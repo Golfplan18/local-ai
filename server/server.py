@@ -419,6 +419,7 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session):
                 "pair_num":        pair_num,
                 "topics":          ", ".join(topics),
                 "chunk_path":      chunk_path,
+                "agent_id":        "user",
             }],
         )
         if embedding is not None:
