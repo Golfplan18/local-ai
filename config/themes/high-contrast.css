@@ -1,0 +1,38 @@
+:root {
+  --bg-app:           #000000;
+  --bg-header:        #000000;
+  --bg-panel:         #000000;
+  --bg-panel-header:  #111111;
+  --bg-input:         #000000;
+  --bg-user-bubble:   #003399;
+  --bg-ai-bubble:     #111111;
+  --bg-tool:          #111111;
+  --bg-code:          #000000;
+  --bg-overlay:       rgba(0,0,0,0.75);
+
+  --text-primary:      #ffffff;
+  --text-secondary:    #cccccc;
+  --text-muted:        #888888;
+  --text-header:       #ffffff;
+  --text-panel-header: #cccccc;
+  --text-user-bubble:  #ffffff;
+  --text-ai-bubble:    #ffffff;
+  --text-link:         #66aaff;
+
+  --border:           #ffffff;
+  --border-panel:     #555555;
+  --border-input:     #ffffff;
+  --accent:           #ffff00;
+  --accent-soft:      #cccc00;
+  --accent-muted:     #888800;
+
+  --panel-gap:        2px;
+  --border-radius:    4px;
+  --border-radius-sm: 2px;
+  --font-family:      -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:        "SF Mono", "Fira Code", "Consolas", monospace;
+  --font-size-base:   16px;
+  --font-size-sm:     14px;
+  --font-size-xs:     12px;
+  --spacing:          8px;
+}

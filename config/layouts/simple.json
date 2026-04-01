@@ -1,0 +1,16 @@
+{
+  "layout": {
+    "preset_base": "simple",
+    "panels": [
+      {
+        "id": "main",
+        "type": "chat",
+        "width_pct": 100,
+        "model_slot": "breadth",
+        "is_main_feed": true,
+        "bridge_subscribe_to": null,
+        "label": "Chat"
+      }
+    ]
+  }
+}

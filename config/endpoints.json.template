@@ -1,0 +1,90 @@
+{
+  "vault_path": "YOUR_VAULT_PATH",
+  "conversations_path": "YOUR_HOME/Documents/conversations/",
+  "chromadb_path": "YOUR_WORKSPACE/chromadb/",
+  "endpoints": [
+    {
+      "name": "local-mlx-MODEL_SLUG",
+      "type": "local",
+      "engine": "mlx",
+      "model": "YOUR_WORKSPACE/models/MODEL_DIRECTORY",
+      "model_name": "MODEL_DISPLAY_NAME",
+      "role": "breadth",
+      "status": "active",
+      "notes": "Primary local model — broad synthesis and consolidation"
+    },
+    {
+      "name": "claude-browser",
+      "type": "browser",
+      "service": "claude",
+      "session_path": "config/browser-sessions/claude.json",
+      "role": "gear5-commercial",
+      "status": "active"
+    },
+    {
+      "name": "chatgpt-browser",
+      "type": "browser",
+      "service": "chatgpt",
+      "session_path": "config/browser-sessions/chatgpt.json",
+      "role": "gear5-commercial",
+      "status": "active"
+    },
+    {
+      "name": "gemini-browser",
+      "type": "browser",
+      "service": "gemini",
+      "session_path": "config/browser-sessions/gemini.json",
+      "role": "gear5-commercial",
+      "status": "active"
+    },
+    {
+      "name": "gemini-api",
+      "type": "api",
+      "service": "gemini",
+      "model": "models/gemini-2.5-flash",
+      "role": "gear5-api",
+      "status": "inactive",
+      "notes": "Set status to active after adding GEMINI_API_KEY via setup.sh"
+    },
+    {
+      "name": "openai-api",
+      "type": "api",
+      "service": "openai",
+      "model": "gpt-4o",
+      "role": "gear5-api",
+      "status": "inactive",
+      "notes": "Set status to active after adding OPENAI_API_KEY via setup.sh"
+    },
+    {
+      "name": "anthropic-api",
+      "type": "api",
+      "service": "claude",
+      "model": "claude-opus-4-6",
+      "role": "gear5-api",
+      "status": "inactive",
+      "notes": "Set status to active after adding ANTHROPIC_API_KEY via setup.sh"
+    }
+  ],
+  "default_endpoint": "local-mlx-MODEL_SLUG",
+  "slot_assignments": {
+    "sidebar":       "local-mlx-MODEL_SLUG",
+    "step1_cleanup": "local-mlx-MODEL_SLUG",
+    "breadth":       "local-mlx-MODEL_SLUG",
+    "depth":         "local-mlx-MODEL_SLUG",
+    "evaluator":     "local-mlx-MODEL_SLUG",
+    "consolidator":  "local-mlx-MODEL_SLUG"
+  },
+  "operational_context": {
+    "interactive": ["local", "browser", "api"],
+    "autonomous":  ["local"],
+    "agent":       ["local"]
+  },
+  "routing": {
+    "depth":              "local-mlx-MODEL_SLUG",
+    "breadth":            "local-mlx-MODEL_SLUG",
+    "small":              "local-mlx-MODEL_SLUG",
+    "gear5_browser":      "claude-browser",
+    "gear5_api_primary":  "gemini-api",
+    "gear5_api_overflow":  "openai-api"
+  }
+}

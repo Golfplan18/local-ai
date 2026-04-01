@@ -1,0 +1,38 @@
+:root {
+  --bg-app:           #fdf6ec;
+  --bg-header:        #3d2b1a;
+  --bg-panel:         #fffdf8;
+  --bg-panel-header:  #f5ede0;
+  --bg-input:         #fffdf8;
+  --bg-user-bubble:   #3d2b1a;
+  --bg-ai-bubble:     #fffdf8;
+  --bg-tool:          #f5ede0;
+  --bg-code:          #fdf0dc;
+  --bg-overlay:       rgba(61,43,26,0.5);
+
+  --text-primary:      #2a1a0a;
+  --text-secondary:    #6a4a2a;
+  --text-muted:        #aaa090;
+  --text-header:       #f5ede0;
+  --text-panel-header: #5a3a1a;
+  --text-user-bubble:  #f5ede0;
+  --text-ai-bubble:    #2a1a0a;
+  --text-link:         #7a4a10;
+
+  --border:           #e8d8c0;
+  --border-panel:     #e8d8c0;
+  --border-input:     #d8c8a8;
+  --accent:           #b05a10;
+  --accent-soft:      #804010;
+  --accent-muted:     #c09060;
+
+  --panel-gap:        1px;
+  --border-radius:    8px;
+  --border-radius-sm: 4px;
+  --font-family:      "Georgia", "Palatino", -apple-system, serif;
+  --font-mono:        "SF Mono", "Fira Code", "Consolas", monospace;
+  --font-size-base:   16px;
+  --font-size-sm:     14px;
+  --font-size-xs:     12px;
+  --spacing:          8px;
+}

@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Local AI</title>
+<link id="theme-link" rel="stylesheet" href="/api/theme">
+<style>
+/* ── Shell styles (structure only — colors from theme CSS variables) ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-family, -apple-system, sans-serif);
+  font-size: var(--font-size-base, 15px);
+  background: var(--bg-app, #f5f5f0);
+  color: var(--text-primary, #1a1a1a);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+#app-header {
+  background: var(--bg-header, #1a1a1a);
+  color: var(--text-header, #f5f5f0);
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12px;
+  min-height: 48px;
+}
+#app-header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+.header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Layout preset icons */
+.preset-icons { display: flex; gap: 4px; }
+.preset-icon {
+  background: none; border: 1px solid #444; color: #aaa;
+  border-radius: 4px; padding: 3px 7px; cursor: pointer;
+  font-size: 13px; line-height: 1; transition: all 0.15s;
+}
+.preset-icon:hover, .preset-icon.active { border-color: #aaa; color: var(--text-header, #f5f5f0); }
+
+/* Theme selector */
+#theme-select {
+  background: #333; color: #ccc; border: 1px solid #444;
+  border-radius: 4px; padding: 3px 6px; font-size: 12px; cursor: pointer;
+}
+
+/* Model switcher button */
+#switcher-btn {
+  background: none; border: 1px solid #444; border-radius: 6px;
+  color: #aaa; padding: 4px 9px; cursor: pointer; font-size: 15px;
+  transition: all 0.15s;
+}
+#switcher-btn:hover { border-color: #888; color: var(--text-header, #f5f5f0); }
+
+/* Layout button */
+#layout-gen-btn {
+  background: none; border: 1px solid #444; border-radius: 6px;
+  color: #aaa; padding: 4px 9px; cursor: pointer; font-size: 12px;
+  transition: all 0.15s;
+}
+#layout-gen-btn:hover { border-color: #888; color: var(--text-header, #f5f5f0); }
+
+/* Workspace — panels rendered here */
+#workspace {
+  display: grid;
+  flex: 1;
+  overflow: hidden;
+  gap: var(--panel-gap, 1px);
+  background: var(--border-panel, #e0e0e0);
+}
+
+/* Panel structure */
+.panel-wrapper {
+  background: var(--bg-panel, #fff);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+.panel-header {
+  background: var(--bg-panel-header, #f0f0eb);
+  color: var(--text-panel-header, #444);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  font-size: var(--font-size-sm, 13px);
+  border-bottom: 1px solid var(--border-panel, #e0e0e0);
+  gap: 8px;
+}
+.panel-label { font-weight: 600; font-size: var(--font-size-sm, 13px); }
+.panel-controls { display: flex; align-items: center; gap: 6px; }
+.panel-type-select {
+  font-size: 11px; background: none; border: 1px solid var(--border, #e0e0e0);
+  border-radius: 3px; padding: 2px 4px; color: var(--text-panel-header, #444);
+  cursor: pointer;
+}
+.panel-close-btn {
+  background: none; border: none; color: var(--text-muted, #999);
+  cursor: pointer; font-size: 14px; padding: 1px 4px; line-height: 1;
+}
+.panel-close-btn:hover { color: var(--text-primary, #1a1a1a); }
+.bridge-toggle {
+  font-size: 10px; padding: 2px 5px; border-radius: 3px; cursor: pointer;
+  border: 1px solid var(--border, #e0e0e0); background: none;
+  color: var(--text-muted, #999); white-space: nowrap;
+}
+.bridge-toggle.active { color: #4a9a4a; border-color: #4a9a4a; }
+.panel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Chat panel body */
+.panel-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.panel-input-row {
+  padding: 10px 12px;
+  background: var(--bg-input, #fff);
+  border-top: 1px solid var(--border, #e0e0e0);
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.panel-input {
+  flex: 1;
+  border: 1px solid var(--border-input, #d0d0d0);
+  border-radius: var(--border-radius, 8px);
+  padding: 8px 10px;
+  font-size: var(--font-size-base, 15px);
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  background: var(--bg-input, #fff);
+  color: var(--text-primary, #1a1a1a);
+  min-height: 38px;
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.4;
+}
+.panel-input:focus { border-color: var(--accent, #1a1a1a); }
+.panel-send {
+  background: var(--accent, #1a1a1a);
+  color: var(--text-header, #f5f5f0);
+  border: none;
+  border-radius: var(--border-radius, 8px);
+  padding: 8px 14px;
+  font-size: var(--font-size-base, 15px);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.panel-send:disabled { background: var(--accent-muted, #999); cursor: default; }
+.panel-send:hover:not(:disabled) { background: var(--accent-soft, #333); }
+
+/* Chat messages */
+.msg { max-width: 100%; }
+.bubble {
+  padding: 9px 12px;
+  border-radius: var(--border-radius, 8px);
+  line-height: 1.55;
+  font-size: var(--font-size-base, 15px);
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: inline-block;
+  max-width: 100%;
+}
+.msg.user { text-align: right; }
+.msg.user .bubble {
+  background: var(--bg-user-bubble, #1a1a1a);
+  color: var(--text-user-bubble, #f5f5f0);
+  border-bottom-right-radius: 3px;
+}
+.msg.ai .bubble {
+  background: var(--bg-ai-bubble, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  color: var(--text-ai-bubble, #1a1a1a);
+  border-bottom-left-radius: 3px;
+}
+.tool-status {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-muted, #999);
+  font-style: italic;
+  padding: 2px 4px;
+}
+.tool-result {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-secondary, #666);
+  background: var(--bg-tool, #f0f0eb);
+  border-left: 3px solid var(--border, #ccc);
+  padding: 4px 8px;
+  border-radius: var(--border-radius-sm, 4px);
+  white-space: pre-wrap;
+  font-family: var(--font-mono, monospace);
+}
+.empty-state {
+  text-align: center;
+  color: var(--text-muted, #999);
+  margin: auto;
+  font-size: var(--font-size-sm, 13px);
+  line-height: 1.8;
+  padding: 24px;
+}
+.bridge-indicator {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-muted, #999);
+  padding: 4px 12px;
+  background: var(--bg-panel-header, #f0f0eb);
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+/* Send to Main */
+.send-to-main-btn {
+  display: block; margin-top: 4px;
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-link, #2a5db0);
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+}
+.send-to-main-btn:hover { text-decoration: underline; }
+
+/* Vault panel */
+.vault-search-row {
+  padding: 8px 10px;
+  display: flex; gap: 6px;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  flex-shrink: 0;
+}
+.vault-search-input {
+  flex: 1; border: 1px solid var(--border-input, #d0d0d0);
+  border-radius: var(--border-radius-sm, 4px);
+  padding: 5px 8px; font-size: var(--font-size-sm, 13px);
+  background: var(--bg-input, #fff); color: var(--text-primary, #1a1a1a);
+  outline: none;
+}
+.vault-search-input:focus { border-color: var(--accent, #1a1a1a); }
+.vault-search-btn {
+  border: 1px solid var(--border-input, #d0d0d0);
+  border-radius: var(--border-radius-sm, 4px);
+  background: none; color: var(--text-secondary, #666);
+  padding: 5px 10px; cursor: pointer; font-size: 14px;
+}
+.vault-results {
+  flex: 1; overflow-y: auto; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.vault-note {
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--border-radius-sm, 4px);
+  padding: 8px 10px;
+  background: var(--bg-panel, #fff);
+}
+.vault-note-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.vault-note-title { font-weight: 600; font-size: var(--font-size-sm, 13px); }
+.vault-note-score { font-size: var(--font-size-xs, 11px); color: var(--text-muted, #999); }
+.vault-note-meta { font-size: var(--font-size-xs, 11px); color: var(--text-muted, #999); margin-bottom: 4px; }
+.vault-note-preview { font-size: var(--font-size-sm, 13px); color: var(--text-secondary, #666); line-height: 1.45; }
+.vault-empty, .vault-loading, .vault-error { text-align: center; color: var(--text-muted, #999); padding: 20px; font-size: var(--font-size-sm, 13px); }
+.vault-error { color: #c00; }
+
+/* Pipeline panel */
+.pipeline-status {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  font-size: var(--font-size-sm, 13px);
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.pipeline-idle { color: var(--text-muted, #999); }
+.pipeline-active { color: #3a9a3a; font-weight: 600; }
+.pipeline-stage-name { color: var(--text-primary, #1a1a1a); }
+.pipeline-stages { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.pipeline-stage { border-radius: var(--border-radius-sm, 4px); padding: 7px 10px; border-left: 3px solid var(--border, #e0e0e0); }
+.stage-pending { opacity: 0.5; }
+.stage-active  { border-left-color: #4a9a4a; background: var(--bg-tool, #f0f0eb); }
+.stage-done    { border-left-color: #888; }
+.stage-error   { border-left-color: #c00; }
+.stage-header  { display: flex; align-items: center; gap: 8px; font-size: var(--font-size-sm, 13px); }
+.stage-icon    { font-size: 12px; width: 14px; }
+.stage-label   { font-weight: 500; }
+.stage-model   { font-size: var(--font-size-xs, 11px); color: var(--text-muted, #999); margin-left: auto; }
+.stage-signal  { font-size: var(--font-size-xs, 11px); padding: 1px 5px; border-radius: 3px; }
+.stage-signal.convergence  { background: #d4f5d4; color: #1a6a1a; }
+.stage-signal.divergence   { background: #ffd4d4; color: #6a1a1a; }
+.stage-output  { margin-top: 5px; }
+.stage-output summary { font-size: var(--font-size-xs, 11px); color: var(--text-muted, #999); cursor: pointer; }
+.stage-output pre { font-size: var(--font-size-xs, 11px); font-family: var(--font-mono, monospace); white-space: pre-wrap; padding: 5px; margin-top: 3px; background: var(--bg-code, #f8f8f5); border-radius: 3px; }
+
+/* Model switcher embedded panel */
+.switcher-panel-body { padding: 10px; overflow-y: auto; flex: 1; }
+.sw-ram { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: var(--bg-app, #f5f5f0); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: var(--font-size-sm, 13px); }
+.sw-lbl { display: block; font-size: var(--font-size-xs, 11px); color: var(--text-muted, #999); }
+.sw-slot { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border, #e0e0e0); }
+.sw-slot-label { font-size: var(--font-size-xs, 11px); font-weight: 600; min-width: 76px; color: var(--text-secondary, #666); text-transform: uppercase; letter-spacing: 0.04em; }
+.sw-select { flex: 1; font-size: var(--font-size-sm, 13px); border: 1px solid var(--border-input, #d0d0d0); border-radius: 4px; padding: 4px 6px; background: var(--bg-input, #fff); color: var(--text-primary, #1a1a1a); }
+.sw-actions { padding: 10px 0 4px; }
+.sw-apply { width: 100%; background: var(--accent, #1a1a1a); color: var(--text-header, #f5f5f0); border: none; border-radius: var(--border-radius, 8px); padding: 8px; font-size: var(--font-size-sm, 13px); cursor: pointer; }
+.sw-apply:disabled { background: var(--accent-muted, #999); }
+
+/* Layout generator overlay */
+#layout-gen-overlay { position: fixed; inset: 0; background: var(--bg-overlay, rgba(0,0,0,0.45)); z-index: 200; display: none; align-items: center; justify-content: center; }
+#layout-gen-overlay.open { display: flex; }
+#layout-gen-modal {
+  background: var(--bg-panel, #fff);
+  border-radius: var(--border-radius, 8px);
+  padding: 20px;
+  width: min(500px, 92vw);
+  display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+#layout-gen-modal h3 { font-size: 15px; }
+#layout-gen-modal p  { font-size: var(--font-size-sm, 13px); color: var(--text-secondary, #666); }
+#layout-desc { width: 100%; border: 1px solid var(--border-input, #d0d0d0); border-radius: var(--border-radius-sm, 4px); padding: 8px; font-family: inherit; font-size: var(--font-size-sm, 13px); background: var(--bg-input, #fff); color: var(--text-primary, #1a1a1a); resize: vertical; min-height: 80px; }
+#layout-image-row { display: flex; align-items: center; gap: 10px; font-size: var(--font-size-sm, 13px); }
+#layout-image-input { flex: 1; }
+#layout-vision-note { font-size: var(--font-size-xs, 11px); color: var(--text-muted, #999); }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.modal-btn-cancel { border: 1px solid var(--border-input, #d0d0d0); background: none; border-radius: var(--border-radius-sm, 4px); padding: 8px 14px; cursor: pointer; font-size: var(--font-size-sm, 13px); }
+.modal-btn-apply  { background: var(--accent, #1a1a1a); color: var(--text-header, #f5f5f0); border: none; border-radius: var(--border-radius-sm, 4px); padding: 8px 14px; cursor: pointer; font-size: var(--font-size-sm, 13px); }
+.modal-btn-apply:disabled { background: var(--accent-muted, #999); }
+#layout-gen-status { font-size: var(--font-size-sm, 13px); color: var(--text-muted, #999); min-height: 18px; }
+
+/* Model switcher slide-out overlay (from header button) */
+#switcher-overlay { position: fixed; inset: 0; background: var(--bg-overlay, rgba(0,0,0,0.45)); z-index: 100; display: none; }
+#switcher-overlay.open { display: block; }
+#switcher-panel-overlay {
+  position: fixed; top: 0; right: 0; width: 480px; max-width: 100vw; height: 100vh;
+  background: var(--bg-panel, #fff); z-index: 101;
+  display: flex; flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+  transform: translateX(100%); transition: transform 0.22s ease;
+}
+#switcher-panel-overlay.open { transform: translateX(0); }
+/* (full switcher markup injected by JS) */
+</style>
+</head>
+<body>
+
+<header id="app-header">
+  <h1>Local AI</h1>
+  <div class="header-controls">
+    <div class="preset-icons">
+      <button class="preset-icon" data-preset="simple"    title="Simple — single panel">⬜</button>
+      <button class="preset-icon" data-preset="studio"    title="Studio — main + sidebar">⬛⬜</button>
+      <button class="preset-icon" data-preset="workbench" title="Workbench — main + sidebar + vault">⬛⬜⬜</button>
+    </div>
+    <select id="theme-select" title="Switch theme"></select>
+    <button id="layout-gen-btn" title="Generate custom layout from description or image">✦ Layout</button>
+    <button id="switcher-btn"   title="Configure models (⌘M)">⚙</button>
+  </div>
+</header>
+
+<div id="workspace"></div>
+
+<!-- Layout generator modal -->
+<div id="layout-gen-overlay">
+  <div id="layout-gen-modal">
+    <h3>Generate Layout</h3>
+    <p>Describe your desired layout in plain language, or upload a screenshot/wireframe.</p>
+    <textarea id="layout-desc" placeholder="e.g. Main chat on the left half. Pipeline monitor top right. Small vault panel bottom right."></textarea>
+    <div id="layout-image-row">
+      <label>Image (optional):</label>
+      <input type="file" id="layout-image-input" accept="image/*">
+    </div>
+    <div id="layout-vision-note"></div>
+    <div id="layout-gen-status"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" id="layout-gen-cancel">Cancel</button>
+      <button class="modal-btn-apply"  id="layout-gen-apply">Generate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Model switcher overlay (from header ⚙ button) -->
+<div id="switcher-overlay"></div>
+<div id="switcher-panel-overlay">
+  <!-- injected by switcher overlay init -->
+</div>
+
+<!-- Panel modules -->
+<script src="/static/chat-panel.js"></script>
+<script src="/static/vault-panel.js"></script>
+<script src="/static/pipeline-panel.js"></script>
+<script src="/static/clarification-panel.js"></script>
+<script src="/static/switcher-panel.js"></script>
+
+<script>
+// ── Panel registry ────────────────────────────────────────────────────────────
+const PANEL_CLASSES = {
+  chat:          ChatPanel,
+  vault:         VaultPanel,
+  pipeline:      PipelinePanel,
+  clarification: ClarificationPanel,
+  switcher:      SwitcherPanel,
+};
+const PANEL_TYPES_LIST = ['chat','vault','pipeline','clarification','switcher'];
+
+// Live panel instances {id: PanelInstance}
+window._panels = {};
+
+// ── App state ─────────────────────────────────────────────────────────────────
+let _layoutCfg  = null;   // current layout config
+let _themeName  = 'default-light';
+let _visionAvailable = false;
+
+// ── Bootstrap ────────────────────────────────────────────────────────────────
+async function boot() {
+  await Promise.all([loadThemeList(), loadLayoutAndRender()]);
+  checkVision();
+}
+
+async function loadThemeList() {
+  try {
+    const r = await fetch('/api/themes');
+    const d = await r.json();
+    const sel = document.getElementById('theme-select');
+    sel.innerHTML = '';
+    (d.themes || []).sort().forEach(t => {
+      const o = document.createElement('option');
+      o.value = t;
+      o.textContent = t.replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+      sel.appendChild(o);
+    });
+    // Detect OS dark mode and set default if no saved theme
+    try {
+      const lr = await fetch('/api/layout');
+      const lc = await lr.json();
+      _themeName = lc.theme || 'default-light';
+    } catch(e) {
+      _themeName = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'default-dark' : 'default-light';
+    }
+    sel.value = _themeName;
+    sel.addEventListener('change', () => applyTheme(sel.value));
+  } catch(e) {}
+}
+
+async function applyTheme(name) {
+  _themeName = name;
+  try {
+    await fetch('/api/theme', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({theme: name})
+    });
+  } catch(e) {}
+  // Refresh stylesheet after server has saved the new theme
+  document.getElementById('theme-link').href = '/api/theme?' + Date.now();
+}
+
+async function loadLayoutAndRender() {
+  try {
+    const r = await fetch('/api/layout');
+    _layoutCfg = await r.json();
+  } catch(e) {
+    _layoutCfg = {layout:{preset_base:'simple',panels:[
+      {id:'main',type:'chat',width_pct:100,model_slot:'breadth',is_main_feed:true,bridge_subscribe_to:null,label:'Chat'}
+    ]}, theme:'default-light'};
+  }
+  renderLayout(_layoutCfg);
+  highlightActivePreset();
+}
+
+function renderLayout(cfg) {
+  // Destroy existing panels
+  Object.values(window._panels).forEach(p => { try { p.destroy(); } catch(e){} });
+  window._panels = {};
+
+  const panels = cfg.layout.panels;
+  const ws     = document.getElementById('workspace');
+
+  // Build CSS Grid columns from width_pct
+  const cols = panels.map(p => `${p.width_pct || Math.floor(100/panels.length)}fr`).join(' ');
+  ws.style.gridTemplateColumns = cols;
+  ws.innerHTML = '';
+
+  panels.forEach(pCfg => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'panel-wrapper';
+    wrapper.id = `panel-wrapper-${pCfg.id}`;
+
+    // Panel header
+    const header = document.createElement('div');
+    header.className = 'panel-header';
+
+    const label = document.createElement('span');
+    label.className = 'panel-label';
+    label.textContent = pCfg.label || pCfg.type;
+
+    const controls = document.createElement('div');
+    controls.className = 'panel-controls';
+
+    // Type selector
+    const typeSel = document.createElement('select');
+    typeSel.className = 'panel-type-select';
+    typeSel.title = 'Change panel type';
+    PANEL_TYPES_LIST.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      if (t === pCfg.type) o.selected = true;
+      typeSel.appendChild(o);
+    });
+    typeSel.addEventListener('change', () => changePanelType(pCfg.id, typeSel.value));
+
+    // Bridge toggle (for panels that support subscribing)
+    const hasSubscribe = ['chat','vault','clarification'].includes(pCfg.type);
+    if (hasSubscribe && !pCfg.is_main_feed) {
+      const bridgeBtn = document.createElement('button');
+      bridgeBtn.className = 'bridge-toggle' + (pCfg.bridge_subscribe_to ? ' active' : '');
+      bridgeBtn.textContent = pCfg.bridge_subscribe_to ? '⇢ bridge on' : '⇢ bridge off';
+      bridgeBtn.title = 'Toggle bridge subscription to main feed';
+      bridgeBtn.addEventListener('click', () => toggleBridge(pCfg.id, bridgeBtn, pCfg));
+      controls.appendChild(bridgeBtn);
+    }
+
+    controls.appendChild(typeSel);
+
+    // Close button (don't show if only one panel)
+    if (panels.length > 1) {
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'panel-close-btn';
+      closeBtn.textContent = '✕';
+      closeBtn.title = 'Close panel';
+      closeBtn.addEventListener('click', () => closePanel(pCfg.id));
+      controls.appendChild(closeBtn);
+    }
+
+    header.appendChild(label);
+    header.appendChild(controls);
+
+    const body = document.createElement('div');
+    body.className = 'panel-body';
+    body.id = `panel-body-${pCfg.id}`;
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(body);
+    ws.appendChild(wrapper);
+
+    // Instantiate module
+    const PanelClass = PANEL_CLASSES[pCfg.type] || ChatPanel;
+    const instance   = new PanelClass(body, pCfg);
+    instance.init();
+    window._panels[pCfg.id] = instance;
+  });
+}
+
+function highlightActivePreset() {
+  const preset = _layoutCfg?.layout?.preset_base || 'simple';
+  document.querySelectorAll('.preset-icon').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.preset === preset);
+  });
+}
+
+// ── Preset switching ──────────────────────────────────────────────────────────
+document.querySelectorAll('.preset-icon').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+async function applyPreset(name) {
+  try {
+    const r = await fetch(`/api/layouts/${name}`);
+    const layout = await r.json();
+    layout.theme = _themeName;
+    _layoutCfg = layout;
+    await fetch('/api/layout', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(layout)
+    });
+    renderLayout(layout);
+    highlightActivePreset();
+  } catch(e) {
+    console.error('Preset load failed:', e);
+  }
+}
+
+// ── Panel type switching ──────────────────────────────────────────────────────
+function changePanelType(panelId, newType) {
+  const panels = _layoutCfg.layout.panels;
+  const p = panels.find(x => x.id === panelId);
+  if (!p) return;
+  const old = window._panels[panelId];
+  if (old) { try { old.destroy(); } catch(e){} }
+
+  p.type = newType;
+  p.label = newType.charAt(0).toUpperCase() + newType.slice(1);
+
+  const body = document.getElementById(`panel-body-${panelId}`);
+  body.innerHTML = '';
+  const PanelClass = PANEL_CLASSES[newType] || ChatPanel;
+  const instance = new PanelClass(body, p);
+  instance.init();
+  window._panels[panelId] = instance;
+
+  // Persist
+  saveLayout();
+}
+
+function toggleBridge(panelId, btn, pCfg) {
+  const panels = _layoutCfg.layout.panels;
+  const p = panels.find(x => x.id === panelId);
+  if (!p) return;
+  const mainPanel = panels.find(x => x.is_main_feed);
+  if (p.bridge_subscribe_to) {
+    p.bridge_subscribe_to = null;
+    btn.textContent = '⇢ bridge off';
+    btn.classList.remove('active');
+  } else {
+    p.bridge_subscribe_to = mainPanel ? mainPanel.id : 'main';
+    btn.textContent = '⇢ bridge on';
+    btn.classList.add('active');
+  }
+  saveLayout();
+}
+
+// ── Panel close / (future: split) ────────────────────────────────────────────
+function closePanel(panelId) {
+  const panels = _layoutCfg.layout.panels;
+  if (panels.length <= 1) return;
+
+  const old = window._panels[panelId];
+  if (old) { try { old.destroy(); } catch(e){} }
+  delete window._panels[panelId];
+
+  const idx   = panels.findIndex(p => p.id === panelId);
+  const freed = panels[idx].width_pct || 0;
+  panels.splice(idx, 1);
+
+  // Distribute freed width to remaining panels proportionally
+  const total = panels.reduce((s,p) => s + (p.width_pct||0), 0);
+  if (total > 0) panels.forEach(p => { p.width_pct = Math.round(p.width_pct * 100 / total); });
+
+  _layoutCfg.layout.preset_base = 'custom';
+  renderLayout(_layoutCfg);
+  saveLayout();
+}
+
+async function saveLayout() {
+  try {
+    await fetch('/api/layout', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_layoutCfg)
+    });
+  } catch(e) {}
+}
+
+// ── Layout generator ──────────────────────────────────────────────────────────
+async function checkVision() {
+  try {
+    const r = await fetch('/models');
+    const d = await r.json();
+    _visionAvailable = (d.commercial_models || []).some(m => m.available && m.transport === 'api');
+    const note = document.getElementById('layout-vision-note');
+    note.textContent = _visionAvailable
+      ? '✓ Vision-capable API endpoint active — image upload enabled.'
+      : 'No vision-capable API endpoint active. Image upload disabled. (Activate Gemini, Claude, or OpenAI API to enable.)';
+    document.getElementById('layout-image-input').disabled = !_visionAvailable;
+  } catch(e) {}
+}
+
+document.getElementById('layout-gen-btn').addEventListener('click', () => {
+  document.getElementById('layout-gen-overlay').classList.add('open');
+  document.getElementById('layout-gen-status').textContent = '';
+});
+document.getElementById('layout-gen-cancel').addEventListener('click', () => {
+  document.getElementById('layout-gen-overlay').classList.remove('open');
+});
+document.getElementById('layout-gen-apply').addEventListener('click', generateLayout);
+
+async function generateLayout() {
+  const desc   = document.getElementById('layout-desc').value.trim();
+  const fileEl = document.getElementById('layout-image-input');
+  const file   = fileEl.files[0];
+  const status = document.getElementById('layout-gen-status');
+  const applyBtn = document.getElementById('layout-gen-apply');
+
+  if (!desc && !file) { status.textContent = 'Enter a description or upload an image.'; return; }
+
+  applyBtn.disabled = true;
+  status.textContent = 'Generating…';
+
+  let image_b64 = null;
+  if (file && _visionAvailable) {
+    image_b64 = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result.split(',')[1]);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  try {
+    const r = await fetch('/api/generate-layout', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({description: desc, image: image_b64})
+    });
+    const data = await r.json();
+    if (data.error) { status.textContent = '⚠ ' + data.error; applyBtn.disabled = false; return; }
+
+    const layout = data.layout;
+    layout.theme = _themeName;
+    _layoutCfg = layout;
+    await fetch('/api/layout', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(layout)
+    });
+    renderLayout(layout);
+    document.getElementById('layout-gen-overlay').classList.remove('open');
+    document.getElementById('layout-desc').value = '';
+    fileEl.value = '';
+  } catch(e) {
+    status.textContent = '⚠ Request failed: ' + e.message;
+  }
+  applyBtn.disabled = false;
+}
+
+// ── Model switcher overlay (⚙ button) ────────────────────────────────────────
+const swOverlay = document.getElementById('switcher-overlay');
+const swPanel   = document.getElementById('switcher-panel-overlay');
+
+swPanel.innerHTML = `
+  <div class="panel-header" style="background:var(--bg-header);color:var(--text-header);">
+    <h2 style="font-size:15px;font-weight:600;">Model Configuration</h2>
+    <button id="sw-close" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;">✕</button>
+  </div>
+  <div id="sw-overlay-body" style="flex:1;overflow-y:auto;padding:16px 18px;">
+    <div style="color:var(--text-muted);font-size:var(--font-size-sm)">Loading…</div>
+  </div>`;
+
+document.getElementById('sw-close').addEventListener('click', closeSwitcherOverlay);
+swOverlay.addEventListener('click', closeSwitcherOverlay);
+document.getElementById('switcher-btn').addEventListener('click', openSwitcherOverlay);
+document.addEventListener('keydown', e => {
+  if ((e.metaKey||e.ctrlKey) && e.key==='m') { e.preventDefault(); openSwitcherOverlay(); }
+  if (e.key==='Escape' && swPanel.classList.contains('open')) closeSwitcherOverlay();
+});
+
+let _swData = null, _swPending = {}, _swSaved = {};
+
+async function openSwitcherOverlay() {
+  swOverlay.classList.add('open');
+  swPanel.classList.add('open');
+  if (!_swData) await loadSwitcherData();
+  else renderSwitcherOverlay();
+}
+function closeSwitcherOverlay() {
+  swOverlay.classList.remove('open');
+  swPanel.classList.remove('open');
+  _swPending = {..._swSaved};
+}
+async function loadSwitcherData() {
+  const r = await fetch('/models');
+  _swData = await r.json();
+  _swSaved   = {...(_swData.slot_assignments||{})};
+  _swPending = {..._swSaved};
+  renderSwitcherOverlay();
+}
+
+const SW_SLOTS = [
+  {id:'sidebar',       label:'Sidebar',       desc:'Gear 1 / quick questions'},
+  {id:'step1_cleanup', label:'Step 1 Cleanup', desc:'Prompt cleanup & mode selection'},
+  {id:'breadth',       label:'Breadth',        desc:'Green/Yellow hat analysis'},
+  {id:'depth',         label:'Depth',          desc:'Black/White hat analysis'},
+  {id:'evaluator',     label:'Evaluator',       desc:'Cross-adversarial evaluation'},
+  {id:'consolidator',  label:'Consolidator',    desc:'Final synthesis'},
+];
+
+function renderSwitcherOverlay() {
+  const body = document.getElementById('sw-overlay-body');
+  const d    = _swData;
+  const budget = d.available_budget_gb;
+
+  body.innerHTML = `
+    <div class="ram-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;background:var(--bg-app);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:var(--font-size-sm);">
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary)">System RAM</span><strong>${d.system_ram_gb} GB</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary)">Overhead</span><strong>${d.overhead_gb} GB</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary)">Budget</span><strong>${budget} GB</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary)">In use</span><strong id="sw-ov-used">— GB</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary)">Remaining</span><strong id="sw-ov-free">— GB</strong></div>
+    </div>
+    <div id="sw-ov-warn" style="margin-bottom:10px;"></div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Slots</div>
+    <div id="sw-ov-slots"></div>
+    <div style="margin-top:14px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Quick Presets</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        <button class="preset-btn" data-swpreset="all-local"       style="border:1px solid var(--border);border-radius:6px;background:var(--bg-app);padding:8px;font-size:12px;cursor:pointer;text-align:left;"><strong style="display:block;margin-bottom:2px;">All Local</strong><span style="color:var(--text-muted);font-size:11px;">Dense→Depth, MoE→Breadth</span></button>
+        <button class="preset-btn" data-swpreset="local-cloud-eval" style="border:1px solid var(--border);border-radius:6px;background:var(--bg-app);padding:8px;font-size:12px;cursor:pointer;text-align:left;"><strong style="display:block;margin-bottom:2px;">Local + Cloud Eval</strong><span style="color:var(--text-muted);font-size:11px;">Local depth &amp; breadth, cloud evaluator</span></button>
+        <button class="preset-btn" data-swpreset="all-cloud"        style="border:1px solid var(--border);border-radius:6px;background:var(--bg-app);padding:8px;font-size:12px;cursor:pointer;text-align:left;"><strong style="display:block;margin-bottom:2px;">All Cloud</strong><span style="color:var(--text-muted);font-size:11px;">Commercial flagships in all roles</span></button>
+        <button class="preset-btn" data-swpreset="max-diversity"    style="border:1px solid var(--border);border-radius:6px;background:var(--bg-app);padding:8px;font-size:12px;cursor:pointer;text-align:left;"><strong style="display:block;margin-bottom:2px;">Max Diversity</strong><span style="color:var(--text-muted);font-size:11px;">Different provider per adversarial role</span></button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="sw-ov-apply" style="flex:1;background:var(--accent);color:var(--text-header);border:none;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;">Apply</button>
+      <button id="sw-ov-cancel" style="background:none;border:1px solid var(--border-input);border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;">Cancel</button>
+    </div>`;
+
+  body.querySelectorAll('.preset-btn').forEach(btn =>
+    btn.addEventListener('click', () => { swApplyPreset(btn.dataset.swpreset); }));
+  body.querySelector('#sw-ov-apply').addEventListener('click', swApplyConfig);
+  body.querySelector('#sw-ov-cancel').addEventListener('click', closeSwitcherOverlay);
+
+  renderSwSlots();
+  swUpdateRam();
+}
+
+function renderSwSlots() {
+  const body = document.getElementById('sw-ov-slots');
+  if (!body) return;
+  body.innerHTML = '';
+  const allM = swBuildIndex();
+  SW_SLOTS.forEach(slot => {
+    const row = document.createElement('div');
+    row.style.cssText = 'border-bottom:1px solid var(--border);padding:9px 0;';
+    row.innerHTML = `<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:5px;">
+      <span style="font-weight:600;font-size:var(--font-size-sm);min-width:110px;">${slot.label}</span>
+      <span style="font-size:var(--font-size-xs);color:var(--text-muted);">${slot.desc}</span>
+    </div>`;
+    const sel = document.createElement('select');
+    sel.style.cssText = 'width:100%;border:1px solid var(--border-input);border-radius:6px;padding:7px 10px;font-size:var(--font-size-sm);background:var(--bg-input);color:var(--text-primary);';
+    sel.id = `sw-slot-${slot.id}`;
+    const lgL = document.createElement('optgroup'); lgL.label = 'Local Models';
+    _swData.local_models.forEach(m => {
+      const o = document.createElement('option'); o.value = m.id;
+      o.textContent = `${m.display_name}  (${m.ram_gb} GB)`;
+      if (_swPending[slot.id] === m.id) o.selected = true;
+      lgL.appendChild(o);
+    });
+    const lgC = document.createElement('optgroup'); lgC.label = 'Commercial Models';
+    _swData.commercial_models.forEach(m => {
+      const o = document.createElement('option'); o.value = m.id;
+      o.textContent = m.display_name + (m.available ? '' : ' (inactive)');
+      if (!m.available) o.style.color = 'var(--text-muted)';
+      if (_swPending[slot.id] === m.id) o.selected = true;
+      lgC.appendChild(o);
+    });
+    sel.appendChild(lgL); sel.appendChild(lgC);
+    sel.addEventListener('change', () => { _swPending[slot.id] = sel.value; swUpdateRam(); swUpdateWarnings(); });
+
+    const impact = document.createElement('div');
+    impact.id = `sw-impact-${slot.id}`;
+    impact.style.cssText = 'font-size:var(--font-size-xs);color:var(--text-muted);margin-top:3px;height:13px;';
+
+    row.appendChild(sel); row.appendChild(impact);
+    body.appendChild(row);
+  });
+  swUpdateAllImpacts();
+  swUpdateWarnings();
+}
+
+function swBuildIndex() {
+  const idx = {};
+  (_swData.local_models||[]).forEach(m => idx[m.id] = m);
+  (_swData.commercial_models||[]).forEach(m => idx[m.id] = m);
+  return idx;
+}
+function swRamUsed(asgn) {
+  const idx = swBuildIndex(); const unique = new Set();
+  Object.values(asgn).forEach(id => { const m = idx[id]; if (m && m.ram_gb > 0) unique.add(id); });
+  let t = 0; unique.forEach(id => t += idx[id].ram_gb); return t;
+}
+function swUpdateRam() {
+  const used = swRamUsed(_swPending);
+  const free = _swData.available_budget_gb - used;
+  const usedEl = document.getElementById('sw-ov-used');
+  const freeEl = document.getElementById('sw-ov-free');
+  if (usedEl) usedEl.textContent = used.toFixed(0) + ' GB';
+  if (freeEl) { freeEl.textContent = free.toFixed(0) + ' GB'; freeEl.style.color = free < 0 ? 'var(--accent)' : ''; }
+  swUpdateAllImpacts();
+}
+function swUpdateAllImpacts() {
+  const idx = swBuildIndex();
+  SW_SLOTS.forEach(slot => {
+    const el = document.getElementById(`sw-impact-${slot.id}`);
+    if (!el) return;
+    const id = _swPending[slot.id]; if (!id) { el.textContent=''; return; }
+    const m  = idx[id]; if (!m) { el.textContent=''; return; }
+    if (m.ram_gb === 0) { el.textContent = '☁ cloud'; el.style.color = 'var(--text-link,#4a80b0)'; return; }
+    const shared = SW_SLOTS.some(s => s.id !== slot.id && _swPending[s.id] === id);
+    el.textContent = shared ? `${m.ram_gb} GB (shared — already loaded)` : `+${m.ram_gb} GB`;
+    el.style.color = shared ? '#3a9a3a' : 'var(--text-muted)';
+  });
+}
+function swUpdateWarnings() {
+  const el = document.getElementById('sw-ov-warn');
+  if (!el) return;
+  const same = _swPending.depth && _swPending.breadth && _swPending.depth === _swPending.breadth;
+  el.innerHTML = same ? `<div style="background:#fffbe6;border:1px solid #e8c840;border-radius:6px;padding:9px 12px;font-size:var(--font-size-xs);color:#5a4a00;margin-bottom:8px;">Same model in Depth and Breadth. Adversarial signal will reflect internal consistency only.</div>` : '';
+}
+function swApplyPreset(preset) {
+  const local = _swData.local_models || [];
+  const comm  = (_swData.commercial_models||[]).filter(m => m.available);
+  const dense = local.find(m => m.type==='dense') || local[0];
+  const largeMoe = local.filter(m=>m.type==='moe').reduce((a,b)=>a&&a.ram_gb>b.ram_gb?a:b, null) || local[0];
+  const small = local.reduce((a,b)=>a.ram_gb<b.ram_gb?a:b, local[0]);
+  const byProv = {}; comm.forEach(m => { if (!byProv[m.provider]) byProv[m.provider]=m; });
+  const claude=byProv['anthropic'], openai=byProv['openai'], google=byProv['google'], any=claude||openai||google;
+  const depth=dense||local[0], breadth=largeMoe||local[0];
+  const a = {};
+  if (preset==='all-local')       { a.sidebar=small?.id;a.step1_cleanup=breadth?.id;a.breadth=breadth?.id;a.depth=depth?.id;a.evaluator=depth?.id;a.consolidator=breadth?.id; }
+  if (preset==='local-cloud-eval'){ a.sidebar=small?.id;a.step1_cleanup=breadth?.id;a.breadth=breadth?.id;a.depth=depth?.id;a.evaluator=any?.id;a.consolidator=breadth?.id; }
+  if (preset==='all-cloud')       { a.sidebar=small?.id;a.step1_cleanup=claude?.id||any?.id;a.breadth=openai?.id||any?.id;a.depth=claude?.id||any?.id;a.evaluator=google?.id||any?.id;a.consolidator=claude?.id||any?.id; }
+  if (preset==='max-diversity')   { a.sidebar=small?.id;a.step1_cleanup=breadth?.id;a.breadth=openai?.id||any?.id||breadth?.id;a.depth=claude?.id||depth?.id;a.evaluator=google?.id||any?.id||depth?.id;a.consolidator=breadth?.id; }
+  Object.entries(a).forEach(([sl,id]) => { if (id) { _swPending[sl]=id; const s=document.getElementById(`sw-slot-${sl}`); if(s) s.value=id; } });
+  swUpdateRam(); swUpdateWarnings();
+}
+async function swApplyConfig() {
+  const btn = document.getElementById('sw-ov-apply');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/config', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot_assignments:_swPending})});
+    const d = await r.json();
+    if (d.error) { btn.textContent='⚠ '+d.error; btn.disabled=false; return; }
+    _swSaved = {..._swPending};
+    btn.textContent = 'Saved ✓';
+    setTimeout(()=>{btn.textContent='Apply';btn.disabled=false;}, 1400);
+  } catch(e) { btn.textContent='⚠ Error'; btn.disabled=false; }
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>

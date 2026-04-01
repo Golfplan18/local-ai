@@ -1,0 +1,45 @@
+{
+  "_comment": "Panel type registry. To add a community panel type: place a JS module in server/static/, add an entry here. The module must export init(el, config), destroy(), onBridgeUpdate(state).",
+  "types": {
+    "chat": {
+      "label": "Chat",
+      "module": "chat-panel.js",
+      "supports_bridge_source": true,
+      "supports_bridge_subscribe": true,
+      "supports_model_slot": true,
+      "description": "Independent conversation with its own history and model assignment."
+    },
+    "vault": {
+      "label": "Vault Notes",
+      "module": "vault-panel.js",
+      "supports_bridge_source": false,
+      "supports_bridge_subscribe": true,
+      "supports_model_slot": false,
+      "description": "ChromaDB semantic search over the vault. Updates automatically based on main feed topic."
+    },
+    "pipeline": {
+      "label": "Pipeline",
+      "module": "pipeline-panel.js",
+      "supports_bridge_source": false,
+      "supports_bridge_subscribe": false,
+      "supports_model_slot": false,
+      "description": "Read-only real-time view of Gear 4 pipeline stage execution."
+    },
+    "clarification": {
+      "label": "Clarification",
+      "module": "clarification-panel.js",
+      "supports_bridge_source": false,
+      "supports_bridge_subscribe": true,
+      "supports_model_slot": true,
+      "description": "Ephemeral chat for questions that should not enter the main conversation. Send to Main injects context."
+    },
+    "switcher": {
+      "label": "Model Switcher",
+      "module": "switcher-panel.js",
+      "supports_bridge_source": false,
+      "supports_bridge_subscribe": false,
+      "supports_model_slot": false,
+      "description": "Persistent model slot configuration panel."
+    }
+  }
+}

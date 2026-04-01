@@ -1,0 +1,10 @@
+{
+  "workspace_root": "YOUR_WORKSPACE",
+  "inference_engine": "mlx-custom",
+  "server_port_file": "YOUR_WORKSPACE/server/.port",
+  "server_base_url": "http://localhost",
+  "chat_endpoint": "/chat",
+  "default_model": "MODEL_SLUG",
+  "boot_spec": "YOUR_WORKSPACE/boot/boot.md",
+  "version": "3.0"
+}

@@ -1,0 +1,72 @@
+{
+  "overhead_reservation_gb": 8,
+  "local_model_directory": "YOUR_WORKSPACE/models/",
+  "local_models": [
+    {
+      "id": "local-mlx-MODEL_SLUG",
+      "display_name": "MODEL_DISPLAY_NAME",
+      "path": "YOUR_WORKSPACE/models/MODEL_DIRECTORY",
+      "ram_gb": 0,
+      "type": "moe",
+      "architecture_note": "Description of model architecture and strengths",
+      "recommended_roles": ["breadth", "step1_cleanup", "consolidator"],
+      "active_params_per_token": null
+    }
+  ],
+  "commercial_models": [
+    {
+      "id": "claude-browser",
+      "display_name": "Claude (browser)",
+      "provider": "anthropic",
+      "transport": "browser_automation",
+      "ram_gb": 0,
+      "tier": "flagship",
+      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"]
+    },
+    {
+      "id": "chatgpt-browser",
+      "display_name": "ChatGPT (browser)",
+      "provider": "openai",
+      "transport": "browser_automation",
+      "ram_gb": 0,
+      "tier": "flagship",
+      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"]
+    },
+    {
+      "id": "gemini-browser",
+      "display_name": "Gemini (browser)",
+      "provider": "google",
+      "transport": "browser_automation",
+      "ram_gb": 0,
+      "tier": "flagship",
+      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"]
+    },
+    {
+      "id": "gemini-api",
+      "display_name": "Gemini 2.5 Flash (API)",
+      "provider": "google",
+      "transport": "api",
+      "ram_gb": 0,
+      "tier": "standard",
+      "recommended_roles": ["evaluator", "breadth", "consolidator"]
+    },
+    {
+      "id": "openai-api",
+      "display_name": "GPT-4o (API)",
+      "provider": "openai",
+      "transport": "api",
+      "ram_gb": 0,
+      "tier": "standard",
+      "recommended_roles": ["evaluator", "breadth", "consolidator"]
+    },
+    {
+      "id": "anthropic-api",
+      "display_name": "Claude Opus (API)",
+      "provider": "anthropic",
+      "transport": "api",
+      "ram_gb": 0,
+      "tier": "flagship",
+      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"]
+    }
+  ]
+}

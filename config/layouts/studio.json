@@ -1,0 +1,25 @@
+{
+  "layout": {
+    "preset_base": "studio",
+    "panels": [
+      {
+        "id": "main",
+        "type": "chat",
+        "width_pct": 65,
+        "model_slot": "breadth",
+        "is_main_feed": true,
+        "bridge_subscribe_to": null,
+        "label": "Main Chat"
+      },
+      {
+        "id": "sidebar",
+        "type": "chat",
+        "width_pct": 35,
+        "model_slot": "sidebar",
+        "is_main_feed": false,
+        "bridge_subscribe_to": "main",
+        "label": "Sidebar"
+      }
+    ]
+  }
+}
