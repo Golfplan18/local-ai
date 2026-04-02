@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
 Universal Chat Server — server.py
-Browser-based chat interface with integrated agentic loop.
+Browser-based chat interface with pipeline-integrated agentic loop.
 All tiers: Tier 0 through Tier C.
+
+Model-calling, tool execution, and pipeline logic live in orchestrator/boot.py.
+This file handles Flask routing, SSE streaming, conversation persistence, and UI APIs.
 """
 
 import os, sys, json, re, threading, time, uuid
 from datetime import datetime
 
 WORKSPACE         = os.path.expanduser("~/local-ai/")
-BOOT_MD           = os.path.join(WORKSPACE, "boot/boot.md")
 CONVERSATIONS_DIR = os.path.expanduser("~/Documents/conversations/")
 CONVERSATIONS_RAW = os.path.expanduser("~/Documents/conversations/raw/")
 ENDPOINTS    = os.path.join(WORKSPACE, "config/endpoints.json")
@@ -17,24 +19,19 @@ MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
 INTERFACE_JSON = os.path.join(WORKSPACE, "config/interface.json")
 LAYOUTS_DIR  = os.path.join(WORKSPACE, "config/layouts/")
 THEMES_DIR   = os.path.join(WORKSPACE, "config/themes/")
-TOOLS_DIR    = os.path.join(WORKSPACE, "orchestrator/tools/")
 MAX_ITERATIONS = 10
 
-sys.path.insert(0, TOOLS_DIR)
+sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/tools/"))
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
 
-TOOLS_AVAILABLE = True
-try:
-    from web_search import web_search
-    from file_ops import file_read, file_write
-    from knowledge_search import knowledge_search
-    from browser_open import browser_open
-    from credential_store import credential_store
-    from browser_evaluate import browser_evaluate
-    from api_evaluate import api_evaluate
-except ImportError as e:
-    print(f"[WARNING] Tool import failed: {e}")
-    TOOLS_AVAILABLE = False
+# Import all shared functions from orchestrator
+from boot import (
+    load_boot_md, load_endpoints as load_config, get_active_endpoint as get_endpoint,
+    get_slot_endpoint, call_model, parse_tool_calls, strip_tool_calls, execute_tool,
+    run_step1_cleanup, run_step2_context_assembly, build_system_prompt_for_gear,
+    run_gear3, run_gear4, _run_model_with_tools, run_pipeline, parse_user_command,
+    route_output, TOOLS_AVAILABLE,
+)
 
 try:
     from flask import Flask, request, Response, stream_with_context, send_from_directory
@@ -45,185 +42,194 @@ except ImportError:
 
 app = Flask(__name__)
 
-# ── helpers ──────────────────────────────────────────────────────────────────
+# ── SSE helpers ──────────────────────────────────────────────────────────────
 
-def load_boot_md():
-    try:
-        with open(BOOT_MD) as f: return f.read()
-    except FileNotFoundError:
-        return "You are a helpful AI assistant."
+def _sse(event_type, **kwargs):
+    """Format a server-sent event."""
+    return f"data: {json.dumps({'type': event_type, **kwargs})}\n\n"
 
-def load_config():
-    try:
-        with open(ENDPOINTS) as f: return json.load(f)
-    except Exception:
-        return {"endpoints": [], "default_endpoint": None}
 
-def get_endpoint(config):
-    default = config.get("default_endpoint")
-    active  = [e for e in config.get("endpoints", []) if e.get("status") == "active"]
-    if not active: return None
-    if default:
-        for e in active:
-            if e.get("name") == default: return e
-    return active[0]
+# Pending clarification state: {panel_id: {step1, config, history, user_input}}
+_pending_clarification = {}
 
-def _extract_final_response(raw):
-    """Extract the final channel content from gpt-oss style responses."""
-    if "<|channel|>final<|message|>" in raw:
-        part = raw.split("<|channel|>final<|message|>", 1)[1]
-        for tok in ["<|end|>", "<|return|>", "<|endoftext|>"]:
-            part = part.split(tok)[0]
-        return part.strip()
-    cleaned = re.sub(r'<\|[^|]+\|>', '', raw)
-    return cleaned.strip() or raw.strip()
 
-def parse_tool_calls(text):
-    pattern = r'<tool_call>\s*<n>(.*?)</n>\s*<parameters>(.*?)</parameters>\s*</tool_call>'
-    out = []
-    for name, params_str in re.findall(pattern, text, re.DOTALL):
-        try:   params = json.loads(params_str.strip())
-        except: params = {"raw": params_str.strip()}
-        out.append({"name": name.strip(), "parameters": params})
-    return out
+def _generate_clarification_questions(step1, config):
+    """Use the breadth model to generate clarification questions for Tier 2/3."""
+    tier = step1["triage_tier"]
+    cleaned = step1["cleaned_prompt"]
+    mode = step1["mode"]
+    corrections = step1.get("corrections_log", "")
+    inferred = step1.get("inferred_items", "")
 
-def strip_tool_calls(text):
-    return re.sub(r'<tool_call>.*?</tool_call>', '', text, flags=re.DOTALL).strip()
+    if tier == 2:
+        instruction = (
+            f"The user's prompt has been triaged as Tier 2 (Targeted Clarification). "
+            f"The domain is recognizable but the specific need is ambiguous.\n\n"
+            f"Cleaned prompt: {cleaned}\n"
+            f"Selected mode: {mode}\n"
+        )
+        if inferred:
+            instruction += f"Inferred items (assumptions made): {inferred}\n"
+        instruction += (
+            f"\nGenerate 2-3 targeted clarification questions that would resolve "
+            f"the ambiguity. Each question should be specific and answerable in "
+            f"one sentence. Format: one question per line, numbered."
+        )
+    else:  # Tier 3
+        instruction = (
+            f"The user's prompt has been triaged as Tier 3 (Full Perceptual Broadening). "
+            f"The domain boundaries are unclear and the prompt is exploratory.\n\n"
+            f"Cleaned prompt: {cleaned}\n"
+            f"Selected mode: {mode}\n"
+        )
+        if inferred:
+            instruction += f"Inferred items (assumptions made): {inferred}\n"
+        instruction += (
+            f"\nGenerate 3-5 broadening questions that help the user discover what "
+            f"they're actually trying to accomplish. Questions should open up the "
+            f"problem space, not narrow it. Format: one question per line, numbered."
+        )
 
-def execute_tool(name, params):
-    if not TOOLS_AVAILABLE:
-        return "[Tools unavailable]"
-    try:
-        if name == "web_search":
-            return web_search(params.get("query",""), params.get("max_results",5))
-        elif name == "file_read":
-            return file_read(params.get("path",""))
-        elif name == "file_write":
-            return file_write(params.get("path",""), params.get("content",""))
-        elif name == "knowledge_search":
-            return knowledge_search(params.get("query",""), params.get("collection","knowledge"), params.get("n_results",5))
-        elif name == "browser_open":
-            return browser_open(params.get("url",""))
-        elif name == "credential_store":
-            return credential_store(params.get("action","retrieve"), params.get("service",""), params.get("username",""), params.get("value"))
-        elif name == "browser_evaluate":
-            return browser_evaluate(
-                params.get("service","claude"),
-                prompt=params.get("prompt",""),
-                task_summary=params.get("task_summary",""),
-                artifact=params.get("artifact",""),
-                evaluation_focus=params.get("evaluation_focus",""),
-            )
-        elif name == "api_evaluate":
-            return api_evaluate(
-                task_summary=params.get("task_summary",""),
-                artifact=params.get("artifact",""),
-                evaluation_focus=params.get("evaluation_focus",""),
-            )
-        else:
-            return f"[Unknown tool: {name}]"
-    except Exception as e:
-        return f"[Tool error — {name}: {e}]"
+    endpoint = get_slot_endpoint(config, "breadth")
+    if not endpoint:
+        return ["What specifically are you trying to accomplish?",
+                "What would a successful outcome look like?"]
 
-def call_model(messages, endpoint):
-    etype = endpoint.get("type","")
-    if etype == "api":     return call_api(messages, endpoint)
-    if etype == "local":   return call_local(messages, endpoint)
-    if etype == "browser": return call_browser(messages, endpoint)
-    return f"[Unknown endpoint type: {etype}]"
+    messages = [
+        {"role": "system", "content": "You generate clarification questions. Output only the numbered questions, nothing else."},
+        {"role": "user", "content": instruction},
+    ]
+    response = call_model(messages, endpoint)
 
-def call_api(messages, endpoint):
-    service = endpoint.get("service","")
-    model   = endpoint.get("model","")
-    if service == "claude":
-        try:
-            import anthropic, keyring
-            key = endpoint.get("api_key") or os.environ.get("ANTHROPIC_API_KEY","") \
-                  or keyring.get_password("local-ai","anthropic-api-key") or ""
-            client = anthropic.Anthropic(api_key=key)
-            system = next((m["content"] for m in messages if m["role"]=="system"), "")
-            conv   = [m for m in messages if m["role"]!="system"]
-            resp   = client.messages.create(model=model or "claude-opus-4-6",
-                                            max_tokens=4096, system=system, messages=conv)
-            return resp.content[0].text
-        except Exception as e:
-            return f"[Claude API error: {e}]"
-    if service == "openai":
-        try:
-            from openai import OpenAI
-            import keyring
-            key = endpoint.get("api_key") or os.environ.get("OPENAI_API_KEY","") \
-                  or keyring.get_password("local-ai","openai-api-key") or ""
-            client = OpenAI(api_key=key)
-            resp = client.chat.completions.create(model=model or "gpt-4o",
-                                                   messages=messages, max_tokens=4096)
-            return resp.choices[0].message.content
-        except Exception as e:
-            return f"[OpenAI API error: {e}]"
-    return f"[Unsupported API service: {service}]"
+    # Parse numbered questions from response
+    questions = []
+    for line in response.splitlines():
+        line = line.strip()
+        if re.match(r'^\d+[\.\)]\s', line):
+            questions.append(re.sub(r'^\d+[\.\)]\s*', '', line))
+    return questions or ["What specifically are you trying to accomplish?"]
 
-def call_local(messages, endpoint):
-    import urllib.request
-    engine = endpoint.get("engine","ollama")
-    model  = endpoint.get("model","")
-    url    = endpoint.get("url","http://localhost:11434")
-    if engine == "ollama":
-        try:
-            payload = json.dumps({"model": model, "messages": messages, "stream": False}).encode()
-            req = urllib.request.Request(f"{url}/api/chat", data=payload,
-                                         headers={"Content-Type":"application/json"}, method="POST")
-            with urllib.request.urlopen(req, timeout=120) as r:
-                return json.loads(r.read()).get("message",{}).get("content","[No response]")
-        except Exception as e:
-            return f"[Ollama error: {e}]"
-    if engine == "mlx":
-        try:
-            from mlx_lm import load, generate as mlx_generate
-            model_obj, tokenizer = load(model)
-            if hasattr(tokenizer, "apply_chat_template"):
-                conv = [m for m in messages if m["role"] != "system"]
-                system = next((m["content"] for m in messages if m["role"] == "system"), None)
-                if system:
-                    conv = [{"role": "system", "content": system}] + conv
-                prompt = tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
-            else:
-                parts = []
-                for m in messages:
-                    if m["role"]=="system":      parts.append(f"<|system|>\n{m['content']}")
-                    elif m["role"]=="user":      parts.append(f"<|user|>\n{m['content']}")
-                    elif m["role"]=="assistant": parts.append(f"<|assistant|>\n{m['content']}")
-                parts.append("<|assistant|>")
-                prompt = "\n".join(parts)
-            raw = mlx_generate(model_obj, tokenizer, prompt=prompt, max_tokens=2048, verbose=False)
-            return _extract_final_response(raw)
-        except Exception as e:
-            return f"[MLX error: {e}]"
-    return f"[Unsupported engine: {engine}]"
 
-def call_browser(messages, endpoint):
-    last_user = next((m["content"] for m in reversed(messages) if m["role"]=="user"), "")
-    service   = endpoint.get("service","claude")
-    if TOOLS_AVAILABLE:
-        return browser_evaluate(service, last_user)
-    return "[browser_evaluate not available]"
+def _run_pipeline_from_step2(step1, config, history, user_input, clarification_text=""):
+    """Resume pipeline from Step 2 onward, optionally enriched with clarification answers."""
+    # If clarification was provided, enrich the cleaned prompt
+    if clarification_text:
+        step1 = dict(step1)  # Don't mutate original
+        step1["cleaned_prompt"] = (
+            f"{step1['cleaned_prompt']}\n\n"
+            f"[User clarification]\n{clarification_text}"
+        )
+        step1["operational_notation"] = step1["cleaned_prompt"]
 
-# ── agentic loop ─────────────────────────────────────────────────────────────
+    context_pkg = run_step2_context_assembly(step1, config)
+    gear = context_pkg["gear"]
 
-def agentic_loop_stream(user_input, history):
-    """Generator: yields SSE-formatted chunks for streaming to browser."""
+    yield _sse("pipeline_stage", stage="step2_done", gear=gear,
+               label=f"Gear {gear} selected")
+
+    # --- Gear Execution ---
+    yield _sse("pipeline_stage", stage="gear_execution",
+               gear=gear, label=f"Running Gear {gear} pipeline…")
+
+    endpoint = get_endpoint(config)
+
+    if gear <= 2:
+        system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
+        ep = get_slot_endpoint(config, "breadth")
+        if ep is None:
+            yield _sse("error", text="No breadth endpoint configured.")
+            return
+        messages = [{"role": "system", "content": system_prompt}]
+        if history:
+            messages.extend([m for m in history if m["role"] != "system"])
+        messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
+        response = _run_model_with_tools(messages, ep)
+
+    elif gear == 3:
+        response = run_gear3(context_pkg, config, history)
+
+    elif gear >= 4:
+        response = run_gear4(context_pkg, config, history)
+
+    else:
+        response = _run_model_with_tools(
+            [{"role": "system", "content": load_boot_md()},
+             {"role": "user", "content": user_input}],
+            endpoint
+        )
+
+    yield _sse("pipeline_stage", stage="complete", gear=gear,
+               mode=step1["mode"], label="Pipeline complete")
+    yield _sse("response", text=response)
+
+
+def _pipeline_stream(user_input, history, panel_id="main"):
+    """Generator: run the full pipeline with SSE stage events.
+
+    Yields SSE events for each pipeline stage so the browser can display progress.
+    For Tier 2/3 triage, pauses for clarification before proceeding.
+    """
+    config = load_config()
+    endpoint = get_endpoint(config)
+
+    if endpoint is None:
+        yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
+        return
+
+    # --- Step 1: Prompt Cleanup + Mode Selection ---
+    yield _sse("pipeline_stage", stage="step1_cleanup", label="Cleaning prompt…")
+
+    conv_context = ""
+    if history:
+        recent = [m for m in history[-6:] if m["role"] != "system"]
+        conv_context = "\n".join(f"{m['role'].upper()}: {m['content'][:500]}" for m in recent)
+
+    step1 = run_step1_cleanup(user_input, conv_context, config)
+    tier = step1["triage_tier"]
+
+    yield _sse("pipeline_stage", stage="step1_done",
+               mode=step1["mode"], triage_tier=tier,
+               label=f"Mode: {step1['mode']} | Tier {tier}")
+
+    # --- Tier 2/3: Clarification gate ---
+    if tier >= 2:
+        yield _sse("pipeline_stage", stage="clarification_generating",
+                    label="Generating clarification questions…")
+        questions = _generate_clarification_questions(step1, config)
+
+        # Store pending state for resumption
+        _pending_clarification[panel_id] = {
+            "step1": step1,
+            "config": config,
+            "history": history,
+            "user_input": user_input,
+        }
+
+        yield _sse("clarification_needed",
+                    tier=tier,
+                    mode=step1["mode"],
+                    questions=questions,
+                    label=f"Tier {tier} — clarification recommended")
+        return  # Pipeline pauses here — resumed via /api/clarification
+
+    # --- Tier 1: Continue directly ---
+    yield _sse("pipeline_stage", stage="step2_context", label="Assembling context…")
+    yield from _run_pipeline_from_step2(step1, config, history, user_input)
+
+
+def _direct_stream(user_input, history):
+    """Generator: legacy single-model agentic loop with SSE tool events."""
     config   = load_config()
     endpoint = get_endpoint(config)
 
     if endpoint is None:
-        yield f"data: {json.dumps({'type':'error','text':'No AI endpoints configured. Add a connection or install a local model.'})}\n\n"
+        yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
         return
 
     messages = list(history)
     if not messages or messages[0]["role"] != "system":
-        messages.insert(0, {"role":"system","content": load_boot_md()})
-    messages.append({"role":"user","content": user_input})
-
-    endpoint_name = endpoint.get("name","unknown")
+        messages.insert(0, {"role": "system", "content": load_boot_md()})
+    messages.append({"role": "user", "content": user_input})
 
     for iteration in range(MAX_ITERATIONS):
         response = call_model(messages, endpoint)
@@ -231,21 +237,26 @@ def agentic_loop_stream(user_input, history):
 
         if not tool_calls:
             clean = strip_tool_calls(response)
-            yield f"data: {json.dumps({'type':'response','text': clean})}\n\n"
-            history.append({"role":"user",      "content": user_input})
-            history.append({"role":"assistant", "content": clean})
+            yield _sse("response", text=clean)
             return
 
         for tc in tool_calls:
-            status_msg = f"[{tc['name']}…]"
-            yield f"data: {json.dumps({'type':'tool_status','text': status_msg})}\n\n"
+            yield _sse("tool_status", text=f"[{tc['name']}…]")
             result = execute_tool(tc["name"], tc["parameters"])
-            yield f"data: {json.dumps({'type':'tool_result','name': tc['name'], 'result': result[:500]})}\n\n"
-            messages.append({"role":"assistant","content": response})
-            messages.append({"role":"user",     "content": f"[Tool: {tc['name']}]\n{result}"})
+            yield _sse("tool_result", name=tc["name"], result=result[:500])
+            messages.append({"role": "assistant", "content": response})
+            messages.append({"role": "user", "content": f"[Tool: {tc['name']}]\n{result}"})
 
     clean = strip_tool_calls(response)
-    yield f"data: {json.dumps({'type':'response','text': clean})}\n\n"
+    yield _sse("response", text=clean)
+
+
+def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main"):
+    """Route to pipeline or direct stream based on mode."""
+    if use_pipeline:
+        yield from _pipeline_stream(user_input, history, panel_id=panel_id)
+    else:
+        yield from _direct_stream(user_input, history)
 
 # ── routes ────────────────────────────────────────────────────────────────────
 
@@ -266,6 +277,108 @@ _session_data = {}
 def _slug(text, max_words=5):
     words = re.sub(r'[^\w\s]', '', text.lower()).split()[:max_words]
     return '-'.join(words) if words else 'conversation'
+
+
+def _generate_chunk_metadata(user_input, ai_response, date_str, panel_id, model_id, pair_num):
+    """Generate contextual header and topic tags for a conversation chunk.
+
+    Attempts to use the sidebar model for intelligent generation (per Conversation
+    Processing Pipeline spec). Falls back to mechanical generation if the model
+    call fails or takes too long.
+
+    Returns: (context_header: str, topics: list[str])
+    """
+    # Try model-generated metadata via sidebar slot
+    try:
+        cfg = load_config()
+        sidebar_ep = get_slot_endpoint(cfg, "sidebar")
+        if sidebar_ep:
+            prompt = (
+                f"Generate metadata for this conversation exchange.\n\n"
+                f"User: {user_input[:500]}\n\n"
+                f"Assistant: {ai_response[:500]}\n\n"
+                f"Return exactly this format, nothing else:\n"
+                f"HEADER: [2-3 sentences: what the exchange is about, what the user "
+                f"was trying to accomplish, written for retrieval orientation]\n"
+                f"TOPICS: [1-3 short topic phrases, comma-separated]"
+            )
+            import urllib.request
+            ep_url = sidebar_ep.get("url", "http://localhost:11434")
+            model = sidebar_ep.get("model", "")
+            payload = json.dumps({
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+            }).encode()
+            req = urllib.request.Request(
+                f"{ep_url}/api/chat", data=payload,
+                headers={"Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                raw = json.loads(resp.read()).get("message", {}).get("content", "")
+
+            # Parse the model response
+            header_match = re.search(r'HEADER:\s*(.+?)(?:\nTOPICS:|\Z)', raw, re.DOTALL)
+            topics_match = re.search(r'TOPICS:\s*(.+)', raw)
+            if header_match:
+                header = header_match.group(1).strip()
+                topics = []
+                if topics_match:
+                    topics = [t.strip() for t in topics_match.group(1).split(",") if t.strip()][:3]
+                if len(header) > 30:
+                    return header, topics
+    except Exception:
+        pass  # Fall through to mechanical generation
+
+    # Mechanical fallback
+    preview = user_input[:140].rstrip()
+    if len(user_input) > 140:
+        preview += "..."
+    context_header = (
+        f"Local AI session on {date_str}, panel '{panel_id}', model {model_id}. "
+        f"Turn {pair_num} of an ongoing conversation. "
+        f"The user asked: {preview}"
+    )
+    topics = [w for w in re.sub(r'[^\w\s]', '', user_input.lower()).split() if len(w) > 3][:3]
+    return context_header, topics
+
+
+# Stop-words filtered from topic slug generation
+_STOP_WORDS = frozenset(
+    "a an the this that these those is am are was were be been being have has had "
+    "do does did will would shall should may might can could of in to for with on at "
+    "by from as into about between through after before above below up down out off "
+    "over under again further then once here there when where why how all each every "
+    "both few more most other some such no nor not only own same so than too very "
+    "and but or if while because until although since what which who whom whose "
+    "i me my we our you your he him his she her it its they them their just also "
+    "still already even much many well really quite also please help want need "
+    "using make sure going like get know think".split()
+)
+
+
+def _topic_slug(user_input, ai_response, max_words=4):
+    """Extract meaningful topic words from the exchange, filtering stop-words."""
+    # Combine the first part of user input and first sentence of response
+    combined = user_input[:300]
+    if ai_response:
+        # Grab the first substantive line from the response
+        for line in ai_response.split('\n'):
+            line = line.strip().lstrip('#').strip()
+            if len(line) > 15:
+                combined += " " + line[:200]
+                break
+
+    words = re.sub(r'[^\w\s]', '', combined.lower()).split()
+    keywords = []
+    seen = set()
+    for w in words:
+        if len(w) > 2 and w not in _STOP_WORDS and w not in seen:
+            keywords.append(w)
+            seen.add(w)
+        if len(keywords) >= max_words:
+            break
+    return '-'.join(keywords) if keywords else 'conversation'
 
 
 def _nomic_embed(text):
@@ -315,7 +428,7 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session):
     # ── Init session on first pair ────────────────────────────────────────────
     if is_new_session or panel_id not in _session_data:
         session_id   = uuid.uuid4().hex[:6]
-        raw_name     = f"{date_str}_{time_str}_{_slug(user_input)}_session-{session_id}.md"
+        raw_name     = f"{date_str}_{time_str}_{_slug(user_input)}.md"
         _session_data[panel_id] = {
             "raw_path":   os.path.join(CONVERSATIONS_RAW, raw_name),
             "session_id": session_id,
@@ -349,28 +462,16 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session):
         )
 
     # ── Step 2: Write processed chunk file ───────────────────────────────────
-    topic_slug = _slug(user_input)
-    chunk_name = (
-        f"{date_str}_{time_str}"
-        f"_session-{session_id}"
-        f"_pair-{pair_num:03d}"
-        f"_{topic_slug}.md"
+    # Generate contextual header and topic tags via sidebar model (per spec).
+    # Falls back to mechanical generation if model call fails or is too slow.
+    context_header, topics = _generate_chunk_metadata(
+        user_input, ai_response, date_str, panel_id, model_id, pair_num
     )
+
+    topic_slug = _topic_slug(user_input, ai_response)
+    chunk_name = f"{date_str}_{time_str}_{topic_slug}.md"
     chunk_path = os.path.join(CONVERSATIONS_DIR, chunk_name)
     chunk_id   = f"session-{session_id}-pair-{pair_num:03d}"
-
-    # Contextual header (2-4 sentences, written for retrieval orientation)
-    preview = user_input[:140].rstrip()
-    if len(user_input) > 140:
-        preview += "…"
-    context_header = (
-        f"Local AI session on {date_str}, panel '{panel_id}', model {model_id}. "
-        f"Turn {pair_num} of an ongoing conversation. "
-        f"The user asked: {preview}"
-    )
-
-    # Topic tags: first 3 meaningful words from the user prompt
-    topics = [w for w in re.sub(r'[^\w\s]', '', user_input.lower()).split() if len(w) > 3][:3]
     topics_yaml = "[" + ", ".join(topics) + "]"
 
     chunk_content = (
@@ -440,41 +541,71 @@ def chat():
     if not user_input:
         return json.dumps({"error":"empty message"}), 400
 
+    # Parse /direct, /save, /saveboth commands from input
+    clean_input, use_pipeline, output_target = parse_user_command(user_input)
+
     def generate():
         cfg = load_config()
         ep  = get_endpoint(cfg)
-        yield f"data: {json.dumps({'type':'start','endpoint': ep.get('name','none') if ep else 'none'})}\n\n"
+        yield _sse("start", endpoint=ep.get("name", "none") if ep else "none",
+                    pipeline=use_pipeline)
+
         final_response = [None]
-        for chunk in agentic_loop_stream(user_input, history):
+        active_mode = [None]
+        active_gear = [None]
+        last_stage = [None]
+
+        for chunk in agentic_loop_stream(clean_input, history, use_pipeline=use_pipeline, panel_id=panel_id):
             yield chunk
             try:
                 d = json.loads(chunk[6:])
                 if d.get("type") == "response":
-                    final_response[0] = d.get("text","")
+                    final_response[0] = d.get("text", "")
+                elif d.get("type") == "pipeline_stage":
+                    last_stage[0] = d.get("stage")
+                    if d.get("mode"):
+                        active_mode[0] = d["mode"]
+                    if d.get("gear"):
+                        active_gear[0] = d["gear"]
+                    # Update pipeline state for polling clients
+                    _pipeline_state.update({
+                        "stage": d.get("stage"),
+                        "label": d.get("label", ""),
+                        "active": d.get("stage") != "complete",
+                    })
             except Exception:
                 pass
+
         if final_response[0] is not None:
+            # Handle file output routing
+            if output_target != "screen":
+                routed = route_output(final_response[0], output_target)
+                if output_target.startswith("file:"):
+                    yield _sse("response", text=routed)
+
             is_new_session = len(history) == 0
             threading.Thread(
                 target=_save_conversation,
-                args=(user_input, final_response[0], panel_id, is_new_session),
+                args=(clean_input, final_response[0], panel_id, is_new_session),
                 daemon=True,
             ).start()
 
             if is_main:
                 recent = list(history[-4:]) + [
-                    {"role": "user",      "content": user_input},
+                    {"role": "user",      "content": clean_input},
                     {"role": "assistant", "content": final_response[0]},
                 ]
                 _bridge_state[panel_id] = {
-                    "current_topic":   user_input,
+                    "current_topic":   clean_input,
                     "recent_messages": recent[-5:],
-                    "active_mode":     None,
-                    "active_gear":     None,
-                    "pipeline_stage":  None,
+                    "active_mode":     active_mode[0],
+                    "active_gear":     active_gear[0],
+                    "pipeline_stage":  last_stage[0],
                     "updated_at":      time.time(),
                 }
-        yield f"data: {json.dumps({'type':'done'})}\n\n"
+
+        _pipeline_state.update({"stage": None, "label": "", "active": False})
+        yield _sse("done")
 
     return Response(stream_with_context(generate()),
                     mimetype="text/event-stream",
@@ -671,6 +802,137 @@ def pipeline_update():
     data = request.get_json(force=True)
     _pipeline_state.update(data)
     return json.dumps({"ok": True})
+
+# ── clarification API ────────────────────────────────────────────────────────
+
+@app.route("/api/clarification", methods=["POST"])
+def clarification_respond():
+    """Resume a paused pipeline with the user's clarification answers.
+
+    Expects JSON: {panel_id: str, answers: str}
+    Where answers is the user's free-text clarification response.
+    Returns an SSE stream continuing the pipeline from Step 2.
+    """
+    data = request.get_json(force=True)
+    panel_id = data.get("panel_id", "main")
+    answers = data.get("answers", "").strip()
+
+    pending = _pending_clarification.pop(panel_id, None)
+    if not pending:
+        return json.dumps({"error": "No pending clarification for this panel"}), 404
+
+    def generate():
+        step1 = pending["step1"]
+        config = pending["config"]
+        history = pending["history"]
+        user_input = pending["user_input"]
+
+        yield _sse("start", endpoint="resumed", pipeline=True)
+        yield _sse("pipeline_stage", stage="step2_context",
+                    label="Assembling context with clarification…")
+
+        final_response = [None]
+        active_mode = [step1.get("mode")]
+        active_gear = [None]
+
+        for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers):
+            yield chunk
+            try:
+                d = json.loads(chunk[6:])
+                if d.get("type") == "response":
+                    final_response[0] = d.get("text", "")
+                elif d.get("type") == "pipeline_stage":
+                    if d.get("gear"):
+                        active_gear[0] = d["gear"]
+            except Exception:
+                pass
+
+        if final_response[0] is not None:
+            is_new_session = len(history) == 0
+            threading.Thread(
+                target=_save_conversation,
+                args=(user_input, final_response[0], panel_id, is_new_session),
+                daemon=True,
+            ).start()
+
+            _bridge_state[panel_id] = {
+                "current_topic": user_input,
+                "recent_messages": (list(history[-4:]) + [
+                    {"role": "user", "content": user_input},
+                    {"role": "assistant", "content": final_response[0]},
+                ])[-5:],
+                "active_mode": active_mode[0],
+                "active_gear": active_gear[0],
+                "pipeline_stage": "complete",
+                "updated_at": time.time(),
+            }
+
+        _pipeline_state.update({"stage": None, "label": "", "active": False})
+        yield _sse("done")
+
+    return Response(stream_with_context(generate()),
+                    mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.route("/api/clarification/skip", methods=["POST"])
+def clarification_skip():
+    """Skip clarification and proceed with Tier 1 behavior."""
+    data = request.get_json(force=True)
+    panel_id = data.get("panel_id", "main")
+
+    pending = _pending_clarification.pop(panel_id, None)
+    if not pending:
+        return json.dumps({"error": "No pending clarification for this panel"}), 404
+
+    def generate():
+        step1 = pending["step1"]
+        config = pending["config"]
+        history = pending["history"]
+        user_input = pending["user_input"]
+
+        yield _sse("start", endpoint="resumed", pipeline=True)
+        yield _sse("pipeline_stage", stage="step2_context",
+                    label="Assembling context (clarification skipped)…")
+
+        final_response = [None]
+        for chunk in _run_pipeline_from_step2(step1, config, history, user_input):
+            yield chunk
+            try:
+                d = json.loads(chunk[6:])
+                if d.get("type") == "response":
+                    final_response[0] = d.get("text", "")
+            except Exception:
+                pass
+
+        if final_response[0] is not None:
+            threading.Thread(
+                target=_save_conversation,
+                args=(user_input, final_response[0], panel_id, len(history) == 0),
+                daemon=True,
+            ).start()
+
+        _pipeline_state.update({"stage": None, "label": "", "active": False})
+        yield _sse("done")
+
+    return Response(stream_with_context(generate()),
+                    mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.route("/api/clarification/pending")
+def clarification_pending():
+    """Check if a panel has pending clarification."""
+    panel_id = request.args.get("panel_id", "main")
+    pending = _pending_clarification.get(panel_id)
+    if pending:
+        return json.dumps({
+            "pending": True,
+            "mode": pending["step1"].get("mode"),
+            "tier": pending["step1"].get("triage_tier"),
+        })
+    return json.dumps({"pending": False})
+
 
 # ── vision detection ──────────────────────────────────────────────────────────
 

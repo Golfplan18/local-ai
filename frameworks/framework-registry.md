@@ -45,84 +45,72 @@ Each framework has one entry with these fields:
 - **Output Summary:** Browser-based AI at localhost:5000, hardware report, README
 - **Proven Applications:** macOS Tier C (128GB); covers Tier 0–C
 - **Known Limitations:** Requires Python 3; browser automation depends on existing accounts
-- **File Location:** pending — not yet installed to frameworks/book/ (canonical: ~/Documents/vault/Installer — Local AI First Boot.md)
+- **File Location:** pending restructure (canonical: ~/Documents/vault/Installer — Local AI First Boot.md)
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** v4 (Layers 1–12)
 
-### Framework — Framework Creation
+### Framework Creation
 - **Purpose:** Design, convert, render, and audit AI instruction frameworks to a standardized canonical specification
 - **Problem Class:** Framework design and knowledge capture
 - **Input Summary:** A task description (F-Design), an existing framework (F-Convert), a canonical spec (F-Render), or a framework for review (F-Audit)
 - **Output Summary:** Canonical framework specification; rendered execution variants; framework registry entry
 - **Proven Applications:** Multiple frameworks produced across all four modes (F-Design, F-Convert, F-Render, F-Audit)
 - **Known Limitations:** Requires human judgment to define evaluation criteria; template-filling failure mode when instructions are ambiguous
-- **File Location:** pending — not yet installed to frameworks/book/ (canonical: ~/Documents/vault/Framework — Framework Creation.md)
+- **File Location:** frameworks/book/framework-creation.md
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 2.0
 
-### Framework — Process Inference
+### Process Inference
 - **Purpose:** Discover unknown transformation processes from defined endpoints when the user knows what they have and what they want but not the path between them
 - **Problem Class:** Process discovery and formalization
 - **Input Summary:** Current state description; desired end state description; available resources and constraints
 - **Output Summary:** Inferred process map with decision points; Formalization Handoff Package for FCF conversion
 - **Proven Applications:** Initial version — tested against process discovery scenarios
 - **Known Limitations:** Requires honest endpoint definition; confabulation risk when constraints are underspecified
-- **File Location:** pending — not yet installed to frameworks/book/ (canonical: ~/Documents/vault/Framework — Process Inference.md)
+- **File Location:** frameworks/book/process-inference.md
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
 
-### Framework — Soul
+### Soul Framework
 - **Purpose:** Interview the user about their values, communication preferences, and behavioral boundaries, then generate or update soul.md
 - **Problem Class:** AI identity and behavioral configuration
 - **Input Summary:** User responses to structured interview about tone, directness, ethics, and operating principles
 - **Output Summary:** soul.md — a persistent values guideline loaded into every session
 - **Proven Applications:** Personal AI identity configuration
 - **Known Limitations:** Output quality depends on depth and honesty of user interview responses
-- **File Location:** pending — not yet installed to frameworks/book/ (canonical: ~/Documents/vault/Framework — Soul.md)
+- **File Location:** frameworks/book/soul-framework.md
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
 
-### Framework — Boot Generation
-- **Purpose:** Produce complete boot.md system specification files (canonical and agent variants) for local AI agents at the appropriate tier and version
-- **Problem Class:** System specification generation
-- **Input Summary:** Hardware description; book chapter context (optional); tier and version overrides (optional)
-- **Output Summary:** boot-[version]-canonical.md; boot-[version]-agent.md; configuration summary
-- **Proven Applications:** Tier A–C boot specifications; multiple version levels
-- **Known Limitations:** Re-run required when Progressive Content Registry changes; does not auto-detect mode file changes
-- **File Location:** pending — not yet installed to frameworks/book/ (canonical: ~/Documents/vault/Framework — Boot Generation.md)
-- **Provenance:** human-created
-- **Confidence:** high
-- **Version:** 1.0
-
-### Framework — Conversation Processing Pipeline
+### Conversation Processing Pipeline
 - **Purpose:** Process raw conversation exports and live session exchanges into structured turn-pair chunks with contextual headers, topic metadata, and ChromaDB indexing for RAG retrieval
 - **Problem Class:** Knowledge processing and conversation indexing
 - **Input Summary:** Inline mode: prompt-response pair from orchestrator; Batch mode: raw conversation files in ~/Documents/conversations/raw/
 - **Output Summary:** Processed chunk files in ~/Documents/conversations/; ChromaDB conversations collection entries; processing manifest
 - **Proven Applications:** Inline processing for live sessions; batch processing for commercial AI exports (Claude, ChatGPT, Gemini)
 - **Known Limitations:** Inline headers are template-generated; richer LLM-generated headers require batch mode
-- **File Location:** pending — not yet installed to frameworks/book/ (canonical: ~/Documents/vault/Framework — Conversation Processing Pipeline.md)
+- **File Location:** frameworks/book/conversation-processing.md
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 1.0
 
-### Framework — Browser Evaluation Setup
+### Browser Evaluation Setup
 - **Purpose:** Connect Playwright browser automation to commercial AI services and register endpoints for use by the orchestrator
 - **Problem Class:** Integration setup
 - **Input Summary:** Existing commercial AI accounts (Claude, ChatGPT, Gemini)
 - **Output Summary:** Saved browser sessions; registered endpoints in endpoints.json
 - **Proven Applications:** All tiers with existing subscriptions
 - **Known Limitations:** Sessions expire; re-run when login cookies expire
-- **File Location:** pending — not yet installed to frameworks/book/ (canonical: ~/Documents/vault/Framework — Browser Evaluation Setup.md)
+- **File Location:** frameworks/book/browser-evaluation-setup.md
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
 
-### Framework — API Key Acquisition
+### API Key Acquisition
 - **Purpose:** Acquire and securely store API keys for commercial AI services, then register endpoints in endpoints.json
 - **Problem Class:** Credential management
 - **Input Summary:** User-selected AI providers
@@ -134,43 +122,66 @@ Each framework has one entry with these fields:
 - **Confidence:** high
 - **Version:** 1.0
 
-### Framework — Gear 4 Pipeline Specifications
-- **Purpose:** Define the six-stage adversarial analysis pipeline: breadth, depth, evaluation, revision, consolidation, and verification
-- **Problem Class:** Multi-model adversarial analysis
-- **Input Summary:** User query or analysis task; available models for each stage role
-- **Output Summary:** Stage-by-stage analysis outputs culminating in a verified consolidated response
-- **Proven Applications:** Complex analytical tasks requiring adversarial review
-- **Known Limitations:** Requires multiple capable models; resource-intensive; not suitable for simple queries
-- **File Location:** pending — not yet installed to frameworks/book/ (canonical: ~/Documents/vault/Framework — Gear 4 Pipeline Specifications.md)
-- **Provenance:** human-created
-- **Confidence:** medium
-- **Version:** 1.0
-
-### Framework — Agent Identity and Programming
+### Agent Identity and Programming
 - **Purpose:** Create and program specialized agent identities using the SoulSpec pattern, producing a compiled agent boot file and registry entry
 - **Problem Class:** Agent creation and identity specification
 - **Input Summary:** Agent purpose description; tier selection (functional vs. incarnated); mission parameters
 - **Output Summary:** SoulSpec canonical file set; compiled agent boot file; agent registry entry
-- **Proven Applications:** None yet — framework not yet created (pending F-Design session)
-- **Known Limitations:** Requires the Agent System Architecture document as input to the F-Design session
-- **File Location:** pending — framework not yet created (canonical will be: ~/Documents/vault/Framework — Agent Identity and Programming.md)
+- **Proven Applications:** Framework produced via F-Design from FCF v2.0
+- **Known Limitations:** Requires the Agent System Architecture document as input for full agent system deployment
+- **File Location:** frameworks/book/agent-identity.md
 - **Provenance:** human-created
-- **Confidence:** low
-- **Version:** 0.1 (placeholder)
+- **Confidence:** medium
+- **Version:** 1.0
+
+### Phase A — Prompt Cleanup
+- **Purpose:** Mechanical preprocessing of raw user input: transcription correction, syntax normalization, reference resolution, semantic extraction, ambiguity resolution, and conversion to Operational Notation
+- **Problem Class:** Pipeline Step 1 — prompt preprocessing
+- **Input Summary:** Raw user prompt; recent conversation history; AMBIGUITY_MODE setting
+- **Output Summary:** Cleaned prompt in natural language and Operational Notation; CORRECTIONS_LOG; INFERRED_ITEMS
+- **Proven Applications:** New — designed from System Overview and research references
+- **Known Limitations:** Quality of reference resolution depends on conversation history availability
+- **File Location:** frameworks/book/phase-a-prompt-cleanup.md
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
 
 ---
 
-## Pending — Not Yet Created
+## Pipeline Stage Frameworks (Gear 4)
 
-The following frameworks are referenced in the system or planned for inclusion but do not yet exist as specification files.
+These six frameworks are loaded into model context windows at specific pipeline stages. They were extracted from the Gear 4 Pipeline Specifications container document.
 
-| Framework | Description |
-|---|---|
-| Framework — Knowledge Artifact Coach | Guide creation of high-quality knowledge artifacts for vault indexing |
-| Framework — Guided Epistemic Navigation | Navigate complex epistemic terrain in research and analysis tasks |
-| F-Analysis-Breadth | Gear 4 breadth stage — lateral thinking, alternatives, synthesis |
-| F-Analysis-Depth | Gear 4 depth stage — sustained logical focus, critical analysis |
-| F-Evaluate | Gear 4 evaluator stage — cross-model critique and convergence signaling |
-| F-Revise | Gear 4 revision stage — incorporating evaluator feedback |
-| F-Consolidate | Gear 4 consolidation stage — merging outputs into final response |
-| F-Verify | Gear 4 verification stage — factual and logical final check |
+### F-Analysis-Breadth (Step 3)
+- **Purpose:** Green/Yellow hat analysis — map alternatives, surface opportunities, identify benefits
+- **File Location:** frameworks/book/f-analysis-breadth.md
+
+### F-Analysis-Depth (Step 3)
+- **Purpose:** Black/White hat analysis — commit to best-supported answer, map risks and failure modes
+- **File Location:** frameworks/book/f-analysis-depth.md
+
+### F-Evaluate (Step 4)
+- **Purpose:** Cross-adversarial evaluation — quality audit within mode + cross-modal perspective
+- **File Location:** frameworks/book/f-evaluate.md
+
+### F-Revise (Step 5)
+- **Purpose:** Revision incorporating cross-evaluation feedback while retaining independent judgment
+- **File Location:** frameworks/book/f-revise.md
+
+### F-Consolidate (Step 7)
+- **Purpose:** Synthesize both analyses into coherent output preserving convergent and divergent findings
+- **File Location:** frameworks/book/f-consolidate.md
+
+### F-Verify (Step 8)
+- **Purpose:** Final verification — 7-check validation that consolidated output accurately represents both analyses
+- **File Location:** frameworks/book/f-verify.md
+
+---
+
+## Deprecated / Archived
+
+| Framework | Reason | Location |
+|---|---|---|
+| Boot Generation | Tier distinction collapsed; single boot.md serves all configs | ~/Documents/vault/Old AI Working Files/ |
+| Progressive Boot Specification | Full install replaces progressive boot | ~/Documents/vault/Old AI Working Files/ |
+| Boot Canonical A/B/C | Model interchangeability makes separate tier boots unnecessary | ~/Documents/vault/Old AI Working Files/ |

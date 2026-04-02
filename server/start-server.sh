@@ -7,8 +7,14 @@ WORKSPACE="$HOME/local-ai"
 pkill -f "server.py" 2>/dev/null
 sleep 1
 
+# Use Homebrew Python (has Flask, mlx-lm, chromadb, etc.)
+PYTHON="/opt/homebrew/bin/python3"
+if [ ! -x "$PYTHON" ]; then
+  PYTHON="python3"
+fi
+
 # Start server in background
-python3 "$WORKSPACE/server/server.py" &
+"$PYTHON" "$WORKSPACE/server/server.py" &
 SERVER_PID=$!
 
 # Wait for server to be ready (up to 30s)
