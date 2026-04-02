@@ -128,10 +128,10 @@ Each framework has one entry with these fields:
 - **Input Summary:** Agent purpose description; tier selection (functional vs. incarnated); mission parameters
 - **Output Summary:** SoulSpec canonical file set; compiled agent boot file; agent registry entry
 - **Proven Applications:** Framework produced via F-Design from FCF v2.0
-- **Known Limitations:** Requires the Agent System Architecture document as input for full agent system deployment
+- **Known Limitations:** Incarnated agent voice calibration requires user-provided reference materials for best results
 - **File Location:** frameworks/book/agent-identity.md
 - **Provenance:** human-created
-- **Confidence:** medium
+- **Confidence:** high
 - **Version:** 1.0
 
 ### Phase A — Prompt Cleanup
