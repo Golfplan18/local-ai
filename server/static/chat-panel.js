@@ -192,6 +192,13 @@ class ChatPanel {
           const d = JSON.parse(line.slice(6));
           if (d.type === 'tool_status')      { this._appendToolStatus(d.text); aiBubble.innerHTML = '<em style="opacity:.5">…</em>'; }
           else if (d.type === 'tool_result') { this._appendToolResult(d.name, d.result); }
+          else if (d.type === 'pipeline_stage') { this._appendToolStatus(d.label || d.stage); aiBubble.innerHTML = '<em style="opacity:.5">…</em>'; }
+          else if (d.type === 'clarification_needed') {
+            aiBubble.innerHTML = '<em style="opacity:.5">Waiting for clarification…</em>';
+            if (typeof showClarificationModal === 'function') {
+              showClarificationModal(d.questions, d.tier, d.mode, this.panelId, aiBubble, text, this);
+            }
+          }
           else if (d.type === 'response') {
             aiBubble.innerHTML = _md(d.text);
             this.history.push({role: 'user',      content: text});

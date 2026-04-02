@@ -348,6 +348,74 @@ body {
 }
 #switcher-panel-overlay.open { transform: translateX(0); }
 /* (full switcher markup injected by JS) */
+
+/* Clarification modal */
+#clarification-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg-overlay, rgba(0,0,0,0.45));
+  z-index: 180; display: none;
+  align-items: center; justify-content: center;
+}
+#clarification-overlay.open { display: flex; }
+#clarification-modal {
+  background: var(--bg-panel, #fff);
+  border-radius: var(--border-radius, 8px);
+  padding: 24px;
+  width: min(620px, 92vw);
+  max-height: 80vh;
+  display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+#clarification-modal h3 { font-size: 16px; font-weight: 600; }
+#clarification-tier-badge {
+  display: inline-block;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 3px;
+  background: var(--accent-soft, #e8e8e0);
+  color: var(--text-secondary, #666);
+  letter-spacing: 0.02em;
+}
+#clarification-questions {
+  overflow-y: auto;
+  font-size: var(--font-size-base, 15px);
+  line-height: 1.65;
+  color: var(--text-primary, #1a1a1a);
+  padding: 14px;
+  background: var(--bg-app, #f5f5f0);
+  border-radius: var(--border-radius-sm, 4px);
+  border: 1px solid var(--border, #e0e0e0);
+  max-height: 30vh;
+}
+#clarification-answers {
+  width: 100%;
+  border: 1px solid var(--border-input, #d0d0d0);
+  border-radius: var(--border-radius-sm, 4px);
+  padding: 10px;
+  font-family: inherit;
+  font-size: var(--font-size-base, 15px);
+  background: var(--bg-input, #fff);
+  color: var(--text-primary, #1a1a1a);
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
+}
+#clarification-answers:focus { border-color: var(--accent, #1a1a1a); outline: none; }
+#clarification-status {
+  font-size: var(--font-size-sm, 13px);
+  color: var(--text-muted, #999);
+  min-height: 18px;
+}
+.clarification-summary {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-muted, #999);
+  background: var(--bg-tool, #f0f0eb);
+  border-left: 3px solid var(--accent-muted, #999);
+  padding: 8px 10px;
+  border-radius: var(--border-radius-sm, 4px);
+  margin: 4px 0;
+  line-height: 1.5;
+}
+.clarification-summary strong { color: var(--text-secondary, #666); }
 </style>
 </head>
 <body>
@@ -391,6 +459,26 @@ body {
 <div id="switcher-overlay"></div>
 <div id="switcher-panel-overlay">
   <!-- injected by switcher overlay init -->
+</div>
+
+<!-- Clarification modal -->
+<div id="clarification-overlay">
+  <div id="clarification-modal">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <h3>Clarification Needed</h3>
+      <span id="clarification-tier-badge"></span>
+    </div>
+    <p style="font-size:var(--font-size-sm,13px);color:var(--text-secondary,#666);margin:0;">
+      The pipeline has paused to gather more information. Answer the questions below to improve the response, or skip to proceed without clarification.
+    </p>
+    <div id="clarification-questions"></div>
+    <textarea id="clarification-answers" placeholder="Type your answers here…"></textarea>
+    <div id="clarification-status"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" id="clarification-skip">Skip</button>
+      <button class="modal-btn-apply" id="clarification-submit">Submit &amp; Continue</button>
+    </div>
+  </div>
 </div>
 
 <!-- Panel modules -->
@@ -928,6 +1016,144 @@ async function swApplyConfig() {
     btn.textContent = 'Saved ✓';
     setTimeout(()=>{btn.textContent='Apply';btn.disabled=false;}, 1400);
   } catch(e) { btn.textContent='⚠ Error'; btn.disabled=false; }
+}
+
+// ── Clarification modal ──────────────────────────────────────────────────────
+let _clarificationState = null;
+
+function showClarificationModal(questions, tier, mode, panelId, aiBubble, userText, panel) {
+  _clarificationState = { panelId, aiBubble, userText, panel };
+
+  document.getElementById('clarification-tier-badge').textContent = `Tier ${tier} · ${mode || 'unknown'}`;
+  document.getElementById('clarification-questions').innerHTML = _md(questions || 'No questions generated.');
+  document.getElementById('clarification-answers').value = '';
+  document.getElementById('clarification-status').textContent = '';
+  document.getElementById('clarification-submit').disabled = false;
+  document.getElementById('clarification-overlay').classList.add('open');
+
+  // Focus the answers textarea after transition
+  setTimeout(() => document.getElementById('clarification-answers').focus(), 100);
+}
+
+function _closeClarificationModal() {
+  document.getElementById('clarification-overlay').classList.remove('open');
+}
+
+document.getElementById('clarification-submit').addEventListener('click', async () => {
+  const answers = document.getElementById('clarification-answers').value.trim();
+  if (!answers) {
+    document.getElementById('clarification-status').textContent = 'Please type your answers before submitting.';
+    return;
+  }
+
+  const btn = document.getElementById('clarification-submit');
+  btn.disabled = true;
+  document.getElementById('clarification-status').textContent = 'Resuming pipeline…';
+
+  const { panelId, aiBubble, userText, panel } = _clarificationState;
+  const questions = document.getElementById('clarification-questions').textContent;
+
+  // Inject Q&A summary into the conversation as a muted record
+  if (panel && panel._msgs) {
+    const summary = document.createElement('div');
+    summary.className = 'clarification-summary';
+    summary.innerHTML = `<strong>Clarification:</strong> ${answers.replace(/</g,'&lt;').replace(/\n/g, '<br>')}`;
+    panel._msgs.appendChild(summary);
+    panel._msgs.scrollTop = panel._msgs.scrollHeight;
+  }
+
+  _closeClarificationModal();
+  await _streamClarificationResponse('/api/clarification', { panel_id: panelId, answers });
+});
+
+document.getElementById('clarification-skip').addEventListener('click', async () => {
+  const { panelId, aiBubble, panel } = _clarificationState;
+
+  // Note in conversation that clarification was skipped
+  if (panel && panel._msgs) {
+    const note = document.createElement('div');
+    note.className = 'clarification-summary';
+    note.innerHTML = '<strong>Clarification skipped</strong> — proceeding with Tier 1 behavior.';
+    panel._msgs.appendChild(note);
+  }
+
+  _closeClarificationModal();
+  await _streamClarificationResponse('/api/clarification/skip', { panel_id: panelId });
+});
+
+// Escape key closes the modal (same as skip)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('clarification-overlay').classList.contains('open')) {
+    document.getElementById('clarification-skip').click();
+  }
+});
+
+// Ctrl/Cmd+Enter submits from the textarea
+document.getElementById('clarification-answers').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    document.getElementById('clarification-submit').click();
+  }
+});
+
+async function _streamClarificationResponse(url, body) {
+  const { aiBubble, userText, panel } = _clarificationState;
+  aiBubble.innerHTML = '<em style="opacity:.5">Resuming…</em>';
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const d = JSON.parse(line.slice(6));
+        if (d.type === 'pipeline_stage') {
+          if (panel) panel._appendToolStatus(d.label || d.stage);
+          aiBubble.innerHTML = '<em style="opacity:.5">…</em>';
+        }
+        else if (d.type === 'tool_status') {
+          if (panel) panel._appendToolStatus(d.text);
+          aiBubble.innerHTML = '<em style="opacity:.5">…</em>';
+        }
+        else if (d.type === 'tool_result') {
+          if (panel) panel._appendToolResult(d.name, d.result);
+        }
+        else if (d.type === 'response') {
+          aiBubble.innerHTML = _md(d.text);
+          // Push to panel history (user message + final response)
+          if (panel) {
+            panel.history.push({ role: 'user', content: userText });
+            panel.history.push({ role: 'assistant', content: d.text });
+          }
+        }
+        else if (d.type === 'error') {
+          aiBubble.textContent = '⚠ ' + d.text;
+        }
+      }
+    }
+  } catch (e) {
+    aiBubble.textContent = '⚠ Connection error';
+  }
+
+  // Re-enable input
+  if (panel) {
+    panel._send.disabled = false;
+    panel._input.focus();
+    panel._msgs.scrollTop = panel._msgs.scrollHeight;
+  }
+  _clarificationState = null;
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────────
