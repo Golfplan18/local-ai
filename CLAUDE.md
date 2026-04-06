@@ -62,9 +62,14 @@ soul.md                  — Identity/personality layer
 
 ## Remaining Work
 
-1. **Frontend clarification UI** — `server/templates/index.html` needs a panel/modal to display clarification questions, accept answers, and call `/api/clarification`. Server-side API is complete.
-2. **More mental models** — 33 of ~100 written. Source: fs.blog/mental-models, game theory, Wikipedia. Format documented in `knowledge/mental-models/inversion.md`. Index with: `/opt/homebrew/bin/python3 ~/local-ai/orchestrator/tools/knowledge_index.py ~/local-ai/knowledge/mental-models/`
-3. **Canonical changes 5 & 8** — Blocked on Agent System Architecture document.
+1. **More mental models** — 33 of ~100 written. Source: fs.blog/mental-models, game theory, Wikipedia. Format documented in `knowledge/mental-models/inversion.md`. Index with: `/opt/homebrew/bin/python3 ~/local-ai/orchestrator/tools/knowledge_index.py ~/local-ai/knowledge/mental-models/`
+2. **Tier 2 question bank modules** — 6 markdown files in `modules/tools/tier2/` (domain question banks for the front-end process)
+
+## Completed (recent sessions)
+
+- **Frontend clarification UI** — Popup modal with SSE streaming, submit/skip endpoints, keyboard shortcuts (Escape/Cmd+Enter)
+- **Canonical changes 1–9** — All complete. Agent System Architecture document created, Agent Identity framework validated, book outline fully updated.
+- **System Overview updated** — Gear 5 removed, model slot system added, agent subsystem section added, chapter numbering corrected, clarification UI documented.
 
 ## Commands
 
