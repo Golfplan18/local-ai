@@ -1216,6 +1216,14 @@ if __name__ == "__main__":
         except OSError:
             continue
 
+    # Platform check — validate engine matches this machine
+    try:
+        from platform_check import startup_check
+        for msg in startup_check():
+            print(msg)
+    except ImportError:
+        pass
+
     config   = load_config()
     endpoint = get_endpoint(config)
 

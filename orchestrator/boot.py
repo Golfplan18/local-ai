@@ -1051,7 +1051,15 @@ def call_local_endpoint(messages: list, endpoint: dict) -> str:
     url = endpoint.get("url", "http://localhost:11434")
     engine = endpoint.get("engine", "ollama")
     model = endpoint.get("model", "")
-    
+
+    # Resolve "auto" engine at runtime based on platform
+    if engine == "auto":
+        import platform as _plat
+        if _plat.system() == "Darwin" and _plat.machine() == "arm64":
+            engine = "mlx"
+        else:
+            engine = "ollama"
+
     if engine == "ollama":
         try:
             import urllib.request
@@ -1274,6 +1282,14 @@ def main():
     print("Commands: /direct (bypass pipeline), /save <path> (file output),")
     print("          /saveboth <path> (file + screen)")
     print()
+
+    # Platform check — validate engine matches this machine
+    try:
+        from platform_check import startup_check
+        for msg in startup_check():
+            print(msg)
+    except ImportError:
+        pass
 
     config = load_endpoints()
     endpoint = get_active_endpoint(config)

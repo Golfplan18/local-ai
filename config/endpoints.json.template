@@ -4,14 +4,15 @@
   "chromadb_path": "YOUR_WORKSPACE/chromadb/",
   "endpoints": [
     {
-      "name": "local-mlx-MODEL_SLUG",
+      "name": "local-MODEL_SLUG",
       "type": "local",
-      "engine": "mlx",
-      "model": "YOUR_WORKSPACE/models/MODEL_DIRECTORY",
+      "engine": "auto",
+      "model": "MODEL_NAME_OR_PATH",
       "model_name": "MODEL_DISPLAY_NAME",
       "role": "breadth",
       "status": "active",
-      "notes": "Primary local model — broad synthesis and consolidation"
+      "context_window": 32768,
+      "notes": "Primary local model. engine: 'mlx' (Apple Silicon) or 'ollama' (Linux/Windows/Intel Mac). Set to 'auto' for platform detection at startup. For MLX: model is a local path. For Ollama: model is a name like 'llama3:70b'."
     },
     {
       "name": "claude-browser",
@@ -65,14 +66,14 @@
       "notes": "Set status to active after adding ANTHROPIC_API_KEY via setup.sh"
     }
   ],
-  "default_endpoint": "local-mlx-MODEL_SLUG",
+  "default_endpoint": "local-MODEL_SLUG",
   "slot_assignments": {
-    "sidebar":       "local-mlx-MODEL_SLUG",
-    "step1_cleanup": "local-mlx-MODEL_SLUG",
-    "breadth":       "local-mlx-MODEL_SLUG",
-    "depth":         "local-mlx-MODEL_SLUG",
-    "evaluator":     "local-mlx-MODEL_SLUG",
-    "consolidator":  "local-mlx-MODEL_SLUG"
+    "sidebar":       "local-MODEL_SLUG",
+    "step1_cleanup": "local-MODEL_SLUG",
+    "breadth":       "local-MODEL_SLUG",
+    "depth":         "local-MODEL_SLUG",
+    "evaluator":     "local-MODEL_SLUG",
+    "consolidator":  "local-MODEL_SLUG"
   },
   "operational_context": {
     "interactive": ["local", "browser", "api"],
@@ -80,9 +81,9 @@
     "agent":       ["local"]
   },
   "routing": {
-    "depth":              "local-mlx-MODEL_SLUG",
-    "breadth":            "local-mlx-MODEL_SLUG",
-    "small":              "local-mlx-MODEL_SLUG",
+    "depth":              "local-MODEL_SLUG",
+    "breadth":            "local-MODEL_SLUG",
+    "small":              "local-MODEL_SLUG",
     "gear5_browser":      "claude-browser",
     "gear5_api_primary":  "gemini-api",
     "gear5_api_overflow":  "openai-api"
