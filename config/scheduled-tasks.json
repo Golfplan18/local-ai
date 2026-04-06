@@ -1,0 +1,9 @@
+{
+  "tasks": [],
+  "settings": {
+    "max_concurrent": 3,
+    "default_model_slot": "small",
+    "default_timeout_minutes": 10,
+    "max_task_age_hours": 72
+  }
+}

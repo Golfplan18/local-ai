@@ -24,6 +24,7 @@ MODES_DIR = os.path.join(WORKSPACE, "modes/")
 MODULES_DIR = os.path.join(WORKSPACE, "modules/")
 
 sys.path.insert(0, TOOLS_DIR)
+sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
 
 # Tool imports with graceful fallback
 TOOLS_AVAILABLE = True
@@ -35,6 +36,7 @@ try:
     from credential_store import credential_store
     from browser_evaluate import browser_evaluate
     from api_evaluate import api_evaluate
+    from dispatcher import dispatch as dispatcher_dispatch, reset_consecutive, cleanup_all
 except ImportError as e:
     print(f"[WARNING] Tool import failed: {e}")
     TOOLS_AVAILABLE = False
@@ -58,9 +60,32 @@ def _extract_final_response(raw: str) -> str:
 def load_boot_md() -> str:
     try:
         with open(BOOT_MD, "r") as f:
-            return f.read()
+            boot_content = f.read()
     except FileNotFoundError:
-        return "You are a helpful AI assistant. You have no special tools in this session."
+        boot_content = "You are a helpful AI assistant. You have no special tools in this session."
+
+    # Load persistent context files
+    context_dir = os.path.join(WORKSPACE, "context")
+    if os.path.isdir(context_dir):
+        context_parts = []
+        total_chars = 0
+        for fname in sorted(os.listdir(context_dir)):
+            if fname.endswith(".md") and fname != "README.md":
+                fpath = os.path.join(context_dir, fname)
+                try:
+                    with open(fpath) as f:
+                        content = f.read()
+                    total_chars += len(content)
+                    context_parts.append(f"\n\n---\n[PERSISTENT CONTEXT: {fname}]\n\n{content}")
+                except Exception:
+                    pass
+        if context_parts:
+            boot_content += "".join(context_parts)
+        if total_chars > 8000:
+            print(f"[WARNING] Context directory contains {total_chars} characters "
+                  f"(~{total_chars // 4} tokens). Consider moving large files to the vault.")
+
+    return boot_content
 
 
 def load_endpoints() -> dict:
@@ -1150,54 +1175,26 @@ def _queue_read() -> str:
 
 
 def execute_tool(name: str, params: dict) -> str:
-    """Dispatch tool call to implementation."""
+    """Dispatch tool call through unified dispatcher.
+
+    Legacy tools (code_execute, continuity_save, queue_read) are handled
+    directly; all others route through dispatcher.py for permission gating,
+    path validation, command classification, and audit logging.
+    """
     if not TOOLS_AVAILABLE:
-        return f"[Tools unavailable — import failed at startup]"
-    
+        return "[Tools unavailable — import failed at startup]"
+
+    # Legacy inline tools not in the dispatcher registry
+    if name == "code_execute":
+        return _code_execute(params.get("code", ""), params.get("timeout", 30))
+    elif name == "continuity_save":
+        return _continuity_save(params.get("session_summary", ""))
+    elif name == "queue_read":
+        return _queue_read()
+
+    # Route everything else through the dispatcher
     try:
-        if name == "web_search":
-            return web_search(params.get("query", ""), params.get("max_results", 5))
-        elif name == "file_read":
-            return file_read(params.get("path", ""))
-        elif name == "file_write":
-            return file_write(params.get("path", ""), params.get("content", ""))
-        elif name == "knowledge_search":
-            return knowledge_search(
-                params.get("query", ""),
-                params.get("collection", "knowledge"),
-                params.get("n_results", 5)
-            )
-        elif name == "browser_open":
-            return browser_open(params.get("url", ""))
-        elif name == "credential_store":
-            return credential_store(
-                params.get("action", "retrieve"),
-                params.get("service", ""),
-                params.get("username", ""),
-                params.get("value")
-            )
-        elif name == "browser_evaluate":
-            return browser_evaluate(
-                params.get("service", "claude"),
-                prompt=params.get("prompt", ""),
-                task_summary=params.get("task_summary", ""),
-                artifact=params.get("artifact", ""),
-                evaluation_focus=params.get("evaluation_focus", ""),
-            )
-        elif name == "api_evaluate":
-            return api_evaluate(
-                task_summary=params.get("task_summary", ""),
-                artifact=params.get("artifact", ""),
-                evaluation_focus=params.get("evaluation_focus", ""),
-            )
-        elif name == "code_execute":
-            return _code_execute(params.get("code", ""), params.get("timeout", 30))
-        elif name == "continuity_save":
-            return _continuity_save(params.get("session_summary", ""))
-        elif name == "queue_read":
-            return _queue_read()
-        else:
-            return f"[Unknown tool: {name}]"
+        return dispatcher_dispatch(name, params)
     except Exception as e:
         return f"[Tool error — {name}: {e}]"
 

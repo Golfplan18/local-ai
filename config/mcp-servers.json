@@ -1,0 +1,8 @@
+{
+  "servers": [],
+  "notes": "Each server entry: {name, transport (stdio|http), command (for stdio) or url (for http), args (optional), env (optional)}. Servers are initialized at orchestrator startup. Add servers with the format shown in examples below.",
+  "examples": [
+    {"name": "playwright", "transport": "stdio", "command": "npx", "args": ["@playwright/mcp@latest"]},
+    {"name": "custom-server", "transport": "http", "url": "http://localhost:8080/mcp"}
+  ]
+}

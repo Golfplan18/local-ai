@@ -32,6 +32,12 @@ from boot import (
     run_gear3, run_gear4, _run_model_with_tools, run_pipeline, parse_user_command,
     route_output, TOOLS_AVAILABLE,
 )
+from dispatcher import (
+    dispatch as dispatcher_dispatch, set_permission_mode,
+    set_mcp_client, TOOL_REGISTRY, reset_consecutive,
+)
+from hooks import fire_hooks
+from compaction import compact_context
 
 try:
     from flask import Flask, request, Response, stream_with_context, send_from_directory
@@ -217,8 +223,30 @@ def _pipeline_stream(user_input, history, panel_id="main"):
     yield from _run_pipeline_from_step2(step1, config, history, user_input)
 
 
+def _tool_status_label(tool_name, params):
+    """Generate a human-readable status label for a tool call."""
+    if tool_name == "bash_execute":
+        cmd = params.get("command", "")
+        return f"[executing: {cmd[:50]}{'…' if len(cmd) > 50 else ''}]"
+    elif tool_name == "file_edit":
+        fp = params.get("file_path", params.get("path", ""))
+        return f"[editing: {os.path.basename(fp)}]"
+    elif tool_name == "search_files":
+        return f"[searching files: {params.get('pattern', '')}]"
+    elif tool_name == "spawn_subagent":
+        return "[running subagent task…]"
+    elif tool_name == "schedule_task":
+        return "[scheduling task…]"
+    elif tool_name.startswith("mcp_"):
+        parts = tool_name.split("_", 2)
+        return f"[calling {parts[1] if len(parts) > 1 else 'mcp'}: {parts[2] if len(parts) > 2 else tool_name}]"
+    else:
+        return f"[{tool_name}…]"
+
+
 def _direct_stream(user_input, history):
-    """Generator: legacy single-model agentic loop with SSE tool events."""
+    """Generator: legacy single-model agentic loop with SSE tool events.
+    Routes all tool calls through the unified dispatcher."""
     config   = load_config()
     endpoint = get_endpoint(config)
 
@@ -231,21 +259,30 @@ def _direct_stream(user_input, history):
         messages.insert(0, {"role": "system", "content": load_boot_md()})
     messages.append({"role": "user", "content": user_input})
 
+    # Auto-approve in server mode (permission handled by UI later)
+    set_permission_mode("auto-approve")
+
     for iteration in range(MAX_ITERATIONS):
         response = call_model(messages, endpoint)
         tool_calls = parse_tool_calls(response)
 
         if not tool_calls:
+            reset_consecutive()
             clean = strip_tool_calls(response)
             yield _sse("response", text=clean)
             return
 
         for tc in tool_calls:
-            yield _sse("tool_status", text=f"[{tc['name']}…]")
+            label = _tool_status_label(tc["name"], tc["parameters"])
+            yield _sse("tool_status", text=label)
             result = execute_tool(tc["name"], tc["parameters"])
             yield _sse("tool_result", name=tc["name"], result=result[:500])
             messages.append({"role": "assistant", "content": response})
             messages.append({"role": "user", "content": f"[Tool: {tc['name']}]\n{result}"})
+
+        # Context compaction check
+        ctx_window = endpoint.get("context_window", 8192)
+        messages = compact_context(messages, call_model, ctx_window)
 
     clean = strip_tool_calls(response)
     yield _sse("response", text=clean)
@@ -1166,8 +1203,13 @@ def config_post():
 
 
 if __name__ == "__main__":
+    import argparse, signal as _signal, socket
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scheduler", action="store_true", help="Start task scheduler")
+    args, _ = parser.parse_known_args()
+
     port = 5000
-    import socket
     for p in range(5000, 5011):
         try:
             s = socket.socket(); s.bind(("localhost", p)); s.close(); port = p; break
@@ -1176,8 +1218,46 @@ if __name__ == "__main__":
 
     config   = load_config()
     endpoint = get_endpoint(config)
+
+    # Fire session_start hooks
+    fire_hooks("session_start")
+
+    # Initialize MCP client
+    try:
+        from mcp_client import get_manager as _get_mcp
+        mcp_mgr = _get_mcp()
+        set_mcp_client(mcp_mgr)
+        mcp_count = len(mcp_mgr.all_tools)
+    except Exception:
+        mcp_count = 0
+
+    # Start scheduler if requested
+    if args.scheduler:
+        from scheduler import get_scheduler
+        sched = get_scheduler()
+        sched.start()
+
     print(f"Local AI Chat Server starting on http://localhost:{port}")
     print(f"Active endpoint: {endpoint.get('name') if endpoint else 'NONE — add an endpoint first'}")
-    print(f"Tools: {'available' if TOOLS_AVAILABLE else 'UNAVAILABLE'}")
+    print(f"Tools: {'available' if TOOLS_AVAILABLE else 'UNAVAILABLE'} ({len(TOOL_REGISTRY)} registered)")
+    if mcp_count:
+        print(f"MCP tools: {mcp_count}")
+    if args.scheduler:
+        print("Scheduler: running")
     print("Press Ctrl+C to stop.")
+
+    def _shutdown_handler(sig, frame):
+        fire_hooks("session_end")
+        try:
+            from bash_execute import cleanup_all
+            cleanup_all()
+        except Exception:
+            pass
+        if args.scheduler:
+            sched.stop()
+        raise SystemExit(0)
+
+    _signal.signal(_signal.SIGINT, _shutdown_handler)
+    _signal.signal(_signal.SIGTERM, _shutdown_handler)
+
     app.run(host="localhost", port=port, debug=False, threaded=True)

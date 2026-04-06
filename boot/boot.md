@@ -119,6 +119,65 @@ Next autonomous task. Interactive sessions have priority.
 ```xml
 <tool_call><n>queue_read</n><parameters>{}</parameters></tool_call>
 ```
+### bash_execute
+Execute a shell command on the user's machine. `command` (REQUIRED), `timeout` (opt, 60), `background` (opt, false). Requires user approval. Use when you need to run a terminal command, install software, check system state, or execute a script. You are limited to 8 consecutive bash commands. If you reach this limit, report what you have tried, what the current error state is, and ask the user for guidance.
+```xml
+<tool_call><n>bash_execute</n><parameters>{"command": "echo hello", "timeout": 60}</parameters></tool_call>
+```
+### file_edit
+Replace a specific string in a file with a new string. `file_path` (REQUIRED), `old_string` (REQUIRED), `new_string` (REQUIRED). The old_string must appear exactly once in the file. Requires user approval.
+```xml
+<tool_call><n>file_edit</n><parameters>{"file_path": "p", "old_string": "old", "new_string": "new"}</parameters></tool_call>
+```
+### search_files
+Search for a text pattern across files. `pattern` (REQUIRED), `directory` (opt, workspace), `file_extension` (opt), `max_results` (opt, 50). Use when you need to find where a specific term, function, or pattern appears.
+```xml
+<tool_call><n>search_files</n><parameters>{"pattern": "def main", "directory": "/Users/oracle/local-ai/"}</parameters></tool_call>
+```
+### list_directory
+List the contents of a directory. `path` (REQUIRED), `max_depth` (opt, 2). Use when you need to understand directory structure.
+```xml
+<tool_call><n>list_directory</n><parameters>{"path": "/Users/oracle/local-ai/", "max_depth": 2}</parameters></tool_call>
+```
+### spawn_subagent
+Spawn an isolated AI call with a fresh context. `system_prompt` (REQUIRED), `user_prompt` (REQUIRED), `model_slot` (opt), `timeout` (opt, 120). Use for self-contained subtasks that benefit from a clean context. The subagent cannot spawn additional subagents. Requires user approval.
+```xml
+<tool_call><n>spawn_subagent</n><parameters>{"system_prompt": "You are a helpful assistant.", "user_prompt": "Summarize this text."}</parameters></tool_call>
+```
+### schedule_task
+Schedule a recurring task. `prompt` (REQUIRED), `interval_minutes` (REQUIRED), `model_slot` (opt, "small"). Use when the user requests periodic monitoring or recurring tasks. Requires user approval.
+```xml
+<tool_call><n>schedule_task</n><parameters>{"prompt": "Check server status", "interval_minutes": 30}</parameters></tool_call>
+```
+### stop_process
+Stop a background process by PID. `pid` (REQUIRED). Use after testing background services. Requires user approval.
+```xml
+<tool_call><n>stop_process</n><parameters>{"pid": 12345}</parameters></tool_call>
+```
+
+### MCP Tools
+MCP-sourced tools may also be available with `mcp_` prefixed names. Invoke them using the same `<tool_call>` format. These tools come from external MCP servers configured in config/mcp-servers.json.
+
+### Permission System
+Tools marked as requiring approval will prompt the user before execution. Wait for the tool result — do not assume the tool executed. If the user denies permission, you will receive an error result. Acknowledge the denial and proceed without the tool result.
+
+### Debugging and Testing Protocol
+This protocol governs all write-test-fix cycles. Follow it whenever you create or modify a file and need to verify it works.
+
+**STEP 1 — STATE YOUR EXPECTATION.** Before running anything, state what you expect to happen. If you cannot state what you expect, you do not understand the task well enough to test it. Stop and clarify with the user.
+
+**STEP 2 — RUN THE MINIMAL TEST.** Execute the smallest possible test. One test. One expected outcome. One observation.
+
+**STEP 3 — READ THE FULL ERROR.** If the test fails, read the COMPLETE error output before taking any action. State the error in your response.
+
+**STEP 4 — DIAGNOSE BEFORE FIXING.** Form a hypothesis about the cause. State it before making a change.
+
+**STEP 5 — MAKE ONE CHANGE.** Exactly one change that addresses your diagnosis. Then return to Step 2.
+
+**STEP 6 — TRACK YOUR ATTEMPTS.** If the result worsened, REVERT immediately and try a different approach.
+
+**STEP 7 — KNOW WHEN TO STOP.** If three consecutive fix attempts have not resolved the error, STOP. Report to the user: the original error, the three fixes attempted, your current hypothesis, and your recommendation. Three failed attempts is a signal for escalation, not failure.
+
 </tool_definitions>
 
 ## § PIPELINE
