@@ -11,7 +11,9 @@ import os
 import json
 
 SESSION_DIR = os.path.expanduser("~/local-ai/config/browser-sessions/")
+SERVICES_JSON = os.path.expanduser("~/local-ai/config/browser-services.json")
 
+# Built-in service configs (always available)
 SERVICE_CONFIG = {
     "claude": {
         "url": "https://claude.ai/new",
@@ -32,6 +34,17 @@ SERVICE_CONFIG = {
         "response_selector": ".response-content, model-response",
     },
 }
+
+# Merge any additional services from capture-sessions
+try:
+    if os.path.exists(SERVICES_JSON):
+        with open(SERVICES_JSON) as _f:
+            _extra = json.load(_f)
+        for _key, _cfg in _extra.items():
+            if _key not in SERVICE_CONFIG:
+                SERVICE_CONFIG[_key] = _cfg
+except Exception:
+    pass
 
 
 def _build_prompt(task_summary: str, artifact: str, evaluation_focus: str) -> str:
