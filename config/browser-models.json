@@ -1,16 +1,18 @@
 {
-  "_note": "Model preferences for browser-based AI services. Run 'python3 config/update-models.py' to change selections. Selector fields control Playwright automation — update these when service UIs change.",
+  "_note": "Model preferences for browser-based AI services. Run 'python3 config/update-models.py' to change selections. Run 'python3 config/update-models.py --refresh' to auto-detect new/retired models.",
   "claude": {
     "available": [
       {"id": "claude-opus-4-6", "name": "Claude Opus 4.6", "tier": "paid"},
       {"id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6", "tier": "free+paid"},
       {"id": "claude-haiku-4-5", "name": "Claude Haiku 4.5", "tier": "free+paid"}
     ],
+    "retired": [],
     "selected": "claude-opus-4-6",
     "last_updated": "2026-04-06",
     "ui": {
       "model_button": "button[data-testid='model-selector'], button:has-text('Claude')",
       "model_option": "div[role='option']:has-text('{model_name}'), button:has-text('{model_name}')",
+      "model_list_selector": "div[role='option'], div[role='menuitem'], button[data-testid*='model']",
       "close_action": "Escape"
     }
   },
@@ -21,11 +23,13 @@
       {"id": "gpt-5.3", "name": "GPT-5.3 Instant", "tier": "free+paid"},
       {"id": "gpt-5.3-codex", "name": "GPT-5.3-Codex", "tier": "paid"}
     ],
+    "retired": [],
     "selected": "gpt-5.4",
     "last_updated": "2026-04-06",
     "ui": {
       "model_button": "button[data-testid='model-selector'], button:has-text('ChatGPT')",
       "model_option": "div[role='option']:has-text('{model_name}'), li:has-text('{model_name}')",
+      "model_list_selector": "div[role='option'], div[role='menuitem'], li[role='option']",
       "close_action": "Escape"
     }
   },
@@ -37,11 +41,13 @@
       {"id": "gemini-2.5-pro", "name": "2.5 Pro", "tier": "free+paid"},
       {"id": "gemini-2.5-flash", "name": "2.5 Flash", "tier": "free+paid"}
     ],
+    "retired": [],
     "selected": "gemini-3.1-pro",
     "last_updated": "2026-04-06",
     "ui": {
       "model_button": "button[aria-label*='model' i], button:has-text('Gemini')",
       "model_option": "div[role='option']:has-text('{model_name}'), li:has-text('{model_name}')",
+      "model_list_selector": "div[role='option'], div[role='menuitem'], li[role='option']",
       "close_action": "Escape"
     }
   }
