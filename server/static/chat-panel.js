@@ -23,8 +23,13 @@ function _md(text) {
   s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
 
-  // 5. Headers (### ## #) — convert to bold paragraph
-  s = s.replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>');
+  // 5. Headers (H1–H6) — proper heading tags with Dracula-colored CSS
+  s = s.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+  s = s.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+  s = s.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
   // 6. Bullet lists (- item or * item)
   s = s.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
@@ -103,9 +108,33 @@ class ChatPanel {
   _showEmpty() {
     if (this._msgs.children.length === 0) {
       const d = document.createElement('div');
-      d.className = 'empty-state';
       d.id = `empty-${this.panelId}`;
-      d.textContent = 'Ready. Type a message to begin.';
+      if (this.config.is_main_feed) {
+        d.className = 'welcome-card';
+        d.innerHTML = `
+          <svg class="welcome-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100" height="100" rx="18" fill="currentColor" opacity="0.12"/>
+            <circle cx="36" cy="58" r="16" stroke="currentColor" stroke-width="7" fill="none"/>
+            <rect x="45" y="42" width="7" height="32" rx="1" fill="currentColor"/>
+            <rect x="66" y="42" width="7" height="32" rx="1" fill="currentColor"/>
+            <circle cx="69.5" cy="33" r="5" fill="currentColor"/>
+          </svg>
+          <div class="welcome-title">What are you working on?</div>
+          <div class="welcome-sub">Your orchestrator is ready. Ask a question, explore an idea, or pick up where you left off.</div>
+          <div class="welcome-hints">
+            <span class="welcome-hint" data-hint="Analyze a problem">Analyze a problem</span>
+            <span class="welcome-hint" data-hint="Explore an idea">Explore an idea</span>
+            <span class="welcome-hint" data-hint="Review my thinking">Review my thinking</span>
+          </div>`;
+        d.querySelectorAll('.welcome-hint').forEach(h => {
+          h.addEventListener('click', () => {
+            if (this._input) { this._input.value = h.dataset.hint; this._input.focus(); }
+          });
+        });
+      } else {
+        d.className = 'empty-state';
+        d.textContent = 'Ready. Type a message to begin.';
+      }
       this._msgs.appendChild(d);
     }
   }

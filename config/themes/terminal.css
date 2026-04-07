@@ -26,6 +26,14 @@
   --accent-soft:      #22aa22;
   --accent-muted:     #115511;
 
+  /* Terminal — all green spectrum */
+  --heading-h1:       #55ff55;
+  --heading-h2:       #33dd33;
+  --heading-h3:       #44ee88;
+  --heading-h4:       #22cc66;
+  --heading-h5:       #66ffaa;
+  --heading-h6:       #88ff88;
+
   --panel-gap:        1px;
   --border-radius:    2px;
   --border-radius-sm: 1px;

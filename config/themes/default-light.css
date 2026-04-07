@@ -26,10 +26,18 @@
   --accent-soft:      #444444;
   --accent-muted:     #999999;
 
+  /* Heading colors — deeper tones for light backgrounds */
+  --heading-h1:       #d63384;
+  --heading-h2:       #198754;
+  --heading-h3:       #cc6600;
+  --heading-h4:       #7c3aed;
+  --heading-h5:       #0891b2;
+  --heading-h6:       #a16207;
+
   --panel-gap:        1px;
   --border-radius:    8px;
   --border-radius-sm: 4px;
-  --font-family:      -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family:      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono:        "SF Mono", "Fira Code", "Consolas", monospace;
   --font-size-base:   15px;
   --font-size-sm:     13px;

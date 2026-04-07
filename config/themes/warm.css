@@ -26,6 +26,14 @@
   --accent-soft:      #804010;
   --accent-muted:     #c09060;
 
+  /* Warm — earthy tones */
+  --heading-h1:       #b83280;
+  --heading-h2:       #2d7a4f;
+  --heading-h3:       #b05a10;
+  --heading-h4:       #6d28d9;
+  --heading-h5:       #0e7490;
+  --heading-h6:       #92400e;
+
   --panel-gap:        1px;
   --border-radius:    8px;
   --border-radius-sm: 4px;

@@ -26,6 +26,14 @@
   --accent-soft:      #cccc00;
   --accent-muted:     #888800;
 
+  /* High-contrast headings — maximum readability */
+  --heading-h1:       #ff79c6;
+  --heading-h2:       #55ff55;
+  --heading-h3:       #ffbb66;
+  --heading-h4:       #cc99ff;
+  --heading-h5:       #88eeff;
+  --heading-h6:       #ffff66;
+
   --panel-gap:        2px;
   --border-radius:    4px;
   --border-radius-sm: 2px;
