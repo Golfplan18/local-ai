@@ -1,0 +1,74 @@
+{
+  "claude": {
+    "url": "https://claude.ai/new",
+    "session_file": "claude.json",
+    "input_selector": "[data-testid=\"composer-input\"], div[contenteditable=\"true\"]",
+    "response_selector": ".font-claude-message, [data-is-streaming=\"false\"]"
+  },
+  "chatgpt": {
+    "url": "https://chatgpt.com/",
+    "session_file": "chatgpt.json",
+    "input_selector": "#prompt-textarea, textarea",
+    "response_selector": ".markdown, .prose"
+  },
+  "gemini": {
+    "url": "https://gemini.google.com/app",
+    "session_file": "gemini.json",
+    "input_selector": "rich-textarea, textarea",
+    "response_selector": ".response-content, model-response"
+  },
+  "perplexity": {
+    "url": "https://www.perplexity.ai/",
+    "session_file": "perplexity.json",
+    "input_selector": "textarea",
+    "response_selector": ".prose, .markdown"
+  },
+  "mistral": {
+    "url": "https://chat.mistral.ai/chat",
+    "session_file": "mistral.json",
+    "input_selector": "textarea",
+    "response_selector": ".prose, .markdown"
+  },
+  "copilot": {
+    "url": "https://copilot.microsoft.com/",
+    "session_file": "copilot.json",
+    "input_selector": "textarea, #searchbox",
+    "response_selector": ".ac-textBlock, .content"
+  },
+  "deepseek": {
+    "url": "https://chat.deepseek.com/",
+    "session_file": "deepseek.json",
+    "input_selector": "textarea",
+    "response_selector": ".markdown, .prose"
+  },
+  "grok": {
+    "url": "https://grok.com/",
+    "session_file": "grok.json",
+    "input_selector": "textarea",
+    "response_selector": ".markdown, .message-content"
+  },
+  "poe": {
+    "url": "https://poe.com/",
+    "session_file": "poe.json",
+    "input_selector": "textarea",
+    "response_selector": ".markdown, .prose"
+  },
+  "huggingchat": {
+    "url": "https://huggingface.co/chat/",
+    "session_file": "huggingchat.json",
+    "input_selector": "textarea",
+    "response_selector": ".prose, .markdown"
+  },
+  "meta_ai": {
+    "url": "https://www.meta.ai/",
+    "session_file": "meta_ai.json",
+    "input_selector": "textarea",
+    "response_selector": ".markdown, .prose"
+  },
+  "cohere": {
+    "url": "https://coral.cohere.com/",
+    "session_file": "cohere.json",
+    "input_selector": "textarea",
+    "response_selector": ".markdown, .prose"
+  }
+}
