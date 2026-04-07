@@ -33,6 +33,5 @@ __pycache__/
 *.pyc
 .DS_Store
 
-# macOS launcher variants
-start.command
-LocalAI.command
+# macOS launcher variants (generated per machine)
+*.command

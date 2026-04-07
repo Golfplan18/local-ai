@@ -78,7 +78,7 @@ soul.md                  — Identity/personality layer
 ./start.sh
 
 # Start chat server (localhost:5000)
-cd server && ./start-server.sh
+./start.sh
 
 # Index mental models into ChromaDB
 /opt/homebrew/bin/python3 ~/local-ai/orchestrator/tools/knowledge_index.py ~/local-ai/knowledge/mental-models/
