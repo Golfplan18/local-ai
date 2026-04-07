@@ -1,6 +1,6 @@
 {
   "event": "session_end",
-  "command": "/opt/homebrew/bin/python3 -c \"import sys; sys.path.insert(0, '/Users/oracle/local-ai/orchestrator/tools'); from bash_execute import cleanup_all; print(cleanup_all())\"",
+  "command": "python3 -c \"import sys, os; sys.path.insert(0, os.path.expanduser('~/local-ai/orchestrator/tools')); from bash_execute import cleanup_all; print(cleanup_all())\"",
   "inject_output": false,
   "description": "Stop all background processes managed by bash_execute when the session ends"
 }

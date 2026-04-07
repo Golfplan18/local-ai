@@ -132,12 +132,12 @@ Replace a specific string in a file with a new string. `file_path` (REQUIRED), `
 ### search_files
 Search for a text pattern across files. `pattern` (REQUIRED), `directory` (opt, workspace), `file_extension` (opt), `max_results` (opt, 50). Use when you need to find where a specific term, function, or pattern appears.
 ```xml
-<tool_call><n>search_files</n><parameters>{"pattern": "def main", "directory": "/Users/oracle/local-ai/"}</parameters></tool_call>
+<tool_call><n>search_files</n><parameters>{"pattern": "def main", "directory": "~/local-ai/"}</parameters></tool_call>
 ```
 ### list_directory
 List the contents of a directory. `path` (REQUIRED), `max_depth` (opt, 2). Use when you need to understand directory structure.
 ```xml
-<tool_call><n>list_directory</n><parameters>{"path": "/Users/oracle/local-ai/", "max_depth": 2}</parameters></tool_call>
+<tool_call><n>list_directory</n><parameters>{"path": "~/local-ai/", "max_depth": 2}</parameters></tool_call>
 ```
 ### spawn_subagent
 Spawn an isolated AI call with a fresh context. `system_prompt` (REQUIRED), `user_prompt` (REQUIRED), `model_slot` (opt), `timeout` (opt, 120). Use for self-contained subtasks that benefit from a clean context. The subagent cannot spawn additional subagents. Requires user approval.

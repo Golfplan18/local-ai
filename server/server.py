@@ -1126,10 +1126,9 @@ def generate_layout():
 
 def get_system_ram_gb():
     try:
-        import subprocess as sp
-        r = sp.run(['sysctl', '-n', 'hw.memsize'], capture_output=True, text=True, timeout=5)
-        return int(r.stdout.strip()) / (1024 ** 3)
-    except Exception:
+        from platform_check import get_system_ram_gb as _get_ram
+        return _get_ram()
+    except ImportError:
         return 16.0
 
 def load_models():
