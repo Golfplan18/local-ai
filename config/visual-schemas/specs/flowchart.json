@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/flowchart.json",
+  "title": "Flowchart / swimlane spec (PROCESS family, Mermaid DSL)",
+  "description": "Per Protocol \u00a73.15. Mermaid flowchart with subgraph-as-lane idiom for swimlanes. Decision-node outgoing-edge exhaustiveness is enforced by the integrity checker downstream.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dialect", "dsl"],
+  "properties": {
+    "dialect": {
+      "type": "string",
+      "const": "flowchart"
+    },
+    "dsl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Mermaid flowchart source."
+    }
+  }
+}

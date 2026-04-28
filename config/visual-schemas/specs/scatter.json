@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/scatter.json",
+  "title": "Scatter plot with annotation spec (QUANT family)",
+  "description": "Vega-Lite subset for bivariate scatter + annotation layer per Protocol \u00a73.1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "data", "mark", "encoding", "caption"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "data": { "type": "object" },
+    "mark": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["point", "circle", "square", "text"]
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["point", "circle", "square", "text"]
+            }
+          }
+        }
+      ]
+    },
+    "encoding": { "type": "object" },
+    "layer": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "repeat": { "type": "object" },
+    "facet": { "type": "object" },
+    "title": { "type": "string" },
+    "width": { "type": ["number", "string"] },
+    "height": { "type": ["number", "string"] },
+    "caption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "period", "n", "units"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "period": { "type": "string", "minLength": 1 },
+        "n": { "type": "integer", "minimum": 0 },
+        "units": { "type": "string", "minLength": 1 }
+      }
+    },
+    "config": { "type": "object" }
+  }
+}

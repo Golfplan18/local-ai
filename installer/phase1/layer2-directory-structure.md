@@ -4,7 +4,7 @@
 
 ### Processing Instructions
 
-1. Create the following directories within the system folder (default `~/local-ai/` on macOS/Linux, `%USERPROFILE%\local-ai\` on Windows):
+1. Create the following directories within the system folder (default `~/ora/` on macOS/Linux, `%USERPROFILE%\ora\` on Windows):
 
    ```
    [workspace]/
@@ -60,7 +60,7 @@
    [Entries added as agents are created through the Agent Identity Framework]
    ```
 
-6. Create the framework registry file at `[workspace]/frameworks/framework-registry.md` populated with initial entries for all book-shipped frameworks. Each entry follows the registry entry format produced by the FCF (name, purpose, problem class, input summary, output summary, proven applications, known limitations, file location, provenance, confidence, version).
+6. Create the framework registry file at `[workspace]/frameworks/framework-registry.md` populated with initial entries for all book-shipped frameworks. Each entry follows the registry entry format produced by the PFF (name, purpose, problem class, input summary, output summary, proven applications, known limitations, file location, provenance, confidence, version).
 7. Write endpoints.json with the three paths and an empty endpoint registry:
 
    ```json

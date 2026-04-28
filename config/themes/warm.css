@@ -1,11 +1,12 @@
 :root {
   --bg-app:           #fdf6ec;
-  --bg-header:        #3d2b1a;
+  --bg-header:        #2a1e12;
   --bg-panel:         #fffdf8;
   --bg-panel-header:  #f5ede0;
-  --bg-input:         #fffdf8;
+  --bg-input:         #f5ede0;
+  --bg-input-well:    #fffdf8;
   --bg-user-bubble:   #3d2b1a;
-  --bg-ai-bubble:     #fffdf8;
+  --bg-ai-bubble:     transparent;
   --bg-tool:          #f5ede0;
   --bg-code:          #fdf0dc;
   --bg-overlay:       rgba(61,43,26,0.5);

@@ -7,7 +7,7 @@ import signal
 import subprocess
 import time
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 
 # ── Background process tracking ────────────────────────────────────────────
 MANAGED_PROCESSES = []

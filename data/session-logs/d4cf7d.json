@@ -1,0 +1,14 @@
+{
+  "session_id": "d4cf7d",
+  "timestamp": "2026-04-16T18:47:56.702842",
+  "mode": null,
+  "gear": 0,
+  "models_used": [
+    "local-mlx-qwen3.5-27b-opus"
+  ],
+  "rag_resources": [],
+  "token_consumption": {},
+  "budget_signals": [],
+  "prompt_length": 32,
+  "output_length": 4
+}

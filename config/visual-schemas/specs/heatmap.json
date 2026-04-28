@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/heatmap.json",
+  "title": "Heatmap / small-multiple heatmap spec (QUANT family)",
+  "description": "Vega-Lite subset for heatmap and faceted heatmap per Protocol \u00a73.1. Also the rendering target for ACH matrices.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "data", "mark", "encoding", "caption"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "data": { "type": "object" },
+    "mark": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["rect", "square"]
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["rect", "square"]
+            }
+          }
+        }
+      ]
+    },
+    "encoding": { "type": "object" },
+    "facet": { "type": "object" },
+    "title": { "type": "string" },
+    "width": { "type": ["number", "string"] },
+    "height": { "type": ["number", "string"] },
+    "caption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "period", "n", "units"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "period": { "type": "string", "minLength": 1 },
+        "n": { "type": "integer", "minimum": 0 },
+        "units": { "type": "string", "minLength": 1 }
+      }
+    },
+    "config": { "type": "object" }
+  }
+}

@@ -1,74 +1,170 @@
 {
   "claude": {
     "url": "https://claude.ai/new",
+    "login_url": "https://claude.ai/login",
     "session_file": "claude.json",
-    "input_selector": "[data-testid=\"composer-input\"], div[contenteditable=\"true\"]",
-    "response_selector": ".font-claude-message, [data-is-streaming=\"false\"]"
+    "input_selector": "[data-testid=\"composer-input\"], div.ProseMirror[contenteditable=\"true\"]",
+    "send_selector": "button[aria-label=\"Send Message\"], button[data-testid=\"send-button\"]",
+    "response_selector": ".font-claude-message, [data-is-streaming=\"false\"]",
+    "logged_in_indicator": "[data-testid=\"composer-input\"], div.ProseMirror",
+    "login_selectors": {
+      "username": "input[type=\"email\"], input[name=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"], button:has-text(\"Continue\")"
+    }
   },
   "chatgpt": {
     "url": "https://chatgpt.com/",
+    "login_url": "https://chatgpt.com/auth/login",
     "session_file": "chatgpt.json",
-    "input_selector": "#prompt-textarea, textarea",
-    "response_selector": ".markdown, .prose"
+    "input_selector": "#prompt-textarea, div.ProseMirror[contenteditable=\"true\"]",
+    "send_selector": "button[data-testid=\"send-button\"], button[aria-label=\"Send prompt\"]",
+    "response_selector": ".markdown, .prose",
+    "logged_in_indicator": "#prompt-textarea, div.ProseMirror",
+    "login_selectors": {
+      "username": "input[type=\"email\"], input[name=\"username\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"], button:has-text(\"Continue\")"
+    }
   },
   "gemini": {
     "url": "https://gemini.google.com/app",
+    "login_url": "https://accounts.google.com/",
     "session_file": "gemini.json",
-    "input_selector": "rich-textarea, textarea",
-    "response_selector": ".response-content, model-response"
+    "input_selector": ".ql-editor, rich-textarea div[contenteditable=\"true\"]",
+    "send_selector": "button[aria-label=\"Send message\"]",
+    "response_selector": "message-content, .markdown, model-response",
+    "logged_in_indicator": ".ql-editor, rich-textarea",
+    "login_selectors": {
+      "username": "input[type=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button:has-text(\"Next\"), #identifierNext button"
+    }
   },
   "perplexity": {
     "url": "https://www.perplexity.ai/",
+    "login_url": "https://www.perplexity.ai/",
     "session_file": "perplexity.json",
     "input_selector": "textarea",
-    "response_selector": ".prose, .markdown"
+    "send_selector": "button[aria-label=\"Submit\"], button[type=\"submit\"]",
+    "response_selector": ".prose, .markdown",
+    "logged_in_indicator": "textarea",
+    "login_selectors": {
+      "username": "input[type=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"]"
+    }
   },
   "mistral": {
     "url": "https://chat.mistral.ai/chat",
+    "login_url": "https://chat.mistral.ai/",
     "session_file": "mistral.json",
     "input_selector": "textarea",
-    "response_selector": ".prose, .markdown"
+    "send_selector": "button[type=\"submit\"], button[aria-label*=\"send\" i]",
+    "response_selector": ".prose, .markdown",
+    "logged_in_indicator": "textarea",
+    "login_selectors": {
+      "username": "input[type=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"]"
+    }
   },
   "copilot": {
     "url": "https://copilot.microsoft.com/",
+    "login_url": "https://copilot.microsoft.com/",
     "session_file": "copilot.json",
     "input_selector": "textarea, #searchbox",
-    "response_selector": ".ac-textBlock, .content"
+    "send_selector": "button[type=\"submit\"], button[aria-label*=\"send\" i]",
+    "response_selector": ".ac-textBlock, .content",
+    "logged_in_indicator": "textarea, #searchbox",
+    "login_selectors": {
+      "username": "input[type=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"], input[type=\"submit\"]"
+    }
   },
   "deepseek": {
     "url": "https://chat.deepseek.com/",
+    "login_url": "https://chat.deepseek.com/sign_in",
     "session_file": "deepseek.json",
     "input_selector": "textarea",
-    "response_selector": ".markdown, .prose"
+    "send_selector": "button[type=\"submit\"], button[aria-label*=\"send\" i]",
+    "response_selector": ".markdown, .prose",
+    "logged_in_indicator": "textarea",
+    "login_selectors": {
+      "username": "input[type=\"email\"], input[name=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"]"
+    }
   },
   "grok": {
     "url": "https://grok.com/",
+    "login_url": "https://grok.com/",
     "session_file": "grok.json",
     "input_selector": "textarea",
-    "response_selector": ".markdown, .message-content"
+    "send_selector": "button[type=\"submit\"], button[aria-label*=\"send\" i]",
+    "response_selector": ".markdown, .message-content",
+    "logged_in_indicator": "textarea",
+    "login_selectors": {
+      "username": "input[type=\"email\"], input[name=\"username\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"]"
+    }
   },
   "poe": {
     "url": "https://poe.com/",
+    "login_url": "https://poe.com/login",
     "session_file": "poe.json",
     "input_selector": "textarea",
-    "response_selector": ".markdown, .prose"
+    "send_selector": "button[type=\"submit\"], button[aria-label*=\"send\" i]",
+    "response_selector": ".markdown, .prose",
+    "logged_in_indicator": "textarea",
+    "login_selectors": {
+      "username": "input[type=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"]"
+    }
   },
   "huggingchat": {
     "url": "https://huggingface.co/chat/",
+    "login_url": "https://huggingface.co/login",
     "session_file": "huggingchat.json",
     "input_selector": "textarea",
-    "response_selector": ".prose, .markdown"
+    "send_selector": "button[type=\"submit\"], button[aria-label*=\"send\" i]",
+    "response_selector": ".prose, .markdown",
+    "logged_in_indicator": "textarea",
+    "login_selectors": {
+      "username": "input[name=\"username\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"]"
+    }
   },
   "meta_ai": {
     "url": "https://www.meta.ai/",
+    "login_url": "https://www.meta.ai/",
     "session_file": "meta_ai.json",
     "input_selector": "textarea",
-    "response_selector": ".markdown, .prose"
+    "send_selector": "button[type=\"submit\"], button[aria-label*=\"send\" i]",
+    "response_selector": ".markdown, .prose",
+    "logged_in_indicator": "textarea",
+    "login_selectors": {
+      "username": "input[type=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"]"
+    }
   },
   "cohere": {
     "url": "https://coral.cohere.com/",
+    "login_url": "https://coral.cohere.com/",
     "session_file": "cohere.json",
     "input_selector": "textarea",
-    "response_selector": ".markdown, .prose"
+    "send_selector": "button[type=\"submit\"], button[aria-label*=\"send\" i]",
+    "response_selector": ".markdown, .prose",
+    "logged_in_indicator": "textarea",
+    "login_selectors": {
+      "username": "input[type=\"email\"]",
+      "password": "input[type=\"password\"]",
+      "submit": "button[type=\"submit\"]"
+    }
   }
 }

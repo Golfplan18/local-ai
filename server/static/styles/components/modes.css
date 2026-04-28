@@ -1,0 +1,49 @@
+/* ============================================================
+   Modes — Private and Stealth
+   Mode classes redefine --background-modifier-border for the
+   pane outlines, and reference --ora-mode-{name}-* variables
+   for mode-button and label coloring.
+   Bottom-cluster buttons (cmd, menu, config, stats) trigger
+   actions but do not put the system into a tinted mode.
+   ============================================================ */
+
+/* Mode tint variable redefinitions use a two-class selector
+   (body.theme-X.MODE-mode) so they have higher specificity than user
+   customizations written by the customizer (which target body.theme-X).
+   This ensures mode tints take over when active, and user customizations
+   come back when the mode is exited. Each per-pane border variable is
+   redefined explicitly so a customized pane's border still gets tinted. */
+
+body.theme-dark.private-mode,
+body.theme-light.private-mode {
+  --background-modifier-border:    var(--ora-mode-private-pane-border);
+  --ora-input-pane-border:         var(--ora-mode-private-pane-border);
+  --ora-output-pane-border:        var(--ora-mode-private-pane-border);
+  --ora-visual-canvas-border:      var(--ora-mode-private-pane-border);
+}
+body.private-mode .spine-button[data-mode-button="private"],
+body.private-mode .spine-button[data-mode-button="private"]:hover {
+  border-color: var(--ora-mode-private-button-border);
+  color: var(--ora-mode-private-button-icon);
+}
+body.private-mode .bridge-mode-label {
+  display: block;
+  color: var(--ora-mode-private-label);
+}
+
+body.theme-dark.stealth-mode,
+body.theme-light.stealth-mode {
+  --background-modifier-border:    var(--ora-mode-stealth-pane-border);
+  --ora-input-pane-border:         var(--ora-mode-stealth-pane-border);
+  --ora-output-pane-border:        var(--ora-mode-stealth-pane-border);
+  --ora-visual-canvas-border:      var(--ora-mode-stealth-pane-border);
+}
+body.stealth-mode .spine-button[data-mode-button="stealth"],
+body.stealth-mode .spine-button[data-mode-button="stealth"]:hover {
+  border-color: var(--ora-mode-stealth-button-border);
+  color: var(--ora-mode-stealth-button-icon);
+}
+body.stealth-mode .bridge-mode-label {
+  display: block;
+  color: var(--ora-mode-stealth-label);
+}

@@ -1,0 +1,23 @@
+/* ============================================================
+   Ora Default Stylesheet — entry point
+   Imports tokens (variable definitions) and components
+   (structural CSS) in cascade order:
+     foundations → dark → light → ora-extensions → components
+   ============================================================ */
+
+@import url("./tokens/foundations.css");
+@import url("./tokens/dark.css");
+@import url("./tokens/light.css");
+@import url("./tokens/ora-extensions.css");
+
+@import url("./components/base.css");
+@import url("./components/layout.css");
+@import url("./components/panes.css");
+@import url("./components/bridges.css");
+@import url("./components/spine.css");
+@import url("./components/wordmark.css");
+@import url("./components/modes.css");
+@import url("./components/headings.css");
+@import url("./components/output-content.css");
+@import url("./components/customizer.css");
+@import url("./components/theme-library.css");

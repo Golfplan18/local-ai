@@ -1,21 +1,32 @@
 {
+  "_comment": "Studio — three-pane layout: main chat (40%) + visual pane (40%) + sidebar chat (20%). The visual pane is bridged to the main chat and renders ora-visual artifacts from the primary conversation; per plan §2 it is collapsible to 0% but not removable. The sidebar is an independent conversation with its own model slot (bridged to main for context) and resolves to the `local-fast` bucket by default (Open Question 4 resolution, WP-2.2 2026-04-17): fast turnaround for side questions, minimal RAM pressure alongside the breadth model running in main. This is a bucket-level default — concrete model pinning happens via the existing slot-assignment system in the model switcher and can be overridden per session without editing this file. Replaces the prior two-pane studio (main + sidebar) preserved at layouts/legacy/studio.workbench-era.json.",
   "layout": {
     "preset_base": "studio",
     "panels": [
       {
         "id": "main",
         "type": "chat",
-        "width_pct": 65,
+        "width_pct": 40,
         "model_slot": "breadth",
         "is_main_feed": true,
         "bridge_subscribe_to": null,
         "label": "Main Chat"
       },
       {
+        "id": "visual",
+        "type": "visual",
+        "width_pct": 40,
+        "model_slot": null,
+        "is_main_feed": false,
+        "bridge_subscribe_to": "main",
+        "label": "Visual"
+      },
+      {
         "id": "sidebar",
         "type": "chat",
-        "width_pct": 35,
+        "width_pct": 20,
         "model_slot": "sidebar",
+        "default_bucket": "local-fast",
         "is_main_feed": false,
         "bridge_subscribe_to": "main",
         "label": "Sidebar"

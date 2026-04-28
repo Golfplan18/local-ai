@@ -1,0 +1,14 @@
+{
+  "session_id": "ba2b55",
+  "timestamp": "2026-04-14T21:29:13.870998",
+  "mode": null,
+  "gear": 0,
+  "models_used": [
+    "local-mlx-gpt-oss-120b"
+  ],
+  "rag_resources": [],
+  "token_consumption": {},
+  "budget_signals": [],
+  "prompt_length": 104,
+  "output_length": 3421
+}

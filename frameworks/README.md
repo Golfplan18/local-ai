@@ -16,12 +16,12 @@ Expected URL: [to be determined upon publication]
 
 To clone when available:
 ```
-git clone [REPOSITORY_URL] ~/local-ai/frameworks/book
+git clone [REPOSITORY_URL] ~/ora/frameworks/book
 ```
 
 To update after cloning:
 ```
-cd ~/local-ai/frameworks/book && git pull
+cd ~/ora/frameworks/book && git pull
 ```
 
 ## Available Now

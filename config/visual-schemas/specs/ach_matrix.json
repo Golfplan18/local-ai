@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/ach_matrix.json",
+  "title": "ACH matrix spec (DECISION family)",
+  "description": "Analysis of Competing Hypotheses per Protocol \u00a73.9. Cell completeness (every evidence \u00d7 hypothesis populated), vocabulary enforcement, and non-diagnostic-evidence flagging are enforced by the integrity checker. Cell enum mirrors Heuer: CC (strongly consistent), C (consistent), N (neutral), I (inconsistent), II (strongly inconsistent), NA (not applicable).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["hypotheses", "evidence", "cells", "scoring_method"],
+  "properties": {
+    "hypotheses": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "credibility", "relevance"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "text": { "type": "string", "minLength": 1 },
+          "credibility": {
+            "type": "string",
+            "enum": ["H", "M", "L"]
+          },
+          "relevance": {
+            "type": "string",
+            "enum": ["H", "M", "L"]
+          },
+          "source": { "type": "string" }
+        }
+      }
+    },
+    "cells": {
+      "type": "object",
+      "description": "Map of evidence_id -> { hypothesis_id -> cell_value }. Structural completeness (all evidence\u00d7hypothesis pairs present) enforced downstream.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string",
+          "enum": ["CC", "C", "N", "I", "II", "NA"]
+        }
+      }
+    },
+    "scoring_method": {
+      "type": "string",
+      "enum": ["heuer_tally", "bayesian", "weighted"]
+    }
+  }
+}

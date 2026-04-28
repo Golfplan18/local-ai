@@ -15,7 +15,7 @@ Each layer file contains its own processing instructions, output format, and ver
 These apply to all layers and should be loaded once at the start:
 
 - **Purpose:** Transform a bare machine into a working AI system
-- **Workspace:** `~/local-ai/` (default) or user-specified path
+- **Workspace:** `~/ora/` (default) or user-specified path
 - **Named failure modes:** See `appendix.md` and the canonical source document
 
 ## Phase 1 — Universal Base (all hardware)
@@ -27,7 +27,7 @@ Every reader executes Phase 1 regardless of hardware capability.
 | 1 | `phase1/layer1-python-environment.md` | Python Environment | Python 3, pip, core packages, Playwright with launch test |
 | 2 | `phase1/layer2-directory-structure.md` | Directory Structure | Workspace directories, config files, endpoints.json |
 | 3 | `phase1/layer3-framework-library.md` | Framework Library | Clone framework files from git repository |
-| 4 | `phase1/layer4-orchestrator-installation.md` | Orchestrator Installation | boot.py, boot.md, soul.md, tool implementations |
+| 4 | `phase1/layer4-orchestrator-installation.md` | Orchestrator Installation | boot.py, boot.md, mind.md, tool implementations |
 | 5 | `phase1/layer5-commercial-ai-connections.md` | Commercial AI Connections | Playwright sessions, cookie refresh system |
 | 6 | `phase1/layer6-api-key-framework.md` | API Key Framework | Install API key acquisition framework |
 | 7 | `phase1/layer7-universal-chat-server.md` | Universal Chat Server | Browser interface at localhost:5000 with agentic loop |

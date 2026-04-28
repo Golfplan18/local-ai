@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/time_series.json",
+  "title": "Time-series chart spec (QUANT family)",
+  "description": "Vega-Lite subset for line + uncertainty band / fan / sparkline per Protocol \u00a73.1. Uncertainty layer signalled by encoding or layered spec; compiler enforces T-rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "data", "mark", "encoding", "caption"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "data": { "type": "object" },
+    "mark": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["line", "area", "point", "rule", "errorband", "errorbar"]
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["line", "area", "point", "rule", "errorband", "errorbar"]
+            }
+          }
+        }
+      ]
+    },
+    "encoding": { "type": "object" },
+    "layer": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Optional Vega-Lite layered sub-specs (e.g., line + errorband)."
+    },
+    "title": { "type": "string" },
+    "width": { "type": ["number", "string"] },
+    "height": { "type": ["number", "string"] },
+    "caption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "period", "n", "units"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "period": { "type": "string", "minLength": 1 },
+        "n": { "type": "integer", "minimum": 0 },
+        "units": { "type": "string", "minLength": 1 }
+      }
+    },
+    "config": { "type": "object" }
+  }
+}

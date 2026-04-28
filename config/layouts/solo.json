@@ -1,0 +1,26 @@
+{
+  "_comment": "Solo — two-pane side-by-side layout: main chat (left, 50%) + visual pane (right, 50%). Default layout for new sessions after the visual-pane rollout (WP-2.2, 2026-04-17). The visual pane is always present and subscribes to the main chat's ora-visual blocks; per plan §2 it is collapsible to 0% but not removable.",
+  "layout": {
+    "preset_base": "solo",
+    "panels": [
+      {
+        "id": "main",
+        "type": "chat",
+        "width_pct": 50,
+        "model_slot": "breadth",
+        "is_main_feed": true,
+        "bridge_subscribe_to": null,
+        "label": "Main Chat"
+      },
+      {
+        "id": "visual",
+        "type": "visual",
+        "width_pct": 50,
+        "model_slot": null,
+        "is_main_feed": false,
+        "bridge_subscribe_to": "main",
+        "label": "Visual"
+      }
+    ]
+  }
+}

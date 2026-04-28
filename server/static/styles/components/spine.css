@@ -1,0 +1,95 @@
+/* ============================================================
+   Spine — middle column with icon clusters (top + bottom)
+   Spine buttons are raised relative to the interface plane,
+   using paired Ora shadow + highlight variables.
+   ============================================================ */
+
+.spine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.spine-top, .spine-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.spine-bottom {
+  margin-top: auto;
+}
+
+.spine-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  color: var(--icon-color);
+  box-shadow:
+    3px 4px 6px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s, border-color 0.12s, transform 0.08s, box-shadow 0.08s;
+}
+.spine-button:hover {
+  color: var(--icon-color-hover);
+  border-color: var(--icon-color-hover);
+}
+.spine-button:active {
+  transform: translate(1px, 1px);
+  box-shadow:
+    2px 2px 4px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+}
+.spine-button svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.bridge-mode-label {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+  display: none;
+}
+
+/* Right bridge mode label — mirrors the left bridge label, justified to
+   the inner edge (near the spine R). Visibility is driven by mode CSS. */
+.bridge-strip-right .bridge-mode-label {
+  right: auto;
+  left: 6px;
+}
+
+/* Q&A message — centered in the right bridge so it doesn't cover the
+   mode label at the inner edge. Shown only while the right input is
+   focused; both the mode label and the Q&A message can render together
+   when the user is in a mode AND typing a Q&A. */
+.bridge-qa-message {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--text-muted);
+  display: none;
+}
+.bridge-qa-message.show {
+  display: block;
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/comparison.json",
+  "title": "Comparison chart spec (QUANT family)",
+  "description": "Vega-Lite subset for bar / column / dot plot / slope graph per Protocol \u00a73.1. Required metadata enforced at the spec level: caption.source, caption.period, caption.n, caption.units. We do not re-validate the entire Vega-Lite grammar; the downstream Vega-Lite compiler does that.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "data", "mark", "encoding", "caption"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Vega-Lite schema URI. Must point at a Vega-Lite schema."
+    },
+    "data": {
+      "type": "object",
+      "description": "Vega-Lite data block. Shape validated downstream by vega-lite."
+    },
+    "mark": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["bar", "point", "circle", "square", "tick", "rule", "line"]
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["bar", "point", "circle", "square", "tick", "rule", "line"]
+            }
+          }
+        }
+      ],
+      "description": "Conservative mark enum for comparison charts. Excludes pie/arc (Cleveland-McGill)."
+    },
+    "encoding": {
+      "type": "object",
+      "description": "Vega-Lite encoding. Shape validated downstream."
+    },
+    "title": { "type": "string" },
+    "width": { "type": ["number", "string"] },
+    "height": { "type": ["number", "string"] },
+    "caption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "period", "n", "units"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "period": { "type": "string", "minLength": 1 },
+        "n": { "type": "integer", "minimum": 0 },
+        "units": { "type": "string", "minLength": 1 }
+      }
+    },
+    "config": {
+      "type": "object",
+      "description": "Optional Vega-Lite config override."
+    }
+  }
+}

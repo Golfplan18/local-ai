@@ -8,7 +8,7 @@ import os
 import sys
 import time
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
 
 

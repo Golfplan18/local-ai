@@ -1,0 +1,27 @@
+{
+  "session_id": "extract-test",
+  "timestamp": "2026-04-14T17:38:41.270141",
+  "steps_completed": [
+    "session_logging",
+    "conversation_summary",
+    "continuity_archive",
+    "knowledge_extraction",
+    "chromadb_ingestion",
+    "relationship_extraction",
+    "glossary_check",
+    "tag_validation",
+    "entity_extraction",
+    "pass2_relationships",
+    "convergence_check"
+  ],
+  "steps_failed": [],
+  "notes_extracted": 0,
+  "notes_approved": 0,
+  "notes_review": 0,
+  "relationships_found": 0,
+  "pass2_relationships": 0,
+  "convergence_flags": [],
+  "glossary_gaps": [],
+  "tag_warnings": [],
+  "total_time_seconds": 17.144155263900757
+}

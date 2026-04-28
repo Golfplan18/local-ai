@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/pro_con.json",
+  "title": "Pro-con tree spec (ARGUMENT family)",
+  "description": "Per Protocol \u00a73.13. Degenerate argument map: a claim with pros, cons, and optional decision; each pro/con may recurse via children.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claim", "pros", "cons"],
+  "properties": {
+    "claim": { "type": "string", "minLength": 1 },
+    "pros": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/argument" }
+    },
+    "cons": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/argument" }
+    },
+    "decision": { "type": "string" }
+  },
+  "$defs": {
+    "argument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "weight": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "source": { "type": "string" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/argument" }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Local AI — Start Script
-WORKSPACE="$HOME/local-ai"
+WORKSPACE="$HOME/ora"
 
 # Kill any stale server process
 pkill -f "server/server.py" 2>/dev/null

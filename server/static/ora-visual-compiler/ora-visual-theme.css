@@ -1,0 +1,1097 @@
+/* ==========================================================================
+ * ora-visual-theme.css
+ * Default Tufte-aligned theme for SVG artifacts emitted by the ora-visual
+ * compiler (all 22 types — stub and real renderers alike).
+ *
+ * --------------------------------------------------------------------------
+ * CLASS-NAMING SCHEME (BEM-inspired)
+ * --------------------------------------------------------------------------
+ *
+ *   .ora-visual                             — block (root <svg> of every artifact)
+ *   .ora-visual--<type>                     — modifier (one per envelope.type)
+ *   .ora-visual--stub                       — modifier used by renderers/stub.js
+ *   .ora-visual__<element>                  — element (logical sub-part of the visual)
+ *   .ora-visual__<element>--<state>         — element with a state modifier
+ *
+ * Example: a decision-tree node that is a chance node gets:
+ *   class="ora-visual__node ora-visual__node--chance"
+ *
+ * Cross-cutting element classes available to every renderer:
+ *   __title        __caption        __label       __axis
+ *   __gridline     __tick           __data-mark   __error-band
+ *   __node         __edge           __edge-label  __polarity-indicator
+ *   __cluster      __legend         __annotation  __accessible-title
+ *   __gist         __stub-bg        __stub-label  __stub-notice
+ *
+ * State modifiers in use:
+ *   --focal, --missing, --suggested, --latent, --selected, --dimmed
+ *
+ * --------------------------------------------------------------------------
+ * HOW TO WRITE A NEW THEME
+ * --------------------------------------------------------------------------
+ *   1. Copy this file as your starting point.
+ *   2. Override the CSS custom properties at :root — that covers 90 % of
+ *      visual adjustments without touching any selectors.
+ *   3. For structural tweaks (e.g. rounded nodes, serif labels) override the
+ *      specific selectors. Do NOT use !important, IDs, or inline styles.
+ *   4. If your theme needs post-render SVG transforms (rough.js, shadows,
+ *      texture overlays), plug a function into OraVisualCompiler.postProcess
+ *      from index.js. The CSS should still style the canonical classes.
+ *   5. Load order: your theme CSS file replaces or cascades after this one.
+ *      Dark mode and print rules are already media-gated — leave them alone
+ *      unless your theme explicitly disables one.
+ *
+ * --------------------------------------------------------------------------
+ * PALETTE SOURCE ATTRIBUTIONS
+ * --------------------------------------------------------------------------
+ *   Okabe-Ito 2008 — Masataka Okabe & Kei Ito, "Color Universal Design",
+ *   jfly.uni-koeln.de/color/. Categorical 8-colour CVD-safe palette.
+ *   Viridis — Smith & van der Walt (SciPy 2015), matplotlib default.
+ *     Perceptually uniform, monotonic-luminance, CVD-safe sequential ramp.
+ *   ColorBrewer — Cynthia Brewer, colorbrewer2.org. RdBu 11-class diverging
+ *     ramp; all ≤ 11-bin diverging schemes are CVD-safe.
+ *
+ * WCAG 2.2 compliance:
+ *   - Body text  ≥ 4.5:1 against background surface (SC 1.4.3 AA).
+ *   - Graphical objects essential to meaning ≥ 3:1 (SC 1.4.11).
+ *   - Never encode solely by colour (SC 1.4.1) — polarity indicators carry
+ *     text glyphs (+/−) and DAG typing uses shape as well as colour.
+ *   Palette values are verified by tests/theme-contrast.js (WCAG relative-
+ *   luminance formula, L* not used). Any deviation from Okabe-Ito's canonical
+ *   hex values is documented in palettes.js.
+ *
+ * ========================================================================== */
+
+/* --------------------------------------------------------------------------
+ * CSS custom properties
+ * All palette, type, and geometry knobs live here. Downstream themes need
+ * only override these to re-skin the entire compiler output.
+ * -------------------------------------------------------------------------- */
+:root {
+  /* Typography ---------------------------------------------------------- */
+  --ora-vis-font-body:
+    'Lato', 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', system-ui, sans-serif;
+  --ora-vis-font-mono:
+    'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  --ora-vis-fontsize-title:   15px;
+  --ora-vis-fontsize-body:    13px;
+  --ora-vis-fontsize-label:   12px;
+  --ora-vis-fontsize-axis:    11px;
+  --ora-vis-fontsize-caption: 11px;
+  --ora-vis-fontsize-annot:   10px;
+
+  --ora-vis-lineheight:       1.35;
+
+  /* Stroke weights (Impl Spec §3.2) ------------------------------------ */
+  --ora-vis-stroke-thin:      0.5px;   /* gridlines, guides */
+  --ora-vis-stroke-medium:    1px;     /* axes, node borders */
+  --ora-vis-stroke-data:      1.5px;   /* data-bearing lines */
+  --ora-vis-stroke-heavy:     2px;     /* loop highlights, focal edges */
+
+  /* Geometry ------------------------------------------------------------ */
+  --ora-vis-margin:           24px;    /* outer padding */
+  --ora-vis-margin-tight:     12px;
+  --ora-vis-radius:           3px;     /* node rounded corners (subtle) */
+
+  /* Light-mode surface palette ----------------------------------------- */
+  --ora-vis-bg:               #FCFCFA; /* paper-warm near-white */
+  --ora-vis-surface:          #FFFFFF;
+  --ora-vis-text:             #1A1E24; /* near-black, slight cool cast */
+  --ora-vis-text-secondary:   #4A5058;
+  --ora-vis-gridline:         #8F9399; /* 3.01:1 on bg (subtle but countable) */
+  --ora-vis-axis:             #3A3F47; /* strong enough for body-text AA */
+  --ora-vis-rule:             #C5C8CD; /* hairline separators, off-data */
+
+  /* Data-mark palette — Okabe-Ito light, WCAG-adjusted (see palettes.js) */
+  --ora-vis-cat-1:            #0072B2;
+  --ora-vis-cat-2:            #D55E00;
+  --ora-vis-cat-3:            #009E73;
+  --ora-vis-cat-4:            #B857A0;
+  --ora-vis-cat-5:            #B87200;
+  --ora-vis-cat-6:            #2E8DC4;
+  --ora-vis-cat-7:            #B8860B;
+  --ora-vis-cat-8:            #000000;
+
+  /* Accents ------------------------------------------------------------- */
+  --ora-vis-highlight:        #C5362F; /* focal callouts; 5.18:1 on bg */
+  --ora-vis-muted:            #7A7F87; /* de-emphasized data; 3.91:1 on bg */
+  --ora-vis-positive:         #009E73; /* CLD + polarity, pro, supports */
+  --ora-vis-negative:         #C5362F; /* CLD − polarity, con, objects-to */
+  --ora-vis-neutral:          #7A7F87;
+
+  /* IBIS role colours --------------------------------------------------- */
+  --ora-vis-ibis-question:    #0072B2;
+  --ora-vis-ibis-idea:        #B87200;
+  --ora-vis-ibis-pro:         #009E73;
+  --ora-vis-ibis-con:         #C5362F;
+
+  /* Causal-DAG typing --------------------------------------------------- */
+  --ora-vis-dag-exposure:     #0072B2;
+  --ora-vis-dag-outcome:      #D55E00;
+  --ora-vis-dag-latent:       #7A7F87;
+
+  /* C4 shape typing ----------------------------------------------------- */
+  --ora-vis-c4-person:        #0072B2;
+  --ora-vis-c4-system:        #1A1E24;
+  --ora-vis-c4-container:     #4A5058;
+  --ora-vis-c4-external:      #7A7F87;
+
+  /* Stub styling -------------------------------------------------------- */
+  --ora-vis-stub-bg:          #F2F1EE;
+  --ora-vis-stub-border:      #8F9399;
+  --ora-vis-stub-text:        #4A5058;
+
+  /* Focus (WP-1.5 accessibility, hook lives here) ---------------------- */
+  --ora-vis-focus-ring:       #0072B2;
+  --ora-vis-focus-width:      2px;
+}
+
+/* ==========================================================================
+ * Base — every compiled artifact
+ * ========================================================================== */
+
+.ora-visual {
+  /* Display container */
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: var(--ora-vis-bg);
+  color: var(--ora-vis-text);
+  font-family: var(--ora-vis-font-body);
+  font-size: var(--ora-vis-fontsize-body);
+  line-height: var(--ora-vis-lineheight);
+  overflow: visible;  /* SVG text must not clip on small viewports */
+  /* Tufte: no decorative frame. Caller may wrap in a <figure> with caption. */
+}
+
+/* Every text element inside the SVG inherits the base font. */
+.ora-visual text {
+  font-family: var(--ora-vis-font-body);
+  fill: var(--ora-vis-text);
+  stroke: none;
+  /* Explicitly opt out of subpixel rendering that harms small sans labels. */
+  paint-order: stroke fill;
+}
+
+.ora-visual__title {
+  font-size: var(--ora-vis-fontsize-title);
+  font-weight: 600;
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual__caption {
+  font-size: var(--ora-vis-fontsize-caption);
+  fill: var(--ora-vis-text-secondary);
+  font-style: italic;
+}
+
+.ora-visual__label {
+  font-size: var(--ora-vis-fontsize-label);
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual__label--muted {
+  fill: var(--ora-vis-muted);
+}
+
+.ora-visual__label--mono {
+  font-family: var(--ora-vis-font-mono);
+}
+
+.ora-visual__annotation {
+  font-size: var(--ora-vis-fontsize-annot);
+  fill: var(--ora-vis-text-secondary);
+}
+
+.ora-visual__accessible-title {
+  /* SVG <title> is non-visual; keep it in the tree for screen readers only. */
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+ * Cross-cutting structural classes
+ * -------------------------------------------------------------------------- */
+
+.ora-visual__axis {
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-medium);
+  fill: none;
+}
+
+.ora-visual__axis text,
+.ora-visual__tick {
+  font-size: var(--ora-vis-fontsize-axis);
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual__gridline {
+  stroke: var(--ora-vis-gridline);
+  stroke-width: var(--ora-vis-stroke-thin);
+  stroke-dasharray: 2 3;
+  fill: none;
+  /* Gridlines sit behind data; renderers should order them first. */
+}
+
+.ora-visual__data-mark {
+  stroke: none;
+  fill: var(--ora-vis-cat-1);
+}
+
+.ora-visual__data-line {
+  stroke: var(--ora-vis-cat-1);
+  stroke-width: var(--ora-vis-stroke-data);
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.ora-visual__error-band {
+  fill: var(--ora-vis-cat-1);
+  fill-opacity: 0.18;
+  stroke: none;
+}
+
+.ora-visual__legend-swatch {
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+.ora-visual__rule {
+  stroke: var(--ora-vis-rule);
+  stroke-width: var(--ora-vis-stroke-thin);
+  fill: none;
+}
+
+/* Categorical colour utility classes.
+ * Renderers that need to assign the Nth Okabe-Ito slot to a mark without
+ * inlining a fill can apply both .ora-visual__data-mark and one of these. */
+.ora-visual__cat-1 { fill: var(--ora-vis-cat-1); stroke: var(--ora-vis-cat-1); }
+.ora-visual__cat-2 { fill: var(--ora-vis-cat-2); stroke: var(--ora-vis-cat-2); }
+.ora-visual__cat-3 { fill: var(--ora-vis-cat-3); stroke: var(--ora-vis-cat-3); }
+.ora-visual__cat-4 { fill: var(--ora-vis-cat-4); stroke: var(--ora-vis-cat-4); }
+.ora-visual__cat-5 { fill: var(--ora-vis-cat-5); stroke: var(--ora-vis-cat-5); }
+.ora-visual__cat-6 { fill: var(--ora-vis-cat-6); stroke: var(--ora-vis-cat-6); }
+.ora-visual__cat-7 { fill: var(--ora-vis-cat-7); stroke: var(--ora-vis-cat-7); }
+.ora-visual__cat-8 { fill: var(--ora-vis-cat-8); stroke: var(--ora-vis-cat-8); }
+
+/* Graph / diagram structural classes */
+.ora-visual__node {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual__node--focal {
+  stroke: var(--ora-vis-highlight);
+  stroke-width: var(--ora-vis-stroke-heavy);
+}
+
+.ora-visual__node--dimmed {
+  opacity: 0.5;
+}
+
+.ora-visual__node--suggested {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-highlight);
+  stroke-width: var(--ora-vis-stroke-medium);
+  stroke-dasharray: 4 3;   /* "proposed" visual vocabulary */
+}
+
+.ora-visual__edge {
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-data);
+  fill: none;
+}
+
+.ora-visual__edge--suggested {
+  stroke-dasharray: 4 3;
+  stroke: var(--ora-vis-highlight);
+}
+
+.ora-visual__edge--dimmed {
+  opacity: 0.4;
+}
+
+.ora-visual__edge-label {
+  font-size: var(--ora-vis-fontsize-annot);
+  fill: var(--ora-vis-text-secondary);
+  /* Renderers should background-fill edge labels via a sibling rect in the
+     surface color for legibility against gridlines/edges. */
+}
+
+.ora-visual__polarity-indicator {
+  font-size: var(--ora-vis-fontsize-label);
+  font-weight: 700;
+  font-family: var(--ora-vis-font-mono);
+  fill: var(--ora-vis-axis);
+}
+
+.ora-visual__polarity-indicator--positive { fill: var(--ora-vis-positive); }
+.ora-visual__polarity-indicator--negative { fill: var(--ora-vis-negative); }
+
+.ora-visual__cluster {
+  fill: none;
+  stroke: var(--ora-vis-gridline);
+  stroke-width: var(--ora-vis-stroke-thin);
+  stroke-dasharray: 6 4;
+  rx: var(--ora-vis-radius);
+  ry: var(--ora-vis-radius);
+}
+
+/* ==========================================================================
+ * Per-type rules — all 22 envelope.type values.
+ * The ora-visual--<type> class lets theming target a specific diagram kind
+ * without fighting cross-cutting defaults.
+ * ========================================================================== */
+
+/* --------------------------------------------------------------------------
+ * QUANT family (Vega-Lite renderers, WP-1.2a)
+ *
+ * WP-1.2a strips Vega-Lite's default inline styles. These rules style
+ * the semantic classes the Vega renderer applies on each emitted group.
+ * -------------------------------------------------------------------------- */
+
+.ora-visual--comparison .ora-visual__data-mark {
+  fill: var(--ora-vis-cat-1);
+}
+
+.ora-visual--comparison .ora-visual__axis {
+  stroke: var(--ora-vis-axis);
+}
+
+/* Time-series defaults to line + optional error band */
+.ora-visual--time_series .ora-visual__data-line {
+  stroke-width: var(--ora-vis-stroke-data);
+}
+
+.ora-visual--time_series .ora-visual__error-band {
+  fill-opacity: 0.15;
+}
+
+/* Distribution: boxplot / violin / histogram. Muted fill, strong median. */
+.ora-visual--distribution .ora-visual__data-mark {
+  fill: var(--ora-vis-cat-1);
+  fill-opacity: 0.35;
+  stroke: var(--ora-vis-cat-1);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--distribution .ora-visual__median {
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-heavy);
+}
+
+/* Scatter: small data points, direct labels preferred */
+.ora-visual--scatter .ora-visual__data-mark {
+  fill: var(--ora-vis-cat-1);
+  fill-opacity: 0.75;
+  stroke: var(--ora-vis-bg);
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+/* Heatmap: Viridis bins (sequential). Actual fills are applied inline by
+ * the renderer per cell because the bin index is data-dependent, but we
+ * provide the grid and border styles. */
+.ora-visual--heatmap .ora-visual__cell {
+  stroke: var(--ora-vis-bg);   /* hairline gap between cells */
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+.ora-visual--heatmap .ora-visual__cell-label {
+  font-size: var(--ora-vis-fontsize-annot);
+  fill: var(--ora-vis-text);
+}
+
+/* Tornado / sensitivity: centered axis, symmetric bars */
+.ora-visual--tornado .ora-visual__data-mark {
+  fill: var(--ora-vis-cat-1);
+}
+
+.ora-visual--tornado .ora-visual__data-mark--low  { fill: var(--ora-vis-cat-2); }
+.ora-visual--tornado .ora-visual__data-mark--high { fill: var(--ora-vis-cat-1); }
+
+.ora-visual--tornado .ora-visual__base-line {
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-data);
+}
+
+/* --------------------------------------------------------------------------
+ * CAUSAL family
+ * -------------------------------------------------------------------------- */
+
+/* Causal Loop Diagram (WP-1.3a) — force-directed, polarity on every edge */
+.ora-visual--causal_loop_diagram .ora-visual__node {
+  rx: var(--ora-vis-radius);
+  ry: var(--ora-vis-radius);
+}
+
+.ora-visual--causal_loop_diagram .ora-visual__edge {
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-data);
+}
+
+.ora-visual--causal_loop_diagram .ora-visual__edge--delay {
+  stroke-dasharray: 2 2;   /* matches CLD convention for delays */
+}
+
+.ora-visual--causal_loop_diagram .ora-visual__loop-label {
+  font-weight: 700;
+  font-family: var(--ora-vis-font-mono);
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual--causal_loop_diagram .ora-visual__loop--reinforcing {
+  stroke: var(--ora-vis-positive);
+}
+
+.ora-visual--causal_loop_diagram .ora-visual__loop--balancing {
+  stroke: var(--ora-vis-negative);
+}
+
+/* Stock-and-Flow (WP-1.3b) — XMILE-aligned shapes */
+.ora-visual--stock_and_flow .ora-visual__stock {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--stock_and_flow .ora-visual__flow {
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-heavy);
+  fill: none;
+  marker-end: url(#ora-arrow-flow);
+}
+
+.ora-visual--stock_and_flow .ora-visual__cloud {
+  fill: var(--ora-vis-bg);
+  stroke: var(--ora-vis-muted);
+  stroke-width: var(--ora-vis-stroke-medium);
+  stroke-dasharray: 1 2;
+}
+
+.ora-visual--stock_and_flow .ora-visual__auxiliary {
+  fill: var(--ora-vis-bg);
+  stroke: var(--ora-vis-muted);
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+.ora-visual--stock_and_flow .ora-visual__info-link {
+  stroke: var(--ora-vis-muted);
+  stroke-width: var(--ora-vis-stroke-thin);
+  stroke-dasharray: 3 2;
+  fill: none;
+}
+
+/* Causal DAG (Pearl/Hernán) — exposure/outcome/latent typing by color+shape */
+.ora-visual--causal_dag .ora-visual__node--exposure {
+  fill: var(--ora-vis-dag-exposure);
+  stroke: var(--ora-vis-dag-exposure);
+}
+
+.ora-visual--causal_dag .ora-visual__node--outcome {
+  fill: var(--ora-vis-dag-outcome);
+  stroke: var(--ora-vis-dag-outcome);
+}
+
+.ora-visual--causal_dag .ora-visual__node--latent {
+  fill: var(--ora-vis-bg);
+  stroke: var(--ora-vis-dag-latent);
+  stroke-dasharray: 3 2;   /* latent: dashed border signals unobserved */
+}
+
+.ora-visual--causal_dag .ora-visual__node--exposure text,
+.ora-visual--causal_dag .ora-visual__node--outcome text {
+  fill: var(--ora-vis-bg);   /* white-on-colour labels; verified AA */
+}
+
+/* Fishbone (WP-1.3c) — deterministic herringbone layout */
+.ora-visual--fishbone .ora-visual__spine {
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-heavy);
+  fill: none;
+}
+
+.ora-visual--fishbone .ora-visual__bone {
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-data);
+  fill: none;
+}
+
+.ora-visual--fishbone .ora-visual__sub-bone {
+  stroke: var(--ora-vis-muted);
+  stroke-width: var(--ora-vis-stroke-medium);
+  fill: none;
+}
+
+.ora-visual--fishbone .ora-visual__effect {
+  font-weight: 700;
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual--fishbone .ora-visual__category {
+  font-weight: 600;
+  fill: var(--ora-vis-text);
+}
+
+/* --------------------------------------------------------------------------
+ * DECISION family
+ * -------------------------------------------------------------------------- */
+
+/* Decision tree (WP-1.3d) — shape by role: decision=square, chance=circle,
+ * terminal=triangle. Renderer emits the right <rect>/<circle>/<polygon> and
+ * adds the modifier class; we style by modifier. */
+.ora-visual--decision_tree .ora-visual__node--decision {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--decision_tree .ora-visual__node--chance {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-cat-1);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--decision_tree .ora-visual__node--terminal {
+  fill: var(--ora-vis-muted);
+  stroke: var(--ora-vis-muted);
+}
+
+.ora-visual--decision_tree .ora-visual__edge-label--probability {
+  font-family: var(--ora-vis-font-mono);
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual--decision_tree .ora-visual__edge-label--payoff {
+  font-family: var(--ora-vis-font-mono);
+  fill: var(--ora-vis-text-secondary);
+}
+
+.ora-visual--decision_tree .ora-visual__ev {
+  font-family: var(--ora-vis-font-mono);
+  font-weight: 600;
+  fill: var(--ora-vis-highlight);
+}
+
+/* Influence diagram (WP-1.3e) — decision/chance/value/deterministic typing */
+.ora-visual--influence_diagram .ora-visual__node--decision {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-medium);
+  /* rect shape supplied by renderer */
+}
+
+.ora-visual--influence_diagram .ora-visual__node--chance {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-cat-1);
+  stroke-width: var(--ora-vis-stroke-medium);
+  /* ellipse shape supplied by renderer */
+}
+
+.ora-visual--influence_diagram .ora-visual__node--value {
+  fill: var(--ora-vis-highlight);
+  stroke: var(--ora-vis-highlight);
+  /* rounded-rect shape supplied by renderer; color signals the single value node */
+}
+
+.ora-visual--influence_diagram .ora-visual__node--value text {
+  fill: var(--ora-vis-bg);
+  font-weight: 600;
+}
+
+.ora-visual--influence_diagram .ora-visual__node--deterministic {
+  fill: var(--ora-vis-muted);
+  stroke: var(--ora-vis-muted);
+}
+
+.ora-visual--influence_diagram .ora-visual__arc--informational {
+  stroke-dasharray: 3 3;   /* information arcs distinguishable from functional */
+}
+
+/* ACH matrix (WP-1.3f) — Vega-Lite heatmap wrapper; adds per-family styling */
+.ora-visual--ach_matrix .ora-visual__cell {
+  stroke: var(--ora-vis-bg);
+  stroke-width: var(--ora-vis-stroke-thin);
+  /* fill applied by renderer from sequential ramp on diagnosticity score */
+}
+
+.ora-visual--ach_matrix .ora-visual__hypothesis-label {
+  font-weight: 600;
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual--ach_matrix .ora-visual__evidence-label {
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual--ach_matrix .ora-visual__evidence-label--non-diagnostic {
+  fill: var(--ora-vis-muted);
+  font-style: italic;
+}
+
+.ora-visual--ach_matrix .ora-visual__cell-label {
+  font-family: var(--ora-vis-font-mono);
+  font-size: var(--ora-vis-fontsize-annot);
+  fill: var(--ora-vis-text);
+}
+
+/* 2×2 / scenario quadrant (WP-1.3g) — SVG grid */
+.ora-visual--quadrant_matrix .ora-visual__axis {
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-data);
+}
+
+.ora-visual--quadrant_matrix .ora-visual__quadrant {
+  fill: none;
+  stroke: var(--ora-vis-rule);
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+.ora-visual--quadrant_matrix .ora-visual__quadrant-label {
+  font-weight: 600;
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual--quadrant_matrix .ora-visual__quadrant-narrative {
+  fill: var(--ora-vis-text-secondary);
+}
+
+.ora-visual--quadrant_matrix .ora-visual__item {
+  fill: var(--ora-vis-cat-1);
+  stroke: var(--ora-vis-bg);
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+/* --------------------------------------------------------------------------
+ * RISK family
+ * -------------------------------------------------------------------------- */
+
+/* Bow-tie (WP-1.3h) — symmetric left(threats)/right(consequences) layout */
+.ora-visual--bow_tie .ora-visual__hazard {
+  fill: var(--ora-vis-highlight);
+  stroke: var(--ora-vis-highlight);
+}
+
+.ora-visual--bow_tie .ora-visual__hazard text {
+  fill: var(--ora-vis-bg);
+  font-weight: 700;
+}
+
+.ora-visual--bow_tie .ora-visual__threat {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-cat-1);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--bow_tie .ora-visual__consequence {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-cat-2);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--bow_tie .ora-visual__control--preventive {
+  fill: var(--ora-vis-cat-1);
+  fill-opacity: 0.15;
+  stroke: var(--ora-vis-cat-1);
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+.ora-visual--bow_tie .ora-visual__control--mitigative {
+  fill: var(--ora-vis-cat-2);
+  fill-opacity: 0.15;
+  stroke: var(--ora-vis-cat-2);
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+.ora-visual--bow_tie .ora-visual__escalation {
+  stroke: var(--ora-vis-muted);
+  stroke-width: var(--ora-vis-stroke-thin);
+  stroke-dasharray: 2 2;
+}
+
+/* --------------------------------------------------------------------------
+ * ARGUMENT family
+ * -------------------------------------------------------------------------- */
+
+/* IBIS (WP-1.3i) — question/idea/pro/con typed by role-colour */
+.ora-visual--ibis .ora-visual__node--question {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-ibis-question);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--ibis .ora-visual__node--idea {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-ibis-idea);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--ibis .ora-visual__node--pro {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-ibis-pro);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--ibis .ora-visual__node--con {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-ibis-con);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--ibis .ora-visual__node-type-glyph {
+  /* Renderer should precede the label with ? / ! / + / − */
+  font-family: var(--ora-vis-font-mono);
+  font-weight: 700;
+}
+
+/* Pro-con tree (WP-1.3j) */
+.ora-visual--pro_con .ora-visual__claim {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-medium);
+  font-weight: 600;
+}
+
+.ora-visual--pro_con .ora-visual__pro {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-positive);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--pro_con .ora-visual__con {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-negative);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--pro_con .ora-visual__weight-indicator {
+  fill: var(--ora-vis-muted);
+  font-family: var(--ora-vis-font-mono);
+  font-size: var(--ora-vis-fontsize-annot);
+}
+
+/* --------------------------------------------------------------------------
+ * RELATIONAL family
+ * -------------------------------------------------------------------------- */
+
+/* Concept map (WP-1.3k) — CXL-shaped propositions */
+.ora-visual--concept_map .ora-visual__concept {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-medium);
+  rx: var(--ora-vis-radius);
+  ry: var(--ora-vis-radius);
+}
+
+.ora-visual--concept_map .ora-visual__linking-phrase {
+  /* Renderer places the phrase inline on the edge; fill background
+     with surface color via a renderer-emitted rect for legibility */
+  font-size: var(--ora-vis-fontsize-annot);
+  font-style: italic;
+  fill: var(--ora-vis-text);
+}
+
+.ora-visual--concept_map .ora-visual__proposition--cross-link {
+  stroke: var(--ora-vis-highlight);
+  stroke-width: var(--ora-vis-stroke-data);
+}
+
+/* --------------------------------------------------------------------------
+ * PROCESS family (Mermaid renderers, WP-1.2b)
+ *
+ * WP-1.2b strips Mermaid's default inline styling so these classes take
+ * over. Renderers remap Mermaid's internal node/edge classes to our names.
+ * -------------------------------------------------------------------------- */
+
+.ora-visual--sequence .ora-visual__actor {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--sequence .ora-visual__lifeline {
+  stroke: var(--ora-vis-muted);
+  stroke-width: var(--ora-vis-stroke-thin);
+  stroke-dasharray: 2 3;
+  fill: none;
+}
+
+.ora-visual--sequence .ora-visual__message {
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-data);
+  fill: none;
+}
+
+.ora-visual--sequence .ora-visual__message--async {
+  stroke-dasharray: 4 3;
+}
+
+.ora-visual--flowchart .ora-visual__node {
+  rx: var(--ora-vis-radius);
+  ry: var(--ora-vis-radius);
+}
+
+.ora-visual--flowchart .ora-visual__node--decision {
+  /* diamond shape supplied by renderer; just theming */
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-cat-1);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+.ora-visual--flowchart .ora-visual__node--start,
+.ora-visual--flowchart .ora-visual__node--end {
+  fill: var(--ora-vis-muted);
+  stroke: var(--ora-vis-muted);
+}
+
+.ora-visual--flowchart .ora-visual__node--start text,
+.ora-visual--flowchart .ora-visual__node--end text {
+  fill: var(--ora-vis-bg);
+  font-weight: 600;
+}
+
+.ora-visual--flowchart .ora-visual__swimlane {
+  fill: none;
+  stroke: var(--ora-vis-rule);
+  stroke-width: var(--ora-vis-stroke-thin);
+}
+
+.ora-visual--state .ora-visual__node {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-medium);
+  rx: 8px;
+  ry: 8px;
+}
+
+.ora-visual--state .ora-visual__node--initial {
+  fill: var(--ora-vis-text);
+  stroke: var(--ora-vis-text);
+}
+
+.ora-visual--state .ora-visual__node--final {
+  fill: var(--ora-vis-surface);
+  stroke: var(--ora-vis-text);
+  stroke-width: var(--ora-vis-stroke-heavy);
+}
+
+/* --------------------------------------------------------------------------
+ * SPATIAL family (Structurizr renderer, WP-1.2d)
+ * -------------------------------------------------------------------------- */
+
+.ora-visual--c4 .ora-visual__node--person {
+  fill: var(--ora-vis-c4-person);
+  stroke: var(--ora-vis-c4-person);
+}
+
+.ora-visual--c4 .ora-visual__node--person text {
+  fill: var(--ora-vis-bg);
+  font-weight: 600;
+}
+
+.ora-visual--c4 .ora-visual__node--system {
+  fill: var(--ora-vis-c4-system);
+  stroke: var(--ora-vis-c4-system);
+}
+
+.ora-visual--c4 .ora-visual__node--system text {
+  fill: var(--ora-vis-bg);
+  font-weight: 600;
+}
+
+.ora-visual--c4 .ora-visual__node--container {
+  fill: var(--ora-vis-c4-container);
+  stroke: var(--ora-vis-c4-container);
+}
+
+.ora-visual--c4 .ora-visual__node--container text {
+  fill: var(--ora-vis-bg);
+}
+
+.ora-visual--c4 .ora-visual__node--external {
+  fill: var(--ora-vis-bg);
+  stroke: var(--ora-vis-c4-external);
+  stroke-width: var(--ora-vis-stroke-medium);
+  stroke-dasharray: 4 3;
+}
+
+.ora-visual--c4 .ora-visual__edge {
+  stroke: var(--ora-vis-axis);
+  stroke-width: var(--ora-vis-stroke-medium);
+}
+
+/* ==========================================================================
+ * Stub renderer (renderers/stub.js) — WP-1.4 owns this look from day one
+ * ========================================================================== */
+
+.ora-visual--stub {
+  /* Keep it clearly "not a real visual" without looking broken. */
+}
+
+.ora-visual__stub-bg {
+  fill: var(--ora-vis-stub-bg);
+  stroke: var(--ora-vis-stub-border);
+  stroke-width: var(--ora-vis-stroke-thin);
+  stroke-dasharray: 4 3;
+}
+
+.ora-visual__stub-label {
+  font-family: var(--ora-vis-font-mono);
+  font-size: var(--ora-vis-fontsize-title);
+  font-weight: 600;
+  fill: var(--ora-vis-stub-text);
+}
+
+.ora-visual__stub-notice {
+  font-size: var(--ora-vis-fontsize-body);
+  fill: var(--ora-vis-stub-text);
+  font-style: italic;
+}
+
+.ora-visual__gist {
+  font-size: var(--ora-vis-fontsize-label);
+  fill: var(--ora-vis-text-secondary);
+}
+
+/* ==========================================================================
+ * Accessibility — focus indicators (hook for WP-1.5 keyboard-nav.js)
+ * ========================================================================== */
+
+.ora-visual *:focus {
+  outline: none;   /* we draw our own ring */
+}
+
+.ora-visual *:focus-visible {
+  outline: var(--ora-vis-focus-width) solid var(--ora-vis-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Keyboard-nav "current element" selection visual (Olli / ARIA TreeView) */
+.ora-visual__node--selected,
+.ora-visual__edge--selected {
+  outline: var(--ora-vis-focus-width) solid var(--ora-vis-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+ * Dark mode
+ *
+ * Neutral dark (not hard-coded to the Ora Dracula theme) so downstream
+ * themes can re-skin. Category palette uses the lightened O-I variants
+ * that meet contrast on dark.
+ * ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ora-vis-bg:               #1A1E24;
+    --ora-vis-surface:          #242932;
+    --ora-vis-text:             #E8EAED;
+    --ora-vis-text-secondary:   #B0B5BD;
+    --ora-vis-gridline:         #6B7078;   /* ≥ 3:1 on dark bg */
+    --ora-vis-axis:             #9AA0A7;
+    --ora-vis-rule:             #3A3F47;
+
+    /* Okabe-Ito lightened for dark bg. All ≥ 3:1 against #1A1E24. */
+    --ora-vis-cat-1:            #5BA8E0;
+    --ora-vis-cat-2:            #F07E3D;
+    --ora-vis-cat-3:            #47D1A6;
+    --ora-vis-cat-4:            #E8A3C2;
+    --ora-vis-cat-5:            #F3B547;
+    --ora-vis-cat-6:            #8ACCF0;
+    --ora-vis-cat-7:            #F0E442;   /* canonical O-I yellow ok on dark */
+    --ora-vis-cat-8:            #E8E8E8;
+
+    --ora-vis-highlight:        #FF7369;
+    --ora-vis-muted:            #9AA0A7;
+    --ora-vis-positive:         #47D1A6;
+    --ora-vis-negative:         #FF7369;
+    --ora-vis-neutral:          #9AA0A7;
+
+    --ora-vis-ibis-question:    #5BA8E0;
+    --ora-vis-ibis-idea:        #F3B547;
+    --ora-vis-ibis-pro:         #47D1A6;
+    --ora-vis-ibis-con:         #FF7369;
+
+    --ora-vis-dag-exposure:     #5BA8E0;
+    --ora-vis-dag-outcome:      #F07E3D;
+    --ora-vis-dag-latent:       #9AA0A7;
+
+    --ora-vis-c4-person:        #5BA8E0;
+    --ora-vis-c4-system:        #E8EAED;
+    --ora-vis-c4-container:     #B0B5BD;
+    --ora-vis-c4-external:      #9AA0A7;
+
+    --ora-vis-stub-bg:          #242932;
+    --ora-vis-stub-border:      #4A5058;
+    --ora-vis-stub-text:        #B0B5BD;
+
+    --ora-vis-focus-ring:       #5BA8E0;
+  }
+
+  /* A few rules whose colour logic inverts on dark: white-on-colour text
+     needs to become dark-on-light where we use paler category fills. */
+  .ora-visual--causal_dag .ora-visual__node--exposure text,
+  .ora-visual--causal_dag .ora-visual__node--outcome text,
+  .ora-visual--c4 .ora-visual__node--person text,
+  .ora-visual--c4 .ora-visual__node--system text,
+  .ora-visual--c4 .ora-visual__node--container text,
+  .ora-visual--influence_diagram .ora-visual__node--value text,
+  .ora-visual--bow_tie .ora-visual__hazard text,
+  .ora-visual--flowchart .ora-visual__node--start text,
+  .ora-visual--flowchart .ora-visual__node--end text {
+    fill: var(--ora-vis-bg);   /* dark text on the now-lighter mark colour */
+  }
+}
+
+/* ==========================================================================
+ * Print
+ *
+ * Force light palette (no dark-mode override), minimum 0.75pt stroke so
+ * every line survives on paper, and strip background fills.
+ * ========================================================================== */
+
+@media print {
+  :root {
+    /* Force light palette regardless of OS setting */
+    --ora-vis-bg:               #FFFFFF;
+    --ora-vis-surface:          #FFFFFF;
+    --ora-vis-text:             #000000;
+    --ora-vis-text-secondary:   #333333;
+    --ora-vis-gridline:         #999999;
+    --ora-vis-axis:             #000000;
+    --ora-vis-rule:             #666666;
+
+    --ora-vis-cat-1:            #0072B2;
+    --ora-vis-cat-2:            #D55E00;
+    --ora-vis-cat-3:            #009E73;
+    --ora-vis-cat-4:            #B857A0;
+    --ora-vis-cat-5:            #B87200;
+    --ora-vis-cat-6:            #2E8DC4;
+    --ora-vis-cat-7:            #B8860B;
+    --ora-vis-cat-8:            #000000;
+
+    --ora-vis-highlight:        #B2182B;
+    --ora-vis-muted:            #666666;
+
+    --ora-vis-stroke-thin:      0.75pt;   /* ≥ 0.75pt survives paper */
+    --ora-vis-stroke-medium:    1pt;
+    --ora-vis-stroke-data:      1.5pt;
+    --ora-vis-stroke-heavy:     2pt;
+  }
+
+  .ora-visual {
+    background: transparent;       /* no background fills on paper */
+    color: #000000;
+    page-break-inside: avoid;
+  }
+
+  .ora-visual__stub-bg {
+    fill: transparent;
+  }
+
+  .ora-visual *:focus-visible {
+    outline: none;                 /* no interactive ring on paper */
+  }
+}

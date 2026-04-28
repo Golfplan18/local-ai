@@ -1,0 +1,9 @@
+{
+  "name": "Ora Default",
+  "version": "1.0.0",
+  "author": "Ora",
+  "authorUrl": "",
+  "minAppVersion": "1.0.0",
+  "modes": ["dark", "light"],
+  "description": "Ora's default theme — Dracula heading palette over a cool grey surface, with paired-light depth on panes and buttons."
+}

@@ -1,0 +1,14 @@
+{
+  "session_id": "server_sim",
+  "timestamp": "2026-04-14T21:30:00",
+  "mode": "exploratory",
+  "gear": 2,
+  "models_used": [
+    "local-mlx-gpt-oss-20b"
+  ],
+  "rag_resources": [],
+  "token_consumption": {},
+  "budget_signals": [],
+  "prompt_length": 64,
+  "output_length": 875
+}

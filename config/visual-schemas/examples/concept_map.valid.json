@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-concept_map",
+  "type": "concept_map",
+  "mode_context": "root_cause_analysis",
+  "relation_to_prose": "integrated",
+  "spec": {
+    "focus_question": "How does velocity interact with tech debt?",
+    "concepts": [
+      {
+        "id": "V",
+        "label": "Velocity",
+        "hierarchy_level": 0
+      },
+      {
+        "id": "T",
+        "label": "Tech debt",
+        "hierarchy_level": 1
+      },
+      {
+        "id": "F",
+        "label": "Fires",
+        "hierarchy_level": 2
+      }
+    ],
+    "linking_phrases": [
+      {
+        "id": "L1",
+        "text": "produces"
+      },
+      {
+        "id": "L2",
+        "text": "causes"
+      },
+      {
+        "id": "L3",
+        "text": "slows"
+      }
+    ],
+    "propositions": [
+      {
+        "from_concept": "V",
+        "via_phrase": "L1",
+        "to_concept": "T"
+      },
+      {
+        "from_concept": "T",
+        "via_phrase": "L2",
+        "to_concept": "F"
+      },
+      {
+        "from_concept": "F",
+        "via_phrase": "L3",
+        "to_concept": "V",
+        "is_cross_link": true
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Bar chart of four categories with counts on y-axis.",
+    "level_2_statistical": "Max is category C at 42; min is A at 10; spread 32.",
+    "level_3_perceptual": "Two clusters: low (A,B) and high (C,D), no intermediate.",
+    "level_4_contextual": null,
+    "short_alt": "Bar chart of four categories where C is the largest at 42.",
+    "data_table_fallback": null
+  },
+  "title": "Example concept_map"
+}

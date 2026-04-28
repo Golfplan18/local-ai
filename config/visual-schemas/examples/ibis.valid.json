@@ -1,0 +1,57 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-ibis",
+  "type": "ibis",
+  "mode_context": "root_cause_analysis",
+  "relation_to_prose": "integrated",
+  "spec": {
+    "nodes": [
+      {
+        "id": "Q1",
+        "type": "question",
+        "text": "Should we adopt Rust?"
+      },
+      {
+        "id": "I1",
+        "type": "idea",
+        "text": "Rewrite critical path in Rust"
+      },
+      {
+        "id": "P1",
+        "type": "pro",
+        "text": "Memory safety"
+      },
+      {
+        "id": "C1",
+        "type": "con",
+        "text": "Hiring pool smaller"
+      }
+    ],
+    "edges": [
+      {
+        "from": "I1",
+        "to": "Q1",
+        "type": "responds_to"
+      },
+      {
+        "from": "P1",
+        "to": "I1",
+        "type": "supports"
+      },
+      {
+        "from": "C1",
+        "to": "I1",
+        "type": "objects_to"
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Bar chart of four categories with counts on y-axis.",
+    "level_2_statistical": "Max is category C at 42; min is A at 10; spread 32.",
+    "level_3_perceptual": "Two clusters: low (A,B) and high (C,D), no intermediate.",
+    "level_4_contextual": null,
+    "short_alt": "Bar chart of four categories where C is the largest at 42.",
+    "data_table_fallback": null
+  },
+  "title": "Example ibis"
+}

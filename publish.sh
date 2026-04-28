@@ -1,5 +1,5 @@
 #!/bin/bash
-cd ~/local-ai
+cd ~/ora
 
 echo ""
 echo "Files changed since last publish:"

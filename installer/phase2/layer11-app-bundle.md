@@ -28,7 +28,7 @@
    ```xml
    CFBundleExecutable: ai
    CFBundleIconFile: ai
-   CFBundleIdentifier: local.ai.launcher
+   CFBundleIdentifier: app.ora-ai.launcher
    CFBundleName: ai
    CFBundleDisplayName: ai
    CFBundlePackageType: APPL

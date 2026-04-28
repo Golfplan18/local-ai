@@ -8,7 +8,7 @@ import os
 import time
 from datetime import datetime
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 VAULT = os.path.expanduser("~/Documents/vault/")
 CONVERSATIONS = os.path.expanduser("~/Documents/conversations/")
 LOG_DIR = os.path.join(WORKSPACE, "logs")
@@ -160,6 +160,84 @@ def _wrap_schedule_task(params):
     return f"Scheduled task {task_id}: '{entry['prompt'][:60]}' every {entry['interval_minutes']}m"
 
 
+# ── Scheduled task registry management ─────────────────────────────────────
+
+def _load_scheduled_tasks_registry():
+    registry_path = os.path.join(WORKSPACE, "config/scheduled-tasks.json")
+    try:
+        with open(registry_path) as f:
+            return json.load(f), registry_path
+    except Exception:
+        return None, registry_path
+
+
+def _save_scheduled_tasks_registry(registry, registry_path):
+    with open(registry_path, "w") as f:
+        json.dump(registry, f, indent=2)
+
+
+def _update_scheduled_task_status(task_id: str, active: bool) -> str:
+    if not task_id:
+        return "Error: task id required"
+    registry, registry_path = _load_scheduled_tasks_registry()
+    if registry is None:
+        return "No scheduled tasks registry found."
+    for t in registry.get("tasks", []):
+        if t["id"] == task_id:
+            t["active"] = active
+            _save_scheduled_tasks_registry(registry, registry_path)
+            verb = "Resumed" if active else "Paused"
+            return f"{verb} scheduled task {task_id}: '{t['prompt'][:60]}'"
+    return f"No scheduled task found with id {task_id}"
+
+
+def _wrap_list_scheduled_tasks(params):
+    """List scheduled tasks. Optional `status` filter: 'active', 'paused', or None for all."""
+    registry, _ = _load_scheduled_tasks_registry()
+    if registry is None:
+        return "No scheduled tasks registry found."
+    tasks = registry.get("tasks", [])
+    if not tasks:
+        return "No scheduled tasks."
+    status_filter = params.get("status")
+    if status_filter == "active":
+        tasks = [t for t in tasks if t.get("active")]
+    elif status_filter == "paused":
+        tasks = [t for t in tasks if not t.get("active")]
+    lines = []
+    for t in tasks:
+        status = "active" if t.get("active") else "paused"
+        lines.append(
+            f"[{t['id']}] {status} — every {t['interval_minutes']}m — "
+            f"{t.get('run_count', 0)} runs — '{t['prompt'][:60]}'"
+        )
+    return "\n".join(lines) if lines else "No tasks match filter."
+
+
+def _wrap_pause_scheduled_task(params):
+    return _update_scheduled_task_status(params.get("id", ""), active=False)
+
+
+def _wrap_resume_scheduled_task(params):
+    return _update_scheduled_task_status(params.get("id", ""), active=True)
+
+
+def _wrap_remove_scheduled_task(params):
+    task_id = params.get("id", "")
+    if not task_id:
+        return "Error: task id required"
+    registry, registry_path = _load_scheduled_tasks_registry()
+    if registry is None:
+        return "No scheduled tasks registry found."
+    tasks = registry.get("tasks", [])
+    for i, t in enumerate(tasks):
+        if t["id"] == task_id:
+            removed = tasks.pop(i)
+            _save_scheduled_tasks_registry(registry, registry_path)
+            return f"Removed scheduled task {task_id}: '{removed['prompt'][:60]}'"
+    return f"No scheduled task found with id {task_id}"
+
+
 TOOL_REGISTRY = {
     "web_search":       {"handler": _wrap_web_search,       "permission": "auto",    "category": "read"},
     "file_read":        {"handler": _wrap_file_read,        "permission": "auto",    "category": "read"},
@@ -175,7 +253,11 @@ TOOL_REGISTRY = {
     "api_evaluate":     {"handler": _wrap_api_evaluate,     "permission": "approve", "category": "execute"},
     "stop_process":     {"handler": _wrap_stop_process,     "permission": "approve", "category": "execute"},
     "spawn_subagent":   {"handler": _wrap_spawn_subagent,   "permission": "approve", "category": "execute"},
-    "schedule_task":    {"handler": _wrap_schedule_task,     "permission": "approve", "category": "write"},
+    "schedule_task":         {"handler": _wrap_schedule_task,         "permission": "approve", "category": "write"},
+    "list_scheduled_tasks":  {"handler": _wrap_list_scheduled_tasks,  "permission": "auto",    "category": "read"},
+    "pause_scheduled_task":  {"handler": _wrap_pause_scheduled_task,  "permission": "approve", "category": "write"},
+    "resume_scheduled_task": {"handler": _wrap_resume_scheduled_task, "permission": "approve", "category": "write"},
+    "remove_scheduled_task": {"handler": _wrap_remove_scheduled_task, "permission": "approve", "category": "write"},
 }
 
 # ── Permission modes ──────────────────────────────────────────────────────
@@ -382,7 +464,7 @@ def dispatch(tool_name: str, parameters: dict,
     classification = None
 
     # MCP routing
-    if tool_name.startswith("mcp_") and _mcp_client:
+    if tool_name.startswith("mcp_") and _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
         try:
             result = _mcp_client.call_mcp_tool(tool_name, parameters)
             return json.dumps(result) if isinstance(result, dict) else str(result)

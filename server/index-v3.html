@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ora — v3 mockup</title>
+<link rel="stylesheet" href="/static/styles/ora-default.css">
+<script src="/static/js/theme-mode.js" defer></script>
+<script src="/static/js/theme-loader.js" defer></script>
+<script src="/static/js/theme-library.js" defer></script>
+<script src="/static/js/customizer.js" defer></script>
+</head>
+<body class="theme-dark">
+
+<div class="ora-shell">
+
+  <!-- LEFT COLUMN — input on top, draggable bridge strip, output on bottom -->
+  <div class="left-column">
+    <div class="pane input-pane">
+      <textarea spellcheck="false"></textarea>
+    </div>
+    <div class="bridge-strip" id="bridgeStrip" role="separator"
+         aria-orientation="horizontal" aria-label="Resize input">
+      <span class="bridge-mode-label" id="bridgeModeLabel"></span>
+    </div>
+    <div class="pane output-pane has-content">
+      <div class="output-content">
+        <h1>Heading 1</h1>
+        <p>Body text demonstrates the default paragraph styling. The output pane uses the theme's text-normal color and base font size.</p>
+
+        <h2>Heading 2</h2>
+        <p>Each heading level uses a distinct color from the Dracula palette to make the hierarchy easy to scan. <a href="#">Sample hyperlink</a> renders in blue.</p>
+
+        <h3>Heading 3</h3>
+        <p>Heading sizes step down moderately so the hierarchy is visible without becoming theatrical.</p>
+
+        <h4>Heading 4</h4>
+        <p>Smaller subsection heading with following paragraph.</p>
+
+        <h5>Heading 5</h5>
+        <p>Even smaller, useful for fine subdivisions.</p>
+
+        <h6>Heading 6</h6>
+        <p>Smallest heading, useful for the finest subdivisions.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPINE — bare; icon clusters flush with pane top/bottom -->
+  <div class="spine">
+
+    <!-- TOP cluster: ? (private) at the very top, ⊘ (stealth) below it -->
+    <div class="spine-top">
+
+      <button class="spine-button" type="button" aria-label="Private"
+              data-mode-button="private" id="modeBtnPrivate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+
+      <button class="spine-button" type="button" aria-label="Stealth"
+              data-mode-button="stealth" id="modeBtnStealth">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2">
+          <circle cx="12" cy="12" r="9"/>
+          <line x1="6" y1="6" x2="18" y2="18" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+    </div>
+
+    <!-- Vertical wordmark — slides with the bridge strip
+         O (top) = enter, r (middle) = decorative, a (bottom) = output menu
+         Two color tiers:
+           wm-bright (rgb 128,128,128) — O inner ring + a ring
+           wm-base   (rgb  88, 88, 88) — O outer ring + r arc + r stem + a stem
+         a's stem drawn before its ring so the circle is continuous
+         and matches the O's inner ring exactly. -->
+    <svg class="spine-wordmark" viewBox="0 0 290 842"
+         xmlns="http://www.w3.org/2000/svg"
+         stroke-width="18">
+
+      <g id="logo-o" class="wordmark-letter wordmark-clickable"
+         role="button" tabindex="0" aria-label="Submit">
+        <circle cx="145" cy="145" r="145" fill="transparent" stroke="none"/>
+        <circle cx="145" cy="145" r="136" class="wm-stroke-base"/>
+        <circle cx="145" cy="145" r="91"  class="wm-stroke-bright"/>
+      </g>
+
+      <g id="logo-r" class="wordmark-letter" aria-hidden="true">
+        <path d="M 54 466 A 91 91 0 0 1 236 466"
+              class="wm-stroke-base" stroke-linecap="butt"/>
+        <rect x="45" y="366" width="18" height="200" class="wm-fill-base"/>
+      </g>
+
+      <g id="logo-a" class="wordmark-letter wordmark-clickable"
+         role="button" tabindex="0" aria-label="Output menu">
+        <circle cx="145" cy="742" r="100" fill="transparent" stroke="none"/>
+        <rect x="227" y="642" width="18" height="200" class="wm-fill-base"/>
+        <circle cx="145" cy="742" r="91"  class="wm-stroke-bright"/>
+      </g>
+
+    </svg>
+
+    <!-- BOTTOM cluster: +, ≡, sliders, bar chart — flush with pane bottoms.
+         These are action buttons (no longer modes); they trigger UI without
+         tinting the interface. The data-mode-button attribute has been removed
+         so the mode-toggle JS does not handle them. -->
+    <div class="spine-bottom">
+
+      <button class="spine-button" type="button" aria-label="Command palette">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+
+      <button class="spine-button" type="button" aria-label="Mode selector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round">
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="18" x2="20" y2="18"/>
+        </svg>
+      </button>
+
+      <button class="spine-button" type="button" aria-label="Configuration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round">
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <circle cx="9" cy="6" r="2.4" fill="var(--interactive-normal)"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <circle cx="15" cy="12" r="2.4" fill="var(--interactive-normal)"/>
+          <line x1="4" y1="18" x2="20" y2="18"/>
+          <circle cx="11" cy="18" r="2.4" fill="var(--interactive-normal)"/>
+        </svg>
+      </button>
+
+      <button class="spine-button" type="button" aria-label="Theme and customization"
+              id="themeToggleBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+          <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+          <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+          <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+        </svg>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN — chat input → small gap → chat output → big bridge gap → visual canvas
+       The big right gap and the left bridge are locked together (both follow the
+       wordmark r-center). The small chatbot gap is independent. -->
+  <div class="right-column">
+    <div class="chat-zone" id="chatZone">
+      <div class="pane chat-input-pane">
+        <textarea spellcheck="false"></textarea>
+      </div>
+      <div class="chatbot-divider" id="chatbotDivider" role="separator"
+           aria-orientation="horizontal" aria-label="Resize chat input"></div>
+      <div class="pane chat-output-pane"></div>
+    </div>
+    <div class="bridge-strip-right" id="bridgeStripRight" role="separator"
+         aria-orientation="horizontal" aria-label="Resize main split">
+      <span class="bridge-mode-label" id="bridgeModeLabelRight"></span>
+      <span class="bridge-qa-message" id="bridgeQAMessage"></span>
+    </div>
+    <div class="pane right-pane"></div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  // Two independent drags wired up on this page:
+  //
+  // 1. MAIN SPLIT — the left bridge strip and the big right gap are locked
+  //    together. Dragging either one resizes the left input pane AND the right
+  //    chat-zone (which sits above the big right gap) by the same amount, and
+  //    moves the wordmark r-center to track them. The wordmark constraint also
+  //    clamps how far either bridge can move (O top stays ≥ ICON_GAP from the
+  //    top icon cluster, a bottom stays ≥ ICON_GAP from the bottom cluster).
+  //
+  // 2. CHATBOT SPLIT — the small divider inside the chat-zone. Dragging this
+  //    only changes the chat-input pane's height; chat-output reflows. The
+  //    main split, the wordmark, and the left bridge are unaffected.
+  //
+  const bridge          = document.getElementById('bridgeStrip');
+  const bridgeRight     = document.getElementById('bridgeStripRight');
+  const chatbotDivider  = document.getElementById('chatbotDivider');
+  const input           = document.querySelector('.input-pane');
+  const chatZone        = document.getElementById('chatZone');
+  const chatInput       = document.querySelector('.chat-input-pane');
+  const wordmark        = document.querySelector('.spine-wordmark');
+  const spine           = document.querySelector('.spine');
+  const topCluster      = document.querySelector('.spine-top');
+  const bottomCluster   = document.querySelector('.spine-bottom');
+
+  const MIN_INPUT             = 60;
+  const MAX_INPUT_RATIO       = 0.7;
+  const ICON_GAP              = 18;
+  const R_CENTER_RATIO        = 0.5534;
+  const CHAT_SMALL_GAP        = 18;
+  const MIN_CHAT_INPUT        = 80;   /* leaves room for 2 rows of text inside the 14px outer padding + browser textarea padding so the scrollbar never appears at minimum */
+  const MAX_CHAT_INPUT_RATIO  = 0.7;     // of the chat-zone height
+
+  // ─── Wordmark placement: r-center pinned to left bridge center ───
+  const placeWordmark = () => {
+    const bRect = bridge.getBoundingClientRect();
+    const sRect = spine.getBoundingClientRect();
+    const bridgeCenterViewport = bRect.top + bRect.height / 2;
+    wordmark.style.top = (bridgeCenterViewport - sRect.top) + 'px';
+  };
+
+  // Bounds for the main split that keep the wordmark off the icon clusters.
+  const computeMainBounds = () => {
+    const tcBottom = topCluster.getBoundingClientRect().bottom;
+    const bcTop    = bottomCluster.getBoundingClientRect().top;
+    const inputTop = input.getBoundingClientRect().top;
+    const bridgeH  = bridge.getBoundingClientRect().height;
+    const wmH      = wordmark.getBoundingClientRect().height;
+    const minH = tcBottom + ICON_GAP + R_CENTER_RATIO * wmH - inputTop - bridgeH / 2;
+    const maxH = bcTop    - ICON_GAP - (1 - R_CENTER_RATIO) * wmH - inputTop - bridgeH / 2;
+    return {
+      min: Math.max(MIN_INPUT, minH),
+      max: Math.min(window.innerHeight * MAX_INPUT_RATIO, maxH)
+    };
+  };
+
+  // Apply a new main-split height to BOTH the left input and the right chat-zone,
+  // then re-clamp the chat-input height in case the chat-zone shrank below it.
+  const setMainHeight = (newH) => {
+    input.style.height = newH + 'px';
+    chatZone.style.height = newH + 'px';
+    // Re-clamp chat-input if chat-zone shrank
+    const maxChatInput = Math.max(MIN_CHAT_INPUT, newH * MAX_CHAT_INPUT_RATIO - CHAT_SMALL_GAP);
+    if (chatInput.offsetHeight > maxChatInput) {
+      chatInput.style.height = maxChatInput + 'px';
+    }
+    placeWordmark();
+  };
+
+  const clampAndPlace = () => {
+    const bounds  = computeMainBounds();
+    const current = input.offsetHeight;
+    const clamped = Math.max(bounds.min, Math.min(bounds.max, current));
+    setMainHeight(clamped);
+  };
+
+  // ─── Main-split drag (either bridge) ───
+  let mainDrag = false, mainStartY = 0, mainStartH = 0;
+
+  const mainDown = (e) => {
+    mainDrag    = true;
+    mainStartY  = e.clientY;
+    mainStartH  = input.offsetHeight;
+    document.body.classList.add('dragging');
+    e.preventDefault();
+  };
+  const mainMove = (e) => {
+    if (!mainDrag) return;
+    const dy     = e.clientY - mainStartY;
+    const bounds = computeMainBounds();
+    const newH   = Math.max(bounds.min, Math.min(bounds.max, mainStartH + dy));
+    setMainHeight(newH);
+  };
+  const mainUp = () => {
+    if (!mainDrag) return;
+    mainDrag = false;
+    document.body.classList.remove('dragging');
+  };
+
+  bridge.addEventListener('mousedown', mainDown);
+  bridgeRight.addEventListener('mousedown', mainDown);
+
+  // ─── Chatbot-split drag (small gap inside the chat zone) ───
+  let chatDrag = false, chatStartY = 0, chatStartH = 0;
+
+  const chatDown = (e) => {
+    chatDrag    = true;
+    chatStartY  = e.clientY;
+    chatStartH  = chatInput.offsetHeight;
+    document.body.classList.add('chat-dragging');
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const chatMove = (e) => {
+    if (!chatDrag) return;
+    const dy = e.clientY - chatStartY;
+    const zoneH = chatZone.offsetHeight;
+    const maxH = Math.max(MIN_CHAT_INPUT, zoneH * MAX_CHAT_INPUT_RATIO - CHAT_SMALL_GAP);
+    const newH = Math.max(MIN_CHAT_INPUT, Math.min(maxH, chatStartH + dy));
+    chatInput.style.height = newH + 'px';
+  };
+  const chatUp = () => {
+    if (!chatDrag) return;
+    chatDrag = false;
+    document.body.classList.remove('chat-dragging');
+  };
+
+  chatbotDivider.addEventListener('mousedown', chatDown);
+
+  // Single mousemove / mouseup that fans out to both drags
+  document.addEventListener('mousemove', (e) => { mainMove(e); chatMove(e); });
+  document.addEventListener('mouseup',   ()  => { mainUp();    chatUp();    });
+
+  window.addEventListener('resize', clampAndPlace);
+
+  // ─── Mode labels (left + right bridges) + Q&A message (centered, separate) ───
+  const modeLabel       = document.getElementById('bridgeModeLabel');
+  const modeLabelRight  = document.getElementById('bridgeModeLabelRight');
+  const qaMessage       = document.getElementById('bridgeQAMessage');
+  const leftInputArea   = document.querySelector('.input-pane textarea');
+  const rightInputArea  = document.querySelector('.chat-input-pane textarea');
+  const logoO           = document.getElementById('logo-o');
+  const themeToggleBtn  = document.getElementById('themeToggleBtn');
+  const MODE_LABELS = { private: 'Private', stealth: 'Stealth' };
+
+  const currentMode = () => {
+    for (const c of document.body.classList) {
+      if (c.endsWith('-mode')) return c.slice(0, -5);
+    }
+    return null;
+  };
+
+  const setMode = (mode) => {
+    [...document.body.classList]
+      .filter(c => c.endsWith('-mode'))
+      .forEach(c => document.body.classList.remove(c));
+    if (mode) {
+      document.body.classList.add(mode + '-mode');
+      const label = MODE_LABELS[mode] || '';
+      modeLabel.textContent = label;
+      modeLabelRight.textContent = label;
+    } else {
+      modeLabel.textContent = '';
+      modeLabelRight.textContent = '';
+    }
+  };
+
+  // Q&A message lives in its own element, centered in the right bridge,
+  // so it doesn't cover the right-bridge mode label at the inner edge.
+  const updateQAMessage = () => {
+    if (document.activeElement === rightInputArea) {
+      qaMessage.textContent = 'Questions and Answers are NOT saved.';
+      qaMessage.classList.add('show');
+    } else {
+      qaMessage.textContent = '';
+      qaMessage.classList.remove('show');
+    }
+  };
+
+  document.querySelectorAll('.spine-button[data-mode-button]').forEach(btn => {
+    const mode = btn.dataset.modeButton;
+    btn.addEventListener('click', () => {
+      setMode(currentMode() === mode ? null : mode);
+    });
+  });
+
+  rightInputArea.addEventListener('focus', updateQAMessage);
+  rightInputArea.addEventListener('blur',  updateQAMessage);
+
+  // Palette icon → open the customizer (which contains the theme toggle
+  // inside its starter overlay). Clicking the palette while the customizer
+  // is open exits the mode.
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      if (window.OraCustomizer) window.OraCustomizer.toggle();
+    });
+  }
+
+  // ─── Submit routing ───
+  // If the right input has text → small-model Q&A path.
+  // Else, if the left input has text → main pipeline path.
+  // Triggered by: O wordmark click/Enter, or Enter (without Shift) in either textarea.
+  // Backend wiring is stubbed; only console.log fires here.
+  const submitInput = () => {
+    const rightContent = rightInputArea.value.trim();
+    if (rightContent) {
+      console.log('[Ora v3] Q&A → small model:', rightContent);
+      rightInputArea.value = '';
+      return;
+    }
+    const leftContent = leftInputArea.value.trim();
+    if (leftContent) {
+      console.log('[Ora v3] Main pipeline:', leftContent);
+      leftInputArea.value = '';
+    }
+  };
+
+  logoO.addEventListener('click', submitInput);
+  logoO.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      submitInput();
+    }
+  });
+
+  [leftInputArea, rightInputArea].forEach(textarea => {
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitInput();
+      }
+    });
+  });
+
+  // ─── Initial layout: 30/70 main split, then enforce icon clearance ───
+  const availableH = window.innerHeight - 32 - bridge.getBoundingClientRect().height;
+  setMainHeight(availableH * 0.30);
+  clampAndPlace();
+})();
+</script>
+
+</body>
+</html>

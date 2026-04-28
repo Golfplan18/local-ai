@@ -1,0 +1,38 @@
+{
+  "_note": "pro weight 9 exceeds maximum 5.",
+  "schema_version": "0.2",
+  "id": "fig-pro_con",
+  "type": "pro_con",
+  "mode_context": "root_cause_analysis",
+  "relation_to_prose": "integrated",
+  "spec": {
+    "claim": "Adopt a four-day work week",
+    "pros": [
+      {
+        "text": "Retention",
+        "weight": 9
+      }
+    ],
+    "cons": [
+      {
+        "text": "Coverage gaps",
+        "weight": 3,
+        "children": [
+          {
+            "text": "Monday on-call coverage"
+          }
+        ]
+      }
+    ],
+    "decision": "Pilot for one quarter"
+  },
+  "semantic_description": {
+    "level_1_elemental": "Bar chart of four categories with counts on y-axis.",
+    "level_2_statistical": "Max is category C at 42; min is A at 10; spread 32.",
+    "level_3_perceptual": "Two clusters: low (A,B) and high (C,D), no intermediate.",
+    "level_4_contextual": null,
+    "short_alt": "Bar chart of four categories where C is the largest at 42.",
+    "data_table_fallback": null
+  },
+  "title": "Example pro_con"
+}

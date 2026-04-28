@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 """
-Generate ai.icns icon variants for the LocalAI app bundle.
-Single-story geometric 'a' (circle + right stem) + geometric 'i' (bar + dot).
+Generate ora.icns icon variants for the Ora app bundle.
+◎ mark: two concentric rings (variant B hierarchical proportions).
 Uses 4x supersampling for smooth anti-aliasing.
+
+macOS-only: requires the `iconutil` command (ships with macOS) to compile
+.iconset folders into .icns files. On Windows/Linux this script will exit
+early with a notice; the .app bundle this feeds is also macOS-only.
 """
 import os
 import shutil
 import subprocess
+import sys
+import tempfile
 from PIL import Image, ImageDraw
 
 VARIANTS = {
-    'ai-dark':  {'bg': (26,  26,  26),   'fg': (240, 240, 240)},
-    'ai-light': {'bg': (245, 245, 240),  'fg': (26,  26,  26)},
-    'ai-amber': {'bg': (26,  26,  26),   'fg': (255, 176,  40)},
-    'ai-teal':  {'bg': (26,  26,  26),   'fg': ( 64, 196, 180)},
-    'ai-blue':  {'bg': (26,  26,  26),   'fg': ( 90, 150, 220)},
+    'ora-dark':  {'bg': (26,  26,  26),    'fg': (240, 240, 240)},
+    'ora-light': {'bg': (245, 245, 240),   'fg': (26,  26,  26)},
+    'ora-amber': {'bg': (26,  26,  26),    'fg': (255, 176,  40)},
+    'ora-teal':  {'bg': (26,  26,  26),    'fg': (64,  196, 180)},
+    'ora-blue':  {'bg': (26,  26,  26),    'fg': (90,  150, 220)},
+    'ora-warm':  {'bg': (26,  24,  20),    'fg': (224, 212, 192)},
 }
 
 SIZES = [16, 32, 128, 256, 512]
@@ -22,97 +29,43 @@ SIZES = [16, 32, 128, 256, 512]
 
 def draw_icon(size, bg, fg):
     """
-    Draw the 'ai' lettermark at `size` pixels using 4x supersampling.
+    Draw the ◎ mark at `size` px using 4x supersampling.
 
-    'a' design: full circle ring (donut method) with a vertical stem on the
-    right side that descends from the top of the circle to the baseline.
-    The stem overlaps the right edge of the ring, so the two forms merge.
-
-    'i' design: thin vertical bar + circular dot above, no serifs.
+    Two concentric rings matching the variant B logo proportions:
+    outer ring / inner ring ratio = 1.45 (hR/R from logo geometry).
     """
-    S = 4          # supersample factor
-    W = size * S   # working canvas size
+    S = 4
+    W = size * S
 
     img = Image.new('RGBA', (W, W), (0, 0, 0, 0))
-    d   = ImageDraw.Draw(img)
+    d = ImageDraw.Draw(img)
 
     fg_c = (*fg, 255)
     bg_c = (*bg, 255)
 
-    # ── Background rounded rectangle ────────────────────────────────────────
+    # Background rounded rectangle
     corner_r = int(W * 0.175)
     d.rounded_rectangle([0, 0, W - 1, W - 1], radius=corner_r, fill=bg_c)
 
-    # ── Shared metrics ───────────────────────────────────────────────────────
-    stroke   = W * 0.068   # uniform stroke width for all strokes
+    # ◎ — two concentric rings
+    cx = W / 2
+    cy = W / 2
 
-    cap_top  = W * 0.185   # top of tallest feature
-    baseline = W * 0.808   # bottom of all strokes
-    letter_h = baseline - cap_top
+    outer_R = W * 0.35           # outer ring radius (~70% of canvas)
+    inner_R = outer_R * 0.69     # inner ring (R / hR = 1/1.45 ≈ 0.69)
+    sw = outer_R * 0.124         # stroke width (sw/hR from logo)
 
-    # ── 'a' geometry ─────────────────────────────────────────────────────────
-    # Circle diameter fills ~84% of letter height; top of circle = cap_top.
-    circ_d  = letter_h * 0.84
-    outer_r = circ_d / 2.0
-    inner_r = outer_r - stroke        # hollow centre radius
+    # Outer ring (donut method)
+    d.ellipse([cx - outer_R, cy - outer_R, cx + outer_R, cy + outer_R], fill=fg_c)
+    gap_r = outer_R - sw
+    d.ellipse([cx - gap_r, cy - gap_r, cx + gap_r, cy + gap_r], fill=bg_c)
 
-    a_cy = baseline - outer_r          # circle centre (bottom of circle = baseline)
+    # Inner ring
+    d.ellipse([cx - inner_R, cy - inner_R, cx + inner_R, cy + inner_R], fill=fg_c)
+    inner_gap = inner_R - sw
+    if inner_gap > 0:
+        d.ellipse([cx - inner_gap, cy - inner_gap, cx + inner_gap, cy + inner_gap], fill=bg_c)
 
-    # ── 'i' geometry ─────────────────────────────────────────────────────────
-    dot_r    = stroke * 0.75           # tittle radius — 1.5× stem width
-    i_col_w  = max(stroke, 2 * dot_r)  # column width for the 'i'
-
-    # ── Horizontal layout: centre the pair ──────────────────────────────────
-    gap     = stroke * 0.90            # space between 'a' right edge and 'i'
-    pair_w  = circ_d + gap + i_col_w
-    x0      = (W - pair_w) / 2.0      # leftmost x of pair
-
-    a_cx    = x0 + outer_r             # 'a' circle centre x
-    i_col_x = x0 + circ_d + gap        # left edge of 'i' column
-    i_cx    = i_col_x + i_col_w / 2.0  # 'i' centre x
-
-    # ── Draw 'a' ─────────────────────────────────────────────────────────────
-    # 1. Filled outer circle
-    d.ellipse(
-        [a_cx - outer_r, a_cy - outer_r,
-         a_cx + outer_r, a_cy + outer_r],
-        fill=fg_c
-    )
-    # 2. Hollow inner circle (punches out centre, leaving a ring)
-    if inner_r > 1:
-        d.ellipse(
-            [a_cx - inner_r, a_cy - inner_r,
-             a_cx + inner_r, a_cy + inner_r],
-            fill=bg_c
-        )
-    # 3. Stem: right side, tangent to circle edge, runs from cap_top → baseline.
-    #    Positioned so its right edge aligns with the circle's rightmost point.
-    #    The stem fills the gap in the ring's hollow at the 3-o'clock position.
-    stem_right = a_cx + outer_r
-    stem_left  = stem_right - stroke
-    # Stem height matches circle exactly: top of circle → bottom of circle
-    d.rectangle([stem_left, a_cy - outer_r, stem_right, a_cy + outer_r], fill=fg_c)
-
-    # ── Draw 'i' ─────────────────────────────────────────────────────────────
-    # 'i' aligns to same top/bottom as 'a' circle
-    a_top = a_cy - outer_r   # top of circle = top of 'i' column
-    a_bot = a_cy + outer_r   # bottom of circle = bottom of 'i' column
-
-    # 1. Vertical stem — same height as 'a' (a_top to a_bot)
-    d.rectangle(
-        [i_cx - stroke / 2, a_top,
-         i_cx + stroke / 2, a_bot],
-        fill=fg_c
-    )
-    # 2. Tittle (dot) — gap below dot matches the a–i letter gap
-    dot_cy = a_top - gap - dot_r
-    d.ellipse(
-        [i_cx - dot_r, dot_cy - dot_r,
-         i_cx + dot_r, dot_cy + dot_r],
-        fill=fg_c
-    )
-
-    # ── Downsample to target size ─────────────────────────────────────────────
     return img.resize((size, size), Image.LANCZOS)
 
 
@@ -121,8 +74,8 @@ def make_iconset(variant_name, bg, fg, out_dir):
     os.makedirs(iconset_path, exist_ok=True)
 
     for sz in SIZES:
-        draw_icon(sz,      bg, fg).save(os.path.join(iconset_path, f'icon_{sz}x{sz}.png'))
-        draw_icon(sz * 2,  bg, fg).save(os.path.join(iconset_path, f'icon_{sz}x{sz}@2x.png'))
+        draw_icon(sz,     bg, fg).save(os.path.join(iconset_path, f'icon_{sz}x{sz}.png'))
+        draw_icon(sz * 2, bg, fg).save(os.path.join(iconset_path, f'icon_{sz}x{sz}@2x.png'))
 
     icns_path = os.path.join(out_dir, f'{variant_name}.icns')
     subprocess.run(
@@ -134,13 +87,19 @@ def make_iconset(variant_name, bg, fg, out_dir):
 
 
 def main():
+    if sys.platform != 'darwin':
+        print('make_icons.py: skipped — .icns generation requires macOS (iconutil). '
+              'The .app bundle this feeds is macOS-only.')
+        return
+
     icons_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'icons')
     os.makedirs(icons_dir, exist_ok=True)
 
-    # Write a debug preview PNG at 512px for visual inspection
-    preview = draw_icon(512, VARIANTS['ai-dark']['bg'], VARIANTS['ai-dark']['fg'])
-    preview.save('/tmp/ai_preview_v2.png')
-    print('Preview: /tmp/ai_preview_v2.png')
+    # Preview at 512px
+    preview_path = os.path.join(tempfile.gettempdir(), 'ora_icon_preview.png')
+    preview = draw_icon(512, VARIANTS['ora-dark']['bg'], VARIANTS['ora-dark']['fg'])
+    preview.save(preview_path)
+    print(f'Preview: {preview_path}')
 
     print('Generating icon variants…')
     for name, colors in VARIANTS.items():

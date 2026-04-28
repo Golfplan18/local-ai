@@ -1,0 +1,35 @@
+/* ============================================================
+   Output content — placeholder/output area inside .output-pane
+   Sits above the dot-grid pseudo-element; pane adds .has-content
+   to suppress the grid when content is present.
+   ============================================================ */
+
+.output-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding: 24px 32px;
+  overflow-y: auto;
+  color: var(--text-normal);
+}
+
+.output-content > * + * {
+  margin-top: 12px;
+}
+
+.output-content h2,
+.output-content h3,
+.output-content h4,
+.output-content h5,
+.output-content h6 {
+  margin-top: 18px;
+}
+
+.output-content h1 + p,
+.output-content h2 + p,
+.output-content h3 + p,
+.output-content h4 + p,
+.output-content h5 + p,
+.output-content h6 + p {
+  margin-top: 6px;
+}

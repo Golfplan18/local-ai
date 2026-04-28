@@ -8,10 +8,12 @@ Model-calling, tool execution, and pipeline logic live in orchestrator/boot.py.
 This file handles Flask routing, SSE streaming, conversation persistence, and UI APIs.
 """
 
-import os, sys, json, re, threading, time, uuid
+import os, sys, json, re, threading, time, uuid, shutil
 from datetime import datetime
+from urllib.parse import urlparse
+import requests
 
-WORKSPACE         = os.path.expanduser("~/local-ai/")
+WORKSPACE         = os.path.expanduser("~/ora/")
 CONVERSATIONS_DIR = os.path.expanduser("~/Documents/conversations/")
 CONVERSATIONS_RAW = os.path.expanduser("~/Documents/conversations/raw/")
 ENDPOINTS    = os.path.join(WORKSPACE, "config/endpoints.json")
@@ -39,6 +41,31 @@ from dispatcher import (
 from hooks import fire_hooks
 from compaction import compact_context
 
+# Phase 13-14 imports (graceful fallback if not available)
+try:
+    from sidebar_window import get_sidebar_window, clear_all_sidebar_windows
+    SIDEBAR_WINDOW_AVAILABLE = True
+except ImportError:
+    SIDEBAR_WINDOW_AVAILABLE = False
+
+try:
+    from incognito import get_incognito_manager, PRIVACY_CAVEAT
+    INCOGNITO_AVAILABLE = True
+except ImportError:
+    INCOGNITO_AVAILABLE = False
+
+try:
+    from resilience import get_degradation_path, format_degradation_signal, should_release_kv_cache, release_kv_cache
+    RESILIENCE_AVAILABLE = True
+except ImportError:
+    RESILIENCE_AVAILABLE = False
+
+try:
+    from runtime_pipeline import RuntimePipeline
+    RUNTIME_PIPELINE_AVAILABLE = True
+except ImportError:
+    RUNTIME_PIPELINE_AVAILABLE = False
+
 try:
     from flask import Flask, request, Response, stream_with_context, send_from_directory
     import flask
@@ -55,17 +82,163 @@ def _sse(event_type, **kwargs):
     return f"data: {json.dumps({'type': event_type, **kwargs})}\n\n"
 
 
+# Pipeline serialization lock. The MLX runtime on Apple Silicon segfaults
+# (SIGSEGV) when several pipelines race to load or invoke models
+# concurrently. Production Ora is single-user and never legitimately
+# overlaps pipelines, so a single global lock is the minimum sufficient
+# fix. Held for the lifetime of the SSE generator.
+_pipeline_lock = threading.Lock()
+
+
 # Pending clarification state: {panel_id: {step1, config, history, user_input}}
 _pending_clarification = {}
 
+import base64
+
+def _process_attachments(attachments: list) -> tuple:
+    """Split attachments into inlined text and image data.
+
+    Returns (text_parts, images) where:
+      - text_parts: list of "[Attached: name]\ncontent" strings for text files
+      - images: list of {"name": str, "mime": str, "base64": str} for image files
+    """
+    text_parts = []
+    images = []
+    for att in (attachments or []):
+        name = att.get("name", "file")
+        mime = att.get("type", "")
+        data_url = att.get("data", "")
+        if not data_url:
+            continue
+
+        # Strip data URL prefix to get raw base64
+        raw_b64 = data_url.split(",", 1)[-1] if "," in data_url else data_url
+
+        if mime.startswith("image/"):
+            images.append({"name": name, "mime": mime, "base64": raw_b64})
+        else:
+            # Text-like file: decode and inline
+            try:
+                content = base64.b64decode(raw_b64).decode("utf-8", errors="replace")
+                text_parts.append(f"[Attached file: {name}]\n{content}")
+            except Exception:
+                text_parts.append(f"[Attached file: {name} — could not decode]")
+    return text_parts, images
+
+
+TIER2_DIR = os.path.join(WORKSPACE, "modules/tools/tier2/")
+
+# Domain detection: map mode names and keyword patterns to Tier 2 module files.
+# Each entry is (module_filename, mode_matches, keyword_patterns).
+_TIER2_MODULES = [
+    ("wicked-problems.md",
+     {"systems-dynamics", "strategic-interaction", "scenario-planning"},
+     r"\b(wicked|intractable|stakeholder|policy|political|systemic|institution)\b"),
+    ("engineering-technical.md",
+     {"root-cause-analysis", "constraint-mapping", "project-mode", "structured-output"},
+     r"\b(engineer|technical|software|hardware|system|debug|failure|architect|code|infra|deploy|api)\b"),
+    ("political-social-analysis.md",
+     {"cui-bono", "relationship-mapping", "strategic-interaction"},
+     r"\b(politic|government|regulat|legislat|advocacy|institution|social|policy|voter|election)\b"),
+    ("design-analysis.md",
+     {"passion-exploration", "terrain-mapping"},
+     r"\b(design|UX|user experience|interface|visual|product design|brand|layout|prototype)\b"),
+    ("contemplative-spiritual.md",
+     set(),
+     r"\b(meditat|spiritual|contemplat|mindful|buddhis|awareness|consciousness|dharma|practic)\b"),
+    ("problem-definition.md",
+     {"deep-clarification", "dialectical-analysis", "paradigm-suspension",
+      "competing-hypotheses", "steelman-construction", "synthesis",
+      "decision-under-uncertainty"},
+     None),  # Always included for Tier 3 or when no other domain matches
+]
+
+
+def _select_tier2_modules(mode: str, cleaned_prompt: str, tier: int) -> list:
+    """Select relevant Tier 2 domain modules based on mode and prompt content.
+
+    Returns list of (filename, content) tuples for modules to inject.
+    """
+    prompt_lower = cleaned_prompt.lower()
+    selected = []
+    matched_any_domain = False
+
+    for filename, mode_set, pattern in _TIER2_MODULES:
+        if filename == "problem-definition.md":
+            continue  # handled as fallback below
+
+        match = False
+        if mode in mode_set:
+            match = True
+        elif pattern and re.search(pattern, prompt_lower):
+            match = True
+
+        if match:
+            matched_any_domain = True
+            path = os.path.join(TIER2_DIR, filename)
+            try:
+                with open(path) as f:
+                    selected.append((filename, f.read()))
+            except FileNotFoundError:
+                pass
+
+    # problem-definition.md: include for Tier 3 (broad exploration)
+    # or when mode matches, or when no domain-specific module matched
+    pd_modes = {"deep-clarification", "dialectical-analysis", "paradigm-suspension",
+                "competing-hypotheses", "steelman-construction", "synthesis",
+                "decision-under-uncertainty"}
+    if tier >= 3 or mode in pd_modes or not matched_any_domain:
+        path = os.path.join(TIER2_DIR, "problem-definition.md")
+        try:
+            with open(path) as f:
+                selected.append(("problem-definition.md", f.read()))
+        except FileNotFoundError:
+            pass
+
+    return selected
+
 
 def _generate_clarification_questions(step1, config):
-    """Use the breadth model to generate clarification questions for Tier 2/3."""
+    """Use the breadth model to generate clarification questions for Tier 2/3.
+
+    Loads domain-specific Tier 2 question bank modules and injects them
+    into the Breadth model's context so it generates targeted questions
+    rather than generic ones.
+    """
     tier = step1["triage_tier"]
     cleaned = step1["cleaned_prompt"]
     mode = step1["mode"]
     corrections = step1.get("corrections_log", "")
     inferred = step1.get("inferred_items", "")
+
+    # Select and load relevant Tier 2 modules
+    modules = _select_tier2_modules(mode, cleaned, tier)
+
+    # Build system prompt with domain question banks
+    system_parts = [
+        "You generate clarification questions for a user whose prompt needs "
+        "clarification before the AI system can provide a high-quality response.",
+        "",
+        "You have access to domain-specific question banks below. Use them to "
+        "generate questions that are specific and grounded in the domain, not "
+        "generic. Select the most relevant questions from the banks and adapt "
+        "them to the user's specific prompt. Do not copy questions verbatim — "
+        "tailor them.",
+    ]
+
+    if modules:
+        system_parts.append("")
+        system_parts.append("=" * 60)
+        system_parts.append("DOMAIN QUESTION BANKS")
+        system_parts.append("=" * 60)
+        for filename, content in modules:
+            system_parts.append("")
+            system_parts.append(content)
+
+    system_parts.append("")
+    system_parts.append("Output only the numbered questions, nothing else.")
+
+    system_prompt = "\n".join(system_parts)
 
     if tier == 2:
         instruction = (
@@ -77,9 +250,10 @@ def _generate_clarification_questions(step1, config):
         if inferred:
             instruction += f"Inferred items (assumptions made): {inferred}\n"
         instruction += (
-            f"\nGenerate 2-3 targeted clarification questions that would resolve "
-            f"the ambiguity. Each question should be specific and answerable in "
-            f"one sentence. Format: one question per line, numbered."
+            f"\nUsing the domain question banks above, generate 2-3 targeted "
+            f"clarification questions that would resolve the ambiguity. Each "
+            f"question should be specific and answerable in one sentence. "
+            f"Format: one question per line, numbered."
         )
     else:  # Tier 3
         instruction = (
@@ -91,18 +265,19 @@ def _generate_clarification_questions(step1, config):
         if inferred:
             instruction += f"Inferred items (assumptions made): {inferred}\n"
         instruction += (
-            f"\nGenerate 3-5 broadening questions that help the user discover what "
-            f"they're actually trying to accomplish. Questions should open up the "
-            f"problem space, not narrow it. Format: one question per line, numbered."
+            f"\nUsing the domain question banks above, generate 3-5 broadening "
+            f"questions that help the user discover what they're actually trying "
+            f"to accomplish. Questions should open up the problem space, not "
+            f"narrow it. Format: one question per line, numbered."
         )
 
-    endpoint = get_slot_endpoint(config, "breadth")
+    endpoint = get_slot_endpoint(config, "step1_cleanup")
     if not endpoint:
         return ["What specifically are you trying to accomplish?",
                 "What would a successful outcome look like?"]
 
     messages = [
-        {"role": "system", "content": "You generate clarification questions. Output only the numbered questions, nothing else."},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": instruction},
     ]
     response = call_model(messages, endpoint)
@@ -116,8 +291,138 @@ def _generate_clarification_questions(step1, config):
     return questions or ["What specifically are you trying to accomplish?"]
 
 
-def _run_pipeline_from_step2(step1, config, history, user_input, clarification_text=""):
-    """Resume pipeline from Step 2 onward, optionally enriched with clarification answers."""
+# ── WP-4.4: Text-only fallback UX ─────────────────────────────────────────────
+#
+# Two upstream signals from the visual routing pipeline (set in
+# ``orchestrator/boot.py::route_for_image_input``):
+#   * ``context_pkg['no_vision_available'] = True`` — no vision-capable
+#     model exists in any bucket; extraction was never attempted.
+#   * ``context_pkg['vision_extraction_result'] is None`` with
+#     ``context_pkg['vision_extraction_meta']['parse_errors']`` populated —
+#     an extractor ran but the response couldn't be parsed.
+#
+# When either signal fires, ``_pipeline_stream`` emits a structured
+# ``visual_fallback`` SSE frame BEFORE any response tokens so the chat-panel
+# client can surface a manual-trace prompt alongside the assistant's prose.
+# If neither signal is present, no frame is emitted (backward compat).
+
+# Fixed user-facing string for the overlay. i18n out-of-scope for this WP;
+# tracked as future polish. Keeping the wording identical between the two
+# fallback reasons keeps the UX consistent — the structured metadata lets
+# the overlay show additional debugging affordances if we want to later.
+_VISUAL_FALLBACK_USER_MESSAGE = (
+    "I couldn't extract structure from your image. Please trace the key "
+    "elements manually using the shape tools, or queue this for a "
+    "vision-capable model when one becomes available."
+)
+
+# Fixed button set advertised to the client. Kept as a list rather than a
+# free-form action dict so the client can pattern-match without leaking a
+# handler surface to the server.
+_VISUAL_FALLBACK_ACTIONS = ["start_tracing", "queue_for_later", "dismiss"]
+
+
+def _build_visual_fallback_frame(context_pkg: dict | None) -> dict | None:
+    """Inspect context_pkg for WP-4.4 fallback signals and build the SSE payload.
+
+    Returns a dict suitable for ``_sse('visual_fallback', **frame)`` when
+    either fallback condition is set; otherwise returns ``None`` so the
+    caller can skip the SSE emission entirely.
+    """
+    if not isinstance(context_pkg, dict):
+        return None
+
+    # Fallback 1 — no vision-capable model exists anywhere.
+    if context_pkg.get("no_vision_available") is True:
+        return {
+            "reason": "no_vision_available",
+            "extractor_attempted": None,
+            "parse_errors": [],
+            "user_message": _VISUAL_FALLBACK_USER_MESSAGE,
+            "actions": list(_VISUAL_FALLBACK_ACTIONS),
+        }
+
+    # Fallback 2 — a vision model WAS selected but extraction parsing failed.
+    # This specifically requires an image_path AND a selected extractor AND
+    # a null vision_extraction_result. That combination rules out the
+    # backward-compat no-image / success cases.
+    has_image = bool(context_pkg.get("image_path"))
+    had_extractor = context_pkg.get("vision_extractor_selected") is not None
+    result_is_none = context_pkg.get("vision_extraction_result") is None
+    # Only consider this a "failure" when the key exists — the gate sets the
+    # key explicitly after attempting extraction. Without the key, we're in
+    # the pre-extraction branch (vision-capable direct pass, for instance).
+    attempted = "vision_extraction_result" in context_pkg
+
+    if has_image and had_extractor and attempted and result_is_none:
+        meta = context_pkg.get("vision_extraction_meta") or {}
+        parse_errors = meta.get("parse_errors") or []
+        if not isinstance(parse_errors, list):
+            parse_errors = [str(parse_errors)]
+        extractor_name = meta.get("extractor_model")
+        if not extractor_name:
+            sel = context_pkg.get("vision_extractor_selected") or {}
+            extractor_name = sel.get("display_name") or sel.get("id")
+        return {
+            "reason": "extraction_failed",
+            "extractor_attempted": extractor_name,
+            "parse_errors": [str(e) for e in parse_errors],
+            "user_message": _VISUAL_FALLBACK_USER_MESSAGE,
+            "actions": list(_VISUAL_FALLBACK_ACTIONS),
+        }
+
+    return None
+
+
+# In-memory vision-retry queue keyed by conversation_id. Each entry is a
+# dict {image_path, attempt_reason, queued_at}. Also mirrored to disk at
+# ``~/ora/sessions/<conversation_id>/vision-retry-queue.json`` so a future
+# daemon (or user-triggered "retry queued visions" action) can flush it
+# without depending on server process lifetime. No automatic retry here —
+# that's future work.
+_vision_retry_queue: dict[str, list[dict]] = {}
+
+
+def _vision_retry_queue_path(conversation_id: str) -> str:
+    """Resolve the per-session JSON file path for the retry queue."""
+    conv_slug = re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
+    return os.path.join(VISUAL_UPLOADS_ROOT, conv_slug, "vision-retry-queue.json")
+
+
+def _load_vision_retry_queue(conversation_id: str) -> list[dict]:
+    """Read the persistent queue file; return empty list on miss/error."""
+    path = _vision_retry_queue_path(conversation_id)
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r") as fh:
+            data = json.load(fh)
+        if isinstance(data, list):
+            return data
+    except Exception as e:
+        print(f"[vision-retry-queue] load failed for {conversation_id}: {e}")
+    return []
+
+
+def _persist_vision_retry_queue(conversation_id: str, entries: list[dict]) -> None:
+    """Write the session queue file. Fail-open: error never blocks the response."""
+    path = _vision_retry_queue_path(conversation_id)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            json.dump(entries, fh, indent=2)
+    except Exception as e:
+        print(f"[vision-retry-queue] persist failed for {conversation_id}: {e}")
+
+
+def _run_pipeline_from_step2(step1, config, history, user_input, clarification_text="", images=None, execution_context="interactive", extra_context=None):
+    """Resume pipeline from Step 2 onward, optionally enriched with clarification answers.
+
+    ``extra_context`` (WP-3.3): an optional dict of extra keys to merge into the
+    assembled ``context_pkg`` before the system prompt is built. Used by the
+    multipart endpoint to thread ``spatial_representation`` + ``image_path``
+    into ``build_system_prompt_for_gear`` without changing the Step 1/2 contract.
+    """
     # If clarification was provided, enrich the cleaned prompt
     if clarification_text:
         step1 = dict(step1)  # Don't mutate original
@@ -128,10 +433,48 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
         step1["operational_notation"] = step1["cleaned_prompt"]
 
     context_pkg = run_step2_context_assembly(step1, config)
+    # WP-3.3: thread merged-input extras (spatial_representation, image_path,
+    # …) into the context package for build_system_prompt_for_gear.
+    if extra_context:
+        for k, v in extra_context.items():
+            if v is not None:
+                context_pkg[k] = v
+
+    # WP-4.2: capability-conditional vision routing gate. If image_path is
+    # present and the downstream model is text-only, select a vision-capable
+    # extractor (fallback cascade); if nothing is available anywhere, flag
+    # no_vision_available for WP-4.4 UX. No-op when there's no image.
+    try:
+        from boot import route_for_image_input
+        route_for_image_input(context_pkg, requested_model=None)
+    except Exception as exc:
+        print(f"[visual-routing] gate skipped due to error: {exc}")
+
+    # WP-4.4: emit visual_fallback SSE frame BEFORE the first model token if
+    # the routing/extraction pipeline signalled either "no vision model
+    # anywhere" or "extraction was attempted and failed to parse". The client
+    # chat-panel routes this to the visual panel's showFallbackPrompt() which
+    # renders an overlay with Start tracing / Queue for later / Dismiss.
+    fallback_frame = _build_visual_fallback_frame(context_pkg)
+    if fallback_frame is not None:
+        yield _sse("visual_fallback", **fallback_frame)
+
     gear = context_pkg["gear"]
 
     yield _sse("pipeline_stage", stage="step2_done", gear=gear,
                label=f"Gear {gear} selected")
+
+    # --- Resilience check: degradation path (Phase 14) ---
+    degradation_signal = ""
+    if RESILIENCE_AVAILABLE and gear >= 3:
+        deg_state = get_degradation_path(gear, config)
+        if deg_state.fallback_gear:
+            gear = deg_state.fallback_gear
+            context_pkg["gear"] = gear
+        degradation_signal = format_degradation_signal(deg_state)
+        if degradation_signal:
+            yield _sse("pipeline_stage", stage="degradation",
+                        gear=gear, label=f"Degradation: level {deg_state.degradation_level}")
 
     # --- Gear Execution ---
     yield _sse("pipeline_stage", stage="gear_execution",
@@ -141,39 +484,52 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
 
     if gear <= 2:
         system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
-        ep = get_slot_endpoint(config, "breadth")
+        ep = endpoint  # Gear 1/2: single model, use active endpoint
         if ep is None:
-            yield _sse("error", text="No breadth endpoint configured.")
+            yield _sse("error", text="No active endpoint configured.")
             return
         messages = [{"role": "system", "content": system_prompt}]
         if history:
             messages.extend([m for m in history if m["role"] != "system"])
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
-        response = _run_model_with_tools(messages, ep)
+        response = _run_model_with_tools(messages, ep, images=images)
 
     elif gear == 3:
-        response = run_gear3(context_pkg, config, history)
+        response = run_gear3(context_pkg, config, history, images=images)
 
     elif gear >= 4:
-        response = run_gear4(context_pkg, config, history)
+        # KV cache release check for sequential fallback
+        if RESILIENCE_AVAILABLE and should_release_kv_cache(config):
+            depth_model = config.get("slot_assignments", {}).get("depth", "")
+            if depth_model:
+                release_kv_cache(depth_model)
+        response = run_gear4(context_pkg, config, history, images=images,
+                             execution_context=execution_context)
 
     else:
         response = _run_model_with_tools(
             [{"role": "system", "content": load_boot_md()},
              {"role": "user", "content": user_input}],
-            endpoint
+            endpoint, images=images
         )
+
+    # Prepend degradation signal if any (never silent)
+    if degradation_signal:
+        response = f"{degradation_signal}\n\n---\n\n{response}"
 
     yield _sse("pipeline_stage", stage="complete", gear=gear,
                mode=step1["mode"], label="Pipeline complete")
     yield _sse("response", text=response)
 
 
-def _pipeline_stream(user_input, history, panel_id="main"):
+def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_context=None):
     """Generator: run the full pipeline with SSE stage events.
 
     Yields SSE events for each pipeline stage so the browser can display progress.
     For Tier 2/3 triage, pauses for clarification before proceeding.
+
+    ``extra_context`` (WP-3.3): optional dict threaded into the pipeline's
+    context package by the multipart endpoint.
     """
     config = load_config()
     endpoint = get_endpoint(config)
@@ -193,9 +549,12 @@ def _pipeline_stream(user_input, history, panel_id="main"):
     step1 = run_step1_cleanup(user_input, conv_context, config)
     tier = step1["triage_tier"]
 
+    confidence = step1.get("classification_confidence", "")
+    conf_tag = f" ({confidence})" if confidence else ""
     yield _sse("pipeline_stage", stage="step1_done",
                mode=step1["mode"], triage_tier=tier,
-               label=f"Mode: {step1['mode']} | Tier {tier}")
+               confidence=confidence,
+               label=f"Mode: {step1['mode']}{conf_tag} | Tier {tier}")
 
     # --- Tier 2/3: Clarification gate ---
     if tier >= 2:
@@ -209,6 +568,8 @@ def _pipeline_stream(user_input, history, panel_id="main"):
             "config": config,
             "history": history,
             "user_input": user_input,
+            "images": images,
+            "extra_context": extra_context,
         }
 
         yield _sse("clarification_needed",
@@ -220,7 +581,8 @@ def _pipeline_stream(user_input, history, panel_id="main"):
 
     # --- Tier 1: Continue directly ---
     yield _sse("pipeline_stage", stage="step2_context", label="Assembling context…")
-    yield from _run_pipeline_from_step2(step1, config, history, user_input)
+    yield from _run_pipeline_from_step2(step1, config, history, user_input,
+                                        images=images, extra_context=extra_context)
 
 
 def _tool_status_label(tool_name, params):
@@ -244,7 +606,7 @@ def _tool_status_label(tool_name, params):
         return f"[{tool_name}…]"
 
 
-def _direct_stream(user_input, history):
+def _direct_stream(user_input, history, images=None):
     """Generator: legacy single-model agentic loop with SSE tool events.
     Routes all tool calls through the unified dispatcher."""
     config   = load_config()
@@ -263,7 +625,8 @@ def _direct_stream(user_input, history):
     set_permission_mode("auto-approve")
 
     for iteration in range(MAX_ITERATIONS):
-        response = call_model(messages, endpoint)
+        # Pass images only on the first call (they accompany the user's original message)
+        response = call_model(messages, endpoint, images=images if iteration == 0 else None)
         tool_calls = parse_tool_calls(response)
 
         if not tool_calls:
@@ -288,18 +651,32 @@ def _direct_stream(user_input, history):
     yield _sse("response", text=clean)
 
 
-def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main"):
-    """Route to pipeline or direct stream based on mode."""
+def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main", images=None, extra_context=None):
+    """Route to pipeline or direct stream based on mode.
+
+    ``extra_context`` (WP-3.3): optional merged-input dict (spatial_representation,
+    image_path) threaded into the pipeline path. Ignored by _direct_stream,
+    which has no pipeline context_pkg to merge into.
+    """
     if use_pipeline:
-        yield from _pipeline_stream(user_input, history, panel_id=panel_id)
+        yield from _pipeline_stream(user_input, history, panel_id=panel_id,
+                                    images=images, extra_context=extra_context)
     else:
-        yield from _direct_stream(user_input, history)
+        yield from _direct_stream(user_input, history, images=images)
 
 # ── routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
     return send_from_directory(os.path.join(WORKSPACE, "server"), "index.html")
+
+@app.route("/v2")
+def index_v2():
+    return send_from_directory(os.path.join(WORKSPACE, "server"), "index-v2.html")
+
+@app.route("/v3")
+def index_v3():
+    return send_from_directory(os.path.join(WORKSPACE, "server"), "index-v3.html")
 
 @app.route("/health")
 def health():
@@ -475,6 +852,11 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session):
         }
 
     sess       = _session_data[panel_id]
+
+    # Fill in raw_path if early-initialized by generate() without it
+    if not sess.get("raw_path"):
+        raw_name = f"{date_str}_{time_str}_{_slug(user_input)}.md"
+        sess["raw_path"] = os.path.join(CONVERSATIONS_RAW, raw_name)
     sess["pair_count"] += 1
     pair_num   = sess["pair_count"]
     session_id = sess["session_id"]
@@ -568,6 +950,152 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session):
         pass  # ChromaDB failure never blocks the conversation
 
 
+def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_context=None):
+    """Shared streaming helper — runs the pipeline, emits SSE, and handles the
+    post-response side-effects (persistence, bridge state, runtime pipeline).
+
+    Returns a Flask SSE ``Response``. Both ``/chat`` and ``/chat/multipart``
+    call this so the streaming/persistence logic lives in one place.
+
+    WP-3.3: ``extra_context`` is merged into the pipeline's context_pkg by
+    ``_run_pipeline_from_step2`` — threads spatial_representation + image_path
+    through to ``build_system_prompt_for_gear`` without touching the Step 1/2
+    contract.
+    """
+    if not user_input:
+        return json.dumps({"error": "empty message"}), 400
+
+    # Parse /direct, /save, /saveboth commands from input
+    clean_input, use_pipeline, output_target = parse_user_command(user_input)
+
+    # Sidebar window integration: use rolling window for sidebar panels
+    is_sidebar = panel_id.startswith("sidebar")
+    if is_sidebar and SIDEBAR_WINDOW_AVAILABLE:
+        sidebar_win = get_sidebar_window(panel_id)
+        history = sidebar_win.get_history()  # Override with rolling window
+    else:
+        sidebar_win = None
+
+    def generate():
+        # Serialize pipeline execution. MLX concurrent model loads crash
+        # the process (observed SIGSEGV during live-fire 2026-04-18); this
+        # is single-user software so a global lock is the right guard.
+        with _pipeline_lock:
+            cfg = load_config()
+            ep  = get_endpoint(cfg)
+            yield _sse("start", endpoint=ep.get("name", "none") if ep else "none",
+                        pipeline=use_pipeline)
+
+            final_response = [None]
+            active_mode = [None]
+            active_gear = [None]
+            last_stage = [None]
+
+            for chunk in agentic_loop_stream(clean_input, history, use_pipeline=use_pipeline,
+                                             panel_id=panel_id, images=images,
+                                             extra_context=extra_context):
+                yield chunk
+                try:
+                    d = json.loads(chunk[6:])
+                    if d.get("type") == "response":
+                        final_response[0] = d.get("text", "")
+                    elif d.get("type") == "pipeline_stage":
+                        last_stage[0] = d.get("stage")
+                        if d.get("mode"):
+                            active_mode[0] = d["mode"]
+                        if d.get("gear"):
+                            active_gear[0] = d["gear"]
+                        # Update pipeline state for polling clients
+                        _pipeline_state.update({
+                            "stage": d.get("stage"),
+                            "label": d.get("label", ""),
+                            "active": d.get("stage") != "complete",
+                        })
+                except Exception:
+                    pass
+
+            if final_response[0] is not None:
+                # Handle file output routing
+                if output_target != "screen":
+                    routed = route_output(final_response[0], output_target)
+                    if output_target.startswith("file:"):
+                        yield _sse("response", text=routed)
+
+                # Sidebar window: record exchange in rolling window
+                if is_sidebar and SIDEBAR_WINDOW_AVAILABLE and sidebar_win is not None:
+                    sidebar_win.add_exchange(clean_input, final_response[0])
+
+                is_new_session = len(history) == 0
+
+                # Initialize session data early so the runtime pipeline thread can read it
+                if is_new_session or panel_id not in _session_data:
+                    _session_data[panel_id] = {
+                        "raw_path": "",  # populated by _save_conversation
+                        "session_id": uuid.uuid4().hex[:6],
+                        "pair_count": 0,
+                        "model": (ep.get("name", "unknown") if ep else "unknown"),
+                        "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+
+                # Incognito mode: skip persistent conversation save when active
+                incognito_active = INCOGNITO_AVAILABLE and get_incognito_manager().state.enabled
+                if incognito_active:
+                    # Write to incognito collection instead of permanent storage
+                    threading.Thread(
+                        target=_save_conversation_incognito,
+                        args=(clean_input, final_response[0], panel_id),
+                        daemon=True,
+                    ).start()
+                else:
+                    threading.Thread(
+                        target=_save_conversation,
+                        args=(clean_input, final_response[0], panel_id, is_new_session),
+                        daemon=True,
+                    ).start()
+
+                # WP-5.3 — append this turn to conversation.json so the next
+                # turn can retrieve prior spatial state. Runs async (best-effort)
+                # and is skipped entirely under incognito. extra_context may
+                # carry ``spatial_representation``, ``annotations``, and/or
+                # ``vision_extraction_result``; missing fields persist as None
+                # so forward-compat is trivial.
+                if not incognito_active:
+                    threading.Thread(
+                        target=_persist_turn_spatial_state,
+                        args=(panel_id, clean_input, final_response[0], extra_context),
+                        daemon=True,
+                    ).start()
+
+                if is_main:
+                    recent = list(history[-4:]) + [
+                        {"role": "user",      "content": clean_input},
+                        {"role": "assistant", "content": final_response[0]},
+                    ]
+                    _bridge_state[panel_id] = {
+                        "current_topic":   clean_input,
+                        "recent_messages": recent[-5:],
+                        "active_mode":     active_mode[0],
+                        "active_gear":     active_gear[0],
+                        "pipeline_stage":  last_stage[0],
+                        "updated_at":      time.time(),
+                    }
+
+                # Runtime pipeline: fire async end-of-session processing (Phase 11)
+                if RUNTIME_PIPELINE_AVAILABLE and not is_sidebar:
+                    threading.Thread(
+                        target=_run_end_of_session_pipeline,
+                        args=(clean_input, final_response[0], panel_id, cfg, history),
+                        daemon=True,
+                    ).start()
+
+            _pipeline_state.update({"stage": None, "label": "", "active": False})
+            yield _sse("done")
+
+    return Response(stream_with_context(generate()),
+                    mimetype="text/event-stream",
+                    headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
+
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data       = request.get_json(force=True)
@@ -578,82 +1106,441 @@ def chat():
     if not user_input:
         return json.dumps({"error":"empty message"}), 400
 
-    # Parse /direct, /save, /saveboth commands from input
-    clean_input, use_pipeline, output_target = parse_user_command(user_input)
+    # Process attachments: text content inlined, images passed separately
+    raw_attachments = data.get("attachments", [])
+    text_parts, images = _process_attachments(raw_attachments)
+    if text_parts:
+        user_input = user_input + "\n\n" + "\n\n".join(text_parts)
 
-    def generate():
-        cfg = load_config()
-        ep  = get_endpoint(cfg)
-        yield _sse("start", endpoint=ep.get("name", "none") if ep else "none",
-                    pipeline=use_pipeline)
+    return _invoke_pipeline(user_input, history, panel_id, is_main, images=images)
 
-        final_response = [None]
-        active_mode = [None]
-        active_gear = [None]
-        last_stage = [None]
 
-        for chunk in agentic_loop_stream(clean_input, history, use_pipeline=use_pipeline, panel_id=panel_id):
-            yield chunk
-            try:
-                d = json.loads(chunk[6:])
-                if d.get("type") == "response":
-                    final_response[0] = d.get("text", "")
-                elif d.get("type") == "pipeline_stage":
-                    last_stage[0] = d.get("stage")
-                    if d.get("mode"):
-                        active_mode[0] = d["mode"]
-                    if d.get("gear"):
-                        active_gear[0] = d["gear"]
-                    # Update pipeline state for polling clients
-                    _pipeline_state.update({
-                        "stage": d.get("stage"),
-                        "label": d.get("label", ""),
-                        "active": d.get("stage") != "complete",
-                    })
-            except Exception:
-                pass
+# ── WP-3.3: Merged visual + text input (multipart) ───────────────────────────
 
-        if final_response[0] is not None:
-            # Handle file output routing
-            if output_target != "screen":
-                routed = route_output(final_response[0], output_target)
-                if output_target.startswith("file:"):
-                    yield _sse("response", text=routed)
+# Uploads for /chat/multipart land here, partitioned by conversation_id.
+VISUAL_UPLOADS_ROOT = os.path.expanduser("~/ora/sessions/")
 
-            is_new_session = len(history) == 0
-            threading.Thread(
-                target=_save_conversation,
-                args=(clean_input, final_response[0], panel_id, is_new_session),
-                daemon=True,
-            ).start()
 
-            if is_main:
-                recent = list(history[-4:]) + [
-                    {"role": "user",      "content": clean_input},
-                    {"role": "assistant", "content": final_response[0]},
-                ]
-                _bridge_state[panel_id] = {
-                    "current_topic":   clean_input,
-                    "recent_messages": recent[-5:],
-                    "active_mode":     active_mode[0],
-                    "active_gear":     active_gear[0],
-                    "pipeline_stage":  last_stage[0],
-                    "updated_at":      time.time(),
-                }
+def _save_multipart_image(conversation_id: str, file_storage) -> str | None:
+    """Persist a multipart-uploaded image under
+    ``~/ora/sessions/<conversation_id>/uploads/<timestamp>-<name>`` and return
+    the absolute path. Creates the directory if missing. Returns None on
+    failure (so the pipeline continues without the image).
+    """
+    if file_storage is None:
+        return None
+    try:
+        # Conservative filename sanitization: keep extension, slug the rest.
+        name = (file_storage.filename or "upload").strip()
+        base = os.path.basename(name) or "upload"
+        # Strip any path-traversal tokens
+        base = base.replace("..", "_").replace("/", "_").replace("\\", "_")
+        conv_slug = re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
+        out_dir = os.path.join(VISUAL_UPLOADS_ROOT, conv_slug, "uploads")
+        os.makedirs(out_dir, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        out_path = os.path.join(out_dir, f"{ts}-{base}")
+        file_storage.save(out_path)
+        return out_path
+    except Exception as e:
+        print(f"[WARNING] _save_multipart_image failed: {e}")
+        return None
 
-        _pipeline_state.update({"stage": None, "label": "", "active": False})
-        yield _sse("done")
 
-    return Response(stream_with_context(generate()),
-                    mimetype="text/event-stream",
-                    headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
+@app.route("/chat/multipart", methods=["POST"])
+def chat_multipart():
+    """WP-3.3 — Merged visual + text input endpoint.
+
+    Accepts ``multipart/form-data`` with fields:
+      * ``message`` (required, str)
+      * ``conversation_id`` (required, str — aliased to the existing panel_id)
+      * ``spatial_representation`` (optional, JSON-encoded string per
+        ``config/visual-schemas/spatial_representation.json``)
+      * ``image`` (optional, binary file field)
+      * ``history``, ``is_main_feed``, ``panel_id`` (optional — carried over
+        from the JSON /chat contract)
+
+    Behavior:
+      1. Validates spatial_representation against the schema via
+         ``visual_validator.validate_spatial_representation``. Invalid →
+         400 with findings.
+      2. Saves any uploaded image to
+         ``~/ora/sessions/<conversation_id>/uploads/<timestamp>-<name>``.
+      3. Invokes the same shared pipeline helper as /chat, threading the
+         spatial_representation + image_path through the context package.
+      4. Returns SSE exactly like /chat.
+    """
+    form = request.form
+    user_input = (form.get("message") or "").strip()
+    conversation_id = (form.get("conversation_id") or form.get("panel_id") or "main").strip()
+    panel_id = (form.get("panel_id") or conversation_id).strip() or "main"
+    is_main = (form.get("is_main_feed", "true").lower() not in {"false", "0", "no"})
+
+    if not user_input:
+        return json.dumps({"error": "empty message"}), 400
+    if not conversation_id:
+        return json.dumps({"error": "missing conversation_id"}), 400
+
+    # Optional history as JSON string
+    history_raw = form.get("history", "")
+    history = []
+    if history_raw:
+        try:
+            history = json.loads(history_raw)
+            if not isinstance(history, list):
+                history = []
+        except Exception:
+            history = []
+
+    # Optional spatial_representation (JSON string) — validate before proceeding.
+    spatial_rep = None
+    spatial_raw = form.get("spatial_representation", "")
+    if spatial_raw:
+        try:
+            spatial_rep = json.loads(spatial_raw)
+        except Exception as e:
+            return json.dumps({
+                "error": "invalid spatial_representation JSON",
+                "detail": str(e),
+            }), 400
+        try:
+            from visual_validator import validate_spatial_representation
+            result = validate_spatial_representation(spatial_rep)
+            if not result.valid:
+                return json.dumps({
+                    "error": "spatial_representation failed validation",
+                    "errors": [e.as_dict() for e in result.errors],
+                    "warnings": [w.as_dict() for w in result.warnings],
+                }), 400
+        except Exception as e:
+            print(f"[WARNING] spatial_representation validation error: {e}")
+            # Fail-open on unexpected validator error — treat as text-only.
+            spatial_rep = None
+
+    # Optional image upload
+    image_path = None
+    file_storage = request.files.get("image")
+    if file_storage is not None:
+        image_path = _save_multipart_image(conversation_id, file_storage)
+
+    # WP-5.2 — optional annotations (JSON string) — validate before proceeding.
+    annotations_payload = None
+    annotations_raw = form.get("annotations", "")
+    if annotations_raw:
+        try:
+            annotations_parsed = json.loads(annotations_raw)
+        except Exception as e:
+            return json.dumps({
+                "error": "invalid annotations JSON",
+                "detail": str(e),
+            }), 400
+        try:
+            from visual_validator import validate_annotations
+            result = validate_annotations(annotations_parsed)
+            if not result.valid:
+                return json.dumps({
+                    "error": "annotations failed validation",
+                    "errors": [e.as_dict() for e in result.errors],
+                    "warnings": [w.as_dict() for w in result.warnings],
+                }), 400
+            # Normalize onto the wrapper shape for downstream consumption.
+            if isinstance(annotations_parsed, list):
+                annotations_payload = {"annotations": annotations_parsed}
+            else:
+                annotations_payload = annotations_parsed
+        except Exception as e:
+            print(f"[WARNING] annotations validation error: {e}")
+            # Fail-open: treat as absent rather than blocking the user's turn.
+            annotations_payload = None
+
+    # Build extra_context threaded into the pipeline
+    extra_context = {}
+    if spatial_rep is not None:
+        extra_context["spatial_representation"] = spatial_rep
+    if image_path is not None:
+        extra_context["image_path"] = image_path
+    if annotations_payload is not None:
+        extra_context["annotations"] = annotations_payload
+
+    # WP-5.3 — Spatial continuity across turns. Fetch the prior turn's
+    # spatial_representation from either the in-memory history arg or
+    # conversation.json on disk, and thread it through extra_context. The
+    # pipeline's ``build_system_prompt_for_gear`` injects it under a
+    # distinguishing fence so the model can see layout evolution.
+    try:
+        from conversation_memory import get_prior_spatial_state, get_prior_annotations
+        prior_spatial = get_prior_spatial_state(conversation_id, history)
+        if prior_spatial:
+            extra_context["prior_spatial_representation"] = prior_spatial
+        prior_annots = get_prior_annotations(conversation_id, history)
+        if prior_annots:
+            extra_context["prior_annotations"] = prior_annots
+    except Exception as e:
+        print(f"[WARNING] prior spatial state lookup failed: {e}")
+
+    # Emit a log line so operators can see the merged inputs reached the server.
+    annot_count = 0
+    if annotations_payload and isinstance(annotations_payload.get("annotations"), list):
+        annot_count = len(annotations_payload["annotations"])
+    print(f"[chat/multipart] conversation_id={conversation_id} "
+          f"spatial_rep={'yes' if spatial_rep else 'no'} "
+          f"image={'yes' if image_path else 'no'} "
+          f"annotations={annot_count} "
+          f"prior_spatial={'yes' if extra_context.get('prior_spatial_representation') else 'no'}")
+
+    return _invoke_pipeline(
+        user_input, history, panel_id, is_main,
+        images=None,  # Image flows via image_path, not the inline base64 channel.
+        extra_context=extra_context or None,
+    )
+
+
+# ── WP-4.4: queue-for-later endpoint ─────────────────────────────────────────
+
+@app.route("/chat/queue-retry", methods=["POST"])
+def chat_queue_retry():
+    """Persist a vision-retry request for later processing.
+
+    Payload (application/json)::
+
+        {
+          "conversation_id": "<string, required>",
+          "image_path":      "<absolute path or URL, required>",
+          "attempt_reason":  "no_vision_available" | "extraction_failed"
+        }
+
+    Response (200)::
+
+        { "queued": true, "queue_size": <int>, "entry": { ... } }
+
+    Response (400)::
+
+        { "error": "<description>" }
+
+    Storage: entries land both in a module-level in-memory dict keyed by
+    ``conversation_id`` (volatile, survives the life of the server process)
+    AND in a per-session JSON file at
+    ``~/ora/sessions/<conversation_id>/vision-retry-queue.json`` (durable
+    across server restarts). Writes are best-effort; disk failures are
+    logged but do not fail the endpoint.
+
+    NO automatic retry here — a future daemon or user-triggered action will
+    flush the queue. This endpoint is purely persistence.
+    """
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return json.dumps({"error": "invalid JSON body"}), 400
+
+    conversation_id = (data.get("conversation_id") or "").strip()
+    image_path = (data.get("image_path") or "").strip()
+    attempt_reason = (data.get("attempt_reason") or "").strip()
+
+    if not conversation_id:
+        return json.dumps({"error": "conversation_id is required"}), 400
+    if not image_path:
+        return json.dumps({"error": "image_path is required"}), 400
+    if attempt_reason not in ("no_vision_available", "extraction_failed"):
+        return json.dumps({
+            "error": "attempt_reason must be 'no_vision_available' or 'extraction_failed'",
+            "received": attempt_reason,
+        }), 400
+
+    entry = {
+        "conversation_id": conversation_id,
+        "image_path": image_path,
+        "attempt_reason": attempt_reason,
+        "queued_at": datetime.now().isoformat(),
+    }
+
+    # Merge the disk queue with the in-memory queue (disk wins on restart).
+    # Using the disk-resident list as the source of truth avoids dropping
+    # entries persisted by a prior server process.
+    existing = _vision_retry_queue.get(conversation_id)
+    if existing is None:
+        existing = _load_vision_retry_queue(conversation_id)
+    existing.append(entry)
+    _vision_retry_queue[conversation_id] = existing
+    _persist_vision_retry_queue(conversation_id, existing)
+
+    return json.dumps({
+        "queued": True,
+        "queue_size": len(existing),
+        "entry": entry,
+    }), 200
+
 
 # ── bridge state (in-memory, volatile) ───────────────────────────────────────
 # {panel_id: {current_topic, recent_messages, active_mode, active_gear, pipeline_stage}}
 _bridge_state = {}
 _pipeline_state = {"stage": None, "stages": [], "active": False}
 
+# ── incognito save helper ────────────────────────────────────────────────────
+
+def _save_conversation_incognito(user_input, ai_response, panel_id):
+    """Write conversation to incognito ChromaDB collection instead of permanent storage."""
+    if not INCOGNITO_AVAILABLE:
+        return
+    manager = get_incognito_manager()
+    if not manager.state.enabled:
+        return
+    try:
+        from datetime import datetime as _dt
+        manager.add_to_incognito(
+            document=f"{user_input}\n\n{ai_response}",
+            metadata={
+                "panel_id": panel_id,
+                "timestamp": _dt.now().isoformat(),
+                "type": "conversation",
+            },
+        )
+    except Exception:
+        pass  # Incognito failure never blocks
+
+
+def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context):
+    """WP-5.3 — append this turn to conversation.json so subsequent turns
+    can retrieve the prior spatial state.
+
+    Each turn's ``spatial_representation``, ``annotations``, and
+    ``vision_extraction_result`` are persisted from ``extra_context``. If
+    ``extra_context`` is None or missing a given field, that slot stores
+    as ``None`` — forward-compat safe, backward-compat safe.
+
+    Runs on a background thread; exceptions never propagate back to the
+    caller. This is a side-channel relative to the existing raw .md log +
+    ChromaDB indexing — the conversation.json is specifically the source
+    of truth for visual state continuity.
+    """
+    try:
+        from conversation_memory import save_turn_spatial_state
+        spatial_rep = None
+        annotations = None
+        vision_extr = None
+        if isinstance(extra_context, dict):
+            spatial_rep = extra_context.get("spatial_representation")
+            annotations = extra_context.get("annotations")
+            vision_extr = extra_context.get("vision_extraction_result")
+        save_turn_spatial_state(
+            conversation_id=panel_id,
+            user_input=user_input,
+            ai_response=ai_response,
+            spatial_representation=spatial_rep,
+            annotations=annotations,
+            vision_extraction_result=vision_extr,
+            timestamp=datetime.now().isoformat(timespec="seconds"),
+        )
+    except Exception as e:
+        print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
+
+
+# ── runtime pipeline helper ──────────────────────────────────────────────────
+
+def _run_end_of_session_pipeline(user_input, ai_response, panel_id, config, history=None):
+    """Fire async end-of-session processing (Phase 11 runtime pipeline)."""
+    if not RUNTIME_PIPELINE_AVAILABLE:
+        return
+    try:
+        from runtime_pipeline import SessionData
+        sess = _session_data.get(panel_id, {})
+        bridge = _bridge_state.get(panel_id, {})
+
+        # Build full conversation history including the current exchange
+        conv_history = list(history or [])
+        conv_history.append({"role": "user", "content": user_input})
+        conv_history.append({"role": "assistant", "content": ai_response})
+
+        session_data = SessionData(
+            session_id=sess.get("session_id", "unknown"),
+            timestamp=datetime.now().isoformat(),
+            mode=bridge.get("active_mode", ""),
+            gear=bridge.get("active_gear", 0) or 0,
+            models_used=[sess.get("model", "")],
+            user_prompt=user_input,
+            final_output=ai_response,
+            conversation_history=conv_history,
+            source_type="chat",
+        )
+        pipeline = RuntimePipeline(config=config, call_fn=call_model)
+        pipeline.run_async(session_data)
+    except Exception:
+        pass  # Runtime pipeline failure never blocks the conversation
+
+
+# ── incognito API ────────────────────────────────────────────────────────────
+
+@app.route("/api/incognito", methods=["GET"])
+def incognito_status():
+    """Get current incognito mode status."""
+    if not INCOGNITO_AVAILABLE:
+        return json.dumps({"available": False, "enabled": False})
+    manager = get_incognito_manager()
+    state = manager.get_state()
+    return json.dumps({
+        "available": True,
+        "enabled": state.enabled,
+        "session_count": state.session_count,
+        "collection_size": state.collection_size,
+        "privacy_caveat": PRIVACY_CAVEAT if state.enabled else None,
+    })
+
+@app.route("/api/incognito/toggle", methods=["POST"])
+def incognito_toggle():
+    """Toggle incognito mode on or off."""
+    if not INCOGNITO_AVAILABLE:
+        return json.dumps({"error": "Incognito mode not available"}), 501
+    manager = get_incognito_manager()
+    if manager.state.enabled:
+        state = manager.disable(confirm=True)
+        action = "disabled"
+    else:
+        state = manager.enable()
+        action = "enabled"
+    return json.dumps({
+        "action": action,
+        "enabled": state.enabled,
+        "privacy_caveat": PRIVACY_CAVEAT if state.enabled else None,
+    })
+
+
+# ── sidebar window API ───────────────────────────────────────────────────────
+
+@app.route("/api/sidebar/clear", methods=["POST"])
+def sidebar_clear():
+    """Clear a sidebar panel's rolling window."""
+    if not SIDEBAR_WINDOW_AVAILABLE:
+        return json.dumps({"error": "Sidebar window not available"}), 501
+    data = request.get_json(force=True)
+    pid = data.get("panel_id", "sidebar")
+    from sidebar_window import clear_sidebar_window
+    clear_sidebar_window(pid)
+    return json.dumps({"ok": True, "panel_id": pid})
+
+@app.route("/api/sidebar/status")
+def sidebar_status():
+    """Get sidebar window status."""
+    if not SIDEBAR_WINDOW_AVAILABLE:
+        return json.dumps({"available": False})
+    pid = request.args.get("panel_id", "sidebar")
+    win = get_sidebar_window(pid)
+    return json.dumps({
+        "available": True,
+        "panel_id": pid,
+        "turn_count": win.get_turn_count(),
+        "max_turns": win.max_turns,
+    })
+
+
 # ── static files ──────────────────────────────────────────────────────────────
+
+@app.route("/static/visual-schemas/<path:filename>")
+def serve_visual_schemas(filename):
+    root = os.path.join(WORKSPACE, "config", "visual-schemas")
+    safe = os.path.normpath(os.path.join(root, filename))
+    if not safe.startswith(root):
+        return "Forbidden", 403
+    return send_from_directory(root, filename)
+
 
 @app.route("/static/<path:filename>")
 def serve_static(filename):
@@ -664,30 +1551,148 @@ def serve_static(filename):
 
 # ── layout API ───────────────────────────────────────────────────────────────
 
+# WP-2.3 — Active layout presets. Keep in sync with the on-disk preset set
+# enumerated at /api/layouts (listdir LAYOUTS_DIR top level). Legacy files
+# live under LAYOUTS_DIR/legacy/ and are not included in the active set.
+_ACTIVE_LAYOUTS = ("solo", "studio")
+
+
 def _default_layout():
-    """Return tier-appropriate default layout based on local model count."""
+    """Return tier-appropriate default layout.
+
+    WP-2.3 retune: picks from the active-layouts set {solo, studio}.
+      - Base default: ``solo`` (two-pane chat + visual).
+      - Upgrade to ``studio`` (three-pane: chat + visual + sidebar chat) when
+        BOTH local-mid AND local-premium buckets are populated — this is when
+        there is spare compute for a second concurrent conversation stream.
+      - Fail-closed: if the resolved preset falls outside ``_ACTIVE_LAYOUTS``
+        (e.g. stale endpoints/bucket config), log a warning and fall back to
+        ``solo`` rather than returning a retired layout.
+    """
+    preset = "solo"
     try:
-        models_cfg = load_models()
-        n_local = len(models_cfg.get("local_models", []))
+        router_cfg = _load_routing_config() or {}
+        buckets = router_cfg.get("buckets", {}) or {}
+        has_mid     = len(buckets.get("local-mid", []) or []) > 0
+        has_premium = len(buckets.get("local-premium", []) or []) > 0
+        if has_mid and has_premium:
+            preset = "studio"
     except Exception:
-        n_local = 0
-    if n_local >= 2:
-        preset = "workbench"
-    elif n_local == 1:
-        preset = "studio"
-    else:
-        preset = "simple"
+        preset = "solo"
+
+    if preset not in _ACTIVE_LAYOUTS:
+        # Fail-closed: never return a retired layout name.
+        try:
+            print(f"[_default_layout] resolved preset '{preset}' not in "
+                  f"active set {_ACTIVE_LAYOUTS}; falling back to 'solo'.")
+        except Exception:
+            pass
+        preset = "solo"
+
     layout_path = os.path.join(LAYOUTS_DIR, f"{preset}.json")
     try:
         with open(layout_path) as f:
             d = json.load(f)
         d["theme"] = "default-light"
+        # Resolve default_bucket → slot_assignments for panels that declare one.
+        d = _resolve_default_buckets(d)
         return d
     except Exception:
-        return {"layout": {"preset_base": "simple", "panels": [
-            {"id": "main", "type": "chat", "width_pct": 100, "model_slot": "breadth",
-             "is_main_feed": True, "bridge_subscribe_to": None, "label": "Chat"}
+        # Hard-wire the solo fallback if the file itself is missing / malformed.
+        return {"layout": {"preset_base": "solo", "panels": [
+            {"id": "main",   "type": "chat",   "width_pct": 50, "model_slot": "breadth",
+             "is_main_feed": True,  "bridge_subscribe_to": None,   "label": "Main Chat"},
+            {"id": "visual", "type": "visual", "width_pct": 50, "model_slot": None,
+             "is_main_feed": False, "bridge_subscribe_to": "main", "label": "Visual"},
         ]}, "theme": "default-light"}
+
+
+def _resolve_default_buckets(layout_cfg):
+    """WP-2.3 — honor ``default_bucket`` on layout panels.
+
+    For every panel in ``layout_cfg['layout']['panels']`` that declares a
+    ``default_bucket`` field AND a ``model_slot``, look up the slot's
+    current assignment. If the slot is unassigned (no explicit user choice
+    via the model switcher), prefer a model from the declared bucket. If
+    the bucket is empty, fall back to any available model and log the
+    fallback — never block layout resolution on bucket misconfiguration.
+
+    The resolution is annotated back onto the panel under
+    ``resolved_slot_assignment`` for client diagnostics (non-authoritative;
+    the server's slot-assignment layer remains the source of truth).
+    """
+    if not isinstance(layout_cfg, dict):
+        return layout_cfg
+    layout = layout_cfg.get("layout") or {}
+    panels = layout.get("panels") or []
+    if not isinstance(panels, list):
+        return layout_cfg
+
+    try:
+        cfg = load_config()
+    except Exception:
+        cfg = {}
+    slot_assignments = (cfg.get("slot_assignments") or {}) if isinstance(cfg, dict) else {}
+
+    try:
+        router_cfg = _load_routing_config() or {}
+        buckets = router_cfg.get("buckets", {}) or {}
+    except Exception:
+        buckets = {}
+
+    try:
+        models_cfg = load_models()
+        known_ids = {m.get("id") for m in models_cfg.get("local_models", [])} | \
+                    {m.get("id") for m in models_cfg.get("commercial_models", [])}
+    except Exception:
+        known_ids = set()
+
+    for panel in panels:
+        if not isinstance(panel, dict):
+            continue
+        default_bucket = panel.get("default_bucket")
+        slot_name = panel.get("model_slot")
+        if not default_bucket or not slot_name:
+            continue
+        # If user has already assigned a model to the slot, respect it.
+        explicit = slot_assignments.get(slot_name)
+        if explicit:
+            panel["resolved_slot_assignment"] = {
+                "source": "user_slot_assignment",
+                "model_id": explicit,
+                "bucket": default_bucket,
+            }
+            continue
+        # Otherwise pick the first entry of the declared bucket.
+        bucket_list = buckets.get(default_bucket) or []
+        chosen = None
+        for mid in bucket_list:
+            if not known_ids or mid in known_ids:
+                chosen = mid
+                break
+        if chosen:
+            panel["resolved_slot_assignment"] = {
+                "source": "default_bucket",
+                "model_id": chosen,
+                "bucket": default_bucket,
+            }
+            continue
+        # Empty bucket — degrade gracefully: any known model OR just log.
+        any_model = next(iter(known_ids)) if known_ids else None
+        try:
+            print(f"[_resolve_default_buckets] bucket '{default_bucket}' empty "
+                  f"for slot '{slot_name}' on panel '{panel.get('id')}'; "
+                  f"falling back to '{any_model or '(none)'}'.")
+        except Exception:
+            pass
+        panel["resolved_slot_assignment"] = {
+            "source": "empty_bucket_fallback",
+            "model_id": any_model,
+            "bucket": default_bucket,
+            "fallback_reason": f"bucket '{default_bucket}' has no registered models",
+        }
+
+    return layout_cfg
 
 @app.route("/api/layout")
 def layout_get():
@@ -784,19 +1789,166 @@ def themes_list():
     except Exception:
         return json.dumps({"themes": ["default-light", "default-dark"]})
 
+# ── V3 theme library API ──────────────────────────────────────────────────
+# Folder-per-theme structure used by /v3 — each theme is a directory under
+# server/static/themes/<id>/ containing manifest.json and theme.css.
+# Index of installed themes lives at server/static/themes/index.json.
+
+V3_THEMES_DIR = os.path.join(WORKSPACE, "server/static/themes/")
+V3_THEMES_INDEX = os.path.join(V3_THEMES_DIR, "index.json")
+COMMUNITY_DIRECTORY_URL = "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-css-themes.json"
+
+def _v3_slugify(text):
+    slug = re.sub(r'[^a-z0-9]+', '-', (text or '').lower()).strip('-')
+    return slug or 'theme'
+
+def _v3_read_index():
+    try:
+        with open(V3_THEMES_INDEX) as f:
+            return json.load(f)
+    except Exception:
+        return {"themes": []}
+
+def _v3_write_index(data):
+    os.makedirs(V3_THEMES_DIR, exist_ok=True)
+    with open(V3_THEMES_INDEX, "w") as f:
+        json.dump(data, f, indent=2)
+
+def _v3_theme_dir(theme_id):
+    if not re.match(r'^[a-z0-9_-]+$', theme_id or ''):
+        raise ValueError(f"Invalid theme id: {theme_id}")
+    return os.path.join(V3_THEMES_DIR, theme_id)
+
+def _v3_install(theme_id, name, manifest, css):
+    theme_dir = _v3_theme_dir(theme_id)
+    os.makedirs(theme_dir, exist_ok=True)
+    manifest = dict(manifest or {})
+    manifest.setdefault("name", name)
+    manifest.setdefault("version", "1.0.0")
+    with open(os.path.join(theme_dir, "manifest.json"), "w") as f:
+        json.dump(manifest, f, indent=2)
+    with open(os.path.join(theme_dir, "theme.css"), "w") as f:
+        f.write(css)
+    index = _v3_read_index()
+    if not any(t.get("id") == theme_id for t in index.get("themes", [])):
+        index.setdefault("themes", []).append({
+            "id": theme_id,
+            "name": name,
+            "directory": theme_id,
+            "bundled": False,
+        })
+        _v3_write_index(index)
+    return {"ok": True, "id": theme_id, "name": name}
+
+@app.route("/api/v3-themes/list")
+def v3_themes_list_api():
+    index = _v3_read_index()
+    out = []
+    for entry in index.get("themes", []):
+        theme_id = entry.get("id")
+        if not theme_id:
+            continue
+        manifest_path = os.path.join(V3_THEMES_DIR, theme_id, "manifest.json")
+        manifest = {}
+        try:
+            with open(manifest_path) as f:
+                manifest = json.load(f)
+        except Exception:
+            pass
+        out.append({**entry, "manifest": manifest})
+    return json.dumps({"themes": out})
+
+@app.route("/api/v3-themes/install", methods=["POST"])
+def v3_themes_install_api():
+    data = request.get_json(force=True) or {}
+    manifest = data.get("manifest") or {}
+    name = data.get("name") or manifest.get("name")
+    css = data.get("css")
+    if not name or not css:
+        return json.dumps({"error": "Missing name or css"}), 400
+    theme_id = _v3_slugify(name)
+    if theme_id == "default":
+        return json.dumps({"error": "Cannot overwrite default theme"}), 400
+    try:
+        return json.dumps(_v3_install(theme_id, name, manifest, css))
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
+@app.route("/api/v3-themes/<theme_id>", methods=["DELETE"])
+def v3_themes_delete_api(theme_id):
+    if theme_id == "default":
+        return json.dumps({"error": "Cannot delete default theme"}), 400
+    try:
+        theme_dir = _v3_theme_dir(theme_id)
+        if os.path.isdir(theme_dir):
+            shutil.rmtree(theme_dir)
+        index = _v3_read_index()
+        index["themes"] = [t for t in index.get("themes", []) if t.get("id") != theme_id]
+        _v3_write_index(index)
+        return json.dumps({"ok": True})
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
+@app.route("/api/v3-themes/community-directory")
+def v3_themes_community_api():
+    try:
+        resp = requests.get(COMMUNITY_DIRECTORY_URL, timeout=15)
+        if resp.status_code != 200:
+            return json.dumps({"error": f"Directory fetch returned {resp.status_code}"}), 502
+        return Response(resp.text, mimetype="application/json")
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
+@app.route("/api/v3-themes/install-from-github", methods=["POST"])
+def v3_themes_install_from_github_api():
+    data = request.get_json(force=True) or {}
+    repo = (data.get("repo") or "").strip()
+    if not repo:
+        return json.dumps({"error": "Missing repo"}), 400
+    if "github.com/" in repo:
+        path = urlparse(repo).path.strip("/").rstrip(".git")
+        repo = path
+    if "/" not in repo or repo.count("/") != 1:
+        return json.dumps({"error": "Invalid repo. Expected 'user/repo' or full GitHub URL."}), 400
+    raw_base = f"https://raw.githubusercontent.com/{repo}/HEAD"
+    try:
+        manifest_resp = requests.get(f"{raw_base}/manifest.json", timeout=15)
+        css_resp = requests.get(f"{raw_base}/theme.css", timeout=15)
+        if manifest_resp.status_code != 200:
+            return json.dumps({"error": f"manifest.json not found in {repo}"}), 404
+        if css_resp.status_code != 200:
+            return json.dumps({"error": f"theme.css not found in {repo}"}), 404
+        manifest = manifest_resp.json()
+        css = css_resp.text
+        name = manifest.get("name") or repo.split("/")[-1]
+        theme_id = _v3_slugify(name)
+        if theme_id == "default":
+            return json.dumps({"error": "Cannot overwrite default theme"}), 400
+        return json.dumps(_v3_install(theme_id, name, manifest, css))
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
 # ── bridge API (polling) ──────────────────────────────────────────────────────
 
 @app.route("/api/bridge/<panel_id>", methods=["POST"])
 def bridge_update(panel_id):
     data = request.get_json(force=True)
-    _bridge_state[panel_id] = {
-        "current_topic":  data.get("current_topic", ""),
-        "recent_messages": data.get("recent_messages", [])[-5:],
-        "active_mode":    data.get("active_mode"),
-        "active_gear":    data.get("active_gear"),
-        "pipeline_stage": data.get("pipeline_stage"),
+    existing = _bridge_state.get(panel_id, {})
+    merged = {
+        "current_topic":  data.get("current_topic", existing.get("current_topic", "")),
+        "recent_messages": data.get("recent_messages", existing.get("recent_messages", []))[-5:],
+        "active_mode":    data.get("active_mode",  existing.get("active_mode")),
+        "active_gear":    data.get("active_gear",  existing.get("active_gear")),
+        "pipeline_stage": data.get("pipeline_stage", existing.get("pipeline_stage")),
         "updated_at":     time.time(),
     }
+    # WP-2.3 — Preserve ora-visual blocks on the bridge so subscribed
+    # visual panels (solo/studio layouts) can pick them up on the next poll.
+    if "ora_visual_blocks" in data:
+        merged["ora_visual_blocks"] = data.get("ora_visual_blocks") or []
+    elif "ora_visual_blocks" in existing:
+        merged["ora_visual_blocks"] = existing["ora_visual_blocks"]
+    _bridge_state[panel_id] = merged
     return json.dumps({"ok": True})
 
 @app.route("/api/bridge/<panel_id>")
@@ -815,7 +1967,7 @@ def vault_search():
     try:
         import chromadb
         config     = load_config()
-        chroma_path = config.get("chromadb_path", os.path.expanduser("~/local-ai/chromadb/"))
+        chroma_path = config.get("chromadb_path", os.path.expanduser("~/ora/chromadb/"))
         client     = chromadb.PersistentClient(path=chroma_path)
         collection = client.get_collection("knowledge")
         raw = collection.query(query_texts=[query], n_results=n)
@@ -872,7 +2024,9 @@ def clarification_respond():
         active_mode = [step1.get("mode")]
         active_gear = [None]
 
-        for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers):
+        for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
+                                              images=pending.get("images"),
+                                              extra_context=pending.get("extra_context")):
             yield chunk
             try:
                 d = json.loads(chunk[6:])
@@ -933,7 +2087,9 @@ def clarification_skip():
                     label="Assembling context (clarification skipped)…")
 
         final_response = [None]
-        for chunk in _run_pipeline_from_step2(step1, config, history, user_input):
+        for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
+                                              images=pending.get("images"),
+                                              extra_context=pending.get("extra_context")):
             yield chunk
             try:
                 d = json.loads(chunk[6:])
@@ -1017,7 +2173,7 @@ def _call_vision_generate_layout(description, image_b64, endpoint_name):
             import keyring
             from google import genai
             from google.genai import types as gtypes
-            key = os.environ.get("GEMINI_API_KEY", "") or keyring.get_password("local-ai", "gemini-api-key") or ""
+            key = os.environ.get("GEMINI_API_KEY", "") or keyring.get_password("ora", "gemini-api-key") or ""
             client = genai.Client(api_key=key)
             parts = []
             if image_b64:
@@ -1032,7 +2188,7 @@ def _call_vision_generate_layout(description, image_b64, endpoint_name):
             return resp.text
         elif service == "claude":
             import anthropic, keyring
-            key = os.environ.get("ANTHROPIC_API_KEY", "") or keyring.get_password("local-ai", "anthropic-api-key") or ""
+            key = os.environ.get("ANTHROPIC_API_KEY", "") or keyring.get_password("ora", "anthropic-api-key") or ""
             client = anthropic.Anthropic(api_key=key)
             content = []
             if image_b64:
@@ -1046,7 +2202,7 @@ def _call_vision_generate_layout(description, image_b64, endpoint_name):
         elif service == "openai":
             from openai import OpenAI
             import keyring
-            key = os.environ.get("OPENAI_API_KEY", "") or keyring.get_password("local-ai", "openai-api-key") or ""
+            key = os.environ.get("OPENAI_API_KEY", "") or keyring.get_password("ora", "openai-api-key") or ""
             client = OpenAI(api_key=key)
             content = [{"type": "text", "text": prompt}]
             if image_b64:
@@ -1159,17 +2315,22 @@ def models_endpoint():
         "local_models":       models_cfg.get("local_models", []),
         "commercial_models":  models_cfg.get("commercial_models", []),
         "slot_assignments":   config.get("slot_assignments", {}),
+        "gear4_overrides":    config.get("gear4_overrides", {}),
     })
 
 @app.route("/config", methods=["GET"])
 def config_get():
     config = load_config()
-    return json.dumps({"slot_assignments": config.get("slot_assignments", {})})
+    return json.dumps({
+        "slot_assignments": config.get("slot_assignments", {}),
+        "gear4_overrides":  config.get("gear4_overrides", {}),
+    })
 
 @app.route("/config", methods=["POST"])
 def config_post():
     data             = request.get_json(force=True)
     slot_assignments = data.get("slot_assignments", {})
+    gear4_overrides  = data.get("gear4_overrides")  # None if not sent
 
     models_cfg  = load_models()
     all_models  = {m["id"]: m for m in
@@ -1194,11 +2355,252 @@ def config_post():
         with open(ENDPOINTS) as f:
             cfg = json.load(f)
         cfg["slot_assignments"] = slot_assignments
+        if gear4_overrides is not None:
+            cfg["gear4_overrides"] = gear4_overrides
         with open(ENDPOINTS, "w") as f:
             json.dump(cfg, f, indent=2)
-        return json.dumps({"ok": True, "slot_assignments": slot_assignments})
+        result = {"ok": True, "slot_assignments": slot_assignments}
+        if gear4_overrides is not None:
+            result["gear4_overrides"] = gear4_overrides
+        return json.dumps(result)
     except Exception as e:
         return json.dumps({"error": str(e)}), 500
+
+
+# ── Routing Configuration API ─────────────────────────────────────────────
+
+ROUTING_CONFIG = os.path.join(WORKSPACE, "config/routing-config.json")
+PROVIDER_DB    = os.path.join(WORKSPACE, "config/provider-database.json")
+
+def _load_routing_config():
+    try:
+        with open(ROUTING_CONFIG) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_routing_config(cfg):
+    with open(ROUTING_CONFIG, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+
+def _get_router():
+    """Get or create Router instance."""
+    try:
+        from router import Router
+        return Router()
+    except Exception:
+        return None
+
+
+@app.route("/config/routing")
+def routing_config_get():
+    """Return the full routing configuration."""
+    cfg = _load_routing_config()
+    return json.dumps(cfg)
+
+
+@app.route("/config/routing", methods=["POST"])
+def routing_config_post():
+    """Update routing configuration (partial update — merges into existing)."""
+    data = request.get_json(force=True)
+    cfg = _load_routing_config()
+
+    # Merge supported top-level keys
+    for key in ["endpoints", "buckets", "pipelines", "reservation",
+                "constraints", "ui_state", "diversity"]:
+        if key in data:
+            cfg[key] = data[key]
+
+    _save_routing_config(cfg)
+    return json.dumps({"ok": True})
+
+
+@app.route("/config/routing/pipelines", methods=["POST"])
+def routing_pipelines_post():
+    """Update just the pipeline configuration."""
+    data = request.get_json(force=True)
+    cfg = _load_routing_config()
+    cfg["pipelines"] = data.get("pipelines", cfg.get("pipelines", {}))
+    _save_routing_config(cfg)
+    return json.dumps({"ok": True})
+
+
+@app.route("/config/routing/buckets", methods=["POST"])
+def routing_buckets_post():
+    """Update bucket contents (model ordering within tiers)."""
+    data = request.get_json(force=True)
+    cfg = _load_routing_config()
+    cfg["buckets"] = data.get("buckets", cfg.get("buckets", {}))
+    _save_routing_config(cfg)
+    return json.dumps({"ok": True})
+
+
+@app.route("/config/routing/status")
+def routing_status():
+    """Return current system routing status — what would happen now for each gear."""
+    router = _get_router()
+    if not router:
+        return json.dumps({"error": "Router not available"}), 500
+    return json.dumps(router.get_status())
+
+
+@app.route("/config/providers")
+def providers_get():
+    """Return the provider database for bucket auto-population."""
+    try:
+        with open(PROVIDER_DB) as f:
+            return json.dumps(json.load(f))
+    except Exception:
+        return json.dumps({})
+
+
+# ── Extension Bridge (Chrome extension ↔ server ↔ browser_evaluate) ────────
+
+from extension_bridge import (
+    get_pending_request_nowait as _ext_get_pending,
+    submit_result as _ext_submit_result,
+    record_poll as _ext_record_poll,
+    is_connected as _ext_is_connected,
+    evaluate as _ext_evaluate,
+)
+
+
+@app.route("/api/extension/pending")
+def extension_pending():
+    """Polled by the Chrome extension to check for evaluation requests."""
+    _ext_record_poll()
+    req = _ext_get_pending()
+    if req:
+        return json.dumps({"request": req})
+    return json.dumps({"request": None})
+
+
+@app.route("/api/extension/result", methods=["POST"])
+def extension_result():
+    """Chrome extension posts evaluation results here."""
+    data = request.json or {}
+    _ext_submit_result(
+        data.get("id", ""),
+        response=data.get("response"),
+        error=data.get("error"),
+    )
+    return json.dumps({"ok": True})
+
+
+@app.route("/api/extension/evaluate", methods=["POST"])
+def extension_evaluate():
+    """Blocking evaluate endpoint for standalone callers (boot.py, CLI).
+
+    Queues the request to the extension, waits for the result,
+    and returns it. Times out after the specified duration.
+    """
+    if not _ext_is_connected():
+        return json.dumps({"error": "Extension not connected"}), 503
+
+    data = request.json or {}
+    service = data.get("service", "")
+    prompt = data.get("prompt", "")
+    config = data.get("config", {})
+    timeout = min(data.get("timeout", 180), 300)
+
+    result = _ext_evaluate(service, prompt, config, timeout=timeout)
+
+    if result is None:
+        return json.dumps({"error": "Timeout or extension disconnected"}), 504
+    if result.startswith("[extension]"):
+        return json.dumps({"error": result}), 502
+    return json.dumps({"response": result})
+
+
+@app.route("/api/extension/status")
+def extension_status():
+    """Check if the Chrome extension is connected."""
+    return json.dumps({"connected": _ext_is_connected()})
+
+
+# ── WP-6.1 — Vault export ────────────────────────────────────────────────────
+
+@app.route("/api/session/export", methods=["POST"])
+def api_session_export():
+    """Export a completed conversation as canonical Markdown + SVG sidecars.
+
+    Request body (JSON)::
+
+        {
+          "conversation_id": "<required>",
+          "session_title":   "<optional — derived from first user message otherwise>",
+
+          # Test-only dependency injection (leave unset in production calls):
+          "_vault_root":            "<override vault root>",
+          "_sessions_root":         "<override ~/ora/sessions root>",
+          "_raw_conversations_dir": "<override ~/Documents/conversations/raw>",
+          "_node_cli":              "<override Node CLI path>"
+        }
+
+    Response::
+
+        200 {
+          "success": true,
+          "markdown_path": "...",
+          "sidecar_paths": ["..."],
+          "sidecar_count": N,
+          "warnings": [...],
+          "envelope_count": N,
+          "invalid_envelopes": [...]
+        }
+        400 {"error": "conversation_id required"}
+        404 {"error": "..."}   (conversation not found)
+        500 {"error": "..."}   (unexpected failure)
+
+    The UI hook is deferred to WP-6.2; this endpoint is consumed directly by
+    tests and (until WP-6.2 ships) by ``curl``.
+    """
+    data = request.json or {}
+    conversation_id = (data.get("conversation_id") or "").strip()
+    if not conversation_id:
+        return json.dumps({"error": "conversation_id required"}), 400
+
+    # Import lazily so the orchestrator module is only loaded when the
+    # endpoint is actually hit.
+    try:
+        from vault_export import export_session_to_vault, ExportResult  # type: ignore
+    except Exception as e:
+        return json.dumps({"error": f"vault_export import failed: {e}"}), 500
+
+    kwargs: dict = {}
+    if data.get("session_title"):
+        kwargs["session_title"] = data["session_title"]
+
+    # Dependency-injection overrides for tests.
+    if data.get("_vault_root"):
+        kwargs["vault_root"] = data["_vault_root"]
+    if data.get("_sessions_root"):
+        kwargs["sessions_root"] = data["_sessions_root"]
+    if data.get("_raw_conversations_dir"):
+        kwargs["raw_conversations_dir"] = data["_raw_conversations_dir"]
+    if data.get("_node_cli"):
+        kwargs["node_cli"] = data["_node_cli"]
+
+    try:
+        result: ExportResult = export_session_to_vault(
+            conversation_id=conversation_id,
+            **kwargs,
+        )
+    except FileNotFoundError as e:
+        return json.dumps({"error": str(e)}), 404
+    except Exception as e:
+        return json.dumps({"error": f"export failed: {e}"}), 500
+
+    return json.dumps({
+        "success": True,
+        "markdown_path": str(result.markdown_path),
+        "sidecar_paths": [str(p) for p in result.sidecar_paths],
+        "sidecar_count": len(result.sidecar_paths),
+        "warnings": list(result.warnings),
+        "envelope_count": result.envelope_count,
+        "invalid_envelopes": list(result.invalid_envelopes),
+    })
 
 
 if __name__ == "__main__":
@@ -1226,6 +2628,61 @@ if __name__ == "__main__":
     config   = load_config()
     endpoint = get_endpoint(config)
 
+    # Startup checks: index regeneration and RAG manifest freshness
+    # (moved from scheduled maintenance to runtime per Runtime Principle)
+    try:
+        import subprocess as _sp
+        _scripts = os.path.join(WORKSPACE, "scripts")
+
+        # Index regeneration: verify modes + frameworks indexes match directories
+        _gen_idx = os.path.join(_scripts, "generate-indexes.sh")
+        if os.path.exists(_gen_idx):
+            _modes_dir = os.path.join(WORKSPACE, "modes")
+            _fw_dir = os.path.join(WORKSPACE, "frameworks", "book")
+            _needs_regen = False
+
+            _modes_idx = os.path.join(_modes_dir, "modes-index.md")
+            if os.path.isdir(_modes_dir) and os.path.exists(_modes_idx):
+                _mode_files = [f for f in os.listdir(_modes_dir) if f.endswith(".md") and f != "modes-index.md"]
+                with open(_modes_idx, "r") as _f:
+                    _idx_text = _f.read()
+                for _mf in _mode_files:
+                    if _mf.replace(".md", "") not in _idx_text and _mf not in _idx_text:
+                        _needs_regen = True
+                        break
+
+            if not _needs_regen:
+                _fw_idx = os.path.join(_fw_dir, "framework-index.md")
+                if os.path.isdir(_fw_dir) and os.path.exists(_fw_idx):
+                    _fw_files = [f for f in os.listdir(_fw_dir) if f.endswith(".md") and f != "framework-index.md"]
+                    with open(_fw_idx, "r") as _f:
+                        _idx_text = _f.read()
+                    for _ff in _fw_files:
+                        if _ff.replace(".md", "") not in _idx_text and _ff not in _idx_text:
+                            _needs_regen = True
+                            break
+
+            if _needs_regen:
+                _sp.run(["bash", _gen_idx], capture_output=True, timeout=30)
+                print("[startup] Indexes regenerated (were out of sync)")
+            else:
+                print("[startup] Indexes: in sync")
+
+        # RAG manifest freshness: recompile if canonical is newer than compiled
+        _cfg_dir = os.path.join(WORKSPACE, "config")
+        _canonical = os.path.join(_cfg_dir, "rag-manifest.md")
+        _compiled = os.path.join(_cfg_dir, "rag-manifest-compiled.md")
+        _compile_sh = os.path.join(_scripts, "compile-rag-manifest.sh")
+
+        if os.path.exists(_canonical) and os.path.exists(_compile_sh):
+            if not os.path.exists(_compiled) or os.path.getmtime(_canonical) > os.path.getmtime(_compiled):
+                _sp.run(["bash", _compile_sh], capture_output=True, timeout=30)
+                print("[startup] RAG manifest recompiled")
+            else:
+                print("[startup] RAG manifest: up to date")
+    except Exception as _e:
+        print(f"[startup] Startup checks skipped: {_e}")
+
     # Fire session_start hooks
     fire_hooks("session_start")
 
@@ -1234,7 +2691,7 @@ if __name__ == "__main__":
         from mcp_client import get_manager as _get_mcp
         mcp_mgr = _get_mcp()
         set_mcp_client(mcp_mgr)
-        mcp_count = len(mcp_mgr.all_tools)
+        mcp_count = len(getattr(mcp_mgr, 'all_tools', []))
     except Exception:
         mcp_count = 0
 
@@ -1255,6 +2712,14 @@ if __name__ == "__main__":
 
     def _shutdown_handler(sig, frame):
         fire_hooks("session_end")
+        # Clear sidebar windows on shutdown
+        if SIDEBAR_WINDOW_AVAILABLE:
+            clear_all_sidebar_windows()
+        # Disable incognito (cleans up temporary collection)
+        if INCOGNITO_AVAILABLE:
+            mgr = get_incognito_manager()
+            if mgr.state.enabled:
+                mgr.disable(confirm=True)
         try:
             from bash_execute import cleanup_all
             cleanup_all()

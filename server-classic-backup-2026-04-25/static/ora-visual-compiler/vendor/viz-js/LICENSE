@@ -1,0 +1,126 @@
+Viz.js Distribution — Third-Party Notices
+==========================================
+
+This vendored bundle is `viz-standalone.js` from the npm package
+`@viz-js/viz` v3.26.0 (https://github.com/mdaines/viz-js). The file
+contains three distinct bodies of code combined into a single script:
+the Viz.js JavaScript wrapper, the Graphviz graph-layout library
+(compiled to WebAssembly), and the Expat XML parser (compiled to
+WebAssembly). Each is distributed under its own license. All three
+licenses apply to this file.
+
+------------------------------------------------------------------------
+1. Viz.js (the JavaScript wrapper) — MIT License
+------------------------------------------------------------------------
+
+Copyright (c) Michael Daines
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+------------------------------------------------------------------------
+2. Graphviz (compiled into the WebAssembly payload) — Eclipse Public
+   License 1.0 (EPL-1.0)
+------------------------------------------------------------------------
+
+Graphviz v14.1.5 — https://www.graphviz.org
+Copyright AT&T and contributors
+
+Graphviz is released under the Eclipse Public License, version 1.0. The
+full text is reproduced below.
+
+THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE
+PUBLIC LICENSE ("AGREEMENT"). ANY USE, REPRODUCTION OR DISTRIBUTION OF
+THE PROGRAM CONSTITUTES RECIPIENT'S ACCEPTANCE OF THIS AGREEMENT.
+
+1. DEFINITIONS
+
+"Contribution" means:
+  a) in the case of the initial Contributor, the initial code and
+     documentation distributed under this Agreement, and
+  b) in the case of each subsequent Contributor:
+     i) changes to the Program, and
+     ii) additions to the Program;
+  where such changes and/or additions to the Program originate from and
+  are distributed by that particular Contributor.
+
+"Contributor" means any person or entity that distributes the Program.
+
+"Licensed Patents" mean patent claims licensable by a Contributor which
+are necessarily infringed by the use or sale of its Contribution alone
+or when combined with the Program.
+
+"Program" means the Contributions distributed in accordance with this
+Agreement.
+
+"Recipient" means anyone who receives the Program under this Agreement,
+including all Contributors.
+
+2. GRANT OF RIGHTS
+
+  a) Subject to the terms of this Agreement, each Contributor hereby
+     grants Recipient a non-exclusive, worldwide, royalty-free copyright
+     license to reproduce, prepare derivative works of, publicly
+     display, publicly perform, distribute and sublicense the
+     Contribution of such Contributor, if any, and such derivative
+     works, in source code and object code form.
+  b) Subject to the terms of this Agreement, each Contributor hereby
+     grants Recipient a non-exclusive, worldwide, royalty-free patent
+     license under Licensed Patents to make, use, sell, offer to sell,
+     import and otherwise transfer the Contribution of such Contributor,
+     if any, in source code and object code form. This patent license
+     shall apply to the combination of the Contribution and the Program
+     if, at the time the Contribution is added by the Contributor, such
+     addition of the Contribution causes such combination to be covered
+     by the Licensed Patents. The patent license shall not apply to any
+     other combinations which include the Contribution. No hardware per
+     se is licensed hereunder.
+
+  [...Full EPL-1.0 text continues. Complete text available at
+   https://www.eclipse.org/legal/epl-v10.html and in the Graphviz
+   source tarball.]
+
+------------------------------------------------------------------------
+3. Expat (compiled into the WebAssembly payload) — MIT License
+------------------------------------------------------------------------
+
+Expat v2.7.5 — https://libexpat.github.io
+
+Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark
+Cooper
+Copyright (c) 2001-2022 Expat maintainers
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

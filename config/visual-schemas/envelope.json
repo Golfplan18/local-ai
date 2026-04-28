@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/envelope.json",
+  "title": "Ora Visual Output Envelope v0.2",
+  "description": "Top-level envelope for ora-visual spec blocks per Protocol v0.2 \u00a72. Discriminated union on 'type' dispatches to one of 22 per-type spec schemas. additionalProperties:false at every level eliminates LLM schema drift (\u00a72.1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "type", "mode_context", "relation_to_prose", "spec", "semantic_description"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$",
+      "description": "Semver. Consumers fail-closed on unknown major versions."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable within a canonical document; used for prose cross-references and annotation targeting."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "comparison",
+        "time_series",
+        "distribution",
+        "scatter",
+        "heatmap",
+        "tornado",
+        "causal_loop_diagram",
+        "stock_and_flow",
+        "causal_dag",
+        "fishbone",
+        "decision_tree",
+        "influence_diagram",
+        "ach_matrix",
+        "quadrant_matrix",
+        "bow_tie",
+        "ibis",
+        "pro_con",
+        "concept_map",
+        "sequence",
+        "flowchart",
+        "state",
+        "c4"
+      ]
+    },
+    "mode_context": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Ora mode that generated this visual (adversarial routing + default config lookup)."
+    },
+    "relation_to_prose": {
+      "type": "string",
+      "enum": ["integrated", "visually_native", "redundant"],
+      "description": "Per \u00a75. 'no_visual' is represented by the absence of an envelope, not by a value here."
+    },
+    "spec": { "type": "object" },
+    "semantic_description": { "$ref": "semantic_description.json" },
+    "title": { "type": "string" },
+    "caption": {
+      "type": "string",
+      "description": "Longer attribution string (source, period, n)."
+    },
+    "render_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preferred_engine": { "type": "string" },
+        "aspect_ratio": { "type": ["number", "string"] },
+        "compact": { "type": "boolean" }
+      }
+    },
+    "integrity_declarations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "non_zero_baseline_justified": { "type": ["string", "boolean"] },
+        "inverted_axis_justified": { "type": ["string", "boolean"] },
+        "axes_independence_rationale": { "type": "string" },
+        "log_scale_base": { "type": ["number", "string"] }
+      }
+    },
+    "memorability_goal": {
+      "type": "boolean",
+      "default": false,
+      "description": "Relaxes T4/T5 chartjunk rules per Bateman CHI 2010. Set by user or mode config, never by the model."
+    },
+    "canvas_action": {
+      "type": "string",
+      "enum": ["replace", "update", "annotate", "clear"],
+      "description": "Envelope-level hint to the visual panel's canvas state machine (WP-2.4). 'replace' clears the stage and renders fresh (default for the first visual in a conversation). 'update' overlays onto the existing canvas, replacing backgroundLayer only while preserving user-input + annotation state (default for subsequent visuals). 'annotate' adds overlays (callouts, highlights) into annotationLayer without touching backgroundLayer. 'clear' empties the entire canvas with no new render. When absent, the client applies the turn-position default. See Protocol \u00a76 / §canvas_action."
+    },
+    "annotations": {
+      "type": "array",
+      "description": "Optional overlay descriptors consumed by canvas_action:'annotate'. Each entry targets an SVG element by id (e.g. 'cld-node-X') and layers a callout/highlight/arrow/badge on top of it. WP-2.4 implements callout + highlight; arrow + badge are deferred to WP-5.1 and emit W_ANNOTATION_KIND_DEFERRED.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target_id", "kind"],
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "SVG element id to attach the annotation to (semantic IDs emitted by renderers)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["callout", "highlight", "arrow", "badge"]
+          },
+          "text": { "type": "string" },
+          "color": { "type": "string" }
+        }
+      }
+    },
+    "fallback": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "data"],
+          "properties": {
+            "type": { "const": "table" },
+            "data": {
+              "type": "array",
+              "items": { "type": "array" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "prose_only" }
+          }
+        }
+      ]
+    },
+    "spatial_representation": { "$ref": "spatial_representation.json" }
+  },
+  "oneOf": [
+    { "allOf": [ { "properties": { "type": { "const": "comparison" } } }, { "properties": { "spec": { "$ref": "specs/comparison.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "time_series" } } }, { "properties": { "spec": { "$ref": "specs/time_series.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "distribution" } } }, { "properties": { "spec": { "$ref": "specs/distribution.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "scatter" } } }, { "properties": { "spec": { "$ref": "specs/scatter.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "heatmap" } } }, { "properties": { "spec": { "$ref": "specs/heatmap.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "tornado" } } }, { "properties": { "spec": { "$ref": "specs/tornado.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "causal_loop_diagram" } } }, { "properties": { "spec": { "$ref": "specs/causal_loop_diagram.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "stock_and_flow" } } }, { "properties": { "spec": { "$ref": "specs/stock_and_flow.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "causal_dag" } } }, { "properties": { "spec": { "$ref": "specs/causal_dag.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "fishbone" } } }, { "properties": { "spec": { "$ref": "specs/fishbone.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "decision_tree" } } }, { "properties": { "spec": { "$ref": "specs/decision_tree.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "influence_diagram" } } }, { "properties": { "spec": { "$ref": "specs/influence_diagram.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "ach_matrix" } } }, { "properties": { "spec": { "$ref": "specs/ach_matrix.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "quadrant_matrix" } } }, { "properties": { "spec": { "$ref": "specs/quadrant_matrix.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "bow_tie" } } }, { "properties": { "spec": { "$ref": "specs/bow_tie.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "ibis" } } }, { "properties": { "spec": { "$ref": "specs/ibis.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "pro_con" } } }, { "properties": { "spec": { "$ref": "specs/pro_con.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "concept_map" } } }, { "properties": { "spec": { "$ref": "specs/concept_map.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "sequence" } } }, { "properties": { "spec": { "$ref": "specs/sequence.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "flowchart" } } }, { "properties": { "spec": { "$ref": "specs/flowchart.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "state" } } }, { "properties": { "spec": { "$ref": "specs/state.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "c4" } } }, { "properties": { "spec": { "$ref": "specs/c4.json" } } } ] }
+  ]
+}

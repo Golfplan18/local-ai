@@ -1,0 +1,119 @@
+{
+  "_note": "Canonical model registry. When a user adds an API key, ALL models for that provider are added to routing-config.json. Users can disable models they don't want.",
+  "providers": {
+    "anthropic": {
+      "credential_key": "ora/anthropic-api-key",
+      "env_var": "ANTHROPIC_API_KEY",
+      "service": "claude",
+      "training_family": "claude",
+      "models": [
+        {
+          "id": "anthropic-api-opus",
+          "model_id": "claude-opus-4-6",
+          "display_name": "Claude Opus 4.6 (API)",
+          "tier": "premium"
+        },
+        {
+          "id": "anthropic-api-sonnet",
+          "model_id": "claude-sonnet-4-6",
+          "display_name": "Claude Sonnet 4.6 (API)",
+          "tier": "mid"
+        },
+        {
+          "id": "anthropic-api-sonnet-4-5",
+          "model_id": "claude-sonnet-4-5-20241022",
+          "display_name": "Claude Sonnet 4.5 (API)",
+          "tier": "mid"
+        },
+        {
+          "id": "anthropic-api-haiku",
+          "model_id": "claude-haiku-4-5-20251001",
+          "display_name": "Claude Haiku 4.5 (API)",
+          "tier": "fast"
+        },
+        {
+          "id": "anthropic-api-opus-3",
+          "model_id": "claude-3-opus-20240229",
+          "display_name": "Claude 3 Opus (API)",
+          "tier": "mid"
+        },
+        {
+          "id": "anthropic-api-sonnet-3-5",
+          "model_id": "claude-3-5-sonnet-20241022",
+          "display_name": "Claude 3.5 Sonnet (API)",
+          "tier": "fast"
+        },
+        {
+          "id": "anthropic-api-haiku-3-5",
+          "model_id": "claude-3-5-haiku-20241022",
+          "display_name": "Claude 3.5 Haiku (API)",
+          "tier": "fast"
+        }
+      ]
+    },
+    "openai": {
+      "credential_key": "ora/openai-api-key",
+      "env_var": "OPENAI_API_KEY",
+      "service": "openai",
+      "training_family": "gpt",
+      "models": [
+        {
+          "id": "openai-api-gpt4o",
+          "model_id": "gpt-4o",
+          "display_name": "GPT-4o (API)",
+          "tier": "mid"
+        },
+        {
+          "id": "openai-api-gpt4-turbo",
+          "model_id": "gpt-4-turbo",
+          "display_name": "GPT-4 Turbo (API)",
+          "tier": "mid"
+        },
+        {
+          "id": "openai-api-gpt4o-mini",
+          "model_id": "gpt-4o-mini",
+          "display_name": "GPT-4o Mini (API)",
+          "tier": "fast"
+        },
+        {
+          "id": "openai-api-gpt35-turbo",
+          "model_id": "gpt-3.5-turbo",
+          "display_name": "GPT-3.5 Turbo (API)",
+          "tier": "fast"
+        }
+      ]
+    },
+    "google": {
+      "credential_key": "ora/gemini-api-key",
+      "env_var": "GEMINI_API_KEY",
+      "service": "gemini",
+      "training_family": "gemini",
+      "models": [
+        {
+          "id": "gemini-api-pro",
+          "model_id": "models/gemini-2.5-pro",
+          "display_name": "Gemini 2.5 Pro (API)",
+          "tier": "premium"
+        },
+        {
+          "id": "gemini-api-flash",
+          "model_id": "models/gemini-2.5-flash",
+          "display_name": "Gemini 2.5 Flash (API)",
+          "tier": "fast"
+        },
+        {
+          "id": "gemini-api-1-5-pro",
+          "model_id": "models/gemini-1.5-pro",
+          "display_name": "Gemini 1.5 Pro (API)",
+          "tier": "mid"
+        },
+        {
+          "id": "gemini-api-1-5-flash",
+          "model_id": "models/gemini-1.5-flash",
+          "display_name": "Gemini 1.5 Flash (API)",
+          "tier": "fast"
+        }
+      ]
+    }
+  }
+}

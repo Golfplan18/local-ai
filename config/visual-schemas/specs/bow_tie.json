@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/bow_tie.json",
+  "title": "Bow-tie risk diagram spec (RISK family)",
+  "description": "Per Protocol \u00a73.11 (new in v0.2). Hazard event is the center; threats render left with preventive controls, consequences render right with mitigative controls. Preventive control types exclude 'recover'; mitigative control types exclude 'eliminate' / 'detect'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["hazard_event", "threats", "consequences"],
+  "properties": {
+    "hazard_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" }
+      }
+    },
+    "threats": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "preventive_controls"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "pathway": { "type": "string" },
+          "preventive_controls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label", "type"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "label": { "type": "string", "minLength": 1 },
+                "type": {
+                  "type": "string",
+                  "enum": ["eliminate", "reduce", "detect"]
+                },
+                "effectiveness": {
+                  "type": "string",
+                  "enum": ["H", "M", "L"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "consequences": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "mitigative_controls"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "severity": {
+            "type": "string",
+            "enum": ["H", "M", "L"]
+          },
+          "mitigative_controls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label", "type"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "label": { "type": "string", "minLength": 1 },
+                "type": {
+                  "type": "string",
+                  "enum": ["reduce", "recover", "contain"]
+                },
+                "effectiveness": {
+                  "type": "string",
+                  "enum": ["H", "M", "L"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "escalation_factors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from_control_id", "label"],
+        "properties": {
+          "from_control_id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "escalation_control": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

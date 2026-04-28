@@ -1,0 +1,475 @@
+// Ora Customizer — Phase 1 (foundation + headings)
+//
+// Customization mode entered by clicking the palette icon.
+//   - Interface dims slightly
+//   - Customizable elements rise above the dim and get a dashed outline
+//   - Hovering shows a bolder outline; clicking opens an element overlay
+//     near the clicked element with controls and a sample
+//   - Adjustments apply live and persist to localStorage as a layered
+//     <style id="ora-user-customizations"> stylesheet
+//   - Exit: click the palette icon again, press Escape, or click outside
+//     any customizable element / overlay
+//
+// Exposed at window.OraCustomizer for in-page wiring.
+
+(() => {
+  const STORAGE_KEY        = 'ora-customizations';
+  const MODE_CLASS         = 'customizer-active';
+  const PALETTE_BUTTON_ID  = 'themeToggleBtn';
+  const FONT_WEIGHTS       = ['100', '200', '300', '400', '500', '600', '700', '800', '900'];
+
+  // ─── Element registry ──────────────────────────
+  // Each entry tells the customizer which DOM elements are customizable
+  // and which CSS variables each axis maps to.
+
+  const CUSTOMIZABLE = [
+    {
+      type: 'heading',
+      selector: '.output-content h1, .output-content h2, .output-content h3, .output-content h4, .output-content h5, .output-content h6',
+      getLevel: (el) => parseInt(el.tagName.slice(1), 10),
+      getAxes: (level) => ({
+        color:      `--h${level}-color`,
+        size:       `--h${level}-size`,
+        weight:     `--h${level}-weight`,
+        font:       `--h${level}-font`,
+        lineHeight: `--h${level}-line-height`,
+      }),
+      label: (level) => `Heading ${level}`,
+      // Sample renders all 6 heading levels so the user can see the
+      // hierarchy while editing one of them.
+      renderSample: () => {
+        const sample = document.createElement('div');
+        sample.className = 'customizer-sample customizer-sample-headings';
+        for (let i = 1; i <= 6; i++) {
+          const h = document.createElement(`h${i}`);
+          h.textContent = `Heading ${i}`;
+          sample.appendChild(h);
+        }
+        return sample;
+      }
+    },
+    {
+      type: 'body-text',
+      selector: '.output-content p',
+      getAxes: () => ({
+        color: '--text-normal',
+        size:  '--font-text-size',
+        font:  '--font-text',
+      }),
+      label: () => 'Body text',
+    },
+    {
+      type: 'link',
+      selector: '.output-content a',
+      getAxes: () => ({
+        color:      '--link-color',
+        hoverColor: '--link-color-hover',
+      }),
+      label: () => 'Hyperlink',
+    }
+  ];
+
+  // ─── State ─────────────────────────────────────
+
+  let active         = false;
+  let userStyle      = null;
+  let starterOverlay = null;
+  let elementOverlay = null;
+
+  // ─── Storage ───────────────────────────────────
+
+  const loadCustomizations = () => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch { return {}; }
+  };
+
+  const saveCustomizations = (customs) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(customs));
+  };
+
+  // ─── Apply user customizations as a layered stylesheet ─────────────
+
+  const ensureUserStyle = () => {
+    if (userStyle) return userStyle;
+    userStyle = document.createElement('style');
+    userStyle.id = 'ora-user-customizations';
+    // Insert after the main ora-default.css link so the cascade picks it up
+    const base = document.querySelector('link[href*="ora-default.css"]');
+    if (base && base.nextSibling) {
+      base.parentNode.insertBefore(userStyle, base.nextSibling);
+    } else {
+      document.head.appendChild(userStyle);
+    }
+    return userStyle;
+  };
+
+  const applyCustomizations = () => {
+    ensureUserStyle();
+    const customs = loadCustomizations();
+    if (Object.keys(customs).length === 0) {
+      userStyle.textContent = '';
+      return;
+    }
+    // Apply at high enough specificity to override theme blocks
+    let css = ':root, body, body.theme-dark, body.theme-light {\n';
+    for (const [variable, value] of Object.entries(customs)) {
+      css += `  ${variable}: ${value};\n`;
+    }
+    css += '}\n';
+    userStyle.textContent = css;
+  };
+
+  const setVariable = (variable, value) => {
+    const customs = loadCustomizations();
+    customs[variable] = value;
+    saveCustomizations(customs);
+    applyCustomizations();
+  };
+
+  const resetVariable = (variable) => {
+    const customs = loadCustomizations();
+    delete customs[variable];
+    saveCustomizations(customs);
+    applyCustomizations();
+  };
+
+  // ─── Tag/untag customizable elements ───────────────────
+
+  const tagCustomizable = () => {
+    CUSTOMIZABLE.forEach(entry => {
+      document.querySelectorAll(entry.selector).forEach(el => {
+        el.classList.add('customizable');
+        el.dataset.customizableType = entry.type;
+      });
+    });
+  };
+
+  const untagCustomizable = () => {
+    document.querySelectorAll('.customizable').forEach(el => {
+      el.classList.remove('customizable');
+      delete el.dataset.customizableType;
+    });
+  };
+
+  const findEntry = (el) => {
+    for (const entry of CUSTOMIZABLE) {
+      if (el.matches(entry.selector)) return entry;
+    }
+    return null;
+  };
+
+  // ─── Starter overlay (light/dark + instructions, near palette) ─────
+
+  const showStarterOverlay = () => {
+    if (starterOverlay) return;
+    const palette = document.getElementById(PALETTE_BUTTON_ID);
+    if (!palette) return;
+
+    starterOverlay = document.createElement('div');
+    starterOverlay.className = 'customizer-starter';
+    starterOverlay.innerHTML = `
+      <div class="customizer-starter-row">
+        <button type="button" class="customizer-theme-toggle">
+          <span class="customizer-theme-toggle-label"></span>
+        </button>
+      </div>
+      <div class="customizer-starter-hint">Click any highlighted item to customize it.</div>
+    `;
+    document.body.appendChild(starterOverlay);
+
+    // Position to the left of the palette button
+    const rect = palette.getBoundingClientRect();
+    starterOverlay.style.position = 'fixed';
+    starterOverlay.style.bottom = `${window.innerHeight - rect.bottom}px`;
+    starterOverlay.style.right = `${window.innerWidth - rect.left + 12}px`;
+
+    const refreshLabel = () => {
+      const label = starterOverlay.querySelector('.customizer-theme-toggle-label');
+      const current = window.OraTheme ? window.OraTheme.get() : 'dark';
+      label.textContent = current === 'dark' ? 'Switch to light' : 'Switch to dark';
+    };
+    refreshLabel();
+
+    starterOverlay.querySelector('.customizer-theme-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.OraTheme) {
+        window.OraTheme.toggle();
+        refreshLabel();
+      }
+    });
+  };
+
+  const hideStarterOverlay = () => {
+    if (starterOverlay) {
+      starterOverlay.remove();
+      starterOverlay = null;
+    }
+  };
+
+  // ─── Element overlay (popover with arrow + sample + controls) ────
+
+  const makeControlRow = (label, control) => {
+    const row = document.createElement('div');
+    row.className = 'customizer-control-row';
+    const lbl = document.createElement('label');
+    lbl.textContent = label;
+    row.appendChild(lbl);
+    row.appendChild(control);
+    return row;
+  };
+
+  const rgbToHex = (rgb) => {
+    const m = rgb.match(/\d+/g);
+    if (!m || m.length < 3) return '#000000';
+    return '#' + m.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+  };
+
+  const showElementOverlay = (el) => {
+    hideElementOverlay();
+    const entry = findEntry(el);
+    if (!entry) return;
+
+    const level = entry.getLevel ? entry.getLevel(el) : null;
+    const axes = entry.getAxes(level);
+
+    elementOverlay = document.createElement('div');
+    elementOverlay.className = 'customizer-element-overlay';
+
+    const header = document.createElement('div');
+    header.className = 'customizer-overlay-header';
+    header.textContent = entry.label ? entry.label(level) : entry.type;
+    elementOverlay.appendChild(header);
+
+    if (entry.renderSample) {
+      elementOverlay.appendChild(entry.renderSample());
+    }
+
+    const controls = document.createElement('div');
+    controls.className = 'customizer-overlay-controls';
+
+    const computed = getComputedStyle(el);
+
+    // Color
+    if (axes.color) {
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = rgbToHex(computed.color);
+      input.addEventListener('input', e => setVariable(axes.color, e.target.value));
+      controls.appendChild(makeControlRow('Color', input));
+    }
+
+    // Hover color (e.g., link hover) — read variable directly since it
+    // doesn't apply to the resting element
+    if (axes.hoverColor) {
+      const value = getComputedStyle(document.body).getPropertyValue(axes.hoverColor).trim();
+      const hex = value.startsWith('#') ? value
+                : value.startsWith('rgb') ? rgbToHex(value)
+                : '#000000';
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = hex;
+      input.addEventListener('input', e => setVariable(axes.hoverColor, e.target.value));
+      controls.appendChild(makeControlRow('Hover color', input));
+    }
+
+    // Size — adapts unit (em/px/rem) to the current variable value
+    if (axes.size) {
+      const variableValue = getComputedStyle(document.body).getPropertyValue(axes.size).trim();
+      let unit, displayValue, step, min, max;
+      if (variableValue.endsWith('em')) {
+        unit = 'em';
+        const parentFs = parseFloat(getComputedStyle(el.parentElement).fontSize) || 16;
+        displayValue = parseFloat(computed.fontSize) / parentFs;
+        step = '0.05'; min = '0.5'; max = '5';
+      } else if (variableValue.endsWith('rem')) {
+        unit = 'rem';
+        displayValue = parseFloat(variableValue);
+        step = '0.05'; min = '0.5'; max = '5';
+      } else {
+        unit = 'px';
+        displayValue = parseFloat(variableValue) || parseFloat(computed.fontSize);
+        step = '1'; min = '8'; max = '96';
+      }
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.step = step;
+      input.min = min;
+      input.max = max;
+      input.value = unit === 'px' ? Math.round(displayValue) : displayValue.toFixed(2);
+      input.addEventListener('input', e => {
+        if (e.target.value) setVariable(axes.size, e.target.value + unit);
+      });
+      controls.appendChild(makeControlRow(`Size (${unit})`, input));
+    }
+
+    // Weight
+    if (axes.weight) {
+      const select = document.createElement('select');
+      FONT_WEIGHTS.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w;
+        opt.textContent = w;
+        if (w === computed.fontWeight) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', e => setVariable(axes.weight, e.target.value));
+      controls.appendChild(makeControlRow('Weight', select));
+    }
+
+    // Font
+    if (axes.font) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = computed.fontFamily;
+      input.addEventListener('change', e => setVariable(axes.font, e.target.value));
+      controls.appendChild(makeControlRow('Font', input));
+    }
+
+    // Line-height
+    if (axes.lineHeight) {
+      const lh = parseFloat(computed.lineHeight) / parseFloat(computed.fontSize);
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.step = '0.1';
+      input.min = '0.8';
+      input.max = '3';
+      input.value = isFinite(lh) ? lh.toFixed(2) : '1.4';
+      input.addEventListener('input', e => {
+        if (e.target.value) setVariable(axes.lineHeight, e.target.value);
+      });
+      controls.appendChild(makeControlRow('Line-height', input));
+    }
+
+    elementOverlay.appendChild(controls);
+
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'customizer-overlay-reset';
+    reset.textContent = 'Reset to default';
+    reset.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Object.values(axes).forEach(resetVariable);
+      // Re-render so controls reflect defaults
+      showElementOverlay(el);
+    });
+    elementOverlay.appendChild(reset);
+
+    const arrow = document.createElement('div');
+    arrow.className = 'customizer-overlay-arrow';
+    elementOverlay.appendChild(arrow);
+
+    document.body.appendChild(elementOverlay);
+    positionOverlay(elementOverlay, el, arrow);
+  };
+
+  const hideElementOverlay = () => {
+    if (elementOverlay) {
+      elementOverlay.remove();
+      elementOverlay = null;
+    }
+  };
+
+  const positionOverlay = (overlay, target, arrow) => {
+    const targetRect  = target.getBoundingClientRect();
+    const overlayRect = overlay.getBoundingClientRect();
+    const padding = 12;
+
+    // Default: place to the right of the target
+    let left = targetRect.right + padding;
+    let arrowSide = 'left';
+
+    // Flip if there's no room on the right
+    if (left + overlayRect.width > window.innerWidth - padding) {
+      left = targetRect.left - overlayRect.width - padding;
+      arrowSide = 'right';
+    }
+
+    // Vertically center on the target, then clamp to viewport
+    let top = targetRect.top + (targetRect.height / 2) - (overlayRect.height / 2);
+    if (top < padding) top = padding;
+    if (top + overlayRect.height > window.innerHeight - padding) {
+      top = window.innerHeight - overlayRect.height - padding;
+    }
+
+    overlay.style.position = 'fixed';
+    overlay.style.left = `${left}px`;
+    overlay.style.top  = `${top}px`;
+
+    // Arrow vertically aligned with target center
+    const arrowTop = (targetRect.top + targetRect.height / 2) - top - 6;
+    arrow.style.top = `${arrowTop}px`;
+    arrow.dataset.side = arrowSide;
+  };
+
+  // ─── Event handlers ────────────────────────────
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      exit();
+    }
+  };
+
+  const onDocumentClick = (e) => {
+    if (!active) return;
+
+    // Inside an overlay → let the click proceed (controls work)
+    if (e.target.closest('.customizer-starter') ||
+        e.target.closest('.customizer-element-overlay')) {
+      return;
+    }
+
+    // On a customizable element → swap to its overlay
+    const customizable = e.target.closest('.customizable');
+    if (customizable) {
+      e.stopPropagation();
+      e.preventDefault();
+      showElementOverlay(customizable);
+      return;
+    }
+
+    // On the palette button → its own click handler will toggle (exit)
+    if (e.target.closest('#' + PALETTE_BUTTON_ID)) {
+      return;
+    }
+
+    // Anywhere else → close overlay if open, exit mode, let original click proceed
+    if (elementOverlay) {
+      hideElementOverlay();
+    }
+    exit();
+  };
+
+  // ─── Public API ────────────────────────────────
+
+  const enter = () => {
+    if (active) return;
+    active = true;
+    document.body.classList.add(MODE_CLASS);
+    tagCustomizable();
+    showStarterOverlay();
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('click', onDocumentClick, true);
+  };
+
+  const exit = () => {
+    if (!active) return;
+    active = false;
+    document.body.classList.remove(MODE_CLASS);
+    untagCustomizable();
+    hideStarterOverlay();
+    hideElementOverlay();
+    document.removeEventListener('keydown', onKeyDown);
+    document.removeEventListener('click', onDocumentClick, true);
+  };
+
+  const toggle = () => {
+    if (active) exit();
+    else enter();
+  };
+
+  // Apply any saved customizations on every page load
+  applyCustomizations();
+
+  window.OraCustomizer = { enter, exit, toggle };
+})();

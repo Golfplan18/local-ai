@@ -1,0 +1,162 @@
+{
+  "_note": "Provider database for auto-populating model buckets. Maps each provider's models to the 6-bucket tier system. Updated manually or via refresh script.",
+  "_tiers": "local-large | local-small | premium | mid | fast | free",
+  "_last_updated": "2026-04-15",
+
+  "providers": {
+    "anthropic": {
+      "display_name": "Anthropic (Claude)",
+      "access_methods": ["browser", "api"],
+      "browser_models": [
+        {"id": "claude-opus-4-6",   "name": "Claude Opus 4.6",   "default_tier": "premium", "access": "paid"},
+        {"id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6", "default_tier": "mid",     "access": "free+paid"},
+        {"id": "claude-haiku-4-5",  "name": "Claude Haiku 4.5",  "default_tier": "fast",    "access": "free+paid"}
+      ],
+      "api_models": [
+        {"id": "claude-opus-4-6",   "name": "Claude Opus 4.6",   "model_id": "claude-opus-4-6",   "default_tier": "premium"},
+        {"id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6", "model_id": "claude-sonnet-4-6", "default_tier": "mid"},
+        {"id": "claude-haiku-4-5",  "name": "Claude Haiku 4.5",  "model_id": "claude-haiku-4-5",  "default_tier": "fast"}
+      ]
+    },
+
+    "openai": {
+      "display_name": "OpenAI (ChatGPT)",
+      "access_methods": ["browser", "api"],
+      "browser_models": [
+        {"id": "gpt-5.4",        "name": "GPT-5.4 Thinking",  "default_tier": "premium", "access": "paid"},
+        {"id": "gpt-5.4-pro",    "name": "GPT-5.4 Pro",       "default_tier": "premium", "access": "paid"},
+        {"id": "gpt-5.3",        "name": "GPT-5.3 Instant",   "default_tier": "mid",     "access": "free+paid"},
+        {"id": "gpt-5.3-codex",  "name": "GPT-5.3-Codex",     "default_tier": "mid",     "access": "paid"}
+      ],
+      "api_models": [
+        {"id": "gpt-5.4",       "name": "GPT-5.4",       "model_id": "gpt-5.4",       "default_tier": "premium"},
+        {"id": "gpt-4o",        "name": "GPT-4o",        "model_id": "gpt-4o",        "default_tier": "mid"},
+        {"id": "gpt-4o-mini",   "name": "GPT-4o Mini",   "model_id": "gpt-4o-mini",   "default_tier": "fast"}
+      ]
+    },
+
+    "google": {
+      "display_name": "Google (Gemini)",
+      "access_methods": ["browser", "api"],
+      "browser_models": [
+        {"id": "gemini-3.1-pro",        "name": "Gemini 3.1 Pro",       "default_tier": "premium", "access": "paid"},
+        {"id": "gemini-3-flash",        "name": "Gemini 3 Flash",       "default_tier": "mid",     "access": "free+paid"},
+        {"id": "gemini-3.1-flash-lite", "name": "Gemini 3.1 Flash Lite","default_tier": "fast",    "access": "free+paid"},
+        {"id": "gemini-2.5-pro",        "name": "Gemini 2.5 Pro",       "default_tier": "mid",     "access": "free+paid"},
+        {"id": "gemini-2.5-flash",      "name": "Gemini 2.5 Flash",     "default_tier": "fast",    "access": "free+paid"}
+      ],
+      "api_models": [
+        {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash (free)", "model_id": "models/gemini-2.5-flash", "default_tier": "free"},
+        {"id": "gemini-2.5-pro",   "name": "Gemini 2.5 Pro",          "model_id": "models/gemini-2.5-pro",   "default_tier": "mid"},
+        {"id": "gemini-3-flash",   "name": "Gemini 3 Flash",          "model_id": "models/gemini-3-flash",   "default_tier": "fast"}
+      ]
+    },
+
+    "perplexity": {
+      "display_name": "Perplexity",
+      "access_methods": ["browser"],
+      "browser_models": [
+        {"id": "perplexity-pro",      "name": "Pro Search", "default_tier": "premium", "access": "paid"},
+        {"id": "perplexity-standard", "name": "Standard",   "default_tier": "mid",     "access": "free+paid"}
+      ]
+    },
+
+    "mistral": {
+      "display_name": "Mistral AI",
+      "access_methods": ["browser", "api"],
+      "browser_models": [
+        {"id": "mistral-large",  "name": "Mistral Large",  "default_tier": "premium", "access": "paid"},
+        {"id": "mistral-medium", "name": "Mistral Medium", "default_tier": "mid",     "access": "free+paid"},
+        {"id": "mistral-small",  "name": "Mistral Small",  "default_tier": "free",    "access": "free"}
+      ]
+    },
+
+    "microsoft": {
+      "display_name": "Microsoft Copilot",
+      "access_methods": ["browser"],
+      "browser_models": [
+        {"id": "copilot-creative", "name": "Creative", "default_tier": "mid", "access": "free+paid"},
+        {"id": "copilot-balanced", "name": "Balanced", "default_tier": "mid", "access": "free+paid"},
+        {"id": "copilot-precise",  "name": "Precise",  "default_tier": "mid", "access": "free+paid"}
+      ]
+    },
+
+    "deepseek": {
+      "display_name": "DeepSeek",
+      "access_methods": ["browser", "api"],
+      "browser_models": [
+        {"id": "deepseek-r1", "name": "DeepSeek-R1", "default_tier": "free", "access": "free"},
+        {"id": "deepseek-v3", "name": "DeepSeek-V3", "default_tier": "free", "access": "free"}
+      ],
+      "api_models": [
+        {"id": "deepseek-r1",   "name": "DeepSeek R1",   "model_id": "deepseek-reasoner", "default_tier": "fast"},
+        {"id": "deepseek-chat", "name": "DeepSeek Chat",  "model_id": "deepseek-chat",     "default_tier": "fast"}
+      ]
+    },
+
+    "xai": {
+      "display_name": "xAI (Grok)",
+      "access_methods": ["browser", "api"],
+      "browser_models": [
+        {"id": "grok-3",      "name": "Grok 3",      "default_tier": "premium", "access": "paid"},
+        {"id": "grok-3-mini", "name": "Grok 3 Mini", "default_tier": "fast",    "access": "free+paid"}
+      ]
+    },
+
+    "poe": {
+      "display_name": "Poe (aggregator)",
+      "access_methods": ["browser"],
+      "browser_models": [
+        {"id": "poe-claude-opus", "name": "Claude-Opus (via Poe)", "default_tier": "premium", "access": "paid"},
+        {"id": "poe-gpt-5",      "name": "GPT-5 (via Poe)",       "default_tier": "premium", "access": "paid"},
+        {"id": "poe-assistant",   "name": "Assistant",              "default_tier": "free",    "access": "free"}
+      ]
+    },
+
+    "huggingface": {
+      "display_name": "HuggingChat",
+      "access_methods": ["browser"],
+      "browser_models": [
+        {"id": "huggingchat-llama-3.3-70b", "name": "Llama 3.3 70B",  "default_tier": "free", "access": "free"},
+        {"id": "huggingchat-qwen-2.5-72b",  "name": "Qwen 2.5 72B",   "default_tier": "free", "access": "free"},
+        {"id": "huggingchat-mistral-nemo",   "name": "Mistral Nemo",   "default_tier": "free", "access": "free"}
+      ]
+    },
+
+    "meta": {
+      "display_name": "Meta AI",
+      "access_methods": ["browser"],
+      "browser_models": [
+        {"id": "meta-ai-llama", "name": "Meta AI (Llama)", "default_tier": "free", "access": "free"}
+      ]
+    },
+
+    "cohere": {
+      "display_name": "Cohere",
+      "access_methods": ["browser", "api"],
+      "browser_models": [
+        {"id": "command-a",      "name": "Command A",  "default_tier": "free", "access": "free"},
+        {"id": "command-r-plus", "name": "Command R+", "default_tier": "free", "access": "free"},
+        {"id": "command-r",      "name": "Command R",  "default_tier": "free", "access": "free"}
+      ]
+    },
+
+    "groq": {
+      "display_name": "Groq",
+      "access_methods": ["api"],
+      "api_models": [
+        {"id": "groq-llama-3.3-70b", "name": "Llama 3.3 70B (Groq)", "model_id": "llama-3.3-70b-versatile", "default_tier": "free"},
+        {"id": "groq-llama-3.1-8b",  "name": "Llama 3.1 8B (Groq)",  "model_id": "llama-3.1-8b-instant",    "default_tier": "free"}
+      ]
+    }
+  },
+
+  "tier_descriptions": {
+    "local-large":  "Local models 40B+ parameters. Zero cost, hardware-bound.",
+    "local-small":  "Local models under 40B. Zero cost, fast, utility work.",
+    "premium":      "Best commercial offering per provider. Maximum quality, highest cost or strictest rate limits.",
+    "mid":          "Capable commercial models. Good quality, moderate cost.",
+    "fast":         "Speed-optimized commercial. Quick responses, low cost per query.",
+    "free":         "Zero-cost endpoints. Reasonable quality, rate limits apply."
+  }
+}

@@ -6,7 +6,7 @@ import json
 import os
 import subprocess
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 HOOKS_DIR = os.path.join(WORKSPACE, "config/hooks/")
 
 _hooks: list[dict] = []

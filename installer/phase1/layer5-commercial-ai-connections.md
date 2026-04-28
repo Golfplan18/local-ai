@@ -126,14 +126,14 @@ This layer configures Playwright browser automation to access commercial AI serv
 
       **macOS — LaunchAgents:**
 
-      For each detected browser, generate a `.plist` file at `~/Library/LaunchAgents/com.local-ai.[browser]-sessions.plist`. The plist must:
+      For each detected browser, generate a `.plist` file at `~/Library/LaunchAgents/com.ora-ai.[browser]-sessions.plist`. The plist must:
       - Set `WatchPaths` to the browser's lock file path (Chrome, Firefox) or the cookies file path (Safari).
       - Call `python3 [workspace]/config/refresh-sessions.py [browser]`.
       - Use the full absolute path to the Python executable (from `which python3`).
       - Set `RunAtLoad` to false — only trigger on file change.
       - Redirect stdout and stderr to `[workspace]/config/session-refresh.log`.
 
-      Load each agent: `launchctl load ~/Library/LaunchAgents/com.local-ai.[browser]-sessions.plist`
+      Load each agent: `launchctl load ~/Library/LaunchAgents/com.ora-ai.[browser]-sessions.plist`
 
       Note on Safari: because Safari's cookies file changes while the browser is running (not just on quit), the WatchPaths trigger fires frequently during a Safari session. The `pgrep Safari` check in the script ensures extraction only happens when Safari is actually closed. The frequent triggering is harmless — the script exits in under a second if Safari is still running.
 
@@ -148,7 +148,7 @@ This layer configures Playwright browser automation to access commercial AI serv
    e. **Verify LaunchAgents are registered (macOS):**
 
       ```
-      launchctl list | grep com.local-ai
+      launchctl list | grep com.ora-ai
       ```
 
       All agents should appear with status `0` (idle, waiting for trigger). A status of `0` is correct — it means the agent is loaded and watching.

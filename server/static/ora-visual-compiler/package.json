@@ -1,0 +1,12 @@
+{
+  "name": "ora-visual-compiler",
+  "version": "0.1.0",
+  "description": "Client-side Ora visual compiler. The tools/ directory hosts Node CLIs that reuse the compiler headlessly (jsdom) for server-side SVG emission.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "render-envelope": "node tools/render-envelope.js",
+    "test": "node tests/run.js",
+    "test:cli": "node tests/test-render-envelope-cli.js"
+  }
+}

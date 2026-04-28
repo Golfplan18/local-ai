@@ -22,20 +22,38 @@ import re
 import sys
 from datetime import datetime
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 MODELS_JSON = os.path.join(WORKSPACE, "config/browser-models.json")
 SESSION_DIR = os.path.join(WORKSPACE, "config/browser-sessions/")
 
 SERVICE_NAMES = {
-    "claude": "Claude",
-    "chatgpt": "ChatGPT",
-    "gemini": "Gemini",
+    "claude":     "Claude",
+    "chatgpt":    "ChatGPT",
+    "gemini":     "Gemini",
+    "perplexity": "Perplexity",
+    "mistral":    "Mistral",
+    "copilot":    "Copilot",
+    "deepseek":   "DeepSeek",
+    "grok":       "Grok",
+    "poe":        "Poe",
+    "huggingchat":"HuggingChat",
+    "meta_ai":    "Meta AI",
+    "cohere":     "Cohere",
 }
 
 SERVICE_URLS = {
-    "claude": "https://claude.ai/new",
-    "chatgpt": "https://chatgpt.com/",
-    "gemini": "https://gemini.google.com/app",
+    "claude":     "https://claude.ai/new",
+    "chatgpt":    "https://chatgpt.com/",
+    "gemini":     "https://gemini.google.com/app",
+    "perplexity": "https://www.perplexity.ai/",
+    "mistral":    "https://chat.mistral.ai/chat",
+    "copilot":    "https://copilot.microsoft.com/",
+    "deepseek":   "https://chat.deepseek.com/",
+    "grok":       "https://grok.com/",
+    "poe":        "https://poe.com/",
+    "huggingchat":"https://huggingface.co/chat/",
+    "meta_ai":    "https://www.meta.ai/",
+    "cohere":     "https://coral.cohere.com/",
 }
 
 # ── Noise filters ─────────────────────────────────────────────────────────
@@ -121,10 +139,18 @@ def save_models(data: dict):
 
 # ── Display ───────────────────────────────────────────────────────────────
 
+def _service_keys(data: dict) -> list:
+    """Return service keys present in the model registry, in a stable order."""
+    # Preferred display order: big-3 first, then alphabetical remainder
+    preferred = ["claude", "chatgpt", "gemini"]
+    rest = sorted(k for k in data if k not in preferred and k != "_note")
+    return [k for k in preferred if k in data] + rest
+
+
 def show_selections(data: dict):
     """Display current model selections."""
     print("\n  Current Model Selections:\n")
-    for key in ("claude", "chatgpt", "gemini"):
+    for key in _service_keys(data):
         svc = data.get(key)
         if not svc:
             continue
@@ -150,7 +176,7 @@ def show_selections(data: dict):
 
 def show_full_list(data: dict):
     """Show all models including retired ones."""
-    for key in ("claude", "chatgpt", "gemini"):
+    for key in _service_keys(data):
         svc = data.get(key)
         if not svc:
             continue
@@ -315,7 +341,7 @@ def auto_refresh(headless: bool = True):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
 
-        for key in ("claude", "chatgpt", "gemini"):
+        for key in _service_keys(data):
             svc = data.get(key)
             if not svc:
                 continue
@@ -581,10 +607,12 @@ def remove_model(data: dict, service: str):
 def interactive_mode(data: dict):
     """Main interactive loop."""
     show_selections(data)
+    valid_services = set(_service_keys(data))
 
     while True:
+        svc_list = " / ".join(_service_keys(data))
         print("  Commands:")
-        print("    claude / chatgpt / gemini  — change model for a service")
+        print(f"    <service>                  — change model ({svc_list})")
         print("    list                       — show all models including retired")
         print("    tier <service>             — set tier for new models")
         print("    restore <service>          — restore a retired model")
@@ -606,29 +634,29 @@ def interactive_mode(data: dict):
             show_selections(data)
         elif cmd == "list":
             show_full_list(data)
-        elif cmd in ("claude", "chatgpt", "gemini"):
+        elif cmd in valid_services:
             select_model(data, cmd)
         elif cmd.startswith("tier "):
             service = cmd.split()[1] if len(cmd.split()) > 1 else ""
-            if service in ("claude", "chatgpt", "gemini"):
+            if service in valid_services:
                 set_tier(data, service)
             else:
                 print(f"  Unknown service: {service}")
         elif cmd.startswith("restore "):
             service = cmd.split()[1] if len(cmd.split()) > 1 else ""
-            if service in ("claude", "chatgpt", "gemini"):
+            if service in valid_services:
                 restore_model(data, service)
             else:
                 print(f"  Unknown service: {service}")
         elif cmd.startswith("add "):
             service = cmd.split()[1] if len(cmd.split()) > 1 else ""
-            if service in ("claude", "chatgpt", "gemini"):
+            if service in valid_services:
                 add_model(data, service)
             else:
                 print(f"  Unknown service: {service}")
         elif cmd.startswith("remove "):
             service = cmd.split()[1] if len(cmd.split()) > 1 else ""
-            if service in ("claude", "chatgpt", "gemini"):
+            if service in valid_services:
                 remove_model(data, service)
             else:
                 print(f"  Unknown service: {service}")

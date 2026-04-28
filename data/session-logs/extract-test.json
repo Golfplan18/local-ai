@@ -1,0 +1,12 @@
+{
+  "session_id": "extract-test",
+  "timestamp": "2026-04-14T17:00:00",
+  "mode": "exploratory",
+  "gear": 1,
+  "models_used": [],
+  "rag_resources": [],
+  "token_consumption": {},
+  "budget_signals": [],
+  "prompt_length": 27,
+  "output_length": 495
+}

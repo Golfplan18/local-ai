@@ -8,7 +8,7 @@ import threading
 import time
 from datetime import datetime
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 REGISTRY_PATH = os.path.join(WORKSPACE, "config/scheduled-tasks.json")
 OUTPUT_DIR = os.path.join(WORKSPACE, "output/scheduled/")
 

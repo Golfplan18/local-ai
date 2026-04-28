@@ -1,0 +1,17 @@
+vega-lite 6.4.2
+BSD-3-Clause
+source: npm pack vega-lite@6.4.2 (https://registry.npmjs.org/vega-lite/-/vega-lite-6.4.2.tgz)
+file: build/vega-lite.min.js
+sha: see npm integrity; verify with `npm view vega-lite@6.4.2 dist.integrity`
+vendored: 2026-04-17 as part of WP-1.2a
+
+Peer dependency: vega (loaded as UMD global `vega` before this bundle).
+Vega-lite's UMD bundle expects `window.vega` to be defined, so vega.min.js
+MUST load first.
+
+To refresh:
+  cd /tmp && npm pack vega-lite@<new-version>
+  tar -xzf vega-lite-<new-version>.tgz
+  cp package/build/vega-lite.min.js ~/ora/server/static/ora-visual-compiler/vendor/vega-lite/
+  cp package/LICENSE ~/ora/server/static/ora-visual-compiler/vendor/vega-lite/
+  # Update this VERSION file and confirm the matching vega major works.

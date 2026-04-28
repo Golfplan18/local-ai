@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/concept_map.json",
+  "title": "Concept map spec (RELATIONAL family, CXL-shaped)",
+  "description": "Per Protocol \u00a73.14. Every proposition must reference declared concept/phrase IDs (enforced by integrity checker); soft warning if no cross-links are present.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["focus_question", "concepts", "linking_phrases", "propositions"],
+  "properties": {
+    "focus_question": { "type": "string", "minLength": 1 },
+    "concepts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "hierarchy_level"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "hierarchy_level": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "linking_phrases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "text": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "propositions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from_concept", "via_phrase", "to_concept"],
+        "properties": {
+          "from_concept": { "type": "string", "minLength": 1 },
+          "via_phrase": { "type": "string", "minLength": 1 },
+          "to_concept": { "type": "string", "minLength": 1 },
+          "is_cross_link": { "type": "boolean", "default": false }
+        }
+      }
+    }
+  }
+}

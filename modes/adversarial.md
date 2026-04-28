@@ -1,0 +1,230 @@
+---
+nexus: obsidian
+type: mode
+date created: 2026/04/24
+date modified: 2026/04/24
+rebuild_phase: catch-all
+meta_mode: true
+---
+
+# MODE: Adversarial
+
+## TRIGGER CONDITIONS
+
+Positive:
+1. The prompt is too complex for Standard (Gear 2) — needs adversarial review to produce a defensible answer — but does not cleanly match any specific analytical mode (root-cause, constraint-mapping, systems-dynamics, etc.).
+2. The prompt involves real stakes or consequential recommendations the user will act on.
+3. The prompt sits at the intersection of multiple specific modes and no single one dominates.
+4. The classifier is uncertain between Standard and a specific mode — escalating to Adversarial is safer than a cheap answer on a heavy question. "When in doubt, go heavier."
+
+Negative:
+- IF the prompt matches a specific analytical mode cleanly → route to that mode.
+- IF the prompt is moderate reasoning with no adversarial need → **Standard**.
+- IF the prompt is trivial → **Simple**.
+
+## EPISTEMOLOGICAL POSTURE
+
+Take the question seriously and run the full adversarial pipeline. Unlike the specific analytical modes, Adversarial makes no special framework request of the analyst — it does not demand a fishbone diagram, a CLD, or a decision tree. It asks only that the analyst produce the most defensible answer to the prompt and that every downstream stage (evaluator, reviser, verifier) apply its universal contract with full rigor.
+
+This mode is the place where "the pipeline does the work." The analyst answers, the evaluator finds fixes and suggestions, the reviser closes them, the verifier checks including V8 (factual accuracy). No mode-specific shape is imposed on the output — but every universal check fires.
+
+## DEFAULT GEAR
+
+Gear 3. Sequential adversarial (Depth analyst → Breadth evaluator → reviser → verifier). Adversarial is the Gear 3 catch-all: when the classifier is uncertain between Standard and a specific analytical mode, route here. When in doubt, go heavier.
+
+Escalation to Gear 4 is permitted if the prompt visibly requires parallel depth + breadth streams — but Adversarial's default home is Gear 3.
+
+## RAG PROFILE
+
+**Retrieve (prioritise):** sources that directly inform the question; reference material and authoritative explanations; relevant prior-conversation context.
+
+**Deprioritise:** nothing in particular — the mode is domain-agnostic, so the retriever should rank by relevance to the prompt rather than by relationship type.
+
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritise:** `explains`, `contradicts`, `supports`, `qualifies`
+**Deprioritise:** none
+**Rationale:** Adversarial needs both supporting and contradicting sources — contradictions feed the evaluator's MANDATORY FIXES work.
+
+
+### RAG PROFILE — INPUT SPEC
+
+| Field | Purpose |
+|---|---|
+| `cleaned_prompt` | The user's question. |
+| `conversation_rag` | Prior turns that frame the current question. |
+| `concept_rag` | Mental models or frameworks relevant to the domain. |
+
+
+### RAG PROFILE — CONTEXT BUDGET
+
+```
+fixed_overhead_tokens: moderate
+analytical_floor_tokens: high
+conversation_history_soft_ceiling: 0.4
+retrieval_approach: auto
+```
+
+## DEPTH MODEL INSTRUCTIONS
+
+White Hat:
+1. Produce the most defensible answer to the prompt. Name the reasoning steps and the load-bearing assumptions.
+2. Cite the sources that support the answer.
+
+Black Hat:
+1. Identify the answer's weakest link — the claim most likely to be wrong or the assumption most likely to fail.
+2. State the strongest objection to the answer and whether it is decisive.
+
+### Cascade — what to leave for the evaluator
+
+- Name the load-bearing assumption explicitly so the evaluator can scrutinize it.
+- Name the reasoning step most open to challenge.
+- Distinguish "established fact" from "plausible inference" in prose — the verifier's V8 pass relies on this distinction to catch over-confident claims.
+
+### Consolidator guidance
+
+If promoted to Gear 4: merge both streams' answers, preserving divergence where it exists rather than averaging. Convergent claims are strengthened; divergent claims are presented as tensions with a named reason for each side.
+
+## BREADTH MODEL INSTRUCTIONS
+
+Green Hat:
+1. Offer the answer that best fits the prompt, the retrieved context, and the user's stated frame.
+2. Surface any alternative answer that a reasonable analyst would arrive at from a different starting frame — but do not manufacture alternatives for their own sake.
+
+Yellow Hat:
+1. Identify what is most useful about the answer for the user's likely purpose.
+2. Flag any opportunity the answer opens that the analyst did not name.
+
+### Cascade — what to leave for the evaluator
+
+- Name the alternative frame that most changes the answer (even if Breadth does not pursue it).
+- Distinguish "this answer is correct within frame X" from "this answer is universally correct" so the evaluator can challenge the frame if appropriate.
+
+## EVALUATION CRITERIA
+
+Universal evaluator contract (f-evaluate.md) applies. Adversarial makes no mode-specific additions — that is the point of a catch-all mode.
+
+### Focus for this mode
+
+A strong Adversarial evaluator prioritises:
+1. **Load-bearing assumption scrutiny (M1).** Is the answer's load-bearing assumption named and defensible?
+2. **Factual defensibility (M2).** Are the factual claims grounded and the high-risk claims hedged appropriately? This preps the V8 pass at verification.
+3. **Alternative-frame handling (M3).** Was a reasonable alternative frame considered, or is the answer stuck in one framing without awareness?
+4. **Proportional commitment (M4).** Does the answer commit where commitment is warranted, and hedge where hedging is honest? Both over-hedging and over-commitment are failures.
+
+### Suggestion templates per criterion
+
+- **M1 (unnamed assumption):** `suggested_change`: "Insert a sentence naming the load-bearing assumption: 'This answer assumes <X>; if <X> does not hold, the answer changes to <Y>.'"
+- **M2 (unhedged high-risk claim):** `suggested_change`: "Hedge the claim with a specific qualifier ('approximately', 'as of <date>', 'in the <domain> context') or cite a source from the retrieved context."
+- **M3 (missing alternative frame):** `suggested_change`: "Add a paragraph naming the most plausible alternative frame and what it would change about the answer."
+- **M4 (over-hedge or over-commit):** `suggested_change`: "Match hedge level to evidence level: state high-confidence claims plainly; hedge low-confidence claims specifically."
+
+### Known failure modes to call out
+
+- **The Unhedged Assertion Trap** → mandatory fix: "Unsupported high-risk claim (specific number, named entity, direct quote). Add hedge or cite source."
+- **The Hidden Assumption Trap** → mandatory fix: "Answer depends on unstated premise. Name it."
+- **The One-Frame Trap** → open: "Answer is framed from one perspective without awareness of alternatives. Add alternative-frame acknowledgment."
+- **The Ceremonial Hedging Trap** → open: "Hedges are generic ('many experts disagree', 'this is complex') rather than specific. Replace with claim-level qualifiers or drop."
+
+### Verifier checks for this mode
+
+Universal V1-V8 apply. No mode-specific verifier checks are required — the V8 factual accuracy check is the primary Adversarial catch, and it is universal. Do not add redundant mode-level checks that restate V8.
+
+## CONTENT CONTRACT
+
+Prose response. Structure (sections, headings, numbered points) only when the reasoning benefits from it or when the prompt explicitly asks for it. No envelope by default.
+
+Required prose elements:
+1. The answer, stated directly.
+2. The load-bearing assumption, named.
+3. The reasoning step most open to challenge, named.
+4. A brief treatment of the most plausible alternative frame, when one exists.
+
+### Reviser guidance per criterion
+
+- **M1 (unnamed assumption):** insert one sentence naming the assumption.
+- **M2 (unhedged claim):** add specific qualifier OR cite source OR drop the claim.
+- **M3 (missing alternative frame):** add one paragraph on the alternative frame and its implications.
+- **M4 (over-hedge):** cut ceremonial hedges; replace with claim-level qualifiers where genuine uncertainty exists.
+
+## EMISSION CONTRACT
+
+No envelope by default. Adversarial is prose-first. An envelope may be emitted only if the reasoning genuinely benefits from a visual AND the type maps cleanly to an existing compiler registry type.
+
+### Envelope type
+
+None by default. If a visual helps, prefer the simplest appropriate type from the compiler registry (concept_map, decision_tree, pro_con, etc.). Do not force a specific type as a mode-mandated artifact.
+
+### Emission rules
+
+1. No `ora-visual` fence unless the reasoning genuinely benefits from a visual.
+2. Prose response that directly answers the prompt, names the assumption, names the reasoning-open-to-challenge, and treats the alternative frame.
+3. Structure only when it earns its keep.
+
+### What NOT to emit
+
+- A forced envelope of a type not genuinely useful for the prompt.
+- A mode-specific framework (root-cause chain, constraint map) that the prompt did not call for.
+- Ceremonial hedges.
+- Restating the question before answering.
+
+## GUARD RAILS
+
+**Catch-all guard rail.** Adversarial is for complex prompts that don't fit a specific analytical mode. Do not retrofit a specific framework (root-cause, fishbone, CLD) onto an Adversarial-routed prompt. Let the answer take the shape the question demands.
+
+**"When in doubt, go heavier" guard rail.** If the classifier was uncertain between Standard and Adversarial and chose Adversarial, honor the choice — run the full pipeline even if the prompt in retrospect looks like it could have been handled by Standard. A slightly over-reviewed answer is better than an under-reviewed one.
+
+**Universal-only guard rail.** Adversarial relies on the universal evaluator, reviser, and verifier contracts (f-evaluate.md, f-revise.md, f-verify.md). Do not add mode-specific checks or criteria that duplicate the universal floor — that floor is deliberate, and Adversarial is the mode that runs on it alone.
+
+**V8 emphasis guard rail.** Because Adversarial answers often touch factual territory (the analyst has no domain framework to constrain claims), the verifier's V8 factual-accuracy pass is the load-bearing check for this mode. The analyst must make V8's job easier by distinguishing "established" from "plausible" claims in prose.
+
+## SUCCESS CRITERIA
+
+Structural (machine):
+- S1: no `ora-visual` fence unless the reasoning genuinely benefits from one.
+- S2: response is prose (subheadings only when earning their keep).
+
+Semantic (LLM-reviewer):
+- M1: load-bearing assumption is named.
+- M2: factual claims are grounded or hedged; high-risk claims carry qualifiers or citations.
+- M3: alternative frame is treated when a plausible one exists.
+- M4: commitment level is proportional to evidence level (no over-hedge, no over-commit).
+
+Composite:
+- C1: the response answers the prompt directly in the first or second sentence.
+- C2: the prose's "reasoning-open-to-challenge" sentence names something the evaluator can actually challenge (not a ceremonial hedge).
+
+```yaml
+success_criteria:
+  mode: adversarial
+  version: 1
+  envelope_optional: true
+  no_envelope: true
+  structural:
+    - { id: S1, check: no_envelope_unless_justified }
+    - { id: S2, check: headings_only_when_earning_keep }
+  semantic:
+    - { id: M1, check: assumption_named }
+    - { id: M2, check: factual_claims_grounded_or_hedged }
+    - { id: M3, check: alternative_frame_treated_when_plausible }
+    - { id: M4, check: commitment_proportional_to_evidence }
+  composite:
+    - { id: C1, check: direct_answer_first_or_second_sentence }
+    - { id: C2, check: challengeable_open_step_named }
+  acceptance: { tier_a_threshold: 0.85,
+                structural_must_all_pass: true,
+                semantic_min_pass: 0.75, composite_min_pass: 0.75 }
+```
+
+## KNOWN FAILURE MODES
+
+**The Specific-Mode Retrofit Trap.** Treating the prompt as if it were root-cause-analysis, decision-under-uncertainty, or systems-dynamics when it wasn't asked for. Adversarial does not manufacture frameworks — the answer takes the shape the question demands.
+
+**The Ceremonial Hedge Trap.** Padding the response with generic hedges ("it's complex", "many experts disagree") that don't track specific uncertainties. Correction: hedge at the claim level, cite sources, or commit.
+
+**The Unhedged Assertion Trap.** Asserting specific numbers, named entities, or direct quotes without grounding. This is V8's primary catch — the analyst should preempt it by distinguishing "established" from "plausible" claims in prose.
+
+**The One-Frame Trap.** Answering from one framing without acknowledging that a different starting frame would change the answer. Correction: when a plausible alternative frame exists, name it briefly.
+
+**The Universal-Duplication Trap.** Adding mode-specific verifier checks that restate V1-V8. Adversarial's whole point is that the universal floor is the contract — do not duplicate it.

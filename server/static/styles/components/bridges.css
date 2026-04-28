@@ -1,0 +1,85 @@
+/* ============================================================
+   Bridges — draggable strips between panes
+   Three variants:
+   - .bridge-strip       (left bridge, between input and output)
+   - .bridge-strip-right (right bridge, locked to left bridge)
+   - .chatbot-divider    (small divider inside chat zone)
+   ============================================================ */
+
+.bridge-strip {
+  height: var(--ora-bridge-default);
+  flex-shrink: 0;
+  cursor: ns-resize;
+  position: relative;
+}
+.bridge-strip::after {
+  content: '';
+  position: absolute;
+  left: 35%;
+  right: 35%;
+  top: 0;
+  height: 2px;
+  border-radius: 0 0 1px 1px;
+  background: var(--ora-bridge-handle);
+  opacity: 0.50;
+  transition: opacity 0.12s, height 0.12s, left 0.12s, right 0.12s;
+}
+.bridge-strip:hover::after,
+body.dragging .bridge-strip::after {
+  opacity: 0.95;
+  height: 3px;
+  left: 30%;
+  right: 30%;
+}
+
+.bridge-strip-right {
+  height: var(--ora-bridge-default);
+  flex-shrink: 0;
+  cursor: ns-resize;
+  position: relative;
+}
+.bridge-strip-right::after {
+  content: '';
+  position: absolute;
+  left: 35%;
+  right: 35%;
+  top: 0;
+  height: 2px;
+  border-radius: 0 0 1px 1px;
+  background: var(--ora-bridge-handle);
+  opacity: 0.50;
+  transition: opacity 0.12s, height 0.12s, left 0.12s, right 0.12s;
+}
+.bridge-strip-right:hover::after,
+body.dragging .bridge-strip-right::after {
+  opacity: 0.95;
+  height: 3px;
+  left: 30%;
+  right: 30%;
+}
+
+.chatbot-divider {
+  height: 18px;
+  flex-shrink: 0;
+  cursor: ns-resize;
+  position: relative;
+}
+.chatbot-divider::after {
+  content: '';
+  position: absolute;
+  left: 35%;
+  right: 35%;
+  top: 0;
+  height: 2px;
+  border-radius: 0 0 1px 1px;
+  background: var(--ora-bridge-handle);
+  opacity: 0.50;
+  transition: opacity 0.12s, height 0.12s, left 0.12s, right 0.12s;
+}
+.chatbot-divider:hover::after,
+body.chat-dragging .chatbot-divider::after {
+  opacity: 0.95;
+  height: 3px;
+  left: 30%;
+  right: 30%;
+}

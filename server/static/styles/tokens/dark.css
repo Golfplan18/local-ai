@@ -1,0 +1,35 @@
+/* ============================================================
+   Ora Dark Theme — color values for .theme-dark
+   ============================================================ */
+
+.theme-dark {
+  /* Surfaces */
+  --background-primary: rgb(16, 16, 16);
+  --background-secondary: rgb(32, 32, 32);
+  --background-modifier-form-field: rgb(48, 48, 48);
+  --background-modifier-border: rgb(64, 64, 64);
+  --background-modifier-border-focus: rgba(255, 255, 255, 0.35);
+
+  /* Buttons / icons */
+  --interactive-normal: rgb(24, 24, 24);
+  --interactive-hover: rgb(40, 40, 40);
+  --icon-color: rgb(64, 64, 64);
+  --icon-color-hover: rgb(160, 160, 160);
+
+  /* Text */
+  --text-normal: rgb(220, 220, 220);
+  --text-muted: rgb(140, 140, 140);
+  --text-faint: rgb(96, 96, 96);
+
+  /* Hyperlinks — bright sky blue, distinct from H3 cyan */
+  --link-color: #5fa8ff;
+  --link-color-hover: #7db7ff;
+
+  /* Headings — Dracula palette, six distinct hues */
+  --h1-color: #ffb86c;
+  --h2-color: #bd93f9;
+  --h3-color: #8be9fd;
+  --h4-color: #50fa7b;
+  --h5-color: #ff5555;
+  --h6-color: #ff79c6;
+}

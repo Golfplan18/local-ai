@@ -2,7 +2,7 @@
 
 import os
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 VAULT = os.path.expanduser("~/Documents/vault/")
 CONVERSATIONS = os.path.expanduser("~/Documents/conversations/")
 

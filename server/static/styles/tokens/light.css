@@ -1,0 +1,37 @@
+/* ============================================================
+   Ora Light Theme — color values for .theme-light
+   Surface palette inverted from dark (256 - dark value).
+   Heading hues darkened so they read on the light surface.
+   ============================================================ */
+
+.theme-light {
+  /* Surfaces */
+  --background-primary: rgb(240, 240, 240);
+  --background-secondary: rgb(224, 224, 224);
+  --background-modifier-form-field: rgb(208, 208, 208);
+  --background-modifier-border: rgb(192, 192, 192);
+  --background-modifier-border-focus: rgba(1, 1, 1, 0.35);
+
+  /* Buttons / icons */
+  --interactive-normal: rgb(232, 232, 232);
+  --interactive-hover: rgb(216, 216, 216);
+  --icon-color: rgb(192, 192, 192);
+  --icon-color-hover: rgb(96, 96, 96);
+
+  /* Text */
+  --text-normal: rgb(36, 36, 36);
+  --text-muted: rgb(96, 96, 96);
+  --text-faint: rgb(140, 140, 140);
+
+  /* Hyperlinks — saturated blue for contrast on light surface */
+  --link-color: #1565c0;
+  --link-color-hover: #0d47a1;
+
+  /* Headings — Dracula hues, darkened for contrast on light surface */
+  --h1-color: #cc7416;
+  --h2-color: #6b3bd1;
+  --h3-color: #1a8cb3;
+  --h4-color: #1c8c40;
+  --h5-color: #c92020;
+  --h6-color: #c3358e;
+}

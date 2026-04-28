@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/distribution.json",
+  "title": "Distribution plot spec (QUANT family)",
+  "description": "Vega-Lite subset for box / violin / strip / histogram per Protocol \u00a73.1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "data", "mark", "encoding", "caption"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "data": { "type": "object" },
+    "mark": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["boxplot", "bar", "tick", "point", "circle", "area"]
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["boxplot", "bar", "tick", "point", "circle", "area"]
+            }
+          }
+        }
+      ]
+    },
+    "encoding": { "type": "object" },
+    "transform": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Optional Vega-Lite transforms (bin, density, aggregate)."
+    },
+    "title": { "type": "string" },
+    "width": { "type": ["number", "string"] },
+    "height": { "type": ["number", "string"] },
+    "caption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "period", "n", "units"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "period": { "type": "string", "minLength": 1 },
+        "n": { "type": "integer", "minimum": 0 },
+        "units": { "type": "string", "minLength": 1 }
+      }
+    },
+    "config": { "type": "object" }
+  }
+}

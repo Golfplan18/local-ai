@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/decision_tree.json",
+  "title": "Decision tree / probability tree spec (DECISION family)",
+  "description": "Per Protocol \u00a73.7. Probability-sum (1 \u00b1 1e-6), decision-edges-lack-probability, and payoff-required-on-terminals are enforced by the integrity checker. The compiler computes rollback EV.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "root"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["decision", "probability"]
+    },
+    "utility_units": {
+      "type": "string",
+      "description": "Required when mode=decision. Enforced conditionally via allOf."
+    },
+    "root": { "$ref": "#/$defs/node" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "mode": { "const": "decision" } } },
+      "then": {
+        "properties": {
+          "utility_units": { "type": "string" }
+        },
+        "required": ["utility_units"]
+      }
+    }
+  ],
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "label"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["decision", "chance", "terminal"]
+        },
+        "label": { "type": "string", "minLength": 1 },
+        "payoff": { "type": "number" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/edge" }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["edge_label", "node"],
+      "properties": {
+        "edge_label": { "type": "string", "minLength": 1 },
+        "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "payoff": { "type": "number" },
+        "node": { "$ref": "#/$defs/node" }
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-decision_tree",
+  "type": "decision_tree",
+  "mode_context": "root_cause_analysis",
+  "relation_to_prose": "integrated",
+  "spec": {
+    "mode": "decision",
+    "utility_units": "USD",
+    "root": {
+      "kind": "decision",
+      "label": "Invest?",
+      "children": [
+        {
+          "edge_label": "Yes",
+          "node": {
+            "kind": "chance",
+            "label": "Market",
+            "children": [
+              {
+                "edge_label": "Up",
+                "probability": 0.6,
+                "node": {
+                  "kind": "terminal",
+                  "label": "Win",
+                  "payoff": 1000
+                }
+              },
+              {
+                "edge_label": "Down",
+                "probability": 0.4,
+                "node": {
+                  "kind": "terminal",
+                  "label": "Lose",
+                  "payoff": -500
+                }
+              }
+            ]
+          }
+        },
+        {
+          "edge_label": "No",
+          "node": {
+            "kind": "terminal",
+            "label": "Status quo",
+            "payoff": 0
+          }
+        }
+      ]
+    }
+  },
+  "semantic_description": {
+    "level_1_elemental": "Bar chart of four categories with counts on y-axis.",
+    "level_2_statistical": "Max is category C at 42; min is A at 10; spread 32.",
+    "level_3_perceptual": "Two clusters: low (A,B) and high (C,D), no intermediate.",
+    "level_4_contextual": null,
+    "short_alt": "Bar chart of four categories where C is the largest at 42.",
+    "data_table_fallback": null
+  },
+  "title": "Example decision_tree"
+}

@@ -1,0 +1,30 @@
+/* ============================================================
+   Base — element resets and root html/body styling
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: var(--background-primary);
+  color: var(--icon-color);
+  font-family: var(--font-text);
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button:focus-visible,
+textarea:focus-visible {
+  outline: 1px solid var(--background-modifier-border-focus);
+  outline-offset: 2px;
+}

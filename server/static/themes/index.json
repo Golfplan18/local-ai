@@ -1,0 +1,16 @@
+{
+  "themes": [
+    {
+      "id": "default",
+      "name": "Ora Default",
+      "directory": "default",
+      "bundled": true
+    },
+    {
+      "id": "dracula-official",
+      "name": "Dracula Official",
+      "directory": "dracula-official",
+      "bundled": false
+    }
+  ]
+}

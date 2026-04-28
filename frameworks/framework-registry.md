@@ -4,7 +4,7 @@ nexus: wisdom_nexus
 type: engram
 writing: no
 date created: 2026/04/01
-date modified: 2026/04/01
+date modified: 2026/04/23
 ---
 
 # Framework Registry
@@ -26,10 +26,11 @@ Each framework has one entry with these fields:
 - **Provenance:** human-created | agent-created
 - **Confidence:** low | medium | high
 - **Version:** Semantic version number
+- **Delivers:** One-line summary per milestone type this framework can deliver (semicolon-separated; see the framework's Milestones Delivered section for detail)
 
 ## Maintenance Protocol
 
-- New entries are added whenever the FCF produces a framework (the FCF includes registry entry generation as a standard output step).
+- New entries are added whenever the PFF produces a framework (the PFF includes registry entry generation as a standard output step).
 - Entries are updated when frameworks are modified — the version number increments and proven applications are updated.
 - When two frameworks consistently compete for the same problem class in search results, review for merger, differentiation, or deprecation.
 - Agent-created frameworks enter at confidence: low. Confidence upgrades to medium after 3+ successful diverse applications, high after 10+.
@@ -49,42 +50,85 @@ Each framework has one entry with these fields:
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** v4 (Layers 1–12)
+- **Delivers:** Working Ora system installed on target machine at the highest tier the hardware supports (Tier 0 through Tier C, with universal Phase 1 base and additive Phase 2 local-model capability where hardware permits)
 
-### Framework Creation
+### Knowledge Artifact Coach
+- **Purpose:** Transform raw ideas, documents, document batches, or existing notes into vault-ready draft notes with classification, atomic excavation, grammar-rule enforcement, and relationship mapping
+- **Problem Class:** Knowledge capture and artifact production for vault
+- **Input Summary:** Mode A: raw idea / brain dump. Mode B: single existing document. Mode C: multiple documents in one session. Mode D: existing vault note for refinement.
+- **Output Summary:** Vault-ready draft notes with suggested YAML frontmatter, tags, and relationship maps; atomic extraction attempted where applicable; cross-document relationships mapped in Mode C; replacement or fresh draft in Mode D
+- **Proven Applications:** Version 5.0 — used for atomic note production, document analysis, and note refinement across the vault. Version 6.0 (2026-04-23) — F-Convert pass brought the framework into Process Formalization Framework v2.0 Anatomy conformance: formal Input/Output Contracts, 9-criterion Evaluation Criteria with 5-level rubrics, Layers 1–8 (absorbing the four mode protocols with mode-specific paths), Self-Evaluation layer with correction trigger and calibration warning, Error Correction and Output Formatting layer, Execution Commands block, 17 named failure modes (16 v5.0 preserved + Fabricated Connection Trap added for confabulation coverage), invariant checks at Layer boundaries 1–6
+- **Known Limitations:** Atomic excavation relies on the user accepting active extraction despite a top-down thinking preference; Mode D refinement does not rewrite notes that are structurally sound; v6.0 retains v5.0 binary quality checks in Layer 5 alongside the rubric scoring (dual structure by design; see Appendix E F-Convert Change Log for rationale)
+- **File Location:** frameworks/book/knowledge-artifact-coach.md
+- **Provenance:** human-created
+- **Confidence:** high
+- **Version:** 6.0
+- **Delivers:** Raw-idea extraction set with classified vault-ready draft notes and atomic excavation attempted (Mode A); document extraction set from a single document with buried atomic notes extracted and relationship map produced (Mode B); batch extraction set across multiple documents with cross-document relationships and deduplication (Mode C); refined note draft produced by evaluating an existing note against its type-appropriate quality checks (Mode D)
+
+### Problem Evolution
+- **Purpose:** Iterative problem definition and project supervision — turn raw epistemic tension into a structured Problem Evolution Document with MOM-populated strategic hierarchy (Mission, Excluded Outcomes, Constraints, Objectives, Active/Aspirational Milestones), keep it current across iterations, supervise Active milestones via Excluded Outcomes drift checks, execute Aspirational-to-Active promotion with P-Feasibility re-checks, and invoke downstream frameworks (MOM, TMF, PIF, PFF) as needed
+- **Problem Class:** Problem definition, project supervision, Lock-protected strategic-hierarchy management, diagnostic routing
+- **Input Summary:** PE-Init: raw tension, idea, or goal description. PE-Iterate: existing Problem Evolution Document plus recap of work since last iteration (or Active milestone completion report for supervision drift check). PE-Review: existing PED. PE-Spawn: parent PED plus sub-problem description.
+- **Output Summary:** Problem Evolution Document (new or updated) with problem definition, Mission (Resolution Statement, Excluded Outcomes), Constraints (Hard/Soft/Working Assumption), Objectives, Active Milestones (with P-Feasibility verdicts) + Aspirational Milestones, Terrain Maps references, phase assessment, diagnostic findings, supervision drift-check findings, Promotion Protocol events, recommended next actions with Constructive Escalation advice form, Decision Log, iteration history; Challenge Summary; Readiness Assessment for PIF or PFF handoff; Sub-Project Spawn Specifications (PE-Spawn only); status summary (PE-Review only, PED not modified); No-Punt Escalation forwarding (when MOM Outcome 3 or TMF Escalation Package fires)
+- **Proven Applications:** Used for Capability Dispatch project definition; Version 2.0 landed 2026-04-23 with MOM auto-invocation, Universal Problem-Definition Lock, Constructive Escalation (No-Punt) Rule, Active/Aspirational milestone supervision, Excluded Outcomes drift detection, and Terrain Mapping Framework invocation path
+- **Known Limitations:** Challenge quality depends on diagnostic depth of the analyst; readiness-for-handoff assessments are advisory — user ultimately decides; MOM invocation depends on MOM availability; TMF invocation on Outcome 2 depends on TMF availability; Promotion Protocol's P-Feasibility re-check depends on PIF availability
+- **File Location:** frameworks/book/problem-evolution.md (executable); ~/Documents/vault/Framework — Problem Evolution.md (canonical)
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 2.0
+- **Delivers:** Initial Problem Evolution Document with MOM-populated Mission/Objectives/Constraints/Milestones from a raw tension, idea, or goal (PE-Init); advanced Problem Evolution Document with new iteration entry covering MOM drift refresh, TMF invocation outcomes, supervision drift checks against Excluded Outcomes, and Promotion Protocol events (PE-Iterate); status summary of a Problem Evolution Document without advancing it (PE-Review); sub-project Problem Evolution Document with its own MOM-populated strategic hierarchy linked to a parent project (PE-Spawn)
+
+### Process Formalization
 - **Purpose:** Design, convert, render, and audit AI instruction frameworks to a standardized canonical specification
 - **Problem Class:** Framework design and knowledge capture
 - **Input Summary:** A task description (F-Design), an existing framework (F-Convert), a canonical spec (F-Render), or a framework for review (F-Audit)
 - **Output Summary:** Canonical framework specification; rendered execution variants; framework registry entry
 - **Proven Applications:** Multiple frameworks produced across all four modes (F-Design, F-Convert, F-Render, F-Audit)
 - **Known Limitations:** Requires human judgment to define evaluation criteria; template-filling failure mode when instructions are ambiguous
-- **File Location:** frameworks/book/framework-creation.md
+- **File Location:** frameworks/book/process-formalization.md
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 2.0
+- **Delivers:** New framework specifications (F-Design); modernized framework specifications (F-Convert); rendered execution variants (F-Render); framework audit reports (F-Audit)
 
 ### Process Inference
 - **Purpose:** Discover unknown transformation processes from defined endpoints when the user knows what they have and what they want but not the path between them
 - **Problem Class:** Process discovery and formalization
 - **Input Summary:** Current state description; desired end state description; available resources and constraints
-- **Output Summary:** Inferred process map with decision points; Formalization Handoff Package for FCF conversion
+- **Output Summary:** Inferred process map with decision points; Formalization Handoff Package for PFF conversion
 - **Proven Applications:** Initial version — tested against process discovery scenarios
 - **Known Limitations:** Requires honest endpoint definition; confabulation risk when constraints are underspecified
 - **File Location:** frameworks/book/process-inference.md
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
+- **Delivers:** Discovered transformation paths (P-Infer); failure diagnoses (P-Debug); decomposed subproblem sets (P-Decompose); formalization handoff packages (P-Formalize); feasibility verdicts (P-Feasibility)
 
-### Soul Framework
-- **Purpose:** Interview the user about their values, communication preferences, and behavioral boundaries, then generate or update soul.md
-- **Problem Class:** AI identity and behavioral configuration
-- **Input Summary:** User responses to structured interview about tone, directness, ethics, and operating principles
-- **Output Summary:** soul.md — a persistent values guideline loaded into every session
-- **Proven Applications:** Personal AI identity configuration
-- **Known Limitations:** Output quality depends on depth and honesty of user interview responses
-- **File Location:** frameworks/book/soul-framework.md
+### Mission, Objectives, and Milestones Clarification
+- **Purpose:** Convert a raw idea, tension, or goal into a structured hierarchy of Mission, Objectives, Constraints, and Milestones — either standalone (Project / Passion / Incubator) or under PEF supervision (Project-only with Active/Aspirational split and P-Feasibility-verified Active milestones)
+- **Problem Class:** Project definition and strategic hierarchy formulation
+- **Input Summary:** M-Standalone: raw idea description. M-Supervised: current problem definition from PED, current state description, optional Resolution Statement candidate and user-stated constraints
+- **Output Summary:** Populated Mission, Objectives, Constraints, and Milestones in Matrix Master format (M-Standalone) or PED-insertion format (M-Supervised); Resolution Statement Objectivity Report; Excluded Outcomes field; classified Constraints; P-Feasibility verdicts for Active milestones (M-Supervised); No-Punt Escalation Report when Project Test fails under M-Supervised
+- **Proven Applications:** Original standalone form used for project matrix authoring in the vault since 2025-09; v2.0 canonical with PEF supervision and Resolution Statement Objectivity Protocol landed 2026-04-23
+- **Known Limitations:** M-Supervised Outcome 2 (terrain-mapping case) depends on the Terrain Mapping Framework as delivery vehicle; P-Feasibility invocation for Active milestones depends on PIF being available
+- **File Location:** frameworks/book/mission-objectives-milestones.md
 - **Provenance:** human-created
 - **Confidence:** medium
-- **Version:** 1.0
+- **Version:** 2.0
+- **Delivers:** Standalone strategic hierarchy (M-Standalone); PEF-supervised strategic hierarchy with Active/Aspirational milestone split and P-Feasibility verdicts (M-Supervised)
+
+### MindSpec Interview Framework
+- **Purpose:** Produce complete MindSpec agent, character, or self specifications through tiered interactive assessment — single-file mind.md or [agent-name].md covering Core Identity, Mission, Context, Commitments, Governance, Constitution, Voice, Communication Patterns, and Relationships
+- **Problem Class:** Agent/character/self identity specification and value-framework production
+- **Input Summary:** Mode selection (agent / character / self); tier selection for agents (ephemeral / persistent task / personal thinking partner); user participation in structured assessment; optional descriptive material or existing specification for revision
+- **Output Summary:** Single-file mind.md (or [agent-name].md) containing all sections for v0.2.3 forward; companion ledger.md (learning log, starts empty) and modifications.md (change log, starts empty); per-tier artifact subsets
+- **Proven Applications:** Version 0.2.3 — 66-entry library, three-stage assessment instrument, inference layer, learning architecture; framework used to self-specify during rebuild
+- **Known Limitations:** Concept-access-difficult commitments require incompatibility adjustment mechanism; Tier 1 ephemeral agents exempt from incompatibility adjustment; default values calibrated to general-population median; real-use feedback mandatory for high-accuracy specs
+- **File Location:** frameworks/book/mindspec-interview.md
+- **Provenance:** human-created
+- **Confidence:** high
+- **Version:** 0.2.3
+- **Delivers:** Complete MindSpec agent specification (ephemeral, persistent task, or personal thinking partner tier) with tier-dependent assessment depth, incompatibility adjustment where applicable, and governance configuration (Agent); MindSpec fiction-character specification with pathology signatures produced through direct-authoring flow with coherence check (Character); MindSpec self-specification produced through full three-stage assessment with incompatibility adjustment and constitutional identification (Self)
 
 ### Conversation Processing Pipeline
 - **Purpose:** Process raw conversation exports and live session exchanges into structured turn-pair chunks with contextual headers, topic metadata, and ChromaDB indexing for RAG retrieval
@@ -97,6 +141,7 @@ Each framework has one entry with these fields:
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 1.0
+- **Delivers:** Processed conversation chunks with ChromaDB indexing (batch mode). Inline mode is pipeline-stage-exempt — invoked automatically by the orchestrator on every session turn, not PEF-selectable.
 
 ### Browser Evaluation Setup
 - **Purpose:** Connect Playwright browser automation to commercial AI services and register endpoints for use by the orchestrator
@@ -109,6 +154,7 @@ Each framework has one entry with these fields:
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
+- **Delivers:** Authenticated Playwright browser session registered for a commercial AI service (Claude, ChatGPT, Gemini, or custom URL) as an active endpoint in endpoints.json
 
 ### API Key Acquisition
 - **Purpose:** Acquire and securely store API keys for commercial AI services, then register endpoints in endpoints.json
@@ -121,18 +167,33 @@ Each framework has one entry with these fields:
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 1.0
+- **Delivers:** Configured API provider access — keys stored in credential store, endpoints registered in endpoints.json, fallback chain documented in api-providers.md
 
 ### Agent Identity and Programming
-- **Purpose:** Create and program specialized agent identities using the SoulSpec pattern, producing a compiled agent boot file and registry entry
+- **Purpose:** Create and program specialized agent identities using the MindSpec pattern, producing a compiled agent boot file and registry entry
 - **Problem Class:** Agent creation and identity specification
 - **Input Summary:** Agent purpose description; tier selection (functional vs. incarnated); mission parameters
-- **Output Summary:** SoulSpec canonical file set; compiled agent boot file; agent registry entry
-- **Proven Applications:** Framework produced via F-Design from FCF v2.0
+- **Output Summary:** MindSpec canonical file set; compiled agent boot file; agent registry entry
+- **Proven Applications:** Framework produced via F-Design from PFF v2.0
 - **Known Limitations:** Incarnated agent voice calibration requires user-provided reference materials for best results
 - **File Location:** frameworks/book/agent-identity.md
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 1.0
+- **Delivers:** New persistent AI agent identity as MindSpec canonical files plus compiled boot file plus registry entry (I-Create); modified agent's MindSpec files and recompiled boot file (I-Modify); full mission brief programming an existing agent to prosecute a mission autonomously (M-Program); compressed task specification assigning bounded work to an existing agent (M-Task)
+
+### Spec-Code Reconciliation
+- **Purpose:** Backward-reconcile installer specifications with the installed system, produce updated installer layers and a natural language system specification
+- **Problem Class:** Specification maintenance and drift correction
+- **Input Summary:** Installer manifest and layer files; live filesystem; git history; system file structure reference
+- **Output Summary:** Discrepancy report with severity classifications; updated installer layers; natural language system specification derivable into installer
+- **Proven Applications:** Designed for post-upgrade reconciliation of the ora system
+- **Known Limitations:** Behavioral comparison requires LLM judgment — cannot be fully automated; accretion items require human confirmation of intent
+- **File Location:** frameworks/book/spec-code-reconciliation.md
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** Full backward-reconciliation bundle (discrepancy report, updated installer layers, natural language system specification) in Full Reconciliation mode; discrepancy report and resolution plan in Partial Reconciliation mode; natural language system specification alone in Specification Only mode
 
 ### Phase A — Prompt Cleanup
 - **Purpose:** Mechanical preprocessing of raw user input: transcription correction, syntax normalization, reference resolution, semantic extraction, ambiguity resolution, and conversion to Operational Notation
@@ -145,12 +206,15 @@ Each framework has one entry with these fields:
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
+- **Delivers:** *Pipeline-stage exempt per PFF Section II subsection 2.3 — invoked by the orchestrator as Step 1 of every pipeline run, not PEF-selectable.*
 
 ---
 
 ## Pipeline Stage Frameworks (Gear 4)
 
 These six frameworks are loaded into model context windows at specific pipeline stages. They were extracted from the Gear 4 Pipeline Specifications container document.
+
+*These six frameworks are pipeline-stage-exempt per PFF Section II subsection 2.3 — they are invoked by the orchestrator at specific pipeline stages and are not PEF-selectable. They do not declare Milestones Delivered or Delivers fields.*
 
 ### F-Analysis-Breadth (Step 3)
 - **Purpose:** Green/Yellow hat analysis — map alternatives, surface opportunities, identify benefits
@@ -185,3 +249,4 @@ These six frameworks are loaded into model context windows at specific pipeline 
 | Boot Generation | Tier distinction collapsed; single boot.md serves all configs | ~/Documents/vault/Old AI Working Files/ |
 | Progressive Boot Specification | Full install replaces progressive boot | ~/Documents/vault/Old AI Working Files/ |
 | Boot Canonical A/B/C | Model interchangeability makes separate tier boots unnecessary | ~/Documents/vault/Old AI Working Files/ |
+| Mind Framework | Superseded by MindSpec Interview Framework v0.2.3 (richer single-file spec with commitments, governance, constitution, voice, communication patterns, relationships vs. the older 5-section mind.md). Old Mind Framework produces only a 5-section mind.md; MindSpec produces the full spec. | ~/Documents/vault/Old AI Working Files/Framework — Mind.md (vault); ~/ora/frameworks/deprecated/mind-framework.md (ora) |

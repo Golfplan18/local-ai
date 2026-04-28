@@ -2,9 +2,21 @@
   "_note": "Model preferences for browser-based AI services. Run 'python3 config/update-models.py' to change selections. Run 'python3 config/update-models.py --refresh' to auto-detect new/retired models.",
   "claude": {
     "available": [
-      {"id": "claude-opus-4-6", "name": "Claude Opus 4.6", "tier": "paid"},
-      {"id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6", "tier": "free+paid"},
-      {"id": "claude-haiku-4-5", "name": "Claude Haiku 4.5", "tier": "free+paid"}
+      {
+        "id": "claude-opus-4-6",
+        "name": "Claude Opus 4.6",
+        "tier": "paid"
+      },
+      {
+        "id": "claude-sonnet-4-6",
+        "name": "Claude Sonnet 4.6",
+        "tier": "free+paid"
+      },
+      {
+        "id": "claude-haiku-4-5",
+        "name": "Claude Haiku 4.5",
+        "tier": "free+paid"
+      }
     ],
     "retired": [],
     "selected": "claude-opus-4-6",
@@ -18,10 +30,26 @@
   },
   "chatgpt": {
     "available": [
-      {"id": "gpt-5.4", "name": "GPT-5.4 Thinking", "tier": "paid"},
-      {"id": "gpt-5.4-pro", "name": "GPT-5.4 Pro", "tier": "paid"},
-      {"id": "gpt-5.3", "name": "GPT-5.3 Instant", "tier": "free+paid"},
-      {"id": "gpt-5.3-codex", "name": "GPT-5.3-Codex", "tier": "paid"}
+      {
+        "id": "gpt-5.4",
+        "name": "GPT-5.4 Thinking",
+        "tier": "paid"
+      },
+      {
+        "id": "gpt-5.4-pro",
+        "name": "GPT-5.4 Pro",
+        "tier": "paid"
+      },
+      {
+        "id": "gpt-5.3",
+        "name": "GPT-5.3 Instant",
+        "tier": "free+paid"
+      },
+      {
+        "id": "gpt-5.3-codex",
+        "name": "GPT-5.3-Codex",
+        "tier": "paid"
+      }
     ],
     "retired": [],
     "selected": "gpt-5.4",
@@ -35,11 +63,31 @@
   },
   "gemini": {
     "available": [
-      {"id": "gemini-3.1-pro", "name": "3.1 Pro", "tier": "paid"},
-      {"id": "gemini-3-flash", "name": "3 Flash", "tier": "free+paid"},
-      {"id": "gemini-3.1-flash-lite", "name": "3.1 Flash Lite", "tier": "free+paid"},
-      {"id": "gemini-2.5-pro", "name": "2.5 Pro", "tier": "free+paid"},
-      {"id": "gemini-2.5-flash", "name": "2.5 Flash", "tier": "free+paid"}
+      {
+        "id": "gemini-3.1-pro",
+        "name": "3.1 Pro",
+        "tier": "paid"
+      },
+      {
+        "id": "gemini-3-flash",
+        "name": "3 Flash",
+        "tier": "free+paid"
+      },
+      {
+        "id": "gemini-3.1-flash-lite",
+        "name": "3.1 Flash Lite",
+        "tier": "free+paid"
+      },
+      {
+        "id": "gemini-2.5-pro",
+        "name": "2.5 Pro",
+        "tier": "free+paid"
+      },
+      {
+        "id": "gemini-2.5-flash",
+        "name": "2.5 Flash",
+        "tier": "free+paid"
+      }
     ],
     "retired": [],
     "selected": "gemini-3.1-pro",
@@ -48,6 +96,220 @@
       "model_button": "button[aria-label*='model' i], button:has-text('Gemini')",
       "model_option": "div[role='option']:has-text('{model_name}'), li:has-text('{model_name}')",
       "model_list_selector": "div[role='option'], div[role='menuitem'], li[role='option']",
+      "close_action": "Escape"
+    }
+  },
+  "perplexity": {
+    "available": [
+      {
+        "id": "perplexity-pro",
+        "name": "Pro Search",
+        "tier": "paid"
+      },
+      {
+        "id": "perplexity-standard",
+        "name": "Standard",
+        "tier": "free+paid"
+      }
+    ],
+    "retired": [],
+    "selected": "perplexity-pro",
+    "last_updated": "2026-04-08",
+    "ui": {
+      "model_button": "button:has-text('Pro'), button:has-text('Focus')",
+      "model_list_selector": "div[role='option'], div[role='menuitem'], button[role='option']",
+      "close_action": "Escape"
+    }
+  },
+  "mistral": {
+    "available": [
+      {
+        "id": "mistral-large",
+        "name": "Mistral Large",
+        "tier": "paid"
+      },
+      {
+        "id": "mistral-medium",
+        "name": "Mistral Medium",
+        "tier": "free+paid"
+      },
+      {
+        "id": "mistral-small",
+        "name": "Mistral Small",
+        "tier": "free"
+      }
+    ],
+    "retired": [],
+    "selected": "mistral-large",
+    "last_updated": "2026-04-08",
+    "ui": {
+      "model_button": "button:has-text('Mistral'), button[aria-label*='model' i]",
+      "model_list_selector": "div[role='option'], div[role='menuitem'], li[role='option']",
+      "close_action": "Escape"
+    }
+  },
+  "copilot": {
+    "available": [
+      {
+        "id": "copilot-creative",
+        "name": "Creative",
+        "tier": "free+paid"
+      },
+      {
+        "id": "copilot-balanced",
+        "name": "Balanced",
+        "tier": "free+paid"
+      },
+      {
+        "id": "copilot-precise",
+        "name": "Precise",
+        "tier": "free+paid"
+      }
+    ],
+    "retired": [],
+    "selected": "copilot-creative",
+    "last_updated": "2026-04-08",
+    "ui": {
+      "model_button": "button:has-text('Creative'), button:has-text('Balanced'), button:has-text('Precise')",
+      "model_list_selector": "button[role='tab'], div[role='option']",
+      "close_action": "Escape"
+    }
+  },
+  "deepseek": {
+    "available": [
+      {
+        "id": "deepseek-r1",
+        "name": "DeepSeek-R1",
+        "tier": "free"
+      },
+      {
+        "id": "deepseek-v3",
+        "name": "DeepSeek-V3",
+        "tier": "free"
+      }
+    ],
+    "retired": [],
+    "selected": "deepseek-r1",
+    "last_updated": "2026-04-08",
+    "ui": {
+      "model_button": "button:has-text('DeepSeek'), div[class*='model']",
+      "model_list_selector": "div[role='option'], div[role='menuitem']",
+      "close_action": "Escape"
+    }
+  },
+  "grok": {
+    "available": [
+      {
+        "id": "grok-3",
+        "name": "Grok 3",
+        "tier": "paid"
+      },
+      {
+        "id": "grok-3-mini",
+        "name": "Grok 3 Mini",
+        "tier": "free+paid"
+      }
+    ],
+    "retired": [],
+    "selected": "grok-3",
+    "last_updated": "2026-04-08",
+    "ui": {
+      "model_button": "button:has-text('Grok'), button[aria-label*='model' i]",
+      "model_list_selector": "div[role='option'], div[role='menuitem']",
+      "close_action": "Escape"
+    }
+  },
+  "poe": {
+    "available": [
+      {
+        "id": "poe-claude-opus",
+        "name": "Claude-Opus",
+        "tier": "paid"
+      },
+      {
+        "id": "poe-gpt-5",
+        "name": "GPT-5",
+        "tier": "paid"
+      },
+      {
+        "id": "poe-assistant",
+        "name": "Assistant",
+        "tier": "free"
+      }
+    ],
+    "retired": [],
+    "selected": "poe-assistant",
+    "last_updated": "2026-04-08",
+    "ui": {
+      "model_button": "button:has-text('Assistant'), button[class*='BotSelector']",
+      "model_list_selector": "div[role='option'], div[role='menuitem'], a[class*='bot']",
+      "close_action": "Escape"
+    }
+  },
+  "huggingchat": {
+    "available": [
+      {
+        "id": "huggingchat-llama-3.3-70b",
+        "name": "Llama 3.3 70B",
+        "tier": "free"
+      },
+      {
+        "id": "huggingchat-qwen-2.5-72b",
+        "name": "Qwen 2.5 72B",
+        "tier": "free"
+      },
+      {
+        "id": "huggingchat-mistral-nemo",
+        "name": "Mistral Nemo",
+        "tier": "free"
+      }
+    ],
+    "retired": [],
+    "selected": "huggingchat-llama-3.3-70b",
+    "last_updated": "2026-04-08",
+    "ui": {
+      "model_button": "button:has-text('Model'), button[class*='model']",
+      "model_list_selector": "div[role='option'], div[role='menuitem'], button[class*='model']",
+      "close_action": "Escape"
+    }
+  },
+  "meta_ai": {
+    "available": [
+      {
+        "id": "meta-ai-llama",
+        "name": "Meta AI (Llama)",
+        "tier": "free"
+      }
+    ],
+    "retired": [],
+    "selected": "meta-ai-llama",
+    "last_updated": "2026-04-08",
+    "ui": {}
+  },
+  "cohere": {
+    "available": [
+      {
+        "id": "command-a",
+        "name": "Command A",
+        "tier": "free"
+      },
+      {
+        "id": "command-r-plus",
+        "name": "Command R+",
+        "tier": "free"
+      },
+      {
+        "id": "command-r",
+        "name": "Command R",
+        "tier": "free"
+      }
+    ],
+    "retired": [],
+    "selected": "command-a",
+    "last_updated": "2026-04-08",
+    "ui": {
+      "model_button": "button:has-text('Command'), button[aria-label*='model' i]",
+      "model_list_selector": "div[role='option'], div[role='menuitem']",
       "close_action": "Escape"
     }
   }

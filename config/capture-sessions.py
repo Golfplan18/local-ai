@@ -19,7 +19,7 @@ import sys
 import time
 from datetime import datetime
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 SESSION_DIR = os.path.join(WORKSPACE, "config/browser-sessions/")
 ENDPOINTS_JSON = os.path.join(WORKSPACE, "config/endpoints.json")
 

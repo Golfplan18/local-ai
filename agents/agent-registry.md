@@ -18,7 +18,7 @@ This file lists all defined agents in the system. The orchestrator reads this re
 - **Tier:** functional | incarnated
 - **Status:** active | suspended | archived
 - **Boot File:** Path to the compiled agent boot file
-- **Canonical Directory:** Path to the directory containing canonical SoulSpec files
+- **Canonical Directory:** Path to the directory containing canonical MindSpec files
 - **Created:** Date
 - **Last Modified:** Date
 - **Description:** One sentence describing the agent's purpose

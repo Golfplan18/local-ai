@@ -1,0 +1,94 @@
+/* ============================================================
+   Ora-specific variables — concepts with no Obsidian equivalent
+   ============================================================ */
+
+/* Material / depth — paired light source, mode-independent.
+   These do NOT flip between light and dark, because the upper-left
+   light source is fixed regardless of palette. */
+:root {
+  --ora-shadow-recess: rgba(0, 0, 0, 0.65);
+  --ora-shadow-raised: rgba(0, 0, 0, 0.55);
+  --ora-highlight-recess: rgba(255, 255, 255, 0.04);
+  --ora-highlight-raised: rgba(255, 255, 255, 0.05);
+}
+
+/* Layout constants + per-pane border variables.
+   The pane border vars default to the universal --background-modifier-border
+   so nothing changes visually until a user customizes one specifically.
+   Declared on body so that var(--background-modifier-border) resolves —
+   the universal border is set on body via .theme-dark/.theme-light, so
+   declaring the references at the same level lets them inherit cleanly. */
+body {
+  --ora-bridge-default: 48px;
+  --ora-input-pane-border: var(--background-modifier-border);
+  --ora-output-pane-border: var(--background-modifier-border);
+  --ora-visual-canvas-border: var(--background-modifier-border);
+
+  /* Visual canvas background — separate from text output panes so the
+     visual area can be themed independently (default unchanged). */
+  --ora-visual-canvas-bg: var(--background-secondary);
+}
+
+/* ============================================================
+   Theme-dependent Ora extensions — Dark
+   ============================================================ */
+
+.theme-dark {
+  /* Buttons */
+  --ora-button-border: rgb(32, 32, 32);
+
+  /* Wordmark */
+  --ora-wordmark-base: rgb(88, 88, 88);
+  --ora-wordmark-bright: rgb(128, 128, 128);
+  --ora-wordmark-hover: rgb(220, 220, 220);
+
+  /* Bridge */
+  --ora-bridge-handle: rgba(255, 255, 255, 0.18);
+
+  /* Pattern */
+  --ora-line-dot-color: rgb(56, 56, 56);
+
+  /* Mode tints — Private (green identity) */
+  --ora-mode-private-pane-border: rgb(64, 128, 64);
+  --ora-mode-private-button-border: rgb(32, 96, 32);
+  --ora-mode-private-button-icon: rgb(64, 128, 64);
+  --ora-mode-private-label: rgb(32, 96, 32);
+
+  /* Mode tints — Stealth (red identity) */
+  --ora-mode-stealth-pane-border: rgb(160, 64, 64);
+  --ora-mode-stealth-button-border: rgb(128, 32, 32);
+  --ora-mode-stealth-button-icon: rgb(160, 64, 64);
+  --ora-mode-stealth-label: rgb(128, 32, 32);
+}
+
+/* ============================================================
+   Theme-dependent Ora extensions — Light
+   ============================================================ */
+
+.theme-light {
+  /* Buttons */
+  --ora-button-border: rgb(224, 224, 224);
+
+  /* Wordmark */
+  --ora-wordmark-base: rgb(168, 168, 168);
+  --ora-wordmark-bright: rgb(128, 128, 128);
+  --ora-wordmark-hover: rgb(36, 36, 36);
+
+  /* Bridge */
+  --ora-bridge-handle: rgba(1, 1, 1, 0.18);
+
+  /* Pattern */
+  --ora-line-dot-color: rgb(200, 200, 200);
+
+  /* Mode tints — Private */
+  --ora-mode-private-pane-border: rgb(128, 192, 128);
+  --ora-mode-private-button-border: rgb(160, 224, 160);
+  --ora-mode-private-button-icon: rgb(128, 192, 128);
+  --ora-mode-private-label: rgb(160, 224, 160);
+
+  /* Mode tints — Stealth */
+  --ora-mode-stealth-pane-border: rgb(192, 96, 96);
+  --ora-mode-stealth-button-border: rgb(224, 128, 128);
+  --ora-mode-stealth-button-icon: rgb(192, 96, 96);
+  --ora-mode-stealth-label: rgb(224, 128, 128);
+}

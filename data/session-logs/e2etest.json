@@ -1,0 +1,12 @@
+{
+  "session_id": "e2etest",
+  "timestamp": "2026-04-14T21:00:00",
+  "mode": "exploratory",
+  "gear": 2,
+  "models_used": [],
+  "rag_resources": [],
+  "token_consumption": {},
+  "budget_signals": [],
+  "prompt_length": 34,
+  "output_length": 238
+}

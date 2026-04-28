@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/sequence.json",
+  "title": "Sequence diagram spec (PROCESS family, Mermaid DSL)",
+  "description": "Per Protocol \u00a73.15. spec wraps a Mermaid sequenceDiagram DSL string. The Mermaid parser runs downstream with a 2-retry repair loop; per-message send/receive validity is enforced there.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dialect", "dsl"],
+  "properties": {
+    "dialect": {
+      "type": "string",
+      "const": "sequence"
+    },
+    "dsl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Mermaid sequenceDiagram source."
+    }
+  }
+}

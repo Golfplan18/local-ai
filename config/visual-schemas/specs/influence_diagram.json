@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/influence_diagram.json",
+  "title": "Influence diagram spec (DECISION family)",
+  "description": "Per Protocol \u00a73.8 (new in v0.2). 'Exactly one value node', temporal consistency, functional-arc DAG-ness, and d-separation readability are enforced by the integrity checker, not JSON Schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nodes", "arcs"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "kind"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "kind": {
+            "type": "string",
+            "enum": ["decision", "chance", "value", "deterministic"]
+          },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "arcs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "type"],
+        "properties": {
+          "from": { "type": "string", "minLength": 1 },
+          "to": { "type": "string", "minLength": 1 },
+          "type": {
+            "type": "string",
+            "enum": ["informational", "functional", "relevance"]
+          },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "temporal_order": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

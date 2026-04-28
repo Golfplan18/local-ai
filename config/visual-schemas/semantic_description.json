@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/semantic_description.json",
+  "title": "Ora Visual Semantic Description",
+  "description": "Four-level semantic description per Lundgard & Satyanarayan (IEEE TVCG 2022), mandated by Protocol v0.2 \u00a78.1. Level 4 is optional; when relation_to_prose is 'redundant' the deeper levels may defer to surrounding prose.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["level_1_elemental", "level_2_statistical", "level_3_perceptual", "short_alt"],
+  "properties": {
+    "level_1_elemental": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Chart type, encodings, axis ranges. Required."
+    },
+    "level_2_statistical": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Extrema, trends, correlations, counts. Required."
+    },
+    "level_3_perceptual": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Synthesized patterns, notable exceptions. Required."
+    },
+    "level_4_contextual": {
+      "type": ["string", "null"],
+      "description": "Domain interpretation. Optional; omit when in doubt (Lundgard-Satyanarayan: 63% of blind readers disliked Level 4)."
+    },
+    "short_alt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 150,
+      "description": "Cesal-formula alt text: '[chart type] of [data], where [key takeaway].' \u2264 150 chars."
+    },
+    "data_table_fallback": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": { "type": ["string", "number", "boolean", "null"] }
+              }
+            }
+          }
+        }
+      ],
+      "description": "Tabular fallback for quantitative visuals with \u2264 50 data points. Populate when feasible per \u00a78.1."
+    },
+    "type_specific": {
+      "type": "object",
+      "description": "Type-specific augmentation of Level 1 (loops for CLD, optimal path for decision trees, leading hypothesis for ACH, items-per-quadrant for 2\u00d72, threat/consequence counts for bow-tie, etc.). Free-form object; downstream compiler interprets per type.",
+      "additionalProperties": true
+    }
+  }
+}

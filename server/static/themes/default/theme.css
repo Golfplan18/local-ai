@@ -1,0 +1,6 @@
+/* Default Ora theme — references the canonical token + component files
+   in /static/styles/. This file exists for symmetry with user-installed
+   themes (which ship as a single theme.css). The active default theme
+   loads via /static/styles/ora-default.css and is identical. */
+
+@import url("../../styles/ora-default.css");

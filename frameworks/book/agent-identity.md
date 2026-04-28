@@ -4,7 +4,7 @@
 
 *Version 1.0*
 
-*Canonical Specification — Produced via F-Design from the Framework Creation Framework v2.0*
+*Canonical Specification — Produced via F-Design from the Process Formalization Framework v2.0*
 
 ---
 
@@ -12,13 +12,13 @@
 
 This is a combined framework with two operational halves that share a single specification document. Each half executes independently in its own session.
 
-**Half 1 — Agent Identity Creation:** Creates or modifies the complete identity specification for a persistent AI agent, producing the SoulSpec file set and a compiled agent boot file.
+**Half 1 — Agent Identity Creation:** Creates or modifies the complete identity specification for a persistent AI agent, producing the MindSpec file set and a compiled agent boot file.
 
 **Half 2 — Agent Mission Programming:** Specifies how an existing agent receives and prosecutes a mission autonomously, producing a structured mission brief with execution specification.
 
 Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemini) or local model — then provide your input below the USER INPUT marker at the bottom. State which mode you need, or the AI will determine it from context.
 
-**Mode I-Create:** You need a new agent identity. You will describe the agent's purpose, domain, and behavioral requirements. The AI will guide you through elicitation and produce the SoulSpec file set plus a compiled boot file. Output directory: `~/local-ai/agents/[agent-name]/`.
+**Mode I-Create:** You need a new agent identity. You will describe the agent's purpose, domain, and behavioral requirements. The AI will guide you through elicitation and produce the MindSpec file set plus a compiled boot file. Output directory: `~/ora/agents/[agent-name]/`.
 
 **Mode I-Modify:** You have an existing agent and need to update specific identity files without regenerating everything. Provide the agent name and describe what needs to change. The AI will load the existing files, modify the relevant components, validate cross-file consistency, and recompile the boot file.
 
@@ -31,6 +31,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 ## Table of Contents
 
 - Section I: Purpose, Contracts, and Execution Tier
+- Milestones Delivered
 - Section II: Evaluation Criteria
 - Section III: Persona Activation
 - Half 1 — Agent Identity Creation
@@ -61,7 +62,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 
 ### PURPOSE
 
-This framework produces two categories of deliverable. Half 1 produces the complete identity specification for a persistent AI agent — the SoulSpec file set (SOUL.md, IDENTITY.md, AGENTS.md, STYLE.md, MEMORY.md, examples/) plus a compiled agent boot file — through structured elicitation at a depth appropriate to the agent's complexity tier. Half 2 produces a structured mission brief that programs an existing agent to prosecute a specific mission autonomously, including plan generation, execution specification, supervisory integration, and checkpoint protocol.
+This framework produces two categories of deliverable. Half 1 produces the complete identity specification for a persistent AI agent — the MindSpec file set (mind.md, IDENTITY.md, AGENTS.md, STYLE.md, MEMORY.md, examples/) plus a compiled agent boot file — through structured elicitation at a depth appropriate to the agent's complexity tier. Half 2 produces a structured mission brief that programs an existing agent to prosecute a specific mission autonomously, including plan generation, execution specification, supervisory integration, and checkpoint protocol.
 
 ### INPUT CONTRACT
 
@@ -73,9 +74,9 @@ Required:
 
 Optional:
 - Agent name. Source: user input. Default behavior if absent: the framework proposes a name based on purpose during elicitation.
-- Existing agent files for modification (Mode I-Modify). Source: `~/local-ai/agents/[agent-name]/` via file_read. Default behavior if absent: framework creates from scratch.
+- Existing agent files for modification (Mode I-Modify). Source: `~/ora/agents/[agent-name]/` via file_read. Default behavior if absent: framework creates from scratch.
 - Reference materials (writing samples, voice exemplars, domain documentation). Source: user-provided documents. Default behavior if absent: framework relies on elicitation responses alone.
-- Existing frameworks from the framework library. Source: `~/local-ai/frameworks/framework-registry.md` via file_read. Default behavior if absent: framework operates without library context.
+- Existing frameworks from the framework library. Source: `~/ora/frameworks/framework-registry.md` via file_read. Default behavior if absent: framework operates without library context.
 
 **Half 2 — Mission Programming (Mode M-Program or M-Task):**
 
@@ -84,32 +85,32 @@ Required:
 - Mission description: what the agent should accomplish. Source: user input.
 
 Optional:
-- Agent identity files. Source: `~/local-ai/agents/[agent-name]/` via file_read. Default behavior if absent: the framework requests the agent name and attempts to load files. IF files are not found, THEN the framework asks the user to provide the agent's purpose and capabilities verbally.
-- Framework library access. Source: `~/local-ai/frameworks/framework-registry.md` via file_read. Default behavior if absent: the framework proceeds without checking for existing frameworks.
-- Process Inference Framework. Source: `~/local-ai/frameworks/process-inference-framework.md` via file_read. Default behavior if absent: when the agent encounters an unknown process, it requests human assistance for process discovery instead of invoking PIF autonomously.
-- Framework Creation Framework. Source: `~/local-ai/frameworks/framework-creation-framework.md` via file_read. Default behavior if absent: when a discovered process needs formalization, the framework produces a structured description and recommends the user run it through FCF manually.
+- Agent identity files. Source: `~/ora/agents/[agent-name]/` via file_read. Default behavior if absent: the framework requests the agent name and attempts to load files. IF files are not found, THEN the framework asks the user to provide the agent's purpose and capabilities verbally.
+- Framework library access. Source: `~/ora/frameworks/framework-registry.md` via file_read. Default behavior if absent: the framework proceeds without checking for existing frameworks.
+- Process Inference Framework. Source: `~/ora/frameworks/process-inference-framework.md` via file_read. Default behavior if absent: when the agent encounters an unknown process, it requests human assistance for process discovery instead of invoking PIF autonomously.
+- Process Formalization Framework. Source: `~/ora/frameworks/process-formalization.md` via file_read. Default behavior if absent: when a discovered process needs formalization, the framework produces a structured description and recommends the user run it through PFF manually.
 
 ### OUTPUT CONTRACT
 
 **Half 1 — Identity Creation:**
 
 Primary outputs:
-- Complete SoulSpec file set written to `~/local-ai/agents/[agent-name]/`:
-  - `SOUL.md` — core personality, values, behavioral boundaries
+- Complete MindSpec file set written to `~/ora/agents/[agent-name]/`:
+  - `mind.md` — core personality, values, behavioral boundaries
   - `IDENTITY.md` — name, role, external presentation
   - `AGENTS.md` — operational workflow rules
   - `STYLE.md` — writing voice and tone (incarnated agents only)
   - `MEMORY.md` — initial memory state and memory management rules
   - `examples/good-outputs.md` — calibration examples (incarnated agents only)
   - `examples/bad-outputs.md` — anti-patterns (incarnated agents only)
-- Compiled agent boot file: `~/local-ai/agents/[agent-name]/[agent-name]-boot.md`
+- Compiled agent boot file: `~/ora/agents/[agent-name]/[agent-name]-boot.md`
 - Quality threshold: passes all validation checks in Layer 7 and scores 3 or above on all applicable evaluation criteria.
 
 Secondary outputs:
 - Agent specification summary: one-page overview of the agent's purpose, capabilities, and behavioral profile. Presented to user before file writing.
 - Change summary (Mode I-Modify only): documenting what was added, modified, or removed relative to the previous version.
 
-Functional agents produce: SOUL.md, AGENTS.md, MEMORY.md, and compiled boot file. IDENTITY.md is optional. STYLE.md and examples/ are omitted.
+Functional agents produce: mind.md, AGENTS.md, MEMORY.md, and compiled boot file. IDENTITY.md is optional. STYLE.md and examples/ are omitted.
 
 Incarnated agents produce: the complete file set listed above.
 
@@ -130,6 +131,44 @@ Each half executes independently in its own session. The triage gate (Layer 1) r
 
 ---
 
+## MILESTONES DELIVERED
+
+This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
+
+### Milestone Type: New agent identity
+
+- **Endpoint produced:** Complete MindSpec canonical file set written to `~/ora/agents/[agent-name]/` at the depth appropriate to the classified tier (functional: `mind.md`, `AGENTS.md`, `MEMORY.md`, optional `IDENTITY.md`; incarnated: the full set plus `IDENTITY.md`, `STYLE.md`, `examples/good-outputs.md`, `examples/bad-outputs.md`), compiled agent boot file at `~/ora/agents/[agent-name]/[agent-name]-boot.md`, and new agent registry entry appended to `~/ora/agents/agent-registry.md`
+- **Verification criterion:** (a) the classification tier (functional or incarnated) is recorded with rationale per Layer 1 criteria; (b) all files required for the classified tier are present, non-empty, and pass the Layer 7 cross-file consistency validation; (c) the compiled boot file preserves every operational directive from the canonical files and achieves at least 40% word-count reduction per Layer 8 compression protocol; (d) the agent registry entry contains all required fields (`agent_id`, `display_name`, `tier`, `status`, `boot_file`, `canonical_directory`, `created`, `last_modified`, `description`); (e) the applicable Half 1 evaluation criteria (1, 2, 3, 4, 5, 6, 7, 10) score 3 or above
+- **Preconditions:** User participation in structured elicitation is available; an agent purpose statement of one to three sentences is provided; `~/ora/agents/` is writable
+- **Mode required:** I-Create
+- **Framework Registry summary:** Creates a new persistent AI agent identity as MindSpec canonical files plus compiled boot file plus registry entry
+
+### Milestone Type: Modified agent identity
+
+- **Endpoint produced:** Updated MindSpec canonical files for the changed components, recompiled agent boot file reflecting the modifications, updated agent registry entry with refreshed `last_modified` date, and change summary documenting what was added, modified, or removed relative to the prior version
+- **Verification criterion:** (a) the existing agent files were located and loaded from `~/ora/agents/[agent-name]/` before modification; (b) only the components identified for change were modified — unchanged components remain byte-identical to the prior version; (c) the Layer 7 cross-file consistency validation passes across the updated file set; (d) the recompiled boot file remains consistent with the updated canonical files per the Layer 8 fidelity check; (e) the change summary enumerates every addition, modification, and removal; (f) the applicable Half 1 evaluation criteria (1, 2, 3, 4, 5, 6, 7, 10) score 3 or above
+- **Preconditions:** An existing agent directory at `~/ora/agents/[agent-name]/` with a loadable MindSpec file set; a user description of what needs to change
+- **Mode required:** I-Modify
+- **Framework Registry summary:** Modifies an existing agent's MindSpec files and recompiles the boot file without regenerating unchanged components
+
+### Milestone Type: Agent mission brief
+
+- **Endpoint produced:** Structured mission brief containing endpoint specification, Hard and Soft constraints, success criteria, authority boundaries, available resources, execution plan with step sequence and decision points, execution specification with per-step quality checks and recovery protocols, checkpoint protocol, and supervisory configuration with escalation triggers — plus, when the mission required a novel process discovered via PIF and formalized via PFF, a new framework registry entry for the discovered process
+- **Verification criterion:** (a) all five mission elements from Layer 11 (Endpoint, Constraints, Success Criteria, Authority Boundaries, Available Resources) are populated and confirmed with the user; (b) the execution plan's method source is identified as one of (matched framework from registry, PIF-discovered path, user-provided process); (c) every step in the execution specification uses only resources from the Available Resources inventory; (d) every checkpoint specifies what the agent presents, what the human reviews, and what happens after review; (e) escalation triggers cover hard-constraint violation, output-quality degradation, insufficient-information decision points, endpoint-unreachability, and ethical or safety concerns; (f) if a novel process was formalized during planning, a framework registry entry is produced with provenance `agent-created` and confidence level `experimental`; (g) the applicable Half 2 evaluation criteria (1, 6, 8, 9, 10) score 3 or above
+- **Preconditions:** An existing agent with loadable identity files at `~/ora/agents/[agent-name]/` (or, if files are unavailable, a user-provided verbal description of the agent's purpose, capabilities, and boundaries); a user-provided mission description
+- **Mode required:** M-Program
+- **Framework Registry summary:** Produces a full mission brief programming an existing agent to prosecute a mission autonomously with plan, execution specification, and supervisory configuration
+
+### Milestone Type: Agent task specification
+
+- **Endpoint produced:** Compressed task specification for an existing agent containing endpoint, Hard and Soft constraints, success criteria, authority boundaries, available resources, and execution specification with checkpoint protocol — without novel-process discovery or formalization
+- **Verification criterion:** (a) Layer 11 produced all five mission elements via the compressed single-prompt intake, with follow-up probes used only where the user's answers were ambiguous; (b) the task is bounded and well-defined such that no PIF invocation was required for plan generation; (c) the execution specification uses only resources from the Available Resources inventory; (d) the checkpoint protocol specifies what the agent presents and what happens after review at each checkpoint; (e) the applicable Half 2 evaluation criteria (1, 6, 8, 9, 10) score 3 or above
+- **Preconditions:** An existing agent with loadable identity files (or a user-provided verbal description as in M-Program); a user-provided description of a discrete, well-defined task
+- **Mode required:** M-Task
+- **Framework Registry summary:** Produces a compressed task specification assigning bounded work to an existing agent without full mission planning
+
+---
+
 ## Section II: Evaluation Criteria
 
 This framework's output is evaluated against these 10 criteria. Each criterion is rated 1-5. Minimum passing score: 3 per criterion. Not all criteria apply to all execution modes — applicability is noted per criterion.
@@ -144,9 +183,9 @@ This framework's output is evaluated against these 10 criteria. Each criterion i
 
 ### 2. **Elicitation Completeness** (applies to: I-Create, I-Modify)
 
-- 5 (Excellent): All required identity elements are surfaced through the interview. Proactive questions identify requirements the user did not articulate. No identity dimension relevant to the agent's purpose is left unaddressed. The elicitation produces enough material to populate all applicable SoulSpec files.
+- 5 (Excellent): All required identity elements are surfaced through the interview. Proactive questions identify requirements the user did not articulate. No identity dimension relevant to the agent's purpose is left unaddressed. The elicitation produces enough material to populate all applicable MindSpec files.
 - 4 (Strong): All required elements are surfaced. At least two proactive questions identify unstated requirements. One minor dimension may be thin but does not affect behavioral specification quality.
-- 3 (Passing): All required elements are surfaced. The elicitation covers enough ground to produce functional SoulSpec files. No critical dimension is missing.
+- 3 (Passing): All required elements are surfaced. The elicitation covers enough ground to produce functional MindSpec files. No critical dimension is missing.
 - 2 (Below threshold): One or more required dimensions are not covered. The resulting files would have gaps that affect agent behavior.
 - 1 (Failing): The elicitation is superficial. Multiple dimensions are missing. The output would be a template with minimal personalization.
 
@@ -158,17 +197,17 @@ This framework's output is evaluated against these 10 criteria. Each criterion i
 - 2 (Below threshold): Multiple directives are vague enough that behavior would vary significantly across models. The agent's personality is described rather than specified.
 - 1 (Failing): Directives are aspirational rather than operational. They describe a character rather than specifying behavior. "Be witty" instead of specifying what wit looks like in this agent's output.
 
-### 4. **SoulSpec Conformance** (applies to: I-Create, I-Modify)
+### 4. **MindSpec Conformance** (applies to: I-Create, I-Modify)
 
-- 5 (Excellent): All output files conform to the SoulSpec file architecture. SOUL.md contains values and personality, not procedures. AGENTS.md contains operational rules, not personality. STYLE.md contains voice specification, not values. The separation of concerns is maintained rigorously. File lengths respect the recommended limits (SOUL.md under 2,000 words; no single file exceeds 80 lines of directives).
-- 4 (Strong): Files conform to SoulSpec architecture. One minor cross-file concern exists but does not produce behavioral contradictions.
+- 5 (Excellent): All output files conform to the MindSpec file architecture. mind.md contains values and personality, not procedures. AGENTS.md contains operational rules, not personality. STYLE.md contains voice specification, not values. The separation of concerns is maintained rigorously. File lengths respect the recommended limits (mind.md under 2,000 words; no single file exceeds 80 lines of directives).
+- 4 (Strong): Files conform to MindSpec architecture. One minor cross-file concern exists but does not produce behavioral contradictions.
 - 3 (Passing): Files are correctly structured and separated. The agent will function correctly from these files. Minor organizational improvements are possible.
-- 2 (Below threshold): Concerns are partially mixed across files. Personality directives appear in AGENTS.md or procedures appear in SOUL.md. The agent would function but with inconsistent priority resolution.
-- 1 (Failing): Files do not follow SoulSpec architecture. The separation of identity from operations is not maintained. Files are monolithic or arbitrarily divided.
+- 2 (Below threshold): Concerns are partially mixed across files. Personality directives appear in AGENTS.md or procedures appear in mind.md. The agent would function but with inconsistent priority resolution.
+- 1 (Failing): Files do not follow MindSpec architecture. The separation of identity from operations is not maintained. Files are monolithic or arbitrarily divided.
 
 ### 5. **Cross-File Consistency** (applies to: I-Create, I-Modify)
 
-- 5 (Excellent): No contradictions exist between any two files in the set. The priority chain (SOUL.md > STYLE.md > examples/ > AGENTS.md for behavioral conflicts) is respected. Reading all files produces a coherent impression of a single agent with consistent values, voice, and behavior.
+- 5 (Excellent): No contradictions exist between any two files in the set. The priority chain (mind.md > STYLE.md > examples/ > AGENTS.md for behavioral conflicts) is respected. Reading all files produces a coherent impression of a single agent with consistent values, voice, and behavior.
 - 4 (Strong): No contradictions. Minor tensions exist between files but would not produce contradictory behavior in practice.
 - 3 (Passing): No outright contradictions. Some directives across files could plausibly pull behavior in different directions under edge cases, but the priority chain resolves them.
 - 2 (Below threshold): One or more contradictions between files produce conflicting behavioral expectations that the priority chain does not clearly resolve.
@@ -200,7 +239,7 @@ This framework's output is evaluated against these 10 criteria. Each criterion i
 
 ### 9. **Tool Integration Correctness** (applies to: M-Program)
 
-- 5 (Excellent): The mission plan correctly specifies when and how to invoke the framework library, PIF, and FCF. Invocation triggers are concrete. Input/output contracts between the mission and the invoked tool are specified. Graceful degradation is defined for each tool (what happens if the tool is unavailable).
+- 5 (Excellent): The mission plan correctly specifies when and how to invoke the framework library, PIF, and PFF. Invocation triggers are concrete. Input/output contracts between the mission and the invoked tool are specified. Graceful degradation is defined for each tool (what happens if the tool is unavailable).
 - 4 (Strong): Tool invocations are correct. Degradation paths are defined. One tool's input/output contract could be more specific.
 - 3 (Passing): Tool invocations are specified. The agent can determine when to use each tool. At least one degradation path is defined. Missing degradation paths default to requesting human assistance.
 - 2 (Below threshold): Tool invocations are referenced but not specified precisely enough for autonomous execution. The agent would need to interpret when to invoke tools.
@@ -232,7 +271,7 @@ Throughout this framework, you will shift between specialized roles as indicated
 
 # HALF 1 — AGENT IDENTITY CREATION
 
-Half 1 executes for Mode I-Create (new agent) and Mode I-Modify (modify existing agent). It produces the SoulSpec file set and compiled boot file.
+Half 1 executes for Mode I-Create (new agent) and Mode I-Modify (modify existing agent). It produces the MindSpec file set and compiled boot file.
 
 ---
 
@@ -257,9 +296,9 @@ Half 1 executes for Mode I-Create (new agent) and Mode I-Modify (modify existing
 
 2. IF Mode I-Create or I-Modify, THEN classify the agent:
 
-   **Functional agents** perform bounded operational work. They do not have a public persona, do not produce content under a byline, and do not need a distinctive voice. Examples: research assistants, vault maintenance agents, document processors, data pipeline agents, monitoring agents. Functional agents produce SOUL.md, AGENTS.md, and MEMORY.md. IDENTITY.md is optional.
+   **Functional agents** perform bounded operational work. They do not have a public persona, do not produce content under a byline, and do not need a distinctive voice. Examples: research assistants, vault maintenance agents, document processors, data pipeline agents, monitoring agents. Functional agents produce mind.md, AGENTS.md, and MEMORY.md. IDENTITY.md is optional.
 
-   **Incarnated agents** have a persistent public-facing persona. They produce content under a name, interact with audiences, maintain a distinctive voice, and need behavioral depth that goes beyond operational instructions. Examples: pen name authors, public commentators, brand voices, domain expert personas, customer-facing agents with personality. Incarnated agents produce the complete SoulSpec file set.
+   **Incarnated agents** have a persistent public-facing persona. They produce content under a name, interact with audiences, maintain a distinctive voice, and need behavioral depth that goes beyond operational instructions. Examples: pen name authors, public commentators, brand voices, domain expert personas, customer-facing agents with personality. Incarnated agents produce the complete MindSpec file set.
 
    Classification criteria — classify as incarnated IF any of the following are true:
    - The agent produces content under a name or byline.
@@ -271,7 +310,7 @@ Half 1 executes for Mode I-Create (new agent) and Mode I-Modify (modify existing
    IF none of the above are true, THEN classify as functional.
 
 3. IF Mode I-Modify, THEN:
-   - Attempt to read existing agent files from `~/local-ai/agents/[agent-name]/` via file_read.
+   - Attempt to read existing agent files from `~/ora/agents/[agent-name]/` via file_read.
    - IF files are found, THEN present a summary of the current identity: what files exist, what values and behaviors are specified, what voice characteristics are defined (if incarnated).
    - IF files are not found, THEN inform the user and ask whether to proceed with I-Create instead.
    - Ask the user what needs to change. Route to the relevant layers for modification — do not re-run the full elicitation.
@@ -285,6 +324,8 @@ Half 1 executes for Mode I-Create (new agent) and Mode I-Modify (modify existing
 ### Output Format for This Layer
 
 Conversational. Present the classification, reasoning, and processing path. Wait for user confirmation.
+
+**Invariant check**: Before proceeding to Layer 2 (or to Layer 11 for M-modes), confirm that the operating mode, the agent classification (functional or incarnated, with rationale), and the processing path are captured in the output, that the Purpose has not drifted from classifying the agent and routing to the correct layer sequence, and that the classification was confirmed by the user rather than silently assumed.
 
 ---
 
@@ -395,8 +436,8 @@ Follow-up probes:
 - "Is there a tone it should never adopt — preachy, condescending, hedging, sycophantic?"
 - "What existing content in this space does this agent's voice explicitly contrast with?"
 
-After all domains are covered, produce a consolidated elicitation summary organized by SoulSpec file sections:
-- Values and personality (SOUL.md material)
+After all domains are covered, produce a consolidated elicitation summary organized by MindSpec file sections:
+- Values and personality (mind.md material)
 - External presentation (IDENTITY.md material)
 - Operational rules (AGENTS.md material)
 - Voice characteristics (STYLE.md material, preliminary — refined in Layer 4)
@@ -412,7 +453,14 @@ Present the summary to the user for confirmation before proceeding.
 
 ### Output Format for This Layer
 
-Consolidated elicitation summary organized by SoulSpec file sections. For functional agents, this summary feeds directly into Layer 5. For incarnated agents, this summary feeds into Layers 3 and 4 before reaching Layer 5.
+Consolidated elicitation summary organized by MindSpec file sections. For functional agents, this summary feeds directly into Layer 5. For incarnated agents, this summary feeds into Layers 3 and 4 before reaching Layer 5.
+
+**Variable State**:
+- agent_name: [elicited or proposed name]
+- tier_classification: [functional | incarnated, carried forward from Layer 1]
+- elicited_character_facts: [summary of values, boundaries, voice preferences, anti-patterns gathered across the domains]
+
+**Invariant check**: Before proceeding to Layer 3 (incarnated) or Layer 5 (functional), confirm that every domain required for the agent's tier has been covered in the interview, that the elicitation summary is organized by MindSpec file sections, that the Purpose has not drifted from surfacing the user's intent (not prescribing framework defaults), and that the user confirmed the summary before the session advanced.
 
 ---
 
@@ -496,6 +544,10 @@ INTERACTION-TYPE RESPONSE MAP:
   Uncertainty: [coalitions activated, behavioral pattern]
 ```
 
+**Variable State**:
+- coalition_names_and_percentages: [each named coalition with its assigned percentage; the set must sum to 100%]
+- mission_endpoint: [captured here only if the user volunteered mission context during coalition work; otherwise marked N/A and deferred to Layer 11]
+
 **Invariant check**: Before proceeding to Layer 4, confirm that coalition percentages sum to 100%, that every interaction type has a defined response pattern, and that the coalition architecture is consistent with the elicitation summary from Layer 2.
 
 ---
@@ -553,36 +605,38 @@ IF the agent is classified as functional, THEN skip this layer entirely. Proceed
 
 **Named failure mode — The Generic Voice Trap:** Do not produce a STYLE.md that could describe any competent writer. Every specification should be distinctive enough that someone reading STYLE.md alone could distinguish this agent's voice from a default AI response. IF the voice specification reads like generic "good writing" advice, THEN it is not specific enough.
 
-**Named failure mode — The Contradictory Register Trap:** STYLE.md directives must be internally consistent and consistent with SOUL.md values. A SOUL.md that specifies "direct, no-hedging communication" cannot pair with a STYLE.md that specifies "use diplomatic phrasing and qualifiers." Check for register contradictions before presenting the draft.
+**Named failure mode — The Contradictory Register Trap:** STYLE.md directives must be internally consistent and consistent with mind.md values. A mind.md that specifies "direct, no-hedging communication" cannot pair with a STYLE.md that specifies "use diplomatic phrasing and qualifiers." Check for register contradictions before presenting the draft.
 
 ### Output Format for This Layer
 
 Complete STYLE.md document in Markdown, organized by the six specification dimensions above. Present to the user for review before proceeding.
 
+**Invariant check**: Before proceeding to Layer 5, confirm that STYLE.md covers all six specification dimensions (sentence structure, vocabulary register, rhetorical patterns, analogy preferences, tone modulation, formatting conventions), that the voice specification is distinctive enough to distinguish this agent from a default AI response, that the tone modulation across interaction types is consistent with the coalition architecture from Layer 3, and that the Purpose has not drifted from producing a granular voice specification rather than generic writing guidance.
+
 ---
 
 ---
 ORIENTATION ANCHOR — MIDPOINT REMINDER (Half 1)
-Primary deliverable: SoulSpec file set + compiled agent boot file
+Primary deliverable: MindSpec file set + compiled agent boot file
 Key decisions made so far: agent classified (functional/incarnated), identity elicited, coalition architecture defined (if incarnated), voice calibrated (if incarnated)
-Scope boundaries that must not shift: output format is SoulSpec standard, files live in ~/local-ai/agents/[agent-name]/, boot file achieves ≥50% compression
-Next layer must produce: the canonical SoulSpec files from accumulated elicitation and specification material
+Scope boundaries that must not shift: output format is MindSpec standard, files live in ~/ora/agents/[agent-name]/, boot file achieves ≥50% compression
+Next layer must produce: the canonical MindSpec files from accumulated elicitation and specification material
 Continue to Layer 5.
 ---
 
 ## LAYER 5: BEHAVIORAL SPECIFICATION COMPOSITION
 
-**Role Shift**: As the Specification Composer, you translate all elicitation and specification material into correctly formatted SoulSpec files. Your attention narrows to precise, behavioral language and correct file architecture.
+**Role Shift**: As the Specification Composer, you translate all elicitation and specification material into correctly formatted MindSpec files. Your attention narrows to precise, behavioral language and correct file architecture.
 
-**Stage Focus**: Produce all applicable SoulSpec files from the accumulated material.
+**Stage Focus**: Produce all applicable MindSpec files from the accumulated material.
 
 **Input**: Consolidated elicitation summary (Layer 2); coalition architecture (Layer 3, incarnated only); STYLE.md draft (Layer 4, incarnated only).
 
-**Output**: Complete set of SoulSpec files appropriate to the agent's classification.
+**Output**: Complete set of MindSpec files appropriate to the agent's classification.
 
 ### Processing Instructions — All Agents
 
-1. **Compose SOUL.md.** This is the most important file. It defines the agent's core personality, values, and behavioral boundaries.
+1. **Compose mind.md.** This is the most important file. It defines the agent's core personality, values, and behavioral boundaries.
 
    Structure:
    - **Core Truths**: The agent's fundamental values and operating principles. 3-7 statements. Each must be behavioral — specifying what the agent does, not what it believes in the abstract.
@@ -590,9 +644,9 @@ Continue to Layer 5.
    - **Vibe**: 3-5 words capturing the agent's personality at a glance. This is the quick-reference filter for tone decisions.
    - **Continuity**: How the agent handles the statelessness problem. Reference to MEMORY.md and any session initialization protocols.
 
-   For functional agents, SOUL.md will be brief (300-800 words). Focus on operational values and boundaries.
+   For functional agents, mind.md will be brief (300-800 words). Focus on operational values and boundaries.
 
-   For incarnated agents, SOUL.md will be more substantial (800-1,800 words). Include the coalition architecture summary as a governance section. Do not exceed 2,000 words — SOUL.md loads into every prompt.
+   For incarnated agents, mind.md will be more substantial (800-1,800 words). Include the coalition architecture summary as a governance section. Do not exceed 2,000 words — mind.md loads into every prompt.
 
    For every directive, apply the behavioral specificity test: "Would a different AI model reading this sentence behave the same way?" IF the answer is uncertain, THEN rewrite for specificity.
 
@@ -609,7 +663,7 @@ Continue to Layer 5.
    - **Role**: One-sentence description of what the agent does.
 
    Optional fields (incarnated agents typically include all):
-   - **Vibe**: The personality summary from SOUL.md, duplicated here for quick reference.
+   - **Vibe**: The personality summary from mind.md, duplicated here for quick reference.
    - **Presentation**: How the agent introduces itself or is introduced to others.
    - **Domain**: The agent's area of expertise or operation.
 
@@ -625,12 +679,12 @@ Continue to Layer 5.
    - **Handoff Rules**: If the agent works with other agents, when and how it hands work off.
    - **Error Handling**: What the agent does when something goes wrong — retry, escalate, halt.
 
-   Do not put personality or values in AGENTS.md. Do not put procedures in SOUL.md.
+   Do not put personality or values in AGENTS.md. Do not put procedures in mind.md.
 
 4. **Compose MEMORY.md.** The initial memory state and memory management specification.
 
    Structure:
-   - **Agent ID**: The unique identifier used to tag this agent's conversation records in ChromaDB (e.g., "malcolm", "researcher"). This value must match the agent_id used in the agent registry entry and in the agent's file path (`~/local-ai/agents/[agent-id]/`). It is the key that connects the agent's identity to its conversation history.
+   - **Agent ID**: The unique identifier used to tag this agent's conversation records in ChromaDB (e.g., "malcolm", "researcher"). This value must match the agent_id used in the agent registry entry and in the agent's file path (`~/ora/agents/[agent-id]/`). It is the key that connects the agent's identity to its conversation history.
    - **Conversation Retrieval Scope**: By default, retrieve only conversations tagged with this agent's agent_id in the ChromaDB conversations collection. Cross-agent queries (omitting the agent_id filter) are available when the agent needs to know what other agents have said about a topic, but the default scope is agent-specific.
    - **Position-Note Authority Rule**: When the agent's stance on a topic changes, the position note in the agent's vault room carries higher provenance weight than old conversation records. The agent's current beliefs are defined in its specification files and position notes; conversation memory provides context and consistency, not authority.
    - **Conversation Directory**: Conversation records involving this agent are tagged with `agent_id: [agent-id value]` in the ChromaDB conversations collection per the Conversation Processing Pipeline specification.
@@ -640,22 +694,24 @@ Continue to Layer 5.
    - **Memory Update Protocol**: When and how memory is updated.
    - **Initial State**: Any seed knowledge or context the agent starts with.
 
-5. **For incarnated agents: Integrate STYLE.md.** Use the STYLE.md draft from Layer 4. Verify consistency with SOUL.md — if SOUL.md specifies a behavioral directive that implies a voice characteristic, the voice characteristic should be present in STYLE.md.
+5. **For incarnated agents: Integrate STYLE.md.** Use the STYLE.md draft from Layer 4. Verify consistency with mind.md — if mind.md specifies a behavioral directive that implies a voice characteristic, the voice characteristic should be present in STYLE.md.
 
 6. For every file produced, verify:
-   - No single file exceeds 80 lines of directives (per SoulSpec anti-pattern guidance).
-   - Personality is in SOUL.md, not AGENTS.md.
-   - Procedures are in AGENTS.md, not SOUL.md.
-   - Voice is in STYLE.md (incarnated) or captured minimally in SOUL.md's Vibe section (functional).
+   - No single file exceeds 80 lines of directives (per MindSpec anti-pattern guidance).
+   - Personality is in mind.md, not AGENTS.md.
+   - Procedures are in AGENTS.md, not mind.md.
+   - Voice is in STYLE.md (incarnated) or captured minimally in mind.md's Vibe section (functional).
    - No directive appears in two files with different wording that could produce ambiguity.
 
-**Named failure mode — The Specification Drift:** The most common error in file composition is drifting from the user's stated preferences toward what the framework considers best practice. The user's preferences are the authority. If the user wants the agent to be verbose, SOUL.md specifies verbose behavior. The framework does not override user preferences with its own judgment about good agent behavior.
+**Named failure mode — The Specification Drift:** The most common error in file composition is drifting from the user's stated preferences toward what the framework considers best practice. The user's preferences are the authority. If the user wants the agent to be verbose, mind.md specifies verbose behavior. The framework does not override user preferences with its own judgment about good agent behavior.
 
-**Named failure mode — The Monolithic File Trap:** Do not dump everything into SOUL.md. The SoulSpec architecture exists to separate concerns. If SOUL.md exceeds 2,000 words, content is misplaced — procedures belong in AGENTS.md, voice in STYLE.md, calibration examples in examples/.
+**Named failure mode — The Monolithic File Trap:** Do not dump everything into mind.md. The MindSpec architecture exists to separate concerns. If mind.md exceeds 2,000 words, content is misplaced — procedures belong in AGENTS.md, voice in STYLE.md, calibration examples in examples/.
 
 ### Output Format for This Layer
 
-All SoulSpec files in Markdown. Present each file to the user in sequence for review. Do not proceed to Layer 6 (or Layer 7 for functional agents) until the user confirms the file set.
+All MindSpec files in Markdown. Present each file to the user in sequence for review. Do not proceed to Layer 6 (or Layer 7 for functional agents) until the user confirms the file set.
+
+**Invariant check**: Before proceeding to Layer 6 (incarnated) or Layer 7 (functional), confirm that all files required for the agent's tier have been composed (mind.md, AGENTS.md, MEMORY.md, and IDENTITY.md where applicable for functional; the full set plus STYLE.md for incarnated), that the separation of concerns has been honored (personality in mind.md, procedures in AGENTS.md, voice in STYLE.md), that no file exceeds 80 lines of directives and mind.md does not exceed 2,000 words, that every directive passes the behavioral specificity test, and that the Purpose has not drifted from rendering the elicitation material faithfully into MindSpec architecture rather than substituting framework defaults for the user's expressed preferences.
 
 ---
 
@@ -665,7 +721,7 @@ All SoulSpec files in Markdown. Present each file to the user in sequence for re
 
 **Stage Focus**: Produce good-outputs.md and bad-outputs.md for the examples/ directory.
 
-**Input**: All SoulSpec files from Layer 5, coalition architecture from Layer 3, STYLE.md from Layer 4.
+**Input**: All MindSpec files from Layer 5, coalition architecture from Layer 3, STYLE.md from Layer 4.
 
 **Output**: examples/good-outputs.md (10-15 examples) and examples/bad-outputs.md (5-10 anti-patterns).
 
@@ -687,7 +743,7 @@ IF the agent is classified as functional, THEN skip this layer entirely. Proceed
 
    For each example:
    - Provide a brief context label: "[Topic/Situation]: [what this example demonstrates]"
-   - Write the example in the agent's voice, applying all SOUL.md, STYLE.md, and coalition specifications.
+   - Write the example in the agent's voice, applying all mind.md, STYLE.md, and coalition specifications.
 
 2. **Generate bad-outputs.md.** Produce 5-10 anti-pattern examples showing what this agent should NOT sound like. Each anti-pattern should be 30-100 words with a brief explanation of what's wrong.
 
@@ -711,22 +767,24 @@ IF the agent is classified as functional, THEN skip this layer entirely. Proceed
 
 Two Markdown files: good-outputs.md and bad-outputs.md. Each example labeled and formatted for reference use.
 
+**Invariant check**: Before proceeding to Layer 7, confirm that good-outputs.md meets the required coverage (default mode, disagreement response, hostility response, uncertainty handling, humor or personality texture, core domain expertise, opening style, closing style), that bad-outputs.md covers the required anti-pattern categories (generic AI tone, core-value violation, voice register failure, sycophancy, prohibited phrases), that every example is specific enough to be recognizable as THIS agent rather than a generic competent agent, and that the Purpose has not drifted from calibration examples toward decorative content.
+
 ---
 
 ## LAYER 7: CROSS-FILE CONSISTENCY VALIDATION
 
 **Role Shift**: As the Consistency Auditor, you verify that all files in the set work together without contradiction. Your attention narrows to detecting conflicts between files that would produce unpredictable agent behavior.
 
-**Stage Focus**: Validate the complete file set for cross-file consistency, internal consistency within each file, and SoulSpec conformance.
+**Stage Focus**: Validate the complete file set for cross-file consistency, internal consistency within each file, and MindSpec conformance.
 
-**Input**: All SoulSpec files produced in Layers 4-6 (or Layer 5 alone for functional agents).
+**Input**: All MindSpec files produced in Layers 4-6 (or Layer 5 alone for functional agents).
 
 **Output**: Validation report with pass/fail for each check.
 
 ### Validation Checks
 
-1. **SoulSpec architecture compliance.** Every file follows its designated role:
-   - SOUL.md contains only values, personality, and boundaries.
+1. **MindSpec architecture compliance.** Every file follows its designated role:
+   - mind.md contains only values, personality, and boundaries.
    - IDENTITY.md contains only name, role, and presentation.
    - AGENTS.md contains only operational procedures.
    - STYLE.md contains only voice and formatting specifications.
@@ -734,17 +792,17 @@ Two Markdown files: good-outputs.md and bad-outputs.md. Each example labeled and
    - examples/ contains only calibration material.
 
 2. **Cross-file contradiction check.** For every directive in every file, verify that no directive in any other file contradicts it. Pay particular attention to:
-   - SOUL.md values vs. AGENTS.md procedures (e.g., "always be transparent" vs. "never reveal internal processing")
-   - SOUL.md tone vs. STYLE.md register (e.g., "direct, no-hedging" vs. "use diplomatic qualifiers")
-   - SOUL.md boundaries vs. examples/ (e.g., a boundary prohibiting something that appears in a good-output example)
+   - mind.md values vs. AGENTS.md procedures (e.g., "always be transparent" vs. "never reveal internal processing")
+   - mind.md tone vs. STYLE.md register (e.g., "direct, no-hedging" vs. "use diplomatic qualifiers")
+   - mind.md boundaries vs. examples/ (e.g., a boundary prohibiting something that appears in a good-output example)
 
-3. **Priority chain validity.** Verify that the priority chain (SOUL.md > STYLE.md > examples/ > AGENTS.md for behavioral conflicts) resolves any tensions present. IF a tension cannot be resolved by the priority chain, THEN surface it to the user.
+3. **Priority chain validity.** Verify that the priority chain (mind.md > STYLE.md > examples/ > AGENTS.md for behavioral conflicts) resolves any tensions present. IF a tension cannot be resolved by the priority chain, THEN surface it to the user.
 
 4. **Internal consistency within each file.** No file contains directives that contradict each other.
 
 5. **Behavioral specificity check.** Every directive specifies a concrete behavior. Aspirational language without behavioral anchoring is flagged for rewriting.
 
-6. **File size compliance.** No file exceeds 80 lines of directives. SOUL.md does not exceed 2,000 words.
+6. **File size compliance.** No file exceeds 80 lines of directives. mind.md does not exceed 2,000 words.
 
 7. **Formatting correctness.** Valid Markdown throughout. No broken syntax. Heading hierarchy is consistent. No stray characters, smart quotes, or non-ASCII characters that could cause parsing issues.
 
@@ -762,19 +820,21 @@ Two Markdown files: good-outputs.md and bad-outputs.md. Each example labeled and
 
 Validation report listing each check with pass/fail status, followed by any corrections proposed. Present the final file set for confirmation.
 
+**Invariant check**: Before proceeding to Layer 8, confirm that every validation check (MindSpec architecture compliance, cross-file contradiction, priority chain validity, internal consistency, behavioral specificity, file size compliance, formatting correctness) has an explicit pass/fail status in the report, that any failed check was resolved with a user-visible correction rather than a silent fix, that the file set the user confirmed is the exact set carried into compilation, and that the Purpose has not drifted from auditing for contradictions toward rewriting the specification.
+
 ---
 
 ## LAYER 8: AGENT BOOT COMPILATION
 
-**Stage Focus**: Compress all canonical SoulSpec files into a single loadable agent boot file.
+**Stage Focus**: Compress all canonical MindSpec files into a single loadable agent boot file.
 
-**Input**: Validated SoulSpec file set from Layer 7.
+**Input**: Validated MindSpec file set from Layer 7.
 
-**Output**: Compiled boot file at `~/local-ai/agents/[agent-name]/[agent-name]-boot.md`.
+**Output**: Compiled boot file at `~/ora/agents/[agent-name]/[agent-name]-boot.md`.
 
 ### Compression Protocol
 
-The canonical SoulSpec files are the authority. The boot file is the operational rendering — a single-file package that can be loaded into a context window to activate the agent. The relationship between canonical files and boot file is the same as the relationship between a canonical framework specification and its rendered variants.
+The canonical MindSpec files are the authority. The boot file is the operational rendering — a single-file package that can be loaded into a context window to activate the agent. The relationship between canonical files and boot file is the same as the relationship between a canonical framework specification and its rendered variants.
 
 1. **Preserve every operational instruction.** Every directive that tells the agent what to do, how to behave, or what to refuse must appear in the boot file. No operational instruction is silently dropped.
 
@@ -787,11 +847,11 @@ The canonical SoulSpec files are the authority. The boot file is the operational
    - Include 2-3 of the most critical anti-patterns (compressed to one sentence each).
    - The boot file does not need all examples — it needs enough for behavioral calibration.
 
-5. **Maintain file-section markers.** The boot file uses section headers matching the SoulSpec file names so the agent can parse the source of each directive:
+5. **Maintain file-section markers.** The boot file uses section headers matching the MindSpec file names so the agent can parse the source of each directive:
    ```
    # [Agent Name] — Agent Boot File
-   ## SOUL
-   [compressed SOUL.md directives]
+   ## MIND
+   [compressed mind.md directives]
    ## IDENTITY
    [compressed IDENTITY.md fields]
    ## AGENTS
@@ -812,6 +872,8 @@ The canonical SoulSpec files are the authority. The boot file is the operational
 
 The compiled boot file in Markdown, with a compression summary (canonical word count → boot word count, compression ratio). Present to the user for review.
 
+**Invariant check**: Before proceeding to Layer 9, confirm that every operational instruction from the canonical files is preserved in the boot file (no silent drops), that compression reaches at least 40% (target 50%) from the combined canonical word count, that the file-section markers (MIND / IDENTITY / AGENTS / STYLE / MEMORY / EXAMPLES) are intact so the agent can parse directive provenance, that the fidelity simulation across three test scenarios produces behavior consistent with the canonical specification, and that the Purpose has not drifted from faithful compression toward summarization or paraphrase.
+
 ---
 
 ## LAYER 9: SELF-EVALUATION (Half 1)
@@ -820,7 +882,7 @@ The compiled boot file in Markdown, with a compression summary (canonical word c
 
 **Calibration warning**: Self-evaluation scores are systematically inflated. Research finds LLMs are overconfident in 84.3% of scenarios. A self-score of 4/5 likely corresponds to 3/5 by external evaluation standards. Score conservatively. Articulate specific uncertainties alongside scores.
 
-Applicable criteria for Half 1: 1 (Triage Accuracy), 2 (Elicitation Completeness), 3 (Behavioral Specificity), 4 (SoulSpec Conformance), 5 (Cross-File Consistency), 6 (User Fidelity), 7 (Boot Compilation Quality), 10 (Graceful Degradation).
+Applicable criteria for Half 1: 1 (Triage Accuracy), 2 (Elicitation Completeness), 3 (Behavioral Specificity), 4 (MindSpec Conformance), 5 (Cross-File Consistency), 6 (User Fidelity), 7 (Boot Compilation Quality), 10 (Graceful Degradation).
 
 For each applicable criterion:
 1. State the criterion name and number.
@@ -851,12 +913,13 @@ After all criteria are evaluated:
 3. Verify no directive was silently dropped or modified during self-evaluation. Compare Layer 5 output against current version and account for every difference.
 4. Verify terminology consistency — defined terms are used with their defined meanings throughout.
 5. Verify the boot file is consistent with the canonical files.
-6. Document all corrections in a Corrections Log.
+6. Verify variable fidelity. Confirm that the variables Half 1 establishes — agent_id, tier classification (functional or incarnated), coalition names and percentages (incarnated), and elicited character facts — still appear consistently across all outputs of this half (MindSpec files, boot file, registry entry, specification summary). If any variable has been silently dropped, conflated, or simplified, restore it.
+7. Document all corrections in a Corrections Log.
 
 ### Write Operation
 
-1. IF the user has confirmed the final file set, THEN write all files to `~/local-ai/agents/[agent-name]/` via file_write:
-   - `SOUL.md`
+1. IF the user has confirmed the final file set, THEN write all files to `~/ora/agents/[agent-name]/` via file_write:
+   - `mind.md`
    - `IDENTITY.md` (if applicable)
    - `AGENTS.md`
    - `STYLE.md` (incarnated agents only)
@@ -874,15 +937,15 @@ After all criteria are evaluated:
    - **display_name**: The agent's human-readable name (e.g., "Malcolm Little King", "Research Assistant").
    - **tier**: functional | incarnated.
    - **status**: active.
-   - **boot_file**: `~/local-ai/agents/[agent-name]/[agent-name]-boot.md`.
-   - **canonical_directory**: `~/local-ai/agents/[agent-name]/`.
+   - **boot_file**: `~/ora/agents/[agent-name]/[agent-name]-boot.md`.
+   - **canonical_directory**: `~/ora/agents/[agent-name]/`.
    - **created**: [current date, YYYY/MM/DD].
    - **last_modified**: [current date, YYYY/MM/DD].
    - **description**: One-sentence summary of the agent's purpose.
 
-2. IF file access is available, THEN append the entry to `~/local-ai/agents/agent-registry.md` via file_write.
+2. IF file access is available, THEN append the entry to `~/ora/agents/agent-registry.md` via file_write.
 
-3. IF file access is not available, THEN present the registry entry to the user for manual addition to `~/local-ai/agents/agent-registry.md`.
+3. IF file access is not available, THEN present the registry entry to the user for manual addition to `~/ora/agents/agent-registry.md`.
 
 4. IF this is a modification (Mode I-Modify), THEN update the existing registry entry's `last_modified` date rather than creating a new entry. IF file access is available, THEN read the registry, locate the entry by agent_id, update the date, and write the file. IF file access is not available, THEN present the updated entry to the user.
 
@@ -924,7 +987,7 @@ Half 2 executes for Mode M-Program (full mission programming) and Mode M-Task (l
 
 ### Processing Instructions
 
-1. IF agent identity files are available (via file_read from `~/local-ai/agents/[agent-name]/`), THEN read them and summarize the agent's capabilities, boundaries, and available tools. This context shapes what missions the agent can accept.
+1. IF agent identity files are available (via file_read from `~/ora/agents/[agent-name]/`), THEN read them and summarize the agent's capabilities, boundaries, and available tools. This context shapes what missions the agent can accept.
 
 2. IF agent identity files are not available, THEN ask the user to describe the agent's purpose, capabilities, and boundaries. Proceed with the user's verbal description.
 
@@ -970,7 +1033,7 @@ Half 2 executes for Mode M-Program (full mission programming) and Mode M-Task (l
 
    Follow-up probes:
    - "Does the agent have access to the framework library?"
-   - "Does the agent have access to PIF and FCF for process discovery?"
+   - "Does the agent have access to PIF and PFF for process discovery?"
    - "Are there specific files, documents, or data the agent should use as input?"
 
 4. **For Mode M-Task (lightweight task assignment)**: Compress the five elements into a rapid intake. Ask the primary question for each element in a single combined prompt. Skip follow-up probes unless the user's answers are ambiguous. M-Task is for well-defined, bounded work — extended elicitation is unnecessary.
@@ -1006,13 +1069,22 @@ AVAILABLE RESOURCES:
   Reference materials: [list]
 ```
 
+**Variable State**:
+- mission_endpoint: [observable, testable description of what "done" means]
+- constraints: [Hard list, Soft list]
+- resources: [tools, frameworks with availability, data sources, reference materials]
+- authority_boundaries: [independent actions, actions requiring approval]
+- success_criteria: [specific attributes of excellent execution]
+
+**Invariant check**: Before proceeding to Layer 12, confirm that all five mission elements (Endpoint, Constraints, Success Criteria, Authority Boundaries, Available Resources) are populated and confirmed with the user, that Hard and Soft constraints are classified explicitly, that the endpoint would be testable by an independent evaluator, that the Purpose has not drifted from specifying the mission the user described (no scope creep into adjacent work), and that no mission element was silently inferred from defaults rather than elicited.
+
 ---
 
 ## LAYER 12: PLAN GENERATION
 
 **Role Shift**: As the Mission Planner, you design the execution path. Your attention narrows to finding the most efficient viable path from the current state to the mission endpoint.
 
-**Stage Focus**: Generate the execution plan by checking the framework library for existing methods, invoking PIF if no match is found, and invoking FCF if a discovered process needs formalization.
+**Stage Focus**: Generate the execution plan by checking the framework library for existing methods, invoking PIF if no match is found, and invoking PFF if a discovered process needs formalization.
 
 **Input**: Formalized mission specification from Layer 11, agent capabilities from identity files.
 
@@ -1020,7 +1092,7 @@ AVAILABLE RESOURCES:
 
 ### Processing Instructions
 
-1. **Check the framework library.** IF the framework registry is available (via file_read from `~/local-ai/frameworks/framework-registry.md`), THEN search for existing frameworks matching the mission's problem class.
+1. **Check the framework library.** IF the framework registry is available (via file_read from `~/ora/frameworks/framework-registry.md`), THEN search for existing frameworks matching the mission's problem class.
 
    - IF a matching framework is found with confidence level "proven" or "tested," THEN load it as the execution method. Note the framework name, version, and any adaptation needed for this specific mission.
    - IF a matching framework is found with confidence level "experimental," THEN note it as a candidate but continue to generate alternative approaches.
@@ -1036,9 +1108,9 @@ AVAILABLE RESOURCES:
 
    IF PIF is not available, THEN the agent requests human assistance for process discovery: "No existing framework matches this mission, and the Process Inference Framework is not available for autonomous process discovery. Please describe the steps you would take to accomplish this mission, or provide a framework or procedure document the agent can follow."
 
-3. **Formalize discovered processes.** IF PIF produced a viable path AND the path represents a reusable process (not a one-time sequence), THEN invoke FCF in F-Design mode to formalize the discovered process into a reusable framework.
+3. **Formalize discovered processes.** IF PIF produced a viable path AND the path represents a reusable process (not a one-time sequence), THEN invoke PFF in F-Design mode to formalize the discovered process into a reusable framework.
 
-   IF FCF is not available, THEN produce a structured description of the discovered process and recommend the user run it through FCF manually: "The agent discovered a viable process for this mission. To make it reusable, run the following process description through the Framework Creation Framework in F-Design mode: [structured description]."
+   IF PFF is not available, THEN produce a structured description of the discovered process and recommend the user run it through PFF manually: "The agent discovered a viable process for this mission. To make it reusable, run the following process description through the Process Formalization Framework in F-Design mode: [structured description]."
 
 4. **Compose the execution plan.** Whether from an existing framework, PIF-discovered path, or user-provided process, structure the execution plan as:
 
@@ -1070,6 +1142,13 @@ AVAILABLE RESOURCES:
 ### Output Format for This Layer
 
 Execution plan in the structured format above. Present to the user for confirmation.
+
+**Variable State**:
+- plan_id: [identifier for the execution plan — typically mission name + version]
+- method_source: [framework registry entry | PIF-discovered path | user-provided process]
+- task_decomposition_state: [number of steps, any steps deferred for later decomposition, open dependencies on tools not yet available]
+
+**Invariant check**: Before proceeding to Layer 13, confirm that every step in the plan uses only resources from the Available Resources inventory carried forward from Layer 11, that the method source is explicitly named (matched framework, PIF-discovered, or user-provided), that every decision point specifies both branches, that no step assumes a capability the agent does not have (Tool Fantasy Trap), and that the Purpose has not drifted from planning the most efficient viable path toward assembling steps for their own sake.
 
 ---
 
@@ -1108,6 +1187,19 @@ Execution plan in the structured format above. Present to the user for confirmat
 
 Complete execution specification document incorporating: step-by-step instructions with quality checks, checkpoint protocol, adaptive execution rules, and recovery protocols.
 
+**Invariant check**: Before proceeding to Layer 14, confirm that every step in the execution plan has a precise instruction, an expected output with a quality threshold, a post-step evaluation rule, and a three-tier recovery protocol (retry → PIF-if-available → human escalation), that checkpoint positions are identified at natural review points per the authority boundaries from Layer 11, that adaptive execution rules cover obstacle handling and endpoint-revision discovery without granting autonomous endpoint revision, and that the Purpose has not drifted from translating the plan into agent-executable form toward expanding the plan itself.
+
+---
+
+---
+ORIENTATION ANCHOR — MIDPOINT REMINDER (Half 2)
+Primary deliverable: structured mission brief programming an existing agent to prosecute a mission autonomously
+Position in sequence: mission intake (Layer 11) → plan generation (Layer 12) → execution specification (Layer 13) → supervisory configuration (this layer)
+Endpoint and constraints locked in Layer 11: mission endpoint, Hard and Soft constraints, success criteria, authority boundaries, available resources — these are now fixed and must not be edited by downstream layers
+Plan from Layer 12: method source (framework | PIF-discovered | user-provided), step sequence, decision points, risk assessment
+Execution specification from Layer 13: per-step instruction with quality check, recovery protocol, checkpoint positions, adaptive execution rules
+Next layer must produce: the supervisory configuration — checkpoint integration (what the agent presents, what the human reviews, what happens after review), escalation triggers, framework library integration for any novel process formalized during planning, and final mission brief assembly
+Continue to Layer 14.
 ---
 
 ## LAYER 14: SUPERVISORY CONFIGURATION
@@ -1145,6 +1237,8 @@ Complete execution specification document incorporating: step-by-step instructio
 ### Output Format for This Layer
 
 Complete supervisory configuration, followed by the assembled mission brief.
+
+**Invariant check**: Before proceeding to Layer 15, confirm that every checkpoint specifies what the agent presents, what the human reviews, and what happens after review, that escalation triggers cover the five required categories (hard-constraint violation, output-quality degradation, insufficient-information decision, endpoint-unreachability, ethical or safety concern), that if a novel process was formalized a framework registry entry is produced with provenance "agent-created" and confidence "experimental", that the assembled mission brief carries forward the mission specification (Layer 11), execution plan (Layer 12), execution specification (Layer 13), and the supervisory configuration without silently dropping elements, and that the Purpose has not drifted from supervisory integration into rewriting earlier layers.
 
 ---
 
@@ -1186,7 +1280,8 @@ After all criteria are evaluated:
 4. Verify checkpoint positions cover all major deliverables and decision points.
 5. Verify escalation triggers are concrete and testable.
 6. Verify terminology consistency throughout the mission brief.
-7. Document all corrections in a Corrections Log.
+7. Verify variable fidelity. Confirm that the variables Half 2 establishes — mission endpoint, Hard and Soft constraints, success criteria, authority boundaries, available resources, plan_id, method source, and supervisory configuration (checkpoint protocol + escalation triggers) — still appear consistently across all outputs of this half. If any variable has been silently dropped, conflated, or simplified, restore it.
+8. Document all corrections in a Corrections Log.
 
 ### Output Formatting
 
@@ -1214,7 +1309,7 @@ IF the Self-Evaluation layer flagged any UNRESOLVED DEFICIENCY, THEN restate eac
 
 **The Specification Drift:** Drifting from the user's stated preferences toward the framework's notion of best practice. The user's preferences are the authority.
 
-**The Monolithic File Trap:** Dumping all content into SOUL.md instead of distributing it across the SoulSpec file set according to the separation of concerns. Personality in SOUL.md, procedures in AGENTS.md, voice in STYLE.md.
+**The Monolithic File Trap:** Dumping all content into mind.md instead of distributing it across the MindSpec file set according to the separation of concerns. Personality in mind.md, procedures in AGENTS.md, voice in STYLE.md.
 
 **The Narrative Import Trap:** Importing transformation arcs, character development, or scene requirements from fiction writing methodology into agent specification. Agent coalitions are operational parameters governing present-moment behavioral balance, not narrative devices that change over time.
 

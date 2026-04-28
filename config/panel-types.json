@@ -33,6 +33,14 @@
       "supports_model_slot": true,
       "description": "Ephemeral chat for questions that should not enter the main conversation. Send to Main injects context."
     },
+    "visual": {
+      "label": "Visual",
+      "module": "visual-panel.js",
+      "supports_bridge_source": false,
+      "supports_bridge_subscribe": true,
+      "supports_model_slot": false,
+      "description": "Dual-pane visual canvas. Renders ora-visual artifacts from the bridged chat; supports zoom, pan, select, keyboard navigation, and annotation (Phase 5)."
+    },
     "switcher": {
       "label": "Model Switcher",
       "module": "switcher-panel.js",

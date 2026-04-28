@@ -1,0 +1,133 @@
+{
+  "_comment": "Mode-to-visual configuration. Canonical source: vault/Reference — Mode-to-Visual Configuration.md. Keep in sync manually until generation is automated.",
+  "_schema_version": "0.2",
+  "_last_updated": "2026-04-17",
+  "modes": {
+    "spatial-reasoning": {
+      "visual_types": ["concept_map", "causal_loop_diagram", "flowchart", "custom_annotated_svg"],
+      "relation_to_prose_default": "visually_native",
+      "adversarial_strictness": "critical",
+      "notes": "Annotations overlaid on user's original input; preserves spatial arrangement."
+    },
+    "systems-dynamics": {
+      "visual_types": ["causal_loop_diagram", "stock_and_flow"],
+      "relation_to_prose_default": "visually_native",
+      "adversarial_strictness": "critical"
+    },
+    "competing-hypotheses": {
+      "visual_types": ["ach_matrix"],
+      "relation_to_prose_default": "visually_native",
+      "adversarial_strictness": "critical"
+    },
+    "decision-under-uncertainty": {
+      "visual_types": ["decision_tree", "influence_diagram", "tornado"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "critical"
+    },
+    "strategic-interaction": {
+      "visual_types": ["decision_tree", "influence_diagram"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "critical",
+      "notes": "Decision tree here is a game tree."
+    },
+    "root-cause-analysis": {
+      "visual_types": ["fishbone", "causal_loop_diagram"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "CLD only when loops are present in the causal chain."
+    },
+    "relationship-mapping": {
+      "visual_types": ["concept_map", "causal_dag"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard"
+    },
+    "consequences-and-sequel": {
+      "visual_types": ["causal_dag", "flowchart"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard"
+    },
+    "constraint-mapping": {
+      "visual_types": ["quadrant_matrix", "pro_con"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard"
+    },
+    "scenario-planning": {
+      "visual_types": ["quadrant_matrix"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Quadrant matrix with scenario_planning subtype."
+    },
+    "benefits-analysis": {
+      "visual_types": ["pro_con", "tornado"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Tornado for quantified benefit claims; pro_con for qualitative PMI assembly."
+    },
+    "synthesis": {
+      "visual_types": ["concept_map"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Concept map captures structural parallels between frameworks."
+    },
+    "dialectical-analysis": {
+      "visual_types": ["ibis"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "IBIS captures thesis/antithesis/synthesis structure."
+    },
+    "terrain-mapping": {
+      "visual_types": ["concept_map"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Concept map with known/unknown/open-questions hierarchy."
+    },
+    "passion-exploration": {
+      "visual_types": ["concept_map"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "relaxed",
+      "notes": "Visual is for navigation, not argument. Annotate-only adversarial."
+    },
+    "cui-bono": {
+      "visual_types": ["flowchart", "concept_map"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Flowchart for interest-flow tracing; concept map for institutional structure."
+    },
+    "steelman-construction": {
+      "visual_types": [],
+      "relation_to_prose_default": "no_visual",
+      "adversarial_strictness": "standard",
+      "notes": "Linguistically native. The steelman is prose."
+    },
+    "deep-clarification": {
+      "visual_types": ["flowchart"],
+      "relation_to_prose_default": "no_visual",
+      "adversarial_strictness": "standard",
+      "notes": "Flowchart only when the mechanism is itself spatial/procedural; otherwise no_visual."
+    },
+    "paradigm-suspension": {
+      "visual_types": [],
+      "relation_to_prose_default": "no_visual",
+      "adversarial_strictness": "standard",
+      "notes": "Questioning assumptions is linguistic; a diagram would force premature commitment."
+    },
+    "project-mode": {
+      "visual_types": [],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Project Mode inherits visual configuration from the analytical mode it serves. Visual types and strictness are resolved at dispatch time based on the underlying mode."
+    },
+    "structured-output": {
+      "visual_types": [],
+      "relation_to_prose_default": "no_visual",
+      "adversarial_strictness": "standard",
+      "notes": "Structured Output renders existing content. Passes through visuals from source; does not generate new visuals."
+    },
+    "red-team": {
+      "visual_types": ["concept_map", "flowchart", "causal_loop_diagram"],
+      "relation_to_prose_default": "no_visual",
+      "adversarial_strictness": "standard",
+      "notes": "Annotated overlay only when input contains a diagram to be attacked; otherwise prose-only. Pick the type matching the user's input structure (feedback loops → causal_loop_diagram; sequential steps → flowchart; typed propositions → concept_map). Severity coded via dual encoding (colour + prefix label in callout text) for WCAG and colour-blind safety. canvas_action is annotate, never replace. Depth (Internal) and Breadth (External) findings consolidate into one envelope per turn."
+    }
+  }
+}

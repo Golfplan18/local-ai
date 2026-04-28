@@ -1,0 +1,177 @@
+---
+nexus: obsidian
+type: mode
+date created: 2026/04/24
+date modified: 2026/04/24
+rebuild_phase: catch-all
+meta_mode: true
+---
+
+# MODE: Simple
+
+## TRIGGER CONDITIONS
+
+Positive:
+1. The prompt is a greeting, chitchat, or social pleasantry ("hi", "thanks", "good morning").
+2. The prompt is a trivial factual lookup answerable with high confidence from general knowledge (capital of a country, author of a book, year of a well-known event).
+3. The prompt is a casual one-liner with no analytical goal ("what time is it in Tokyo?", "spell out 'necessary'").
+4. The classifier judges the answer is a high-confidence one-shot that a small model (≤ 9B) can produce correctly without reasoning steps.
+
+Negative:
+- IF any reasoning chain is required to reach the answer → **Standard**.
+- IF the answer depends on conflicting frames, uncertain sources, or stakeholder tradeoffs → **Adversarial** or a specific analytical mode.
+- IF the user asks for a deliverable with shape or scope → **Project Mode**.
+
+## EPISTEMOLOGICAL POSTURE
+
+Answer directly from general knowledge. Do not hedge unnecessarily; do not manufacture uncertainty where none exists. If the prompt is social, respond socially. This mode assumes the answer is well-known and the user wants it fast.
+
+## DEFAULT GEAR
+
+Gear 1. Single fast model, direct response, no adversarial review, no envelope. Simple is the Gear 1 catch-all: if it belongs here, it belongs in Gear 1.
+
+## RAG PROFILE
+
+**Retrieve (prioritise):** nothing by default. Conversation history only if the prompt references a prior turn ("what did I just ask?").
+
+**Deprioritise:** concept RAG, mental models, extended history — none of these are required for a one-shot trivial response.
+
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+Not applicable. Simple mode does not use knowledge-graph traversal.
+
+
+### RAG PROFILE — INPUT SPEC
+
+| Field | Purpose |
+|---|---|
+| `cleaned_prompt` | The user's current question. |
+| `conversation_rag` | Only pulled if the prompt references a prior turn. |
+
+
+### RAG PROFILE — CONTEXT BUDGET
+
+```
+fixed_overhead_tokens: minimal
+analytical_floor_tokens: 0
+conversation_history_soft_ceiling: 0.1
+retrieval_approach: none
+```
+
+## DEPTH MODEL INSTRUCTIONS
+
+Not applicable at Gear 1. If promoted to Gear 3 or higher, the prompt has been misclassified — re-route to **Standard** or **Adversarial**.
+
+### Cascade — what to leave for the evaluator
+
+Not applicable at Gear 1.
+
+### Consolidator guidance
+
+Not applicable at Gear 1.
+
+## BREADTH MODEL INSTRUCTIONS
+
+Answer directly and concisely. If the answer is a single sentence, emit a single sentence. Do not pad. Do not introduce caveats that the user did not ask for.
+
+### Cascade — what to leave for the evaluator
+
+Not applicable at Gear 1.
+
+## EVALUATION CRITERIA
+
+Not applicable at Gear 1 — there is no evaluator step. If the mode is promoted to Gear 3, the universal evaluator contract (f-evaluate.md) applies with no mode-specific additions.
+
+### Focus for this mode
+
+Not applicable at Gear 1.
+
+### Suggestion templates per criterion
+
+Not applicable at Gear 1.
+
+### Known failure modes to call out
+
+Not applicable at Gear 1.
+
+### Verifier checks for this mode
+
+Not applicable at Gear 1. Universal V1-V8 apply if promoted.
+
+## CONTENT CONTRACT
+
+Prose only. One to three sentences unless the prompt explicitly asks for more. No headings. No envelope.
+
+### Reviser guidance per criterion
+
+Not applicable at Gear 1.
+
+## EMISSION CONTRACT
+
+No envelope. Simple is a prose-only mode. If an envelope appears, it is an error — suppress it and respond with prose only.
+
+### Envelope type
+
+None.
+
+### Emission rules
+
+1. No `ora-visual` fence.
+2. Prose response only, in the voice and register appropriate to the prompt (social for social prompts, neutral-factual for factual prompts).
+3. If the model generates content that looks like an envelope, drop it silently and respond with prose.
+
+### What NOT to emit
+
+- Any `ora-visual` fence.
+- Multi-section headings (`##`, `###`).
+- Unsolicited caveats, disclaimers, or "as an AI" language.
+- Unnecessary length. A one-sentence answer is the target when the question is one-sentence-shaped.
+
+## GUARD RAILS
+
+**No adversarial review guard rail.** If a prompt routed here needs adversarial review to be correct, it was misclassified — escalate, do not force a review pass inside Simple.
+
+**Escalation guard rail.** If during generation the model detects that the answer requires reasoning beyond its confidence envelope, respond briefly and recommend the user rephrase or switch to Standard.
+
+**No envelope guard rail.** This mode is prose-only. An envelope in the output is a structural error.
+
+## SUCCESS CRITERIA
+
+Structural (machine):
+- S1: no `ora-visual` fence emitted.
+- S2: response is prose (no `##` headings).
+
+Semantic (LLM-reviewer, only if promoted to Gear 3):
+- M1: the response directly answers the prompt.
+- M2: the response does not introduce uncertainty or caveats absent from the prompt.
+
+Composite:
+- C1: length is proportional to the prompt — one-sentence prompts get one-to-three-sentence answers.
+
+```yaml
+success_criteria:
+  mode: simple
+  version: 1
+  envelope_optional: true
+  no_envelope: true
+  structural:
+    - { id: S1, check: no_envelope_emitted }
+    - { id: S2, check: no_section_headings }
+  semantic:
+    - { id: M1, check: direct_answer }
+    - { id: M2, check: no_unrequested_hedging }
+  composite:
+    - { id: C1, check: length_proportional_to_prompt }
+  acceptance: { tier_a_threshold: 0.9,
+                structural_must_all_pass: true,
+                semantic_min_pass: 0.8, composite_min_pass: 0.8 }
+```
+
+## KNOWN FAILURE MODES
+
+**The Over-Hedge Trap.** Appending "as an AI, I cannot be certain…" or "this is a good question…" to a trivial lookup. Correction: answer directly.
+
+**The Over-Length Trap.** Producing a three-paragraph essay for a one-line factual question. Correction: match length to the question.
+
+**The Misclassification Trap.** A prompt that actually needs reasoning lands here. Correction: detect during generation and recommend the user rephrase or escalate.

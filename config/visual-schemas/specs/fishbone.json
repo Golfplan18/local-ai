@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/fishbone.json",
+  "title": "Fishbone / Ishikawa diagram spec (CAUSAL family)",
+  "description": "Per Protocol \u00a73.6. Framework-specific category names (6M, 4P, \u2026) are validated by the downstream compiler; depth-\u22643 and 'effect is a problem not a solution' are integrity-checker responsibilities.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["effect", "framework", "categories"],
+  "properties": {
+    "effect": { "type": "string", "minLength": 1 },
+    "framework": {
+      "type": "string",
+      "enum": ["6M", "4P", "4S", "8P", "custom"]
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "causes"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "causes": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/cause" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "cause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "sub_causes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cause" }
+        }
+      }
+    }
+  }
+}

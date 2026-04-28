@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import os
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 
 
 def estimate_tokens(text: str) -> int:
@@ -64,7 +64,7 @@ def compact_context(messages: list, call_model_fn, context_limit: int = 8192) ->
 
     # Preserve system prompt (first message) and last 3 turns
     system_msg = messages[0] if messages and messages[0]["role"] == "system" else None
-    keep_tail = messages[-6:] if len(messages) > 6 else messages[-3:]  # ~3 user+assistant pairs
+    keep_tail = messages[-6:] if len(messages) > 6 else messages[1 if system_msg else 0:]  # ~3 user+assistant pairs, or all non-system if short
     middle = messages[1:-len(keep_tail)] if system_msg else messages[:-len(keep_tail)]
 
     if not middle:

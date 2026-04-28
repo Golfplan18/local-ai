@@ -1,0 +1,56 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-influence_diagram",
+  "type": "influence_diagram",
+  "mode_context": "root_cause_analysis",
+  "relation_to_prose": "integrated",
+  "spec": {
+    "nodes": [
+      {
+        "id": "D1",
+        "label": "Launch?",
+        "kind": "decision"
+      },
+      {
+        "id": "C1",
+        "label": "Demand",
+        "kind": "chance"
+      },
+      {
+        "id": "V1",
+        "label": "Profit",
+        "kind": "value"
+      }
+    ],
+    "arcs": [
+      {
+        "from": "C1",
+        "to": "D1",
+        "type": "informational"
+      },
+      {
+        "from": "D1",
+        "to": "V1",
+        "type": "functional"
+      },
+      {
+        "from": "C1",
+        "to": "V1",
+        "type": "functional"
+      }
+    ],
+    "temporal_order": [
+      "C1",
+      "D1"
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Bar chart of four categories with counts on y-axis.",
+    "level_2_statistical": "Max is category C at 42; min is A at 10; spread 32.",
+    "level_3_perceptual": "Two clusters: low (A,B) and high (C,D), no intermediate.",
+    "level_4_contextual": null,
+    "short_alt": "Bar chart of four categories where C is the largest at 42.",
+    "data_table_fallback": null
+  },
+  "title": "Example influence_diagram"
+}

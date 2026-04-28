@@ -1,7 +1,7 @@
 # Persistent Context Directory
 
 Every .md file in this directory is loaded automatically at the start of every
-session and injected into the system prompt after boot.md and soul.md.
+session and injected into the system prompt after boot.md and mind.md.
 
 Use this for observations, decisions, conventions, and any lightweight persistent
 memory that should be available every session without going through RAG retrieval.

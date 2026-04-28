@@ -1,0 +1,27 @@
+{
+  "session_id": "ba2b55",
+  "timestamp": "2026-04-14T21:30:02.048567",
+  "steps_completed": [
+    "session_logging",
+    "conversation_summary",
+    "continuity_archive",
+    "knowledge_extraction",
+    "chromadb_ingestion",
+    "relationship_extraction",
+    "glossary_check",
+    "tag_validation",
+    "entity_extraction",
+    "pass2_relationships",
+    "convergence_check"
+  ],
+  "steps_failed": [],
+  "notes_extracted": 5,
+  "notes_approved": 3,
+  "notes_review": 2,
+  "relationships_found": 0,
+  "pass2_relationships": 0,
+  "convergence_flags": [],
+  "glossary_gaps": [],
+  "tag_warnings": [],
+  "total_time_seconds": 48.17748999595642
+}

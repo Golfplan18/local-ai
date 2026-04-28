@@ -24,7 +24,7 @@ This framework processes conversations into structured turn-pair chunks ready fo
 - Processing manifest: a record of which files in raw/ have already been processed. Source: ~/Documents/conversations/.processing-manifest.json (created and maintained by this pipeline).
 
 Optional (both modes):
-- Existing ChromaDB conversations collection. Source: ~/local-ai/chromadb/. Default behavior if absent: pipeline creates the collection and indexes all processed files.
+- Existing ChromaDB conversations collection. Source: ~/ora/chromadb/. Default behavior if absent: pipeline creates the collection and indexes all processed files.
 
 ## OUTPUT CONTRACT
 
@@ -52,6 +52,20 @@ Available tools (batch mode):
 - file_write: Write processed chunks to ~/Documents/conversations/ and update the manifest.
 - file_list: Enumerate files in ~/Documents/conversations/raw/ and ~/Documents/conversations/.
 - chromadb_index: Add entries to the conversations collection.
+
+---
+
+## MILESTONES DELIVERED
+
+This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision. Inline mode is invoked automatically by the orchestrator on every session turn and is not PEF-selectable; it behaves as a pipeline stage per the exemption in PFF Section II subsection 2.3. Only batch mode produces a project-level milestone and is declared below.
+
+### Milestone Type: Processed conversation chunks with ChromaDB indexing
+
+- **Endpoint produced:** A set of processed turn-pair chunk files written to ~/Documents/conversations/ — each with YAML frontmatter (source_file, source_platform, model_used, timestamp, conversation_title, turn_range, topics, chunk_id, agent_id), a 2-4 sentence contextual header, and the full user/assistant exchange — plus corresponding entries in the ChromaDB conversations collection (document content, metadata, embedding derived from contextual header + user prompt), plus an updated processing manifest at ~/Documents/conversations/.processing-manifest.json recording every file processed in the run
+- **Verification criterion:** (a) every raw file in the batch's input set is either represented in the updated manifest with its chunk_ids and processing date, or listed in the processing summary as skipped with a reason (unrecognized format, parser failure, or error); (b) every chunk written to ~/Documents/conversations/ has a unique chunk_id with no collisions and valid YAML frontmatter that parses programmatically; (c) ChromaDB conversations collection entry count increases by exactly the number of new (non-duplicate) chunks written, with embeddings generated from contextual header + user prompt per the Embedding Dilution failure mode; (d) no chunk duplicates an existing chunk_id from a prior run — deduplication check against ~/Documents/conversations/ ran before every write; (e) all seven Evaluation Criteria score 3 or above against the produced chunks
+- **Preconditions:** One or more unprocessed conversation files present in ~/Documents/conversations/raw/ in a recognized source format (Claude.ai JSON export, ChatGPT export, Gemini export, local system session log, or API call log); ChromaDB conversations collection accessible at ~/ora/chromadb/ (or creatable if absent); the processing manifest at ~/Documents/conversations/.processing-manifest.json is readable or creatable
+- **Mode required:** batch
+- **Framework Registry summary:** Processed conversation chunks with ChromaDB indexing (batch)
 
 ---
 
@@ -473,7 +487,7 @@ and topic metadata, ready for dual-strategy RAG retrieval
 
 SOURCE: ~/Documents/conversations/raw/
 DESTINATION: ~/Documents/conversations/
-INDEX: ~/local-ai/chromadb/ (conversations collection)
+INDEX: ~/ora/chromadb/ (conversations collection)
 MANIFEST: ~/Documents/conversations/.processing-manifest.json
 
 CONSTRAINTS:

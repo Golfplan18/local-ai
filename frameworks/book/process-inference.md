@@ -10,7 +10,7 @@
 
 ## How to Use This File
 
-This is a process discovery framework. It operates when the user knows what they have and what they want but does not know the transformation path between them. It is the upstream companion to the Framework Creation Framework: this framework discovers the process; the FCF formalizes it.
+This is a process discovery framework. It operates when the user knows what they have and what they want but does not know the transformation path between them. It is the upstream companion to the Process Formalization Framework: this framework discovers the process; the PFF formalizes it.
 
 Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemini) or local model — then provide your input below the USER INPUT marker at the bottom. State which mode you need, or the AI will determine it from context.
 
@@ -20,12 +20,15 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 
 **Mode P-Decompose:** You have a complex endpoint and need it broken into solvable subproblems. Describe the endpoint. The AI will decompose it into manageable parts with dependency ordering.
 
-**Mode P-Formalize:** You have already discovered a workable process through inference and want it prepared for handoff to the Framework Creation Framework. Provide the discovered process. The AI will structure it as an FCF-ready package.
+**Mode P-Formalize:** You have already discovered a workable process through inference and want it prepared for handoff to the Process Formalization Framework. Provide the discovered process. The AI will structure it as an PFF-ready package.
+
+**Mode P-Feasibility:** You (or a calling framework — typically the Mission, Objectives, and Milestones Clarification Framework under PEF supervision) need a lightweight feasibility assessment on a candidate milestone or next-step, without producing a full transformation path. Two sub-uses exist. **Verify**: a candidate milestone is provided with its endpoint; you determine whether reaching it from the current state is reachable, reachable with conditions, not reachable, or cannot be assessed. **Suggest**: no candidate milestone is provided; you identify candidate next state-changes from the current state toward a named Resolution Statement, and assess feasibility of each. The output is a verdict, not a full process. P-Feasibility runs Layers 1 and 2, then a dedicated Feasibility Assessment, then Layers 8 and 9. Layers 3 through 7 are skipped.
 
 ---
 
 ## Table of Contents
 
+- Milestones Delivered
 - Evaluation Criteria
 - Persona Activation
 - Layer 1: Endpoint Elicitation and Problem Classification
@@ -37,6 +40,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 - Layer 7: Formalization Handoff Package
 - Layer 8: Self-Evaluation
 - Layer 9: Error Correction and Output Formatting
+- P-Feasibility Mode Specification
 - Named Failure Modes
 - Execution Commands
 - User Input
@@ -45,7 +49,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 
 ## PURPOSE
 
-Discover a viable transformation path when the user knows the starting state and desired end state but does not know the process that connects them. Produce a structured process description ready for formalization through the Framework Creation Framework.
+Discover a viable transformation path when the user knows the starting state and desired end state but does not know the process that connects them. Produce a structured process description ready for formalization through the Process Formalization Framework.
 
 ## INPUT CONTRACT
 
@@ -64,7 +68,8 @@ Optional:
 
 Primary outputs:
 - **Viable Process Description**: A structured description of the discovered transformation path, including step sequence, decision points, required tools, assumptions, and validation checks. Format: structured natural language with numbered steps. Quality threshold: scores 3 or above on all evaluation criteria.
-- **Formalization Handoff Package**: A structured summary ready for input to the Framework Creation Framework (F-Design or F-Convert mode). Format: process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract. Quality threshold: an operator unfamiliar with the discovery process can execute the FCF conversion without additional context.
+- **Formalization Handoff Package**: A structured summary ready for input to the Process Formalization Framework (F-Design or F-Convert mode). Format: process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract. Quality threshold: an operator unfamiliar with the discovery process can execute the PFF conversion without additional context.
+- **P-Feasibility Verdict (Mode P-Feasibility only)**: Structured assessment of whether the specified endpoint (Verify) or the ranked candidate next state-changes (Suggest) can be reached from the current state under the given constraints. Format: one of four verdicts — Reachable / Reachable with conditions / Not reachable / Cannot assess (terrain unknown) — with justification, named blocking uncertainties if any, and (for Suggest) a ranked list of 3-5 candidate state-changes with the recommended one marked. Quality threshold: the verdict is unambiguous and the justification references specific findings from Layers 1 and 2.
 
 Secondary outputs:
 - **Problem Model**: Problem type classification, transformation class, key constraints, critical unknowns. Format: structured summary.
@@ -75,6 +80,47 @@ Secondary outputs:
 ## EXECUTION TIER
 
 Specification — this document is model-agnostic and environment-agnostic. All stage boundaries are logical. Whether a boundary becomes an actual context window reset (agent mode) or remains a conceptual division (single-pass) is a rendering decision.
+
+---
+
+## MILESTONES DELIVERED
+
+This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
+
+### Milestone Type: Discovered transformation path
+- **Endpoint produced:** Viable Process Description — a structured description of the transformation path from current state to desired end state, including step sequence, decision points, required tools, assumptions, and validation checks
+- **Verification criterion:** All seven Evaluation Criteria score 3 or above; the Formalization Handoff Package is complete per Layer 7 and ready for PFF F-Convert
+- **Preconditions:** Current State Description and Desired End State Description are provided; testability assessment passes
+- **Mode required:** P-Infer
+- **Framework Registry summary:** Discovers transformation paths between defined endpoints when the process is unknown
+
+### Milestone Type: Failure diagnosis
+- **Endpoint produced:** Identified failure point within a broken process plus corrected path specification
+- **Verification criterion:** The failure point is isolated to a specific step or interaction; the corrected path removes the failure under the same constraints
+- **Preconditions:** The failing process description, the expected behavior, and the actual behavior are provided
+- **Mode required:** P-Debug
+- **Framework Registry summary:** Diagnoses failure points in broken processes and infers corrected paths
+
+### Milestone Type: Decomposed subproblem set
+- **Endpoint produced:** Transformation skeleton with intermediate states, gap-size assessment per transition, dependency map, and identified subproblems (each marked solvable with known methods or requiring its own P-Infer cycle)
+- **Verification criterion:** Each intermediate state passes the necessity test; the dependency map is acyclic; the decomposition connects current state to desired end state without gaps
+- **Preconditions:** A complex endpoint needing reduction; endpoint formalized with testable precision
+- **Mode required:** P-Decompose
+- **Framework Registry summary:** Decomposes complex endpoints into logically required subproblems with dependency ordering
+
+### Milestone Type: Formalization handoff package
+- **Endpoint produced:** PFF-ready structured package containing process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, and output contract
+- **Verification criterion:** An operator unfamiliar with the discovery process can execute the PFF conversion without additional context; all nine required elements are present
+- **Preconditions:** A discovered process from prior P-Infer work or user-provided process description
+- **Mode required:** P-Formalize
+- **Framework Registry summary:** Structures discovered processes into PFF-ready handoff packages
+
+### Milestone Type: Feasibility verdict
+- **Endpoint produced:** P-Feasibility Verdict — one of four verdicts (Reachable / Reachable with conditions / Not reachable / Cannot assess) with justification, and (in Suggest sub-mode) a ranked list of candidate next state-changes
+- **Verification criterion:** The verdict is unambiguous, objectively determined from Layer 1-2 analysis, and the justification cites specific findings
+- **Preconditions:** For Verify sub-mode: a candidate milestone endpoint and current state description. For Suggest sub-mode: a Resolution Statement and current state description. In both cases: constraints inherited from calling framework.
+- **Mode required:** P-Feasibility
+- **Framework Registry summary:** Assesses feasibility of candidate milestones or suggests next state-changes
 
 ---
 
@@ -125,10 +171,10 @@ This framework's output is evaluated against these 7 criteria. Each criterion is
    - 1 (Failing): Assumptions are not surfaced. The analysis proceeds as if all inferences are established facts.
 
 7. **Formalization Handoff Readiness**:
-   - 5 (Excellent): The handoff package contains all elements specified in the Output Contract (process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract). An operator unfamiliar with the discovery process can execute the FCF conversion without additional context. Every step in the sequence is concrete enough to be tested independently.
-   - 4 (Strong): The handoff package is complete. One or two steps may need minor clarification but the overall process is executable by an FCF operator.
+   - 5 (Excellent): The handoff package contains all elements specified in the Output Contract (process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract). An operator unfamiliar with the discovery process can execute the PFF conversion without additional context. Every step in the sequence is concrete enough to be tested independently.
+   - 4 (Strong): The handoff package is complete. One or two steps may need minor clarification but the overall process is executable by an PFF operator.
    - 3 (Passing): The handoff package contains the step sequence, required inputs, and output contract. Some elements (failure modes, recovery paths) may be incomplete but the core process is transferable.
-   - 2 (Below threshold): The discovered process is described but not structured for FCF conversion. An operator would need to re-interview the user to fill gaps.
+   - 2 (Below threshold): The discovered process is described but not structured for PFF conversion. An operator would need to re-interview the user to fill gaps.
    - 1 (Failing): No structured handoff. The process exists only as a narrative description scattered across the analysis.
 
 ---
@@ -178,7 +224,8 @@ Your operating mode shifts across layers as indicated by Role Shift markers. You
    - The process is deterministic or exploratory.
 
 6. IF P-Debug mode: request the expected behavior, the actual behavior, and the point at which divergence is first observed.
-7. Conduct proactive endpoint elicitation. Based on the problem type classification, identify endpoint dimensions the user likely has not specified. Present these as questions, not assumptions. Wait for user response before proceeding.
+7. IF P-Feasibility mode: run per standard instructions. The endpoint is the candidate milestone (Verify sub-mode) or the Resolution Statement provided by the calling framework (Suggest sub-mode). Current state description is inherited from the calling framework's context (typically the PED and conversation history).
+8. Conduct proactive endpoint elicitation. Based on the problem type classification, identify endpoint dimensions the user likely has not specified. Present these as questions, not assumptions. Wait for user response before proceeding.
 
 ### Output Format for This Layer
 
@@ -253,6 +300,8 @@ PROBLEM CHARACTERISTICS:
    - Unknown bottlenecks that may constrain throughput or timing.
 
    For each uncertainty, assess: does this uncertainty block path generation (must be resolved first) or can it be carried as an open question into path generation?
+
+6. IF P-Feasibility mode: run per standard instructions. Constraints are inherited from the calling framework (typically MOM's PED Constraints section, including Hard, Soft, and Working Assumption classifications). Working Assumptions are treated as candidate blocking uncertainties for feasibility assessment purposes.
 
 ### Output Format for This Layer
 
@@ -524,11 +573,11 @@ REVISED UNCERTAINTY MAP:
 
 ## LAYER 7: FORMALIZATION HANDOFF PACKAGE
 
-**Stage Focus**: Structure the discovered process for handoff to the Framework Creation Framework. Produce a complete package that an FCF operator can convert without additional context.
+**Stage Focus**: Structure the discovered process for handoff to the Process Formalization Framework. Produce a complete package that an PFF operator can convert without additional context.
 
 **Input**: Selected path with refined step sequence from Layer 6, complete assumptions log, constraint model from Layer 2, uncertainty map.
 
-**Output**: FCF-ready handoff package.
+**Output**: PFF-ready handoff package.
 
 ### Processing Instructions
 
@@ -544,7 +593,7 @@ REVISED UNCERTAINTY MAP:
    - **Recovery Paths**: What to do when specific steps fail. For each failed step: diagnostic action, alternative approach, escalation condition.
    - **Output Contract**: What the process produces when it succeeds. For each output: name, format, quality threshold.
 
-2. Verify handoff completeness. Apply the operator test: could a person unfamiliar with the discovery process execute the FCF conversion using only this package?
+2. Verify handoff completeness. Apply the operator test: could a person unfamiliar with the discovery process execute the PFF conversion using only this package?
    - IF any element requires context from the discovery process that is not captured in the package, THEN add it.
    - IF any step is described at a level of abstraction that requires domain expertise to interpret, THEN make the implicit domain knowledge explicit.
 
@@ -656,6 +705,148 @@ IF the Self-Evaluation layer flagged any UNRESOLVED DEFICIENCY, THEN restate eac
 
 ---
 
+## P-Feasibility Mode Specification
+
+P-Feasibility is a lightweight version of P-Infer that produces a feasibility verdict rather than a full transformation path. Invoked primarily by the Mission, Objectives, and Milestones Clarification Framework (MOM) during milestone formulation under PEF supervision.
+
+### Sub-mode determination
+
+- IF the input includes a specified candidate endpoint (e.g., a proposed milestone) THEN sub-mode is **Verify**.
+- IF the input includes only a Resolution Statement and current state, with no candidate endpoint, THEN sub-mode is **Suggest**.
+
+### Layer flow
+
+P-Feasibility uses this subset of the standard PIF layer sequence:
+
+1. **Layer 1 — Endpoint Elicitation and Problem Classification** — run per standard instructions
+2. **Layer 2 — Constraint Modeling and Uncertainty Mapping** — run per standard instructions
+3. **Feasibility Assessment** — P-Feasibility specific; see below
+4. **Layers 3 through 7 are skipped in P-Feasibility mode.**
+5. **Layer 8 — Self-Evaluation** — run with the P-Feasibility evaluation criteria below
+6. **Layer 9 — Error Correction and Output Formatting** — run with the P-Feasibility output format below
+
+### Feasibility Assessment — Processing Instructions
+
+Using the formalized endpoints from Layer 1 and the constraint model from Layer 2:
+
+1. Assess whether the current state has been described with observable specificity. IF the current state contains elements classified as "missing," or more than half the elements are "approximate" rather than "confirmed," THEN the verdict is **Cannot assess (terrain unknown)**. Proceed directly to step 6.
+
+2. Assess whether the endpoint has been formalized with testable precision (Layer 1's testability assessment returned "pass"). IF endpoint is still ambiguous, THEN return to Layer 1 for clarification before proceeding.
+
+3. Assess whether any candidate direct path from the current state to the endpoint plausibly exists. A candidate direct path exists IF at least one sequence of operations using resources from the resource inventory can plausibly transform the current state toward the endpoint, AND no hard constraint is necessarily violated by that sequence. Assessment is lightweight — no full decomposition or path generation occurs. The question is *"Does a path plausibly exist?"*, not *"What specifically is the path?"*
+
+4. Assess whether blocking uncertainties are present. A blocking uncertainty is an unresolved unknown from Layer 2 whose resolution is required before any path can be confirmed.
+
+5. Determine the verdict:
+   - **Reachable**: Candidate direct path exists AND no blocking uncertainties AND no hard constraint violated. State (if known) whether a named framework from the Framework Registry can deliver the milestone, or whether PIF P-Infer will need to discover the specific path at execution time.
+   - **Reachable with conditions**: Candidate direct path exists AND blocking uncertainties are present AND their resolution paths are identifiable. List each blocking uncertainty with what would resolve it.
+   - **Not reachable**: No candidate direct path exists under the current constraints, OR every candidate path necessarily violates a hard constraint. State which constraints are blocking, and whether relaxing any of them would enable a path.
+   - **Cannot assess (terrain unknown)**: Current state cannot be described with enough specificity to evaluate feasibility. Note which specific elements are missing and need to be surfaced through terrain mapping before feasibility can be assessed.
+
+6. IF sub-mode is Suggest, THEN the processing differs materially from Verify. Instead of a single verdict on a specified endpoint, produce a list of candidate next state-changes, each with its own feasibility verdict.
+
+   6a. Generate 3-5 candidate next state-changes. Each candidate should be a plausible move toward the Resolution Statement from the current state. Candidates should differ meaningfully — not minor variations of the same idea. Draw on:
+   - Direct progress moves (shortest paths advancing toward Resolution Statement)
+   - Information-gathering moves (steps that resolve uncertainties before committing to direction)
+   - Constraint-relaxation moves (steps that surface whether a constraint is actually hard)
+   - Adjacent-domain analogs (steps informed by similar problems in other domains)
+
+   6b. For each candidate, run steps 3-5 above (direct path assessment, blocking uncertainty check, verdict determination). Each candidate receives its own verdict.
+
+   6c. Rank the candidates by: (a) progress toward Resolution Statement, (b) cost, (c) information value, (d) feasibility (Reachable > Reachable with conditions > Not reachable).
+
+   6d. Mark the top-ranked candidate as RECOMMENDED. The top-level verdict for Suggest mode output is the recommended candidate's verdict. The user ultimately picks their preferred candidate, which may or may not be the recommended one based on their priorities.
+
+7. Update the Assumptions Log with all assumptions introduced during Feasibility Assessment.
+
+### P-Feasibility Evaluation Criteria
+
+In P-Feasibility mode, the Self-Evaluation layer applies these five criteria instead of the standard seven. Minimum passing score: 3 per criterion.
+
+1. **Endpoint Specification Quality** (as defined in the standard criteria section above).
+2. **Constraint Completeness** (as defined in the standard criteria section above).
+3. **Verdict Appropriateness**:
+   - 5 (Excellent): The verdict is the logically correct one given the Layer 1 and Layer 2 analysis. Edge cases between verdicts are handled with explicit reasoning.
+   - 4 (Strong): The verdict is correct. Reasoning is clear and covers the main case.
+   - 3 (Passing): The verdict is plausible given the analysis. No obvious misclassification.
+   - 2 (Below threshold): The verdict could be challenged by a reviewer examining the Layer 1-2 output. Edge cases are not acknowledged.
+   - 1 (Failing): The verdict contradicts the Layer 1-2 analysis.
+4. **Verdict Justification**:
+   - 5 (Excellent): Every element of the verdict cites specific findings from Layers 1-2. The reasoning is auditable — a reviewer could retrace the logic from analysis to verdict.
+   - 4 (Strong): Major verdict elements are justified with specific citations. One minor element may be unsupported.
+   - 3 (Passing): The verdict is justified at the top level with at least one specific citation. Some reasoning may be implicit.
+   - 2 (Below threshold): The verdict is asserted without clear grounding in the analysis.
+   - 1 (Failing): The verdict has no visible justification.
+5. **Assumption Explicitness** (as defined in the standard criteria section above).
+
+### P-Feasibility Output Format — Verify sub-mode
+
+```
+P-FEASIBILITY VERDICT: [Reachable | Reachable with conditions | Not reachable | Cannot assess (terrain unknown)]
+SUB-MODE: Verify
+
+ENDPOINT ASSESSED:
+- [Milestone statement]
+
+JUSTIFICATION:
+- [Specific reasoning connecting Layer 1-2 findings to the verdict]
+
+BLOCKING UNCERTAINTIES (if Reachable with conditions):
+- [Uncertainty]: [what would resolve it]
+
+CONSTRAINT ANALYSIS (if Not reachable):
+- Blocking constraints: [list]
+- Relaxation candidates: [constraint + what relaxing it would enable]
+
+MISSING CURRENT-STATE ELEMENTS (if Cannot assess):
+- [Element]: [what description would be needed]
+
+FRAMEWORK DELIVERY NOTE (if Reachable):
+- [Named framework that delivers this milestone, OR "PIF P-Infer required at execution time to discover specific path"]
+
+NEW ASSUMPTIONS LOGGED:
+- [Assumptions introduced during Feasibility Assessment, with status]
+```
+
+### P-Feasibility Output Format — Suggest sub-mode
+
+```
+SUB-MODE: Suggest
+RECOMMENDED CANDIDATE VERDICT: [Reachable | Reachable with conditions | Not reachable | Cannot assess (terrain unknown)]
+
+CANDIDATES (ranked, recommended first):
+
+1. [RECOMMENDED] [Candidate state-change description]
+   - Rationale: [why this is a good move toward Resolution Statement — what it advances or what it reveals]
+   - Verdict: [Reachable | Reachable with conditions | Not reachable]
+   - Justification: [specific reasoning connecting Layer 1-2 findings to this candidate's verdict]
+   - [If Reachable with conditions: blocking uncertainties with resolutions]
+   - [If Not reachable: blocking constraints with relaxation candidates]
+
+2. [Alternative candidate description]
+   - Rationale: [what priorities or lines of inquiry this would serve]
+   - Verdict: [...]
+   - Justification: [...]
+   - [Conditional fields as above]
+
+3. [Alternative candidate description]
+   - [Same structure]
+
+[Additional candidates if generated, up to 5]
+
+OVERALL ASSESSMENT:
+- [If all candidates Not reachable or Cannot assess: escalation advice per No-Punt rule]
+- [If terrain mapping is needed: note this and what gaps need closure]
+
+FRAMEWORK DELIVERY NOTE (if recommended candidate is Reachable):
+- [Named framework that delivers this milestone, OR "PIF P-Infer required at execution time to discover specific path"]
+
+NEW ASSUMPTIONS LOGGED:
+- [Assumptions introduced during Feasibility Assessment, with status]
+```
+
+---
+
 ## NAMED FAILURE MODES
 
 **The Endpoint Vagueness Trap:** The desired output is not defined clearly enough to infer a process — the framework generates paths toward a moving target. Correction: Apply the testability check in Layer 1. IF an independent evaluator cannot determine pass/fail, THEN clarify before proceeding.
@@ -688,18 +879,19 @@ IF the Self-Evaluation layer flagged any UNRESOLVED DEFICIENCY, THEN restate eac
    - **Mode P-Debug:** User describes a failing process. Execute Layers 1-9 with P-Debug modifications noted in each layer.
    - **Mode P-Decompose:** User describes a complex endpoint needing reduction. Execute Layers 1-3, then return Layer 3 output as the primary deliverable. Continue to Layers 4-9 only if the user requests path generation for specific subproblems.
    - **Mode P-Formalize:** User provides a discovered process. Skip Layers 3-5. Execute Layer 1 (to formalize endpoints), Layer 2 (to capture constraints), Layer 6 (to refine the step sequence), Layer 7 (to produce the handoff package), Layers 8-9.
+   - **Mode P-Feasibility:** User or calling framework provides an endpoint and current state description (Verify sub-mode), or a Resolution Statement and current state with no candidate endpoint (Suggest sub-mode). Execute Layer 1 (endpoint formalization), Layer 2 (constraint modeling), Feasibility Assessment, Layer 8 (with P-Feasibility criteria), Layer 9 (with P-Feasibility output format). Skip Layers 3 through 7. See P-Feasibility Mode Specification section for details.
 3. IF the mode is ambiguous, THEN ask the user to confirm before proceeding.
 4. IF any required inputs (per Input Contract) are missing, THEN list them and request them before proceeding.
 5. IF any required inputs are present but ambiguous, THEN state what you understand, what you are uncertain about, and what assumptions you will make if not corrected. Wait for confirmation before proceeding.
 6. Execute the appropriate layer sequence. Produce all outputs specified in the Output Contract.
 7. Apply the Self-Evaluation (Layer 8) and Error Correction (Layer 9) to all outputs before delivery.
-8. Present outputs with a summary of the discovery process, key assumptions, unresolved risks, and recommendations for next steps. IF the user wants to formalize the discovered process into a reusable framework, THEN recommend running the Formalization Handoff Package through the Framework Creation Framework (F-Convert mode). The FCF will produce both the canonical framework specification and its framework registry entry for indexing.
+8. Present outputs with a summary of the discovery process, key assumptions, unresolved risks, and recommendations for next steps. IF the user wants to formalize the discovered process into a reusable framework, THEN recommend running the Formalization Handoff Package through the Process Formalization Framework (F-Convert mode). The PFF will produce both the canonical framework specification and its framework registry entry for indexing.
 
 ---
 
 ## USER INPUT
 
-[State Mode P-Infer (discover unknown process), Mode P-Debug (diagnose failing process), Mode P-Decompose (reduce complex endpoint), or Mode P-Formalize (structure discovered process for FCF handoff) — or let the AI auto-detect from your input. Then describe your current state, desired end state, and any constraints, resources, non-solutions, or uncertainties you can provide.]
+[State Mode P-Infer (discover unknown process), Mode P-Debug (diagnose failing process), Mode P-Decompose (reduce complex endpoint), or Mode P-Formalize (structure discovered process for PFF handoff) — or let the AI auto-detect from your input. Then describe your current state, desired end state, and any constraints, resources, non-solutions, or uncertainties you can provide.]
 
 ---
 

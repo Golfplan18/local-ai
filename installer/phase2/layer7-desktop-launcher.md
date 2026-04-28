@@ -24,7 +24,7 @@
    d. Copy or symlink the launcher to the Desktop.
 
 4. **Linux launcher:**
-   a. Create a `.desktop` file at `~/.local/share/applications/local-ai.desktop`.
+   a. Create a `.desktop` file at `~/.local/share/applications/ora.desktop`.
    b. Also place a copy on the Desktop if `~/Desktop/` exists.
 
 5. **Windows launcher:**

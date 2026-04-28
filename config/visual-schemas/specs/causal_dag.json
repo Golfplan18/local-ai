@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/causal_dag.json",
+  "title": "Causal DAG spec (CAUSAL family, DAGitty DSL)",
+  "description": "Per Protocol \u00a73.5. dsl is a DAGitty syntax string; acyclicity and exposure/outcome presence are enforced by the DAGitty parser in the integrity checker.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dsl", "focal_exposure", "focal_outcome"],
+  "properties": {
+    "dsl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "DAGitty DSL string, e.g. 'dag { x [exposure]; y [outcome]; u [latent]; x -> y; u -> x; u -> y }'."
+    },
+    "focal_exposure": {
+      "type": "string",
+      "minLength": 1
+    },
+    "focal_outcome": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

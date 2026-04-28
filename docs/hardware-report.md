@@ -32,10 +32,10 @@ Disk space used by models: ~116 GB total (45 + 61 + 10)
 - Python: 3.14.3
 - pip packages: chromadb, ddgs, duckduckgo-search, keyring, anthropic, openai, google-generativeai, playwright, flask, mlx-lm
 - Playwright: installed (Chromium 145.0.7632.6) — Launch test: PASS
-- Orchestrator: ~/local-ai/orchestrator/boot.py
-- Chat server: ~/local-ai/server/server.py — Server test: PASS
-- Framework library: ~/local-ai/frameworks/
-- Active boot.md: ~/local-ai/boot/boot.md (v1)
+- Orchestrator: ~/ora/orchestrator/boot.py
+- Chat server: ~/ora/server/server.py — Server test: PASS
+- Framework library: ~/ora/frameworks/
+- Active boot.md: ~/ora/boot/boot.md (v1)
 - ChromaDB: installed (inactive until vault is indexed)
 - Credential storage: keyring (macOS Keychain)
 
@@ -43,7 +43,7 @@ Disk space used by models: ~116 GB total (45 + 61 + 10)
 - Commercial AI (browser automation): claude-browser, chatgpt-browser, gemini-browser
 - Local model: gpt-oss-120b (default endpoint)
 - API keys: not configured — available via frameworks/api-key-setup.md
-- Endpoint registry: ~/local-ai/config/endpoints.json (4 endpoints)
+- Endpoint registry: ~/ora/config/endpoints.json (4 endpoints)
 - Default endpoint: local-mlx-gpt-oss-120b
 
 ## What This Means

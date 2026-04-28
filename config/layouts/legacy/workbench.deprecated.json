@@ -1,0 +1,35 @@
+{
+  "_comment": "DEPRECATED (2026-04-17, WP-2.2). This layout predates the visual pane and is kept for reference only. The active layouts going forward are `solo` (chat + visual) and `studio` (main chat + visual + sidebar chat). A three-panel variant that surfaces a vault-notes column may be reintroduced later as a compound layout that also hosts the visual pane; this file documents the prior shape but is not loadable from the active switcher.",
+  "layout": {
+    "preset_base": "workbench",
+    "panels": [
+      {
+        "id": "main",
+        "type": "chat",
+        "width_pct": 50,
+        "model_slot": "breadth",
+        "is_main_feed": true,
+        "bridge_subscribe_to": null,
+        "label": "Main Chat"
+      },
+      {
+        "id": "sidebar",
+        "type": "chat",
+        "width_pct": 25,
+        "model_slot": "sidebar",
+        "is_main_feed": false,
+        "bridge_subscribe_to": "main",
+        "label": "Sidebar"
+      },
+      {
+        "id": "vault",
+        "type": "vault",
+        "width_pct": 25,
+        "model_slot": null,
+        "is_main_feed": false,
+        "bridge_subscribe_to": "main",
+        "label": "Vault Notes"
+      }
+    ]
+  }
+}

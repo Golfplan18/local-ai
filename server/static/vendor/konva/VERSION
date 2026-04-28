@@ -1,0 +1,17 @@
+konva 9.3.16
+MIT
+source: https://unpkg.com/konva@9.3.16/konva.min.js
+file: konva.min.js (~170 KB minified)
+choice: full UMD bundle — browser build exposes window.Konva with Stage, Layer, Group, Image, Rect, Path, Text, and the full tween/animation API. No tree-shaking needed since visual-panel.js consumes the full interaction surface (Stage + layers + drag/zoom + hit graph).
+vendored: 2026-04-17 as part of WP-2.1 (visual-panel.js — dual-pane Konva panel)
+
+Consumers (present + anticipated):
+  server/static/visual-panel.js   — WP-2.1 — Konva stage for SVG artifact + annotation + user input layers
+  (no other consumers planned; panel-level vendoring rather than compiler-level)
+
+To refresh:
+  curl -sL "https://unpkg.com/konva@<new-version>/konva.min.js" -o /tmp/konva.min.js
+  curl -sL "https://raw.githubusercontent.com/konvajs/konva/master/LICENSE" -o /tmp/konva-license.txt
+  cp /tmp/konva.min.js ~/ora/server/static/vendor/konva/konva.min.js
+  cp /tmp/konva-license.txt ~/ora/server/static/vendor/konva/LICENSE
+  # Update this VERSION file with the new version number.

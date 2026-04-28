@@ -9,7 +9,7 @@ import subprocess
 import threading
 import time
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 MCP_REGISTRY = os.path.join(WORKSPACE, "config/mcp-servers.json")
 
 
@@ -44,7 +44,7 @@ class MCPConnection:
                          "method": "initialize",
                          "params": {"protocolVersion": "2024-11-05",
                                     "capabilities": {},
-                                    "clientInfo": {"name": "local-ai", "version": "1.0"}}})
+                                    "clientInfo": {"name": "ora", "version": "1.0"}}})
             resp = self._recv(timeout=10)
             if resp and "result" in resp:
                 # Send initialized notification

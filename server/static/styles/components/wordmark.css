@@ -1,0 +1,28 @@
+/* ============================================================
+   Wordmark — vertical ◎ra glyph in the spine
+   r-center anchored to bridge-strip center via JS.
+   Two color tiers: base (outer) and bright (inner).
+   ============================================================ */
+
+.spine-wordmark {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 60px;
+  height: auto;
+  transform: translate(-50%, -55.34%);
+}
+
+.wm-stroke-base   { stroke: var(--ora-wordmark-base); fill: none; transition: stroke 0.12s; }
+.wm-stroke-bright { stroke: var(--ora-wordmark-bright); fill: none; transition: stroke 0.12s; }
+.wm-fill-base     { fill: var(--ora-wordmark-base); stroke: none; transition: fill 0.12s; }
+
+.wordmark-clickable { cursor: pointer; }
+.wordmark-clickable:focus-visible { outline: none; }
+
+.wordmark-clickable:hover .wm-stroke-base,
+.wordmark-clickable:focus-visible .wm-stroke-base   { stroke: var(--ora-wordmark-hover); }
+.wordmark-clickable:hover .wm-stroke-bright,
+.wordmark-clickable:focus-visible .wm-stroke-bright { stroke: var(--ora-wordmark-hover); }
+.wordmark-clickable:hover .wm-fill-base,
+.wordmark-clickable:focus-visible .wm-fill-base     { fill: var(--ora-wordmark-hover); }

@@ -3,9 +3,10 @@
   --bg-header:        #1a1a1a;
   --bg-panel:         #ffffff;
   --bg-panel-header:  #f0f0eb;
-  --bg-input:         #ffffff;
+  --bg-input:         #f0f0eb;
+  --bg-input-well:    #ffffff;
   --bg-user-bubble:   #1a1a1a;
-  --bg-ai-bubble:     #ffffff;
+  --bg-ai-bubble:     transparent;
   --bg-tool:          #f0f0eb;
   --bg-code:          #f8f8f5;
   --bg-overlay:       rgba(0,0,0,0.45);

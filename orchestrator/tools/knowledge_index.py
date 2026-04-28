@@ -8,7 +8,7 @@ Usage:
     python3 knowledge_index.py ~/Documents/vault/Engrams/inversion.md
 
     # Index the mental models directory:
-    python3 knowledge_index.py ~/local-ai/knowledge/mental-models/
+    python3 knowledge_index.py ~/ora/knowledge/mental-models/
 
     # Re-index (clear and rebuild):
     python3 knowledge_index.py --reindex ~/Documents/vault/Engrams/
@@ -51,7 +51,7 @@ import sys
 import re
 import json
 
-CHROMADB_PATH = os.path.expanduser("~/local-ai/chromadb/")
+CHROMADB_PATH = os.path.expanduser("~/ora/chromadb/")
 
 
 def _nomic_embed(text):

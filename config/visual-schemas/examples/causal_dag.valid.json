@@ -1,0 +1,21 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-causal_dag",
+  "type": "causal_dag",
+  "mode_context": "root_cause_analysis",
+  "relation_to_prose": "integrated",
+  "spec": {
+    "dsl": "dag { x [exposure]; y [outcome]; u [latent]; x -> y; u -> x; u -> y }",
+    "focal_exposure": "x",
+    "focal_outcome": "y"
+  },
+  "semantic_description": {
+    "level_1_elemental": "Bar chart of four categories with counts on y-axis.",
+    "level_2_statistical": "Max is category C at 42; min is A at 10; spread 32.",
+    "level_3_perceptual": "Two clusters: low (A,B) and high (C,D), no intermediate.",
+    "level_4_contextual": null,
+    "short_alt": "Bar chart of four categories where C is the largest at 42.",
+    "data_table_fallback": null
+  },
+  "title": "Example causal_dag"
+}

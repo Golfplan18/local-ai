@@ -11,7 +11,7 @@ import os
 import json
 
 
-ENDPOINTS_JSON = os.path.expanduser("~/local-ai/config/endpoints.json")
+ENDPOINTS_JSON = os.path.expanduser("~/ora/config/endpoints.json")
 
 
 def _load_endpoints() -> dict:
@@ -36,11 +36,11 @@ def _build_prompt(task_summary: str, artifact: str, evaluation_focus: str) -> st
 def _call_gemini(prompt: str, model: str) -> str:
     try:
         import keyring
-        key = os.environ.get("GEMINI_API_KEY", "") or keyring.get_password("local-ai", "gemini-api-key") or ""
+        key = os.environ.get("GEMINI_API_KEY", "") or keyring.get_password("ora", "gemini-api-key") or ""
     except Exception:
         key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
-        return "[api_evaluate] No Gemini API key found. Store via: keyring set local-ai gemini-api-key"
+        return "[api_evaluate] No Gemini API key found. Store via: keyring set ora gemini-api-key"
     try:
         from google import genai
         client = genai.Client(api_key=key)
@@ -53,7 +53,7 @@ def _call_gemini(prompt: str, model: str) -> str:
 def _call_openai(prompt: str, model: str) -> str:
     try:
         import keyring
-        key = os.environ.get("OPENAI_API_KEY", "") or keyring.get_password("local-ai", "openai-api-key") or ""
+        key = os.environ.get("OPENAI_API_KEY", "") or keyring.get_password("ora", "openai-api-key") or ""
     except Exception:
         key = os.environ.get("OPENAI_API_KEY", "")
     if not key:
@@ -74,7 +74,7 @@ def _call_openai(prompt: str, model: str) -> str:
 def _call_claude(prompt: str, model: str) -> str:
     try:
         import keyring
-        key = os.environ.get("ANTHROPIC_API_KEY", "") or keyring.get_password("local-ai", "anthropic-api-key") or ""
+        key = os.environ.get("ANTHROPIC_API_KEY", "") or keyring.get_password("ora", "anthropic-api-key") or ""
     except Exception:
         key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not key:

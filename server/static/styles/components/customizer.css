@@ -1,0 +1,299 @@
+/* ============================================================
+   Customizer — overlay UI for customization mode
+   ============================================================ */
+
+/* ─── Dim layer over the whole viewport while in customization mode.
+       pointer-events: none lets clicks pass through to elements below. */
+body.customizer-active::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ─── Customizable elements rise above the dim while in mode and get
+       a dashed indicator. Hover bolds it to signal "click to edit". */
+body.customizer-active .customizable {
+  position: relative;
+  z-index: 110;
+  outline: 1px dashed var(--text-muted);
+  outline-offset: 4px;
+  cursor: pointer;
+  transition: outline 0.15s;
+}
+body.customizer-active .customizable:hover {
+  outline: 2px solid var(--link-color);
+}
+
+/* Palette button stays bright (above the dim) so it's visible as the
+   exit point. */
+body.customizer-active #themeToggleBtn {
+  position: relative;
+  z-index: 110;
+}
+
+/* ─── Starter overlay (light/dark + instructions, near palette) ─── */
+
+.customizer-starter {
+  z-index: 200;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow:
+    3px 4px 12px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+  padding: 12px 14px;
+  min-width: 180px;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+
+.customizer-starter-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.customizer-theme-toggle {
+  flex: 1;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  color: var(--text-normal);
+  padding: 6px 10px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.customizer-theme-toggle:hover {
+  background: var(--interactive-hover);
+}
+
+.customizer-starter-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ─── Preview-mode picker ─── */
+
+.customizer-preview-row {
+  margin-bottom: 10px;
+}
+.customizer-preview-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.customizer-preview-buttons {
+  display: flex;
+  gap: 4px;
+}
+.customizer-preview-buttons button {
+  flex: 1;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  color: var(--text-muted);
+  padding: 4px 6px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+.customizer-preview-buttons button:hover {
+  background: var(--interactive-hover);
+}
+.customizer-preview-buttons button.active {
+  background: var(--interactive-hover);
+  color: var(--text-normal);
+  font-weight: 500;
+}
+
+/* ─── Preview-mode body classes mirror the real mode rules so the
+       interface tints visually without entering the actual mode. Higher
+       specificity (theme + preview class) outranks user customizations. ─── */
+
+body.theme-dark.customizer-preview-private,
+body.theme-light.customizer-preview-private {
+  --background-modifier-border:    var(--ora-mode-private-pane-border);
+  --ora-input-pane-border:         var(--ora-mode-private-pane-border);
+  --ora-output-pane-border:        var(--ora-mode-private-pane-border);
+  --ora-visual-canvas-border:      var(--ora-mode-private-pane-border);
+}
+body.customizer-preview-private .spine-button[data-mode-button="private"],
+body.customizer-preview-private .spine-button[data-mode-button="private"]:hover {
+  border-color: var(--ora-mode-private-button-border);
+  color: var(--ora-mode-private-button-icon);
+}
+body.customizer-preview-private .bridge-mode-label {
+  display: block;
+  color: var(--ora-mode-private-label);
+}
+
+body.theme-dark.customizer-preview-stealth,
+body.theme-light.customizer-preview-stealth {
+  --background-modifier-border:    var(--ora-mode-stealth-pane-border);
+  --ora-input-pane-border:         var(--ora-mode-stealth-pane-border);
+  --ora-output-pane-border:        var(--ora-mode-stealth-pane-border);
+  --ora-visual-canvas-border:      var(--ora-mode-stealth-pane-border);
+}
+body.customizer-preview-stealth .spine-button[data-mode-button="stealth"],
+body.customizer-preview-stealth .spine-button[data-mode-button="stealth"]:hover {
+  border-color: var(--ora-mode-stealth-button-border);
+  color: var(--ora-mode-stealth-button-icon);
+}
+body.customizer-preview-stealth .bridge-mode-label {
+  display: block;
+  color: var(--ora-mode-stealth-label);
+}
+
+/* ─── Element overlay (popover with arrow + sample + controls) ─── */
+
+.customizer-element-overlay {
+  z-index: 210;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow:
+    3px 4px 16px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+  padding: 14px 16px;
+  min-width: 280px;
+  max-width: 340px;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+
+.customizer-overlay-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+/* ─── Sample area (e.g., shows all 6 headings inside heading overlay) ─── */
+
+.customizer-sample {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.customizer-sample-headings > * + * {
+  margin-top: 4px;
+}
+.customizer-sample-headings h1 {
+  color: var(--h1-color); font-size: var(--h1-size);
+  font-weight: var(--h1-weight); font-family: var(--h1-font);
+  line-height: var(--h1-line-height);
+}
+.customizer-sample-headings h2 {
+  color: var(--h2-color); font-size: var(--h2-size);
+  font-weight: var(--h2-weight); font-family: var(--h2-font);
+  line-height: var(--h2-line-height);
+}
+.customizer-sample-headings h3 {
+  color: var(--h3-color); font-size: var(--h3-size);
+  font-weight: var(--h3-weight); font-family: var(--h3-font);
+  line-height: var(--h3-line-height);
+}
+.customizer-sample-headings h4 {
+  color: var(--h4-color); font-size: var(--h4-size);
+  font-weight: var(--h4-weight); font-family: var(--h4-font);
+  line-height: var(--h4-line-height);
+}
+.customizer-sample-headings h5 {
+  color: var(--h5-color); font-size: var(--h5-size);
+  font-weight: var(--h5-weight); font-family: var(--h5-font);
+  line-height: var(--h5-line-height);
+}
+.customizer-sample-headings h6 {
+  color: var(--h6-color); font-size: var(--h6-size);
+  font-weight: var(--h6-weight); font-family: var(--h6-font);
+  line-height: var(--h6-line-height);
+}
+
+/* ─── Controls stack ─── */
+
+.customizer-overlay-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.customizer-control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.customizer-control-row label {
+  flex: 0 0 88px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.customizer-control-row input,
+.customizer-control-row select {
+  flex: 1;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  color: var(--text-normal);
+  padding: 4px 6px;
+  border-radius: var(--radius-s);
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 0;
+}
+.customizer-control-row input[type="color"] {
+  padding: 2px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.customizer-overlay-reset {
+  margin-top: 12px;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: 12px;
+  width: 100%;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+.customizer-overlay-reset:hover {
+  background: var(--interactive-hover);
+  color: var(--text-normal);
+}
+
+/* ─── Arrow/tail pointing at the element being edited ─── */
+
+.customizer-overlay-arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  transform: rotate(45deg);
+}
+.customizer-overlay-arrow[data-side="left"] {
+  left: -7px;
+  border-top: none;
+  border-right: none;
+}
+.customizer-overlay-arrow[data-side="right"] {
+  right: -7px;
+  border-bottom: none;
+  border-left: none;
+}

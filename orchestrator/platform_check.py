@@ -11,7 +11,7 @@ import os
 import platform
 import subprocess
 
-WORKSPACE = os.path.expanduser("~/local-ai/")
+WORKSPACE = os.path.expanduser("~/ora/")
 ENDPOINTS_JSON = os.path.join(WORKSPACE, "config/endpoints.json")
 
 

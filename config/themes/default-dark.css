@@ -1,27 +1,29 @@
 :root {
-  --bg-app:           #1a1a1a;
-  --bg-header:        #0d0d0d;
-  --bg-panel:         #242424;
-  --bg-panel-header:  #1e1e1e;
-  --bg-input:         #2a2a2a;
+  /* Cool grey palette — Dracula-adjacent neutrals */
+  --bg-app:           #1e1f29;
+  --bg-header:        #191a23;
+  --bg-panel:         #282a36;
+  --bg-panel-header:  #21222c;
+  --bg-input:         #2d2f3b;
+  --bg-input-well:    #1e1f29;
   --bg-user-bubble:   #2e4a6e;
-  --bg-ai-bubble:     #2a2a2a;
-  --bg-tool:          #1e1e1e;
-  --bg-code:          #1a1a1a;
-  --bg-overlay:       rgba(0,0,0,0.6);
+  --bg-ai-bubble:     transparent;
+  --bg-tool:          #21222c;
+  --bg-code:          #1e1f29;
+  --bg-overlay:       rgba(15,15,22,0.65);
 
-  --text-primary:      #e0e0e0;
-  --text-secondary:    #aaaaaa;
-  --text-muted:        #666666;
-  --text-header:       #e0e0e0;
-  --text-panel-header: #aaaaaa;
+  --text-primary:      #f8f8f2;
+  --text-secondary:    #b0b4c0;
+  --text-muted:        #6272a4;
+  --text-header:       #f8f8f2;
+  --text-panel-header: #b0b4c0;
   --text-user-bubble:  #e8f0ff;
-  --text-ai-bubble:    #e0e0e0;
-  --text-link:         #7aadff;
+  --text-ai-bubble:    #f8f8f2;
+  --text-link:         #8be9fd;
 
-  --border:           #333333;
-  --border-panel:     #333333;
-  --border-input:     #404040;
+  --border:           #44475a;
+  --border-panel:     #44475a;
+  --border-input:     #4a4d5e;
   --accent:           #6b8cba;
   --accent-soft:      #4a6a9a;
   --accent-muted:     #4a5a6a;
@@ -34,7 +36,7 @@
   --heading-h5:       #8be9fd;
   --heading-h6:       #f1fa8c;
 
-  --panel-gap:        2px;
+  --panel-gap:        6px;
   --border-radius:    8px;
   --border-radius-sm: 4px;
   --font-family:      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

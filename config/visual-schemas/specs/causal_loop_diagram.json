@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/causal_loop_diagram.json",
+  "title": "Causal loop diagram (CLD) spec (CAUSAL family)",
+  "description": "Per Protocol \u00a73.3. Loop polarity and sign-product invariants are enforced by the integrity checker, not by JSON Schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["variables", "links", "loops"],
+  "properties": {
+    "variables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "polarity"],
+        "properties": {
+          "from": { "type": "string", "minLength": 1 },
+          "to": { "type": "string", "minLength": 1 },
+          "polarity": {
+            "type": "string",
+            "enum": ["+", "-"]
+          },
+          "delay": { "type": "boolean", "default": false },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "loops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "members", "label"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[RB][0-9]+$",
+            "description": "Loop identifier: R1/R2/\u2026 for reinforcing, B1/B2/\u2026 for balancing."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["R", "B"]
+          },
+          "members": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "label": { "type": "string", "minLength": 1 },
+          "narrative": { "type": "string" }
+        }
+      }
+    },
+    "allow_isolated": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, orphan variables (not part of any link) are permitted."
+    }
+  }
+}

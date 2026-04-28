@@ -5,7 +5,7 @@ Double-click **Local AI.command** on your Desktop.
 Your browser will open to http://localhost:5000 — your AI chat interface.
 
 ## Stopping
-Run: ~/local-ai/stop.sh
+Run: ~/ora/stop.sh
 Or close the terminal window that appeared when you started.
 
 ## How This Works
@@ -35,7 +35,7 @@ To switch models, tell your AI: "Switch to DeepSeek" or "Use the 20B model"
 
 ## Your System Files
 
-- **boot.md** (~/local-ai/boot/boot.md): The active system specification.
+- **boot.md** (~/ora/boot/boot.md): The active system specification.
   Your AI reads this file as its operating instructions.
 
 - **Vault** (~/Documents/vault/): Put files here that you want your AI to search.
@@ -43,7 +43,7 @@ To switch models, tell your AI: "Switch to DeepSeek" or "Use the 20B model"
 
 - **Conversations** (~/Documents/conversations/): Session logs saved automatically.
 
-- **Frameworks** (~/local-ai/frameworks/): The framework library.
+- **Frameworks** (~/ora/frameworks/): The framework library.
   Your AI can execute any framework by name.
 
 - **config/endpoints.json**: Lists your available AI connections.
@@ -59,7 +59,7 @@ Tell your AI: "Read and execute frameworks/browser-eval-setup.md"
 ## If Something Goes Wrong
 
 - **Browser shows "connection refused"**: Server isn't running. Click the launcher.
-- **Browser shows "No AI endpoints configured"**: Run ~/local-ai/start.sh and check endpoints.json.
+- **Browser shows "No AI endpoints configured"**: Run ~/ora/start.sh and check endpoints.json.
 - **Tool calls not executing** (you see <tool_call> tags in responses): You may be connected
   directly to a commercial AI instead of localhost:5000. Always use the launcher.
 - **Garbled output from local model**: Run this framework again to re-check the chat template.
@@ -67,7 +67,7 @@ Tell your AI: "Read and execute frameworks/browser-eval-setup.md"
 ## Updating
 
 To update framework library when the repository is published:
-  cd ~/local-ai/frameworks/book && git pull
+  cd ~/ora/frameworks/book && git pull
 
 To add API keys:
   Tell your AI: "Read and execute frameworks/api-key-setup.md"

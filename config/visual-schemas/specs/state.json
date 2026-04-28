@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/state.json",
+  "title": "State diagram spec (PROCESS family, Mermaid DSL)",
+  "description": "Per Protocol \u00a73.15. Mermaid stateDiagram-v2 (FSM only; Harel statecharts excluded per \u00a71.2). Initial-state declaration and unreachable-state flagging are enforced by the integrity checker downstream.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dialect", "dsl"],
+  "properties": {
+    "dialect": {
+      "type": "string",
+      "const": "state"
+    },
+    "dsl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Mermaid stateDiagram-v2 source."
+    }
+  }
+}

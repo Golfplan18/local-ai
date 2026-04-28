@@ -1,0 +1,13 @@
+vega 6.2.0
+BSD-3-Clause
+source: npm pack vega@6.2.0 (https://registry.npmjs.org/vega/-/vega-6.2.0.tgz)
+file: build/vega.min.js
+sha: see npm integrity; verify with `npm view vega@6.2.0 dist.integrity`
+vendored: 2026-04-17 as part of WP-1.2a
+
+To refresh:
+  cd /tmp && npm pack vega@<new-version>
+  tar -xzf vega-<new-version>.tgz
+  cp package/build/vega.min.js ~/ora/server/static/ora-visual-compiler/vendor/vega/
+  cp package/LICENSE ~/ora/server/static/ora-visual-compiler/vendor/vega/
+  # Update this VERSION file with the new version number.

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ora",
+      "runtimeExecutable": "/opt/homebrew/bin/python3",
+      "runtimeArgs": ["/Users/oracle/ora/server/server.py"],
+      "port": 5000
+    }
+  ]
+}

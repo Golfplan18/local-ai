@@ -1,0 +1,49 @@
+{
+  "_note": "Mark '3dline' not in allowed enum (line/area/point/rule/errorband/errorbar).",
+  "schema_version": "0.2",
+  "id": "fig-time_series",
+  "type": "time_series",
+  "mode_context": "root_cause_analysis",
+  "relation_to_prose": "integrated",
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "data": {
+      "values": [
+        {
+          "t": "2026-01",
+          "v": 1
+        },
+        {
+          "t": "2026-02",
+          "v": 2
+        }
+      ]
+    },
+    "mark": "3dline",
+    "encoding": {
+      "x": {
+        "field": "t",
+        "type": "temporal"
+      },
+      "y": {
+        "field": "v",
+        "type": "quantitative"
+      }
+    },
+    "caption": {
+      "source": "Monthly sales",
+      "period": "2026-01 to 2026-02",
+      "n": 2,
+      "units": "USD"
+    }
+  },
+  "semantic_description": {
+    "level_1_elemental": "Bar chart of four categories with counts on y-axis.",
+    "level_2_statistical": "Max is category C at 42; min is A at 10; spread 32.",
+    "level_3_perceptual": "Two clusters: low (A,B) and high (C,D), no intermediate.",
+    "level_4_contextual": null,
+    "short_alt": "Bar chart of four categories where C is the largest at 42.",
+    "data_table_fallback": null
+  },
+  "title": "Example time_series"
+}

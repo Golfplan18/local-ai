@@ -81,7 +81,17 @@ Explain common quantization labels: Q4_K_M, Q5_K_M, Q8_0 (GGUF naming), 4bit, 8b
 **Note on tool calling and model size:** Reliable tool calling requires a model of sufficient size and capability — as a rough guide, 13B+ at 4-bit quantization, or 7B at 8-bit. Users at Scout tier with 8GB RAM may encounter the Local Model Tool Reliability Trap with very small models. Flag this when selecting models at the lower end of the hardware capability range.
 
 **Topic 6 — Dense vs. Mixture of Experts (MoE).**
-Explain briefly: dense models use all their parameters for every response (deeper reasoning per token). MoE models activate only a subset of parameters per token (faster, broader associative reach). A 120B MoE model with 5.7B active parameters runs more like a 6B dense model in speed but draws from 120B parameters of knowledge. Most users will encounter both types.
+This distinction determines the reasoning quality a user gets per gigabyte of RAM. Explain clearly:
+
+Dense models activate all their parameters for every token — a 70B dense model uses all 70 billion parameters on every word it generates. This is slow but powerful.
+
+MoE models have a large total parameter count but activate only a small fraction per token. The critical metric is active parameters per token. A model advertised as 120B with 4 active experts out of 128 might activate only 3.75 billion parameters per token — it reasons more like a 4B dense model, not a 120B dense model, while occupying 60 GB of RAM.
+
+MoE is a speed optimization, not a reasoning optimization. For chatbot-style interactions where response latency matters, MoE delivers acceptable quality at fast speeds. For analysis, reasoning, and adversarial evaluation, dense models deliver dramatically more value per GB of RAM. The practical test: divide the model's RAM requirement by its active parameter count. Dense models typically deliver 1.5–2.0 billion active parameters per GB. MoE models may deliver as little as 0.06 billion per GB.
+
+**Recommendation: at 32 GB RAM and above, always prefer a dense model over an MoE model of equivalent RAM footprint for reasoning work.** MoE models are appropriate only when RAM is so constrained that no useful-size dense model fits, or for tasks where speed matters more than depth.
+
+To verify architecture: check the model's config.json for `num_local_experts` and `num_experts_per_tok` fields. If present, the model is MoE. Model names and Hugging Face cards are unreliable indicators.
 
 **Topic 7 — Practical considerations on Hugging Face.**
 Explain what the user will see when browsing Hugging Face: repository names, model cards, file listings, download counts, community ratings. Warn about XET pointers. Explain required companion files. The framework handles this automatically, but users should know it exists.
@@ -137,7 +147,7 @@ e. Estimate RAM at inference:
    - 4-bit quantization: parameter_count × 0.5 GB per billion + 2 GB overhead
    - 8-bit quantization: parameter_count × 1.0 GB per billion + 2 GB overhead
    - 16-bit (full precision): parameter_count × 2.0 GB per billion + 2 GB overhead
-   - For MoE models: use total parameter count for disk estimation, use active parameter count for RAM estimation.
+   - For MoE models: use total parameter count for both disk and RAM estimation (all parameters must be loaded into memory, even though only a fraction are active per token). Additionally, calculate and report the active parameters per token (`num_experts_per_tok × expert_size`) and warn the user: "This is an MoE model. While it requires [X] GB of RAM for all [total]B parameters, only [active]B parameters are active per token. Reasoning quality will be comparable to a [active]B dense model, not a [total]B dense model."
 
 **Step 3: Determine format compatibility.**
 
@@ -170,11 +180,13 @@ MODEL VALIDATION RESULTS
 
 Model: [name]
   Repository: [URL]
-  Parameters: [count] ([dense / MoE with X active])
+  Parameters: [count] ([dense / MoE with X active per token])
+  Architecture: [dense — all parameters active / MoE — X of Y experts active, Z B active params per token]
   Quantization: [level]
   Format: [MLX / GGUF / Ollama]
   Estimated size on disk: ~[X] GB
   Estimated RAM at inference: ~[X] GB
+  [IF MoE:] Active params per GB of RAM: [X] B/GB (compare: a dense model at this size would deliver ~1.75 B/GB)
   Available model RAM: [X] GB (headroom after model: [X] GB)
   Required companion files: [list — all present / missing: (list)]
   Chat template: [found / not found — default will be used]
@@ -202,11 +214,13 @@ Calculate AVAILABLE_MODEL_RAM = total RAM × 0.75.
 
 Search for the current best-rated open-weight model at the target size for the user's platform. Prioritize models with strong community adoption, benchmark performance, and broad compatibility.
 
+**Critical: always prefer dense models over MoE models at every tier.** MoE models may appear to offer more parameters for the RAM budget, but they deliver dramatically less reasoning quality per GB. The auto-selector must verify the model's config.json for `num_local_experts` — if present, the model is MoE and should be rejected in favor of a dense alternative of equivalent RAM footprint. The only exception is Tier 1, where RAM is so constrained that no dense model of useful size may fit.
+
 IF the coding agent cannot determine the current best model, THEN default to:
-- Tier 1: Qwen3 family, smallest available at 4-bit
-- Tier 2: Qwen3 or Llama family, medium size at 4-bit
-- Tier 3: Qwen3, Llama, or Mistral family, large size at 4-bit
-- Tier 4–5: Largest available high-quality open model at the appropriate quantization
+- Tier 1: Qwen3 family, smallest available dense model at 4-bit (MoE acceptable only if no dense model fits)
+- Tier 2: Qwen3 or Llama family, dense, medium size at 4-bit (e.g., Qwen3.5-27B distill variants)
+- Tier 3: Qwen3, Llama, or Mistral family, dense, large size at 4-bit (e.g., Llama 3.1 70B, Qwen 2.5 72B)
+- Tier 4–5: Largest available high-quality dense model at 4-bit quantization. For multi-model setups, select models from different families for adversarial diversity (e.g., one Llama-family, one Qwen-family).
 
 After selecting, run the same validation steps from User-Specified Mode (Steps 2–6).
 
@@ -216,11 +230,13 @@ After selecting, run the same validation steps from User-Specified Mode (Steps 2
 MODEL SELECTION ([Auto / User-specified])
 Model: [name and version]
 Repository: [URL]
-Parameters: [count] ([dense / MoE])
+Parameters: [count] ([dense / MoE with X active per token])
+Architecture: [dense — all parameters active / MoE — X of Y experts active, Z B active params per token]
 Quantization: [level]
 Format: [MLX / GGUF / Ollama]
 Estimated size on disk: ~[X] GB
 Estimated RAM at inference: ~[X] GB (calculated from [X]B parameters × [formula])
+[IF MoE:] Active params per GB of RAM: [X] B/GB — reasoning comparable to ~[X]B dense model
 Available model RAM: [X] GB (headroom: [X] GB)
 Required companion files: [all present / list of files]
 Chat template: [status]
