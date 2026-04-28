@@ -2,7 +2,7 @@
 
 *A framework for detecting and reconciling drift between content files in the canonical vault and the ~/ora deployment surface.*
 
-*Version 1.0*
+*Version 1.1*
 
 ---
 
@@ -232,7 +232,8 @@ When comparing two files for body equality:
 1. Strip the YAML frontmatter from each side (the block delimited by `---` at the start, if present). Compare only what comes after.
 2. Strip leading and trailing blank lines from each body.
 3. Treat sequences of blank lines longer than two as equivalent.
-4. The bodies are equal if and only if the normalized strings are identical.
+4. Treat standalone markdown horizontal rules — lines containing only `---` (with no other characters) — as equivalent to blank lines on both sides. Section dividers carry no semantic content for the runtime loading the file, so cosmetic differences in horizontal-rule placement must not be classified as body drift. (Added in v1.1; this prevents the false-positive class observed during the 2026-04-27 smoke test where vault carried more `---` separators than ora for the same logical content.)
+5. The bodies are equal if and only if the normalized strings are identical.
 
 ### Classification rule
 
