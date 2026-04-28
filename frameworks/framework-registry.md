@@ -1,12 +1,3 @@
----
-title: Framework Registry
-nexus: wisdom_nexus
-type: engram
-writing: no
-date created: 2026/04/01
-date modified: 2026/04/23
----
-
 # Framework Registry
 
 This file indexes all frameworks available to the system. Agents query this registry (via ChromaDB semantic search) to find frameworks matching a problem. Humans browse it to see what's available.
@@ -40,6 +31,7 @@ Each framework has one entry with these fields:
 ## Registered Frameworks
 
 ### Installer — Local AI First Boot
+
 - **Purpose:** Transform a bare machine into a working local AI system with browser chat interface, model switcher, multi-panel UI, conversation processing, and desktop launcher
 - **Problem Class:** System setup and installation
 - **Input Summary:** Hardware access; optional model preference and workspace path
@@ -53,6 +45,7 @@ Each framework has one entry with these fields:
 - **Delivers:** Working Ora system installed on target machine at the highest tier the hardware supports (Tier 0 through Tier C, with universal Phase 1 base and additive Phase 2 local-model capability where hardware permits)
 
 ### Knowledge Artifact Coach
+
 - **Purpose:** Transform raw ideas, documents, document batches, or existing notes into vault-ready draft notes with classification, atomic excavation, grammar-rule enforcement, and relationship mapping
 - **Problem Class:** Knowledge capture and artifact production for vault
 - **Input Summary:** Mode A: raw idea / brain dump. Mode B: single existing document. Mode C: multiple documents in one session. Mode D: existing vault note for refinement.
@@ -65,8 +58,23 @@ Each framework has one entry with these fields:
 - **Version:** 6.0
 - **Delivers:** Raw-idea extraction set with classified vault-ready draft notes and atomic excavation attempted (Mode A); document extraction set from a single document with buried atomic notes extracted and relationship map produced (Mode B); batch extraction set across multiple documents with cross-document relationships and deduplication (Mode C); refined note draft produced by evaluating an existing note against its type-appropriate quality checks (Mode D)
 
+### Wicked Problems
+
+- **Purpose:** Structured analysis of problems that resist resolution due to fundamental stakeholder value conflicts, evolving problem definitions, and the absence of an objective stopping condition. WPF does not solve wicked problems; it produces a Decision Clarity Document making the structure of the dilemma legible to whoever holds decision authority.
+- **Problem Class:** Wicked-problem analysis, multi-stakeholder value-conflict mapping, tradeoff transparency
+- **Input Summary:** Path A (user invocation): problem description plus optional stakeholder stance. Path B (PEF handoff): structured handoff package with problem definition, four-condition trigger evaluation, stakeholders, Excluded Outcomes, Constraints, iteration history. Path C (cui-bono escalation): cui-bono prior output plus indicator evidence.
+- **Output Summary:** Decision Clarity Document containing executive summary, Stage 1 problem-space map (per-stakeholder framings + competing-hypotheses matrix), Stage 2 value-conflict map (per-stakeholder steelmans + Fundamental/Resolvable classification), Stage 3 consequence landscape (Cui Bono + Systems Dynamics + Scenario Planning per intervention across three time horizons + problem-definition reshaping notes), Stage 4 tradeoff statements per intervention with advocate-stance Red Team passes per subordinated stakeholder + reversibility notes. Plus reclassification recommendations when Stage 1 or Stage 2 gates fail.
+- **Proven Applications:** New framework — landing 2026-04-24
+- **Known Limitations:** WPF refuses to recommend an intervention; the decision is the user's. WPF cannot dissolve fundamental value conflicts. WPF requires at least three of four wicked conditions to fire; partial-complexity problems route to ordinary PEF iteration instead. The framework orchestrates other modes (competing-hypotheses, cui-bono, steelman-construction, systems-dynamics, scenario-planning, red-team) — quality depends on those modes' performance.
+- **File Location:** ~/Documents/vault/Framework — Wicked Problems.md (canonical)
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** Decision Clarity Document making the tradeoffs across available interventions legible without recommending any particular intervention, suitable for direct use by a decision-maker or policymaker; reclassification recommendation when the problem turns out not to be wicked (Stage 1 or Stage 2 gate failure)
+
 ### Problem Evolution
-- **Purpose:** Iterative problem definition and project supervision — turn raw epistemic tension into a structured Problem Evolution Document with MOM-populated strategic hierarchy (Mission, Excluded Outcomes, Constraints, Objectives, Active/Aspirational Milestones), keep it current across iterations, supervise Active milestones via Excluded Outcomes drift checks, execute Aspirational-to-Active promotion with P-Feasibility re-checks, and invoke downstream frameworks (MOM, TMF, PIF, PFF) as needed
+
+- **Purpose:** Iterative problem definition and project supervision — turn raw epistemic tension into a structured Problem Evolution Document with MOM-populated strategic hierarchy (Mission, Excluded Outcomes, Constraints, Objectives, Active/Aspirational Milestones), keep it current across iterations, supervise Active milestones via Excluded Outcomes drift checks, execute Aspirational-to-Active promotion with P-Feasibility re-checks, and invoke downstream frameworks (MOM, TMF, PIF, PFF, WPF) as needed
 - **Problem Class:** Problem definition, project supervision, Lock-protected strategic-hierarchy management, diagnostic routing
 - **Input Summary:** PE-Init: raw tension, idea, or goal description. PE-Iterate: existing Problem Evolution Document plus recap of work since last iteration (or Active milestone completion report for supervision drift check). PE-Review: existing PED. PE-Spawn: parent PED plus sub-problem description.
 - **Output Summary:** Problem Evolution Document (new or updated) with problem definition, Mission (Resolution Statement, Excluded Outcomes), Constraints (Hard/Soft/Working Assumption), Objectives, Active Milestones (with P-Feasibility verdicts) + Aspirational Milestones, Terrain Maps references, phase assessment, diagnostic findings, supervision drift-check findings, Promotion Protocol events, recommended next actions with Constructive Escalation advice form, Decision Log, iteration history; Challenge Summary; Readiness Assessment for PIF or PFF handoff; Sub-Project Spawn Specifications (PE-Spawn only); status summary (PE-Review only, PED not modified); No-Punt Escalation forwarding (when MOM Outcome 3 or TMF Escalation Package fires)
@@ -79,6 +87,7 @@ Each framework has one entry with these fields:
 - **Delivers:** Initial Problem Evolution Document with MOM-populated Mission/Objectives/Constraints/Milestones from a raw tension, idea, or goal (PE-Init); advanced Problem Evolution Document with new iteration entry covering MOM drift refresh, TMF invocation outcomes, supervision drift checks against Excluded Outcomes, and Promotion Protocol events (PE-Iterate); status summary of a Problem Evolution Document without advancing it (PE-Review); sub-project Problem Evolution Document with its own MOM-populated strategic hierarchy linked to a parent project (PE-Spawn)
 
 ### Process Formalization
+
 - **Purpose:** Design, convert, render, and audit AI instruction frameworks to a standardized canonical specification
 - **Problem Class:** Framework design and knowledge capture
 - **Input Summary:** A task description (F-Design), an existing framework (F-Convert), a canonical spec (F-Render), or a framework for review (F-Audit)
@@ -92,6 +101,7 @@ Each framework has one entry with these fields:
 - **Delivers:** New framework specifications (F-Design); modernized framework specifications (F-Convert); rendered execution variants (F-Render); framework audit reports (F-Audit)
 
 ### Process Inference
+
 - **Purpose:** Discover unknown transformation processes from defined endpoints when the user knows what they have and what they want but not the path between them
 - **Problem Class:** Process discovery and formalization
 - **Input Summary:** Current state description; desired end state description; available resources and constraints
@@ -105,6 +115,7 @@ Each framework has one entry with these fields:
 - **Delivers:** Discovered transformation paths (P-Infer); failure diagnoses (P-Debug); decomposed subproblem sets (P-Decompose); formalization handoff packages (P-Formalize); feasibility verdicts (P-Feasibility)
 
 ### Mission, Objectives, and Milestones Clarification
+
 - **Purpose:** Convert a raw idea, tension, or goal into a structured hierarchy of Mission, Objectives, Constraints, and Milestones — either standalone (Project / Passion / Incubator) or under PEF supervision (Project-only with Active/Aspirational split and P-Feasibility-verified Active milestones)
 - **Problem Class:** Project definition and strategic hierarchy formulation
 - **Input Summary:** M-Standalone: raw idea description. M-Supervised: current problem definition from PED, current state description, optional Resolution Statement candidate and user-stated constraints
@@ -117,7 +128,22 @@ Each framework has one entry with these fields:
 - **Version:** 2.0
 - **Delivers:** Standalone strategic hierarchy (M-Standalone); PEF-supervised strategic hierarchy with Active/Aspirational milestone split and P-Feasibility verdicts (M-Supervised)
 
+### Terrain Mapping
+
+- **Purpose:** Close knowledge gaps in an ill-mapped problem space through bounded research loops and produce a navigable Terrain Map Artifact sufficient for the calling framework (PEF or MOM) to formulate the next concrete milestone
+- **Problem Class:** Problem-space mapping, knowledge gap closure, pre-PIF terrain preparation
+- **Input Summary:** Current Problem Space (from PEF/MOM); Known Knowledge Gaps; Closure Criteria per Gap; optional project constraints, prior Excluded Outcomes, prior Terrain Map Artifact (TM-Continue), loop counter
+- **Output Summary:** Terrain Map Artifact (separate vault document, minimal YAML `nexus:` and `type: terrain_map` only); calling-PED artifact reference; Return Package to PEF/MOM with gap-closure status and next-action recommendation; Escalation Package on three-loop non-convergence (no artifact written)
+- **Proven Applications:** Initial version — designed to be invoked from PEF when PED reveals knowledge gaps that block the next milestone
+- **Known Limitations:** Depends on the Deep Research Protocol (under development as of 2026-04-23; imminent DRP canonicalization will replace the temporary direct Ora research-capability scaffolding in Layer 3); three-loop threshold is bounded by design and shifts unresolvable problems back to the calling framework rather than producing a forced map
+- **File Location:** frameworks/book/terrain-mapping.md
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** Terrain map sufficient to formulate next concrete milestone (TM-Initiate / TM-Continue); problem redefinition escalation (TM-Escalate-Redefine, internally triggered)
+
 ### MindSpec Interview Framework
+
 - **Purpose:** Produce complete MindSpec agent, character, or self specifications through tiered interactive assessment — single-file mind.md or [agent-name].md covering Core Identity, Mission, Context, Commitments, Governance, Constitution, Voice, Communication Patterns, and Relationships
 - **Problem Class:** Agent/character/self identity specification and value-framework production
 - **Input Summary:** Mode selection (agent / character / self); tier selection for agents (ephemeral / persistent task / personal thinking partner); user participation in structured assessment; optional descriptive material or existing specification for revision
@@ -131,6 +157,7 @@ Each framework has one entry with these fields:
 - **Delivers:** Complete MindSpec agent specification (ephemeral, persistent task, or personal thinking partner tier) with tier-dependent assessment depth, incompatibility adjustment where applicable, and governance configuration (Agent); MindSpec fiction-character specification with pathology signatures produced through direct-authoring flow with coherence check (Character); MindSpec self-specification produced through full three-stage assessment with incompatibility adjustment and constitutional identification (Self)
 
 ### Conversation Processing Pipeline
+
 - **Purpose:** Process raw conversation exports and live session exchanges into structured turn-pair chunks with contextual headers, topic metadata, and ChromaDB indexing for RAG retrieval
 - **Problem Class:** Knowledge processing and conversation indexing
 - **Input Summary:** Inline mode: prompt-response pair from orchestrator; Batch mode: raw conversation files in ~/Documents/conversations/raw/
@@ -144,6 +171,7 @@ Each framework has one entry with these fields:
 - **Delivers:** Processed conversation chunks with ChromaDB indexing (batch mode). Inline mode is pipeline-stage-exempt — invoked automatically by the orchestrator on every session turn, not PEF-selectable.
 
 ### Browser Evaluation Setup
+
 - **Purpose:** Connect Playwright browser automation to commercial AI services and register endpoints for use by the orchestrator
 - **Problem Class:** Integration setup
 - **Input Summary:** Existing commercial AI accounts (Claude, ChatGPT, Gemini)
@@ -157,6 +185,7 @@ Each framework has one entry with these fields:
 - **Delivers:** Authenticated Playwright browser session registered for a commercial AI service (Claude, ChatGPT, Gemini, or custom URL) as an active endpoint in endpoints.json
 
 ### API Key Acquisition
+
 - **Purpose:** Acquire and securely store API keys for commercial AI services, then register endpoints in endpoints.json
 - **Problem Class:** Credential management
 - **Input Summary:** User-selected AI providers
@@ -170,6 +199,7 @@ Each framework has one entry with these fields:
 - **Delivers:** Configured API provider access — keys stored in credential store, endpoints registered in endpoints.json, fallback chain documented in api-providers.md
 
 ### Agent Identity and Programming
+
 - **Purpose:** Create and program specialized agent identities using the MindSpec pattern, producing a compiled agent boot file and registry entry
 - **Problem Class:** Agent creation and identity specification
 - **Input Summary:** Agent purpose description; tier selection (functional vs. incarnated); mission parameters
@@ -183,6 +213,7 @@ Each framework has one entry with these fields:
 - **Delivers:** New persistent AI agent identity as MindSpec canonical files plus compiled boot file plus registry entry (I-Create); modified agent's MindSpec files and recompiled boot file (I-Modify); full mission brief programming an existing agent to prosecute a mission autonomously (M-Program); compressed task specification assigning bounded work to an existing agent (M-Task)
 
 ### Spec-Code Reconciliation
+
 - **Purpose:** Backward-reconcile installer specifications with the installed system, produce updated installer layers and a natural language system specification
 - **Problem Class:** Specification maintenance and drift correction
 - **Input Summary:** Installer manifest and layer files; live filesystem; git history; system file structure reference
@@ -196,6 +227,7 @@ Each framework has one entry with these fields:
 - **Delivers:** Full backward-reconciliation bundle (discrepancy report, updated installer layers, natural language system specification) in Full Reconciliation mode; discrepancy report and resolution plan in Partial Reconciliation mode; natural language system specification alone in Specification Only mode
 
 ### Phase A — Prompt Cleanup
+
 - **Purpose:** Mechanical preprocessing of raw user input: transcription correction, syntax normalization, reference resolution, semantic extraction, ambiguity resolution, and conversion to Operational Notation
 - **Problem Class:** Pipeline Step 1 — prompt preprocessing
 - **Input Summary:** Raw user prompt; recent conversation history; AMBIGUITY_MODE setting
@@ -208,6 +240,20 @@ Each framework has one entry with these fields:
 - **Version:** 1.0
 - **Delivers:** *Pipeline-stage exempt per PFF Section II subsection 2.3 — invoked by the orchestrator as Step 1 of every pipeline run, not PEF-selectable.*
 
+### Deep Research Protocol
+
+- **Purpose:** Produce structured, cited research reports addressing open-ended knowledge gaps via orchestrated multi-step search — vault-first, then parallel Level 1 subagent fan-out to web, browser AI, and API AI sources — with confidence-triggered iteration
+- **Problem Class:** Open-ended research and knowledge gap resolution
+- **Input Summary:** A research query (from TMF, user, or project agent); caller context; optional nexus, source filter, depth cap, subagent cap, persist flag
+- **Output Summary:** Structured markdown research report with executive summary, per-sub-query sections, cross-query synthesis, named caveats, bibliography; saved to vault root with inherited nexus if specified
+- **Proven Applications:** None yet — initial version
+- **Known Limitations:** Token cost scales 4-15× a single-shot query (per Anthropic's published figures); vault-first retrieval quality depends on vault content; confabulation risk present where external sources are sparse
+- **File Location:** frameworks/book/deep-research-protocol.md (executable); ~/Documents/vault/Framework — Deep Research Protocol.md (canonical)
+- **Provenance:** human-created
+- **Confidence:** low
+- **Version:** 1.0
+- **Delivers:** Cited research reports addressing specified knowledge gaps via vault-first retrieval and parallel external fan-out
+
 ---
 
 ## Pipeline Stage Frameworks (Gear 4)
@@ -217,28 +263,48 @@ These six frameworks are loaded into model context windows at specific pipeline 
 *These six frameworks are pipeline-stage-exempt per PFF Section II subsection 2.3 — they are invoked by the orchestrator at specific pipeline stages and are not PEF-selectable. They do not declare Milestones Delivered or Delivers fields.*
 
 ### F-Analysis-Breadth (Step 3)
+
 - **Purpose:** Green/Yellow hat analysis — map alternatives, surface opportunities, identify benefits
 - **File Location:** frameworks/book/f-analysis-breadth.md
 
 ### F-Analysis-Depth (Step 3)
+
 - **Purpose:** Black/White hat analysis — commit to best-supported answer, map risks and failure modes
 - **File Location:** frameworks/book/f-analysis-depth.md
 
 ### F-Evaluate (Step 4)
+
 - **Purpose:** Cross-adversarial evaluation — quality audit within mode + cross-modal perspective
 - **File Location:** frameworks/book/f-evaluate.md
 
 ### F-Revise (Step 5)
+
 - **Purpose:** Revision incorporating cross-evaluation feedback while retaining independent judgment
 - **File Location:** frameworks/book/f-revise.md
 
 ### F-Consolidate (Step 7)
+
 - **Purpose:** Synthesize both analyses into coherent output preserving convergent and divergent findings
 - **File Location:** frameworks/book/f-consolidate.md
 
 ### F-Verify (Step 8)
+
 - **Purpose:** Final verification — 7-check validation that consolidated output accurately represents both analyses
 - **File Location:** frameworks/book/f-verify.md
+
+### System File Drift Correction
+
+- **Purpose:** Detect and reconcile drift between content files in the canonical vault and the `~/ora/` deployment surface, under explicit user-controlled direction with `.bak` backups for every overwrite
+- **Problem Class:** System maintenance — vault/deployment dual-copy reconciliation
+- **Input Summary:** Operation mode (D-Detect | D-Sync | D-Accept-Ora | D-Bootstrap); vault root path; ora root path; optional pair filter; explicit pair list (D-Accept-Ora only)
+- **Output Summary:** D-Detect → drift report classifying every registered pair (`identical | yaml-only-diff | vault-newer | ora-newer | body-different | vault-only | ora-only | excluded`); D-Sync → vault→ora sync log with `.bak` paths; D-Accept-Ora → reverse sync log with `.bak` paths; D-Bootstrap → creation log for new vault copies derived from ora-only files matching registered patterns
+- **Proven Applications:** New framework — landing 2026-04-28 alongside the vault canonicalization migration that produced the initial paired state
+- **Known Limitations:** Refuses to silently resolve `ora-newer` pairs or pairing ambiguities — surfaces them as conflicts requiring explicit user decision. Pairing rules are category-keyed; new content categories require an updated Pairing Rules table in the framework spec.
+- **File Location:** frameworks/book/system-file-drift-correction.md (canonical: ~/Documents/vault/Framework — System File Drift Correction.md)
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** Drift detection report classifying every registered file pair; drift correction (vault → ora) with `.bak` backups for every overwrite; reverse sync (ora → vault, opt-in) for explicitly-approved pairs; bootstrap creation of vault copies for ora-only files matching registered patterns
 
 ---
 
@@ -249,4 +315,4 @@ These six frameworks are loaded into model context windows at specific pipeline 
 | Boot Generation | Tier distinction collapsed; single boot.md serves all configs | ~/Documents/vault/Old AI Working Files/ |
 | Progressive Boot Specification | Full install replaces progressive boot | ~/Documents/vault/Old AI Working Files/ |
 | Boot Canonical A/B/C | Model interchangeability makes separate tier boots unnecessary | ~/Documents/vault/Old AI Working Files/ |
-| Mind Framework | Superseded by MindSpec Interview Framework v0.2.3 (richer single-file spec with commitments, governance, constitution, voice, communication patterns, relationships vs. the older 5-section mind.md). Old Mind Framework produces only a 5-section mind.md; MindSpec produces the full spec. | ~/Documents/vault/Old AI Working Files/Framework — Mind.md (vault); ~/ora/frameworks/deprecated/mind-framework.md (ora) |
+| Mind Framework | Superseded by MindSpec Interview Framework v0.2.3 (richer single-file spec with commitments, governance, constitution, voice, communication patterns, relationships vs. the older 5-section mind.md). Old Mind Framework produces only a 5-section mind.md; MindSpec produces the full spec. | ~/Documents/vault/Old AI Working Files/Framework — Mind.md (vault); ~/Documents/vault/Old AI Working Files/mind-framework.md.archived-2026-04-27 (the ora deprecated copy was archived 2026-04-27 and the deprecated/ folder was removed) |

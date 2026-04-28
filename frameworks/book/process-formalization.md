@@ -50,6 +50,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 This framework's own declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
 ### Milestone Type: New framework specification
+
 - **Endpoint produced:** Canonical framework spec document + executable copy + Framework Registry entry
 - **Verification criterion:** All items in the Quality Verification Checklist (Section VII) pass for the produced spec
 - **Preconditions:** A task definition, input/output inventory, quality dimensions, and failure modes are provided by the user
@@ -57,6 +58,7 @@ This framework's own declaration of the project-level milestones it can deliver.
 - **Framework Registry summary:** Designs new framework specifications from task requirements
 
 ### Milestone Type: Modernized framework specification
+
 - **Endpoint produced:** Updated canonical framework spec conforming to the current Framework Anatomy and Authoring Standards
 - **Verification criterion:** All items in the Quality Verification Checklist pass; cross-check confirms all original framework intellectual content is preserved in the updated version
 - **Preconditions:** An existing framework specification requiring modernization
@@ -64,6 +66,7 @@ This framework's own declaration of the project-level milestones it can deliver.
 - **Framework Registry summary:** Converts legacy framework specifications to current standard
 
 ### Milestone Type: Rendered execution variant
+
 - **Endpoint produced:** A new framework file (single-pass, agent-mode, or reasoning-model) rendered from a canonical specification
 - **Verification criterion:** The rendered variant passes the rendering-specific compliance checks in the Quality Verification Checklist
 - **Preconditions:** A canonical framework specification and a named target execution environment
@@ -71,6 +74,7 @@ This framework's own declaration of the project-level milestones it can deliver.
 - **Framework Registry summary:** Renders execution variants from canonical framework specifications
 
 ### Milestone Type: Framework audit report
+
 - **Endpoint produced:** Scored audit report documenting framework compliance against Quality Verification Checklist with specific remediation recommendations
 - **Verification criterion:** Report assigns a pass/fail to every checklist item and identifies each failure's specific location in the framework being audited
 - **Preconditions:** A framework specification ready for audit

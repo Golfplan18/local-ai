@@ -2,6 +2,29 @@
 
 This file provides guidance to Claude Code when working in this repository.
 
+## Vault Canonical Rule (READ FIRST)
+
+**The Wisdom Nexus vault at `/Users/oracle/Documents/vault/` is the canonical source of truth for all markdown content in this repository.** Files in `~/ora/` are operational copies the orchestrator loads at runtime; the vault is where edits happen and where the source-of-truth lives.
+
+**When you modify any `.md` file in `~/ora/`, you MUST also update the paired vault file** — otherwise drift accumulates and the next vault → ora sync will silently overwrite your ora-side edits.
+
+The pairing convention:
+- `~/ora/frameworks/book/<name>.md` ↔ `/Users/oracle/Documents/vault/Framework — <Title Case Name>.md` (or `Specification — <Title>.md` for the F-stage specs). Vault has YAML, ora does not.
+- `~/ora/modes/<name>.md` ↔ `/Users/oracle/Documents/vault/Modes/<name>.md`. Both have YAML; preserve.
+- `~/ora/knowledge/mental-models/<name>.md` ↔ `/Users/oracle/Documents/vault/Lenses/<name>.md`. Both have YAML; preserve.
+- `~/ora/modules/tools/.../<name>.md` ↔ `/Users/oracle/Documents/vault/Modules/Tools/.../<name>.md`. Neither has YAML.
+- A handful of singletons: `~/ora/agents/agent-registry.md` ↔ `Reference — Agent Registry.md`; `~/ora/FORKING.md` ↔ `Reference — Forking Ora.md`; `~/ora/frameworks/mode-classification-directory.md` ↔ `Reference — Mode Classification Directory.md`; `~/ora/frameworks/framework-registry.md` ↔ `Framework — Framework Registry.md`.
+- `~/ora/CLAUDE.md` (this file), `~/ora/boot/boot.md`, `~/ora/mind.md`, `~/ora/mindspec/default-mindspec.md` — ora-only, no vault counterpart.
+
+**The recommended workflow when editing ora .md files:**
+1. Make your edit to the ora file (fast iteration).
+2. Immediately propagate the body change to the paired vault file (preserve vault's YAML; replace the body).
+3. OR surface the change so the user can run the System File Drift Correction framework to reconcile.
+
+If you skip step 2 or 3, the user has to remember the divergence — and they will miss it. Don't make them.
+
+The full pairing rules and operational details are in `~/ora/frameworks/book/system-file-drift-correction.md` (canonical: `/Users/oracle/Documents/vault/Framework — System File Drift Correction.md`).
+
 ## Repository Overview
 
 Ora is a multi-model orchestrator for local LLMs on Apple Silicon. It runs an 8-step adversarial pipeline with configurable "Gears" that route prompts through cleanup, context assembly, analysis, cross-evaluation, revision, and verification stages.
