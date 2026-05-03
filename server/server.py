@@ -1887,6 +1887,33 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                pending_clarification_stage=pre_routing.get("pending_clarification_stage"),
                label=f"Mode: {step1['mode']}{conf_tag} | Tier {tier}")
 
+    # --- Phase 9 fall-through to direct stream for non-analytical prompts ---
+    # Three cases where the analytical pipeline can't or shouldn't run, all
+    # of which previously produced empty "pipeline produced no response"
+    # errors on the plain HTTP `/chat` endpoint:
+    #
+    #   (1) bypass_to_direct_response: True — Stage 1 matched a greeting / ack
+    #       / system command / lookup trigger.
+    #   (2) mode == "simple" or "standard" — the placeholder modes set by
+    #       run_step1_cleanup for bypasses and catch-all dispatches. The
+    #       Phase 9 archive removed both mode files; load_mode() returns ""
+    #       so the analytical pipeline drops the response silently.
+    #   (3) The pre-routing pipeline returned a pending clarification but the
+    #       caller is the plain HTTP endpoint that can't render the
+    #       clarification UI. Ask the model directly instead — the reply
+    #       itself can carry the disambiguation question if the model wants.
+    #
+    # All three cases delegate to _direct_stream which calls the model with
+    # boot.md as the system prompt and yields a real `response` event.
+    fallback_to_direct = (
+        pre_routing.get("bypass_to_direct_response")
+        or step1.get("mode") in ("simple", "standard")
+        or pre_routing.get("pending_clarification")
+    )
+    if fallback_to_direct:
+        yield from _direct_stream(user_input, history, images=images)
+        return
+
     # --- Phase 9: pre-routing pipeline question gate ---
     # Stage 2 and Stage 3 questions ride the existing clarification panel.
     # Stage 2 surfaces a disambiguation question (territory/mode unclear);
@@ -2055,6 +2082,15 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
 
 @app.route("/")
 def index():
+    # V3 cutover 2026-05-02: `/` now serves index-v3.html. The classic
+    # interface stays accessible at /classic for one work-week before
+    # retirement; /v3 remains as a stable alias for direct V3 access.
+    return send_from_directory(os.path.join(WORKSPACE, "server"), "index-v3.html")
+
+@app.route("/classic")
+def index_classic():
+    # Pre-V3-cutover interface preserved as a fallback during the transition
+    # window. Snapshot also at server/index.html.bak.pre-v3-cutover-2026-05-02.
     return send_from_directory(os.path.join(WORKSPACE, "server"), "index.html")
 
 @app.route("/v2")
