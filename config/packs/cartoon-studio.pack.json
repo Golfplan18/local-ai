@@ -1,0 +1,517 @@
+{
+  "pack_name": "Cartoon Studio",
+  "pack_version": "1.0.0",
+  "ora_compatibility": ">=0.7.0",
+  "author": {
+    "name": "Ora",
+    "url": "https://ora.local"
+  },
+  "description": "Comic + cartoon authoring \u2014 speech bubbles, thought bubbles, caption boxes, and panel-grid templates for 2-panel, 4-panel, and manga-style pages.",
+  "toolbars": [
+    {
+      "id": "cartoon-studio",
+      "label": "Cartoon Studio",
+      "default_dock": "left",
+      "default_icon_size": "small",
+      "items": [
+        {
+          "id": "speech",
+          "icon": "message-circle",
+          "label": "Speech bubble",
+          "shortcut": "B",
+          "binding": "tool:speech_bubble"
+        },
+        {
+          "id": "thought",
+          "icon": "cloud",
+          "label": "Thought bubble",
+          "shortcut": "Shift+B",
+          "binding": "tool:thought_bubble"
+        },
+        {
+          "id": "shout",
+          "icon": "zap",
+          "label": "Shout bubble",
+          "binding": "tool:shout_bubble"
+        },
+        {
+          "id": "caption",
+          "icon": "rectangle-horizontal",
+          "label": "Caption box",
+          "shortcut": "C",
+          "binding": "tool:caption_box"
+        },
+        {
+          "id": "panel",
+          "icon": "square",
+          "label": "Panel frame",
+          "shortcut": "P",
+          "binding": "tool:rect"
+        },
+        {
+          "id": "text",
+          "icon": "type",
+          "label": "Text",
+          "shortcut": "T",
+          "binding": "tool:text"
+        },
+        {
+          "id": "generate-art",
+          "icon": "sparkles",
+          "label": "Generate panel art",
+          "shortcut": "Shift+G",
+          "binding": "capability:image_generates"
+        },
+        {
+          "id": "restyle",
+          "icon": "palette",
+          "label": "Restyle as comic",
+          "binding": "capability:image_styles",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "ask-ora",
+          "icon": "wand-2",
+          "label": "Ask Ora",
+          "shortcut": "Shift+A",
+          "binding": "tool:ask_ora"
+        }
+      ]
+    }
+  ],
+  "prompt_templates": [
+    {
+      "id": "panel-art",
+      "slash_command": "/panel-art",
+      "label": "Generate panel art",
+      "template": "Generate one comic-book panel illustrating: {{scene}}. Style: {{style}}. Include strong outlines and flat color fills. Leave clear sky/wall space at the top for a speech bubble.",
+      "variables": [
+        {
+          "name": "scene",
+          "type": "text",
+          "label": "What's happening"
+        },
+        {
+          "name": "style",
+          "type": "enum",
+          "label": "Style",
+          "default": "western comic",
+          "options": [
+            "western comic",
+            "manga",
+            "graphic novel",
+            "newspaper strip",
+            "kid-friendly cartoon"
+          ]
+        }
+      ],
+      "capability_route": "image_generates"
+    },
+    {
+      "id": "restyle-as-comic",
+      "slash_command": "/comic-style",
+      "label": "Restyle as comic",
+      "template": "Restyle this image as a comic-book illustration. Strong black outlines, flat color blocks, halftone shading, no photographic detail. Preserve the subject and composition; only change the rendering.",
+      "variables": [],
+      "capability_route": "image_styles"
+    },
+    {
+      "id": "write-caption",
+      "slash_command": "/caption",
+      "label": "Write a caption",
+      "template": "Write a 1-2 sentence narrator caption for this comic panel. Tone: {{tone}}. Subject: {{subject}}.",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "label": "What's in the panel"
+        },
+        {
+          "name": "tone",
+          "type": "enum",
+          "label": "Tone",
+          "default": "dramatic",
+          "options": [
+            "dramatic",
+            "wry",
+            "noir",
+            "wholesome",
+            "ironic"
+          ]
+        }
+      ],
+      "gear_preference": 2
+    }
+  ],
+  "composition_templates": [
+    {
+      "id": "comic-2-panel",
+      "label": "2-panel strip",
+      "thumbnail": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='10' y='20' width='38' height='40' rx='2'/><rect x='52' y='20' width='38' height='40' rx='2'/></svg>",
+      "canvas_state": {
+        "schema_version": "0.1",
+        "format_id": "ora-canvas",
+        "metadata": {
+          "title": "2-panel strip",
+          "canvas_size": {
+            "width": 1600,
+            "height": 800
+          }
+        },
+        "view": {
+          "zoom": 0.6,
+          "pan": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "layers": [
+          {
+            "id": "background",
+            "kind": "background"
+          },
+          {
+            "id": "annotation",
+            "kind": "annotation"
+          },
+          {
+            "id": "user_input",
+            "kind": "user_input"
+          },
+          {
+            "id": "selection",
+            "kind": "selection"
+          }
+        ],
+        "objects": [
+          {
+            "id": "panel-1",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 60,
+            "y": 60,
+            "width": 700,
+            "height": 680,
+            "attrs": {
+              "x": 60,
+              "y": 60,
+              "width": 700,
+              "height": 680,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "panel-2",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 840,
+            "y": 60,
+            "width": 700,
+            "height": 680,
+            "attrs": {
+              "x": 840,
+              "y": 60,
+              "width": 700,
+              "height": 680,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "comic-4-panel",
+      "label": "4-panel grid",
+      "thumbnail": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='10' y='10' width='38' height='28' rx='2'/><rect x='52' y='10' width='38' height='28' rx='2'/><rect x='10' y='42' width='38' height='28' rx='2'/><rect x='52' y='42' width='38' height='28' rx='2'/></svg>",
+      "canvas_state": {
+        "schema_version": "0.1",
+        "format_id": "ora-canvas",
+        "metadata": {
+          "title": "4-panel grid",
+          "canvas_size": {
+            "width": 1600,
+            "height": 1600
+          }
+        },
+        "view": {
+          "zoom": 0.45,
+          "pan": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "layers": [
+          {
+            "id": "background",
+            "kind": "background"
+          },
+          {
+            "id": "annotation",
+            "kind": "annotation"
+          },
+          {
+            "id": "user_input",
+            "kind": "user_input"
+          },
+          {
+            "id": "selection",
+            "kind": "selection"
+          }
+        ],
+        "objects": [
+          {
+            "id": "p1",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 60,
+            "y": 60,
+            "width": 700,
+            "height": 700,
+            "attrs": {
+              "x": 60,
+              "y": 60,
+              "width": 700,
+              "height": 700,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "p2",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 840,
+            "y": 60,
+            "width": 700,
+            "height": 700,
+            "attrs": {
+              "x": 840,
+              "y": 60,
+              "width": 700,
+              "height": 700,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "p3",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 60,
+            "y": 840,
+            "width": 700,
+            "height": 700,
+            "attrs": {
+              "x": 60,
+              "y": 840,
+              "width": 700,
+              "height": 700,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "p4",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 840,
+            "y": 840,
+            "width": 700,
+            "height": 700,
+            "attrs": {
+              "x": 840,
+              "y": 840,
+              "width": 700,
+              "height": 700,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "comic-manga-page",
+      "label": "Manga page (6 panels)",
+      "thumbnail": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='10' y='8' width='80' height='14' rx='1'/><rect x='10' y='25' width='38' height='20' rx='1'/><rect x='52' y='25' width='38' height='20' rx='1'/><rect x='10' y='48' width='25' height='24' rx='1'/><rect x='38' y='48' width='25' height='24' rx='1'/><rect x='66' y='48' width='24' height='24' rx='1'/></svg>",
+      "canvas_state": {
+        "schema_version": "0.1",
+        "format_id": "ora-canvas",
+        "metadata": {
+          "title": "Manga page",
+          "canvas_size": {
+            "width": 1400,
+            "height": 2000
+          }
+        },
+        "view": {
+          "zoom": 0.4,
+          "pan": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "layers": [
+          {
+            "id": "background",
+            "kind": "background"
+          },
+          {
+            "id": "annotation",
+            "kind": "annotation"
+          },
+          {
+            "id": "user_input",
+            "kind": "user_input"
+          },
+          {
+            "id": "selection",
+            "kind": "selection"
+          }
+        ],
+        "objects": [
+          {
+            "id": "wide",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 60,
+            "y": 60,
+            "width": 1280,
+            "height": 380,
+            "attrs": {
+              "x": 60,
+              "y": 60,
+              "width": 1280,
+              "height": 380,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "m1",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 60,
+            "y": 480,
+            "width": 620,
+            "height": 540,
+            "attrs": {
+              "x": 60,
+              "y": 480,
+              "width": 620,
+              "height": 540,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "m2",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 720,
+            "y": 480,
+            "width": 620,
+            "height": 540,
+            "attrs": {
+              "x": 720,
+              "y": 480,
+              "width": 620,
+              "height": 540,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "b1",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 60,
+            "y": 1060,
+            "width": 410,
+            "height": 880,
+            "attrs": {
+              "x": 60,
+              "y": 1060,
+              "width": 410,
+              "height": 880,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "b2",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 495,
+            "y": 1060,
+            "width": 410,
+            "height": 880,
+            "attrs": {
+              "x": 495,
+              "y": 1060,
+              "width": 410,
+              "height": 880,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          },
+          {
+            "id": "b3",
+            "kind": "shape",
+            "layer": "user_input",
+            "konva_class": "Rect",
+            "x": 930,
+            "y": 1060,
+            "width": 410,
+            "height": 880,
+            "attrs": {
+              "x": 930,
+              "y": 1060,
+              "width": 410,
+              "height": 880,
+              "stroke": "#222",
+              "strokeWidth": 4,
+              "fill": "#fff",
+              "panel": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

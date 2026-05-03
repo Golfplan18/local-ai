@@ -1,5 +1,12 @@
 # Process Inference Framework
 
+## Display Name
+Process Inference (PIF)
+
+## Display Description
+Discover unknown transformation processes from defined endpoints — when you know what you have and what you want but not the path between them. Produces a candidate process specification ready for PFF formalization.
+
+
 *A Framework for Discovering Unknown Processes from Defined Endpoints*
 
 *Version 1.0*
@@ -7,6 +14,27 @@
 *Canonical Specification — Produced via F-Convert from the Process Inference Overview*
 
 ---
+
+
+## Setup Questions
+
+### Current state
+Required. Natural-language description of what exists now — data, materials, system state, tools, environment, resources. Partial is fine; gaps become entries in the uncertainty map.
+
+### Desired end state
+Required. What success looks like in observable, testable terms — the exact output, the working condition, the acceptable behavior, the target deliverable.
+
+### Constraints
+Optional. Hard limits — time, cost, permissions, materials, safety, platform, accuracy, legal boundaries. If absent, the framework elicits constraints proactively during analysis.
+
+### Available resources
+Optional. Tools, hardware, APIs, software, manual steps, templates, people, or documents you can use. If absent, the framework asks during analysis.
+
+### Known non-solutions
+Optional. Approaches that have already failed or been ruled out. Helps the framework prune candidate paths early.
+
+### Uncertainty map
+Optional. What you know you do not know — missing substeps, hidden dependencies, unknown bottlenecks. If absent, the framework builds it from gaps between current and end states.
 
 ## How to Use This File
 
@@ -81,46 +109,80 @@ Secondary outputs:
 
 Specification — this document is model-agnostic and environment-agnostic. All stage boundaries are logical. Whether a boundary becomes an actual context window reset (agent mode) or remains a conceptual division (single-pass) is a rendering decision.
 
+Modes P-Infer and P-Debug cover Layers 1-9 (nine processing layers) and declare a single milestone each. Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the iterative-then-integrative shape of process discovery: candidate path generation (Layer 4), probe design (Layer 5), and path evaluation (Layer 6) cycle internally before producing a single integrated transformation path or failure diagnosis, and intermediate milestones would emit throwaway candidate paths that the framework's own evaluation step is meant to discard.
+
 ---
 
 ## MILESTONES DELIVERED
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: Discovered transformation path
-- **Endpoint produced:** Viable Process Description — a structured description of the transformation path from current state to desired end state, including step sequence, decision points, required tools, assumptions, and validation checks
-- **Verification criterion:** All seven Evaluation Criteria score 3 or above; the Formalization Handoff Package is complete per Layer 7 and ready for PFF F-Convert
-- **Preconditions:** Current State Description and Desired End State Description are provided; testability assessment passes
-- **Mode required:** P-Infer
-- **Framework Registry summary:** Discovers transformation paths between defined endpoints when the process is unknown
+PIF is a multi-mode framework with five modes (P-Infer / P-Debug / P-Decompose / P-Formalize / P-Feasibility). Mode is user-specified or, when omitted, auto-classified within Layer 1 per the Layer 1 processing instructions; there is no separate triage layer. Each mode declares a single milestone covering the layer subset its endpoint requires; P-Feasibility's layer flow is documented in the §P-Feasibility Mode Specification section. All milestone properties are defined inline per milestone.
 
-### Milestone Type: Failure diagnosis
-- **Endpoint produced:** Identified failure point within a broken process plus corrected path specification
-- **Verification criterion:** The failure point is isolated to a specific step or interaction; the corrected path removes the failure under the same constraints
-- **Preconditions:** The failing process description, the expected behavior, and the actual behavior are provided
-- **Mode required:** P-Debug
-- **Framework Registry summary:** Diagnoses failure points in broken processes and infers corrected paths
+### Milestones for Mode P-Infer
 
-### Milestone Type: Decomposed subproblem set
-- **Endpoint produced:** Transformation skeleton with intermediate states, gap-size assessment per transition, dependency map, and identified subproblems (each marked solvable with known methods or requiring its own P-Infer cycle)
-- **Verification criterion:** Each intermediate state passes the necessity test; the dependency map is acyclic; the decomposition connects current state to desired end state without gaps
-- **Preconditions:** A complex endpoint needing reduction; endpoint formalized with testable precision
-- **Mode required:** P-Decompose
-- **Framework Registry summary:** Decomposes complex endpoints into logically required subproblems with dependency ordering
+#### Milestone 1: Discovered transformation path
 
-### Milestone Type: Formalization handoff package
-- **Endpoint produced:** PFF-ready structured package containing process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, and output contract
-- **Verification criterion:** An operator unfamiliar with the discovery process can execute the PFF conversion without additional context; all nine required elements are present
-- **Preconditions:** A discovered process from prior P-Infer work or user-provided process description
-- **Mode required:** P-Formalize
-- **Framework Registry summary:** Structures discovered processes into PFF-ready handoff packages
+- **Mode:** P-Infer
+- **Endpoint produced:** Viable Process Description — a structured description of the transformation path from current state to desired end state, including step sequence, decision points, required tools, assumptions, and validation checks.
+- **Verification criterion:** All seven Evaluation Criteria score 3 or above; the Formalization Handoff Package is complete per Layer 7 and ready for PFF F-Convert.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7, 8, 9
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Viable Process Description per Layer 6 output (selected path with refined step sequence) wrapped in the Layer 7 Formalization Handoff Package structure (process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract).
+- **Drift check question:** Does the discovered path connect the user's actual current state to the actual desired end state — without scope-shifted endpoints, without confabulated tools or steps the assumptions log doesn't justify — and is Layer 7's handoff package executable by an operator unfamiliar with the discovery process?
 
-### Milestone Type: Feasibility verdict
-- **Endpoint produced:** P-Feasibility Verdict — one of four verdicts (Reachable / Reachable with conditions / Not reachable / Cannot assess) with justification, and (in Suggest sub-mode) a ranked list of candidate next state-changes
-- **Verification criterion:** The verdict is unambiguous, objectively determined from Layer 1-2 analysis, and the justification cites specific findings
-- **Preconditions:** For Verify sub-mode: a candidate milestone endpoint and current state description. For Suggest sub-mode: a Resolution Statement and current state description. In both cases: constraints inherited from calling framework.
-- **Mode required:** P-Feasibility
-- **Framework Registry summary:** Assesses feasibility of candidate milestones or suggests next state-changes
+### Milestones for Mode P-Debug
+
+#### Milestone 1: Failure diagnosis
+
+- **Mode:** P-Debug
+- **Endpoint produced:** Identified failure point within a broken process plus corrected path specification.
+- **Verification criterion:** The failure point is isolated to a specific step or interaction; the corrected path removes the failure under the same constraints.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7, 8, 9
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Diagnosis bundle — failing-step isolation (with expected vs. actual divergence point), root cause statement, and corrected path specification produced via the same Layer 4-6 candidate-generation / probe / evaluation cycle as P-Infer, then packaged through Layer 7's handoff structure.
+- **Drift check question:** Does the diagnosis pin the failure to a specific step or interaction — not a vague systemic explanation — and does the corrected path actually remove the failure under the same constraints rather than relaxing them implicitly?
+
+### Milestones for Mode P-Decompose
+
+#### Milestone 1: Decomposed subproblem set
+
+- **Mode:** P-Decompose
+- **Endpoint produced:** Transformation skeleton with intermediate states, gap-size assessment per transition, dependency map, and identified subproblems (each marked solvable with known methods or requiring its own P-Infer cycle).
+- **Verification criterion:** Each intermediate state passes the necessity test; the dependency map is acyclic; the decomposition connects current state to desired end state without gaps.
+- **Layers covered:** 1, 2, 3, 8, 9
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Layer 3 GAP DECOMPOSITION output — transformation skeleton with intermediate states, gap-size assessment per transition, dependency map, and per-subproblem solvability tags (known-method vs. requires-its-own-P-Infer-cycle).
+- **Drift check question:** Does the decomposition genuinely connect current state to desired end state without invented intermediate states — with every intermediate passing the necessity test and the dependency map acyclic — rather than producing a plausible-looking decomposition that the necessity test would reject?
+
+### Milestones for Mode P-Formalize
+
+#### Milestone 1: Formalization handoff package
+
+- **Mode:** P-Formalize
+- **Endpoint produced:** PFF-ready structured package containing process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, and output contract.
+- **Verification criterion:** An operator unfamiliar with the discovery process can execute the PFF conversion without additional context; all nine required elements are present.
+- **Layers covered:** 7, 8, 9
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Layer 7 FORMALIZATION HANDOFF PACKAGE structure — process goal, required inputs (name/format/source per item), required tools (capability/alternatives per item), step sequence, decision points (condition + branch actions), failure modes (description/detection/recovery), validation checks, recovery paths, output contract.
+- **Drift check question:** Can an operator unfamiliar with the discovery process execute the PFF conversion using only this package — with all nine required elements present and no implicit domain knowledge that the package fails to make explicit?
+
+### Milestones for Mode P-Feasibility
+
+#### Milestone 1: Feasibility verdict
+
+- **Mode:** P-Feasibility
+- **Endpoint produced:** P-Feasibility Verdict — one of four verdicts (Reachable / Reachable with conditions / Not reachable / Cannot assess) with justification, and (in Suggest sub-mode) a ranked list of candidate next state-changes.
+- **Verification criterion:** The verdict is unambiguous, objectively determined from Layer 1-2 analysis, and the justification cites specific findings.
+- **Layers covered:** 1, 2, 8, 9
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** P-Feasibility Verify or Suggest output per the §P-Feasibility Mode Specification — Verify sub-mode emits one verdict + justification; Suggest sub-mode emits 3-5 ranked candidate next state-changes each with its own verdict and a RECOMMENDED top pick. Layers 3-7 are skipped; the Feasibility Assessment substep replaces them.
+- **Drift check question:** Does the verdict objectively reflect the Layer 1-2 analysis — citing specific findings rather than asserting "Reachable" without basis or "Not reachable" without naming the blocking constraint — and (in Suggest sub-mode) do the candidates differ meaningfully rather than minor variations of the same direction?
 
 ---
 

@@ -77,6 +77,31 @@ body.customizer-active #themeToggleBtn {
   color: var(--text-muted);
 }
 
+.customizer-reset-row {
+  margin-top: 10px;
+  margin-bottom: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.customizer-reset-all {
+  flex: 1;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  color: var(--text-muted);
+  padding: 5px 10px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+
+.customizer-reset-all:hover {
+  background: var(--interactive-hover);
+  color: var(--h5-color, #ff5555);
+}
+
 /* ─── Preview-mode picker ─── */
 
 .customizer-preview-row {

@@ -1,172 +1,177 @@
 ---
-nexus: obsidian
+nexus:
+  - ora
 type: mode
-date created: 2026/04/17
-date modified: 2026/04/17
+tags:
+date created: 2026-04-17
+date modified: 2026-05-01
 wp: WP-3.4
 ---
 
 # MODE: Spatial Reasoning
 
-## TRIGGER CONDITIONS
+```yaml
+# 0. IDENTITY
+mode_id: spatial-reasoning
+canonical_name: Spatial Reasoning
+suffix_rule: analysis
+educational_name: structural gap detection on diagrams
 
-Positive triggers: The user submits visual input as the primary query medium — a napkin sketch, a whiteboard photo, an Excalidraw export, an Obsidian Canvas file, drawings on the visual pane, or annotations on a prior Ora visual output. Fog-clearing language: "what do you see," "what's missing," "what am I missing in this diagram," "what does this tell me," "help me see what I'm not seeing," "I have a sense of the structure but can't articulate it." Annotation-request language: "can you annotate this," "annotate this causal structure," "mark up this diagram," "point out what's missing." Gap-language targeting the user's own drawing: "is there a feedback loop I haven't drawn," "what relationships are implied but not shown," "what node am I missing," "what connection did I forget." The diagram IS the question rather than an illustration accompanying a text question.
+# 1. TERRITORY AND POSITION
+territory: T11-structural-relationship-mapping
+gradation_position:
+  axis: specificity
+  value: visual-input
+adjacent_modes_in_territory:
+  - mode_id: relationship-mapping
+    relationship: specificity counterpart (general specificity — text-input variant of the same operation)
 
-Negative triggers: IF the user submits a diagram as supporting evidence for a text question (the text is the query, the image is context), THEN route to the mode matching the text query. IF the user is requesting construction of a new visual deliverable from scratch, THEN route to Project Mode with visual output. IF the user is presenting multiple diagrams or models for eliminative comparison, THEN route to Competing Hypotheses. IF the user has spatial intuition they want to verbalize and expects the system to do analytical work on the verbalization rather than on the spatial arrangement, THEN route to Relationship Mapping. IF the user mentions feedback loops but has NO spatial artifact (no visual pane input, no uploaded image, no annotation target), THEN route to Systems Dynamics — mentions of feedback-loop behavior in pure-text queries are not spatial. IF the user has a spatial artifact AND asks about feedback loops as a structural gap ("what feedback loop is missing," "is there a loop I haven't drawn"), THEN stay in Spatial Reasoning — the diagram is the query, the feedback-loop vocabulary describes the structural finding.
+# 2. TRIGGER CONDITIONS AND ROUTING
+trigger_conditions:
+  user_situation_signals:
+    - "I have a sense of the structure but can't articulate it"
+    - "what am I missing in this diagram"
+    - "help me see what I'm not seeing"
+    - "is there a relationship I haven't drawn"
+  prompt_shape_signals:
+    - "annotate this"
+    - "what's missing"
+    - "what node am I missing"
+    - "what connection did I forget"
+    - "is there a feedback loop I haven't drawn"
+disambiguation_routing:
+  routes_to_this_mode_when:
+    - "user submits a diagrammatic visual input (sketch, whiteboard photo, Excalidraw, Obsidian Canvas, prior Ora visual) AND the diagram IS the question"
+    - "gap detection on user-drawn structure: missing nodes, missing connections, missing levels"
+  routes_away_when:
+    - "diagram is supporting evidence for a text question (text is query, image is context)" → mode matching the text query
+    - "user wants a new visual deliverable constructed from scratch" → Project Mode with visual output
+    - "user has spatial intuition but no spatial artifact (text-only query)" → relationship-mapping
+    - "user wants to read the layout/composition itself as primary content (not the relations the diagram asserts)" → T19 spatial-composition modes
+when_not_to_invoke:
+  - "Question is about layout, composition, or what the spatial structure itself does as primary content (voids, groupings, forces, affordances)" → T19 (Spatial Composition modes: ma-reading / compositional-dynamics / place-reading-genius-loci / information-density)
+  - "User has no spatial artifact and is asking text-only structural questions" → relationship-mapping
+  - "User mentions feedback loops in pure text without a diagram" → systems-dynamics-causal or systems-dynamics-structural
 
-## EPISTEMOLOGICAL POSTURE
+# 3. EXECUTION STRUCTURE
+composition: atomic
+atomic_spec:
+  passes: 1
+  posture: descriptive
 
-Spatial arrangement is a form of thinking, not a representation of thinking already completed. The parallel processor constructs spatial relationships faster than the serial processor can articulate them. The user's sketch is therefore signal about their pre-conscious understanding, not a claim to be verified. The mode's work is to help the user see what their spatial intuition was encoding — proximity, verticality, connection, containment, symmetry — and to surface what the structure implies but does not explicitly show. Tversky's correspondence principles (proximity = relatedness, verticality = hierarchy, containment = category membership, connection = relationship) provide the diagnostic lens. Gaps and ambiguities in the spatial input are first-class findings, not problems to be resolved unilaterally.
+# 4. INPUT AND OUTPUT CONTRACTS
+input_contract:
+  expert_mode:
+    required: [spatial_artifact_with_resolvable_entity_ids, focal_gap_question]
+    optional: [prior_spatial_representation, annotation_palette_preferences, domain_context_for_pattern_matching]
+    notes: "Applies when user submits a structured spatial input (Excalidraw JSON, Obsidian Canvas) with addressable entity ids."
+  accessible_mode:
+    required: [visual_input_napkin_sketch_or_whiteboard_photo_or_canvas]
+    optional: [hint_at_what_user_is_uncertain_about]
+    notes: "Default. Mode extracts entities and relationships from rough input, flags ambiguities, and surfaces gaps. Confidence is calibrated lower for rough inputs."
+  detection:
+    expert_signals: ["Excalidraw JSON", "Obsidian Canvas", "annotate this CLD", "target_id", "annotation kind"]
+    accessible_signals: ["what's missing", "what do you see", "help me see", "I have a sense but can't articulate"]
+    default: accessible_mode
+  graceful_degradation:
+    on_missing_required: "Ask: 'Could you share the diagram or canvas you want me to look at, and the question you have about it?'"
+    on_underspecified: "Ask: 'Is the diagram itself the question (gap detection — stay here), or is the diagram supporting evidence for a text question (route to the text-question mode)?'"
+output_contract:
+  artifact_type: mapping
+  required_sections:
+    - structural_summary
+    - ambiguities_flagged
+    - tversky_correspondence_findings
+    - gap_analysis
+    - pattern_identifications
+    - fog_clearing_questions
+    - annotated_visual_output
+    - transition_prompt
+  format: diagram-friendly
 
-## DEFAULT GEAR
+# 5. CRITICAL QUESTIONS
+critical_questions:
+  - cq_id: CQ1
+    question: "Does the structural extraction capture all visible entities, relationships, clusters, and hierarchy with ambiguities flagged rather than silently resolved?"
+    failure_mode_if_unmet: structural-misrepresentation
+  - cq_id: CQ2
+    question: "Are identified gaps genuine — implied by the spatial structure or domain logic — or are they template pattern-matching artifacts?"
+    failure_mode_if_unmet: gap-fabrication
+  - cq_id: CQ3
+    question: "Are fog-clearing questions open (eliciting the user's pre-conscious structure) rather than leading (encoding a specific answer)?"
+    failure_mode_if_unmet: leading-question
+  - cq_id: CQ4
+    question: "Does the mode preserve the user's spatial arrangement — annotating without rearranging?"
+    failure_mode_if_unmet: rearrangement-trap
 
-Gear 3. Full structural analysis with gap identification, pattern recognition, and fog-clearing dialogue is the standard operating depth. Gear 2 for quick structural summaries (most prominent pattern + single most important gap). Gear 4 for deep structural analysis with cross-domain pattern matching, second-order gap analysis, and explicit Tversky correspondence audit.
+# 6. NAMED FAILURE MODES AND CORRECTION
+failure_modes:
+  - name: rearrangement-trap
+    detection_signal: "Mode produces a 'cleaner' version of the user's diagram with entities relocated."
+    correction_protocol: re-dispatch (annotate, do not rearrange — propose restructuring as suggestion only)
+  - name: template-projection
+    detection_signal: "A familiar pattern (hub-and-spoke, cycle, tree) is identified that the spatial arrangement visually suggests but the conceptual content does not actually instantiate."
+    correction_protocol: flag (verify pattern is present in concepts, not just pixels)
+  - name: gap-fabrication
+    detection_signal: "Proposed missing elements are not implied by the spatial structure or domain logic; they are speculative additions."
+    correction_protocol: re-dispatch (every gap identification cites specific spatial or domain evidence)
+  - name: leading-question
+    detection_signal: "Fog-clearing question encodes a specific answer ('Isn't there a feedback loop between A and B?')."
+    correction_protocol: re-dispatch (rewrite as open question willing to accept 'no')
+  - name: critic-trap
+    detection_signal: "Mode evaluates the user's diagram as correct or incorrect rather than treating spatial intuition as signal."
+    correction_protocol: flag
 
-## RAG PROFILE
+# 7. LENS DEPENDENCIES
+lens_dependencies:
+  required:
+    - tversky-spatial-correspondence-principles
+  optional:
+    - structural-pattern-libraries (hub-and-spoke, chain, cycle, star, cluster bridge, orphan)
+    - systems-archetypes (when causal structure present)
+    - larkin-simon-diagram-literacy
+  foundational:
+    - kahneman-tversky-bias-catalog
 
-Retrieve Tversky's spatial cognition research, diagram literacy frameworks (Larkin & Simon 1987, Mayer's multimedia principles), structural pattern libraries (hub-and-spoke, chain, cycle, star, cluster bridge, orphan), causal loop archetype references, and domain-specific structural references relevant to the depicted subject. Retrieve prior Ora visual outputs from the conversation history if the user is annotating one. Deprioritize text-only analytical frameworks — the input is spatial, and the analysis should stay close to the spatial primitives.
-
-
-### RAG PROFILE — RELATIONSHIP PRIORITIES
-
-**Prioritize:** `enables`, `contains`, `precedes`, `parent`, `requires`
-**Deprioritize:** `supersedes`, `contradicts`
-**Rationale:** Spatial reasoning operates on structural relationships that correspond to Tversky's natural mappings — containment, hierarchy, and enabling connections are the primary spatial semantics.
-
-### RAG PROFILE — CONTEXT BUDGET
-
+# 8. RUNTIME AND DEPTH
+default_depth_tier: 2
+expected_runtime: ~5min
+escalation_signals:
+  upward:
+    target_mode_id: null
+    when: "T11 has no heavier mode in the visual-input variant; deeper analysis routes sideways."
+  sideways:
+    target_mode_id: relationship-mapping
+    when: "User abandons the visual input and switches to text-only structural questions."
+  downward:
+    target_mode_id: null
+    when: "Spatial Reasoning is already the lighter end of T11's specificity axis when diagrammatic input is given."
 ```
-fixed_overhead_tokens: TBD
-analytical_floor_tokens: TBD
-conversation_history_soft_ceiling: 0.4
-retrieval_approach: auto
-```
 
-*Token measurements to be calibrated during Phase 8E testing.*
+## DEPTH ANALYSIS GUIDANCE
 
-## DEPTH MODEL INSTRUCTIONS
+Depth in Spatial Reasoning is the rigour of structural extraction and gap analysis on user-drawn input. A thin pass labels what is visible; a substantive pass extracts entities, relationships, clusters, and hierarchy with positions and ambiguities flagged, applies Tversky's correspondence audit (proximity = relatedness, verticality = hierarchy, containment = category, connection = relationship), and identifies gaps with specific spatial or domain evidence per gap. Test depth by asking: would the gap analysis name what to look for in the user's intuition rather than what to add to the diagram?
 
-White Hat directives:
-1. Extract entities, relationships, clusters, and hierarchy from the spatial input. Record positions, types, and any labels. Flag ambiguous elements (a line that might be a relationship or a boundary, a cluster that might be intentional or accidental) rather than resolving them.
-2. Apply Tversky's correspondence audit as diagnostic questions: Are proximities meaningful? Does vertical position track importance or abstraction? Are there unconnected proximities that suggest implicit relationships? Do boundaries correspond to coherent categories?
-3. Perform gap analysis — missing nodes implied by the structure, missing connections implied by proximity or by the logic of existing connections, missing hierarchical levels, missing feedback loops, boundary problems (clusters that should split or merge).
+## BREADTH ANALYSIS GUIDANCE
 
-Black Hat directives:
-1. For each proposed gap, verify it is genuine and not template pattern-matching. A hub-and-spoke identification requires actual high-degree centrality, not just one well-connected node.
-2. Challenge structural pattern labels — is the identified pattern actually present in the domain, or is the mode projecting a pattern the spatial arrangement happens to suggest but the concepts do not actually instantiate?
-3. Assess whether proposed additions respect the user's spatial arrangement. Annotations that rearrange rather than overlay violate the mode's commitment to the user's intuition.
-
-## BREADTH MODEL INSTRUCTIONS
-
-Green Hat directives:
-1. Identify known structural patterns in the arrangement — hub-and-spoke, chain, cycle, star, cluster bridge, orphan — and state what each pattern typically implies for the domain.
-2. Generate fog-clearing questions that help the user articulate what the spatial arrangement is encoding. Questions should be open ("Is there a relationship you're sensing but haven't named yet?") rather than leading ("Isn't there a feedback loop here?").
-3. Propose refinements as annotations overlaid on the user's original, never as replacements. Use a distinct overlay palette (suggest: blue for additions, orange for questions, red for structural warnings).
-
-Yellow Hat directives:
-1. Identify the single most consequential gap — the addition that, if real, would most substantially change what the diagram implies. Highlight it.
-2. Identify structural crystallization signals — points where the spatial input is becoming specific enough to warrant transition to an answer-seeking analytical mode (Systems Dynamics, Decision Under Uncertainty, Steelman Construction, Consequences and Sequel, Terrain Mapping).
-3. Frame findings so the user can evaluate them against their own intuition. The mode does not claim to be right; it surfaces what the structure says and lets the user confirm or revise.
+Breadth in Spatial Reasoning is the catalog of structural patterns considered (hub-and-spoke / chain / cycle / star / cluster bridge / orphan) and the range of fog-clearing questions generated. Widen the lens to identify multiple plausible patterns the arrangement might instantiate, generate open questions targeting different aspects of the user's pre-conscious understanding, and surface the single most consequential gap (the addition that, if real, would most change what the diagram implies). Breadth markers: ≥2 candidate patterns considered (with verification per CQ2); ≥1 fog-clearing question per ambiguity; one most-consequential gap highlighted.
 
 ## EVALUATION CRITERIA
 
-Extends the base four-criterion rubric with:
+Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Spatial Reasoning output: extracts structure accurately with ambiguities flagged; identifies gaps grounded in evidence (not template artifacts); generates open fog-clearing questions; preserves the user's spatial arrangement (annotates without rearranging); treats spatial intuition as signal, not as a claim to be evaluated. Specifically check for the rearrangement trap, template projection (pattern in pixels not in concepts), gap fabrication (speculative additions), and leading questions.
 
-5. **Structural Fidelity.** 5=extraction captures all visible entities, relationships, clusters, and hierarchy with correct positions and ambiguities flagged. 3=extraction is substantially correct but one significant element missed or forced. 1=extraction misrepresents the input or silently resolves ambiguities.
-6. **Gap Genuineness.** 5=all identified gaps are genuine (implied by the spatial structure or domain logic), not template artifacts. 3=most gaps genuine but one is a pattern-match that doesn't fit the domain. 1=gaps are speculative additions not grounded in the input.
-7. **Fog-Clearing Quality.** 5=questions are open, specific to the user's input, and help the user articulate pre-conscious structure. 3=questions are useful but one leads toward a pre-formed structure rather than surfacing the user's. 1=questions impose an interpretation rather than eliciting one.
+## REVISION GUIDANCE
 
-## CONTENT CONTRACT
+Revise to flag silently-resolved ambiguities. Revise to remove gaps that lack spatial or domain evidence. Revise to convert leading questions into open ones. Resist revising toward a "cleaner" version of the user's diagram — the arrangement is the user's signal. Resist revising toward judgment of the user's intuition — the mode surfaces what the diagram contains and implies, without ruling on whether the user's intuition is right.
 
-The output is complete when it contains:
+## CONSOLIDATION GUIDANCE
 
-1. **Structural summary** — what the diagram shows: entities, typed relationships, clusters, hierarchy.
-2. **Ambiguities flagged** — elements whose interpretation is unclear, presented to the user for resolution.
-3. **Tversky correspondence findings** — where spatial cues (proximity, verticality, containment) suggest meaning that may or may not be intended.
-4. **Gap analysis** — missing nodes, missing connections, missing levels, missing feedback, boundary problems.
-5. **Pattern identifications** — known structural patterns present, with what each pattern implies.
-6. **Fog-clearing questions** — open questions helping the user articulate what the arrangement encodes.
-7. **Annotated visual output** — the user's original spatial arrangement overlaid with Ora's annotations (missing-connection indicators, gap markers, pattern labels, structural warnings).
-8. **Transition prompt** — if structure has crystallized into a specific analytical question, propose the appropriate next mode.
+Consolidate as a diagram-friendly mapping with the eight required sections (structural summary / ambiguities flagged / Tversky correspondence findings / gap analysis / pattern identifications / fog-clearing questions / annotated visual output / transition prompt). Format: diagram-friendly. When envelope-bearing: canvas_action must be "annotate" (never "replace" or "update"); target_id values must resolve to entity ids in the user's submitted spatial_representation; annotation kinds limited to "callout" or "highlight"; callout text ≤60 characters; one envelope per response. The user's spatial arrangement is preserved; annotations overlay it.
 
-## EMISSION CONTRACT
+## VERIFICATION CRITERIA
 
-Spatial Reasoning produces a response containing BOTH prose (the seven content-contract sections above) AND exactly one fenced `ora-visual` block with `canvas_action: "annotate"`. The prose arrives first; the envelope follows as the final block of the response.
+Verified means: structural extraction faithful to input with ambiguities flagged (not silently resolved); every gap identification cites spatial or domain evidence; fog-clearing questions are open (not leading); user's spatial arrangement preserved (annotations overlay, not relocate); annotation envelope uses canvas_action="annotate" with valid target_ids; transition prompt fires when structure has crystallized into a specific analytical question. The four critical questions are addressed in the output.
 
-### Envelope shape (annotate)
+## CAVEATS AND OPEN DEBATES
 
-```ora-visual
-{
-  "id": "sr-<slug>",
-  "version": "0.2",
-  "type": "<visual_type_from_mode_to_visual>",
-  "title": "Annotated gap analysis",
-  "mode_context": "spatial-reasoning",
-  "relation_to_prose": "visually_native",
-  "canvas_action": "annotate",
-  "annotations": [
-    { "target_id": "<user_entity_id>", "kind": "callout",  "text": "<one-line gap description>" },
-    { "target_id": "<user_entity_id>", "kind": "highlight", "color": "#FF5722" }
-  ],
-  "spec": { /* Required for schema validity — may reuse the user's spatial_representation as a minimal CLD or concept_map spec when no new structure is being proposed. */ },
-  "semantic_description": { "short_alt": "...", "level_1_elemental": "...", "level_2_summary": "...", "level_3_trends": "..." }
-}
-```
-
-### Emission rules
-
-1. **`canvas_action` must be `"annotate"`** — never `replace` or `update`. The user's spatial arrangement is sacred (Rearrangement Trap); the envelope overlays findings onto the user's existing canvas without redrawing.
-2. **`target_id` values must resolve to entity ids** present in the user's submitted `spatial_representation` (the ids that arrive inside the `=== USER SPATIAL INPUT ===` block in the system prompt). Do NOT invent new ids; the visual panel's `_computeTargetBox` looks them up on the rendered SVG and emits `W_ANNOTATION_TARGET_MISSING` when they're absent.
-3. **`kind` must be `"callout"` or `"highlight"`** — `"arrow"` and `"badge"` are deferred to WP-5.1 and emit `W_ANNOTATION_KIND_DEFERRED` warnings.
-4. **One annotation per finding** — prefer a few well-placed callouts over many overlapping ones. Use `highlight` for a single primary gap (the most consequential missing element) and `callout` for up to three secondary observations.
-5. **Callout text is one line, ≤ 60 characters** — the callout bubble is narrow; longer text truncates.
-6. **`visual_type` resolves from mode-to-visual.json** — for Spatial Reasoning the allowed types are `concept_map`, `causal_loop_diagram`, `flowchart`, and `custom_annotated_svg`. Pick the type that matches the structural semantics of the user's input (feedback loops → `causal_loop_diagram`; typed propositions → `concept_map`).
-7. **Emit no `ora-visual` block at all** if no annotation is warranted — prose alone is acceptable. The visual panel treats absent envelopes as no-op, not as a clear.
-
-### What NOT to emit
-
-- **Do not** emit `canvas_action: "replace"` — this would wipe the user's drawing and violate the preserve-arrangement guard rail.
-- **Do not** emit `canvas_action: "update"` — this replaces the backgroundLayer artifact with a fresh render; the user's spatial arrangement would be redrawn by Ora's layout engine rather than preserved as-is.
-- **Do not** invent `target_id` strings that don't appear in the user's spatial input. The annotation will silently render nothing.
-- **Do not** emit multiple `ora-visual` blocks per turn — one envelope per response.
-
-## KNOWN FAILURE MODES
-
-**The Rearrangement Trap:** Producing a "cleaner" version of the user's diagram with entities moved to new positions. Correction: Preserve the user's spatial arrangement. Annotate; do not rearrange. If the original layout is confusing, say so in prose and offer the user the option to request a restructuring — do not perform it unilaterally.
-
-**The Template Projection Trap:** Identifying a familiar structural pattern (hub-and-spoke, cycle, tree) that the spatial arrangement visually suggests but the conceptual content does not actually instantiate. Correction: Verify the pattern is present in the concepts, not just in the pixels. A high-degree node is not automatically a hub.
-
-**The Gap Fabrication Trap:** Proposing missing elements that neither the spatial structure nor the domain actually implies. Correction: Every gap identification must cite the specific spatial or domain evidence that implies it. "There's a proximity between X and Y but no connecting line" is evidence. "Concept maps usually have cross-links" is not.
-
-**The Leading Question Trap:** Asking fog-clearing questions that encode a specific answer ("Isn't there a feedback loop between A and B?"). Correction: Questions must be open ("Is there a relationship between A and B you're sensing but haven't drawn?") and must be willing to accept "no" as the correct answer.
-
-**The Critic Trap:** Evaluating the user's diagram as correct or incorrect. Correction: The spatial intuition is signal, not a claim. The mode surfaces what the diagram contains, implies, and might be missing — without judging whether the user's intuition is right.
-
-## GUARD RAILS
-
-**Solution Announcement Trigger (standing guard rail).** WHEN proposing an addition to the user's diagram, THEN verify it is grounded in either spatial evidence from the input or established domain logic — not in template pattern completion.
-
-**Preserve-arrangement guard rail.** The user's spatial arrangement persists. Annotations overlay; they do not relocate. If a substantive restructuring would genuinely help, propose it as a suggestion in the text pane and wait for the user's consent before acting.
-
-**Confidence calibration guard rail.** Confidence is higher for formal inputs (Excalidraw JSON, Obsidian Canvas) and lower for rough inputs (napkin sketches, whiteboard photos). Low-confidence extractions must be flagged, not presented as certain.
-
-**Intuition-as-signal guard rail.** Treat the user's spatial choices as informative about their pre-conscious understanding. Do not silently correct, tidy, or "improve" their arrangement.
-
-## TOOLS
-
-Tier 1: RAD (recognize what the diagram is trying to describe, divide if multiple concerns are conflated), CAF (enumerate all visible entities and relationships), C&S (trace what the identified structure implies forward), Challenge (test whether identified patterns are genuine vs template artifacts).
-
-Tier 2: No default module. Load domain modules based on the subject matter the diagram depicts — Engineering Analysis for technical systems diagrams, Political Analysis for institutional/policy diagrams, etc.
-
-Enrichment frameworks: Tversky's spatial correspondence principles. Structural pattern libraries (hub-and-spoke, chain, cycle, star, cluster bridge, orphan). Systems archetypes for pattern recognition when causal structure is present.
-
-## TRANSITION SIGNALS
-
-- IF causal structure with feedback crystallizes → propose **Systems Dynamics**.
-- IF backward causal tracing is needed → propose **Root Cause Analysis**.
-- IF decision structure emerges (branches, probabilities, payoffs) → propose **Decision Under Uncertainty** or **Constraint Mapping**.
-- IF argument structure emerges (claims, objections, supports) → propose **Steelman Construction** or **Dialectical Analysis**.
-- IF forward causal cascade structure emerges → propose **Consequences and Sequel**.
-- IF the diagram reveals a domain map the user wants oriented in → propose **Terrain Mapping**.
-- IF the user begins defining a deliverable → propose **Project Mode**.
-- IF the spatial input is serving as supporting evidence for a text question that now wants answering → propose the mode matching the text question.
+**Re-home from old T19 to T11 per Decision G.** Spatial Reasoning was originally placed in the old T19 territory ("Visual and Spatial Structure"). Decision G renamed T19 to "Spatial Composition" (analyzing what the spatial structure itself does as primary content — voids, groupings, forces, affordances per the Ma Reading / Compositional Dynamics / Place Reading / Information Density mode population). The mode's actual operation — structural gap detection on diagrammatic input (missing nodes, missing connections, missing levels, missing feedback loops) — is a T11 operation (notice missing relations) on visual-medium input rather than a T19 operation (read the composition's own meaning). Re-homed accordingly: territory is T11-structural-relationship-mapping; gradation_position is specificity-visual-input; adjacent_modes_in_territory pairs with relationship-mapping (general specificity counterpart). The mode_id remains `spatial-reasoning` for filename and registry continuity. When the user's input is a diagram and the question is about layout / composition / spatial-structure-as-primary-content rather than about the relations the diagram asserts, route to T19 instead. See `Reference — Analytical Territories.md` §T11 and §T19 and the boundary-verification entry T11 ↔ T19 for the disambiguating question.

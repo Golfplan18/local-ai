@@ -1,0 +1,221 @@
+{
+  "pack_name": "Photo Editor",
+  "pack_version": "1.0.0",
+  "ora_compatibility": ">=0.7.0",
+  "author": {
+    "name": "Ora",
+    "url": "https://ora.local"
+  },
+  "description": "Photoshop-equivalent operations on canvas images \u2014 crop, adjust, AI edits, outpaint, upscale, style transfer, and critique.",
+  "toolbars": [
+    {
+      "id": "photo-editor",
+      "label": "Photo Editor",
+      "default_dock": "left",
+      "default_icon_size": "small",
+      "items": [
+        {
+          "id": "upload",
+          "icon": "image-up",
+          "label": "Upload image",
+          "shortcut": "U",
+          "binding": "tool:image_upload"
+        },
+        {
+          "id": "crop",
+          "icon": "crop",
+          "label": "Crop",
+          "shortcut": "Shift+C",
+          "binding": "tool:image-crop",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "rotate",
+          "icon": "rotate-cw",
+          "label": "Rotate",
+          "binding": "tool:image_rotate",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "flip",
+          "icon": "flip-horizontal",
+          "label": "Flip",
+          "binding": "tool:image_flip",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "brightness",
+          "icon": "sun",
+          "label": "Brightness",
+          "binding": "tool:image_brightness",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "contrast",
+          "icon": "contrast",
+          "label": "Contrast",
+          "binding": "tool:image_contrast",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "ai-edit",
+          "icon": "wand-2",
+          "label": "AI edit (masked)",
+          "shortcut": "Shift+E",
+          "binding": "capability:image_edits",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "outpaint",
+          "icon": "expand",
+          "label": "Outpaint",
+          "binding": "capability:image_outpaints",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "upscale",
+          "icon": "arrow-up-from-line",
+          "label": "Upscale",
+          "binding": "capability:image_upscales",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "restyle",
+          "icon": "palette",
+          "label": "Restyle",
+          "binding": "capability:image_styles",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "vary",
+          "icon": "shuffle",
+          "label": "Vary",
+          "binding": "capability:image_varies",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "critique",
+          "icon": "eye",
+          "label": "Critique",
+          "binding": "capability:image_critique",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "ask-ora",
+          "icon": "sparkles",
+          "label": "Ask Ora",
+          "shortcut": "Shift+A",
+          "binding": "tool:ask_ora"
+        }
+      ]
+    }
+  ],
+  "macros": [
+    {
+      "id": "auto-enhance",
+      "label": "Auto enhance",
+      "icon": "wand",
+      "shortcut": null,
+      "steps": [
+        {
+          "tool": "image_brightness",
+          "params": {
+            "delta": 10
+          }
+        },
+        {
+          "tool": "image_contrast",
+          "params": {
+            "delta": 10
+          }
+        }
+      ]
+    }
+  ],
+  "prompt_templates": [
+    {
+      "id": "remove-background",
+      "slash_command": "/remove-bg",
+      "label": "Remove background",
+      "template": "Remove the background from the masked region. Replace with transparent pixels. Preserve the subject's edges, including soft transitions like hair and fur.",
+      "variables": [],
+      "capability_route": "image_edits"
+    },
+    {
+      "id": "add-element",
+      "slash_command": "/add",
+      "label": "Add an element",
+      "template": "Within the masked region, add: {{thing}}. Match the lighting, perspective, and style of the surrounding scene.",
+      "variables": [
+        {
+          "name": "thing",
+          "type": "text",
+          "label": "What to add"
+        }
+      ],
+      "capability_route": "image_edits"
+    },
+    {
+      "id": "restyle-image",
+      "slash_command": "/restyle",
+      "label": "Restyle as",
+      "template": "Restyle this image in the manner of: {{style}}. Preserve the subject and composition; change only the style.",
+      "variables": [
+        {
+          "name": "style",
+          "type": "text",
+          "label": "Style description"
+        }
+      ],
+      "capability_route": "image_styles"
+    }
+  ],
+  "composition_templates": [
+    {
+      "id": "single-photo",
+      "label": "Single photo",
+      "thumbnail": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='12' y='12' width='76' height='56' rx='3'/><circle cx='30' cy='30' r='5'/><polyline points='12,55 35,40 55,52 75,32 88,45 88,68 12,68'/></svg>",
+      "canvas_state": {
+        "schema_version": "0.1",
+        "format_id": "ora-canvas",
+        "metadata": {
+          "title": "Photo",
+          "canvas_size": {
+            "width": 4000,
+            "height": 3000
+          }
+        },
+        "view": {
+          "zoom": 1.0,
+          "pan": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "layers": [
+          {
+            "id": "bg",
+            "kind": "background",
+            "label": "Background"
+          },
+          {
+            "id": "annot",
+            "kind": "annotation",
+            "label": "Annotations"
+          },
+          {
+            "id": "main",
+            "kind": "user_input",
+            "label": "Photo"
+          },
+          {
+            "id": "sel",
+            "kind": "selection",
+            "label": "Selection"
+          }
+        ],
+        "objects": []
+      }
+    }
+  ]
+}

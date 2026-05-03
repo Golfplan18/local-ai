@@ -242,6 +242,11 @@
     // Transform state (tracks wheel zoom + drag pan)
     this._transform = { x: 0, y: 0, scale: 1 };
 
+    // WP-7.4.4 — keyboard pan/zoom state
+    this._spaceHeld   = false;       // Space pan modifier (held)
+    this._zKeyArmed   = false;       // first-key state of Z→E zoom-to-extents sequence
+    this._zKeyTimeout = null;        // 1500 ms timeout that clears _zKeyArmed
+
     // WP-3.1 — drawing/tool state
     this._activeTool        = 'select';     // default
     this._shapeCounter      = 0;            // monotonic id source
@@ -269,8 +274,18 @@
     this._imageErrorTimeout   = null;
     this._imageIndicatorOpen  = false;  // whether the remove button is visible
 
+    // WP-7.1.4 — hide-on-blur chrome state
+    this._chromeHidden        = false;     // current hidden state (mirror of .chrome-hidden class)
+    this._chromeHideTimeout   = null;      // 200 ms grace timer
+    this._panning             = false;     // mirror of mouse-pan state for guard
+    this._onChromeMouseEnter  = null;
+    this._onChromeMouseLeave  = null;
+    this._onChromeFocusIn     = null;
+    this._onChromeFocusOut    = null;
+
     // Event listener refs for destroy()
     this._onKeyDown       = null;
+    this._onKeyUp         = null;
     this._onWindowResize  = null;
     this._onToolbarClick  = null;
     this._onDragOver      = null;
@@ -280,6 +295,13 @@
     this._onCameraInputChange = null;
     this._onImageIndicatorClick = null;
     this._destroyed       = false;
+
+    // WP-7.1.2 — edge-docking state. The dock manager owns the four-edge
+    // chrome and the floating overflow set; visual-panel registers the
+    // universal toolbar (and any future specialty toolbars) into it and
+    // reacts to "arrangement_changed" by resizing the Konva stage.
+    this._dockController       = null;   // OraVisualDock instance (null if dock module absent)
+    this._universalToolbarCtl  = null;   // OraVisualToolbar render() controller
   }
 
   // ── init / destroy ────────────────────────────────────────────────────────
@@ -328,6 +350,9 @@
         '<button class="vp-tool-btn" data-tool="upload-image" aria-label="Upload image" title="Upload image">\u{1F4C4}</button>' +
         cameraBtnHtml +
         '<span class="vp-tool-spacer"></span>' +
+        // WP-7.4.5 \u2014 zoom-to-extents + zoom-to-selection commands.
+        '<button class="vp-tool-btn" data-tool="zoom-extents"   aria-label="Zoom to extents (F)"            title="Zoom to extents (F)">\u26F6</button>' +
+        '<button class="vp-tool-btn" data-tool="zoom-selection" aria-label="Zoom to selection (Cmd+Shift+F)" title="Zoom to selection (Cmd+Shift+F)">\u2750</button>' +
         '<button class="vp-tool-btn" data-tool="reset"    aria-label="Reset view"             title="Reset view">\u27F2</button>' +
       '</div>' +
       '<input type="file" class="vp-hidden-file" id="vp-file-input-' + id + '" accept="image/*" hidden>' +
@@ -390,11 +415,31 @@
         this.renderSpec(env);
       } catch (e) { /* silent — bad config shouldn't break init */ }
     }
+
+    // WP-7.1.1 / WP-7.1.2 — install the dock manager and mount the universal
+    // toolbar into it. Failure of either step is non-fatal: the panel keeps
+    // working with the legacy toolbar (lines ~317–341) so a missing
+    // OraVisualDock or OraVisualToolbar dependency degrades cleanly.
+    try { this._mountUniversalToolbar(); }
+    catch (e) { /* silent — toolbar mount failure shouldn't break init */ }
+
+    // WP-7.1.4 — hide chrome on blur (mouse leave + focus out), restore on
+    // hover/focus. Guarded against in-flight interactions (drawing, text
+    // entry, drag-pan, focused inputs). 200 ms grace timer debounces.
+    try { this._wireChromeBlur(); }
+    catch (e) { /* silent — chrome-blur failure shouldn't break init */ }
   };
 
   VisualPanel.prototype.destroy = function () {
     this._destroyed = true;
+    // WP-7.1.4 — tear down hide-on-blur listeners + grace timer.
+    try { this._unwireChromeBlur(); } catch (e) { /* ignore */ }
     if (this._onKeyDown) this.el.removeEventListener('keydown', this._onKeyDown);
+    if (this._onKeyUp) this.el.removeEventListener('keyup', this._onKeyUp);
+    if (this._zKeyTimeout) {
+      try { clearTimeout(this._zKeyTimeout); } catch (e) { /* ignore */ }
+      this._zKeyTimeout = null;
+    }
     if (this._onWindowResize) window.removeEventListener('resize', this._onWindowResize);
     if (this._onToolbarClick && this._toolbarEl) {
       this._toolbarEl.removeEventListener('click', this._onToolbarClick);
@@ -437,6 +482,32 @@
       this._annotHintTimeout = null;
     }
     this._penContext = null;
+    // WP-7.1.2 — tear down dock + universal toolbar before the Konva stage
+    // so any drag listeners are removed before the host DOM is reshaped.
+    if (this._universalToolbarCtl && typeof this._universalToolbarCtl.destroy === 'function') {
+      try { this._universalToolbarCtl.destroy(); } catch (e) { /* ignore */ }
+      this._universalToolbarCtl = null;
+    }
+    if (this._dockController && typeof this._dockController.destroy === 'function') {
+      try { this._dockController.destroy(); } catch (e) { /* ignore */ }
+      this._dockController = null;
+    }
+    // WP-7.1.3 — tear down min-canvas banner + icon-size picker if open.
+    if (this._minCanvasBanner && this._minCanvasBanner.parentNode) {
+      try { this._minCanvasBanner.parentNode.removeChild(this._minCanvasBanner); }
+      catch (e) { /* ignore */ }
+    }
+    this._minCanvasBanner = null;
+    if (this._iconSizeMenu && this._iconSizeMenu.parentNode) {
+      try { this._iconSizeMenu.parentNode.removeChild(this._iconSizeMenu); }
+      catch (e) { /* ignore */ }
+    }
+    this._iconSizeMenu = null;
+    if (this._iconSizeMenuOutside && typeof document !== 'undefined') {
+      try { document.removeEventListener('mousedown', this._iconSizeMenuOutside, true); }
+      catch (e) { /* ignore */ }
+    }
+    this._iconSizeMenuOutside = null;
     if (this.stage) {
       try { this.stage.destroy(); } catch (e) { /* ignore */ }
     }
@@ -858,6 +929,394 @@
     this._applyTransform();
   };
 
+  // ── Public: WP-7.4.4 keyboard pan/zoom commands ──────────────────────────
+  // These are called from the keyboard handler and from any future toolbar
+  // button. Wheel-zoom-on-cursor + click-drag-pan are wired in _wireMouse
+  // and remain unchanged (Phase 2 carry-forward).
+
+  /** Clamp scale into the same [0.1, 10] band the wheel handler uses. */
+  VisualPanel.prototype._clampScale = function (s) {
+    return Math.max(0.1, Math.min(10, s));
+  };
+
+  /**
+   * Zoom centered on `anchor` (stage-local pixel coordinates). When `anchor`
+   * is omitted, anchors on the viewport center.
+   */
+  VisualPanel.prototype._zoomBy = function (factor, anchor) {
+    if (!this.stage) return;
+    var oldScale = this._transform.scale;
+    var newScale = this._clampScale(oldScale * factor);
+    if (newScale === oldScale) return;
+    var w = this.stage.width()  || 0;
+    var h = this.stage.height() || 0;
+    var a = anchor || { x: w / 2, y: h / 2 };
+    var worldX = (a.x - this._transform.x) / oldScale;
+    var worldY = (a.y - this._transform.y) / oldScale;
+    this._transform.scale = newScale;
+    this._transform.x = a.x - worldX * newScale;
+    this._transform.y = a.y - worldY * newScale;
+    this._applyTransform();
+  };
+
+  VisualPanel.prototype.zoomIn  = function () { this._zoomBy(1.1); };
+  VisualPanel.prototype.zoomOut = function () { this._zoomBy(1 / 1.1); };
+
+  /** Zoom to 100% (scale=1) keeping the viewport-center stationary in
+   *  world coordinates so the user doesn't lose orientation. */
+  VisualPanel.prototype.zoomTo100 = function () {
+    if (!this.stage) return;
+    var oldScale = this._transform.scale;
+    var newScale = 1;
+    if (newScale === oldScale) return;
+    var w = this.stage.width()  || 0;
+    var h = this.stage.height() || 0;
+    var cx = w / 2, cy = h / 2;
+    var worldX = (cx - this._transform.x) / oldScale;
+    var worldY = (cy - this._transform.y) / oldScale;
+    this._transform.scale = newScale;
+    this._transform.x = cx - worldX * newScale;
+    this._transform.y = cy - worldY * newScale;
+    this._applyTransform();
+  };
+
+  /** Nudge the view by (dx, dy) viewport pixels. Positive dx pans content
+   *  rightward (== view moves leftward in world space). */
+  VisualPanel.prototype.nudgeView = function (dx, dy) {
+    this._transform.x += dx;
+    this._transform.y += dy;
+    this._applyTransform();
+  };
+
+  /**
+   * Compute the bounding box (in world / unscaled coordinates) of all
+   * visible content across background, annotation, and userInput layers.
+   * Returns null when nothing is on canvas.
+   *
+   * Note: backgroundLayer carries an SVG host mirror via CSS transform —
+   * its Konva content is just the sentinel rect. To capture the rendered
+   * artifact, we measure the SVG host's natural bounding box from its DOM
+   * children. Konva layers contribute via `getClientRect({skipTransform:
+   * true})` which returns world-space bounds.
+   */
+  VisualPanel.prototype._computeContentBBox = function () {
+    var bb = null;
+    var addRect = function (r) {
+      if (!r || !isFinite(r.width) || !isFinite(r.height)) return;
+      if (r.width <= 0 || r.height <= 0) return;
+      if (!bb) { bb = { x: r.x, y: r.y, width: r.width, height: r.height }; return; }
+      var x1 = Math.min(bb.x, r.x);
+      var y1 = Math.min(bb.y, r.y);
+      var x2 = Math.max(bb.x + bb.width,  r.x + r.width);
+      var y2 = Math.max(bb.y + bb.height, r.y + r.height);
+      bb = { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+    };
+    // userInputLayer — user shapes / drawings.
+    if (this.userInputLayer && this.userInputLayer.getChildren().length > 0) {
+      try { addRect(this.userInputLayer.getClientRect({ skipTransform: true })); } catch (e) { /* ignore */ }
+    }
+    // annotationLayer — Ora annotations.
+    if (this.annotationLayer && this.annotationLayer.getChildren().length > 0) {
+      try { addRect(this.annotationLayer.getClientRect({ skipTransform: true })); } catch (e) { /* ignore */ }
+    }
+    // backgroundLayer — SVG artifact via host element. Sentinel-only when
+    // no artifact present, so guard on the SVG host having children.
+    if (this._svgHost && this._svgHost.children && this._svgHost.children.length > 0) {
+      // The SVG host is positioned at (0, 0) in stage coords with the same
+      // transform as the stage. Use its native pixel bbox.
+      var svg = this._svgHost.querySelector('svg');
+      var w, h;
+      if (svg) {
+        w = svg.getAttribute('width');
+        h = svg.getAttribute('height');
+        var fw = parseFloat(w), fh = parseFloat(h);
+        if (isFinite(fw) && isFinite(fh) && fw > 0 && fh > 0) {
+          addRect({ x: 0, y: 0, width: fw, height: fh });
+        } else {
+          // Fall back to viewBox.
+          var vb = svg.getAttribute('viewBox');
+          if (vb) {
+            var parts = vb.split(/\s+|,/).map(parseFloat);
+            if (parts.length === 4 && parts.every(isFinite) && parts[2] > 0 && parts[3] > 0) {
+              addRect({ x: 0, y: 0, width: parts[2], height: parts[3] });
+            }
+          }
+        }
+      } else {
+        // Non-SVG host content — measure offsetWidth/Height as a last resort.
+        var ow = this._svgHost.offsetWidth, oh = this._svgHost.offsetHeight;
+        if (ow > 0 && oh > 0) addRect({ x: 0, y: 0, width: ow, height: oh });
+      }
+    }
+    return bb;
+  };
+
+  /** Zoom + pan to fit a world-space bbox into the viewport with a margin.
+   *  Margin is fraction (0.05 == 5% padding). */
+  VisualPanel.prototype._zoomToBBox = function (bb, margin) {
+    if (!this.stage || !bb) return false;
+    if (typeof margin !== 'number') margin = 0.05;
+    var vw = this.stage.width()  || 0;
+    var vh = this.stage.height() || 0;
+    if (vw <= 0 || vh <= 0) return false;
+    var pad = 1 + margin * 2;
+    var sx = vw / (bb.width  * pad);
+    var sy = vh / (bb.height * pad);
+    var s  = this._clampScale(Math.min(sx, sy));
+    // Center bbox in viewport.
+    var cx = bb.x + bb.width  / 2;
+    var cy = bb.y + bb.height / 2;
+    this._transform.scale = s;
+    this._transform.x = vw / 2 - cx * s;
+    this._transform.y = vh / 2 - cy * s;
+    this._applyTransform();
+    return true;
+  };
+
+  /** Zoom-to-fit (a.k.a. zoom-to-extents): bbox of all canvas content. F or
+   *  Z→E sequence. When canvas is empty, falls back to resetView(). */
+  VisualPanel.prototype.zoomToFit = function () {
+    var bb = this._computeContentBBox();
+    if (bb) {
+      this._zoomToBBox(bb, 0.05);
+    } else {
+      this.resetView();
+    }
+  };
+
+  // ── WP-7.4.5 — Zoom-to-extents and zoom-to-selection ──────────────────────
+  // Public API:
+  //   zoomToExtents()   — alias for zoomToFit (bbox of all content; F /
+  //                       Z→E shortcut already lands here via WP-7.4.4).
+  //   zoomToSelection() — bbox of currently selected shapes ∪ annotations,
+  //                       margin ~10 % per spec. No-ops gracefully when
+  //                       nothing is selected. Cmd+Shift+F shortcut.
+  //
+  // Selection state lives in two arrays populated by the click handler in
+  // _wireMouse: this._selectedShapeIds (userInputLayer) and
+  // this._selectedAnnotIds (annotationLayer). The semantic single-node
+  // selection (this._selectedNodeId) targets backgroundLayer SVG elements;
+  // we honour it as a fallback when no user-shape / annotation is selected
+  // so keyboard-Olli-nav users can also zoom to whatever they've focused.
+
+  /**
+   * Compute world-space bbox of currently selected user shapes ∪ user
+   * annotations ∪ semantic SVG node. Returns null when nothing is selected
+   * or when every selected node fails to produce a measurable rect.
+   */
+  VisualPanel.prototype._computeSelectionBBox = function () {
+    var bb = null;
+    var addRect = function (r) {
+      if (!r || !isFinite(r.width) || !isFinite(r.height)) return;
+      if (r.width <= 0 || r.height <= 0) return;
+      if (!bb) { bb = { x: r.x, y: r.y, width: r.width, height: r.height }; return; }
+      var x1 = Math.min(bb.x, r.x);
+      var y1 = Math.min(bb.y, r.y);
+      var x2 = Math.max(bb.x + bb.width,  r.x + r.width);
+      var y2 = Math.max(bb.y + bb.height, r.y + r.height);
+      bb = { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+    };
+
+    // User-drawn shapes — Konva nodes in userInputLayer.
+    if (this._selectedShapeIds && this._selectedShapeIds.length > 0) {
+      for (var i = 0; i < this._selectedShapeIds.length; i++) {
+        var snode = this._findShapeById(this._selectedShapeIds[i]);
+        if (snode) {
+          try { addRect(snode.getClientRect({ skipTransform: true, relativeTo: this.userInputLayer })); }
+          catch (e) { /* ignore */ }
+        }
+      }
+    }
+
+    // User annotations — Konva nodes in annotationLayer.
+    if (this._selectedAnnotIds && this._selectedAnnotIds.length > 0) {
+      for (var j = 0; j < this._selectedAnnotIds.length; j++) {
+        var anode = this._findAnnotationById(this._selectedAnnotIds[j]);
+        if (anode) {
+          try { addRect(anode.getClientRect({ skipTransform: true, relativeTo: this.annotationLayer })); }
+          catch (e2) { /* ignore */ }
+        }
+      }
+    }
+
+    // Semantic SVG selection — backgroundLayer DOM target. Use the existing
+    // viewport-rect helper, then unproject to world space via the current
+    // transform (the helper bakes scale + pan in).
+    if (!bb && this._selectedNodeId && this._svgHost) {
+      var domNode = this._svgHost.querySelector('[data-id="' + this._selectedNodeId + '"]');
+      if (!domNode && this._svgHost.querySelector) {
+        // Fallback: direct id match.
+        try { domNode = this._svgHost.querySelector('#' + CSS.escape(this._selectedNodeId)); }
+        catch (e3) { domNode = null; }
+      }
+      if (domNode && domNode.getBBox) {
+        try {
+          var raw = domNode.getBBox();
+          if (raw && raw.width > 0 && raw.height > 0) {
+            addRect({ x: raw.x, y: raw.y, width: raw.width, height: raw.height });
+          }
+        } catch (e4) { /* ignore */ }
+      }
+    }
+
+    return bb;
+  };
+
+  /** Alias for zoomToFit — exposes "extents" naming for command surfaces. */
+  VisualPanel.prototype.zoomToExtents = function () { this.zoomToFit(); };
+
+  /**
+   * Zoom + pan so the current selection's bbox fills the viewport with a
+   * 10 % margin (per §11.7 / §13.4 spec). When nothing is selected, falls
+   * back to zoomToExtents so the shortcut remains useful in the empty case.
+   */
+  VisualPanel.prototype.zoomToSelection = function () {
+    var bb = this._computeSelectionBBox();
+    if (bb) {
+      this._zoomToBBox(bb, 0.10);
+    } else {
+      // Graceful fallback — no selection means "show me everything".
+      this.zoomToExtents();
+    }
+  };
+
+  /** Arm the Z→E zoom-to-extents key sequence for 1500 ms. */
+  VisualPanel.prototype._armZKey = function () {
+    this._zKeyArmed = true;
+    if (this._zKeyTimeout) {
+      try { clearTimeout(this._zKeyTimeout); } catch (e) { /* ignore */ }
+    }
+    var self = this;
+    this._zKeyTimeout = setTimeout(function () {
+      self._zKeyArmed = false;
+      self._zKeyTimeout = null;
+    }, 1500);
+  };
+
+  VisualPanel.prototype._disarmZKey = function () {
+    this._zKeyArmed = false;
+    if (this._zKeyTimeout) {
+      try { clearTimeout(this._zKeyTimeout); } catch (e) { /* ignore */ }
+      this._zKeyTimeout = null;
+    }
+  };
+
+  /** Toggle "grab" cursor when Space-pan modifier is held. Reuses the
+   *  existing cursor class infrastructure so it doesn't fight the active
+   *  tool's normal cursor. */
+  VisualPanel.prototype._applySpacePanCursor = function (held) {
+    if (!this._konvaEl) return;
+    if (held) {
+      this._konvaEl.classList.add('vp-cursor-grab');
+    } else {
+      this._konvaEl.classList.remove('vp-cursor-grab');
+    }
+  };
+
+  // ── Public: WP-7.4.7 — view persistence in canvas file ───────────────────
+  //
+  // Plan §11.7 ("Default view on open") + §13.4 WP-7.4.7. View state is a
+  // property of the canvas file, not the session (per §12 Q18) — so zoom +
+  // pan persist cross-session, cross-machine, and cross-user-share.
+  //
+  //  - getViewState()        captures current zoom + pan in
+  //                          canvas-file-format.js shape ({ zoom, pan: {x,y} })
+  //                          so a save command (WP-7.4.8) can drop the result
+  //                          straight into state.view.
+  //  - setViewState(view)    restores zoom + pan from a canvas-state.view
+  //                          object without forcing the caller to know about
+  //                          the internal _transform shape.
+  //  - applyViewFromCanvasState(state)
+  //                          load-time entry point: if state.view is present
+  //                          and valid, restore; otherwise auto-fit (the
+  //                          "imported file with no view state" branch).
+  //
+  // Auto-fit reuses zoomToFit() from WP-7.4.4 so this WP doesn't fork the
+  // bbox-computation logic. zoomToFit() already gracefully degrades to
+  // resetView() when the canvas is empty.
+
+  /**
+   * Capture the current pan + zoom in canvas-state.view shape.
+   *
+   *   { zoom: number, pan: { x: number, y: number } }
+   *
+   * Mirrors the schema in canvas-file-format.js. `zoom` carries the Konva
+   * stage scale (1 = 100%); `pan` carries the stage position offset in
+   * viewport pixels. This is what a save command (or autosave; WP-7.4.8)
+   * writes into the canvas file so reopening restores the same view.
+   *
+   * @returns {{zoom:number, pan:{x:number, y:number}}}
+   */
+  VisualPanel.prototype.getViewState = function () {
+    var t = this._transform || { x: 0, y: 0, scale: 1 };
+    var z = (typeof t.scale === 'number' && t.scale > 0 && isFinite(t.scale)) ? t.scale : 1;
+    var px = (typeof t.x === 'number' && isFinite(t.x)) ? t.x : 0;
+    var py = (typeof t.y === 'number' && isFinite(t.y)) ? t.y : 0;
+    return { zoom: z, pan: { x: px, y: py } };
+  };
+
+  /**
+   * Restore pan + zoom from a canvas-state.view object. Defensive against
+   * malformed input — out-of-shape values fall through to resetView() so a
+   * partially-corrupt file still opens. Zoom is clamped to the same
+   * [0.1, 10] band the wheel handler uses, so a hand-edited file can't
+   * push the stage to an unrenderable scale.
+   *
+   * @param {{zoom?:number, pan?:{x?:number, y?:number}}} view
+   */
+  VisualPanel.prototype.setViewState = function (view) {
+    if (!view || typeof view !== 'object') { this.resetView(); return; }
+    var zoom = view.zoom;
+    var pan  = view.pan;
+    if (typeof zoom !== 'number' || !(zoom > 0) || !isFinite(zoom)) { this.resetView(); return; }
+    if (!pan || typeof pan !== 'object') { this.resetView(); return; }
+    var px = pan.x, py = pan.y;
+    if (typeof px !== 'number' || !isFinite(px) ||
+        typeof py !== 'number' || !isFinite(py)) {
+      this.resetView();
+      return;
+    }
+    var clamped = (typeof this._clampScale === 'function')
+      ? this._clampScale(zoom)
+      : Math.max(0.1, Math.min(10, zoom));
+    this._transform = { x: px, y: py, scale: clamped };
+    this._applyTransform();
+  };
+
+  /**
+   * Open-time view dispatch.
+   *
+   *  - state.view present and well-formed → setViewState (cross-session
+   *    continuity branch).
+   *  - state.view missing or malformed → zoomToFit (the "file imported
+   *    from elsewhere" branch in §11.7; falls back to resetView when the
+   *    canvas is empty).
+   *
+   * This is the function a load command (WP-7.4.8) should call after
+   * deserializing a `.ora-canvas` file.
+   *
+   * @param {object} state — a canvas-file-format state object
+   */
+  VisualPanel.prototype.applyViewFromCanvasState = function (state) {
+    var v = state && typeof state === 'object' ? state.view : null;
+    if (v && typeof v === 'object' &&
+        typeof v.zoom === 'number' && v.zoom > 0 && isFinite(v.zoom) &&
+        v.pan && typeof v.pan === 'object' &&
+        typeof v.pan.x === 'number' && isFinite(v.pan.x) &&
+        typeof v.pan.y === 'number' && isFinite(v.pan.y)) {
+      this.setViewState(v);
+      return;
+    }
+    // Missing or malformed view → auto-fit. zoomToFit() falls back to
+    // resetView() on empty canvas, so this branch is safe even when the
+    // file's objects[] is empty.
+    if (typeof this.zoomToFit === 'function') {
+      this.zoomToFit();
+    } else {
+      this.resetView();
+    }
+  };
+
   // ── Internal: stage init ──────────────────────────────────────────────────
 
   VisualPanel.prototype._initStage = function () {
@@ -1078,6 +1537,105 @@
       // chat composer / our own inline text-tool input. Shortcuts should
       // never hijack typing in form fields.
       if (!self._isTypingTarget(e.target)) {
+        // ── WP-7.4.4 — pan/zoom shortcuts ────────────────────────────────
+        // Cmd+0 / Ctrl+0 → zoom to 100% (checked before plain shortcuts).
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && key === '0') {
+          e.preventDefault();
+          self.zoomTo100();
+          return;
+        }
+        // ── WP-7.4.5 — zoom-to-selection ────────────────────────────────
+        // Cmd+Shift+F / Ctrl+Shift+F → zoom-to-selection (falls back to
+        // zoom-to-extents when nothing is selected). Picked Cmd+Shift+F to
+        // sit alongside plain F (zoom-to-fit, WP-7.4.4) without colliding
+        // with Cmd+0 (100 %) or Cmd+Z / Cmd+Shift+Z (undo / redo).
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey &&
+            (key === 'f' || key === 'F')) {
+          e.preventDefault();
+          self.zoomToSelection();
+          return;
+        }
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          // Z → E zoom-to-extents sequence (CAD muscle memory). The first
+          // key arms a 1500 ms window; the second key fires extents. Z is
+          // not otherwise bound, so arming is non-destructive.
+          if (self._zKeyArmed && (key === 'e' || key === 'E')) {
+            e.preventDefault();
+            self._disarmZKey();
+            self.zoomToFit();
+            return;
+          }
+          if (key === 'z' || key === 'Z') {
+            // Plain Z arms the sequence. Cmd+Z is undo (handled below).
+            e.preventDefault();
+            self._armZKey();
+            return;
+          }
+          // Zoom in: + / =
+          if (key === '+' || key === '=') {
+            e.preventDefault();
+            self.zoomIn();
+            return;
+          }
+          // Zoom out: - / _
+          if (key === '-' || key === '_') {
+            e.preventDefault();
+            self.zoomOut();
+            return;
+          }
+          // F → zoom-to-fit (also the second key of Z → E above when armed,
+          // but armed branch above wins).
+          if (key === 'f' || key === 'F') {
+            e.preventDefault();
+            self.zoomToFit();
+            return;
+          }
+          // Arrow keys → nudge view (only when no Olli node is focused
+          // AND no shape is selected — otherwise existing nav wins below).
+          if (key === 'ArrowUp' || key === 'ArrowDown' ||
+              key === 'ArrowLeft' || key === 'ArrowRight') {
+            var ariaActive = self._ariaDescription &&
+              Array.isArray(self._ariaDescription.nodes) &&
+              self._ariaDescription.nodes.length > 0;
+            var hasShapeSel = self._selectedShapeIds && self._selectedShapeIds.length > 0;
+            var hasAnnotSel = self._selectedAnnotIds && self._selectedAnnotIds.length > 0;
+            if (!ariaActive && !hasShapeSel && !hasAnnotSel) {
+              e.preventDefault();
+              var step = e.shiftKey ? 100 : 25;
+              if (key === 'ArrowUp')    self.nudgeView(0,  step);
+              if (key === 'ArrowDown')  self.nudgeView(0, -step);
+              if (key === 'ArrowLeft')  self.nudgeView( step, 0);
+              if (key === 'ArrowRight') self.nudgeView(-step, 0);
+              return;
+            }
+          }
+          // Space → pan modifier (held). Not on auto-repeat.
+          if (key === ' ' || key === 'Spacebar') {
+            if (!e.repeat && !self._spaceHeld) {
+              e.preventDefault();
+              self._spaceHeld = true;
+              self._applySpacePanCursor(true);
+            } else {
+              // Still swallow so it doesn't trigger Olli "expand" below.
+              e.preventDefault();
+            }
+            return;
+          }
+          // Escape → cancel any in-progress drag (drawing or pan).
+          if (key === 'Escape' || key === 'Esc') {
+            var didCancel = false;
+            if (self._drawContext) { self._cancelDraw(); didCancel = true; }
+            if (self._penContext)  { self._cancelPenStroke(); didCancel = true; }
+            self._dismissTextInput();
+            self._dismissAnnotationInput();
+            self._disarmZKey();
+            if (didCancel) {
+              e.preventDefault();
+              return;
+            }
+            // Otherwise fall through so Olli nav can ascend on Escape.
+          }
+        }
         // Tool shortcuts (single-letter, no modifier except delete).
         if (!e.ctrlKey && !e.metaKey && !e.altKey) {
           var toolByKey = {
@@ -1166,6 +1724,17 @@
       }
     };
     this.el.addEventListener('keydown', this._onKeyDown);
+
+    // WP-7.4.4 — keyup releases Space-pan modifier.
+    this._onKeyUp = function (e) {
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        if (self._spaceHeld) {
+          self._spaceHeld = false;
+          self._applySpacePanCursor(false);
+        }
+      }
+    };
+    this.el.addEventListener('keyup', this._onKeyUp);
   };
 
   /**
@@ -1225,6 +1794,174 @@
     if (node) this._selectElement(node);
   };
 
+  // ── WP-7.1.4 hide-on-blur chrome ────────────────────────────────────────
+  //
+  // Two chrome surfaces are gated by a single `chrome-hidden` modifier on
+  // `this.el`: `.visual-panel__toolbar` (legacy WP-3.1) and `.ora-toolbar`
+  // (universal WP-7.1.1). CSS handles the fade; JS only flips the class.
+  //
+  // Hiding is guarded against in-flight interactions and debounced by a
+  // 200 ms grace timer. If the user re-enters or refocuses inside the panel
+  // before grace elapses, the pending hide is cancelled.
+
+  VisualPanel.prototype._isInteracting = function () {
+    // Drawing or pen stroke in progress.
+    if (this._drawContext) return true;
+    if (this._penContext)  return true;
+    // Inline text-entry overlay (text tool / callout / sticky) is open.
+    if (this._textInputEl)  return true;
+    if (this._annotInputEl) return true;
+    // Mouse-drag pan in progress.
+    if (this._panning) return true;
+    // Stage's own dragging, in case Konva ever opts in via draggable().
+    if (this.stage && typeof this.stage.isDragging === 'function') {
+      try { if (this.stage.isDragging()) return true; } catch (e) { /* ignore */ }
+    }
+    // Focus is currently inside the panel (input, button, canvas).
+    if (typeof document !== 'undefined' && document.activeElement && this.el) {
+      try {
+        if (this.el.contains(document.activeElement) && document.activeElement !== this.el) {
+          return true;
+        }
+      } catch (e) { /* ignore */ }
+    }
+    return false;
+  };
+
+  VisualPanel.prototype._setChromeHidden = function (hidden) {
+    if (this._destroyed || !this.el) return;
+    if (hidden && this._isInteracting()) return;     // never hide mid-interaction
+    if (hidden === this._chromeHidden) return;
+    this._chromeHidden = !!hidden;
+    if (this.el.classList) {
+      if (hidden) this.el.classList.add('chrome-hidden');
+      else        this.el.classList.remove('chrome-hidden');
+    }
+    // WP-7.7.4 — broadcast chrome visibility transitions so downstream
+    // overlays (e.g. tooltip system) can suppress themselves while chrome
+    // is hidden. Dispatched on `document` so listeners don't need a panel
+    // reference. Guarded against environments without CustomEvent (jsdom
+    // ships it; older test harnesses may not).
+    try {
+      if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+        if (hidden) {
+          document.dispatchEvent(new CustomEvent('ora-toolbar:chrome-hidden'));
+        } else {
+          document.dispatchEvent(new CustomEvent('ora-toolbar:chrome-shown'));
+        }
+      }
+    } catch (e) { /* silent — event dispatch is best-effort */ }
+  };
+
+  VisualPanel.prototype._scheduleChromeHide = function () {
+    var self = this;
+    if (this._chromeHideTimeout) {
+      try { clearTimeout(this._chromeHideTimeout); } catch (e) { /* ignore */ }
+      this._chromeHideTimeout = null;
+    }
+    this._chromeHideTimeout = setTimeout(function () {
+      self._chromeHideTimeout = null;
+      // Re-check guard at fire time — state may have changed during grace.
+      if (!self._destroyed) self._setChromeHidden(true);
+    }, 200);
+  };
+
+  VisualPanel.prototype._cancelChromeHide = function () {
+    if (this._chromeHideTimeout) {
+      try { clearTimeout(this._chromeHideTimeout); } catch (e) { /* ignore */ }
+      this._chromeHideTimeout = null;
+    }
+  };
+
+  // Audio/Video Phase 1 — idle-while-inside auto-hide. The pre-existing
+  // chrome-hide already triggers on mouseleave/focusout. This adds the
+  // complementary "mouse is inside but hasn't moved for a while" path so
+  // the toolbar gets out of the way even when the cursor stays parked
+  // over the canvas. Reset on any mousemove inside the panel.
+  VisualPanel.prototype._IDLE_HIDE_MS = 2500;
+
+  VisualPanel.prototype._scheduleIdleHide = function () {
+    var self = this;
+    if (this._idleHideTimeout) {
+      try { clearTimeout(this._idleHideTimeout); } catch (e) { /* ignore */ }
+      this._idleHideTimeout = null;
+    }
+    this._idleHideTimeout = setTimeout(function () {
+      self._idleHideTimeout = null;
+      if (!self._destroyed) self._setChromeHidden(true);
+    }, this._IDLE_HIDE_MS);
+  };
+
+  VisualPanel.prototype._cancelIdleHide = function () {
+    if (this._idleHideTimeout) {
+      try { clearTimeout(this._idleHideTimeout); } catch (e) { /* ignore */ }
+      this._idleHideTimeout = null;
+    }
+  };
+
+  VisualPanel.prototype._wireChromeBlur = function () {
+    var self = this;
+    if (!this.el) return;
+
+    this._onChromeMouseEnter = function () {
+      self._cancelChromeHide();
+      self._setChromeHidden(false);
+      self._scheduleIdleHide();
+    };
+    this._onChromeMouseLeave = function () {
+      self._cancelIdleHide();
+      self._scheduleChromeHide();
+    };
+    this._onChromeFocusIn = function () {
+      self._cancelChromeHide();
+      self._cancelIdleHide();
+      self._setChromeHidden(false);
+    };
+    this._onChromeFocusOut = function () {
+      // Use the grace timer; the related target may not be reachable
+      // synchronously (browsers vary on FocusEvent.relatedTarget timing).
+      self._scheduleChromeHide();
+    };
+    this._onChromeMouseMove = function () {
+      // Any mouse movement inside the panel means the user is engaged —
+      // reveal the chrome (if it had idle-hidden) and restart the idle
+      // timer.
+      if (self._chromeHidden) self._setChromeHidden(false);
+      self._scheduleIdleHide();
+    };
+
+    this.el.addEventListener('mouseenter', this._onChromeMouseEnter);
+    this.el.addEventListener('mouseleave', this._onChromeMouseLeave);
+    this.el.addEventListener('focusin',    this._onChromeFocusIn);
+    this.el.addEventListener('focusout',   this._onChromeFocusOut);
+    this.el.addEventListener('mousemove',  this._onChromeMouseMove);
+  };
+
+  VisualPanel.prototype._unwireChromeBlur = function () {
+    if (!this.el) return;
+    if (this._onChromeMouseEnter) this.el.removeEventListener('mouseenter', this._onChromeMouseEnter);
+    if (this._onChromeMouseLeave) this.el.removeEventListener('mouseleave', this._onChromeMouseLeave);
+    if (this._onChromeFocusIn)    this.el.removeEventListener('focusin',    this._onChromeFocusIn);
+    if (this._onChromeFocusOut)   this.el.removeEventListener('focusout',   this._onChromeFocusOut);
+    if (this._onChromeMouseMove)  this.el.removeEventListener('mousemove',  this._onChromeMouseMove);
+    this._onChromeMouseEnter = null;
+    this._onChromeMouseLeave = null;
+    this._onChromeFocusIn    = null;
+    this._onChromeFocusOut   = null;
+    this._onChromeMouseMove  = null;
+    if (this._chromeHideTimeout) {
+      try { clearTimeout(this._chromeHideTimeout); } catch (e) { /* ignore */ }
+      this._chromeHideTimeout = null;
+    }
+    if (this._idleHideTimeout) {
+      try { clearTimeout(this._idleHideTimeout); } catch (e) { /* ignore */ }
+      this._idleHideTimeout = null;
+    }
+    // Always restore chrome on teardown so a re-init starts visible.
+    if (this.el && this.el.classList) this.el.classList.remove('chrome-hidden');
+    this._chromeHidden = false;
+  };
+
   // ── Internal: mouse (wheel zoom, drag pan) ────────────────────────────────
 
   VisualPanel.prototype._wireMouse = function () {
@@ -1254,24 +1991,31 @@
     });
 
     // Drag pan on empty space
-    var panning = false;
+    // WP-7.1.4 — `self._panning` mirrors the local flag so _isInteracting()
+    // can include in-flight pans in the hide-on-blur guard.
     var panStart = { x: 0, y: 0 };
     var transformStart = { x: 0, y: 0 };
 
     this.stage.on('mousedown touchstart', function (e) {
-      // Only pan when the click wasn't on a Konva listening target.
-      if (e.target !== self.stage) {
-        var name = e.target.name && e.target.name();
-        if (name && name.indexOf('vp-selection-') !== 0) return;
+      // WP-7.4.4 — Space held forces pan over any target.
+      if (!self._spaceHeld) {
+        // Only pan when the click wasn't on a Konva listening target.
+        if (e.target !== self.stage) {
+          var name = e.target.name && e.target.name();
+          if (name && name.indexOf('vp-selection-') !== 0) return;
+        }
+      } else if (e.evt && e.evt.preventDefault) {
+        // Space-pan: prevent drawing tool from also engaging.
+        e.evt.preventDefault();
       }
       var p = self.stage.getPointerPosition() || { x: 0, y: 0 };
-      panning = true;
+      self._panning = true;
       panStart = p;
       transformStart = { x: self._transform.x, y: self._transform.y };
     });
 
     this.stage.on('mousemove touchmove', function () {
-      if (!panning) return;
+      if (!self._panning) return;
       var p = self.stage.getPointerPosition() || { x: 0, y: 0 };
       self._transform.x = transformStart.x + (p.x - panStart.x);
       self._transform.y = transformStart.y + (p.y - panStart.y);
@@ -1279,7 +2023,7 @@
     });
 
     this.stage.on('mouseup touchend mouseleave', function () {
-      panning = false;
+      self._panning = false;
     });
   };
 
@@ -1317,6 +2061,431 @@
   };
 
   // ══════════════════════════════════════════════════════════════════════════
+  // WP-7.1.1 / WP-7.1.2 — universal toolbar mount + edge-docking integration
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Mount the universal toolbar into the dock manager.
+   *
+   * Steps:
+   *   1. Look up the universal toolbar definition via OraVisualToolbar (the
+   *      WP-7.1.1 registry). If the toolbar isn't registered yet, attempt
+   *      to fetch its JSON from /static/config/toolbars/ and register it
+   *      lazily; this lets standalone pages (and the jsdom test harness)
+   *      seed the registry before the panel comes up.
+   *   2. Render it via OraVisualToolbar.render(), wiring action handlers to
+   *      the same legacy _handleToolbarAction router so existing code paths
+   *      keep working until §7.3 capability slots replace them.
+   *   3. Ask OraVisualDock to wrap and mount the toolbar at its default
+   *      edge ("top" per the universal toolbar JSON), and arrange for the
+   *      Konva stage to resize whenever the dock arrangement changes.
+   *
+   * Failure of any step is non-fatal: the panel still has the legacy
+   * toolbar (rendered inline by init()), so the user is never left without
+   * tools when one of the WP-7.1.x dependencies is missing.
+   */
+  VisualPanel.prototype._mountUniversalToolbar = function () {
+    var Toolbar = (typeof window !== 'undefined' && window.OraVisualToolbar) || null;
+    var Dock    = (typeof window !== 'undefined' && window.OraVisualDock)    || null;
+    if (!Toolbar || !Dock) {
+      // Either dependency missing: leave the legacy toolbar in place.
+      return;
+    }
+    var def = Toolbar.get && Toolbar.get('ora-universal');
+    if (!def) {
+      // Not in the registry — try to fetch + register inline. fetch() may
+      // be unavailable in some test harnesses; tolerate that.
+      try {
+        if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+          var self = this;
+          window.fetch('/static/config/toolbars/universal.toolbar.json')
+            .then(function (r) { return r && r.ok ? r.json() : null; })
+            .then(function (json) {
+              if (json && Toolbar.register) {
+                try { Toolbar.register(json); } catch (e) { /* validator threw */ }
+                self._mountUniversalToolbar();   // try again synchronously
+              }
+            })
+            .catch(function () { /* network error — silent */ });
+        }
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    // Build action + predicate registries that delegate to existing logic.
+    // Keeping the bindings here (instead of in OraVisualToolbar) keeps the
+    // toolbar module reusable across panels with different action surfaces.
+    var panel = this;
+    var actionRegistry = {
+      'tool:select':            function () { panel.setActiveTool('select'); },
+      'tool:pan':               function () { panel._spaceHeld = true; panel._applyCursor && panel._applyCursor(); },
+      'tool:zoom_in':           function () {
+        if (panel.zoomIn) panel.zoomIn();
+        else if (panel._zoomBy) panel._zoomBy(1.2);
+      },
+      'tool:zoom_out':          function () {
+        if (panel.zoomOut) panel.zoomOut();
+        else if (panel._zoomBy) panel._zoomBy(1 / 1.2);
+      },
+      'tool:zoom_100':          function () {
+        if (panel.zoomTo100) panel.zoomTo100();
+        else if (panel.resetView) panel.resetView();
+      },
+      'tool:zoom_fit':          function () {
+        if (panel.zoomToExtents) panel.zoomToExtents();
+        else if (panel.zoomToFit) panel.zoomToFit();
+      },
+      'tool:undo':              function () { if (panel.undo) panel.undo(); },
+      'tool:redo':              function () { if (panel.redo) panel.redo(); },
+      'tool:save':              function () { if (panel.saveCanvas) panel.saveCanvas(); },
+      'tool:export':            function () { if (panel.exportCanvas) panel.exportCanvas(); },
+      'tool:clear':             function () { if (panel.clearArtifact) panel.clearArtifact(); },
+      // Resize / crop bindings: WP-7.1.1 stub-handler contract — clicking
+      // surfaces "binding coming with WP-7.X.Y". Leaving them undefined here
+      // routes through OraVisualToolbar's `onStub` callback.
+      'tool:ask_ora':           function () { /* WP-7.1.5 wires this */ },
+      // Specialty-pack toolbar selector. The handler resolves the launcher
+      // button DOM node by id ("ora-toolbar-item-toolbar-selector" — set
+      // by visual-toolbar's render path) and passes it as the popover
+      // anchor so the popover positions next to the button. The selector
+      // module appends its host to the visual pane element (panel.el),
+      // not document.body, so the popover stays clipped to the pane.
+      'tool:toolbar_selector':  function (item, ctx, e) {
+        var Selector = window.OraV3ToolbarSelector;
+        if (!Selector) return;
+        var anchor = (e && (e.currentTarget || e.target)) || null;
+        Selector.toggle(anchor, panel);
+      },
+      // Send the most-relevant canvas image to the active conversation's
+      // media library. Implementation lives in v3-canvas-to-library.js so
+      // visual-panel stays focused on canvas concerns.
+      'tool:send_to_library':   function () {
+        var Lib = window.OraV3CanvasToLibrary;
+        if (!Lib || typeof Lib.sendBest !== 'function') return;
+        Lib.sendBest(panel);
+      },
+    };
+    // WP-7.1.5 — wire the Ask Ora binding into the action registry. The
+    // bindings module installs its handler under the canonical
+    // OraVisualToolbarBindings.ASK_ORA_BINDING key, replacing the stub
+    // declared above. Dependency-soft: if the module is missing the panel
+    // still works, the Ask Ora button just falls back to the stub above.
+    try {
+      var Bindings = (typeof window !== 'undefined' && window.OraVisualToolbarBindings) || null;
+      if (Bindings && typeof Bindings.attach === 'function') {
+        Bindings.attach(actionRegistry, { panel: panel });
+      }
+    } catch (e) { /* silent — bindings failure shouldn't break toolbar mount */ }
+    var predicateRegistry = {
+      'history_has_undo': function () {
+        var has = panel._historyCursor > 0;
+        return { enabled: has, reason: has ? null : 'Nothing to undo yet' };
+      },
+      'history_has_redo': function () {
+        var n = panel._history ? panel._history.length : 0;
+        var has = panel._historyCursor < n;
+        return { enabled: has, reason: has ? null : 'Nothing to redo' };
+      },
+      'selection_active': function () {
+        var n = (panel._selectedShapeIds ? panel._selectedShapeIds.length : 0) +
+                (panel._selectedAnnotIds ? panel._selectedAnnotIds.length : 0) +
+                (panel._selectedNodeId ? 1 : 0);
+        return { enabled: n > 0, reason: n > 0 ? null : 'Make a selection first' };
+      },
+      'canvas_has_content': function () {
+        var has = !!(panel._currentEnvelope || panel._backgroundImageNode ||
+                     (panel.userInputLayer && panel.userInputLayer.children &&
+                      panel.userInputLayer.children.length > 0));
+        return { enabled: has, reason: has ? null : 'Canvas is empty' };
+      },
+      // Phase 6 follow-up — enable the "send to media library" toolbar
+      // button only when the canvas has a Konva.Image we can dispatch.
+      // The library module's findCandidateImage encodes the same
+      // selection-then-fallback rule the click handler uses, so the
+      // button's enabled state matches what the click would actually
+      // operate on.
+      'canvas_has_sendable_image': function () {
+        var Lib = (typeof window !== 'undefined') && window.OraV3CanvasToLibrary;
+        var has = !!(Lib && typeof Lib.findCandidateImage === 'function'
+                         && Lib.findCandidateImage(panel));
+        return {
+          enabled: has,
+          reason: has ? null : 'Add an image to the canvas first'
+        };
+      },
+    };
+
+    var ctl = Toolbar.render(def, {
+      actionRegistry:    actionRegistry,
+      predicateRegistry: predicateRegistry,
+      context:           panel,
+      onStub: function (binding /*, item, msg */) {
+        try {
+          // Surface stub-binding clicks via the existing error bar so the
+          // user gets visible feedback (rather than silent console-only).
+          if (panel._showErrorBar) {
+            panel._showErrorBar(binding + ' is not yet wired up.');
+            setTimeout(function () {
+              if (panel._errorBar) panel._errorBar.hidden = true;
+            }, 1800);
+          }
+        } catch (e) { /* ignore */ }
+      },
+    });
+    this._universalToolbarCtl = ctl;
+
+    // Stand up the dock manager around the panel host, then mount the
+    // toolbar into it. The dock manager moves existing children of the host
+    // (viewport, error bar, indicators, etc.) into a centre dock-content
+    // container; from this point onwards, "the canvas" lives at
+    // host > .ora-dock--middle > .ora-dock-content > .visual-panel__viewport.
+    var dock = Dock.create(this.el, {
+      defaultEdges: { 'ora-universal': def.default_dock || 'top' },
+      onArrangementChanged: function (footprints /*, arrangement */) {
+        panel._resyncStageFromDock(footprints);
+      },
+    });
+    this._dockController = dock;
+
+    // WP-7.1.3 — Mount the dismissable min-canvas warning banner. The dock
+    // controller signals when icon size + footprint configuration squeezes
+    // the drawable region below threshold; we surface a top-of-pane banner
+    // so the user can either reduce icon size or undock toolbars.
+    try { this._wireMinCanvasWarning(dock); } catch (e) { /* silent */ }
+
+    // WP-7.1.3 — Wire right-click on a toolbar drag handle to an icon-size
+    // picker (S / M / L / XL). Persist selection to localStorage, restore
+    // on next panel init.
+    try { this._wireIconSizePicker(dock); } catch (e) { /* silent */ }
+
+    dock.mount(ctl, {
+      id: def.id || 'ora-universal',
+      label: def.label || 'Universal',
+    });
+    // First-pass resize so the Konva stage matches the now-reduced viewport.
+    this._resyncStageFromDock(dock.getFootprints());
+
+    // Apply persisted icon size, if any. Read after mount so the toolbar
+    // controllers exist; setIconSizeAll() will iterate them.
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        var stored = window.localStorage.getItem('ora.visualPane.iconSize.v1');
+        if (stored && typeof dock.setIconSizeAll === 'function') {
+          dock.setIconSizeAll(stored);
+        }
+      }
+    } catch (e) { /* silent — quota / disabled storage */ }
+
+    // Re-evaluate enabled state once on mount so e.g. undo/redo reflect the
+    // current empty history.
+    if (typeof ctl.refreshEnabled === 'function') {
+      try { ctl.refreshEnabled(); } catch (e) { /* ignore */ }
+    }
+  };
+
+  /**
+   * Resize the Konva stage to fit the current dock-drawable region.
+   *
+   * Called whenever the dock manager reports an arrangement change (mount,
+   * unmount, dock, undock, reorder) and on window resize. Honors the same
+   * minimum dimensions used by `_initStage` so a fully-docked layout still
+   * produces a usable canvas.
+   *
+   * If the dock manager isn't available, this is a no-op — the WP-2.1
+   * resize observer (`_wireResize`) handles the legacy single-toolbar path.
+   */
+  VisualPanel.prototype._resyncStageFromDock = function (/* footprints */) {
+    if (!this.stage || !this._viewportEl || !this._dockController) return;
+    var w = this._viewportEl.clientWidth  || 0;
+    var h = this._viewportEl.clientHeight || 0;
+    if (w === 0 || h === 0) {
+      // jsdom or pre-layout — fall back to drawable region from the dock
+      // manager so the contract is still observable in tests.
+      var region = this._dockController.getDrawableRegion();
+      if (w === 0) w = region.width;
+      if (h === 0) h = region.height;
+    }
+    w = Math.max(300, w);
+    h = Math.max(200, h);
+    try {
+      this.stage.width(w);
+      this.stage.height(h);
+      this.stage.batchDraw();
+    } catch (e) { /* ignore */ }
+  };
+
+  /**
+   * WP-7.1.3 — Register a min-canvas warning handler with the dock and
+   * mount a dismissable banner at the top of the panel when it fires.
+   * The banner is absolutely positioned so it overlays the canvas without
+   * pushing the drawable region down further. Dismiss persists for the
+   * tab session via the dock's sessionStorage flag.
+   */
+  VisualPanel.prototype._wireMinCanvasWarning = function (dock) {
+    if (!dock || typeof dock.onMinCanvasWarning !== 'function') return;
+    var panel = this;
+    dock.onMinCanvasWarning(function (info) {
+      try {
+        // Avoid stacking duplicate banners on repeat fires.
+        if (panel._minCanvasBanner && panel._minCanvasBanner.parentNode) return;
+        if (!panel.el || panel._destroyed) return;
+        var doc = (typeof document !== 'undefined') ? document : null;
+        if (!doc) return;
+
+        var banner = doc.createElement('div');
+        banner.className = 'ora-min-canvas-warning';
+        banner.setAttribute('role', 'status');
+        banner.style.cssText =
+          'position:absolute;top:8px;left:50%;transform:translateX(-50%);' +
+          'z-index:9000;max-width:520px;padding:8px 12px;' +
+          'background:rgba(40,42,54,0.95);color:#f8f8f2;' +
+          'border:1px solid rgba(189,147,249,0.35);border-radius:6px;' +
+          'font-size:12px;line-height:1.4;display:flex;align-items:center;' +
+          'gap:10px;box-shadow:0 4px 12px rgba(0,0,0,0.35);';
+
+        var msg = doc.createElement('span');
+        var w = (info && typeof info.width  === 'number') ? Math.round(info.width)  : 0;
+        var h = (info && typeof info.height === 'number') ? Math.round(info.height) : 0;
+        msg.textContent =
+          'Canvas drawable area is small (' + w + '×' + h + ' px). ' +
+          'Reduce icon size or undock toolbars to recover space.';
+        banner.appendChild(msg);
+
+        var btn = doc.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ora-min-canvas-warning__dismiss';
+        btn.textContent = 'Dismiss';
+        btn.style.cssText =
+          'background:transparent;color:#bd93f9;border:1px solid #6272a4;' +
+          'border-radius:4px;padding:2px 8px;cursor:pointer;font:inherit;';
+        btn.onclick = function () {
+          try {
+            if (typeof dock.dismissMinCanvasWarning === 'function') {
+              dock.dismissMinCanvasWarning();
+            }
+          } catch (e) { /* ignore */ }
+          if (banner.parentNode) {
+            try { banner.parentNode.removeChild(banner); } catch (e) { /* ignore */ }
+          }
+          panel._minCanvasBanner = null;
+        };
+        banner.appendChild(btn);
+
+        // Mount on the panel root so it sits above docks + viewport.
+        // Ensure host is positioned so absolute child anchors correctly.
+        try {
+          var cs = (typeof window !== 'undefined' && window.getComputedStyle)
+            ? window.getComputedStyle(panel.el) : null;
+          if (cs && cs.position === 'static') panel.el.style.position = 'relative';
+        } catch (e) { /* ignore */ }
+        panel.el.appendChild(banner);
+        panel._minCanvasBanner = banner;
+      } catch (e) { /* ignore handler errors */ }
+    });
+  };
+
+  /**
+   * WP-7.1.3 — Right-click on a toolbar drag handle opens a small popup
+   * menu offering Small/Medium/Large/Extra-Large. Selection delegates to
+   * dockController.setIconSizeAll() and persists to localStorage so the
+   * choice survives reloads.
+   */
+  VisualPanel.prototype._wireIconSizePicker = function (dock) {
+    if (!dock || typeof dock.onToolbarHandleContextMenu !== 'function') return;
+    var panel = this;
+    var SIZES = [
+      { value: 'small',       label: 'Small (S)' },
+      { value: 'medium',      label: 'Medium (M)' },
+      { value: 'large',       label: 'Large (L)' },
+      { value: 'extra-large', label: 'Extra-Large (XL)' },
+    ];
+
+    function closeMenu() {
+      if (panel._iconSizeMenu && panel._iconSizeMenu.parentNode) {
+        try { panel._iconSizeMenu.parentNode.removeChild(panel._iconSizeMenu); }
+        catch (e) { /* ignore */ }
+      }
+      panel._iconSizeMenu = null;
+      if (panel._iconSizeMenuOutside && typeof document !== 'undefined') {
+        try { document.removeEventListener('mousedown', panel._iconSizeMenuOutside, true); }
+        catch (e) { /* ignore */ }
+      }
+      panel._iconSizeMenuOutside = null;
+    }
+
+    dock.onToolbarHandleContextMenu(function (toolbarId, handleEl, evt) {
+      try {
+        var doc = (typeof document !== 'undefined') ? document : null;
+        if (!doc) return;
+        closeMenu();
+
+        var menu = doc.createElement('div');
+        menu.className = 'ora-icon-size-menu';
+        menu.setAttribute('role', 'menu');
+        menu.style.cssText =
+          'position:fixed;z-index:9100;min-width:160px;' +
+          'background:#282a36;color:#f8f8f2;border:1px solid #44475a;' +
+          'border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.4);' +
+          'padding:4px 0;font-size:12px;';
+
+        // Anchor near the right-click coordinates if present, else near
+        // the handle's bounding rect.
+        var x = (evt && typeof evt.clientX === 'number') ? evt.clientX : 0;
+        var y = (evt && typeof evt.clientY === 'number') ? evt.clientY : 0;
+        if ((!x && !y) && handleEl && typeof handleEl.getBoundingClientRect === 'function') {
+          var r = handleEl.getBoundingClientRect();
+          x = r.left; y = r.bottom + 2;
+        }
+        menu.style.left = x + 'px';
+        menu.style.top  = y + 'px';
+
+        SIZES.forEach(function (entry) {
+          var item = doc.createElement('button');
+          item.type = 'button';
+          item.setAttribute('role', 'menuitem');
+          item.textContent = entry.label;
+          item.style.cssText =
+            'display:block;width:100%;text-align:left;padding:6px 12px;' +
+            'background:transparent;color:inherit;border:none;cursor:pointer;font:inherit;';
+          item.onmouseover = function () { item.style.background = '#44475a'; };
+          item.onmouseout  = function () { item.style.background = 'transparent'; };
+          item.onclick = function () {
+            try {
+              if (typeof dock.setIconSizeAll === 'function') {
+                dock.setIconSizeAll(entry.value);
+              }
+              if (typeof window !== 'undefined' && window.localStorage) {
+                try { window.localStorage.setItem('ora.visualPane.iconSize.v1', entry.value); }
+                catch (e) { /* quota — ignore */ }
+              }
+            } catch (e) { /* ignore */ }
+            closeMenu();
+          };
+          menu.appendChild(item);
+        });
+
+        doc.body.appendChild(menu);
+        panel._iconSizeMenu = menu;
+
+        // Click-outside to dismiss. Use mousedown so it fires before any
+        // potential second right-click reaches the handle.
+        panel._iconSizeMenuOutside = function (e) {
+          if (menu.contains(e.target)) return;
+          closeMenu();
+        };
+        // Defer one tick so the originating right-click doesn't immediately
+        // close the menu we just opened.
+        setTimeout(function () {
+          if (panel._iconSizeMenuOutside && typeof document !== 'undefined') {
+            try { document.addEventListener('mousedown', panel._iconSizeMenuOutside, true); }
+            catch (e) { /* ignore */ }
+          }
+        }, 0);
+      } catch (e) { /* ignore handler errors */ }
+    });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
   // WP-3.1 — Toolbar, drawing tools, selection, undo/redo
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -1331,6 +2500,9 @@
     if (tool === 'undo')              { this.undo();                   return; }
     if (tool === 'redo')              { this.redo();                   return; }
     if (tool === 'clear-user-input')  { this.clearUserInput();         return; }
+    // WP-7.4.5 — zoom commands surfaced as toolbar buttons.
+    if (tool === 'zoom-extents')      { this.zoomToExtents();          return; }
+    if (tool === 'zoom-selection')    { this.zoomToSelection();        return; }
     // WP-4.1 — image upload pickers
     if (tool === 'upload-image')      { this._openFilePicker('file');  return; }
     if (tool === 'camera')            { this._openFilePicker('camera');return; }
@@ -1411,6 +2583,23 @@
     this.stage.on('touchstart.vp3',function (e) { self._onStageDown(e); });
     this.stage.on('touchmove.vp3', function (e) { self._onStageMove(e); });
     this.stage.on('touchend.vp3',  function (e) { self._onStageUp(e);   });
+
+    // Right-click on a Konva.Image opens the canvas-to-library context
+    // menu. Implementation lives in v3-canvas-to-library.js. We suppress
+    // the browser's native context menu only when the click landed on
+    // an image — anywhere else falls through to the default behavior.
+    this.stage.on('contextmenu.vp-cl', function (e) {
+      var target = e && e.target;
+      if (!target || typeof target.getClassName !== 'function') return;
+      if (target.getClassName() !== 'Image') return;
+      var Lib = (typeof window !== 'undefined') && window.OraV3CanvasToLibrary;
+      if (!Lib || typeof Lib.openContextMenu !== 'function') return;
+      var native = e.evt;
+      if (native && typeof native.preventDefault === 'function') native.preventDefault();
+      var x = (native && native.clientX) || 0;
+      var y = (native && native.clientY) || 0;
+      Lib.openContextMenu(self, x, y, target);
+    });
   };
 
   /**
@@ -1604,13 +2793,103 @@
       // Snap endpoints to any shape within CONN_SNAP_PX.
       var startAnchor = ctx.startAnchor;
       var endAnchor   = this._snapToShape(end, null);
+      var pts = [s.x, s.y, end.x, end.y];
+      // V3 polish 2026-04-30 — when an endpoint is anchored to a shape,
+      // place it on that shape's edge facing the OTHER endpoint rather
+      // than at the user's raw drop coordinates. The line therefore
+      // emerges from the shape's perimeter cleanly.
+      if (startAnchor) {
+        var startShape = this._findShapeById(startAnchor);
+        if (startShape) {
+          var sEdge = this._edgePointForShape(startShape, { x: pts[2], y: pts[3] });
+          if (sEdge) { pts[0] = sEdge.x; pts[1] = sEdge.y; }
+        }
+      }
+      if (endAnchor) {
+        var endShape = this._findShapeById(endAnchor);
+        if (endShape) {
+          var eEdge = this._edgePointForShape(endShape, { x: pts[0], y: pts[1] });
+          if (eEdge) { pts[2] = eEdge.x; pts[3] = eEdge.y; }
+        }
+      }
       this._createShape(ctx.type, {
-        points: [s.x, s.y, end.x, end.y],
+        points: pts,
         connEndpointStart: startAnchor,
         connEndpointEnd:   endAnchor,
       });
     }
     this.userInputLayer.draw();
+  };
+
+  /**
+   * V3 polish 2026-04-30 — auto-attach connector endpoints to shape
+   * edges. Given a shape and an external reference point, return the
+   * point on the shape's bounding-rect edge that lies on the line from
+   * the shape's center toward the external point. Used at line/arrow
+   * create time to snap endpoints to the visual edge of the anchored
+   * shape, and again on shape drag to reroute existing connectors.
+   */
+  VisualPanel.prototype._edgePointForShape = function (shape, externalPoint) {
+    if (!shape || !externalPoint) return null;
+    var box;
+    try { box = shape.getClientRect({ relativeTo: this.userInputLayer }); }
+    catch (err) { return null; }
+    if (!box || box.width <= 0 || box.height <= 0) return null;
+    var cx = box.x + box.width  / 2;
+    var cy = box.y + box.height / 2;
+    var dx = externalPoint.x - cx;
+    var dy = externalPoint.y - cy;
+    if (dx === 0 && dy === 0) return { x: cx, y: cy };
+    var sx = (dx === 0) ? Infinity : Math.abs((box.width  / 2) / dx);
+    var sy = (dy === 0) ? Infinity : Math.abs((box.height / 2) / dy);
+    var s  = Math.min(sx, sy);
+    return { x: cx + dx * s, y: cy + dy * s };
+  };
+
+  /**
+   * V3 polish 2026-04-30 — keep connector lines/arrows attached to
+   * their endpoint shapes. Walks every line/arrow whose
+   * connEndpointStart or connEndpointEnd matches `shapeId` and
+   * recomputes the affected endpoint using `_edgePointForShape` so
+   * the connector continues to land on the shape's edge after the
+   * shape has moved or been resized.
+   */
+  VisualPanel.prototype._rerouteConnections = function (shapeId) {
+    if (!shapeId || !this.userInputLayer) return;
+    var thisShape = this._findShapeById(shapeId);
+    if (!thisShape) return;
+    var lines = this.userInputLayer.find('.user-shape');
+    var dirty = false;
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i];
+      var t = l.getAttr('userShapeType');
+      if (t !== 'line' && t !== 'arrow') continue;
+      var startId = l.getAttr('connEndpointStart');
+      var endId   = l.getAttr('connEndpointEnd');
+      if (startId !== shapeId && endId !== shapeId) continue;
+      var pts = l.points().slice();
+      if (pts.length < 4) continue;
+      var lastIdx = pts.length - 2;
+
+      // Establish the "facing" reference for each end (where the OTHER
+      // end currently sits, in layer coords).
+      var startRef = { x: pts[0],       y: pts[1]       };
+      var endRef   = { x: pts[lastIdx], y: pts[lastIdx + 1] };
+
+      if (startId === shapeId) {
+        // Re-derive the start endpoint on this shape's edge facing the
+        // current end position (which is itself on the other shape if
+        // endId is set — we approximate using its current point).
+        var snew = this._edgePointForShape(thisShape, endRef);
+        if (snew) { pts[0] = snew.x; pts[1] = snew.y; dirty = true; }
+      }
+      if (endId === shapeId) {
+        var enew = this._edgePointForShape(thisShape, startRef);
+        if (enew) { pts[lastIdx] = enew.x; pts[lastIdx + 1] = enew.y; dirty = true; }
+      }
+      if (dirty) l.points(pts);
+    }
+    if (dirty) this.userInputLayer.batchDraw();
   };
 
   /**
@@ -1693,6 +2972,109 @@
     this._textInputAnchor = null;
   };
 
+  // V3 Phase 7.1 — inline label editor for rect/ellipse/diamond shapes.
+  // Opens an <input> overlay positioned at the shape's viewport-space
+  // center, prefilled with the current userLabel. Enter commits, Escape
+  // dismisses without changes.
+  VisualPanel.prototype._openShapeLabelEditor = function (groupNode) {
+    if (!this._viewportEl || !groupNode) return;
+    this._dismissTextInput();
+    var doc = this.el.ownerDocument || document;
+    var input = doc.createElement('input');
+    input.type = 'text';
+    input.className = 'vp-text-input';
+    input.id = 'vp-text-input-' + this.panelId;
+    input.value = groupNode.getAttr('userLabel') || '';
+
+    // Position over the shape's center in viewport coordinates.
+    var rect = (typeof groupNode.getClientRect === 'function')
+      ? groupNode.getClientRect({ relativeTo: this.stage })
+      : { x: groupNode.x(), y: groupNode.y(), width: 0, height: 0 };
+    var t = this._transform || { x: 0, y: 0, scale: 1 };
+    var cx = (rect.x + rect.width  / 2) * t.scale + t.x;
+    var cy = (rect.y + rect.height / 2) * t.scale + t.y;
+    // Width: try to fit within the shape's screen-space width, with a
+    // sensible minimum and a maximum tied to the panel size.
+    var inputW = Math.max(80, Math.min(rect.width * t.scale - 12, 280));
+    input.style.position = 'absolute';
+    input.style.left = (cx - inputW / 2) + 'px';
+    input.style.top  = (cy - 14) + 'px';
+    input.style.width = inputW + 'px';
+    this._viewportEl.appendChild(input);
+    this._textInputEl = input;
+
+    var self = this;
+    var prevLabel = groupNode.getAttr('userLabel') || '';
+    var commit = function () {
+      var value = (self._textInputEl && self._textInputEl.value) || '';
+      self._dismissTextInput();
+      if (value === prevLabel) return;
+      self._setShapeLabel(groupNode, value, prevLabel);
+    };
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); self._dismissTextInput(); }
+    });
+    input.addEventListener('blur', commit);
+    setTimeout(function () {
+      try { input.focus(); input.select(); } catch (err) { /* ignore */ }
+    }, 0);
+  };
+
+  // Update the shape's userLabel attr + the inner Text child's text.
+  // Pushes a history frame when prev !== next so undo restores the
+  // previous label. _suppressHistory short-circuits the frame for
+  // internal replays (undo/redo apply paths).
+  VisualPanel.prototype._setShapeLabel = function (groupNode, label, prevLabel) {
+    if (!groupNode) return;
+    label = label || '';
+    if (typeof prevLabel !== 'string') {
+      prevLabel = groupNode.getAttr('userLabel') || '';
+    }
+    groupNode.setAttrs({ userLabel: label });
+    if (groupNode._vpInnerText && typeof groupNode._vpInnerText.text === 'function') {
+      groupNode._vpInnerText.text(label);
+      var layer = groupNode.getLayer && groupNode.getLayer();
+      if (layer) layer.draw();
+    }
+    if (this._suppressHistory) return;
+    if (prevLabel === label) return;
+    var self = this;
+    var nid = groupNode.getAttr('userShapeId');
+    this._pushHistory({
+      label: 'edit-label',
+      undoFn: function () {
+        var n = self._findShapeById(nid);
+        if (n) self._applyShapeLabelInternal(n, prevLabel);
+      },
+      redoFn: function () {
+        var n = self._findShapeById(nid);
+        if (n) self._applyShapeLabelInternal(n, label);
+      },
+    });
+  };
+
+  // Internal helper: apply label without pushing history (for undo/redo).
+  VisualPanel.prototype._applyShapeLabelInternal = function (groupNode, label) {
+    if (!groupNode) return;
+    groupNode.setAttrs({ userLabel: label || '' });
+    if (groupNode._vpInnerText && typeof groupNode._vpInnerText.text === 'function') {
+      groupNode._vpInnerText.text(label || '');
+      var layer = groupNode.getLayer && groupNode.getLayer();
+      if (layer) layer.draw();
+    }
+  };
+
+  // Look up a shape group by its userShapeId attribute.
+  VisualPanel.prototype._findShapeById = function (id) {
+    if (!this.userInputLayer || !id) return null;
+    var matches = this.userInputLayer.find('.user-shape');
+    for (var i = 0; i < matches.length; i++) {
+      if (matches[i].getAttr('userShapeId') === id) return matches[i];
+    }
+    return null;
+  };
+
   // ── Shape creation / deletion / movement (public for testing) ────────────
 
   /**
@@ -1713,29 +3095,111 @@
     var fill   = 'rgba(0,114,178,0.08)';
 
     if (type === 'rect') {
-      node = new Konva.Rect({
-        x: params.x || 0, y: params.y || 0,
+      // V3 Phase 7.1 — shapes-with-internal-text. The "shape" is now a
+      // Konva.Group containing the geometric primitive plus a Konva.Text
+      // child that auto-fits the interior. The Group carries the
+      // user-shape attrs the serializer expects; inner children are
+      // rendering-only with `listening: false`.
+      var rectShape = new Konva.Rect({
+        x: 0, y: 0,
         width:  params.width  || MIN_SHAPE_PX,
         height: params.height || MIN_SHAPE_PX,
         stroke: stroke, strokeWidth: 2, fill: fill,
+        listening: false,
+      });
+      var rectText = new Konva.Text({
+        x: 0, y: 0,
+        width:  rectShape.width(),
+        height: rectShape.height(),
+        text:   params.userLabel || '',
+        fontSize: 14,
+        fill: '#1a1a1a',
+        align: 'center',
+        verticalAlign: 'middle',
+        padding: 8,
+        listening: false,
+      });
+      node = new Konva.Group({
+        x: params.x || 0, y: params.y || 0,
         draggable: true,
       });
+      node.add(rectShape);
+      node.add(rectText);
+      node._vpInnerShape = rectShape;
+      node._vpInnerText  = rectText;
     } else if (type === 'ellipse') {
-      node = new Konva.Ellipse({
-        x: params.x || 0, y: params.y || 0,
+      var ellShape = new Konva.Ellipse({
+        x: 0, y: 0,
         radiusX: params.radiusX || MIN_SHAPE_PX / 2,
         radiusY: params.radiusY || MIN_SHAPE_PX / 2,
         stroke: stroke, strokeWidth: 2, fill: fill,
+        listening: false,
+      });
+      // Text inside the ellipse: bbox is centered at (0,0) extending +/- radius.
+      var ellText = new Konva.Text({
+        x: -ellShape.radiusX(),
+        y: -ellShape.radiusY(),
+        width:  ellShape.radiusX() * 2,
+        height: ellShape.radiusY() * 2,
+        text:   params.userLabel || '',
+        fontSize: 14,
+        fill: '#1a1a1a',
+        align: 'center',
+        verticalAlign: 'middle',
+        padding: 12,
+        listening: false,
+      });
+      node = new Konva.Group({
+        x: params.x || 0, y: params.y || 0,
         draggable: true,
       });
+      node.add(ellShape);
+      node.add(ellText);
+      node._vpInnerShape = ellShape;
+      node._vpInnerText  = ellText;
     } else if (type === 'diamond') {
-      node = new Konva.Line({
-        points: params.points || [0, 0, MIN_SHAPE_PX, MIN_SHAPE_PX / 2,
-                                  0, MIN_SHAPE_PX, -MIN_SHAPE_PX, MIN_SHAPE_PX / 2],
+      var dPoints = params.points || [0, 0, MIN_SHAPE_PX, MIN_SHAPE_PX / 2,
+                                      0, MIN_SHAPE_PX, -MIN_SHAPE_PX, MIN_SHAPE_PX / 2];
+      var dShape = new Konva.Line({
+        points: dPoints,
         closed: true,
         stroke: stroke, strokeWidth: 2, fill: fill,
+        listening: false,
+      });
+      // Compute the diamond's bbox (in local coords) for text placement.
+      var dxs = [], dys = [];
+      for (var di = 0; di < dPoints.length; di += 2) {
+        dxs.push(dPoints[di]); dys.push(dPoints[di + 1]);
+      }
+      var dxMin = Math.min.apply(null, dxs), dxMax = Math.max.apply(null, dxs);
+      var dyMin = Math.min.apply(null, dys), dyMax = Math.max.apply(null, dys);
+      // Inscribe the text in a smaller centered rect (about half the bbox)
+      // so it stays within the diamond's tilted edges.
+      var dWidth  = (dxMax - dxMin) * 0.6;
+      var dHeight = (dyMax - dyMin) * 0.6;
+      var dCenterX = (dxMin + dxMax) / 2;
+      var dCenterY = (dyMin + dyMax) / 2;
+      var dText = new Konva.Text({
+        x: dCenterX - dWidth / 2,
+        y: dCenterY - dHeight / 2,
+        width:  dWidth,
+        height: dHeight,
+        text:   params.userLabel || '',
+        fontSize: 14,
+        fill: '#1a1a1a',
+        align: 'center',
+        verticalAlign: 'middle',
+        padding: 4,
+        listening: false,
+      });
+      node = new Konva.Group({
+        x: params.x || 0, y: params.y || 0,
         draggable: true,
       });
+      node.add(dShape);
+      node.add(dText);
+      node._vpInnerShape = dShape;
+      node._vpInnerText  = dText;
     } else if (type === 'line') {
       node = new Konva.Line({
         points: params.points || [0, 0, MIN_SHAPE_PX, 0],
@@ -1782,6 +3246,56 @@
 
     // Wire drag-end to push a move history frame + reroute connections.
     var self = this;
+    node.on('dragstart.vp3', function () {
+      node._vpPrevPos = { x: node.x(), y: node.y() };
+      // V3 polish 2026-04-30 — multi-select drag. If this node is part
+      // of a multi-selection, snapshot the other selected shapes' start
+      // positions so dragmove can translate them by the same delta.
+      var nid = node.getAttr('userShapeId');
+      var sel = self._selectedShapeIds || [];
+      if (sel.length > 1 && sel.indexOf(nid) >= 0) {
+        var siblings = [];
+        for (var si = 0; si < sel.length; si++) {
+          if (sel[si] === nid) continue;
+          var sn = self._findShapeById(sel[si]);
+          if (!sn) continue;
+          siblings.push({
+            node:   sn,
+            startX: sn.x(),
+            startY: sn.y(),
+          });
+        }
+        node._vpDragSiblings = siblings;
+        node._vpDragOriginX  = node.x();
+        node._vpDragOriginY  = node.y();
+      } else {
+        node._vpDragSiblings = null;
+      }
+    });
+    // V3 polish 2026-04-30 — snap-to-grid + multi-select cluster drag.
+    // Snap honors `panel._snapGrid` (default 10px); Shift bypasses snap.
+    // When multiple shapes are selected, the dragged node is the leader
+    // and siblings move by the same delta so the whole cluster slides
+    // together while preserving relative positions.
+    node.on('dragmove.vp3', function (e) {
+      if (!(e && e.evt && e.evt.shiftKey)) {
+        var g = (typeof self._snapGrid === 'number') ? self._snapGrid : 10;
+        if (g > 0) {
+          node.x(Math.round(node.x() / g) * g);
+          node.y(Math.round(node.y() / g) * g);
+        }
+      }
+      var sibs = node._vpDragSiblings;
+      if (sibs && sibs.length) {
+        var dx = node.x() - (node._vpDragOriginX || 0);
+        var dy = node.y() - (node._vpDragOriginY || 0);
+        for (var si = 0; si < sibs.length; si++) {
+          sibs[si].node.x(sibs[si].startX + dx);
+          sibs[si].node.y(sibs[si].startY + dy);
+        }
+        if (self.userInputLayer) self.userInputLayer.batchDraw();
+      }
+    });
     node.on('dragend.vp3', function () {
       if (self._suppressHistory) return;
       // We record position delta via the node's current pos vs. last-known.
@@ -1794,10 +3308,44 @@
         redoFn: function () { self._setShapePos(nid, curr.x, curr.y); },
       });
       node._vpPrevPos = curr;
+      // V3 polish 2026-04-30 — keep connectors attached. Reroute any
+      // line/arrow endpoints anchored to this shape so they follow the
+      // new position.
+      self._rerouteConnections(nid);
+      // V3 polish 2026-04-30 — multi-select drag: push a history frame
+      // for each sibling that moved during this drag, then redraw the
+      // selection rings so they hug the new positions.
+      var sibs = node._vpDragSiblings;
+      if (sibs && sibs.length) {
+        for (var si = 0; si < sibs.length; si++) {
+          var sib   = sibs[si];
+          var sid   = sib.node.getAttr('userShapeId');
+          var sprev = { x: sib.startX,    y: sib.startY    };
+          var scurr = { x: sib.node.x(), y: sib.node.y() };
+          (function (sid, sprev, scurr) {
+            self._pushHistory({
+              label: 'move',
+              undoFn: function () { self._setShapePos(sid, sprev.x, sprev.y); },
+              redoFn: function () { self._setShapePos(sid, scurr.x, scurr.y); },
+            });
+          })(sid, sprev, scurr);
+          // Reroute connectors for this sibling too.
+          self._rerouteConnections(sid);
+        }
+        node._vpDragSiblings = null;
+        if (self._redrawSelection) self._redrawSelection();
+      }
     });
-    node.on('dragstart.vp3', function () {
-      node._vpPrevPos = { x: node.x(), y: node.y() };
-    });
+
+    // V3 Phase 7.1 — double-click on rect/ellipse/diamond opens an
+    // inline label editor that updates the shape's userLabel + the
+    // inner Text child. Only attach to shape kinds with internal text.
+    if (type === 'rect' || type === 'ellipse' || type === 'diamond') {
+      node.on('dblclick.vp3 dbltap.vp3', function (e) {
+        if (e && typeof e.cancelBubble !== 'undefined') e.cancelBubble = true;
+        self._openShapeLabelEditor(node);
+      });
+    }
 
     this.userInputLayer.add(node);
     this.userInputLayer.draw();
@@ -1838,6 +3386,10 @@
     var node = this._findShapeById(id);
     if (!node) return;
     node.position({ x: x, y: y });
+    // V3 polish 2026-04-30 — keep connectors attached. Reroute any
+    // line/arrow endpoints anchored to this shape so they follow the
+    // new position. Covers undo/redo + any programmatic moves.
+    this._rerouteConnections(id);
     this.userInputLayer.draw();
   };
 
@@ -3169,6 +4721,15 @@
       node.on('dragstart.vp5', function () {
         node._vpPrevPos = { x: node.x(), y: node.y() };
       });
+      // V3 polish 2026-04-30 — snap-to-grid during drag. Same rule as
+      // shapes: honors `panel._snapGrid` (default 10px); Shift bypasses.
+      node.on('dragmove.vp5', function (e) {
+        if (e && e.evt && e.evt.shiftKey) return;
+        var g = (typeof self._snapGrid === 'number') ? self._snapGrid : 10;
+        if (g <= 0) return;
+        node.x(Math.round(node.x() / g) * g);
+        node.y(Math.round(node.y() / g) * g);
+      });
       node.on('dragend.vp5', function () {
         if (self._suppressHistory) return;
         var prev = node._vpPrevPos || { x: 0, y: 0 };
@@ -3429,6 +4990,15 @@
       var self = this;
       node.draggable(true);
       node.on('dragstart.vp5', function () { node._vpPrevPos = { x: node.x(), y: node.y() }; });
+      // V3 polish 2026-04-30 — snap-to-grid on rehydrated annotations
+      // (matches the create-time wiring above).
+      node.on('dragmove.vp5', function (e) {
+        if (e && e.evt && e.evt.shiftKey) return;
+        var g = (typeof self._snapGrid === 'number') ? self._snapGrid : 10;
+        if (g <= 0) return;
+        node.x(Math.round(node.x() / g) * g);
+        node.y(Math.round(node.y() / g) * g);
+      });
       node.on('dragend.vp5', function () {
         if (self._suppressHistory) return;
         var prev = node._vpPrevPos || { x: 0, y: 0 };
@@ -3618,6 +5188,12 @@
     // WP-5.1 surface — user annotations
     getUserAnnotations:          function () { return _active ? _active.getUserAnnotations() : []; },
     deleteSelectedAnnotations:   function () { if (_active) _active.deleteSelectedAnnotations(); },
+    // WP-7.4.7 surface — view persistence in canvas file
+    getViewState:               function () {
+      return _active ? _active.getViewState() : { zoom: 1, pan: { x: 0, y: 0 } };
+    },
+    setViewState:               function (view) { if (_active) _active.setViewState(view); },
+    applyViewFromCanvasState:   function (state) { if (_active) _active.applyViewFromCanvasState(state); },
     _getActive: function () { return _active; },
   };
 })();

@@ -546,6 +546,9 @@
         </div>
       </div>
       <div class="customizer-starter-hint">Click any highlighted item to customize it.</div>
+      <div class="customizer-starter-row customizer-reset-row">
+        <button type="button" class="customizer-reset-all">Reset all customizations</button>
+      </div>
     `;
     document.body.appendChild(starterOverlay);
 
@@ -584,6 +587,19 @@
         setPreviewMode(btn.dataset.preview);
         refreshPreviewActive();
       });
+    });
+
+    // Global reset — clears all customizations for the active theme.
+    starterOverlay.querySelector('.customizer-reset-all').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = getActiveThemeId();
+      if (!confirm(`Reset all customizations for "${id}"?\n\nThis cannot be undone.`)) return;
+      const all = loadAllCustomizations();
+      delete all[id];
+      saveAllCustomizations(all);
+      applyCustomizations();
+      // Refresh the open element overlay so its controls reflect the defaults
+      if (elementOverlay && currentTarget) showElementOverlay(currentTarget);
     });
   };
 

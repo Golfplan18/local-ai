@@ -1,5 +1,12 @@
 # Agent Identity and Programming Framework
 
+## Display Name
+Agent Identity and Programming
+
+## Display Description
+Create and program specialized agent identities using the MindSpec pattern. Produces a compiled agent boot file and registry entry, ready to slot into the orchestrator. Use when defining a new domain-specialized agent voice or capability.
+
+
 *A Combined Framework for Creating AI Agent Identities and Programming Agent Missions*
 
 *Version 1.0*
@@ -129,43 +136,75 @@ Specification — this document is model-agnostic and environment-agnostic. All 
 
 Each half executes independently in its own session. The triage gate (Layer 1) routes to the appropriate half. No single-pass session needs to hold both halves simultaneously.
 
+Modes I-Create and I-Modify cover Layers 2-10 (nine processing layers, post-M0) and declare a single milestone each; modes M-Program and M-Task cover Layers 11-16 (six processing layers) and declare a single milestone each. Per the Process Formalization Framework Section II §2.3, these single-milestone-for->5-layer-modes designs are justified by the internal consistency requirements of each Half: Half 1's MindSpec canonical fileset is only valid post-Layer-7 cross-file consistency validation, and Half 2's mission/task brief carries an interdependent execution plan, supervisory configuration, and checkpoint protocol that only become coherent at full-pipeline completion.
+
 ---
 
 ## MILESTONES DELIVERED
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: New agent identity
+Agent-Identity is a multi-mode framework with four modes (I-Create / I-Modify / M-Program / M-Task) organized into a half-1 / half-2 architecture: Half 1 (Layers 2-10) produces agent identity (modes I-Create and I-Modify); Half 2 (Layers 11-16) produces agent missions or tasks (modes M-Program and M-Task). Layer 1 is the M0 routing layer that fires before mode selection — it determines the operating mode, classifies the agent as Functional or Incarnated for I-modes, and loads existing agent files for I-Modify / M-Program / M-Task. M-Program and M-Task consume identity files produced by I-Create or I-Modify (or, at runtime, accept a verbal description of an existing agent in lieu of files). Layers 3, 4, and 6 are Conditional — they fire only when the agent is classified as Incarnated and are skipped for Functional agents. All milestone properties are defined inline per milestone.
 
-- **Endpoint produced:** Complete MindSpec canonical file set written to `~/ora/agents/[agent-name]/` at the depth appropriate to the classified tier (functional: `mind.md`, `AGENTS.md`, `MEMORY.md`, optional `IDENTITY.md`; incarnated: the full set plus `IDENTITY.md`, `STYLE.md`, `examples/good-outputs.md`, `examples/bad-outputs.md`), compiled agent boot file at `~/ora/agents/[agent-name]/[agent-name]-boot.md`, and new agent registry entry appended to `~/ora/agents/agent-registry.md`
-- **Verification criterion:** (a) the classification tier (functional or incarnated) is recorded with rationale per Layer 1 criteria; (b) all files required for the classified tier are present, non-empty, and pass the Layer 7 cross-file consistency validation; (c) the compiled boot file preserves every operational directive from the canonical files and achieves at least 40% word-count reduction per Layer 8 compression protocol; (d) the agent registry entry contains all required fields (`agent_id`, `display_name`, `tier`, `status`, `boot_file`, `canonical_directory`, `created`, `last_modified`, `description`); (e) the applicable Half 1 evaluation criteria (1, 2, 3, 4, 5, 6, 7, 10) score 3 or above
-- **Preconditions:** User participation in structured elicitation is available; an agent purpose statement of one to three sentences is provided; `~/ora/agents/` is writable
-- **Mode required:** I-Create
-- **Framework Registry summary:** Creates a new persistent AI agent identity as MindSpec canonical files plus compiled boot file plus registry entry
+### M0: Routing
 
-### Milestone Type: Modified agent identity
+- **Function:** Determine the operating mode (I-Create / I-Modify / M-Program / M-Task) from explicit user specification or, when unspecified, from context (new-agent description → I-Create; existing-agent + change description → I-Modify; existing-agent + mission description → M-Program; existing-agent + discrete-task description → M-Task). For I-Create and I-Modify, classify the target agent as Functional or Incarnated per Layer 1's classification criteria and set the Conditional-Layer flag accordingly. For I-Modify / M-Program / M-Task, attempt to load existing agent files from `~/ora/agents/[agent-name]/` and surface their summary (or escalate if files cannot be found). Apply the Over-Classification Trap correction: do not classify an agent as Incarnated solely because the user describes it with personality language; test against the recognizable-voice criterion before declaring Incarnated.
+- **Layers covered:** 1
+- **Output:** Confirmed operating mode + (for I-Create / I-Modify) tier classification (Functional / Incarnated) with rationale + (for I-Modify / M-Program / M-Task) loaded existing-agent file summary or absence-of-files escalation. The tier classification governs which Conditional layers (3, 4, 6) fire downstream; Functional skips them, Incarnated runs them.
 
-- **Endpoint produced:** Updated MindSpec canonical files for the changed components, recompiled agent boot file reflecting the modifications, updated agent registry entry with refreshed `last_modified` date, and change summary documenting what was added, modified, or removed relative to the prior version
-- **Verification criterion:** (a) the existing agent files were located and loaded from `~/ora/agents/[agent-name]/` before modification; (b) only the components identified for change were modified — unchanged components remain byte-identical to the prior version; (c) the Layer 7 cross-file consistency validation passes across the updated file set; (d) the recompiled boot file remains consistent with the updated canonical files per the Layer 8 fidelity check; (e) the change summary enumerates every addition, modification, and removal; (f) the applicable Half 1 evaluation criteria (1, 2, 3, 4, 5, 6, 7, 10) score 3 or above
-- **Preconditions:** An existing agent directory at `~/ora/agents/[agent-name]/` with a loadable MindSpec file set; a user description of what needs to change
-- **Mode required:** I-Modify
-- **Framework Registry summary:** Modifies an existing agent's MindSpec files and recompiles the boot file without regenerating unchanged components
+### Milestones for Mode I-Create
 
-### Milestone Type: Agent mission brief
+#### Milestone 1: New agent identity
 
-- **Endpoint produced:** Structured mission brief containing endpoint specification, Hard and Soft constraints, success criteria, authority boundaries, available resources, execution plan with step sequence and decision points, execution specification with per-step quality checks and recovery protocols, checkpoint protocol, and supervisory configuration with escalation triggers — plus, when the mission required a novel process discovered via PIF and formalized via PFF, a new framework registry entry for the discovered process
-- **Verification criterion:** (a) all five mission elements from Layer 11 (Endpoint, Constraints, Success Criteria, Authority Boundaries, Available Resources) are populated and confirmed with the user; (b) the execution plan's method source is identified as one of (matched framework from registry, PIF-discovered path, user-provided process); (c) every step in the execution specification uses only resources from the Available Resources inventory; (d) every checkpoint specifies what the agent presents, what the human reviews, and what happens after review; (e) escalation triggers cover hard-constraint violation, output-quality degradation, insufficient-information decision points, endpoint-unreachability, and ethical or safety concerns; (f) if a novel process was formalized during planning, a framework registry entry is produced with provenance `agent-created` and confidence level `experimental`; (g) the applicable Half 2 evaluation criteria (1, 6, 8, 9, 10) score 3 or above
-- **Preconditions:** An existing agent with loadable identity files at `~/ora/agents/[agent-name]/` (or, if files are unavailable, a user-provided verbal description of the agent's purpose, capabilities, and boundaries); a user-provided mission description
-- **Mode required:** M-Program
-- **Framework Registry summary:** Produces a full mission brief programming an existing agent to prosecute a mission autonomously with plan, execution specification, and supervisory configuration
+- **Mode:** I-Create
+- **Endpoint produced:** Complete MindSpec canonical file set written to `~/ora/agents/[agent-name]/` at the depth appropriate to the classified tier (functional: `mind.md`, `AGENTS.md`, `MEMORY.md`, optional `IDENTITY.md`; incarnated: the full set plus `IDENTITY.md`, `STYLE.md`, `examples/good-outputs.md`, `examples/bad-outputs.md`), compiled agent boot file at `~/ora/agents/[agent-name]/[agent-name]-boot.md`, and new agent registry entry appended to `~/ora/agents/agent-registry.md`.
+- **Verification criterion:** (a) the classification tier (functional or incarnated) is recorded with rationale per Layer 1 criteria; (b) all files required for the classified tier are present, non-empty, and pass the Layer 7 cross-file consistency validation; (c) the compiled boot file preserves every operational directive from the canonical files and achieves at least 40% word-count reduction per Layer 8 compression protocol; (d) the agent registry entry contains all required fields (`agent_id`, `display_name`, `tier`, `status`, `boot_file`, `canonical_directory`, `created`, `last_modified`, `description`); (e) the applicable Half 1 evaluation criteria (1, 2, 3, 4, 5, 6, 7, 10) score 3 or above.
+- **Layers covered:** 2, 3, 4, 5, 6, 7, 8, 9, 10
+- **Conditional layers:** 3, 4, 6 — fire only for Incarnated tier; skipped for Functional agents per M0's classification.
+- **Required prior milestones:** M0
+- **Gear:** 4
+- **Output format:** MindSpec canonical fileset at `~/ora/agents/[agent-name]/` per the classified tier (Functional subset of `mind.md` + `AGENTS.md` + `MEMORY.md` + optional `IDENTITY.md`, or Incarnated full set adding `IDENTITY.md` + `STYLE.md` + `examples/good-outputs.md` + `examples/bad-outputs.md`), plus `[agent-name]-boot.md` compiled boot file, plus appended agent registry entry. Half 1 self-evaluation and error correction (Layers 9-10) verify and finalize the bundle.
+- **Drift check question:** Does the produced fileset faithfully reflect the user's described agent — applying tier-appropriate depth (Functional vs. Incarnated) per evidence rather than personality-language shortcut — with cross-file consistency passed and the boot compilation preserving operational directives without lossy compression?
 
-### Milestone Type: Agent task specification
+### Milestones for Mode I-Modify
 
-- **Endpoint produced:** Compressed task specification for an existing agent containing endpoint, Hard and Soft constraints, success criteria, authority boundaries, available resources, and execution specification with checkpoint protocol — without novel-process discovery or formalization
-- **Verification criterion:** (a) Layer 11 produced all five mission elements via the compressed single-prompt intake, with follow-up probes used only where the user's answers were ambiguous; (b) the task is bounded and well-defined such that no PIF invocation was required for plan generation; (c) the execution specification uses only resources from the Available Resources inventory; (d) the checkpoint protocol specifies what the agent presents and what happens after review at each checkpoint; (e) the applicable Half 2 evaluation criteria (1, 6, 8, 9, 10) score 3 or above
-- **Preconditions:** An existing agent with loadable identity files (or a user-provided verbal description as in M-Program); a user-provided description of a discrete, well-defined task
-- **Mode required:** M-Task
-- **Framework Registry summary:** Produces a compressed task specification assigning bounded work to an existing agent without full mission planning
+#### Milestone 1: Modified agent identity
+
+- **Mode:** I-Modify
+- **Endpoint produced:** Updated MindSpec canonical files for the changed components, recompiled agent boot file reflecting the modifications, updated agent registry entry with refreshed `last_modified` date, and change summary documenting what was added, modified, or removed relative to the prior version.
+- **Verification criterion:** (a) the existing agent files were located and loaded from `~/ora/agents/[agent-name]/` before modification; (b) only the components identified for change were modified — unchanged components remain byte-identical to the prior version; (c) the Layer 7 cross-file consistency validation passes across the updated file set; (d) the recompiled boot file remains consistent with the updated canonical files per the Layer 8 fidelity check; (e) the change summary enumerates every addition, modification, and removal; (f) the applicable Half 1 evaluation criteria (1, 2, 3, 4, 5, 6, 7, 10) score 3 or above.
+- **Layers covered:** 2, 3, 4, 5, 6, 7, 8, 9, 10
+- **Conditional layers:** 3, 4, 6 — fire only for Incarnated tier (skipped for Functional agents per M0's classification); additionally, Half-1 layers fire only for the components named in the requested change per Layer 1 routing — unchanged components are not re-elicited.
+- **Required prior milestones:** M0
+- **Gear:** 4
+- **Output format:** Updated MindSpec canonical files (only the components named in the change), recompiled `[agent-name]-boot.md`, registry entry with refreshed `last_modified`, and change summary listing additions / modifications / removals.
+- **Drift check question:** Does the modification stay scoped to the components the user requested — with unchanged components byte-identical to the prior version — and does the recompiled boot file remain consistent with the canonical files rather than introducing unbidden changes during recompilation?
+
+### Milestones for Mode M-Program
+
+#### Milestone 1: Agent mission brief
+
+- **Mode:** M-Program
+- **Endpoint produced:** Structured mission brief containing endpoint specification, Hard and Soft constraints, success criteria, authority boundaries, available resources, execution plan with step sequence and decision points, execution specification with per-step quality checks and recovery protocols, checkpoint protocol, and supervisory configuration with escalation triggers — plus, when the mission required a novel process discovered via PIF and formalized via PFF, a new framework registry entry for the discovered process.
+- **Verification criterion:** (a) all five mission elements from Layer 11 (Endpoint, Constraints, Success Criteria, Authority Boundaries, Available Resources) are populated and confirmed with the user; (b) the execution plan's method source is identified as one of (matched framework from registry, PIF-discovered path, user-provided process); (c) every step in the execution specification uses only resources from the Available Resources inventory; (d) every checkpoint specifies what the agent presents, what the human reviews, and what happens after review; (e) escalation triggers cover hard-constraint violation, output-quality degradation, insufficient-information decision points, endpoint-unreachability, and ethical or safety concerns; (f) if a novel process was formalized during planning, a framework registry entry is produced with provenance `agent-created` and confidence level `experimental`; (g) the applicable Half 2 evaluation criteria (1, 6, 8, 9, 10) score 3 or above.
+- **Layers covered:** 11, 12, 13, 14, 15, 16
+- **Required prior milestones:** M0, I-Create.M1 or I-Modify.M1 (or runtime user-provided verbal description of the agent in lieu of identity files).
+- **Gear:** 4
+- **Output format:** Half 2 mission brief — Layer 11's mission elements (Endpoint, Hard/Soft Constraints, Success Criteria, Authority Boundaries, Available Resources), Layer 12's execution plan (step sequence + decision points + method-source identification), Layer 13's execution specification (per-step quality checks + recovery protocols + checkpoint protocol), Layer 14's supervisory configuration (escalation triggers); Layers 15-16 verify and finalize. If a novel process was formalized via PFF, a Framework Registry entry with provenance `agent-created` and confidence `experimental` accompanies the brief.
+- **Drift check question:** Does the mission brief stay faithful to the user's actual mission — with the method source declared truthfully (registry-matched / PIF-discovered / user-provided) rather than confabulated, and with escalation triggers genuinely covering hard-constraint violation and ethical concerns rather than performatively listed?
+
+### Milestones for Mode M-Task
+
+#### Milestone 1: Agent task specification
+
+- **Mode:** M-Task
+- **Endpoint produced:** Compressed task specification for an existing agent containing endpoint, Hard and Soft constraints, success criteria, authority boundaries, available resources, and execution specification with checkpoint protocol — without novel-process discovery or formalization.
+- **Verification criterion:** (a) Layer 11 produced all five mission elements via the compressed single-prompt intake, with follow-up probes used only where the user's answers were ambiguous; (b) the task is bounded and well-defined such that no PIF invocation was required for plan generation; (c) the execution specification uses only resources from the Available Resources inventory; (d) the checkpoint protocol specifies what the agent presents and what happens after review at each checkpoint; (e) the applicable Half 2 evaluation criteria (1, 6, 8, 9, 10) score 3 or above.
+- **Layers covered:** 11, 12, 13, 14, 15, 16
+- **Required prior milestones:** M0, I-Create.M1 or I-Modify.M1 (or runtime user-provided verbal description of the agent in lieu of identity files).
+- **Gear:** 4
+- **Output format:** Compressed Half 2 task specification — Layer 11's compressed mission elements via single-prompt intake, Layer 12's plan generation without PIF invocation (since the task is bounded), Layer 13's execution specification with checkpoint protocol, Layer 14's supervisory configuration; Layers 15-16 verify and finalize. No novel-process discovery and no Framework Registry entry produced.
+- **Drift check question:** Does the task specification stay genuinely bounded — with no PIF invocation required and the compressed single-prompt intake completed without unjustified follow-up probes — rather than expanding scope into a full mission brief that should have been M-Program?
 
 ---
 

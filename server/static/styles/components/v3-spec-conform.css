@@ -1,0 +1,181 @@
+/* ============================================================
+   V3 Spec Conformance — additions for 2026-04-30 batch.
+   Covers:
+     - Sidebar top-row layout (new-thread + pin toggle)
+     - Sidebar pin-in-place toggle button
+     - Per-row pin button (Backlog 3F)
+     - Disabled mode button + tooltip (Backlog 5A)
+     - Right-column scratchpad turns + "not saved" label (Backlog 6)
+     - Click-to-rename display name in output pane header (Backlog 2C)
+   These additions sit at the end of the cascade so they extend
+   without overriding theme tokens.
+   ============================================================ */
+
+/* ── Sidebar top row (new-thread cmd + pin toggle) ─────────── */
+
+.sidebar-top-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.sidebar-top-row .sidebar-new-thread-cmd {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.sidebar-pin-toggle {
+  flex-shrink: 0;
+  width: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.sidebar-pin-toggle:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+
+.sidebar-pin-toggle[aria-pressed="true"] {
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+
+/* Body class set by sidebar.js when pinned. Reserved for any layout
+   reactions we may want (e.g. main content offset). Currently a hook
+   only — no layout changes piped in yet. */
+body.sidebar-pinned .left-sidebar.expanded {
+  /* No-op for now; left as an anchor for future layout work. */
+}
+
+/* ── Per-row pin button (Backlog 3F) ───────────────────────── */
+
+.sidebar-row-pin {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease;
+}
+
+.sidebar-row:hover .sidebar-row-pin,
+.sidebar-row-pin.is-pinned {
+  opacity: 1;
+}
+
+.sidebar-row-pin:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.sidebar-row-pin.is-pinned {
+  color: var(--interactive-accent);
+}
+
+/* ── Disabled mode button (Backlog 5A) ─────────────────────── */
+
+.spine-button.mode-button-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: auto; /* keep hover so the title tooltip fires */
+}
+
+.spine-button.mode-button-disabled:hover {
+  background: transparent;
+}
+
+/* ── Scratchpad (right-column Q&A) ─────────────────────────── */
+
+.chat-output-pane {
+  position: relative;
+}
+
+.scratchpad-turn {
+  padding: 6px 10px;
+  margin: 4px 0;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.scratchpad-turn-query {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  font-weight: 500;
+}
+
+.scratchpad-turn-answer {
+  color: var(--text-normal);
+}
+
+.scratchpad-turn-pending {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.scratchpad-turn-error {
+  color: var(--text-error, #d4716e);
+  font-style: italic;
+}
+
+.scratchpad-not-saved-label {
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-faint, var(--text-muted));
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.7;
+}
+
+/* ── Editable display name in output-pane header (Backlog 2C) ── */
+
+.output-pane-display-name.is-clickable {
+  cursor: text;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 120ms ease;
+}
+
+.output-pane-display-name.is-clickable:hover {
+  border-bottom-color: var(--text-muted);
+}
+
+.output-pane-display-name.is-renaming {
+  cursor: text;
+  border-bottom: none;
+}
+
+.output-pane-display-name-input {
+  font: inherit;
+  color: inherit;
+  background: var(--background-primary);
+  border: 1px solid var(--interactive-accent);
+  border-radius: 3px;
+  padding: 1px 6px;
+  outline: none;
+  min-width: 12ch;
+  max-width: 40ch;
+}

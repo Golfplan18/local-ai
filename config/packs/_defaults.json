@@ -1,0 +1,9 @@
+{
+  "_comment": "Default packs that V3 boot auto-loads. Filename keys are looked up under /static/config/packs/. Order matters only for tie-break of macro/template id collisions; toolbar registries enforce uniqueness.",
+  "default_packs": [
+    "diagram-thinking.pack.json",
+    "photo-editor.pack.json",
+    "mood-board.pack.json",
+    "cartoon-studio.pack.json"
+  ]
+}

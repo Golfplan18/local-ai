@@ -1,0 +1,250 @@
+/* ============================================================
+   Left Sidebar — V3 Phase 4.1–4.4
+   Two states: collapsed (icon-width dashboard) / expanded (full list).
+   Header-less; the new-thread command sits at the top and acts as the
+   de facto header. Three groups: Unread / Active / Pending.
+   ============================================================ */
+
+.left-sidebar {
+  --ora-sidebar-collapsed-w: 40px;
+  --ora-sidebar-expanded-w: 280px;
+  width: var(--ora-sidebar-collapsed-w);
+  min-width: var(--ora-sidebar-collapsed-w);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 2px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  transition: width 180ms ease;
+}
+
+.left-sidebar.expanded {
+  width: var(--ora-sidebar-expanded-w);
+  min-width: var(--ora-sidebar-expanded-w);
+}
+
+/* ── Collapsed dashboard (5 vertical items) ─────────────────── */
+
+.sidebar-collapsed-dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 10px;
+}
+
+.left-sidebar.expanded .sidebar-collapsed-dashboard {
+  display: none;
+}
+
+.sidebar-dash-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--interactive-normal);
+  padding: 0;
+}
+
+.sidebar-dash-icon:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.sidebar-dash-count {
+  font-family: var(--font-monospace, ui-monospace, SFMono-Regular, monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  min-height: 16px;
+  line-height: 16px;
+  cursor: default;
+}
+
+.sidebar-dash-count[data-count="0"] {
+  display: none;
+}
+
+/* ── Expanded panel (new-thread command + three groups) ─────── */
+
+.sidebar-expanded-panel {
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  padding: 12px 10px;
+  overflow: hidden;
+}
+
+.left-sidebar.expanded .sidebar-expanded-panel {
+  display: flex;
+}
+
+.sidebar-new-thread-cmd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.sidebar-new-thread-cmd:hover {
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  border-color: var(--interactive-accent);
+}
+
+.sidebar-new-thread-cmd .plus-glyph {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.sidebar-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-group-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 4px 4px 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 4px;
+}
+
+.sidebar-group-empty {
+  font-size: 12px;
+  color: var(--text-faint, var(--text-muted));
+  font-style: italic;
+  padding: 4px 6px;
+}
+
+.sidebar-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-normal);
+  position: relative;
+}
+
+.sidebar-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.sidebar-row.is-active {
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  border-left: 2px solid var(--interactive-accent);
+}
+
+/* V3 Backlog 3C — keyboard focus indicator for arrow-key navigation.
+   :focus-visible scopes this to keyboard-driven focus, so mouse clicks
+   don't leave a lingering ring. */
+.sidebar-row:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+  background: var(--background-modifier-hover);
+}
+
+.sidebar-row-prefix {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.sidebar-row[data-tag="stealth"] .sidebar-row-prefix {
+  color: var(--ora-mode-stealth-button-icon);
+}
+
+.sidebar-row[data-tag="private"] .sidebar-row-prefix {
+  color: var(--ora-mode-private-button-icon);
+}
+
+.sidebar-row-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-row-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.sidebar-row-close {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.sidebar-row:hover .sidebar-row-close {
+  opacity: 1;
+}
+
+.sidebar-row-close:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* Pending row indicator: a small pulsing dot on the right edge */
+.sidebar-row[data-pending="true"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  transform: translateY(-50%);
+  animation: pending-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}

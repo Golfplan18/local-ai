@@ -1,5 +1,12 @@
 # MindSpec Interview Framework v0.2.3
 
+## Display Name
+MindSpec Interview
+
+## Display Description
+Produce complete agent, character, or self specifications through tiered interactive interview — Core Identity, Mission, Context, Commitments, Governance, Constitution, Voice, Communication Patterns, Relationships. Output is a single mind.md or [agent-name].md file.
+
+
 *Operational specification for producing MindSpec agent, character, and self specifications through tiered interactive assessment. Includes Inference Layer (§V) and Learning Architecture (§VI) specifications.*
 
 *v0.2.2 2026-04-21: Universality-audit corrections applied. Library defaults recalibrated to general-population median (26 of 59 entries). Portrait, dyad, multi-commitment, and pressure-test revisions for architect-specific-vocabulary, framework-jargon, and contemplative-practice-presumption leakage. Stage 2A Life-Context Direct Pass specified as §VIIA — previously improvised, now universal. Framework-author reflexivity flagged as Known Limitation. Single-file specification architecture introduced for application to v0.2.3 outputs. Four-framework ecosystem clarified (MindSpec / Mission / Interaction / Problem Evolution). See `Framework — MindSpec Universality Audit and Corrections.md` for methodology and full corrections.*
@@ -7,6 +14,21 @@
 *v0.2.3 2026-04-21: Library inventory in §II updated to 66 entries (42 primary + 24 character-spec) across 11 families. Primary additions KINDNESS, RESPECT, WARMTH; character-spec additions CONTEMPT, SELF-CONTEMPT, ARROGANCE, SCHADENFREUDE. Renames: HARM-AVERSION → HARMLESSNESS, IN-GROUP-LOYALTY → TRIBALISM, SELF-ABASEMENT → FALSE HUMILITY, Life-Orientation → VITALITY, Long-duration-affective-state → TEMPERAMENT.*
 
 *v0.2.3 consolidation 2026-04-21: Inference Layer and Learning Architecture merged into this file as §V and §VI respectively. Library Specifications and Three-Stage Assessment Instrument consolidated into `Framework — MindSpec Library and Instrument.md`. Previous five-file architecture reduced to three operational files + Universality Audit.*
+
+
+## Setup Questions
+
+### Specification target
+Required. Whether you're producing an agent, a character, or a self specification.
+
+### Tier — for agents only
+Required for agent mode. Which tier of agent: ephemeral (one-off task), persistent task (a recurring role), or personal thinking partner (lifelong, multi-domain).
+
+### Descriptive material
+Optional. Any text you've already written about the agent, character, or self — purpose, voice, examples, prior notes. If absent, the framework runs a full elicitation interview from scratch.
+
+### Existing specification — for revision
+Optional. A prior MindSpec file (single-file v0.2.3+ or structured YAML v0.2.2 format) if you're revising rather than creating fresh. If absent, the framework starts from library defaults.
 
 ## PURPOSE
 
@@ -52,29 +74,46 @@ Single-pass in commercial AI sessions. Stages execute sequentially with natural 
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: Agent specification
+MindSpec Interview is a multi-mode framework with three modes (MSI-Agent / MSI-Character / MSI-Self). Mode is selected explicitly by the invoker; there is no triage layer. The framework uses Stages from §IV (the Three-Stage Assessment Instrument) and §VIIA (Life-Context Direct Pass at Stage 2A) instead of numbered Layers; **Layers covered** values below carry these Stage numbers (1, 2, 2A, 3). §V Inference Layer, §VI Learning Architecture, and §VII Tier-Dependent Interview Flows are cross-cutting infrastructure invoked by every mode and are not separately enumerated in **Layers covered**. All milestone properties are defined inline per milestone.
 
+### Milestones for Mode MSI-Agent
+
+#### Milestone 1: Agent specification
+
+- **Mode:** MSI-Agent
 - **Endpoint produced:** Complete agent specification fileset for a named persistent or ephemeral AI agent — primary single-file specification (`mind.md` or `[agent-name].md`) containing Core Identity, Mission, Context, Commitments (structured fields plus operational prose per entry), Governance, Constitution, Voice, Communication Patterns, and Relationships sections, plus companion files `ledger.md` (learning log) and `modifications.md` (change log) initialized empty. For v0.2.2 and earlier, the structured-YAML set (`commitments.yaml` + `governance.yaml` + `constitution.yaml`) plus `mind.md` prose projection, `VOICE.md`, and `COMMUNICATION.md`. Tier-dependent subsets per §VII — Tier 1 ephemeral agents receive library-default specifications without assessment; Tier 2 persistent task agents receive Stage 1 filtered assessment with light governance; Tier 3 personal thinking partners receive full three-stage assessment with full governance.
 - **Verification criterion:** (a) all seven Evaluation Criteria (§VIII) score 3 or above; (b) for Tier 3 specifications, total specification length reaches 4000–6000 words per §Single-file specification architecture density requirements; (c) all library entries at weight 6+ carry the full operational paragraph (100–200 words) per projection density requirements; (d) incompatibility adjustment mechanism (§V.3) has been applied and resulting adjustments are surfaced transparently per §V.4.1 Adjustment Summary Format (Tier 2 and Tier 3 only; Tier 1 is exempt per Principle 6); (e) for Tier 3, constitutional commitments have been identified per Stage 3 pressure-testing and recorded with articles, interpretation, and amendment conditions; (f) the tier-appropriate interview flow from §VII has been followed through to completion with all Stage 2A Life-Context fields (§VIIA) populated including explicit "none" recordings where applicable.
-- **Preconditions:** User participation is available for the interview duration matching the selected tier; mode is locked to agent-specification; tier is selected (ephemeral, persistent task, or personal thinking partner); dependent documents (`MindSpec_v0.4_Specification.md` and `Framework — MindSpec Library and Instrument.md`) are loaded; optional descriptive material about the agent target and optional existing specification for revision are either provided or explicitly absent.
-- **Mode required:** Agent-specification mode with tier selection
-- **Framework Registry summary:** Produces complete MindSpec agent specification (ephemeral, persistent task, or personal thinking partner tier) through tiered interactive assessment with incompatibility adjustment and governance configuration
+- **Layers covered:** 1, 2, 2A, 3
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Agent fileset at the agent's canonical paths — primary specification (`mind.md` or `[agent-name].md`) plus `ledger.md` and `modifications.md` companion files; depth varies by tier per §VII (Tier 1 library-default subsets, Tier 2 Stage-1-filtered with light governance, Tier 3 full single-file spec).
+- **Drift check question:** Does the agent specification faithfully capture what the user described about the agent target — applying tier-appropriate depth without inflating Tier 1 to Tier 3 levels — with incompatibility adjustments surfaced transparently per §V.4.1 rather than silently resolved?
 
-### Milestone Type: Character specification
+### Milestones for Mode MSI-Character
 
+#### Milestone 1: Character specification
+
+- **Mode:** MSI-Character
 - **Endpoint produced:** Complete fiction-character specification fileset — primary single-file specification (`char-profile.md` or `[character-name].md`) containing Core Identity, Mission, Context, Commitments (structured fields plus operational prose per entry including pathology signatures where applicable from the 24-entry character-spec library), Governance, Constitution, Voice, Communication Patterns, and Relationships sections, plus companion files `ledger.md` and `modifications.md` initialized empty. Produced through direct authoring plus coherence check flow (§VII) with pathology signatures pre-filled per authorial intent where explicit material is provided.
 - **Verification criterion:** (a) all seven Evaluation Criteria (§VIII) score 3 or above; (b) incompatibility adjustment mechanism (§V.3) has been applied — character-spec mode is within universal scope per Principle 6 and §V.3.8 — and resulting adjustments are surfaced transparently in the authorial-control framing specified in §V.3.8; (c) character-spec library entries (PITY, FALSE HUMILITY, INDIFFERENCE, CAPITULATION, ENTITLEMENT, JEALOUSY, CRUELTY, ENMESHMENT, CONTEMPT, SELF-CONTEMPT, ARROGANCE, SCHADENFREUDE, RESENTMENT, MALICE, SPITE, WRATH, GREED, MISERLINESS, POSSESSIVENESS, OBSESSION, CONCEALMENT, DELUSION, BITTERNESS, PRETENSE) used in the specification carry operational prose matching the agent commitment density requirements; (d) the resulting specification passes coherence check — directly-opposing pairs and near-enemy pairs are not simultaneously active at high weights unless justified by the adjustment mechanism's output; (e) Stage 2A Life-Context fields (§VIIA) populated for the character with explicit "none" recordings where applicable.
-- **Preconditions:** User participation is available for the 30-90 minute direct-authoring flow; mode is locked to character-specification; authorial material (character sketches, biographical notes, prior writings, theoretical frameworks with references) is either provided for material-based inference (§V.1) or the author proceeds without pre-fill; dependent documents are loaded.
-- **Mode required:** Character-specification mode
-- **Framework Registry summary:** Produces complete MindSpec fiction-character specification with pathology signatures through direct-authoring flow with coherence check
+- **Layers covered:** 2A
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Character fileset at the character's canonical paths — primary specification (`char-profile.md` or `[character-name].md`) plus `ledger.md` and `modifications.md` companion files; produced via §VII direct-authoring + coherence-check flow with §V.3 incompatibility check and Stage 2A Life-Context (§VIIA), using the 24-entry character-spec library for pathology-signature pre-fill.
+- **Drift check question:** Does the character specification stay faithful to authorial intent — using the 24-entry character-spec library's pathology signatures only where explicit material warrants them — with coherence check passed and incompatibility adjustments surfaced under the authorial-control framing rather than silently overriding the author?
 
-### Milestone Type: Self-specification
+### Milestones for Mode MSI-Self
 
+#### Milestone 1: Self-specification
+
+- **Mode:** MSI-Self
 - **Endpoint produced:** Complete self-specification fileset for the user — primary single-file specification (`mind.md`) containing Core Identity, Mission, Context, Commitments (structured fields plus operational prose per entry across the 42-entry primary library), Governance, Constitution, Voice, Communication Patterns, and Relationships sections, plus companion files `ledger.md` and `modifications.md` initialized empty. Produced through full three-stage assessment (§IV) with Stage 2A Life-Context Direct Pass (§VIIA), Inference Layer processing (§V), and constitutional identification via Stage 3 pressure-tests.
 - **Verification criterion:** (a) all seven Evaluation Criteria (§VIII) score 3 or above; (b) total specification length reaches 4000–6000 words per §Single-file specification architecture density requirements; (c) all library entries at weight 6+ carry the full operational paragraph (100–200 words) per projection density requirements; (d) incompatibility adjustment mechanism (§V.3) has been applied in full — self-specification is within universal scope per Principle 6 and §V.3.8 — and resulting adjustments are surfaced transparently per §V.4.1 with developmental framing (Principle 10) honored throughout; (e) concept-access-difficult commitments (the 14 entries listed in §V.3.1) carry reliability coefficients and any adjustments trace to specific evidence from scenario patterns per §V.3.4; (f) constitutional commitments have been identified per Stage 3 pressure-testing and recorded with articles, interpretation, and amendment conditions; (g) if LC-7 self-identified load-bearing commitments were provided, divergence between self-identification and assessment-derived results has been surfaced in the adjustment summary.
-- **Preconditions:** User participation is available for the 3-5 hour full assessment (or 45-minute-to-full with material-based pre-fill per §V.1); mode is locked to self-specification; dependent documents are loaded; optional prior-writings material, biographical context, or theoretical framework anchors are either provided or explicitly absent.
-- **Mode required:** Self-specification mode (runs against the full-depth Tier 3 interview flow by default)
-- **Framework Registry summary:** Produces complete MindSpec self-specification through full three-stage assessment with incompatibility adjustment and constitutional identification
+- **Layers covered:** 1, 2, 2A, 3
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Self-specification fileset for the user — primary spec (`mind.md`) at user-canonical path plus `ledger.md` and `modifications.md` companion files; runs the full Tier 3 interview flow by default per §VII (3-5 hours, or 45-min-to-full with §V.1 material-based pre-fill).
+- **Drift check question:** Does the self-specification faithfully reflect the user's actual commitment patterns — surfacing divergence between self-identification (LC-7) and assessment-derived results when present — with developmental framing (Principle 10) honored and concept-access-difficult adjustments traced to evidence per §V.3.4 rather than imposed by default?
 
 ---
 

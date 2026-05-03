@@ -1,0 +1,234 @@
+/* ============================================================
+   Prompt Overlay — V3 design backlog item 8B
+   ----------------------------------------------------------------
+   The output pane shows the response of the currently-displayed
+   turn. The prompt that generated it isn't shown by default. An
+   expander in the output pane header summons an overlay that
+   covers the input pane and the bridge strip, displaying the
+   prompt as read-only scrollable text.
+   ============================================================ */
+
+/* ─── Output pane header (item 8A) ─────────────────────────────
+   Sits at the top of the output pane in the eye-flow region.
+   Carries mode icon, display name, navigation arrows around the
+   turn position, timestamp, and the prompt-overlay expand button.
+   ─────────────────────────────────────────────────────────────── */
+
+.output-pane {
+  /* Reserve space at the top for the absolute-positioned header */
+  padding-top: 36px;
+}
+
+.output-pane-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  height: 36px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-ui-small, 13px);
+  color: var(--text-muted);
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  pointer-events: auto;
+}
+
+.output-pane-header-left,
+.output-pane-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.output-pane-mode-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.output-pane-mode-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Mode icon is hidden in standard (no tag) state, visible when a
+   mode-tag class is on body. The actual icon is rendered by JS. */
+
+.output-pane-display-name {
+  font-weight: 500;
+  color: var(--text-normal);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.output-pane-nav-btn {
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.output-pane-nav-btn:hover:not(:disabled) {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.output-pane-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.output-pane-turn-position {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.output-pane-timestamp {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  margin-left: 4px;
+}
+
+.output-pane-expand-btn {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-left: 6px;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.output-pane-expand-btn:hover {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+  background: var(--background-modifier-hover);
+}
+
+.output-pane-expand-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* When overlay is open, the expand button becomes prominent so the
+   user can see the escape control even at a glance. */
+body.prompt-overlay-open .output-pane-expand-btn {
+  color: var(--text-normal);
+  border-color: var(--text-normal);
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+}
+
+/* ─── Prompt overlay ──────────────────────────────────────────── */
+
+.prompt-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* height set by JS to match input-pane + bridge-strip */
+  height: 0;
+  z-index: 10;
+  background: var(--background-secondary);
+  border: 2px solid var(--ora-output-pane-border, var(--background-modifier-border));
+  border-radius: 6px;
+  box-shadow:
+    inset 5px 5px 12px var(--ora-shadow-recess),
+    inset -1px -1px 0 var(--ora-highlight-recess);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.prompt-overlay.is-open {
+  display: flex;
+}
+
+.prompt-overlay-header {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  font-size: var(--font-ui-small, 13px);
+  color: var(--text-muted);
+}
+
+.prompt-overlay-title {
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.prompt-overlay-close-btn {
+  width: 26px;
+  height: 26px;
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  border: 1px solid var(--text-normal);
+  color: var(--text-normal);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.prompt-overlay-close-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--text-normal);
+}
+
+.prompt-overlay-close-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.prompt-overlay-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 18px;
+  font-size: var(--font-ui-medium, 15px);
+  line-height: 1.5;
+  color: var(--text-normal);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Ensure the left column establishes a positioning context for the
+   absolutely-positioned overlay. The inline JS in index-v3.html sets
+   this defensively if missing. */
+.left-column {
+  position: relative;
+}

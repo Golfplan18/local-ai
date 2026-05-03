@@ -152,10 +152,18 @@ class ChatPanel {
     this._setupResize();
     this._setupAttachments();
     this._showEmpty();
+
+    // WP-7.6.2 \u2014 boot async job result delivery. Wires the SSE bridge so
+    // `ora:job_status` events fire on window (consumed by OraJobQueue
+    // for the strip + canvas placeholder) AND lands a pending/result
+    // entry inline in this chat panel's output stream.
+    this._jobChatEntries = Object.create(null);
+    this._setupJobStream();
   }
 
   destroy() {
     if (this._abortCtrl) this._abortCtrl.abort();
+    this._teardownJobStream();
   }
 
   onBridgeUpdate(state) {
@@ -244,6 +252,19 @@ class ChatPanel {
   }
 
   _addAttachment(file) {
+    // Audio/Video Phase 2 — drop dispatch by MIME. Audio and video files
+    // route through the transcription pipeline rather than the data-URL
+    // attachment path. This keeps a 200 MB MOV from melting browser memory
+    // (the pre-Phase-2 path read every dropped file via FileReader.
+    // readAsDataURL, which is fine for thumbnails and ruinous for media).
+    if (window.OraTranscribeInput && window.OraTranscribeInput.isMediaFile(file)) {
+      try {
+        window.OraTranscribeInput.acceptFile(file, this._attachEl);
+      } catch (e) {
+        console.error('OraTranscribeInput.acceptFile failed:', e);
+      }
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       this._attachments.push({ name: file.name, type: file.type, dataUrl: reader.result });
@@ -342,6 +363,308 @@ class ChatPanel {
     d.textContent = `${name}: ${result}`;
     this._msgs.appendChild(d);
     this._msgs.scrollTop = this._msgs.scrollHeight;
+  }
+
+  // ── WP-7.6.2: async job result delivery ──────────────────────────────────
+  //
+  // Async results land in the same chat output stream as sync results
+  // (per §12 Q12 — no special notification panel). The lifecycle is:
+  //
+  //   1. Server-side dispatcher files the job; job_queue emits
+  //      'job_dispatched' which we surface here as a *pending* chat
+  //      entry with a small spinner badge.
+  //   2. job_queue emits 'status_changed' (queued → in_progress) — we
+  //      update the badge text but keep the entry shape.
+  //   3. Terminal status (complete / failed / cancelled) — we transition
+  //      the same DOM node into the actual result entry, render the
+  //      result_ref per its declared output type, and push a bridge
+  //      update so the canvas can pick up the artifact via the existing
+  //      bridge polling mechanism (capability-invocation-ui +
+  //      WP-7.3.3 family slot-specific handlers).
+  //
+  // The SSE stream is conversation-agnostic: the server fans every
+  // queue event to every connected client. We filter here on
+  // `conversation_id === this.panelId` so the right pane sees its
+  // jobs.
+
+  // V3 Backlog 2A Chunk 5 (2026-04-30) — SSE retired; browser polls
+  // the /api/jobs/<panel_id> endpoint at a relaxed cadence (5s) and
+  // diffs against the last-seen state to fire the same internal
+  // `ora:job_status` events. Jobs are background work, so 5s latency
+  // is fine. Polling stops when the panel tears down.
+
+  _setupJobStream() {
+    if (typeof window === 'undefined' || typeof fetch !== 'function') return;
+
+    // Hydrate first so a freshly-mounted panel re-renders any active jobs.
+    this._hydrateActiveJobs().catch(() => {});
+
+    if (this._jobPollTimer) return; // already polling
+    this._jobLastSeen = this._jobLastSeen || new Map(); // job_id → status
+
+    const poll = async () => {
+      try {
+        const resp = await fetch(`/api/jobs/${encodeURIComponent(this.panelId)}`);
+        if (!resp || !resp.ok) return;
+        const data = await resp.json();
+        const jobs = (data && Array.isArray(data.jobs)) ? data.jobs : [];
+        for (const job of jobs) {
+          const id = job && job.job_id;
+          if (!id) continue;
+          const last = this._jobLastSeen.get(id);
+          // Only fire when status changed (or new job).
+          if (last && last === job.status) continue;
+          this._jobLastSeen.set(id, job.status);
+          const payload = { type: 'job_status', conversation_id: this.panelId, job };
+          try {
+            window.dispatchEvent(new CustomEvent('ora:job_status', { detail: payload }));
+          } catch (_e) {
+            if (window.OraJobQueue && typeof window.OraJobQueue.handleEvent === 'function') {
+              try { window.OraJobQueue.handleEvent(payload); } catch (_e2) {}
+            }
+          }
+          if (payload.conversation_id === this.panelId) {
+            this._handleJobChatEvent(payload);
+          }
+        }
+      } catch (_e) {
+        // Network blip — continue polling.
+      }
+    };
+
+    this._jobPollTimer = window.setInterval(poll, 5000);
+    // Fire one poll immediately so we don't wait 5s for the first sweep.
+    poll();
+  }
+
+  _teardownJobStream() {
+    if (this._jobPollTimer) {
+      try { window.clearInterval(this._jobPollTimer); } catch (_e) {}
+      this._jobPollTimer = null;
+    }
+    if (this._jobEvtSrc) {
+      try { this._jobEvtSrc.close(); } catch (_e) {}
+      this._jobEvtSrc = null;
+    }
+  }
+
+  async _hydrateActiveJobs() {
+    if (typeof fetch !== 'function') return;
+    let resp;
+    try {
+      resp = await fetch(`/api/jobs/${encodeURIComponent(this.panelId)}`);
+    } catch (_e) { return; }
+    if (!resp || !resp.ok) return;
+    let data;
+    try { data = await resp.json(); } catch (_e) { return; }
+    const jobs = (data && Array.isArray(data.jobs)) ? data.jobs : [];
+    for (const job of jobs) {
+      // Skip terminal jobs from prior sessions — the chat-stream entry
+      // only makes sense for jobs the user is still waiting on.
+      if (!job.status || job.status === 'queued' || job.status === 'in_progress') {
+        this._handleJobChatEvent({ type: 'job_dispatched', job, conversation_id: this.panelId });
+      }
+    }
+  }
+
+  /**
+   * Idempotently apply one queue-event payload to the chat-stream UI.
+   * Public so tests can drive transitions without an SSE simulator.
+   */
+  _handleJobChatEvent(payload) {
+    if (!payload || !payload.job) return;
+    const job = payload.job;
+    const id  = job.id;
+    if (!id) return;
+
+    let entry = this._jobChatEntries[id];
+    if (!entry) {
+      entry = this._createJobChatEntry(job);
+      this._jobChatEntries[id] = entry;
+    } else {
+      entry.job = job;
+      this._updateJobChatEntry(entry);
+    }
+
+    if (job.status === 'complete'
+        || job.status === 'failed'
+        || job.status === 'cancelled') {
+      this._finalizeJobChatEntry(entry);
+      // Fire bridge update so the canvas (capability-invocation-ui +
+      // WP-7.3.3 slot handlers) can pick up the artifact. We POST the
+      // full result envelope; existing polling consumers see it on the
+      // next tick. Errors swallowed — this is a hint, not a hard sync
+      // path.
+      if (job.status === 'complete') {
+        try {
+          fetch(`/api/bridge/${encodeURIComponent(this.panelId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              async_job_result: {
+                job_id:      job.id,
+                capability:  job.capability,
+                result_ref:  job.result_ref,
+                completed_at: job.completed_at,
+              },
+            }),
+          }).catch(() => {});
+        } catch (_e) {}
+      }
+    }
+  }
+
+  _capabilityLabel(cap) {
+    if (!cap) return 'Async job';
+    return String(cap).replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+  }
+
+  _createJobChatEntry(job) {
+    this._clearEmpty();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg ai async-job async-job--pending';
+    wrap.setAttribute('data-job-id', job.id);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble async-job__bubble';
+
+    // Pending body: spinner badge + capability label + status text.
+    const head = document.createElement('div');
+    head.className = 'async-job__head';
+    head.innerHTML = `
+      <span class="async-job__spinner" aria-hidden="true">${_oraPulse16}</span>
+      <span class="async-job__label">${this._capabilityLabel(job.capability)}</span>
+      <span class="async-job__status async-job__status--${job.status}">${job.status === 'in_progress' ? 'Working' : 'Queued'}…</span>
+    `;
+    bubble.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'async-job__body';
+    bubble.appendChild(body);
+
+    wrap.appendChild(bubble);
+    this._msgs.appendChild(wrap);
+    this._msgs.scrollTop = this._msgs.scrollHeight;
+
+    return { job, wrap, bubble, head, body };
+  }
+
+  _updateJobChatEntry(entry) {
+    if (!entry || !entry.head) return;
+    const job = entry.job;
+    const statusEl = entry.head.querySelector('.async-job__status');
+    if (statusEl) {
+      statusEl.className = `async-job__status async-job__status--${job.status}`;
+      if (job.status === 'queued')      statusEl.textContent = 'Queued…';
+      else if (job.status === 'in_progress') statusEl.textContent = 'Working…';
+      else if (job.status === 'complete')    statusEl.textContent = 'Complete';
+      else if (job.status === 'failed')      statusEl.textContent = 'Failed';
+      else if (job.status === 'cancelled')   statusEl.textContent = 'Cancelled';
+      else statusEl.textContent = job.status;
+    }
+  }
+
+  _finalizeJobChatEntry(entry) {
+    if (!entry || !entry.wrap) return;
+    const job = entry.job;
+    entry.wrap.classList.remove('async-job--pending');
+    entry.wrap.classList.add('async-job--' + job.status);
+    this._updateJobChatEntry(entry);
+
+    // Replace spinner with a static dot so the entry no longer animates.
+    const spinner = entry.head ? entry.head.querySelector('.async-job__spinner') : null;
+    if (spinner) {
+      spinner.innerHTML = '';
+      spinner.classList.add('async-job__spinner--done');
+    }
+
+    // Render the result body per status.
+    const body = entry.body;
+    if (!body) return;
+    body.innerHTML = '';
+
+    if (job.status === 'complete') {
+      this._renderJobResult(body, job);
+    } else if (job.status === 'failed') {
+      const msg = document.createElement('div');
+      msg.className = 'async-job__error';
+      msg.textContent = job.error || 'The job failed.';
+      body.appendChild(msg);
+    } else if (job.status === 'cancelled') {
+      const msg = document.createElement('div');
+      msg.className = 'async-job__cancelled';
+      msg.textContent = 'Cancelled.';
+      body.appendChild(msg);
+    }
+
+    this._msgs.scrollTop = this._msgs.scrollHeight;
+  }
+
+  _renderJobResult(body, job) {
+    const ref = job.result_ref;
+
+    // Image / video URL shapes — Replicate dispatchers normalise these.
+    if (ref && typeof ref === 'object') {
+      if (ref.image_url || ref.url) {
+        const url = ref.image_url || ref.url;
+        if (/\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(url)) {
+          const img = document.createElement('img');
+          img.className = 'async-job__image';
+          img.src = url;
+          img.alt = this._capabilityLabel(job.capability) + ' result';
+          body.appendChild(img);
+          return;
+        }
+        if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(url) || ref.video_url) {
+          const v = document.createElement('video');
+          v.className = 'async-job__video';
+          v.src = ref.video_url || url;
+          v.controls = true;
+          body.appendChild(v);
+          return;
+        }
+        const a = document.createElement('a');
+        a.className = 'async-job__link';
+        a.href = url; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = url;
+        body.appendChild(a);
+        return;
+      }
+      if (ref.video_url) {
+        const v = document.createElement('video');
+        v.className = 'async-job__video';
+        v.src = ref.video_url;
+        v.controls = true;
+        body.appendChild(v);
+        return;
+      }
+    }
+
+    // Plain string → URL or short text.
+    if (typeof ref === 'string') {
+      const text = ref.trim();
+      if (/^https?:\/\//i.test(text)) {
+        const a = document.createElement('a');
+        a.className = 'async-job__link';
+        a.href = text; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = text;
+        body.appendChild(a);
+        return;
+      }
+      const p = document.createElement('div');
+      p.className = 'async-job__text';
+      p.textContent = text;
+      body.appendChild(p);
+      return;
+    }
+
+    // Fallback: pretty-print whatever we got so the user sees the
+    // payload rather than a silent no-op.
+    const pre = document.createElement('pre');
+    pre.className = 'async-job__json';
+    try { pre.textContent = JSON.stringify(ref, null, 2); }
+    catch (_e) { pre.textContent = String(ref); }
+    body.appendChild(pre);
   }
 
   // ── Send ──────────────────────────────────────────────────────────────────
@@ -444,7 +767,12 @@ class ChatPanel {
       try { console.warn('[chat-panel] visual capture failed:', e); } catch (e2) {}
     }
 
-    const useMultipart = !!(spatialRep || pendingImage || annotationsPayload);
+    // Stub envelopes (no real user shapes — synthesized only to transport
+    // the active-selection hint client-side) don't on their own warrant the
+    // multipart endpoint. We still take that path when there's a real
+    // pendingImage or annotation payload.
+    const hasRealSpatial = !!(spatialRep && !spatialRep._stubEnvelope);
+    const useMultipart = !!(hasRealSpatial || pendingImage || annotationsPayload);
 
     // Resolve the message text that goes on the wire (with any clarification
     // context prepended as before).
@@ -464,8 +792,21 @@ class ChatPanel {
         fd.append('panel_id', this.panelId);
         fd.append('is_main_feed', this.isMain ? 'true' : 'false');
         fd.append('history', JSON.stringify(this.history || []));
-        if (spatialRep) {
-          fd.append('spatial_representation', JSON.stringify(spatialRep));
+        if (spatialRep && !spatialRep._stubEnvelope) {
+          // Strip client-only metadata (underscore-prefixed) before transit —
+          // the server-side schema uses additionalProperties:false. WP-7.1.5
+          // adds `_activeSelection` for image-ref auto-fill consumption by
+          // visual-toolbar-bindings; it must not ride along to the server.
+          // `_stubEnvelope` envelopes (image-only with no real user shapes)
+          // are skipped entirely — they were synthesized to transport the
+          // active-selection hint to in-process consumers, not the server.
+          const wireRep = {};
+          for (const k in spatialRep) {
+            if (Object.prototype.hasOwnProperty.call(spatialRep, k) && k[0] !== '_') {
+              wireRep[k] = spatialRep[k];
+            }
+          }
+          fd.append('spatial_representation', JSON.stringify(wireRep));
         }
         if (pendingImage && pendingImage.blob) {
           fd.append('image', pendingImage.blob, pendingImage.name || 'upload.png');
@@ -518,6 +859,14 @@ class ChatPanel {
           if (d.type === 'tool_status')      { this._appendToolStatus(d.text); aiBubble.innerHTML = _oraPulse16; }
           else if (d.type === 'tool_result') { this._appendToolResult(d.name, d.result); }
           else if (d.type === 'pipeline_stage') { this._appendToolStatus(d.label || d.stage); aiBubble.innerHTML = _oraPulse16; }
+          else if (d.type === 'dispatch_announcement') {
+            // Phase 9 — educational parenthetical per Decision E.
+            // Rendered as italic tool status so it appears inline with the
+            // pipeline progress. The text comes from the orchestrator with
+            // *(named technique)* markdown already in place.
+            this._appendToolStatus(d.text);
+            aiBubble.innerHTML = _oraPulse16;
+          }
           else if (d.type === 'clarification_needed') {
             aiBubble.innerHTML = '<em style="opacity:.5">Waiting for clarification\u2026</em>';
             if (typeof showClarificationModal === 'function') {

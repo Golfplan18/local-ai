@@ -1,0 +1,13 @@
+{
+  "conversation_id": "annot-convo-1",
+  "display_name": "What do you make of my markup?",
+  "tag": "",
+  "messages": [],
+  "created_at": "2026-05-01T15:34:29.269361Z",
+  "interrupted_input": "What do you make of my markup?",
+  "interrupted_at": "2026-05-01T15:34:29.269361Z",
+  "interrupted_submission_id": "20260501T153429269347Z-1613b849",
+  "last_status": "errored",
+  "last_error_summary": "Server interrupted before pipeline completed. Your submission was captured to disk and recovered on restart.",
+  "last_errored_at": "2026-05-02T15:57:41"
+}

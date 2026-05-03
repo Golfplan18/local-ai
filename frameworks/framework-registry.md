@@ -1,3 +1,4 @@
+
 # Framework Registry
 
 This file indexes all frameworks available to the system. Agents query this registry (via ChromaDB semantic search) to find frameworks matching a problem. Humans browse it to see what's available.
@@ -58,15 +59,29 @@ Each framework has one entry with these fields:
 - **Version:** 6.0
 - **Delivers:** Raw-idea extraction set with classified vault-ready draft notes and atomic excavation attempted (Mode A); document extraction set from a single document with buried atomic notes extracted and relationship map produced (Mode B); batch extraction set across multiple documents with cross-document relationships and deduplication (Mode C); refined note draft produced by evaluating an existing note against its type-appropriate quality checks (Mode D)
 
-### Wicked Problems
+### Document Processing
+
+- **Purpose:** Convert any document — PDF, Word, slides, HTML, RTF, plain text, markdown — into vault-ready atomic notes with full YAML frontmatter, subtype classification, grammar-rule enforcement, and relationship mapping
+- **Problem Class:** Document ingestion and atomic note extraction
+- **Input Summary:** Files in any supported format (.pdf/.docx/.pptx/.html/.rtf/.txt/.md), placed in a processing queue, supplied via direct API call, or referenced from a batch manifest
+- **Output Summary:** Vault-ready atomic notes with type/subtype classification and relationship declarations (Path 1); processed turn-pair chunks for ChromaDB conversations collection when input is a chat (Path 2)
+- **Proven Applications:** Ships as the canonical pipeline implementation of Knowledge Artifact Coach v6.0; called by the file-attach pipeline for Ora's input-pane document drops
+- **Known Limitations:** Path 1 quality depends on Knowledge Artifact Coach's atomic-extraction protocol; mixed-content documents (text + diagrams) require iteration; chunking quality bounded by the format converter's output
+- **File Location:** frameworks/book/document-processing.md (executable); ~/Documents/vault/Framework — Document Processing.md (canonical)
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** Vault-ready atomic notes from a single document or batch; ChromaDB-indexed turn-pair chunks when the input is a chat
+
+### Decision Clarity Analysis (renamed from Wicked Problems Framework 2026-05-01)
 
 - **Purpose:** Structured analysis of problems that resist resolution due to fundamental stakeholder value conflicts, evolving problem definitions, and the absence of an objective stopping condition. WPF does not solve wicked problems; it produces a Decision Clarity Document making the structure of the dilemma legible to whoever holds decision authority.
 - **Problem Class:** Wicked-problem analysis, multi-stakeholder value-conflict mapping, tradeoff transparency
 - **Input Summary:** Path A (user invocation): problem description plus optional stakeholder stance. Path B (PEF handoff): structured handoff package with problem definition, four-condition trigger evaluation, stakeholders, Excluded Outcomes, Constraints, iteration history. Path C (cui-bono escalation): cui-bono prior output plus indicator evidence.
 - **Output Summary:** Decision Clarity Document containing executive summary, Stage 1 problem-space map (per-stakeholder framings + competing-hypotheses matrix), Stage 2 value-conflict map (per-stakeholder steelmans + Fundamental/Resolvable classification), Stage 3 consequence landscape (Cui Bono + Systems Dynamics + Scenario Planning per intervention across three time horizons + problem-definition reshaping notes), Stage 4 tradeoff statements per intervention with advocate-stance Red Team passes per subordinated stakeholder + reversibility notes. Plus reclassification recommendations when Stage 1 or Stage 2 gates fail.
 - **Proven Applications:** New framework — landing 2026-04-24
-- **Known Limitations:** WPF refuses to recommend an intervention; the decision is the user's. WPF cannot dissolve fundamental value conflicts. WPF requires at least three of four wicked conditions to fire; partial-complexity problems route to ordinary PEF iteration instead. The framework orchestrates other modes (competing-hypotheses, cui-bono, steelman-construction, systems-dynamics, scenario-planning, red-team) — quality depends on those modes' performance.
-- **File Location:** ~/Documents/vault/Framework — Wicked Problems.md (canonical)
+- **Known Limitations:** WPF refuses to recommend an intervention; the decision is the user's. WPF cannot dissolve fundamental value conflicts. WPF requires at least three of four wicked conditions to fire; partial-complexity problems route to ordinary PEF iteration instead. The framework orchestrates other modes (competing-hypotheses, cui-bono, steelman-construction, systems-dynamics, scenario-planning, the red-team modes) — quality depends on those modes' performance.
+- **File Location:** ~/Documents/vault/Framework — Decision Clarity Analysis.md (canonical, renamed from Framework — Wicked Problems.md 2026-05-01)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
@@ -99,6 +114,34 @@ Each framework has one entry with these fields:
 - **Confidence:** high
 - **Version:** 2.0
 - **Delivers:** New framework specifications (F-Design); modernized framework specifications (F-Convert); rendered execution variants (F-Render); framework audit reports (F-Audit)
+
+### Corpus Formalization
+
+- **Purpose:** Design, modify, deploy, and validate bespoke corpus templates that structure the body of information a recurring workflow accumulates between Process Formalization (PFF) inputs and Output Formalization (OFF) renders
+- **Problem Class:** Knowledge corpus design and template management
+- **Input Summary:** C-Design: workflow description + sources + outputs. C-Modify: existing template + change description. C-Instance: template + period identifier. C-Validate: template + populated instance.
+- **Output Summary:** Corpus template (C-Design, C-Modify); deployed corpus instance ready for PFF writes (C-Instance); completeness report identifying which OFFs can render (C-Validate)
+- **Proven Applications:** Shipped 2026-04 as the C in the PFF/CFF/OFF triad (sibling to Process Formalization v2.0 and Output Formalization v1.0)
+- **Known Limitations:** Requires a clear concept of what a workflow "accumulates" as a body — does not help when the unit of accumulation is unclear; chain relationships add complexity that must be designed deliberately
+- **File Location:** frameworks/book/corpus-formalization.md (executable); ~/Documents/vault/Framework — Corpus Formalization.md (canonical)
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** New corpus template (C-Design); modified template (C-Modify); fresh corpus instance for the current period (C-Instance); completeness assessment of an instance (C-Validate)
+
+### Output Formalization
+
+- **Purpose:** Design, modify, render with, and audit bespoke output frameworks that express knowledge work in specific media (Word doc, deck, spreadsheet, logo, CAD drawing) at craft standard in a specified voice
+- **Problem Class:** Output rendering and bespoke output-framework design
+- **Input Summary:** O-Design: exemplar / template / verbal description / medium-plus-genre. O-Modify: existing bespoke OFF + change description. O-Render: bespoke OFF + content (from CFF, PFF, or supplied). O-Audit: existing bespoke OFF.
+- **Output Summary:** Bespoke output framework composing content/craft/style/render layers (O-Design, O-Modify); rendered artifact in target medium (O-Render); quality audit with remediation recommendations (O-Audit)
+- **Proven Applications:** Shipped 2026-04 as the O in the PFF/CFF/OFF triad (sibling to Process Formalization v2.0 and Corpus Formalization v1.0); also integrates with MindSpec voice for style consistency
+- **Known Limitations:** O-Design quality depends on input modality clarity; voice consistency depends on a populated MindSpec or equivalent style profile; medium-specific render details may need user iteration
+- **File Location:** frameworks/book/output-formalization.md (executable); ~/Documents/vault/Framework — Output Formalization.md (canonical)
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** New bespoke output framework for a specific medium/genre (O-Design); modified output framework (O-Modify); rendered artifact (O-Render); quality audit with remediation (O-Audit)
 
 ### Process Inference
 
@@ -305,6 +348,38 @@ These six frameworks are loaded into model context windows at specific pipeline 
 - **Confidence:** medium
 - **Version:** 1.0
 - **Delivers:** Drift detection report classifying every registered file pair; drift correction (vault → ora) with `.bak` backups for every overwrite; reverse sync (ora → vault, opt-in) for explicitly-approved pairs; bootstrap creation of vault copies for ora-only files matching registered patterns
+
+---
+
+### Periodic Maintenance
+
+- **Purpose:** Four scheduled vault-maintenance tasks for work that genuinely requires full-vault scans or has no runtime trigger; per the Runtime Principle, scheduled execution is reserved for tasks where runtime execution is impossible
+- **Problem Class:** Vault maintenance, scheduled tasks
+- **Input Summary:** Vault read access; for each scheduled task: the entire current vault state at the time the task runs
+- **Output Summary:** Updated relationship graph (Task 1, weekly); vault health report with action items (Task 2, monthly); provenance audit fold-in (within Task 2); plus two additional scheduled tasks defined in the framework
+- **Proven Applications:** Currently four named scheduled tasks ship with Ora; runtime-eligible work explicitly excluded per the Runtime Principle gate
+- **Known Limitations:** Schedule cadences are fixed in the framework; tasks that become runtime-eligible should be migrated to the runtime pipeline rather than left here; fragility to bulk vault reorganization (which can flood Task 1's orphan threshold)
+- **File Location:** frameworks/book/periodic-maintenance.md (executable); ~/Documents/vault/Framework — Periodic Maintenance.md (canonical)
+- **Provenance:** human-created
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** Weekly orphan relationship cleanup; monthly vault health audit including provenance audit; additional scheduled vault hygiene tasks per the framework spec
+
+---
+
+### Video Editing Suggestions
+
+- **Purpose:** Read a clip's whisper transcript and propose specific edits — cuts (filler, silence, false starts), chapter markers, title cards, transitions — as structured JSON the UI renders with one-click Apply buttons
+- **Problem Class:** Audio/video editing assistance, transcript-driven suggestion generation
+- **Input Summary:** Required: media-library entry id and normalized whisper transcript (`{language, duration_ms, segments: [{start_ms, end_ms, text}, ...]}`). Optional: free-text goals; current timeline state for the entry.
+- **Output Summary:** JSON validated against `~/ora/config/framework-schemas/video-editing-suggestions.schema.json`; `entry_id`, `summary`, and ordered `suggestions[]` of four types (cut / chapter / title_card / transition), each with reason and source-time offsets.
+- **Proven Applications:** New framework — landing 2026-05-01 with the heuristic generator (deterministic Python pass over the transcript). LLM path wired but gated until the user enables live model dispatch.
+- **Known Limitations:** Heuristic generator covers filler, silence, false starts, and discourse-marker chapter cues — does not yet detect nuanced topic shifts, redundant content, or pacing issues. Auto-apply currently implemented for `cut` only; chapter / title_card / transition show a "coming soon" message on Apply. Cuts that span multiple timeline clips return `ok:false` and require manual resolution.
+- **File Location:** frameworks/book/video-editing-suggestions.md (executable); ~/Documents/vault/Framework — Video Editing Suggestions.md (canonical); JSON Schema at config/framework-schemas/video-editing-suggestions.schema.json
+- **Provenance:** human-created
+- **Confidence:** low
+- **Version:** 1.0
+- **Delivers:** Schema-validated suggestions JSON for a transcribed clip; one-click cut application that splits the affected timeline clip, removes the cut span, and ripple-shifts later clips on the same track
 
 ---
 

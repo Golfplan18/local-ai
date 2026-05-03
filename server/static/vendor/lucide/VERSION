@@ -1,0 +1,28 @@
+lucide-static 1.14.0
+ISC (note: §11.2 architectural-decisions row says "MIT" — Lucide's actual license is ISC, an equivalent permissive license; functionally identical for vendoring purposes)
+source: https://registry.npmjs.org/lucide-static/-/lucide-static-1.14.0.tgz
+files:
+  icons/             — 1,952 individual SVG files (one per icon name), 7.6 MB total
+  icon-nodes.json    — machine-readable per-icon node tree (used for tree-shaking + name validation)
+  tags.json          — semantic tag aliases per icon (e.g. "image" tagged as picture, photo, photography)
+  LICENSE            — ISC license text
+choice: lucide-static (not the runtime "lucide" package). Static SVG files plus icon-nodes.json metadata is what the icon-resolver and tree-shake build need; we don't want a JS-side icon-instantiation runtime. Each SVG is ~600 bytes, all 1,952 sum to ~7.6 MB raw — tree-shake-output below the toolbar pack JSON references.
+vendored: 2026-04-29 as part of WP-7.0.3 (Lucide icon library vendor integration; Phase 7 foundation)
+
+Consumers (present + anticipated):
+  server/static/icon-resolver.js                — WP-7.0.3 — name/SVG → SVG resolver with fallback glyph
+  server/static/visual-toolbar.js               — WP-7.1.1 (anticipated) — toolbar items reference Lucide names
+  config/toolbars/*.json                        — WP-7.1.6 (anticipated) — specialty toolbar definitions
+  config/packs/*.json                           — WP-7.8.1 (anticipated) — shipped customization packs
+  scripts/lucide-tree-shake.js                  — WP-7.0.3 — build script that produces runtime icon set
+
+To refresh:
+  curl -sL "https://registry.npmjs.org/lucide-static/-/lucide-static-<new-version>.tgz" -o /tmp/lucide-static.tgz
+  cd /tmp && tar -xzf lucide-static.tgz
+  rm -rf ~/ora/server/static/vendor/lucide/icons
+  cp -R package/icons ~/ora/server/static/vendor/lucide/icons
+  cp package/icon-nodes.json ~/ora/server/static/vendor/lucide/icon-nodes.json
+  cp package/tags.json ~/ora/server/static/vendor/lucide/tags.json
+  cp package/LICENSE ~/ora/server/static/vendor/lucide/LICENSE
+  # Update this VERSION file with the new version number.
+  # Re-run scripts/lucide-tree-shake.js to refresh the runtime icon set.

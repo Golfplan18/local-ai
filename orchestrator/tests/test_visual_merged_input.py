@@ -389,8 +389,10 @@ class ChatEndpointBackwardCompatTests(unittest.TestCase):
         self.server = server
         self.client = server.app.test_client()
 
-    def test_json_chat_endpoint_still_streams_response(self) -> None:
-        """Simple JSON POST → SSE response event lands as before."""
+    def test_json_chat_endpoint_returns_plain_http(self) -> None:
+        """V3 Backlog 2A — /chat returns plain JSON {status, conversation_id,
+        chunk_id} after running the pipeline synchronously. No SSE frames.
+        """
         captured = {}
 
         def fake_stream(clean_input, history, use_pipeline=True,
@@ -401,6 +403,8 @@ class ChatEndpointBackwardCompatTests(unittest.TestCase):
 
         with mock.patch.object(self.server, "agentic_loop_stream",
                                side_effect=fake_stream), \
+             mock.patch.object(self.server, "_save_conversation",
+                               return_value="session-test-pair-001"), \
              mock.patch.object(self.server.threading, "Thread", _NoopThread):
             resp = self.client.post(
                 "/chat",
@@ -415,8 +419,10 @@ class ChatEndpointBackwardCompatTests(unittest.TestCase):
             body = b"".join(resp.response).decode("utf-8")
 
         self.assertEqual(resp.status_code, 200)
-        self.assertIn('"type": "response"', body)
-        self.assertIn("text-only reply", body)
+        payload = json.loads(body)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["conversation_id"], "main")
+        self.assertEqual(payload["chunk_id"], "session-test-pair-001")
         # /chat must not thread any merged-input extras.
         self.assertIsNone(captured.get("extra_context"))
 

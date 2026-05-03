@@ -1,326 +1,181 @@
 ---
-nexus: obsidian
+nexus:
+  - ora
 type: mode
-date created: 2026/04/17
-date modified: 2026/04/18
-rebuild_phase: 3
+tags:
+date created: 2026-04-17
+date modified: 2026-05-01
 ---
 
 # MODE: Benefits Analysis
 
-## TRIGGER CONDITIONS
+```yaml
+# 0. IDENTITY
+mode_id: benefits-analysis
+canonical_name: Benefits Analysis
+suffix_rule: analysis
+educational_name: balanced benefits-and-strengths analysis (PMI — plus, minus, interesting)
 
-Positive:
-1. "What are the benefits and risks of"; cost-benefit analysis; "pros and cons of"; proposal evaluation.
-2. Evaluation of a single option's merits, risks, and non-obvious implications.
-3. Request language: "evaluate this proposal", "PMI for X", "plus/minus/interesting", "what's the full picture on X".
+# 1. TERRITORY AND POSITION
+territory: T15-artifact-evaluation-by-stance
+gradation_position:
+  axis: stance
+  value: constructive-balanced
+adjacent_modes_in_territory:
+  - mode_id: steelman-construction
+    relationship: stance counterpart (constructive-strong, single position only)
+  - mode_id: balanced-critique
+    relationship: stance counterpart (neutral, no constructive lean)
+  - mode_id: red-team-assessment
+    relationship: stance counterpart (adversarial-actor-modeling, assessment)
+  - mode_id: red-team-advocate
+    relationship: stance counterpart (adversarial-actor-modeling, advocate)
+  - mode_id: devils-advocate-lite
+    relationship: stance counterpart (adversarial-light, deferred per CR-6)
 
-Negative:
-- IF comparing multiple options → **Constraint Mapping**.
-- IF constructing the strongest version of a position → **Steelman Construction**.
-- IF tracing forward causal cascades → **Consequences and Sequel** (BA is first-order across three columns; C&S traces second- and third-order over time).
-- IF feedback-driven systemic analysis → **Systems Dynamics**.
+# 2. TRIGGER CONDITIONS AND ROUTING
+trigger_conditions:
+  user_situation_signals:
+    - "have a proposal and want the full picture before deciding"
+    - "looking for benefits and risks of one option, not comparing alternatives"
+    - "want non-obvious implications surfaced"
+  prompt_shape_signals:
+    - "what are the benefits and risks of"
+    - "pros and cons of"
+    - "PMI for"
+    - "plus / minus / interesting"
+    - "evaluate this proposal"
+    - "what's the full picture on"
+disambiguation_routing:
+  routes_to_this_mode_when:
+    - "one proposal, three columns (Plus / Minus / Interesting)"
+    - "wants balanced evaluation without recommendation by default"
+  routes_away_when:
+    - "comparing multiple options" → constraint-mapping (T3)
+    - "wants the strongest version of the proposal" → steelman-construction (T15)
+    - "wants the adversarial actor stress test for own decision" → red-team-assessment (T15)
+    - "wants adversarial argument brief for external use" → red-team-advocate (T15)
+    - "wants forward causal cascades over time" → consequences-and-sequel (T6)
+when_not_to_invoke:
+  - "User wants to choose between alternatives — Benefits Analysis evaluates a single proposal"
+  - "User wants a verdict — Benefits Analysis presents the envelope; user decides"
 
-Tiebreaker:
-- BA vs CM: **one proposal, three columns** → BA; **multiple alternatives** → CM.
+# 3. EXECUTION STRUCTURE
+composition: atomic
+atomic_spec:
+  passes: 1
+  posture: constructive
 
-## EPISTEMOLOGICAL POSTURE
+# 4. INPUT AND OUTPUT CONTRACTS
+input_contract:
+  expert_mode:
+    required: [proposal_stated_precisely, stated_goal_proposal_advances, affected_party_inventory]
+    optional: [implementation_history, similar_proposal_outcomes]
+    notes: "Applies when user supplies precise proposal text and identifies affected parties."
+  accessible_mode:
+    required: [proposal_described]
+    optional: [context_or_motivation]
+    notes: "Default. Mode infers affected parties from the proposal description."
+  detection:
+    expert_signals: ["affected parties", "stakeholders include", "stated goal is"]
+    accessible_signals: ["thinking about doing X", "considering this", "wondering if I should"]
+    default: accessible_mode
+  graceful_degradation:
+    on_missing_required: "Ask: 'What's the specific proposal you want me to evaluate? More detail makes the analysis more useful.'"
+    on_underspecified: "Ask: 'Are you weighing this single proposal, or comparing it against alternatives? Single proposal = Benefits Analysis; alternatives = Constraint Mapping.'"
+output_contract:
+  artifact_type: synthesis
+  required_sections:
+    - proposal_stated_precisely
+    - plus_column
+    - minus_column
+    - interesting_column
+    - affected_parties_map
+    - evidence_quality_note
+    - most_consequential_per_column
+  format: structured
 
-Every proposal has three kinds of consequences: Plus (advance the stated goal), Minus (work against it), Interesting (neither purely good nor bad but change what else becomes true). The Interesting column is where non-obvious implications live. De Bono's PMI is a discipline for keeping all three channels open. The task is not to reach a verdict but to present the full envelope.
+# 5. CRITICAL QUESTIONS
+critical_questions:
+  - cq_id: CQ1
+    question: "Are all three PMI columns populated, or has the analysis collapsed into Plus/Minus only?"
+    failure_mode_if_unmet: two-column-trap
+  - cq_id: CQ2
+    question: "Are claims grounded in the user's specific case, or generic boilerplate?"
+    failure_mode_if_unmet: boilerplate-trap
+  - cq_id: CQ3
+    question: "Has the Interesting column captured at least one second-order implication (precedent, signaling, path-dependency) — or explicitly noted that none was identified?"
+    failure_mode_if_unmet: second-order-omission
+  - cq_id: CQ4
+    question: "Have asymmetries (Plus for one party, Minus for another) been surfaced via the affected-parties map?"
+    failure_mode_if_unmet: single-perspective-trap
+  - cq_id: CQ5
+    question: "Has the analysis avoided unsolicited recommendation — presenting the envelope rather than rendering a verdict?"
+    failure_mode_if_unmet: verdict-trap
 
-## DEFAULT GEAR
+# 6. NAMED FAILURE MODES AND CORRECTION
+failure_modes:
+  - name: two-column-trap
+    detection_signal: "Plus and Minus populated; Interesting column empty without explicit 'none identified' statement."
+    correction_protocol: re-dispatch (audit for second-order implications and populate or explicitly mark empty)
+  - name: boilerplate-trap
+    detection_signal: "Claims read as generic — could apply to any proposal of this type."
+    correction_protocol: re-dispatch (rewrite each claim with specifics from user's case)
+  - name: single-perspective-trap
+    detection_signal: "All claims viewed from one party's perspective; affected-parties map missing or single-row."
+    correction_protocol: re-dispatch (map affected parties; surface asymmetries)
+  - name: verdict-trap
+    detection_signal: "Output recommends adoption (or rejection) when user did not ask for a lean."
+    correction_protocol: flag (remove recommendation; BA produces envelope, not verdict)
+  - name: false-symmetry-trap
+    detection_signal: "Equal pros and cons presented for appearance of balance, not honest distribution."
+    correction_protocol: flag (report honest distribution explicitly)
 
-Gear 3. Sequential adversarial review is appropriate because Minus and Interesting columns are where generative models typically underperform. Gear 4 when high-stakes or politically charged.
+# 7. LENS DEPENDENCIES
+lens_dependencies:
+  required:
+    - debono-pmi
+  optional:
+    - stakeholder-incidence-analysis
+    - second-order-effects-catalog (precedent / signaling / path-dependency)
+  foundational:
+    - kahneman-tversky-bias-catalog
 
-## RAG PROFILE
-
-**Retrieve (prioritise):** evaluations of similar proposals, outcome data from implemented versions, domain-specific risk frameworks, cost-benefit literature, PMI documentation.
-
-**Deprioritise:** partisan advocacy and promotional sources.
-
-
-### RAG PROFILE — RELATIONSHIP PRIORITIES
-
-**Prioritise:** `enables`, `produces`, `contradicts`, `qualifies`, `requires`
-**Deprioritise:** `parent`, `child`, `supersedes`
-**Rationale:** BA tracks what a proposal enables, produces, contradicts, and qualifies.
-
-
-### RAG PROFILE — INPUT SPEC
-
-| Field | Purpose |
-|---|---|
-| `cleaned_prompt` | The proposal to be evaluated, with scope |
-| `conversation_rag` | Prior turns' benefit/risk claims |
-| `concept_rag` | PMI, stakeholder analysis, precedent cases |
-| `relationship_rag` | Objects linked by `enables`/`contradicts` |
-
-
-### RAG PROFILE — CONTEXT BUDGET
-
+# 8. RUNTIME AND DEPTH
+default_depth_tier: 2
+expected_runtime: ~5min
+escalation_signals:
+  upward:
+    target_mode_id: red-team-assessment
+    when: "Stress-testing under adversarial-actor framing is needed beyond balanced-constructive evaluation; assessment stance for own decision (default), or red-team-advocate when the user needs a brief for external use."
+  sideways:
+    target_mode_id: balanced-critique
+    when: "User wants neutral evaluation with no constructive lean rather than balanced-constructive."
+  downward:
+    target_mode_id: null
+    when: "Benefits Analysis is one of T15's lighter evaluation stances."
 ```
-fixed_overhead_tokens: TBD
-analytical_floor_tokens: TBD
-conversation_history_soft_ceiling: 0.4
-retrieval_approach: auto
-```
 
-## DEPTH MODEL INSTRUCTIONS
+## DEPTH ANALYSIS GUIDANCE
 
-White Hat:
-1. Audit Plus for motivated optimism; mark each with its load-bearing assumption. **These populate `spec.pros[]` in the envelope.**
-2. Audit Minus for thoroughness. **These populate `spec.cons[]`.**
-3. Audit Interesting for non-obvious implications (precedent, signalling, path-dependency). **These also populate Plus or Cons with an "interesting" note in the weight, or are surfaced in prose and not in envelope.**
+Depth in Benefits Analysis is the specificity and mechanism-grounding of each column item. A thin pass produces generic claims ("improved efficiency", "potential risks"); a substantive pass names mechanism per claim (the literal phrase "mechanism:" anchors each Plus). Test depth by asking: could the same Plus or Minus apply to a different proposal? If yes, the claim is generic. The Interesting column carries particular depth weight — second-order items (precedent, signaling, path-dependency) are where motivated-optimism analysis typically underperforms.
 
-Black Hat:
-1. For each Plus claim, identify mechanism; flag claims without mechanism.
-2. For each Minus, assess mitigation.
-3. Identify claims that flip between Plus and Minus depending on perspective.
+## BREADTH ANALYSIS GUIDANCE
 
-### Cascade — what to leave for the evaluator
-
-- State the proposal verbatim in the opening paragraph with the literal opening "Proposal:" — matches `spec.claim`. Supports C1.
-- Use the literal column prefixes "Plus:", "Minus:", "Interesting:" in prose; the Interesting column is populated even if it reads as "no non-obvious implications identified" (that's still an honest signal).
-- For each Plus, state the mechanism with the literal phrase "mechanism:" in the surrounding sentence. Supports Black Hat audit.
-- For Interesting items, prefix with "Second-order:" when the item is precedent/signalling/path-dependency. Supports M3.
-
-### Consolidator guidance
-
-Not applicable at this mode's default gear (Gear 3). If promoted to Gear 4 for high-stakes/politically-charged proposals, merge both streams' columns; de-duplicate by text stem-overlap; preserve Breadth's second-order items in the Interesting channel as a priority.
-
-## BREADTH MODEL INSTRUCTIONS
-
-Green Hat:
-1. Produce the three columns with explicit, concrete claims (not generic).
-2. Populate Interesting with second-order implications.
-3. Stress-test each claim against the user's actual context.
-
-Yellow Hat:
-1. Identify the most consequential item in each column.
-2. Map affected parties; surface asymmetries.
-3. Surface analytical uncertainty where evidence is thin.
-
-### Cascade — what to leave for the evaluator
-
-- Map affected parties in a dedicated section with the literal heading "Affected parties:" listing each party and which column items affect them.
-- Use the literal phrase "asymmetry:" when the same item is Plus for one party and Minus for another. Supports M4.
-- Mark each column's most-consequential item with the literal prefix "Most consequential:" (one per column).
+Breadth in Benefits Analysis is the survey of affected parties before settling on the asymmetries to surface. Widen the lens to scan: parties who benefit if the proposal succeeds; parties who pay costs; parties whose interests are unaffected but whose narrative is changed; parties whose absence from the analysis itself constitutes an asymmetry. Breadth markers: the affected-parties map has at least three rows; the Interesting column captures non-obvious implications; the analysis identifies at least one item that is Plus for one party and Minus for another.
 
 ## EVALUATION CRITERIA
 
-5. **Column Distinctness.** 5=items belong in their columns. 3=one miscategorised. 1=Interesting empty.
-6. **Specificity.** 5=grounded in the user's case. 3=mostly specific. 1=generic.
-7. **Second-Order Coverage.** 5=Interesting captures precedent / signalling / path-dependency. 3=some second-order. 1=first-order only.
-8. **Asymmetry Detection.** 5=identifies Plus-for-one-party / Minus-for-another. 3=partial. 1=single perspective.
+Evaluate against CQ1–CQ5. The named failure modes are the evaluation checklist. A passing Benefits Analysis output (a) populates all three PMI columns or explicitly marks an empty column; (b) grounds each claim in the user's specifics; (c) names ≥ 1 second-order implication; (d) maps affected parties and surfaces ≥ 1 asymmetry; (e) does NOT recommend unless the user asked for a lean. The Verdict Trap is the load-bearing failure mode for this stance — unsolicited recommendation invalidates the mode's contribution.
 
-### Focus for this mode
+## REVISION GUIDANCE
 
-A strong BA evaluator prioritises:
+Revise to add specificity where claims are generic. Revise to populate the Interesting column where second-order items are missing. Revise to remove recommendation language where the user did not ask for a lean. Resist revising toward false symmetry — if the honest distribution is 1 Plus and 5 Minus, say so rather than padding. Resist revising toward verdict — Benefits Analysis presents the envelope; the user decides.
 
-1. **No-advocacy (M5, Verdict Trap).** BA does not recommend unless the user asks. Any unsolicited recommendation is mandatory fix.
-2. **Three-column floor (M1, S8).** Plus / Minus / Interesting all populated. Two-column output is Constraint Mapping's shape, not BA's.
-3. **Pro_con shape (S8).** `pros ≥ 2`, `cons ≥ 2`, `claim` non-empty.
-4. **Specificity (M2, Boilerplate Trap).** Generic claims ungrounded in user context fail; mandate fix.
-5. **Second-order coverage (M3).** Interesting column must capture at least one precedent/signalling/path-dependency item — or explicitly say none were found.
-6. **Short_alt (S11).** Name the proposal, not every pro/con.
+## CONSOLIDATION GUIDANCE
 
-### Suggestion templates per criterion
+Consolidate as a structured three-column output (Plus / Minus / Interesting) with the affected-parties map, evidence-quality note, and most-consequential-per-column annotations. The proposal is stated precisely at the top. Recommendation field is empty by default; populated only if the user asked for a lean. Format is structured (matrix-friendly when columns lend themselves to tabular presentation).
 
-- **S11 (short_alt):** `suggested_change`: "Rewrite short_alt as: 'Pro/con tree for <proposal stem ≤ 80 chars>.' Target ≤ 100 chars."
-- **S8 (pro_con shape):** `suggested_change`: "Add pros/cons until ≥ 2 each; `claim` must be non-empty. If the honest distribution is 1 pro and 5 cons, say so in prose rather than padding."
-- **M1 (missing column):** `suggested_change`: "Populate the missing column with ≥ 1 concrete item grounded in the user's case. If no items exist after audit, write 'No items identified in the <column> column after audit' rather than omitting the column."
-- **M2 (boilerplate):** `suggested_change`: "Replace generic claim '<current>' with a concrete version citing specific features of the user's proposal — name the product, the team, the dollar amount, the timeline, whatever anchors the claim."
-- **M3 (no second-order):** `suggested_change`: "Add at least one Interesting item prefixed 'Second-order:' capturing precedent, signalling, or path-dependency. If genuinely none, write 'No second-order implications identified' explicitly."
-- **M5 (unsolicited recommendation):** `suggested_change`: "Remove the recommendation. Set `spec.decision` to empty unless the user explicitly asked for a lean. BA produces an envelope, not a verdict."
+## VERIFICATION CRITERIA
 
-### Known failure modes to call out
-
-- **Verdict Trap** → open: "Prose recommends adoption without the user asking. BA is non-recommending."
-- **Two-Column Trap** → open: "Interesting column empty; mandate population or explicit 'none identified' statement."
-- **Boilerplate Trap** → open: "Claims generic, not grounded in user's case. Mandate specificity."
-- **Single-Perspective Trap** → open: "Affected-parties map missing; asymmetries not surfaced. Mandate party mapping."
-- **False-Symmetry Trap** → surface as SUGGESTED: "Equal pros and cons for appearance balance; report honest distribution instead."
-
-### Verifier checks for this mode
-
-Universal V1-V8 first; then:
-
-- **V-BA-1 — No-recommendation preservation.** Revised prose and `spec.decision` do not recommend adoption unless user asked. Silent recommendation injection during revision is a FAIL.
-- **V-BA-2 — Three-column preservation.** Revised prose still has Plus / Minus / Interesting (or explicit "none identified" for any empty column).
-- **V-BA-3 — Claim-prose match.** Revised `spec.claim` ≈ revised prose's "Proposal:" sentence.
-
-## CONTENT CONTRACT
-
-In order:
-
-1. **Proposal stated precisely** — what is being evaluated. Becomes `spec.claim`.
-2. **Plus column** — concrete benefits grounded in specifics with mechanism. **Populate `spec.pros`.**
-3. **Minus column** — concrete risks with mitigation assessment. **Populate `spec.cons`.**
-4. **Interesting column** — non-obvious implications. Add as weighted items in pros/cons OR as prose-only items in a Tornado envelope when quantification is the point.
-5. **Affected parties map** — who experiences each Plus/Minus/Interesting.
-6. **Evidence quality note** — where claims are thinly supported.
-7. **Most consequential item in each column** — the claim that would most change the decision if wrong.
-
-The mode does not recommend adoption. The user decides. **(optional `spec.decision` may note "Pilot"/"Reject"/"Adopt with conditions" only if the user explicitly asked for a lean.)**
-
-After your analysis, emit exactly one fenced `ora-visual` block per EMISSION CONTRACT.
-
-### Reviser guidance per criterion
-
-- **short_alt preservation (Phase 7 iteration — IMPORTANT).** When re-emitting the envelope in the REVISED DRAFT, preserve `spec.semantic_description.short_alt` ≤ 150 chars. If rewriting it, match the Cesal form shown in this mode's `## EMISSION CONTRACT` canonical envelope (a short noun phrase: `<visual type> of <subject>`). Do NOT enumerate concepts, cross-links, quadrants, facets, branches, loops, hypotheses, or evidence items inside `short_alt` — that enumeration belongs in `level_1_elemental`. A fresh short_alt over 150 chars triggers `E_SCHEMA_INVALID` and negates the revision.
-- **S2:** `E_SCHEMA_INVALID` → often short_alt length; apply S11 template.
-- **S7:** set `type: "pro_con"` (default) unless sensitivity-framing is genuinely the point — then `tornado`.
-- **S8:** apply pro_con shape template.
-- **S9 (tornado):** `parameters ≥ 2` each with all 5 numeric fields.
-- **S10 (tornado swing ordering):** if `sort_by: "swing"`, sort parameters by descending |swing|.
-- **S11:** apply short_alt template.
-- **M1:** apply missing-column template.
-- **M2:** apply boilerplate template.
-- **M3:** apply second-order template.
-- **M4 (asymmetry):** add Affected-parties section with asymmetry identified for at least one item.
-- **M5:** apply no-recommendation template.
-- **C1-C3:** sync claim with prose, pros/cons with prose columns, decision field with prose (or leave empty).
-
-## EMISSION CONTRACT
-
-### Envelope type selection
-
-- **`pro_con`** (default) — captures the three columns via `pros`, `cons`, and weighted pro/con children for Interesting.
-- **`tornado`** — when benefits are quantified and the user wants sensitivity framing (which parameter swings the benefit most). Use when the proposal has numeric payoffs or scenarios.
-
-Selection rule: qualitative or mixed → `pro_con`. Quantified sensitivity framing → `tornado`.
-
-### Canonical envelope (pro_con)
-
-```ora-visual
-{
-  "schema_version": "0.2",
-  "id": "ba-fig-1",
-  "type": "pro_con",
-  "mode_context": "benefits-analysis",
-  "relation_to_prose": "integrated",
-  "title": "PMI — four-day work week",
-  "canvas_action": "replace",
-  "spec": {
-    "claim": "Adopt a four-day work week across the engineering org.",
-    "pros": [
-      { "text": "Improved retention",                 "weight": 4, "children": [
-        { "text": "Market-wide signal value in a tight hiring market" }
-      ] },
-      { "text": "Reduced meeting load by design",    "weight": 3 }
-    ],
-    "cons": [
-      { "text": "Coverage gaps for incident response","weight": 4, "children": [
-        { "text": "Monday on-call becomes contested" }
-      ] },
-      { "text": "Customer-facing SLA compression",    "weight": 3 }
-    ],
-    "decision": "Pilot for one quarter in one team"
-  },
-  "semantic_description": {
-    "level_1_elemental": "Pro/con tree for adopting a four-day work week, with weighted arguments and one decision note.",
-    "level_2_statistical": "Two pros and two cons; top pro weight 4 (retention), top con weight 4 (coverage gaps).",
-    "level_3_perceptual": "Pros and cons are balanced on weight; the decision note reflects that a pilot is the natural first step given the balance.",
-    "short_alt": "Pro/con tree for a four-day work week, weighted and balanced."
-  }
-}
-```
-
-### Emission rules
-
-1. **`type ∈ {"pro_con", "tornado"}`.**
-2. **`mode_context = "benefits-analysis"`. `canvas_action = "replace"`. `relation_to_prose = "integrated"`.**
-3. **For `pro_con`:** `spec.claim` non-empty. `spec.pros ≥ 2` and `spec.cons ≥ 2`, each with non-empty `text`. `weight ∈ [1, 5]` when present. `children` optional for nested sub-arguments.
-4. **For `tornado`:** `spec.base_case_label`, `spec.base_case_value`, `spec.outcome_variable`, `spec.outcome_units`, `spec.sort_by ∈ {"swing","high_impact","custom"}`. `spec.parameters ≥ 2` with all five numeric fields. When `sort_by="swing"`, parameters must be in descending absolute swing order.
-5. **`semantic_description` required; `short_alt ≤ 150`.**
-6. **One envelope.**
-
-### What NOT to emit
-
-- A recommendation when the user did not ask for one. The `spec.decision` field is optional and should be empty when the user asked only for the envelope.
-- A lopsided tree with 1 pro and 5 cons (or vice versa) — if the honest distribution is that lopsided, say so in prose rather than padding.
-- `canvas_action: "annotate"`.
-
-## GUARD RAILS
-
-**Solution Announcement Trigger.** WHEN the output recommends, pause — BA does not recommend.
-
-**Specificity guard rail.** Each claim is grounded in the user's specific case.
-
-**Asymmetry guard rail.** Affected-parties map is populated; asymmetries surfaced.
-
-**Interesting-column-non-empty guard rail.** If the Interesting column (captured via weighted children or prose) is empty, audit again for non-obvious implications.
-
-## SUCCESS CRITERIA
-
-Structural:
-- S1-S6: standard preamble.
-- S7: `type ∈ {"pro_con", "tornado"}`.
-- S8: for `pro_con`: `claim` non-empty, `pros ≥ 2`, `cons ≥ 2`.
-- S9: for `tornado`: `parameters ≥ 2` with all five numeric fields; `sort_by` present.
-- S10: for `tornado` with `sort_by="swing"`: descending |swing| ordering (validator enforces).
-- S11: `semantic_description` complete; `short_alt ≤ 150`.
-
-Semantic:
-- M1: all three PMI columns populated in prose (Plus / Minus / Interesting).
-- M2: each claim grounded in the user's context, not generic.
-- M3: ≥ one second-order implication named (precedent / signalling / path-dependency).
-- M4: affected-parties asymmetry surfaced.
-- M5: prose does not make an unsolicited recommendation.
-
-Composite:
-- C1: `spec.claim` ≈ prose's "Proposal stated precisely" sentence.
-- C2: top-level `pros`/`cons` appear in prose's Plus/Minus columns.
-- C3: any `decision` field maps to prose language (not invented).
-
-```yaml
-success_criteria:
-  mode: benefits-analysis
-  version: 1
-  structural:
-    - { id: S1-S6, check: standard_preamble }
-    - { id: S7,   check: type_in_allowlist, allowlist: [pro_con, tornado] }
-    - { id: S8,   check: pro_con_shape, min_pros: 2, min_cons: 2, applies_to: pro_con }
-    - { id: S9,   check: tornado_shape, min_params: 2, applies_to: tornado }
-    - { id: S10,  check: tornado_swing_ordering, applies_to: tornado }
-    - { id: S11,  check: semantic_description_complete }
-  semantic:
-    - { id: M1, check: pmi_three_columns }
-    - { id: M2, check: claims_grounded_in_context }
-    - { id: M3, check: second_order_implication }
-    - { id: M4, check: asymmetry_surfaced }
-    - { id: M5, check: no_unsolicited_recommendation }
-  composite:
-    - { id: C1, check: claim_matches_prose }
-    - { id: C2, check: pros_cons_match_prose }
-    - { id: C3, check: decision_from_prose_or_absent }
-  acceptance: { tier_a_threshold: 0.9, structural_must_all_pass: true,
-                semantic_min_pass: 0.8, composite_min_pass: 0.75 }
-```
-
-## KNOWN FAILURE MODES
-
-**The Two-Column Trap (inverse of M3).** Plus and Minus only, Interesting empty. Correction: force-populate Interesting.
-
-**The Boilerplate Trap (inverse of M2).** Generic claims. Correction: specific to the user's context.
-
-**The Single-Perspective Trap (inverse of M4).** One party's view. Correction: map affected parties.
-
-**The Verdict Trap (inverse of M5).** Recommending adoption. Correction: BA produces an envelope, not a verdict.
-
-**The False-Symmetry Trap.** Equal pros and cons to appear balanced. Correction: report honest distribution.
-
-## TOOLS
-
-Tier 1: PMI (primary), CAF, C&S, AGO.
-Tier 2: Domain evaluation modules.
-
-## TRANSITION SIGNALS
-
-- IF choosing between alternatives → propose **Constraint Mapping**.
-- IF probability + time-value → propose **Decision Under Uncertainty**.
-- IF forward causal cascades need tracing → propose **Consequences and Sequel**.
-- IF strongest case needed → propose **Steelman Construction**.
-- IF feedback loops → propose **Systems Dynamics**.
-- IF distributional impact + authorship → propose **Cui Bono**.
-- IF multiple futures need mapping → propose **Scenario Planning**.
+Verified means: proposal stated precisely; all three columns populated (or explicit "none identified" statement); each claim grounded in user's specifics; ≥ 1 second-order implication named; affected-parties map present; ≥ 1 asymmetry surfaced; no unsolicited recommendation. The five critical questions are addressed. Silent injection of a recommendation during revision is a verification failure.

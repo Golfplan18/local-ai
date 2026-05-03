@@ -11,6 +11,12 @@
       "name": "Dracula Official",
       "directory": "dracula-official",
       "bundled": false
+    },
+    {
+      "id": "dracula-for-obsidian",
+      "name": "Dracula for Obsidian",
+      "directory": "dracula-for-obsidian",
+      "bundled": false
     }
   ]
 }

@@ -1,0 +1,179 @@
+{
+  "pack_name": "Diagram Thinking",
+  "pack_version": "1.0.0",
+  "ora_compatibility": ">=0.7.0",
+  "author": {
+    "name": "Ora",
+    "url": "https://ora.local"
+  },
+  "description": "Diagrammatic reasoning workspace \u2014 shapes, connectors, and AI-assisted prompts for cause-effect maps, decision trees, and concept models.",
+  "toolbars": [
+    {
+      "id": "diagram-thinking",
+      "label": "Diagram Thinking",
+      "default_dock": "left",
+      "default_icon_size": "small",
+      "items": [
+        {
+          "id": "rect",
+          "icon": "square",
+          "label": "Rectangle",
+          "shortcut": "R",
+          "binding": "tool:rect"
+        },
+        {
+          "id": "ellipse",
+          "icon": "circle",
+          "label": "Ellipse",
+          "shortcut": "E",
+          "binding": "tool:ellipse"
+        },
+        {
+          "id": "diamond",
+          "icon": "diamond",
+          "label": "Diamond",
+          "shortcut": "D",
+          "binding": "tool:diamond"
+        },
+        {
+          "id": "polygon",
+          "icon": "pentagon",
+          "label": "Polygon",
+          "shortcut": "G",
+          "binding": "tool:polygon"
+        },
+        {
+          "id": "line",
+          "icon": "minus",
+          "label": "Line",
+          "shortcut": "L",
+          "binding": "tool:line"
+        },
+        {
+          "id": "arrow",
+          "icon": "move-right",
+          "label": "Arrow",
+          "shortcut": "A",
+          "binding": "tool:arrow"
+        },
+        {
+          "id": "text",
+          "icon": "type",
+          "label": "Text",
+          "shortcut": "T",
+          "binding": "tool:text"
+        },
+        {
+          "id": "ask-ora",
+          "icon": "sparkles",
+          "label": "Ask Ora",
+          "shortcut": "Shift+A",
+          "binding": "tool:ask_ora"
+        }
+      ]
+    }
+  ],
+  "prompt_templates": [
+    {
+      "id": "diagram-this-process",
+      "slash_command": "/diagram-process",
+      "label": "Diagram this process",
+      "template": "Render the following process as a step-by-step diagram. Use boxes for steps, diamonds for decisions, arrows for flow. Identify any feedback loops or skip-steps.\n\nProcess: {{process}}",
+      "variables": [
+        {
+          "name": "process",
+          "type": "text",
+          "label": "Describe the process"
+        }
+      ],
+      "gear_preference": 3
+    },
+    {
+      "id": "find-causal-loops",
+      "slash_command": "/find-causal-loops",
+      "label": "Find causal loops",
+      "template": "Examine the system below and identify causal loops (reinforcing or balancing feedback). For each loop, name the variables involved and the polarity of each arrow.\n\nSystem: {{system}}",
+      "variables": [
+        {
+          "name": "system",
+          "type": "text",
+          "label": "Describe the system"
+        }
+      ],
+      "gear_preference": 3
+    },
+    {
+      "id": "decision-tree",
+      "slash_command": "/decision-tree",
+      "label": "Build a decision tree",
+      "template": "Build a decision tree for the question below. Each node should be either a decision (square), chance (circle), or outcome (triangle). Score outcomes by {{score_by}}.\n\nQuestion: {{question}}",
+      "variables": [
+        {
+          "name": "question",
+          "type": "text",
+          "label": "Decision question"
+        },
+        {
+          "name": "score_by",
+          "type": "enum",
+          "label": "Score by",
+          "default": "expected value",
+          "options": [
+            "expected value",
+            "minimax regret",
+            "max worst case"
+          ]
+        }
+      ],
+      "gear_preference": 3
+    }
+  ],
+  "composition_templates": [
+    {
+      "id": "blank-diagram-canvas",
+      "label": "Blank diagram",
+      "thumbnail": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='10' y='12' width='28' height='18' rx='2'/><circle cx='75' cy='21' r='10'/><polygon points='25,55 35,40 45,55'/><line x1='38' y1='21' x2='65' y2='21'/><line x1='25' y1='30' x2='35' y2='40'/><line x1='75' y1='31' x2='45' y2='55'/></svg>",
+      "canvas_state": {
+        "schema_version": "0.1",
+        "format_id": "ora-canvas",
+        "metadata": {
+          "title": "Diagram",
+          "canvas_size": {
+            "width": 10000,
+            "height": 10000
+          }
+        },
+        "view": {
+          "zoom": 1.0,
+          "pan": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "layers": [
+          {
+            "id": "bg",
+            "kind": "background",
+            "label": "Background"
+          },
+          {
+            "id": "annot",
+            "kind": "annotation",
+            "label": "Annotations"
+          },
+          {
+            "id": "main",
+            "kind": "user_input",
+            "label": "Diagram"
+          },
+          {
+            "id": "sel",
+            "kind": "selection",
+            "label": "Selection"
+          }
+        ],
+        "objects": []
+      }
+    }
+  ]
+}

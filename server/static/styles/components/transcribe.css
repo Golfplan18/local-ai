@@ -1,0 +1,119 @@
+/* ─── Transcribe input chip — Audio/Video Phase 2 ────────────────────────
+ * Renders inside .panel-attachments when an audio/video file is dropped
+ * on the input pane. State machine (data-state):
+ *   queued → extracting → transcribing → complete | failed
+ */
+
+.transcribe-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin: 4px 6px 4px 0;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.85));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-primary, #e6e6e6);
+  max-width: 360px;
+  min-width: 220px;
+  position: relative;
+}
+
+.transcribe-chip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  color: var(--text-secondary, #aaa);
+}
+
+.transcribe-chip__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transcribe-chip__name {
+  font-size: 12px;
+  color: var(--text-primary, #e6e6e6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transcribe-chip__status {
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transcribe-chip__bar {
+  position: relative;
+  height: 3px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.transcribe-chip__fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(
+    to right,
+    rgba(80, 200, 120, 0.85),
+    rgba(140, 180, 220, 0.95)
+  );
+  transition: width 200ms linear;
+}
+
+.transcribe-chip__close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.transcribe-chip__close:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary, #e6e6e6);
+}
+
+.transcribe-chip[data-state="extracting"] .transcribe-chip__icon,
+.transcribe-chip[data-state="transcribing"] .transcribe-chip__icon {
+  color: var(--text-success, #6abf6b);
+  animation: transcribe-chip-pulse 1.6s ease-in-out infinite;
+}
+
+.transcribe-chip[data-state="complete"] .transcribe-chip__icon {
+  color: var(--text-success, #6abf6b);
+}
+
+.transcribe-chip[data-state="failed"] .transcribe-chip__icon {
+  color: var(--text-error, #d4504a);
+}
+.transcribe-chip[data-state="failed"] .transcribe-chip__status {
+  color: var(--text-error, #d4504a);
+}
+
+.transcribe-chip__vault-path {
+  color: var(--text-success, #6abf6b);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.2px;
+}
+
+@keyframes transcribe-chip-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1.0; }
+}

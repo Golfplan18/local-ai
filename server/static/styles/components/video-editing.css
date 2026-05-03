@@ -1,0 +1,272 @@
+/* ─── Video editing pane — Audio/Video Phase 3 ──────────────────────────
+ *
+ * Layout swap: when body has class `pane-mode-video`, the visual pane
+ * hides its dot-grid canvas and the drawing-tool toolbar, and reveals
+ * the video-editing surfaces (capture controls + media library +
+ * timeline placeholder + preview placeholder).
+ *
+ * The capture-controls toolbar already knows about pane-mode-video
+ * from Phase 1; this file fills in the rest.
+ */
+
+/* When in video mode: hide the canvas viewport and the drawing toolbar
+ * inside the visual pane. They stay in the DOM (no destruction) so
+ * exiting the mode restores the prior canvas state intact. */
+body.pane-mode-video .visual-panel .visual-panel__viewport,
+body.pane-mode-video .visual-panel .visual-panel__toolbar {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The visual-panel root gets a video-editing background so the user
+ * sees a clearly different surface (not a hidden canvas with a chip
+ * floating over it). */
+body.pane-mode-video .visual-panel {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.02) 0,
+      rgba(255, 255, 255, 0.02) 8px,
+      transparent 8px,
+      transparent 16px
+    ),
+    var(--background-secondary, rgba(20, 22, 28, 0.92));
+}
+
+/* Media library panel — Phase 3.
+ * Anchored at the bottom of the visual pane, full width. The capture
+ * controls toolbar lives at the top (Phase 1). The middle slot is
+ * reserved for the timeline editor (Phase 5 placeholder) and preview
+ * monitor (Phase 5 placeholder). */
+.media-library {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 11;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 42%;
+  padding: 10px 12px;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.92));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.30);
+  color: var(--text-primary, #e6e6e6);
+  font-size: 12px;
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+}
+
+body.pane-mode-video .media-library.media-library--visible {
+  display: flex;
+}
+
+.media-library__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.media-library__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary, #aaa);
+}
+
+.media-library__count {
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ── URL import row (yt-dlp) ─────────────────────────────────────── */
+
+.media-library__import {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px 0;
+}
+
+.media-library__import-input {
+  flex: 1 1 auto;
+  min-width: 160px;
+  padding: 5px 8px;
+  font-size: 12px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.35));
+  color: var(--text-normal, #f0f0f0);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  outline: none;
+}
+
+.media-library__import-input:focus {
+  border-color: var(--ora-accent, #bd93f9);
+}
+
+.media-library__import-input:disabled {
+  opacity: 0.6;
+}
+
+.media-library__import-btn {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  font-size: 12px;
+  background: var(--ora-accent, #bd93f9);
+  color: var(--ora-on-accent, #1e1f29);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.media-library__import-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.media-library__import-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.media-library__import-status {
+  flex: 1 1 100%;
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+  min-height: 14px;
+  line-height: 1.3;
+}
+
+.media-library__import-status--progress {
+  color: var(--ora-accent, #bd93f9);
+}
+
+.media-library__import-status--error {
+  color: var(--text-error, #ff7777);
+}
+
+.media-library__import-status--success {
+  color: var(--text-success, #50fa7b);
+}
+
+/* ── Audio waveform thumbnails ───────────────────────────────────── */
+
+.media-library__entry-waveform {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  background: var(--background-primary, rgba(0, 0, 0, 0.35));
+}
+
+.media-library__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.media-library__empty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-secondary, #aaa);
+  background: var(--background-primary, rgba(0, 0, 0, 0.25));
+  border: 1px dashed var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 6px;
+  text-align: center;
+}
+
+.media-library__entry {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.media-library__entry-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary, #aaa);
+}
+
+.media-library__entry-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-library__entry-thumb--glyph {
+  color: var(--text-secondary, #888);
+}
+
+.media-library__entry-meta {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.media-library__entry-name {
+  font-size: 12px;
+  color: var(--text-primary, #e6e6e6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-library__entry-sub {
+  font-size: 10.5px;
+  color: var(--text-secondary, #aaa);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.media-library__entry-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+}
+.media-library__entry:hover .media-library__entry-remove {
+  opacity: 1;
+}
+.media-library__entry-remove:hover {
+  background: rgba(212, 80, 74, 0.85);
+  border-color: rgba(212, 80, 74, 0.95);
+}
+
+/* When the visual-panel is in chrome-hidden auto-fade, dim (don't hide)
+ * the media library — users still need to see what's loaded so they can
+ * resume work. The capture controls fade fully because they're a
+ * stronger UI affordance. */
+.visual-panel.chrome-hidden .media-library {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}

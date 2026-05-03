@@ -1,0 +1,58 @@
+{
+  "id": "ora-image",
+  "label": "Image",
+  "default_dock": "left",
+  "default_icon_size": "medium",
+  "items": [
+    {
+      "id": "upload",
+      "icon": "image-up",
+      "label": "Upload image",
+      "shortcut": "U",
+      "binding": "tool:image_upload"
+    },
+    {
+      "id": "crop",
+      "icon": "crop",
+      "label": "Crop",
+      "shortcut": "Shift+C",
+      "binding": "tool:image-crop",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "rotate",
+      "icon": "rotate-cw",
+      "label": "Rotate",
+      "binding": "tool:image_rotate",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "flip",
+      "icon": "flip-horizontal",
+      "label": "Flip",
+      "binding": "tool:image_flip",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "brightness",
+      "icon": "sun",
+      "label": "Brightness",
+      "binding": "tool:image_brightness",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "contrast",
+      "icon": "contrast",
+      "label": "Contrast",
+      "binding": "tool:image_contrast",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "blur",
+      "icon": "droplet",
+      "label": "Blur",
+      "binding": "tool:image_blur",
+      "enabled_when": "image_present"
+    }
+  ]
+}

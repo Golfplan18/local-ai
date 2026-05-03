@@ -202,6 +202,16 @@ async function bootCompiler() {
     return c;
   };
   loadScript(path.join(COMPILER_DIR, '..', 'vendor', 'konva', 'konva.min.js'));
+
+  // WP-7.1.1 / WP-7.1.2 — universal toolbar registry/renderer + edge-dock
+  // manager. Both load BEFORE visual-panel.js so that
+  // VisualPanel.prototype._mountUniversalToolbar finds OraVisualToolbar +
+  // OraVisualDock on `win` at init time. icon-resolver.js stubs / vendors
+  // the Lucide bundle that visual-toolbar.js consults via OraIconResolver.
+  loadScript(path.join(COMPILER_DIR, '..', 'icon-resolver.js'));
+  loadScript(path.join(COMPILER_DIR, '..', 'visual-toolbar.js'));
+  loadScript(path.join(COMPILER_DIR, '..', 'visual-dock.js'));
+
   loadScript(path.join(COMPILER_DIR, '..', 'visual-panel.js'));
 
   // WP-3.2 — Canvas serializer. Plain IIFE; reads window.OraVisualCompiler._ajv
@@ -219,6 +229,41 @@ async function bootCompiler() {
   // point. Loading the full class is a no-op side-effect in jsdom; only
   // the top-level helper function is needed for the test.
   loadScript(path.join(COMPILER_DIR, '..', 'chat-panel.js'));
+
+  // WP-7.0.2 — canvas-state file format reader/writer. Load before the
+  // Phase 7 commands (resize-canvas / lazy-expansion) so they can pull
+  // OraCanvasFileFormat.newCanvasState() at boot.
+  loadScript(path.join(COMPILER_DIR, '..', 'canvas-file-format.js'));
+
+  // WP-7.4.1 — Resize canvas command. Required by lazy-expansion.js
+  // (which calls OraResizeCanvas.apply / .getCurrentSize / .computeBoundingBox).
+  loadScript(path.join(COMPILER_DIR, '..', 'commands', 'resize-canvas.js'));
+
+  // WP-7.4.6 — Lazy canvas expansion. Prototype-patches VisualPanel so
+  // newly-placed objects near a canvas edge silently grow the canvas.
+  loadScript(path.join(COMPILER_DIR, '..', 'lazy-expansion.js'));
+
+  // WP-7.1.1 / WP-7.1.2 — pre-register the universal toolbar JSON so
+  // VisualPanel.prototype._mountUniversalToolbar finds it via
+  // OraVisualToolbar.get('ora-universal') without hitting fetch (jsdom
+  // has no network). Tests that want to exercise the no-toolbar path can
+  // call OraVisualToolbar.clear() before constructing a panel.
+  try {
+    const toolbarPath = path.join(__dirname, '..', '..', '..', '..',
+                                  'config', 'toolbars', 'universal.toolbar.json');
+    if (fs.existsSync(toolbarPath) && win.OraVisualToolbar &&
+        typeof win.OraVisualToolbar.register === 'function') {
+      const toolbarDef = JSON.parse(fs.readFileSync(toolbarPath, 'utf-8'));
+      try { win.OraVisualToolbar.register(toolbarDef); }
+      catch (e) {
+        // Validator may reject — log but continue; per-test code can
+        // re-register or work around as needed.
+        console.warn('WARN: universal toolbar registration failed: ' + e.message);
+      }
+    }
+  } catch (e) {
+    console.warn('WARN: universal toolbar pre-register: ' + e.message);
+  }
 
   // Bootstrap Ajv by reading schemas from disk (no fetch in Node without deps).
   const customLoad = (url) => {
@@ -298,6 +343,8 @@ async function runSuite(label, fn, ctx) {
     './cases/test-canvas-action.js',
     './cases/test-artifact-adversarial.js',
     './cases/test-canvas-serializer.js',
+    './cases/test-canvas-file-format.js',
+    './cases/test-lazy-expansion.js',
     './cases/test-shape-tools.js',
     './cases/test-annotation-tools.js',
     './cases/test-merged-input.js',
@@ -306,6 +353,8 @@ async function runSuite(label, fn, ctx) {
     './cases/test-visual-fallback.js',
     './cases/test-render-envelope-cli.js',
     './cases/test-annotation-parser.js',
+    './cases/test-toolbar-docking.js',
+    './cases/test-icon-size.js',
   ];
   for (const rel of caseFiles) {
     const mod = require(path.resolve(__dirname, rel));

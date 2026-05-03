@@ -1,28 +1,35 @@
 """
-rag_engine.py — Full RAG Architecture (Phase 8D)
+rag_engine.py — Full RAG Architecture (Phase 8D + Phase 5.6 ranker)
 
 Implements the complete RAG system:
 - Hardware tier detection
 - Model capability lookup
 - RAG routing (agentic vs pre-assembled)
 - Step 1.5 RAG planning
-- Five-bucket priority stack assembly
+- Type-weighted ranker (Phase 5.6) — replaces the positional bucket
+  priority stack. Score = similarity × type_weight × recency_factor.
+  External tier uses web_corroboration classification + EXTERNAL_WEIGHTS.
+  Output carries provenance markers per chunk.
+- Five-bucket priority stack assembly (legacy; kept for boot.py callers
+  during transition)
 - Resource utilization header
 - Budget signal system (Signals 0-6)
 - Manifest modification-date check
 
 This module is called from boot.py's Step 2 (context assembly).
-It replaces the simple ChromaDB queries with a full priority-stack system.
 
-Usage:
-    from rag_engine import RAGEngine
-
-    engine = RAGEngine(config)
-    context = engine.assemble_context(
-        cleaned_prompt=prompt,
-        mode_text=mode_text,
-        gear=gear
+Usage (new ranker, Phase 5.6):
+    from rag_engine import assemble_ranked_context
+    text = assemble_ranked_context(
+        query=cleaned_prompt,
+        type_filter=["engram", "resource", "incubator"],
+        n_results=10,
     )
+
+Usage (legacy bucket assembly):
+    from rag_engine import RAGEngine
+    engine = RAGEngine(config)
+    context = engine.assemble_context(...)
 """
 
 from __future__ import annotations
@@ -31,11 +38,23 @@ import os
 import json
 import subprocess
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Optional
 
 WORKSPACE = os.path.expanduser("~/ora/")
 CONFIG_DIR = os.path.join(WORKSPACE, "config/")
+
+# Make sibling-package imports work whether the module is loaded as
+# `orchestrator.rag_engine` (production) or `rag_engine` (tests).
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+import provenance  # noqa: E402
+from tools import cluster_recency, web_corroboration  # noqa: E402
+from tools import knowledge_search as _knowledge_search  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -560,84 +579,175 @@ class RAGEngine:
 
 
 # ---------------------------------------------------------------------------
-# Convenience function for boot.py integration
+# Phase 5.6 — Type-weighted ranker
 # ---------------------------------------------------------------------------
+#
+# Replaces the positional five-bucket priority stack with unified
+# type-weighted ranking. See Reference — Ora YAML Schema §5 + §6 + §15
+# (rev 3, 2026-04-30) for the contract this implements.
 
-def enhanced_context_assembly(
-    step1_result: dict,
-    config: dict,
-    knowledge_search_fn=None,
-) -> dict:
+
+def rank_vault_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Score and sort vault chunks by similarity × type_weight × recency.
+
+    Each input chunk dict should have:
+        - similarity: float in [0, 1] (e.g. 1.0 - cosine_distance)
+        - metadata:   dict with at least `type`; optionally
+                      `topic_primary`, `timestamp_utc` for decay.
+
+    Drops chunks whose `provenance.weight_for(type)` returns None
+    (matrix, supervision, unknown types). Annotates each surviving
+    chunk with score / weight / recency fields and returns the list
+    sorted by score descending.
     """
-    Drop-in replacement for run_step2_context_assembly in boot.py.
-    Adds relationship traversal and priority stack assembly.
+    # All-chunks pool used for cluster-recency newer_count.
+    all_metas = [c.get("metadata") or {} for c in chunks]
 
-    Args:
-        step1_result: Output from Step 1 (mode, cleaned_prompt, triage_tier)
-        config: Loaded endpoints.json
-        knowledge_search_fn: The knowledge_search function (injected to avoid circular import)
+    scored: list[dict[str, Any]] = []
+    for chunk in chunks:
+        meta = chunk.get("metadata") or {}
+        chunk_type = meta.get("type")
+        weight = provenance.weight_for(chunk_type)
+        if weight is None:
+            continue
 
-    Returns:
-        Context package dict compatible with the existing pipeline.
+        recency = cluster_recency.recency_factor(meta, all_metas)
+        similarity = float(chunk.get("similarity", 0.0))
+        score = similarity * weight * recency
+
+        annotated = dict(chunk)
+        annotated["weight"]  = weight
+        annotated["recency"] = recency
+        annotated["score"]   = score
+        scored.append(annotated)
+
+    scored.sort(key=lambda c: c["score"], reverse=True)
+    return scored
+
+
+def score_external_chunks(
+    chunks: list[dict[str, Any]],
+    all_urls: Optional[list[str]] = None,
+    *,
+    registry: Optional[web_corroboration.TrustedSourcesRegistry] = None,
+) -> list[dict[str, Any]]:
+    """Score live-web chunks via the Schema §15 cascade.
+
+    Each chunk dict must have a `url` and `similarity`. The cascade
+    classifies the URL (whitelisted / corroborated / single / excluded
+    / override-tier) and looks up the weight in
+    `provenance.EXTERNAL_WEIGHTS`. Excluded chunks are dropped.
+
+    Annotates surviving chunks with classification / weight / score
+    and returns sorted descending.
     """
-    from orchestrator.boot import load_mode, extract_default_gear
+    if all_urls is None:
+        all_urls = [c.get("url", "") for c in chunks]
 
-    mode_name = step1_result["mode"]
-    mode_text = load_mode(mode_name)
-    gear = extract_default_gear(mode_text)
-    cleaned_prompt = step1_result["operational_notation"]
+    scored: list[dict[str, Any]] = []
+    for chunk in chunks:
+        url = chunk.get("url", "")
+        if not url:
+            continue
+        classification = web_corroboration.classify_web_source(
+            url, all_urls=all_urls, registry=registry,
+        )
+        weight = provenance.EXTERNAL_WEIGHTS.get(classification)
+        if weight is None or weight == 0.0:
+            # Unknown classification (e.g. an override tier name not in
+            # EXTERNAL_WEIGHTS) or excluded → drop. Override-tier names
+            # like "resource" / "web" map via TYPE_WEIGHTS instead.
+            override_weight = provenance.TYPE_WEIGHTS.get(classification)
+            if override_weight is None:
+                continue
+            weight = override_weight
 
-    # Standard ChromaDB queries
-    conv_rag = ""
-    concept_rag = ""
-    if knowledge_search_fn:
-        try:
-            conv_rag = knowledge_search_fn(cleaned_prompt, "conversations", 3)
-        except Exception:
-            pass
-        if gear >= 2:
-            try:
-                concept_rag = knowledge_search_fn(cleaned_prompt, "knowledge", 5)
-            except Exception:
-                pass
+        similarity = float(chunk.get("similarity", 0.0))
+        annotated = dict(chunk)
+        annotated["classification"] = classification
+        annotated["weight"]         = weight
+        annotated["score"]          = similarity * weight
+        scored.append(annotated)
 
-    # Relationship graph enrichment
-    engine = RAGEngine(config)
-    initial_results = []
-    if concept_rag:
-        # Parse concept_rag results into a list for relationship traversal
-        # ChromaDB results come as formatted text; extract source titles
-        for line in concept_rag.split("\n"):
-            if line.startswith("Source:") or "source:" in line.lower():
-                title = line.split(":", 1)[1].strip().replace(".md", "")
-                initial_results.append({"source": title})
+    scored.sort(key=lambda c: c["score"], reverse=True)
+    return scored
 
-    relationship_rag = engine.get_relationship_context(initial_results, mode_text)
 
-    # Build context package (compatible with existing pipeline)
-    context = engine.assemble_context(
-        cleaned_prompt=cleaned_prompt,
-        mode_text=mode_text,
-        gear=gear,
-        conversation_rag=conv_rag,
-        concept_rag=concept_rag,
-        relationship_rag=relationship_rag,
+def format_context_with_provenance(
+    chunks: list[dict[str, Any]],
+    max_chars: int = 8000,
+) -> str:
+    """Format ranked chunks as a text package with provenance markers.
+
+    Each chunk is preceded by a single-line marker:
+        [type: <type> | weight: <weight> | source: <source>]
+    External chunks use:
+        [classification: <class> | weight: <weight> | source: <url>]
+
+    Stops appending once `max_chars` is exceeded so the assembled
+    package fits inside the analytical-floor budget the ranker is
+    given.
+    """
+    if not chunks:
+        return ""
+
+    parts: list[str] = []
+    total = 0
+    for chunk in chunks:
+        meta = chunk.get("metadata") or {}
+        weight = chunk.get("weight", 0.0)
+        source = (
+            meta.get("source")
+            or chunk.get("url")
+            or chunk.get("id")
+            or "unknown"
+        )
+        if "classification" in chunk:
+            marker = (
+                f"[classification: {chunk['classification']} "
+                f"| weight: {weight} | source: {source}]"
+            )
+        else:
+            chunk_type = meta.get("type", "unknown")
+            marker = (
+                f"[type: {chunk_type} | weight: {weight} | source: {source}]"
+            )
+        body = chunk.get("document") or ""
+        block = f"{marker}\n{body}\n"
+        if total + len(block) > max_chars and parts:
+            break
+        parts.append(block)
+        total += len(block)
+    return "\n".join(parts)
+
+
+def assemble_ranked_context(
+    query: str,
+    *,
+    collection: str = "knowledge",
+    type_filter: Optional[list[str]] = None,
+    mode_text: Optional[str] = None,
+    n_results: int = 10,
+    include_private: bool = False,
+    include_archived: bool = False,
+    max_chars: int = 8000,
+) -> str:
+    """End-to-end Phase 5.6 ranker: query → rank → format.
+
+    When `mode_text` is provided and `type_filter` is None, extracts
+    the type_filter from the mode file's `## RAG PROFILE → ###
+    type_filter` subsection (Phase 4 mode-file contract).
+    """
+    if type_filter is None and mode_text:
+        type_filter = _knowledge_search._extract_mode_type_filter(mode_text)
+
+    chunks = _knowledge_search.knowledge_search_raw(
+        query=query,
+        collection=collection,
+        n_results=n_results,
+        type_filter=type_filter,
+        include_private=include_private,
+        include_archived=include_archived,
     )
-
-    # Return in the format boot.py expects
-    return {
-        "cleaned_prompt": cleaned_prompt,
-        "natural_language_prompt": step1_result["cleaned_prompt"],
-        "mode_name": mode_name,
-        "mode_text": mode_text,
-        "gear": gear,
-        "conversation_rag": conv_rag,
-        "concept_rag": concept_rag,
-        "relationship_rag": relationship_rag,
-        "triage_tier": step1_result["triage_tier"],
-        # New fields from RAG engine
-        "rag_approach": context.get("approach", "pre-assembled"),
-        "rag_utilization": context.get("utilization", ""),
-        "rag_signals": context.get("signals", []),
-        "hardware_tier": context.get("hardware_tier", 0),
-    }
+    ranked = rank_vault_chunks(chunks)
+    return format_context_with_provenance(ranked, max_chars=max_chars)

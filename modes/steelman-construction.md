@@ -1,266 +1,188 @@
 ---
-nexus: obsidian
+nexus:
+  - ora
 type: mode
-date created: 2026/03/23
-date modified: 2026/04/18
-rebuild_phase: 3
+tags:
+date created: 2026-03-23
+date modified: 2026-05-01
 no_visual: true
 ---
 
 # MODE: Steelman Construction
 
-## TRIGGER CONDITIONS
+```yaml
+# 0. IDENTITY
+mode_id: steelman-construction
+canonical_name: Steelman Construction
+suffix_rule: analysis
+educational_name: strongest-case construction (steelman)
 
-Positive:
-1. A position is about to be critiqued or dismissed.
-2. "What's the best case for X"; "give me the strongest version".
-3. Debate involves caricature of one side.
-4. User wants to understand an opposing argument at its strongest before evaluating.
-5. Request language: "steelman", "best case for", "play devil's advocate", "strongest version of the other side".
+# 1. TERRITORY AND POSITION
+territory: T15-artifact-evaluation-by-stance
+gradation_position:
+  axis: stance
+  value: constructive-strong
+adjacent_modes_in_territory:
+  - mode_id: benefits-analysis
+    relationship: stance-counterpart (constructive-balanced — Plus/Minus/Interesting)
+  - mode_id: balanced-critique
+    relationship: stance-counterpart (neutral)
+  - mode_id: red-team-assessment
+    relationship: stance-counterpart (adversarial-actor-modeling, assessment — direct opposite)
+  - mode_id: red-team-advocate
+    relationship: stance-counterpart (adversarial-actor-modeling, advocate)
+  - mode_id: devils-advocate-lite
+    relationship: stance-counterpart (adversarial-light — gap-deferred)
+cross_territory_reference:
+  - territory: T1-argumentative-artifact-examination
+    note: "When the artifact under steelmanning is itself an argument, T1 cross-reference activates. The home territory remains T15; T1 informs lens selection (e.g., argument-coherence considerations) without re-homing the mode."
 
-Negative:
-- IF questioning foundational assumptions rather than strengthening the position → **Paradigm Suspension**.
-- IF tracing whose interests a position serves → **Cui Bono**.
-- IF neutrally examining tension between positions → **Synthesis**.
-- IF driving thesis through antithesis → **Dialectical Analysis**.
+# 2. TRIGGER CONDITIONS AND ROUTING
+trigger_conditions:
+  user_situation_signals:
+    - "a position is about to be critiqued or dismissed"
+    - "I want to understand the opposing argument at its strongest before evaluating"
+    - "the debate involves caricature of one side"
+    - "I want to give this idea its fairest hearing"
+  prompt_shape_signals:
+    - "steelman"
+    - "best case for"
+    - "strongest version of"
+    - "what's the best argument for X"
+    - "give me the strongest formulation"
+disambiguation_routing:
+  routes_to_this_mode_when:
+    - "you want a single artifact reconstructed at its logical best, then critiqued only at that strength"
+    - "the input is one position or proposal you want strengthened"
+    - "self-directed epistemic hygiene — strengthen-then-critique workflow"
+  routes_away_when:
+    - "balanced evaluation across positive, negative, and interesting" → benefits-analysis
+    - "neutral examination weighing both sides equally" → balanced-critique
+    - "tear it down adversarially for own decision" → red-team-assessment
+    - "build the case against for external use" → red-team-advocate
+    - "drive thesis through antithesis to synthesis" → dialectical-analysis (T12)
+    - "trace whose interests the position serves" → cui-bono (T2)
+    - "question the foundational frame the position rests on" → paradigm-suspension (T9)
+when_not_to_invoke:
+  - "User wants a balanced evaluation, not a constructive-strong stance" → benefits-analysis or balanced-critique
+  - "User wants the artifact attacked for own fix-prioritisation" → red-team-assessment
+  - "User wants an argument brief against the artifact for external use" → red-team-advocate
+  - "User is auditing the argument's soundness as an argument, not building its best version" → T1 (argument-audit / coherence-audit / frame-audit)
 
-Tiebreaker:
-- Steelman vs Dialectical: **build + critique one position** → Steelman; **build + negate + sublate** → DA.
+# 3. EXECUTION STRUCTURE
+composition: atomic
+atomic_spec:
+  passes: 1
+  posture: constructive
 
-## EPISTEMOLOGICAL POSTURE
+# 4. INPUT AND OUTPUT CONTRACTS
+input_contract:
+  expert_mode:
+    required: [position_or_proposal, position_proponents_or_canonical_sources]
+    optional: [user_position_for_agreement_mapping, prior_critiques_to_avoid_recapitulating]
+    notes: "Applies when user supplies the position with explicit attribution to proponents or canonical formulations."
+  accessible_mode:
+    required: [position_or_proposal_to_steelman]
+    optional: [user_position_or_critique_context]
+    notes: "Default. Mode infers proponents and canonical formulations from the position."
+  detection:
+    expert_signals: ["canonical formulation", "the proponents' best argument", "Rawls argues", "academic literature on"]
+    accessible_signals: ["steelman", "best case for", "strongest version", "give it the fairest hearing"]
+    default: accessible_mode
+  graceful_degradation:
+    on_missing_required: "Ask: 'What position or argument do you want me to construct the strongest case for?'"
+    on_underspecified: "Ask: 'Could you state the position you want steelmanned, and whether you'd like me to identify points of agreement with your own view?'"
+output_contract:
+  artifact_type: synthesis
+  required_sections:
+    - original_position
+    - steelmanned_reconstruction
+    - strength_identification
+    - points_of_agreement
+    - critique_of_the_steelman
+    - survival_assessment
+  format: prose
 
-The opposing position is treated as potentially correct and deserving the strongest possible formulation. This is self-directed epistemic hygiene — steelmanning serves the analyst's understanding, not the opponent's ego. Evidence and reasoning are taken seriously on their own terms. The position is reconstructed at its logical best: hidden premises identified, logical gaps filled, best evidence marshalled. The steelman is built BEFORE critique begins — never simultaneously.
+# 5. CRITICAL QUESTIONS
+critical_questions:
+  - cq_id: CQ1
+    question: "Would a thoughtful proponent of this position endorse the reconstruction (mirror test), or would they recognize their argument weakened?"
+    failure_mode_if_unmet: tinman-trap
+  - cq_id: CQ2
+    question: "Is the steelman recognizably the same argument strengthened, or has it drifted into a different argument the analyst prefers?"
+    failure_mode_if_unmet: identity-loss
+  - cq_id: CQ3
+    question: "Does the critique address only the steelmanned version, or does it retreat to the weaker original at any point?"
+    failure_mode_if_unmet: retreat-to-original
+  - cq_id: CQ4
+    question: "Was the steelman built fully before critique began, or were construction and critique entangled?"
+    failure_mode_if_unmet: entangled-construction
 
-## DEFAULT GEAR
+# 6. NAMED FAILURE MODES AND CORRECTION
+failure_modes:
+  - name: tinman-trap
+    detection_signal: "Reconstruction appears strong but is designed to be defeated; mirror test fails (proponent would not endorse)."
+    correction_protocol: re-dispatch
+  - name: identity-loss
+    detection_signal: "Reconstruction has drifted into a different argument; core claim of original position no longer present."
+    correction_protocol: re-dispatch
+  - name: retreat-to-original
+    detection_signal: "Critique paragraph addresses the weaker original formulation at one or more passages."
+    correction_protocol: re-dispatch
+  - name: steel-strawman
+    detection_signal: "Steelman appears generally strong but a specific point is engineered for defeat by the subsequent critique."
+    correction_protocol: re-dispatch
+  - name: projection-trap
+    detection_signal: "Reconstruction filtered through analyst's worldview rather than the proponent's values; charitable inferences favour analyst's frame."
+    correction_protocol: flag
+  - name: entangled-construction
+    detection_signal: "Construction and critique appear interleaved; steelman was not built fully before critique began."
+    correction_protocol: re-dispatch
 
-Gear 3. Sequential construction and stress-testing is the natural workflow. Breadth constructs; Depth stress-tests.
+# 7. LENS DEPENDENCIES
+lens_dependencies:
+  required: []
+  optional:
+    - rapoport-rules-of-engagement
+    - dennett-charitable-interpretation
+  foundational:
+    - kahneman-tversky-bias-catalog
 
-## RAG PROFILE
-
-**Retrieve (prioritise):** strongest advocates for the position; academic literature supporting it; canonical formulations (foundational papers, definitive books).
-
-**Deprioritise:** critiques of the position during construction — critiques belong in the evaluation phase only.
-
-
-### RAG PROFILE — RELATIONSHIP PRIORITIES
-
-**Prioritise:** `supports`, `extends`, `qualifies`, `analogous-to`
-**Deprioritise:** `contradicts`, `supersedes`
-**Rationale:** Steelmanning requires finding the strongest support, extensions, and analogies.
-
-
-### RAG PROFILE — INPUT SPEC
-
-| Field | Purpose |
-|---|---|
-| `cleaned_prompt` | The position to be steelmanned |
-| `conversation_rag` | Prior turns' critiques that constructed only a weak version |
-| `concept_rag` | Proponents' canonical arguments |
-| `relationship_rag` | Objects linked by `supports` to the position |
-
-
-### RAG PROFILE — CONTEXT BUDGET
-
+# 8. RUNTIME AND DEPTH
+default_depth_tier: 2
+expected_runtime: ~5min
+escalation_signals:
+  upward:
+    target_mode_id: null
+    when: "Steelman Construction is the canonical constructive-strong mode in T15; no heavier sibling along the stance axis."
+  sideways:
+    target_mode_id: benefits-analysis
+    when: "User wants balanced evaluation rather than asymmetric strengthening; switch to constructive-balanced."
+  downward:
+    target_mode_id: null
+    when: "No lighter constructive-strong sibling; if user wants a quick endorsement rather than a strengthened reconstruction, route out of T15 entirely."
 ```
-fixed_overhead_tokens: TBD
-analytical_floor_tokens: TBD
-conversation_history_soft_ceiling: 0.4
-retrieval_approach: auto
-```
 
-## DEPTH MODEL INSTRUCTIONS
+## DEPTH ANALYSIS GUIDANCE
 
-White Hat:
-1. Identify the position as originally stated.
-2. Identify the strongest evidence supporting it — evidence that would be most difficult for a critic to dismiss.
-3. After Breadth completes the steelman, assess whether the construction genuinely strengthens or subtly weakens (tinmanning).
+Going deeper in Steelman Construction means reconstructing the position at its logical best — surfacing hidden premises that would make the argument stronger, filling logical gaps with the most charitable inferences, and marshalling the best available evidence. Depth shows itself in the mirror test: would a thoughtful proponent say "I wish I'd thought of putting it that way"? A thin pass paraphrases; a substantive pass formulates more precisely than proponents have, identifies the strongest premises, and marshalls evidence that would be most difficult for a critic to dismiss. Construction completes fully before critique begins — entangled construction-and-critique is a structural failure mode.
 
-Black Hat:
-1. Apply the **mirror test**: would a thoughtful proponent say "I wish I'd thought of putting it that way"? If not, the steelman is insufficient.
-2. Identify ≥ 2 points where the steelmanned version is strongest.
-3. Critique only the steelmanned version, never retreating to the weaker original.
+## BREADTH ANALYSIS GUIDANCE
 
-### Cascade — what to leave for the evaluator
-
-This mode emits NO envelope. All cascade cues live in prose.
-
-- Separate the six CONTENT CONTRACT sections with literal headings `Original position:`, `Steelmanned reconstruction:`, `Strength identification:`, `Points of agreement:`, `Critique of the steelman:`, `Survival assessment:`. Supports S2.
-- Keep the Original-position paragraph ≤ 1/3 of the total steelman section length — construction must dominate. Supports S3.
-- Apply the literal phrase "mirror test:" when declaring the steelman mirror-passed. Supports M1.
-- List ≥ 2 points of agreement explicitly numbered (`Agreement 1:`, `Agreement 2:`). Supports M2.
-- Critique section uses the literal phrase "addressing the steelmanned version:" to signal no-retreat-to-original. Supports M3.
-
-### Consolidator guidance
-
-Not applicable at this mode's default gear (Gear 3, single-stream). If promoted to Gear 4 (rare — construction and critique are naturally sequential), use Breadth's construction as canonical and Depth's critique as the stress-test; do NOT present both constructions side-by-side, which defeats the mode's purpose (one steelman, not a side-by-side compare).
-
-## BREADTH MODEL INSTRUCTIONS
-
-Green Hat:
-1. Reconstruct at logical best. Identify hidden premises that make the argument stronger. Fill gaps with the most charitable inferences. Marshal the best available evidence.
-2. Formulate more precisely than proponents have.
-3. Identify ≥ 2 points of agreement between the steelmanned position and the user's own.
-
-Yellow Hat:
-1. Identify what is genuinely valuable in the position.
-2. Assess what the user gains from the steelman: better understanding of opposition, genuine vulnerabilities in their own position, unexpected common ground.
-3. Identify what survives critique.
-
-### Cascade — what to leave for the evaluator
-
-- Prefix each hidden premise uncovered during construction with `Hidden premise:`.
-- Prefix filled gaps with `Gap filled:`.
-- Use the literal phrase "survives critique:" for each element in the Survival assessment. Supports M4.
-- Identify genuine value with the literal phrase "Genuinely valuable:".
+Widening the lens means scanning for the proponent's full philosophical or strategic context, not just the immediate claim. Identify hidden premises, fill gaps, and look for the strongest available support across the position's intellectual lineage. Identify at least two points of agreement between the steelmanned position and the user's own — these are not concessions but genuine common ground that often opens unexpected analytical leverage. Identify what is genuinely valuable in the position, separate from its rhetorical packaging. Breadth markers: hidden premises are explicitly surfaced, points of agreement are numbered and grounded in the user's stated view, and the steelman's intellectual lineage is acknowledged.
 
 ## EVALUATION CRITERIA
 
-5. **Steelman Fidelity.** 5=recognisably the same argument, strengthened. 3=shifted the core claim. 1=replaced with a different argument.
-6. **Mirror Test.** 5=a thoughtful proponent would endorse. 3=recognises the argument with one mischaracterisation. 1=would not recognise their own argument.
-7. **Critique Quality.** 5=addresses only the strongest version. 3=retreats to original at one point. 1=primarily addresses the original formulation.
+Evaluate against the four critical questions: (CQ1) mirror test pass; (CQ2) identity preservation; (CQ3) critique-targets-steelman-only; (CQ4) construction-before-critique. The named failure modes (tinman-trap, identity-loss, retreat-to-original, steel-strawman, projection-trap, entangled-construction) are the evaluation checklist. A passing Steelman output has all six required sections, the steelmanned reconstruction is recognizably the same argument strengthened, at least two points of agreement are explicit, the critique addresses only the strongest version, and the survival assessment names what remains compelling after critique. Mode is prose-only — any visual emission is an evaluation failure.
 
-### Focus for this mode
+## REVISION GUIDANCE
 
-A strong Steelman evaluator prioritises (prose-only, no envelope):
+Revise to strengthen the reconstruction wherever a thoughtful proponent would recognize weakness — apply the mirror test until it passes. Revise to re-anchor to the original claim wherever the steelman has drifted into a different argument. Revise to rewrite critique passages that retreat to the weaker original; if a critique doesn't apply to the steelmanned version, drop it rather than weakening the steelman to make the critique fit. Revise to rebuild from the proponent's values where the reconstruction has filtered through the analyst's worldview. Resist revising toward "balanced" presentation — the mode is asymmetric by design; the constructive-strong stance is the deliverable. If multiple positions need steelmanning, apply identical rigor to each (symmetry guard rail).
 
-1. **No-envelope invariant (S1).** Any `ora-visual` block is a mandatory fix — this mode is prose-only.
-2. **Six-section presence (S2).** Each of the six CONTENT CONTRACT sections must be identifiable.
-3. **Construction-dominance (S3).** Original-position paragraph ≤ 1/3 of total steelman section length.
-4. **Mirror test (M1).** Would a thoughtful proponent endorse the reconstruction?
-5. **Critique-addresses-steelman-only (M3).** No retreat to the original formulation during critique.
-6. **Fidelity (M5).** Steelman is the same argument strengthened, not replaced.
+## CONSOLIDATION GUIDANCE
 
-No visual short_alt criterion applies — mode is envelope-free.
+Consolidate as prose with the six required sections in order: original position (faithful re-expression including weaknesses), steelmanned reconstruction (the strongest possible version), strength identification (most defensible premises, hardest-to-dismiss evidence), points of agreement (≥2 explicit), critique of the steelman (addressing only the strongest version), survival assessment (what remains compelling after critique). The original-position paragraph stays bounded (≤ ⅓ of total steelman section length) so construction dominates rather than repetition of the weak formulation. Mode is prose-only — no envelope, no diagram, no visual summary; if user requests visual rendering, propose dialectical-analysis (which emits IBIS) as transition.
 
-### Suggestion templates per criterion
+## VERIFICATION CRITERIA
 
-- **S1 (envelope present):** `suggested_change`: "Remove the `ora-visual` block. Steelman Construction is prose-only. If the user asked for a visual summary, propose transition to Dialectical Analysis (which emits IBIS)."
-- **S2 (missing section):** `suggested_change`: "Add the missing section with the literal heading `<section-name>:`. Six sections required in order: Original position / Steelmanned reconstruction / Strength identification / Points of agreement / Critique / Survival assessment."
-- **S3 (original over-long):** `suggested_change`: "Trim the Original-position paragraph to ≤ 1/3 of the total steelman section length. Construction must dominate, not repetition of the weak formulation."
-- **M1 (mirror test failed):** `suggested_change`: "Rewrite the steelman until a thoughtful proponent would say 'I wish I'd thought of putting it that way'. The current version is recognisably weaker than what a committed advocate would produce."
-- **M3 (retreat to original):** `suggested_change`: "Critique paragraph addresses the weaker original at passage <quote>. Rewrite to address only the steelmanned formulation. If the critique doesn't apply to the steelman, it isn't a critique — drop it."
-- **M5 (identity loss):** `suggested_change`: "The steelman has drifted into a different argument. Re-anchor to the original position's core claim; the steelman strengthens that claim, not replaces it."
-
-### Known failure modes to call out
-
-- **Envelope-Slip Trap** → open: "An `ora-visual` block was emitted. Mandate removal — Steelman Construction is prose-only."
-- **Tinman Trap** → open: "The 'steelman' is designed to be defeated. Apply the mirror test and rewrite."
-- **Steel-Strawman Trap** → open: "The steelman appears strong but has a specific point engineered for defeat. Strengthen that specific point or drop the critique."
-- **Identity Loss Trap** → open: "Reconstruction has drifted into a different argument. Re-anchor to the original claim."
-- **Projection Trap** → surface as SUGGESTED: "Reconstruction filtered through the analyst's worldview. Rebuild from the proponent's values."
-
-### Verifier checks for this mode
-
-Universal V1-V8 (V2/V3/V6 N/A since Gear 3 single-stream; V5 applies to prose content contract only); then:
-
-- **V-STM-1 — No-envelope preservation.** Revised response has NO `ora-visual` fenced block.
-- **V-STM-2 — Six-section preservation.** All six CONTENT CONTRACT sections present in revised prose.
-- **V-STM-3 — Construction-dominance preservation.** Original-position paragraph still ≤ 1/3 of total steelman section length.
-- **V-STM-4 — No-retreat preservation.** Critique section still addresses only the steelmanned version; no retreat to original formulation.
-
-## CONTENT CONTRACT
-
-In order:
-
-1. **Original position** — faithful re-expression of the position as actually stated, including its weaknesses.
-2. **Steelmanned reconstruction** — the strongest possible version.
-3. **Strength identification** — which premises are most defensible, which evidence hardest to dismiss.
-4. **Points of agreement** — ≥ 2 places where the steelmanned position and the user's position converge.
-5. **Critique of the steelman** — addressing only the strongest version, with specific vulnerabilities.
-6. **Survival assessment** — what remains compelling after critique.
-
-### Reviser guidance per criterion
-
-- **short_alt preservation (Phase 7 iteration — IMPORTANT).** When re-emitting the envelope in the REVISED DRAFT, preserve `spec.semantic_description.short_alt` ≤ 150 chars. If rewriting it, match the Cesal form shown in this mode's `## EMISSION CONTRACT` canonical envelope (a short noun phrase: `<visual type> of <subject>`). Do NOT enumerate concepts, cross-links, quadrants, facets, branches, loops, hypotheses, or evidence items inside `short_alt` — that enumeration belongs in `level_1_elemental`. A fresh short_alt over 150 chars triggers `E_SCHEMA_INVALID` and negates the revision.
-- **S1 (envelope present):** apply envelope-removal template.
-- **S2 (missing section):** apply missing-section template.
-- **S3 (original too long):** apply trim template.
-- **M1 (mirror test):** apply mirror-test template.
-- **M2 (< 2 agreement points):** add agreement points until ≥ 2, each numbered.
-- **M3 (retreat):** apply no-retreat template.
-- **M4 (survival missing):** add Survival-assessment section with "survives critique:" labels.
-- **M5 (identity loss):** apply re-anchor template.
-
-## EMISSION CONTRACT
-
-**Steelman Construction emits NO `ora-visual` block.** Linguistic argument is the native form of the deliverable; any diagram would misrepresent the argument's structure as spatial when it is rhetorical.
-
-### Suppression rule
-
-- The response is prose only, in the seven content-contract sections above.
-- A conceptual reader may be tempted to emit an `ibis` diagram — **do not**. IBIS is Dialectical Analysis's envelope; rendering a steelman as IBIS flattens the construction's rhetorical arc into a static graph.
-- If the user explicitly asks for a visual summary, emit nothing in Steelman Construction and propose transitioning to **Dialectical Analysis** (which emits IBIS) for the visual.
-
-## GUARD RAILS
-
-**Solution Announcement Trigger.** WHEN declaring the steelmanned position correct or refuted, verify the assessment is grounded in the analysis.
-
-**Construction-before-critique guard rail.** Complete the steelman before beginning any critique.
-
-**Mirror test guard rail.** Apply the mirror test before presenting.
-
-**Symmetry guard rail.** If multiple positions need steelmanning, apply identical rigour to each.
-
-**No-envelope guard rail.** Do NOT emit any `ora-visual` block. Prose is the deliverable.
-
-## SUCCESS CRITERIA
-
-Since there is no envelope, structural criteria focus on prose shape. The Phase 4 reviewer uses only prose content.
-
-### Structural (prose-only)
-
-- S1: NO `ora-visual` fence in response. Envelope absence is the pass condition.
-- S2: Prose contains all six CONTENT CONTRACT sections (in order or clearly demarcated).
-- S3: Original-position paragraph is ≤ 1/3 of total steelman section length (construction dominates, not repetition).
-
-### Semantic (LLM-reviewer)
-
-- M1: Mirror test — a thoughtful proponent would endorse.
-- M2: ≥ 2 points of agreement explicit.
-- M3: Critique addresses only the steelmanned version (no retreat to original).
-- M4: Survival assessment explicit.
-- M5: The steelmanned reconstruction is recognisably the same argument, not a replacement.
-
-```yaml
-success_criteria:
-  mode: steelman-construction
-  version: 1
-  no_visual: true
-  structural:
-    - { id: S1, check: no_envelope_present }
-    - { id: S2, check: six_content_sections_present }
-    - { id: S3, check: original_position_length_bounded }
-  semantic:
-    - { id: M1, check: mirror_test }
-    - { id: M2, check: two_agreement_points }
-    - { id: M3, check: critique_targets_steelman_only }
-    - { id: M4, check: survival_assessment_present }
-    - { id: M5, check: steelman_fidelity }
-  acceptance: { tier_a_threshold: 0.9, structural_must_all_pass: true,
-                semantic_min_pass: 0.8 }
-```
-
-## KNOWN FAILURE MODES
-
-**The Tinman Trap (inverse of M1).** Declaring a steelman while constructing a position designed to be defeated. Correction: apply the mirror test.
-
-**The Projection Trap.** Filtering through the analyst's worldview. Correction: reconstruct from the proponent's values, not the analyst's.
-
-**The Steel-Strawman Trap.** Appearing strong but defeatable at a specific point. Correction: identify strongest points explicitly.
-
-**The Identity Loss Trap (inverse of M5).** "Improving" into a different argument. Correction: the steelman must be the same argument strengthened.
-
-**The Envelope-Slip Trap (inverse of no-envelope guard).** Emitting an `ibis` diagram as a visual summary. Correction: no envelope in this mode; propose Dialectical Analysis if visual needed.
-
-## TOOLS
-
-Tier 1: OPV (understand from proponents' perspective), Challenge, PMI.
-Tier 2: Domain modules based on the position's domain.
-
-## TRANSITION SIGNALS
-
-- IF critique reveals unexamined assumptions → propose **Paradigm Suspension**.
-- IF tracing interests behind the position → propose **Cui Bono**.
-- IF two steelmanned positions produce tension worth examining → propose **Synthesis** or **Dialectical Analysis**.
-- IF choosing between the steelmanned position and the user's → propose **Constraint Mapping**.
-- IF the user wants a visual rendering of the argument → propose **Dialectical Analysis** (IBIS).
+Verified means: all six required sections present in order or clearly demarcated; original-position paragraph bounded (≤ ⅓ of steelman section length); mirror test passes (a thoughtful proponent would endorse the reconstruction); steelman is recognizably the same argument strengthened (not replaced); at least two points of agreement explicit; critique addresses only the steelmanned version with no retreat to the original; survival assessment present; no visual envelope emitted. The four critical questions are addressable from the output.

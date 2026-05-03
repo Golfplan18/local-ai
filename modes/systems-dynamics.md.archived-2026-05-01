@@ -1,0 +1,450 @@
+---
+nexus:
+  - ora
+type: mode
+tags:
+date created: 2026-03-23
+date modified: 2026-04-18
+---
+
+# MODE: Systems Dynamics
+
+## TRIGGER CONDITIONS
+
+Positive (fire the mode):
+1. The problem involves feedback loops, unintended consequences, or counterintuitive behaviour.
+2. Interventions keep producing unexpected results.
+3. The situation involves delays between action and effect.
+4. Multiple variables interact in circular rather than linear ways.
+5. Loop-shaped request language: "why does fixing X make things worse", "what are the leverage points", "this keeps happening despite our attempts to fix it", "draw the feedback structure", "show me the loops".
+
+Negative (route elsewhere):
+- IF relationships are static and structural without temporal dynamics → **Relationship Mapping**.
+- IF the user wants to trace a specific failure backward through a causal chain (no declared loops) → **Root Cause Analysis**.
+- IF the user is orienting in unfamiliar territory rather than analysing a system → **Terrain Mapping**.
+- IF the user mentions feedback loops but has a drawn spatial artifact and asks what's missing → **Spatial Reasoning**.
+- IF the user wants to choose among alternatives shaped by feedback → **Decision Under Uncertainty** (propose SD first only if the feedback structure is the load-bearing question).
+
+Tiebreakers:
+- SD vs RCA: **ongoing counterintuitive behaviour driven by loops** → SD; **one-off failure trace** → RCA.
+- SD vs Relationship Mapping: **temporal dynamics, delays, accumulation** → SD; **static structure** → RM.
+
+## EPISTEMOLOGICAL POSTURE
+
+Causation is circular, emergent, and feedback-driven, not linear. Behaviour arises from structure, not from individual intentions or single causes. Systems exhibit counterintuitive behaviour — corrective programmes are often counteracted by the system's own feedback dynamics. The observer is part of the system. Understanding requires identifying not just connections but the *type* of connection: reinforcing loops (R), balancing loops (B), delays, stocks, and flows. Leverage points exist but are often non-obvious — the most effective interventions are rarely the most obvious ones.
+
+## DEFAULT GEAR
+
+Gear 4. Independent structural analysis is the minimum. Two models may identify different feedback loops, different leverage points, and different system archetypes. Convergence increases confidence; divergence reveals structural features worth examining that anchored analysis would suppress. Gear 3 as fallback when only one model is available; the single-model risk is mono-loop projection.
+
+## RAG PROFILE
+
+**Retrieve (prioritise):** systems thinking literature, system dynamics case studies, system archetype libraries (Senge), Meadows' leverage-points hierarchy, domain-specific SD models if they exist.
+
+**Deprioritise:** linear causal analyses and single-factor explanations — the mode's work is specifically to find what those miss.
+
+
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
+
+Rationale: Loop analysis draws on engram-tier loop articulations and resource-tier system patterns.
+
+### Provenance Treatment
+
+When assembling reasoning from retrieved chunks:
+
+- Chunks marked `engram` represent the user's vetted positions; weight them above lower-tier sources even when they contradict consensus from chats or web content.
+- When P1/P2 sources conflict with P3–P6 sources, surface the conflict explicitly rather than averaging.
+- For Gear 4 adversarial outputs, prefer the analysis grounded in higher-provenance sources.
+- Engram-tier loop articulations and stock-and-flow models override partial loop fragments retrieved from chat or incubator. Cross-domain analogies surfaced in resource tier are useful for structural pattern matching but should not import policy claims unmodified.
+
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritise:** `enables`, `produces`, `requires`, `contradicts`, `qualifies`
+**Deprioritise:** `parent`, `child`, `supersedes`
+**Rationale:** System dynamics tracks feedback loops — what enables what, what produces what, where contradictions create oscillation.
+
+
+### RAG PROFILE — INPUT SPEC (context-package fields consumed)
+
+| Field | Purpose |
+|---|---|
+| `cleaned_prompt` | The behaviour-over-time or counterintuitive-outcome the user is puzzling over |
+| `conversation_rag` | Prior turns' loop hypotheses, archetype labels, leverage-point proposals |
+| `concept_rag` | Mental models — Senge's archetypes, Meadows' 12 leverage points, Forrester core concepts |
+| `relationship_rag` | Domain objects already linked by `enables` / `produces` / `contradicts` |
+| `prior_spatial_representation` | Any CLD or stock-and-flow the user drew previously; preserve variable ids and loop labels across turns |
+| `spatial_representation` | User's current drawing to ground the feedback-structure analysis |
+| `annotations` | User callouts pointing at ambiguous links or asking "is this a loop?" |
+
+
+### RAG PROFILE — CONTEXT BUDGET
+
+```
+fixed_overhead_tokens: TBD
+analytical_floor_tokens: TBD
+conversation_history_soft_ceiling: 0.4
+retrieval_approach: auto
+```
+
+*Token measurements to be calibrated during Phase 8E testing.*
+
+## DEPTH MODEL INSTRUCTIONS
+
+White Hat directives:
+1. Define the system boundary explicitly — what is inside, what is outside. **This boundary shapes which variables get declared in `spec.variables`.**
+2. Identify stocks (accumulations) and flows (rates of change) where magnitudes and units are known or estimable. If the system is primarily qualitative, stay with a CLD; if there are numbered accumulations with known or estimable units, prefer `stock_and_flow`.
+3. Identify all feedback loops and classify each as reinforcing (R — amplifies change) or balancing (B — resists change). **Each loop becomes an entry in `spec.loops` with id `R1`/`B1`/… matching its type.**
+4. Identify delays — where the effect of an action takes time to materialise. Delays are the most common source of counterintuitive system behaviour. Mark delayed edges with `delay: true` in the envelope.
+
+Black Hat directives:
+1. For each feedback loop, assess whether it is genuinely circular or a linear chain misidentified as circular. A real loop has a closing edge that returns influence to the start variable.
+2. Identify at minimum one counterintuitive behaviour — a case where intervention produces the opposite of the intended effect due to feedback dynamics.
+3. Verify loop polarity: a loop with an even number of `-` edges is reinforcing (R); odd is balancing (B). The validator enforces this via `E_GRAPH_CYCLE` — if the declared type disagrees with polarity parity, the envelope is rejected.
+
+### Cascade — what to leave for the evaluator
+
+Explicit structural cues the Depth analyst must leave so the evaluator can mechanically verify:
+
+- Declare the system boundary in the first paragraph using the literal opening "System boundary:". Supports M5 and C4.
+- Name every loop with the exact literal form `<type><n>: <label>` (e.g. `B1: Debt balances velocity`, `R2: Adoption reinforces content`) matching `spec.loops[].id` and `spec.loops[].label`. Supports C1.
+- State each loop's member variables in prose in the same order as `spec.loops[].members`. Supports C2.
+- For each `-` edge declared in prose, use the literal phrase "negative link" or "dampening"; for `+` edges use "positive link" or "reinforcing edge". Supports C3 and the polarity-parity mental audit.
+- Identify at least one delay explicitly with the literal phrase "delayed by" and flag the corresponding edge with `delay: true` in the envelope.
+- When a `stock_and_flow` envelope is chosen, state the unit string verbatim in prose (e.g. "accumulated in units of people/year"). Supports S11.
+- **short_alt discipline — IMPORTANT (Phase 5 iteration).** Emit `spec.semantic_description.short_alt` in Cesal form: `"Causal loop diagram of <dominant loop behaviour ≤ 60 chars>."` (or `"Stock-and-flow diagram of <subject>."` for S&F). TARGET ≤ 100 chars. HARD MAX 150 chars — exceeding this rejects the envelope with `E_SCHEMA_INVALID`. Do NOT enumerate variables, polarities, loops, or archetypes inside short_alt — that content lives in `level_1_elemental`. Good: `"Causal loop diagram of velocity-debt balancing dynamics."` (55 chars). Bad: `"Causal loop diagram showing velocity, tech debt, fires, monitoring coverage with four signed links and one balancing loop capturing how rapid velocity creates accumulating debt..."` (180+ chars — rejected).
+- **C3 polarity verification (Phase 5 iter-2).** Before emitting, perform a prose-envelope polarity audit: for every edge named in prose with a polarity hint (phrases like "amplifies", "reinforces", "increases", "positive link" → `+`; "dampens", "balances", "reduces", "negative link" → `-`), verify the corresponding `spec.links[].polarity` matches. Common failure: prose says a link "dampens" but envelope has `polarity: +`. Check every link before emitting. If polarity is genuinely ambiguous for an edge, state "ambiguous polarity — omitted" in prose and DO NOT emit that edge.
+
+### Consolidator guidance
+
+Applies at this mode's default gear (Gear 4). Depth + Breadth both produce independent CLDs (or S&Fs). Reconcile as follows:
+
+- **Reference frame for the envelope:** Depth's variable set + loop declarations. Depth's framework choices (CLD vs S&F, boundary, polarity) are canonical.
+- **Breadth's contributions as prose sections:** archetype identification and Meadows-depth leverage ranking live as dedicated prose sections even when Depth has named the same archetype — preserve attribution.
+- **Convergence on loop count + polarity:** if both streams declared the same loop with matching type + polarity parity, mark it as high-confidence in the prose loop-listing.
+- **Divergence resolution:** if the streams disagree on polarity for the same edge, do NOT average or pick one silently — emit both readings in prose with rationale, then drop that edge from the envelope if the ambiguity is unresolvable, OR keep Depth's polarity and note the Breadth objection in the "Confidence and boundary caveats" paragraph.
+- **Archetype disagreement:** if streams name different archetypes for the same structure, keep both in prose as "Candidate archetypes" and let the user choose; the envelope does not encode archetype choice directly.
+
+## BREADTH MODEL INSTRUCTIONS
+
+Green Hat directives:
+1. Map the complete feedback structure. Name every loop with a short descriptive `label` (e.g. "Debt balances velocity") and state what behaviour it drives.
+2. Identify system archetypes present — Fixes That Fail, Shifting the Burden, Limits to Growth, Eroding Goals, Escalation, Success to the Successful, Tragedy of the Commons, Growth and Underinvestment. Name any that apply and state the predicted behaviour.
+3. Rank leverage points using Meadows' hierarchy: parameters < buffer sizes < stock-and-flow structure < delays < feedback loops < information flows < rules < self-organisation < goals < paradigms.
+
+Yellow Hat directives:
+1. Identify the highest-leverage interventions — structural changes producing the most beneficial system-wide effects.
+2. Distinguish robust interventions (work across system states) from fragile interventions (depend on specific conditions).
+3. Identify what the user gains from systems-level understanding — how seeing the feedback structure changes what they would do compared to linear analysis.
+
+### Cascade — what to leave for the evaluator
+
+Explicit structural cues the Breadth analyst must leave so the evaluator can mechanically verify:
+
+- Name every archetype with the canonical label (Fixes That Fail, Shifting the Burden, Limits to Growth, Eroding Goals, Escalation, Success to the Successful, Tragedy of the Commons, Growth and Underinvestment) exactly. No paraphrase or variation. Supports M3.
+- For every leverage-point recommendation, state Meadows depth as "Depth level N:" (1=parameters through 12=paradigms) in the Leverage-points paragraph. Supports M4.
+- Use the literal phrase "outside the system boundary" when excluding a variable. Supports M5.
+- Number counterintuitive behaviours explicitly (`Counterintuitive Behaviour 1:`, etc.) — at least one required by the Depth/Breadth spec.
+
+## EVALUATION CRITERIA
+
+Extends the base four-criterion rubric with:
+
+5. **Feedback Structure.** 5=all significant loops identified, classified (R/B), named, and behavioural implications stated. 3=major loops identified but one significant loop missing or misclassified. 1=loops not identified or confused with linear chains.
+6. **Archetype Recognition.** 5=archetypes correctly identified with evidence, predicted behaviour matches observed behaviour. 3=archetype named but fit approximate. 1=no archetype recognition or archetype misidentified.
+7. **Leverage Point Quality.** 5=leverage points ranked by Meadows depth with reasoning, highest-leverage interventions identified and justified. 3=leverage points identified but not ranked. 1=proposed interventions are parameter adjustments without structural analysis.
+8. **Polarity Integrity.** 5=every link polarity justified and every loop's type matches its polarity parity. 3=polarity declared throughout but one loop's type is wrong. 1=polarity omitted or inconsistent.
+
+### Focus for this mode
+
+A strong SD evaluator prioritises in this order:
+
+1. **Loop-or-nothing (S9, Loop-or-nothing guard).** A CLD with `spec.loops: []` is structurally invalid — mandate fix or route out of mode.
+2. **Polarity parity (S10).** Mismatched loop type vs polarity parity is rejected by validator; mandate fix with explicit edge-count before suggesting semantic refinements.
+3. **Loop genuineness (M1).** A chain labelled as a loop without a closing edge is a silent structural failure — mandate fix.
+4. **Boundary honesty (M5).** Silent exclusion of relevant variables masks false leverage; mandate fix when evident.
+5. **Archetype-loop fit (M3).** Name-drops without matching `spec.loops` structure fail M3; surface as mandatory.
+6. **Short_alt discipline (S12).** SD's CLD short_alt should name the dominant loop's behaviour, NOT enumerate variables.
+
+### Suggestion templates per criterion
+
+Use verbatim in SUGGESTED IMPROVEMENTS when the named criterion fails.
+
+- **S12 (short_alt):** `suggested_change`: "Rewrite short_alt as: 'Causal loop diagram of <dominant loop behaviour ≤ 80 chars>.' Do not enumerate variables or link polarities — level_1_elemental handles enumeration. Target ≤ 100 chars."  `criterion_it_would_move`: `S12`.
+- **S9 (loop id pattern):** `suggested_change`: "Rename loop id to match `^[RB][0-9]+$`. Use `R1`/`R2` for reinforcing loops, `B1`/`B2` for balancing. Type prefix must match `type` field."  `criterion_it_would_move`: `S9`.
+- **S10 (polarity parity mismatch):** `suggested_change`: "Count `-` edges along loop members: even ⇒ declare `type: R`; odd ⇒ declare `type: B`. Update whichever is inconsistent with the parity count."  `criterion_it_would_move`: `S10`.
+- **M1 (loop not genuine):** `suggested_change`: "For loop <id>, verify the closing edge exists in `spec.links` — last member's variable must have an edge to the first member. If absent, add the closing edge OR remove the loop from `spec.loops` and describe the chain as directed influence in prose only."  `criterion_it_would_move`: `M1`.
+- **M3 (archetype name-drop):** `suggested_change`: "Either remove the archetype name from prose (a structural archetype requires a matching loop topology in `spec.loops`) OR add the archetype's characteristic loop to `spec.loops` with correct polarity parity."  `criterion_it_would_move`: `M3`.
+- **M4 (leverage not Meadows-ranked):** `suggested_change`: "Annotate each leverage point with 'Depth level N:' where N ∈ 1-12 per Meadows' hierarchy. A parameter tweak is depth 1-3; a feedback-loop addition is depth 6; a paradigm shift is depth 12."  `criterion_it_would_move`: `M4`.
+
+### Known failure modes to call out
+
+Dispatch rule:
+
+- **Loopless-CLD Trap** → open: "A CLD with zero loops is not a feedback structure; per the Loop-or-nothing guard, this is mandatory."
+- **Linear-Masquerading-as-Loop Trap** → open: "Loop X lacks a closing edge in `spec.links`; it is a chain, not a loop."
+- **Polarity Parity Mismatch** → open: "Loop X's declared type contradicts its `-` edge parity."
+- **Archetype Name-Drop Trap** → open: "Archetype <name> is named without matching loop structure."
+- **Everything-Connects Trap** → surface as SUGGESTED IMPROVEMENT: "State the system boundary explicitly; unfalsifiable holism without boundary declaration fails M5."
+
+### Verifier checks for this mode
+
+Universal V1-V8 first; then:
+
+- **V-SD-1 — Loop-parity consistency.** Every loop in the revised `spec.loops` has declared type matching `-`-edge parity across its `members`.
+- **V-SD-2 — Archetype-loop match preservation.** If archetypes named in revised prose, each has a matching loop in revised `spec.loops`; silent archetype addition during revision is a FAIL.
+- **V-SD-3 — Variable coverage.** Every variable named as a loop member in revised prose has a matching `spec.variables[].id` in revised envelope.
+- **V-SD-4 — Boundary preservation.** Variables outside the revised prose's declared boundary are absent from revised `spec.variables`. Silent boundary expansion during revision is a FAIL.
+
+## CONTENT CONTRACT
+
+The prose is complete when it contains, in order:
+
+1. **System boundary** — one paragraph stating what is inside the system and what is outside. Everything inside becomes (or is a candidate for) a `spec.variables` entry.
+2. **Variables declaration** — the named nodes (with short labels) the analysis operates on. If using `stock_and_flow`, distinguish stocks from flows from auxiliaries here.
+3. **Feedback loops** — every loop that was identified, with its short name (e.g. "Debt balances velocity"), its type (R or B), its member variables in order, and the behaviour it drives. **Each prose loop must correspond to a `spec.loops` entry with matching id.**
+4. **Delays** — where effects lag behind actions, and how the delays shape the behaviour-over-time pattern.
+5. **System archetypes** — which known behavioural patterns are present, with evidence from the specific loops and variables.
+6. **Leverage points** — ranked by Meadows depth, with specific recommendations for the highest-leverage interventions.
+7. **Emergent / counterintuitive behaviours** — at least one behaviour that linear analysis would not predict, driven by the mapped feedback structure.
+8. **Confidence and boundary caveats** — what the analysis does NOT cover (outside the declared boundary) and where loop strength is uncertain.
+
+After your analysis, emit exactly one fenced `ora-visual` block conforming to the EMISSION CONTRACT below as the final block of the response.
+
+### Reviser guidance per criterion
+
+When the evaluator's output mandates a fix against the named criterion:
+
+- **short_alt preservation (Phase 7 iteration — IMPORTANT).** When re-emitting the envelope in the REVISED DRAFT, preserve `spec.semantic_description.short_alt` ≤ 150 chars. If rewriting it, match the Cesal form shown in this mode's `## EMISSION CONTRACT` canonical envelope (a short noun phrase: `<visual type> of <subject>`). Do NOT enumerate concepts, cross-links, quadrants, facets, branches, loops, hypotheses, or evidence items inside `short_alt` — that enumeration belongs in `level_1_elemental`. A fresh short_alt over 150 chars triggers `E_SCHEMA_INVALID` and negates the revision.
+- **S2 (schema invalid):** read the first `E_*` code. `E_SCHEMA_INVALID` → most often short_alt length; apply S12 template. `E_GRAPH_CYCLE` → polarity parity mismatch; apply S10 template. `E_UNRESOLVED_REF` → a loop member is not in `spec.variables`; add the variable or remove the loop.
+- **S6 (relation_to_prose):** set `envelope.relation_to_prose = "visually_native"`; SD's diagram IS the argument.
+- **S7 (variable count < 4):** add variables until ≥ 4. A meaningful feedback structure rarely has fewer.
+- **S8 (link count / polarity missing):** add polarity `+` or `-` to every link; if the count is below 3, add the missing edges that the loop declarations require.
+- **S9 (no loops):** either add `spec.loops` with declared id/type/members/label — or route the user to Relationship Mapping (emit prose explaining the route and suppress the envelope).
+- **S10 (polarity parity):** apply S10 template.
+- **S11 (stock_and_flow shape):** ensure every stock has `initial` + `unit`; every flow has `unit` and resolvable endpoints; no orphan stocks.
+- **S12 (short_alt):** apply S12 template.
+- **M1 (chain mis-labelled as loop):** apply M1 template.
+- **M2 (behaviour-grounded label):** rename loop label to describe the behaviour, not the variables.
+- **M3 (archetype without loop):** apply M3 template.
+- **M4 (Meadows not ranked):** apply M4 template.
+- **M5 (boundary not stated):** add "System boundary:" paragraph to the prose's opening and list excluded variables with rationale.
+- **C1 (loop name mismatch):** align prose loop names with `spec.loops[].id` or `.label` verbatim.
+- **C3 (polarity prose-envelope mismatch):** fix whichever side is wrong; pick one canonical stance and update the other.
+- **C4 (boundary-variable contamination):** remove the excluded variable from `spec.variables` and delete any links referencing it.
+
+## EMISSION CONTRACT
+
+Systems Dynamics produces a response containing BOTH prose (the eight content-contract sections above) AND exactly one fenced `ora-visual` block. The prose arrives first; the envelope is the final block of the response.
+
+### Envelope type selection
+
+- **Default: `causal_loop_diagram`.** Qualitative feedback analysis — named variables, signed links, typed loops. Use for almost all SD turns.
+- **Switch to `stock_and_flow` only when accumulation is numerical and material** — i.e. there is at least one stock with an initial value and a named unit, and at least one flow with a rate (or estimable rate) and a matching unit. Do not pick S&F just because the word "stock" is mentioned metaphorically.
+- In both cases `relation_to_prose: "visually_native"` — the visual IS the structural argument, not a summary of it.
+
+### Canonical envelope (causal_loop_diagram)
+
+```ora-visual
+{
+  "schema_version": "0.2",
+  "id": "sd-fig-1",
+  "type": "causal_loop_diagram",
+  "mode_context": "systems-dynamics",
+  "relation_to_prose": "visually_native",
+  "title": "Velocity vs tech debt — balancing loop",
+  "canvas_action": "replace",
+  "spec": {
+    "variables": [
+      { "id": "V", "label": "Velocity" },
+      { "id": "T", "label": "Tech debt" },
+      { "id": "F", "label": "Fires" },
+      { "id": "M", "label": "Monitoring coverage" }
+    ],
+    "links": [
+      { "from": "V", "to": "T", "polarity": "+" },
+      { "from": "T", "to": "F", "polarity": "+", "delay": true },
+      { "from": "F", "to": "V", "polarity": "-" },
+      { "from": "M", "to": "F", "polarity": "-" }
+    ],
+    "loops": [
+      {
+        "id": "B1",
+        "type": "B",
+        "members": ["V", "T", "F"],
+        "label": "Debt balances velocity",
+        "narrative": "Higher velocity accumulates debt, which causes fires that eventually slow velocity; a delayed balancing loop that operators mistake for random outages."
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Four variables (Velocity, Tech debt, Fires, Monitoring coverage) with four signed links and one declared balancing loop through V-T-F.",
+    "level_2_statistical": "One loop of length 3, with one delay edge (T→F). Monitoring coverage is an exogenous moderator with one negative link into Fires.",
+    "level_3_perceptual": "The dominant loop is balancing: velocity is self-limiting through debt accumulation and delayed fire-fighting, not through external constraint.",
+    "short_alt": "Balancing loop where velocity creates debt, debt causes delayed fires, fires slow velocity."
+  }
+}
+```
+
+### Emission rules (causal_loop_diagram)
+
+1. **`type` must be `"causal_loop_diagram"`** unless `stock_and_flow` conditions (numerical accumulation) are met.
+2. **`mode_context` must be `"systems-dynamics"`** (hyphens, not underscores).
+3. **`relation_to_prose` must be `"visually_native"`** — the diagram IS the argument.
+4. **`canvas_action` must be `"replace"`** — SD renders its own structure; it does not overlay user-drawn content.
+5. **`spec.variables` must have at least 4 entries.** Fewer than 4 generally cannot express a non-trivial feedback structure.
+6. **Each variable has a short `label`** (≤ ~24 chars; the renderer truncates longer labels).
+7. **`spec.links` carries `polarity ∈ {"+", "-"}` on every edge.** Mark delayed edges with `delay: true`.
+8. **`spec.loops` must have at least 1 entry.** A CLD with no declared loops is not a feedback structure — either declare the loop or switch to `causal_dag` via **Relationship Mapping** mode.
+9. **Loop `id` follows the pattern `R<n>` or `B<n>`** (e.g. `R1`, `B1`, `B2`). The validator enforces the pattern with a regex; `type` must match the prefix.
+10. **Loop polarity parity must match declared type.** Even number of `-` edges on the loop's members ⇒ `R`; odd ⇒ `B`. The validator computes parity and rejects a type mismatch with `E_GRAPH_CYCLE`.
+11. **Loop `members` is an ordered list of variable ids** traversed in loop order, minimum 2 entries.
+12. **Every loop has a `label`** naming the behaviour (not the variables) — e.g. "Debt balances velocity", not "V-T-F loop".
+13. **`semantic_description` has all four required fields non-empty**, and `short_alt ≤ 150 characters`. Do not enumerate every variable in `short_alt` — name the dominant loop's behaviour.
+14. **No orphan variables unless `allow_isolated: true`.** Isolated variables emit `W_ORPHAN_NODE` and hurt accessibility — either link them or drop them.
+15. **Emit exactly one `ora-visual` block.**
+
+### Emission rules (stock_and_flow — secondary)
+
+Switch to `type: "stock_and_flow"` only when the system has numerical accumulation. Requirements:
+
+- `spec.stocks` with at least 1 entry, each with `id`, `label`, `initial` (number), and `unit` (string).
+- `spec.flows` with at least 1 entry, each with `id`, `label`, `from`, `to`, and `unit` (flow/time). Flow endpoints must resolve to a stock id or a cloud id.
+- `spec.clouds` for boundary sources/sinks the flows connect to.
+- `spec.auxiliaries` for formula-like variables that modulate flow rates; the validator requires `info_links` among auxiliaries to form a DAG (no cycles among auxiliaries).
+- At least one stock must be connected by a flow; `W_STOCK_ISOLATED` fires otherwise.
+- Units should be dimensionally consistent flow-to-stock (e.g. stock units `people`, flow units `people/year`).
+- `mode_context`, `relation_to_prose`, `canvas_action` same as CLD.
+
+### What NOT to emit
+
+- **Do not** emit a CLD with no declared loops — that is Relationship Mapping's territory (use `causal_dag` instead, in that mode).
+- **Do not** set `canvas_action: "annotate"` — that is Spatial Reasoning's mode.
+- **Do not** mix CLD variables and S&F stocks in the same envelope — pick one type.
+- **Do not** declare a loop whose type contradicts its polarity parity (`E_GRAPH_CYCLE` rejection).
+- **Do not** emit a single-variable or two-variable CLD — the minimum useful feedback topology is a 3-cycle.
+
+## GUARD RAILS
+
+**Solution Announcement Trigger (standing guard rail).** WHEN recommending an intervention, THEN verify it has been tested against the system's feedback structure. A recommendation ignoring feedback dynamics is a linear solution applied to a non-linear system.
+
+**Structure-over-events guard rail.** Focus on feedback loops, delays, stocks and flows — not individual events or actors. Events are symptoms; structure is the cause.
+
+**Feasibility guard rail.** For every leverage point, assess whether it is actionable given the user's position and resources.
+
+**Loop-or-nothing guard rail.** WHEN about to emit a CLD envelope with zero declared loops, THEN stop and either declare the loops, switch to `stock_and_flow` if accumulation structure is present, or escape the mode (route to Relationship Mapping) if no loops exist.
+
+**Polarity integrity guard rail.** WHEN declaring a loop `type`, THEN verify the parity of `-` edges matches (`R` = even; `B` = odd). Count before emitting.
+
+**Boundary honesty guard rail.** State what is outside the system boundary. A model that silently excludes important variables produces false-leverage recommendations.
+
+## SUCCESS CRITERIA
+
+A Systems Dynamics turn succeeds when all structural, semantic, and composite criteria below are met.
+
+### Structural (machine-checkable)
+
+- **S1 — Envelope presence.** Exactly one `ora-visual` fenced block parseable as JSON.
+- **S2 — Schema validity.** Passes `visual_validator.validate_envelope` with zero errors.
+- **S3 — Mode-correct type.** `envelope.type ∈ {"causal_loop_diagram", "stock_and_flow"}`.
+- **S4 — Mode context.** `envelope.mode_context == "systems-dynamics"`.
+- **S5 — Canvas action.** `envelope.canvas_action == "replace"`.
+- **S6 — Relation to prose.** `envelope.relation_to_prose == "visually_native"`.
+- **S7 — Variable count (CLD).** `len(spec.variables) ≥ 4`.
+- **S8 — Link count (CLD).** `len(spec.links) ≥ 3` and every link carries `polarity ∈ {"+", "-"}`.
+- **S9 — Loop count (CLD).** `len(spec.loops) ≥ 1`, each loop has `id` matching `^[RB][0-9]+$`, `members` length ≥ 2, non-empty `label`.
+- **S10 — Loop polarity parity.** For each loop, the count of `-` edges along its members matches the declared type (`R` = even, `B` = odd). The validator enforces this.
+- **S11 — Stock/flow shape (S&F).** If type is `stock_and_flow`: ≥1 stock with `initial` and `unit`, ≥1 flow with `unit` and resolvable endpoints, no orphan stocks.
+- **S12 — Semantic description complete.** All four required fields non-empty; `short_alt ≤ 150 chars`.
+
+### Semantic (LLM-reviewer)
+
+- **M1 — Loop genuineness.** Every declared loop is a genuine cycle in the graph, not a chain re-labelled as a loop.
+- **M2 — Behaviour-grounded labels.** Loop labels describe the behaviour (e.g. "Debt balances velocity"), not the variables traversed ("V-T-F loop").
+- **M3 — Archetype fit.** When an archetype is named in prose, its predicted behaviour is observed in the declared loop structure; archetypes without matching loops are not asserted.
+- **M4 — Leverage ranking.** Leverage-point recommendations are ranked by Meadows depth; the prose names which depth level each point sits at.
+- **M5 — Boundary honesty.** Prose states the system boundary; variables outside the boundary are explicitly excluded, not silently dropped.
+
+### Composite (prose + envelope agreement)
+
+- **C1 — Loop name traceability.** Every loop named in prose appears as a `spec.loops[]` entry with matching `id` OR matching `label`.
+- **C2 — Variable coverage.** Every variable named as a loop member in prose exists in `spec.variables[].id`.
+- **C3 — Polarity consistency.** When prose describes an edge as reinforcing or balancing, the envelope's `polarity` on that edge matches.
+- **C4 — Boundary agreement.** Variables outside the prose's declared boundary are absent from `spec.variables`.
+
+### Machine-readable summary (for the Phase 4 adversarial reviewer)
+
+```yaml
+success_criteria:
+  mode: systems-dynamics
+  version: 1
+  structural:
+    - { id: S1,  check: envelope_present }
+    - { id: S2,  check: envelope_schema_valid }
+    - { id: S3,  check: type_in_allowlist, allowlist: [causal_loop_diagram, stock_and_flow] }
+    - { id: S4,  check: mode_context_equals, value: systems-dynamics }
+    - { id: S5,  check: canvas_action_equals, value: replace }
+    - { id: S6,  check: relation_to_prose_equals, value: visually_native }
+    - { id: S7,  check: min_variables, min: 4, applies_to: causal_loop_diagram }
+    - { id: S8,  check: min_links_with_polarity, min: 3, applies_to: causal_loop_diagram }
+    - { id: S9,  check: min_loops_with_id_pattern, min: 1, pattern: "^[RB][0-9]+$", applies_to: causal_loop_diagram }
+    - { id: S10, check: loop_polarity_parity_matches_type, applies_to: causal_loop_diagram }
+    - { id: S11, check: stock_and_flow_shape, applies_to: stock_and_flow }
+    - { id: S12, check: semantic_description_complete }
+  semantic:
+    - { id: M1, check: loops_are_genuine_cycles }
+    - { id: M2, check: loop_labels_describe_behaviour }
+    - { id: M3, check: archetype_fits_loop_structure }
+    - { id: M4, check: leverage_ranked_by_meadows_depth }
+    - { id: M5, check: boundary_stated_in_prose }
+  composite:
+    - { id: C1, check: loop_name_prose_envelope_match }
+    - { id: C2, check: variable_coverage_in_envelope }
+    - { id: C3, check: polarity_prose_envelope_match }
+    - { id: C4, check: boundary_variables_excluded }
+  acceptance:
+    tier_a_threshold: 0.9
+    structural_must_all_pass: true
+    semantic_min_pass: 0.8
+    composite_min_pass: 0.75
+```
+
+## KNOWN FAILURE MODES
+
+**The Everything-Connects Trap (inverse of M5).** Unfalsifiable holism — claiming everything connects without analytical precision. Correction: Declare the system boundary. Identify specific connections with specific mechanisms.
+
+**The Deep-Leverage Trap (inverse of Yellow Hat directive 2).** Overemphasising paradigm shifts at the expense of actionable parameter adjustments. Correction: Rank by leverage AND feasibility. A workable parameter change may outperform an unreachable paradigm shift.
+
+**The Qualitative-Only Trap (inverse of stock_and_flow selection rule).** Producing CLDs without ever assessing magnitudes, delays, or relative loop strengths even when quantification is available. Correction: When stocks and units are known, switch to `stock_and_flow`; when they are not, declare loop dominance qualitatively in prose.
+
+**The Observer-Blindness Trap.** Analysing the system as if the analyst is outside it. Correction: Identify how the analyst and user are part of the system.
+
+**The Linear-Masquerading-as-Loop Trap (inverse of M1, S9).** Labelling a chain A→B→C as a "loop" without the closing C→A edge. Correction: Verify each loop's `members` returns to its starting variable along declared `links`.
+
+**The Polarity Parity Mismatch Trap (inverse of S10).** Declaring a loop as `R` when the polarity parity says it is `B` (or vice versa). Correction: Count `-` edges; even is R, odd is B.
+
+**The Loopless-CLD Trap (inverse of S9, Loop-or-nothing guard).** Emitting a `causal_loop_diagram` with `spec.loops: []`. Correction: A CLD with zero loops is a DAG — either declare the loops or route to Relationship Mapping.
+
+**The Archetype Name-Drop Trap (inverse of M3).** Naming a Senge archetype without a matching loop structure in the envelope. Correction: The archetype's characteristic loop must be present in `spec.loops`; if it isn't, don't name the archetype.
+
+**The Mixed-Type Trap.** Mixing CLD semantics (variables, polarity, loops) with stock-and-flow semantics (stocks, flows, clouds, info_links) in one envelope. Correction: Pick one type. Stocks belong in S&F; polarity belongs in CLD.
+
+## TOOLS
+
+Tier 1: CAF (identify all system factors), C&S (trace consequences across time horizons — delays are central), Challenge (test whether loops are genuine), RAD (recognise system type, divide if multiple systems conflated).
+
+Tier 2: Engineering and Technical Analysis Module for technical systems. Political and Social Analysis Module for institutional or policy systems.
+
+Enrichment frameworks: Meadows' 12 leverage points hierarchy. Senge's system archetypes for pattern recognition.
+
+## TRANSITION SIGNALS
+
+- IF the analysis reveals specific failure points requiring backward causal tracing → propose **Root Cause Analysis**.
+- IF the feedback structure embeds institutional interests → propose **Cui Bono**.
+- IF the user wants to explore multiple possible futures for the system → propose **Scenario Planning**.
+- IF the user begins defining a deliverable → propose **Project Mode**.
+- IF a foundational assumption worth questioning surfaces → propose **Paradigm Suspension**.
+- IF relationships are primarily structural without significant temporal dynamics → propose **Relationship Mapping**.

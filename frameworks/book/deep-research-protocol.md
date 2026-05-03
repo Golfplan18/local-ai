@@ -1,5 +1,12 @@
 # Deep Research Protocol
 
+## Display Name
+Deep Research Protocol
+
+## Display Description
+Produce structured, cited research reports addressing open-ended knowledge gaps. Searches the vault first, then fans out to web, browser AI, and API AI sources in parallel, with confidence-triggered iteration. Use when the question is genuinely open and you want a defensible report rather than a single-pass answer.
+
+
 *A Level 2 framework for orchestrated multi-step research producing cited reports on open-ended knowledge gaps.*
 
 *Version 1.0*
@@ -46,13 +53,37 @@ Specification. This canonical document describes the intellectual content of the
 
 ## MILESTONES DELIVERED
 
-### Milestone Type: Research report addressing specified knowledge gaps
+This framework delivers three sequential milestones. Each milestone is a coherent intermediate deliverable that downstream milestones consume; each is a checkpoint where adversarial review and drift detection fire.
 
-- **Endpoint produced:** Structured markdown research report saved (if `persist=true`) to vault root with filename `Reference — [Topic].md` and inherited nexus; contains executive summary, per-sub-query sections, cross-query synthesis, named caveats, and bibliography with inline citations; every claim carries a source-class tag.
-- **Verification criterion:** Every sub-query declared in the research plan has at least one cited claim in the report; every claim carries one of the source-class tags `[VAULT]`, `[WEB]`, `[BROWSER_AI]`, `[API_AI]`, `[INFERRED]`; the Self-Evaluation layer reports no UNRESOLVED DEFICIENCY; the Bibliography lists every URL cited in the body with no orphan citations (no URL in body absent from Bibliography; no URL in Bibliography uncited in body).
-- **Preconditions:** A research query (from TMF, direct user invocation, or project-agent delegation); access to `knowledge_search` for vault consultation plus at least one external retrieval source (`web_fetch`, `browser_evaluate`, or `api_evaluate`); `caller_context` is supplied.
-- **Mode required:** N/A (single mode).
-- **Framework Registry summary:** Produces cited research reports addressing open-ended knowledge gaps via vault-first retrieval and parallel external fan-out.
+### Milestone 1: Approved Research Plan
+
+- **Endpoint produced:** A research plan containing 3-7 sub-queries; per-sub-query coverage_criterion; per-sub-query source_hints (VAULT_CONTENT first-ranked); stopping_criteria for the run; for caller_context=USER_DIRECT with vague initial query, explicit user approval of the plan structure (plan_review_status = APPROVED).
+- **Verification criterion:** Every sub-query has a coverage_criterion; every sub-query has source_hints; stopping_criteria declared; sub-queries collectively cover normalized_query without obvious gap; plan_review_status = APPROVED for vague USER_DIRECT input, NOT_REQUIRED for TMF / PROJECT_AGENT / detailed USER_DIRECT.
+- **Layers covered:** 1, 2
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** See Layer 2 Output Format (RESEARCH PLAN block with sub-queries, coverage criteria, source hints, stopping criteria, plan review status).
+- **Drift check question:** Does this research plan address the user's original query without scope expansion into adjacent topics?
+
+### Milestone 2: Evidence Integrated and Iteration Resolved
+
+- **Endpoint produced:** An integrated_evidence_map with one entry per sub-query in research_plan, each carrying deduplicated claims tagged with source class ([VAULT], [WEB], [BROWSER_AI], [API_AI], [INFERRED]) and citations; iteration_decision (one of CONVERGED, CONVERGED_WITH_GAPS, BLOCKED — never ITERATE, since iteration is internal to this milestone); uncovered-dimension caveats recorded for the synthesis layer.
+- **Verification criterion:** Every sub-query in research_plan appears in integrated_evidence_map; every retained claim carries a source-class tag and citation; iteration count did not exceed depth_cap; vault was consulted before external retrieval for every sub-query (unless sources_allowed explicitly excluded vault); subagent_cap was respected on every fan-out wave; iteration_decision is one of CONVERGED, CONVERGED_WITH_GAPS, or BLOCKED.
+- **Layers covered:** 3, 4, 5
+- **Required prior milestones:** M1
+- **Gear:** 4
+- **Output format:** See Layer 5 Output Format (INTEGRATED EVIDENCE MAP + ITERATION DECISION block).
+- **Drift check question:** Does the integrated evidence cover every sub-query approved in the research plan, and does the iteration decision faithfully reflect coverage status without falsely declaring CONVERGED while material gaps remain?
+
+### Milestone 3: Final Research Report
+
+- **Endpoint produced:** Structured markdown research report with Executive Summary (150-250 words answering normalized_query), per-sub-query sections with inline source-class tags and citations, Cross-Query Synthesis, Caveats and Epistemic Notes, Bibliography grouped by source class, Corrections Log, Missing Information Declaration, and Recovery Declaration for any UNRESOLVED DEFICIENCY; if persist=true, saved to vault root as `Reference — [Topic].md` with inherited nexus and YAML frontmatter (type, nexus, tags, dates); if persist=false, returned in-memory to caller.
+- **Verification criterion:** Every sub-query from research_plan has a section in the report; every substantive claim carries a source-class tag; Bibliography contains every cited URL with no orphans in either direction; all 9 Evaluation Criteria scored at or above threshold (or below-threshold deficiencies surfaced with UNRESOLVED DEFICIENCY labels); structural completeness matches Layer 6 Output Format; YAML frontmatter present and correctly populated when persisted.
+- **Layers covered:** 6, 7, 8
+- **Required prior milestones:** M2
+- **Gear:** 4
+- **Output format:** See Layer 6 Output Format (the markdown report structure) and Layer 8 Output Format (Corrections Log, Missing Information Declaration, Recovery Declaration appendices).
+- **Drift check question:** Does the final report directly answer the user's original query with proper citation grounding, no fabricated URLs, and faithful representation of the integrated evidence?
 
 ---
 

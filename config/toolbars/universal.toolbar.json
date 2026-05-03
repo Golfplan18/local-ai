@@ -1,0 +1,133 @@
+{
+  "id": "ora-universal",
+  "label": "Universal",
+  "default_dock": "top",
+  "default_icon_size": "medium",
+  "items": [
+    {
+      "id": "new-canvas",
+      "icon": "file-plus",
+      "label": "New canvas",
+      "shortcut": "Ctrl+N",
+      "binding": "tool:new_canvas"
+    },
+    {
+      "id": "select",
+      "icon": "mouse-pointer",
+      "label": "Select",
+      "shortcut": "V",
+      "binding": "tool:select"
+    },
+    {
+      "id": "pan",
+      "icon": "hand",
+      "label": "Pan",
+      "shortcut": "H",
+      "binding": "tool:pan"
+    },
+    {
+      "id": "zoom-in",
+      "icon": "zoom-in",
+      "label": "Zoom in",
+      "shortcut": "+",
+      "binding": "tool:zoom_in"
+    },
+    {
+      "id": "zoom-out",
+      "icon": "zoom-out",
+      "label": "Zoom out",
+      "shortcut": "-",
+      "binding": "tool:zoom_out"
+    },
+    {
+      "id": "zoom-100",
+      "icon": "percent",
+      "label": "Zoom to 100%",
+      "shortcut": "0",
+      "binding": "tool:zoom_100"
+    },
+    {
+      "id": "zoom-fit",
+      "icon": "maximize-2",
+      "label": "Zoom to fit",
+      "shortcut": "F",
+      "binding": "tool:zoom_fit"
+    },
+    {
+      "id": "undo",
+      "icon": "undo-2",
+      "label": "Undo",
+      "shortcut": "Ctrl+Z",
+      "binding": "tool:undo",
+      "enabled_when": "history_has_undo"
+    },
+    {
+      "id": "redo",
+      "icon": "redo-2",
+      "label": "Redo",
+      "shortcut": "Ctrl+Shift+Z",
+      "binding": "tool:redo",
+      "enabled_when": "history_has_redo"
+    },
+    {
+      "id": "save",
+      "icon": "save",
+      "label": "Save canvas",
+      "shortcut": "Ctrl+S",
+      "binding": "tool:save"
+    },
+    {
+      "id": "export",
+      "icon": "download",
+      "label": "Export",
+      "binding": "tool:export"
+    },
+    {
+      "id": "clear",
+      "icon": "trash-2",
+      "label": "Clear canvas",
+      "binding": "tool:clear"
+    },
+    {
+      "id": "resize-canvas",
+      "icon": "scale",
+      "label": "Resize canvas",
+      "binding": "tool:resize_canvas"
+    },
+    {
+      "id": "crop-to-content",
+      "icon": "frame",
+      "label": "Crop to content",
+      "binding": "tool:crop_to_content",
+      "enabled_when": "canvas_has_content"
+    },
+    {
+      "id": "crop-to-selection",
+      "icon": "crop",
+      "label": "Crop to selection",
+      "binding": "tool:crop_to_selection",
+      "enabled_when": "selection_active"
+    },
+    {
+      "id": "ask-ora",
+      "icon": "sparkles",
+      "label": "Ask Ora",
+      "shortcut": "?",
+      "binding": "tool:ask_ora"
+    },
+    {
+      "id": "toolbar-selector",
+      "icon": "layout-panel-left",
+      "label": "Specialty toolbars",
+      "shortcut": "Shift+T",
+      "binding": "tool:toolbar_selector"
+    },
+    {
+      "id": "send-to-library",
+      "icon": "film",
+      "label": "Send image to media library",
+      "binding": "tool:send_to_library",
+      "enabled_when": "canvas_has_sendable_image"
+    }
+  ]
+}

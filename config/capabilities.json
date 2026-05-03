@@ -1,0 +1,469 @@
+{
+  "_schema_version": 1,
+  "_note": "Capability slot definitions for Ora's image / video / training pipeline. Authored 2026-04-29 under WP-7.0.1. Each entry is the canonical contract a model registers against; provider wiring lands in WP-7.3.2 / WP-7.3.3 / WP-7.3.4.",
+  "_canonical_source": "/Users/oracle/Documents/vault/Reference — Capability Invocation Contracts.md",
+  "_input_types": [
+    "text",
+    "image-ref",
+    "image-bytes",
+    "mask",
+    "direction-list",
+    "count",
+    "float",
+    "enum",
+    "images-list"
+  ],
+  "_execution_patterns": ["sync", "async"],
+  "slots": {
+    "image_generates": {
+      "name": "image_generates",
+      "summary": "Generate a new image from a text description.",
+      "required_inputs": [
+        {
+          "name": "prompt",
+          "type": "text",
+          "description": "Natural-language description of the image to generate."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "style",
+          "type": "text",
+          "description": "Style hint appended to the prompt (e.g., 'watercolor', 'photorealistic').",
+          "default": null
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "enum",
+          "description": "Output aspect ratio.",
+          "default": "1:1",
+          "enum_values": ["1:1", "16:9", "9:16", "4:3", "3:4"]
+        },
+        {
+          "name": "provider_override",
+          "type": "enum",
+          "description": "Force a specific provider for this call instead of routing-config preferred.",
+          "default": null,
+          "enum_values": ["openai", "stability", "replicate"]
+        }
+      ],
+      "output": {
+        "type": "image-bytes",
+        "description": "Image bytes; inserted into canvas at default location or selected anchor."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "model_unavailable",
+          "description": "No provider configured for this slot.",
+          "fix_path": "Configure a provider via Framework — API Key Acquisition.md"
+        },
+        {
+          "code": "prompt_rejected",
+          "description": "Provider's content policy blocked the prompt.",
+          "fix_path": "Rephrase, switch provider, or cancel."
+        },
+        {
+          "code": "quota_exceeded",
+          "description": "Provider rate limit hit.",
+          "fix_path": "Wait or switch provider."
+        }
+      ]
+    },
+    "image_edits": {
+      "name": "image_edits",
+      "summary": "Modify a region of an existing image (inpaint).",
+      "required_inputs": [
+        {
+          "name": "image",
+          "type": "image-ref",
+          "description": "Canvas object id of the image to edit."
+        },
+        {
+          "name": "mask",
+          "type": "mask",
+          "description": "Mask defining the region to modify."
+        },
+        {
+          "name": "prompt",
+          "type": "text",
+          "description": "Description of what should appear in the masked region."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "strength",
+          "type": "float",
+          "description": "How aggressively to apply the edit. 0.0 = no change, 1.0 = full replacement.",
+          "default": 0.75,
+          "min": 0.0,
+          "max": 1.0
+        },
+        {
+          "name": "provider_override",
+          "type": "enum",
+          "description": "Force a specific provider for this call.",
+          "default": null,
+          "enum_values": ["openai", "stability", "replicate"]
+        }
+      ],
+      "output": {
+        "type": "image-bytes",
+        "description": "Image bytes; replaces source or lands as new layer per user setting."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "no_mask_drawn",
+          "description": "Caller forgot the mask.",
+          "fix_path": "Draw a mask first (per §7.5 selection model)."
+        },
+        {
+          "code": "no_image_selected",
+          "description": "Caller didn't pick an image.",
+          "fix_path": "Select an image on the canvas."
+        },
+        {
+          "code": "mask_invalid",
+          "description": "Mask doesn't overlap the source image.",
+          "fix_path": "Redraw within the image bounds."
+        }
+      ]
+    },
+    "image_outpaints": {
+      "name": "image_outpaints",
+      "summary": "Extend an image beyond its current borders.",
+      "required_inputs": [
+        {
+          "name": "image",
+          "type": "image-ref",
+          "description": "Canvas object id of the image to extend."
+        },
+        {
+          "name": "directions",
+          "type": "direction-list",
+          "description": "One or more of 'top' / 'bottom' / 'left' / 'right'."
+        },
+        {
+          "name": "prompt",
+          "type": "text",
+          "description": "Description of what should appear in the new region."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "aspect_ratio",
+          "type": "enum",
+          "description": "Target aspect ratio after extension.",
+          "default": null,
+          "enum_values": ["1:1", "16:9", "9:16", "4:3", "3:4"]
+        }
+      ],
+      "output": {
+        "type": "image-bytes",
+        "description": "Image bytes; canvas image grows."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "image_too_large",
+          "description": "Provider's max input dimensions exceeded.",
+          "fix_path": "Downscale first."
+        },
+        {
+          "code": "direction_invalid",
+          "description": "Caller passed an unrecognized direction.",
+          "fix_path": "Use the valid set: top / bottom / left / right."
+        }
+      ]
+    },
+    "image_upscales": {
+      "name": "image_upscales",
+      "summary": "Increase resolution and detail.",
+      "required_inputs": [
+        {
+          "name": "image",
+          "type": "image-ref",
+          "description": "Canvas object id of the image to upscale."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "scale_factor",
+          "type": "float",
+          "description": "Multiplier for output dimensions.",
+          "default": 2.0
+        },
+        {
+          "name": "provider_override",
+          "type": "enum",
+          "description": "Force a specific provider for this call.",
+          "default": null,
+          "enum_values": ["openai", "stability", "replicate"]
+        }
+      ],
+      "output": {
+        "type": "image-bytes",
+        "description": "Image bytes; replaces source at higher resolution."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "image_too_small",
+          "description": "Input below provider's minimum dimensions.",
+          "fix_path": "Provide a larger source."
+        },
+        {
+          "code": "image_too_large",
+          "description": "Input × scale_factor exceeds provider's max output.",
+          "fix_path": "Lower scale_factor."
+        }
+      ]
+    },
+    "image_styles": {
+      "name": "image_styles",
+      "summary": "Apply a style from a reference image (or trained style adapter) to a source image.",
+      "required_inputs": [
+        {
+          "name": "source_image",
+          "type": "image-ref",
+          "description": "Canvas object id of the image to restyle."
+        },
+        {
+          "name": "style_reference",
+          "type": "image-ref",
+          "description": "Canvas object id of the style image OR a trained style-adapter id."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "strength",
+          "type": "float",
+          "description": "Strength of the style transfer.",
+          "default": 0.75,
+          "min": 0.0,
+          "max": 1.0
+        }
+      ],
+      "output": {
+        "type": "image-bytes",
+        "description": "Image bytes; new image (does not replace source)."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "references_incompatible",
+          "description": "Source and style differ in a way the model can't reconcile.",
+          "fix_path": "Try a different style reference."
+        }
+      ]
+    },
+    "image_varies": {
+      "name": "image_varies",
+      "summary": "Generate variations of a source image.",
+      "required_inputs": [
+        {
+          "name": "source_image",
+          "type": "image-ref",
+          "description": "Canvas object id of the image to vary."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "count",
+          "type": "count",
+          "description": "Number of variations to produce.",
+          "default": 4
+        },
+        {
+          "name": "variation_strength",
+          "type": "float",
+          "description": "How far each variation diverges from the source.",
+          "default": 0.5,
+          "min": 0.0,
+          "max": 1.0
+        }
+      ],
+      "output": {
+        "type": "images-list",
+        "description": "Multiple images; rendered as a grid in a result panel."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "source_ambiguous",
+          "description": "Model can't determine what aspects of the source to vary.",
+          "fix_path": "Provide a clearer source."
+        }
+      ]
+    },
+    "image_to_prompt": {
+      "name": "image_to_prompt",
+      "summary": "Generate a text prompt that would produce a similar image.",
+      "required_inputs": [
+        {
+          "name": "image",
+          "type": "image-ref",
+          "description": "Canvas object id of the image to reverse-engineer."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "target_style",
+          "type": "enum",
+          "description": "Target prompt style for downstream copy-paste.",
+          "default": "dalle",
+          "enum_values": ["dalle", "sd", "mj", "flux"]
+        }
+      ],
+      "output": {
+        "type": "text",
+        "description": "Prompt string with copy button."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "image_unreadable",
+          "description": "Image data corrupt or empty.",
+          "fix_path": "Re-upload."
+        }
+      ]
+    },
+    "image_critique": {
+      "name": "image_critique",
+      "summary": "Structured critique against a rubric.",
+      "required_inputs": [
+        {
+          "name": "image",
+          "type": "image-ref",
+          "description": "Canvas object id of the image to critique."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "rubric",
+          "type": "text",
+          "description": "Custom rubric (e.g., 'composition, color, technique').",
+          "default": null
+        },
+        {
+          "name": "genre",
+          "type": "text",
+          "description": "Inferred or supplied genre to anchor the critique.",
+          "default": null
+        },
+        {
+          "name": "depth",
+          "type": "enum",
+          "description": "Critique depth.",
+          "default": "standard",
+          "enum_values": ["quick", "standard", "deep"]
+        }
+      ],
+      "output": {
+        "type": "text",
+        "description": "Structured critique (rubric scores + prose)."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "no_specific_guidance",
+          "description": "No rubric supplied and no inferable genre.",
+          "fix_path": "Provide a rubric."
+        }
+      ]
+    },
+    "video_generates": {
+      "name": "video_generates",
+      "summary": "Generate a video from a text description.",
+      "required_inputs": [
+        {
+          "name": "prompt",
+          "type": "text",
+          "description": "Natural-language description of the video to generate."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "duration",
+          "type": "float",
+          "description": "Video length in seconds.",
+          "default": null
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "description": "Style hint.",
+          "default": null
+        },
+        {
+          "name": "resolution",
+          "type": "enum",
+          "description": "Output resolution.",
+          "default": null,
+          "enum_values": ["480p", "720p", "1080p", "4k"]
+        }
+      ],
+      "output": {
+        "type": "video-bytes",
+        "description": "Video bytes; lands as new entry in chat output stream when ready."
+      },
+      "execution_pattern": "async",
+      "common_errors": [
+        {
+          "code": "quota_exceeded",
+          "description": "Provider rate limit.",
+          "fix_path": "Wait or switch provider."
+        },
+        {
+          "code": "prompt_rejected",
+          "description": "Content policy.",
+          "fix_path": "Rephrase or cancel."
+        }
+      ]
+    },
+    "style_trains": {
+      "name": "style_trains",
+      "summary": "Train a style adapter / LoRA from reference images.",
+      "required_inputs": [
+        {
+          "name": "reference_images",
+          "type": "images-list",
+          "description": "At least 3 images that exemplify the target style.",
+          "min_count": 3
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "description": "Display name for the trained style adapter."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "training_depth",
+          "type": "enum",
+          "description": "Training run depth.",
+          "default": "standard",
+          "enum_values": ["quick", "standard", "deep"]
+        }
+      ],
+      "output": {
+        "type": "style-adapter-id",
+        "description": "Identifier of the new style adapter; registered for use in image_styles."
+      },
+      "execution_pattern": "async",
+      "common_errors": [
+        {
+          "code": "insufficient_examples",
+          "description": "Fewer than 3 references.",
+          "fix_path": "Provide more reference images."
+        },
+        {
+          "code": "training_failed",
+          "description": "Provider-side training error.",
+          "fix_path": "Try with different references or a different provider."
+        }
+      ]
+    }
+  }
+}

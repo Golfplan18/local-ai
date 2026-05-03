@@ -1,0 +1,357 @@
+#!/usr/bin/env python3
+"""check-capability-sync — drift detector for the capability slot framework
+(WP-7.0.1).
+
+Verifies that ``~/ora/config/capabilities.json``,
+``~/ora/config/routing-config.json``'s ``slots`` block, and the canonical
+vault doc ``Reference — Capability Invocation Contracts.md`` agree on
+which slots exist.
+
+Exit codes:
+  0 — all four sources in sync.
+  1 — drift detected. stderr lists every disagreement individually.
+  2 — input file not found, or malformed JSON.
+
+Usage:
+  /opt/homebrew/bin/python3 ~/ora/tools/check-capability-sync
+  /opt/homebrew/bin/python3 ~/ora/tools/check-capability-sync --doc /path/to/contracts.md
+
+Checks performed (each emits a specific message on failure):
+
+  1. Every slot in capabilities.json appears as a section in the vault doc.
+  2. Every slot section in the vault doc appears in capabilities.json.
+  3. Every slot in routing-config.json's ``slots`` block is defined in
+     capabilities.json.
+  4. Every slot in capabilities.json has a corresponding routing-config
+     entry (warning, not failure — providers may not be wired yet).
+  5. Each slot's ``execution_pattern`` matches the doc.
+  6. Each slot's required-input names match the doc's ``Required inputs:``
+     line.
+  7. Each slot's common-error codes match the doc's bullet list.
+
+This is the canonical drift-check called by humans before commits and by
+WP-7.0.1's test stub. It does NOT modify any file — it reports only.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+DEFAULT_CAPABILITIES = Path.home() / "ora" / "config" / "capabilities.json"
+DEFAULT_ROUTING = Path.home() / "ora" / "config" / "routing-config.json"
+DEFAULT_DOC = (
+    Path.home()
+    / "Documents"
+    / "vault"
+    / "Reference — Capability Invocation Contracts.md"
+)
+
+
+# ---------------------------------------------------------------------------
+# Doc parsing
+# ---------------------------------------------------------------------------
+#
+# The doc layout (see Reference — Capability Invocation Contracts.md §3):
+#
+#   ### 3.1 `image_generates`
+#
+#   - **Summary:** ...
+#   - **Required inputs:** `prompt` (text).
+#   - **Optional inputs:** `style` (text), `aspect_ratio` (enum: ...).
+#   - **Output:** ...
+#   - **Execution:** sync.
+#   - **Common errors:**
+#     - `model_unavailable` — ...
+#     - `prompt_rejected` — ...
+#
+# The parser is forgiving: it picks up slot names from the H3 backtick,
+# execution from the `**Execution:**` line, required-input names from the
+# `**Required inputs:**` line's backticks, and error codes from the
+# nested `- \`code\`` bullets that follow `**Common errors:**`.
+#
+# Optional-input parsing is intentionally not asserted — defaults can vary
+# subtly between the doc's prose form and the JSON's structured form
+# (e.g., `0.75` vs `0.75 (default)`), and demanding exact match would
+# create false positives. The presence of optional inputs is implied by
+# the contract, not contractually frozen.
+
+SLOT_HEADING_RE = re.compile(r"^###\s+\d+\.\d+\s+`([a-z_]+)`(?:\s+\([^)]*\))?\s*$")
+REQUIRED_LINE_RE = re.compile(r"^-\s*\*\*Required inputs:\*\*\s*(.*)$", re.IGNORECASE)
+EXEC_LINE_RE = re.compile(r"^-\s*\*\*Execution:\*\*\s*(\w+)", re.IGNORECASE)
+COMMON_ERRORS_LINE_RE = re.compile(r"^-\s*\*\*Common errors:\*\*", re.IGNORECASE)
+ERROR_BULLET_RE = re.compile(r"^\s+-\s*`([a-z_]+)`")
+BACKTICK_NAME_RE = re.compile(r"`([a-z_][a-z0-9_]*)`")
+
+
+def parse_doc(doc_path: Path) -> dict[str, dict]:
+    """Extract slot contracts from the canonical vault doc.
+
+    Returns ``{slot_name: {"execution": str, "required": [str, ...], "errors": [str, ...]}}``.
+    Only slots under headings matching ``### N.M `slot_name``` are parsed.
+    """
+    if not doc_path.exists():
+        print(f"[check-capability-sync] FATAL: doc not found at {doc_path}", file=sys.stderr)
+        sys.exit(2)
+
+    text = doc_path.read_text()
+    lines = text.splitlines()
+
+    slots: dict[str, dict] = {}
+    current: str | None = None
+    in_errors = False
+
+    for line in lines:
+        m = SLOT_HEADING_RE.match(line)
+        if m:
+            current = m.group(1)
+            slots[current] = {"execution": None, "required": [], "errors": []}
+            in_errors = False
+            continue
+
+        if current is None:
+            continue
+
+        # Stop accumulating when we hit a new H1/H2/H3 that isn't a slot heading
+        if line.startswith("## ") or (line.startswith("### ") and not SLOT_HEADING_RE.match(line)):
+            in_errors = False
+            current = None
+            continue
+
+        # Required inputs
+        m = REQUIRED_LINE_RE.match(line)
+        if m:
+            for name in BACKTICK_NAME_RE.findall(m.group(1)):
+                # Filter out type annotations like `text` that follow input names —
+                # required-line shape is `name1` (type1), `name2` (type2). The
+                # NAMES come first inside parens-free positions, so we extract
+                # all backticks then drop known type tokens. Simpler heuristic:
+                # split by comma and take the first backtick of each clause.
+                pass
+            # Better: split by commas and pull the first backtick name.
+            clauses = re.split(r",\s*", m.group(1))
+            names = []
+            for clause in clauses:
+                bts = BACKTICK_NAME_RE.findall(clause)
+                if bts:
+                    # First backtick is the input name; subsequent backticks
+                    # are type annotations or enum values. The doc convention
+                    # is `name` (type), where (type) is plain or `(type: ...)`.
+                    names.append(bts[0])
+            slots[current]["required"] = names
+            in_errors = False
+            continue
+
+        # Execution
+        m = EXEC_LINE_RE.match(line)
+        if m:
+            slots[current]["execution"] = m.group(1).strip().lower().rstrip(".")
+            in_errors = False
+            continue
+
+        # Common errors header
+        if COMMON_ERRORS_LINE_RE.match(line):
+            in_errors = True
+            continue
+
+        # Inside common-errors block, pick up error codes
+        if in_errors:
+            m = ERROR_BULLET_RE.match(line)
+            if m:
+                slots[current]["errors"].append(m.group(1))
+            elif line.strip() and not line.startswith(" "):
+                # Left the indented errors block.
+                in_errors = False
+
+    return slots
+
+
+# ---------------------------------------------------------------------------
+# Comparison
+# ---------------------------------------------------------------------------
+
+def diff_set(label_a: str, set_a: set, label_b: str, set_b: set, prefix: str = "") -> list[str]:
+    """Return a list of messages describing set-difference drift."""
+    msgs = []
+    only_a = set_a - set_b
+    only_b = set_b - set_a
+    for item in sorted(only_a):
+        msgs.append(f"{prefix}'{item}' is in {label_a} but missing from {label_b}")
+    for item in sorted(only_b):
+        msgs.append(f"{prefix}'{item}' is in {label_b} but missing from {label_a}")
+    return msgs
+
+
+def check_sync(
+    capabilities_path: Path,
+    routing_path: Path,
+    doc_path: Path,
+    routing_required: bool = True,
+) -> tuple[list[str], list[str]]:
+    """Run all sync checks. Return (errors, warnings) lists of messages."""
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # --- Load capabilities.json ---------------------------------------
+    if not capabilities_path.exists():
+        return ([f"capabilities.json not found at {capabilities_path}"], [])
+    try:
+        cap = json.loads(capabilities_path.read_text())
+    except json.JSONDecodeError as e:
+        return ([f"capabilities.json is malformed JSON: {e}"], [])
+
+    cap_slots = set(cap.get("slots", {}).keys())
+    if not cap_slots:
+        errors.append("capabilities.json defines zero slots — expected the 10 Phase 7 slots.")
+
+    # --- Load routing-config.json -------------------------------------
+    routing_slots: set[str] = set()
+    if routing_path.exists():
+        try:
+            rc = json.loads(routing_path.read_text())
+        except json.JSONDecodeError as e:
+            errors.append(f"routing-config.json is malformed JSON: {e}")
+            rc = {}
+        rc_slots_block = rc.get("slots", {}) or {}
+        # Filter out underscore-prefixed metadata keys (_note, etc.)
+        routing_slots = {k for k in rc_slots_block.keys() if not k.startswith("_")}
+    elif routing_required:
+        errors.append(f"routing-config.json not found at {routing_path}")
+
+    # --- Load vault doc ------------------------------------------------
+    doc_slots_data = parse_doc(doc_path)
+    doc_slots = set(doc_slots_data.keys())
+
+    # --- Check 1+2: capabilities.json ↔ vault doc ---------------------
+    errors.extend(diff_set("capabilities.json", cap_slots, "vault doc", doc_slots,
+                           prefix="slot mismatch: "))
+
+    # --- Check 3: routing-config slots ⊆ capabilities ----------------
+    rc_only = routing_slots - cap_slots
+    for s in sorted(rc_only):
+        errors.append(f"routing-config.json declares slot '{s}' but capabilities.json does not define it")
+
+    # --- Check 4: capabilities ⊆ routing-config (warning only) ------
+    cap_only_in_routing = cap_slots - routing_slots
+    for s in sorted(cap_only_in_routing):
+        warnings.append(f"capabilities.json defines slot '{s}' but routing-config.json has no entry for it (providers not wired yet)")
+
+    # --- Check 5/6/7: per-slot contract checks (intersection only) --
+    for slot in sorted(cap_slots & doc_slots):
+        cap_entry = cap["slots"][slot]
+        doc_entry = doc_slots_data[slot]
+
+        # Execution pattern
+        cap_exec = cap_entry.get("execution_pattern")
+        doc_exec = doc_entry.get("execution")
+        if cap_exec and doc_exec and cap_exec != doc_exec:
+            errors.append(
+                f"slot '{slot}': execution_pattern drift "
+                f"(capabilities.json='{cap_exec}', vault doc='{doc_exec}')"
+            )
+
+        # Required input names
+        cap_req = {ri["name"] for ri in cap_entry.get("required_inputs", [])}
+        doc_req = set(doc_entry.get("required", []))
+        # The doc may abbreviate (e.g., "image + mask + prompt" -> three names);
+        # the JSON is the authoritative source, so we just check set equality.
+        if cap_req != doc_req:
+            extras_cap = cap_req - doc_req
+            extras_doc = doc_req - cap_req
+            if extras_cap:
+                errors.append(
+                    f"slot '{slot}': required inputs in capabilities.json but not in doc: "
+                    f"{', '.join(sorted(extras_cap))}"
+                )
+            if extras_doc:
+                errors.append(
+                    f"slot '{slot}': required inputs in doc but not in capabilities.json: "
+                    f"{', '.join(sorted(extras_doc))}"
+                )
+
+        # Common error codes
+        cap_errs = {ce["code"] for ce in cap_entry.get("common_errors", [])}
+        doc_errs = set(doc_entry.get("errors", []))
+        if cap_errs != doc_errs:
+            extras_cap = cap_errs - doc_errs
+            extras_doc = doc_errs - cap_errs
+            if extras_cap:
+                errors.append(
+                    f"slot '{slot}': common_errors in capabilities.json but not in doc: "
+                    f"{', '.join(sorted(extras_cap))}"
+                )
+            if extras_doc:
+                errors.append(
+                    f"slot '{slot}': common_errors in doc but not in capabilities.json: "
+                    f"{', '.join(sorted(extras_doc))}"
+                )
+
+    return errors, warnings
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Verify capabilities.json, routing-config.json, and the vault doc are in sync.",
+    )
+    parser.add_argument(
+        "--capabilities",
+        type=Path,
+        default=DEFAULT_CAPABILITIES,
+        help=f"Path to capabilities.json (default: {DEFAULT_CAPABILITIES})",
+    )
+    parser.add_argument(
+        "--routing-config",
+        type=Path,
+        default=DEFAULT_ROUTING,
+        help=f"Path to routing-config.json (default: {DEFAULT_ROUTING})",
+    )
+    parser.add_argument(
+        "--doc",
+        type=Path,
+        default=DEFAULT_DOC,
+        help=f"Path to Reference — Capability Invocation Contracts.md "
+             f"(default: {DEFAULT_DOC})",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Treat warnings as errors (e.g., capabilities slot lacking a routing entry).",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress warnings on stdout (errors still printed to stderr).",
+    )
+    args = parser.parse_args(argv)
+
+    errors, warnings = check_sync(
+        args.capabilities,
+        args.routing_config,
+        args.doc,
+    )
+
+    if errors:
+        print("[check-capability-sync] DRIFT DETECTED:", file=sys.stderr)
+        for msg in errors:
+            print(f"  ERROR: {msg}", file=sys.stderr)
+    if warnings and not args.quiet:
+        for msg in warnings:
+            print(f"  WARN:  {msg}", file=sys.stderr)
+
+    if errors:
+        return 1
+    if args.strict and warnings:
+        return 1
+
+    print("[check-capability-sync] OK — capabilities.json, routing-config.json, and vault doc are in sync.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

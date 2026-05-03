@@ -1,360 +1,186 @@
 ---
-nexus: obsidian
+nexus:
+  - ora
 type: mode
-date created: 2026/03/23
-date modified: 2026/04/18
-rebuild_phase: 3
+tags:
+date created: 2026-03-23
+date modified: 2026-05-01
 ---
 
 # MODE: Cui Bono
 
-## TRIGGER CONDITIONS
+```yaml
+# 0. IDENTITY
+mode_id: cui-bono
+canonical_name: Cui Bono
+suffix_rule: analysis
+educational_name: who-benefits analysis (cui bono)
 
-Positive:
-1. Policy analysis; institutional behaviour analysis; "who benefits".
-2. Numerical targets or technical standards presented as objective.
-3. OPV output reveals stakeholder positions correlated with institutional interests.
-4. Positions or policies embedding distributional choices beneath technical language.
-5. Request language: "who gains from X", "trace the interests", "what does the institution want from this", "cui bono".
+# 1. TERRITORY AND POSITION
+territory: T2-interest-and-power
+gradation_position:
+  axis: complexity
+  value: simple
+adjacent_modes_in_territory:
+  - mode_id: stakeholder-mapping
+    relationship: complexity-heavier sibling (multi-party-descriptive — lives in T8)
+  - mode_id: boundary-critique
+    relationship: stance-critical counterpart (Ulrich CSH)
+  - mode_id: wicked-problems
+    relationship: complexity-molecular sibling
+  - mode_id: decision-clarity
+    relationship: depth-molecular sibling (decision-maker-output)
 
-Negative:
-- IF the user questions the **evidential** basis of a paradigm → **Paradigm Suspension** (CB traces interests, not evidence).
-- IF the user wants to evaluate alternatives without tracing institutional interests → **Constraint Mapping**.
+# 2. TRIGGER CONDITIONS AND ROUTING
+trigger_conditions:
+  user_situation_signals:
+    - "trying to understand who's behind this"
+    - "want to know who benefits from"
+    - "feels like someone's pushing this for a reason"
+    - "this policy or standard sounds objective but I suspect it isn't"
+  prompt_shape_signals:
+    - "who benefits"
+    - "cui bono"
+    - "whose interests"
+    - "who's pushing this"
+    - "trace the interests"
+    - "who gains from X"
+disambiguation_routing:
+  routes_to_this_mode_when:
+    - "this one situation, single set of beneficiaries"
+    - "quick read on who gains from this state of affairs"
+    - "policy or institutional position with distributional consequences"
+  routes_away_when:
+    - "landscape of multiple parties with different stakes" → stakeholder-mapping
+    - "tangled / wicked / many systems interacting" → wicked-problems
+    - "voices being left out of the picture entirely" → boundary-critique
+    - "produce a decision document for a decision-maker" → decision-clarity
+    - "questioning the empirical foundations of a position" → paradigm-suspension
+when_not_to_invoke:
+  - "User is evaluating an argument's soundness, not its sponsoring interests" → T1
+  - "User is asking about active negotiation strategy" → T13
+  - "Multiple competing explanations for the same evidence — adjudicate via diagnosticity" → T5 competing-hypotheses
 
-Tiebreakers:
-- CB vs Paradigm Suspension: **whose interests does this serve** → CB; **is the foundation sound** → PS.
+# 3. EXECUTION STRUCTURE
+composition: atomic
+atomic_spec:
+  passes: 1
+  posture: descriptive
 
-## EPISTEMOLOGICAL POSTURE
+# 4. INPUT AND OUTPUT CONTRACTS
+input_contract:
+  expert_mode:
+    required: [situation_or_artifact, optional_actor_inventory]
+    optional: [historical_context, prior_interest_analyses, distributional_parameters]
+    notes: "Applies when user explicitly references actors by name or supplies an actor inventory or named institutional parameters."
+  accessible_mode:
+    required: [situation_or_artifact]
+    optional: [related_context]
+    notes: "Default. Mode infers actor inventory and parameters from the situation."
+  detection:
+    expert_signals: ["actor inventory", "stakeholders are X, Y, Z", "interest groups include", "policy text", "regulatory framework"]
+    accessible_signals: ["who benefits", "whose interests", "who's behind this", "trace the interests"]
+    default: accessible_mode
+  graceful_degradation:
+    on_missing_required: "Ask: 'Could you describe the situation, decision, or paste the article/document you want me to look at?'"
+    on_underspecified: "Ask: 'What's the situation, decision, or text you want a who-benefits read on?'"
+output_contract:
+  artifact_type: mapping
+  required_sections:
+    - institutional_authorship
+    - stated_rationale
+    - distributional_impact
+    - alternative_design_from_opposite_constituency
+    - motivational_analysis_fgl
+    - legitimate_value
+    - confidence_per_finding
+  format: structured
 
-Institutional consensus is data about what institutions have chosen to believe, not evidence of correctness. Numerical targets, technical standards, and regulatory frameworks are political artefacts — they embed value judgements and distributional choices presented as objective. Every position has an author, every author a constituency, every constituency interests. This mode traces those interests without assuming bad faith — institutional behaviour follows institutional incentives, which is structural, not conspiratorial.
+# 5. CRITICAL QUESTIONS
+critical_questions:
+  - cq_id: CQ1
+    question: "Are the identified beneficiaries actually positioned to benefit, or is the inference symbolic?"
+    failure_mode_if_unmet: symbolic-inference (mistaking narrative resonance for actual benefit)
+  - cq_id: CQ2
+    question: "Are there beneficiaries the analysis is missing because they are not visible from the artifact's frame?"
+    failure_mode_if_unmet: frame-bounded-blindness
+  - cq_id: CQ3
+    question: "Are the costs identified actually borne by the parties named, or is incidence misattributed?"
+    failure_mode_if_unmet: cost-incidence-error
+  - cq_id: CQ4
+    question: "Has FGL (Fear, Greed, Laziness) been applied symmetrically across constituencies, or only against the disfavoured side?"
+    failure_mode_if_unmet: asymmetric-fgl
 
-## DEFAULT GEAR
+# 6. NAMED FAILURE MODES AND CORRECTION
+failure_modes:
+  - name: symbolic-inference
+    detection_signal: "Beneficiary identified by ideological alignment rather than concrete benefit pathway."
+    correction_protocol: flag
+  - name: frame-bounded-blindness
+    detection_signal: "All identified parties share the artifact's frame; no parties from outside the frame appear."
+    correction_protocol: escalate
+  - name: cost-incidence-error
+    detection_signal: "Costs are attributed to a party without a concrete payment, time, or freedom-loss pathway."
+    correction_protocol: flag
+  - name: conspiracy-trap
+    detection_signal: "Distributional outcomes attributed to deliberate coordination without explicit evidence; intent assumed where structural incentives suffice."
+    correction_protocol: flag
+  - name: cynicism-trap
+    detection_signal: "Position concluded to have no legitimate basis; legitimate value collapsed into distributional overlay."
+    correction_protocol: flag
+  - name: mirror-trap
+    detection_signal: "Alternative design reflects analyst's preference rather than the disadvantaged constituency's interests."
+    correction_protocol: re-dispatch
+  - name: asymmetric-fgl
+    detection_signal: "FGL applied to only one constituency; opposing party's motives uninspected."
+    correction_protocol: flag
 
-Gear 4. Independent analysis is the minimum. The Depth model traces institutional incentives while the Breadth model constructs the alternative from opposite interests. Anchoring compromises the convergence/divergence diagnostic.
+# 7. LENS DEPENDENCIES
+lens_dependencies:
+  required: []
+  optional:
+    - rumelt-strategy-kernel
+    - ulrich-csh-boundary-categories
+    - public-choice-theory
+    - fgl-fear-greed-laziness
+  foundational:
+    - kahneman-tversky-bias-catalog
 
-## RAG PROFILE
-
-**Retrieve (prioritise):** political economy analysis, institutional incentive studies, distributional impact research, regulatory history, public choice theory, critiques of institutional positions, the institution's stated rationale.
-
-**Deprioritise:** technical literature that presents institutional choices as objective findings.
-
-
-### RAG PROFILE — RELATIONSHIP PRIORITIES
-
-**Prioritise:** `enables`, `produces`, `requires`, `contradicts`
-**Deprioritise:** `analogous-to`, `parent`, `child`
-**Rationale:** Incentive analysis tracks what enables outcomes, what produces benefits, and what constraints actors face.
-
-
-### RAG PROFILE — INPUT SPEC
-
-| Field | Purpose |
-|---|---|
-| `cleaned_prompt` | The position / standard / target under analysis |
-| `conversation_rag` | Prior turns' authorship + constituency mappings |
-| `concept_rag` | FGL (Fear, Greed, Laziness), public choice theory |
-| `relationship_rag` | Institutional entities linked by `enables`/`produces` |
-
-
-### RAG PROFILE — CONTEXT BUDGET
-
+# 8. RUNTIME AND DEPTH
+default_depth_tier: 2
+expected_runtime: ~5min
+escalation_signals:
+  upward:
+    target_mode_id: stakeholder-mapping
+    when: "Beneficiary inventory exceeds 5 parties or interest structure is multi-layered."
+  sideways:
+    target_mode_id: boundary-critique
+    when: "Most identified parties are inside one frame; boundary-critique surfaces parties outside it."
+  downward:
+    target_mode_id: null
+    when: "Cui Bono is already the lightest mode in T2."
 ```
-fixed_overhead_tokens: TBD
-analytical_floor_tokens: TBD
-conversation_history_soft_ceiling: 0.4
-retrieval_approach: auto
-```
 
-## DEPTH MODEL INSTRUCTIONS
+## DEPTH ANALYSIS GUIDANCE
 
-White Hat:
-1. Identify the institutional author(s) of the position. **Becomes the source node in a flowchart OR a hierarchy_level 0 concept in a concept_map.**
-2. Document the stated rationale.
-3. Map the actual distributional impact. **Flow: author → mechanism → beneficiary / loser.**
-4. Identify the numerical parameters or definitional choices that drive the distributional outcome.
+Going deeper in Cui Bono means tracing concrete benefit pathways (money flows, power-position changes, time-and-attention captures, narrative-control gains) rather than asserting alignment-based benefit. A thin pass names parties; a substantive pass names the institutional author, the specific parameters or definitional choices that drive distribution, and the counterparty's loss-pathway. Apply FGL (Fear, Greed, Laziness) explicitly per constituency. Test depth by asking: could the analysis predict how each beneficiary would behave if the situation changed, and could it name the parameter whose alteration would shift the distribution?
 
-Black Hat:
-1. Assess whether the distributional impact is consistent with the stated purpose.
-2. Identify which constituencies' interests are served by the specific parameters chosen.
-3. Evaluate the Breadth model's alternative for internal consistency — does it genuinely represent opposite interests?
+## BREADTH ANALYSIS GUIDANCE
 
-### Cascade — what to leave for the evaluator
-
-- Open with the literal label `Institutional author:` naming the author organisation. Supports M1 and C1.
-- For each parameter driving distribution, use the literal label `Parameter:` with the value and the population it affects. Supports M2 and C3.
-- In the Flowchart DSL, include subgraphs named `Authors`, `Beneficiaries`, and `Bears cost` as separators. Supports S10.
-- Apply FGL (Fear, Greed, Laziness) explicitly with the literal labels `Fear:`, `Greed:`, `Laziness:` per constituency. Supports M4.
-
-### Consolidator guidance
-
-Applies at this mode's default gear (Gear 4). Depth traces author-to-beneficiary flow; Breadth constructs the alternative from opposite constituency.
-
-- **Reference frame for the envelope:** Depth's author-to-beneficiary flowchart (or concept map) is canonical. Breadth's alternative-constituency mapping is emitted as a separate prose section "Alternative design from opposite constituency" — NOT emitted as a second envelope; preserve the "one envelope per turn" invariant.
-- **FGL reconciliation:** when streams disagree on the motivational attribution for a constituency, emit both attributions in prose ("Depth attributes this to Greed; Breadth attributes it to Fear of capture by opposite faction") and let the user weigh.
-- **Legitimate value preservation:** if one stream identified a legitimate value separate from distributional overlay, it is preserved — do not let adversarial momentum strip legitimate value.
-
-## BREADTH MODEL INSTRUCTIONS
-
-Green Hat:
-1. Construct the alternative position that would emerge from the opposite constituency's interests — equal technical sophistication.
-2. Identify ≥ 2 numerical parameters / definitional choices where a different value would produce a materially different distributional outcome.
-3. Map the policy landscape if the disadvantaged constituency had authored the standard.
-
-Yellow Hat:
-1. Identify the legitimate value the current position serves — separate from the distributional overlay.
-2. Assess user gains from this analysis — actionable, informational, or diagnostic.
-
-### Cascade — what to leave for the evaluator
-
-- Construct the alternative with the literal heading "Alternative design:" and match Depth's technical rigour. Supports M3.
-- Use the literal phrase "Legitimate value:" in the section separating distributional overlay from genuine purpose. Supports M5.
-- Use the literal phrase "cost-bearer:" when naming who bears the cost.
+Widening the lens means scanning for parties not visible from the artifact's own frame: parties who would benefit if the situation were framed differently; parties who pay costs the artifact treats as natural; parties absent from the discussion whose voices would change the analysis. Construct the alternative design that would emerge from the opposite constituency's interests, with equal technical sophistication. Identify the legitimate value the current position serves, separate from its distributional overlay. Breadth markers: the analysis surveys the boundary of who is and isn't being asked, and offers an alternative as well-formed as the original.
 
 ## EVALUATION CRITERIA
 
-5. **Institutional Tracing.** 5=authorship + constituency + incentive structure mapped for all relevant institutions. 3=authorship identified but incentive structure incomplete. 1=no tracing.
-6. **Distributional Specificity.** 5=specific parameters with quantified impact. 3=direction only. 1=vague.
-7. **Alternative Construction Quality.** 5=technically sophisticated, internally consistent, genuinely opposite. 3=cosmetic or naive. 1=no alternative or strawman.
+Evaluate against the four critical questions: (CQ1) symbolic vs. concrete benefit; (CQ2) frame-bounded blindness; (CQ3) cost-incidence accuracy; (CQ4) FGL symmetry. The named failure modes (symbolic-inference, frame-bounded-blindness, cost-incidence-error, conspiracy-trap, cynicism-trap, mirror-trap, asymmetric-fgl) are the evaluation checklist. A passing Cui Bono output names institutional author, names benefit pathways concretely with specific parameters, surfaces an alternative design from the disadvantaged constituency, applies FGL symmetrically across constituencies, separates legitimate value from distributional overlay, and assigns confidence per finding.
 
-### Focus for this mode
+## REVISION GUIDANCE
 
-A strong CB evaluator prioritises:
+Revise to add concrete pathways where the draft asserts benefit without mechanism. Revise to add specific parameters where vague "incentive structure" language sits unanchored. Revise to add boundary-cases (parties absent or marginalized). Revise to make the alternative design technically sophisticated rather than cosmetic, and to ground it in the disadvantaged constituency's interests rather than the analyst's preferences. Resist revising toward neutrality if the analysis surfaces real power-asymmetries — the mode is descriptive of interest structure, not neutralizing of it. Silent upgrade from structural incentive attribution to intent-attribution during revision is a failure unless new evidence is explicitly cited.
 
-1. **Author-and-beneficiary presence (S10).** Envelope must show at least one author element AND one beneficiary element. Missing either invalidates the trace.
-2. **Parameter specificity (M2).** ≥ 2 specific parameters with distributional impact. Vague "incentive structure" language fails.
-3. **Alternative construction (M3).** Not cosmetic, not analyst's preference. Technically sophisticated.
-4. **FGL symmetry (M4).** Applied to ≥ 2 constituencies. Single-side attribution is the Asymmetric-FGL trap.
-5. **Legitimate value (M5).** Separate from distributional overlay. Cynicism trap otherwise.
-6. **Structural-not-conspiracy stance.** Institutional incentives first; intent only with evidence.
-7. **Short_alt (S11).** Name the parameter and the beneficiary; don't list every subgraph.
+## CONSOLIDATION GUIDANCE
 
-### Suggestion templates per criterion
+Consolidate as a structured mapping with the seven required sections. The institutional author appears as the source node in any structural representation; the parameters driving distribution are named explicitly; beneficiaries and cost-bearers are separable. The alternative-constituency design is emitted as its own section, not as a competing primary analysis. FGL attributions accompany each named constituency. Each finding carries a confidence rating. The structured format permits row-level audit of which party benefits how, by what mechanism, with what cost-incidence.
 
-- **S11 (short_alt):** `suggested_change`: "Rewrite short_alt as: 'Flowchart of <parameter> tracing authorship, beneficiaries, and cost-bearers.' (or 'Concept map of <institutional structure>' for concept_map). Target ≤ 100 chars."
-- **S10 (missing author/beneficiary):** `suggested_change`: "Envelope lacks <author|beneficiary> node. Add the institutional author (subgraph 'Authors') and the beneficiary constituency (subgraph 'Beneficiaries')."
-- **M2 (vague parameters):** `suggested_change`: "Replace generic 'incentive structure' with ≥ 2 specific parameters — numerical thresholds, definitional choices, eligibility criteria — and quantify or describe the distributional impact of each."
-- **M3 (cosmetic alternative):** `suggested_change`: "Rewrite alternative design with equal technical rigour to the institutional position. Specific parameters, not direction. The alternative serves the disadvantaged constituency, not the analyst's preference."
-- **M4 (asymmetric FGL):** `suggested_change`: "Apply Fear/Greed/Laziness labels to both the institutional author AND the opposing constituency. Symmetric application prevents advocacy disguised as analysis."
-- **M5 (cynicism):** `suggested_change`: "Add a 'Legitimate value:' paragraph separating what the position does serve (public goods, coordination, information) from the distributional overlay."
+## VERIFICATION CRITERIA
 
-### Known failure modes to call out
-
-- **Conspiracy Trap** → open: "Analysis attributes outcomes to deliberate coordination; default to structural. Evidence required before upgrading to intent."
-- **Cynicism Trap** → open: "No legitimate value identified; separate distributional overlay from genuine purpose."
-- **Mirror Trap** → open: "Alternative design mirrors the analyst's preference rather than the disadvantaged constituency's. Rewrite from that constituency's interests."
-- **Asymmetric-FGL Trap** → open: "FGL applied only to opposing side. Apply to both parties."
-
-### Verifier checks for this mode
-
-Universal V1-V8 first; then:
-
-- **V-CB-1 — Author-beneficiary preservation.** Revised envelope retains at least one author-labelled element AND one beneficiary-labelled element.
-- **V-CB-2 — Alternative-design rigour.** If prose includes "Alternative design:", it has specific parameters (not direction) with at least equal specificity to the institutional position.
-- **V-CB-3 — Legitimate value preservation.** Revised prose retains the "Legitimate value:" section (or explicit "No legitimate value beyond distributional effects" declaration).
-- **V-CB-4 — Structural-first preservation.** Silent upgrade from structural incentive to intent-attribution during revision is a FAIL unless new evidence is explicitly cited.
-
-## CONTENT CONTRACT
-
-In order:
-
-1. **Institutional authorship** — who authored / advocates; what constituency they serve.
-2. **Stated rationale** — the official justification in its own terms.
-3. **Distributional impact** — who gains, who loses, by how much (with parameters cited).
-4. **Alternative design** — the position from opposite interests, equal technical rigour.
-5. **Motivational analysis** — FGL (Fear, Greed, Laziness) of institutional actors.
-6. **Legitimate value** — what the position does serve, separate from distributional overlay.
-
-After your analysis, emit exactly one fenced `ora-visual` block per EMISSION CONTRACT.
-
-### Reviser guidance per criterion
-
-- **short_alt preservation (Phase 7 iteration — IMPORTANT).** When re-emitting the envelope in the REVISED DRAFT, preserve `spec.semantic_description.short_alt` ≤ 150 chars. If rewriting it, match the Cesal form shown in this mode's `## EMISSION CONTRACT` canonical envelope (a short noun phrase: `<visual type> of <subject>`). Do NOT enumerate concepts, cross-links, quadrants, facets, branches, loops, hypotheses, or evidence items inside `short_alt` — that enumeration belongs in `level_1_elemental`. A fresh short_alt over 150 chars triggers `E_SCHEMA_INVALID` and negates the revision.
-- **S2:** `E_SCHEMA_INVALID` → often short_alt length; apply S11 template. `E_UNRESOLVED_REF` in concept_map → propositions reference undeclared ids; fix.
-- **S7:** pick envelope type: single-institution policy → `flowchart`; multi-institution network → `concept_map`.
-- **S8 (flowchart DSL):** ensure DSL begins with `flowchart ` or `graph `; add `Authors` / `Beneficiaries` / `Bears cost` subgraphs.
-- **S9 (concept_map shape):** ensure ≥ 4 concepts, ≥ 2 linking phrases, ≥ 3 propositions, ≥ 1 cross-link.
-- **S10:** apply missing-author/beneficiary template.
-- **S11:** apply short_alt template.
-- **M1 (author not named):** add `Institutional author:` label to prose and corresponding node to envelope.
-- **M2:** apply vague-parameters template.
-- **M3:** apply cosmetic-alternative template.
-- **M4:** apply asymmetric-FGL template.
-- **M5:** apply cynicism template.
-- **C1-C3:** sync author, beneficiaries, and parameters between prose and envelope.
-
-## EMISSION CONTRACT
-
-### Envelope type selection
-
-- **`flowchart`** — when tracing interest flows from author → parameter → beneficiary is the load-bearing structure. Default for policy-with-clear-flow cases.
-- **`concept_map`** — when institutional structure (multiple authors, constituencies, parameters in a network) is the load-bearing structure.
-
-Selection rule: single-institution policy → `flowchart`; multi-institution network → `concept_map`.
-
-### Canonical envelope (flowchart)
-
-```ora-visual
-{
-  "schema_version": "0.2",
-  "id": "cb-fig-1",
-  "type": "flowchart",
-  "mode_context": "cui-bono",
-  "relation_to_prose": "integrated",
-  "title": "Cui bono — minimum viable audit threshold at $5M",
-  "canvas_action": "replace",
-  "spec": {
-    "dialect": "flowchart",
-    "dsl": "flowchart LR\n  A[Standard-setting body] -->|authors| P[Threshold: $5M revenue]\n  P -->|exempts| S[Small firms]\n  P -->|binds| L[Mid-size firms]\n  S -->|lobbied for| A\n  L -->|bears cost| O[Audit overhead]\n  subgraph Authors\n    A\n  end\n  subgraph Beneficiaries\n    S\n  end\n  subgraph Bears cost\n    L\n    O\n  end"
-  },
-  "semantic_description": {
-    "level_1_elemental": "Flowchart tracing the $5M audit threshold from author to beneficiaries and cost-bearers, with subgraphs for each role.",
-    "level_2_statistical": "One author, one parameter, two affected constituencies — one exempted (small firms), one bound (mid-size firms).",
-    "level_3_perceptual": "The lobbying arrow back from small firms to the author exposes the structural incentive: the author benefits from a specific threshold the lobbying constituency requested.",
-    "short_alt": "Flowchart of the $5M audit threshold tracing authorship, beneficiaries, and cost-bearers."
-  }
-}
-```
-
-### Emission rules
-
-1. **`type ∈ {"flowchart", "concept_map"}`.**
-2. **`mode_context = "cui-bono"`. `canvas_action = "replace"`. `relation_to_prose = "integrated"`.**
-3. **For `flowchart`:** `spec.dialect = "flowchart"`; `spec.dsl` is Mermaid flowchart syntax (must begin with `flowchart ` or `graph `). Include subgraphs for `Authors`, `Beneficiaries`, and `Bears cost` where applicable.
-4. **For `concept_map`:** ≥ 4 concepts representing institutions + constituencies + parameters; ≥ 2 linking phrases including directional action verbs (e.g. "authors", "exempts", "binds", "lobbies for"); ≥ 3 propositions; at least one `is_cross_link`.
-5. **The envelope must show at least one institutional author node AND at least one beneficiary + one cost-bearer node.**
-6. **`semantic_description` required; `short_alt ≤ 150`.**
-7. **One envelope.**
-
-### What NOT to emit
-
-- A flowchart with no subgraph separation — the interest structure must be visually separable.
-- A concept map with only institutions and no parameters — CB is about parameters driving distribution.
-- `canvas_action: "annotate"`.
-
-## WPF ESCALATION CHECK
-
-After the standard cui-bono output (CONTENT CONTRACT prose + EMISSION CONTRACT envelope) has been delivered, evaluate the analysis for wicked-problem indicators. This check is performed AFTER the standard output — it does not interrupt or alter the core analysis; it appends a follow-on recommendation when warranted.
-
-### Indicators
-
-Evaluate the cui-bono output against these three indicators:
-
-1. **Multiple stakeholder groups with incompatible benefit structures.** The Distributional Impact section names beneficiaries and cost-bearers whose values cannot be jointly satisfied — what benefits one group materially harms another, and the harm is not compensable through side-payments or technical adjustments.
-2. **No intervention option that produces net benefit across all groups.** The current intervention plus the alternative-constituency design plus any other implicit options all subordinate at least one major stakeholder group below their threshold of acceptance.
-3. **Value conflicts evident in the distribution of benefits and harms.** The distribution traces back to fundamentally different values about what the policy or institution should serve — not merely different empirical estimates, different priorities within a shared value framework, or different positions on a tradeable margin.
-
-### Escalation rule
-
-- **IF two or more indicators are present** → append the WPF escalation prompt below to the output, formatted as a clearly labelled follow-on recommendation (visually distinct from the core analysis — separated by a horizontal rule and prefixed with the bridge-strip-style label `[WPF Escalation Recommended]`).
-- **IF fewer than two indicators are present** → do nothing. The cui-bono output stands on its own; no escalation is offered.
-
-### Escalation prompt template
-
-When the rule fires, append this block verbatim to the output:
-
-```
----
-
-[WPF Escalation Recommended]
-
-> This analysis shows characteristics consistent with a wicked problem — a problem where fundamental stakeholder value conflicts make any intervention a tradeoff rather than a resolution. Indicators present in this analysis: [list which of the three indicators fired and the specific evidence from the cui-bono output for each].
->
-> For complete analysis including value conflict mapping, full consequence landscape modeling across time horizons, and a Decision Clarity Document suitable for decision-makers, invoke the Wicked Problems Framework (WPF). WPF will inherit this cui-bono analysis as the first intervention's distributional layer in Stage 3 — no work is duplicated.
->
-> Invoke WPF? Yes / No.
-```
-
-### Handoff payload (when user confirms WPF invocation)
-
-If the user confirms, hand off the following payload to WPF Path C (escalation):
-
-- **Cui Bono Output** — the prior turn's full prose + envelope, preserved verbatim.
-- **Indicator evidence** — which of the three indicators fired and the specific evidence from the cui-bono output for each.
-- **Institutional author, beneficiaries, cost-bearers, distributional parameters, alternative-constituency design** — already in the cui-bono output; explicitly forwarded so WPF Stage 3 doesn't re-extract.
-
-### Guard rails on the escalation
-
-- The escalation prompt is **never inserted before** the standard output. Cui-bono's job is to deliver its analysis; WPF escalation is a follow-on, not a substitute.
-- The escalation is **never silently inferred** by the user — it is an explicit prompt awaiting Yes / No.
-- When fewer than two indicators are present, the escalation is **not offered**. Cui-bono is a complete mode in its own right; not every cui-bono analysis needs WPF.
-- The escalation prompt must include **specific evidence** for each indicator that fired — generic "this looks complicated" language is a failure (G-CB-WPF-SP).
-
-## GUARD RAILS
-
-**Solution Announcement Trigger.** WHEN endorsing the alternative, verify the endorsement is grounded in analysis, not analytical momentum.
-
-**Structural-first guard rail.** Institutional incentives before conspiracy. Require explicit evidence to upgrade.
-
-**Symmetry guard rail.** Apply FGL to all parties, including those the user sympathises with.
-
-## SUCCESS CRITERIA
-
-Structural:
-- S1-S6: standard preamble.
-- S7: `type ∈ {"flowchart", "concept_map"}`.
-- S8: for `flowchart`: `dialect=="flowchart"`, `dsl` starts with `flowchart ` or `graph `.
-- S9: for `concept_map`: ≥ 4 concepts, ≥ 2 linking phrases, ≥ 3 propositions.
-- S10: at least one author-labelled element AND one beneficiary-labelled element in the envelope.
-- S11: `semantic_description` complete; `short_alt ≤ 150`.
-
-Semantic:
-- M1: authorship explicitly named in prose.
-- M2: ≥ 2 specific parameters driving distribution named.
-- M3: alternative design constructed with equal rigour.
-- M4: FGL applied to ≥ 2 constituencies (not one).
-- M5: legitimate-value separation stated (what does the position do serve, aside from distribution).
-
-Composite:
-- C1: institutional author in prose corresponds to author node/concept in envelope.
-- C2: beneficiaries + cost-bearers in prose corresponds to envelope structure.
-- C3: the ≥ 2 parameters named in prose appear in envelope labels.
-
-```yaml
-success_criteria:
-  mode: cui-bono
-  version: 1
-  structural:
-    - { id: S1-S6, check: standard_preamble }
-    - { id: S7,  check: type_in_allowlist, allowlist: [flowchart, concept_map] }
-    - { id: S8,  check: flowchart_mermaid_dsl, applies_to: flowchart }
-    - { id: S9,  check: concept_map_shape, applies_to: concept_map }
-    - { id: S10, check: author_and_beneficiary_present }
-    - { id: S11, check: semantic_description_complete }
-  semantic:
-    - { id: M1, check: authorship_named }
-    - { id: M2, check: two_parameters_driving_distribution }
-    - { id: M3, check: alternative_design_present }
-    - { id: M4, check: fgl_applied_to_multiple_parties }
-    - { id: M5, check: legitimate_value_stated }
-  composite:
-    - { id: C1, check: author_in_envelope }
-    - { id: C2, check: beneficiaries_cost_bearers_in_envelope }
-    - { id: C3, check: parameters_in_envelope_labels }
-  acceptance: { tier_a_threshold: 0.9, structural_must_all_pass: true,
-                semantic_min_pass: 0.8, composite_min_pass: 0.75 }
-```
-
-## KNOWN FAILURE MODES
-
-**The Conspiracy Trap.** Attributing distributional outcomes to deliberate coordination. Correction: default to structural; upgrade only with evidence.
-
-**The Cynicism Trap (inverse of M5).** Concluding the position has no legitimate basis. Correction: separate legitimate value from distributional overlay.
-
-**The Mirror Trap (inverse of M3).** Constructing an alternative that is actually the analyst's preference. Correction: the alternative serves the disadvantaged constituency, not the analyst.
-
-**The Asymmetric-FGL Trap (inverse of M4).** Applying FGL only to the opposing side. Correction: apply to all parties.
-
-## TOOLS
-
-Tier 1: FGL (primary), OPV, KVI, C&S, CAF.
-Tier 2: Political and Social Analysis Module.
-
-## TRANSITION SIGNALS
-
-- IF the position rests on unexamined empirical assumptions → propose **Paradigm Suspension**.
-- IF the user wants to evaluate the alternatives as viable options → propose **Constraint Mapping**.
-- IF the user wants the strongest case for the institutional position → propose **Steelman Construction**.
-- IF the user begins a deliverable → propose **Project Mode**.
-- IF multiple explanations exist for institutional behaviour → propose **Competing Hypotheses**.
-- IF two or more wicked-problem indicators fire on the cui-bono output (incompatible benefit structures, no net-positive intervention, fundamental value conflicts in distribution) → emit the **WPF Escalation** prompt per the WPF ESCALATION CHECK section above, offering invocation of the Wicked Problems Framework.
-- IF the user wants the strongest case AGAINST the institutional position from the disadvantaged constituency's perspective → propose **Red Team** in `advocate` stance with the disadvantaged constituency as the client.
+Verified means: the institutional author is named explicitly; at least two specific parameters driving distribution are stated; the alternative design is constructed with equal technical rigor and from the disadvantaged constituency's interests; FGL is applied to at least two constituencies; legitimate value is separated from distributional overlay; every named beneficiary has a concrete benefit pathway; every named cost has a concrete bearer; the analysis has surfaced absent voices or explicitly noted that boundary-critique was deferred. Confidence per finding accompanies every claim. The four critical questions are addressable from the output.

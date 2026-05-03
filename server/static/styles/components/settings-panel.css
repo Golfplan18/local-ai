@@ -1,0 +1,303 @@
+/* ============================================================
+   settings-panel.css — Audio/Video Phase 9
+
+   Centered modal with backdrop and tabbed content. Hidden by
+   default; shown when the gear button toggles
+   `OraSettingsPanel.open()`. Tabs: Capture / Whisper /
+   External APIs / Export.
+   ============================================================ */
+
+.ora-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.ora-settings-backdrop--visible {
+  display: flex;
+}
+
+.ora-settings-modal {
+  width: min(720px, 90vw);
+  max-height: 86vh;
+  background: var(--ora-bg, #1e1f29);
+  color: var(--ora-fg, #f8f8f2);
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ora-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+}
+
+.ora-settings-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ora-settings-close {
+  background: transparent;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 10px;
+  border-radius: 4px;
+}
+
+.ora-settings-close:hover {
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06));
+  color: var(--ora-fg, #f8f8f2);
+}
+
+.ora-settings-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.08));
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.02));
+}
+
+.ora-settings-tab {
+  background: transparent;
+  border: none;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.ora-settings-tab:hover {
+  color: var(--ora-fg, #f8f8f2);
+}
+
+.ora-settings-tab--active {
+  color: var(--ora-fg, #f8f8f2);
+  border-bottom-color: var(--ora-accent, #bd93f9);
+}
+
+.ora-settings-tab-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 18px;
+}
+
+.ora-settings-section-header {
+  margin: 18px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+}
+
+.ora-settings-field {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.ora-settings-field-label {
+  font-size: 13px;
+  color: var(--ora-fg-soft, rgba(248, 248, 242, 0.85));
+}
+
+.ora-settings-input {
+  background: var(--ora-bg-elevated, rgba(0, 0, 0, 0.3));
+  color: var(--ora-fg, #f8f8f2);
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+}
+
+.ora-settings-input:focus {
+  border-color: var(--ora-accent, #bd93f9);
+}
+
+.ora-settings-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ora-fg-soft, rgba(248, 248, 242, 0.85));
+  cursor: pointer;
+}
+
+.ora-settings-note {
+  margin: 8px 0 12px;
+  font-size: 12px;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.55));
+  line-height: 1.45;
+}
+
+/* ── API key rows ──────────────────────────────────────────────── */
+
+.ora-settings-apikey-row {
+  display: grid;
+  grid-template-columns: 200px 60px 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.ora-settings-apikey-label {
+  font-size: 13px;
+  color: var(--ora-fg-soft, rgba(248, 248, 242, 0.85));
+}
+
+.ora-settings-apikey-status {
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.ora-settings-apikey-status--set {
+  background: rgba(80, 250, 123, 0.15);
+  color: #50fa7b;
+}
+
+.ora-settings-apikey-status--unset {
+  background: rgba(255, 184, 108, 0.10);
+  color: #ffb86c;
+}
+
+.ora-settings-apikey-input {
+  background: var(--ora-bg-elevated, rgba(0, 0, 0, 0.3));
+  color: var(--ora-fg, #f8f8f2);
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  outline: none;
+  width: 100%;
+}
+
+.ora-settings-apikey-input:focus {
+  border-color: var(--ora-accent, #bd93f9);
+}
+
+/* ── footer + buttons ──────────────────────────────────────────── */
+
+.ora-settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+}
+
+.ora-settings-status {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.55));
+}
+
+.ora-settings-status--success {
+  color: var(--text-success, #50fa7b);
+}
+
+.ora-settings-status--error {
+  color: var(--text-error, #ff7777);
+}
+
+.ora-settings-status--info {
+  color: var(--ora-accent, #bd93f9);
+}
+
+.ora-settings-btn {
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.05));
+  color: var(--ora-fg, #f8f8f2);
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.16));
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.ora-settings-btn:hover:not(:disabled) {
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.10));
+}
+
+.ora-settings-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ora-settings-btn--primary {
+  background: var(--ora-accent, #bd93f9);
+  color: var(--ora-on-accent, #1e1f29);
+  border-color: var(--ora-accent, #bd93f9);
+  font-weight: 600;
+}
+
+.ora-settings-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+  background: var(--ora-accent, #bd93f9);
+}
+
+.ora-settings-btn--ghost {
+  background: transparent;
+}
+
+.ora-settings-btn--small {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.ora-settings-btn--danger {
+  color: var(--text-error, #ff7777);
+  border-color: var(--text-error, #ff7777);
+}
+
+.ora-settings-btn--danger:hover:not(:disabled) {
+  background: rgba(255, 121, 121, 0.12);
+}
+
+/* ── gear trigger button ─────────────────────────────────────────── */
+
+.ora-settings-trigger {
+  background: transparent;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.55));
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ora-settings-trigger:hover {
+  color: var(--ora-fg, #f8f8f2);
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06));
+}

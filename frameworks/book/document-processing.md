@@ -1,17 +1,34 @@
+
 # Document Processing Framework
+
+## Display Name
+Document Processing
+
+## Display Description
+Convert any document — PDF, Word, slides, HTML, plain text — into vault-ready atomic notes with full YAML frontmatter, subtype classification, grammar-rule enforcement, and relationship mapping. Used by the file-attach pipeline; also runnable directly to ingest a single document or batch.
+
 
 _Created April 14, 2026 — canonical pipeline specification for converting any document input into vault-ready notes with complete YAML frontmatter, subtype classification, grammar rules, and relationship mapping._
 
+
+## Setup Questions
+
+### Document or files
+Required. The document(s) you want processed. Provide a file path, paste the document text directly, or attach files to the input pane. Supported formats: PDF, Word (.docx), PowerPoint (.pptx), HTML, RTF, plain text, Markdown.
+
+### Source provenance
+Optional. Where the document came from — for example, a chat export, a published paper, a personal note, or a research report. Helps the framework choose the right note type and tags for the extracted material.
+
 ## PURPOSE
 
-This framework processes any document — a conversation transcript, book chapter, scientific paper, vault note, research report, or external chat export — and produces vault-ready notes with correct note type classification, atomic subtype assignment, grammar rule enforcement, and relationship mapping. It is the automated implementation of the Knowledge Artifact Coach (Framework — Knowledge Artifact Coach v5.0) operating in pipeline mode without human interaction.
+This framework processes any document — a conversation transcript, book chapter, scientific paper, vault note, research report, or external chat export — and produces vault-ready notes with correct note type classification, atomic subtype assignment, grammar rule enforcement, and relationship mapping. It is the automated implementation of the Knowledge Artifact Coach (Framework — Knowledge Artifact Coach v6.0) operating in pipeline mode without human interaction.
 
 The framework serves three use cases:
 1. **Batch extraction** — processing the historical archive of ~3,500 conversations and external documents
 2. **Ongoing external processing** — digesting conversations conducted outside Ora (commercial AI exports)
 3. **Source document processing** — extracting knowledge from books, papers, reports, and other long-form sources
 
-**Canonical specification:** Framework — Knowledge Artifact Coach v5.0 is the single source of truth for note types, subtypes, body schemas, quality checks, grammar rules, and output formats. This framework implements that specification as automated pipeline code. The Knowledge Artifact Coach framework defines *what* the engine produces; this document defines *how* the engine produces it.
+**Canonical specification:** Framework — Knowledge Artifact Coach v6.0 is the single source of truth for note types, subtypes, body schemas, quality checks, grammar rules, and output formats. This framework implements that specification as automated pipeline code. The Knowledge Artifact Coach framework defines *what* the engine produces; this document defines *how* the engine produces it.
 
 ---
 
@@ -61,6 +78,11 @@ Path 2 delegates to the existing conversation processing pipeline (frameworks/bo
 - Processed turn-pair chunk files per the conversation processing pipeline specification
 - ChromaDB conversations collection entries
 - Processing manifest updates
+
+**Type assignments per output category:**
+- Source-document chunks (Path 1): `type: resource` per Reference — Ora YAML Schema §4
+- Extracted atomic notes (Path 1): `type: incubator` (awaiting user elevation to `engram`)
+- Conversation turn-pair chunks (Path 2): `type: chat`
 
 **Quality guarantees:**
 - Every auto-approved note passes all [AUTO] quality checks from Framework — Knowledge Artifact Coach Phase 4
@@ -281,7 +303,7 @@ A note is auto-approved if ALL of the following are true:
 2. **Schema conformance** — body matches the subtype's required schema (all required elements present)
 3. **Title is declarative claim** — not a topic label, not a question (for atomic/molecular)
 4. **Exactly one claim** — title expresses a single proposition (for atomic)
-5. **YAML frontmatter complete** — nexus, type, tags present; subtype present for atomics; type is "working"
+5. **YAML frontmatter complete** — nexus, type, tags present; subtype present for atomics; type is "incubator" for extracted atomic notes / "resource" for source-document chunks (per Reference — Ora YAML Schema §4)
 6. **Limits/boundary section present** — for causal_claim, analogy, and process_principle subtypes
 7. **Self-containedness verified** — each bullet parseable in isolation (heuristic: no bullet starts with "This", "It", "They" without prior referent in the same bullet)
 8. **Minimum length** — body contains at least 2 proposition bullets (for atomic/molecular)
@@ -410,9 +432,7 @@ Runs after batch extraction or as an ongoing check when new notes are produced.
 ### Three Categories
 
 1. **Clean merge** — identical or near-identical notes. Keep the stronger expression (more complete body, more precise title, more recent source). Add `arrival_history` to the surviving note recording the merge.
-
 2. **Variant merge** — same core concept expressed differently, each capturing a distinct facet. Keep both notes. Add a `qualifies` or `extends` relationship between them. Add `arrival_history` noting the variant detection.
-
 3. **False positive** — surface-similar notes that are actually about different things. Add a `surface-similar` note in the deduplication log. No merge, no relationship. Flag for human review if similarity > 0.90 to confirm.
 
 ### Trigger

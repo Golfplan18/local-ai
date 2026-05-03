@@ -1,0 +1,791 @@
+# MODE CLASSIFICATION DIRECTORY
+
+> **DEPRECATED — to be archived in Phase 9.** This file is retained until `~/ora/orchestrator/boot.py` no longer reads it. The Mode Classification Directory's intent-classification flow has been superseded by the four-stage pre-routing pipeline at `~/ora/architecture/pre-routing-pipeline.md`. See `~/ora/CLAUDE.md` for the migration plan.
+>
+> Vault-side counterpart was archived to `~/Documents/vault/Old AI Working Files/Reference — Mode Classification Directory.md.archived-2026-05-01` on 2026-05-01 (Phase 7).
+
+*Loaded into: Step 1 cleanup model context window at Phase A.5 (Mode Classification).*
+
+*This document is the single reference for classifying a cleaned prompt into the correct analysis mode. It is optimized for discrimination — every section exists to help you distinguish between modes, not to describe what modes do after selection.*
+
+## CLASSIFICATION PROCESS
+
+Follow these steps in order. Do not skip steps.
+
+1. **Read the cleaned prompt.** Identify what the user wants.
+
+2. **Trivial check (surface-level — run this FIRST).** Before any intent classification, check whether the prompt is trivially simple:
+   - Is it a **greeting, chitchat, social pleasantry**? ("hi", "thanks", "good morning")
+   - Is it a **trivial factual lookup** answerable with high confidence from general knowledge? ("capital of France", "who wrote Hamlet", "year of the Apollo 11 landing")
+   - Is it a **single-line casual question** with no reasoning step required? ("spell out 'necessary'", "what's 17 × 23")
+   
+   IF YES → classify as intent **SIMPLE**, mode **simple**, runner-up **standard**, triage tier 1. Stop. Do not force-fit trivial input into an analytical intent.
+   
+   IF NO → continue to step 3.
+
+3. **Primary intent classification.** Assign the prompt to one of these intent categories:
+   - **LEARNING** — The user wants to understand something they don't know well (or wants something explained)
+   - **DECIDING** — The user faces a choice between alternatives
+   - **BUILDING** — The user wants to produce a specific deliverable (artifact, code, document, plan with a defined output)
+   - **ANALYZING** — The user wants to examine evidence, causes, or explanations of a specific phenomenon
+   - **CONNECTING** — The user wants to understand relationships between things
+   - **QUESTIONING** — The user challenges assumptions, frameworks, or consensus
+   - **EXPLORING** — The user is following curiosity without a specific goal
+   - **SPATIAL** — The user submits a visual artifact as the primary query medium, asking what it shows or what's missing
+
+4. **Candidate modes.** Using the intent category, identify 2-4 candidate modes from the Intent-to-Mode Map below.
+
+5. **Positive trigger check.** For each candidate, check whether the prompt matches the positive triggers in that mode's entry.
+
+6. **Negative trigger elimination.** For each remaining candidate, check the negative triggers. These are IF/THEN routing rules — if a negative trigger fires, that mode is eliminated and the prompt is routed to the mode specified in the rule.
+
+7. **Boundary pair resolution.** If 2+ candidates survive, consult the Boundary Pairs section for the specific pair.
+
+8. **Catch-all fallback (only if no candidate from steps 4-7 matched).** This step ONLY fires if every candidate from step 4 failed its positive triggers in step 5 OR was eliminated by a negative trigger in step 6. **If a candidate matched in step 5 (including standard under LEARNING for "explain X" prompts), STOP — that is your selected mode. Do NOT proceed to step 8.**
+   
+   If you reach this step, fall back to a catch-all:
+   - **Standard catch-all (Gear 2)** — use when the prompt is moderate reasoning with no real stakes, no conflicting frames, and no hidden assumptions. Default for unmatched prompts.
+   - **Adversarial catch-all (Gear 3)** — use ONLY when the prompt has clear real stakes, multiple plausible frames, hidden assumptions, or consequential recommendations the user will act on, AND no specific analytical mode is a clean fit.
+   
+   **Default within the catch-all fallback is standard, NOT adversarial.** Adversarial is reserved for prompts where stakes are visible. "Heavier when in doubt" applies ONLY to picking between standard and adversarial WHEN BOTH are plausibly applicable and the prompt has stakes-shaped signal — not as a general bias toward Gear 3.
+   
+   **Standard vs project-mode (critical disambiguation):** project-mode requires a NAMED DELIVERABLE WITH SHAPE OR SCOPE — "build", "write", "create", "produce", "draft", "design" verbs, OR explicit requirements / success criteria / specifications. **"Explain X" is NOT project-mode** — there is no deliverable being produced; the user wants understanding. Route explanatory prompts to **standard**.
+
+9. **Select the mode.** Report: selected mode, runner-up, confidence, and one-sentence reasoning.
+
+---
+
+## CATCH-ALL MODES (trivial / moderate / complex fallbacks)
+
+Three catch-all modes exist for prompts that do NOT fit a specific analytical mode. They are ordered by complexity: Simple → Standard → Adversarial.
+
+| Catch-all | Gear | Use when | Do NOT use when |
+|-----------|------|----------|-----------------|
+| **simple** | 1 | Greeting, chitchat, trivial factual lookup answerable with high confidence from general knowledge, casual one-liner with no analytical goal. | The prompt needs any reasoning step beyond direct recall. |
+| **standard** | 2 | Moderate reasoning required; short explanation, summary, clarification; defensible single answer; no conflicting frames; no real-stakes decision. | The prompt matches a specific analytical mode cleanly, OR the prompt has real stakes / conflicting frames / hidden assumptions. |
+| **adversarial** | 3 | Complex prompt with real stakes or multiple plausible frames; too heavy for Standard; does not cleanly match any specific analytical mode. | The prompt matches a specific analytical mode cleanly — route to that mode instead. |
+
+**Catch-all tiebreakers (apply only when MULTIPLE catch-alls plausibly fit):**
+- simple vs standard: if any reasoning step is needed, prefer standard.
+- standard vs adversarial: if the prompt has visible real stakes OR a plausible alternative frame the user might miss, prefer adversarial. Otherwise standard. **Do NOT escalate to adversarial just because the prompt is long or technical** — escalate only when stakes/conflicts are present.
+- adversarial vs specific analytical mode (root-cause-analysis, decision-under-uncertainty, etc.): if the specific mode's trigger conditions fit cleanly, prefer the specific mode.
+- "Go heavier when in doubt" applies ONLY between standard and adversarial when the prompt has stakes-shaped signal. It is NOT a general bias toward Gear 3 — explanatory and expository prompts default to standard.
+
+---
+
+## INTENT-TO-MODE MAP
+
+| Intent | Primary Candidates | Secondary Candidates |
+|--------|-------------------|---------------------|
+| SIMPLE | simple | — |
+| CATCH-ALL | standard, adversarial | — |
+| LEARNING | standard, terrain-mapping, deep-clarification | passion-exploration |
+| DECIDING | constraint-mapping, decision-under-uncertainty | strategic-interaction, benefits-analysis, red-team, adversarial |
+| BUILDING | project-mode, structured-output | — |
+| ANALYZING | root-cause-analysis, competing-hypotheses, cui-bono, benefits-analysis, consequences-and-sequel, red-team | scenario-planning, adversarial |
+| CONNECTING | relationship-mapping, systems-dynamics, synthesis, consequences-and-sequel | dialectical-analysis |
+| QUESTIONING | paradigm-suspension, steelman-construction | dialectical-analysis, cui-bono, red-team |
+| EXPLORING | passion-exploration, terrain-mapping | deep-clarification |
+| SPATIAL | spatial-reasoning | — |
+
+**LEARNING tiebreaker:** Use **standard** for plain "explain X" / "summarize X" / "how does X work" expository prompts where the user wants a single defensible answer. Use **terrain-mapping** when the user wants a broad survey of a domain they're unfamiliar with ("give me the lay of the land in machine learning"). Use **deep-clarification** when the user is confused about a specific concept and needs the confusion unpacked ("I keep mixing up X and Y, help me see the difference clearly").
+
+---
+
+## MODE ENTRIES
+
+Each mode entry contains:
+- **Positive triggers** — conditions that indicate this mode
+- **Negative triggers** — IF/THEN rules that route AWAY from this mode to another
+- **Key signal** — the single most diagnostic feature that distinguishes this mode
+- **Example anchors** — prompts that route here (✓) and prompts that look similar but route elsewhere (✗)
+
+---
+
+### simple
+
+**Intent category:** SIMPLE
+
+**Positive triggers:** Greetings ("hi", "hello", "good morning"), acknowledgments ("thanks"), trivial factual lookups ("capital of France", "who wrote Hamlet"), casual one-liners with no analytical goal. Answer is a high-confidence one-shot that a small model (≤ 9B) can produce correctly without reasoning steps.
+
+**Negative triggers:**
+- IF any reasoning step is required to reach the answer → route to **standard**.
+- IF the answer depends on conflicting frames, uncertain sources, or stakeholder tradeoffs → route to **adversarial** or a specific analytical mode.
+- IF the user names a deliverable with shape or scope → route to **project-mode**.
+
+**Key signal:** The prompt is social, trivially factual, or a casual one-liner — no reasoning needed, no stakes, no ambiguity.
+
+**Example anchors:**
+- ✓ "Hi!" — greeting.
+- ✓ "Say hello in one short sentence." — trivial social request.
+- ✓ "What's the capital of Japan?" — direct factual lookup.
+- ✓ "Spell out 'necessary'." — trivial recall.
+- ✗ "Explain how photosynthesis works." → **standard** (reasoning, explanation).
+- ✗ "Should I migrate my database to Postgres?" → **constraint-mapping** or **adversarial** (stakes, tradeoffs).
+
+---
+
+### standard
+
+**Intent category:** LEARNING (primary candidate for "explain X" / "summarize X" / mechanism / comparison prompts), CATCH-ALL (fallback when no specific analytical mode fits).
+
+**Positive triggers:** Standard is the catch-all for **expository / instructional / explanatory** prompts that need reasoning but no adversarial review. Specifically:
+
+- "Explain X" / "Explain how X works" / "Explain why X happens"
+- "Summarize X" / "Give me a summary of X"
+- "Walk me through X"
+- "What is X" (when X requires more than a one-line lookup)
+- "What's the difference between X and Y" (comparison without a real-stakes decision attached)
+- "Why does X happen" (mechanism question)
+- "How does X work" (mechanism question)
+- "Tell me about X"
+
+These are the prompts where the user wants UNDERSTANDING. They are NOT producing a deliverable, NOT making a decision with stakes, NOT diagnosing a specific failure, and NOT challenging assumptions. The answer is a defensible expository response.
+
+**Negative triggers:**
+- IF the prompt is trivially answerable from general knowledge with no reasoning step (greeting, single-fact lookup) → route to **simple**.
+- IF the prompt names a deliverable to produce ("build", "write", "create", "produce", "draft", "design") OR specifies requirements / scope → route to **project-mode**.
+- IF the prompt has real stakes, conflicting frames, or hidden assumptions → route to **adversarial** or a specific analytical mode.
+- IF the prompt matches a specific analytical mode cleanly (root-cause-analysis, decision-under-uncertainty, constraint-mapping, etc.) → route to that mode.
+
+**Key signal:** The user wants to UNDERSTAND something — explanation, summary, mechanism, comparison without stakes. No artifact produced, no decision to make, no diagnosis to perform.
+
+**Example anchors:**
+- ✓ "Explain how photosynthesis works, in two paragraphs." — reasoning + explanation, no stakes, NOT producing an artifact.
+- ✓ "Why does bread rise when it bakes?" — mechanism question, single defensible answer, NOT a deliverable.
+- ✓ "Give me a short summary of the differences between REST and GraphQL." — comparison, no real-stakes decision attached.
+- ✓ "Walk me through how DNS resolution works." — instructional, single defensible answer.
+- ✓ "What is quantum entanglement?" — explanation needed, more than a one-line lookup.
+- ✓ "How does a turbocharger work?" — mechanism question, expository answer.
+- ✗ "Root-cause analysis of the production outage on Tuesday." → **root-cause-analysis** (specific analytical mode).
+- ✗ "Should I use Postgres or MySQL for this project?" → **constraint-mapping** (specific mode — choosing alternatives).
+- ✗ "Hi there" → **simple** (no reasoning needed).
+- ✗ "Build me a script that resizes images." → **project-mode** (deliverable being produced).
+- ✗ "Help me think through whether to leave my job." → **adversarial** (real stakes, multi-frame).
+
+---
+
+### adversarial
+
+**Intent category:** CATCH-ALL
+
+**Positive triggers:** Prompt is too complex for Standard — real stakes, multiple plausible frames, hidden assumptions, or a consequential recommendation — but does not cleanly match any specific analytical mode. The classifier is uncertain between Standard and a specific mode and escalating to Adversarial is safer. "When in doubt, go heavier."
+
+**Negative triggers:**
+- IF the prompt matches a specific analytical mode cleanly → route to that specific mode.
+- IF the prompt is moderate-reasoning with no adversarial need → route to **standard**.
+- IF the prompt is trivial → route to **simple**.
+
+**Key signal:** Complex, stakes-heavy, framed ambiguously — but no specific analytical framework fits better than general adversarial review.
+
+**Example anchors:**
+- ✓ "What should I consider when choosing a career?" — stakes-heavy, multi-frame, no specific analytical mode dominates.
+- ✓ "Is it worth learning Rust right now?" — real-stakes decision with plausible alternatives but no clean match to constraint-mapping or decision-under-uncertainty.
+- ✓ "Help me think through whether I should move to a new city." — stakes-heavy, multi-frame, personal rather than analytical.
+- ✗ "Should I migrate my database to Postgres?" → **constraint-mapping** (clean match — comparing alternatives against constraints).
+- ✗ "Root-cause analysis of the production outage." → **root-cause-analysis** (clean match).
+- ✗ "Explain how photosynthesis works." → **standard** (no stakes, no adversarial need).
+
+---
+
+### benefits-analysis
+
+**Intent category:** ANALYZING (secondary: DECIDING)
+
+**Positive triggers:** "What are the benefits and risks of," "pros and cons of," cost-benefit analysis, "should we adopt X," "what are the implications of," evaluation of a single option's merits, risks, and non-obvious implications. De Bono PMI framework ("Plus, Minus, Interesting").
+
+**Negative triggers:**
+- IF the user is comparing multiple options to choose between them, THEN route to **constraint-mapping**.
+- IF the user wants the strongest possible version of a position constructed before critique, THEN route to **steelman-construction**.
+- IF the user is tracing forward causal cascades rather than first-order benefit/risk envelope, THEN route to **consequences-and-sequel**.
+- IF feedback loops in the system warrant analysis, THEN route to **systems-dynamics**.
+
+**Key signal:** The prompt asks for a single proposal's full effect envelope — benefit, risk, AND non-obvious implication — not a choice between alternatives.
+
+**Example anchors:**
+- ✓ "What are the benefits and drawbacks of adopting a four-day workweek at our company?" — single proposal, full envelope requested
+- ✓ "Before I commit to this migration, I want a PMI on switching our database to Postgres" — explicit PMI request
+- ✓ "What are the implications of making this feature free?" — implications (neither pure benefit nor pure risk) requested
+- ✗ "Should I use Postgres or MySQL?" → **constraint-mapping** (choosing between alternatives)
+- ✗ "What happens if we make this feature free — walk me through the cascade" → **consequences-and-sequel** (forward causal chain, not first-order envelope)
+- ✗ "Make the strongest case for the four-day workweek" → **steelman-construction** (strengthening, not balanced evaluation)
+
+---
+
+### competing-hypotheses
+
+**Intent category:** ANALYZING
+
+**Positive triggers:** Multiple explanations exist for the same evidence, "which explanation fits best," the analyst has a favored hypothesis that needs stress-testing, evidence is ambiguous or contradictory, the situation involves potential deception or information manipulation, the question is "what is actually happening" rather than "what should we do."
+
+**Negative triggers:**
+- IF the user wants to choose between action alternatives rather than between explanations, THEN route to **constraint-mapping**.
+- IF the user wants to question the foundational framework rather than test hypotheses within it, THEN route to **paradigm-suspension**.
+- IF the user wants to trace institutional interests behind competing claims, THEN route to **cui-bono**.
+
+**Key signal:** The prompt is about which EXPLANATION fits evidence, not which ACTION to take.
+
+**Example anchors:**
+- ✓ "My sales dropped 40% — was it the price change, the competitor launch, or the marketing shift?" — multiple explanations for observed data
+- ✓ "Three studies give contradictory results about this drug — which methodology is most reliable?" — evaluating competing evidence
+- ✓ "Is the market correction driven by interest rates, geopolitical risk, or a tech bubble?" — testing explanations against evidence
+- ✗ "Should I lower prices or increase marketing?" → **constraint-mapping** (choosing between actions, not explanations)
+- ✗ "Who funded those three studies?" → **cui-bono** (tracing interests, not evaluating evidence)
+
+---
+
+### consequences-and-sequel
+
+**Intent category:** ANALYZING (secondary: CONNECTING)
+
+**Positive triggers:** "What would happen if," "what are the downstream effects," "second-order consequences," policy change impact analysis, "if we do X then what," requests for causal chain tracing beyond first-order effects, temporal evolution of effects from a specific starting action.
+
+**Negative triggers:**
+- IF the user is tracing backward from symptoms to find the cause, THEN route to **root-cause-analysis**.
+- IF the causal structure is circular with feedback loops as the defining feature, THEN route to **systems-dynamics**.
+- IF the user wants to explore multiple plausible futures under genuine uncertainty about which future materializes, THEN route to **scenario-planning**.
+- IF the user is evaluating a single proposal's first-order benefit/risk envelope, THEN route to **benefits-analysis**.
+
+**Key signal:** Forward linear causal cascade from a specific named action — tracing second- and third-order effects over time.
+
+**Example anchors:**
+- ✓ "If we raise prices 20%, walk me through the cascade of what happens next" — forward cascade from specific action
+- ✓ "What are the second- and third-order effects of banning gas stoves in new construction?" — explicit request for multi-order effects
+- ✓ "We're about to deprecate this API. What does that lead to downstream?" — forward tracing from a named change
+- ✗ "Why do our prices keep drifting up?" → **root-cause-analysis** (backward tracing)
+- ✗ "What could the market look like in five years?" → **scenario-planning** (multiple futures, not a specific starting action)
+- ✗ "Why does fixing bugs make the system feel slower?" → **systems-dynamics** (feedback loop suspected)
+
+---
+
+### constraint-mapping
+
+**Intent category:** DECIDING
+
+**Positive triggers:** Multiple viable options exist, "which should I choose," tradeoff analysis, consequences pointing in opposite directions at different time horizons, value conflicts without a clear resolution. The user frames the question as a choice between alternatives rather than a search for the right answer.
+
+**Negative triggers:**
+- IF the user is questioning the framework within which the alternatives exist, THEN route to **paradigm-suspension**.
+- IF the user wants to trace who benefits from each alternative, THEN route to **cui-bono**.
+- IF the question is about which explanation best fits evidence rather than which option to choose, THEN route to **competing-hypotheses**.
+
+**Key signal:** The prompt presents OPTIONS to choose between, with constraints or tradeoffs to navigate.
+
+**Example anchors:**
+- ✓ "I have $5000, 2 months, and no team — what product can I build?" — explicit constraints limiting options
+- ✓ "Should we use React or Vue for this project? We need fast onboarding but also long-term scalability." — tradeoff between alternatives
+- ✓ "Which of these three marketing strategies gives the best ROI given our budget?" — choosing between defined options
+- ✗ "Should I take the risky option now or wait for more information?" → **decision-under-uncertainty** (probability and timing matter, not just tradeoffs)
+- ✗ "Why are these the only options? Is there a completely different approach?" → **paradigm-suspension** (questioning the framework)
+
+---
+
+### cui-bono
+
+**Intent category:** ANALYZING
+
+**Positive triggers:** Policy analysis, institutional behavior analysis, "who benefits," numerical targets presented as objective, stakeholder positions that correlate with institutional interests, positions or policies embedding distributional choices beneath technical language.
+
+**Negative triggers:**
+- IF the user questions the evidential basis of a paradigm rather than its political basis, THEN route to **paradigm-suspension**.
+- IF the user wants to evaluate multiple alternatives without tracing institutional interests, THEN route to **constraint-mapping**.
+
+**Key signal:** The prompt asks about WHO BENEFITS or what INTERESTS drive a position, policy, or institution.
+
+**Example anchors:**
+- ✓ "Who benefits from the new data privacy regulation?" — directly asks who benefits
+- ✓ "Why does the medical establishment resist this treatment?" — institutional behavior analysis
+- ✓ "The government says inflation is 3% but everything costs more — what's going on?" — questioning numerical targets as political artifacts
+- ✗ "Is the data privacy regulation actually effective at protecting privacy?" → **paradigm-suspension** or **competing-hypotheses** (questioning effectiveness, not interests)
+- ✗ "Should we comply with the new regulation or lobby against it?" → **constraint-mapping** (choosing between actions)
+
+---
+
+### decision-under-uncertainty
+
+**Intent category:** DECIDING
+
+**Positive triggers:** A choice must be made between alternatives with uncertain outcomes. "Should we act now or wait," probabilities matter but are not precisely known, the cost of being wrong is high, flexibility or optionality has value, the user faces a risk/uncertainty distinction. The decision has temporal dynamics — the cost of delay versus the benefit of learning.
+
+**Negative triggers:**
+- IF the user wants to map tradeoffs without incorporating probability or time-value, THEN route to **constraint-mapping**.
+- IF the user wants to understand which explanation fits evidence best, THEN route to **competing-hypotheses**.
+- IF the user wants to explore multiple possible futures rather than make a specific decision, THEN route to **scenario-planning**.
+
+**Key signal:** The prompt involves a DECISION where PROBABILITY, TIMING, or IRREVERSIBILITY matters — not just tradeoffs.
+
+**Example anchors:**
+- ✓ "Should I take the job offer or wait for a better one?" — timing + uncertainty + irreversibility
+- ✓ "We can invest now at a discount or wait for Q3 earnings — what's the smart play?" — option value vs. cost of delay
+- ✓ "Should we launch with 80% confidence or spend another month on testing?" — probability threshold decision
+- ✗ "Which of these three investment options has the best risk-adjusted return?" → **constraint-mapping** (comparing defined alternatives, not managing uncertainty)
+- ✗ "What could happen to our industry over the next 10 years?" → **scenario-planning** (exploring futures, not making a specific decision)
+
+---
+
+### deep-clarification
+
+**Intent category:** LEARNING
+
+**Positive triggers:** "Why does X work that way," "explain the mechanics of," "what's really going on underneath," technical depth in a known domain. The user has an established position or understanding and wants to push past first-level explanation to underlying mechanics. The domain is already identified — the user is not exploring; they are drilling.
+
+**Negative triggers:**
+- IF the user is unfamiliar with the domain and needs orientation, THEN route to **terrain-mapping**.
+- IF the user has a deliverable in mind, THEN route to **project-mode**.
+- IF the user wants to question the foundational assumptions rather than understand the mechanics within the current framework, THEN route to **paradigm-suspension**.
+
+**Key signal:** The user ALREADY KNOWS the domain and wants to go DEEPER into mechanics. Familiarity + depth-seeking.
+
+**Example anchors:**
+- ✓ "I understand transformers use attention — but why does multi-head attention work better than single-head?" — has existing knowledge, wants deeper mechanics
+- ✓ "What's really going on underneath when a neural network generalizes?" — drilling into known domain
+- ✓ "I get that antibiotics kill bacteria, but what's the actual mechanism of resistance?" — surface knowledge, seeking underlying mechanics
+- ✗ "What is machine learning?" → **terrain-mapping** (unfamiliar with domain, needs orientation)
+- ✗ "Tell me about consciousness" → **terrain-mapping** (open-ended, no established position, domain boundaries unclear)
+- ✗ "Is the standard model of particle physics actually correct?" → **paradigm-suspension** (questioning framework, not drilling into it)
+
+---
+
+### dialectical-analysis
+
+**Intent category:** CONNECTING / QUESTIONING
+
+**Positive triggers:** A question is structured around genuine opposition between positions that each have real merit. Compromise or middle ground is insufficient — something genuinely new must emerge. The user frames issues in terms of fundamental tension or contradiction. Existing positions seem trapped in a false dichotomy. Questions involving historical development or evolution of ideas or systems. "These two things seem to contradict each other but both seem true."
+
+**Negative triggers:**
+- IF the user wants to neutrally examine tension between positions without requiring adversarial commitment or sublation, THEN route to **synthesis** — Dialectical Analysis requires adversarial commitment and productive transformation, not bilateral observation.
+- IF the user wants to choose between alternatives, THEN route to **constraint-mapping**.
+- IF the user wants to construct the strongest version of one position, THEN route to **steelman-construction**.
+
+**Key signal:** The prompt frames a CONTRADICTION or OPPOSITION between positions, seeking TRANSFORMATION into something new — not neutral comparison, not choosing a side.
+
+**Example anchors:**
+- ✓ "Individual freedom and collective welfare seem to fundamentally conflict — is there a way past this?" — genuine opposition, seeking transformation
+- ✓ "Is remote work better than office work? Both sides have evidence and neither is fully right." — opposition between positions with real merit, middle ground insufficient
+- ✓ "Science values both replication and novelty — but these pull in opposite directions. How does it actually progress?" — structural contradiction in a system
+- ✗ "Compare the pros and cons of remote vs. office work" → **synthesis** (neutral bilateral examination, not seeking transformation through contradiction)
+- ✗ "Make the best case for remote work" → **steelman-construction** (strengthening one position, not driving contradiction)
+- ✗ "Should our company go remote or stay in-office?" → **constraint-mapping** (choosing between alternatives)
+
+---
+
+### paradigm-suspension
+
+**Intent category:** QUESTIONING
+
+**Positive triggers:** The user questions a mainstream position ("what if X is wrong"), evidence contradicts an accepted explanation, the user asks why a consensus exists rather than accepting it. The user explicitly requests heterodox exploration or says "I want to question the standard view." Phrases like "what would X look like if we removed assumption Y" or "suspend the assumption" or "what if that entire framework is wrong" are strong paradigm-suspension signals — even when the phrasing resembles a build request.
+
+**Negative triggers:**
+- IF the user accepts the consensus framework and wants to work within it to produce a concrete deliverable, THEN route to **project-mode** or **constraint-mapping**.
+- IF the user wants to trace institutional interests behind a position rather than question its evidential basis, THEN route to **cui-bono**.
+- Surface similarity: a user saying "that seems wrong" may be expressing disagreement with a specific claim (route to **deep-clarification**) rather than questioning the paradigm — check whether the challenge targets a specific claim or a foundational assumption.
+
+**Key signal:** The prompt CHALLENGES A FRAMEWORK or CONSENSUS, not just a specific claim. The user questions WHY something is believed, not HOW it works. "What if X is wrong" + "what would it look like without X" = paradigm-suspension.
+
+**Example anchors:**
+- ✓ "Everyone says you need a degree to succeed — is that actually true?" — questioning mainstream position
+- ✓ "The standard dietary guidelines have been wrong before — should we trust the current ones?" — questioning consensus evidential basis
+- ✓ "What if economic growth isn't actually sustainable? The whole framework assumes it is." — challenging foundational assumption
+- ✓ "Everyone assumes GDP growth is the right metric. What would economics look like if we suspended that assumption?" — "what would it look like without X" = paradigm-suspension, NOT a build request
+- ✗ "Why do most employers require degrees?" → **root-cause-analysis** or **cui-bono** (asking about causes or interests, not questioning the framework)
+- ✗ "Help me get a job without a degree" → **project-mode** (accepting the situation, building a deliverable)
+
+---
+
+### passion-exploration
+
+**Intent category:** EXPLORING
+
+**Positive triggers:** No deliverable stated, curiosity-driven inquiry, "I'm interested in," "help me think about," "I've been wondering," open-ended engagement with a topic. The aim is exploratory with no specific deliverable or endpoint.
+
+**Negative triggers:**
+- IF the user names a deliverable or states success criteria, THEN route to **project-mode**.
+- IF the user expresses unfamiliarity and needs orientation, THEN route to **terrain-mapping** — exploration requires enough familiarity to wander productively.
+
+**Key signal:** CURIOSITY without DELIVERABLE or DESTINATION. The user wants to follow interest, not reach a conclusion.
+
+**Example anchors:**
+- ✓ "I feel curious about what truly excites me in life" — pure curiosity, no deliverable
+- ✓ "I've been thinking a lot about how music affects mood — help me explore that" — interest-driven, open-ended
+- ✓ "Something about fractals fascinates me and I want to understand why" — emotional engagement, no specific goal
+- ✗ "What are fractals?" → **terrain-mapping** (unfamiliar with domain, needs orientation first)
+- ✗ "Write me a guide to understanding music theory" → **project-mode** (names a deliverable)
+
+---
+
+### project-mode
+
+**Intent category:** BUILDING
+
+**Positive triggers:** The user names a specific output ("build," "write," "create," "produce," "draft," "design"), states requirements or success criteria, defines scope, or provides specifications. A defined artifact or answer is the deliverable. The work requires ENGINEERING, DESIGN DECISIONS, or PROBLEM-SOLVING — not just assembling known information into a format.
+
+**Negative triggers:**
+- IF the user expresses no deliverable and frames the query as exploration, THEN route to **passion-exploration** or **terrain-mapping**.
+- IF the user's requirements explicitly involve questioning a foundational assumption ("what if X is wrong," "suspend the assumption"), THEN route to **paradigm-suspension** — even if the phrasing sounds like a build request ("what would it look like if...").
+- IF the deliverable is primarily a FORMAT (table, list, outline, chart, summary) filled with factual assembly of known information, THEN route to **structured-output** — Structured Output renders known content; Project Mode solves problems.
+- **IF the user is asking for an EXPLANATION, SUMMARY, MECHANISM, or COMPARISON without producing an artifact ("explain X," "summarize X," "walk me through X," "why does X happen," "how does X work," "what is X"), THEN route to standard.** Project-mode requires producing a deliverable; explanatory prompts produce understanding, not artifacts.
+
+**Key signal:** A named DELIVERABLE or OUTPUT exists that requires ENGINEERING or PROBLEM-SOLVING. The user wants something BUILT or PRODUCED — not just formatted, and NOT just explained.
+
+**Example anchors:**
+- ✓ "Help me plan the architecture for a new web app" — names a deliverable (architecture plan)
+- ✓ "Write a Python script that scrapes product prices" — explicit build request
+- ✓ "Design a database schema for a multi-tenant SaaS platform" — specific output with requirements
+- ✗ "What are all the ways I could build a web app?" → **terrain-mapping** (surveying approaches, no commitment to build)
+- ✗ "I'm curious about web architecture patterns" → **passion-exploration** (no deliverable, following curiosity)
+- ✗ "Explain how photosynthesis works in two paragraphs." → **standard** (explanation, no artifact)
+- ✗ "Why does bread rise when it bakes?" → **standard** (mechanism question, no deliverable)
+- ✗ "Walk me through how DNS resolution works." → **standard** (instructional, no artifact produced)
+
+---
+
+### red-team
+
+**Intent category:** ANALYZING (secondary: DECIDING, QUESTIONING)
+
+**Positive triggers:** The user has a **specific named artifact** on the table — a plan, draft, claim, decision, design, argument, policy proposal, or output from a prior turn — and wants it stress-tested from a hostile stance. Imperative attack phrasing: "stress-test this," "attack this," "pick this apart," "try to break this," "poke holes," "pre-mortem this." Blind-spot seeking: "what am I missing," "where is this weak," "what would a hostile reviewer say." Failure-mode framing: "how could this fail," "what's the worst case." Pre-commit posture: "before I ship this," "before I commit." Implicit signal: an artifact is submitted with a request for critical review without a specific other mode being named, especially when prior turns produced the artifact.
+
+**Stance-detection (sub-classifier):** within Red Team, two stances exist. Default `assessment` (honest vulnerability triage for the user's own benefit) is triggered by the assessment-shaped phrasing above. Override `advocate` (argument brief / ammunition / dissuasion) is triggered by: "argue against this," "make the case against," "give me ammunition," "I need to dissuade," "talk them out of it," "prep me for debate," "every angle including weak ones," "comprehensive critique," "no triage." When stance is unclear, the mode asks one disambiguation question through the clarification panel.
+
+**Negative triggers:**
+- IF the user wants the **strongest case FOR** the position, THEN route to **steelman-construction** — opposite direction.
+- IF the user wants **balanced evaluation** (Plus AND Minus AND Interesting), THEN route to **benefits-analysis** — Red Team is hostile only.
+- IF the user wants **synthesis through productive tension**, THEN route to **dialectical-analysis** — Red Team is unilateral, no sublation.
+- IF the user wants to **choose between alternatives**, THEN route to **constraint-mapping** — Red Team attacks one artifact, not multiple.
+- IF the user wants to **question the framework** the artifact rests on, THEN route to **paradigm-suspension** — Red Team attacks within the framework.
+- IF the user wants to **evaluate which explanation fits evidence**, THEN route to **competing-hypotheses**.
+- IF the user wants **forward causal cascade** from a change, THEN route to **consequences-and-sequel**.
+- IF the prompt is **stakes-heavy with no specific artifact on the table**, THEN route to catch-all **adversarial** — Red Team requires a named target.
+- IF the user is **exploring without an artifact**, THEN route to **terrain-mapping** or **passion-exploration**.
+
+**Key signal:** A SPECIFIC NAMED ARTIFACT is on the table and the user wants it ATTACKED from a hostile stance — not balanced, not strengthened, not synthesized.
+
+**Example anchors:**
+- ✓ "I've drafted a proposal to reorganize the team — stress-test it before I send it to leadership" — artifact + explicit attack request
+- ✓ "Here's my plan for launching this product. What am I missing?" — artifact + blind-spot seeking
+- ✓ "Pre-mortem this migration — assume we're going to fail, tell me how" — explicit pre-mortem framing
+- ✓ "My argument for raising prices — try to break it" — artifact + explicit break request
+- ✓ "Argue against this policy — I need to convince my partner not to support it" — advocate stance, explicit ammunition request
+- ✗ "Make the strongest case for raising prices" → **steelman-construction** (strengthen, not attack)
+- ✗ "Should we raise prices or cut costs?" → **constraint-mapping** (choice between options, not attack on one)
+- ✗ "Why do price increases usually fail?" → **root-cause-analysis** or **consequences-and-sequel** (no specific artifact on the table)
+- ✗ "What should I consider when launching a product?" → **adversarial** (stakes-heavy but no specific artifact)
+- ✗ "What are the pros and cons of this proposal?" → **benefits-analysis** (balanced envelope, not hostile)
+
+---
+
+### relationship-mapping
+
+**Intent category:** CONNECTING
+
+**Positive triggers:** "How do these connect," systems analysis, causal modeling, dependency graphs, "what affects what," mapping the structure of a situation rather than analyzing it linearly. The user wants to understand a network of relationships rather than reach a conclusion.
+
+**Negative triggers:**
+- IF the relationships involve feedback loops, delays, emergent behavior, or counterintuitive dynamics, THEN route to **systems-dynamics** — Relationship Mapping is structural and static; Systems Dynamics adds temporal behavior.
+- IF the user wants to understand a single concept deeply rather than its connections, THEN route to **deep-clarification**.
+
+**Key signal:** The prompt names MULTIPLE ENTITIES and asks how they CONNECT or AFFECT each other. The output is a MAP of relationships, not a narrative.
+
+**Example anchors:**
+- ✓ "How do the Federal Reserve, interest rates, inflation, and employment relate to each other?" — multiple named entities, asking about connections
+- ✓ "Map out the dependencies between our microservices" — explicit dependency/relationship mapping
+- ✓ "What affects what in the college admissions process?" — asking about relational structure
+- ✗ "Why do housing prices keep going up despite building more houses?" → **systems-dynamics** (feedback loops, counterintuitive behavior, temporal dynamics)
+- ✗ "What is the Federal Reserve?" → **terrain-mapping** (domain orientation, not relationship mapping)
+- ✗ "How does inflation really work at the mechanical level?" → **deep-clarification** (drilling into one concept, not mapping connections)
+
+---
+
+### root-cause-analysis
+
+**Intent category:** ANALYZING
+
+**Positive triggers:** Something has gone wrong and the cause is unclear. A problem keeps recurring despite attempted fixes. The presented problem feels like a symptom rather than the real issue. "Why does this keep happening," "we've tried X but it didn't work," "what's the real problem here." Diagnostic investigation is needed before solution design.
+
+**Negative triggers:**
+- IF the user wants to map a system's feedback structure rather than trace a specific failure, THEN route to **systems-dynamics**.
+- IF the user wants to choose between solutions rather than diagnose the problem, THEN route to **constraint-mapping**.
+- IF the user wants to explore unfamiliar territory rather than diagnose a failure in familiar territory, THEN route to **terrain-mapping**.
+
+**Key signal:** Something is BROKEN or FAILING and the user wants to find the REAL CAUSE, not just fix the symptom.
+
+**Example anchors:**
+- ✓ "Why does my server keep crashing every 3 hours?" — recurring failure, cause unclear
+- ✓ "We've reorganized the team three times but productivity hasn't improved — what are we missing?" — repeated fix attempts failed
+- ✓ "Customer churn spiked last quarter and we don't know why" — problem exists, cause unknown
+- ✗ "How does server load balancing work?" → **terrain-mapping** or **deep-clarification** (learning, not diagnosing)
+- ✗ "Should we scale horizontally or vertically?" → **constraint-mapping** (choosing between solutions, not diagnosing)
+
+---
+
+### scenario-planning
+
+**Intent category:** ANALYZING
+
+**Positive triggers:** A decision depends on future conditions that are genuinely uncertain, strategic planning over a timeframe exceeding one year, "what could happen," "how should we prepare," "what if the environment changes," the analysis defaults to a single "official future" that needs challenging. The user is making a commitment that will be difficult to reverse and the environment could take multiple shapes.
+
+**Negative triggers:**
+- IF the user wants to map present-state tradeoffs between alternatives, THEN route to **constraint-mapping** — present conditions, not future uncertainty.
+- IF the user wants to trace a causal chain backward from a failure, THEN route to **root-cause-analysis**.
+- IF the user wants to choose between options based on probability and payoff, THEN route to **decision-under-uncertainty** — scenario planning maps multiple futures, decision analysis chooses among them.
+
+**Key signal:** The prompt is about MULTIPLE POSSIBLE FUTURES and how to PREPARE for them, not about choosing now.
+
+**Example anchors:**
+- ✓ "What happens to my business if AI replaces 50% of our workforce?" — exploring a future contingency
+- ✓ "How should we prepare our supply chain for the next 5 years given geopolitical instability?" — strategic planning with uncertain futures
+- ✓ "What are the possible scenarios for the housing market over the next decade?" — explicitly asking for multiple futures
+- ✗ "Should we invest in AI automation now?" → **decision-under-uncertainty** (making a specific decision, not mapping futures)
+- ✗ "What are the pros and cons of AI automation?" → **constraint-mapping** (present-state tradeoff analysis)
+
+---
+
+### spatial-reasoning
+
+**Intent category:** SPATIAL
+
+**Positive triggers:** The user submits visual input as the primary query medium — a sketch, whiteboard photo, Excalidraw export, Obsidian Canvas file, drawing on the visual pane, or annotation of a prior Ora visual output. Fog-clearing language: "what do you see," "what's missing," "what am I missing in this diagram," "what does this tell me," "help me see what I'm not seeing," "I have a sense of the structure but can't articulate it." Annotation-request language: "can you annotate this," "annotate this causal structure," "mark up this diagram," "point out what's missing." Gap-language targeting the user's own drawing: "is there a feedback loop I haven't drawn," "what relationships are implied but not shown," "what node am I missing," "what connection did I forget." The diagram IS the question.
+
+**Negative triggers:**
+- IF the user submits a diagram as supporting evidence for a text question, THEN route to the mode matching the text query.
+- IF the user wants to construct a new visual deliverable from scratch, THEN route to **project-mode**.
+- IF the user is presenting multiple diagrams for eliminative comparison, THEN route to **competing-hypotheses**.
+- IF the user is in unfamiliar territory and wants orientation (no existing spatial artifact to analyze), THEN route to **terrain-mapping**.
+- IF the user provides text describing entities and relationships they want mapped into a diagram, THEN route to **relationship-mapping**.
+- IF the user mentions feedback loops but has NO spatial artifact, THEN route to **systems-dynamics** — pure-text feedback-loop queries are not spatial.
+
+**Key signal:** Visual artifact is the primary query medium, and the analytical work is structural — what the spatial arrangement implies and what it is missing.
+
+**Example anchors:**
+- ✓ (user uploads napkin sketch) "What feedback loops am I missing in this system?" — visual is the query
+- ✓ (user drew on visual pane) "What does this tell me about how these concepts fit together?" — fog-clearing from user's own drawing
+- ✓ (user annotates prior Ora CLD) "I've marked what I think is wrong — what do you see?" — annotation of prior visual
+- ✓ (user drew partial CLD) "What am I missing in this diagram?" — gap-seeking on a user-drawn artifact
+- ✓ (user drew partial CLD) "Is there a feedback loop I haven't drawn?" — "I haven't drawn" anchors the query to the user's artifact
+- ✓ (user drew concept cluster) "Can you annotate this causal structure?" — explicit annotate verb on existing drawing
+- ✓ (user drew nodes) "What relationships are implied but not shown?" — implied-but-not-shown is gap-analysis on the user's spatial input
+- ✗ "Here's our architecture diagram — does it meet SOC2 requirements?" → route to analytical mode matching compliance question (diagram is evidence, not the question)
+- ✗ "Can you draw me a causal loop diagram of employee turnover?" → **project-mode** (constructing new visual, not analyzing one)
+- ✗ "I'm trying to understand how distributed systems work" → **terrain-mapping** (no spatial artifact; user wants orientation)
+- ✗ "Why do housing prices keep going up despite building more houses?" → **systems-dynamics** (no spatial artifact; pure-text feedback-loop query)
+
+---
+
+### steelman-construction
+
+**Intent category:** QUESTIONING
+
+**Positive triggers:** A position is about to be critiqued or dismissed, the user asks "what's the best case for X," a debate involves caricature of one side, the user wants to understand an opposing argument at its strongest before evaluating it, "play devil's advocate" or "give me the strongest version of the other side," policy or strategic decisions requiring understanding of the strongest counter-case.
+
+**Negative triggers:**
+- IF the user wants to question foundational assumptions behind a position rather than strengthen it, THEN route to **paradigm-suspension**.
+- IF the user wants to trace whose interests a position serves rather than understand its logical merits, THEN route to **cui-bono**.
+- IF the user wants to neutrally examine tension between two positions, THEN route to **synthesis**.
+- IF the user wants to drive thesis through antithesis to produce something new, THEN route to **dialectical-analysis**.
+
+**Key signal:** The prompt asks for the STRONGEST VERSION of a specific position. Build up, don't tear down.
+
+**Example anchors:**
+- ✓ "Make the strongest case for universal basic income" — explicitly requests strongest version
+- ✓ "Before I argue against cryptocurrency, what's the best case for it?" — steelmanning before critique
+- ✓ "Everyone dismisses this theory — but what if its proponents are right? What's their best argument?" — seeking strongest formulation of dismissed position
+- ✗ "Is universal basic income a good idea?" → **dialectical-analysis** or **constraint-mapping** (evaluating, not strengthening)
+- ✗ "Who benefits from UBI proposals?" → **cui-bono** (interest-tracing, not argument-strengthening)
+
+---
+
+### strategic-interaction
+
+**Intent category:** DECIDING
+
+**Positive triggers:** "Game theory analysis," the situation involves two or more actors making choices that affect each other's outcomes, strategic interdependence is the central feature, "what will they do if we do X," credibility of threats or promises is at issue, deterrence or compellence dynamics, negotiation or bargaining strategy, competitive or cooperative dynamics between identifiable actors, "what's their best move," auction design, signaling and screening dynamics.
+
+**Negative triggers:**
+- IF the user wants to trace whose interests a position serves without modeling strategic interaction, THEN route to **cui-bono** — interest-tracing is not game-theoretic modeling.
+- IF the user wants to choose between their own alternatives without modeling an opponent's response, THEN route to **constraint-mapping** or **decision-under-uncertainty**.
+- IF the user wants to understand a system's feedback structure rather than actor-to-actor strategic dynamics, THEN route to **systems-dynamics**.
+
+**Key signal:** There is an OPPONENT, COUNTERPARTY, or OTHER ACTOR whose RESPONSE to the user's actions must be modeled. Strategic INTERDEPENDENCE is central.
+
+**Example anchors:**
+- ✓ "How should I negotiate my salary given that the company has two other candidates?" — negotiation with a counterparty who has options
+- ✓ "Our competitor is about to launch a similar product — should we accelerate or differentiate?" — competitive dynamics between actors
+- ✓ "If we raise prices, will our competitors follow or undercut us?" — modeling another actor's response
+- ✗ "How should I ask for a raise?" → **project-mode** (tactical advice, no strategic interdependence modeled)
+- ✗ "What salary should I target?" → **constraint-mapping** (evaluating options, not modeling counterparty)
+- ✗ "What are the dynamics of the job market?" → **terrain-mapping** (domain orientation, no specific counterparty)
+
+---
+
+### structured-output
+
+**Intent category:** BUILDING
+
+**Positive triggers:** The user requests a specific document format — "write this as a report," "format this as a memo," "create a comparison table," "put this in outline form," "draft a one-pager," "make a summary document." The content or analysis already exists and the task is rendering it into a structured deliverable. The user names a format rather than an analytical task. The deliverable is primarily presentational — the intellectual work is assembly, organization, and formatting rather than original analysis.
+
+**Negative triggers:**
+- IF the deliverable requires ENGINEERING, DESIGN DECISIONS, or PROBLEM-SOLVING that goes beyond assembling known information into a format, THEN route to **project-mode** — Project Mode solves problems; Structured Output renders known content into requested formats.
+- IF the user names a deliverable but the problem definition is unclear or the content does not yet exist, THEN route to the Front-End Process for clarification before mode selection.
+- IF the user wants to explore a topic rather than produce a formatted output, THEN route to **terrain-mapping** or **passion-exploration**.
+
+**Key signal:** The FORMAT IS the deliverable. The user specifies a structure (table, list, outline, report, summary) and the content is factual assembly of known information — not engineering, not problem-solving, not design.
+
+**Example anchors:**
+- ✓ "Create a markdown table comparing Python, JavaScript, and Rust across learning curve, performance, and ecosystem" — FORMAT is the deliverable (table), content is factual assembly of well-known attributes
+- ✓ "Put our meeting notes into a structured summary with action items" — formatting existing content
+- ✓ "List three cognitive biases as a numbered list with one-sentence definitions" — format + content assembly
+- ✓ "Write a comparison chart of AWS vs Azure vs GCP pricing tiers" — FORMAT requested (chart), content is publicly known facts
+- ✗ "Help me decide between Python, JavaScript, and Rust for my project" → **constraint-mapping** (analytical decision, not formatting)
+- ✗ "Write a complete web application in Python" → **project-mode** (original engineering work, not rendering)
+- ✗ "Build me a script that generates comparison tables from API data" → **project-mode** (engineering a tool, not rendering a table)
+
+---
+
+### synthesis
+
+**Intent category:** CONNECTING
+
+**Positive triggers:** Cross-domain connection, "how does X relate to Y," integrative analysis, the user wants to examine productive tension between two or more developed positions or frameworks. Two bodies of knowledge that have been explored separately and now need to be examined together.
+
+**Negative triggers:**
+- IF the user wants to choose between alternatives rather than examine their relationship, THEN route to **constraint-mapping**.
+- IF the user wants to drive thesis through antithesis to produce a genuinely new position, THEN route to **dialectical-analysis** — Synthesis examines tension neutrally, Dialectical Analysis commits adversarially.
+- IF the user wants to construct the strongest version of one position, THEN route to **steelman-construction**.
+
+**Key signal:** The prompt names TWO OR MORE DEVELOPED FRAMEWORKS and asks how they RELATE or what EMERGES from combining them. Neutral examination, not adversarial transformation.
+
+**Example anchors:**
+- ✓ "Combine the ideas of stoicism, cognitive behavioral therapy, and mindfulness" — multiple developed frameworks, integrative
+- ✓ "How do evolutionary biology and economics inform each other?" — cross-domain connection
+- ✓ "What can lean manufacturing teach us about software development?" — examining what emerges from connecting frameworks
+- ✗ "Stoicism and hedonism contradict each other — which is right?" → **dialectical-analysis** (opposition seeking transformation, not neutral synthesis)
+- ✗ "Make the best case for stoicism" → **steelman-construction** (strengthening one position)
+- ✗ "Should I follow stoic or hedonistic principles?" → **constraint-mapping** (choosing between alternatives)
+
+---
+
+### systems-dynamics
+
+**Intent category:** CONNECTING
+
+**Positive triggers:** The problem involves feedback loops, unintended consequences, or counterintuitive behavior. Interventions keep producing unexpected results. The situation involves delays between action and effect. Multiple variables interact in circular rather than linear ways. "Why does fixing X make things worse," "what are the leverage points," "this keeps happening despite our attempts to fix it."
+
+**Negative triggers:**
+- IF the relationships are static and structural without temporal dynamics, THEN route to **relationship-mapping**.
+- IF the user wants to trace a specific failure backward through a causal chain, THEN route to **root-cause-analysis**.
+- IF the user is mapping territory rather than analyzing system behavior, THEN route to **terrain-mapping**.
+
+**Key signal:** FEEDBACK LOOPS, DELAYS, or COUNTERINTUITIVE BEHAVIOR. The system's behavior over TIME is the analytical object, not its static structure.
+
+**Example anchors:**
+- ✓ "Why do housing prices keep going up despite building more houses?" — counterintuitive behavior, feedback dynamics
+- ✓ "Every time we hire more people, productivity drops before it rises — why?" — delays between action and effect
+- ✓ "What are the leverage points in the healthcare cost spiral?" — explicitly asks about system leverage points
+- ✗ "How do hospitals, insurers, and patients relate to each other?" → **relationship-mapping** (structural connections, not dynamic behavior)
+- ✗ "Why did our last hire not work out?" → **root-cause-analysis** (specific failure diagnosis, not system dynamics)
+- ✗ "What is the healthcare system?" → **terrain-mapping** (domain orientation)
+
+---
+
+### terrain-mapping
+
+**Intent category:** LEARNING
+
+**Positive triggers:** The user asks "what is," "how does X work," "where do I start," "what do I need to know about," or expresses unfamiliarity with a domain. The prompt names a domain the conversation history shows the user has not previously engaged with.
+
+**Negative triggers:**
+- IF the user names a specific deliverable or states requirements, THEN route to **project-mode**.
+- IF the user expresses familiarity but wants deeper mechanics, THEN route to **deep-clarification**.
+
+**Key signal:** UNFAMILIARITY with a domain. The user needs ORIENTATION — a map of the territory, not depth in any part of it.
+
+**Example anchors:**
+- ✓ "What is quantum computing?" — unfamiliar domain, needs orientation
+- ✓ "Where do I start with machine learning?" — explicit "where do I start"
+- ✓ "What do I need to know about investing?" — domain orientation request
+- ✗ "I understand neural networks but why does batch normalization help?" → **deep-clarification** (has existing knowledge, wants depth)
+- ✗ "How do interest rates, inflation, and employment relate?" → **relationship-mapping** (names entities and asks about connections)
+- ✗ "Build me a machine learning model" → **project-mode** (names a deliverable)
+- ✗ "I've been fascinated by quantum physics lately" → **passion-exploration** (curiosity-driven, not orientation-seeking)
+
+---
+
+## BOUNDARY PAIRS — DISAMBIGUATION TABLE
+
+These are the mode pairs most likely to be confused. When both modes seem to fit, use the distinguishing question to resolve.
+
+| Pair | Distinguishing Question | If YES → | If NO → |
+|------|------------------------|----------|---------|
+| **terrain-mapping** vs **deep-clarification** | Does the user show existing knowledge of the domain and want to go deeper? | deep-clarification | terrain-mapping |
+| **terrain-mapping** vs **relationship-mapping** | Does the prompt name specific entities and ask how they connect? | relationship-mapping | terrain-mapping |
+| **terrain-mapping** vs **passion-exploration** | Does the user express personal curiosity/fascination without needing orientation? | passion-exploration | terrain-mapping |
+| **terrain-mapping** vs **project-mode** | Does the prompt name a deliverable or output to produce? | project-mode | terrain-mapping |
+| **terrain-mapping** vs **strategic-interaction** | Is there an opponent or counterparty whose response must be modeled? | strategic-interaction | terrain-mapping |
+| **terrain-mapping** vs **systems-dynamics** | Does the prompt describe feedback loops, delays, or counterintuitive behavior? | systems-dynamics | terrain-mapping |
+| **relationship-mapping** vs **systems-dynamics** | Does TIME, FEEDBACK, or COUNTERINTUITIVE BEHAVIOR matter? | systems-dynamics | relationship-mapping |
+| **dialectical-analysis** vs **synthesis** | Does the user seek TRANSFORMATION through contradiction, or NEUTRAL examination of tension? | dialectical-analysis | synthesis |
+| **dialectical-analysis** vs **constraint-mapping** | Is the user ANALYZING opposition or DECIDING between options? | dialectical-analysis | constraint-mapping |
+| **constraint-mapping** vs **decision-under-uncertainty** | Do PROBABILITY, TIMING, or IRREVERSIBILITY matter beyond simple tradeoffs? | decision-under-uncertainty | constraint-mapping |
+| **project-mode** vs **structured-output** | Does the deliverable require ENGINEERING, DESIGN, or PROBLEM-SOLVING — or is the FORMAT itself the deliverable (table, list, chart) filled with known facts? | project-mode | structured-output |
+| **project-mode** vs **paradigm-suspension** | Does the user accept the current framework and want to BUILD within it, or challenge/suspend a foundational assumption ("what if X is wrong," "what would it look like without X")? | project-mode | paradigm-suspension |
+| **competing-hypotheses** vs **constraint-mapping** | Is the question "which EXPLANATION fits" or "which OPTION to choose"? | competing-hypotheses | constraint-mapping |
+| **paradigm-suspension** vs **deep-clarification** | Is the user questioning THE FRAMEWORK or drilling WITHIN it? | paradigm-suspension | deep-clarification |
+| **paradigm-suspension** vs **cui-bono** | Is the user questioning EVIDENTIAL basis or tracing INSTITUTIONAL interests? | paradigm-suspension | cui-bono |
+| **steelman-construction** vs **dialectical-analysis** | Is the user strengthening ONE position or driving OPPOSITION between two? | steelman-construction | dialectical-analysis |
+| **strategic-interaction** vs **constraint-mapping** | Must the user model ANOTHER ACTOR'S RESPONSE to their choice? | strategic-interaction | constraint-mapping |
+| **scenario-planning** vs **decision-under-uncertainty** | Is the user MAPPING FUTURES or MAKING A DECISION? | scenario-planning | decision-under-uncertainty |
+| **root-cause-analysis** vs **systems-dynamics** | Is there a specific FAILURE to diagnose, or a SYSTEM BEHAVIOR to understand? | root-cause-analysis | systems-dynamics |
+| **benefits-analysis** vs **constraint-mapping** | Is the user evaluating ONE proposal (its benefits, risks, and non-obvious implications) or CHOOSING between multiple options? | benefits-analysis | constraint-mapping |
+| **benefits-analysis** vs **steelman-construction** | Does the user want a BALANCED envelope (Plus/Minus/Interesting) or the STRONGEST possible case for the position? | benefits-analysis | steelman-construction |
+| **benefits-analysis** vs **consequences-and-sequel** | Does the user want FIRST-ORDER benefit/risk categorization or FORWARD CAUSAL CASCADE traced through multiple orders? | benefits-analysis | consequences-and-sequel |
+| **consequences-and-sequel** vs **root-cause-analysis** | Is the user tracing FORWARD from a cause or BACKWARD from a symptom? | consequences-and-sequel | root-cause-analysis |
+| **consequences-and-sequel** vs **systems-dynamics** | Is the causal structure LINEAR (cascade) or CIRCULAR (feedback loops)? | consequences-and-sequel | systems-dynamics |
+| **consequences-and-sequel** vs **scenario-planning** | Is the user tracing forward from a SPECIFIC ACTION, or exploring MULTIPLE POSSIBLE FUTURES? | consequences-and-sequel | scenario-planning |
+| **red-team** vs **steelman-construction** | Does the user want to BUILD UP the position or TEAR IT DOWN? | steelman-construction | red-team |
+| **red-team** vs **benefits-analysis** | Does the user want BALANCED evaluation (Plus AND Minus AND Interesting), or HOSTILE attack only? | benefits-analysis | red-team |
+| **red-team** vs **dialectical-analysis** | Does the user seek SYNTHESIS through productive tension, or a VULNERABILITY LIST with no reconciliation sought? | dialectical-analysis | red-team |
+| **red-team** vs **paradigm-suspension** | Is the target the ARTIFACT within its framework, or the FRAMEWORK itself? | red-team | paradigm-suspension |
+| **red-team** vs **adversarial** (catch-all) | Does the user have a SPECIFIC NAMED ARTIFACT on the table to be attacked? | red-team | adversarial |
+| **red-team** vs **competing-hypotheses** | Is the user attacking ONE artifact, or choosing between MULTIPLE explanations? | red-team | competing-hypotheses |
+| **red-team** vs **consequences-and-sequel** | Is the user ENUMERATING vulnerabilities of an artifact, or TRACING forward causal effects from one? | red-team | consequences-and-sequel |
+| **red-team assessment** vs **red-team advocate** | Is the user ASSESSING the artifact for their own benefit (default), or BUILDING a case against it for ammunition or dissuasion? | red-team advocate | red-team assessment |
+| **spatial-reasoning** vs **relationship-mapping** | Is the PRIMARY INPUT a visual artifact (→ spatial-reasoning) or text describing entities to be mapped (→ relationship-mapping)? | spatial-reasoning | relationship-mapping |
+| **spatial-reasoning** vs **systems-dynamics** | Is the analysis of STRUCTURE (what's connected, what's missing) or of DYNAMIC BEHAVIOR (feedback, delays, counterintuition)? | spatial-reasoning | systems-dynamics |
+| **spatial-reasoning** vs **terrain-mapping** | Does the user have an EXISTING SPATIAL ARTIFACT to analyze, or are they in UNFAMILIAR TERRITORY asking for orientation? | spatial-reasoning | terrain-mapping |
+| **spatial-reasoning** vs **project-mode** | Is the user ANALYZING an existing visual or CONSTRUCTING a new visual deliverable? | spatial-reasoning | project-mode |
+
+---
+
+## OUTPUT FORMAT
+
+```
+### MODE CLASSIFICATION
+- Selected mode: [mode-name]
+- Stance: [stance-name, only when the selected mode declares stances — currently red-team: assessment | advocate]
+- Runner-up: [mode-name]
+- Confidence: [high/medium/low]
+- Intent category: [LEARNING/DECIDING/BUILDING/ANALYZING/CONNECTING/QUESTIONING/EXPLORING]
+- Reasoning: [one sentence — why this mode and not the runner-up]
+- Triage tier: [1/2/3]
+  - Tier 1: Clear, specific, obvious mode — proceed directly
+  - Tier 2: Recognizable domain but specific need is ambiguous — clarification recommended
+  - Tier 3: Exploratory, domain boundaries unclear — full perceptual broadening recommended
+- Detected invocation: [mode-name or NONE]
+```
+
+The `Stance` field is omitted entirely for modes that do not declare stances. For `red-team`, omit the field only if stance disambiguation is being deferred to the clarification panel — otherwise emit `assessment` (default) or `advocate` (override) based on the user's phrasing.
+
+**Detected invocation** is independent of `Selected mode`. It records whether the user's PROSE LANGUAGE explicitly invoked a specific named mode — words or phrases that name a mode or its core operation. Examples: "steelman this argument" → `steelman-construction`; "what's the root cause" → `root-cause-analysis`; "premortem this plan" → `premortem`; "let's red-team that" → `red-team`. If the prose contains no specific mode-evoking language, output `NONE`. The two fields may agree, disagree, or one may be absent. Used by the alignment prefilter (V3 Input Handling Q4) to compare the user's expressed intent against the classifier's picked mode; mismatch triggers the prefilter popup.
+
+---
+
+## ADDING NEW MODES
+
+To add a mode to this directory:
+
+1. Write the mode file in `modes/` with TRIGGER CONDITIONS (positive and negative), EPISTEMOLOGICAL POSTURE, DEFAULT GEAR, and RAG PROFILE sections.
+2. Add an entry to this directory with: intent category, positive triggers, negative triggers, key signal, and 3 example anchors (✓) + 2-3 counter-examples (✗).
+3. Add boundary pairs to the disambiguation table for any existing modes that share semantic territory with the new mode.
+4. Add the new mode to the Intent-to-Mode Map under the appropriate category.
+
+The discrimination quality improves as modes are added — more boundary pairs means more explicit routing rules.

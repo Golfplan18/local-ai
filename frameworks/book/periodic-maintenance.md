@@ -1,5 +1,12 @@
 # Framework — Periodic Maintenance
 
+## Display Name
+Periodic Maintenance
+
+## Display Description
+Four scheduled vault-maintenance tasks for work that genuinely requires full-vault scans or has no runtime trigger (per the Runtime Principle). Use sparingly — most maintenance should happen at runtime, not on a schedule.
+
+
 ## Purpose
 
 Four scheduled tasks — only work that genuinely requires full-vault scans or has no runtime trigger. Per the Runtime Principle: if a process can run at runtime, it must run at runtime. Scheduled maintenance exists only for tasks where runtime execution is impossible.

@@ -1,0 +1,313 @@
+/* ─── Render controls — Audio/Video Phase 7 ──────────────────────────── */
+
+/* The Render button lives in the timeline-editor's ruler row, alongside
+ * zoom + add-track + watermark. Slightly emphasized so it reads as the
+ * primary action of the editor surface. */
+.render-controls__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: rgba(80, 200, 120, 0.15);
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid rgba(80, 200, 120, 0.55);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  margin-left: 6px;
+}
+.render-controls__btn:hover {
+  background: rgba(80, 200, 120, 0.30);
+}
+
+/* Preset picker (uses ctx-menu-style chrome) */
+.render-controls__menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 280px;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.98));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  font-size: 12px;
+  color: var(--text-primary, #e6e6e6);
+}
+.render-controls__menu-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary, #888);
+  padding: 4px 8px;
+}
+.render-controls__menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-primary, #e6e6e6);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.render-controls__menu button:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+}
+
+/* Progress modal */
+.render-controls__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(2px);
+          backdrop-filter: blur(2px);
+}
+.render-controls__modal-card {
+  width: 460px;
+  max-width: 92vw;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.98));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  color: var(--text-primary, #e6e6e6);
+  display: flex;
+  flex-direction: column;
+}
+.render-controls__modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.30));
+  border-bottom: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+}
+.render-controls__modal-title {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.render-controls__modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.render-controls__modal-close:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #fff);
+}
+.render-controls__modal-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.render-controls__modal-preset {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary, #888);
+}
+.render-controls__modal-bar {
+  height: 8px;
+  width: 100%;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 4px;
+  overflow: hidden;
+}
+.render-controls__modal-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(to right, rgba(80, 200, 120, 0.85), rgba(140, 180, 220, 0.95));
+  transition: width 200ms linear;
+}
+.render-controls__modal-status {
+  font-size: 12px;
+  color: var(--text-primary, #e6e6e6);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.render-controls__modal-output {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.30));
+  border-radius: 4px;
+  font-size: 11px;
+}
+.render-controls__modal-output-label {
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary, #888);
+}
+.render-controls__modal-output code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-success, #6abf6b);
+  word-break: break-all;
+}
+.render-controls__modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.30));
+  border-top: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+}
+.render-controls__modal-action {
+  background: var(--background-secondary, rgba(255, 255, 255, 0.04));
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.render-controls__modal-action:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+}
+
+/* Error pop-up — shares modal chrome with explicit "danger" coloring */
+.render-controls__error {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(2px);
+          backdrop-filter: blur(2px);
+}
+.render-controls__error-card {
+  width: 480px;
+  max-width: 92vw;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.98));
+  border: 1px solid rgba(212, 80, 74, 0.55);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  color: var(--text-primary, #e6e6e6);
+}
+.render-controls__error-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(212, 80, 74, 0.35);
+  background: rgba(212, 80, 74, 0.18);
+}
+.render-controls__error-title {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 200, 200, 0.95);
+}
+.render-controls__error-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.render-controls__error-body {
+  padding: 14px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  max-height: 320px;
+  overflow-y: auto;
+  color: rgba(255, 220, 220, 0.95);
+}
+.render-controls__error-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(212, 80, 74, 0.20);
+  background: var(--background-primary, rgba(0, 0, 0, 0.30));
+}
+.render-controls__error-foot button {
+  background: var(--background-secondary, rgba(255, 255, 255, 0.04));
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.render-controls__error-foot button[data-role="ai-help"] {
+  background: rgba(140, 180, 220, 0.18);
+  border-color: rgba(140, 180, 220, 0.55);
+  color: rgba(180, 220, 255, 0.95);
+}
+.render-controls__error-foot button:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+}
+
+/* Background-render mini-pill — replaces the modal when the user opts to
+ * "Run in background". Lives in the timeline editor ruler row alongside
+ * Render and watermark buttons. */
+.render-controls__bg-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid rgba(80, 200, 120, 0.55);
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.render-controls__bg-pill:hover {
+  background: rgba(80, 200, 120, 0.18);
+}
+.render-controls__bg-pill[data-state="complete"] {
+  border-color: rgba(80, 200, 120, 0.85);
+  color: rgba(140, 230, 160, 0.95);
+}
+.render-controls__bg-pill-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(80, 200, 120, 0.55);
+  border-top-color: rgba(80, 200, 120, 0.95);
+  animation: render-controls-spin 0.9s linear infinite;
+}
+.render-controls__bg-pill[data-state="complete"] .render-controls__bg-pill-spinner {
+  animation: none;
+  background: rgba(80, 200, 120, 0.95);
+  border-color: rgba(80, 200, 120, 0.95);
+}
+@keyframes render-controls-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Danger button — used for Cancel inside the progress modal. */
+.render-controls__modal-action--danger {
+  border-color: rgba(212, 80, 74, 0.55);
+  color: rgba(255, 200, 200, 0.95);
+}
+.render-controls__modal-action--danger:hover {
+  background: rgba(212, 80, 74, 0.30);
+}

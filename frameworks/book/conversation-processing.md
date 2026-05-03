@@ -1,5 +1,12 @@
 # Conversation Processing Pipeline
 
+## Display Name
+Conversation Processing
+
+## Display Description
+Process raw conversation exports and live session exchanges into structured turn-pair chunks with contextual headers, topic metadata, and ChromaDB indexing for RAG retrieval. Use to ingest external chat archives into the vault's retrieval surface.
+
+
 _Updated March 31, 2026 — dual-mode architecture: inline processing for ongoing conversations (primary), batch processing for imports only. Inline processing executes as part of the output delivery step, eliminating overnight batch dependency for ongoing work._
 
 ## PURPOSE
@@ -53,19 +60,24 @@ Available tools (batch mode):
 - file_list: Enumerate files in ~/Documents/conversations/raw/ and ~/Documents/conversations/.
 - chromadb_index: Add entries to the conversations collection.
 
+The single batch-mode milestone covers Layers 1-6 (six processing layers). Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the integration of the chunk pipeline: format detection, semantic chunking, header generation, write, and indexing must all complete before the chunk-set is queryable, and intermediate states would represent un-indexed or un-headered chunks unsafe to commit to ChromaDB.
+
 ---
 
 ## MILESTONES DELIVERED
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision. Inline mode is invoked automatically by the orchestrator on every session turn and is not PEF-selectable; it behaves as a pipeline stage per the exemption in PFF Section II subsection 2.3. Only batch mode produces a project-level milestone and is declared below.
 
-### Milestone Type: Processed conversation chunks with ChromaDB indexing
+### Milestone 1: Processed Conversation Chunks with ChromaDB Indexing
 
-- **Endpoint produced:** A set of processed turn-pair chunk files written to ~/Documents/conversations/ — each with YAML frontmatter (source_file, source_platform, model_used, timestamp, conversation_title, turn_range, topics, chunk_id, agent_id), a 2-4 sentence contextual header, and the full user/assistant exchange — plus corresponding entries in the ChromaDB conversations collection (document content, metadata, embedding derived from contextual header + user prompt), plus an updated processing manifest at ~/Documents/conversations/.processing-manifest.json recording every file processed in the run
-- **Verification criterion:** (a) every raw file in the batch's input set is either represented in the updated manifest with its chunk_ids and processing date, or listed in the processing summary as skipped with a reason (unrecognized format, parser failure, or error); (b) every chunk written to ~/Documents/conversations/ has a unique chunk_id with no collisions and valid YAML frontmatter that parses programmatically; (c) ChromaDB conversations collection entry count increases by exactly the number of new (non-duplicate) chunks written, with embeddings generated from contextual header + user prompt per the Embedding Dilution failure mode; (d) no chunk duplicates an existing chunk_id from a prior run — deduplication check against ~/Documents/conversations/ ran before every write; (e) all seven Evaluation Criteria score 3 or above against the produced chunks
-- **Preconditions:** One or more unprocessed conversation files present in ~/Documents/conversations/raw/ in a recognized source format (Claude.ai JSON export, ChatGPT export, Gemini export, local system session log, or API call log); ChromaDB conversations collection accessible at ~/ora/chromadb/ (or creatable if absent); the processing manifest at ~/Documents/conversations/.processing-manifest.json is readable or creatable
-- **Mode required:** batch
-- **Framework Registry summary:** Processed conversation chunks with ChromaDB indexing (batch)
+- **Mode:** batch
+- **Endpoint produced:** A set of processed turn-pair chunk files written to ~/Documents/conversations/ — each with YAML frontmatter (source_file, source_platform, model_used, timestamp, conversation_title, turn_range, topics, chunk_id, agent_id), a 2-4 sentence contextual header, and the full user/assistant exchange — plus corresponding entries in the ChromaDB conversations collection (document content, metadata, embedding derived from contextual header + user prompt), plus an updated processing manifest at ~/Documents/conversations/.processing-manifest.json recording every file processed in the run.
+- **Verification criterion:** (a) every raw file in the batch's input set is either represented in the updated manifest with its chunk_ids and processing date, or listed in the processing summary as skipped with a reason (unrecognized format, parser failure, or error); (b) every chunk written to ~/Documents/conversations/ has a unique chunk_id with no collisions and valid YAML frontmatter that parses programmatically; (c) ChromaDB conversations collection entry count increases by exactly the number of new (non-duplicate) chunks written, with embeddings generated from contextual header + user prompt per the Embedding Dilution failure mode; (d) no chunk duplicates an existing chunk_id from a prior run — deduplication check against ~/Documents/conversations/ ran before every write; (e) all seven Evaluation Criteria score 3 or above against the produced chunks.
+- **Layers covered:** 1, 2, 3, 4, 5, 6
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Set of chunk markdown files with structured YAML frontmatter, ChromaDB collection updates, and updated processing manifest JSON.
+- **Drift check question:** Does every input file in the batch produce either a chunk-set or a documented skip reason, and do the produced chunks faithfully reflect the original conversation content without lossy summarization?
 
 ---
 

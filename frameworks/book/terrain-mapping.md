@@ -1,5 +1,12 @@
 # Terrain Mapping Framework
 
+## Display Name
+Terrain Mapping (TMF)
+
+## Display Description
+Close knowledge gaps in an ill-mapped problem space through bounded research loops. Produces a navigable Terrain Map Artifact sufficient for the calling framework (PEF or MOM) to formulate the next concrete milestone.
+
+
 *A Framework for Closing Knowledge Gaps Through Structured Research Loops and Producing a Navigable Terrain Map of an Ill-Mapped Problem Space*
 
 *Version 1.0*
@@ -7,6 +14,27 @@
 *Canonical Specification*
 
 ---
+
+
+## Setup Questions
+
+### Mode
+Required. Which TMF mode: Standalone (you're invoking directly), Handoff (called from PEF or MOM with a structured package), or Iterate (extending a prior Terrain Map).
+
+### Current problem space
+Required. Natural-language description of the problem as you currently understand it. If invoked from PEF or MOM, this comes from the calling document's Current Problem Definition section.
+
+### Known knowledge gaps
+Required. List of what you know is missing, phrased as questions the project cannot currently answer. Numbered list with one gap per entry. Partial lists are fine — Stage 1 will expand them.
+
+### Closure criteria per gap
+Optional. For each gap, the observable condition that would mark it closed. If absent, Stage 1 constructs criteria during question-bank expansion.
+
+### Inherited project constraints
+Optional. Constraints from the calling framework — time, cost, scope boundaries, Excluded Outcomes, stakeholder sensitivities. If absent, TMF works with no constraint inheritance.
+
+### Existing Terrain Map — for Iterate mode
+Required for Iterate. The prior Terrain Map Artifact (paste the content, attach the file, or reference a vault path).
 
 ## How to Use This File
 
@@ -91,27 +119,54 @@ Secondary outputs:
 
 Specification — this document is model-agnostic and environment-agnostic. All layer boundaries are logical. Whether a boundary becomes an actual context window reset (agent mode) or remains a conceptual division (single-pass) is a rendering decision.
 
+Modes TM-Initiate and TM-Continue each cover Layers 1-7 (seven processing layers) and declare a single milestone. Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the integrated nature of the Terrain Map Artifact: the gap-closure findings only become integrable at the end of the research-loop sequence, and intermediate checkpoints would surface partial maps with unresolved gaps that the framework's own loop logic is meant to close before commit.
+
 ---
 
 ## MILESTONES DELIVERED
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: Terrain map sufficient to formulate next concrete milestone
+TMF produces one of two alternative outcomes per execution: a Terrain Map Artifact (when research loops converge on the named gaps) or a Problem Redefinition Escalation (when three consecutive loops fail to converge). Both outcomes use the framework's full layer sequence; the mode classification (TM-Initiate / TM-Continue / TM-Escalate-Redefine) determines which outcome is produced. All milestone properties are defined inline per milestone.
 
-- **Endpoint produced:** Terrain Map Artifact (separate vault document, YAML `nexus: [project-nexus]` and `type: terrain_map` only) plus a one-line reference added to the calling PED's Artifacts list plus a Return Package with gap-closure status and next-action recommendation for the calling framework
-- **Verification criterion:** All seven Evaluation Criteria score 3 or above; every originally-named gap is marked closed with evidence traceable to a research report, marked provisionally closed with the condition stated, marked residual with an articulated reason, or added to Excluded Outcomes with justification; the Return Package recommends a specific, concrete next action for the calling framework
-- **Preconditions:** Current Problem Space and Known Knowledge Gaps are provided; the problem has been named and sits in PEF's DEFINE or ANALYZE phase; the domain does not require expertise or permissions the framework cannot access through research
-- **Mode required:** TM-Initiate (first cycle) or TM-Continue (subsequent cycles within the three-loop threshold)
-- **Framework Registry summary:** Produces a terrain map of an ill-defined problem space sufficient to formulate the next concrete milestone
+### Milestones for Mode TM-Initiate
 
-### Milestone Type: Problem redefinition escalation
+#### Milestone 1: Terrain Map Sufficient to Formulate Next Concrete Milestone
 
-- **Endpoint produced:** Escalation Package describing which aspects of the original problem definition the evidence suggests are wrong or unformulable under current constraints, with recommended problem-redefinition actions returned to the calling framework; no Terrain Map Artifact written
-- **Verification criterion:** The escalation package names at least one specific problem-definition element (scope boundary, embedded assumption, constraint, or success criterion) that evidence contradicts, cites the research loop(s) that surfaced the contradiction, and recommends a specific PEF action (return to Layer 2, invoke PE-Spawn, redefine a constraint, etc.); the recommendation is actionable without further TMF work
-- **Preconditions:** Three consecutive research loops have completed within the same TMF session without reaching convergence on the originally-named gap set; OR the framework's Layer 4 analysis explicitly identifies a problem-definition contradiction before the three-loop threshold is reached
-- **Mode required:** TM-Escalate-Redefine (internally triggered — not user-invoked)
-- **Framework Registry summary:** Escalates to the calling framework when research loops fail to converge, recommending problem redefinition
+- **Mode:** TM-Initiate
+- **Endpoint produced:** Fresh Terrain Map Artifact (separate vault document with YAML `nexus: [project-nexus]` and `type: terrain_map`) plus a one-line reference added to the calling PED's Artifacts list plus a Return Package with gap-closure status and next-action recommendation for the calling framework. TM-Initiate is the first-cycle invocation; no prior terrain map exists for this gap inventory.
+- **Verification criterion:** All seven Evaluation Criteria score 3 or above; every originally-named gap is marked closed with evidence traceable to a research report, marked provisionally closed with the condition stated, marked residual with an articulated reason, or added to Excluded Outcomes with justification; the Return Package recommends a specific, concrete next action for the calling framework.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Terrain Map Artifact as standalone vault document plus PED Artifacts-list reference plus structured Return Package.
+- **Drift check question:** Does the produced terrain map close the gaps the calling framework actually named, or has it drifted into adjacent territory the caller did not request mapped?
+
+### Milestones for Mode TM-Continue
+
+#### Milestone 1: Terrain Map Sufficient to Formulate Next Concrete Milestone
+
+- **Mode:** TM-Continue
+- **Endpoint produced:** Extended Terrain Map Artifact (existing terrain_map vault document modified in place to incorporate additional research-loop findings) plus refreshed one-line reference in the calling PED's Artifacts list plus a Return Package with updated gap-closure status and next-action recommendation. TM-Continue is the continuation invocation (within the three-loop threshold) that extends an existing artifact rather than creating a fresh one.
+- **Verification criterion:** All seven Evaluation Criteria score 3 or above; every originally-named gap is marked closed with evidence traceable to a research report, marked provisionally closed with the condition stated, marked residual with an articulated reason, or added to Excluded Outcomes with justification; the Return Package recommends a specific, concrete next action for the calling framework.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7
+- **Required prior milestones:** TM-Initiate.M1
+- **Gear:** 4
+- **Output format:** Updated Terrain Map Artifact (existing vault document modified in place) plus refreshed PED Artifacts-list reference plus structured Return Package.
+- **Drift check question:** Does the continuation-cycle research extend the existing terrain map's gap inventory rather than discarding or contradicting prior findings, and do the new findings address gaps the calling framework actually named?
+
+### Milestones for Mode TM-Escalate-Redefine
+
+#### Milestone 1: Problem Redefinition Escalation
+
+- **Mode:** TM-Escalate-Redefine (internally triggered — not user-invoked)
+- **Endpoint produced:** Escalation Package describing which aspects of the original problem definition the evidence suggests are wrong or unformulable under current constraints, with recommended problem-redefinition actions returned to the calling framework; no Terrain Map Artifact written.
+- **Verification criterion:** The escalation package names at least one specific problem-definition element (scope boundary, embedded assumption, constraint, or success criterion) that evidence contradicts, cites the research loop(s) that surfaced the contradiction, and recommends a specific PEF action (return to Layer 2, invoke PE-Spawn, redefine a constraint, etc.); the recommendation is actionable without further TMF work.
+- **Layers covered:** 1, 2, 3, 4 (escalation triggered before completing full layer sequence)
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Escalation Package as structured markdown returned to calling framework.
+- **Drift check question:** Does the escalation specifically identify problem-definition contradictions surfaced by the research loops rather than generic dissatisfaction, and is the recommended PEF action concrete enough to execute without further interpretation?
 
 ---
 

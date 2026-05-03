@@ -1,0 +1,16 @@
+{
+  "conversation_id": "welcome",
+  "tag": "",
+  "is_welcome": true,
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "**Welcome to Ora**\n\nThis is your orientation thread. The full help system is under construction.\n\nOnce it's ready, this thread will offer:\n- A guided introduction to Ora's interface and the eight-step pipeline\n- Searchable answers about how modes, gears, and frameworks work\n- A place to ask Ora about itself, with answers that accumulate here\n\nFor now, this is a placeholder. The thread is pinned to the top of your\nconversation list and won't be removed by automatic cleanup. You can\nmanually delete it from the sidebar if you don't want it.\n\n— Under construction —\n",
+      "timestamp": "2026-04-30T07:12:30",
+      "spatial_representation": null,
+      "annotations": null,
+      "vision_extraction_result": null
+    }
+  ],
+  "last_read_at": "2026-04-30T13:41:44"
+}

@@ -1,0 +1,43 @@
+{
+  "id": "ora-annotation",
+  "label": "Annotation",
+  "default_dock": "left",
+  "default_icon_size": "medium",
+  "items": [
+    {
+      "id": "callout",
+      "icon": "message-square-quote",
+      "label": "Callout",
+      "shortcut": "C",
+      "binding": "tool:callout"
+    },
+    {
+      "id": "highlight",
+      "icon": "highlighter",
+      "label": "Highlight",
+      "shortcut": "H",
+      "binding": "tool:highlight"
+    },
+    {
+      "id": "strikethrough",
+      "icon": "strikethrough",
+      "label": "Strikethrough",
+      "shortcut": "X",
+      "binding": "tool:strikethrough"
+    },
+    {
+      "id": "sticky",
+      "icon": "sticky-note",
+      "label": "Sticky note",
+      "shortcut": "N",
+      "binding": "tool:sticky"
+    },
+    {
+      "id": "pen",
+      "icon": "pen-tool",
+      "label": "Freehand pen",
+      "shortcut": "P",
+      "binding": "tool:pen"
+    }
+  ]
+}

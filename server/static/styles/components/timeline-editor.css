@@ -1,0 +1,621 @@
+/* ─── Timeline editor — Audio/Video Phase 5 ────────────────────────────
+ *
+ * Mounted inside .visual-panel as the middle band when body has
+ * `pane-mode-video`. Phase 1 capture controls live above it; Phase 3
+ * media library lives below.
+ *
+ * Layout: ruler row → viewport (ruler ticks + tracks + playhead) →
+ * single-line keyboard hint at the bottom.
+ */
+
+.timeline-editor {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  /* Top: under the capture-controls toolbar (which is ~50 px tall + 12
+   * px top margin). Bottom: above the media library (which is anchored
+   * to bottom: 12px with max-height: 42%). The middle band is what's
+   * left over; the timeline-editor takes up to its `max-height` and
+   * scrolls inside. */
+  top: 76px;
+  bottom: calc(42% + 28px);
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.92));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 8px;
+  overflow: hidden;
+  color: var(--text-primary, #e6e6e6);
+  font-size: 12px;
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+}
+
+body.pane-mode-video .timeline-editor.timeline-editor--visible {
+  display: flex;
+  /* Sit below the preview monitor when it is mounted. The custom
+   * property is defined in preview-monitor.css and falls back to 0
+   * if that stylesheet is unavailable. */
+  top: calc(var(--preview-monitor-height, 0px) + 88px);
+  /* Match the trimmed media-library size (35 % vs the 42 % default)
+   * so the timeline gets a usable strip in video mode. */
+  bottom: calc(35% + 28px);
+}
+
+/* Ruler row chrome */
+.timeline-editor__ruler-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.30));
+  border-bottom: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  flex-shrink: 0;
+}
+
+.timeline-editor__timecode-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  flex: 1 1 auto;
+}
+.timeline-editor__timecode {
+  font-size: 13px;
+  color: var(--text-primary, #e6e6e6);
+  letter-spacing: 0.5px;
+}
+.timeline-editor__sep {
+  color: var(--text-secondary, #888);
+}
+.timeline-editor__total-duration {
+  font-size: 12px;
+  color: var(--text-secondary, #aaa);
+  letter-spacing: 0.5px;
+}
+
+.timeline-editor__zoom { display: inline-flex; gap: 4px; }
+.timeline-editor__icon-btn,
+.timeline-editor__add-track {
+  background: var(--background-secondary, rgba(255, 255, 255, 0.04));
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 3px 8px;
+  line-height: 1;
+}
+.timeline-editor__icon-btn { width: 24px; padding: 3px 0; }
+.timeline-editor__icon-btn:hover,
+.timeline-editor__add-track:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+}
+
+/* Viewport (scrolling area for ruler + tracks) */
+.timeline-editor__viewport {
+  position: relative;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.timeline-editor__ruler {
+  position: relative;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.18);
+  border-bottom: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  flex-shrink: 0;
+  cursor: ew-resize;
+}
+.timeline-editor__tick {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  padding-left: 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  color: var(--text-secondary, #888);
+  line-height: 22px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Tracks container */
+.timeline-editor__tracks {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-editor__track {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.06));
+  min-height: 56px;
+  position: relative;
+}
+.timeline-editor__track:last-child { border-bottom: none; }
+
+.timeline-editor__track-header {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  width: 140px;
+  flex-shrink: 0;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.96));
+  border-right: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+}
+.timeline-editor__track-kind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-secondary, #aaa);
+}
+.timeline-editor__track-kind[data-kind="video"]  { color: rgba(140, 180, 220, 0.95); }
+.timeline-editor__track-kind[data-kind="audio"]  { color: rgba(106, 191, 107, 0.95); }
+.timeline-editor__track-kind[data-kind="pip"]    { color: rgba(220, 180, 60, 0.95); }
+.timeline-editor__track-kind[data-kind="music"]  { color: rgba(195, 130, 200, 0.95); }
+.timeline-editor__track-label {
+  flex: 1 1 auto;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timeline-editor__track-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #888);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.timeline-editor__track-remove:hover {
+  background: rgba(212, 80, 74, 0.55);
+  color: #fff;
+}
+
+.timeline-editor__track-lane {
+  position: relative;
+  flex: 1 1 auto;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.18) 0%,
+    rgba(0, 0, 0, 0.12) 100%
+  );
+  min-height: 56px;
+}
+
+/* Drop affordance — visible when a clip is being dragged anywhere */
+.timeline-editor__track-lane:hover {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.10) 0%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+}
+
+/* Clips */
+.timeline-editor__clip {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.55));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  cursor: grab;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
+.timeline-editor__clip:active { cursor: grabbing; }
+.timeline-editor__clip[data-kind="video"] {
+  background: linear-gradient(180deg, rgba(70, 110, 170, 0.55), rgba(40, 70, 130, 0.65));
+  border-color: rgba(120, 170, 220, 0.55);
+}
+.timeline-editor__clip[data-kind="audio"] {
+  background: linear-gradient(180deg, rgba(70, 140, 90, 0.55), rgba(40, 100, 60, 0.65));
+  border-color: rgba(120, 200, 140, 0.55);
+}
+.timeline-editor__clip[data-kind="pip"] {
+  background: linear-gradient(180deg, rgba(180, 140, 60, 0.55), rgba(140, 100, 30, 0.65));
+  border-color: rgba(220, 190, 110, 0.55);
+}
+.timeline-editor__clip[data-kind="music"] {
+  background: linear-gradient(180deg, rgba(160, 110, 170, 0.55), rgba(120, 70, 130, 0.65));
+  border-color: rgba(220, 170, 220, 0.55);
+}
+
+.timeline-editor__clip.is-selected {
+  outline: 2px solid rgba(212, 80, 74, 0.85);
+  outline-offset: 1px;
+}
+
+.timeline-editor__clip-edge {
+  width: 6px;
+  flex: 0 0 auto;
+  cursor: ew-resize;
+  background: rgba(255, 255, 255, 0.10);
+}
+.timeline-editor__clip-edge:hover {
+  background: rgba(255, 255, 255, 0.30);
+}
+.timeline-editor__clip-body {
+  flex: 1 1 auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  gap: 4px;
+  overflow: hidden;
+}
+.timeline-editor__clip-label {
+  flex: 1 1 auto;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tiny transition indicators inside the clip — not load-bearing yet,
+ * but cue the user that the in/out transition is non-cut. */
+.timeline-editor__clip-tin,
+.timeline-editor__clip-tout {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.timeline-editor__clip-tin[data-trans-in="cut"],
+.timeline-editor__clip-tout[data-trans-out="cut"] {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.30);
+}
+.timeline-editor__clip-tin[data-trans-in="dissolve"],
+.timeline-editor__clip-tout[data-trans-out="dissolve"] {
+  background: rgba(212, 180, 60, 0.85);
+}
+.timeline-editor__clip-tin[data-trans-in="fade-from-black"],
+.timeline-editor__clip-tout[data-trans-out="fade-to-black"] {
+  background: rgba(255, 255, 255, 0.85);
+}
+.timeline-editor__clip-tin  { order: 0; }  /* leftmost */
+.timeline-editor__clip-tout { order: 99; } /* rightmost */
+.timeline-editor__clip-label { order: 1; }
+
+/* Playhead */
+.timeline-editor__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(212, 80, 74, 0.95);
+  pointer-events: none;
+  z-index: 3;
+  /* Anchor inside the scroll content, not the viewport — so when the
+   * viewport scrolls horizontally the playhead moves with the content.
+   * The JS sets `left` in content pixels, which works because the
+   * playhead is a child of the (scrolled) viewport. */
+}
+
+/* Hint band */
+.timeline-editor__hint {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+  background: var(--background-primary, rgba(0, 0, 0, 0.30));
+  border-top: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.06));
+}
+.timeline-editor__hint kbd {
+  background: var(--background-secondary, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+}
+
+/* Right-click + add-track context menu */
+.timeline-editor__ctx-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 180px;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.98));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  font-size: 12px;
+  color: var(--text-primary, #e6e6e6);
+}
+.timeline-editor__ctx-menu-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary, #888);
+  padding: 4px 8px;
+}
+.timeline-editor__ctx-menu-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  flex-wrap: wrap;
+}
+.timeline-editor__ctx-menu-label {
+  font-size: 10px;
+  color: var(--text-secondary, #888);
+  margin-right: 4px;
+  width: 22px;
+  text-align: right;
+}
+.timeline-editor__ctx-menu button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-primary, #e6e6e6);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.timeline-editor__ctx-menu button:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+}
+.timeline-editor__ctx-menu-danger {
+  color: rgba(212, 130, 130, 0.95) !important;
+}
+.timeline-editor__ctx-menu-danger:hover {
+  background: rgba(212, 80, 74, 0.55) !important;
+  color: #fff !important;
+}
+
+/* When timeline is visible, shrink the media library to make room — the
+ * timeline takes the middle slab, library compresses to 30% bottom. */
+body.pane-mode-video .timeline-editor.timeline-editor--visible ~ .media-library,
+body.pane-mode-video .media-library + .timeline-editor.timeline-editor--visible ~ .media-library {
+  max-height: 30%;
+}
+body.pane-mode-video .timeline-editor.timeline-editor--visible ~ .media-library {
+  max-height: 30%;
+}
+
+/* ── Phase 6: overlay track + clip styling ─────────────────────────────── */
+
+.timeline-editor__clip[data-kind="overlay"] {
+  background: linear-gradient(180deg, rgba(180, 110, 220, 0.55), rgba(120, 70, 160, 0.65));
+  border-color: rgba(220, 170, 240, 0.55);
+}
+.timeline-editor__clip[data-overlay-type="title-card"] {
+  background: linear-gradient(180deg, rgba(60, 80, 120, 0.85), rgba(35, 50, 85, 0.95));
+  border-color: rgba(140, 170, 220, 0.65);
+  border-width: 1.5px;
+}
+.timeline-editor__clip[data-overlay-type="lower-third"] {
+  background: linear-gradient(180deg, rgba(180, 110, 220, 0.55), rgba(120, 70, 160, 0.65));
+}
+.timeline-editor__clip[data-overlay-type="watermark"] {
+  background: linear-gradient(180deg, rgba(170, 170, 170, 0.45), rgba(110, 110, 110, 0.65));
+  border-color: rgba(220, 220, 220, 0.45);
+}
+
+.timeline-editor__clip-overlay-glyph {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-right: 4px;
+  order: 0;
+}
+
+/* Track-header "+ overlay" button */
+.timeline-editor__track-add-overlay {
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-secondary, #aaa);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  margin-right: 4px;
+}
+.timeline-editor__track-add-overlay:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #e6e6e6);
+}
+
+/* Watermark button (active state) */
+.timeline-editor__watermark-btn {
+  font-size: 14px;
+  width: 26px;
+}
+.timeline-editor__watermark-btn[data-enabled="true"] {
+  color: rgba(212, 80, 74, 0.95);
+  border-color: rgba(212, 80, 74, 0.45);
+}
+
+/* ── Phase 6: overlay inspector panel ─────────────────────────────────── */
+
+.timeline-editor__inspector {
+  width: 320px;
+  z-index: 25;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.96));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--text-primary, #e6e6e6);
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+}
+
+.timeline-editor__inspector-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.30));
+  border-bottom: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  flex-shrink: 0;
+}
+.timeline-editor__inspector-type {
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.timeline-editor__inspector-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.timeline-editor__inspector-close:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #fff);
+}
+.timeline-editor__inspector-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.timeline-editor__inspector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.06));
+}
+.timeline-editor__inspector-section:last-child { border-bottom: none; }
+.timeline-editor__inspector-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary, #888);
+}
+.timeline-editor__inspector-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.timeline-editor__inspector-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+}
+.timeline-editor__inspector-textarea,
+.timeline-editor__inspector-select,
+.timeline-editor__inspector-num {
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.timeline-editor__inspector-textarea {
+  width: 100%;
+  resize: vertical;
+}
+.timeline-editor__inspector-num {
+  width: 64px;
+}
+.timeline-editor__inspector-select {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+.timeline-editor__inspector-color {
+  width: 28px;
+  height: 22px;
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.timeline-editor__inspector-range {
+  flex: 1 1 auto;
+}
+.timeline-editor__inspector-grad-label {
+  font-size: 10px;
+  color: var(--text-secondary, #888);
+  margin-right: 4px;
+}
+.timeline-editor__inspector-grad-btn {
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-secondary, #aaa);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.timeline-editor__inspector-grad-btn:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #e6e6e6);
+}
+.timeline-editor__inspector-grad-btn[data-active="true"] {
+  background: rgba(212, 80, 74, 0.45);
+  border-color: rgba(212, 80, 74, 0.65);
+  color: var(--text-primary, #fff);
+}
+
+/* Watermark dropdown rows reuse inspector-row spacing */
+.timeline-editor__ctx-menu--wm {
+  padding: 4px 6px;
+  min-width: 240px;
+}
+.timeline-editor__ctx-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+}
+.timeline-editor__ctx-menu-row input[type="checkbox"] {
+  margin: 0;
+}
+.timeline-editor__ctx-menu-row input[type="range"] {
+  flex: 1 1 auto;
+}
+.timeline-editor__ctx-menu-row [data-wm-readout] {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  width: 38px;
+  color: var(--text-secondary, #aaa);
+  text-align: right;
+}

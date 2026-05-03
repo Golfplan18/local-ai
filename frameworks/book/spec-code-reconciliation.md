@@ -12,6 +12,13 @@ pipeline_step: standalone
 
 # Spec-Code Reconciliation Framework
 
+## Display Name
+Spec-Code Reconciliation
+
+## Display Description
+Backward-reconcile installer specifications with the installed system. Produces updated installer layers and a natural-language system specification that matches the actually-installed code.
+
+
 *A framework for backward-reconciling installer specifications with the actual installed system, then producing a natural language system specification from which the installer could be derived.*
 
 ---
@@ -59,32 +66,54 @@ Available tools and trigger conditions:
 
 This framework is agent-only; single-pass execution is not supported because filesystem access and git history consultation are intrinsic to Layers 1, 3, and 4. In a non-agent context, the framework produces only a reconciliation plan (methodology and questions for manual operator execution), not the three concrete deliverables.
 
+Mode SCR-Full covers Layers 1-7 (seven processing layers) and declares a single milestone. Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the integrated character of the three-document bundle: the discrepancy report, updated installer layers, and system specification must be internally consistent (the specification must derive from the same installer layers it references), and producing them incrementally would risk publishing an inconsistent intermediate state where the specification described layers different from those just written to disk.
+
 ---
 
 ## MILESTONES DELIVERED
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: Full backward-reconciliation bundle
-- **Endpoint produced:** Three-document bundle written to disk — (1) Discrepancy Report at `~/ora/reconciliation/sweeps/[date]_sweep-report.md` with severity-classified (STRUCTURAL/BEHAVIORAL/COSMETIC) and drift-typed (bug-fix/design-change/accretion) findings plus embedded Drift Inventory and Reconciliation Log; (2) Updated Installer Layers written in-place over the current layer files; (3) Natural Language System Specification at `~/ora/installer/system-specification.md`
-- **Verification criterion:** All seven Evaluation Criteria score 3 or above; every installer layer has been parsed and every file under `~/ora/` is accounted for in at least one of the three outputs; a hypothetical fresh install from the updated layers would produce a system functionally identical to the current one; the Derivation Notes section in the specification maps every major section to the installer layer it would generate
-- **Preconditions:** Installer manifest, all installer layer files, live `~/ora/` filesystem, git history from initial installation to present, and the System File Structure reference are all accessible to the agent
-- **Mode required:** Full Reconciliation (Layers 1–7)
-- **Framework Registry summary:** Backward-reconciles installer specifications with the installed system and produces a derivable natural language system specification
+Spec-Code Reconciliation is a multi-mode framework with three modes (SCR-Full / SCR-Partial / SCR-Spec). Mode is selected explicitly by the invoker; there is no triage layer. Each mode covers a different layer subset and produces a distinct milestone. All milestone properties are defined inline per milestone.
 
-### Milestone Type: Discrepancy report and resolution plan
+### Milestones for Mode SCR-Full
+
+#### Milestone 1: Full backward-reconciliation bundle
+
+- **Mode:** SCR-Full
+- **Endpoint produced:** Three-document bundle written to disk — (1) Discrepancy Report at `~/ora/reconciliation/sweeps/[date]_sweep-report.md` with severity-classified (STRUCTURAL/BEHAVIORAL/COSMETIC) and drift-typed (bug-fix/design-change/accretion) findings plus embedded Drift Inventory and Reconciliation Log; (2) Updated Installer Layers written in-place over the current layer files; (3) Natural Language System Specification at `~/ora/installer/system-specification.md`.
+- **Verification criterion:** All seven Evaluation Criteria score 3 or above; every installer layer has been parsed and every file under `~/ora/` is accounted for in at least one of the three outputs; a hypothetical fresh install from the updated layers would produce a system functionally identical to the current one; the Derivation Notes section in the specification maps every major section to the installer layer it would generate.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Three artifacts on disk per the Endpoint produced spec — sweep report at the dated path, updated installer layer files in-place, and system specification at `~/ora/installer/system-specification.md` with Derivation Notes mapping.
+- **Drift check question:** Does the bundle faithfully reflect the current installed system — with the updated installer layers genuinely capable of regenerating the live `~/ora/` and the specification mappable back to those layers via Derivation Notes — without injecting changes the user did not authorize?
+
+### Milestones for Mode SCR-Partial
+
+#### Milestone 1: Discrepancy report and resolution plan
+
+- **Mode:** SCR-Partial
 - **Endpoint produced:** Scoped diagnostic output covering a single installer layer (or named layer subset) — Structural Inventory Table, Behavioral Comparison Report with severity and drift-type classifications, and Resolution Plan naming the specific text changes needed for each discrepancy. No installer layer files are modified and no system specification is produced.
-- **Verification criterion:** Every file the targeted installer layer references has been compared to the filesystem; every discrepancy has a severity, a drift type, and a resolution decision (code-is-correct / spec-is-correct / both-update / new-content) with justification referencing git commits where applicable; the layer-one and layer-two invariant checks both pass
-- **Preconditions:** The targeted installer layer file(s), the relevant live filesystem subtree, and git history for the affected files are all accessible; the user names the specific layer(s) to be reconciled
-- **Mode required:** Partial Reconciliation (Layers 1–3, single-layer scope)
-- **Framework Registry summary:** Diagnoses spec-code drift for a named installer layer without modifying layers or producing a system specification
+- **Verification criterion:** Every file the targeted installer layer references has been compared to the filesystem; every discrepancy has a severity, a drift type, and a resolution decision (code-is-correct / spec-is-correct / both-update / new-content) with justification referencing git commits where applicable; the layer-one and layer-two invariant checks both pass.
+- **Layers covered:** 1, 2, 3
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Diagnostic output bundle for the targeted installer layer — Structural Inventory Table + Behavioral Comparison Report (with severity + drift-type classifications) + Resolution Plan; no installer files written and no system specification produced.
+- **Drift check question:** Does the diagnostic report stay scoped to the named installer layer(s) — with no installer files modified and no scope creep into adjacent layers — and does every discrepancy carry severity, drift type, and resolution decision with citation?
 
-### Milestone Type: Natural language system specification
-- **Endpoint produced:** `~/ora/installer/system-specification.md` — a declarative natural language document describing the current system's architecture, component catalog, configuration architecture, behavioral contracts, dependency map, and hardware adaptation, with a Derivation Notes section mapping specification sections to the installer layers they would generate
-- **Verification criterion:** An AI agent given only the specification can determine complete directory structure, every file to create, every dependency to install, every configuration schema, and every behavioral contract needed to produce the installer layers; Evaluation Criterion 4 (Specification Derivability) scores 3 or above; every claim in the specification corresponds to something verifiable on the filesystem or in the code
-- **Preconditions:** The installer layers under `~/ora/installer/` are treated as current (no reconciliation is performed); the live `~/ora/` filesystem and the System File Structure reference are accessible
-- **Mode required:** Specification Only (Layer 5)
-- **Framework Registry summary:** Produces a natural language system specification from current installer layers and the live filesystem
+### Milestones for Mode SCR-Spec
+
+#### Milestone 1: Natural language system specification
+
+- **Mode:** SCR-Spec
+- **Endpoint produced:** `~/ora/installer/system-specification.md` — a declarative natural language document describing the current system's architecture, component catalog, configuration architecture, behavioral contracts, dependency map, and hardware adaptation, with a Derivation Notes section mapping specification sections to the installer layers they would generate.
+- **Verification criterion:** An AI agent given only the specification can determine complete directory structure, every file to create, every dependency to install, every configuration schema, and every behavioral contract needed to produce the installer layers; Evaluation Criterion 4 (Specification Derivability) scores 3 or above; every claim in the specification corresponds to something verifiable on the filesystem or in the code.
+- **Layers covered:** 5
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Single markdown file at `~/ora/installer/system-specification.md` per the Layer 5 spec template — architecture, component catalog, configuration architecture, behavioral contracts, dependency map, hardware adaptation, and Derivation Notes mapping specification sections to installer layers.
+- **Drift check question:** Does the specification accurately describe the current installer layers and live filesystem — with every claim verifiable and the Derivation Notes mapping bidirectional — rather than describing an aspirational or historical version of the system?
 
 ---
 

@@ -13,6 +13,9 @@
 @import url("./components/base.css");
 @import url("./components/layout.css");
 @import url("./components/panes.css");
+@import url("./components/input-pane-toolbar.css");
+@import url("./components/framework-picker.css");
+@import url("./components/framework-setup-popup.css");
 @import url("./components/bridges.css");
 @import url("./components/spine.css");
 @import url("./components/wordmark.css");
@@ -21,3 +24,13 @@
 @import url("./components/output-content.css");
 @import url("./components/customizer.css");
 @import url("./components/theme-library.css");
+@import url("./components/sidebar.css");
+@import url("./components/prompt-overlay.css");
+@import url("./components/transcribe.css");
+@import url("./components/video-editing.css");
+@import url("./components/timeline-editor.css");
+@import url("./components/preview-monitor.css");
+@import url("./components/transcript-panel.css");
+@import url("./components/render-controls.css");
+@import url("./components/settings-panel.css");
+@import url("./components/v3-spec-conform.css");

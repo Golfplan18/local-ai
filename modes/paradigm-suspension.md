@@ -1,265 +1,170 @@
 ---
-nexus: obsidian
+nexus:
+  - ora
 type: mode
-date created: 2026/03/23
-date modified: 2026/04/18
-rebuild_phase: 3
-no_visual: true
+tags:
+date created: 2026-03-23
+date modified: 2026-05-01
 ---
 
 # MODE: Paradigm Suspension
 
-## TRIGGER CONDITIONS
+```yaml
+# 0. IDENTITY
+mode_id: paradigm-suspension
+canonical_name: Paradigm Suspension
+suffix_rule: analysis
+educational_name: paradigm suspension and assumption surfacing
 
-Positive:
-1. "What if X is wrong"; evidence contradicts an accepted explanation.
-2. User asks why a consensus exists rather than accepting it.
-3. PMI Interesting output surfaces paradigm-level assumptions.
-4. User explicitly requests heterodox exploration or says "I want to question the standard view".
-5. Request language: "suspend the paradigm", "question the frame", "what if the consensus is wrong".
+# 1. TERRITORY AND POSITION
+territory: T9-paradigm-and-assumption-examination
+gradation_position:
+  axis: stance
+  value: suspending
+adjacent_modes_in_territory:
+  - mode_id: frame-comparison
+    relationship: stance counterpart (comparing rather than suspending)
+  - mode_id: worldview-cartography
+    relationship: depth-molecular sibling (deeper synthesis across paradigms)
 
-Negative:
-- IF user accepts the consensus framework and wants to work within it → **Project Mode** or **Constraint Mapping**.
-- IF user wants to trace institutional interests behind the position → **Cui Bono** (PS questions evidence; CB questions interests).
+# 2. TRIGGER CONDITIONS AND ROUTING
+trigger_conditions:
+  user_situation_signals:
+    - "what if X is wrong"
+    - "evidence contradicts the accepted explanation"
+    - "I want to question the standard view"
+    - "why does this consensus exist"
+  prompt_shape_signals:
+    - "suspend the paradigm"
+    - "question the frame"
+    - "what if the consensus is wrong"
+    - "heterodox exploration"
+disambiguation_routing:
+  routes_to_this_mode_when:
+    - "challenge the foundational assumptions a single consensus depends on"
+    - "evaluate evidence without the interpretive overlay of the dominant frame"
+  routes_away_when:
+    - "compare two or more paradigms side by side" → frame-comparison
+    - "build a synthesis across worldviews" → worldview-cartography
+    - "challenge a single argument's coherence within its own frame" → coherence-audit (T1)
+    - "trace institutional interests behind the position" → cui-bono (T2)
+when_not_to_invoke:
+  - "User accepts the consensus and wants to work within it" → Project Mode or Constraint Mapping
+  - "Question targets a specific claim's truth, not the framework that gives it sense" → Deep Clarification
+  - "User wants to push back against observation rather than against authority — Einstein guard rail violation"
 
-Tiebreaker:
-- PS vs Deep Clarification: "this seems wrong" may be disagreement with a specific claim (DC) rather than questioning the paradigm. Check whether the challenge targets a claim or a foundational assumption.
-- PS vs Cui Bono: **challenge the evidence** → PS; **trace the interests** → CB.
+# 3. EXECUTION STRUCTURE
+composition: atomic
+atomic_spec:
+  passes: 1
+  posture: suspending
 
-## EPISTEMOLOGICAL POSTURE
+# 4. INPUT AND OUTPUT CONTRACTS
+input_contract:
+  expert_mode:
+    required: [paradigm_or_consensus_position, contesting_evidence_or_alternative]
+    optional: [historical_paradigm_revision_analogue, foundational_papers_of_consensus]
+    notes: "Applies when user explicitly names the paradigm and supplies the contesting evidence or alternative."
+  accessible_mode:
+    required: [situation_or_claim_under_question]
+    optional: [hint_at_user_unease_or_anomaly]
+    notes: "Default. Mode infers the load-bearing consensus and surfaces alternatives."
+  detection:
+    expert_signals: ["Lakatosian", "Kuhnian", "hard core", "protective belt", "paradigm shift", "anomaly"]
+    accessible_signals: ["what if X is wrong", "the standard view", "this can't be the whole story"]
+    default: accessible_mode
+  graceful_degradation:
+    on_missing_required: "Ask: 'What's the consensus position or accepted explanation you want to question?'"
+    on_underspecified: "Ask: 'Are you challenging the evidence behind a position, or the interests pushing it? If interests, route to Cui Bono.'"
+output_contract:
+  artifact_type: audit
+  required_sections:
+    - foundational_assumptions
+    - evidence_audit_observational_vs_interpretive
+    - load_bearing_assessment
+    - alternative_interpretations
+    - evaluation
+  format: prose
 
-Consensus is treated as data about what institutions believe, not as evidence of correctness. Authority is challenged; observation is not. **The Einstein guard rail governs: push back against authority, never against observation.** Foundational assumptions the consensus depends on are identified and treated as provisional. Alternatives are evaluated against raw observational evidence, not against consensus positions.
+# 5. CRITICAL QUESTIONS
+critical_questions:
+  - cq_id: CQ1
+    question: "Have foundational assumptions been stated as testable propositions, or are they smuggled in as conclusions?"
+    failure_mode_if_unmet: assumption-as-conclusion
+  - cq_id: CQ2
+    question: "Is observational evidence cleanly separated from interpretive evidence, with the same standard applied to consensus and alternatives?"
+    failure_mode_if_unmet: asymmetric-evidence-standard
+  - cq_id: CQ3
+    question: "Is the Einstein guard rail honoured — push back against authority, never against observation?"
+    failure_mode_if_unmet: einstein-guard-rail-violation
+  - cq_id: CQ4
+    question: "Are alternatives genuinely distinct from the consensus and grounded in observational evidence, not strawmen?"
+    failure_mode_if_unmet: false-equivalence
 
-This mode is NOT contrarianism. It suspends paradigmatic assumptions to examine evidence without interpretive overlay, then evaluates whether the paradigm is supported by the evidence on its own terms.
+# 6. NAMED FAILURE MODES AND CORRECTION
+failure_modes:
+  - name: contrarianism-trap
+    detection_signal: "Mode concludes the consensus is wrong without evidential grounding for the rejection."
+    correction_protocol: flag
+  - name: false-equivalence
+    detection_signal: "Fringe alternative treated as equally supported by the same kind of evidence the consensus rests on."
+    correction_protocol: flag
+  - name: interpretive-evidence-trap
+    detection_signal: "Alternative's evidence accepted uncritically while consensus evidence is held to a higher standard (or vice versa)."
+    correction_protocol: re-dispatch (apply observational/interpretive distinction symmetrically)
+  - name: einstein-guard-rail-violation
+    detection_signal: "An observation is dismissed in order to favour a preferred alternative."
+    correction_protocol: flag
+  - name: assumption-as-conclusion
+    detection_signal: "A foundational assumption is stated in conclusion form ('therefore X') rather than testable form ('it is claimed that X')."
+    correction_protocol: re-dispatch (rewrite as testable proposition)
 
-## DEFAULT GEAR
+# 7. LENS DEPENDENCIES
+lens_dependencies:
+  required:
+    - lakatos-hard-core-protective-belt
+  optional:
+    - kuhn-anomaly-and-paradigm-revision
+    - hermeneutic-circle
+  foundational:
+    - kahneman-tversky-bias-catalog
+    - knightian-risk-uncertainty-ambiguity
 
-Gear 4. Independent analysis is the minimum. Anchoring compromises the discovery of load-bearing assumptions.
-
-## RAG PROFILE
-
-**Retrieve (prioritise):** primary observational data, heterodox literature, critiques of consensus frameworks, historical precedents of paradigm revision; foundational papers that established the current consensus (not for their conclusions but for their stated assumptions).
-
-**Deprioritise:** textbooks and survey sources that present consensus as settled fact.
-
-
-### RAG PROFILE — RELATIONSHIP PRIORITIES
-
-**Prioritise:** `contradicts`, `qualifies`, `analogous-to`, `supersedes`
-**Deprioritise:** `parent`, `child`, `precedes`
-**Rationale:** Challenging consensus requires finding contradictions, qualifications, and analogies that undermine assumptions.
-
-
-### RAG PROFILE — INPUT SPEC
-
-| Field | Purpose |
-|---|---|
-| `cleaned_prompt` | The paradigm to examine |
-| `conversation_rag` | Prior turns' assumption identifications |
-| `concept_rag` | Kuhnian, Lakatosian, hermeneutic frameworks |
-| `relationship_rag` | Objects linked by `contradicts` |
-
-
-### RAG PROFILE — CONTEXT BUDGET
-
+# 8. RUNTIME AND DEPTH
+default_depth_tier: 2
+expected_runtime: ~5min
+escalation_signals:
+  upward:
+    target_mode_id: worldview-cartography
+    when: "Suspension reveals multiple paradigms in genuine tension that warrant integrative synthesis."
+  sideways:
+    target_mode_id: frame-comparison
+    when: "Suspension surfaces two or more paradigms; user wants comparative reading rather than single-frame suspension."
+  downward:
+    target_mode_id: null
+    when: "Paradigm Suspension is the lightest stance position in T9."
 ```
-fixed_overhead_tokens: TBD
-analytical_floor_tokens: TBD
-conversation_history_soft_ceiling: 0.4
-retrieval_approach: auto
-```
 
-## DEPTH MODEL INSTRUCTIONS
+## DEPTH ANALYSIS GUIDANCE
 
-White Hat:
-1. Identify the foundational assumptions the consensus position depends on. State each as a testable proposition.
-2. For each assumption, identify observational evidence for/against, distinguishing observational from interpretive evidence.
-3. Identify the strongest version of the consensus case.
+Depth in Paradigm Suspension is the degree to which foundational assumptions are surfaced as testable propositions and traced through the framework's logical scaffolding. A thin pass names assumptions; a substantive pass identifies which assumptions are load-bearing (the framework collapses if suspended) versus peripheral (the framework adapts), and tests each assumption against observational rather than interpretive evidence. Test depth by asking: would the analysis predict which observations would falsify each load-bearing assumption?
 
-Black Hat:
-1. For each assumption, assess load-bearing vs peripheral. How much of the framework survives if the assumption is suspended?
-2. Identify where defenders conflate interpretive with observational evidence.
-3. Evaluate Breadth's alternative interpretations for logical coherence and evidential grounding. Reject alternatives without observational support as rigorously as consensus claims without it.
+## BREADTH ANALYSIS GUIDANCE
 
-### Cascade — what to leave for the evaluator
-
-This mode emits NO envelope. Cascade cues live in prose.
-
-- State each foundational assumption with the literal prefix `Assumption N (testable):` — at least 3 required. Supports M1 and S3.
-- Label every evidence item with `[observational]` or `[interpretive]` tag. Supports M2, S4.
-- Use the literal phrase "load-bearing:" for each load-bearing assumption. Supports M3.
-- When rejecting or accepting an assumption, use the literal phrase "observational evidence" vs "interpretive framing" in the justification. Supports M5 (Einstein guard rail).
-
-### Consolidator guidance
-
-Applies at this mode's default gear (Gear 4). Both streams independently surface load-bearing assumptions.
-
-- **Reference frame for prose output:** union of foundational assumptions surfaced by both streams; both streams' alternative interpretations emitted in the "Alternative interpretations" section (attributed by originator).
-- **Einstein guard rail reconciliation:** if either stream dismissed an observation to favour an alternative, that dismissal is stripped — observation is non-negotiable.
-- **Load-bearing disagreement:** if streams disagree on which assumption is load-bearing, emit both classifications in prose; the user weighs.
-
-## BREADTH MODEL INSTRUCTIONS
-
-Green Hat:
-1. For each foundational assumption, generate ≥ 2 alternatives consistent with observational evidence.
-2. Map what the domain looks like under each alternative.
-3. Identify structural similarities to historical paradigm revisions.
-
-Yellow Hat:
-1. For each alternative, identify its strongest feature — the observation it explains most naturally.
-2. Assess what value each alternative opens up.
-3. Identify what the user gains from examination regardless of outcome.
-
-### Cascade — what to leave for the evaluator
-
-- Each alternative interpretation uses the literal prefix `Alternative interpretation N:` — at least 2 required. Supports M4.
-- State each alternative's strongest feature with the literal phrase "explains most naturally:".
-- Identify structural similarities to historical paradigm revisions with the literal prefix `Historical analogue:`.
+Breadth in Paradigm Suspension is the catalog of alternative interpretations consistent with the same observational evidence. Widen the lens by generating ≥2 alternatives per load-bearing assumption, looking for structural similarities to historical paradigm revisions (Copernican, plate tectonics, prion theory), and surveying what the domain looks like under each alternative. Breadth markers: alternatives are genuinely distinct (not paraphrases of consensus), each grounded in observation, with at least one historical analogue noted.
 
 ## EVALUATION CRITERIA
 
-5. **Assumption Identification.** 5=all foundational assumptions as testable propositions. 3=some stated as givens. 1=assumptions not distinguished from conclusions.
-6. **Evidence Classification.** 5=observational cleanly separated from interpretive. 3=one conflation. 1=no distinction.
-7. **Alternative Quality.** 5=genuinely distinct, internally consistent, grounded in observation. 3=minor variation. 1=strawman.
-8. **Einstein Guard Rail Compliance.** 5=authority questioned, observation respected throughout. 3=one instance of dismissing observation. 1=observation treated as equally sceptical.
+Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Paradigm Suspension output: states ≥3 foundational assumptions as testable propositions; tags each evidence item as observational or interpretive; assesses load-bearing vs peripheral status; supplies ≥2 genuinely distinct alternatives grounded in observation; honours the Einstein guard rail (observation wins over preferred alternative). Specifically check for the contrarianism trap (rejecting consensus without evidence) and false equivalence (treating fringe positions as equally supported).
 
-### Focus for this mode
+## REVISION GUIDANCE
 
-A strong PS evaluator prioritises (prose-only, no envelope):
+Revise to convert assumptions stated as conclusions into testable propositions. Revise to add load-bearing assessment where missing. Revise to apply observational/interpretive labelling symmetrically. Resist revising toward neutrality if the analysis surfaces a genuinely weakened paradigm — the mode is suspending, not endorsing. Resist revising toward contrarian conclusions if observation supports the consensus — observation wins. Never collapse the suspension into a verdict the evidence does not warrant.
 
-1. **No-envelope invariant (S1).** Any `ora-visual` block is a mandatory fix.
-2. **Five-section presence (S2).** Foundational assumptions / Evidence audit / Load-bearing / Alternative interpretations / Evaluation.
-3. **Three testable assumptions (S3, M1).** Stated as testable propositions, not conclusions.
-4. **Observational-interpretive labelling (S4, M2).** Every evidence item tagged.
-5. **Einstein guard rail (M5).** Observation wins over preferred alternative.
-6. **Two genuine alternatives (M4).** Not strawmen; evidentially grounded.
+## CONSOLIDATION GUIDANCE
 
-No short_alt criterion — envelope-free mode.
+Consolidate as prose in the five required sections (foundational assumptions / evidence audit / load-bearing assessment / alternative interpretations / evaluation). Format: prose only — no diagram. A diagram would freeze the paradigm's structure, contradicting the mode's commitment to holding interpretive frames provisional. If visualisation is essential, transition to Synthesis (for bilateral mapping) or Dialectical Analysis (for adversarial sublation). Each foundational assumption uses the literal prefix "Assumption N (testable):"; each evidence item is tagged "[observational]" or "[interpretive]"; load-bearing assessment uses the literal label "load-bearing:" or "peripheral:".
 
-### Suggestion templates per criterion
+## VERIFICATION CRITERIA
 
-- **S1 (envelope present):** `suggested_change`: "Remove the `ora-visual` block. Paradigm Suspension is prose-only — a diagram would freeze what the mode deliberately holds provisional. If visualisation is needed, transition to Synthesis (concept_map) or Dialectical Analysis (IBIS)."
-- **S3/M1 (assumptions as conclusions):** `suggested_change`: "Rewrite assumption <N> as a testable proposition. Format: 'Assumption N (testable): <proposition that could be empirically tested>'. Conclusions start with 'therefore'; propositions start with 'suppose that' or 'it is claimed that'."
-- **S4/M2 (evidence not labelled):** `suggested_change`: "Tag every evidence item as `[observational]` (direct measurement / observation) or `[interpretive]` (reading through a theoretical framework). If unsure, err toward `[interpretive]` and flag for human review."
-- **M3 (no load-bearing assessment):** `suggested_change`: "For each assumption, state whether it is load-bearing (framework collapses if suspended) or peripheral. Use the literal label 'load-bearing:' or 'peripheral:'."
-- **M4 (alternatives strawmen):** `suggested_change`: "Rewrite alternative <N> with equal rigour to consensus. If the alternative cannot be made as evidentially grounded as consensus, drop it rather than strawman it."
-- **M5 (Einstein guard rail violated):** `suggested_change`: "Passage <quote> dismisses observation to favour alternative <id>. Restore observational respect — observation wins. Authority may be challenged, observation may not."
-
-### Known failure modes to call out
-
-- **Envelope-Slip Trap** → open: "`ora-visual` block emitted. Mandate removal — PS is envelope-free."
-- **Contrarianism Trap** → open: "Suspension used to conclude consensus is wrong without evidential support. Mandate evidential grounding for any rejection."
-- **False Equivalence Trap** → open: "Fringe alternative treated as equally supported without evidential distinction. Apply symmetric rigour."
-- **Interpretive Evidence Trap** → open: "Alternative's evidence accepted uncritically while consensus evidence held to higher standard. Apply the observational/interpretive distinction symmetrically."
-
-### Verifier checks for this mode
-
-Universal V1-V8 (V2/V3 N/A — Gear 4 but prose-only consolidation; V5 applies to prose content contract); then:
-
-- **V-PS-1 — No-envelope preservation.** Revised response has NO `ora-visual` fenced block.
-- **V-PS-2 — Testable-assumption preservation.** Revised prose has ≥ 3 assumptions stated as testable propositions with the literal prefix `Assumption N (testable):`.
-- **V-PS-3 — Observational/interpretive labelling preservation.** Every evidence item in revised prose carries `[observational]` or `[interpretive]` tag.
-- **V-PS-4 — Einstein-guard-rail preservation.** Revised prose does not dismiss observation to favour an alternative. Silent re-introduction of such dismissal during revision is a FAIL.
-
-## CONTENT CONTRACT
-
-In order:
-
-1. **Foundational assumptions** — each as a testable proposition. ≥ 3.
-2. **Evidence audit** — observational vs interpretive for each assumption.
-3. **Load-bearing assessment** — which assumptions are load-bearing vs peripheral.
-4. **Alternative interpretations** — ≥ 2 for the most load-bearing assumptions.
-5. **Evaluation** — honest assessment of whether the paradigm is supported, weakened, or indeterminate.
-
-### Reviser guidance per criterion
-
-- **short_alt preservation (Phase 7 iteration — IMPORTANT).** When re-emitting the envelope in the REVISED DRAFT, preserve `spec.semantic_description.short_alt` ≤ 150 chars. If rewriting it, match the Cesal form shown in this mode's `## EMISSION CONTRACT` canonical envelope (a short noun phrase: `<visual type> of <subject>`). Do NOT enumerate concepts, cross-links, quadrants, facets, branches, loops, hypotheses, or evidence items inside `short_alt` — that enumeration belongs in `level_1_elemental`. A fresh short_alt over 150 chars triggers `E_SCHEMA_INVALID` and negates the revision.
-- **S1 (envelope present):** apply envelope-removal template.
-- **S2 (missing section):** add missing section using literal heading per content contract.
-- **S3/M1 (assumptions as conclusions):** apply testable-proposition template.
-- **S4/M2 (evidence not labelled):** apply observational/interpretive template.
-- **M3 (no load-bearing):** apply load-bearing template.
-- **M4 (strawman alternatives):** apply rigour template.
-- **M5 (Einstein rail):** apply observation-restoration template.
-
-## EMISSION CONTRACT
-
-**Paradigm Suspension emits NO `ora-visual` block.** Questioning assumptions is linguistic — a diagram would force premature commitment to a specific structure. The mode's power is in holding multiple interpretive frames simultaneously without collapsing to one.
-
-### Suppression rule
-
-- Prose only in the five content-contract sections.
-- Do not emit a `concept_map`, `ibis`, or `causal_dag` — each would freeze the examined paradigm's structure.
-- If visualising the comparison between paradigms becomes essential, transition to **Synthesis** (for bilateral mapping) or **Dialectical Analysis** (for adversarial sublation).
-
-## GUARD RAILS
-
-**Solution Announcement Trigger.** WHEN endorsing either consensus or alternative, verify the endorsement is grounded in observational evidence.
-
-**Einstein guard rail.** Push back against authority, never against observation. Observation wins over preferred alternative.
-
-**Symmetry guard rail.** Identical evidential standards for all positions — mainstream and heterodox.
-
-**No-envelope guard rail.** Do NOT emit any `ora-visual`.
-
-## SUCCESS CRITERIA
-
-### Structural (prose-only)
-
-- S1: NO `ora-visual` fence — envelope absence is the pass condition.
-- S2: Prose contains all five CONTENT CONTRACT sections.
-- S3: ≥ 3 foundational assumptions stated as testable propositions (not conclusions).
-- S4: Observational vs interpretive labelling applied to each piece of evidence.
-
-### Semantic (LLM-reviewer)
-
-- M1: Assumptions stated as testable propositions, not conclusions.
-- M2: Observational evidence cleanly separated from interpretive.
-- M3: Load-bearing assessment present for ≥ 3 assumptions.
-- M4: ≥ 2 alternatives that are genuinely distinct from consensus.
-- M5: Einstein guard rail — observation not dismissed to favour an alternative.
-
-```yaml
-success_criteria:
-  mode: paradigm-suspension
-  version: 1
-  no_visual: true
-  structural:
-    - { id: S1, check: no_envelope_present }
-    - { id: S2, check: five_content_sections_present }
-    - { id: S3, check: three_testable_assumptions }
-    - { id: S4, check: observational_interpretive_labelling }
-  semantic:
-    - { id: M1, check: assumptions_as_testable_propositions }
-    - { id: M2, check: observational_vs_interpretive_separation }
-    - { id: M3, check: load_bearing_assessment }
-    - { id: M4, check: two_genuine_alternatives }
-    - { id: M5, check: einstein_guard_rail_compliance }
-  acceptance: { tier_a_threshold: 0.9, structural_must_all_pass: true,
-                semantic_min_pass: 0.8 }
-```
-
-## KNOWN FAILURE MODES
-
-**The Contrarianism Trap (inverse of M5).** Treating suspension as license to conclude consensus is wrong. Correction: PS evaluates whether assumptions hold; if they do, say so.
-
-**The False Equivalence Trap (inverse of M4).** Treating fringe positions as equally supported without evidential distinction. Correction: evaluate with identical rigour.
-
-**The Interpretive Evidence Trap (inverse of M2).** Accepting evidence only within the alternative's framework while rejecting consensus evidence that works the same way. Correction: apply the distinction symmetrically.
-
-**The Envelope-Slip Trap.** Emitting a `concept_map` or similar to "visualise the paradigm". Correction: no envelope — a diagram freezes what PS deliberately holds provisional.
-
-## TOOLS
-
-Tier 1: Challenge, PMI, APC, Provocation.
-Tier 2: Problem Definition Question Bank (Module 4 — Assumptions and Preconceptions); if scientific, Module 2 — Information Audit.
-
-Enrichment frameworks: Lakatosian hard-core/protective-belt; Kuhnian anomaly assessment; hermeneutic circle.
-
-## TRANSITION SIGNALS
-
-- IF paradigm holds and user wants to work within it → propose **Project Mode**.
-- IF question involves tracing who benefits → propose **Cui Bono**.
-- IF examination produces two developed positions in genuine tension → propose **Synthesis** or **Dialectical Analysis**.
-- IF user begins a deliverable → propose **Project Mode**.
-- IF user wants strongest version of the consensus case first → propose **Steelman Construction**.
+Verified means: ≥3 foundational assumptions stated as testable propositions (not conclusions); every evidence item carries an observational/interpretive tag; load-bearing assessment present for ≥3 assumptions; ≥2 genuinely distinct alternatives with observational grounding; Einstein guard rail honoured throughout (no observation dismissed to favour an alternative); evaluation states honestly whether the paradigm is supported, weakened, or indeterminate. The four critical questions are addressed in the output.

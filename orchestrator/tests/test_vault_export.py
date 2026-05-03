@@ -227,11 +227,13 @@ class TestSlugify(unittest.TestCase):
 class TestDeriveSessionName(unittest.TestCase):
     def test_uses_session_title(self):
         import datetime as dt
+        # Phase 5.7: filename includes HH-MM. Date-only `when` defaults
+        # the time to 00-00.
         name = V._derive_session_name(
             "My Great Session", "abc123def456", None,
             when=dt.date(2026, 4, 17),
         )
-        self.assertEqual(name, "2026-04-17-my-great-session")
+        self.assertEqual(name, "2026-04-17-00-00-my-great-session")
 
     def test_falls_back_to_first_user_message(self):
         import datetime as dt
@@ -239,14 +241,22 @@ class TestDeriveSessionName(unittest.TestCase):
             None, "abc123def456", "Explain the Riemann hypothesis",
             when=dt.date(2026, 4, 17),
         )
-        self.assertEqual(name, "2026-04-17-explain-the-riemann-hypothesis")
+        self.assertEqual(name, "2026-04-17-00-00-explain-the-riemann-hypothesis")
 
     def test_no_title_no_user_uses_conversation_id(self):
         import datetime as dt
         name = V._derive_session_name(
             None, "abc123def456", None, when=dt.date(2026, 4, 17),
         )
-        self.assertTrue(name.startswith("2026-04-17-session-"), f"unexpected: {name}")
+        self.assertTrue(name.startswith("2026-04-17-00-00-session-"), f"unexpected: {name}")
+
+    def test_datetime_with_time_emits_hh_mm(self):
+        import datetime as dt
+        name = V._derive_session_name(
+            "Pipeline Discussion", "abc123def456", None,
+            when=dt.datetime(2026, 4, 30, 14, 35),
+        )
+        self.assertEqual(name, "2026-04-30-14-35-pipeline-discussion")
 
 
 class TestRawLogParser(unittest.TestCase):
@@ -322,15 +332,163 @@ class TestExtractOraVisuals(unittest.TestCase):
 
 
 class TestFrontmatter(unittest.TestCase):
-    def test_has_required_keys(self):
-        fm = V._build_frontmatter("abc", "Title", "2026-04-17 10:00:00")
-        for key in ("nexus:", "type: chat", "tags:", "conversation_id:",
-                    "session_title:", "date created:", "date modified:"):
+    """Phase 5.7: frontmatter follows Schema §12 conversation chunk template
+    — only nexus, type, tags, dates. conversation_id and session_title
+    move to the body's meta block."""
+
+    def test_has_schema12_keys(self):
+        fm = V._build_canonical_frontmatter(
+            nexus=["ora"], type_="chat", tags=[],
+            created_at="2026-04-17 10:00:00",
+        )
+        for key in ("nexus:", "type: chat", "tags:",
+                    "date created:", "date modified:"):
             self.assertIn(key, fm, f"frontmatter missing {key!r}")
 
-    def test_date_created_normalized(self):
-        fm = V._build_frontmatter("abc", "Title", "2026-04-17 10:00:00")
-        self.assertIn("date created: 2026/04/17", fm)
+    def test_does_not_include_conversation_id_or_title(self):
+        # Phase 5.7: bespoke fields moved out of YAML.
+        fm = V._build_canonical_frontmatter(
+            nexus=["ora"], type_="chat", tags=[],
+            created_at="2026-04-17 10:00:00",
+        )
+        self.assertNotIn("conversation_id:", fm)
+        self.assertNotIn("session_title:", fm)
+
+    def test_date_created_uses_dashes(self):
+        # Schema §10 rule 9: YYYY-MM-DD (dashes, not slashes).
+        fm = V._build_canonical_frontmatter(
+            nexus=[], type_="chat", tags=[],
+            created_at="2026-04-17 10:00:00",
+        )
+        self.assertIn("date created: 2026-04-17", fm)
+        self.assertNotIn("2026/04/17", fm)
+
+    def test_empty_nexus_emits_bare_key(self):
+        # Schema §10 rule 4: empty properties as bare key, not [] or null.
+        fm = V._build_canonical_frontmatter(nexus=[], type_="chat", tags=[])
+        self.assertIn("nexus:\n", fm)
+        self.assertNotIn("nexus: []", fm)
+        self.assertNotIn("nexus: null", fm)
+
+    def test_nexus_values_block_list_form(self):
+        fm = V._build_canonical_frontmatter(
+            nexus=["idea_refinery"], type_="chat", tags=[],
+        )
+        self.assertIn("nexus:\n  - idea_refinery", fm)
+
+    def test_default_type_is_chat(self):
+        fm = V._build_canonical_frontmatter(nexus=[], tags=[])
+        self.assertIn("type: chat", fm)
+
+    def test_tags_when_present(self):
+        fm = V._build_canonical_frontmatter(
+            nexus=[], type_="chat", tags=["consciousness", "epistemology"],
+        )
+        self.assertIn("tags:\n  - consciousness\n  - epistemology", fm)
+
+
+class TestMasterMatrixMatching(unittest.TestCase):
+    """Phase 5.7: nexus derivation from topic via Master Matrix lookup."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(
+            "w", suffix=".md", delete=False, encoding="utf-8",
+        )
+        self._tmp.write(textwrap.dedent("""\
+            ---
+            nexus:
+              - obsidian
+            type: matrix
+            ---
+
+            # Project Effort Matrix Name (Placeholder)
+
+            project property name: placeholder
+
+            # Project Matrix Engram Refinery
+
+            project property name: idea_refinery
+            parent project name:
+            passion property name: meta
+
+            # Project Matrix Ora
+
+            project property name: ora
+            parent project name:
+            passion property name: meta
+
+            # Passion Definition
+
+            passion property name: epistemology
+            """))
+        self._tmp.close()
+        self.path = self._tmp.name
+
+    def tearDown(self):
+        try:
+            os.unlink(self.path)
+        except OSError:
+            pass
+
+    def test_load_dedupes_identifiers(self):
+        ids = V._load_master_matrix(self.path)
+        # `meta` appears twice as passion identifier — should dedupe.
+        self.assertEqual(ids.count("meta"), 1)
+
+    def test_load_includes_project_and_passion(self):
+        ids = V._load_master_matrix(self.path)
+        self.assertIn("idea_refinery", ids)
+        self.assertIn("ora", ids)
+        self.assertIn("meta", ids)
+        self.assertIn("epistemology", ids)
+
+    def test_load_skips_parent_project_name(self):
+        # `parent project name:` lacks "property" — should not be captured
+        # as a nexus identifier (it's a back-reference).
+        ids = V._load_master_matrix(self.path)
+        # All values in our fixture's `parent project name:` lines are empty,
+        # so we just confirm no spurious entries crept in.
+        self.assertNotIn("", ids)
+
+    def test_match_topic_substring(self):
+        ids = V._load_master_matrix(self.path)
+        # "idea refinery" with a space matches "idea_refinery" via normalization.
+        nexus = V._match_topic_to_nexus("Working on idea refinery cleanup", ids)
+        self.assertEqual(nexus, ["idea_refinery"])
+
+    def test_match_topic_underscore_form(self):
+        ids = V._load_master_matrix(self.path)
+        nexus = V._match_topic_to_nexus("Touching idea_refinery directly", ids)
+        self.assertEqual(nexus, ["idea_refinery"])
+
+    def test_match_topic_case_insensitive(self):
+        ids = V._load_master_matrix(self.path)
+        nexus = V._match_topic_to_nexus("Working on IDEA REFINERY", ids)
+        self.assertEqual(nexus, ["idea_refinery"])
+
+    def test_no_match_returns_empty(self):
+        ids = V._load_master_matrix(self.path)
+        nexus = V._match_topic_to_nexus(
+            "Completely unrelated discussion of fish", ids,
+        )
+        self.assertEqual(nexus, [])
+
+    def test_multiple_matches(self):
+        ids = V._load_master_matrix(self.path)
+        nexus = V._match_topic_to_nexus(
+            "ora and epistemology — how they intersect", ids,
+        )
+        self.assertIn("ora", nexus)
+        self.assertIn("epistemology", nexus)
+
+    def test_empty_topic_returns_empty(self):
+        ids = V._load_master_matrix(self.path)
+        self.assertEqual(V._match_topic_to_nexus("", ids), [])
+        self.assertEqual(V._match_topic_to_nexus(None, ids), [])
+
+    def test_missing_master_matrix_file_returns_empty(self):
+        ids = V._load_master_matrix("/tmp/nonexistent_matrix_xyz.md")
+        self.assertEqual(ids, [])
 
 
 class TestSidecarGitignore(unittest.TestCase):
@@ -406,12 +564,19 @@ class TestExportHappyPath(unittest.TestCase):
         self.assertTrue(res.markdown_path.exists(), f"markdown missing at {res.markdown_path}")
 
     def test_markdown_has_frontmatter(self):
+        # Phase 5.7: YAML follows Schema §12 — only nexus, type, tags, dates.
+        # conversation_id and session_title moved to body meta block.
         res = self._export()
         text = res.markdown_path.read_text()
         self.assertTrue(text.startswith("---\n"))
-        self.assertIn("conversation_id: \"test-conv-001\"", text)
         self.assertIn("type: chat", text)
-        self.assertIn("ora-session", text)
+        # Bespoke fields no longer in YAML
+        self.assertNotIn("conversation_id: \"test-conv-001\"", text)
+        self.assertNotIn("session_title:", text)
+        # ora-session and visual-intelligence are not in the schema's
+        # controlled vocabulary; the indexer doesn't auto-emit them.
+        # Body meta block still carries the conversation id for back-link.
+        self.assertIn("test-conv-001", text)
 
     def test_markdown_preserves_user_prose(self):
         res = self._export()

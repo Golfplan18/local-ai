@@ -323,11 +323,45 @@ class BatchProcessor:
             for note, result in gate_results.get("review", []):
                 self._write_to_review(note, result)
 
-            # Step 8: Path 2 — conversation processing (if chat type)
+            # Step 8: Path 2 — conversation re-emission as chunks.
+            # Re-emits each prompt+response pair as a Schema §12 chunk
+            # file plus a Conv RAG §2 ChromaDB record using the same
+            # shape as live `_save_conversation`. Historical timestamps
+            # preserved so the chunks land at their original date.
             if type_result["type"] == "chat" and 2 in type_result.get("paths", []):
-                # Delegate to conversation processing pipeline
-                # (This would call the conversation processing code from server.py)
-                pass
+                try:
+                    from orchestrator.tools.path2_emitter import emit_path2_chunks
+                    from orchestrator.vault_export import _parse_raw_session_log
+                    messages = _parse_raw_session_log(markdown)
+                    if messages:
+                        conversation_id = os.path.basename(file_status.path)
+                        chromadb_path = self.config.get(
+                            "chromadb_path",
+                            os.path.expanduser("~/ora/chromadb/"),
+                        )
+                        conversations_dir = os.path.expanduser(
+                            "~/Documents/conversations/",
+                        )
+                        path2_result = emit_path2_chunks(
+                            messages,
+                            conversation_id=conversation_id,
+                            raw_path=file_status.path,
+                            conversations_dir=conversations_dir,
+                            chromadb_path=chromadb_path,
+                        )
+                        # Stats summary onto the FileStatus for the manifest.
+                        # (Use existing fields where possible; add path2_result
+                        # detail in `error` only if errors fired so the manifest
+                        # surface stays compact.)
+                        if path2_result.get("errors"):
+                            file_status.error = (file_status.error or "")
+                            file_status.error += (
+                                f" path2_errors: {len(path2_result['errors'])}"
+                            )
+                except Exception as e:
+                    # Don't let Path 2 failure block Path 1 results.
+                    file_status.error = (file_status.error or "")
+                    file_status.error += f" path2_exception: {e}"
 
             file_status.status = "completed"
             file_status.processed_at = datetime.now().isoformat()

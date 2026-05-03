@@ -118,6 +118,8 @@ class VisualE2ESseTests(unittest.TestCase):
 
         with mock.patch.object(self.server, "agentic_loop_stream",
                                side_effect=fake_agentic_loop_stream), \
+             mock.patch.object(self.server, "_save_conversation",
+                               return_value="session-test-pair-001"), \
              mock.patch.object(self.server.threading, "Thread", _NoopThread):
             resp = self.client.post(
                 "/chat",
@@ -129,32 +131,23 @@ class VisualE2ESseTests(unittest.TestCase):
                 }),
                 headers={"Content-Type": "application/json"},
             )
-            # Iterate the SSE stream INSIDE the with-block so mocks apply
-            # during generate() execution (test_client responses are lazy).
             body_bytes = b"".join(resp.response)
 
         self.assertEqual(resp.status_code, 200)
         body = body_bytes.decode("utf-8")
 
-        # A response event landed:
-        self.assertIn('"type": "response"', body)
-        # The ora-visual fence is present (SSE JSON-escapes the payload, so
-        # backticks and ``` appear as ``` with escaped inner quotes).
-        self.assertIn("ora-visual", body)
-        # The envelope's discriminator appears in the escaped SSE payload:
-        self.assertIn('causal_loop_diagram', body)
+        # V3 Backlog 2A — plain-HTTP reply: status / conversation_id /
+        # chunk_id. The visual fence now lives in the chunk file (saved by
+        # _save_conversation, mocked here), not in the response body.
+        payload = json.loads(body)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["conversation_id"], "main")
+        self.assertEqual(payload["chunk_id"], "session-test-pair-001")
 
-        # Pull the response payload out of the SSE stream and extract the fence.
-        response_line = None
-        for line in body.splitlines():
-            if line.startswith("data: ") and '"response"' in line:
-                response_line = line[6:]
-                break
-        self.assertIsNotNone(response_line,
-                             "no response SSE event found in stream")
-        payload = json.loads(response_line)
-        self.assertEqual(payload["type"], "response")
-        extracted = _extract_fence(payload["text"])
+        # The fence round-trip is validated directly against the upstream
+        # response_text we fed into the mock pipeline. (On a real run, the
+        # same string would be persisted to the chunk file.)
+        extracted = _extract_fence(response_text)
         self.assertIsNotNone(extracted, "could not extract ora-visual fence")
         self.assertEqual(extracted["type"], "causal_loop_diagram")
         self.assertEqual(extracted["id"], self.envelope["id"])

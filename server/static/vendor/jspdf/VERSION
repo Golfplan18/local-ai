@@ -1,0 +1,17 @@
+jspdf 2.5.2
+MIT
+source: https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js
+file: jspdf.umd.min.js (~360 KB minified, UMD)
+choice: UMD bundle — exposes window.jspdf with the jsPDF constructor (window.jspdf.jsPDF). Single-file, no plugins required for the export-pdf workpacket — image embedding (doc.addImage with PNG data URLs) is in the core bundle, no html-to-pdf or autotable plugins needed.
+vendored: 2026-04-30 as part of WP-7.4.9c (export-pdf canvas command)
+
+Consumers (present + anticipated):
+  server/static/commands/export-pdf.js   — WP-7.4.9c — canvas → PDF export via stage.toDataURL + doc.addImage
+  (no other consumers planned at this time)
+
+To refresh:
+  curl -sL "https://unpkg.com/jspdf@<new-version>/dist/jspdf.umd.min.js" -o /tmp/jspdf.umd.min.js
+  curl -sL "https://raw.githubusercontent.com/parallax/jsPDF/master/LICENSE" -o /tmp/jspdf-license.txt
+  cp /tmp/jspdf.umd.min.js  ~/ora/server/static/vendor/jspdf/jspdf.umd.min.js
+  cp /tmp/jspdf-license.txt ~/ora/server/static/vendor/jspdf/LICENSE
+  # Update this VERSION file with the new version number.

@@ -3,8 +3,11 @@
    ============================================================ */
 
 .ora-shell {
+  /* V3 Phase 4.6 — column widths driven by horizontal-spine-drag JS.
+     Defaults to 1fr/1fr (equal split) until JS sets explicit pixel
+     widths via --ora-left-w / --ora-right-w. */
   display: grid;
-  grid-template-columns: 1fr 68px 1fr;
+  grid-template-columns: auto var(--ora-left-w, 1fr) 68px var(--ora-right-w, 1fr);
   gap: 14px;
   padding: 16px;
   height: 100vh;
@@ -14,12 +17,14 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 
 .right-column {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 
 .chat-zone {
@@ -37,4 +42,71 @@ body.dragging {
 body.chat-dragging {
   cursor: ns-resize;
   user-select: none;
+}
+
+/* V3 Phase 4.6 — horizontal spine drag visual feedback */
+body.spine-dragging {
+  cursor: ew-resize;
+  user-select: none;
+}
+
+body.spine-dragging .spine {
+  cursor: ew-resize;
+}
+
+.spine {
+  cursor: ew-resize;
+}
+
+/* Buttons and the wordmark inside the spine override the ew-resize cursor
+   so they read as clickable. */
+.spine button,
+.spine .spine-wordmark .wordmark-clickable {
+  cursor: pointer;
+}
+
+/* V3 Phase 1.7 — collapsed pane treatment.
+   Icon-width strip with a doubled border, internal content hidden,
+   click-to-expand cursor on the strip itself. */
+.left-column.collapsed,
+.right-column.collapsed {
+  cursor: pointer;
+  border: 2px double var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--background-secondary, transparent);
+}
+
+.left-column.collapsed > *,
+.right-column.collapsed > * {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.left-column.collapsed:hover,
+.right-column.collapsed:hover {
+  border-color: var(--interactive-accent);
+}
+
+/* V3 Phase 4.7 — quick query box collapse.
+   When the chat-zone is collapsed, it shrinks to icon-height with the
+   same doubled-border treatment used for horizontal pane collapse. The
+   right bridge strip + canvas pane fill the rest of the right column. */
+.chat-zone.collapsed {
+  cursor: pointer;
+  height: 40px !important;
+  min-height: 40px;
+  border: 2px double var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--background-secondary, transparent);
+}
+
+.chat-zone.collapsed > * {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.chat-zone.collapsed:hover {
+  border-color: var(--interactive-accent);
 }

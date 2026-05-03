@@ -1,11 +1,24 @@
 # API Key Acquisition Framework
 
+## Display Name
+API Key Acquisition
+
+## Display Description
+Acquire and securely store API keys for commercial AI services, then register endpoints in endpoints.json. Use when adding a new external model provider (Anthropic, OpenAI, Google, etc.) for the orchestrator to call.
+
+
 *Guided Setup for Commercial AI API Access — The Overflow and Reliability Channel*
 
+---
 
 ## PURPOSE
 
-This framework walks the user through obtaining API keys from commercial AI providers (Anthropic, OpenAI, Google), storing them securely, and verifying they work. API keys are the overflow and reliability channel in the system's evaluation architecture. The primary evaluation channel is browser automation via Playwright, which uses the reader's existing subscriptions at no additional cost. API keys serve three specific use cases:
+This framework walks the user through obtaining API keys from commercial AI providers, storing them securely, and verifying they work. Two provider categories are covered:
+
+- **Evaluation providers** (Anthropic, OpenAI, Google) — text-generation and reasoning APIs that serve as the overflow and reliability channel behind browser automation.
+- **Image-generation providers** (OpenAI DALL-E, Stability AI, Replicate) — image-generation APIs used by the visual pane (Phase 7). Image generators do **not** have a browser-automation tier, so an API key is the primary access path; the fallback chain is preferred → fallback → unavailable.
+
+API keys for evaluation providers are the overflow and reliability channel in the system's evaluation architecture. The primary evaluation channel is browser automation via Playwright, which uses the reader's existing subscriptions at no additional cost. Evaluation API keys serve three specific use cases:
 
 1. **Overflow:** When browser automation is throttled, rate-limited, or temporarily unavailable.
 2. **Reliability:** For enterprise users who want SLA-backed access, guaranteed uptime, and usage tracking.
@@ -37,18 +50,25 @@ Secondary outputs:
 
 Agent: This framework executes through the local orchestrator with tool access. It uses browser_open to open signup pages, credential_store to save keys, and web-based API calls to verify keys. The local AI guides the user conversationally through each step.
 
+The single milestone covers Layers 1-7 (seven processing layers) for one configured provider. Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the atomicity of provider configuration: the Configured API Provider Access state is only verifiable at end-of-pipeline (provider selection → signup → key extraction → store → verify), and intermediate states represent partial configuration unsafe to commit because an unverified key in the credential store would cause silent runtime failures.
+
+---
 
 ## MILESTONES DELIVERED
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: Configured API provider access
+### Milestone 1: Configured API Provider Access
 
-- **Endpoint produced:** One or more commercial AI API keys (Anthropic, OpenAI, Google) stored in the system credential store under `ora-[provider]`; corresponding endpoint entries added to `[workspace]/config/endpoints.json` with `credential_key`, model, and verification timestamp; evaluation fallback chain documented in `[workspace]/config/api-providers.md`
-- **Verification criterion:** (a) each configured provider has a key stored in the system credential store (no plaintext file, no log value); (b) each configured provider has a verification result recorded — either a successful minimal API call (200 response with generated text) or an explicit stored-but-unverified status with reason (auth error, quota error, or network error); (c) `endpoints.json` contains one active entry per configured provider with `credential_key` matching the credential-store key name; (d) `api-providers.md` documents the four-layer fallback chain (browser automation → API primary → API secondary → local-only) with primary/secondary selection recorded; (e) no key value appears in any log, session file, or persisted artifact
-- **Preconditions:** User has or will create accounts with the selected providers and can complete payment-method setup during execution; local orchestrator has browser_open, credential_store, and HTTP tool access; a writable `[workspace]/config/` directory exists
-- **Framework Registry summary:** Acquires and securely stores commercial AI API keys (Anthropic, OpenAI, Google), registers endpoints, and configures the evaluation fallback chain
+- **Endpoint produced:** One or more commercial AI API keys (Anthropic, OpenAI, Google) stored in the system credential store under `ora-[provider]`; corresponding endpoint entries added to `[workspace]/config/endpoints.json` with `credential_key`, model, and verification timestamp; evaluation fallback chain documented in `[workspace]/config/api-providers.md`.
+- **Verification criterion:** (a) each configured provider has a key stored in the system credential store (no plaintext file, no log value); (b) each configured provider has a verification result recorded — either a successful minimal API call (200 response with generated text) or an explicit stored-but-unverified status with reason (auth error, quota error, or network error); (c) `endpoints.json` contains one active entry per configured provider with `credential_key` matching the credential-store key name; (d) `api-providers.md` documents the four-layer fallback chain (browser automation → API primary → API secondary → local-only) with primary/secondary selection recorded; (e) no key value appears in any log, session file, or persisted artifact.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Credential-store entries plus updated endpoints.json plus api-providers.md documentation file.
+- **Drift check question:** Are all configured provider keys stored only in the credential store (never in plaintext or logs), and does the fallback chain documented in api-providers.md match the actual primary/secondary selection in endpoints.json?
 
+---
 
 ## EVALUATION CRITERIA
 
@@ -80,6 +100,7 @@ This framework's declaration of the project-level milestones it can deliver. Use
    - 2: Provider configured but fallback chain not documented or endpoint registry not updated.
    - 1: No configuration file produced.
 
+---
 
 ## NAMED FAILURE MODES
 
@@ -89,12 +110,13 @@ This framework's declaration of the project-level milestones it can deliver. Use
 
 **The Wrong Page Trap:** Provider websites change their layouts. The framework provides specific URLs, but the signup flow may differ from what the instructions describe. The framework must tell the user what they are looking for (a section called "API Keys" or "Developer Console"), not just which buttons to click.
 
-**The Key Format Trap:** Users may copy extra whitespace, quotation marks, or partial keys when pasting. The framework must trim whitespace and validate the key format before storing. Anthropic keys start with `sk-ant-`. OpenAI keys start with `sk-`. Google keys are longer alphanumeric strings.
+**The Key Format Trap:** Users may copy extra whitespace, quotation marks, or partial keys when pasting. The framework must trim whitespace and validate the key format before storing. Anthropic keys start with `sk-ant-`. OpenAI keys start with `sk-`. Google keys are longer alphanumeric strings. Stability AI keys start with `sk-` (same prefix shape as OpenAI — verify the key goes to the right `ora-` keychain entry, not the wrong one). Replicate tokens start with `r8_`.
 
 **The Verification Failure Trap:** A correctly entered key fails verification because the user's account requires payment method confirmation, email verification, or has a usage limit of $0 until billing is activated. The framework must distinguish between "key is invalid" and "key is valid but account is not yet activated" and guide the user accordingly.
 
 **The Unnecessary Expense Trap:** The user sets up API keys without understanding that browser automation (already configured) provides the same evaluation capability at no additional cost. They spend money on API access they don't need. Correction: The framework's explanation (Layer 1) explicitly states that browser automation is the primary channel and API is the overflow/reliability alternative. The framework presents the cost comparison: browser automation uses existing subscriptions (free or already paid for); API access is pay-per-use on top of subscriptions. The user makes an informed decision.
 
+---
 
 ## LAYER 1: EXPLANATION AND CONTEXT
 
@@ -122,7 +144,9 @@ If none of these apply to you right now, you can skip this setup and return to i
 
 **Section 3 — What it costs:**
 
-"API access is pay-per-use. Here's what typical usage looks like when API is your overflow channel (not primary):
+"API access is pay-per-use. There are two distinct cost regimes depending on what kind of provider you're setting up:
+
+**Evaluation providers (Anthropic, OpenAI text, Google)** — billed per token of text. Typical usage when API is your overflow channel (not primary):
 
 - Light overflow use: $1–5 per month
 - Moderate use (dozens of evaluations): $10–30 per month
@@ -130,7 +154,9 @@ If none of these apply to you right now, you can skip this setup and return to i
 
 The cheapest options (Google Gemini Flash, OpenAI GPT-4o-mini) cost roughly six hundredths of a cent per evaluation. Even the most capable models (Claude Sonnet, GPT-4o) cost about one to two cents per evaluation.
 
-For comparison, browser automation uses your existing subscriptions — if you're already paying for Claude Pro or ChatGPT Plus, that cost doesn't change. API access is an additional, separate expense.
+**Image-generation providers (OpenAI DALL-E, Stability AI, Replicate)** — billed per image, not per token. Per-image pricing varies widely by provider, model, and resolution — roughly a few cents per standard-resolution image at the cheap end and tens of cents at the expensive end. There is no usage tier inside the visual pane that previews or estimates per-call costs before generation; charges land where they land. You can monitor spending on each provider's billing dashboard. If you want a hard ceiling, set a monthly spending cap inside the provider's billing settings — Ora itself does not enforce one.
+
+For comparison, browser automation uses your existing subscriptions — if you're already paying for Claude Pro or ChatGPT Plus, that cost doesn't change. API access is an additional, separate expense. Image generation has no browser-automation alternative; if you want to use the visual pane's AI generators, an API key is the only path.
 
 You will need to provide a credit card during signup."
 
@@ -146,16 +172,29 @@ IF the user wants to proceed, THEN ask: "Which providers would you like to set u
 
 Present the options:
 
+**Evaluation providers (text/reasoning):**
+
 1. **Anthropic (Claude)** — Recommended as primary API evaluator. Strong analytical and reasoning capability.
-2. **OpenAI (GPT)** — Widely used. Good general capability.
+2. **OpenAI (GPT)** — Widely used. Good general capability. Same key also serves DALL-E image generation if you select option 6.
 3. **Google (Gemini)** — Lowest cost option. Gemini Flash is extremely inexpensive.
-4. **All three** — Provides maximum fallback coverage. Recommended if budget allows.
-5. **I already have one or more API keys** — Skip to key entry.
+4. **All three evaluation providers** — Provides maximum fallback coverage for evaluation. Recommended if budget allows.
+
+**Image-generation providers (visual pane):**
+
+5. **OpenAI image (DALL-E)** — Reuses the OpenAI key from option 2. If you've already configured OpenAI, no additional setup is needed; the same `ora-openai` keychain entry serves DALL-E.
+6. **Stability AI** — Stable Diffusion family models (SDXL, SD3). Quality control via image-to-image, ControlNet, and style references. Pay-per-image.
+7. **Replicate** — Aggregator hosting hundreds of community image models, plus video and style-training. Long-tail fallback for capabilities the other two image providers don't cover.
+8. **All image providers** — Configure all three for maximum image-generation fallback coverage.
+
+**Other:**
+
+9. **I already have one or more API keys** — Skip to key entry.
 
 Record the user's selection. Process each selected provider through Layers 2–4 sequentially.
 
 IF the user decides to skip, THEN: "No problem. Your system will continue using browser automation for evaluation. You can set up API keys anytime by telling your AI: 'Read and execute frameworks/api-key-setup.md'"
 
+---
 
 ## LAYER 2: PROVIDER SIGNUP (repeat for Each Selected provider)
 
@@ -190,6 +229,7 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
 3. Guide: "Log in or create an account. You should see the API Keys page. Click 'Create new secret key.' Give it a name like 'ora' so you can identify it later."
 4. **Critical warning (first delivery):** Same as above, noting OpenAI keys start with `sk-`.
+5. **Image-generation note:** "The OpenAI API key you just created serves both the chat completions endpoint (used for evaluation) AND the image-generation endpoints (DALL-E 3 / DALL-E 2). One key, both capabilities. The credential store entry `ora-openai` is what the visual pane will look up when it routes to DALL-E. You do not need to create a separate key for image generation."
 
 **IF provider is Google:**
 
@@ -205,6 +245,37 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 3. Guide: "Log in with your Google account. Click 'Create API Key.' Select a Google Cloud project (if you don't have one, Google will create a default project for you)."
 4. **Critical warning (first delivery):** Same as above.
 
+**IF provider is Stability AI:**
+
+1. Tell the user: "I'm going to open the Stability AI platform in your browser. Stability hosts the Stable Diffusion family of image-generation models — SDXL, SD3, and related variants. Image generation is billed per image (typically a few cents per standard image, more for higher resolutions). There is no monthly minimum and no upfront commitment, but you will need to add a payment method or buy credits to use the API."
+2. Open the browser:
+   ```xml
+   <tool_call>
+   <n>browser_open</n>
+   <url>https://platform.stability.ai/</url>
+   </tool_call>
+   ```
+
+3. Guide: "Log in or create a Stability AI account. Once you're in the platform, look for 'Account' or 'API Keys' in the navigation — Stability typically presents it as part of the account settings rather than a separate developer console. Click to generate a new API key. You may also need to add a payment method or purchase credits before the key will work for live generation calls."
+4. **Critical warning (first delivery):** "IMPORTANT: The key will be shown exactly ONCE. Do NOT close this page until you've copied the key. Stability AI keys typically start with `sk-` and are a long string of letters and numbers. Note: this prefix is the same shape as an OpenAI key — make sure you keep them separate, since they go to different services and to different `ora-` keychain entries."
+5. **Pricing transparency:** Per the architectural decision in §11.13 of the visual-pane plan, the framework does not preview or estimate per-call costs. You can monitor spending on Stability AI's billing dashboard at any time. If you want a hard ceiling, set a monthly spending cap inside Stability's billing settings — Ora itself does not enforce one.
+
+**IF provider is Replicate:**
+
+1. Tell the user: "I'm going to open Replicate's API tokens page in your browser. Replicate is an aggregator — it hosts hundreds of community-built image, video, and audio models behind a single API, and serves as a long-tail fallback for capabilities that OpenAI and Stability don't cover. Replicate is billed by GPU time per run; per-image cost varies by model from fractions of a cent to tens of cents."
+2. Open the browser:
+   ```xml
+   <tool_call>
+   <n>browser_open</n>
+   <url>https://replicate.com/account/api-tokens</url>
+   </tool_call>
+   ```
+
+3. Guide: "Log in or create a Replicate account (you can sign in with GitHub if you have one). The API tokens page should appear directly after sign-in. Click 'Create token' and give it a name like 'ora' so you can identify it later. Replicate will also ask for a payment method before runs will execute, even though the token itself is created without one."
+4. **Critical warning (first delivery):** "IMPORTANT: The token will be shown exactly ONCE. Do NOT close this page until you've copied it. Replicate tokens start with `r8_` and are a long string of letters and numbers."
+5. **Pricing transparency:** Per the architectural decision in §11.13 of the visual-pane plan, the framework does not preview or estimate per-call costs. You can monitor spending on Replicate's billing dashboard at any time. If you want a hard ceiling, set a monthly spending cap inside Replicate's billing settings — Ora itself does not enforce one.
+
+---
 
 ## LAYER 3: KEY ENTRY AND STORAGE (repeat for Each provider)
 
@@ -219,6 +290,8 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
    - Remove any quotation marks surrounding the key.
    - IF provider is Anthropic AND key does not start with `sk-ant-`, THEN warn: "This doesn't look like an Anthropic API key — they typically start with 'sk-ant-'. Check that you copied the full key."
    - IF provider is OpenAI AND key does not start with `sk-`, THEN warn: "This doesn't look like an OpenAI API key — they typically start with 'sk-'. Check that you copied the full key."
+   - IF provider is Stability AI AND key does not start with `sk-`, THEN warn: "This doesn't look like a Stability AI API key — they typically start with 'sk-' (the same prefix shape as OpenAI; verify it's the Stability key, not an OpenAI key pasted by mistake). Check that you copied the full key."
+   - IF provider is Replicate AND key does not start with `r8_`, THEN warn: "This doesn't look like a Replicate API token — they typically start with 'r8_'. Check that you copied the full token."
    - IF key is shorter than 20 characters, THEN warn: "This seems too short for an API key. Did you copy the full string?"
 
 4. **Store the key securely:**
@@ -236,6 +309,7 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 6. **Log the event (without the key value):**
    Log to the session file: "API key stored for [provider]. Key verified format. Stored in credential manager." NEVER log the key value itself.
 
+---
 
 ## LAYER 4: VERIFICATION (repeat for Each provider)
 
@@ -261,6 +335,12 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
    **Google:** POST to the Gemini API with model `gemini-2.0-flash`, max_tokens 10, message "Say hello." Expected cost: <$0.001.
 
+   **Stability AI:** POST to `https://api.stability.ai/v2beta/stable-image/generate/sd3` (or the smallest currently-current SDXL endpoint) with the smallest viable request — prompt `"hi"`, output_format `jpeg`, dimensions 256×256 (or the smallest supported). The verification call generates one real image; expected cost is on the order of a few cents (Stability does not currently expose a free-tier ping endpoint). The framework warns the user before running the call: "Verifying the Stability AI key requires generating one small image, which will incur a charge of a few cents on your account. Proceed?" Expected cost: ~$0.01–0.05 depending on model and resolution.
+
+   **Replicate:** POST to `https://api.replicate.com/v1/predictions` invoking a known fast, cheap model (e.g., a small SDXL or Stable Diffusion variant) with prompt `"hi"` and the lowest supported step count and resolution. The verification call generates one real image; expected cost is on the order of fractions of a cent to a few cents depending on the model and GPU class. The framework warns the user before running the call: "Verifying the Replicate token requires running one small model, which will incur a charge of typically less than a cent on your account. Proceed?" Expected cost: ~$0.001–0.02 depending on the model selected.
+
+   **Note on image-provider verification:** Unlike text providers, image providers have no genuinely free verification endpoint — listing models is sometimes available without auth and so doesn't actually verify the key. The framework therefore performs a real (smallest-possible) generation. This is consistent with the §11.13 cost-transparency design: charges land where they land, and the user is informed before the call so the small verification charge isn't a surprise.
+
 3. **Interpret the result:**
 
    IF the API returns a successful response with generated text:
@@ -276,6 +356,7 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
    IF the API returns a network error:
    - Report: "I couldn't reach [provider]'s servers. This may be a temporary network issue. The key has been stored — we can verify it later. For now, let's continue with the next provider."
 
+---
 
 ## LAYER 5: CONFIGURATION AND SUMMARY
 
@@ -299,7 +380,7 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
 2. **Update the endpoint registry** at `[workspace]/config/endpoints.json`:
 
-   For each configured API provider, add an endpoint entry:
+   For each configured **evaluation** API provider, add an endpoint entry:
 
    ```json
    {
@@ -312,6 +393,34 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
      "credential_key": "ora-[provider]"
    }
    ```
+
+   For each configured **image-generation** API provider, add an endpoint entry of type `image-api`:
+
+   ```json
+   {
+     "name": "stability-api",
+     "type": "image-api",
+     "service": "stability",
+     "model": "[default model — e.g., sd3 or sdxl]",
+     "status": "active",
+     "verified": "[ISO date]",
+     "credential_key": "ora-stability"
+   }
+   ```
+
+   ```json
+   {
+     "name": "replicate-api",
+     "type": "image-api",
+     "service": "replicate",
+     "model": "[default model identifier — e.g., a stable-diffusion variant]",
+     "status": "active",
+     "verified": "[ISO date]",
+     "credential_key": "ora-replicate"
+   }
+   ```
+
+   For OpenAI image generation: do **not** add a separate endpoint entry — the existing `openai-api` entry already references the `ora-openai` credential, and that same key serves the DALL-E endpoints. Image-routing logic looks up the OpenAI service and calls the appropriate endpoint (chat completions or images) based on the requested capability.
 
    Do not modify existing browser or local endpoint entries.
 
@@ -372,6 +481,8 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
    </tool_call>
    ```
 
+   IF one or more **image-generation** providers were configured during this session, THEN ALSO write the sibling configuration file `[workspace]/config/api-image-providers.md` documenting the image-generation fallback chain. The shape of this file is fixed by the sibling-document spec at `[workspace]/config/api-image-providers.md` (template included with Ora) — it lists configured image providers, their default models, the preferred → fallback ordering, and the "no browser-automation tier" note per §11.13. The framework writes the per-session status (configured / verified / unverified-with-reason) into the existing template; it does not author a new template each run.
+
 4. **Present the summary:**
 
    "Here's what we set up:
@@ -388,6 +499,7 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
    You don't need to do anything else — your boot.md specification knows how to use these keys through the orchestrator. The keys are stored securely and will be available whenever your system needs them."
 
+---
 
 ## LAYER 6: SELF-EVALUATION
 
@@ -441,6 +553,7 @@ Modifications applied: [list of corrections made during self-evaluation — retr
 Unresolved deficiencies: [list of criteria remaining below 3, with specific gap and what would resolve it]
 ```
 
+---
 
 ## LAYER 7: ERROR CORRECTION AND OUTPUT FORMATTING
 
@@ -494,6 +607,7 @@ IF the Self-Evaluation layer flagged any UNRESOLVED DEFICIENCY, THEN restate eac
 
 For operational runtime failures encountered during framework execution (key paste failures, verification failures after retries, user abandonment partway through), see the OPERATIONAL RECOVERY section below. That section covers failures that occur *during* framework execution; this Recovery Declaration covers unresolved deficiencies detected *at the end* of framework execution by the Self-Evaluation layer.
 
+---
 
 ## OPERATIONAL RECOVERY
 
@@ -518,6 +632,7 @@ WHEN the user wants to stop partway through:
 - Update the endpoint registry with completed providers.
 - Explain: "I've saved what we set up so far. Your browser automation connections remain your primary evaluation channel. You can add more API providers anytime by telling me to run this framework again."
 
+---
 
 ## EXECUTION COMMANDS
 
@@ -528,9 +643,11 @@ WHEN the user wants to stop partway through:
 5. Run Layer 6 (Self-Evaluation) scoring each of the 4 Evaluation Criteria against the output with cited evidence and confidence assessment. Apply modifications for any below-threshold scores.
 6. Complete Layer 7 (Error Correction and Output Formatting) including Error Correction Protocol, Missing Information Declaration, and Recovery Declaration. For operational runtime failures encountered during execution, consult the OPERATIONAL RECOVERY section.
 
+---
 
-*End of API Key Acquisition Framework v1.2*
+*End of API Key Acquisition Framework v1.3*
 
+---
 
 **VERSION HISTORY**
 
@@ -539,3 +656,5 @@ v1.0 (2026/03/23): Initial version. API keys positioned as the primary evaluatio
 v1.1 (2026/03/24): Repositioned API keys as the overflow/reliability channel behind browser automation via Playwright. Added Layer 1 context explaining the relationship between browser automation and API access. Added four-layer evaluation fallback chain (browser → API primary → API secondary → local-only). Added operational context rules for autonomous work. Added endpoint registry integration. Added the Unnecessary Expense Trap to Named Failure Modes. Updated evaluation criteria to include fallback chain completeness and browser automation context in user comprehension.
 
 v1.2 (2026/04/23): Added Layer 6 (Self-Evaluation) in penultimate position and Layer 7 (Error Correction and Output Formatting) in final position per Process Formalization Framework v2.0 Anatomy. Layer 6 scores each of the 4 Evaluation Criteria 1–5 with cited evidence, calibration warning, and remediation protocol for below-threshold scores. Layer 7 adds Error Correction Protocol (factual consistency, terminology, structural completeness, variable fidelity), Output Formatting, Missing Information Declaration, and Recovery Declaration. Renamed the existing RECOVERY section to OPERATIONAL RECOVERY to distinguish runtime-failure recovery (during execution) from the PFF Recovery Declaration (for unresolved deficiencies at end-of-execution). EXECUTION COMMANDS updated with steps 5 and 6 covering the new layers.
+
+v1.3 (2026/04/29): Extended Layer 2 with image-generation providers per WP-7.3.5 and §11.13 of the visual-pane plan. Added Stability AI section (signup `https://platform.stability.ai/`, key prefix `sk-`, keychain entry `ora-stability`) and Replicate section (signup `https://replicate.com/account/api-tokens`, key prefix `r8_`, keychain entry `ora-replicate`). Added a note under the existing OpenAI section confirming that the same `ora-openai` key serves DALL-E 3 / DALL-E 2 alongside chat completions — no separate setup required. Layer 1 Section 3 split into evaluation-cost regime (per-token) and image-generation-cost regime (per-image), and the provider-selection menu split into evaluation / image-generation / other groups. Layer 3 validation extended with prefix checks for Stability and Replicate. Layer 4 verification calls added for Stability (smallest viable SDXL/SD3 generation, ~$0.01–0.05) and Replicate (smallest viable model run, ~$0.001–0.02), with a note that image providers have no genuinely free verification endpoint and the user is informed before the small charge lands. Layer 5 endpoint-registry guidance extended with `type: image-api` entries for Stability and Replicate, plus a note that OpenAI image generation reuses the existing `openai-api` entry. Layer 5 also writes a sibling `[workspace]/config/api-image-providers.md` when image providers are configured; the template/spec lives in vault root as `api-image-providers.md`. Named Failure Modes Key Format Trap extended with the new prefixes.

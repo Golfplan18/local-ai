@@ -9,21 +9,403 @@
 <script src="/static/js/theme-loader.js" defer></script>
 <script src="/static/js/theme-library.js" defer></script>
 <script src="/static/js/customizer.js" defer></script>
+<!-- Konva + visual panel deps. Loaded BEFORE v3-canvas-mount.js so the
+     panel class is available when the mount script runs. visual-panel.js
+     degrades gracefully if optional deps (toolbar, dock) are missing. -->
+<link rel="stylesheet" href="/static/css/visual-panel.css">
+<script src="/static/vendor/konva/konva.min.js"></script>
+<script src="/static/visual-toolbar.js"></script>
+<script src="/static/canvas-serializer.js"></script>
+<script src="/static/annotation-parser.js"></script>
+<script src="/static/visual-panel.js"></script>
+<script src="/static/capture-controls.js"></script>
+<script src="/static/transcribe-input.js"></script>
+<script src="/static/media-library.js"></script>
+<script src="/static/timeline-editor.js"></script>
+<script src="/static/preview-monitor.js"></script>
+<script src="/static/transcript-panel.js"></script>
+<script src="/static/render-controls.js"></script>
+<script src="/static/settings-panel.js"></script>
+
+<!-- ── Phase 7 (Dual-Purpose Visual Pane) — ported from V1 2026-04-30 ─────
+     Phase 7 transforms the visual pane from thinking-only to a workspace
+     supporting diagrammatic reasoning + AI-driven image work in equal
+     measure. Loaded BEFORE the v3-* defer block so VisualPanel.init()
+     finds OraVisualDock, OraVisualToolbarBindings, and the capability
+     slot wirings on `window` when v3-canvas-mount.js calls panel.init().
+     Mount order mirrors index.html (V1) exactly; visual-panel.js
+     degrades gracefully when any optional dep is absent. -->
+
+<!-- WP-7.0.3 — Lucide icon resolver. visual-toolbar consults it via
+     OraIconResolver when resolving icon refs. init() is not called here
+     (mirrors V1); the toolbar's fallback glyph handles unresolved icons. -->
+<script src="/static/icon-resolver.js"></script>
+
+<!-- WP-7.1.2 — Edge-dock manager (visual-toolbar already mounted above). -->
+<script src="/static/visual-dock.js"></script>
+
+<!-- WP-7.1.5 — Ask Ora classifier + prompt UI + toolbar binding glue. -->
+<script src="/static/ask-ora-router.js"></script>
+<script src="/static/ask-ora-prompt.js"></script>
+<script src="/static/visual-toolbar-bindings.js"></script>
+
+<!-- WP-7.6.1 / WP-7.6.2 — async job queue strip + canvas placeholder. -->
+<script src="/static/job-queue.js"></script>
+
+<!-- WP-7.3 — Capability dispatch foundation. capability-invocation-ui is
+     the generic UX scaffold every §7.3 slot mounts onto; the rest are
+     dependency-free helpers. Ajv2020 is borrowed from the ora-visual-
+     compiler vendor dir — pack-validator looks for it on window.Ajv2020. -->
+<script src="/static/ora-visual-compiler/vendor/ajv/ajv2020.bundle.min.js"></script>
+<script src="/static/capability-invocation-ui.js"></script>
+<script src="/static/prompt-template-engine.js"></script>
+<script src="/static/shape-with-text.js"></script>
+<script src="/static/pack-validator.js"></script>
+
+<!-- WP-7.3.3 — Capability slot wirings (sync + async). Each module
+     attaches itself to OraCapabilityInvocationUI; video-generates and
+     style-trains additionally consume OraJobQueue (above). -->
+<script src="/static/capability-image-generates.js"></script>
+<script src="/static/tools/image-edits.js"></script>
+<script src="/static/capability-image-outpaints.js"></script>
+<script src="/static/capability-image-upscales.js"></script>
+<script src="/static/capability-image-styles.js"></script>
+<script src="/static/capability-image-varies.js"></script>
+<script src="/static/capability-image-to-prompt.js"></script>
+<script src="/static/capability-image-critique.js"></script>
+<script src="/static/capability-video-generates.js"></script>
+<script src="/static/capability-style-trains.js"></script>
+
+<!-- WP-7.5.1 — Selection / image tools. Self-register on window.OraTools
+     and read at panel _mountUniversalToolbar() time. -->
+<script src="/static/tools/rect-selection.tool.js"></script>
+<script src="/static/tools/brush-mask.tool.js"></script>
+<script src="/static/tools/lasso-selection.tool.js"></script>
+<script src="/static/tools/image-crop.tool.js"></script>
+
+<!-- WP-7.0.2 / WP-7.7.6 — canvas file format reader/writer + share
+     reminder modal. Loaded ahead of the Phase 7 commands so save-canvas
+     reaches OraCanvasFileFormat + OraCanvasShareReminder at boot. -->
+<script src="/static/canvas-file-format.js"></script>
+<script src="/static/canvas-share-reminder.js"></script>
+
+<!-- Phase 7 canvas-operation commands (each is its own self-registering IIFE). -->
+<script src="/static/commands/resize-canvas.js"></script>
+<!-- WP-7.4.6 — Lazy canvas expansion. Prototype-patches VisualPanel so
+     newly placed objects silently grow the canvas via OraResizeCanvas.apply()
+     when their bbox approaches within 200 px of any edge. -->
+<script src="/static/lazy-expansion.js"></script>
+<!-- WP-7.4.8 — Save + autosave (POST to /api/canvas/save, 30 s timer). -->
+<script src="/static/commands/save-canvas.js"></script>
+<!-- WP-7.4.2 — Crop commands. Both reuse OraResizeCanvas geometry helpers
+     and OraCanvasFileFormat (loaded above). -->
+<script src="/static/commands/crop-to-content.js"></script>
+<script src="/static/commands/crop-to-selection.js"></script>
+<!-- WP-7.4.9a / WP-7.4.9b — Export → PNG/JPG (raster) + Export → SVG.
+     Both reuse OraSaveCanvas helpers and dispatch ora:canvas-pre-share
+     through OraCanvasShareReminder. -->
+<script src="/static/commands/export-raster.js"></script>
+<script src="/static/commands/export-svg.js"></script>
+
+<!-- WP-7.2 — Customization runtime. pack-loader needs OraPackValidator
+     (above); macro-engine and prompt-template-runtime need
+     OraPromptTemplateEngine + OraCapabilityInvocationUI (above);
+     composition-template-loader needs OraCanvasFileFormat (above);
+     pack-install-review needs OraPackValidator. -->
+<script src="/static/pack-loader.js"></script>
+<script src="/static/macro-engine.js"></script>
+<script src="/static/prompt-template-runtime.js"></script>
+<script src="/static/composition-template-loader.js"></script>
+<script src="/static/pack-install-review.js"></script>
+
+<!-- WP-7.7.2 / WP-7.7.3 — Onboarding. Both monkey-patch VisualPanel and
+     read window.OraPanels.visual at runtime, so they load after
+     visual-panel.js (mounted earlier in this <head>). -->
+<script src="/static/ai-undo-warning.js"></script>
+<script src="/static/opt-in-tutorial.js"></script>
+
+<!-- WP-7.4.9c — Export → PDF. Loads jsPDF UMD bundle then the command IIFE. -->
+<script src="/static/vendor/jspdf/jspdf.umd.min.js"></script>
+<script src="/static/commands/export-pdf.js"></script>
+
+<script src="/static/js/sidebar.js" defer></script>
+<script src="/static/js/v3-layout.js" defer></script>
+<script src="/static/js/v3-bootstrap.js" defer></script>
+<script src="/static/js/v3-state.js" defer></script>
+<!-- V3 Phase 7 platform bootstrap. Loaded BEFORE v3-canvas-mount.js so the
+     pack validator init has a chance to race the canvas mount; even if it
+     loses, the boot script also listens for ora:canvas-mounted and
+     re-fires _mountUniversalToolbar after init. -->
+<script src="/static/js/v3-phase7-boot.js" defer></script>
+<!-- V3 pack-toolbar wiring. Builds the extended action+predicate registry
+     pack toolbars need (drawing tools, image tools, capability dispatches),
+     docks every registered pack toolbar at its default edge, and renders a
+     floating popover for capability:* clicks with OraCapabilityInvocationUI
+     mounted inside. v3-phase7-boot calls OraV3PackToolbars.mountAll(panel)
+     once init + pack autoload finish. -->
+<script src="/static/js/v3-pack-toolbars.js" defer></script>
+<!-- V3 sample-template gallery (WP-7.7.5). Modal launched by the universal
+     toolbar's "New canvas" button (tool:new_canvas). Two sections: pack
+     templates + user-saved templates with a save-as-template tile. Hooks
+     via document-level click delegation so it doesn't need to extend the
+     universal toolbar's action registry. -->
+<script src="/static/js/v3-template-gallery.js" defer></script>
+<!-- V3 canvas-state codec (Konva ↔ canvas-state v0.1). Used by the
+     gallery to serialize the current canvas as a user-saved template
+     and to deserialize pack/user templates back onto the panel. -->
+<script src="/static/js/v3-canvas-state-codec.js" defer></script>
+<!-- Cartoon Studio bubble + caption tools. Provides
+     OraV3BubbleTools.activateTool(panel, kind) for the cartoon-studio
+     pack toolbar bindings (tool:speech_bubble, tool:thought_bubble,
+     tool:shout_bubble, tool:caption_box). -->
+<script src="/static/js/v3-bubble-tools.js" defer></script>
+<!-- Comic panel-grid interior-border dragging. Listens for
+     ora:canvas-loaded and overlays draggable handles on shared edges
+     between panel rects (marked panel:true). -->
+<script src="/static/js/v3-panel-grid.js" defer></script>
+<!-- Specialty-pack toolbar selector. Spine button "spineToolbarSelector"
+     (Position 8) and Shift+T both toggle a popover that lets the user
+     dock or undock individual specialty pack toolbars (Diagram Thinking,
+     Photo Editor, Mood Board, Cartoon Studio). Replaces the prior auto-
+     mount behavior so V3 boots with a clean canvas. Active set persists
+     in localStorage via OraV3PackToolbars. Must load AFTER v3-pack-toolbars
+     since it depends on mountPack/unmountPack/listAvailablePacks. -->
+<script src="/static/js/v3-toolbar-selector.js" defer></script>
+<!-- Canvas-image → media-library transfer. Two invocations: right-click
+     a canvas image (stage contextmenu listener wired by visual-panel.js)
+     or click the "Send image to media library" universal-toolbar button.
+     Both call OraV3CanvasToLibrary.send / sendBest, which extracts the
+     original image bytes (data URL or fetched URL — never a canvas-state
+     raster) and POSTs to /api/media-library/<conv>/add. -->
+<script src="/static/js/v3-canvas-to-library.js" defer></script>
+<script src="/static/js/v3-canvas-mount.js" defer></script>
+<script src="/static/js/prompt-overlay.js" defer></script>
+<script src="/static/js/v3-conversation.js" defer></script>
+<!-- V3 Input Handling Phase 4 — input-pane state container + framework
+     picker. input-state.js must load before framework-picker.js so the
+     picker's commitSelection can call OraInputState.setFramework on row
+     click. Both are defer-loaded; ordering follows declaration order. -->
+<script src="/static/js/input-state.js" defer></script>
+<script src="/static/js/framework-picker.js" defer></script>
+<!-- V3 Input Handling Phase 7 — framework setup popup. Driven by the
+     submit-flow code in this file's inline script (Phase 7.E) when a
+     framework is selected and the gap analyzer reports missing inputs. -->
+<script src="/static/js/framework-setup-popup.js" defer></script>
+<!-- V3 Input Handling Phase 8 — document drop module. Mirrors
+     transcribe-input.js shape; the file-drop dispatcher in this file's
+     inline script routes each dropped/attached file to either
+     OraTranscribeInput (audio/video) or OraDocumentInput (documents). -->
+<script src="/static/js/document-input.js" defer></script>
 </head>
 <body class="theme-dark">
 
 <div class="ora-shell">
 
+  <!-- LEFT SIDEBAR — V3 Phase 4.1–4.4 — collapsed by default to icon-width
+       dashboard; expands to a header-less panel with a new-thread command
+       at the top and three groups (Unread / Active / Pending). -->
+  <aside class="left-sidebar" id="leftSidebar" aria-label="Conversations">
+
+    <div class="sidebar-collapsed-dashboard">
+      <button class="sidebar-dash-icon" type="button" id="sidebarDashExpand"
+              aria-label="Expand conversations sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+      <button class="sidebar-dash-icon" type="button" id="sidebarDashNewChat"
+              aria-label="Start new conversation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M21 11.5a8.38 8.38 0 0 1-9 8.38 8.5 8.5 0 0 1-7.6-3.8L3 21l1.92-2.4A8.38 8.38 0 1 1 21 11.5z"/>
+          <line x1="12" y1="8" x2="12" y2="14"/>
+          <line x1="9" y1="11" x2="15" y2="11"/>
+        </svg>
+      </button>
+      <span class="sidebar-dash-count" id="sidebarDashUnread"
+            data-count="0" title="Unread outputs">0</span>
+      <span class="sidebar-dash-count" id="sidebarDashActive"
+            data-count="0" title="Active conversations">0</span>
+      <span class="sidebar-dash-count" id="sidebarDashPending"
+            data-count="0" title="Pending operations">0</span>
+    </div>
+
+    <div class="sidebar-expanded-panel">
+      <div class="sidebar-top-row">
+        <button class="sidebar-new-thread-cmd" type="button"
+                aria-label="Start new conversation">
+          <span class="plus-glyph">+</span>
+          <span>New thread</span>
+        </button>
+        <!-- Backlog 3E — pin-in-place toggle. Default off (temporary mode);
+             when pressed the sidebar stays open until unpinned. -->
+        <button class="sidebar-pin-toggle" type="button"
+                id="sidebarPinToggle" aria-pressed="false"
+                title="Pin sidebar open" aria-label="Pin sidebar open">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <line x1="12" y1="17" x2="12" y2="22"/>
+            <path d="M7 17h10l-1.5-3V6.5a3 3 0 0 0-7 0V14L7 17z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sidebar-groups">
+        <!-- Spec §3A order: Pinned / Unread / Errored / Active / Pending+Ongoing.
+             Pinned hosts the WELCOME thread (auto-pinned via is_welcome) AND
+             any conversation the user has explicitly pinned (Backlog 3F). -->
+        <div class="sidebar-group" data-group="pinned">
+          <div class="sidebar-group-label">Pinned</div>
+          <div class="sidebar-group-rows"></div>
+        </div>
+        <div class="sidebar-group" data-group="unread">
+          <div class="sidebar-group-label">Unread</div>
+          <div class="sidebar-group-rows"></div>
+        </div>
+        <!-- Backlog 11 — errored runs surface as their own group; header
+             only shows when at least one errored row exists. -->
+        <div class="sidebar-group" data-group="errored">
+          <div class="sidebar-group-label">Errored</div>
+          <div class="sidebar-group-rows"></div>
+        </div>
+        <div class="sidebar-group" data-group="active">
+          <div class="sidebar-group-label">Active</div>
+          <div class="sidebar-group-rows"></div>
+        </div>
+        <div class="sidebar-group" data-group="pending">
+          <div class="sidebar-group-label">Pending</div>
+          <div class="sidebar-group-rows"></div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
   <!-- LEFT COLUMN — input on top, draggable bridge strip, output on bottom -->
   <div class="left-column">
     <div class="pane input-pane">
       <textarea spellcheck="false"></textarea>
+      <!-- V3 Input Handling Phase 8 — attachment chip row. The
+           file-drop dispatcher (in this file's inline script) renders
+           per-file chips here when a file is dropped on the pane or
+           picked via the attach icon. OraTranscribeInput and
+           OraDocumentInput both append into this same row so the
+           visual treatment is consistent regardless of file type. -->
+      <div class="input-pane-attachments" id="inputPaneAttachments"
+           aria-live="polite" aria-label="Attached files"></div>
+      <!-- V3 Input Handling Phase 3 — two-icon bottom-right toolbar:
+           framework picker, attach. Mode selection is intentionally absent;
+           the mode-selection process is being redesigned separately and
+           will land its own picker with that work.
+           Click handlers dispatch `ora:input-toolbar:{framework|attach}`
+           events; Phase 4 wires the actual framework picker dropdown. -->
+      <div class="input-pane-toolbar" role="toolbar" aria-label="Input options">
+        <button class="input-pane-toolbar__btn" type="button"
+                id="inputToolbarFramework"
+                aria-label="Pick framework"
+                data-input-toolbar="framework">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </button>
+        <button class="input-pane-toolbar__btn" type="button"
+                id="inputToolbarAttach"
+                aria-label="Attach file"
+                data-input-toolbar="attach">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
+        <input type="file" id="inputToolbarAttachFile" multiple
+               style="display: none" aria-hidden="true">
+      </div>
     </div>
     <div class="bridge-strip" id="bridgeStrip" role="separator"
          aria-orientation="horizontal" aria-label="Resize input">
+      <!-- V3 Input Handling Phase 5 — left-justified framework label. Set
+           by the framework picker via the `ora:framework-changed` event;
+           empty when no framework is selected for the current input. -->
+      <span class="bridge-framework-label" id="bridgeFrameworkLabel"></span>
+      <!-- Right-justified conversation-mode label (stealth/private),
+           owned by V3 Item 5 / Phase 1.x. Mirrored on the right bridge
+           strip near the spine R glyph. -->
       <span class="bridge-mode-label" id="bridgeModeLabel"></span>
     </div>
+    <!-- V3 design backlog item 8B: prompt overlay. Hidden by default;
+         shown via the expand button in the output pane header below.
+         When active, sized by JS to cover the input pane and the bridge
+         strip exactly. Read-only display of the previous prompt for the
+         currently-viewed turn. -->
+    <div class="prompt-overlay" id="promptOverlay" aria-hidden="true">
+      <div class="prompt-overlay-header">
+        <span class="prompt-overlay-title">Prompt for this turn</span>
+        <button class="prompt-overlay-close-btn" type="button" id="promptOverlayCloseBtn"
+                aria-label="Close prompt overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="6" y1="6" x2="18" y2="18"/>
+            <line x1="18" y1="6" x2="6" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="prompt-overlay-content" id="promptOverlayContent"></div>
+    </div>
+
     <div class="pane output-pane has-content">
+
+      <!-- V3 Input Handling Phase 4 — framework picker dropdown.
+           Anchored to the top of this output pane, expanding downward.
+           Hidden by default; opened by the framework toolbar button via
+           the `ora:input-toolbar:framework` event. Rows fetched from
+           GET /api/frameworks/picker on every open. -->
+      <div class="framework-picker" id="frameworkPicker" hidden
+           role="dialog" aria-label="Pick a framework" aria-modal="false">
+        <div class="framework-picker__search-row">
+          <input class="framework-picker__search" id="frameworkPickerSearch"
+                 type="text" placeholder="Search frameworks…"
+                 autocomplete="off" spellcheck="false">
+        </div>
+        <div class="framework-picker__list" id="frameworkPickerList"></div>
+      </div>
+
+      <!-- V3 Input Handling Phase 7 — framework setup popup. Empty
+           container; framework-setup-popup.js renders the gap-analysis
+           report into it on demand and resolves a Promise when the user
+           clicks Cancel / Run anyway / Continue. -->
+      <div class="framework-setup-popup" id="frameworkSetupPopup" hidden
+           role="dialog" aria-label="Framework setup" aria-modal="false"></div>
+
+      <!-- V3 design backlog item 8A: output pane header. Mode icon and
+           display name on the left; navigation arrows around the turn
+           position, timestamp, and prompt-overlay expander on the right.
+           Real data flow (display name from conversation.json, turn
+           position from 2B load endpoint, timestamp from chunk YAML)
+           wires in later. -->
+      <div class="output-pane-header">
+        <div class="output-pane-header-left">
+          <span class="output-pane-mode-icon" id="outputPaneModeIcon" aria-hidden="true"></span>
+          <span class="output-pane-display-name" id="outputPaneDisplayName">Conversation</span>
+        </div>
+        <div class="output-pane-header-right">
+          <button class="output-pane-nav-btn" type="button" id="outputPaneNavBack"
+                  aria-label="Previous turn" disabled>&#8592;</button>
+          <span class="output-pane-turn-position" id="outputPaneTurnPosition">turn 1 of 1</span>
+          <button class="output-pane-nav-btn" type="button" id="outputPaneNavForward"
+                  aria-label="Next turn" disabled>&#8594;</button>
+          <span class="output-pane-timestamp" id="outputPaneTimestamp">—</span>
+          <button class="output-pane-expand-btn" type="button" id="outputPaneExpandBtn"
+                  aria-label="Show prompt for this turn" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 15 12 9 18 15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <div class="output-content">
         <h1>Heading 1</h1>
         <p>Body text demonstrates the default paragraph styling. The output pane uses the theme's text-normal color and base font size.</p>
@@ -49,17 +431,10 @@
   <!-- SPINE — bare; icon clusters flush with pane top/bottom -->
   <div class="spine">
 
-    <!-- TOP cluster: ? (private) at the very top, ⊘ (stealth) below it -->
+    <!-- TOP cluster — V3 spec §2.2: Position 1 (top) = Stealth (⊘),
+         Position 2 = Private (◎). Order matches §1.1's "two mode toggle
+         buttons" enumeration. -->
     <div class="spine-top">
-
-      <button class="spine-button" type="button" aria-label="Private"
-              data-mode-button="private" id="modeBtnPrivate">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/>
-        </svg>
-      </button>
 
       <button class="spine-button" type="button" aria-label="Stealth"
               data-mode-button="stealth" id="modeBtnStealth">
@@ -67,6 +442,15 @@
              stroke-width="2">
           <circle cx="12" cy="12" r="9"/>
           <line x1="6" y1="6" x2="18" y2="18" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <button class="spine-button" type="button" aria-label="Private"
+              data-mode-button="private" id="modeBtnPrivate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/>
         </svg>
       </button>
 
@@ -97,7 +481,7 @@
       </g>
 
       <g id="logo-a" class="wordmark-letter wordmark-clickable"
-         role="button" tabindex="0" aria-label="Output menu">
+         role="button" tabindex="0" aria-label="Open conversations sidebar">
         <circle cx="145" cy="742" r="100" fill="transparent" stroke="none"/>
         <rect x="227" y="642" width="18" height="200" class="wm-fill-base"/>
         <circle cx="145" cy="742" r="91"  class="wm-stroke-bright"/>
@@ -105,13 +489,26 @@
 
     </svg>
 
-    <!-- BOTTOM cluster: +, ≡, sliders, bar chart — flush with pane bottoms.
-         These are action buttons (no longer modes); they trigger UI without
-         tinting the interface. The data-mode-button attribute has been removed
-         so the mode-toggle JS does not handle them. -->
+    <!-- V3 spec §3 — bracketing text on the R glyph. Vertical position is
+         pinned to the wordmark r-center (placeWordmark() sets the top
+         coordinate). Visible only when stealth or private mode is active;
+         300ms fade per §3.4. -->
+    <span class="mode-bracket mode-bracket-left"  id="modeBracketLeft"  aria-hidden="true"></span>
+    <span class="mode-bracket mode-bracket-right" id="modeBracketRight" aria-hidden="true"></span>
+
+    <!-- BOTTOM cluster — V3 spec §2.2 + Audio/Video Phase 1:
+         Position 3 (Plus)             = New thread (opens §6 bootstrap flow)
+         Position 4 (Hamburger)        = Sidebar toggle (opens/closes §1.3)
+         Position 5 (Video camera)     = Video editing pane-mode toggle
+         Position 6 (Sliders)          = Configuration / settings
+         Position 7 (Painter's palette)= Theme & Appearance
+         data-mode-button is reserved for content-confidentiality modes
+         (Stealth, Private). The video toggle uses data-pane-mode-button
+         so it composes with — does not conflict with — those modes. -->
     <div class="spine-bottom">
 
-      <button class="spine-button" type="button" aria-label="Command palette">
+      <button class="spine-button" type="button" aria-label="New thread"
+              id="spineNewThread">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round">
           <line x1="12" y1="5" x2="12" y2="19"/>
@@ -119,7 +516,8 @@
         </svg>
       </button>
 
-      <button class="spine-button" type="button" aria-label="Mode selector">
+      <button class="spine-button" type="button" aria-label="Sidebar toggle"
+              id="spineSidebarToggle">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round">
           <line x1="4" y1="6" x2="20" y2="6"/>
@@ -128,7 +526,20 @@
         </svg>
       </button>
 
-      <button class="spine-button" type="button" aria-label="Configuration">
+      <button class="spine-button" type="button" aria-label="Video editing"
+              data-pane-mode-button="video" id="spineVideoMode">
+        <!-- Video camera glyph in the same minimalist line-stroke style as
+             the other spine icons. Body + lens triangle. -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="7" width="13" height="10" rx="1.5" ry="1.5"/>
+          <polygon points="16 10 21 7 21 17 16 14 16 10"/>
+        </svg>
+      </button>
+
+      <button class="spine-button" type="button" aria-label="Configuration"
+              id="spineSettingsBtn"
+              title="Open settings (capture, Whisper, API keys, export)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round">
           <line x1="4" y1="6" x2="20" y2="6"/>
@@ -140,7 +551,7 @@
         </svg>
       </button>
 
-      <button class="spine-button" type="button" aria-label="Theme and customization"
+      <button class="spine-button" type="button" aria-label="Theme and appearance"
               id="themeToggleBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -212,11 +623,18 @@
   const MAX_CHAT_INPUT_RATIO  = 0.7;     // of the chat-zone height
 
   // ─── Wordmark placement: r-center pinned to left bridge center ───
+  // V3 spec §3 also pins the mode-bracket text to the same Y so the
+  // bracketing rides with the R glyph during bridge drags.
+  const bracketLeft  = document.getElementById('modeBracketLeft');
+  const bracketRight = document.getElementById('modeBracketRight');
   const placeWordmark = () => {
     const bRect = bridge.getBoundingClientRect();
     const sRect = spine.getBoundingClientRect();
     const bridgeCenterViewport = bRect.top + bRect.height / 2;
-    wordmark.style.top = (bridgeCenterViewport - sRect.top) + 'px';
+    const topPx = (bridgeCenterViewport - sRect.top) + 'px';
+    wordmark.style.top = topPx;
+    if (bracketLeft)  bracketLeft.style.top  = topPx;
+    if (bracketRight) bracketRight.style.top = topPx;
   };
 
   // Bounds for the main split that keep the wordmark off the icon clusters.
@@ -339,10 +757,19 @@
       const label = MODE_LABELS[mode] || '';
       modeLabel.textContent = label;
       modeLabelRight.textContent = label;
+      // V3 spec §3 — bracketing text on R glyph, mirrors the mode label
+      // verbatim (just uppercase, letter-spaced via CSS).
+      if (bracketLeft)  bracketLeft.textContent  = label;
+      if (bracketRight) bracketRight.textContent = label;
     } else {
       modeLabel.textContent = '';
       modeLabelRight.textContent = '';
+      if (bracketLeft)  bracketLeft.textContent  = '';
+      if (bracketRight) bracketRight.textContent = '';
     }
+    // Spec §5A — refresh the disabled state on the OTHER mode button
+    // every time the active mode changes.
+    updateModeButtonAvailability();
   };
 
   // Q&A message lives in its own element, centered in the right bridge,
@@ -357,11 +784,230 @@
     }
   };
 
+  // V3 spec §5A — mutual exclusivity. While one mode is active the OTHER
+  // mode button is visually disabled (greyed) with a hover tooltip
+  // explaining why. No modal interruption — the disabled state IS the
+  // affordance. updateModeButtonAvailability() is called whenever the
+  // current mode changes (entered, exited, navigated to a tagged thread).
+  const updateModeButtonAvailability = () => {
+    const cur = currentMode();
+    document.querySelectorAll('.spine-button[data-mode-button]').forEach(btn => {
+      const btnMode = btn.dataset.modeButton;
+      const blocked = !!cur && cur !== btnMode;
+      btn.classList.toggle('mode-button-disabled', blocked);
+      btn.setAttribute('aria-disabled', blocked ? 'true' : 'false');
+      if (blocked) {
+        btn.setAttribute('title',
+          `Exit ${MODE_LABELS[cur] || cur} before entering ${MODE_LABELS[btnMode] || btnMode}`);
+      } else {
+        btn.removeAttribute('title');
+      }
+    });
+  };
+
+  // V3 spec §4 / §5 — Stealth / Private dropdowns. Clicking a mode button
+  // (when not in the OTHER mode) opens a New / Fork / Exit menu instead
+  // of toggling immediately. Exit only appears when already in that mode.
+  let modeDropdownEl = null;
+  const buildModeDropdown = () => {
+    if (modeDropdownEl) return modeDropdownEl;
+    modeDropdownEl = document.createElement('div');
+    modeDropdownEl.className = 'mode-dropdown';
+    modeDropdownEl.setAttribute('role', 'menu');
+    document.body.appendChild(modeDropdownEl);
+    return modeDropdownEl;
+  };
+  const closeModeDropdown = () => {
+    if (modeDropdownEl) modeDropdownEl.classList.remove('show');
+  };
+  const openModeDropdown = (mode, anchorBtn) => {
+    const dd = buildModeDropdown();
+    const inMode = currentMode() === mode;
+    const items = [
+      { action: 'new',  label: 'New' },
+      { action: 'fork', label: 'Fork' },
+    ];
+    if (inMode) items.push({ action: 'exit', label: 'Exit' });
+
+    dd.innerHTML = '';
+    items.forEach(i => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'mode-dropdown-item';
+      b.dataset.action = i.action;
+      b.dataset.mode = mode;
+      b.setAttribute('role', 'menuitem');
+      b.textContent = i.label;
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleModeDropdownAction(mode, i.action);
+        closeModeDropdown();
+      });
+      dd.appendChild(b);
+    });
+
+    // Position to the right of the anchor button.
+    const r = anchorBtn.getBoundingClientRect();
+    dd.style.top  = r.top + 'px';
+    dd.style.left = (r.right + 8) + 'px';
+    dd.dataset.modeContext = mode;
+    dd.classList.add('show');
+  };
+
+  const handleModeDropdownAction = (mode, action) => {
+    if (action === 'new') {
+      // Activate the mode, then open the bootstrap flow with that tag.
+      // The bootstrap modal already reads currentMode() to set the tag,
+      // so setMode first ensures the new conversation is properly tagged.
+      setMode(mode);
+      document.dispatchEvent(new CustomEvent('ora:new-thread-requested', {
+        detail: { tag: mode, source: 'mode-dropdown' },
+      }));
+      return;
+    }
+    if (action === 'fork') {
+      // Fire a fork-request event — the active-conversation tracker (built
+      // out as Phase 5.7 + Phase 6.2 conversation routing matures) will
+      // pick it up and call /api/conversation/<id>/fork. For now this
+      // cleanly surfaces user intent without an active-conversation id
+      // being known to the inline script.
+      setMode(mode);
+      document.dispatchEvent(new CustomEvent('ora:fork-conversation-requested', {
+        detail: { tag: mode, source: 'mode-dropdown' },
+      }));
+      return;
+    }
+    if (action === 'exit') {
+      if (mode === 'stealth') {
+        const ok = window.confirm(
+          'This stealth conversation will be permanently deleted. ' +
+          'This cannot be undone. Confirm exit?'
+        );
+        if (!ok) return;
+        document.dispatchEvent(new CustomEvent('ora:exit-stealth-requested', {
+          detail: { source: 'mode-dropdown' },
+        }));
+        setMode(null);
+      } else {
+        // Private exit just clears the mode UI; vault content is retained.
+        setMode(null);
+      }
+      return;
+    }
+  };
+
   document.querySelectorAll('.spine-button[data-mode-button]').forEach(btn => {
     const mode = btn.dataset.modeButton;
-    btn.addEventListener('click', () => {
-      setMode(currentMode() === mode ? null : mode);
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = currentMode();
+      // Spec §5A — disabled mode button silently ignores clicks; tooltip
+      // surfaces on hover. No modal interruption.
+      if (cur && cur !== mode) return;
+      openModeDropdown(mode, btn);
     });
+  });
+
+  // ─── Pane-mode buttons (Audio/Video Phase 1) ────────────────────────────
+  //
+  // [data-pane-mode-button] is a SEPARATE category from [data-mode-button]:
+  // pane-mode is about which UI surface the visual pane shows (canvas vs.
+  // video editing) and composes orthogonally with the content-confidentiality
+  // modes (Stealth, Private) carried on [data-mode-button]. A user can be in
+  // Private mode AND in video editing pane-mode at the same time.
+  //
+  // Body class convention: `pane-mode-<name>` (e.g. `pane-mode-video`).
+  // Click toggles. Other panes / panels listen for ora:pane-mode-toggle
+  // and react. visual-panel.js consumes this for the canvas ↔ video
+  // editing layout switch.
+  const currentPaneMode = () => {
+    for (const c of document.body.classList) {
+      if (c.startsWith('pane-mode-')) return c.slice('pane-mode-'.length);
+    }
+    return null;
+  };
+  const setPaneMode = (mode) => {
+    const prev = currentPaneMode();
+    [...document.body.classList]
+      .filter(c => c.startsWith('pane-mode-'))
+      .forEach(c => document.body.classList.remove(c));
+    if (mode) document.body.classList.add('pane-mode-' + mode);
+    document.querySelectorAll('.spine-button[data-pane-mode-button]').forEach(b => {
+      b.setAttribute('aria-pressed', b.dataset.paneModeButton === mode ? 'true' : 'false');
+    });
+    document.dispatchEvent(new CustomEvent('ora:pane-mode-toggle', {
+      detail: { previous: prev, current: mode || null },
+    }));
+  };
+  document.querySelectorAll('.spine-button[data-pane-mode-button]').forEach(btn => {
+    btn.setAttribute('aria-pressed', 'false');
+    const mode = btn.dataset.paneModeButton;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = currentPaneMode();
+      setPaneMode(cur === mode ? null : mode);
+    });
+  });
+  // Expose for other modules (visual-panel.js, capture controls) that
+  // need to query or programmatically exit the mode (e.g. on canvas-needing
+  // actions per design-doc §A "implicit save+exit").
+  window.OraPaneMode = { current: currentPaneMode, set: setPaneMode };
+
+  // ─── Audio/Video Phase 3 — implicit save+exit for video pane mode ─────
+  //
+  // The design (§A) says any user action that requires the canvas should
+  // save the video editing state and exit video mode. In Phase 3 the
+  // editing state is the per-conversation media library, which is
+  // already disk-persisted on every mutation. So "implicit save+exit"
+  // collapses to: drop pane-mode-video on canvas-needing transitions.
+  //
+  // Triggers:
+  //   - ora:new-thread-requested — user clicks "+" to start a new thread
+  //   - ora:conversation-selected — user picks a different conversation
+  //     in the sidebar (only counts when the new conversation differs;
+  //     re-selecting the same one is a no-op).
+  var _lastSelectedConvForPaneExit = null;
+  document.addEventListener('ora:new-thread-requested', function () {
+    if (currentPaneMode() === 'video') setPaneMode(null);
+  });
+  document.addEventListener('ora:conversation-selected', function (e) {
+    var d = e && e.detail || {};
+    var cid = d.conversation_id || d.id || null;
+    if (currentPaneMode() === 'video'
+        && cid && _lastSelectedConvForPaneExit
+        && cid !== _lastSelectedConvForPaneExit) {
+      setPaneMode(null);
+    }
+    _lastSelectedConvForPaneExit = cid;
+  });
+
+  // Close dropdown on outside click or Escape.
+  document.addEventListener('click', (e) => {
+    if (!modeDropdownEl || !modeDropdownEl.classList.contains('show')) return;
+    if (e.target.closest('.mode-dropdown')) return;
+    if (e.target.closest('.spine-button[data-mode-button]')) return;
+    closeModeDropdown();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModeDropdown();
+  });
+
+  // V3 Phase 5.7 — when the sidebar reports a conversation selection,
+  // activate the mode UI from the conversation's tag. Standard-tagged
+  // conversations clear the mode.
+  document.addEventListener('ora:conversation-selected', (e) => {
+    const tag = e.detail && e.detail.tag;
+    if (tag === 'stealth' || tag === 'private') {
+      // Suppress the mutual-exclusivity modal here — the user didn't
+      // click a mode button; they navigated to a tagged conversation,
+      // which intrinsically carries that mode.
+      [...document.body.classList]
+        .filter(c => c.endsWith('-mode'))
+        .forEach(c => document.body.classList.remove(c));
+      setMode(tag);
+    } else {
+      setMode(null);
+    }
   });
 
   rightInputArea.addEventListener('focus', updateQAMessage);
@@ -376,29 +1022,522 @@
     });
   }
 
-  // ─── Submit routing ───
-  // If the right input has text → small-model Q&A path.
-  // Else, if the left input has text → main pipeline path.
-  // Triggered by: O wordmark click/Enter, or Enter (without Shift) in either textarea.
-  // Backend wiring is stubbed; only console.log fires here.
-  const submitInput = () => {
-    const rightContent = rightInputArea.value.trim();
-    if (rightContent) {
-      console.log('[Ora v3] Q&A → small model:', rightContent);
-      rightInputArea.value = '';
-      return;
+  // ─── Submit routing (V3 Phase 7.2 + V3 Backlog 2A) ──────────────────
+  // O wordmark / Enter in either textarea fires submitInput().
+  //   - Right (QQB) input → /api/scratchpad (plain HTTP — Chunk 4 below).
+  //   - Left input → /chat/multipart (plain HTTP — Chunk 2 of Backlog 2A).
+  //
+  // V3 Backlog 2A — file-as-source-of-truth. The endpoint returns plain
+  // JSON {status, conversation_id, chunk_id} after the pipeline finishes
+  // and the chunk file lands on disk. The browser does NOT render the
+  // response inline — per the V3 model, the user submits, walks away,
+  // and reads the response later by clicking its Unread row in the
+  // sidebar. We refresh the sidebar on reply so the new Unread badge
+  // appears immediately; the 12-second reconciliation scan is the
+  // safety net if the connection drops mid-pipeline.
+
+  const outputPane = document.querySelector('.output-pane');
+
+  const currentConversationId = () => {
+    // OraConversation is the source of truth (it's set on selection AND
+    // tracks the active id during submit flows). Fall back to OraSidebar
+    // for legacy callers.
+    if (window.OraConversation && window.OraConversation.getActiveConversationId) {
+      const id = window.OraConversation.getActiveConversationId();
+      if (id) return id;
     }
-    const leftContent = leftInputArea.value.trim();
-    if (leftContent) {
-      console.log('[Ora v3] Main pipeline:', leftContent);
-      leftInputArea.value = '';
+    if (window.OraSidebar && window.OraSidebar.getActiveConversation) {
+      return window.OraSidebar.getActiveConversation() || 'main';
+    }
+    return 'main';
+  };
+
+  const currentTag = () => {
+    if (document.body.classList.contains('stealth-mode')) return 'stealth';
+    if (document.body.classList.contains('private-mode')) return 'private';
+    return '';
+  };
+
+  // V3 Backlog 8 — turn rendering goes through OraConversation now so
+  // the output pane shows ONE turn at a time with forward/back nav and
+  // the prompt overlay reflects the same turn's user prompt. These
+  // shims preserve the old call sites.
+  const renderUserTurn = (text) => {
+    if (window.OraConversation && typeof window.OraConversation.appendUser === 'function') {
+      window.OraConversation.appendUser(text);
     }
   };
 
-  logoO.addEventListener('click', submitInput);
+  const renderAssistantTurn = (text) => {
+    if (window.OraConversation && typeof window.OraConversation.appendAssistant === 'function') {
+      window.OraConversation.appendAssistant(text);
+    }
+  };
+
+  // V3 Backlog 2A — refresh the sidebar after a successful submit so
+  // the new Unread (or Errored) row surfaces immediately. The periodic
+  // reconciliation scan picks it up either way; this just removes the
+  // 12-second wait for the in-conversation case.
+  const refreshSidebarAfterSubmit = () => {
+    if (window.OraSidebar && typeof window.OraSidebar.refresh === 'function') {
+      try { window.OraSidebar.refresh(); }
+      catch (e) { console.warn('[v3 submit] sidebar refresh failed:', e); }
+    }
+  };
+
+  const submitToMainPipeline = async (text) => {
+    const body = new FormData();
+    body.append('message', text);
+    body.append('conversation_id', currentConversationId());
+    body.append('panel_id',        currentConversationId());
+    body.append('is_main_feed',    'true');
+    body.append('tag',             currentTag());
+
+    // V3 Input Handling Phase 4 — pass the picker's framework selection
+    // through to the pipeline so the framework branch of
+    // compare_intent_with_mode resolves correctly. Per design doc Q3
+    // stickiness rule the selection is per-input only — cleared below
+    // after the request goes out.
+    if (window.OraInputState && typeof window.OraInputState.getFramework === 'function') {
+      const fw = window.OraInputState.getFramework();
+      if (fw && fw.id) body.append('framework_selected', fw.id);
+    }
+
+    // V3 Phase 7.2 — include canvas content if any. captureFromPanel
+    // returns null when the userInputLayer has no shapes, in which case
+    // we omit the field. /chat/multipart accepts spatial-only or
+    // text-only or combined.
+    let canvasHasContent = false;
+    if (window.OraCanvas && typeof window.OraCanvas.capture === 'function') {
+      try {
+        const spatial = window.OraCanvas.capture();
+        if (spatial) {
+          body.append('spatial_representation', JSON.stringify(spatial));
+          canvasHasContent = true;
+        }
+      } catch (e) {
+        console.warn('[v3 submit] canvas capture failed:', e);
+      }
+    }
+
+    // V3 Item 12 Q1 follow-up — vision-capable rendered-snapshot
+    // bundling. When the canvas has content, attach a PNG preview so
+    // image-capable models can read the visual gestalt directly. Text-
+    // only models ignore this field (the pipeline already covers their
+    // path via spatial_representation). The field name is distinct from
+    // the user-attached `image` field so the two intents don't conflate.
+    if (canvasHasContent
+        && window.OraSaveCanvas
+        && typeof window.OraSaveCanvas._capturePreview === 'function'
+        && window.OraPanels && window.OraPanels.visual
+        && typeof window.OraPanels.visual._getActive === 'function') {
+      try {
+        const _activePanelForPreview = window.OraPanels.visual._getActive();
+        if (_activePanelForPreview) {
+          const previewDataUrl = window.OraSaveCanvas._capturePreview(_activePanelForPreview);
+          if (previewDataUrl) {
+            body.append('canvas_preview_png', previewDataUrl);
+          }
+        }
+      } catch (e) {
+        console.warn('[v3 submit] canvas preview capture failed:', e);
+      }
+    }
+
+    // Clear the per-input framework selection now that the request is on
+    // the wire. Done before the await so that if the user starts typing a
+    // follow-up while waiting, the toolbar/bridge already reflect the
+    // cleared state.
+    if (window.OraInputState && typeof window.OraInputState.clearFramework === 'function') {
+      window.OraInputState.clearFramework();
+    }
+    // V3 Input Handling Phase 8 — same per-input stickiness applies to
+    // attachments. The document/audio jobs already submitted continue
+    // running in the background; clearing this list just resets the
+    // input pane's state for the next prompt.
+    if (window.OraInputAttachments && typeof window.OraInputAttachments.clear === 'function') {
+      window.OraInputAttachments.clear();
+    }
+
+    let resp;
+    try {
+      resp = await fetch('/chat/multipart', { method: 'POST', body });
+    } catch (e) {
+      renderAssistantTurn('[Submit failed: ' + (e.message || e) + ']');
+      return;
+    }
+
+    // V3 Input Handling Phase 9 — per-turn canvas snapshot. Save the
+    // visual pane's state to ~/ora/sessions/<id>/canvas/<ts>.ora-canvas
+    // (with a stable latest.ora-canvas mirror) immediately after the
+    // chat request goes out. Fire-and-forget — the save lands in the
+    // background and must not block the streamed response. Stealth /
+    // private routing is the canvas-save endpoint's responsibility; we
+    // pass the conversation_id and let the server resolve the right
+    // destination (vault Incubator vs ephemeral temp dir).
+    if (window.OraSaveCanvas && typeof window.OraSaveCanvas.saveImmediate === 'function'
+        && window.OraPanels && window.OraPanels.visual
+        && typeof window.OraPanels.visual._getActive === 'function') {
+      const _activePanel = window.OraPanels.visual._getActive();
+      if (_activePanel) {
+        try {
+          // saveImmediate returns a Promise; we deliberately don't await
+          // so the streamed response renders without waiting for disk I/O.
+          window.OraSaveCanvas.saveImmediate(_activePanel, 'turn-snapshot')
+            .catch((e) => console.warn('[v3 submit] canvas save failed:', e));
+        } catch (e) {
+          console.warn('[v3 submit] canvas save threw:', e);
+        }
+      }
+    }
+    if (!resp.ok) {
+      // Network / 4xx / 5xx. The submission log on the server side
+      // either persists (orphan-recovery on next boot) or was deleted
+      // by the validation 400 path. Either way, surface it locally so
+      // the user knows the submit didn't go through.
+      console.warn('[v3 submit] HTTP', resp.status);
+      refreshSidebarAfterSubmit();
+      return;
+    }
+
+    // V3 Backlog 2A — plain-HTTP reply. {status, conversation_id, chunk_id}
+    // on success, {status: "errored", failure_summary} on pipeline failure.
+    // We do NOT render the response inline. The chunk file is on disk;
+    // the user reads it by clicking the Unread row in the sidebar.
+    let payload = null;
+    try {
+      payload = await resp.json();
+    } catch (e) {
+      console.warn('[v3 submit] reply parse failed:', e);
+      refreshSidebarAfterSubmit();
+      return;
+    }
+    if (payload && payload.status === 'errored') {
+      console.warn('[v3 submit] pipeline errored:',
+                   payload.failure_summary || '(no summary)');
+    }
+    refreshSidebarAfterSubmit();
+  };
+
+  // ─── V3 Input Handling Phase 7 — pre-flight framework input gap check ───
+  //
+  // When the user submits with a framework selected, we run /api/framework/
+  // analyze-inputs first. If the analyzer reports missing or unclear
+  // requirements, we open the framework setup popup, collect responses,
+  // augment the prompt with what the user provides, and either re-analyze
+  // (Continue), submit with a warning note (Run anyway), or abandon
+  // (Cancel). Without a framework we pass the prompt straight to
+  // submitToMainPipeline.
+  //
+  // Augmentation format: each per-question response gets a marker block
+  // appended to the prompt so the framework's pipeline can correlate
+  // responses to its declared inputs even after Phase A cleanup runs:
+  //
+  //     [Response to: <question name>]
+  //     <free-typed text, if any>
+  //     [Asserted on canvas: yes — see the visual pane.]   (when checked)
+  //
+  // The whole augmented prompt then enters submitToMainPipeline like any
+  // other text input.
+
+  const _summarizeAttachments = () => {
+    // V3 Input Handling Phase 8 — the file-drop dispatcher tracks every
+    // dropped/attached file in window.OraInputAttachments. Pass each
+    // entry's name + type so the gap analyzer can mark a "Document or
+    // files" requirement as PROVIDED when the user has dropped a
+    // document, even before the document_input pipeline finishes
+    // converting it.
+    if (!window.OraInputAttachments) return [];
+    return window.OraInputAttachments.list().map(a => ({
+      name: a.name,
+      type: a.type || a.kind || '',
+    }));
+  };
+
+  const _summarizeCanvas = () => {
+    if (!window.OraCanvas || typeof window.OraCanvas.capture !== 'function') return '';
+    try {
+      const snap = window.OraCanvas.capture();
+      if (!snap) return '';
+      const shapes = Array.isArray(snap.shapes) ? snap.shapes.length : 0;
+      const annotations = Array.isArray(snap.annotations) ? snap.annotations.length : 0;
+      const parts = [];
+      if (shapes) parts.push(`${shapes} shape${shapes === 1 ? '' : 's'}`);
+      if (annotations) parts.push(`${annotations} annotation${annotations === 1 ? '' : 's'}`);
+      return parts.length ? parts.join(', ') : '';
+    } catch (_) {
+      return '';
+    }
+  };
+
+  const _analyzeFrameworkInputs = async ({ frameworkId, prompt, priorResponses }) => {
+    const body = {
+      framework_id: frameworkId,
+      prompt,
+      attachments: _summarizeAttachments(),
+      canvas_summary: _summarizeCanvas(),
+      prior_responses: priorResponses || {},
+    };
+    const resp = await fetch('/api/framework/analyze-inputs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      throw new Error(`analyzer http ${resp.status}`);
+    }
+    return resp.json();
+  };
+
+  const _hasGaps = (report) =>
+    Array.isArray(report.requirements) &&
+    report.requirements.some(r => r.status === 'missing' || r.status === 'unclear');
+
+  const _augmentPromptWithResponses = (basePrompt, responses, onCanvas) => {
+    // Append a labeled block per question the user responded to. Both
+    // free-text and on-canvas can be set on the same row; both surface.
+    const names = new Set([
+      ...Object.keys(responses || {}),
+      ...Object.keys(onCanvas || {}),
+    ]);
+    if (names.size === 0) return basePrompt;
+    const blocks = [];
+    for (const name of names) {
+      const lines = [`[Response to: ${name}]`];
+      if (responses[name]) lines.push(responses[name]);
+      if (onCanvas[name]) lines.push('[Asserted on canvas: yes — see the visual pane.]');
+      blocks.push(lines.join('\n'));
+    }
+    return basePrompt.replace(/\s+$/, '') + '\n\n' + blocks.join('\n\n');
+  };
+
+  const _runAnywayNote = (missingSummary, currentRequirements) => {
+    // Prefer the popup's snapshot of remaining-missing names. If the
+    // popup didn't pass one (very rare) fall back to scanning the report.
+    const summary = (missingSummary && missingSummary.trim())
+      ? missingSummary
+      : (currentRequirements || [])
+          .filter(r => r.status === 'missing' || r.status === 'unclear')
+          .map(r => r.name)
+          .join(', ');
+    if (!summary) return '';
+    return [
+      '',
+      `[FRAMEWORK NOTE: User proceeded despite missing inputs: ${summary}.`,
+      'Produce a best-effort output. For each missing input, explicitly caveat',
+      'in the output what could not be determined and why, rather than',
+      'confabulating values.]',
+    ].join('\n');
+  };
+
+  const submitWithFrameworkCheck = async (text) => {
+    const fw = (window.OraInputState && window.OraInputState.getFramework())
+      ? window.OraInputState.getFramework() : null;
+    if (!fw || !fw.id) {
+      return submitToMainPipeline(text);
+    }
+    if (!window.OraFrameworkSetupPopup || typeof window.OraFrameworkSetupPopup.show !== 'function') {
+      // Popup module didn't load — fall back to direct submit so the user
+      // isn't blocked by missing UI. The pipeline still receives the
+      // framework selection.
+      return submitToMainPipeline(text);
+    }
+
+    // Iteration loop. Round N: analyze with priorResponses, popup if
+    // gaps, collect responses, decide. We accumulate ALL responses across
+    // rounds so a question answered in round 1 stays answered in round 2.
+    let priorResponses = {};
+    let priorOnCanvas  = {};
+    let augmentedPrompt = text;
+
+    for (let round = 0; round < 5; round += 1) {
+      let report;
+      try {
+        report = await _analyzeFrameworkInputs({
+          frameworkId: fw.id,
+          prompt: augmentedPrompt,
+          priorResponses,
+        });
+      } catch (e) {
+        console.warn('[framework gap] analyzer call failed:', e);
+        // Analyzer down — submit anyway so the user isn't trapped. Phase
+        // 7 should be advisory, not a hard gate when infrastructure is
+        // unavailable.
+        return submitToMainPipeline(augmentedPrompt);
+      }
+
+      if (!_hasGaps(report)) {
+        return submitToMainPipeline(augmentedPrompt);
+      }
+
+      const choice = await window.OraFrameworkSetupPopup.show(report);
+
+      if (choice.action === 'cancel') {
+        if (window.OraInputState) window.OraInputState.clearFramework();
+        return; // do not submit
+      }
+
+      // Merge this round's responses into the running state.
+      for (const k of Object.keys(choice.responses || {})) {
+        priorResponses[k] = choice.responses[k];
+      }
+      for (const k of Object.keys(choice.on_canvas || {})) {
+        priorOnCanvas[k] = choice.on_canvas[k];
+      }
+      augmentedPrompt = _augmentPromptWithResponses(text, priorResponses, priorOnCanvas);
+
+      if (choice.action === 'run-anyway') {
+        const note = _runAnywayNote(choice.missing_summary, report.requirements);
+        return submitToMainPipeline(augmentedPrompt + note);
+      }
+
+      // choice.action === 'continue' — loop and re-analyze. If the user's
+      // responses cover everything, the next round's _hasGaps returns
+      // false and we submit. If gaps remain, popup re-fires.
+    }
+
+    // Safety net: after 5 rounds, just submit with whatever we have.
+    return submitToMainPipeline(augmentedPrompt);
+  };
+
+  // V3 Backlog 6 — Right-column scratchpad. Streams from /api/scratchpad
+  // (local-fast, no save). Client-side autopurging history keeps the
+  // last SCRATCHPAD_MAX_PAIRS query/answer pairs visible; older pairs
+  // are removed from the DOM as new ones land. History clears on tab
+  // refresh — nothing is persisted to disk or ChromaDB.
+  const chatOutputPane = document.querySelector('.chat-output-pane');
+  const SCRATCHPAD_MAX_PAIRS = 10;
+
+  const ensureScratchpadNotSavedLabel = () => {
+    if (!chatOutputPane) return;
+    if (chatOutputPane.querySelector('.scratchpad-not-saved-label')) return;
+    const lbl = document.createElement('div');
+    lbl.className = 'scratchpad-not-saved-label';
+    lbl.textContent = 'not saved';
+    chatOutputPane.appendChild(lbl);
+  };
+
+  const renderScratchpadEntry = (cls, text) => {
+    if (!chatOutputPane) return null;
+    const block = document.createElement('div');
+    block.className = 'scratchpad-turn ' + cls;
+    block.textContent = text;
+    chatOutputPane.appendChild(block);
+    chatOutputPane.scrollTop = chatOutputPane.scrollHeight;
+    ensureScratchpadNotSavedLabel();
+    return block;
+  };
+
+  const trimScratchpadHistory = () => {
+    if (!chatOutputPane) return;
+    const queries = chatOutputPane.querySelectorAll('.scratchpad-turn-query');
+    if (queries.length <= SCRATCHPAD_MAX_PAIRS) return;
+    const excess = queries.length - SCRATCHPAD_MAX_PAIRS;
+    for (let i = 0; i < excess; i++) {
+      const q = queries[i];
+      const next = q.nextElementSibling;
+      q.remove();
+      if (next && next.classList.contains('scratchpad-turn') &&
+          !next.classList.contains('scratchpad-turn-query')) {
+        next.remove();
+      }
+    }
+  };
+
+  const submitToScratchpad = async (prompt) => {
+    renderScratchpadEntry('scratchpad-turn-query', prompt);
+    const pending = renderScratchpadEntry('scratchpad-turn-pending', '…');
+    let resp;
+    try {
+      resp = await fetch('/api/scratchpad', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ prompt }),
+      });
+    } catch (e) {
+      if (pending) pending.remove();
+      renderScratchpadEntry('scratchpad-turn-error',
+        '[Scratchpad failed: ' + (e.message || e) + ']');
+      trimScratchpadHistory();
+      return;
+    }
+    if (!resp.ok) {
+      if (pending) pending.remove();
+      renderScratchpadEntry('scratchpad-turn-error',
+        '[Scratchpad failed: HTTP ' + resp.status + ']');
+      trimScratchpadHistory();
+      return;
+    }
+    // V3 Backlog 2A Chunk 4 — /api/scratchpad now replies with plain
+    // JSON {answer, ...} after the local-fast model completes. No
+    // streaming. The user sees the answer pushed to the right-column
+    // output as soon as it's ready.
+    let payload = null;
+    try {
+      payload = await resp.json();
+    } catch (e) {
+      payload = null;
+    }
+    if (pending) pending.remove();
+    const errDetail = payload && typeof payload.error === 'string' ? payload.error : null;
+    const answer    = payload && typeof payload.answer === 'string' ? payload.answer : null;
+    if (errDetail) {
+      renderScratchpadEntry('scratchpad-turn-error', '[' + errDetail + ']');
+    } else if (answer !== null) {
+      renderScratchpadEntry('scratchpad-turn-answer', answer || '[no response]');
+    } else {
+      renderScratchpadEntry('scratchpad-turn-error', '[no response]');
+    }
+    trimScratchpadHistory();
+  };
+
+  const submitInput = () => {
+    const rightContent = rightInputArea.value.trim();
+    if (rightContent) {
+      rightInputArea.value = '';
+      submitToScratchpad(rightContent);
+      return;
+    }
+    const leftContent = leftInputArea.value.trim();
+    // V3 Phase 7.2 — canvas content alone is a valid submission per
+    // spec §1.8. Check whether the canvas has any drawn shapes so an
+    // empty-text + canvas-only submission still fires the pipeline.
+    let canvasHasContent = false;
+    if (window.OraCanvas && typeof window.OraCanvas.capture === 'function') {
+      try { canvasHasContent = !!window.OraCanvas.capture(); }
+      catch (e) { canvasHasContent = false; }
+    }
+    if (!leftContent && !canvasHasContent) return;
+
+    leftInputArea.value = '';
+    if (leftContent) {
+      renderUserTurn(leftContent);
+    } else {
+      renderUserTurn('[canvas content]');
+    }
+    // V3 Input Handling Phase 7 — route through the framework gap check.
+    // When no framework is selected, the wrapper passes straight through
+    // to submitToMainPipeline; when one is selected, the popup may
+    // intervene before submission.
+    submitWithFrameworkCheck(leftContent);
+  };
+
+  // V3 Backlog 7 — pulse the O on submit for visual feedback. The
+  // animation removes itself when the class is cleared, so we toggle
+  // off on each click to retrigger.
+  const pulseLogoO = () => {
+    logoO.classList.remove('wordmark-pulse');
+    // Force a reflow so the next class add restarts the animation.
+    void logoO.getBoundingClientRect();
+    logoO.classList.add('wordmark-pulse');
+    setTimeout(() => logoO.classList.remove('wordmark-pulse'), 360);
+  };
+
+  logoO.addEventListener('click', () => { pulseLogoO(); submitInput(); });
   logoO.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      pulseLogoO();
       submitInput();
     }
   });
@@ -412,10 +1551,286 @@
     });
   });
 
-  // ─── Initial layout: 30/70 main split, then enforce icon clearance ───
+  // ─── Initial layout: V3 spec §1.5 — wordmark R-glyph anchored at 70% from
+  // top of the spine. Since the wordmark r-center follows the bridge center,
+  // the bridge starts at 70% from top, which makes the input pane (above)
+  // 70% of available height and the output pane (below) 30%.
   const availableH = window.innerHeight - 32 - bridge.getBoundingClientRect().height;
-  setMainHeight(availableH * 0.30);
+  // V3 default — was 0.70 (input-dominant) which made the canvas tiny by
+  // default. 0.50 puts the wordmark r-center halfway up the spine and
+  // gives the canvas a usable working area without the user having to
+  // drag the bridge first.
+  setMainHeight(availableH * 0.50);
   clampAndPlace();
+
+  // ─── Audio/Video Phase 1 — capture controls bring-up ─────────────────
+  // The toolbar listens for `ora:pane-mode-toggle` events fired above by
+  // the spine-button click handler, then mounts itself inside the visual
+  // pane. SSE connection to /api/capture/stream opens here as well so
+  // the controller is ready before the user enters video mode.
+  if (window.OraCaptureControls && typeof window.OraCaptureControls.init === 'function') {
+    try { window.OraCaptureControls.init(); }
+    catch (e) { console.error('OraCaptureControls init failed:', e); }
+  }
+
+  // ─── Audio/Video Phase 2 — transcription dispatcher bring-up ────────
+  // Connects the SSE stream and exposes window.OraTranscribeInput so
+  // chat-panel.js can dispatch audio/video drops through it.
+  if (window.OraTranscribeInput && typeof window.OraTranscribeInput.init === 'function') {
+    try { window.OraTranscribeInput.init(); }
+    catch (e) { console.error('OraTranscribeInput init failed:', e); }
+  }
+
+  // V3 Input Handling Phase 8 — connect the document SSE stream so the
+  // attachment chips for dropped/attached documents update in real time.
+  if (window.OraDocumentInput && typeof window.OraDocumentInput.init === 'function') {
+    try { window.OraDocumentInput.init(); }
+    catch (e) { console.error('OraDocumentInput init failed:', e); }
+  }
+
+  // ─── Audio/Video Phase 3 — media library bring-up ────────────────────
+  // Mounts the per-conversation media library panel inside the visual
+  // pane when pane-mode-video is active.
+  if (window.OraMediaLibrary && typeof window.OraMediaLibrary.init === 'function') {
+    try { window.OraMediaLibrary.init(); }
+    catch (e) { console.error('OraMediaLibrary init failed:', e); }
+  }
+
+  // ─── Audio/Video Phase 5 — timeline editor bring-up ──────────────────
+  // The middle-band timeline editor between capture controls and the
+  // media library. Init wires SSE-less event listeners; the panel
+  // mounts when pane-mode flips to video.
+  if (window.OraTimelineEditor && typeof window.OraTimelineEditor.init === 'function') {
+    try { window.OraTimelineEditor.init(); }
+    catch (e) { console.error('OraTimelineEditor init failed:', e); }
+  }
+
+  // ─── Audio/Video Phase 7-fix — preview monitor bring-up ──────────────
+  // Sits above the timeline editor when pane-mode flips to video.
+  // Listens for timeline mutation + playhead events fired by the
+  // timeline editor; emits its own playhead update during proxy
+  // playback so the timeline editor's playhead can follow.
+  if (window.OraPreviewMonitor && typeof window.OraPreviewMonitor.init === 'function') {
+    try { window.OraPreviewMonitor.init(); }
+    catch (e) { console.error('OraPreviewMonitor init failed:', e); }
+  }
+
+  // ─── Audio/Video Phase 8 — transcript panel bring-up ─────────────────
+  // Floating overlay docked to the right edge of the visual pane in
+  // pane-mode-video. Shows whisper segments for whichever clip is
+  // currently under the playhead; click a segment to seek; the active
+  // segment highlights as the playhead moves.
+  if (window.OraTranscriptPanel && typeof window.OraTranscriptPanel.init === 'function') {
+    try { window.OraTranscriptPanel.init(); }
+    catch (e) { console.error('OraTranscriptPanel init failed:', e); }
+  }
+
+  // ─── Audio/Video Phase 9 — settings panel bring-up ───────────────────
+  // Centered modal with tabs (Capture / Whisper / External APIs / Export).
+  // Triggered by the gear button in the spine bottom cluster (Position 6).
+  if (window.OraSettingsPanel && typeof window.OraSettingsPanel.init === 'function') {
+    try { window.OraSettingsPanel.init(); }
+    catch (e) { console.error('OraSettingsPanel init failed:', e); }
+    var spineSettingsBtn = document.getElementById('spineSettingsBtn');
+    if (spineSettingsBtn) {
+      spineSettingsBtn.addEventListener('click', function () {
+        try { window.OraSettingsPanel.toggle(); }
+        catch (e) { console.error('OraSettingsPanel toggle failed:', e); }
+      });
+    }
+  }
+
+  // ─── Audio/Video Phase 7 — render controls bring-up ──────────────────
+  // Mounts the Render button into the timeline editor's ruler row when
+  // pane-mode flips to video, and opens the SSE channel for render
+  // lifecycle events.
+  if (window.OraRenderControls && typeof window.OraRenderControls.init === 'function') {
+    try { window.OraRenderControls.init(); }
+    catch (e) { console.error('OraRenderControls init failed:', e); }
+  }
+
+  // ─── V3 Input Handling Phase 3 — input-pane toolbar click handlers ───
+  // The mode and framework buttons emit a CustomEvent on document; Phase 4
+  // listens to those events to open the picker dropdowns. The attach button
+  // opens the hidden file input directly so users can browse files now;
+  // Phase 8 wires the file-drop dispatcher that consumes the chosen files.
+  document.querySelectorAll('.input-pane-toolbar__btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const action = btn.dataset.inputToolbar;
+      if (action === 'attach') {
+        const fileInput = document.getElementById('inputToolbarAttachFile');
+        if (fileInput) fileInput.click();
+      }
+      document.dispatchEvent(new CustomEvent(`ora:input-toolbar:${action}`, {
+        detail: { source: btn, sourceEvent: e },
+      }));
+    });
+  });
+  // Surface chosen files via a CustomEvent so Phase 8's file-drop dispatcher
+  // can consume them through the same code path as drag-and-drop.
+  const _attachInput = document.getElementById('inputToolbarAttachFile');
+  if (_attachInput) {
+    _attachInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+      document.dispatchEvent(new CustomEvent('ora:input-toolbar:files', {
+        detail: { files },
+      }));
+      e.target.value = ''; // allow re-selecting the same file later
+    });
+  }
+
+  // ─── V3 Input Handling Phase 8 — file-drop dispatcher ────────────────
+  //
+  // Single dispatcher routes both attach-icon-picked files (via the
+  // `ora:input-toolbar:files` event from above) AND files dragged onto
+  // the input pane (native drop event). Each file is sniffed:
+  //
+  //   - Audio/video MIME → window.OraTranscribeInput.acceptFile (V1 of
+  //     this module shipped from the parallel A/V session; sends to
+  //     /api/transcribe and emits chip lifecycle events)
+  //   - Document MIME / known extension → window.OraDocumentInput
+  //     .acceptFile (Phase 8 module; sends to /api/document/process,
+  //     stages into vault Incubator/ with `incubating` tag)
+  //   - Otherwise: rejected with a transient chip showing "Unsupported
+  //     file type"
+  //
+  // Multi-file drops dispatch each file independently so audio + PDFs
+  // dropped together end up in the right pipelines without ceremony.
+  // The framework gap analyzer reads the dispatcher's _pendingAttachments
+  // list so the user can satisfy a "Document or files" requirement just
+  // by dropping the file in.
+  const _attachmentRow = document.getElementById('inputPaneAttachments');
+  const _pendingAttachments = [];
+
+  const _addPendingAttachment = (file, kind, processingId) => {
+    _pendingAttachments.push({
+      name: file.name,
+      type: file.type || '',
+      size: file.size || 0,
+      kind: kind,                  // 'audio' | 'video' | 'document'
+      processing_id: processingId, // server-side id for status tracking
+    });
+  };
+
+  const _renderUnsupportedChip = (file) => {
+    if (!_attachmentRow) return;
+    const chip = document.createElement('div');
+    chip.className = 'transcribe-chip';
+    chip.dataset.state = 'failed';
+    chip.innerHTML =
+      '<span class="transcribe-chip__icon" aria-hidden="true">!</span>' +
+      '<div class="transcribe-chip__body">' +
+        '<div class="transcribe-chip__name">' + (file.name || 'file') + '</div>' +
+        '<div class="transcribe-chip__status">Unsupported file type</div>' +
+      '</div>' +
+      '<button type="button" class="transcribe-chip__close" aria-label="Dismiss">×</button>';
+    chip.querySelector('.transcribe-chip__close').addEventListener('click', () => chip.remove());
+    _attachmentRow.appendChild(chip);
+  };
+
+  const dispatchFile = async (file) => {
+    if (!file) return;
+    const conv = currentConversationId();
+    const tag  = currentTag();
+    if (window.OraTranscribeInput && window.OraTranscribeInput.isMediaFile(file)) {
+      try {
+        const tid = await window.OraTranscribeInput.acceptFile(file, _attachmentRow);
+        const kind = (file.type || '').startsWith('audio/') ? 'audio' : 'video';
+        _addPendingAttachment(file, kind, tid);
+      } catch (e) {
+        console.warn('[file-drop] transcribe accept failed:', e);
+      }
+      return;
+    }
+    if (window.OraDocumentInput && window.OraDocumentInput.isDocumentFile(file)) {
+      try {
+        const pid = await window.OraDocumentInput.acceptFile(file, _attachmentRow, {
+          conversation_id: conv,
+          tag: tag,
+        });
+        _addPendingAttachment(file, 'document', pid);
+      } catch (e) {
+        console.warn('[file-drop] document accept failed:', e);
+      }
+      return;
+    }
+    _renderUnsupportedChip(file);
+  };
+
+  document.addEventListener('ora:input-toolbar:files', (e) => {
+    const files = (e.detail && e.detail.files) || [];
+    files.forEach(dispatchFile);
+  });
+
+  // Native drag-and-drop on the input pane. We intercept dragover to
+  // prevent the browser's default "open file" handler, mark the pane
+  // with .is-dragover for the CSS highlight, and consume drop events.
+  const _inputPaneEl = document.querySelector('.input-pane');
+  if (_inputPaneEl) {
+    let _dragDepth = 0;
+    _inputPaneEl.addEventListener('dragenter', (e) => {
+      if (!e.dataTransfer || !e.dataTransfer.types) return;
+      if (Array.from(e.dataTransfer.types).indexOf('Files') === -1) return;
+      e.preventDefault();
+      _dragDepth += 1;
+      _inputPaneEl.classList.add('is-dragover');
+    });
+    _inputPaneEl.addEventListener('dragover', (e) => {
+      if (!e.dataTransfer || !e.dataTransfer.types) return;
+      if (Array.from(e.dataTransfer.types).indexOf('Files') === -1) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+    _inputPaneEl.addEventListener('dragleave', () => {
+      _dragDepth = Math.max(0, _dragDepth - 1);
+      if (_dragDepth === 0) _inputPaneEl.classList.remove('is-dragover');
+    });
+    _inputPaneEl.addEventListener('drop', (e) => {
+      if (!e.dataTransfer) return;
+      const files = Array.from(e.dataTransfer.files || []);
+      if (files.length === 0) return;
+      e.preventDefault();
+      _dragDepth = 0;
+      _inputPaneEl.classList.remove('is-dragover');
+      files.forEach(dispatchFile);
+    });
+  }
+
+  // Expose a tiny accessor + clear so the framework gap analyzer's
+  // _summarizeAttachments() and the submit code's per-input clear can
+  // both reach this state without duplicating it.
+  window.OraInputAttachments = {
+    list:  () => _pendingAttachments.slice(),
+    clear: () => { _pendingAttachments.length = 0; if (_attachmentRow) _attachmentRow.innerHTML = ''; },
+  };
+
+  // ─── V3 Input Handling Phase 5 — bridge framework label ───────────────
+  // The framework picker fires `ora:framework-changed` whenever a
+  // framework is set or cleared (per-input stickiness clears it after
+  // submit). The left-justified bridge label mirrors that state so the
+  // user can see which framework will run when they hit Enter.
+  const _bridgeFrameworkLabel = document.getElementById('bridgeFrameworkLabel');
+  if (_bridgeFrameworkLabel) {
+    document.addEventListener('ora:framework-changed', (e) => {
+      const fw = e.detail && e.detail.framework;
+      if (fw && fw.display_name) {
+        _bridgeFrameworkLabel.textContent = fw.display_name;
+        _bridgeFrameworkLabel.classList.add('is-set');
+      } else {
+        _bridgeFrameworkLabel.textContent = '';
+        _bridgeFrameworkLabel.classList.remove('is-set');
+      }
+    });
+    // Initial sync — restore if a framework is already set on page load.
+    if (window.OraInputState && typeof window.OraInputState.getFramework === 'function') {
+      const fw = window.OraInputState.getFramework();
+      if (fw && fw.display_name) {
+        _bridgeFrameworkLabel.textContent = fw.display_name;
+        _bridgeFrameworkLabel.classList.add('is-set');
+      }
+    }
+  }
 })();
 </script>
 

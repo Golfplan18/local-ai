@@ -1,0 +1,43 @@
+{
+  "id": "ora-ai-analyze",
+  "label": "AI Analyze",
+  "default_dock": "left",
+  "default_icon_size": "medium",
+  "items": [
+    {
+      "id": "describe",
+      "icon": "eye",
+      "label": "Describe",
+      "binding": "capability:image_critique",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "critique",
+      "icon": "message-square-quote",
+      "label": "Critique",
+      "binding": "capability:image_critique",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "deconstruct",
+      "icon": "scan-search",
+      "label": "Deconstruct",
+      "binding": "capability:image_critique",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "image-to-prompt",
+      "icon": "file-text",
+      "label": "Image to prompt",
+      "binding": "capability:image_to_prompt",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "style-codes",
+      "icon": "tags",
+      "label": "Style codes",
+      "binding": "capability:image_to_prompt",
+      "enabled_when": "image_present"
+    }
+  ]
+}

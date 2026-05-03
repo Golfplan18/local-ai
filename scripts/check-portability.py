@@ -197,9 +197,9 @@ def is_allowed_mac_only(rel_path: str) -> bool:
 # File-level patterns that indicate platform-conditional code is present.
 # When found in a file, downgrade matches of platform-specific commands within that file.
 PYTHON_PLATFORM_GUARD_RE = re.compile(
-    r'sys\.platform\s*==\s*[\'"](darwin|linux|win32)[\'"]'
+    r'sys\.platform\s*[!=]=\s*[\'"](darwin|linux|win32)[\'"]'
     r'|sys\.platform\s*\.\s*startswith\s*\(\s*[\'"]linux[\'"]'
-    r'|platform\.system\(\)\s*==\s*[\'"](Darwin|Linux|Windows)[\'"]'
+    r'|platform\.system\(\)\s*[!=]=\s*[\'"](Darwin|Linux|Windows)[\'"]'
 )
 SH_PYTHON_FALLBACK_RE = re.compile(r'command\s+-v\s+python3?')
 
@@ -212,6 +212,16 @@ def has_platform_branching(text: str, ext: str) -> bool:
     return False
 
 
+PLATFORM_GUARDED_RULES = {
+    "homebrew-python-hardcode",
+    "macos-osascript", "macos-iconutil", "macos-pmset", "macos-launchctl",
+    "macos-pbcopy-pbpaste", "macos-lsregister",
+    "posix-pgrep", "posix-pkill",
+    "tmp-hardcode", "macos-open-command-bare",
+    "library-app-support-hardcode", "applications-hardcode",
+}
+
+
 def scan(root: Path) -> list[Finding]:
     findings: list[Finding] = []
     for path in walk_files(root):
@@ -220,6 +230,7 @@ def scan(root: Path) -> list[Finding]:
         if text is None:
             continue
         ext = path.suffix.lower()
+        file_has_guard = has_platform_branching(text, ext)
         for severity, rule_id, regex, exts, note in RULES:
             if exts is not None and ext not in exts:
                 continue
@@ -232,12 +243,21 @@ def scan(root: Path) -> list[Finding]:
                 snippet = text[line_start:line_end].strip()[:120]
 
                 in_docstring = ext == ".py" and is_in_module_docstring(text, m.start())
+                guarded = file_has_guard and rule_id in PLATFORM_GUARDED_RULES
 
                 downgraded_severity = severity
+                extra_note = ""
                 if is_allowed_mac_only(rel):
                     downgraded_severity = "INFO"
+                elif guarded:
+                    if severity == "CRITICAL":
+                        downgraded_severity = "LOW"
+                    elif severity == "HIGH":
+                        downgraded_severity = "INFO"
+                    extra_note = " (file has platform-conditional code — likely guarded; verify)"
                 elif in_docstring and severity == "CRITICAL":
                     downgraded_severity = "LOW"
+                    extra_note = " (inside module docstring)"
 
                 findings.append(Finding(
                     severity=downgraded_severity,
@@ -245,7 +265,7 @@ def scan(root: Path) -> list[Finding]:
                     file=rel,
                     line=line_no,
                     snippet=snippet,
-                    note=note + (" (inside module docstring)" if in_docstring else ""),
+                    note=note + extra_note,
                 ))
 
     findings.sort(key=lambda f: (SEVERITY_ORDER.get(f.severity, 99), f.file, f.line))

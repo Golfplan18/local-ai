@@ -1,4 +1,12 @@
+
 # Corpus Formalization Framework
+
+## Display Name
+Corpus Formalization (CFF)
+
+## Display Description
+Meta-framework for formalizing the knowledge corpus — the set of facts, lenses, and reference material that sits between processes (PFF) and outputs (OFF). Use to design or audit how a knowledge body is structured, navigated, and surfaced for downstream framework execution.
+
 
 *A Meta-Framework for Formalizing the Knowledge Corpus That Sits Between Process and Output*
 
@@ -677,15 +685,17 @@ A corpus template is a markdown file with YAML frontmatter and a structured body
 
 ```yaml
 ---
-nexus: [project or domain]
-type: engram
-subtype: corpus-template
+nexus:
+  - [project or domain]
+type: framework
+tags:
+  - corpus-template
 workflow: [Workflow Name]
 cadence: [quarterly | monthly | weekly | daily | ad-hoc | project-bound]
 identifier_format: [format string, e.g., "Q[N] [YYYY]" or "[YYYY]-[MM]"]
 template_version: [semantic version, e.g., 1.0]
-date created: [YYYY/MM/DD]
-date modified: [YYYY/MM/DD]
+date created: [YYYY-MM-DD]
+date modified: [YYYY-MM-DD]
 sources:
   - name: [source name]
     type: [external-data | user-direct-entry | pff-output | chain-input]
@@ -774,26 +784,41 @@ authority: [who can modify this template; defaults to owner]
 
 ## Section IX: Corpus Instance Format Specification
 
-A corpus instance is structurally identical to its template but with additional instance-specific frontmatter and populated content.
+A corpus instance is structurally identical to its template but with the `type` field overridden to `incubator` (elevatable to `engram` on user vetting), the `tags` updated to `corpus-instance`, and additional instance-specific frontmatter and populated content.
 
-### Frontmatter additions for instances
+### Frontmatter for instances
 
 ```yaml
 ---
-[All template frontmatter fields]
-template_source: [path to template file]
+nexus:
+  - [project or domain]
+type: incubator                    # overrides template's `framework`; user elevates to `engram` after vetting
+tags:
+  - corpus-instance
+workflow: [Workflow Name]
+cadence: [from template]
+identifier_format: [from template]
 template_version: [version of template this instance was created from]
+template_source: [path to template file]
 period_identifier: [the period this instance covers, e.g., "April 2026"]
-instantiated: [YYYY/MM/DD when this instance was created]
+instantiated: [YYYY-MM-DD when this instance was created]
+sources: [from template]
+outputs: [from template]
+chain_inputs: [from template]
+chain_outputs: [from template]
+owner: [from template]
+authority: [from template]
 sections_status:
   [section_name]: [filled | partial | empty | blocked]
 sections_provenance:
   [section_name]:
     source_pff: [PFF name and version if applicable]
-    filled_at: [YYYY/MM/DD HH:MM]
+    filled_at: [YYYY-MM-DD HH:MM]
     filled_by: [user or agent identifier]
-last_modified: [YYYY/MM/DD HH:MM]
+last_modified: [YYYY-MM-DD HH:MM]
 status: [populating | complete | partial | blocked]
+date created: [YYYY-MM-DD]
+date modified: [YYYY-MM-DD]
 ---
 ```
 

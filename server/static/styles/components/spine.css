@@ -65,6 +65,35 @@
   white-space: nowrap;
   pointer-events: none;
   display: none;
+  /* V3 Input Handling Phase 5 — share the bridge with the framework
+     label. Cap to half the bridge width so the framework label has room
+     on the left; ellipsis on overflow. */
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* V3 Input Handling Phase 5 — left-justified framework name on the left
+   bridge strip. Mirrors the mode label's positioning rules: percentage
+   width cap, ellipsis on overflow, hidden when empty. */
+.bridge-framework-label {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-normal);
+  display: none;
+}
+.bridge-framework-label.is-set {
+  display: block;
 }
 
 /* Right bridge mode label — mirrors the left bridge label, justified to
@@ -92,4 +121,50 @@
 }
 .bridge-qa-message.show {
   display: block;
+}
+
+/* V3 spec §3 — mode bracketing on the R glyph.
+   Two horizontal text labels positioned absolutely within the spine,
+   centered on the wordmark r-center (top coordinate set by JS via
+   placeWordmark). Each extends out of the spine into the adjacent pane
+   gap; overflow is allowed so the text reaches toward the pane edges
+   without being clipped by the spine's 68px column.
+   Visibility is keyed off body.stealth-mode / body.private-mode classes;
+   text content is set by setMode() in the inline script. */
+.mode-bracket {
+  position: absolute;
+  top: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-family: var(--font-monospace, ui-monospace, SFMono-Regular, monospace);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.mode-bracket-left {
+  right: 100%;
+  text-align: right;
+  padding-right: 14px;
+}
+
+.mode-bracket-right {
+  left: 100%;
+  text-align: left;
+  padding-left: 14px;
+}
+
+body.stealth-mode .mode-bracket {
+  color: var(--ora-mode-stealth-label);
+  opacity: 0.65;
+}
+
+body.private-mode .mode-bracket {
+  color: var(--ora-mode-private-label);
+  opacity: 0.65;
 }

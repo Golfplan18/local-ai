@@ -657,10 +657,76 @@
   // ── Panel helper ──────────────────────────────────────────────────────────
 
   /**
+   * Resolve the panel's "active selection" — a single canvas-object id that
+   * represents what the user has the focus on. Used by WP-7.1.5 (Ask Ora)
+   * to auto-fill `image-ref` capability inputs so the Run button enables
+   * without an extra click.
+   *
+   * Priority (image is most useful for AI capabilities, which is the main
+   * consumer):
+   *
+   *   1. Attached background image (`_backgroundImageNode`) — if present,
+   *      that is the natural target for image-* capabilities. The synthetic
+   *      sentinel id `'canvas-image'` is returned (the Konva.Image carries
+   *      no userShapeId since it's not a user-drawn shape).
+   *   2. Selected user shape (`_selectedShapeIds[0]`) — first id wins when
+   *      multiple shapes are selected; "primary" selection has no defined
+   *      ordering, so we take the first.
+   *   3. Selected user annotation (`_selectedAnnotIds[0]`) — same first-wins.
+   *   4. Selected semantic SVG node (`_selectedNodeId`) — id of an artifact
+   *      element (e.g. a node inside a rendered graph).
+   *
+   * Returns the bare string id, or null when nothing qualifies. The caller
+   * (visual-toolbar-bindings) treats the value as opaque; the
+   * capability-invocation-ui's `image-ref` widget accepts a string or
+   * `{id, kind}` shape, so a bare string is the simpler contract.
+   */
+  function _resolveActiveSelection(panel) {
+    if (!_isObj(panel)) return null;
+
+    // 1. Attached background image — the dominant case for image-ref.
+    if (panel._backgroundImageNode) {
+      return 'canvas-image';
+    }
+
+    // 2. Selected user shape (prefer over annotations / semantic nodes).
+    var shapeIds = panel._selectedShapeIds;
+    if (Array.isArray(shapeIds) && shapeIds.length > 0) {
+      var sid = shapeIds[0];
+      if (typeof sid === 'string' && sid.length > 0) return sid;
+    }
+
+    // 3. Selected user annotation.
+    var annotIds = panel._selectedAnnotIds;
+    if (Array.isArray(annotIds) && annotIds.length > 0) {
+      var aid = annotIds[0];
+      if (typeof aid === 'string' && aid.length > 0) return aid;
+    }
+
+    // 4. Semantic SVG node.
+    var nid = panel._selectedNodeId;
+    if (typeof nid === 'string' && nid.length > 0) return nid;
+
+    return null;
+  }
+
+  /**
    * Capture a spatial_representation from a live VisualPanel instance. The
    * panel exposes `userInputLayer` directly as a public field (see
    * visual-panel.js); no getter is required. WP-3.3 will wire this into
    * chat submission.
+   *
+   * Additive surface (WP-7.1.5):
+   *   `_activeSelection` — a bare string id of the selection target, or
+   *   absent when nothing is selected. Consumers (visual-toolbar-bindings
+   *   for Ask Ora image-ref auto-fill) treat the absence/presence
+   *   identically to a null check.
+   *
+   * Returning a snapshot for a panel with NO user shapes but WITH an active
+   * selection (e.g. just an attached background image): we synthesize a
+   * minimal one-entity envelope so callers can still read `_activeSelection`
+   * off it. Without this, an image-only panel produces null and the auto-
+   * fill never fires.
    *
    * NOTE: if a future refactor makes userInputLayer private (e.g. prefix
    * `_userInputLayer`), add a public getter on VisualPanel and update the
@@ -670,8 +736,37 @@
   function captureFromPanel(panel) {
     if (!_isObj(panel)) return null;
     var layer = panel.userInputLayer || panel._userInputLayer || null;
-    if (!layer) return null;
-    return serialize(layer);
+    var snapshot = layer ? serialize(layer) : null;
+    var activeSel = _resolveActiveSelection(panel);
+
+    if (snapshot) {
+      if (activeSel != null) snapshot._activeSelection = activeSel;
+      return snapshot;
+    }
+
+    // No user shapes — if we still have an active selection (most commonly
+    // an attached background image), surface a stub envelope so the
+    // image-ref auto-fill path can read `_activeSelection`. The stub uses
+    // the same id as the active selection so downstream consumers that
+    // walk entities[] still see a coherent target.
+    //
+    // The `_stubEnvelope: true` marker lets server-bound senders (chat-panel)
+    // detect that this envelope carries no real user spatial input and was
+    // synthesized purely to transport the active-selection hint to in-process
+    // consumers (visual-toolbar-bindings). Senders should skip
+    // `spatial_representation` for stub envelopes — `_activeSelection` and
+    // `_stubEnvelope` are stripped by the underscore-prefix rule before
+    // transit anyway, but we flag the envelope so the sender can avoid
+    // shipping a misleading single-entity payload to the server.
+    if (activeSel != null) {
+      return {
+        entities: [{ id: activeSel, position: [0.5, 0.5], label: '(canvas selection)' }],
+        _activeSelection: activeSel,
+        _stubEnvelope: true,
+      };
+    }
+
+    return null;
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────
@@ -685,5 +780,6 @@
     // Internal knobs exposed for tests.
     _PROXIMITY_FRAC:    PROXIMITY_FRAC,
     _REL_TYPE_FOR:      REL_TYPE_FOR,
+    _resolveActiveSelection: _resolveActiveSelection,
   };
 })();

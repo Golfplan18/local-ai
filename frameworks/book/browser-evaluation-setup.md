@@ -1,5 +1,12 @@
 # Browser Evaluation Setup Framework
 
+## Display Name
+Browser Evaluation Setup
+
+## Display Description
+Connect Playwright browser automation to commercial AI services and register the resulting endpoints. Use when adding a chat-based AI service that has no public API but is accessible through a browser session.
+
+
 *Guided Setup for Commercial AI Browser Automation Connections*
 
 ---
@@ -37,12 +44,15 @@ Agent: This framework executes through the local orchestrator with tool access. 
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: Registered browser evaluation endpoint
+### Milestone 1: Registered Browser Evaluation Endpoint
 
 - **Endpoint produced:** For each requested service (Claude, ChatGPT, Gemini, or a user-specified URL): an authenticated Playwright session file at `[workspace]/config/browser-sessions/[service].json` plus a corresponding active entry in `[workspace]/config/endpoints.json` with `name`, `type: browser`, `service`, `session_path`, `status: active`, and `verified` (ISO date) fields. IF no `default_endpoint` was previously set, the entry is also installed as the default.
 - **Verification criterion:** (a) the session file exists at the named path and loads without error into a fresh Playwright context; (b) a second Playwright context opened with that stored state reaches the service's chat page in a logged-in state (chat interface visible, no redirect to login); (c) a minimal test prompt ("Say hello.") sent through the `browser_evaluate` tool either returns a response within 30 seconds or the timeout is explicitly logged per Layer 3; (d) the endpoint registry entry exists for the service with `status: active` and the verification date populated, and no duplicate entry remains from a prior expired session.
-- **Preconditions:** Playwright is installed with Chromium binaries (installed by the first boot framework Phase 1); the user can complete interactive login in a visible browser including any 2FA or CAPTCHA challenges; the target service's URL resolves and its chat page is reachable. Re-authentication invocation (when a specific prior session has expired) inherits the expired service name from the orchestrator and skips Layer 1's selection prompt per Execution Command 5.
-- **Framework Registry summary:** Registers an authenticated Playwright browser session for a commercial AI service (Claude, ChatGPT, Gemini, or custom URL) as an active endpoint in `endpoints.json`.
+- **Layers covered:** 1, 2, 3, 4
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Playwright session JSON file + endpoints.json entry update.
+- **Drift check question:** Is the registered session genuinely authenticated for the requested service (chat interface visible without login redirect), and does the endpoints.json entry correctly reference the new session file with no stale duplicates from prior expired sessions?
 
 ---
 

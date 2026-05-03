@@ -1,12 +1,34 @@
 # Process Formalization Framework
 
+## Display Name
+Process Formalization (PFF)
+
+## Display Description
+Design, convert, render, and audit AI instruction frameworks against a standardized canonical specification. Four modes: F-Design (new framework), F-Convert (existing → canonical), F-Render (spec → execution variants), F-Audit (review).
+
+
 *A Meta-Framework for Formalizing Domain Expertise into Executable AI Specifications*
 
-*Version 2.0*
+*Version 2.1*
 
 *Research-backed update incorporating findings from "Best Practices for Multi-Step AI Prompting" (Appendix)*
 
 ---
+
+
+## Setup Questions
+
+### Mode
+Required. Which of the four PFF operations: F-Design (create a new framework from a task description), F-Convert (rebuild an existing framework against the canonical specification), F-Render (produce an execution variant from a canonical spec), or F-Audit (review an existing framework for quality issues).
+
+### Task description — for F-Design
+Required for F-Design. Description of the task or domain you want a framework for. The more concrete, the better — name the deliverable, the stakeholders, and the hard requirements.
+
+### Existing framework — for F-Convert, F-Render, F-Audit
+Required for F-Convert, F-Render, and F-Audit. The framework spec (paste the content, attach the file, or provide a vault path).
+
+### Target execution tier — for F-Render
+Required for F-Render. One of: specification (canonical, model-agnostic), single-pass (commercial AI in one window), agent (swarm execution with stages and tools), or reasoning-model (simplified for o3/o4/DeepSeek-R1).
 
 ## How to Use This File
 
@@ -49,37 +71,92 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 
 This framework's own declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: New framework specification
+PFF is a multi-mode framework. The four modes (F-Design / F-Convert / F-Render / F-Audit) deliver different milestones along independent paths. F-Design has more than 5 phases and is therefore decomposed into multiple intermediate milestones per the multi-milestone requirement in Section 2.3; the other three modes are short enough to remain single-milestone. All milestone properties are defined inline per milestone per the inline-properties principle.
 
-- **Endpoint produced:** Canonical framework spec document + executable copy + Framework Registry entry
-- **Verification criterion:** All items in the Quality Verification Checklist (Section VII) pass for the produced spec
-- **Preconditions:** A task definition, input/output inventory, quality dimensions, and failure modes are provided by the user
-- **Mode required:** F-Design
-- **Framework Registry summary:** Designs new framework specifications from task requirements
+### Milestones for Mode F-Design
 
-### Milestone Type: Modernized framework specification
+#### Milestone 1: Requirements Gathered
 
-- **Endpoint produced:** Updated canonical framework spec conforming to the current Framework Anatomy and Authoring Standards
-- **Verification criterion:** All items in the Quality Verification Checklist pass; cross-check confirms all original framework intellectual content is preserved in the updated version
-- **Preconditions:** An existing framework specification requiring modernization
-- **Mode required:** F-Convert
-- **Framework Registry summary:** Converts legacy framework specifications to current standard
+- **Mode:** F-Design
+- **Endpoint produced:** A complete requirements record covering: final user-facing deliverable; mode structure (single-mode or multi-mode with per-mode deliverables); routing layer (if any); per-mode milestone breakpoints with all 8 inline properties elicited per Phase 1 Question 1 Steps A-E; input inventory; quality definition; failure modes; pipeline position; execution environment; domain expertise needs; precedent frameworks; proactive gap assessment accepted/dismissed item by item by the user; complexity assessment confirming recommended architecture (simple / standard / agent-mode / multi-framework pipeline).
+- **Verification criterion:** Every question 1-10 in Phase 1 has a recorded answer; the proactive gap assessment was presented to the user and accepted/dismissed item by item; the complexity assessment was presented and confirmed; if the framework is multi-mode, modes are enumerated and each has its own milestone breakdown elicited; if any mode has more than 5 layers and only one milestone has been declared for it, Step E correction was applied; M0 routing layer (if present) was identified per Step C.
+- **Layers covered:** Phase 1 (Requirements Gathering and Proactive Elicitation)
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Structured Phase 1 record with one section per question 1-10 in the Question Sequence.
+- **Drift check question:** Do the captured requirements faithfully reflect the user's stated task without injected framework defaults the user did not confirm, and do the proactive gap items reflect the user's actual problem space rather than generic patterns?
 
-### Milestone Type: Rendered execution variant
+#### Milestone 2: Evaluation Criteria and Architecture Designed
 
-- **Endpoint produced:** A new framework file (single-pass, agent-mode, or reasoning-model) rendered from a canonical specification
-- **Verification criterion:** The rendered variant passes the rendering-specific compliance checks in the Quality Verification Checklist
-- **Preconditions:** A canonical framework specification and a named target execution environment
-- **Mode required:** F-Render
-- **Framework Registry summary:** Renders execution variants from canonical framework specifications
+- **Mode:** F-Design
+- **Endpoint produced:** Numbered evaluation criteria (7-12) with five-level rubrics per criterion derived from quality dimensions, anti-failure dimensions, and integration dimensions; processing architecture with layer structure, handoff specifications, stage boundaries for agent mode (if applicable), invariant checks, anti-drift anchors (for >7-layer frameworks), named failure modes per layer plus framework-wide cross-cutting failure modes, and recovery protocol covering retry/halt/proceed conditions at each identified failure point.
+- **Verification criterion:** Quality dimensions from Question 3, anti-failure dimensions from Question 4, and integration dimensions from Question 5 are all extracted into criteria; criteria count is 7-12 with each having a five-level rubric; layers map to evaluation criteria such that every criterion has at least one layer producing material that satisfies it; handoffs declare what each layer produces, consumes, and discards; the architecture was presented to the user for review and accepted before proceeding to Phase 4.
+- **Layers covered:** Phase 2 (Evaluation Criteria Design), Phase 3 (Architecture Design)
+- **Required prior milestones:** M1
+- **Gear:** 4
+- **Output format:** Numbered criteria list with rubrics + textual architecture description with layer structure + handoff table + named failure modes inventory + recovery protocol per failure point.
+- **Drift check question:** Do the evaluation criteria collectively cover the quality, anti-failure, and integration dimensions captured in M1, and does the architecture map every criterion to a producing layer with explicit handoffs?
 
-### Milestone Type: Framework audit report
+#### Milestone 3: Canonical Specification Drafted
 
-- **Endpoint produced:** Scored audit report documenting framework compliance against Quality Verification Checklist with specific remediation recommendations
-- **Verification criterion:** Report assigns a pass/fail to every checklist item and identifies each failure's specific location in the framework being audited
-- **Preconditions:** A framework specification ready for audit
-- **Mode required:** F-Audit
-- **Framework Registry summary:** Audits frameworks against quality standard and provides remediation
+- **Mode:** F-Design
+- **Endpoint produced:** Full canonical framework specification conforming to Framework Anatomy (Section II): YAML frontmatter, Header Block (Purpose, Input Contract, Output Contract, Execution Tier), Milestones Delivered with all properties inline per Section 2.3 schema, Evaluation Criteria, Persona (if applicable), Processing Layers with full instructions and invariant checks at boundaries, Self-Evaluation Layer with calibration warning and correction trigger phrases, Error Correction and Output Formatting Layer with variable fidelity verification and Recovery Declaration, Named Failure Modes section, Execution Commands block.
+- **Verification criterion:** Every Section II subsection (2.1-2.12) is either present or explicitly justified as omitted; Milestones Delivered uses the inline-properties schema with all required fields per milestone (Endpoint produced, Verification criterion, Layers covered, Required prior milestones, Gear, Output format, Drift check question, plus Mode for multi-mode frameworks, plus Conditional layers when applicable, plus M0 when applicable); the Authoring Standards in Section III are applied (imperative voice, IF/THEN logic, named actors, specific quantities, Think-Then-Format); invariant checks are present at every layer boundary except the final two; named failure modes are declared per layer plus framework-wide.
+- **Layers covered:** Phase 4 (Specification Drafting)
+- **Required prior milestones:** M2
+- **Gear:** 4
+- **Output format:** Full markdown specification document following the structure defined in Section II.
+- **Drift check question:** Does the drafted specification faithfully implement the architecture from M2 and satisfy the requirements from M1, without introducing scope, criteria, or layers that were not part of the design?
+
+#### Milestone 4: Variants Rendered and Verified
+
+- **Mode:** F-Design
+- **Endpoint produced:** Rendered execution variants per the requested target environments (single-pass commercial, agent-mode, reasoning-model, or any combination) per Section V Rendering Protocol; verification report against the Section VII Quality Verification Checklist showing pass on every applicable item; canonical specification plus rendered variants saved to their target locations; Framework Registry entry added with the framework's metadata and accurate Delivers field.
+- **Verification criterion:** All requested execution variants are rendered and pass their rendering-specific compliance checks per Section VII (Agent-Mode Compliance for agent renderings, Reasoning-Model Compliance for reasoning-model renderings); the canonical specification passes Section VII Structural Completeness, Milestones Delivered Compliance, Input/Output Integrity, Evaluation Architecture, Language Compliance, Anti-Drift Compliance, Think-Then-Format Compliance, Variable Fidelity Compliance, Anti-Confabulation Compliance, Recovery Compliance, Backward Compatibility, and Proactive Elicitation Compliance; the Framework Registry entry contains all required fields and an accurate Delivers summary that compresses the framework's actual milestones.
+- **Layers covered:** Phase 5 (Rendering), Phase 6 (Verification)
+- **Required prior milestones:** M3
+- **Gear:** 4
+- **Output format:** Rendered framework files at their target paths + Section VII audit report (pass/fail per checklist item) + Framework Registry entry.
+- **Drift check question:** Do the rendered variants preserve every operational directive from the canonical specification, do they pass all applicable Quality Verification Checklist items, and is the Framework Registry entry's Delivers summary an accurate compression of the framework's actual milestones?
+
+### Milestones for Mode F-Convert
+
+#### Milestone 1: Modernized Framework Specification
+
+- **Mode:** F-Convert
+- **Endpoint produced:** Updated canonical framework spec conforming to the current Framework Anatomy and Authoring Standards; intellectual content preservation cross-check confirming no original substance was lost; updated Framework Registry entry reflecting any changed Delivers content; conversion change-log enumerating what was added, modified, restructured, or removed relative to the prior version.
+- **Verification criterion:** All items in the Quality Verification Checklist (Section VII) pass for the updated spec; cross-check confirms all original framework intellectual content is preserved in the updated version; the Section VI Conversion Protocol's Analysis Phase, Conversion Phase, and Verification Phase all completed; Milestones Delivered uses the inline-properties schema; if the original framework declared milestones using a legacy schema (Preconditions / Framework Registry summary fields), they are restated using the current schema (Layers covered / Required prior milestones / Gear / Output format / Drift check question).
+- **Layers covered:** Section VI (Conversion Protocol — 6.1 Analysis Phase, 6.2 Conversion Phase, 6.3 Verification Phase)
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Updated canonical framework specification document plus a conversion change-log noting what was added, modified, restructured, or removed.
+- **Drift check question:** Does the modernized framework preserve every piece of original intellectual content while conforming to current Authoring Standards, and does it correctly use the inline-properties schema for any milestones declared?
+
+### Milestones for Mode F-Render
+
+#### Milestone 1: Rendered Execution Variant
+
+- **Mode:** F-Render
+- **Endpoint produced:** A new framework file rendered from a canonical specification into the requested target environment (single-pass commercial, agent-mode, or reasoning-model) per Section V Rendering Protocol.
+- **Verification criterion:** The rendered variant passes the rendering-specific compliance checks in Section VII (Agent-Mode Compliance for agent renderings, Reasoning-Model Compliance for reasoning-model renderings, Backward Compatibility for all renderings); every operational directive from the canonical spec is preserved in the rendered variant.
+- **Layers covered:** Section V (Rendering Protocol — 5.1 Single-Pass Rendering Protocol, 5.2 Agent-Mode Rendering Protocol, or 5.3 Reasoning-Model Rendering Protocol per target; plus 5.4 Rendering Order if multiple variants requested)
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** New framework file in the target environment's expected format.
+- **Drift check question:** Does the rendered variant preserve every operational directive from the canonical specification while honoring the target environment's specific rendering rules, and does it pass the rendering-specific compliance checks for that environment?
+
+### Milestones for Mode F-Audit
+
+#### Milestone 1: Framework Audit Report
+
+- **Mode:** F-Audit
+- **Endpoint produced:** Scored audit report documenting framework compliance against the Quality Verification Checklist (Section VII) with pass/fail per checklist item, specific location identification for each failure, and concrete remediation recommendations.
+- **Verification criterion:** Every Section VII checklist item received a pass/fail verdict; every failure cites the specific location in the framework being audited where the failure occurs; every failure is paired with a concrete remediation recommendation rather than a generic suggestion; the audit covers Structural Completeness, Milestones Delivered Compliance, Input/Output Integrity, Evaluation Architecture, Language Compliance, Anti-Drift Compliance, Think-Then-Format Compliance, Variable Fidelity Compliance, Anti-Confabulation Compliance, Recovery Compliance, applicable rendering compliance categories, Backward Compatibility, and Proactive Elicitation Compliance.
+- **Layers covered:** Section VII (Quality Verification Checklist application)
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Markdown audit report with verdict-per-item, location citations, and remediation recommendations.
+- **Drift check question:** Does the audit report assign verdicts to every checklist item, cite specific locations for failures rather than generic claims, and provide concrete remediation rather than vague exhortations?
 
 ---
 
@@ -192,6 +269,19 @@ The header block appears immediately after frontmatter. It provides the AI with 
 ```
 # [Framework Name]
 
+## Display Name
+[Short picker-friendly name, 60 char limit. Used in the framework picker row title and the bridge-zone label when this framework is invoked.]
+
+## Display Description
+[Brief description, 400 char limit. 2–4 sentences. Used in the framework picker dropdown row to tell the user what this framework produces and when to pick it.]
+
+## Setup Questions
+[Optional but strongly recommended for user-pickable frameworks. Structured list of inputs this framework needs, consumed by the framework setup popup (V3 Input Handling Phase 7) to detect missing inputs deterministically. Each question is an `### Name` heading whose body's first sentence flags `Required.` or `Optional.`; the rest of the body is the description shown to the user.
+
+When a framework declares this section, the popup uses it directly. When absent, the popup falls back to LLM-driven analysis of the `## INPUT CONTRACT` section below.
+
+Mode-conditional questions are written as `Required for [mode-name] mode.` and the analyzer handles the conditional logic against the user's chosen mode.]
+
 ## PURPOSE
 [One to three sentences. What this framework produces and why it exists.
 Name the deliverable concretely, not the aspiration.]
@@ -211,6 +301,13 @@ For each output: name, format, destination, and quality threshold.]
 [If reasoning-model: state that instructions are simplified for
 internal reasoning models.]
 ```
+
+**Display Name and Display Description rules:**
+
+- **Display Name** is the picker row title and bridge-zone label. Hard limit 60 characters. Plain text, no Markdown. Should make the framework immediately recognizable to a user scanning the picker. Acronyms in parentheses are encouraged when the framework is commonly referenced by acronym (e.g. "Process Formalization (PFF)").
+- **Display Description** is the picker row body. Hard limit 400 characters. 2–4 sentences. Lead with the deliverable; close with when to pick this framework over the alternatives. Plain text, no Markdown.
+- Both fields are mandatory for every framework that is user-pickable. Pipeline-internal stage specs (F-* and Phase A) are exempt — they are loaded automatically by the orchestrator and never appear in the picker.
+- The picker parser reads these sections by literal heading match. Do not rename, demote to a sub-heading, or add modifiers like `## Display Name (preview)`.
 
 **Input Contract format:**
 
@@ -241,7 +338,7 @@ Secondary outputs (if applicable):
 
 ### 2.3 Milestones Delivered
 
-Every framework that delivers project-level milestones declares them here. This declaration is the handoff point between project supervision (via the Problem Evolution Framework, PEF) and framework execution — when PEF needs a milestone delivered, it consults this section to identify which framework to invoke.
+Every framework that delivers project-level milestones declares them here. This declaration is the handoff point between project supervision (via the Problem Evolution Framework, PEF) and framework execution — when PEF needs a milestone delivered, it consults this section to identify which framework to invoke. It is also the structural basis for layered framework execution: Ora's milestone executor parses this section and runs each milestone as a separate pipeline pass with drift detection at the boundaries.
 
 The Milestones Delivered section is required for every framework that can be selected by PEF for milestone delivery.
 
@@ -249,63 +346,97 @@ The Milestones Delivered section is required for every framework that can be sel
 
 Exempt frameworks must declare the exemption explicitly in their Execution Tier section with a statement of the form: *"This framework is invoked as part of [pipeline or orchestration name]; it is not PEF-selectable and does not declare Milestones Delivered."*
 
+**Inline-properties principle.** All milestone properties are defined inline within each milestone block — never via shared definitions, factored references, or parent-subsection inheritance. Every property is bound to the specific milestone path it governs. This prevents cross-mode property mismatches and makes each milestone block fully self-contained for the parser.
+
+**Schema:**
+
 ```
 ## MILESTONES DELIVERED
 
-### Milestone Type: [Name]
-- **Endpoint produced:** [concrete artifact or state change this framework produces]
-- **Verification criterion:** [how to objectively determine the milestone is achieved]
-- **Preconditions:** [what must be true in the current state for the framework to deliver this milestone]
-- **Mode required (if applicable):** [which framework mode applies, e.g., F-Design]
-- **Framework Registry summary:** [one-line searchable summary for the Registry entry]
+[Optional intro paragraph: what milestones the framework delivers, across how many modes, where drift checks fire.]
 
-[Additional Milestone Types follow the same structure]
+### M0: Routing
+[Declare ONLY if the framework has a triage / routing / classification layer that fires before mode selection. Skip entirely if the framework has no such layer.]
+
+- **Function:** [what this layer classifies, routes, or gates]
+- **Layers covered:** [layer numbers]
+- **Output:** [what M0 produces — typically a mode selection plus any classification flag that downstream milestones consume conditionally]
+
+### Milestone N: [Name]
+
+- **Mode:** [mode name (e.g., I-Create, F-Design); for single-mode frameworks, write "all" or omit this property entirely]
+- **Endpoint produced:** [concrete artifact or state change this milestone produces]
+- **Verification criterion:** [how to objectively determine this milestone is achieved]
+- **Layers covered:** [comma-separated layer numbers, e.g., "1, 2" or "3, 4, 5"]
+- **Conditional layers:** [OPTIONAL — present only if one or more layers in Layers covered fire conditionally. List the conditional layers and state the activating condition inline. Example: "3, 4, 6 — fire only when M0 classifies tier as Incarnated"]
+- **Required prior milestones:** [M-references whose deliverables this milestone consumes. Use "None" for the first milestone. For cross-mode references, prefix with the mode name (e.g., "I-Create.M4")]
+- **Gear:** [pipeline gear at which this milestone runs. Default 4]
+- **Output format:** [reference to a Layer Output Format block from the framework, or inline description of the deliverable's structure]
+- **Drift check question:** [specific question used at this milestone's boundary to detect wandering from the user's original intent — specific enough to surface scope expansion, terminology shift, or premature convergence; not generic]
+
+[Additional Milestone entries follow the same structure with all properties inline. Multi-mode frameworks MAY group milestones under optional `### Milestones for Mode <Name>` subsection headers for human readability — but the parser uses each milestone's inline Mode property as the source of truth, never the parent subsection header.]
 ```
 
 **Format standards:**
 
-- A framework may declare multiple milestone types when different modes produce different outcomes.
+- All milestone properties are defined inline within their milestone block. No factoring, no shared definitions, no parent-subsection inheritance for property values.
 - The **Endpoint produced** is a concrete deliverable or state change — a specific artifact, file, or observable change in the system. Abstract outcomes are prohibited.
-- The **Verification criterion** must be objectively determinable. It uses the same standard as Resolution Statements in the Mission, Objectives, and Milestones Clarification Framework. Ambiguous quality terms ("good," "robust," "complete") are prohibited unless paired with objective evaluation criteria that allow any observer to determine pass/fail without subjective interpretation.
-- **Preconditions** describe what must hold before the framework can execute successfully — inputs required plus any state conditions in the project or system.
-- **Mode required** is specified when the framework has multiple modes that deliver different milestone types.
-- The **Framework Registry summary** is a single-line phrase copied into the Registry's "Delivers" field to enable semantic search.
+- The **Verification criterion** must be objectively determinable per the Resolution Statement Objectivity Protocol. Ambiguous quality terms ("good," "robust," "complete") are prohibited unless paired with objective evaluation criteria.
+- **Layers covered** lists the processing layers grouped under this milestone. The milestone executor concatenates these layers' instructions into a single pipeline pass.
+- **Conditional layers** is optional. Declare only when one or more layers in Layers covered fire conditionally on runtime state — typically a classification produced by M0 or an earlier milestone. State the condition inline so the parser and executor can resolve it without external context.
+- **Required prior milestones** lists the prior milestones whose deliverables this milestone consumes. Cross-mode references (rare; usually only the first milestone of a mode pulling from M0) use the mode-prefix syntax `<ModeName>.<MilestoneId>`.
+- **Gear** is the pipeline gear at which this milestone runs. Default is Gear 4 (parallel adversarial review with consolidation). Lower gears are acceptable for milestones that only assemble structured data with no synthesis.
+- **Output format** can reference an existing Layer Output Format block from the framework rather than duplicate it inline.
+- **Drift check question** is asked at the milestone's boundary to detect whether the deliverable still addresses the user's original input.
+- **Mode** is required as an inline property when the framework has multiple modes producing different milestone paths. Single-mode frameworks may omit Mode or write "all".
 
-**During F-Design:** The designer elicits milestones delivered as part of Phase 1, Question 1 of the Framework Design Process. For each milestone type, the question is: *"What concrete endpoint does this framework produce, how is achievement objectively verified, and what must be true for the framework to run successfully?"* Each declared milestone type becomes an entry in this section.
+**Multi-milestone requirement.** Frameworks with more than ~5 processing layers per mode SHOULD declare multiple intermediate milestones for that mode, where each milestone groups a coherent set of layers that produces a stable deliverable downstream milestones consume. A framework (or mode) that runs 8+ layers under a single milestone receives no drift checkpoints between input and final output; declaring intermediate milestones is the structural mechanism for drift prevention. Single-milestone designs are appropriate only for short paths (≤5 layers) or paths with no natural intermediate deliverable.
 
-**Example — the Process Formalization Framework itself:**
+**Multi-mode frameworks.** Frameworks with multiple modes (e.g., I-Create / I-Modify / M-Program / M-Task in agent-identity, or F-Design / F-Convert / F-Render / F-Audit in this framework) declare the milestones for each mode separately, with Mode bound inline to each milestone. M0 routing layers, when present, fire before mode selection and feed the mode classification to downstream milestones via Conditional layers.
+
+**During F-Design:** The designer elicits milestones delivered as part of Phase 1 Question 1 of the Framework Design Process. Each declared milestone becomes an entry in this section with all properties inline.
+
+**Example — Deep Research Protocol (single-mode, multiple intermediate milestones):**
 
 ```
 ## MILESTONES DELIVERED
 
-### Milestone Type: New framework specification
-- **Endpoint produced:** Canonical framework spec document + executable copy + Framework Registry entry
-- **Verification criterion:** All items in the Quality Verification Checklist (Section VII) pass for the produced spec
-- **Preconditions:** A task definition, input/output inventory, quality dimensions, and failure modes are provided by the user
-- **Mode required:** F-Design
-- **Framework Registry summary:** Designs new framework specifications from task requirements
+This framework delivers three sequential milestones. Each milestone is a coherent intermediate deliverable that downstream milestones consume; each is a checkpoint where adversarial review and drift detection fire.
 
-### Milestone Type: Modernized framework specification
-- **Endpoint produced:** Updated canonical framework spec conforming to the current Framework Anatomy and Authoring Standards
-- **Verification criterion:** All items in the Quality Verification Checklist pass; cross-check confirms all original framework intellectual content is preserved in the updated version
-- **Preconditions:** An existing framework specification requiring modernization
-- **Mode required:** F-Convert
-- **Framework Registry summary:** Converts legacy framework specifications to current standard
+### Milestone 1: Approved Research Plan
 
-### Milestone Type: Rendered execution variant
-- **Endpoint produced:** A new framework file (single-pass, agent-mode, or reasoning-model) rendered from a canonical specification
-- **Verification criterion:** The rendered variant passes the rendering-specific compliance checks in the Quality Verification Checklist
-- **Preconditions:** A canonical framework specification and a named target execution environment
-- **Mode required:** F-Render
-- **Framework Registry summary:** Renders execution variants from canonical framework specifications
+- **Endpoint produced:** A research plan containing 3-7 sub-queries; per-sub-query coverage_criterion; per-sub-query source_hints (VAULT_CONTENT first-ranked); stopping_criteria for the run; for caller_context=USER_DIRECT with vague initial query, explicit user approval of the plan structure.
+- **Verification criterion:** Every sub-query has a coverage_criterion; every sub-query has source_hints; stopping_criteria declared; sub-queries collectively cover normalized_query without obvious gap; plan_review_status appropriate to caller_context.
+- **Layers covered:** 1, 2
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** See Layer 2 Output Format.
+- **Drift check question:** Does this research plan address the user's original query without scope expansion into adjacent topics?
 
-### Milestone Type: Framework audit report
-- **Endpoint produced:** Scored audit report documenting framework compliance against Quality Verification Checklist with specific remediation recommendations
-- **Verification criterion:** Report assigns a pass/fail to every checklist item and identifies each failure's specific location in the framework being audited
-- **Preconditions:** A framework specification ready for audit
-- **Mode required:** F-Audit
-- **Framework Registry summary:** Audits frameworks against quality standard and provides remediation
+### Milestone 2: Evidence Integrated and Iteration Resolved
+
+- **Endpoint produced:** An integrated_evidence_map with one entry per sub-query in research_plan, each carrying deduplicated claims tagged with source class and citations; iteration_decision (CONVERGED, CONVERGED_WITH_GAPS, or BLOCKED).
+- **Verification criterion:** Every sub-query in research_plan appears in integrated_evidence_map; every retained claim carries a source-class tag and citation; iteration count did not exceed depth_cap; vault was consulted before external retrieval; iteration_decision is one of CONVERGED, CONVERGED_WITH_GAPS, or BLOCKED.
+- **Layers covered:** 3, 4, 5
+- **Required prior milestones:** M1
+- **Gear:** 4
+- **Output format:** See Layer 5 Output Format.
+- **Drift check question:** Does the integrated evidence cover every sub-query approved in the research plan, and does the iteration decision faithfully reflect coverage status without falsely declaring CONVERGED while material gaps remain?
+
+### Milestone 3: Final Research Report
+
+- **Endpoint produced:** Structured markdown research report with Executive Summary, per-sub-query sections with citations, Cross-Query Synthesis, Caveats, Bibliography, Corrections Log, Missing Information Declaration, Recovery Declaration; persisted to vault if persist=true.
+- **Verification criterion:** Every sub-query has a section in the report; every claim carries a source-class tag; Bibliography contains every cited URL with no orphans in either direction; all 9 Evaluation Criteria scored at threshold or with documented UNRESOLVED DEFICIENCY.
+- **Layers covered:** 6, 7, 8
+- **Required prior milestones:** M2
+- **Gear:** 4
+- **Output format:** See Layer 6 Output Format and Layer 8 Output Format.
+- **Drift check question:** Does the final report directly answer the user's original query with proper citation grounding, no fabricated URLs, and faithful representation of the integrated evidence?
 ```
+
+(Single-mode framework: no Mode property declared; no M0 routing milestone; no Conditional layers; flat M1, M2, M3 numbering.)
+
+For a multi-mode example with M0 routing and Conditional layers, see the agent-identity framework's Milestones Delivered section.
 
 ### 2.4 Evaluation Criteria
 
@@ -856,7 +987,19 @@ The AI conducts a structured interview with the user to establish the framework'
 
 **Question Sequence:**
 
-1. **Task Definition and Milestones Delivered:** What does this framework produce as its immediate deliverable(s)? Then: what project-level milestones can this framework deliver? For each milestone type, identify (a) the concrete endpoint produced, (b) how achievement would be objectively verified, (c) preconditions that must hold for successful execution, (d) which mode (if any) delivers this milestone type, and (e) a one-line summary suitable for the Framework Registry's "Delivers" field.
+1. **Task Definition, Modes, and Milestones Delivered:** Establish the framework's mode structure, then elicit milestones with all properties inline.
+
+   **Step A — Final deliverable.** What does this framework produce as its final user-facing deliverable?
+
+   **Step B — Modes.** Does this framework have a single execution path or multiple modes (e.g., create / modify / audit)? For each mode identified, what does that mode deliver as its final output?
+
+   **Step C — Routing.** Does the framework have a triage / classification / routing layer that fires BEFORE mode selection? If so, what does it produce that downstream milestones will consume? (This becomes M0 — routing is not itself a milestone but precedes them.)
+
+   **Step D — Per-mode milestone breakpoints.** For each mode identified in Step B: at what natural breakpoints along that mode's layer sequence does the path produce coherent intermediate deliverables that downstream layers consume? For each milestone (intermediate or final) within a mode, elicit ALL of the following inline: (a) the concrete endpoint produced, (b) which layers feed into it, (c) any layers in (b) that fire conditionally based on M0 routing classification or other runtime state, and the condition that activates them, (d) how achievement would be objectively verified, (e) which prior milestones it depends on (use mode-prefix syntax for cross-mode references), (f) the pipeline gear at which it should run (default Gear 4), (g) the output format reference, (h) a drift check question specific enough to surface scope expansion, terminology shift, or premature convergence within this milestone's scope.
+
+   **Step E — Verify chunking sufficiency.** IF any mode has more than ~5 layers and you have identified only one milestone for that mode, THEN return to Step D for that mode — long unchunked execution defeats drift prevention. Single-milestone designs are valid only for short modes (≤5 layers) or modes with no natural intermediate deliverable; if you commit to a single milestone, document the rationale in the framework's Execution Tier section.
+
+   All elicited properties are recorded inline per milestone — never factored into shared definitions or parent-subsection-only inheritance.
 2. **Input Inventory:** What information does this framework receive as input? For each input: What is it? Where does it come from? Is it always available or sometimes absent?
 3. **Quality Definition:** How do you know the output is good? What specific attributes distinguish excellent output from mediocre output for this task? Push beyond "high quality" — name the dimensions.
 4. **Failure Modes:** What are the most likely ways this framework's output could go wrong? What mistakes have you seen AI make on this type of task before?
@@ -930,7 +1073,15 @@ The AI produces the full canonical specification following the Framework Anatomy
 **Process:**
 
 1. Draft the Header Block (Purpose, Input Contract, Output Contract).
-2. Draft the Milestones Delivered section. For each milestone type elicited in Phase 1 Question 1, produce an entry with Endpoint produced, Verification criterion, Preconditions, Mode required (if applicable), and Framework Registry summary. Verify each Verification criterion is objectively determinable per the Resolution Statement Objectivity Protocol — no ambiguous quality terms without objective evaluation criteria.
+2. Draft the Milestones Delivered section per Section 2.3. All milestone properties are defined inline per milestone — never factored into shared definitions.
+
+   IF the framework has a routing / triage layer (identified in Phase 1 Question 1 Step C), THEN declare it as M0 at the top of the Milestones Delivered section with Function, Layers covered, and Output. M0 is not itself a milestone; it precedes mode selection.
+
+   For each mode (identified in Phase 1 Question 1 Step B), draft the mode's milestones in sequence. For each milestone, produce an entry with all required properties bound inline: Mode (omit or write "all" for single-mode frameworks), Endpoint produced, Verification criterion, Layers covered, Conditional layers (only if applicable, with the condition stated inline), Required prior milestones (with mode prefix for cross-mode references), Gear, Output format, and Drift check question.
+
+   IF any mode has more than ~5 layers and only one milestone has been declared for that mode, THEN return to Phase 1 Question 1 Step D to identify intermediate breakpoints.
+
+   Verify each Verification criterion is objectively determinable per the Resolution Statement Objectivity Protocol — no ambiguous quality terms without objective evaluation criteria.
 3. Draft the Evaluation Criteria (from Phase 2, refined by architecture decisions in Phase 3). Use five-level rubrics with concrete per-level descriptions.
 4. Draft the Persona (if applicable, based on Question 7 from Phase 1).
 5. Draft each Processing Layer with full instructions following the Authoring Standards in Section III. Apply the Think-Then-Format standard to every layer. Insert invariant checks at layer boundaries.
@@ -1199,11 +1350,18 @@ Apply this checklist to any framework — new, converted, or rendered. Score eac
 *These items apply only to frameworks that declare Milestones Delivered. Pipeline-stage and fixed-sequence frameworks exempt per Section II subsection 2.3 are not subject to this category; their exemption declaration in Execution Tier is checked under Structural Completeness.*
 
 - [ ] Milestones Delivered section is positioned between the Framework Header Block and the Evaluation Criteria.
-- [ ] At least one milestone type is declared.
-- [ ] Every milestone type has: Endpoint produced, Verification criterion, Preconditions, Framework Registry summary. Mode required is declared if the framework has multiple modes producing different milestone types.
+- [ ] At least one milestone is declared.
+- [ ] Every milestone has all required properties defined inline within its block: Endpoint produced, Verification criterion, Layers covered, Required prior milestones, Gear, Output format, Drift check question. Multi-mode frameworks also declare Mode inline per milestone.
+- [ ] No milestone property is factored into shared definitions, parent-subsection-only inheritance, or external references — every property is bound inline to its specific milestone path.
+- [ ] If the framework has a routing / triage / classification layer that fires before mode selection, M0 is declared at the top of the Milestones Delivered section with Function, Layers covered, and Output.
+- [ ] If any milestone declares Conditional layers, both the conditional layer numbers and the activating condition are stated inline within that milestone.
 - [ ] Each Verification criterion is objectively evaluable — no ambiguous quality terms without objective evaluation criteria.
-- [ ] Each Framework Registry summary is a single line suitable for semantic indexing.
 - [ ] Each Endpoint produced is a concrete artifact or state change, not an abstract outcome.
+- [ ] Each Drift check question is specific enough to surface scope expansion, terminology shift, or premature convergence — not a generic "is this on track?".
+- [ ] Each Layers covered list is non-overlapping with other milestones' Layers covered (no layer appears in two milestones, except M0 which is its own routing pass).
+- [ ] Required prior milestones references are valid (every M-N reference resolves to a declared milestone; cross-mode references use the mode-prefix syntax `<ModeName>.<MilestoneId>`).
+- [ ] Each mode with more than 5 processing layers declares more than one milestone for that mode, OR explicitly justifies single-milestone design in the Execution Tier section.
+- [ ] Multi-mode frameworks declare Mode as an inline property per milestone (single-mode frameworks may omit Mode or write "all").
 
 ### Input/Output Integrity
 

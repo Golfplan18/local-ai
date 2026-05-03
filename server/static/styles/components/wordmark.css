@@ -26,3 +26,36 @@
 .wordmark-clickable:focus-visible .wm-stroke-bright { stroke: var(--ora-wordmark-hover); }
 .wordmark-clickable:hover .wm-fill-base,
 .wordmark-clickable:focus-visible .wm-fill-base     { fill: var(--ora-wordmark-hover); }
+
+/* V3 Backlog 7 — A and O state expressions.
+   "A" gains a sidebar-expand role (per Phase 5.7). Pulse subtly
+   while the sidebar is collapsed and there's something the user
+   might want to see (any unread, errored, or pending count > 0)
+   so the affordance is discoverable. The pulse is muted enough
+   to read as ambient texture, not motion noise. */
+@keyframes ora-a-attract {
+  0%   { stroke-width: 18; }
+  50%  { stroke-width: 21; }
+  100% { stroke-width: 18; }
+}
+
+body:not(.sidebar-expanded) #logo-a.wordmark-attract .wm-stroke-bright,
+body:not(.sidebar-expanded) #logo-a.wordmark-attract .wm-fill-base {
+  animation: ora-a-attract 2.4s ease-in-out infinite;
+}
+
+/* "O" submit pulse. Brief outward expansion of the inner ring on
+   click, giving immediate visual feedback that the submit
+   gesture registered. CSS-only via a class toggled by the JS
+   submit handler. */
+@keyframes ora-o-pulse {
+  0%   { transform: scale(1);    opacity: 1;   }
+  40%  { transform: scale(1.18); opacity: 0.8; }
+  100% { transform: scale(1);    opacity: 1;   }
+}
+
+#logo-o.wordmark-pulse {
+  transform-origin: 145px 145px;
+  transform-box: fill-box;
+  animation: ora-o-pulse 320ms ease-out;
+}

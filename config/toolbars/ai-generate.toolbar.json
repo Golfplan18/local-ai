@@ -1,0 +1,50 @@
+{
+  "id": "ora-ai-generate",
+  "label": "AI Generate",
+  "default_dock": "left",
+  "default_icon_size": "medium",
+  "items": [
+    {
+      "id": "text-to-image",
+      "icon": "sparkles",
+      "label": "Text to image",
+      "shortcut": "Shift+G",
+      "binding": "capability:image_generates"
+    },
+    {
+      "id": "inpaint",
+      "icon": "wand-2",
+      "label": "Inpaint",
+      "binding": "capability:image_edits",
+      "enabled_when": "image_present_and_mask"
+    },
+    {
+      "id": "outpaint",
+      "icon": "expand",
+      "label": "Outpaint",
+      "binding": "capability:image_outpaints",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "upscale",
+      "icon": "image-upscale",
+      "label": "Upscale",
+      "binding": "capability:image_upscales",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "style-transfer",
+      "icon": "palette",
+      "label": "Style transfer",
+      "binding": "capability:image_styles",
+      "enabled_when": "image_present"
+    },
+    {
+      "id": "variations",
+      "icon": "shapes",
+      "label": "Variations",
+      "binding": "capability:image_varies",
+      "enabled_when": "image_present"
+    }
+  ]
+}

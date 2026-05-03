@@ -1,0 +1,178 @@
+/* ============================================================
+   Framework picker dropdown — V3 Input Handling Phase 4
+   Anchored to the top of the output pane, expanding downward.
+   Search-as-you-type filters rows in place. Each row shows the
+   framework's Display Name + Display Description (Phase 2 metadata).
+   Three category groups: standard / user-created / one-offs.
+   X-to-remove appears only on user-created and one-off rows.
+   ============================================================ */
+
+.framework-picker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px var(--ora-shadow-recess);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.framework-picker[hidden] {
+  display: none;
+}
+
+.framework-picker__search-row {
+  flex-shrink: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+}
+
+.framework-picker__search {
+  width: 100%;
+  height: 28px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: var(--font-ui-medium);
+  padding: 0 10px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.framework-picker__search:focus {
+  border-color: var(--icon-color-hover);
+}
+
+.framework-picker__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.framework-picker__group + .framework-picker__group {
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.framework-picker__group-label {
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 6px 14px 4px;
+}
+
+.framework-picker__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px 10px 14px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  color: var(--text-normal);
+  transition: background 0.08s;
+}
+.framework-picker__row:hover,
+.framework-picker__row:focus-visible {
+  background: var(--background-modifier-hover);
+  outline: none;
+}
+
+.framework-picker__row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.framework-picker__row-title {
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  line-height: 1.25;
+  margin-bottom: 2px;
+}
+
+.framework-picker__row-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.framework-picker__remove {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-top: 2px;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.framework-picker__remove:hover {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+}
+.framework-picker__remove svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+.framework-picker__empty {
+  padding: 24px 14px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Confirmation row that the X click drops in place of the framework row,
+   asking whether to remove from the picker only or to delete the file. */
+.framework-picker__confirm {
+  padding: 10px 14px;
+  background: var(--background-modifier-form-field);
+  border-top: 1px solid var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.framework-picker__confirm-text {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-normal);
+  margin-bottom: 8px;
+}
+.framework-picker__confirm-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.framework-picker__confirm-btn {
+  font-size: var(--font-ui-smaller);
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+.framework-picker__confirm-btn:hover {
+  border-color: var(--icon-color-hover);
+}
+.framework-picker__confirm-btn--danger {
+  color: var(--ora-status-error, #ff6e6e);
+}

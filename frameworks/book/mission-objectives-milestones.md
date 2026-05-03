@@ -1,4 +1,12 @@
+
 # Mission, Objectives, and Milestones Clarification Framework
+
+## Display Name
+Mission, Objectives, and Milestones (MOM)
+
+## Display Description
+Convert a raw idea, tension, or goal into a structured Mission/Objectives/Constraints/Milestones hierarchy. Standalone (Project / Passion / Incubator) or under PEF supervision (with Active/Aspirational milestone split and P-Feasibility checks).
+
 
 *A Framework for Articulating Mission, Eliciting Constraints, and Formulating Milestones — Either Standalone or Under Problem Evolution Framework Supervision*
 
@@ -7,6 +15,21 @@
 *Canonical Specification — Produced via F-Convert with PEF-supervised mode added per the 2026-04-23 design session*
 
 ---
+
+
+## Setup Questions
+
+### Idea, tension, or goal description
+Required. Natural-language description of what you want to figure out, build, or accomplish. Partial, vague, or contradictory is fine — those are exactly the raw material the framework works with.
+
+### Mode
+Optional. Standalone (Project / Passion / Incubator) or Supervised (under Problem Evolution). If absent, the framework picks Standalone unless invoked from PEF.
+
+### User-stated constraints
+Optional. Limits you already know about — time, budget, scope, resources, hard requirements. If you don't list any, the framework asks about constraints during analysis.
+
+### Existing Mission / Objectives / Milestones
+Optional. If you already have an earlier version of any of these (from a prior MOM run, a project matrix, or a draft), include it. The framework will iterate from there instead of starting fresh.
 
 ## How to Use This File
 
@@ -30,6 +53,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 - Layer 3: Mission Formulation with Resolution Statement Objectivity Protocol
 - Layer 4: Objective and Milestone Refinement
 - Layer 5: Synthesis and Output
+- Layer 5.5: Matrix File Creation
 - Layer 6: Self-Evaluation
 - Layer 7: Error Correction and Output Formatting
 - Named Failure Modes
@@ -76,27 +100,41 @@ Secondary outputs:
 
 Specification — this document is model-agnostic and environment-agnostic. All layer boundaries are logical. Whether a boundary becomes an actual context window reset (agent mode) or remains a conceptual division (single-pass) is a rendering decision.
 
+Both modes (M-Standalone, M-Supervised) cover Layers 1-7 (seven processing layers) and declare a single milestone each. Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the integrated character of the strategic hierarchy: Mission, Objectives, and Milestones must cohere as a triad and only achieve that coherence at full-pipeline completion; per-layer drift detection is handled via Layer 7's invariant checks.
+
 ---
 
 ## MILESTONES DELIVERED
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-### Milestone Type: Standalone strategic hierarchy
+MOM is invoked in one of two modes: M-Standalone (user-direct, producing strategic hierarchy in Matrix Master format) or M-Supervised (PEF-invoked, producing strategic hierarchy in PED-insertion format with Active/Aspirational milestone split). Each mode delivers a distinct milestone using the framework's full layer sequence. All milestone properties are defined inline per milestone.
 
-- **Endpoint produced:** Populated Mission, Objectives, Constraints, and Milestones in Matrix Master format, with classification as Project, Passion, or Incubator explicitly recorded
-- **Verification criterion:** (a) classification is recorded with rationale; (b) for endpoint-bearing classifications (Project, Incubator), Resolution Statement passes the three Objectivity Protocol checks and an Excluded Outcomes field is populated with three or more genuine near-misses; (c) Constraints are classified Hard, Soft, or Working Assumption with revisit triggers recorded for every Working Assumption; (d) Milestones are verifiable statements of completion for endpoint-bearing classifications, or practices and directions of travel for Passions
-- **Preconditions:** A raw idea, tension, or goal description provided by the user
-- **Mode required:** M-Standalone
-- **Framework Registry summary:** Produces classified strategic hierarchy (Project, Passion, or Incubator) from raw idea input with Resolution Statement objectivity checks applied to endpoint-bearing classifications
+### Milestones for Mode M-Standalone
 
-### Milestone Type: PEF-supervised strategic hierarchy
+#### Milestone 1: Standalone Strategic Hierarchy
 
-- **Endpoint produced:** Populated Mission, Objectives, Constraints, and Milestones in PED-insertion format with Active and Aspirational milestone split, and P-Feasibility verdicts recorded for each Active milestone
-- **Verification criterion:** (a) Layer 1 yielded one of three outcomes (Project definable, Project not yet definable with terrain-mapping Active milestone, or Not a Project with No-Punt escalation produced); (b) if Project definable or terrain-mapping, Resolution Statement passes the three Objectivity Protocol checks and Excluded Outcomes field is populated; (c) Constraints are classified Hard, Soft, or Working Assumption with revisit triggers recorded for every Working Assumption; (d) every Active milestone has a P-Feasibility verdict produced by invoking the Process Inference Framework in P-Feasibility mode; (e) every Aspirational milestone has a Contingency note where applicable and an explicit candidate-components caveat where candidate components are listed; (f) if No-Punt escalation occurred, the escalation report contains specific reformulation advice
-- **Preconditions:** Current Problem Definition from the calling PED; current state description; any user-stated constraints. For invocation of P-Feasibility: constraints and current state are inheritable by the PIF
-- **Mode required:** M-Supervised
-- **Framework Registry summary:** Produces PEF-ready strategic hierarchy with Active and Aspirational milestone split and P-Feasibility-verified Active milestones
+- **Mode:** M-Standalone
+- **Endpoint produced:** Populated Mission, Objectives, Constraints, and Milestones in Matrix Master format, with classification as Project, Passion, or Incubator explicitly recorded.
+- **Verification criterion:** (a) classification is recorded with rationale; (b) for endpoint-bearing classifications (Project, Incubator), Resolution Statement passes the three Objectivity Protocol checks and an Excluded Outcomes field is populated with three or more genuine near-misses; (c) Constraints are classified Hard, Soft, or Working Assumption with revisit triggers recorded for every Working Assumption; (d) Milestones are verifiable statements of completion for endpoint-bearing classifications, or practices and directions of travel for Passions.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Matrix Master-format strategic hierarchy with classification noted.
+- **Drift check question:** Does the produced strategic hierarchy faithfully represent the user's stated idea or tension, and does the classification (Project / Passion / Incubator) match the actual evidence rather than a framework-preferred default?
+
+### Milestones for Mode M-Supervised
+
+#### Milestone 1: PEF-Supervised Strategic Hierarchy
+
+- **Mode:** M-Supervised
+- **Endpoint produced:** Populated Mission, Objectives, Constraints, and Milestones in PED-insertion format with Active and Aspirational milestone split, and P-Feasibility verdicts recorded for each Active milestone.
+- **Verification criterion:** (a) Layer 1 yielded one of three outcomes (Project definable, Project not yet definable with terrain-mapping Active milestone, or Not a Project with No-Punt escalation produced); (b) if Project definable or terrain-mapping, Resolution Statement passes the three Objectivity Protocol checks and Excluded Outcomes field is populated; (c) Constraints are classified Hard, Soft, or Working Assumption with revisit triggers recorded for every Working Assumption; (d) every Active milestone has a P-Feasibility verdict produced by invoking the Process Inference Framework in P-Feasibility mode; (e) every Aspirational milestone has a Contingency note where applicable and an explicit candidate-components caveat where candidate components are listed; (f) if No-Punt escalation occurred, the escalation report contains specific reformulation advice.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** PED-insertion-format strategic hierarchy with Active/Aspirational split, P-Feasibility verdicts attached, and No-Punt escalation report if applicable.
+- **Drift check question:** Does the produced PED-insertion content correctly distinguish Active from Aspirational milestones with valid P-Feasibility verdicts, and was the No-Punt rule honored if the M-Supervised path led to escalation?
 
 ---
 
@@ -545,7 +583,87 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
 
 3. **Present the output** in the appropriate format above.
 
-**Invariant check:** Before Layer 6 Self-Evaluation, confirm that the output format matches the mode and all required sections are populated per the classification.
+**Invariant check:** Before Layer 5.5 Matrix File Creation, confirm that the output format matches the mode and all required sections are populated per the classification.
+
+---
+
+## LAYER 5.5: MATRIX FILE CREATION
+
+**Role Shift:** As the Vault Registrar, the framework now persists the Layer 5 output as a project / passion / incubator matrix file in the vault and registers the new nexus value vault-wide so that other notes can reference it.
+
+**Stage Focus:** Materialize the Layer 5 output as a vault-canonical matrix file, embed Bases-template fragments per the project_type, and register the nexus value in Reference — Master Matrix.
+
+**Input:** Layer 5 output (Matrix Master document or PED-insertion format); Layer 1 classification (Project / Passion / Incubator); the project's project_type identifiers (one or more from Reference — Project Type Registry).
+
+**Output:** A new file at `Engrams/Matrix/Project Matrix [Name].md` (or `Passion Matrix [Name].md`) with proper YAML frontmatter and embedded Bases-template fragments; an updated `Engrams/Reference — Master Matrix.md` with the new nexus entry registered.
+
+### Processing Instructions
+
+1. **Determine matrix file path** from Layer 1 classification:
+   - Project or Incubator → `Engrams/Matrix/Project Matrix [Name].md`
+   - Passion → `Engrams/Matrix/Passion Matrix [Name].md`
+   
+   `[Name]` is the project name in title case.
+
+2. **Determine project_type values.** Ask the user (or infer from the project description) which Project Type Registry entries this matrix participates in. Multi-valued — e.g., a non-fiction book that also functions as a knowledge cluster takes `[book, knowledge]`. Reference — Project Type Registry currently registers: `project`, `passion`, `book`, `knowledge`, `workflow`, `fiction`. Use one or more.
+
+3. **Construct YAML frontmatter** per Reference — Ora YAML Schema §12 Project / Passion Matrix template:
+
+   ```yaml
+   ---
+   nexus:
+     - [project-property-name]
+   type: matrix
+   tags:
+   project_type:
+     - [first project_type value]
+     - [additional values if applicable]
+   date created: [YYYY-MM-DD]
+   date modified: [YYYY-MM-DD]
+   ---
+   ```
+   
+   `[project-property-name]` is the snake_case nexus identifier (e.g., `quantum_mechanics`, `american_jesus`) — the same value other vault files will reference.
+
+4. **Inline Bases-template fragments.** For each value in `project_type`, look up the corresponding entry in Reference — Project Type Registry and inline its fragments into the matrix body. A `project_type: [book, knowledge]` matrix inlines the union of the book entry's fragments and the knowledge entry's fragments. Deduplicate any overlapping fragment names.
+
+5. **Insert Layer 5 content as the matrix body.** The Mission, Excluded Outcomes, Objectives, Constraints, and Milestones / Practices and Directions of Travel sections from Layer 5's output go above the Bases fragments. Body structure:
+
+   ```markdown
+   # [Project / Passion / Incubator Title]
+   
+   [Mission, Excluded Outcomes, Objectives, Constraints, Milestones — verbatim from Layer 5]
+   
+   ---
+   
+   [Bases-template fragments per project_type, inlined from Reference — Project Type Registry]
+   ```
+
+6. **Write the matrix file.** Use file_write to create the file at the determined path. If a file already exists at that path, halt and surface to the user — never silently overwrite.
+
+7. **Register the nexus value in Reference — Master Matrix.** Open `Engrams/Reference — Master Matrix.md`, identify the appropriate section (Projects, Passions, or Incubators), and add a new entry with:
+   - The project name (title case)
+   - The project property name (the snake_case nexus identifier)
+   - A one-line description (drawn from the Layer 5 Mission's Resolution Statement or Core Essence)
+   - Cross-reference link to the new matrix file: `[[Project Matrix [Name]]]` or `[[Passion Matrix [Name]]]`
+   
+   If a Master Matrix entry for this nexus already exists (re-run of MOM on an existing project), update the entry rather than duplicate.
+
+8. **Confirm vault-wide availability.** The new nexus value is now valid for any vault file's `nexus:` property. If the project has immediate open questions or work to begin, offer to invoke Problem Evolution Framework PE-Init to create the project's first Problem Evolution Document (PED).
+
+### Output Formatting for This Layer
+
+Surface the file paths created and updated:
+
+```
+**Matrix file created:** [path to new matrix file]
+**Master Matrix updated:** Engrams/Reference — Master Matrix.md
+**New nexus value registered:** [project-property-name]
+```
+
+If Problem Evolution Framework should be invoked next, surface that handoff.
+
+**Invariant check:** Before Layer 6 Self-Evaluation, confirm that the matrix file exists at the determined path with proper YAML frontmatter, the Master Matrix has been updated, and the new nexus value is now resolvable.
 
 ---
 

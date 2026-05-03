@@ -457,11 +457,22 @@ class ModelsJsonSchemaTests(unittest.TestCase):
             )
 
     def test_all_commercial_models_are_vision_capable_by_default(self) -> None:
-        """Per spec: modern API/browser models default to True; explicit exceptions documented."""
+        """Per spec: modern API/browser models default to True; explicit exceptions documented.
+
+        Documented exception (WP-7.3.2): image-generation-only models
+        (DALL-E 3, DALL-E 2, Stability SD3, Replicate image models) are
+        ``image_capable: true`` but ``vision_capable: false`` — they
+        emit images, they don't consume them. The vision-extraction
+        routing path (`vision_capable`) is for models that can read an
+        image and produce text, which is a different capability."""
         models_path = WORKSPACE / "config" / "models.json"
         with open(models_path) as f:
             cfg = json.load(f)
         for m in cfg.get("commercial_models", []):
+            if m.get("image_capable") is True:
+                # Image-generation models are documented exceptions per
+                # WP-7.3.2's capability-slot taxonomy.
+                continue
             self.assertTrue(
                 m.get("vision_capable", False),
                 f"commercial model {m.get('id')} should be vision_capable: true "

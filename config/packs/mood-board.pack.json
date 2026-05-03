@@ -1,0 +1,207 @@
+{
+  "pack_name": "Mood Board",
+  "pack_version": "1.0.0",
+  "ora_compatibility": ">=0.7.0",
+  "author": {
+    "name": "Ora",
+    "url": "https://ora.local"
+  },
+  "description": "Visual mood board \u2014 collect, arrange, and annotate reference images to capture an aesthetic, brand direction, or design feel.",
+  "toolbars": [
+    {
+      "id": "mood-board",
+      "label": "Mood Board",
+      "default_dock": "left",
+      "default_icon_size": "small",
+      "items": [
+        {
+          "id": "upload",
+          "icon": "image-plus",
+          "label": "Add image",
+          "shortcut": "U",
+          "binding": "tool:image_upload"
+        },
+        {
+          "id": "generate",
+          "icon": "sparkles",
+          "label": "Generate image",
+          "shortcut": "Shift+G",
+          "binding": "capability:image_generates"
+        },
+        {
+          "id": "vary",
+          "icon": "shuffle",
+          "label": "Vary",
+          "binding": "capability:image_varies",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "to-prompt",
+          "icon": "scan-text",
+          "label": "Image \u2192 prompt",
+          "binding": "capability:image_to_prompt",
+          "enabled_when": "image_present"
+        },
+        {
+          "id": "text",
+          "icon": "type",
+          "label": "Caption",
+          "shortcut": "T",
+          "binding": "tool:text"
+        },
+        {
+          "id": "rect",
+          "icon": "square",
+          "label": "Frame",
+          "shortcut": "R",
+          "binding": "tool:rect"
+        },
+        {
+          "id": "line",
+          "icon": "minus",
+          "label": "Divider",
+          "shortcut": "L",
+          "binding": "tool:line"
+        },
+        {
+          "id": "ask-ora",
+          "icon": "wand-2",
+          "label": "Ask Ora",
+          "shortcut": "Shift+A",
+          "binding": "tool:ask_ora"
+        }
+      ]
+    }
+  ],
+  "prompt_templates": [
+    {
+      "id": "describe-mood",
+      "slash_command": "/describe-mood",
+      "label": "Describe this mood",
+      "template": "Look at the images on this canvas. Describe the shared mood \u2014 colors, textures, light quality, emotional register. Suggest three adjectives that capture the feel.",
+      "variables": [],
+      "gear_preference": 2
+    },
+    {
+      "id": "generate-companion",
+      "slash_command": "/companion",
+      "label": "Generate a companion image",
+      "template": "Generate one new image that fits the existing mood board. Style: {{style}}. Subject: {{subject}}. Match the dominant color palette and lighting of the existing images.",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "label": "Subject"
+        },
+        {
+          "name": "style",
+          "type": "enum",
+          "label": "Style",
+          "default": "photographic",
+          "options": [
+            "photographic",
+            "illustrated",
+            "painterly",
+            "cinematic",
+            "minimalist"
+          ]
+        }
+      ],
+      "capability_route": "image_generates"
+    }
+  ],
+  "composition_templates": [
+    {
+      "id": "blank-mood-board",
+      "label": "Blank mood board",
+      "thumbnail": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='10' y='10' width='30' height='25' rx='2'/><rect x='45' y='10' width='25' height='35' rx='2'/><rect x='75' y='10' width='15' height='20' rx='2'/><rect x='10' y='40' width='20' height='30' rx='2'/><rect x='35' y='50' width='35' height='20' rx='2'/><rect x='75' y='35' width='15' height='35' rx='2'/></svg>",
+      "canvas_state": {
+        "schema_version": "0.1",
+        "format_id": "ora-canvas",
+        "metadata": {
+          "title": "Mood Board",
+          "canvas_size": {
+            "width": 4000,
+            "height": 3000
+          }
+        },
+        "view": {
+          "zoom": 1.0,
+          "pan": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "layers": [
+          {
+            "id": "bg",
+            "kind": "background",
+            "label": "Background"
+          },
+          {
+            "id": "annot",
+            "kind": "annotation",
+            "label": "Annotations"
+          },
+          {
+            "id": "main",
+            "kind": "user_input",
+            "label": "Images"
+          },
+          {
+            "id": "sel",
+            "kind": "selection",
+            "label": "Selection"
+          }
+        ],
+        "objects": []
+      }
+    },
+    {
+      "id": "two-by-two-grid",
+      "label": "2 \u00d7 2 image grid",
+      "thumbnail": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='12' y='12' width='35' height='28' rx='2'/><rect x='53' y='12' width='35' height='28' rx='2'/><rect x='12' y='44' width='35' height='28' rx='2'/><rect x='53' y='44' width='35' height='28' rx='2'/></svg>",
+      "canvas_state": {
+        "schema_version": "0.1",
+        "format_id": "ora-canvas",
+        "metadata": {
+          "title": "Mood Board (2\u00d72)",
+          "canvas_size": {
+            "width": 4000,
+            "height": 3000
+          }
+        },
+        "view": {
+          "zoom": 0.5,
+          "pan": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "layers": [
+          {
+            "id": "bg",
+            "kind": "background",
+            "label": "Background"
+          },
+          {
+            "id": "annot",
+            "kind": "annotation",
+            "label": "Annotations"
+          },
+          {
+            "id": "main",
+            "kind": "user_input",
+            "label": "Images"
+          },
+          {
+            "id": "sel",
+            "kind": "selection",
+            "label": "Selection"
+          }
+        ],
+        "objects": []
+      }
+    }
+  ]
+}

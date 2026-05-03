@@ -1,0 +1,257 @@
+/* ─── Preview monitor — Audio/Video Phase 7 follow-up ────────────────────
+ *
+ * Lives inside .visual-panel above the timeline editor when body has
+ * pane-mode-video. Shows a static frame at the playhead by default;
+ * switches to a <video> element playing the cached 360 p proxy when the
+ * user hits Play.
+ *
+ * Layout exposes a CSS custom property `--preview-monitor-height` that
+ * timeline-editor.css consumes to push the timeline below the preview.
+ */
+
+.visual-panel {
+  --preview-monitor-height: clamp(110px, 22%, 240px);
+}
+
+/* The preview claims top space inside the middle band; shrink the
+ * media library a touch in video mode so the timeline still has a
+ * usable strip between them. (Pre-preview default is 42 %; with the
+ * preview present, the middle band would otherwise collapse.) */
+body.pane-mode-video .media-library {
+  max-height: 35%;
+}
+
+.preview-monitor {
+  position: absolute;
+  top: 76px;
+  left: 12px;
+  right: 12px;
+  height: var(--preview-monitor-height);
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 6px;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.92));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 8px;
+  color: var(--text-primary, #e6e6e6);
+  font-size: 12px;
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+}
+
+body.pane-mode-video .preview-monitor.preview-monitor--visible {
+  display: flex;
+}
+
+.preview-monitor__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.preview-monitor__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary, #aaa);
+}
+
+.preview-monitor__status {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+}
+
+.preview-monitor__status[data-kind="fresh"]    { background: #4ade80; }
+.preview-monitor__status[data-kind="stale"]    { background: #fbbf24; }
+.preview-monitor__status[data-kind="rendering"]{ background: #38bdf8; animation: preview-monitor-pulse 1.2s ease-in-out infinite; }
+.preview-monitor__status[data-kind="error"]    { background: #f87171; }
+.preview-monitor__status[data-kind="none"]     { background: rgba(255, 255, 255, 0.30); }
+
+@keyframes preview-monitor-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.preview-monitor__stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.preview-monitor__image,
+.preview-monitor__video {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  background: #000;
+}
+
+/* The image is shown by default; the video element is hidden until the
+ * user enters playback mode. */
+.preview-monitor .preview-monitor__video {
+  display: none;
+}
+
+.preview-monitor.preview-monitor--playback .preview-monitor__image {
+  display: none;
+}
+
+.preview-monitor.preview-monitor--playback .preview-monitor__video {
+  display: block;
+}
+
+.preview-monitor__overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+          backdrop-filter: blur(2px);
+}
+
+.preview-monitor__overlay--visible {
+  display: flex;
+}
+
+.preview-monitor__overlay-text {
+  font-size: 12px;
+  color: var(--text-primary, #e6e6e6);
+}
+
+.preview-monitor__overlay-bar {
+  width: 60%;
+  max-width: 240px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.preview-monitor__overlay-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent, #38bdf8);
+  transition: width 200ms ease-out;
+}
+
+.preview-monitor__transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.preview-monitor__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  background: var(--background-primary, rgba(0, 0, 0, 0.30));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 4px;
+  color: var(--text-primary, #e6e6e6);
+  cursor: pointer;
+  transition: background 120ms ease-out, border-color 120ms ease-out;
+}
+
+.preview-monitor__btn:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--background-modifier-border-hover, rgba(255, 255, 255, 0.18));
+}
+
+.preview-monitor__btn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.preview-monitor__timecode {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+  letter-spacing: 0.5px;
+}
+
+.preview-monitor__hint {
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* When the visual-panel is in chrome-hidden auto-fade, dim (don't hide) so
+ * the user can still tell where the preview is. */
+.visual-panel.chrome-hidden .preview-monitor {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ─── Drag-to-position overlay handle (Phase 6 follow-up, 2026-05-01) ───
+ *
+ * Floating dashed-outline box overlaid on the preview stage when a
+ * positionable overlay clip (lower-third) is selected in the timeline
+ * editor. The user drags this handle to update the overlay's normalized
+ * position; the actual rendered overlay catches up on the next preview
+ * frame after the timeline editor's debounced save. */
+.preview-monitor__drag-handle {
+  position: absolute;
+  pointer-events: auto;
+  border: 1.5px dashed var(--accent, #9aa6ff);
+  background: rgba(154, 166, 255, 0.10);
+  border-radius: 3px;
+  cursor: grab;
+  z-index: 4;
+  transition: background-color 0.12s ease-out;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  /* Don't intercept hover from the underlying preview unless the user is
+   * actually grabbing the handle. */
+  user-select: none;
+  touch-action: none;
+}
+.preview-monitor__drag-handle:hover {
+  background: rgba(154, 166, 255, 0.20);
+}
+.preview-monitor__drag-handle.is-dragging {
+  cursor: grabbing;
+  background: rgba(154, 166, 255, 0.28);
+  border-style: solid;
+}
+.preview-monitor__drag-handle[hidden] {
+  display: none;
+}
+.preview-monitor__drag-handle-label {
+  font-size: 10px;
+  font-family: var(--ora-font-mono, ui-monospace, monospace);
+  color: var(--text-primary, #e6e6e6);
+  background: rgba(20, 22, 28, 0.78);
+  padding: 1px 5px;
+  border-radius: 2px;
+  letter-spacing: 0.04em;
+}

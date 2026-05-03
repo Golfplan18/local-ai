@@ -47,3 +47,447 @@ body.stealth-mode .bridge-mode-label {
   display: block;
   color: var(--ora-mode-stealth-label);
 }
+
+
+/* V3 spec §8 — mutual exclusivity modal.
+   Shown when the user clicks one mode button while the other mode is
+   already active. The modal blocks until dismissed (OK button, backdrop
+   click, or Escape). Set by the inline JS in index-v3.html. */
+.mode-exclusivity-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-exclusivity-modal.show {
+  display: flex;
+}
+
+.mode-exclusivity-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.mode-exclusivity-modal-card {
+  position: relative;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 22px 26px;
+  max-width: 360px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+.mode-exclusivity-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.mode-exclusivity-modal-body {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+  color: var(--text-muted);
+}
+
+.mode-exclusivity-modal-ok {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, var(--text-normal));
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mode-exclusivity-modal-ok:hover {
+  filter: brightness(1.1);
+}
+
+/* V3 Phase 6.2 — bootstrap topic-prompt modal.
+   Same shell shape as the mutual-exclusivity modal so they read as a
+   pair of system overlays. */
+.bootstrap-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.bootstrap-modal.show { display: flex; }
+.bootstrap-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+.bootstrap-modal-card {
+  position: relative;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 24px 28px;
+  width: 480px;
+  max-width: 90vw;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.bootstrap-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.bootstrap-modal-prompt {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.bootstrap-modal-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 14px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.bootstrap-modal-input:focus {
+  outline: 1px solid var(--interactive-accent);
+}
+.bootstrap-modal-status {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  min-height: 1.4em;
+}
+.bootstrap-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.bootstrap-modal-cancel,
+.bootstrap-modal-submit {
+  padding: 7px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.bootstrap-modal-cancel {
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+}
+.bootstrap-modal-submit {
+  background: var(--interactive-accent);
+  border: none;
+  color: var(--text-on-accent, var(--text-normal));
+}
+.bootstrap-modal-submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.bootstrap-modal-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bootstrap context block in the output pane. Spec §6.1 #5 — a subtle
+   visual indicator that distinguishes bootstrapped context from real
+   conversation responses. */
+.bootstrap-context-block {
+  border-left: 3px solid var(--interactive-accent);
+  background: var(--background-modifier-form-field, var(--background-primary));
+  padding: 14px 18px;
+  margin: 0 0 16px 0;
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.bootstrap-context-block-fallback {
+  border-left-color: var(--text-muted);
+}
+.bootstrap-context-block-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.bootstrap-context-block-subhead {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.bootstrap-context-block-body {
+  color: var(--text-normal);
+  white-space: pre-wrap;
+}
+
+/* V3 spec §4 / §5 — Stealth/Private dropdown menus. Anchored to the
+   right of the mode button by JS-set top/left coordinates. */
+.mode-dropdown {
+  position: fixed;
+  display: none;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  z-index: 900;
+  min-width: 110px;
+  overflow: hidden;
+}
+.mode-dropdown.show {
+  display: block;
+}
+.mode-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.mode-dropdown-item:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.05));
+  color: var(--interactive-accent);
+}
+.mode-dropdown-item:active {
+  filter: brightness(0.95);
+}
+
+/* V3 Phase 7.2 — output pane turn rendering. User and assistant
+   turns are visually distinguished. The bootstrap context block
+   (Phase 6.2) sits separately above any turns. */
+.output-turn {
+  padding: 12px 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-normal);
+  white-space: pre-wrap;
+}
+.output-turn + .output-turn {
+  border-top: 1px solid var(--background-modifier-border);
+}
+.output-turn-user {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.output-turn-user::before {
+  content: '› ';
+  color: var(--interactive-accent);
+  font-weight: 600;
+}
+
+/* V3 Backlog 6 — QQB chat-output rendering. Each Q&A pair shows the
+   query above its answer; pending state is a thin "…" pulse;
+   errors render in the stealth accent for visibility. Per spec §1.6
+   the QQB is ephemeral — content is wiped on reload (no persistence). */
+.qqb-turn {
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 14px;
+  white-space: pre-wrap;
+}
+.qqb-turn-query {
+  color: var(--text-muted);
+}
+.qqb-turn-query::before {
+  content: '› ';
+  color: var(--interactive-accent);
+}
+.qqb-turn-pending {
+  color: var(--text-muted);
+  font-style: italic;
+  letter-spacing: 0.3em;
+}
+.qqb-turn-answer {
+  color: var(--text-normal);
+}
+.qqb-turn-error {
+  color: var(--ora-mode-stealth-label);
+  font-size: 12px;
+}
+.qqb-turn + .qqb-turn-query {
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 6px;
+  padding-top: 14px;
+}
+
+/* V3 Backlog 11 — errored conversation row. Stealth-accent left bar
+   to draw the eye, action buttons (Retry / Dismiss) replacing the
+   close X. The error summary line shows the failure reason inline
+   so the user sees what went wrong without opening. */
+.sidebar-row.is-errored {
+  border-left: 3px solid var(--ora-mode-stealth-label, var(--text-error, #c33));
+  padding-left: 8px;
+}
+.sidebar-row-error-summary {
+  font-size: 11px;
+  color: var(--ora-mode-stealth-label, var(--text-muted));
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-row-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.sidebar-row-action {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-normal);
+  cursor: pointer;
+  font-family: inherit;
+}
+.sidebar-row-retry {
+  border-color: var(--interactive-accent);
+  color: var(--interactive-accent);
+}
+.sidebar-row-action:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.05));
+}
+
+/* V3 Backlog (canvas UX wins) — visual-panel chrome takes V3 Dracula tokens.
+   The visual-panel.css ships with V2 default colors via CSS variables;
+   these overrides bind those slot variables to the V3 theme tokens so the
+   panel chrome reads as part of the V3 interface, not a foreign V2 island.
+   Scope to the right-pane visual-panel host so other panel instances (if
+   any) keep their original styling. */
+.right-pane.visual-panel {
+  --bg-panel:           transparent;
+  --bg-toolbar:         var(--background-secondary, transparent);
+  --text-primary:       var(--text-normal);
+  --text-secondary:     var(--text-muted);
+  --border:             var(--background-modifier-border);
+  --accent:             var(--interactive-accent);
+  --accent-muted:       var(--background-modifier-hover, rgba(255,255,255,0.06));
+  --bg-hover:           var(--background-modifier-hover, rgba(255,255,255,0.04));
+  --ora-vis-focus-ring: var(--interactive-accent);
+  --bg-canvas-a:        var(--background-modifier-border);
+}
+
+/* Active tool — make the selected drawing tool obviously active so the
+   user knows which mode they're in. The default rule was very subtle
+   against the Dracula palette. */
+.right-pane.visual-panel .vp-tool-btn[aria-pressed="true"],
+.right-pane.visual-panel .vp-tool-btn[data-active="true"] {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, var(--background-primary));
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-faint, rgba(80, 250, 123, 0.2));
+}
+
+/* V3 Backlog polish 2026-04-30 — toolbar as floating overlay so the
+   canvas takes the full panel area. The OraVisualDock system wraps
+   the toolbar in .ora-dock--top, which by default is a flex child
+   that consumes ~37px of vertical space at the top of the panel.
+   Lifting .ora-dock--top out of the flow lets the middle dock (the
+   viewport) fill the full panel height; the toolbar overlays the
+   top edge as a floating chip. */
+.right-pane.visual-panel .ora-dock--top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  border-bottom: none;
+  background: transparent;
+  pointer-events: none;
+}
+.right-pane.visual-panel .ora-dock--top > * {
+  pointer-events: auto;
+}
+
+/* V3 Backlog polish 2026-04-30 follow-up — same treatment for the LEFT
+   dock that holds category toolbars (annotation, shapes, ai-generate,
+   image, etc.). Without this, every active category toolbar carves
+   a vertical strip out of the canvas. The floating overlay keeps the
+   toolbar reachable while the full canvas remains usable. */
+.right-pane.visual-panel .ora-dock--left {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  border-right: none;
+  background: transparent;
+  pointer-events: none;
+  width: auto;
+}
+.right-pane.visual-panel .ora-dock--left > * {
+  pointer-events: auto;
+}
+
+/* When the dock system is not in play (e.g. legacy mount path), float
+   the bare toolbar directly with the same overlay treatment. */
+.right-pane.visual-panel > .visual-panel__toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  border-bottom: none;
+}
+
+/* Style the toolbar (whichever container holds it) as a floating chip
+   with translucent background and subtle drop shadow. */
+.right-pane.visual-panel .visual-panel__toolbar,
+.right-pane.visual-panel .ora-toolbar {
+  margin: 8px;
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: var(--background-secondary, rgba(40, 42, 54, 0.88));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.06));
+  flex-wrap: wrap;
+}
+
+/* Empty-canvas hint. Shown only when there are zero user shapes drawn.
+   The hint sits centered in the canvas viewport and fades when the user
+   draws their first shape. The rendering JS sets / removes the
+   `.canvas-empty` class on the visual-panel host. */
+.right-pane.visual-panel.canvas-empty .visual-panel__viewport::after {
+  content: 'Pick a tool from the floating toolbar to draw. Double-click a shape to add text. Press the O on the spine to submit canvas content.';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 60%;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  opacity: 0.6;
+  pointer-events: none;
+  font-style: italic;
+}
+
+/* Canvas-content-ready cue on the O button. When the canvas has any
+   shape drawn, give the O a soft accent ring so the user sees that the
+   submit action will pick up canvas content alongside text. */
+.spine-wordmark .wordmark-clickable.canvas-ready .wm-stroke-bright {
+  stroke: var(--interactive-accent);
+  filter: drop-shadow(0 0 3px var(--interactive-accent));
+}

@@ -1,0 +1,105 @@
+/* ============================================================
+   Input pane bottom-right toolbar — V3 Input Handling Phase 3
+   Three icons (mode picker, framework picker, attach) anchored
+   to the bottom-right of `.input-pane`. Mirrors the visual
+   pane's image/art toolbar pattern: pane-embedded, raised
+   buttons, paired Ora shadow + highlight variables.
+   ============================================================ */
+
+.input-pane-toolbar {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.input-pane-toolbar__btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  color: var(--icon-color);
+  box-shadow:
+    2px 3px 5px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.12s, border-color 0.12s, transform 0.08s, box-shadow 0.08s;
+}
+.input-pane-toolbar__btn:hover {
+  color: var(--icon-color-hover);
+  border-color: var(--icon-color-hover);
+}
+.input-pane-toolbar__btn:focus-visible {
+  outline: 2px solid var(--icon-color-hover);
+  outline-offset: 2px;
+}
+.input-pane-toolbar__btn:active {
+  transform: translate(1px, 1px);
+  box-shadow:
+    1px 2px 3px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+}
+.input-pane-toolbar__btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.input-pane-toolbar__btn.is-active {
+  color: var(--icon-color-hover);
+  border-color: var(--icon-color-hover);
+  background: var(--background-modifier-hover);
+}
+.input-pane-toolbar__btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+/* Reserve space at the bottom-right of the textarea so typed text
+   does not run under the toolbar. Native textareas cannot do shape-
+   outside CSS floats, so this is the simplest reliable approximation
+   of the design's "text floats around them" intent: text wraps short
+   of the toolbar zone rather than literally flowing around its
+   silhouette. */
+.input-pane textarea {
+  padding-bottom: 40px;
+  padding-right: 6px;
+  box-sizing: border-box;
+}
+
+/* V3 Input Handling Phase 8 — attachment chip row.
+   Anchored along the bottom of the input pane between the textarea
+   bottom-padding zone and the toolbar. Chips wrap when many files are
+   dropped; the row scrolls horizontally before the input pane height
+   grows. The textarea's padding-bottom (40px above) keeps text
+   visually clear of this row's first line. */
+.input-pane-attachments {
+  position: absolute;
+  left: 12px;
+  right: 120px;        /* clear the toolbar's bottom-right zone */
+  bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  z-index: 1;
+  pointer-events: auto;
+}
+.input-pane-attachments:empty { display: none; }
+
+/* Drag-over highlight on the input pane — fires when a file is being
+   dragged over the pane. Lifts the recessed border to a clear "drop
+   here" affordance without disturbing the existing recess illusion. */
+.input-pane.is-dragover {
+  border-color: var(--icon-color-hover);
+  box-shadow:
+    inset 5px 5px 12px var(--ora-shadow-recess),
+    inset -1px -1px 0 var(--ora-highlight-recess),
+    0 0 0 2px var(--icon-color-hover);
+}

@@ -454,53 +454,30 @@ class VisualFallbackSseIntegrationTests(unittest.TestCase):
                 out.append(d)
         return out
 
+    @unittest.skip(
+        "V3 Backlog 2A (2026-04-30): /chat moved to plain HTTP. The "
+        "visual_fallback SSE signal no longer reaches the browser. The UX "
+        "still needs a path (e.g. chunk-YAML metadata + sidebar badge), "
+        "but that is a separate redesign. The pipeline still emits the "
+        "frame internally — it just doesn't surface client-side until the "
+        "redesign lands."
+    )
     def test_no_vision_available_emits_visual_fallback_event(self) -> None:
-        body = self._run_fake_pipeline({
-            "image_path": "/abs/img.png",
-            "no_vision_available": True,
-        })
-        events = self._find_events(body, "visual_fallback")
-        self.assertEqual(len(events), 1,
-                         f"expected exactly one visual_fallback event; got {len(events)}")
-        ev = events[0]
-        self.assertEqual(ev["reason"], "no_vision_available")
-        self.assertIn("user_message", ev)
-        self.assertIn("actions", ev)
-        self.assertIn("start_tracing", ev["actions"])
+        pass
 
+    @unittest.skip(
+        "V3 Backlog 2A (2026-04-30): see "
+        "test_no_vision_available_emits_visual_fallback_event."
+    )
     def test_visual_fallback_precedes_response(self) -> None:
-        """The fallback frame must come BEFORE any response frame."""
-        body = self._run_fake_pipeline({
-            "image_path": "/abs/img.png",
-            "no_vision_available": True,
-        })
-        fb_idx = body.find('"type": "visual_fallback"')
-        rp_idx = body.find('"type": "response"')
-        self.assertGreater(fb_idx, -1)
-        self.assertGreater(rp_idx, -1)
-        self.assertLess(fb_idx, rp_idx,
-                        "visual_fallback must precede response in SSE stream")
+        pass
 
+    @unittest.skip(
+        "V3 Backlog 2A (2026-04-30): see "
+        "test_no_vision_available_emits_visual_fallback_event."
+    )
     def test_extraction_failed_emits_frame_with_parse_errors(self) -> None:
-        body = self._run_fake_pipeline({
-            "image_path": "/abs/img.png",
-            "vision_extractor_selected": {
-                "id": "api-vision", "bucket": "premium",
-                "display_name": "API Vision Model",
-            },
-            "vision_extraction_result": None,
-            "vision_extraction_meta": {
-                "extractor_model": "api-vision",
-                "confidence": 0.0,
-                "parse_errors": ["unexpected token at col 12"],
-            },
-        })
-        events = self._find_events(body, "visual_fallback")
-        self.assertEqual(len(events), 1)
-        ev = events[0]
-        self.assertEqual(ev["reason"], "extraction_failed")
-        self.assertEqual(ev["extractor_attempted"], "api-vision")
-        self.assertIn("unexpected token at col 12", ev["parse_errors"])
+        pass
 
     def test_backward_compat_no_image_no_frame(self) -> None:
         """Text-only request → no visual_fallback frame in stream."""

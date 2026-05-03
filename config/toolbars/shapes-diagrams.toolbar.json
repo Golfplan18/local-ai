@@ -1,0 +1,71 @@
+{
+  "id": "ora-shapes-diagrams",
+  "label": "Shapes & Diagrams",
+  "default_dock": "left",
+  "default_icon_size": "medium",
+  "items": [
+    {
+      "id": "rect",
+      "icon": "square",
+      "label": "Rectangle",
+      "shortcut": "R",
+      "binding": "tool:rect"
+    },
+    {
+      "id": "ellipse",
+      "icon": "circle",
+      "label": "Ellipse",
+      "shortcut": "E",
+      "binding": "tool:ellipse"
+    },
+    {
+      "id": "diamond",
+      "icon": "diamond",
+      "label": "Diamond",
+      "shortcut": "D",
+      "binding": "tool:diamond"
+    },
+    {
+      "id": "polygon",
+      "icon": "pentagon",
+      "label": "Polygon",
+      "shortcut": "G",
+      "binding": "tool:polygon"
+    },
+    {
+      "id": "line",
+      "icon": "minus",
+      "label": "Line",
+      "shortcut": "L",
+      "binding": "tool:line"
+    },
+    {
+      "id": "arrow",
+      "icon": "move-right",
+      "label": "Arrow",
+      "shortcut": "A",
+      "binding": "tool:arrow"
+    },
+    {
+      "id": "text",
+      "icon": "type",
+      "label": "Text",
+      "shortcut": "T",
+      "binding": "tool:text"
+    },
+    {
+      "id": "connector",
+      "icon": "spline",
+      "label": "Connector",
+      "shortcut": "K",
+      "binding": "tool:connector"
+    },
+    {
+      "id": "snap-to-grid",
+      "icon": "grid-3x3",
+      "label": "Snap to grid",
+      "shortcut": "Shift+G",
+      "binding": "tool:snap_to_grid"
+    }
+  ]
+}

@@ -665,3 +665,682 @@
   display: none;
 }
 
+/* ── Canvas share-reminder modal (WP-7.7.6) ─────────────────────────────── */
+/* One-time-per-session reminder shown before sharing/exporting a canvas
+ * file. Owned by canvas-share-reminder.js. Lives on document.body, not
+ * inside the visual-panel root, but its theming follows the same tokens. */
+
+.ora-canvas-share-reminder {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ora-canvas-share-reminder[hidden] {
+  display: none;
+}
+
+.ora-canvas-share-reminder__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-overlay-strong, rgba(0, 0, 0, 0.5));
+  cursor: pointer;
+}
+
+.ora-canvas-share-reminder__dialog {
+  position: relative;
+  max-width: 440px;
+  width: calc(100% - 48px);
+  background: var(--bg-panel, #fff);
+  color: var(--text-primary, #1a1a1a);
+  border: 1px solid var(--border, #e0e0d8);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 20px 22px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ora-canvas-share-reminder__title {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.ora-canvas-share-reminder__body p {
+  margin: 0 0 8px 0;
+}
+
+.ora-canvas-share-reminder__intent {
+  font-weight: 500;
+}
+
+.ora-canvas-share-reminder__note {
+  margin-top: 12px !important;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  font-style: italic;
+}
+
+.ora-canvas-share-reminder__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.ora-canvas-share-reminder__btn {
+  font: inherit;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border, #e0e0d8);
+  background: var(--bg-button, #f6f6f3);
+  color: var(--text-primary, #1a1a1a);
+  transition: background .12s, border-color .12s;
+}
+
+.ora-canvas-share-reminder__btn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.ora-canvas-share-reminder__btn:focus-visible {
+  outline: 2px solid var(--ora-vis-focus-ring, #0072B2);
+  outline-offset: 1px;
+}
+
+.ora-canvas-share-reminder__btn--confirm {
+  background: var(--accent, #0072B2);
+  border-color: var(--accent, #0072B2);
+  color: var(--accent-text, #fff);
+}
+
+.ora-canvas-share-reminder__btn--confirm:hover {
+  background: var(--accent-hover, #005a8c);
+  border-color: var(--accent-hover, #005a8c);
+}
+
+/* WP-7.1.4 — hide-on-blur chrome.
+ * When `.chrome-hidden` is set on the panel root, both the legacy drawing
+ * toolbar and the universal toolbar fade out together. Pointer events are
+ * disabled while hidden so an off-screen toolbar can't intercept clicks
+ * meant for the canvas underneath.
+ */
+.visual-panel.chrome-hidden .visual-panel__toolbar,
+.visual-panel.chrome-hidden .ora-toolbar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity .15s, transform .15s;
+}
+
+.visual-panel .visual-panel__toolbar,
+.visual-panel .ora-toolbar {
+  transition: opacity .15s, transform .15s;
+}
+
+/* ── WP-7.1.1 — Universal toolbar baseline ─────────────────────────────── */
+
+.ora-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  /* WP-7.1.3 — Icon size variables. Defaults match the prior hardcoded
+   * medium values so existing layouts are visually unchanged. The
+   * data-icon-size selectors below override these for the other tiers. */
+  --ora-toolbar-item-size: 28px;
+  --ora-toolbar-icon-size: 18px;
+}
+.ora-toolbar[data-icon-size="small"] {
+  --ora-toolbar-item-size: 22px;
+  --ora-toolbar-icon-size: 14px;
+}
+.ora-toolbar[data-icon-size="medium"] {
+  --ora-toolbar-item-size: 28px;
+  --ora-toolbar-icon-size: 18px;
+}
+.ora-toolbar[data-icon-size="large"] {
+  --ora-toolbar-item-size: 36px;
+  --ora-toolbar-icon-size: 22px;
+}
+.ora-toolbar[data-icon-size="extra-large"] {
+  --ora-toolbar-item-size: 44px;
+  --ora-toolbar-icon-size: 28px;
+}
+.ora-toolbar__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ora-toolbar-item-size, 28px);
+  height: var(--ora-toolbar-item-size, 28px);
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary, #555);
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.ora-toolbar__item:hover {
+  background: var(--bg-hover, rgba(0,0,0,0.04));
+  color: var(--text-primary, #1a1a1a);
+}
+.ora-toolbar__item:focus-visible {
+  outline: 2px solid var(--ora-vis-focus-ring, #0072B2);
+  outline-offset: 1px;
+}
+.ora-toolbar__item:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ora-toolbar__item[aria-pressed="true"] {
+  background: var(--accent-muted, rgba(0,114,178,.12));
+  border-color: var(--accent, #0072B2);
+  color: var(--accent, #0072B2);
+}
+.ora-toolbar__icon {
+  display: inline-flex;
+  width: var(--ora-toolbar-icon-size, 18px);
+  height: var(--ora-toolbar-icon-size, 18px);
+}
+.ora-toolbar__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Visually-hidden text label inside each item — keeps screen-reader output
+ * useful while the visible affordance is icon-only. */
+.ora-toolbar__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── WP-7.1.2 — Edge docking ────────────────────────────────────────────── */
+
+/* When OraVisualDock takes over the panel layout it adds .ora-dock-host on
+ * the panel root and inserts a flex skeleton:
+ *   ora-dock--top
+ *   ora-dock--middle  (flex-row: ora-dock--left | ora-dock-content | ora-dock--right)
+ *   ora-dock--bottom
+ *   ora-dock--floating (absolute overflow set)
+ *
+ * The dock-content container holds whatever children visual-panel had at
+ * mount time (viewport, error bar, indicators, fallback, etc.). The viewport
+ * already uses flex:1, so as soon as the host lays out as flex:column the
+ * canvas auto-grows into the remaining space below/above docked toolbars. */
+.ora-dock-host {
+  position: relative;
+}
+
+.ora-dock {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  background: var(--ora-vis-surface, var(--bg-toolbar, var(--bg-panel, #fafaf7)));
+}
+
+.ora-dock--top,
+.ora-dock--bottom {
+  flex-direction: row;
+  width: 100%;
+  min-height: 0;
+}
+.ora-dock--top    { border-bottom: 1px solid var(--border, #e0e0d8); }
+.ora-dock--bottom { border-top:    1px solid var(--border, #e0e0d8); }
+
+.ora-dock--middle {
+  flex-direction: row;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: transparent;
+}
+
+.ora-dock--left,
+.ora-dock--right {
+  flex-direction: column;
+  min-width: 0;
+}
+.ora-dock--left  { border-right: 1px solid var(--border, #e0e0d8); }
+.ora-dock--right { border-left:  1px solid var(--border, #e0e0d8); }
+
+.ora-dock-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Empty dock rows/columns shouldn't carve any space out of the canvas. The
+ * data-empty attribute is toggled by the dock manager whenever a slot has
+ * no toolbars in it. */
+.ora-dock[data-empty] {
+  display: none;
+}
+
+/* Floating layer overlays the canvas — toolbars dragged off the edge land
+ * here and remain interactive. Pointer events are confined to the wrappers
+ * so the rest of the canvas still receives clicks. */
+.ora-dock--floating {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  pointer-events: none;
+  z-index: 30;
+}
+.ora-dock--floating .ora-toolbar-wrap {
+  pointer-events: auto;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  background: var(--ora-vis-surface, var(--bg-toolbar, var(--bg-panel, #fafaf7)));
+  border: 1px solid var(--border, #e0e0d8);
+  border-radius: 4px;
+}
+
+/* Toolbar wrapper — adds the drag handle in front of the toolbar root. */
+.ora-toolbar-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  background: transparent;
+}
+.ora-toolbar-wrap[data-orientation="vertical"] {
+  flex-direction: column;
+  align-items: stretch;
+}
+.ora-toolbar-wrap > .ora-toolbar {
+  flex: 1 1 auto;
+}
+
+/* Drag handle — small grippable area. Six dots laid out in a 2x3 grid via
+ * a single span and a CSS gradient pattern. */
+.ora-toolbar-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 28px;
+  margin: 2px 4px 2px 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: grab;
+  color: var(--text-secondary, #555);
+  touch-action: none;        /* let pointer events drive drag */
+}
+.ora-toolbar-handle:active {
+  cursor: grabbing;
+}
+.ora-toolbar-handle:focus-visible {
+  outline: 2px solid var(--ora-vis-focus-ring, #0072B2);
+  outline-offset: 1px;
+}
+.ora-toolbar-handle__grip {
+  display: block;
+  width: 6px;
+  height: 18px;
+  background-image:
+    radial-gradient(circle, var(--text-tertiary, #999) 1px, transparent 1.4px);
+  background-size: 3px 4px;
+  background-repeat: repeat;
+  opacity: 0.7;
+}
+.ora-toolbar-handle:hover .ora-toolbar-handle__grip {
+  opacity: 1;
+}
+.ora-toolbar-wrap[data-orientation="vertical"] .ora-toolbar-handle {
+  width: 28px;
+  height: 14px;
+  margin: 6px 2px 4px 2px;
+}
+.ora-toolbar-wrap[data-orientation="vertical"] .ora-toolbar-handle__grip {
+  width: 18px;
+  height: 6px;
+  background-size: 4px 3px;
+}
+
+/* Drop preview indicator — appears in the dock during a drag. */
+.ora-dock-drop-preview {
+  background: var(--accent-muted, rgba(0,114,178,.15));
+  border: 2px dashed var(--accent, #0072B2);
+  border-radius: 4px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.ora-dock--top .ora-dock-drop-preview,
+.ora-dock--bottom .ora-dock-drop-preview {
+  width: 60px;
+  height: 24px;
+  align-self: center;
+}
+.ora-dock--left .ora-dock-drop-preview,
+.ora-dock--right .ora-dock-drop-preview {
+  width: 24px;
+  height: 60px;
+  align-self: center;
+}
+
+/* During a drag, dim the dock-content so the user's eye is drawn to the
+ * edge zones. Subtle — doesn't interfere with the in-progress canvas. */
+.ora-dock-host--dragging .ora-dock-content {
+  filter: brightness(0.97);
+}
+
+/* Vertical orientation: the toolbar root becomes a column of items. The
+ * existing .ora-toolbar uses display:flex with default flex-direction:row,
+ * so we need to swap when its wrapper says vertical. */
+.ora-toolbar-wrap[data-orientation="vertical"] .ora-toolbar {
+  flex-direction: column;
+}
+
+/* ── Audio/Video Phase 1 — capture controls toolbar ────────────────────────
+ * Lives inside .visual-panel as an absolutely-positioned overlay at top
+ * center. Hidden by default; visible only when body has class
+ * pane-mode-video AND the controller has applied .capture-controls--visible.
+ * Inherits the WP-7.1.4 chrome-hidden auto-fade because it carries the
+ * shared .ora-toolbar class.
+ */
+.capture-controls {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.92));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.30);
+  color: var(--text-primary, #e6e6e6);
+  font-size: 12px;
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+}
+body.pane-mode-video .capture-controls.capture-controls--visible {
+  display: inline-flex;
+}
+/* When the chrome is auto-hidden by WP-7.1.4 mouseleave/blur grace, the
+ * existing .visual-panel.chrome-hidden .ora-toolbar rule fades us out.
+ * The transform must respect translateX(-50%) so the centering doesn't
+ * jump — re-declare. */
+.visual-panel.chrome-hidden .capture-controls {
+  transform: translate(-50%, -4px);
+}
+
+.capture-controls__sources {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.capture-controls__source-label {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary, #aaa);
+  gap: 2px;
+}
+.capture-controls__select {
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  min-width: 140px;
+  max-width: 220px;
+}
+
+.capture-controls__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.capture-controls__btn:hover:not([disabled]) {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.06));
+}
+.capture-controls__btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.capture-controls__btn-label {
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+/* Recording-state styling: Start button dot turns red when in idle state to
+ * cue "this is what records." When actively recording it's the Pause/Stop
+ * pair the user reaches for, and Start is hidden behind the disabled veil. */
+.capture-controls__start svg {
+  color: var(--text-error, #d4504a);
+}
+.capture-controls__start[disabled] svg {
+  color: var(--text-secondary, #aaa);
+}
+.capture-controls[data-state="recording"] .capture-controls__start svg {
+  /* When recording, the disabled Start button still pulses subtly to
+   * confirm the recording state to the user. */
+  animation: capture-controls-pulse 1.4s ease-in-out infinite;
+}
+@keyframes capture-controls-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1.0; }
+}
+
+.capture-controls__duration {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  color: var(--text-primary, #e6e6e6);
+  padding: 0 6px;
+  min-width: 76px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.capture-controls__meter {
+  position: relative;
+  width: 64px;
+  height: 8px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  border-radius: 3px;
+  overflow: hidden;
+}
+.capture-controls__meter-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(
+    to right,
+    rgba(80, 200, 120, 0.85) 0%,
+    rgba(80, 200, 120, 0.85) 60%,
+    rgba(220, 180, 60, 0.90) 80%,
+    rgba(220, 90, 70, 0.95) 100%
+  );
+  transition: width 80ms linear;
+}
+
+.capture-controls__status {
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+  padding: 0 4px;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.capture-controls__status[data-kind="error"]   { color: var(--text-error, #d4504a); }
+.capture-controls__status[data-kind="warn"]    { color: var(--text-warn,  #d4a04a); }
+.capture-controls__status[data-kind="success"] { color: var(--text-success, #6abf6b); }
+
+/* When pane-mode-video is active, the visual-panel host gets a subtle
+ * top-edge accent so the user has a visual confirmation of mode entry
+ * even before they see the controls toolbar. Tiny — doesn't disturb
+ * the canvas underneath. */
+body.pane-mode-video .visual-panel {
+  box-shadow: inset 0 2px 0 0 rgba(212, 80, 74, 0.45);
+}
+
+/* ── Phase 4: webcam corner picker ───────────────────────────────────── */
+.capture-controls__corner-picker {
+  display: grid;
+  grid-template-columns: repeat(2, 18px);
+  grid-template-rows: repeat(2, 18px);
+  gap: 1px;
+  background: var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  padding: 1px;
+  border-radius: 4px;
+}
+.capture-controls__corner-picker[hidden] { display: none; }
+.capture-controls__corner {
+  width: 18px;
+  height: 18px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-secondary, #aaa);
+  border: none;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.capture-controls__corner:hover {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary, #e6e6e6);
+}
+.capture-controls__corner[data-active="true"] {
+  background: rgba(212, 80, 74, 0.45);
+  color: var(--text-primary, #e6e6e6);
+}
+
+/* ── Phase 4: region selection trigger button ────────────────────────── */
+.capture-controls__btn-region svg {
+  color: var(--text-secondary, #aaa);
+}
+.capture-controls__btn-region:hover svg {
+  color: var(--text-primary, #e6e6e6);
+}
+
+/* ── Phase 4: region selection overlay ────────────────────────────────
+ * Modal-ish overlay inside the visual pane. The user sees a snapshot of
+ * the screen they picked, drags a rectangle, confirms. The visual pane's
+ * existing chrome-hide system continues to govern the surrounding
+ * capture-controls toolbar — the overlay sits above. */
+.capture-region-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 10, 14, 0.92);
+  -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
+}
+.capture-region-overlay__chrome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--background-secondary, rgba(20, 22, 28, 0.96));
+  border-bottom: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.10));
+  flex-shrink: 0;
+}
+.capture-region-overlay__hint {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: var(--text-secondary, #aaa);
+}
+.capture-region-overlay__btn {
+  padding: 5px 12px;
+  background: var(--background-primary, rgba(0, 0, 0, 0.4));
+  color: var(--text-primary, #e6e6e6);
+  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.18));
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.capture-region-overlay__btn:hover:not([disabled]) {
+  background: var(--background-modifier-hover, rgba(255, 255, 255, 0.08));
+}
+.capture-region-overlay__btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.capture-region-overlay__btn[data-role="confirm"] {
+  background: rgba(106, 191, 107, 0.20);
+  border-color: rgba(106, 191, 107, 0.55);
+  color: var(--text-success, #6abf6b);
+}
+.capture-region-overlay__btn[data-role="confirm"]:hover:not([disabled]) {
+  background: rgba(106, 191, 107, 0.32);
+}
+
+.capture-region-overlay__stage {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+}
+.capture-region-overlay__loading,
+.capture-region-overlay__error {
+  color: var(--text-secondary, #aaa);
+  font-size: 12px;
+}
+.capture-region-overlay__error {
+  color: var(--text-error, #d4504a);
+}
+.capture-region-overlay__image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  /* Faint backdrop so the rectangle stands out */
+  filter: brightness(0.85);
+}
+.capture-region-overlay__rect {
+  position: absolute;
+  border: 1.5px solid rgba(212, 80, 74, 0.95);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+

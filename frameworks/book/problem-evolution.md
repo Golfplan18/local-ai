@@ -1,5 +1,12 @@
 # Problem Evolution Framework
 
+## Display Name
+Problem Evolution (PEF)
+
+## Display Description
+Iterative problem definition and project supervision. Turns raw epistemic tension into a Problem Evolution Document with Mission, Objectives, Constraints, and Active/Aspirational milestones. Drives downstream framework invocation (MOM, TMF, PIF, PFF, WPF) as needed.
+
+
 *A Framework for Iterative Problem Definition, Project Navigation, MOM-Supervised Milestone Formulation, and Downstream Framework Routing*
 
 *Version 2.0*
@@ -7,6 +14,24 @@
 *Canonical Specification — Updated per the 2026-04-23 design session to auto-invoke MOM, supervise Active/Aspirational milestones, use Excluded Outcomes during drift detection, and invoke the Terrain Mapping Framework when the problem is not yet definable*
 
 ---
+
+
+## Setup Questions
+
+### Mode
+Required. Which PEF mode you want: Init (new problem from a tension or goal), Iterate (advance an existing Problem Evolution Document), Review (status summary without advancing), or Spawn (sub-problem under a parent project).
+
+### Tension, idea, or goal — for Init mode
+Required for Init. Natural-language description of what you're trying to accomplish, what is bothering you, or what you want to explore. Partial or contradictory is fine.
+
+### Existing Problem Evolution Document — for Iterate, Review, Spawn
+Required for Iterate, Review, and Spawn modes. The current PED, either as pasted document text or a vault file path.
+
+### Recap of work since last iteration — for Iterate mode
+Required for Iterate. What was done, what was learned, what decisions were made, what changed since the last PE-Iterate run.
+
+### Sub-problem description — for Spawn mode
+Required for Spawn. What the sub-problem is, why it was identified, and how it connects to the parent project.
 
 ## How to Use This File
 
@@ -101,43 +126,73 @@ Secondary outputs:
 
 Specification — this document is model-agnostic and environment-agnostic. All layer boundaries are logical. Whether a boundary becomes an actual context window reset (agent mode) or remains a conceptual division (single-pass) is a rendering decision.
 
+Modes PE-Init, PE-Iterate, and PE-Spawn cover Layers 2-8 (seven processing layers, post-M0). Each currently declares a single milestone; per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified inline at the top of the MILESTONES DELIVERED section as a known follow-up retrofit — multi-milestone decomposition with intermediate drift checkpoints between problem-state elicitation, diagnostic/routing, and PED commit is reserved for a subsequent revision.
+
 ---
 
 ## MILESTONES DELIVERED
 
-This framework's declaration of the project-level milestones it can deliver. As the supervisory framework, PEF is invoked directly by the user rather than selected through the Framework Registry; these milestone types document what each mode produces so that project history can trace deliverables back to their invocations.
+This framework's declaration of the project-level milestones it can deliver. As the supervisory framework, PEF is invoked directly by the user rather than selected through the Framework Registry; these milestones document what each mode produces so that project history can trace deliverables back to their invocations.
 
-### Milestone Type: Initial Problem Evolution Document with populated Mission/Objectives/Constraints/Milestones
+PEF is a multi-mode framework with four modes (PE-Init / PE-Iterate / PE-Review / PE-Spawn). Layer 1 is the M0 routing layer that fires before mode selection; Layers 2-8 execute mode-specifically. Each mode currently declares a single milestone covering its mode-specific layer subset. Multi-milestone decomposition for the >5-layer modes (PE-Init / PE-Iterate / PE-Spawn) is a follow-up retrofit that will introduce intermediate drift checkpoints between problem-state elicitation, diagnostic/routing, and PED commit. All milestone properties are defined inline per milestone.
 
+### M0: Routing
+
+- **Function:** Determine operating mode (PE-Init / PE-Iterate / PE-Review / PE-Spawn) from explicit user specification or, when unspecified, from context (no PED + new idea → PE-Init; PED + recap → PE-Iterate; PED + status request → PE-Review; PED + sub-problem → PE-Spawn). Load relevant context (PED for non-Init modes) and state session expectations.
+- **Layers covered:** 1
+- **Output:** Confirmed mode + loaded context summary + session scope. Downstream milestones consume the mode classification to dispatch their mode-specific processing.
+
+### Milestones for Mode PE-Init
+
+#### Milestone 1: Initial Problem Evolution Document
+
+- **Mode:** PE-Init
 - **Endpoint produced:** New Problem Evolution Document containing current problem definition, Mission (Resolution Statement, optional Core Essence / Emotional Drivers), Excluded Outcomes, Constraints (Hard / Soft / Working Assumption), Objectives, Active and Aspirational Milestones with P-Feasibility verdicts for Active milestones, Terrain Maps section (may be empty initially), phase assessment, diagnostic findings, recommended next actions with reasoning, Decision Log, and iteration entry recording the founding session. Mission, Excluded Outcomes, Constraints, Objectives, and Milestones sections are populated via auto-invocation of MOM in M-Supervised mode during Layer 2. Format: structured markdown following the PED template in Appendix C.
-- **Verification criterion:** (a) all six Evaluation Criteria score 3 or above; (b) a future session loading the PED can understand project history, current problem definition, strategic hierarchy, and next steps without additional context; (c) the document follows the PED template in Appendix C including Mission, Excluded Outcomes, Constraints, Active/Aspirational milestones, and Terrain Maps sections; (d) MOM was invoked and one of the three outcomes is recorded (Outcome 1 produced full strategic hierarchy; Outcome 2 produced terrain-mapping Active milestone with TMF handoff; Outcome 3 produced No-Punt Escalation Report with Redefine/Explore/Abandon advice); (e) at least one recommended next action is specific enough to execute without further interpretation; (f) if Outcome 2 was returned, TMF was invoked in Layer 5 and the Terrain Map Artifact reference (or Escalation Package) is recorded
-- **Preconditions:** User-provided description of a tension, idea, or goal; no prior Problem Evolution Document exists for this project
-- **Mode required:** PE-Init
-- **Framework Registry summary:** Produces initial Problem Evolution Document with MOM-populated strategic hierarchy from a user's raw tension, idea, or goal
+- **Verification criterion:** (a) all six Evaluation Criteria score 3 or above; (b) a future session loading the PED can understand project history, current problem definition, strategic hierarchy, and next steps without additional context; (c) the document follows the PED template in Appendix C including Mission, Excluded Outcomes, Constraints, Active/Aspirational milestones, and Terrain Maps sections; (d) MOM was invoked and one of the three outcomes is recorded (Outcome 1 produced full strategic hierarchy; Outcome 2 produced terrain-mapping Active milestone with TMF handoff; Outcome 3 produced No-Punt Escalation Report with Redefine/Explore/Abandon advice); (e) at least one recommended next action is specific enough to execute without further interpretation; (f) if Outcome 2 was returned, TMF was invoked in Layer 5 and the Terrain Map Artifact reference (or Escalation Package) is recorded.
+- **Layers covered:** 2, 3, 4, 5, 6, 7, 8
+- **Required prior milestones:** M0
+- **Gear:** 4
+- **Output format:** Structured markdown PED per Appendix C with Mission / Excluded Outcomes / Constraints / Objectives / Active and Aspirational milestones / Terrain Maps / Decision Log / iteration entry sections.
+- **Drift check question:** Does the produced PED faithfully capture the user's stated problem without injecting framework defaults the user did not confirm, and does the recommended next action address the user's actual question rather than a framework-preferred adjacent one?
 
-### Milestone Type: Updated Problem Evolution Document with new iteration entry
+### Milestones for Mode PE-Iterate
 
-- **Endpoint produced:** Existing PED advanced with a new iteration entry recording the current session's findings, challenges, answered and unresolved gaps, updated problem definition, MOM invocation outcome (if strategic-hierarchy drift was detected or Promotion Protocol fired), TMF invocation outcome (if an outcome-2 path was active), supervision drift-check findings (if Active milestones were checked off), Promotion Protocol events (if applicable), Decision Log additions, and recommended next actions with reasoning
-- **Verification criterion:** (a) all six Evaluation Criteria score 3 or above; (b) the new iteration entry is traceable to the previous iteration — what changed, why, and what evidence supported the change; (c) definition drift, assumption persistence, and scope changes have been checked and findings recorded; (d) if any Decision Log revisit triggers have activated, each has been addressed in the iteration; (e) if any Active milestone was claimed complete, the Layer 4 supervision drift check (Part A + Part B against Excluded Outcomes) was run and findings are recorded; (f) if an Active milestone completed, the Promotion Protocol was executed including MOM re-invocation scoped to Layer 4 for the newly-promoted Aspirational milestone; (g) any Lock-protected field changes are recorded in the Decision Log with user-authorization evidence; (h) readiness for PIF or PFF handoff is assessed and recorded
-- **Preconditions:** Existing Problem Evolution Document; user's recap of work, learning, and decisions since the last iteration (or discoverable conversation history if the recap is thin)
-- **Mode required:** PE-Iterate
-- **Framework Registry summary:** Advances a Problem Evolution Document with new findings, challenges, Lock-protected drift checks, milestone promotions, and next actions
+#### Milestone 1: Updated Problem Evolution Document
 
-### Milestone Type: Problem status summary
+- **Mode:** PE-Iterate
+- **Endpoint produced:** Existing PED advanced with a new iteration entry recording the current session's findings, challenges, answered and unresolved gaps, updated problem definition, MOM invocation outcome (if strategic-hierarchy drift was detected or Promotion Protocol fired), TMF invocation outcome (if an outcome-2 path was active), supervision drift-check findings (if Active milestones were checked off), Promotion Protocol events (if applicable), Decision Log additions, and recommended next actions with reasoning.
+- **Verification criterion:** (a) all six Evaluation Criteria score 3 or above; (b) the new iteration entry is traceable to the previous iteration — what changed, why, and what evidence supported the change; (c) definition drift, assumption persistence, and scope changes have been checked and findings recorded; (d) if any Decision Log revisit triggers have activated, each has been addressed in the iteration; (e) if any Active milestone was claimed complete, the Layer 4 supervision drift check (Part A + Part B against Excluded Outcomes) was run and findings are recorded; (f) if an Active milestone completed, the Promotion Protocol was executed including MOM re-invocation scoped to Layer 4 for the newly-promoted Aspirational milestone; (g) any Lock-protected field changes are recorded in the Decision Log with user-authorization evidence; (h) readiness for PIF or PFF handoff is assessed and recorded.
+- **Layers covered:** 2, 3, 4, 5, 6, 7, 8
+- **Required prior milestones:** M0
+- **Gear:** 4
+- **Output format:** Updated PED with new iteration entry per Appendix C iteration-entry template; updated Decision Log; updated Active/Aspirational milestone status.
+- **Drift check question:** Does the new iteration entry faithfully reflect the user's recap and decisions without inventing findings, and do the supervision drift-check results faithfully reflect Resolution Statement adherence and Excluded Outcomes status?
 
-- **Endpoint produced:** Status summary of a project identifying current problem definition, current Resolution Statement, current Excluded Outcomes count, current Constraints (summary), Active milestones with P-Feasibility verdicts, next-in-line Aspirational milestone, Terrain Maps inventory, open questions, pending recommended actions, and any activated revisit triggers or evidence of definition drift — without modifying the PED
-- **Verification criterion:** (a) the summary names the current problem definition, current Resolution Statement, current phase, and number of iterations completed; (b) the Active milestones and their statuses (in progress / blocked / candidate for completion) are listed; (c) if revisit triggers have activated, Excluded Outcomes appear to have been matched, or drift evidence is present, they are flagged with a recommendation to switch to PE-Iterate; (d) no new iteration entry is written to the PED during this mode
-- **Preconditions:** Existing Problem Evolution Document
-- **Mode required:** PE-Review
-- **Framework Registry summary:** Summarizes the current state of a Problem Evolution Document without advancing it
+### Milestones for Mode PE-Review
 
-### Milestone Type: Sub-project Problem Evolution Document linked to parent
+#### Milestone 1: Problem Status Summary
 
-- **Endpoint produced:** New Problem Evolution Document for a sub-project with its own MOM-populated strategic hierarchy, linked to the parent project's PED; parent PED updated to reference the sub-project and the specific Active milestone or dependency that motivated the spawn
-- **Verification criterion:** (a) the sub-project PED contains problem definition, MOM-populated Mission/Excluded Outcomes/Constraints/Objectives/Milestones (via the same Layer 2 MOM auto-invocation applied to the sub-problem), phase assessment, recommended first action, and explicit linkage to the parent project; (b) the parent PED records the spawned sub-project alongside the triggering Active milestone or dependency; (c) both documents reference each other; (d) all six Evaluation Criteria score 3 or above for the sub-project PED
-- **Preconditions:** Parent project PED; sub-problem description identifying what the sub-problem is, why it was identified, and how it connects to the parent project
-- **Mode required:** PE-Spawn
-- **Framework Registry summary:** Creates a sub-project Problem Evolution Document with its own MOM-populated strategic hierarchy, linked to a parent project
+- **Mode:** PE-Review
+- **Endpoint produced:** Status summary of a project identifying current problem definition, current Resolution Statement, current Excluded Outcomes count, current Constraints (summary), Active milestones with P-Feasibility verdicts, next-in-line Aspirational milestone, Terrain Maps inventory, open questions, pending recommended actions, and any activated revisit triggers or evidence of definition drift — without modifying the PED.
+- **Verification criterion:** (a) the summary names the current problem definition, current Resolution Statement, current phase, and number of iterations completed; (b) the Active milestones and their statuses (in progress / blocked / candidate for completion) are listed; (c) if revisit triggers have activated, Excluded Outcomes appear to have been matched, or drift evidence is present, they are flagged with a recommendation to switch to PE-Iterate; (d) no new iteration entry is written to the PED during this mode.
+- **Layers covered:** 2, 8
+- **Required prior milestones:** M0
+- **Gear:** 4
+- **Output format:** Structured status summary as markdown with sections for current state, Active milestone statuses, revisit-trigger findings, and switch-to-PE-Iterate recommendations if applicable.
+- **Drift check question:** Does the status summary faithfully report the existing PED state without modifying it, and are revisit-trigger findings grounded in actual PED contents rather than inferred patterns?
+
+### Milestones for Mode PE-Spawn
+
+#### Milestone 1: Sub-Project Problem Evolution Document
+
+- **Mode:** PE-Spawn
+- **Endpoint produced:** New Problem Evolution Document for a sub-project with its own MOM-populated strategic hierarchy, linked to the parent project's PED; parent PED updated to reference the sub-project and the specific Active milestone or dependency that motivated the spawn.
+- **Verification criterion:** (a) the sub-project PED contains problem definition, MOM-populated Mission/Excluded Outcomes/Constraints/Objectives/Milestones (via the same Layer 2 MOM auto-invocation applied to the sub-problem), phase assessment, recommended first action, and explicit linkage to the parent project; (b) the parent PED records the spawned sub-project alongside the triggering Active milestone or dependency; (c) both documents reference each other; (d) all six Evaluation Criteria score 3 or above for the sub-project PED.
+- **Layers covered:** 2, 3, 4, 5, 6, 7, 8
+- **Required prior milestones:** M0
+- **Gear:** 4
+- **Output format:** New sub-project PED per Appendix C template, with parent-project link in YAML frontmatter and reference inserted in parent PED.
+- **Drift check question:** Does the sub-project PED genuinely represent a sub-problem distinct enough to warrant its own track rather than a redefinition of the parent project, and is the parent-child linkage bidirectional and accurate?
 
 ---
 

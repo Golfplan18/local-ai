@@ -13,7 +13,10 @@ The pairing convention:
 - `~/ora/modes/<name>.md` ↔ `/Users/oracle/Documents/vault/Modes/<name>.md`. Both have YAML; preserve.
 - `~/ora/knowledge/mental-models/<name>.md` ↔ `/Users/oracle/Documents/vault/Lenses/<name>.md`. Both have YAML; preserve.
 - `~/ora/modules/tools/.../<name>.md` ↔ `/Users/oracle/Documents/vault/Modules/Tools/.../<name>.md`. Neither has YAML.
-- A handful of singletons: `~/ora/agents/agent-registry.md` ↔ `Reference — Agent Registry.md`; `~/ora/FORKING.md` ↔ `Reference — Forking Ora.md`; `~/ora/frameworks/mode-classification-directory.md` ↔ `Reference — Mode Classification Directory.md`; `~/ora/frameworks/framework-registry.md` ↔ `Framework — Framework Registry.md`.
+- **`~/ora/architecture/<name>.md` ↔ `/Users/oracle/Documents/vault/Reference — <Title>.md`** (kebab-case ora filename ↔ vault canonical name). Vault has YAML, ora does not. Decision K: this subdirectory holds the 9 pre-routing-pipeline architecture files the orchestrator reads at runtime exclusively. The 9 files are: `territories.md`, `mode-template.md`, `disambiguation-style-guide.md`, `lens-library-specification.md`, `pre-routing-pipeline.md`, `signal-vocabulary-registry.md`, `runtime-configuration.md`, `within-territory-trees.md`, `cross-territory-adjacency.md`.
+- **`~/ora/frameworks/territories/<territory-id>.md` ↔ `/Users/oracle/Documents/vault/Framework — <Territory Display Name>.md`** (Phase 10 deliverables; 21 self-contained territory frameworks). Vault has YAML, ora does not.
+- A handful of singletons: `~/ora/agents/agent-registry.md` ↔ `Reference — Agent Registry.md`; `~/ora/FORKING.md` ↔ `Reference — Forking Ora.md`; `~/ora/frameworks/framework-registry.md` ↔ `Framework — Framework Registry.md`; `~/ora/frameworks/pff-cff-off-integration-architecture.md` ↔ `Reference — PFF-CFF-OFF Integration Architecture.md`.
+- **`~/ora/frameworks/mode-classification-directory.md` ↔ `Reference — Mode Classification Directory.md`** — **archived 2026-05-02 (Phase 9).** The Mode Classification Directory's intent-classification flow has been replaced by the four-stage pre-routing pipeline in `~/ora/architecture/pre-routing-pipeline.md`. Phase 7 archived the vault-side file; Phase 9 archived the ora-side file at `~/ora/Old AI Working Files/mode-classification-directory.md.archived-2026-05-02` once `boot.py` no longer read it.
 - `~/ora/CLAUDE.md` (this file), `~/ora/boot/boot.md`, `~/ora/mind.md`, `~/ora/mindspec/default-mindspec.md` — ora-only, no vault counterpart.
 
 **The recommended workflow when editing ora .md files:**
@@ -42,7 +45,11 @@ Ora is a multi-model orchestrator for local LLMs on Apple Silicon. It runs an 8-
 ## Architecture
 
 ### Pipeline (boot.py — the orchestrator)
-1. **Step 1** — Two-pass: Phase A (prompt cleanup) → Phase A.5 (mode classification via Mode Classification Directory)
+1. **Step 1** — Phase A (prompt cleanup) followed by the **four-stage pre-routing pipeline** (Phase 9, replaces the retired Phase A.5):
+   - **Stage 1 — Pre-Analysis Filter:** substring-matches the prompt against the signal vocabulary registry and a short bypass-trigger list. Greetings, simple lookups, and prior-conversation references bypass the analytical pipeline; analytical-artifact triggers forward to Stage 2.
+   - **Stage 2 — Sufficiency Analyzer:** classifies signals as strong vs weak, AND-composes them, detects conflicts, runs cross-territory adjacency check, runs within-territory disambiguation, applies the friction reducer (skips questions the prompt already answered). Either dispatches a `mode_id` or surfaces a single plain-language disambiguation question per the Disambiguation Style Guide.
+   - **Stage 3 — Input Completeness Check:** loads the dispatched mode's `input_contract`, picks `expert_mode` vs `accessible_mode`, scans for required fields, and either elicits the missing input or offers graceful degradation to a lighter sibling.
+   - **Stage 4 — Mode Execution:** loads the runtime config (errors safely if missing per Decision C), composes the educational-parenthetical dispatch announcement, then runs the gear pipeline. The four-stage pipeline lives in `boot.py::run_pre_routing_pipeline`; supporting registries are read from `~/ora/architecture/`.
 2. **Step 2** — Context assembly: mode file, conversation RAG, concept RAG (ChromaDB)
 3. **Steps 3-8** — Gear-appropriate execution:
    - **Gear 1-2**: Single model, direct response

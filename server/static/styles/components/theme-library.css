@@ -156,6 +156,64 @@
   color: var(--text-muted);
 }
 
+.theme-card-badge-installed {
+  background: var(--text-muted);
+  color: var(--background-primary);
+}
+
+.theme-card-thumbnail {
+  width: 100%;
+  height: auto;
+  max-height: 100px;
+  object-fit: cover;
+  border-radius: var(--radius-s);
+  margin-bottom: 8px;
+  display: block;
+  background: var(--background-primary);
+}
+
+.theme-install-status {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.theme-install-status:empty {
+  display: none;
+}
+
+.theme-install-status.error {
+  color: var(--h5-color, #ff5555);
+}
+
+.theme-library-meta {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.theme-library-sentinel {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 14px;
+  margin-top: 8px;
+}
+
+.theme-library-sentinel:empty {
+  display: none;
+}
+
+.theme-card-downloads {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
 /* ─── Status messages ─── */
 
 .theme-library-loading,
@@ -267,4 +325,29 @@
 .theme-library-import button[data-action="install-upload"]:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Drag-drop zone for .css files */
+.theme-library-dropzone {
+  margin: 8px 0;
+  padding: 16px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  text-align: center;
+  background: var(--background-primary);
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.theme-library-dropzone-text {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.theme-library-dropzone.dragover {
+  border-color: var(--link-color);
+  background: var(--background-secondary);
+}
+
+.theme-library-dropzone.dragover .theme-library-dropzone-text {
+  color: var(--link-color);
 }

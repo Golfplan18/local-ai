@@ -8,6 +8,50 @@
     "fallback_extractor_bucket": "fast",
     "description": "When image input arrives and the downstream model is not vision_capable, route the image through a vision-capable model from the preferred bucket. Fall back to the fallback bucket, then fail gracefully to manual-trace UX (WP-4.4). Bucket names match the configured buckets below \u2014 the actual Ora buckets are 'premium' (Claude Opus API, Gemini Pro API, browser flagships) and 'fast' (Claude Haiku, Gemini Flash, GPT-4o Mini). There is no distinct 'api-premium' bucket in this config; 'premium' spans API + browser by tier, not by transport."
   },
+  "slots": {
+    "_note": "Per-slot routing for Phase 7 capability slots (WP-7.0.1). Each entry is preferred + fallback model ids matching `~/ora/config/capabilities.json`. Providers populate these in WP-7.3.2 (DALL-E 3, Stability, Replicate). Empty arrays mean the slot is currently unfulfilled \u2014 the orchestrator surfaces 'Configure a model in Settings \u2192' UX per the sibling spec \u00a75.",
+    "_canonical_source": "/Users/oracle/Documents/vault/Reference \u2014 Capability Invocation Contracts.md",
+    "image_generates": {
+      "preferred": "openai-dalle3",
+      "fallback": ["stability", "replicate"]
+    },
+    "image_edits": {
+      "preferred": "openai-dalle2",
+      "fallback": ["replicate"]
+    },
+    "image_outpaints": {
+      "preferred": "stability",
+      "fallback": ["replicate"]
+    },
+    "image_upscales": {
+      "preferred": "stability",
+      "fallback": ["replicate"]
+    },
+    "image_styles": {
+      "preferred": "replicate",
+      "fallback": []
+    },
+    "image_varies": {
+      "preferred": null,
+      "fallback": ["replicate"]
+    },
+    "image_to_prompt": {
+      "preferred": "replicate",
+      "fallback": []
+    },
+    "image_critique": {
+      "preferred": null,
+      "fallback": []
+    },
+    "video_generates": {
+      "preferred": "replicate",
+      "fallback": []
+    },
+    "style_trains": {
+      "preferred": "replicate",
+      "fallback": []
+    }
+  },
   "machines": [
     {
       "id": "studio-128",

@@ -1,4 +1,12 @@
+
 # System File Drift Correction Framework
+
+## Display Name
+System File Drift Correction
+
+## Display Description
+Detect and reconcile drift between the canonical vault and the ~/ora/ deployment surface. Runs under explicit user-controlled direction with .bak backups for every overwrite. Use when vault and ora .md files have diverged.
+
 
 *A framework for detecting and reconciling drift between content files in the canonical vault and the ~/ora deployment surface.*
 
@@ -8,7 +16,7 @@
 
 ## How to Use This File
 
-This framework manages the dual-copy relationship between the Wisdom Nexus vault (canonical source-of-truth) and the ~/ora deployment directory (operational copies the orchestrator loads at runtime). Most ora content has a paired vault file. When edits accumulate in either location without being propagated, the pair drifts. This framework detects and reconciles that drift.
+This framework manages the dual-copy relationship between the Ora vault (canonical source-of-truth) and the ~/ora deployment directory (operational copies the orchestrator loads at runtime). Most ora content has a paired vault file. When edits accumulate in either location without being propagated, the pair drifts. This framework detects and reconciles that drift.
 
 Paste this entire file into a Claude session that has file system access (Claude Code or equivalent). State the operation mode below the USER INPUT marker at the bottom. The AI executes the operation and reports.
 
@@ -53,35 +61,61 @@ Primary outputs vary by mode:
 
 specification — operates in a single context window for commercial AI execution with file system tools. Agent-mode rendering is straightforward but not required.
 
+Each mode (D-Detect / D-Sync / D-Accept-Ora / D-Bootstrap) covers Layers 1-6 (six processing layers) and declares a single milestone. Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the atomic-by-design nature of drift-correction: the file pair is either reconciled per the mode's contract or it is not. Per-layer milestones would fragment what users experience as a single sync operation and risk partial-state commits to the filesystem.
+
 ## MILESTONES DELIVERED
 
-### Milestone Type: Drift detection report
+### Milestones for Mode D-Detect
+
+#### Milestone 1: Drift Detection Report
+
+- **Mode:** D-Detect
 - **Endpoint produced:** A report classifying every registered file pair as one of: `identical | yaml-only-diff | vault-newer | ora-newer | body-different | vault-only | ora-only | excluded`.
 - **Verification criterion:** Every registered pair appears exactly once with a classification; the file system is unchanged after the operation completes.
-- **Preconditions:** Vault and ora paths are accessible.
-- **Mode required:** D-Detect
-- **Framework Registry summary:** Reports drift status across all paired vault/ora content files.
+- **Layers covered:** 1, 2, 3, 4, 5, 6
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Structured drift report with per-pair classifications.
+- **Drift check question:** Does every registered pair appear exactly once with a classification, and is the file system genuinely unchanged after detection?
 
-### Milestone Type: Drift correction (vault → ora)
+### Milestones for Mode D-Sync
+
+#### Milestone 1: Drift Correction (Vault → Ora)
+
+- **Mode:** D-Sync
 - **Endpoint produced:** Every pair classified as `vault-newer` or `body-different` has its ora copy updated to match vault's body. Every overwritten ora file has a `.bak` of its prior content alongside it.
 - **Verification criterion:** For every modified pair, the ora file's body equals its vault counterpart's body modulo YAML differences and trailing-blank-line normalization. Every overwrite produced a `.bak` file. No `ora-newer` pair was modified.
-- **Preconditions:** A drift detection pass has classified pairs; vault is the canonical direction.
-- **Mode required:** D-Sync
-- **Framework Registry summary:** Pushes current vault body to drifted ora copies under vault-canonical authority.
+- **Layers covered:** 1, 2, 3, 4, 5, 6
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Updated ora files plus `.bak` files plus sync summary report.
+- **Drift check question:** Did every modified pair receive a `.bak` and does its ora body now match vault's body, with no `ora-newer` pair touched?
 
-### Milestone Type: Reverse sync (ora → vault, opt-in)
+### Milestones for Mode D-Accept-Ora
+
+#### Milestone 1: Reverse Sync (Ora → Vault, Opt-In)
+
+- **Mode:** D-Accept-Ora
 - **Endpoint produced:** For every vault file in the user's explicit pair list, vault's body is updated to match ora's body. Every overwritten vault file has a `.bak`.
 - **Verification criterion:** Only files in the explicit pair list were modified. Every modified vault file's body equals its ora counterpart's body. Every overwrite produced a `.bak`.
-- **Preconditions:** User has explicitly identified which pairs to accept; the pair list is non-empty.
-- **Mode required:** D-Accept-Ora
-- **Framework Registry summary:** Pulls ora body into vault for explicitly-approved pairs after direct ora edits (e.g., Claude Code working in ora).
+- **Layers covered:** 1, 2, 3, 4, 5, 6
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Updated vault files plus `.bak` files plus reverse-sync summary report.
+- **Drift check question:** Were only the explicitly-listed pairs modified, and does every modified vault file body now match its ora counterpart with a `.bak` preserved?
 
-### Milestone Type: Bootstrap (ora-only → vault)
+### Milestones for Mode D-Bootstrap
+
+#### Milestone 1: Bootstrap (Ora-Only → Vault)
+
+- **Mode:** D-Bootstrap
 - **Endpoint produced:** For every ora file matching a registered pairing pattern but lacking a vault counterpart, a vault file is created at the canonical destination path containing ora's verbatim content.
 - **Verification criterion:** Every previously ora-only file matching a registered pattern now has a vault pair. No existing vault file was overwritten. The created vault files contain ora's content unchanged.
-- **Preconditions:** Pairing patterns are defined; bootstrap targets do not already exist in vault.
-- **Mode required:** D-Bootstrap
-- **Framework Registry summary:** Creates initial vault copies for newly-recognized ora files matching registered patterns.
+- **Layers covered:** 1, 2, 3, 4, 5, 6
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** New vault files at canonical paths plus bootstrap summary report.
+- **Drift check question:** Did the bootstrap create vault files only for newly-recognized ora-only patterns, with no existing vault file overwritten?
 
 ## EVALUATION CRITERIA
 
@@ -138,7 +172,7 @@ This framework's output is evaluated against these seven criteria. Each criterio
 
 ## PERSONA
 
-You are the System File Drift Auditor — a meticulous custodian of source-of-truth integrity between the canonical Wisdom Nexus vault and its operational deployment surface in `~/ora`.
+You are the System File Drift Auditor — a meticulous custodian of source-of-truth integrity between the canonical Ora vault and its operational deployment surface in `~/ora`.
 
 You possess:
 - The patience to compare hundreds of file pairs without skipping;
@@ -185,6 +219,16 @@ Every pair belongs to one category. Apply categories in this order:
 | `Reference — Mode Classification Directory.md` (vault root) | `frameworks/mode-classification-directory.md` | vault → ora | No YAML on ora side. |
 | `Framework — Framework Registry.md` (vault root) | `frameworks/framework-registry.md` | vault → ora | Strip vault YAML when writing to ora. |
 | `Framework — System File Drift Correction.md` (vault root) | `frameworks/book/system-file-drift-correction.md` | vault → ora | This framework itself. Strip vault YAML when writing to ora. |
+| `Reference — Analytical Territories.md` (vault root) | `architecture/territories.md` | vault → ora | Strip vault YAML. Decision K: ora side holds 9 kebab-case architecture files the orchestrator reads at runtime. |
+| `Reference — Mode Specification Template.md` (vault root) | `architecture/mode-template.md` | vault → ora | Strip vault YAML. |
+| `Reference — Disambiguation Style Guide.md` (vault root) | `architecture/disambiguation-style-guide.md` | vault → ora | Strip vault YAML. |
+| `Reference — Lens Library Specification.md` (vault root) | `architecture/lens-library-specification.md` | vault → ora | Strip vault YAML. |
+| `Reference — Pre-Routing Pipeline Architecture.md` (vault root) | `architecture/pre-routing-pipeline.md` | vault → ora | Strip vault YAML. |
+| `Reference — Signal Vocabulary Registry.md` (vault root) | `architecture/signal-vocabulary-registry.md` | vault → ora | Strip vault YAML. |
+| `Reference — Mode Runtime Configuration.md` (vault root) | `architecture/runtime-configuration.md` | vault → ora | Strip vault YAML. |
+| `Reference — Within-Territory Disambiguation Trees.md` (vault root) | `architecture/within-territory-trees.md` | vault → ora | Strip vault YAML. |
+| `Reference — Cross-Territory Adjacency.md` (vault root) | `architecture/cross-territory-adjacency.md` | vault → ora | Strip vault YAML. |
+| `Framework — <Territory Display Name>.md` (vault root, Phase 10 deliverables — 21 files) | `frameworks/territories/<territory-id>.md` | vault → ora | Strip vault YAML. Filename: derive territory-id from territory display name (e.g., "Argumentative Artifact Examination" → `t1-argumentative-artifact-examination.md`). Built in Phase 10. |
 | `vault/Modes/*.md` | `ora/modes/*.md` | vault → ora | Both sides have YAML; preserve. Filename matches one-to-one. |
 | `vault/Lenses/*.md` | `ora/knowledge/mental-models/*.md` | vault → ora | Both sides have YAML; preserve. Filename matches one-to-one. |
 | `vault/Modules/Tools/*.md` | `ora/modules/tools/*.md` | vault → ora | No YAML on either side. |

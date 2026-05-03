@@ -33,6 +33,16 @@
  *       style error (schema mandates minItems=1).
  *  21.  captureFromPanel reads panel.userInputLayer and serializes it.
  *  22.  Relationship `strength` propagates when userStrength is set on shape.
+ *  23.  captureFromPanel: no selection → snapshot has no _activeSelection
+ *       (WP-7.1.5 image-ref auto-fill source).
+ *  24.  captureFromPanel: shape selection → snapshot._activeSelection is the
+ *       shape id.
+ *  25.  captureFromPanel: attached background image → snapshot._activeSelection
+ *       is the synthetic 'canvas-image' sentinel even when no shapes are drawn.
+ *  26.  captureFromPanel: image priority — when both an image and a shape are
+ *       selected/present, the image wins.
+ *  27.  captureFromPanel: empty canvas with no selection still returns null
+ *       (no spurious envelope).
  */
 
 'use strict';
@@ -455,6 +465,114 @@ module.exports = {
         'strength=' + (r && r.relationships && r.relationships[0].strength));
     } catch (e) {
       record('canvas-serializer #22', false, 'threw: ' + (e.stack || e.message || e));
+    }
+
+    // ── _activeSelection surfacing (WP-7.1.5 image-ref auto-fill source) ──
+    //
+    // The Ask Ora bindings auto-fill required `image-ref` capability inputs
+    // from `snapshot._activeSelection` (with a `_selectionId` fallback).
+    // captureFromPanel must populate `_activeSelection` when the panel has
+    // a selection — image first (most useful for AI tools), then shapes,
+    // then annotations, then SVG nodes.
+
+    // 23. No selection → no _activeSelection.
+    try {
+      const kids = [
+        mkRect({ userShapeId: 'r1', userLabel: 'R', x: 10, y: 10, width: 10, height: 10 }),
+      ];
+      const panel = {
+        userInputLayer: mkLayer(kids, 500, 400),
+        _selectedShapeIds: [],
+        _selectedAnnotIds: [],
+        _selectedNodeId:   null,
+        _backgroundImageNode: null,
+      };
+      const r = S.captureFromPanel(panel);
+      record('canvas-serializer #23: no selection → no _activeSelection',
+        r && r._activeSelection == null,
+        'activeSelection=' + (r && JSON.stringify(r._activeSelection)));
+    } catch (e) {
+      record('canvas-serializer #23', false, 'threw: ' + (e.stack || e.message || e));
+    }
+
+    // 24. Shape selection → _activeSelection carries the shape id.
+    try {
+      const kids = [
+        mkRect({ userShapeId: 'r1', userLabel: 'R', x: 10, y: 10, width: 10, height: 10 }),
+        mkRect({ userShapeId: 'r2', userLabel: 'S', x: 60, y: 10, width: 10, height: 10 }),
+      ];
+      const panel = {
+        userInputLayer: mkLayer(kids, 500, 400),
+        _selectedShapeIds: ['r2'],
+        _selectedAnnotIds: [],
+        _selectedNodeId:   null,
+        _backgroundImageNode: null,
+      };
+      const r = S.captureFromPanel(panel);
+      record('canvas-serializer #24: shape selected → _activeSelection is shape id',
+        r && r._activeSelection === 'r2',
+        'activeSelection=' + (r && JSON.stringify(r._activeSelection)));
+    } catch (e) {
+      record('canvas-serializer #24', false, 'threw: ' + (e.stack || e.message || e));
+    }
+
+    // 25. Image attached, no shapes → snapshot returns 'canvas-image' sentinel
+    //     even on an otherwise-empty layer (a stub envelope is synthesized so
+    //     the auto-fill path can still read _activeSelection). The envelope
+    //     also carries `_stubEnvelope: true` so server-bound senders can skip
+    //     transmitting a synthesized spatial_representation.
+    try {
+      const panel = {
+        userInputLayer: mkLayer([], 500, 400),
+        _selectedShapeIds: [],
+        _selectedAnnotIds: [],
+        _selectedNodeId:   null,
+        _backgroundImageNode: { name: 'vp-background-image' },  // truthy stand-in
+      };
+      const r = S.captureFromPanel(panel);
+      record('canvas-serializer #25: attached image → _activeSelection = canvas-image',
+        r && r._activeSelection === 'canvas-image' && Array.isArray(r.entities) && r.entities.length === 1
+          && r._stubEnvelope === true,
+        'r=' + JSON.stringify(r));
+    } catch (e) {
+      record('canvas-serializer #25', false, 'threw: ' + (e.stack || e.message || e));
+    }
+
+    // 26. Image priority — image present + shape selected → image wins.
+    try {
+      const kids = [
+        mkRect({ userShapeId: 'r1', userLabel: 'R', x: 10, y: 10, width: 10, height: 10 }),
+      ];
+      const panel = {
+        userInputLayer: mkLayer(kids, 500, 400),
+        _selectedShapeIds: ['r1'],
+        _selectedAnnotIds: [],
+        _selectedNodeId:   null,
+        _backgroundImageNode: { name: 'vp-background-image' },
+      };
+      const r = S.captureFromPanel(panel);
+      record('canvas-serializer #26: image present beats shape selection',
+        r && r._activeSelection === 'canvas-image',
+        'activeSelection=' + (r && JSON.stringify(r._activeSelection)));
+    } catch (e) {
+      record('canvas-serializer #26', false, 'threw: ' + (e.stack || e.message || e));
+    }
+
+    // 27. Empty canvas + no selection → null (no spurious envelope).
+    try {
+      const panel = {
+        userInputLayer: mkLayer([], 500, 400),
+        _selectedShapeIds: [],
+        _selectedAnnotIds: [],
+        _selectedNodeId:   null,
+        _backgroundImageNode: null,
+      };
+      const r = S.captureFromPanel(panel);
+      record('canvas-serializer #27: empty + no selection → null',
+        r === null,
+        'r=' + JSON.stringify(r));
+    } catch (e) {
+      record('canvas-serializer #27', false, 'threw: ' + (e.stack || e.message || e));
     }
   },
 };

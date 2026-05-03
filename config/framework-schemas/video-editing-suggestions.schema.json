@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/video-editing-suggestions.schema.json",
+  "title": "Video Editing Suggestions",
+  "description": "Output of the Video Editing Suggestions framework. The model reads a transcript and returns a list of structured edit suggestions the user can apply with one click.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entry_id", "suggestions"],
+  "properties": {
+    "entry_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The media-library entry id this suggestion list is for."
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional one-paragraph plain-English overview of the proposed edits."
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/cut" },
+          { "$ref": "#/$defs/chapter" },
+          { "$ref": "#/$defs/title_card" },
+          { "$ref": "#/$defs/transition" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "cut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "start_ms", "end_ms", "reason"],
+      "properties": {
+        "type": { "const": "cut" },
+        "start_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Source-time offset where the cut starts."
+        },
+        "end_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Source-time offset where the cut ends. Must be strictly greater than start_ms; minimum span 200 ms."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "enum": ["filler", "silence", "false_start", "redundant", "off_topic", "other"],
+          "description": "Optional sub-classification."
+        }
+      }
+    },
+    "chapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "at_ms", "label", "reason"],
+      "properties": {
+        "type": { "const": "chapter" },
+        "at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "title_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "at_ms", "duration_ms", "title", "reason"],
+      "properties": {
+        "type": { "const": "title_card" },
+        "at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 500,
+          "maximum": 15000
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "at_ms", "duration_ms", "kind", "reason"],
+      "properties": {
+        "type": { "const": "transition" },
+        "at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 5000
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["fade", "dissolve", "cut"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    }
+  }
+}

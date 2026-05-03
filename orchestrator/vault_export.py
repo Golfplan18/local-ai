@@ -33,19 +33,17 @@ next to the Markdown. Invalid envelopes and CLI failures generate warnings
 (never abort the export) — the Markdown is the source of truth, and the
 user can regenerate sidecars by re-opening the session in Ora.
 
-Markdown shape (WP-6.2 ownership, but produced here for round-trip)
--------------------------------------------------------------------
+Markdown shape (Phase 5.7, Schema §12 chunk template)
+-----------------------------------------------------
 
   ---
-  nexus: []
+  nexus:
+    - <topic-derived from Master Matrix; section absent if domain-general>
   type: chat
   tags:
-    - ora-session
-    - visual-intelligence
-  conversation_id: <id>
-  session_title: <title>
-  date created: YYYY/MM/DD
-  date modified: YYYY/MM/DD
+    - <controlled-vocabulary tags; section absent if none>
+  date created: YYYY-MM-DD
+  date modified: YYYY-MM-DD
   ---
   # <title>
 
@@ -60,6 +58,12 @@ Markdown shape (WP-6.2 ownership, but produced here for round-trip)
   …fenced ``ora-visual`` JSON kept verbatim…
   ![[<session-name>.fig-1.svg]]
 
+The conversation_id and session_title are kept in the body's meta
+block (preserves the back-link to the source session) but are not
+in the YAML frontmatter — Schema §12 keeps the conversation chunk
+template minimal. Filename includes HH-MM to prevent same-day
+collisions when multiple sessions are exported on the same date.
+
 This module is deliberately free of Flask; the HTTP wrapper lives in
 ``server.py`` as ``POST /api/session/export``.
 """
@@ -73,7 +77,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime, date
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 # visual_validator lives in the same orchestrator package. Import lazily so
 # tests that stub the validator don't need to boot the jsonschema layer.
@@ -161,11 +165,26 @@ def _derive_session_name(
     session_title: str | None,
     conversation_id: str,
     first_user_message: str | None,
-    when: date | None = None,
+    when: datetime | date | None = None,
 ) -> str:
-    """Return the filesystem stem ``YYYY-MM-DD-<slug>`` for the markdown doc."""
-    when = when or date.today()
-    date_str = when.strftime("%Y-%m-%d")
+    """Return the filesystem stem ``YYYY-MM-DD-HH-MM-<slug>`` for the
+    markdown doc.
+
+    HH-MM is included in the stem to prevent same-day collisions when
+    multiple sessions export on the same date (Phase 5.7 / Q4
+    requirement).
+
+    For backward compat: callers who pass a `date` (not a `datetime`)
+    get the time defaulted to 00-00 so explicit-date tests stay
+    deterministic.
+    """
+    if when is None:
+        when = datetime.now()
+    if isinstance(when, datetime):
+        date_str = when.strftime("%Y-%m-%d-%H-%M")
+    else:
+        # date instance → no time component; use 00-00 sentinel
+        date_str = when.strftime("%Y-%m-%d") + "-00-00"
 
     if session_title:
         slug = _slugify(session_title)
@@ -463,57 +482,142 @@ def _render_envelope_to_svg(
 # ---------------------------------------------------------------------------
 
 
-def _build_frontmatter(
-    conversation_id: str,
-    session_title: str,
-    created_at: str | None,
+def _build_canonical_frontmatter(
+    nexus: list[str] | None = None,
+    type_: str = "chat",
+    tags: list[str] | None = None,
+    created_at: str | None = None,
     modified_at: datetime | None = None,
 ) -> str:
-    """Produce YAML frontmatter per vault CLAUDE.md conventions.
+    """Produce YAML frontmatter per Schema §12 conversation chunk template.
 
-    Keys (stable order):
-        nexus, type, tags, conversation_id, session_title,
-        date created, date modified
+    Keys (canonical order from Schema §11):
+        nexus, type, tags, date created, date modified
+
+    Empty lists are emitted as bare key (Schema §10 rule 4):
+        nexus:
+        tags:
+
+    `conversation_id` and `session_title` are NOT included — they live
+    in the body's meta block per Phase 5.7. Date format is YYYY-MM-DD
+    (Schema §10 rule 9).
     """
     modified_at = modified_at or datetime.now()
-    date_created = _format_vault_date(created_at) or modified_at.strftime("%Y/%m/%d")
-    date_modified = modified_at.strftime("%Y/%m/%d")
+    date_created = _format_vault_date(created_at) or modified_at.strftime("%Y-%m-%d")
+    date_modified = modified_at.strftime("%Y-%m-%d")
 
-    # Escape quotes in strings we embed bare in YAML.
-    safe_title = session_title.replace("\"", "'")
-    safe_id = conversation_id.replace("\"", "'")
+    parts = [
+        "---\n",
+        _format_yaml_list("nexus", nexus or []),
+        f"type: {type_}\n",
+        _format_yaml_list("tags", tags or []),
+        f"date created: {date_created}\n",
+        f"date modified: {date_modified}\n",
+        "---\n",
+    ]
+    return "".join(parts)
 
-    # Use block-list form for tags — vault convention.
-    return (
-        "---\n"
-        "nexus: []\n"
-        "type: chat\n"
-        "tags:\n"
-        "  - ora-session\n"
-        "  - visual-intelligence\n"
-        f"conversation_id: \"{safe_id}\"\n"
-        f"session_title: \"{safe_title}\"\n"
-        f"date created: {date_created}\n"
-        f"date modified: {date_modified}\n"
-        "---\n"
-    )
+
+def _format_yaml_list(key: str, values: list[str]) -> str:
+    """Emit a YAML list property in canonical block-list form.
+
+    Empty list → ``key:\\n`` per Schema §10 rule 4 (no `[]`, no `null`).
+    Non-empty → multi-line ``- value`` form per §10 rule 3.
+    """
+    if not values:
+        return f"{key}:\n"
+    lines = [f"{key}:"]
+    for v in values:
+        lines.append(f"  - {v}")
+    return "\n".join(lines) + "\n"
 
 
 def _format_vault_date(value: str | None) -> str | None:
-    """Normalize an arbitrary date-ish string to ``YYYY/MM/DD`` (vault spec)."""
+    """Normalize an arbitrary date-ish string to ``YYYY-MM-DD`` (Schema §10
+    rule 9 — dashes, not slashes)."""
     if not value:
         return None
     # Try common ISO shapes.
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.strptime(value[:19 if "T" in value or " " in value else 10], fmt).strftime("%Y/%m/%d")
+            return datetime.strptime(value[:19 if "T" in value or " " in value else 10], fmt).strftime("%Y-%m-%d")
         except (ValueError, TypeError):
             continue
     # Fallback: extract YYYY-MM-DD prefix if present.
     m = re.match(r"(\d{4})-(\d{2})-(\d{2})", value)
     if m:
-        return f"{m.group(1)}/{m.group(2)}/{m.group(3)}"
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
     return None
+
+
+# ---------------------------------------------------------------------------
+# Master Matrix nexus matcher (Phase 5.7)
+# ---------------------------------------------------------------------------
+
+
+_DEFAULT_MASTER_MATRIX_PATH = (
+    Path.home() / "Documents" / "vault" / "Engrams" / "Reference — Master Matrix.md"
+)
+
+# Match `project property name: <id>` and `passion property name: <id>`.
+# Skip `parent project name:` (no "property" keyword — that's a back-reference).
+_MATRIX_PROPERTY_RE = re.compile(
+    r"^(?:project|passion)\s+property\s+name:\s*(\S+)\s*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def _load_master_matrix(path: Path | str | None = None) -> list[str]:
+    """Parse the Master Matrix file and return a deduped list of
+    project/passion identifiers (canonical nexus values).
+
+    Defensively returns [] if the file is missing or unreadable —
+    callers fall through to empty nexus when no match.
+    """
+    target = Path(path) if path else _DEFAULT_MASTER_MATRIX_PATH
+    try:
+        content = target.read_text(encoding="utf-8")
+    except (OSError, FileNotFoundError):
+        return []
+
+    seen: set[str] = set()
+    identifiers: list[str] = []
+    for m in _MATRIX_PROPERTY_RE.finditer(content):
+        ident = m.group(1).strip()
+        if ident and ident not in seen:
+            seen.add(ident)
+            identifiers.append(ident)
+    return identifiers
+
+
+def _normalize_for_match(s: str) -> str:
+    """Lowercase and replace underscores/hyphens with spaces.
+
+    Lets `idea_refinery` (matrix identifier) match `idea refinery` or
+    `Idea-Refinery` in a free-form topic string.
+    """
+    return re.sub(r"[_\-]+", " ", s.lower())
+
+
+def _match_topic_to_nexus(topic: str | None, identifiers: list[str]) -> list[str]:
+    """Return identifiers whose normalized form appears in the topic.
+
+    Substring match with normalization (underscore/hyphen → space,
+    case-folded). When multiple identifiers match, all are returned in
+    the order they appear in the matrix file. Empty topic or no
+    identifiers → empty list.
+    """
+    if not topic or not identifiers:
+        return []
+    haystack = _normalize_for_match(topic)
+    matches: list[str] = []
+    for ident in identifiers:
+        needle = _normalize_for_match(ident)
+        if not needle:
+            continue
+        if needle in haystack:
+            matches.append(ident)
+    return matches
 
 
 # ---------------------------------------------------------------------------
@@ -640,6 +744,7 @@ def export_session_to_vault(
     raw_conversations_dir: Path | None = None,
     node_cli: Path | None = None,
     render_timeout_s: float = 60.0,
+    master_matrix_path: Path | None = None,
     _validator: Any = None,
 ) -> ExportResult:
     """Export the conversation identified by ``conversation_id`` to the vault.
@@ -782,9 +887,16 @@ def export_session_to_vault(
             sidecars_per_message[mi][vi] = sidecar_name
 
     # ── Second pass: build the markdown document. ───────────────────────────
-    frontmatter = _build_frontmatter(
-        conversation_id=conversation_id,
-        session_title=resolved_title,
+    # Derive nexus from the topic (session title or first user message)
+    # via Master Matrix substring match. Empty list when nothing matches.
+    matrix_identifiers = _load_master_matrix(master_matrix_path)
+    topic_for_nexus = session_title or convo.get("session_title") or first_user or ""
+    nexus = _match_topic_to_nexus(topic_for_nexus, matrix_identifiers)
+
+    frontmatter = _build_canonical_frontmatter(
+        nexus=nexus,
+        type_="chat",
+        tags=[],  # controlled-vocabulary tags can be set by the caller / pipeline
         created_at=convo.get("created_at"),
     )
     now_iso = datetime.now().isoformat(timespec="seconds")
@@ -819,6 +931,11 @@ __all__ = [
     "_extract_ora_visuals",
     "_parse_raw_session_log",
     "_render_envelope_to_svg",
-    "_build_frontmatter",
+    "_build_canonical_frontmatter",
+    "_format_yaml_list",
+    "_format_vault_date",
+    "_load_master_matrix",
+    "_match_topic_to_nexus",
+    "_normalize_for_match",
     "_ensure_sessions_dir",
 ]

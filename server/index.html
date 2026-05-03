@@ -1290,9 +1290,156 @@ body {
 <script src="/static/clarification-panel.js"></script>
 <script src="/static/switcher-panel.js"></script>
 <script src="/static/config-panel.js"></script>
+<!-- WP-7.1.1 / WP-7.1.2 — universal toolbar registry/renderer + edge dock manager.
+     Both modules are loaded BEFORE visual-panel.js so that
+     VisualPanel.prototype._mountUniversalToolbar finds OraVisualToolbar and
+     OraVisualDock on `window` at init time. icon-resolver.js carries the
+     Lucide vendor bundle that visual-toolbar.js expects via OraIconResolver. -->
+<script src="/static/icon-resolver.js"></script>
+<script src="/static/visual-toolbar.js"></script>
+<script src="/static/visual-dock.js"></script>
 <script src="/static/visual-panel.js"></script>
 <script src="/static/canvas-serializer.js"></script>
 <script src="/static/annotation-parser.js"></script>
+<!-- WP-7.1.5 — Ask Ora classifier + prompt UI + toolbar binding glue. Loaded
+     after visual-panel.js so the bindings module can attach to the universal
+     toolbar's actionRegistry at panel _mountUniversalToolbar() time. -->
+<script src="/static/ask-ora-router.js"></script>
+<script src="/static/ask-ora-prompt.js"></script>
+<script src="/static/visual-toolbar-bindings.js"></script>
+<!-- WP-7.6.1 / WP-7.6.2 — async job queue (strip + canvas placeholder + chat-stream wiring) -->
+<script src="/static/job-queue.js"></script>
+
+<!-- WP-7.3 — Phase 7 capability-dispatch foundation. capability-invocation-ui
+     is the generic UX scaffold every §7.3 capability slot mounts onto;
+     prompt-template-engine is the Mustache renderer; shape-with-text is the
+     primitive used by image-to-prompt and style-trains; pack-validator is
+     the JSON-Schema validator used by pack-loader and pack-install-review.
+     All four are dependency-free of visual-panel and load before the slots
+     and customization runtime that consume them. -->
+<script src="/static/capability-invocation-ui.js"></script>
+<script src="/static/prompt-template-engine.js"></script>
+<script src="/static/shape-with-text.js"></script>
+<script src="/static/pack-validator.js"></script>
+
+<!-- WP-7.3.3 — Phase 7 capability slot wirings. Each module attaches itself to
+     OraCapabilityInvocationUI (foundation above). video-generates and
+     style-trains additionally consume OraJobQueue (loaded above). image-edits
+     lives under tools/ per the §7.3.3b sub-WP layout. -->
+<script src="/static/capability-image-generates.js"></script>
+<script src="/static/tools/image-edits.js"></script>
+<script src="/static/capability-image-outpaints.js"></script>
+<script src="/static/capability-image-upscales.js"></script>
+<script src="/static/capability-image-styles.js"></script>
+<script src="/static/capability-image-varies.js"></script>
+<script src="/static/capability-image-to-prompt.js"></script>
+<script src="/static/capability-image-critique.js"></script>
+<script src="/static/capability-video-generates.js"></script>
+<script src="/static/capability-style-trains.js"></script>
+
+<!-- WP-7.5.1 — Phase 7 selection / image tools. Each self-registers onto
+     window.OraTools and is read at panel _mountUniversalToolbar() time;
+     loaded after the capability slots so the toolbar registry is populated
+     in a single pass. -->
+<script src="/static/tools/rect-selection.tool.js"></script>
+<script src="/static/tools/brush-mask.tool.js"></script>
+<script src="/static/tools/lasso-selection.tool.js"></script>
+<script src="/static/tools/image-crop.tool.js"></script>
+
+<style>
+  /* WP-7.6.2 — async-job chat-stream entry styling. Inline so the
+     chat panel looks correct even when no external stylesheet ships
+     for it; the chat already uses 'msg' / 'bubble' as base classes. */
+  .msg.async-job .async-job__head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; opacity: 0.85;
+  }
+  .msg.async-job .async-job__spinner {
+    display: inline-flex; width: 16px; height: 16px;
+  }
+  .msg.async-job .async-job__label { font-weight: 600; }
+  .msg.async-job .async-job__status {
+    padding: 1px 6px; border-radius: 8px;
+    background: rgba(139, 233, 253, 0.15); color: #8be9fd;
+    font-size: 11px; letter-spacing: 0.02em;
+  }
+  .msg.async-job .async-job__status--queued      { background: rgba(241, 250, 140, 0.15); color: #f1fa8c; }
+  .msg.async-job .async-job__status--in_progress { background: rgba(139, 233, 253, 0.15); color: #8be9fd; }
+  .msg.async-job .async-job__status--complete    { background: rgba(80, 250, 123, 0.15); color: #50fa7b; }
+  .msg.async-job .async-job__status--failed      { background: rgba(255, 85, 85, 0.18); color: #ff5555; }
+  .msg.async-job .async-job__status--cancelled   { background: rgba(98, 114, 164, 0.18); color: #6272a4; }
+  .msg.async-job .async-job__body { margin-top: 6px; }
+  .msg.async-job .async-job__image,
+  .msg.async-job .async-job__video {
+    max-width: 100%; border-radius: 6px; display: block;
+  }
+  .msg.async-job .async-job__error {
+    font-size: 12px; color: #ff5555;
+  }
+  .msg.async-job .async-job__cancelled {
+    font-size: 12px; color: #6272a4; font-style: italic;
+  }
+  .msg.async-job .async-job__json {
+    font-size: 11px; max-height: 200px; overflow: auto;
+    padding: 6px; border-radius: 4px;
+    background: rgba(40, 42, 54, 0.4);
+  }
+</style>
+
+<!-- WP-7.0.2 / WP-7.7.6 — canvas file format reader/writer + one-time-per-session
+     share-reminder modal. Loaded ahead of the Phase 7 commands so save-canvas.js
+     can reach OraCanvasFileFormat + OraCanvasShareReminder at boot. -->
+<script src="/static/canvas-file-format.js"></script>
+<script src="/static/canvas-share-reminder.js"></script>
+
+<!-- Phase 7 canvas-operation commands (each is its own self-registering IIFE) -->
+<script src="/static/commands/resize-canvas.js"></script>
+<!-- WP-7.4.6 — Lazy canvas expansion. Prototype-patches VisualPanel so any
+     newly placed object (drawn shape, drag-dropped/pasted image, AI-inserted
+     image) silently grows the canvas via OraResizeCanvas.apply() when its
+     bbox approaches within 200 px of any edge. Loaded AFTER resize-canvas.js
+     so OraResizeCanvas is in scope at patch time. -->
+<script src="/static/lazy-expansion.js"></script>
+<!-- WP-7.4.8 — Save + autosave commands. Hooks into VisualPanel lifecycle on
+     load, runs a 30 s autosave timer, and POSTs to /api/canvas/save. -->
+<script src="/static/commands/save-canvas.js"></script>
+
+<!-- WP-7.4.2 — Crop commands. Both reuse OraResizeCanvas geometry helpers
+     (loaded above) and OraCanvasFileFormat (also above). crop-to-selection
+     additionally consumes OraCropToContent (loaded immediately prior). -->
+<script src="/static/commands/crop-to-content.js"></script>
+<script src="/static/commands/crop-to-selection.js"></script>
+
+<!-- WP-7.4.9a / WP-7.4.9b — Export → PNG/JPG (raster) + Export → SVG.
+     Both reuse OraSaveCanvas.buildCanvasState / computeContentExtent and
+     dispatch ora:canvas-pre-share through OraCanvasShareReminder. -->
+<script src="/static/commands/export-raster.js"></script>
+<script src="/static/commands/export-svg.js"></script>
+
+<!-- WP-7.2 — Phase 7 customization runtime. pack-loader needs OraPackValidator
+     (loaded earlier with the foundation block); macro-engine and
+     prompt-template-runtime need OraPromptTemplateEngine + OraCapabilityInvocationUI
+     (also loaded earlier); composition-template-loader needs OraCanvasFileFormat
+     (loaded above this block); pack-install-review needs OraPackValidator. -->
+<script src="/static/pack-loader.js"></script>
+<script src="/static/macro-engine.js"></script>
+<script src="/static/prompt-template-runtime.js"></script>
+<script src="/static/composition-template-loader.js"></script>
+<script src="/static/pack-install-review.js"></script>
+
+<!-- WP-7.7.2 / WP-7.7.3 — Onboarding modules. Both monkey-patch VisualPanel
+     and read window.OraPanels.visual at runtime, so they load after
+     visual-panel.js (mounted earlier in this <head>). -->
+<script src="/static/ai-undo-warning.js"></script>
+<script src="/static/opt-in-tutorial.js"></script>
+
+<!-- WP-7.4.9c — Export → PDF. Loads jsPDF UMD bundle then the command IIFE.
+     The command reuses OraSaveCanvas's content-extent helpers (loaded above)
+     for the bounded "content + 100 px margin" export region, and dispatches
+     ora:canvas-pre-share with intent: 'export' through the share-reminder
+     module loaded earlier in this <head>. -->
+<script src="/static/vendor/jspdf/jspdf.umd.min.js"></script>
+<script src="/static/commands/export-pdf.js"></script>
 
 <!-- Bootstrap Ajv against the on-disk schemas. Runs before PanelManager wiring
      so canvas-serializer can consume OraVisualCompiler._ajv when serializing. -->

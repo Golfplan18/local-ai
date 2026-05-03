@@ -66,11 +66,13 @@
     return await resp.json();
   };
 
-  const installFromGitHub = async (repo) => {
+  // installFromGitHub accepts an optional `fallback` manifest (used by the
+  // browse view to supply name/author/modes when the repo lacks manifest.json).
+  const installFromGitHub = async (repo, fallback) => {
     const resp = await fetch('/api/v3-themes/install-from-github', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repo }),
+      body: JSON.stringify({ repo, fallback: fallback || null }),
     });
     return await resp.json();
   };
@@ -99,6 +101,18 @@
     return await resp.json();
   };
 
+  // Fetch download stats for sorting. Returns {} on failure so the caller
+  // can fall back to directory order without breaking.
+  const fetchCommunityStats = async () => {
+    try {
+      const resp = await fetch('/api/v3-themes/community-stats');
+      if (!resp.ok) return {};
+      return await resp.json();
+    } catch {
+      return {};
+    }
+  };
+
   // Restore active theme on load (if not default — default is always present)
   const init = () => {
     const id = getActive();
@@ -114,5 +128,6 @@
     installFromCSS,
     deleteTheme,
     fetchCommunityDirectory,
+    fetchCommunityStats,
   };
 })();

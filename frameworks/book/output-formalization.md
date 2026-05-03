@@ -1,5 +1,12 @@
 # Output Formalization Framework
 
+## Display Name
+Output Formalization (OFF)
+
+## Display Description
+Meta-framework for formalizing the expression side of knowledge work — how an output is shaped, structured, and rendered for its audience. Pairs with Process Formalization (PFF) and Corpus Formalization (CFF). Use to design or audit how a deliverable type is produced and presented.
+
+
 *A Meta-Framework for Formalizing the Expression Side of Knowledge Work*
 
 *Version 1.0*
