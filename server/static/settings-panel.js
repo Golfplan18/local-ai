@@ -101,10 +101,8 @@
       + '<div class="ora-settings-tab-content" data-role="tab-content"></div>'
       + '<div class="ora-settings-footer">'
       +   '<span class="ora-settings-status" data-role="status"></span>'
-      +   '<button type="button" class="ora-settings-btn ora-settings-btn--ghost" '
-      +           'data-role="cancel">Cancel</button>'
       +   '<button type="button" class="ora-settings-btn ora-settings-btn--primary" '
-      +           'data-role="save">Save</button>'
+      +           'data-role="done">Done</button>'
       + '</div>';
     _backdropEl.appendChild(_modalEl);
 
@@ -114,10 +112,8 @@
 
     _modalEl.querySelector('.ora-settings-close')
       .addEventListener('click', close);
-    _modalEl.querySelector('[data-role="cancel"]')
+    _modalEl.querySelector('[data-role="done"]')
       .addEventListener('click', close);
-    _modalEl.querySelector('[data-role="save"]')
-      .addEventListener('click', _onSave);
 
     _renderTabs();
     return _backdropEl;
@@ -263,13 +259,51 @@
     var keysHint = document.createElement('p');
     keysHint.className = 'ora-settings-note';
     keysHint.textContent = 'Keys are stored in the macOS keychain. They are never '
-      + 'shown back in the browser; if you need to update one, just type a new '
-      + 'value and click Save.';
+      + 'shown back in the browser; if you need to update one, type a new '
+      + 'value and click the Save button on that row.';
     _tabContentEl.appendChild(keysHint);
 
     _apiKeys.forEach(function (row) {
       _appendApiKeyRow(row);
     });
+
+    // ── Add new provider ───────────────────────────────────────────────
+    // The user already has Framework — API Key Acquisition for end-to-end
+    // provider setup (key elicitation, keychain storage, endpoint
+    // registration). Rather than duplicate that flow inline, surface a
+    // button that drops the slash-command into the input pane, closes the
+    // settings modal, and lets the framework run as a normal interaction.
+    var addWrap = document.createElement('div');
+    addWrap.className = 'ora-settings-add-provider';
+    var addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'ora-settings-btn ora-settings-btn--ghost';
+    addBtn.textContent = '+ Add new provider';
+    addBtn.title = 'Run Framework — API Key Acquisition to register a new provider';
+    addBtn.addEventListener('click', function () {
+      var input = document.querySelector('.input-pane textarea');
+      if (!input) {
+        _setStatus('Could not find the input pane', 'error');
+        return;
+      }
+      input.value = '/framework api-key-setup';
+      // Trigger an input event so any draft-tracking listeners pick up the
+      // new value. The user reviews and presses Enter (or edits the prompt
+      // first, e.g. to specify a particular provider as an argument).
+      try {
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      } catch (_) { /* old browser fallback — ignore */ }
+      close();
+      try { input.focus(); } catch (_) { /* ignore */ }
+    });
+    addWrap.appendChild(addBtn);
+    var addHint = document.createElement('span');
+    addHint.className = 'ora-settings-note';
+    addHint.style.marginLeft = '10px';
+    addHint.textContent =
+      'Drops /framework api-key-setup into the input. Review and press Enter to start.';
+    addWrap.appendChild(addHint);
+    _tabContentEl.appendChild(addWrap);
   }
 
   function _renderExportTab() {
@@ -423,7 +457,10 @@
     return label;
   }
 
-  // ── dirty tracking ───────────────────────────────────────────────────────
+  // ── dirty tracking + autosave ────────────────────────────────────────────
+
+  var _autosaveTimer = null;
+  var AUTOSAVE_DELAY_MS = 600;
 
   function _setDirty(path, value) {
     var parts = path.split('.');
@@ -435,6 +472,15 @@
       cur = cur[parts[i]];
     }
     cur[parts[parts.length - 1]] = value;
+    // Debounced autosave. All inputs end up here on commit (selects /
+    // checkboxes fire 'change' immediately; text/number inputs fire 'change'
+    // on blur). The 600ms delay is a no-op for those events but coalesces
+    // multi-field bursts (e.g. user changes 3 selects in a row → one POST).
+    if (_autosaveTimer) clearTimeout(_autosaveTimer);
+    _autosaveTimer = setTimeout(function () {
+      _autosaveTimer = null;
+      _onSave();
+    }, AUTOSAVE_DELAY_MS);
   }
 
   // ── server I/O ───────────────────────────────────────────────────────────
@@ -462,17 +508,19 @@
       });
   }
 
+  // _onSave is now driven by autosave (debounced from _setDirty); no manual
+  // Save button. Silent no-op when nothing's dirty so a stray click or
+  // timer race doesn't paint "Nothing to save."
   function _onSave() {
     if (!_settings) return;
-    if (!Object.keys(_dirty).length) {
-      _setStatus('Nothing to save.', 'info');
-      return;
-    }
+    if (!Object.keys(_dirty).length) return;
     _setStatus('Saving…');
+    var pending = _dirty;
+    _dirty = {};
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updates: _dirty }),
+      body: JSON.stringify({ updates: pending }),
     })
       .then(function (r) {
         return r.json().then(function (j) { return { ok: r.ok, data: j }; });
@@ -482,12 +530,12 @@
           throw new Error((res.data && res.data.error) || 'save failed');
         }
         _settings = res.data.settings || _settings;
-        _dirty = {};
-        _setStatus('Saved.', 'success');
-        _renderTabContent();
-        setTimeout(function () { _setStatus(''); }, 2000);
+        _setStatus('Saved ✓', 'success');
+        setTimeout(function () { _setStatus(''); }, 1400);
       })
       .catch(function (err) {
+        // Restore the dirty payload so the next change triggers a retry.
+        Object.keys(pending).forEach(function (k) { _dirty[k] = pending[k]; });
         _setStatus('Save failed: ' + err.message, 'error');
       });
   }

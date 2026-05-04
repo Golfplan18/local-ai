@@ -305,6 +305,15 @@
   background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06));
 }
 
+/* External APIs tab — Add new provider button row. */
+.ora-settings-add-provider {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--background-modifier-border);
+}
+
 /* ── Models tab ───────────────────────────────────────────────────────── */
 
 .ora-settings-models-ram {
