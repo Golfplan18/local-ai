@@ -327,6 +327,45 @@
   };
 
   // ── Turn navigation ────────────────────────────────────────────────────
+  // Visual canvas tracks the active turn. Each turn was saved with a
+  // timestamped .ora-canvas snapshot at submit time; the N-th snapshot
+  // (sorted chronologically) corresponds to the N-th turn. The server's
+  // /api/canvas/load endpoint resolves index → file when given ?turn=.
+  const loadTurnCanvas = async (turnIndex) => {
+    if (!state.activeConversationId) return;
+    try {
+      const url = `/api/canvas/load/${encodeURIComponent(state.activeConversationId)}?turn=${turnIndex}`;
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        // No canvas for that turn — clear to a blank canvas instead of
+        // leaving the prior turn's content. Use the format's read-empty
+        // pattern: an empty objects array.
+        const panel = (window.OraPanels && window.OraPanels.visual
+                        && typeof window.OraPanels.visual._getActive === 'function')
+                      ? window.OraPanels.visual._getActive()
+                      : null;
+        if (panel && typeof panel.loadCanvasState === 'function') {
+          try { panel.loadCanvasState({ objects: [] }); } catch (e) { /* non-fatal */ }
+        }
+        return;
+      }
+      const buf = await resp.arrayBuffer();
+      if (window.OraCanvasFileFormat
+          && typeof window.OraCanvasFileFormat.read === 'function') {
+        const cs = await window.OraCanvasFileFormat.read(new Uint8Array(buf));
+        const panel = (window.OraPanels && window.OraPanels.visual
+                        && typeof window.OraPanels.visual._getActive === 'function')
+                      ? window.OraPanels.visual._getActive()
+                      : null;
+        if (panel && typeof panel.loadCanvasState === 'function') {
+          panel.loadCanvasState(cs);
+        }
+      }
+    } catch (e) {
+      console.warn('[v3-conversation] turn-canvas load failed:', e);
+    }
+  };
+
   const showTurn = (index) => {
     const total = state.turns.length;
     if (total === 0) return;
@@ -334,6 +373,9 @@
     state.currentTurnIndex = clamped;
     renderHeader();
     renderTurn();
+    // Pull the canvas snapshot that was saved alongside this turn so the
+    // visual pane stays in sync with the text output.
+    loadTurnCanvas(clamped);
   };
 
   const goBack    = () => showTurn(state.currentTurnIndex - 1);

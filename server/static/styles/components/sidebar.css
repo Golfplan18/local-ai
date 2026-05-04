@@ -78,7 +78,7 @@
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  padding: 6px 4px;
+  padding: 6px 0;
   overflow: hidden;
 }
 
@@ -130,7 +130,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
-  padding: 2px 4px 2px;
+  padding: 2px 0;
   border-bottom: 1px solid var(--background-modifier-border);
   margin-bottom: 1px;
 }
@@ -139,14 +139,14 @@
   font-size: 12px;
   color: var(--text-faint, var(--text-muted));
   font-style: italic;
-  padding: 1px 6px;
+  padding: 1px 0;
 }
 
 .sidebar-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 4px;
+  padding: 1px 0;
   border-radius: 3px;
   cursor: pointer;
   font-size: 13px;

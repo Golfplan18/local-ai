@@ -3665,29 +3665,51 @@ def canvas_save():
 
 @app.route("/api/canvas/load/<conversation_id>", methods=["GET"])
 def canvas_load(conversation_id):
-    """V3 Input Handling Phase 9 — return the latest canvas snapshot.
+    """V3 Input Handling Phase 9 — return a canvas snapshot.
 
-    Returns the gzip-compressed bytes of ``latest.ora-canvas`` for the
-    given conversation, or 404 if no canvas has been saved yet.
+    Without ``?turn=`` returns ``latest.ora-canvas`` (most recent snapshot).
+    With ``?turn=<idx>`` returns the snapshot for the N-th turn (0-indexed)
+    by sorting all per-turn ``<ts>.ora-canvas`` files by timestamp and
+    picking index N. The N-th canvas file corresponds to the canvas state
+    at the moment the N-th user message was submitted, which is the
+    visual that accompanied that turn's assistant response.
 
     Response shape::
 
         200 application/octet-stream  — raw gzipped canvas-state bytes
         404 application/json           — {"error": "no canvas saved"}
-
-    Frontend callers (v3-conversation.js) decode via OraCanvasFileFormat.
-    Full visual rehydration of the user-input layer requires an inverse
-    of canvas-serializer.js that does not yet exist; this endpoint ships
-    so the data is reachable when that work lands. Until then the
-    caller can still consult the bytes (e.g. to confirm a snapshot
-    exists for the conversation) without trying to reconstruct shapes.
     """
     conv_slug = re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
-    latest_path = os.path.join(CANVAS_ROOT, conv_slug, "canvas", "latest.ora-canvas")
-    if not os.path.exists(latest_path):
+    canvas_dir = os.path.join(CANVAS_ROOT, conv_slug, "canvas")
+
+    turn_arg = request.args.get("turn")
+    target_path: str | None = None
+
+    if turn_arg is not None:
+        try:
+            turn_idx = int(turn_arg)
+        except (TypeError, ValueError):
+            return json.dumps({"error": "invalid turn index"}), 400, {"Content-Type": "application/json"}
+        if not os.path.isdir(canvas_dir):
+            return json.dumps({"error": "no canvas saved"}), 404, {"Content-Type": "application/json"}
+        # Per-turn snapshots are filename-timestamped; sort lexicographically
+        # which equals chronologically for the YYYYMMDD-HHMMSS pattern emitted
+        # by OraSaveCanvas. Exclude the rolling latest mirror and any
+        # preview PNG sidecars.
+        snaps = sorted(
+            f for f in os.listdir(canvas_dir)
+            if f.endswith(".ora-canvas") and f != "latest.ora-canvas"
+        )
+        if not snaps or turn_idx < 0 or turn_idx >= len(snaps):
+            return json.dumps({"error": "no canvas for that turn", "available": len(snaps)}), 404, {"Content-Type": "application/json"}
+        target_path = os.path.join(canvas_dir, snaps[turn_idx])
+    else:
+        target_path = os.path.join(canvas_dir, "latest.ora-canvas")
+
+    if not target_path or not os.path.exists(target_path):
         return json.dumps({"error": "no canvas saved"}), 404, {"Content-Type": "application/json"}
     try:
-        with open(latest_path, "rb") as f:
+        with open(target_path, "rb") as f:
             blob = f.read()
     except Exception as e:
         return json.dumps({"error": "read failed", "message": str(e)}), 500, {"Content-Type": "application/json"}

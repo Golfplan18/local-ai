@@ -775,18 +775,35 @@
  * When `.chrome-hidden` is set on the panel root, both the legacy drawing
  * toolbar and the universal toolbar fade out together. Pointer events are
  * disabled while hidden so an off-screen toolbar can't intercept clicks
- * meant for the canvas underneath.
+ * meant for the canvas underneath. The surrounding dock containers (which
+ * carry the toolbar backgrounds and borders) fade with them so the canvas
+ * background shows edge-to-edge with no leftover "voids" where toolbars
+ * sat. When the user re-enters the panel, everything fades back in
+ * together.
  */
 .visual-panel.chrome-hidden .visual-panel__toolbar,
-.visual-panel.chrome-hidden .ora-toolbar {
+.visual-panel.chrome-hidden .ora-toolbar,
+.visual-panel.chrome-hidden .ora-toolbar-wrap,
+.visual-panel.chrome-hidden .ora-dock--top,
+.visual-panel.chrome-hidden .ora-dock--bottom,
+.visual-panel.chrome-hidden .ora-dock--left,
+.visual-panel.chrome-hidden .ora-dock--right {
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-4px);
   transition: opacity .15s, transform .15s;
+}
+.visual-panel.chrome-hidden .visual-panel__toolbar,
+.visual-panel.chrome-hidden .ora-toolbar {
+  transform: translateY(-4px);
 }
 
 .visual-panel .visual-panel__toolbar,
-.visual-panel .ora-toolbar {
+.visual-panel .ora-toolbar,
+.visual-panel .ora-toolbar-wrap,
+.visual-panel .ora-dock--top,
+.visual-panel .ora-dock--bottom,
+.visual-panel .ora-dock--left,
+.visual-panel .ora-dock--right {
   transition: opacity .15s, transform .15s;
 }
 
