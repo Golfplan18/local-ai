@@ -54,7 +54,7 @@ class ConfigPanel {
       <div class="cfg-body">
         <div class="cfg-pipelines">
           ${this._renderPipeline('interactive', 'My Pipeline')}
-          ${this._renderPipeline('agent', 'Agent Pipeline')}
+          ${this._renderPipeline('agent', 'Automated Pipeline')}
         </div>
         <div class="cfg-buckets">
           <div class="cfg-section-title">Model Buckets</div>
@@ -368,7 +368,7 @@ class ConfigPanel {
     for (const context of ['interactive', 'agent']) {
       const ctx = this._status[context] || {};
       html += `<div class="cfg-status-context">
-        <div class="cfg-status-title">${context === 'interactive' ? 'Interactive' : 'Agent'}</div>`;
+        <div class="cfg-status-title">${context === 'interactive' ? 'Interactive' : 'Automated'}</div>`;
 
       for (const gear of [4, 3, 2, 1]) {
         const g = ctx[`gear${gear}`];
