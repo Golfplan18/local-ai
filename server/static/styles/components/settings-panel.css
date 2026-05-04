@@ -22,7 +22,10 @@
 }
 
 .ora-settings-modal {
-  width: min(720px, 90vw);
+  /* Widened from 720px to fit the Models tab's ConfigPanel (dual pipeline
+     columns + bucket panel + machine table). The other tabs stay readable
+     at the new width because their fields stretch with the container. */
+  width: min(1080px, 94vw);
   max-height: 86vh;
   background: var(--ora-bg, #1e1f29);
   color: var(--ora-fg, #f8f8f2);

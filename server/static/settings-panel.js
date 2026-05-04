@@ -30,27 +30,9 @@
   var _apiKeys = [];
   var _dirty = {};       // pending changes, applied on Save
 
-  // Models tab state — separate from _settings because /models has its own
-  // schema + its own POST endpoint (/config) and doesn't share the
-  // updates-pending pattern of the other tabs.
-  var _modelsData    = null;   // last response from /models
-  var _modelsPending = {};     // slot_id → model_id user has chosen but not applied
-  var _modelsSaved   = {};     // slot_id → model_id currently persisted
-
-  var MODEL_SLOTS = [
-    { id: 'sidebar',       label: 'Sidebar',
-      hint: 'Right-side Q&A and lightweight conversational replies.' },
-    { id: 'step1_cleanup', label: 'Step 1 cleanup',
-      hint: 'Cleans the prompt and runs the four-stage pre-routing pipeline.' },
-    { id: 'breadth',       label: 'Breadth',
-      hint: 'Generates the wider exploration in adversarial pipelines.' },
-    { id: 'depth',         label: 'Depth',
-      hint: 'Generates the deep critical analysis in adversarial pipelines.' },
-    { id: 'evaluator',     label: 'Evaluator',
-      hint: 'Scores breadth + depth outputs and surfaces fixes.' },
-    { id: 'consolidator',  label: 'Consolidator',
-      hint: 'Synthesizes the revised drafts into a final response.' },
-  ];
+  // Models tab hosts the classic ConfigPanel verbatim. _modelsConfigPanel
+  // is the one live instance for the open settings modal (see _renderModelsTab).
+  var _modelsConfigPanel = null;
 
   var TABS = [
     { id: 'models',   label: 'Models' },
@@ -180,175 +162,32 @@
   }
 
   // ── Models tab ───────────────────────────────────────────────────────────
-  // Rebuilds the old classic-interface model switcher inside the V3 settings
-  // modal. Per-slot dropdowns of local + commercial models, RAM budget
-  // tracker, and an Apply button that saves to /config (not /api/settings).
+  // Hosts the classic ConfigPanel (server/static/config-panel.js) inside the
+  // V3 settings modal so the Models tab shows the EXACT arrangement the
+  // classic interface had: dual pipeline display (Interactive + Agent), six
+  // model buckets, machine RAM accounting, and live system status. The
+  // ConfigPanel class owns its own load/save/render lifecycle; we just
+  // mount it into the tab body once and let it manage state from there.
 
   function _renderModelsTab() {
-    if (!_modelsData) {
-      _tabContentEl.textContent = 'Loading model configuration…';
-      _loadModelsState();
+    if (typeof ConfigPanel === 'undefined') {
+      _tabContentEl.textContent =
+        'config-panel.js is not loaded. Reload the page or check the network tab.';
       return;
     }
-
-    var d = _modelsData;
-    var head = document.createElement('div');
-    head.className = 'ora-settings-models-ram';
-    var used = _modelsRamUsed();
-    var free = (d.available_budget_gb || 0) - used;
-    head.innerHTML = ''
-      + '<div><span class="ora-settings-ram-lbl">Budget</span>'
-      +   '<strong>' + (d.available_budget_gb || 0) + ' GB</strong></div>'
-      + '<div><span class="ora-settings-ram-lbl">Used</span>'
-      +   '<strong data-role="models-used">' + used.toFixed(0) + ' GB</strong></div>'
-      + '<div><span class="ora-settings-ram-lbl">Free</span>'
-      +   '<strong data-role="models-free" style="' + (free < 0 ? 'color:var(--ora-mode-stealth-button-icon)' : '') + '">'
-      +     free.toFixed(0) + ' GB</strong></div>';
-    _tabContentEl.appendChild(head);
-
-    var note = document.createElement('p');
-    note.className = 'ora-settings-note';
-    note.textContent = 'Each slot drives a different stage of the pipeline. '
-      + 'Local models stay on this machine; commercial models call out via API. '
-      + 'The RAM tracker counts unique local models — picking the same one for '
-      + 'multiple slots only loads it once.';
-    _tabContentEl.appendChild(note);
-
-    var slotsWrap = document.createElement('div');
-    slotsWrap.className = 'ora-settings-models-slots';
-    MODEL_SLOTS.forEach(function (slot) {
-      var row = document.createElement('div');
-      row.className = 'ora-settings-models-slot';
-      var label = document.createElement('label');
-      label.className = 'ora-settings-models-slot-label';
-      label.textContent = slot.label;
-      var hint = document.createElement('div');
-      hint.className = 'ora-settings-models-slot-hint';
-      hint.textContent = slot.hint;
-      var sel = document.createElement('select');
-      sel.className = 'ora-settings-input ora-settings-models-select';
-
-      var lgL = document.createElement('optgroup');
-      lgL.label = 'Local';
-      (d.local_models || []).forEach(function (m) {
-        var o = document.createElement('option');
-        o.value = m.id;
-        o.textContent = m.display_name + ' (' + m.ram_gb + ' GB)';
-        if (_modelsPending[slot.id] === m.id) o.selected = true;
-        lgL.appendChild(o);
-      });
-
-      var lgC = document.createElement('optgroup');
-      lgC.label = 'Cloud';
-      (d.commercial_models || []).forEach(function (m) {
-        var o = document.createElement('option');
-        o.value = m.id;
-        o.textContent = m.display_name + (m.available ? '' : ' (inactive)');
-        if (!m.available) o.style.color = 'var(--text-muted)';
-        if (_modelsPending[slot.id] === m.id) o.selected = true;
-        lgC.appendChild(o);
-      });
-
-      sel.appendChild(lgL);
-      sel.appendChild(lgC);
-      sel.addEventListener('change', function () {
-        _modelsPending[slot.id] = sel.value;
-        _updateModelsRam();
-      });
-
-      row.appendChild(label);
-      row.appendChild(hint);
-      row.appendChild(sel);
-      slotsWrap.appendChild(row);
-    });
-    _tabContentEl.appendChild(slotsWrap);
-
-    var actions = document.createElement('div');
-    actions.className = 'ora-settings-models-actions';
-    var applyBtn = document.createElement('button');
-    applyBtn.type = 'button';
-    applyBtn.className = 'ora-settings-btn ora-settings-btn--primary';
-    applyBtn.textContent = 'Apply model configuration';
-    applyBtn.addEventListener('click', function () { _applyModelConfig(applyBtn); });
-    actions.appendChild(applyBtn);
-    _tabContentEl.appendChild(actions);
-  }
-
-  function _loadModelsState() {
-    fetch('/models')
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        _modelsData = data;
-        _modelsSaved = Object.assign({}, data.slot_assignments || {});
-        _modelsPending = Object.assign({}, _modelsSaved);
-        if (_activeTab === 'models') _renderModelsTab();
-      })
-      .catch(function (err) {
-        _tabContentEl.textContent = 'Couldn’t load models: ' + err.message;
-      });
-  }
-
-  function _modelsIndex() {
-    var idx = {};
-    if (!_modelsData) return idx;
-    (_modelsData.local_models || []).forEach(function (m) { idx[m.id] = m; });
-    (_modelsData.commercial_models || []).forEach(function (m) { idx[m.id] = m; });
-    return idx;
-  }
-
-  function _modelsRamUsed() {
-    var idx = _modelsIndex();
-    var unique = {};
-    Object.keys(_modelsPending).forEach(function (slotId) {
-      var modelId = _modelsPending[slotId];
-      var m = idx[modelId];
-      if (m && m.ram_gb > 0) unique[modelId] = m.ram_gb;
-    });
-    var t = 0;
-    Object.keys(unique).forEach(function (k) { t += unique[k]; });
-    return t;
-  }
-
-  function _updateModelsRam() {
-    if (!_modelsData) return;
-    var used = _modelsRamUsed();
-    var free = (_modelsData.available_budget_gb || 0) - used;
-    var u = _tabContentEl.querySelector('[data-role="models-used"]');
-    var f = _tabContentEl.querySelector('[data-role="models-free"]');
-    if (u) u.textContent = used.toFixed(0) + ' GB';
-    if (f) {
-      f.textContent = free.toFixed(0) + ' GB';
-      f.style.color = free < 0 ? 'var(--ora-mode-stealth-button-icon)' : '';
+    // Mount fresh on each tab open. Cheap (a single fetch + render) and
+    // means the user always sees current routing/status without a stale
+    // snapshot from a previous open.
+    _tabContentEl.innerHTML = '';
+    var host = document.createElement('div');
+    host.className = 'ora-settings-config-host';
+    _tabContentEl.appendChild(host);
+    try {
+      _modelsConfigPanel = new ConfigPanel(host, { id: 'settings-models' });
+      _modelsConfigPanel.init();
+    } catch (err) {
+      host.textContent = 'Could not load model configuration: ' + (err && err.message);
     }
-  }
-
-  function _applyModelConfig(btn) {
-    btn.disabled = true;
-    var prevText = btn.textContent;
-    btn.textContent = 'Saving…';
-    fetch('/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slot_assignments: _modelsPending }),
-    })
-      .then(function (r) {
-        return r.json().then(function (j) { return { ok: r.ok, data: j }; });
-      })
-      .then(function (res) {
-        if (!res.ok || (res.data && res.data.error)) {
-          var msg = (res.data && res.data.error) || 'save failed';
-          btn.textContent = '⚠ ' + msg;
-          setTimeout(function () { btn.textContent = prevText; btn.disabled = false; }, 2400);
-          return;
-        }
-        _modelsSaved = Object.assign({}, _modelsPending);
-        btn.textContent = 'Saved ✓';
-        setTimeout(function () { btn.textContent = prevText; btn.disabled = false; }, 1400);
-      })
-      .catch(function (err) {
-        btn.textContent = '⚠ ' + (err.message || 'error');
-        setTimeout(function () { btn.textContent = prevText; btn.disabled = false; }, 2400);
-      });
   }
 
   // ── tabs ─────────────────────────────────────────────────────────────────
