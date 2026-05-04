@@ -66,6 +66,8 @@ Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `d
 - Conversation persistence with content-derived filenames
 - Clarification panel: Tier 2/3 triage pauses pipeline, generates questions, resumes with answers
 - Three clarification endpoints: `POST /api/clarification`, `POST /api/clarification/skip`, `GET /api/clarification/pending`
+- **V3 cutover (2026-05-02):** `/` now serves `index-v3.html`. The classic interface is preserved at `/classic` for the transition window; `/v3` remains as a stable alias. Snapshot of pre-cutover `index.html` lives at `server/index.html.bak.pre-v3-cutover-2026-05-02`.
+- **`/chat` bypass guard (2026-05-02):** the plain-HTTP `_pipeline_stream` falls through to `_direct_stream` when the pre-routing pipeline returns `bypass_to_direct_response: True`, when `step1["mode"]` is one of the placeholder modes (`simple` / `standard` — both Phase-9-archived), or when a `pending_clarification` is set. Without this guard, those three paths produced empty `pipeline produced no response` errors because `load_mode()` returned `""` and the pipeline never emitted a response event. The analytical pipeline still runs for prompts that successfully dispatch to a real mode.
 
 ### Knowledge System
 - **ChromaDB** vector store with `knowledge` and `conversations` collections
@@ -82,6 +84,24 @@ Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `d
 - **Spatial continuity**: `orchestrator/conversation_memory.py` persists per-turn `spatial_representation` + `annotations` in conversation.json; prior state injected into next turn's prompt with a layout-preservation instruction.
 - **Active layouts**: `solo` (chat 50% + visual 50%) is default; `studio` (chat 40% + visual 40% + sidebar 20% on `local-fast` bucket) when both `local-mid` and `local-premium` have entries. Legacy `simple.json` and `workbench.json` archived under `config/layouts/legacy/`.
 
+### Meta-Layer Oversight Subsystem (2026-05-04)
+
+The runtime infrastructure for the meta-layer apparatus described in `Reference — Meta-Layer Architecture` (vault canonical). Three nested supervision layers — Layer A is Framework — Problem Evolution (strategic), Layer B is Framework — Process Coherence (chain coordination), Layer C is the policy engine described in `Working — ora-meta-layer-path-to-autonomous-operation`. The user-facing entry point for configuration is Framework — Oversight Configuration.
+
+- **Parsers** (`orchestrator/ped_parser.py`, `orchestrator/corpus_parser.py`, `orchestrator/workflow_spec_parser.py`): structured extraction of Mission / Excluded Outcomes / Constraints / Milestones / Decision Log from PEDs; section schemas / cadences / cross-section rules from corpus templates; PFFs / OFFs / chain rules / oversight extensions from workflow specs.
+- **Watchers** (`orchestrator/ped_watcher.py`, `orchestrator/corpus_watcher.py`, `orchestrator/workflow_spec_sweeper.py`, `orchestrator/revisit_sweeper.py`): polling sweeps that detect file-state changes, emit oversight events. Per-project pointer files at `~/ora/data/oversight/<nexus>/` and per-workflow pointers at `~/ora/data/oversight/<workflow_id>/` register what to watch.
+- **Event bus** (`orchestrator/oversight_events.py`): tiny in-process emitter + durable JSONL log at `~/ora/data/oversight/events.jsonl`.
+- **Framework hooks**: `milestone_executor.py` emits FrameworkStarted / MilestoneComplete / FrameworkComplete / MilestoneBlocked events through the bus when a framework runs. Standalone invocations (no `project_nexus`) still emit but are filtered out by the router.
+- **Context loader** (`orchestrator/oversight_context.py`): given an event, loads project-level locks (PED) and/or workflow-level locks (corpus template + workflow spec) and bundles them for Process Coherence.
+- **Router** (`orchestrator/oversight_router.py`): consumes events, applies the routing table from Reference — Meta-Layer Architecture §7, invokes Process Coherence (live or simulated). `ORA_OVERSIGHT_LIVE=1` enables live model invocations; default is simulated for safety.
+- **Verdict actions** (`orchestrator/oversight_actions.py`): PROCEED / REVISE / ESCALATE handlers; appends Decision Log entries to PEDs (lock-protected via `fcntl` advisory lock); pushes ESCALATE entries to `~/ora/data/oversight/human-queue.jsonl`; caps REVISE retries at 3 per (milestone, project) per §10 O3.
+- **Daemon** (`orchestrator/oversight_daemon.py`): background loop that runs the watchers on configurable intervals (env vars: `ORA_PED_WATCHER_SEC`, `ORA_CORPUS_WATCHER_SEC`, `ORA_WORKFLOW_SWEEPER_SEC`, `ORA_REVISIT_SWEEPER_SEC`). Started by `start.sh` by default (pass `--no-oversight` to disable). Auto-registers PEDs at startup by scanning the vault for files with `type: PED` in YAML frontmatter or filenames starting with `PED ` — so new projects under oversight don't require manual registration.
+- **Health surface** (`orchestrator/oversight_health.py`): server-side check that reads each watcher's heartbeat file, computes staleness, and returns warnings. Wired into `server.py`'s chat handler so warnings prepend to the next AI response when the oversight daemon is down or a watcher is stalled. The user sees the warning in the active conversation without needing a separate dashboard. Two warning categories: `daemon_down` (oversight in use but no recent heartbeats anywhere) and `stale` (a specific watcher is older than 2× its expected interval).
+- **Corpus runtime** (`orchestrator/corpus_runtime.py`): mechanical CFF modes — `c_instance` (creates a fresh corpus instance from a template, with frontmatter and per-section heading scaffold) and `c_validate` (checks each section's populated state against the template's missing-data behavior). Both emit oversight events (`CorpusInstanceCreated`, `CorpusValidated`). Model-driven CFF modes (C-Design, C-Modify) are deferred — templates are written by hand or via the existing framework execution flow.
+- **Output runtime** (`orchestrator/output_runtime.py`): mechanical OFF mode — `o_render` (renders a corpus instance through a bespoke OFF spec to produce a markdown artifact). Bespoke OFF specs are markdown files with YAML frontmatter declaring sections, headings, missing-section behavior, and an optional title template with `{period}`/`{corpus_title}` interpolation. Emits `OFFRendered`. Model-driven OFF modes (O-Design, O-Modify, O-Audit) and non-markdown formats (Word, PowerPoint, etc.) are deferred.
+- **Workflow auto-registration**: oversight daemon's vault scanner walks both the vault and `~/ora/workflows/` for files identified as workflow specs (frontmatter has `tags: [workflow-spec]` or `type: framework` with `workflow_id`, or the file is named `workflow-spec.md`) and registers each automatically. Mirrors the PED auto-registration path.
+- **Tests** (`orchestrator/tests/test_oversight_parsers.py` + `test_oversight_runtime.py`): 47 unit tests covering parsers, watchers, runtime modes, event emission, and end-to-end Shape 4 pipeline.
+
 ## Key Directories
 
 ```
@@ -91,6 +111,21 @@ orchestrator/visual_adversarial.py           — Tufte T-rules + LLM-prior-inver
 orchestrator/visual_extraction.py            — Vision-model extraction prompt + response parser
 orchestrator/vault_export.py                 — Session → canonical markdown + SVG sidecars
 orchestrator/conversation_memory.py          — Turn-level spatial/annotation persistence
+orchestrator/ped_parser.py                   — Meta-layer: PED structured-extraction
+orchestrator/corpus_parser.py                — Meta-layer: corpus template/instance parser
+orchestrator/workflow_spec_parser.py         — Meta-layer: workflow spec parser + reference integrity check
+orchestrator/ped_watcher.py                  — Meta-layer: PED checkbox-state diff sweep → MilestoneClaimed events
+orchestrator/corpus_watcher.py               — Meta-layer: corpus instance state diff → CorpusSectionPopulated / ChainPropagationRequired events
+orchestrator/workflow_spec_sweeper.py        — Meta-layer: workflow spec drift detection (Workflow Spec Drift Trap)
+orchestrator/revisit_sweeper.py              — Meta-layer: Working Assumption revisit triggers + age-based reviews
+orchestrator/oversight_events.py             — Meta-layer: in-process event bus + durable JSONL log
+orchestrator/oversight_context.py            — Meta-layer: bundles project-level + workflow-level locks for Process Coherence
+orchestrator/oversight_router.py             — Meta-layer: routing table dispatcher per Reference — Meta-Layer Architecture §7
+orchestrator/oversight_actions.py            — Meta-layer: PROCEED / REVISE / ESCALATE handlers + Decision Log writer + file lock
+orchestrator/oversight_daemon.py             — Meta-layer: background loop running all watcher sweeps + auto-registers PEDs and workflow specs at startup
+orchestrator/oversight_health.py             — Meta-layer: heartbeat staleness check; warnings injected into chat responses by server.py
+orchestrator/corpus_runtime.py               — Meta-layer: CFF C-Instance (create instance) + C-Validate (validate sections); emits CorpusInstanceCreated and CorpusValidated events
+orchestrator/output_runtime.py               — Meta-layer: OFF O-Render (corpus + bespoke OFF → markdown artifact); emits OFFRendered events
 server/server.py                             — Flask chat server (localhost:5000)
 server/templates/                            — index.html (browser UI)
 server/static/ora-visual-compiler/           — Client compiler: errors.js, validator.js, dispatcher.js, index.js, renderers/, vendor/ (Vega, Vega-Lite, Mermaid, viz-js, D3, Dagre, Konva, Ajv, structurizr-mini), tests/
@@ -133,6 +168,8 @@ mind.md                                      — Identity/personality layer
 
 ## Completed (recent sessions)
 
+- **V3 cutover + interface refinements (2026-05-02 / 2026-05-04)** — `/` now serves V3 (`index-v3.html`); classic preserved at `/classic`. Chat empty-response bug fixed in `_pipeline_stream` (bypass / catch-all / clarification all delegate to `_direct_stream` so the placeholder `simple` and `standard` modes — Phase-9-archived — don't hang the pipeline). Logo position 70%-up; R glyph is the bidirectional drag handle (transparent hit-target rect for the empty middle); column widths persist as `fr` ratios so they scale with the window; visual canvas now shows a dot grid that scales/pans with Konva content (not the prior checkerboard); dock containers collapse to zero dimension when chrome-hidden so the canvas extends edge-to-edge; sidebar conversation rows are flush left with X/pin clusters on the left; full title shows in a fixed-position tooltip on hover; collapsed-sidebar dashboard counts doubled (12px → 24px); per-turn canvas snapshots restore on turn-arrow navigation via `?turn=<idx>` extension to `/api/canvas/load`; A glyph toggles the sidebar (open/close) and blurs after click to drop the focus outline. Settings panel (spine button) opens a Models tab that embeds the classic `ConfigPanel` verbatim (dual pipelines + 6 buckets + machines + status); rest of the panel is autosaved on input commit (no Save button); External APIs tab has an "+ Add new provider" button that runs `/framework api-key-setup`. **Pending — image generation routing schema is locked but not implemented:** see `~/Documents/vault/Working — Framework — V3 Interface Refinement Handoff.md` for the next-thread brief.
+
 - **Frontend clarification UI** — Popup modal with SSE streaming, submit/skip endpoints, keyboard shortcuts (Escape/Cmd+Enter)
 - **Canonical changes 1–9** — All complete. Agent System Architecture document created, Agent Identity framework validated, book outline fully updated.
 - **System Overview updated** — Gear 5 removed, model slot system added, agent subsystem section added, chapter numbering corrected, clarification UI documented.
@@ -162,6 +199,30 @@ cd ~/ora/server/static/ora-visual-compiler/tests && node run.js
 
 # Run Python server-side test suite (visual + pipeline)
 cd ~/ora && /opt/homebrew/bin/python3 -m unittest discover -s orchestrator/tests
+
+# Run the meta-layer oversight tests (parsers + watchers + runtime + end-to-end)
+cd ~/ora && /opt/homebrew/bin/python3 -m unittest orchestrator.tests.test_oversight_parsers orchestrator.tests.test_oversight_runtime
+
+# Create a corpus instance from a template (CFF C-Instance)
+cd ~/ora && /opt/homebrew/bin/python3 orchestrator/corpus_runtime.py instance \
+  /path/to/corpus-template.md 2026-05 /path/to/instance-dir/
+
+# Validate a populated corpus instance (CFF C-Validate)
+cd ~/ora && /opt/homebrew/bin/python3 orchestrator/corpus_runtime.py validate \
+  /path/to/instance.md /path/to/template.md
+
+# Render a corpus instance through a bespoke OFF (OFF O-Render)
+cd ~/ora && /opt/homebrew/bin/python3 orchestrator/output_runtime.py \
+  /path/to/off-spec.md /path/to/instance.md /path/to/output-dir/
+
+# Start chat server (oversight daemon enabled by default; pass --no-oversight to disable)
+./start.sh
+
+# Run all oversight watcher sweeps once without the daemon (debugging)
+cd ~/ora && /opt/homebrew/bin/python3 orchestrator/oversight_daemon.py
+
+# Check oversight health (reports stale watchers / daemon down / clean)
+cd ~/ora && /opt/homebrew/bin/python3 orchestrator/oversight_health.py
 
 # Render an envelope → SVG from the command line
 echo '<envelope-json>' | node ~/ora/server/static/ora-visual-compiler/tools/render-envelope.js > out.svg
