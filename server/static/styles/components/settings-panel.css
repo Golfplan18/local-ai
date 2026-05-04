@@ -301,3 +301,64 @@
   color: var(--ora-fg, #f8f8f2);
   background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06));
 }
+
+/* ── Models tab ───────────────────────────────────────────────────────── */
+
+.ora-settings-models-ram {
+  display: flex;
+  gap: 18px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.ora-settings-models-ram > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ora-settings-ram-lbl {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+}
+
+.ora-settings-models-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.ora-settings-models-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ora-settings-models-slot-label {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.ora-settings-models-slot-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ora-settings-models-select {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.ora-settings-models-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
