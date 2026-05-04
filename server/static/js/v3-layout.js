@@ -48,12 +48,23 @@
   let leftCollapsedBy       = null;  // 'drag' | 'button'
   let rightCollapsedBy      = null;
 
-  // Persist column widths to the shell as CSS custom properties. The grid
-  // template in layout.css consumes these when set, falling back to 1fr
-  // when unset (so the un-resized initial layout matches what was there).
+  // Persist column widths to the shell as CSS custom properties. Stored as
+  // `fr` ratios (not pixels) so the columns rescale proportionally when the
+  // window resizes — keeping panes from leaving dead space on either side.
+  // The auto-column (sidebar) sticks to its content width; only the two
+  // flexible columns share the available space.
   const applyWidths = (leftW, rightW) => {
-    shell.style.setProperty('--ora-left-w',  leftW  + 'px');
-    shell.style.setProperty('--ora-right-w', rightW + 'px');
+    const total = leftW + rightW;
+    if (total <= 0) {
+      shell.style.setProperty('--ora-left-w',  '1fr');
+      shell.style.setProperty('--ora-right-w', '1fr');
+      return;
+    }
+    // Normalize so right column = 1fr; left column scales relative to it.
+    const leftFr  = (leftW  / total) * 2;
+    const rightFr = (rightW / total) * 2;
+    shell.style.setProperty('--ora-left-w',  leftFr.toFixed(4)  + 'fr');
+    shell.style.setProperty('--ora-right-w', rightFr.toFixed(4) + 'fr');
   };
 
   const totalRoom = () => leftCol.offsetWidth + rightCol.offsetWidth;

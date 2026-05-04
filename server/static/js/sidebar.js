@@ -154,28 +154,11 @@
     prefix.textContent = prefixForTag(row.tag);
     el.appendChild(prefix);
 
-    const titleWrap = document.createElement('div');
-    titleWrap.className = 'sidebar-row-title';
-    titleWrap.textContent = row.title || '(untitled)';
-    if (row.last_activity_at) {
-      const meta = document.createElement('span');
-      meta.className = 'sidebar-row-meta';
-      meta.textContent = formatTimestamp(row.last_activity_at);
-      titleWrap.appendChild(meta);
-    }
-    el.appendChild(titleWrap);
-
-    // Backlog 11 — errored row gets retry / dismiss action buttons in
-    // place of the standard close. The error summary surfaces inline
-    // beneath the title so the user sees what failed without opening.
+    // Action buttons (X / pin, or Retry / Dismiss for errored rows) live on
+    // the LEFT side of the row, between the mode prefix and the title, so
+    // the title can have unconstrained width to show on hover.
     if (row.last_status === 'errored') {
       el.classList.add('is-errored');
-      if (row.last_error_summary) {
-        const errLine = document.createElement('div');
-        errLine.className = 'sidebar-row-error-summary';
-        errLine.textContent = row.last_error_summary;
-        el.appendChild(errLine);
-      }
       const actions = document.createElement('div');
       actions.className = 'sidebar-row-actions';
       const retryBtn = document.createElement('button');
@@ -198,23 +181,7 @@
       actions.appendChild(dismissBtn);
       el.appendChild(actions);
     } else {
-      // Backlog 3F — per-row pin toggle. Pinned rows surface in the
-      // top-of-list Pinned group; clicking again unpins. WELCOME pins
-      // automatically via is_welcome and shows no user pin control.
-      if (!row.is_welcome) {
-        const pin = document.createElement('button');
-        pin.type = 'button';
-        pin.className = 'sidebar-row-pin';
-        pin.setAttribute('aria-label', row.pinned ? 'Unpin conversation' : 'Pin conversation');
-        if (row.pinned) pin.classList.add('is-pinned');
-        // Filled pin glyph when pinned; outline glyph when not.
-        pin.textContent = row.pinned ? '\u{1F4CC}' : '\u{1F4CD}';
-        pin.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          onPinClick(row);
-        });
-        el.appendChild(pin);
-      }
+      // Pin (always visible) + close (visible on hover) — both on the left.
       const close = document.createElement('button');
       close.type = 'button';
       close.className = 'sidebar-row-close';
@@ -225,10 +192,83 @@
         onCloseClick(row);
       });
       el.appendChild(close);
+      if (!row.is_welcome) {
+        const pin = document.createElement('button');
+        pin.type = 'button';
+        pin.className = 'sidebar-row-pin';
+        pin.setAttribute('aria-label', row.pinned ? 'Unpin conversation' : 'Pin conversation');
+        if (row.pinned) pin.classList.add('is-pinned');
+        pin.textContent = row.pinned ? '\u{1F4CC}' : '\u{1F4CD}';
+        pin.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          onPinClick(row);
+        });
+        el.appendChild(pin);
+      }
     }
+
+    const titleWrap = document.createElement('div');
+    titleWrap.className = 'sidebar-row-title';
+    titleWrap.textContent = row.title || '(untitled)';
+    if (row.last_activity_at) {
+      const meta = document.createElement('span');
+      meta.className = 'sidebar-row-meta';
+      meta.textContent = formatTimestamp(row.last_activity_at);
+      titleWrap.appendChild(meta);
+    }
+    el.appendChild(titleWrap);
+
+    if (row.last_status === 'errored' && row.last_error_summary) {
+      const errLine = document.createElement('div');
+      errLine.className = 'sidebar-row-error-summary';
+      errLine.textContent = row.last_error_summary;
+      el.appendChild(errLine);
+    }
+
+    // Hover tooltip with the full title, extending past the sidebar's right
+    // edge over the output pane. Stored as a data attribute and rendered by
+    // a single shared overlay element (set up in attachHoverTooltip below)
+    // so we don't pile per-row DOM nodes.
+    el.dataset.fullTitle = row.title || '(untitled)';
+    attachHoverTooltip(el);
 
     el.addEventListener('click', () => onRowClick(row));
     return el;
+  };
+
+  // Shared hover-tooltip overlay. Lives once on the body and is positioned
+  // per-row on mouseenter, hidden on mouseleave. Position: fixed so it can
+  // escape the sidebar's overflow:hidden and visually extend over the
+  // output pane to the right.
+  const ensureTooltipNode = () => {
+    let n = document.getElementById('ora-sidebar-row-tooltip');
+    if (n) return n;
+    n = document.createElement('div');
+    n.id = 'ora-sidebar-row-tooltip';
+    n.className = 'sidebar-row-tooltip';
+    n.style.display = 'none';
+    document.body.appendChild(n);
+    return n;
+  };
+  const attachHoverTooltip = (rowEl) => {
+    rowEl.addEventListener('mouseenter', () => {
+      const t = ensureTooltipNode();
+      t.textContent = rowEl.dataset.fullTitle || '';
+      const rect = rowEl.getBoundingClientRect();
+      const sidebar = document.querySelector('.left-sidebar');
+      const sidebarRight = sidebar
+        ? sidebar.getBoundingClientRect().right
+        : rect.right;
+      // Place tooltip just past the sidebar's right edge, vertically aligned
+      // to the row.
+      t.style.left = (sidebarRight + 8) + 'px';
+      t.style.top  = rect.top + 'px';
+      t.style.display = 'block';
+    });
+    rowEl.addEventListener('mouseleave', () => {
+      const t = document.getElementById('ora-sidebar-row-tooltip');
+      if (t) t.style.display = 'none';
+    });
   };
 
   const onPinClick = async (row) => {

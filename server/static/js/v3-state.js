@@ -112,8 +112,28 @@
     const chatZone  = document.querySelector('.chat-zone');
 
     if (shell) {
-      if (state.leftW)  shell.style.setProperty('--ora-left-w',  state.leftW);
-      if (state.rightW) shell.style.setProperty('--ora-right-w', state.rightW);
+      // Migration: pre-2026-05-04 layouts persisted column widths in pixels.
+      // Once the window resizes, fixed-pixel columns leave dead space in the
+      // sidebar's auto-track. New writes use `fr` ratios; old `px` values are
+      // converted to fr at load time so existing users don't see dead space.
+      const toFr = (val) => {
+        if (!val) return val;
+        const m = String(val).match(/^([\d.]+)\s*px\s*$/);
+        if (!m) return val;
+        return parseFloat(m[1]);  // returned as raw number, paired below
+      };
+      const leftPx  = toFr(state.leftW);
+      const rightPx = toFr(state.rightW);
+      if (typeof leftPx === 'number' && typeof rightPx === 'number') {
+        const sum = leftPx + rightPx;
+        if (sum > 0) {
+          shell.style.setProperty('--ora-left-w',  ((leftPx  / sum) * 2).toFixed(4) + 'fr');
+          shell.style.setProperty('--ora-right-w', ((rightPx / sum) * 2).toFixed(4) + 'fr');
+        }
+      } else {
+        if (state.leftW)  shell.style.setProperty('--ora-left-w',  state.leftW);
+        if (state.rightW) shell.style.setProperty('--ora-right-w', state.rightW);
+      }
     }
 
     if (inputPane && state.inputPaneH) {

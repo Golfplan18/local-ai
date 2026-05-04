@@ -20,6 +20,13 @@
 .wordmark-clickable { cursor: pointer; }
 .wordmark-clickable:focus-visible { outline: none; }
 
+/* R glyph is the bidirectional drag handle — the only place where the spine
+   responds to both horizontal and vertical movement at once. */
+#logo-r {
+  cursor: move;
+  pointer-events: auto;
+}
+
 .wordmark-clickable:hover .wm-stroke-base,
 .wordmark-clickable:focus-visible .wm-stroke-base   { stroke: var(--ora-wordmark-hover); }
 .wordmark-clickable:hover .wm-stroke-bright,

@@ -35,7 +35,7 @@
 .visual-panel__toolbar {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--border, #e0e0d8);
   background: var(--ora-vis-surface, var(--bg-toolbar, var(--bg-panel, #fafaf7)));
@@ -95,7 +95,7 @@
   width: 1px;
   height: 18px;
   background: var(--border, #e0e0d8);
-  margin: 0 4px;
+  margin: 0 2px;
 }
 
 .vp-tool-spacer {
@@ -141,14 +141,21 @@
   flex: 1;
   overflow: hidden;
   min-height: 100px;
-  background:
-    linear-gradient(45deg, var(--bg-canvas-a, #f4f4ef) 25%, transparent 25%),
-    linear-gradient(-45deg, var(--bg-canvas-a, #f4f4ef) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, var(--bg-canvas-a, #f4f4ef) 75%),
-    linear-gradient(-45deg, transparent 75%, var(--bg-canvas-a, #f4f4ef) 75%);
-  background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-  background-color: var(--bg-canvas, #fafaf7);
+  /* Visual canvas matches the output pane: solid theme color with a subtle
+     dot grid. The grid spacing and offset are driven by --ora-canvas-zoom
+     and --ora-canvas-pan-{x,y}, which _applyTransform() updates on every
+     zoom/pan tick — so the dots scale and pan with the Konva content. */
+  background-color: var(--background-secondary);
+  background-image: radial-gradient(
+    var(--ora-line-dot-color) 1.4px,
+    transparent 1.6px
+  );
+  background-size:
+    calc(var(--size-4-6) * var(--ora-canvas-zoom, 1))
+    calc(var(--size-4-6) * var(--ora-canvas-zoom, 1));
+  background-position:
+    calc(var(--ora-canvas-pan-x, 0) * 1px)
+    calc(var(--ora-canvas-pan-y, 0) * 1px);
 }
 
 /* SVG host — absolutely positioned so CSS transform mirrors Konva stage */

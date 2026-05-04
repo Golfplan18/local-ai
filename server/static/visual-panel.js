@@ -2040,6 +2040,13 @@
       this._svgHost.style.transformOrigin = '0 0';
       this._svgHost.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px) scale(' + t.scale + ')';
     }
+    // Mirror to the viewport's background-grid CSS vars so the dot grid
+    // scales and pans with the Konva content.
+    if (this._viewportEl) {
+      this._viewportEl.style.setProperty('--ora-canvas-zoom',  String(t.scale));
+      this._viewportEl.style.setProperty('--ora-canvas-pan-x', String(t.x));
+      this._viewportEl.style.setProperty('--ora-canvas-pan-y', String(t.y));
+    }
     if (this._zoomInd) {
       this._zoomInd.textContent = Math.round(t.scale * 100) + '%';
     }

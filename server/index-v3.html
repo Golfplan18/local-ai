@@ -698,6 +698,64 @@
   bridge.addEventListener('mousedown', mainDown);
   bridgeRight.addEventListener('mousedown', mainDown);
 
+  // ─── R-glyph bidirectional drag ───
+  // The R is the one handle on the page that moves the layout in both axes
+  // at once. Spine background drags horizontally only, bridge handles drag
+  // vertically only. Grabbing the R combines both — the user can move the
+  // intersection point of the column split and the bridge in any direction.
+  const logoR     = document.getElementById('logo-r');
+  const oraShell  = document.querySelector('.ora-shell');
+  const leftCol   = document.querySelector('.left-column');
+  const rightCol  = document.querySelector('.right-column');
+  let rDrag = false;
+  let rStartX = 0, rStartY = 0;
+  let rStartInputH = 0, rStartLeftW = 0, rStartRightW = 0;
+
+  const rDown = (e) => {
+    rDrag = true;
+    rStartX = e.clientX;
+    rStartY = e.clientY;
+    rStartInputH = input.offsetHeight;
+    rStartLeftW  = leftCol.offsetWidth;
+    rStartRightW = rightCol.offsetWidth;
+    document.body.classList.add('dragging', 'spine-dragging');
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const rMove = (e) => {
+    if (!rDrag) return;
+    const dx = e.clientX - rStartX;
+    const dy = e.clientY - rStartY;
+    // Vertical axis: input height tracks dy, clamped by main bounds.
+    const bounds = computeMainBounds();
+    const newH   = Math.max(bounds.min, Math.min(bounds.max, rStartInputH + dy));
+    setMainHeight(newH);
+    // Horizontal axis: column widths track dx, clamped at zero (spine drag's
+    // event-horizon collapse logic is intentionally not triggered here — the
+    // R is for fine positioning, not for collapsing panes).
+    const total = rStartLeftW + rStartRightW;
+    let newLeft  = rStartLeftW + dx;
+    let newRight = rStartRightW - dx;
+    if (newLeft  < 0) { newRight = total; newLeft  = 0; }
+    if (newRight < 0) { newLeft  = total; newRight = 0; }
+    // Store as fr ratios (not pixels) so window resize keeps the layout
+    // proportional rather than leaving dead space.
+    if (total > 0) {
+      const leftFr  = (newLeft  / total) * 2;
+      const rightFr = (newRight / total) * 2;
+      oraShell.style.setProperty('--ora-left-w',  leftFr.toFixed(4)  + 'fr');
+      oraShell.style.setProperty('--ora-right-w', rightFr.toFixed(4) + 'fr');
+    }
+  };
+  const rUp = () => {
+    if (!rDrag) return;
+    rDrag = false;
+    document.body.classList.remove('dragging', 'spine-dragging');
+  };
+  if (logoR) {
+    logoR.addEventListener('mousedown', rDown);
+  }
+
   // ─── Chatbot-split drag (small gap inside the chat zone) ───
   let chatDrag = false, chatStartY = 0, chatStartH = 0;
 
@@ -725,9 +783,9 @@
 
   chatbotDivider.addEventListener('mousedown', chatDown);
 
-  // Single mousemove / mouseup that fans out to both drags
-  document.addEventListener('mousemove', (e) => { mainMove(e); chatMove(e); });
-  document.addEventListener('mouseup',   ()  => { mainUp();    chatUp();    });
+  // Single mousemove / mouseup that fans out to all drags
+  document.addEventListener('mousemove', (e) => { mainMove(e); chatMove(e); rMove(e); });
+  document.addEventListener('mouseup',   ()  => { mainUp();    chatUp();    rUp();    });
 
   window.addEventListener('resize', clampAndPlace);
 
@@ -1553,14 +1611,13 @@
 
   // ─── Initial layout: V3 spec §1.5 — wordmark R-glyph anchored at 70% from
   // top of the spine. Since the wordmark r-center follows the bridge center,
-  // the bridge starts at 70% from top, which makes the input pane (above)
-  // 70% of available height and the output pane (below) 30%.
+  // the bridge starts at 30% from top, putting the wordmark r-center 70% of
+  // the way to the top of the available height.
   const availableH = window.innerHeight - 32 - bridge.getBoundingClientRect().height;
-  // V3 default — was 0.70 (input-dominant) which made the canvas tiny by
-  // default. 0.50 puts the wordmark r-center halfway up the spine and
-  // gives the canvas a usable working area without the user having to
-  // drag the bridge first.
-  setMainHeight(availableH * 0.50);
+  // V3 default — input pane gets 30% of available height so the bridge (and
+  // therefore the wordmark r-center) sits 30% from the top, i.e. 70% of the
+  // way to the top. The output pane below gets the remaining 70%.
+  setMainHeight(availableH * 0.30);
   clampAndPlace();
 
   // ─── Audio/Video Phase 1 — capture controls bring-up ─────────────────
