@@ -790,7 +790,29 @@
 .visual-panel.chrome-hidden .ora-dock--right {
   opacity: 0;
   pointer-events: none;
-  transition: opacity .15s, transform .15s;
+  transition: opacity .15s, transform .15s, width .15s, height .15s,
+              min-width .15s, min-height .15s,
+              padding .15s, border-width .15s;
+}
+/* Collapse dock containers to zero dimension when chrome is hidden so the
+   middle dock-content (viewport with dot grid) expands to fill the panel
+   edge-to-edge — otherwise the docks remain in flex flow even at opacity:0
+   and leave dead strips along the panel edges. */
+.visual-panel.chrome-hidden .ora-dock--top,
+.visual-panel.chrome-hidden .ora-dock--bottom {
+  height: 0;
+  min-height: 0;
+  padding: 0;
+  border-width: 0;
+  overflow: hidden;
+}
+.visual-panel.chrome-hidden .ora-dock--left,
+.visual-panel.chrome-hidden .ora-dock--right {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-width: 0;
+  overflow: hidden;
 }
 .visual-panel.chrome-hidden .visual-panel__toolbar,
 .visual-panel.chrome-hidden .ora-toolbar {
