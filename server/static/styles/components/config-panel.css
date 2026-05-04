@@ -42,8 +42,9 @@
   background: var(--bg-panel, #1e1e1e);
 }
 .cfg-pipelines {
+  /* Three columns — My Pipeline, Automated, Visual Capabilities. */
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 1px;
   background: var(--border, #333);
   padding: 0;
@@ -474,4 +475,48 @@
 }
 .cfg-save-err {
   color: #c00;
+}
+
+/* Visual Capabilities column — third pipeline column. Each cell shows
+   one slot with a preferred-provider dropdown plus a reorderable
+   fallback list. Reuses .cfg-bucket-* styles for the fallback rows so
+   the look stays consistent with the pipeline columns. */
+.cfg-visual-caps .cfg-section {
+  padding: 8px 10px;
+}
+.cfg-slot-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cfg-slot-preferred {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cfg-slot-pref-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #999);
+  flex-shrink: 0;
+}
+.cfg-slot-preferred-select {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: var(--font-size-xs, 11px);
+  background: var(--bg-app, #14151c);
+  color: var(--text-primary, #f0f0f0);
+  border: 1px solid var(--border, #333);
+  border-radius: 4px;
+}
+.cfg-slot-fallback-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #999);
+  margin-top: 2px;
 }

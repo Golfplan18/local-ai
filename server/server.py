@@ -1816,6 +1816,22 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     the pipeline continues regardless. The UI consumes the comparison data
     once Phase 3-6 land.
     """
+    # --- Runtime slash-command short-circuit ---
+    # /instance, /validate, /render, /queue, /approve, /deny — mechanical
+    # meta-layer runtime operations that don't need a model endpoint or
+    # the analytical pipeline. Handled before the endpoint check so the
+    # user can still manage the human queue and run corpus operations even
+    # when no AI endpoint is configured.
+    from slash_commands import is_runtime_command, run_runtime_command
+    if is_runtime_command(user_input):
+        yield _sse("pipeline_stage", stage="runtime_command",
+                   label="Running runtime command…")
+        try:
+            yield _sse("response", text=run_runtime_command(user_input))
+        except Exception as exc:
+            yield _sse("error", text=f"Runtime command error: {exc}")
+        return
+
     config = load_config()
     endpoint = get_endpoint(config)
 
@@ -3075,6 +3091,21 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                 print(f"[ERROR] _invoke_pipeline pipeline crash: {e}")
 
             if final_response is not None:
+                # Meta-layer oversight health check — if any watcher is
+                # stale, prepend a system note so the user sees the warning
+                # in the conversation. Per Reference — Meta-Layer Architecture
+                # §10 O1; surfacing path settled 2026-05-04.
+                try:
+                    from oversight_health import check_health, format_warnings_as_chat_note
+                    _oversight_warnings = check_health()
+                    if _oversight_warnings:
+                        _oversight_note = format_warnings_as_chat_note(_oversight_warnings)
+                        if _oversight_note:
+                            final_response = _oversight_note + final_response
+                except Exception as _oh_exc:
+                    # Health check must never break the chat path
+                    print(f"[server] oversight health check failed (non-fatal): {_oh_exc}")
+
                 # Handle file output routing (e.g. /save, /saveboth)
                 if output_target != "screen":
                     routed = route_output(final_response, output_target)
@@ -5471,6 +5502,134 @@ def generate_layout():
 
     return json.dumps({"layout": layout_cfg, "vision_used": bool(image_b64 and has_vision)})
 
+# ── capability slot dispatch ─────────────────────────────────────────────────
+# /api/capability/image_generates — server-side bridge for the `image_generates`
+# slot (capabilities.json §3.1). The browser POSTs:
+#   { slot: 'image_generates',
+#     inputs: { prompt, style?, aspect_ratio?, provider_override? },
+#     provider_override? }
+# The registry auto-registers local-diffusers (when the diffusers package
+# is installed); routes-side, we additionally register the OpenAI provider
+# so a machine with an OpenAI key but no local diffusers install still has
+# a working path. resolve_provider walks preferred → fallback per
+# routing-config.json's slots block.
+
+@app.route("/api/capability/image_generates", methods=["POST"])
+def capability_image_generates():
+    """Dispatch the `image_generates` capability slot.
+
+    Body JSON:
+      slot (must be 'image_generates'),
+      inputs { prompt (str), style (str, optional),
+               aspect_ratio (str, optional), provider_override (str, optional) },
+      provider_override (str, optional, top-level — wins if both set).
+
+    Response:
+      200 { image: { data: <b64>, mime_type: 'image/png' },
+            provider: <provider_id>, metadata: {...} }
+      4xx { error: { code, message } }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return Response(json.dumps({"error": {
+            "code": "handler_failed",
+            "message": "Request body must be JSON."
+        }}), status=400, mimetype="application/json")
+
+    inputs_in = data.get("inputs") or {}
+    if not isinstance(inputs_in, dict):
+        inputs_in = {}
+
+    prompt = (inputs_in.get("prompt") or "").strip()
+    if not prompt:
+        return Response(json.dumps({"error": {
+            "code": "handler_failed",
+            "message": "image_generates requires a non-empty 'prompt'."
+        }}), status=400, mimetype="application/json")
+
+    style = inputs_in.get("style") or None
+    aspect_ratio = inputs_in.get("aspect_ratio") or "1:1"
+    provider_override = (
+        data.get("provider_override")
+        or inputs_in.get("provider_override")
+        or None
+    )
+
+    # Load the registry (auto-registers local-diffusers when installed)
+    # and additionally register the OpenAI provider so the resolver has
+    # both options available. Both registrations are best-effort —
+    # missing deps don't break the route; resolve_provider just walks
+    # past unregistered providers.
+    try:
+        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
+        from capability_registry import load_registry as _load_registry
+        registry = _load_registry()
+    except Exception as exc:
+        return Response(json.dumps({"error": {
+            "code": "model_unavailable",
+            "message": f"Capability registry unavailable: {exc}"
+        }}), status=503, mimetype="application/json")
+
+    try:
+        import openai_images as _oai
+        _oai.register(registry)
+    except Exception:
+        pass
+
+    inputs = {"prompt": prompt, "aspect_ratio": aspect_ratio}
+    if style:
+        inputs["style"] = style
+
+    try:
+        result = registry.invoke(
+            "image_generates",
+            inputs,
+            provider_id=provider_override,
+        )
+    except Exception as exc:
+        code = getattr(exc, "code", "model_unavailable")
+        # No provider registered = local-first install with no API
+        # keys configured AND no diffusers install — surface a helpful
+        # fix-path message rather than the raw "no_provider_registered".
+        if code == "no_provider_registered":
+            message = (
+                "No image generator is available. Install local image "
+                "generation (pip install diffusers transformers accelerate "
+                "safetensors torch) OR configure an API key in Settings → "
+                "External APIs."
+            )
+        else:
+            message = str(exc)
+        return Response(json.dumps({"error": {
+            "code": code,
+            "message": message
+        }}), status=502 if code in ("model_unavailable", "handler_failed", "no_provider_registered") else 400,
+            mimetype="application/json")
+
+    output = getattr(result, "output", result)
+    provider_id = getattr(result, "provider_id", "unknown")
+    if not isinstance(output, (bytes, bytearray)):
+        return Response(json.dumps({"error": {
+            "code": "handler_failed",
+            "message": "Handler did not return image bytes."
+        }}), status=502, mimetype="application/json")
+
+    import base64
+    return Response(json.dumps({
+        "image": {
+            "data": base64.b64encode(bytes(output)).decode("ascii"),
+            "mime_type": "image/png",
+        },
+        "provider": provider_id,
+        "metadata": {
+            "aspect_ratio": aspect_ratio,
+            "style": style,
+        },
+    }), status=200, mimetype="application/json")
+
+
 # ── capability slot dispatch (WP-7.3.3b) ─────────────────────────────────────
 # /api/capability/image_edits — server-side bridge between the WP-7.3.1 UI's
 # `capability-dispatch` events and the WP-7.3.2a `dispatch_image_edits`
@@ -7273,7 +7432,7 @@ def routing_config_post():
 
     # Merge supported top-level keys
     for key in ["endpoints", "buckets", "pipelines", "reservation",
-                "constraints", "ui_state", "diversity"]:
+                "constraints", "ui_state", "diversity", "slots"]:
         if key in data:
             cfg[key] = data[key]
 
@@ -7318,6 +7477,109 @@ def providers_get():
             return json.dumps(json.load(f))
     except Exception:
         return json.dumps({})
+
+
+@app.route("/api/capability/providers")
+def capability_providers_get():
+    """Return the set of providers registered (or registerable) per
+    capability slot.
+
+    Used by the Visual Capabilities settings column to populate the
+    preferred-provider dropdown and the fallback list. Includes:
+
+      * Providers actually bound on a fresh registry — these are the
+        ones the user can save as preferred / fallback right now.
+      * A flag on each so the UI can surface "not yet installed"
+        guidance when a known provider exists but its dependencies
+        aren't on the path yet (e.g., diffusers without torch).
+
+    Response shape:
+      {
+        "slots": {
+          "<slot_name>": [
+            { "provider_id": "<id>", "available": true|false,
+              "reason": "<short>" }
+          ]
+        }
+      }
+    """
+    try:
+        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
+        from capability_registry import load_registry as _load_registry
+        registry = _load_registry()
+        # Best-effort: try registering each known image-providing
+        # integration. Each is wrapped so a missing dependency on one
+        # doesn't break visibility into the others.
+        for module_name in ("openai_images", "stability", "replicate"):
+            try:
+                module = __import__(module_name)
+                if module_name == "replicate" and hasattr(module, "register_replicate_provider"):
+                    module.register_replicate_provider(registry)
+                elif hasattr(module, "register"):
+                    module.register(registry)
+            except Exception:
+                pass
+    except Exception as exc:
+        return json.dumps({"error": str(exc), "slots": {}}), 503
+
+    # Known provider IDs grouped by which integration registers them —
+    # used to surface "install diffusers" / "configure API key" hints
+    # for providers that are known but not currently registered.
+    KNOWN_PROVIDERS = {
+        "local-diffusers": ("install diffusers + torch to enable offline image generation", "local"),
+        "openai-dalle3":   ("set OpenAI API key in Settings → External APIs", "api"),
+        "openai-dalle2":   ("set OpenAI API key in Settings → External APIs", "api"),
+        "stability":       ("set Stability API key in Settings → External APIs", "api"),
+        "replicate":       ("set Replicate token in Settings → External APIs", "api"),
+    }
+
+    # Credential availability per provider. The integration modules
+    # register their dispatchers regardless of whether keys exist (so
+    # the user can configure them at runtime), so "registered" alone
+    # over-reports availability. Here we cross-check actual credential
+    # state and downgrade the dot to "not configured" when missing.
+    has_openai = bool(os.environ.get("OPENAI_API_KEY") or _try_keychain_openai_key())
+    has_stability = bool(os.environ.get("STABILITY_API_KEY") or _try_keychain_stability_key())
+    has_replicate = bool(os.environ.get("REPLICATE_API_TOKEN") or _try_keychain_replicate_token())
+
+    PROVIDER_HAS_CREDS = {
+        # local-diffusers: registration itself depends on the diffusers
+        # package being importable, so a registered local-diffusers is
+        # always usable. Treat as always-credentialed.
+        "local-diffusers": True,
+        "openai-dalle3":   has_openai,
+        "openai-dalle2":   has_openai,
+        "stability":       has_stability,
+        "replicate":       has_replicate,
+    }
+
+    out = {}
+    for slot_name in registry.list_slots():
+        registered = set(registry.providers_for(slot_name))
+        entries = []
+        seen = set()
+        for pid in registered:
+            has_creds = PROVIDER_HAS_CREDS.get(pid, True)
+            reason_default = KNOWN_PROVIDERS.get(pid, ("", "unknown"))
+            entries.append({
+                "provider_id": pid,
+                "available": has_creds,
+                "reason": "" if has_creds else reason_default[0],
+                "kind": reason_default[1],
+            })
+            seen.add(pid)
+        for pid, (reason, kind) in KNOWN_PROVIDERS.items():
+            if pid in seen:
+                continue
+            entries.append({
+                "provider_id": pid,
+                "available": False,
+                "reason": reason,
+                "kind": kind,
+            })
+        out[slot_name] = entries
+    return json.dumps({"slots": out})
 
 
 # ── Extension Bridge (Chrome extension ↔ server ↔ browser_evaluate) ────────
@@ -7507,6 +7769,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--scheduler", action="store_true", help="Start task scheduler")
+    parser.add_argument("--oversight", action="store_true", help="Start meta-layer oversight daemon (PED watcher, corpus watcher, workflow spec sweeper, revisit sweeper)")
     args, _ = parser.parse_known_args()
 
     port = 5000
@@ -7618,6 +7881,15 @@ if __name__ == "__main__":
         from scheduler import get_scheduler
         sched = get_scheduler()
         sched.start()
+
+    # Start meta-layer oversight daemon if requested
+    if args.oversight:
+        try:
+            from oversight_daemon import get_daemon
+            oversight = get_daemon()
+            oversight.start()
+        except Exception as e:
+            print(f"[server] Failed to start oversight daemon: {e}")
 
     print(f"Local AI Chat Server starting on http://localhost:{port}")
     print(f"Active endpoint: {endpoint.get('name') if endpoint else 'NONE — add an endpoint first'}")

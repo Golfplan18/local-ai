@@ -33,12 +33,16 @@ class ConfigPanel {
 
   async _load() {
     try {
-      const [rcfg, status] = await Promise.all([
+      const [rcfg, status, providers] = await Promise.all([
         fetch('/config/routing').then(r => r.json()),
         fetch('/config/routing/status').then(r => r.json()),
+        fetch('/api/capability/providers')
+          .then(r => r.json())
+          .catch(() => ({ slots: {} })),
       ]);
       this._data = rcfg;
       this._status = status;
+      this._providers = (providers && providers.slots) || {};
       this._render();
     } catch (e) {
       this._root.innerHTML = `<div class="cfg-err">Failed to load: ${e.message}</div>`;
@@ -55,6 +59,7 @@ class ConfigPanel {
         <div class="cfg-pipelines">
           ${this._renderPipeline('interactive', 'My Pipeline')}
           ${this._renderPipeline('agent', 'Automated Pipeline')}
+          ${this._renderVisualCapabilities()}
         </div>
         <div class="cfg-buckets">
           <div class="cfg-section-title">Model Buckets</div>
@@ -149,6 +154,123 @@ class ConfigPanel {
         ${this._expanded[`${context}_post_analysis`]
           ? this._renderExpandedPostAnalysis(context, postAnalysis)
           : this._renderCellBuckets(context, 'post_analysis', postAnalysis.buckets || [])}
+      </div>
+    </div>`;
+  }
+
+  // ── Visual Capabilities column (third pipeline column) ──────
+  //
+  // Renders one editable cell per capability slot from
+  // capabilities.json (image_generates, image_edits, ...). Each cell
+  // shows a "Preferred" dropdown plus a reorderable fallback list of
+  // providers. Provider universe comes from /api/capability/providers,
+  // which marks each provider as available (registered + dependencies
+  // satisfied) or unavailable with a fix-path hint. Edits write into
+  // this._data.slots and persist via the same autosave path the
+  // pipeline columns use.
+
+  _renderVisualCapabilities() {
+    // Order matches capabilities.json — synthesis slots first, then
+    // analysis (image_to_prompt / image_critique), video, training.
+    const SLOT_ORDER = [
+      'image_generates', 'image_edits', 'image_outpaints',
+      'image_upscales', 'image_styles', 'image_varies',
+      'image_to_prompt', 'image_critique',
+      'video_generates', 'style_trains',
+    ];
+    const SLOT_LABELS = {
+      image_generates:  'Image generates',
+      image_edits:      'Image edits',
+      image_outpaints:  'Image outpaints',
+      image_upscales:   'Image upscales',
+      image_styles:     'Image styles',
+      image_varies:     'Image varies',
+      image_to_prompt:  'Image → prompt',
+      image_critique:   'Image critique',
+      video_generates:  'Video generates',
+      style_trains:     'Style trains',
+    };
+
+    const slotsCfg = this._data.slots || {};
+    const providers = this._providers || {};
+
+    const sections = SLOT_ORDER
+      .filter(slot => providers[slot] !== undefined)
+      .map(slot => this._renderVisualCapabilitySection(
+        slot, SLOT_LABELS[slot] || slot,
+        slotsCfg[slot] || {},
+        providers[slot] || []
+      )).join('');
+
+    return `<div class="cfg-pipeline cfg-visual-caps" data-context="visual">
+      <div class="cfg-pipeline-title">Visual Capabilities</div>
+      ${sections}
+    </div>`;
+  }
+
+  _renderVisualCapabilitySection(slot, label, cfg, providers) {
+    const preferred = cfg.preferred || '';
+    const fallback = Array.isArray(cfg.fallback) ? cfg.fallback : [];
+    const allIds = providers.map(p => p.provider_id);
+    const availableLookup = {};
+    providers.forEach(p => { availableLookup[p.provider_id] = p; });
+
+    // Preferred dropdown — empty option lets the user clear the
+    // preference and rely entirely on fallback walking.
+    const prefOptions = ['<option value="">(no preference)</option>']
+      .concat(allIds.map(id => {
+        const p = availableLookup[id];
+        const tag = p && !p.available ? ' — not configured' : '';
+        return `<option value="${id}" ${id === preferred ? 'selected' : ''}>${id}${tag}</option>`;
+      })).join('');
+
+    // Fallback list — reorderable, with a "+ add fallback" select for
+    // providers not yet in the list (and not the current preferred).
+    const fallbackUsed = new Set(fallback);
+    if (preferred) fallbackUsed.add(preferred);
+    const addOptions = allIds.filter(id => !fallbackUsed.has(id));
+
+    const fallbackItems = fallback.map((pid, i) => {
+      const p = availableLookup[pid];
+      const dot = p && p.available ? '●' : '○';
+      const dotClass = p && p.available ? 'cfg-ep-active' : 'cfg-ep-inactive';
+      const reason = p && !p.available ? ` title="${p.reason || 'not configured'}"` : '';
+      return `<div class="cfg-bucket-item ${dotClass}" data-slot="${slot}" data-index="${i}"${reason}>
+        <span class="cfg-bucket-arrows">
+          <span class="cfg-arrow cfg-up cfg-slot-arrow" data-dir="up" data-slot="${slot}" data-idx="${i}" title="Move up">↑</span>
+          <span class="cfg-arrow cfg-down cfg-slot-arrow" data-dir="down" data-slot="${slot}" data-idx="${i}" title="Move down">↓</span>
+        </span>
+        <span class="cfg-model-status">${dot}</span>
+        <span class="cfg-bucket-name">${pid}</span>
+        <span class="cfg-bucket-remove cfg-slot-remove" data-slot="${slot}" data-idx="${i}" title="Remove">×</span>
+      </div>`;
+    }).join('');
+
+    const addSelect = addOptions.length
+      ? `<div class="cfg-bucket-add">
+          <select class="cfg-add-select cfg-slot-add" data-slot="${slot}">
+            <option value="">+ add fallback</option>
+            ${addOptions.map(id => {
+              const p = availableLookup[id];
+              const tag = p && !p.available ? ' — not configured' : '';
+              return `<option value="${id}">${id}${tag}</option>`;
+            }).join('')}
+          </select>
+        </div>`
+      : '';
+
+    return `<div class="cfg-section">
+      <div class="cfg-section-label">${label}</div>
+      <div class="cfg-slot-cell" data-slot="${slot}">
+        <div class="cfg-slot-preferred">
+          <label class="cfg-slot-pref-label">Preferred:</label>
+          <select class="cfg-slot-preferred-select" data-slot="${slot}">${prefOptions}</select>
+        </div>
+        <div class="cfg-slot-fallback-label">Fallback (in order):</div>
+        <div class="cfg-bucket-list">
+          ${fallbackItems || '<div class="cfg-empty">no fallback</div>'}
+          ${addSelect}
+        </div>
       </div>
     </div>`;
   }
@@ -467,6 +589,34 @@ class ConfigPanel {
         this._render();
       });
     }
+
+    // ── Visual Capabilities events ────────────────────────────
+    // Preferred-provider dropdown
+    root.querySelectorAll('.cfg-slot-preferred-select').forEach(sel => {
+      sel.addEventListener('change', () => {
+        this._setSlotPreferred(sel.dataset.slot, sel.value || null);
+      });
+    });
+    // Fallback reorder arrows
+    root.querySelectorAll('.cfg-slot-arrow').forEach(arrow => {
+      arrow.addEventListener('click', () => {
+        this._moveSlotFallback(arrow.dataset.slot,
+          parseInt(arrow.dataset.idx), arrow.dataset.dir);
+      });
+    });
+    // Fallback remove
+    root.querySelectorAll('.cfg-slot-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._removeSlotFallback(btn.dataset.slot, parseInt(btn.dataset.idx));
+      });
+    });
+    // Fallback add
+    root.querySelectorAll('.cfg-slot-add').forEach(sel => {
+      sel.addEventListener('change', () => {
+        if (!sel.value) return;
+        this._addSlotFallback(sel.dataset.slot, sel.value);
+      });
+    });
   }
 
   // ── Data mutation helpers ───────────────────────────────────
@@ -550,6 +700,64 @@ class ConfigPanel {
     this._render();
   }
 
+  // ── Visual capability slot mutators ─────────────────────────
+
+  _ensureSlot(slot) {
+    if (!this._data.slots) this._data.slots = {};
+    if (!this._data.slots[slot]) {
+      this._data.slots[slot] = { preferred: null, fallback: [] };
+    }
+    if (!Array.isArray(this._data.slots[slot].fallback)) {
+      this._data.slots[slot].fallback = [];
+    }
+    return this._data.slots[slot];
+  }
+
+  _setSlotPreferred(slot, providerId) {
+    const cell = this._ensureSlot(slot);
+    cell.preferred = providerId || null;
+    // If the new preferred was in fallback, drop it — preferred and
+    // fallback must not overlap.
+    if (providerId) {
+      cell.fallback = cell.fallback.filter(id => id !== providerId);
+    }
+    this._dirty = true;
+    this._autoSave();
+    this._render();
+  }
+
+  _moveSlotFallback(slot, idx, dir) {
+    const cell = this._ensureSlot(slot);
+    const fb = [...cell.fallback];
+    const newIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (newIdx < 0 || newIdx >= fb.length) return;
+    [fb[idx], fb[newIdx]] = [fb[newIdx], fb[idx]];
+    cell.fallback = fb;
+    this._dirty = true;
+    this._autoSave();
+    this._render();
+  }
+
+  _removeSlotFallback(slot, idx) {
+    const cell = this._ensureSlot(slot);
+    const fb = [...cell.fallback];
+    fb.splice(idx, 1);
+    cell.fallback = fb;
+    this._dirty = true;
+    this._autoSave();
+    this._render();
+  }
+
+  _addSlotFallback(slot, providerId) {
+    const cell = this._ensureSlot(slot);
+    if (cell.preferred === providerId) return;
+    if (cell.fallback.includes(providerId)) return;
+    cell.fallback = [...cell.fallback, providerId];
+    this._dirty = true;
+    this._autoSave();
+    this._render();
+  }
+
   _autoSave() {
     if (this._saveTimer) clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => this._save(), 800);
@@ -567,6 +775,7 @@ class ConfigPanel {
           pipelines: this._data.pipelines,
           buckets: this._data.buckets,
           diversity: this._data.diversity || {},
+          slots: this._data.slots || {},
         }),
       });
       const result = await resp.json();

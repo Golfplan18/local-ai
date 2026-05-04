@@ -389,4 +389,21 @@ def load_registry(
                 routing_config = json.load(f)
         except Exception:
             routing_config = None
-    return CapabilityRegistry(config_path=config_path, routing_config=routing_config)
+    registry = CapabilityRegistry(config_path=config_path, routing_config=routing_config)
+
+    # Local-first default: auto-register the offline diffusers provider
+    # so every route gets it without per-route imports. Defensive — if
+    # the integration module isn't on the path, or its dependencies
+    # aren't installed, we silently skip and the resolver falls through
+    # to whatever API providers each route registers explicitly.
+    try:
+        import sys as _sys
+        _integrations_dir = str(CONFIG_DIR.parent / "orchestrator" / "integrations")
+        if _integrations_dir not in _sys.path:
+            _sys.path.insert(0, _integrations_dir)
+        import local_diffusers as _local_diffusers
+        _local_diffusers.register(registry)
+    except Exception:
+        pass
+
+    return registry
