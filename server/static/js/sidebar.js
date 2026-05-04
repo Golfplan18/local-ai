@@ -459,10 +459,21 @@
     logoA.addEventListener('click', (e) => {
       // Prevent the existing "output menu" handler from firing alongside us.
       e.stopPropagation();
-      // Per spec 3E: clicking the A while pinned does nothing (sidebar
-      // is already open). Otherwise expand.
-      if (isPinned() && isExpanded()) return;
-      setExpanded(true);
+      // Toggle behavior:
+      //   * sidebar closed → open
+      //   * sidebar open + pinned → no-op (pin keeps it open)
+      //   * sidebar open + unpinned → close
+      if (isExpanded()) {
+        if (isPinned()) return;
+        setExpanded(false);
+      } else {
+        setExpanded(true);
+      }
+      // Drop focus after a mouse click so the SVG group's :focus outline
+      // doesn't linger as a "box" around the A. Keyboard users (Tab) still
+      // get focus-visible indication via the existing CSS.
+      try { e.currentTarget.blur(); } catch (_) { /* SVGElement.blur may
+        not be implemented on every browser version — ignore */ }
     });
   }
 
