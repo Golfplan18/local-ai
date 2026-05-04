@@ -475,6 +475,13 @@
       </g>
 
       <g id="logo-r" class="wordmark-letter" aria-hidden="true">
+        <!-- Transparent hit target so the R catches mousedown across its
+             full bounding box, not just where the curve / leg are painted.
+             Without this, drags that start in the empty middle of the R
+             pass through to the parent SVG and trigger horizontal-only
+             spine drag. -->
+        <rect x="45" y="366" width="191" height="200"
+              fill="transparent" stroke="none"/>
         <path d="M 54 466 A 91 91 0 0 1 236 466"
               class="wm-stroke-base" stroke-linecap="butt"/>
         <rect x="45" y="366" width="18" height="200" class="wm-fill-base"/>
