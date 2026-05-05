@@ -453,15 +453,25 @@ body.stealth-mode .bridge-mode-label {
    with translucent background and subtle drop shadow. */
 .right-pane.visual-panel .visual-panel__toolbar,
 .right-pane.visual-panel .ora-toolbar {
-  margin: 8px;
-  border-radius: 8px;
-  padding: 4px 8px;
+  margin: 4px;
+  border-radius: 6px;
+  padding: 2px 4px;
   background: var(--background-secondary, rgba(40, 42, 54, 0.88));
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
   border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.06));
   flex-wrap: wrap;
+}
+
+/* Vertical-rail toolbars (left/right docks) need the *least* horizontal
+   space possible — every extra pixel cuts into canvas width. Shrink the
+   items themselves and tighten their padding further when the wrap is
+   in vertical orientation. */
+.right-pane.visual-panel .ora-toolbar-wrap[data-orientation="vertical"] .ora-toolbar {
+  --ora-toolbar-item-size: 24px;
+  --ora-toolbar-icon-size: 16px;
+  padding: 4px 2px;
 }
 
 /* Empty-canvas hint. Shown only when there are zero user shapes drawn.

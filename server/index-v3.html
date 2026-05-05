@@ -27,6 +27,28 @@
 <script src="/static/render-controls.js"></script>
 <script src="/static/config-panel.js"></script>
 <script src="/static/settings-panel.js"></script>
+<script src="/static/tooltip.js"></script>
+<script>
+  // Universal hover-tooltip helper. Boots immediately so tooltips work
+  // even before /api/settings has loaded; the setting fetch toggles
+  // enable/disable once it arrives. Tracks settings-saved events to
+  // honor on/off changes without a page reload.
+  (function () {
+    if (!window.OraTooltip) return;
+    window.OraTooltip.init();
+    function _applySetting(payload) {
+      if (!payload || !payload.interface) return;
+      var on = payload.interface.tooltips_enabled !== false;
+      if (on) window.OraTooltip.enable();
+      else window.OraTooltip.disable();
+    }
+    fetch('/api/settings').then(function (r) { return r.json(); })
+      .then(_applySetting).catch(function () { /* keep default-on */ });
+    document.addEventListener('ora:settings-saved', function (evt) {
+      _applySetting(evt && evt.detail);
+    });
+  })();
+</script>
 
 <!-- ── Phase 7 (Dual-Purpose Visual Pane) — ported from V1 2026-04-30 ─────
      Phase 7 transforms the visual pane from thinking-only to a workspace
@@ -130,6 +152,7 @@
 <script src="/static/commands/export-pdf.js"></script>
 
 <script src="/static/js/sidebar.js" defer></script>
+<script src="/static/js/sidebar-oversight.js" defer></script>
 <script src="/static/js/v3-layout.js" defer></script>
 <script src="/static/js/v3-bootstrap.js" defer></script>
 <script src="/static/js/v3-state.js" defer></script>
@@ -251,32 +274,80 @@
           </svg>
         </button>
       </div>
-      <div class="sidebar-groups">
-        <!-- Spec §3A order: Pinned / Unread / Errored / Active / Pending+Ongoing.
-             Pinned hosts the WELCOME thread (auto-pinned via is_welcome) AND
-             any conversation the user has explicitly pinned (Backlog 3F). -->
-        <div class="sidebar-group" data-group="pinned">
-          <div class="sidebar-group-label">Pinned</div>
-          <div class="sidebar-group-rows"></div>
+      <!-- Sidebar accordion: three super-sections, mutually exclusive
+           expansion. Conversations starts expanded by default; clicking
+           Paused or Operating collapses Conversations and expands the
+           clicked section. Closes deferred handoff item #8. -->
+      <div class="sidebar-accordion" data-active-super="conversations">
+
+        <div class="sidebar-supergroup" data-super="conversations" data-expanded="true">
+          <button class="sidebar-supergroup-header" type="button"
+                  data-super-toggle="conversations"
+                  aria-expanded="true">
+            <span class="sidebar-supergroup-arrow">▾</span>
+            <span class="sidebar-supergroup-label">Conversations</span>
+          </button>
+          <div class="sidebar-supergroup-body">
+            <div class="sidebar-groups">
+              <!-- Spec §3A order: Pinned / Unread / Errored / Active / Pending+Ongoing.
+                   Pinned hosts the WELCOME thread (auto-pinned via is_welcome) AND
+                   any conversation the user has explicitly pinned (Backlog 3F). -->
+              <div class="sidebar-group" data-group="pinned">
+                <div class="sidebar-group-label">Pinned</div>
+                <div class="sidebar-group-rows"></div>
+              </div>
+              <div class="sidebar-group" data-group="unread">
+                <div class="sidebar-group-label">Unread</div>
+                <div class="sidebar-group-rows"></div>
+              </div>
+              <!-- Backlog 11 — errored runs surface as their own group; header
+                   only shows when at least one errored row exists. -->
+              <div class="sidebar-group" data-group="errored">
+                <div class="sidebar-group-label">Errored</div>
+                <div class="sidebar-group-rows"></div>
+              </div>
+              <div class="sidebar-group" data-group="active">
+                <div class="sidebar-group-label">Active</div>
+                <div class="sidebar-group-rows"></div>
+              </div>
+              <div class="sidebar-group" data-group="pending">
+                <div class="sidebar-group-label">Pending</div>
+                <div class="sidebar-group-rows"></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="sidebar-group" data-group="unread">
-          <div class="sidebar-group-label">Unread</div>
-          <div class="sidebar-group-rows"></div>
+
+        <div class="sidebar-supergroup" data-super="paused" data-expanded="false">
+          <button class="sidebar-supergroup-header" type="button"
+                  data-super-toggle="paused"
+                  aria-expanded="false">
+            <span class="sidebar-supergroup-arrow">▸</span>
+            <span class="sidebar-supergroup-label">Paused</span>
+            <span class="sidebar-supergroup-count" id="sidebarPausedCount"
+                  data-count="0">0</span>
+          </button>
+          <div class="sidebar-supergroup-body">
+            <div class="oversight-list" id="oversightPausedList"
+                 aria-label="Paused queue entries"></div>
+          </div>
         </div>
-        <!-- Backlog 11 — errored runs surface as their own group; header
-             only shows when at least one errored row exists. -->
-        <div class="sidebar-group" data-group="errored">
-          <div class="sidebar-group-label">Errored</div>
-          <div class="sidebar-group-rows"></div>
+
+        <div class="sidebar-supergroup" data-super="operating" data-expanded="false">
+          <button class="sidebar-supergroup-header" type="button"
+                  data-super-toggle="operating"
+                  aria-expanded="false">
+            <span class="sidebar-supergroup-arrow">▸</span>
+            <span class="sidebar-supergroup-label">Operating</span>
+            <span class="sidebar-supergroup-count" id="sidebarOperatingCount"
+                  data-count="0">0</span>
+          </button>
+          <div class="sidebar-supergroup-body">
+            <div class="oversight-list" id="oversightOperatingList"
+                 aria-label="Operating items"></div>
+          </div>
         </div>
-        <div class="sidebar-group" data-group="active">
-          <div class="sidebar-group-label">Active</div>
-          <div class="sidebar-group-rows"></div>
-        </div>
-        <div class="sidebar-group" data-group="pending">
-          <div class="sidebar-group-label">Pending</div>
-          <div class="sidebar-group-rows"></div>
-        </div>
+
       </div>
     </div>
 

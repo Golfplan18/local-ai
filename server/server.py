@@ -1839,22 +1839,88 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
         return
 
-    # --- Framework slash-command short-circuit ---
-    # Detect /framework <name> <query> and route to the layered milestone
-    # executor instead of the standard step1 → step2 → gear pipeline.
-    # Phase A.5 cleanup and mode classification are bypassed entirely;
-    # framework invocations are explicit and the executor handles structured
-    # milestone-to-milestone handoffs.
-    from milestone_executor import is_framework_command, run_framework_command
-    if is_framework_command(user_input):
-        yield _sse("pipeline_stage", stage="framework_execution",
-                   label="Running framework via layered milestone executor…")
+    # --- Resolution-chain continuation short-circuit ---
+    # If the most recent assistant message carries a resolution marker,
+    # the user is mid-discussion to resolve a paused queue entry. Numeric
+    # input (1/2/3) commits an action; anything else continues the
+    # discussion. Same conversation-as-state design as elicitation.
+    import resolution_chain
+    resolution_ctx = resolution_chain.is_resolution_continuation(history or [])
+    if resolution_ctx is not None:
+        yield _sse("pipeline_stage", stage="resolution_continuation",
+                   label="Continuing resolution discussion…")
         try:
-            result_text = run_framework_command(user_input, config)
+            text = resolution_chain.continue_resolution(
+                resolution_ctx, history or [], user_input,
+                conversation_id=panel_id if panel_id != "main" else "",
+                config=config,
+            )
         except Exception as exc:
-            yield _sse("error", text=f"Framework execution error: {exc}")
+            yield _sse("error", text=f"Resolution discussion error: {exc}")
             return
-        yield _sse("response", text=result_text)
+        yield _sse("response", text=text)
+        return
+
+    # --- Mid-framework continuation short-circuit ---
+    # If the most recent assistant message in history carries a marker, the
+    # user's reply is part of an in-progress interactive framework execution.
+    # Route to the elicitation handler, which makes a small-model call to
+    # extract elicited state from the conversation, then asks the next
+    # question or produces the final deliverable. Conversation IS the state;
+    # there is no separate persistence layer.
+    import framework_elicitation
+    continuation_ctx = framework_elicitation.is_continuation(history or [])
+    if continuation_ctx is not None:
+        yield _sse("pipeline_stage", stage="framework_elicitation",
+                   label=f"Continuing {continuation_ctx.framework_id} / {continuation_ctx.mode}…")
+        try:
+            text = framework_elicitation.continue_elicitation(
+                continuation_ctx, history or [], config,
+                latest_user_text=user_input,
+            )
+        except Exception as exc:
+            yield _sse("error", text=f"Framework elicitation error: {exc}")
+            return
+        yield _sse("response", text=text)
+        return
+
+    # --- Framework slash-command short-circuit ---
+    # Detect /framework <name> [<query>] and route to either the one-shot
+    # milestone executor (when a query is supplied) or the interactive
+    # elicitation handler (when no query — the user wants the framework to
+    # walk them through it). Phase A.5 cleanup and mode classification are
+    # bypassed entirely; framework invocations are explicit.
+    from milestone_executor import (
+        is_framework_command, framework_command_has_query,
+        run_framework_command, parse_framework_command,
+    )
+    if is_framework_command(user_input):
+        if framework_command_has_query(user_input):
+            yield _sse("pipeline_stage", stage="framework_execution",
+                       label="Running framework via layered milestone executor…")
+            try:
+                result_text = run_framework_command(user_input, config)
+            except Exception as exc:
+                yield _sse("error", text=f"Framework execution error: {exc}")
+                return
+            yield _sse("response", text=result_text)
+            return
+        # Empty-query form → start an interactive elicitation session.
+        try:
+            framework_name, _ = parse_framework_command(user_input)
+        except ValueError as exc:
+            yield _sse("error", text=f"Framework command error: {exc}")
+            return
+        yield _sse("pipeline_stage", stage="framework_elicitation_start",
+                   label=f"Starting interactive {framework_name} session…")
+        try:
+            text = framework_elicitation.start_elicitation(
+                framework_name, history or [], config,
+            )
+        except Exception as exc:
+            yield _sse("error", text=f"Framework elicitation error: {exc}")
+            return
+        yield _sse("response", text=text)
         return
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
@@ -7764,6 +7830,105 @@ def api_job_cancel(job_id):
     return json.dumps({"success": True, "job": job})
 
 
+# ── Oversight panels (V3 sidebar Paused + Operating) ────────────────────────
+
+@app.route("/api/oversight/paused", methods=["GET"])
+def api_oversight_paused():
+    """Return the Paused queue as a list of entries for the sidebar panel.
+
+    Each entry: id, name, queued_at, engagement, discussion_conversation_id,
+    redefinition flag, project_nexus, event_type, reasoning excerpt.
+    Sorted oldest-first.
+    """
+    try:
+        from oversight_queue import list_paused
+    except ImportError:
+        return json.dumps({"entries": []}), 200, {"Content-Type": "application/json"}
+    entries = list_paused()
+    rows = []
+    for e in entries:
+        verdict = e.verdict or {}
+        reasoning = (verdict.get("reasoning") or verdict.get("raw_output") or "").strip()
+        if len(reasoning) > 600:
+            reasoning = reasoning[:600] + "…"
+        rows.append({
+            "id": e.id,
+            "name": e.name,
+            "queued_at": e.queued_at,
+            "engagement": e.engagement,
+            "discussion_conversation_id": e.discussion_conversation_id,
+            "redefinition": e.redefinition,
+            "project_nexus": (e.event or {}).get("project_nexus", ""),
+            "event_type": (e.event or {}).get("event_type", ""),
+            "reasoning_excerpt": reasoning,
+        })
+    return json.dumps({"entries": rows}), 200, {"Content-Type": "application/json"}
+
+
+@app.route("/api/oversight/operating", methods=["GET"])
+def api_oversight_operating():
+    """Return Operating items aggregated from re-eval queue + active elicitations.
+
+    Read-only in v1 — no actions. Sorted oldest-first.
+    """
+    try:
+        from oversight_queue import list_operating
+    except ImportError:
+        return json.dumps({"entries": []}), 200, {"Content-Type": "application/json"}
+    entries = list_operating()
+    rows = [e.to_dict() for e in entries]
+    return json.dumps({"entries": rows}), 200, {"Content-Type": "application/json"}
+
+
+@app.route("/api/oversight/paused/<entry_id>/name", methods=["PATCH", "POST"])
+def api_oversight_rename(entry_id):
+    """Rename a Paused entry. Body: ``{"name": "..."}``."""
+    try:
+        from oversight_queue import rename
+    except ImportError:
+        return json.dumps({"error": "oversight_queue unavailable"}), 503
+    data = request.json or {}
+    new_name = (data.get("name") or "").strip()
+    if not new_name:
+        return json.dumps({"error": "name is required"}), 400
+    if rename(entry_id, new_name):
+        return json.dumps({"success": True}), 200
+    return json.dumps({"error": "entry not found"}), 404
+
+
+@app.route("/api/oversight/paused/<entry_id>/engagement", methods=["POST"])
+def api_oversight_engagement(entry_id):
+    """Update engagement state. Body: ``{"state": "seen"|"discussing"|"unseen"}``."""
+    try:
+        from oversight_queue import mark_engagement
+    except ImportError:
+        return json.dumps({"error": "oversight_queue unavailable"}), 503
+    data = request.json or {}
+    state = (data.get("state") or "").strip()
+    if mark_engagement(entry_id, state):
+        return json.dumps({"success": True}), 200
+    return json.dumps({"error": "entry not found or invalid state"}), 400
+
+
+@app.route("/api/oversight/paused/<entry_id>/discuss", methods=["POST"])
+def api_oversight_discuss(entry_id):
+    """Open (or reuse) a discussion conversation for a Paused entry.
+
+    Returns ``{conversation_id, queue_entry_id, display_name, reused}``. The
+    new conversation is seeded with one assistant message containing the
+    entry's context, the initial options block, and the resolution marker.
+    """
+    try:
+        from resolution_chain import start_resolution
+    except ImportError:
+        return json.dumps({"error": "resolution_chain unavailable"}), 503
+    try:
+        result = start_resolution(entry_id, config=load_config())
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)}), 404
+    return json.dumps(result), 200, {"Content-Type": "application/json"}
+
+
 if __name__ == "__main__":
     import argparse, signal as _signal, socket
 
@@ -7928,5 +8093,18 @@ if __name__ == "__main__":
         _scan_orphaned_pending_submissions()
     except Exception as _e:
         print(f"[startup] orphan submission scan failed: {_e}")
+
+    # Self-heal the Lucide icon-set: rebuild runtime/icon-set.json
+    # whenever the toolbar / pack JSON sources have moved on. Keeps
+    # newly-added toolbar icons from rendering as fallback "?" glyphs
+    # without requiring a manual `node lucide-tree-shake.js` run.
+    try:
+        from icon_set_builder import rebuild_if_stale as _icon_rebuild
+        _r = _icon_rebuild()
+        if _r.get("rebuilt"):
+            print(f"[startup] icon-set rebuilt: {_r['icon_count']} icons "
+                  f"({_r['reason']})")
+    except Exception as _e:
+        print(f"[startup] icon-set rebuild failed: {_e}")
 
     app.run(host="localhost", port=port, debug=False, threaded=True)

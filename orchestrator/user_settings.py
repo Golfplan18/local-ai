@@ -67,6 +67,12 @@ DEFAULTS: dict = {
         "transcription_provider": "whisper_local",   # whisper_local | assemblyai | deepgram
         "tts_provider": "openai",                    # openai | elevenlabs
     },
+    "interface": {
+        # Universal hover tooltips on every interactive element. When
+        # off, the helper restores native browser title attributes so
+        # the user still sees something on hover (just OS-styled).
+        "tooltips_enabled": True,
+    },
 }
 
 # Whitelisted providers for keyring writes/reads.

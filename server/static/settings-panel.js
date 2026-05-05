@@ -35,11 +35,12 @@
   var _modelsConfigPanel = null;
 
   var TABS = [
-    { id: 'models',   label: 'Models' },
-    { id: 'capture',  label: 'Capture' },
-    { id: 'whisper',  label: 'Whisper' },
-    { id: 'apis',     label: 'External APIs' },
-    { id: 'export',   label: 'Export' },
+    { id: 'models',     label: 'Models' },
+    { id: 'interface',  label: 'Interface' },
+    { id: 'capture',    label: 'Capture' },
+    { id: 'whisper',    label: 'Whisper' },
+    { id: 'apis',       label: 'External APIs' },
+    { id: 'export',     label: 'Export' },
   ];
 
   var WHISPER_MODELS = [
@@ -152,9 +153,26 @@
       return;
     }
     if (_activeTab === 'capture') _renderCaptureTab();
+    else if (_activeTab === 'interface') _renderInterfaceTab();
     else if (_activeTab === 'whisper') _renderWhisperTab();
     else if (_activeTab === 'apis') _renderAPIsTab();
     else if (_activeTab === 'export') _renderExportTab();
+  }
+
+  function _renderInterfaceTab() {
+    var iface = (_dirty.interface || _settings.interface || {});
+    var src = _settings.interface || {};
+    var enabled = iface.tooltips_enabled !== undefined
+      ? iface.tooltips_enabled
+      : (src.tooltips_enabled !== false);
+    _appendField('Show themed hover tooltips',
+      _checkboxInput('interface.tooltips_enabled', enabled));
+    _appendNote(
+      'When on, hovering over any button, icon, or list row for half a second '
+      + 'shows a small description that matches the active theme. When off, '
+      + 'your operating system\'s default tooltip is used instead — same '
+      + 'information, plain styling.'
+    );
   }
 
   // ── Models tab ───────────────────────────────────────────────────────────
@@ -532,6 +550,12 @@
         _settings = res.data.settings || _settings;
         _setStatus('Saved ✓', 'success');
         setTimeout(function () { _setStatus(''); }, 1400);
+        // Broadcast so live UI helpers (tooltip toggle, etc.) can
+        // react without a page reload.
+        try {
+          document.dispatchEvent(new CustomEvent('ora:settings-saved',
+            { detail: _settings }));
+        } catch (_) { /* old browser fallback — ignore */ }
       })
       .catch(function (err) {
         // Restore the dirty payload so the next change triggers a retry.

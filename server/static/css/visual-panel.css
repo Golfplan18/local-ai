@@ -220,13 +220,16 @@
   position: absolute;
   bottom: 8px;
   right: 8px;
-  padding: 3px 8px;
-  background: var(--bg-overlay, rgba(255,255,255,.85));
-  color: var(--text-secondary, #555);
+  padding: 2px 6px;
+  /* Background tracks the canvas pane so the indicator recedes; the
+     number itself uses the secondary text color so it reads against
+     the canvas without grabbing attention. */
+  background: transparent;
+  color: var(--text-secondary, #999);
   font-size: 11px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   border-radius: 3px;
-  border: 1px solid var(--border, #e0e0d8);
+  border: none;
   pointer-events: none;
   z-index: 15;
 }
