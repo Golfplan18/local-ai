@@ -1,0 +1,8 @@
+{
+  "capture": {
+    "frame_rate": 25
+  },
+  "interface": {
+    "tooltips_enabled": true
+  }
+}

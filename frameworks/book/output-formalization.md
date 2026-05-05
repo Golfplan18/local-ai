@@ -642,6 +642,64 @@ O-Audit evaluates an existing bespoke framework against the Section II criteria.
 
 ---
 
+## MILESTONES DELIVERED
+
+This framework's declaration of the per-mode milestones it can deliver. OFF is a four-mode framework: three model-driven modes (O-Design, O-Modify, O-Audit) that produce, update, or evaluate bespoke output frameworks, and one mechanical mode (O-Render) that uses an existing OFF spec to produce an artifact. O-Render is canonically invoked via the runtime slash command `/render`, which calls `output_runtime.o_render` directly. All milestone properties are defined inline per milestone.
+
+### Milestones for Mode O-Design
+
+#### Milestone 1: Bespoke Output Framework
+
+- **Mode:** O-Design
+- **Endpoint produced:** New bespoke output framework markdown file specifying the four-layer architecture (content / craft / style / render) for a specific medium and genre. Includes: target medium and genre, content-layer expectations (which corpus sections feed the output, in what order), craft-layer norms (genre conventions, structural rules, prose or visual standards), style-layer composition with the user's mind.md voice signals, render-layer specification (target file format, render library, file-extension and section-mapping rules). When an exemplar or template was provided, the framework analyzes it and reflects observed patterns; when only a verbal description or a medium-plus-genre spec was given, the framework draws on its craft library defaults plus the user's style.
+- **Verification criterion:** (a) each of the four layers (content, craft, style, render) is explicitly populated; (b) layer separation is observed — no style decisions in the craft layer, no render specifics in content; (c) when mind.md is available, voice characteristics from its Voice and Communication Patterns sections are reflected; when absent, the Style Guide Module fallback is invoked rather than substituting generic defaults; (d) the render-layer specification names a target format and render library with enough detail that a renderer can be implemented from the spec alone; (e) the framework scores 3 or above on Layer Separation Rigor, Craft Floor Sufficiency, Style Layer Faithfulness, Render Layer Specification Completeness, and Genre Appropriateness per Section II.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Bespoke OFF markdown per Section VIII (Four-Layer Architecture), with frontmatter declaring genre, medium, and any chain relationships, plus the four layer specifications and the composition rules.
+- **Drift check question:** Does the produced framework serve the user's stated medium and genre with their actual voice — rather than producing a generic "competent practitioner" framework that loses the user-specific signal in mind.md?
+
+### Milestones for Mode O-Modify
+
+#### Milestone 1: Updated Bespoke Output Framework
+
+- **Mode:** O-Modify
+- **Endpoint produced:** Updated bespoke OFF (same path as input) with the requested changes applied. Accompanied by a change summary documenting what was added, modified, or removed in each affected layer. Layer separation is preserved.
+- **Verification criterion:** (a) only the layers the user flagged for change are modified; the others are byte-identical to the prior version; (b) the change summary names every modification with rationale and identifies which layer it lives in; (c) the post-change framework re-passes Layer Separation Rigor (no layer leakage introduced); (d) if the change affects voice, the updated style layer remains faithful to mind.md.
+- **Layers covered:** Section V protocol
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Updated bespoke OFF markdown plus change summary block.
+- **Drift check question:** Are the changes scoped to the layers the user named, without incidental edits or layer-leakage regressions?
+
+### Milestones for Mode O-Render
+
+#### Milestone 1: Rendered Artifact
+
+- **Mode:** O-Render
+- **Endpoint produced:** Rendered artifact in the target format (.md / .html / .docx, or any format the OFF spec's render layer declares) at the user-specified output directory. Frontmatter or sidecar records which corpus sections fed the render, which mind.md sections were composed, and any missing-content notes per the corpus's missing-data behavior. Mechanical mode — canonical invocation is `/render <off-spec> <instance> [<dir>]`, which dispatches to `output_runtime.o_render`.
+- **Verification criterion:** Mechanical milestone — handled by the runtime function rather than a model pass. Prefer the slash command. Invoking via `/framework off …` produces a redirect notice rather than an artifact.
+- **Layers covered:** Section VI protocol
+- **Required prior milestones:** None
+- **Gear:** 1
+- **Output format:** Target-format artifact per the bespoke OFF's render-layer specification.
+- **Drift check question:** N/A — mechanical mode.
+
+### Milestones for Mode O-Audit
+
+#### Milestone 1: Bespoke Framework Audit Report
+
+- **Mode:** O-Audit
+- **Endpoint produced:** Scored evaluation of an existing bespoke OFF against the ten Section II evaluation criteria, with criterion-level scores (1–5) and specific remediation recommendations for any criterion below 4. The audit identifies layer leakage, craft-floor gaps, style-layer drift from mind.md, and render-layer underspecification.
+- **Verification criterion:** (a) every applicable evaluation criterion has a numeric score with rationale; (b) any score below 4 is accompanied by a specific remediation recommendation, not a generic exhortation; (c) cited findings reference specific sections of the audited framework rather than abstractions; (d) when mind.md is available, the style-layer faithfulness score reflects actual comparison against mind.md sections.
+- **Layers covered:** Section VII protocol
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Markdown audit report with per-criterion scores, findings, and remediation recommendations.
+- **Drift check question:** Does the audit cite specific elements of the audited framework, or does it produce generic feedback that could apply to any framework in the genre?
+
+---
+
 ## Section VIII: The Four-Layer Architecture
 
 Every bespoke framework OFF generates is structured as a composition of four layers. The layers are universal across all media and genres; their content is medium-and-genre specific.

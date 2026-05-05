@@ -1,0 +1,225 @@
+{
+  "ran_at": "2026-05-03T16:34:25",
+  "targets": 31,
+  "fixed": 31,
+  "failed": 0,
+  "rows": [
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2025-1-12/Mental Health Institution Experiences.md",
+      "pair_num": 29,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2023-12-26_19-15_meta-description-intellectually-know.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 5301
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2025-1-12/Purpose of Karma Meditation.md",
+      "pair_num": 44,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2024-10-24_18-17_line-edit-paraphrase-into.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 3103
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2025-8-27 (part 1)/American Jesus Narrative Outline.md",
+      "pair_num": 11,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-19_20-45_chapter-three-parables-luke.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 3294
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2025-8-27 (part 1)/Completing Bible Quotes from Matthew.md",
+      "pair_num": 1,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_13-57_biblical-referenceparablebiblical-textaj-hayzeus.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 77506
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2025-8-27 (part 1)/Completing Bible Quotes from Matthew.md",
+      "pair_num": 2,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_14-10_biblical-referenceparablebiblical-textaj-hayzeus.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 80769
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2025-8-27 (part 2)/Jesus' Biblical Quotes List.md",
+      "pair_num": 6,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_13-00_lamp-stand-said-bring.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 61470
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2025-8-27 (part 2)/Parable placement American Jesus.md",
+      "pair_num": 9,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_18-17_matthew-52the-parable-dragnet.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 14830
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2025-8-27 (part 2)/Placing Parables in Narrative.md",
+      "pair_num": 8,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-19_20-45_act-chapter-covenant-section.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 30961
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Claude/Claude 20250819 American Jesus Narrative Outline.md",
+      "pair_num": 11,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-19_20-45_chapter-three-parables-luke-pair011.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 3309
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Claude/Claude 20251227 Analyzing Ashley's mental state ....md",
+      "pair_num": 122,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-12-20_10-24_feel-love-adele-rain.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 5732
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Claude/Claude 20251227 Analyzing Ashley's mental state ....md",
+      "pair_num": 124,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-12-20_13-49_depth-problem-hadn-really.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 1904
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250808 Jesus' Biblical Quotes List.md",
+      "pair_num": 6,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_13-00_parabletext-lamp-standhe-said.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 61455
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250808 Parable placement American Jesus.md",
+      "pair_num": 12,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_18-17_matthew-52the-parable-dragnet-pair012.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 14832
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250809 Completing Bible Quotes from Mat....md",
+      "pair_num": 3,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_13-12_biblical-referenceparabletext-mark-25the.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 62504
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250809 Completing Bible Quotes from Mat....md",
+      "pair_num": 5,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_13-57_biblical-referenceparablebiblical-textaj-hayzeus-pair005.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 77521
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250809 Completing Bible Quotes from Mat....md",
+      "pair_num": 6,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_14-10_biblical-referenceparablebiblical-textaj-hayzeus-pair006.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 80746
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250810 Bible Quotes for American Jesus ....md",
+      "pair_num": 2,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-08_18-36_biblical-referenceparablebiblical-textaj-luke.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 81350
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250810 Bible Quotes for American Jesus ....md",
+      "pair_num": 5,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-10_10-07_matthew-42do-among-gentiles.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 4017
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250810 Bible Quotes for American Jesus ....md",
+      "pair_num": 11,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-10_15-45_matthew-44watch-out-one.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 6032
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250812 Bible Quotes for American Jesus ....md",
+      "pair_num": 2,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-11_13-58_biblical-referencebiblical-textaj-chayzeus.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 36801
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250812 Bible Quotes for American Jesus ....md",
+      "pair_num": 11,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-11_18-50_luke-34therefore-tell-worry.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 3007
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250814 Bible Quotes for American Jesus ....md",
+      "pair_num": 4,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-13_15-16_biblical-referencebiblical-textaj-chayzeus.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 108250
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250815 Ready for Next Instructions.md",
+      "pair_num": 2,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-14_17-34_biblical-referencebiblical-textaj-chayzeus.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 57594
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250816 Outline Review Complete, Ready f....md",
+      "pair_num": 1,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-15_20-08_american-jesus-themes-concepts.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 599965
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250817 Ready for Next Instructions.md",
+      "pair_num": 1,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-16_15-28_american-jesus-themes-concepts.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 624522
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250818 Project Review and Parable Place....md",
+      "pair_num": 1,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-17_13-04_american-jesus-themes-concepts.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 646104
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250819 Placing Parables in Narrative.md",
+      "pair_num": 1,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-19_09-54_american-jesus-themes-concepts.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 698902
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250819 Placing Parables in Narrative.md",
+      "pair_num": 8,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-19_10-37_act-chapter-outline-michael.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 127597
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250819 _American Jesus_ Outline Review ....md",
+      "pair_num": 1,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-18_13-59_american-jesus-themes-concepts.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 795379
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250819 _American Jesus_ Outline Review ....md",
+      "pair_num": 5,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-18_15-53_act-chapter-outline-view.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 18603
+    },
+    {
+      "source_raw": "/Users/oracle/Documents/conversations/raw/Raw Chats 2026-3-19 Gemini/Gemini 20250819 _American Jesus_ Outline Review ....md",
+      "pair_num": 13,
+      "cleaned_pair_path": "/Users/oracle/Documents/Commercial AI archives/2025-08-18_16-25_act-chapter-pharisees-refinement.md",
+      "model_used": "gemini-2.5-flash",
+      "new_user_input_chars": 11195
+    }
+  ]
+}

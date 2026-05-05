@@ -133,6 +133,25 @@
   padding: 2px 0;
   border-bottom: 1px solid var(--background-modifier-border);
   margin-bottom: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-group-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 0 5px;
+  min-width: 16px;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.sidebar-group-count[data-count="0"] {
+  display: none;
 }
 
 .sidebar-group-empty {
@@ -286,4 +305,200 @@
 @keyframes pending-pulse {
   0%, 100% { opacity: 0.35; }
   50%      { opacity: 1; }
+}
+
+/* ── Sidebar accordion (Conversations / Paused / Operating) ─────────────
+   Three super-sections, mutually exclusive expansion. Closes deferred
+   handoff item #8: oversight panels. */
+
+.sidebar-accordion {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 2px;
+}
+
+.sidebar-supergroup {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-supergroup[data-expanded="true"] {
+  flex: 1;
+}
+
+.sidebar-supergroup-header {
+  appearance: none;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--text-normal);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--background-modifier-border);
+  text-align: left;
+  width: 100%;
+}
+
+.sidebar-supergroup-header:hover {
+  background: var(--background-modifier-hover);
+}
+
+.sidebar-supergroup-arrow {
+  display: inline-block;
+  font-size: 10px;
+  width: 12px;
+  color: var(--text-muted);
+}
+
+.sidebar-supergroup-label {
+  flex: 1;
+}
+
+.sidebar-supergroup-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 0 6px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.sidebar-supergroup-count[data-count="0"] {
+  display: none;
+}
+
+.sidebar-supergroup-body {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 4px;
+}
+
+.sidebar-supergroup[data-expanded="true"] > .sidebar-supergroup-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Oversight list cards (Paused + Operating) ───────────────────────── */
+
+.oversight-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oversight-list:empty::before {
+  content: "—";
+  display: block;
+  color: var(--text-faint, var(--text-muted));
+  font-style: italic;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.oversight-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--background-secondary, transparent);
+  border: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.oversight-card:hover {
+  background: var(--background-modifier-hover);
+}
+
+.oversight-card[data-engagement="unseen"] .oversight-card-name {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.oversight-card-name {
+  color: var(--text-normal);
+  word-break: break-word;
+}
+
+.oversight-card-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.oversight-card-meta .badge {
+  background: var(--background-modifier-border);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.oversight-card-meta .badge.discussing {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, white);
+}
+
+.oversight-card-name-edit {
+  width: 100%;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.oversight-detail {
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.oversight-detail-reasoning {
+  white-space: pre-wrap;
+  color: var(--text-normal);
+  margin-bottom: 8px;
+}
+
+.oversight-detail-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.oversight-detail-actions button {
+  appearance: none;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary, transparent);
+  color: var(--text-normal);
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.oversight-detail-actions button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.oversight-detail-actions .primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, white);
+  border-color: var(--interactive-accent);
 }

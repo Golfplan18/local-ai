@@ -7,7 +7,5 @@
   "interrupted_input": "What am I missing in this diagram?",
   "interrupted_at": "2026-05-01T15:34:32.359254Z",
   "interrupted_submission_id": "20260501T153432359225Z-235c4ee2",
-  "last_status": "errored",
-  "last_error_summary": "Server interrupted before pipeline completed. Your submission was captured to disk and recovered on restart.",
-  "last_errored_at": "2026-05-02T15:57:41"
+  "last_read_at": "2026-05-04T08:46:28"
 }

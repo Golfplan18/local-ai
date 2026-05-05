@@ -677,6 +677,64 @@ C-Validate checks a corpus instance for completeness against its template.
 
 ---
 
+## MILESTONES DELIVERED
+
+This framework's declaration of the per-mode milestones it can deliver. CFF is a four-mode framework: two model-driven design modes (C-Design, C-Modify) that produce or update corpus templates, and two mechanical modes (C-Instance, C-Validate) that operate on existing templates and instances. The mechanical modes are canonically invoked via the runtime slash commands `/instance` and `/validate`, which call `corpus_runtime.c_instance` and `corpus_runtime.c_validate` directly; their milestone declarations exist for routing parity but should be invoked via the slash commands rather than via `/framework cff …`. All milestone properties are defined inline per milestone.
+
+### Milestones for Mode C-Design
+
+#### Milestone 1: Bespoke Corpus Template
+
+- **Mode:** C-Design
+- **Endpoint produced:** New corpus template markdown file with frontmatter declaring `type: corpus_template` and `template_version`, a `## Sections` block listing every section with its `id`, `name`, `source` PFF (or "derived" / "chain"), `cadence`, `missing_data_behavior` (hold-and-warn / default-empty / fail-render / use-stale-with-warning), and any `chain_input` or `chain_output` declarations. The template reflects the workflow the user described: one section per input PFF, plus derived sections that synthesize across other sections, plus chain sections when this corpus is fed by or feeds another corpus.
+- **Verification criterion:** (a) every section has a non-empty `id`, `name`, and `missing_data_behavior`; (b) the section set covers each input PFF the user named at least once; (c) the cadence and identifier convention are stated and consistent with the workflow's reporting rhythm; (d) any chain relationship is declared on both sides (`chain_input` on the consumer + matching `chain_output` on the producer if both corpora are described); (e) the template scores 3 or above on Workflow Triage Accuracy, Section Architecture Coherence, and Cross-Reference Validity per Section II.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Markdown corpus template per Section VIII (Corpus Template Format Specification), including frontmatter, `## Sections` block, optional `## Chain Relationships`, and `## Template Metadata`.
+- **Drift check question:** Does the produced template reflect the workflow the user actually described, with sections that map to their named PFFs and a cadence that matches their reporting rhythm — rather than a framework-default workflow shape the user did not endorse?
+
+### Milestones for Mode C-Modify
+
+#### Milestone 1: Updated Corpus Template
+
+- **Mode:** C-Modify
+- **Endpoint produced:** Updated corpus template (same path as input) with the requested changes applied. Accompanied by a change summary in the form of a Decision-Log-style note recording what was added, modified, or removed and why. Frontmatter `template_version` is incremented. Existing instances created from prior versions are not modified.
+- **Verification criterion:** (a) only the requested changes are made — sections, chain relationships, or metadata not flagged for change are byte-identical to the prior version; (b) the change summary names every modification with rationale; (c) `template_version` is incremented; (d) Cross-Reference Validity (Section II §4) is re-verified after the change.
+- **Layers covered:** Section V protocol
+- **Required prior milestones:** None
+- **Gear:** 4
+- **Output format:** Updated markdown corpus template plus change summary block.
+- **Drift check question:** Are the changes scoped strictly to what the user requested, with no incidental edits to unrelated sections?
+
+### Milestones for Mode C-Instance
+
+#### Milestone 1: New Corpus Instance
+
+- **Mode:** C-Instance
+- **Endpoint produced:** Fresh corpus instance file at `~/Documents/vault/Corpus Instances/<template-slug>-<period>.md` with frontmatter recording template, template_version, period, and creation timestamp; section scaffold with empty bodies ready to receive PFF outputs. Mechanical mode — canonical invocation is `/instance <template> <period> [<dir>]`, which dispatches to `corpus_runtime.c_instance`.
+- **Verification criterion:** Mechanical milestone — handled by the runtime function rather than a model pass. Prefer the slash command. Invoking via `/framework cff …` produces a redirect notice rather than an instance.
+- **Layers covered:** Section VI protocol
+- **Required prior milestones:** None
+- **Gear:** 1
+- **Output format:** Corpus instance markdown per Section IX (Corpus Instance Format Specification).
+- **Drift check question:** N/A — mechanical mode.
+
+### Milestones for Mode C-Validate
+
+#### Milestone 1: Instance Validation Report
+
+- **Mode:** C-Validate
+- **Endpoint produced:** Validation report listing per-section population status (filled / partial / empty / blocked), overall instance status (PASS / PARTIAL / FAIL), and any missing sections relative to the template. Mechanical mode — canonical invocation is `/validate <instance> [<template>]`, which dispatches to `corpus_runtime.c_validate`.
+- **Verification criterion:** Mechanical milestone — handled by the runtime function rather than a model pass. Prefer the slash command.
+- **Layers covered:** Section VII protocol
+- **Required prior milestones:** None
+- **Gear:** 1
+- **Output format:** Structured validation report (markdown).
+- **Drift check question:** N/A — mechanical mode.
+
+---
+
 ## Section VIII: Corpus Template Format Specification
 
 A corpus template is a markdown file with YAML frontmatter and a structured body. The format is human-readable, version-controllable, and parseable by C-Modify, C-Instance, and C-Validate.

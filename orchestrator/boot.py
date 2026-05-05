@@ -4664,15 +4664,44 @@ def run_pipeline(user_input: str, history: list = None,
     """
     config = load_endpoints()
 
+    # --- Runtime slash-command short-circuit ---
+    # /instance, /validate, /render, /queue, /approve, /deny — mechanical
+    # meta-layer runtime operations. No model endpoint or pipeline state
+    # required; handled before the framework executor because they're
+    # cheaper and more deterministic.
+    from slash_commands import is_runtime_command, run_runtime_command
+    if is_runtime_command(user_input):
+        return run_runtime_command(user_input)
+
+    # --- Mid-framework continuation short-circuit ---
+    # If the most recent assistant message in history carries an elicitation
+    # marker, route the user's reply to the elicitation handler. Conversation
+    # IS the state — no persistence file.
+    import framework_elicitation
+    continuation_ctx = framework_elicitation.is_continuation(history or [])
+    if continuation_ctx is not None:
+        return framework_elicitation.continue_elicitation(
+            continuation_ctx, history or [], config,
+            latest_user_text=user_input,
+        )
+
     # --- Framework slash-command short-circuit ---
-    # Detect explicit /framework invocations and route to the layered
-    # milestone executor. Bypasses Phase A.5 cleanup, mode classification,
-    # and the standard gear branches — framework invocations are explicit
-    # and structured. The milestone executor handles its own structured
-    # handoff between layers.
-    from milestone_executor import is_framework_command, run_framework_command
+    # Detect explicit /framework invocations. With a query → one-shot;
+    # without a query → interactive multi-turn elicitation.
+    from milestone_executor import (
+        is_framework_command, framework_command_has_query,
+        run_framework_command, parse_framework_command,
+    )
     if is_framework_command(user_input):
-        return run_framework_command(user_input, config)
+        if framework_command_has_query(user_input):
+            return run_framework_command(user_input, config)
+        try:
+            framework_name, _ = parse_framework_command(user_input)
+        except ValueError as exc:
+            return f"[Framework command error: {exc}]"
+        return framework_elicitation.start_elicitation(
+            framework_name, history or [], config,
+        )
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
     # Build conversation context from recent history

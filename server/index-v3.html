@@ -318,33 +318,40 @@
           </div>
         </div>
 
-        <div class="sidebar-supergroup" data-super="paused" data-expanded="false">
+        <div class="sidebar-supergroup" data-super="processes" data-expanded="false">
           <button class="sidebar-supergroup-header" type="button"
-                  data-super-toggle="paused"
+                  data-super-toggle="processes"
                   aria-expanded="false">
             <span class="sidebar-supergroup-arrow">▸</span>
-            <span class="sidebar-supergroup-label">Paused</span>
-            <span class="sidebar-supergroup-count" id="sidebarPausedCount"
+            <span class="sidebar-supergroup-label">Automated Processes</span>
+            <span class="sidebar-supergroup-count" id="sidebarProcessesCount"
                   data-count="0">0</span>
           </button>
           <div class="sidebar-supergroup-body">
-            <div class="oversight-list" id="oversightPausedList"
-                 aria-label="Paused queue entries"></div>
-          </div>
-        </div>
-
-        <div class="sidebar-supergroup" data-super="operating" data-expanded="false">
-          <button class="sidebar-supergroup-header" type="button"
-                  data-super-toggle="operating"
-                  aria-expanded="false">
-            <span class="sidebar-supergroup-arrow">▸</span>
-            <span class="sidebar-supergroup-label">Operating</span>
-            <span class="sidebar-supergroup-count" id="sidebarOperatingCount"
-                  data-count="0">0</span>
-          </button>
-          <div class="sidebar-supergroup-body">
-            <div class="oversight-list" id="oversightOperatingList"
-                 aria-label="Operating items"></div>
+            <div class="sidebar-groups">
+              <!-- Paused: queue entries waiting on user resolution. Mirrors
+                   the Pinned/Unread/Active inner-group pattern used by
+                   Conversations above. -->
+              <div class="sidebar-group" data-group="paused">
+                <div class="sidebar-group-label">
+                  Paused
+                  <span class="sidebar-group-count" id="sidebarPausedCount"
+                        data-count="0">0</span>
+                </div>
+                <div class="oversight-list" id="oversightPausedList"
+                     aria-label="Paused queue entries"></div>
+              </div>
+              <!-- Operating: long-running tasks in motion. Read-only in v1. -->
+              <div class="sidebar-group" data-group="operating">
+                <div class="sidebar-group-label">
+                  Operating
+                  <span class="sidebar-group-count" id="sidebarOperatingCount"
+                        data-count="0">0</span>
+                </div>
+                <div class="oversight-list" id="oversightOperatingList"
+                     aria-label="Operating items"></div>
+              </div>
+            </div>
           </div>
         </div>
 

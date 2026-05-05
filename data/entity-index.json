@@ -12,5 +12,79 @@
     "howard marks"
   ],
   "For example, rent control first reduces rent but second\u2011order reduces housing supply": [],
-  "A first\u2011order view might be \u201cThis company has good earnings, so the stock will rise.\u201d": []
+  "A first\u2011order view might be \u201cThis company has good earnings, so the stock will rise.\u201d": [],
+  "Frameworks are typically documented, shared, and designed to be applied repeatedly across different situations": [],
+  "The definition of a mental model - this is a core knowledge claim": [],
+  "The definition of a framework - this is another core knowledge claim-1": [],
+  "Mental models are best used when you need rapid, personal insight, such as anticipating reactions or troubleshooting on the fly-1": [],
+  "Combined gas expansion can increase the dough's volume by 2-3 times before the structure sets": [],
+  "Mental models serve quick intuition and personal decision-making, while frameworks support systematic analysis, communication, and repeatable processes-1": [],
+  "A framework is an external, structured set of concepts, principles, or components that organizes thinking about a domain-1": [],
+  "Water in the dough converts to steam, generating additional internal pressure that pushes dough walls outward": [],
+  "The definition of a framework - this is another core knowledge claim": [],
+  "A mental model is an internal, often informal, cognitive representation that a person builds to understand how something works": [],
+  "A framework is an external, structured set of concepts, principles, or components that organizes thinking about a domain": [],
+  "Mental models are specific to an individual's perspective, while frameworks are generalizable to many users or projects": [],
+  "The text shows a conversation where a user asks What is 2+2": [
+    "what is 2+2?"
+  ],
+  "The only knowledge claim is 2 + 2 = 4-1": [
+    "2 + 2 = 4"
+  ],
+  "But this is explicitly a trivialwell-known fact that I'm instructed to skip": [],
+  "A mental model is an internal, often informal, cognitive representation that a person builds to understand how something works-1": [],
+  "A user question asking for 2+2-1": [],
+  "But this is explicitly a trivialwell-known fact that I'm instructed to skip-1": [],
+  "Trapped carbon dioxide bubbles expand rapidly as temperature rises during baking": [],
+  "Yeast continues producing CO2 until the dough reaches approximately 60\u00b0C, after which fermentation stops": [],
+  "A user question asking for 2+2": [],
+  "The definition of a mental model - this is a core knowledge claim-1": [],
+  "People systematically attribute others' behavior to character while attributing their own behavior to situational circumstances": [],
+  "Starch granules gelatinize and absorb water, forming a rigid matrix that locks the expanded structure in place": [],
+  "The key differences between them (location, formality, scope, purpose, evolution)": [],
+  "A response offering assistance and listing available services": [],
+  "The text shows a conversation where a user asks What is 2+2-1": [
+    "what is 2+2?"
+  ],
+  "Mental models grow organically and may be incomplete, while frameworks are deliberately designed, iterated, and versioned-1": [],
+  "Mental models are best used when you need rapid, personal insight, such as anticipating reactions or troubleshooting on the fly": [],
+  "Frameworks are best used when coordinating teams, ensuring consistency, or applying proven methods to complex problems": [],
+  "Mental models serve quick intuition and personal decision-making, while frameworks support systematic analysis, communication, and repeatable processes": [],
+  "Version incompatibilities between dependencies can manifest as intermittent failures depending on resolution order or caching": [],
+  "Mental models grow organically and may be incomplete, while frameworks are deliberately designed, iterated, and versioned": [],
+  "Frameworks are typically documented, shared, and designed to be applied repeatedly across different situations-1": [],
+  "People judge whether something belongs to a category by how closely it resembles their mental prototype rather than by statistical evidence": [],
+  "The key differences between them (location, formality, scope, purpose, evolution)-1": [],
+  "The only knowledge claim is 2 + 2 = 4": [
+    "2 + 2 = 4"
+  ],
+  "Gluten proteins denature during baking, contributing to structural setting": [],
+  "Frameworks are best used when coordinating teams, ensuring consistency, or applying proven methods to complex problems-1": [],
+  "Mental models are specific to an individual's perspective, while frameworks are generalizable to many users or projects-1": [],
+  "SQL databases use normalization to reduce redundancy while NoSQL databases embrace denormalization to reduce the need for joins": [
+    "sql"
+  ],
+  "SQL uses schema-on-write with rigid structure while NoSQL uses schema-on-read with flexible structure": [
+    "sql"
+  ],
+  "The boundary between SQL and NoSQL is blurring as each adopts features from the other (e.g., PostgreSQL's JSONB, MongoDB's multi-document transactions)": [
+    "sql",
+    "jsonb"
+  ],
+  "The choice between SQL and NoSQL should be driven by actual constraints rather than categorical preferences": [
+    "sql"
+  ],
+  "The CAP theorem forces SQL databases to prioritize consistency and partition tolerance (CP) while many NoSQL systems prioritize availability and partition tolerance (AP)": [
+    "cap",
+    "sql"
+  ],
+  "SQL provides standardized query language with native JOIN support while NoSQL has fragmented APIs with JOINs often pushed to the application layer": [
+    "sql",
+    "join",
+    "apis",
+    "joins"
+  ],
+  "SQL databases scale vertically first while NoSQL databases are designed for horizontal scaling from the ground up": [
+    "sql"
+  ]
 }

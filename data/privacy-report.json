@@ -1,0 +1,27 @@
+{
+  "sessions_total": 3710,
+  "pairs_total": 39081,
+  "pass_a_hits": 2876,
+  "pass_b_session_hits": 116,
+  "pass_b_cost": 1.518318000000001,
+  "pass_b_input_tokens": 1458018,
+  "pass_b_output_tokens": 12060,
+  "duration_secs": 291.1917375830235,
+  "pairs_flagged_after_propagation": 4208,
+  "thread_propagation_added": 531,
+  "chain_propagation_added": 316,
+  "chains_propagated": 234,
+  "applied_counts": {
+    "cleaned_pair_files": 4208,
+    "chunk_files": 0,
+    "atomic_notes": 10761,
+    "source_notes": 223,
+    "chromadb_chunks": 4208
+  },
+  "by_method": {
+    "keyword": 2876,
+    "thread-prop": 531,
+    "chain-prop": 316,
+    "llm-session": 485
+  }
+}

@@ -47,6 +47,17 @@ from scratch import ScratchSession
 
 MAX_RETRIES = 3
 DRIFT_CHECK_SLOT = "sidebar"  # small model, cheap
+MODE_SELECT_SLOT = "sidebar"  # routing classifier; small model is sufficient
+
+# Mechanical modes are runtime-handled, not model-driven. Routing one through
+# /framework would otherwise produce model hallucination of an artifact rather
+# than actually creating a file. Instead we short-circuit and return a
+# redirect notice pointing at the matching slash command.
+MECHANICAL_MODE_REDIRECTS = {
+    "C-Instance": "/instance <template> <period> [<instance-dir>]",
+    "C-Validate": "/validate <instance> [<template>]",
+    "O-Render": "/render <off-spec> <instance> [<output-dir>]",
+}
 
 
 # ---------- Result types ----------
@@ -71,6 +82,8 @@ class FrameworkExecutionResult:
     success: bool
     failure_reason: Optional[str] = None
     duration_seconds: float = 0.0
+    mode: str = "all"             # "all" for single-mode; mode name for multi-mode
+    mode_reasoning: str = ""       # how the mode was selected (for transparency)
 
 
 class MilestoneExecutionError(Exception):
@@ -85,18 +98,36 @@ def execute_framework(
     user_input: str,
     config: Optional[dict] = None,
     execution_id: Optional[str] = None,
+    project_nexus: Optional[str] = None,
 ) -> FrameworkExecutionResult:
     """Execute a framework on the given user input.
 
     Returns a FrameworkExecutionResult. On success, scratch is cleaned up.
     On failure, scratch is preserved for inspection or resume.
 
-    For multi-mode frameworks: only single-mode execution is supported in
-    the MVP. Multi-mode invocations require explicit mode selection (TODO:
-    M0 routing wiring).
+    Multi-mode frameworks (PEF, MOM, Process Formalization, etc.): the
+    executor calls ``select_mode`` to choose which mode to run, then
+    executes only that mode's declared milestones. Selection priority:
+    explicit prefix in user input → mode name mentioned in user input →
+    LLM-based routing classifier → first declared mode. The chosen mode
+    and the reasoning are recorded on the result and emitted with the
+    oversight events.
+
+    project_nexus: optional. When set, framework-level oversight events
+    are emitted with the project context for the meta-layer's Layer B
+    routing (see Reference — Meta-Layer Architecture). When None, events
+    fire with project_nexus=None and the oversight router filters them out.
     """
     # Lazy import of boot.py to avoid circular issues during testing
     from boot import load_endpoints
+
+    # Lazy import of oversight events — keeps the executor usable
+    # standalone when no oversight infrastructure is loaded.
+    try:
+        from oversight_events import emit as emit_oversight_event
+    except ImportError:
+        def emit_oversight_event(_evt):  # type: ignore
+            return None
 
     if config is None:
         config = load_endpoints()
@@ -104,57 +135,154 @@ def execute_framework(
     fw = parse_framework_file(framework_path)
 
     if fw.is_multi_mode:
-        raise NotImplementedError(
-            f"Framework {fw.name!r} is multi-mode. The MVP executor supports "
-            "single-mode frameworks only. Multi-mode routing (M0) is a "
-            "follow-up build item."
+        selected_mode, mode_reasoning, effective_input = select_mode(
+            fw, user_input, config
         )
-
-    milestones = fw.milestones_by_mode.get("all", [])
-    if not milestones:
-        raise FrameworkParseError(
-            f"Framework {fw.name!r} declared no milestones to execute."
-        )
+        milestones = fw.milestones_by_mode.get(selected_mode, [])
+        if not milestones:
+            raise FrameworkParseError(
+                f"Framework {fw.name!r} has no milestones declared for mode "
+                f"{selected_mode!r}."
+            )
+        # Mechanical-mode redirect — short-circuit before scratch / model calls.
+        if selected_mode in MECHANICAL_MODE_REDIRECTS:
+            return _build_mechanical_redirect(
+                fw, selected_mode, mode_reasoning, effective_input,
+                execution_id=execution_id,
+            )
+    else:
+        selected_mode = "all"
+        mode_reasoning = "single-mode framework"
+        effective_input = user_input
+        milestones = fw.milestones_by_mode.get("all", [])
+        if not milestones:
+            raise FrameworkParseError(
+                f"Framework {fw.name!r} declared no milestones to execute."
+            )
 
     scratch = ScratchSession.create(fw.name, execution_id=execution_id)
     started = time.time()
     results: list[MilestoneResult] = []
 
+    # ---- Oversight hook: FrameworkStarted ----
+    emit_oversight_event({
+        "event_type": "FrameworkStarted",
+        "framework_id": fw.name,
+        "mode": selected_mode,
+        "mode_reasoning": mode_reasoning,
+        "execution_id": scratch.execution_id,
+        "project_nexus": project_nexus,
+        "user_input": effective_input,
+    })
+
     try:
         for milestone in milestones:
-            result = _run_milestone(fw, milestone, scratch, user_input, config)
+            result = _run_milestone(fw, milestone, scratch, effective_input, config)
             results.append(result)
+
+            # ---- Oversight hook: MilestoneComplete ----
+            emit_oversight_event({
+                "event_type": "MilestoneComplete",
+                "framework_id": fw.name,
+                "mode": selected_mode,
+                "execution_id": scratch.execution_id,
+                "milestone_id": milestone.id,
+                "milestone_name": milestone.name,
+                "deliverable_path": str(getattr(scratch, "session_dir", "")),
+                "drift_status": result.drift_status,
+                "drift_reasoning": result.drift_reasoning,
+                "project_nexus": project_nexus,
+            })
+
             if result.drift_status == "DRIFT_DETECTED":
                 # MVP behavior: log and continue. Future: pause / surface.
                 # Drift is recorded in result.drift_reasoning.
                 pass
+
         # Final output = last milestone's deliverable
         final_output = results[-1].deliverable if results else ""
         scratch.mark_complete()
+
+        # ---- Oversight hook: FrameworkComplete (success) ----
+        emit_oversight_event({
+            "event_type": "FrameworkComplete",
+            "framework_id": fw.name,
+            "mode": selected_mode,
+            "execution_id": scratch.execution_id,
+            "final_output_path": str(getattr(scratch, "session_dir", "")),
+            "milestones": [
+                {
+                    "milestone_id": r.milestone_id,
+                    "name": r.name,
+                    "drift_status": r.drift_status,
+                    "attempts": r.attempts,
+                }
+                for r in results
+            ],
+            "project_nexus": project_nexus,
+            "success": True,
+        })
+
         scratch.cleanup()
         return FrameworkExecutionResult(
             framework_name=fw.name,
             execution_id=scratch.execution_id,
-            user_input=user_input,
+            user_input=effective_input,
             milestones=results,
             final_output=final_output,
             success=True,
             duration_seconds=time.time() - started,
+            mode=selected_mode,
+            mode_reasoning=mode_reasoning,
         )
     except MilestoneExecutionError as exc:
         scratch.mark_failed(
             milestone_id=results[-1].milestone_id if results else "unknown",
             reason=str(exc),
         )
+
+        # ---- Oversight hook: FrameworkComplete (failure) + MilestoneBlocked ----
+        emit_oversight_event({
+            "event_type": "MilestoneBlocked",
+            "framework_id": fw.name,
+            "mode": selected_mode,
+            "execution_id": scratch.execution_id,
+            "milestone_id": results[-1].milestone_id if results else "unknown",
+            "block_reason": str(exc),
+            "block_evidence": "",
+            "project_nexus": project_nexus,
+        })
+        emit_oversight_event({
+            "event_type": "FrameworkComplete",
+            "framework_id": fw.name,
+            "mode": selected_mode,
+            "execution_id": scratch.execution_id,
+            "final_output_path": "",
+            "milestones": [
+                {
+                    "milestone_id": r.milestone_id,
+                    "name": r.name,
+                    "drift_status": r.drift_status,
+                    "attempts": r.attempts,
+                }
+                for r in results
+            ],
+            "project_nexus": project_nexus,
+            "success": False,
+            "failure_reason": str(exc),
+        })
+
         return FrameworkExecutionResult(
             framework_name=fw.name,
             execution_id=scratch.execution_id,
-            user_input=user_input,
+            user_input=effective_input,
             milestones=results,
             final_output="",
             success=False,
             failure_reason=str(exc),
             duration_seconds=time.time() - started,
+            mode=selected_mode,
+            mode_reasoning=mode_reasoning,
         )
 
 
@@ -429,6 +557,195 @@ def _parse_drift_response(response: str) -> tuple[str, str]:
     return (status, reasoning)
 
 
+# ---------- Multi-mode dispatch ----------
+
+def _build_mechanical_redirect(
+    fw: Framework,
+    selected_mode: str,
+    mode_reasoning: str,
+    effective_input: str,
+    execution_id: Optional[str] = None,
+) -> FrameworkExecutionResult:
+    """Return a FrameworkExecutionResult that redirects the user to the
+    matching slash command instead of running the gear pipeline.
+
+    Mechanical modes (C-Instance / C-Validate / O-Render) are handled by
+    runtime functions, not by model passes. Running them through /framework
+    would produce a hallucinated artifact rather than actually creating a
+    file. This redirect surfaces the canonical invocation so the user can
+    re-issue the request via the slash command.
+    """
+    slash_form = MECHANICAL_MODE_REDIRECTS[selected_mode]
+    body = (
+        f"**{fw.name} — mode {selected_mode} is mechanical.**\n\n"
+        f"This mode is handled by the runtime, not by the framework executor. "
+        f"To run it, use:\n\n"
+        f"```\n{slash_form}\n```\n\n"
+        f"Routing detail: {mode_reasoning}.\n"
+    )
+    if effective_input:
+        body += f"\nYour input was: {effective_input!r}"
+
+    exec_id = execution_id or "no-execution"
+    return FrameworkExecutionResult(
+        framework_name=fw.name,
+        execution_id=exec_id,
+        user_input=effective_input,
+        milestones=[],
+        final_output=body,
+        success=True,
+        duration_seconds=0.0,
+        mode=selected_mode,
+        mode_reasoning=mode_reasoning,
+    )
+
+
+def select_mode(
+    fw: Framework, user_input: str, config: dict
+) -> tuple[str, str, str]:
+    """Pick the operating mode for a multi-mode framework.
+
+    Selection priority:
+      1. Explicit prefix — first whitespace-separated token of user_input
+         matches one of the framework's declared modes (case-insensitive).
+         The token is consumed; remaining text becomes the effective input.
+      2. In-input mention — any declared mode name appears anywhere in
+         user_input (case-insensitive). First match wins. effective_input
+         is the original user_input.
+      3. LLM-based routing classifier — small-model call with the M0 routing
+         function text and a one-line catalog of modes. Skipped when no
+         endpoint is available.
+      4. Default to the first declared mode.
+
+    Returns (mode, reasoning, effective_input). For single-mode frameworks
+    or frameworks with no declared modes, returns ("all", reason, user_input).
+    """
+    if not fw.is_multi_mode or not fw.modes:
+        return ("all", "single-mode framework", user_input)
+
+    # 1. Explicit prefix
+    parts = user_input.strip().split(maxsplit=1)
+    if parts:
+        first = parts[0]
+        for mode_name in fw.modes:
+            if first.lower() == mode_name.lower():
+                remaining = parts[1] if len(parts) > 1 else ""
+                return (
+                    mode_name,
+                    f"explicit prefix: first token matched mode {mode_name!r}",
+                    remaining,
+                )
+
+    # 2. In-input mention
+    lower_input = user_input.lower()
+    for mode_name in fw.modes:
+        if mode_name.lower() in lower_input:
+            return (
+                mode_name,
+                f"mode {mode_name!r} mentioned in user input",
+                user_input,
+            )
+
+    # 3. LLM-based routing classifier
+    selected = _llm_select_mode(fw, user_input, config)
+    if selected:
+        mode, reasoning = selected
+        return (mode, reasoning, user_input)
+
+    # 4. Default to first declared mode
+    first_mode = fw.modes[0]
+    return (
+        first_mode,
+        f"no mode signal detected; defaulting to first declared mode "
+        f"{first_mode!r}",
+        user_input,
+    )
+
+
+def _llm_select_mode(
+    fw: Framework, user_input: str, config: dict
+) -> Optional[tuple[str, str]]:
+    """Ask a small model to pick a mode given the user input.
+
+    Returns (mode, reasoning) on success, None on failure or when no
+    endpoint is available. The selected mode is matched against
+    fw.modes case-insensitively; an out-of-list response yields None.
+    """
+    try:
+        from boot import call_model, get_slot_endpoint, get_active_endpoint
+    except Exception:
+        return None
+
+    endpoint = (
+        get_slot_endpoint(config, MODE_SELECT_SLOT)
+        or get_active_endpoint(config)
+    )
+    if endpoint is None:
+        return None
+
+    catalog = _build_mode_catalog(fw)
+
+    prompt = (
+        "You are a routing classifier for a multi-mode framework. Read the "
+        "framework's mode catalog and the user's request, then pick the single "
+        "best-fit mode.\n\n"
+        f"FRAMEWORK: {fw.name}\n\n"
+        f"MODE CATALOG:\n{catalog}\n\n"
+        f"USER REQUEST:\n{user_input}\n\n"
+        "Answer in this exact format:\n"
+        "MODE: <one mode name from the catalog, exactly as written>\n"
+        "REASONING: <one sentence>"
+    )
+    messages = [
+        {"role": "system", "content": "You are a careful routing classifier."},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        response = call_model(messages, endpoint)
+    except Exception:
+        return None
+
+    return _parse_mode_response(response, fw.modes)
+
+
+def _build_mode_catalog(fw: Framework) -> str:
+    """Construct a short catalog string for the routing classifier prompt."""
+    lines: list[str] = []
+    if fw.m0_routing and fw.m0_routing.function:
+        lines.append(f"Routing function: {fw.m0_routing.function}")
+        lines.append("")
+    for mode_name in fw.modes:
+        ms_list = fw.milestones_by_mode.get(mode_name, [])
+        if ms_list:
+            lines.append(f"- {mode_name}: {ms_list[0].name}")
+        else:
+            lines.append(f"- {mode_name}")
+    return "\n".join(lines)
+
+
+def _parse_mode_response(
+    response: str, valid_modes: list[str]
+) -> Optional[tuple[str, str]]:
+    """Extract MODE and REASONING from the routing response.
+
+    Returns None if no MODE line is found or the value isn't a declared mode.
+    """
+    import re
+    m = re.search(r"MODE:\s*(\S+)", response, re.I)
+    if not m:
+        return None
+    raw_mode = m.group(1).strip().rstrip(".,;:")
+    for vm in valid_modes:
+        if raw_mode.lower() == vm.lower():
+            r = re.search(r"REASONING:\s*(.+)", response, re.I | re.DOTALL)
+            reasoning = (
+                r.group(1).strip()[:300] if r else "selected by routing classifier"
+            )
+            return (vm, f"routing classifier picked {vm!r}: {reasoning}")
+    return None
+
+
 # ---------- Slash-command invocation ----------
 
 FRAMEWORK_COMMAND_PREFIX = "/framework "
@@ -440,32 +757,59 @@ def is_framework_command(user_input: str) -> bool:
 
 
 def parse_framework_command(user_input: str) -> tuple[str, str]:
-    """Parse '/framework <name> <query>' into (framework_filename, query).
+    """Parse '/framework <name> [<query>]' into (framework_filename, query).
 
     framework_filename gets .md appended if not already present.
-    Raises ValueError on missing parts.
+    Raises ValueError if the framework name is missing.
+
+    An empty query is allowed and returned as "". The caller decides how to
+    handle it: ``run_framework_command`` treats empty as an error (it expects
+    a one-shot invocation), while ``framework_elicitation.start_elicitation``
+    treats empty as the trigger for an interactive multi-turn session.
+
+    Multi-mode dispatch: the executor inspects the query for a mode token
+    (either as the first word or anywhere in the body). To force a specific
+    mode, prefix the query with the mode name — e.g.
+    ``/framework problem-evolution PE-Init walk through the new project``
+    runs PE-Init regardless of context. Without an explicit token, the
+    executor's ``select_mode`` falls through to in-input mention, then to
+    LLM-based routing, then to the first declared mode.
     """
     body = user_input.strip()[len(FRAMEWORK_COMMAND_PREFIX):].strip()
     parts = body.split(maxsplit=1)
     if not parts:
-        raise ValueError("missing framework name; usage: /framework <name> <query>")
+        raise ValueError("missing framework name; usage: /framework <name> [<query>]")
     framework_name = parts[0]
     if not framework_name.endswith(".md"):
         framework_name += ".md"
     framework_query = parts[1] if len(parts) > 1 else ""
-    if not framework_query:
-        raise ValueError(
-            f"framework {framework_name} invoked without a query; "
-            f"usage: /framework <name> <query>"
-        )
     return framework_name, framework_query
+
+
+def framework_command_has_query(user_input: str) -> bool:
+    """Return True iff /framework <name> was invoked with a non-empty query.
+
+    Used by the chat handler to choose between one-shot dispatch
+    (``run_framework_command``) and interactive elicitation
+    (``framework_elicitation.start_elicitation``).
+    """
+    try:
+        _, query = parse_framework_command(user_input)
+    except ValueError:
+        return False
+    return bool(query.strip())
 
 
 def format_execution_result(result: FrameworkExecutionResult) -> str:
     """Format a FrameworkExecutionResult as user-facing markdown."""
+    mode_suffix = (
+        f" / mode {result.mode}"
+        if result.mode and result.mode != "all"
+        else ""
+    )
     if not result.success:
         return (
-            f"[Framework {result.framework_name} failed at "
+            f"[Framework {result.framework_name}{mode_suffix} failed at "
             f"{len(result.milestones)} milestone(s). {result.failure_reason}]\n\n"
             f"Scratch preserved at ~/ora/scratch/{result.execution_id}/"
         )
@@ -478,11 +822,13 @@ def format_execution_result(result: FrameworkExecutionResult) -> str:
             )
 
     parts = [
-        f"[Framework: {result.framework_name} | "
+        f"[Framework: {result.framework_name}{mode_suffix} | "
         f"Execution: {result.execution_id} | "
         f"Milestones: {len(result.milestones)} | "
         f"Duration: {result.duration_seconds:.1f}s]",
     ]
+    if mode_suffix and result.mode_reasoning:
+        parts.append(f"[Mode selection: {result.mode_reasoning}]")
     if drift_warnings:
         parts.append("[Drift warnings]:")
         parts.extend(drift_warnings)
@@ -503,6 +849,15 @@ def run_framework_command(user_input: str, config: dict) -> str:
         framework_name, framework_query = parse_framework_command(user_input)
     except ValueError as exc:
         return f"[Framework command error: {exc}]"
+
+    if not framework_query.strip():
+        return (
+            f"[Framework {framework_name} invoked without a query. For one-shot "
+            f"execution, supply a query: `/framework {framework_name} <your input>`. "
+            f"For interactive elicitation, the chat handler should route empty-query "
+            f"invocations through framework_elicitation.start_elicitation rather than "
+            f"this entry point.]"
+        )
 
     try:
         result = execute_framework(framework_name, framework_query, config)

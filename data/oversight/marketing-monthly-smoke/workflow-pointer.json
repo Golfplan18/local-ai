@@ -1,0 +1,8 @@
+{
+  "workflow_id": "marketing-monthly-smoke",
+  "project_nexus": "smoke_shape4",
+  "workflow_spec_path": "/var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/ora-shape4-test-769r2l_m/workflow-spec.md",
+  "corpus_template_path": "/var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/ora-shape4-test-769r2l_m/marketing-corpus-template.md",
+  "corpus_instance_directory": "/var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/ora-shape4-test-769r2l_m/instances",
+  "registered_at": "2026-05-04T17:37:24.879529+00:00"
+}

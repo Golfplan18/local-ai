@@ -16,8 +16,15 @@ else
   exit 1
 fi
 
-# Start server
-"$PYTHON" "$WORKSPACE/server/server.py" "$@" &
+# Start server with meta-layer oversight daemon enabled by default.
+# The daemon watches PEDs, corpora, and workflow specs; per CLAUDE.md
+# Meta-Layer Oversight Subsystem. Pass --no-oversight to disable.
+if [[ " $* " == *" --no-oversight "* ]]; then
+  CLEAN_ARGS=$(echo " $@ " | sed 's/ --no-oversight / /g' | sed 's/^ *//;s/ *$//')
+  "$PYTHON" "$WORKSPACE/server/server.py" $CLEAN_ARGS &
+else
+  "$PYTHON" "$WORKSPACE/server/server.py" --oversight "$@" &
+fi
 
 # Wait up to 30s for server on any port 5000-5010
 for i in $(seq 1 30); do
