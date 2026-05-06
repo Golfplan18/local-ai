@@ -21,6 +21,8 @@
 
 .output-pane-header {
   position: absolute;
+  /* At floor level — flush with pane edges so the .pane::after recess
+     shadow casts onto the header itself, not around it. */
   top: 0;
   left: 0;
   right: 0;

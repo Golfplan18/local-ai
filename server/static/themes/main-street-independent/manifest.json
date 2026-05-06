@@ -1,0 +1,9 @@
+{
+  "name": "Main Street Independent",
+  "version": "1.0.0",
+  "author": "Main Street Independent",
+  "authorUrl": "",
+  "minAppVersion": "1.0.0",
+  "modes": ["dark", "light"],
+  "description": "MSI's house palette — warm cream and dark paper with hand-drawn earth-tone accents. Six heading colors map to the publication's per-register accents (plum / olive / ochre / brick / sepia / burnt orange)."
+}

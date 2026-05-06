@@ -107,6 +107,18 @@ body.spine-dragging .spine {
   pointer-events: none;
 }
 
+/* When the chat-zone is collapsed, shrink the bridge handle to a slim
+   gap (~10px). The visual pane is then pushed down by chat-zone (40px)
+   + this gap, leaving a small band of background between the
+   minimized chatbox and the top of the visual pane — without the full
+   48px bridge that the expanded state uses. */
+.chat-zone.collapsed + .bridge-strip-right {
+  height: 10px;
+}
+.chat-zone.collapsed + .bridge-strip-right::after {
+  display: none;
+}
+
 .chat-zone.collapsed:hover {
   border-color: var(--interactive-accent);
 }

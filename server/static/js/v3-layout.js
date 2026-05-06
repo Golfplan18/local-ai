@@ -104,21 +104,18 @@
     applyWidths(newLeft, newRight);
   };
 
-  const onMouseUp = () => {
-    if (!dragging) return;
-    dragging = false;
-    document.body.classList.remove('spine-dragging');
-
+  // Event-horizon check — collapses a side when its column is below the
+  // functional minimum, snaps back to MIN_PANE_W otherwise. Extracted so
+  // the wordmark-R drag handler in index-v3.html can call it on release
+  // (the R drag previously skipped this on purpose; the publisher wants
+  // the same auto-collapse on both drag handles).
+  const checkEventHorizonAndCollapse = () => {
     const leftNow  = leftCol.offsetWidth;
     const rightNow = rightCol.offsetWidth;
-
-    // Event-horizon check on whichever side is below threshold.
     if (leftNow < MIN_PANE_W) {
-      // Released past the event horizon → commit collapse.
       if (leftNow < MIN_PANE_W - SNAP_BACK_PX) {
         collapsePane('left', 'drag');
       } else {
-        // In the snap-back zone → restore to MIN_PANE_W.
         const total = totalRoom();
         applyWidths(MIN_PANE_W, total - MIN_PANE_W);
         leftLastUncollapsedW = MIN_PANE_W;
@@ -134,10 +131,16 @@
         rightLastUncollapsedW = MIN_PANE_W;
       }
     } else {
-      // Both above minimum → remember as the last uncollapsed widths.
       leftLastUncollapsedW  = leftNow;
       rightLastUncollapsedW = rightNow;
     }
+  };
+
+  const onMouseUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove('spine-dragging');
+    checkEventHorizonAndCollapse();
   };
 
   const collapsePane = (side, by) => {
@@ -238,14 +241,16 @@
     if (!chatZone || !qqbCollapsed) return;
     chatZone.classList.remove('collapsed');
     qqbCollapsed = false;
-    if (qqbCollapsedBy === 'button' && qqbLastUncollapsedH) {
-      chatZone.style.height = qqbLastUncollapsedH + 'px';
-    } else {
-      // Drag-collapse → default. Without a hard "default", clear inline
-      // height and let the existing bridge drag re-clamp on next interaction.
-      chatZone.style.height = '';
-    }
+    // Don't restore the old saved height — sync to the current left-side
+    // input height instead, so the right bridge lands at the wordmark's
+    // current position (which may have moved while collapsed).
+    chatZone.style.height = '';
     qqbCollapsedBy = null;
+    // Trigger the window-resize listener (clampAndPlace in index-v3.html),
+    // which calls setMainHeight(input.offsetHeight) — that sets BOTH the
+    // input pane and the chat-zone to the same height and re-runs
+    // placeWordmark. Both bridges and the wordmark stay in sync.
+    window.dispatchEvent(new Event('resize'));
   };
 
   // Click on collapsed QQB → expand. Fires before the bridge mousedown
@@ -259,6 +264,18 @@
         expandQQB();
       }
     }, true);
+  }
+
+  // Minimize button inside chat-input-pane — explicit collapse trigger
+  // so the user can hide the chat-zone and let the visual pane fill
+  // the right column.
+  const minimizeBtn = document.getElementById('chatZoneMinimizeBtn');
+  if (minimizeBtn) {
+    minimizeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      collapseQQB('button');
+    });
   }
 
   // Public API. Phase 5 dropdowns (Stealth/Private New/Fork/Exit) and

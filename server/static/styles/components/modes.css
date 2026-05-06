@@ -489,9 +489,14 @@ body.stealth-mode .bridge-mode-label {
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-muted);
-  opacity: 0.6;
+  /* Hide by default; reveal only when the cursor is over the visual pane. */
+  opacity: 0;
+  transition: opacity 0.15s ease;
   pointer-events: none;
   font-style: italic;
+}
+.right-pane.visual-panel.canvas-empty:hover .visual-panel__viewport::after {
+  opacity: 0.6;
 }
 
 /* Canvas-content-ready cue on the O button. When the canvas has any

@@ -1,0 +1,107 @@
+/* ============================================================
+   Main Street Independent — Ora theme
+   Maps MSI's per-register palette to Ora's variable system.
+   Headings H1-H6 carry the publication's six accent colors.
+   ============================================================ */
+
+.theme-dark, .theme-light {
+  /* Obsidian-style accent tokens — MSI accents where MSI has them.
+     Blue/cyan/pink are desaturated approximations since MSI's palette
+     doesn't include those hues. */
+  --color-red:        #C77958;  /* brick (dark) */
+  --color-red-rgb:    199, 121, 88;
+  --color-orange:     #C97D55;  /* burnt orange (dark) */
+  --color-orange-rgb: 201, 125, 85;
+  --color-yellow:     #D4AC4A;  /* ochre (dark) */
+  --color-yellow-rgb: 212, 172, 74;
+  --color-green:      #87905B;  /* olive (dark) */
+  --color-green-rgb:  135, 144, 91;
+  --color-blue:       #5A5470;  /* desaturated indigo (MSI has no blue) */
+  --color-blue-rgb:   90, 84, 112;
+  --color-cyan:       #6A8A85;  /* desaturated cyan (MSI has no cyan) */
+  --color-cyan-rgb:   106, 138, 133;
+  --color-purple:     #8B5C6B;  /* warm plum (dark) */
+  --color-purple-rgb: 139, 92, 107;
+  --color-pink:       #A8757D;  /* dusky plum-pink (MSI has no pink) */
+  --color-pink-rgb:   168, 117, 125;
+}
+
+/* ============================================================
+   DARK MODE — based on MSI dark paper
+   ============================================================ */
+.theme-dark {
+  /* Surfaces */
+  --background-primary:                 #15110A;
+  --background-secondary:               #1F1A0F;
+  --background-modifier-form-field:     #2A2218;
+  --background-modifier-border:         #3A3022;
+  --background-modifier-border-focus:   rgba(232, 224, 204, 0.35);
+
+  /* Buttons / icons — closer to text so glyphs read clearly, not faded */
+  --interactive-normal: #1F1A0F;
+  --interactive-hover:  #2A2218;
+  --icon-color:         #C8BFAA;
+  --icon-color-hover:   #E8E0CC;
+
+  /* Text */
+  --text-normal: #E8E0CC;
+  --text-muted:  #A89F8A;
+  --text-faint:  #666660;
+
+  /* Hyperlinks — MSI sepia (the analytical / scholarly signal) */
+  --link-color:       #A48055;
+  --link-color-hover: #C09870;
+
+  /* Ora wordmark glyphs — track text-color, not the default mid-grays */
+  --ora-wordmark-base:   #A89F8A;
+  --ora-wordmark-bright: #C8BFAA;
+  --ora-wordmark-hover:  #E8E0CC;
+
+  /* Headings — six MSI register accents (per publisher ordering) */
+  --h1-color: #8B5C6B;  /* warm plum    — Hard news */
+  --h2-color: #87905B;  /* olive        — Diagrammatic primary */
+  --h3-color: #D4AC4A;  /* ochre        — Diagrammatic secondary */
+  --h4-color: #C77958;  /* brick        — Editorial cartoon (Phukher) */
+  --h5-color: #A48055;  /* sepia        — Analytical illustration */
+  --h6-color: #C97D55;  /* burnt orange — Cartoonist */
+}
+
+/* ============================================================
+   LIGHT MODE — based on MSI cream paper
+   ============================================================ */
+.theme-light {
+  /* Surfaces */
+  --background-primary:                 #F4ECD8;
+  --background-secondary:               #EDE3CC;
+  --background-modifier-form-field:     #E5DAC0;
+  --background-modifier-border:         #D4C8A8;
+  --background-modifier-border-focus:   rgba(26, 26, 26, 0.35);
+
+  /* Buttons / icons — closer to text so glyphs read clearly, not faded */
+  --interactive-normal: #EDE3CC;
+  --interactive-hover:  #E5DAC0;
+  --icon-color:         #3A3530;
+  --icon-color-hover:   #1A1A1A;
+
+  /* Text */
+  --text-normal: #1A1A1A;
+  --text-muted:  #5A5248;
+  --text-faint:  #888880;
+
+  /* Hyperlinks — MSI sepia (light) */
+  --link-color:       #6D4F33;
+  --link-color-hover: #8A6849;
+
+  /* Ora wordmark glyphs — track text-color, not the default mid-grays */
+  --ora-wordmark-base:   #5A5248;
+  --ora-wordmark-bright: #3A3530;
+  --ora-wordmark-hover:  #1A1A1A;
+
+  /* Headings — light-mode MSI register accents */
+  --h1-color: #6B3F4D;  /* warm plum    — Hard news */
+  --h2-color: #6B7042;  /* olive        — Diagrammatic primary */
+  --h3-color: #B8923A;  /* ochre        — Diagrammatic secondary */
+  --h4-color: #A85C3F;  /* brick        — Editorial cartoon (Phukher) */
+  --h5-color: #6D4F33;  /* sepia        — Analytical illustration */
+  --h6-color: #A85A2B;  /* burnt orange — Cartoonist */
+}

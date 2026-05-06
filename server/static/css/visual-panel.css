@@ -232,6 +232,13 @@
   border: none;
   pointer-events: none;
   z-index: 15;
+  /* Hide by default; reveal only when the cursor is over the visual pane. */
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.right-pane:hover .visual-panel__zoom-indicator,
+.visual-panel:hover .visual-panel__zoom-indicator {
+  opacity: 1;
 }
 
 /* ── Fallback panel (data table / prose when compile fails) ────────────── */
@@ -814,6 +821,20 @@
   width: 0;
   min-width: 0;
   padding: 0;
+  border-width: 0;
+  overflow: hidden;
+}
+/* The legacy in-dock toolbar elements also reserve flex height even at
+   opacity:0; collapse them too so the dot-grid viewport extends edge-to-
+   edge. They animate back when chrome re-shows via the existing height
+   transition above. */
+.visual-panel.chrome-hidden .visual-panel__toolbar,
+.visual-panel.chrome-hidden .ora-toolbar,
+.visual-panel.chrome-hidden .ora-toolbar-wrap {
+  height: 0;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   border-width: 0;
   overflow: hidden;
 }
