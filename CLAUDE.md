@@ -66,7 +66,7 @@ Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `d
 - Conversation persistence with content-derived filenames
 - Clarification panel: Tier 2/3 triage pauses pipeline, generates questions, resumes with answers
 - Three clarification endpoints: `POST /api/clarification`, `POST /api/clarification/skip`, `GET /api/clarification/pending`
-- **V3 cutover (2026-05-02):** `/` now serves `index-v3.html`. The classic interface is preserved at `/classic` for the transition window; `/v3` remains as a stable alias. Snapshot of pre-cutover `index.html` lives at `server/index.html.bak.pre-v3-cutover-2026-05-02`.
+- **V3 cutover (2026-05-02):** `/` now serves `index-v3.html`. The classic interface is preserved at `/classic` for the transition window; `/v3` remains as a stable alias. Pre-cutover `index.html` and `server.py` are recoverable from git history (the `.bak` snapshots that lived alongside them were removed 2026-05-06 per the no-`.bak` rule).
 - **`/chat` bypass guard (2026-05-02):** the plain-HTTP `_pipeline_stream` falls through to `_direct_stream` when the pre-routing pipeline returns `bypass_to_direct_response: True`, when `step1["mode"]` is one of the placeholder modes (`simple` / `standard` — both Phase-9-archived), or when a `pending_clarification` is set. Without this guard, those three paths produced empty `pipeline produced no response` errors because `load_mode()` returned `""` and the pipeline never emitted a response event. The analytical pipeline still runs for prompts that successfully dispatch to a real mode.
 
 ### Knowledge System
