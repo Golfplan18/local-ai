@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "created_at": "2026-05-08T08:39:47.204610",
+  "completed_files": {
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Book Questions.md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 892,
+      "output_tokens": 4,
+      "cost_usd": 0.002736,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Current Focus Import.md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 5798,
+      "output_tokens": 13,
+      "cost_usd": 0.017589,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Life Goals.md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 1392,
+      "output_tokens": 1000,
+      "cost_usd": 0.019176,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Life Skills.md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 804,
+      "output_tokens": 4,
+      "cost_usd": 0.0024720000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Hawks and Doves.md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 2089,
+      "output_tokens": 1241,
+      "cost_usd": 0.024882,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Life Structure.md": {
+      "candidates_total": 7,
+      "candidates_minted": 7,
+      "candidates_dedup": 0,
+      "input_tokens": 1298,
+      "output_tokens": 732,
+      "cost_usd": 0.014874,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Masculine and Feminine Thinking.md": {
+      "candidates_total": 28,
+      "candidates_minted": 23,
+      "candidates_dedup": 5,
+      "input_tokens": 6121,
+      "output_tokens": 2911,
+      "cost_usd": 0.062028,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Problem Solving Process.md": {
+      "candidates_total": 19,
+      "candidates_minted": 17,
+      "candidates_dedup": 2,
+      "input_tokens": 2238,
+      "output_tokens": 2199,
+      "cost_usd": 0.039699,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Destiny Ministry.md": {
+      "candidates_total": 55,
+      "candidates_minted": 55,
+      "candidates_dedup": 0,
+      "input_tokens": 15207,
+      "output_tokens": 6207,
+      "cost_usd": 0.138726,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Special Needs writing motivation.md": {
+      "candidates_total": 8,
+      "candidates_minted": 5,
+      "candidates_dedup": 3,
+      "input_tokens": 985,
+      "output_tokens": 889,
+      "cost_usd": 0.01629,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/A Special Life.md": {
+      "candidates_total": 247,
+      "candidates_minted": 227,
+      "candidates_dedup": 20,
+      "input_tokens": 76879,
+      "output_tokens": 28687,
+      "cost_usd": 0.6609420000000001,
+      "chunks_processed": 14,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Special Needs Acceptance Outlines.md": {
+      "candidates_total": 255,
+      "candidates_minted": 165,
+      "candidates_dedup": 90,
+      "input_tokens": 72735,
+      "output_tokens": 29391,
+      "cost_usd": 0.65907,
+      "chunks_processed": 14,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Using AI as part of the writing process.md": {
+      "candidates_total": 13,
+      "candidates_minted": 13,
+      "candidates_dedup": 0,
+      "input_tokens": 2388,
+      "output_tokens": 1412,
+      "cost_usd": 0.028344,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Quantum Mechanics Mind Map.md": {
+      "candidates_total": 254,
+      "candidates_minted": 243,
+      "candidates_dedup": 11,
+      "input_tokens": 46042,
+      "output_tokens": 32342,
+      "cost_usd": 0.6232559999999998,
+      "chunks_processed": 62,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/White Paper writing guidelines.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 3928,
+      "output_tokens": 1627,
+      "cost_usd": 0.036189,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Spirituality Outlines.md": {
+      "candidates_total": 90,
+      "candidates_minted": 81,
+      "candidates_dedup": 9,
+      "input_tokens": 23740,
+      "output_tokens": 10715,
+      "cost_usd": 0.23194499999999998,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Workshop/Mind Maps/Spiritual Practice.md": {
+      "candidates_total": 733,
+      "candidates_minted": 679,
+      "candidates_dedup": 54,
+      "input_tokens": 122270,
+      "output_tokens": 82899,
+      "cost_usd": 1.6102949999999996,
+      "chunks_processed": 164,
+      "errors": []
+    }
+  },
+  "totals": {
+    "files_processed": 17,
+    "candidates_total": 1744,
+    "candidates_minted": 1550,
+    "candidates_dedup": 194,
+    "input_tokens": 384806,
+    "output_tokens": 202273,
+    "cost_usd": 4.1885129999999995,
+    "errors": 0
+  },
+  "last_updated": "2026-05-08T09:13:44.352109"
+}

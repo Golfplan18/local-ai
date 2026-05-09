@@ -21,6 +21,11 @@ chromadb/
 knowledge/
 reconciliation/
 
+# Derived indexes (regenerable from canonical YAML in vault)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
 # Generated per machine
 ai
 ai.app/

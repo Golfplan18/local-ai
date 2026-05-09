@@ -1,0 +1,1709 @@
+{
+  "version": 1,
+  "created_at": "2026-05-08T08:39:45.654834",
+  "completed_files": {
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 1/The Moral Case Against Aristocratic Power_KC/book_1.docx": {
+      "candidates_total": 506,
+      "candidates_minted": 180,
+      "candidates_dedup": 326,
+      "input_tokens": 108114,
+      "output_tokens": 59335,
+      "cost_usd": 1.214367,
+      "chunks_processed": 26,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 1/#WeToo The Moral Case Against Aristocratic Power.docx": {
+      "candidates_total": 519,
+      "candidates_minted": 249,
+      "candidates_dedup": 270,
+      "input_tokens": 108114,
+      "output_tokens": 60534,
+      "cost_usd": 1.2323520000000003,
+      "chunks_processed": 26,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 5/#WeToo How To Crush the Conservative Coalition and Reclaim Our Freedom_KC/book_1.docx": {
+      "candidates_total": 528,
+      "candidates_minted": 165,
+      "candidates_dedup": 363,
+      "input_tokens": 62587,
+      "output_tokens": 59179,
+      "cost_usd": 1.075446,
+      "chunks_processed": 48,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/#MeToo movement.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 14,
+      "candidates_dedup": 1,
+      "input_tokens": 2837,
+      "output_tokens": 1822,
+      "cost_usd": 0.035841,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 5/#WeToo How To Crush the Conservative Coalition and Reclaim Our Freedom.docx": {
+      "candidates_total": 546,
+      "candidates_minted": 142,
+      "candidates_dedup": 404,
+      "input_tokens": 62587,
+      "output_tokens": 61517,
+      "cost_usd": 1.1105159999999998,
+      "chunks_processed": 48,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/#We Too and #MeToo Fighting American Injustice (book 3).docx": {
+      "candidates_total": 8,
+      "candidates_minted": 2,
+      "candidates_dedup": 6,
+      "input_tokens": 1260,
+      "output_tokens": 1019,
+      "cost_usd": 0.019065,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/#We Too prompt for recaps.docx": {
+      "candidates_total": 10,
+      "candidates_minted": 6,
+      "candidates_dedup": 4,
+      "input_tokens": 1332,
+      "output_tokens": 1033,
+      "cost_usd": 0.019491,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/(omnibus) Praise and Endorsement from Conservative America.docx": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 1667,
+      "output_tokens": 9,
+      "cost_usd": 0.005136,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/1 Praise and Endorsement from Conservative America.docx": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 1635,
+      "output_tokens": 9,
+      "cost_usd": 0.005039999999999999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/#We Too prompt for summaries .docx": {
+      "candidates_total": 15,
+      "candidates_minted": 8,
+      "candidates_dedup": 7,
+      "input_tokens": 1346,
+      "output_tokens": 1579,
+      "cost_usd": 0.027723,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/1-Lifting the Veil.docx": {
+      "candidates_total": 12,
+      "candidates_minted": 6,
+      "candidates_dedup": 6,
+      "input_tokens": 2408,
+      "output_tokens": 1437,
+      "cost_usd": 0.028779,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/10-Private Debt as Extraction.docx": {
+      "candidates_total": 18,
+      "candidates_minted": 0,
+      "candidates_dedup": 18,
+      "input_tokens": 3285,
+      "output_tokens": 1944,
+      "cost_usd": 0.039015,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 4/#WeToo The Complete Guide to Fighting Back Against America's Aristocracy.docx": {
+      "candidates_total": 1013,
+      "candidates_minted": 543,
+      "candidates_dedup": 470,
+      "input_tokens": 227254,
+      "output_tokens": 121550,
+      "cost_usd": 2.5050120000000002,
+      "chunks_processed": 54,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 4/#WeToo The Complete Guide to Fighting Back Against America's Aristocracy_KC/book_1.docx": {
+      "candidates_total": 1008,
+      "candidates_minted": 323,
+      "candidates_dedup": 685,
+      "input_tokens": 227254,
+      "output_tokens": 123562,
+      "cost_usd": 2.5351919999999994,
+      "chunks_processed": 54,
+      "errors": [
+        "chunk 13: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/11-Debunking the Affordability Myth.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 5,
+      "candidates_dedup": 15,
+      "input_tokens": 3560,
+      "output_tokens": 2395,
+      "cost_usd": 0.046604999999999994,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/12-The Four Horsemen Strategy.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 2,
+      "candidates_dedup": 13,
+      "input_tokens": 4009,
+      "output_tokens": 1840,
+      "cost_usd": 0.039627,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/16-The Masculine Contradiction.docx": {
+      "candidates_total": 18,
+      "candidates_minted": 7,
+      "candidates_dedup": 11,
+      "input_tokens": 3934,
+      "output_tokens": 2166,
+      "cost_usd": 0.044292,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/17-Communities Collapsing by Design.docx": {
+      "candidates_total": 55,
+      "candidates_minted": 14,
+      "candidates_dedup": 41,
+      "input_tokens": 7725,
+      "output_tokens": 6712,
+      "cost_usd": 0.12385499999999999,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/14-Democracy Under Siege.docx": {
+      "candidates_total": 90,
+      "candidates_minted": 28,
+      "candidates_dedup": 62,
+      "input_tokens": 11915,
+      "output_tokens": 10702,
+      "cost_usd": 0.196275,
+      "chunks_processed": 12,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/15-Breaking the Blockades.docx": {
+      "candidates_total": 92,
+      "candidates_minted": 20,
+      "candidates_dedup": 72,
+      "input_tokens": 11202,
+      "output_tokens": 10855,
+      "cost_usd": 0.19643099999999997,
+      "chunks_processed": 11,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/13-The Full Progressive Agenda.docx": {
+      "candidates_total": 124,
+      "candidates_minted": 41,
+      "candidates_dedup": 83,
+      "input_tokens": 13302,
+      "output_tokens": 14088,
+      "cost_usd": 0.251226,
+      "chunks_processed": 14,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/2 Praise and Endorsement from Conservative America.docx": {
+      "candidates_total": 13,
+      "candidates_minted": 13,
+      "candidates_dedup": 0,
+      "input_tokens": 1658,
+      "output_tokens": 1507,
+      "cost_usd": 0.027579,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 3/#WeToo From Media Revolution to Collective Action.docx": {
+      "candidates_total": 1179,
+      "candidates_minted": 474,
+      "candidates_dedup": 705,
+      "input_tokens": 158243,
+      "output_tokens": 136460,
+      "cost_usd": 2.521629000000001,
+      "chunks_processed": 151,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 3/#WeToo From Media Revolution to Collective Action_KC/book_1.docx": {
+      "candidates_total": 1164,
+      "candidates_minted": 620,
+      "candidates_dedup": 544,
+      "input_tokens": 158243,
+      "output_tokens": 135471,
+      "cost_usd": 2.506794,
+      "chunks_processed": 151,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/18-When Religion Confronts Wealth.docx": {
+      "candidates_total": 64,
+      "candidates_minted": 15,
+      "candidates_dedup": 49,
+      "input_tokens": 9974,
+      "output_tokens": 7523,
+      "cost_usd": 0.14276699999999998,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/2-Modernized Communist Manifesto.docx": {
+      "candidates_total": 54,
+      "candidates_minted": 5,
+      "candidates_dedup": 49,
+      "input_tokens": 10998,
+      "output_tokens": 6148,
+      "cost_usd": 0.125214,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/22-Nationalism's Shell Game.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 6,
+      "candidates_dedup": 14,
+      "input_tokens": 2935,
+      "output_tokens": 2251,
+      "cost_usd": 0.04257,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/24-The Patriot's Paradox.docx": {
+      "candidates_total": 14,
+      "candidates_minted": 3,
+      "candidates_dedup": 11,
+      "input_tokens": 2937,
+      "output_tokens": 1805,
+      "cost_usd": 0.035886,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/19-The Security State Boomerang.docx": {
+      "candidates_total": 76,
+      "candidates_minted": 15,
+      "candidates_dedup": 61,
+      "input_tokens": 11406,
+      "output_tokens": 8978,
+      "cost_usd": 0.16888799999999998,
+      "chunks_processed": 14,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/25-Technology Breaking Control.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 7,
+      "candidates_dedup": 13,
+      "input_tokens": 3950,
+      "output_tokens": 2532,
+      "cost_usd": 0.04983,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/20-The Generational Betrayal.docx": {
+      "candidates_total": 68,
+      "candidates_minted": 18,
+      "candidates_dedup": 50,
+      "input_tokens": 9034,
+      "output_tokens": 8222,
+      "cost_usd": 0.15043199999999998,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/26-Populism's False Promises.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 7,
+      "candidates_dedup": 8,
+      "input_tokens": 3931,
+      "output_tokens": 1927,
+      "cost_usd": 0.040698,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/27-Workers Against Themselves.docx": {
+      "candidates_total": 18,
+      "candidates_minted": 8,
+      "candidates_dedup": 10,
+      "input_tokens": 3978,
+      "output_tokens": 2355,
+      "cost_usd": 0.047258999999999995,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/3 Praise and Endorsement from Conservative America.docx": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 1615,
+      "output_tokens": 1378,
+      "cost_usd": 0.025515,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/29-The Evolution of Propaganda.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 10,
+      "candidates_dedup": 10,
+      "input_tokens": 3074,
+      "output_tokens": 2418,
+      "cost_usd": 0.045492,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/21-Meritocracy's Empty Promises.docx": {
+      "candidates_total": 73,
+      "candidates_minted": 14,
+      "candidates_dedup": 59,
+      "input_tokens": 10289,
+      "output_tokens": 8726,
+      "cost_usd": 0.161757,
+      "chunks_processed": 11,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/30-Progressive Media's Fatal Flaws.docx": {
+      "candidates_total": 19,
+      "candidates_minted": 9,
+      "candidates_dedup": 10,
+      "input_tokens": 3128,
+      "output_tokens": 2295,
+      "cost_usd": 0.043809,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/31-Politically Correct, Politically Impotent.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 9,
+      "candidates_dedup": 6,
+      "input_tokens": 3185,
+      "output_tokens": 1838,
+      "cost_usd": 0.037125,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/23-The Repression Addiction.docx": {
+      "candidates_total": 69,
+      "candidates_minted": 16,
+      "candidates_dedup": 53,
+      "input_tokens": 10578,
+      "output_tokens": 8235,
+      "cost_usd": 0.15525899999999998,
+      "chunks_processed": 13,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/3-The Manifesto of the American Aristocrat.docx": {
+      "candidates_total": 32,
+      "candidates_minted": 18,
+      "candidates_dedup": 14,
+      "input_tokens": 5929,
+      "output_tokens": 3376,
+      "cost_usd": 0.06842699999999999,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/32-The Tribal Mind Hack.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 5,
+      "candidates_dedup": 15,
+      "input_tokens": 3925,
+      "output_tokens": 2261,
+      "cost_usd": 0.04569,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/33-Digital Swarm Warfare.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 12,
+      "candidates_dedup": 8,
+      "input_tokens": 3105,
+      "output_tokens": 2196,
+      "cost_usd": 0.042255,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/35-Trojan Horses in Motion.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 9,
+      "candidates_dedup": 11,
+      "input_tokens": 3640,
+      "output_tokens": 2392,
+      "cost_usd": 0.0468,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/36-Manufacturing the Meme Revolution.docx": {
+      "candidates_total": 18,
+      "candidates_minted": 11,
+      "candidates_dedup": 7,
+      "input_tokens": 2726,
+      "output_tokens": 2119,
+      "cost_usd": 0.039963,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/4-The Middle Road of Civic Capitalism.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 3,
+      "candidates_dedup": 12,
+      "input_tokens": 3078,
+      "output_tokens": 1760,
+      "cost_usd": 0.035634,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/39-Visual Storytelling Insurgency.docx": {
+      "candidates_total": 19,
+      "candidates_minted": 8,
+      "candidates_dedup": 11,
+      "input_tokens": 4012,
+      "output_tokens": 2316,
+      "cost_usd": 0.046776,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/28-Exploiting Conservative Vulnerabilities.docx": {
+      "candidates_total": 94,
+      "candidates_minted": 26,
+      "candidates_dedup": 68,
+      "input_tokens": 13432,
+      "output_tokens": 11062,
+      "cost_usd": 0.206226,
+      "chunks_processed": 17,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/34-The Trojan Horse Strategy.docx": {
+      "candidates_total": 56,
+      "candidates_minted": 14,
+      "candidates_dedup": 42,
+      "input_tokens": 7558,
+      "output_tokens": 6456,
+      "cost_usd": 0.11951400000000001,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/37-Romancing the Revolution.docx": {
+      "candidates_total": 56,
+      "candidates_minted": 14,
+      "candidates_dedup": 42,
+      "input_tokens": 7217,
+      "output_tokens": 6289,
+      "cost_usd": 0.11598599999999998,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 2/#WeToo-The Vulnerable Foundations of Elite Power_KC/book_1.docx": {
+      "candidates_total": 1298,
+      "candidates_minted": 760,
+      "candidates_dedup": 538,
+      "input_tokens": 180366,
+      "output_tokens": 151796,
+      "cost_usd": 2.8180380000000014,
+      "chunks_processed": 183,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/5-Moral Engine of Politics.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 4,
+      "candidates_dedup": 11,
+      "input_tokens": 3573,
+      "output_tokens": 1691,
+      "cost_usd": 0.036084,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/38-Action Heroes for Economic Justice.docx": {
+      "candidates_total": 69,
+      "candidates_minted": 34,
+      "candidates_dedup": 35,
+      "input_tokens": 8258,
+      "output_tokens": 8133,
+      "cost_usd": 0.14676899999999998,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/6-Taking the Battle to the Enemy.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 4,
+      "candidates_dedup": 11,
+      "input_tokens": 3706,
+      "output_tokens": 1772,
+      "cost_usd": 0.037697999999999995,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/41-Gaming the System.docx": {
+      "candidates_total": 50,
+      "candidates_minted": 10,
+      "candidates_dedup": 40,
+      "input_tokens": 6526,
+      "output_tokens": 5688,
+      "cost_usd": 0.104898,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/7-The Progressive Language Prison.docx": {
+      "candidates_total": 14,
+      "candidates_minted": 4,
+      "candidates_dedup": 10,
+      "input_tokens": 2940,
+      "output_tokens": 1601,
+      "cost_usd": 0.032835,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/40-Broadcasting Behind Enemy Lines.docx": {
+      "candidates_total": 52,
+      "candidates_minted": 13,
+      "candidates_dedup": 39,
+      "input_tokens": 7081,
+      "output_tokens": 6382,
+      "cost_usd": 0.11697300000000001,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/From #MeToo to #WeToo (book one).docx": {
+      "candidates_total": 7,
+      "candidates_minted": 1,
+      "candidates_dedup": 6,
+      "input_tokens": 1106,
+      "output_tokens": 773,
+      "cost_usd": 0.014913000000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/8-Modern Monetary Theory.docx": {
+      "candidates_total": 12,
+      "candidates_minted": 2,
+      "candidates_dedup": 10,
+      "input_tokens": 2999,
+      "output_tokens": 1502,
+      "cost_usd": 0.031527,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Book 2/#WeToo-The Vulnerable Foundations of Elite Power.docx": {
+      "candidates_total": 1337,
+      "candidates_minted": 385,
+      "candidates_dedup": 952,
+      "input_tokens": 180366,
+      "output_tokens": 155842,
+      "cost_usd": 2.8787279999999993,
+      "chunks_processed": 183,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/Part II-The Moral and Practical Path Forward.docx": {
+      "candidates_total": 9,
+      "candidates_minted": 5,
+      "candidates_dedup": 4,
+      "input_tokens": 1928,
+      "output_tokens": 1109,
+      "cost_usd": 0.022419,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/9-Velocity of Money Economics.docx": {
+      "candidates_total": 18,
+      "candidates_minted": 4,
+      "candidates_dedup": 14,
+      "input_tokens": 3244,
+      "output_tokens": 2059,
+      "cost_usd": 0.040617,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/43-A New Specter Rises.docx": {
+      "candidates_total": 47,
+      "candidates_minted": 13,
+      "candidates_dedup": 34,
+      "input_tokens": 6562,
+      "output_tokens": 5460,
+      "cost_usd": 0.101586,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/The #We Too Movement for Economic Justice (book 2).docx": {
+      "candidates_total": 6,
+      "candidates_minted": 1,
+      "candidates_dedup": 5,
+      "input_tokens": 1109,
+      "output_tokens": 627,
+      "cost_usd": 0.012732,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/Part IV-Moving From Understanding to Action.docx": {
+      "candidates_total": 14,
+      "candidates_minted": 6,
+      "candidates_dedup": 8,
+      "input_tokens": 2697,
+      "output_tokens": 1598,
+      "cost_usd": 0.032061000000000006,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/The Evolution of #We Too (complete edition).docx": {
+      "candidates_total": 6,
+      "candidates_minted": 0,
+      "candidates_dedup": 6,
+      "input_tokens": 1193,
+      "output_tokens": 768,
+      "cost_usd": 0.015099000000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/Part VI-When Individual Creation Becomes Collective Movement.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 5,
+      "candidates_dedup": 10,
+      "input_tokens": 2355,
+      "output_tokens": 1739,
+      "cost_usd": 0.03315,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/42-The Open-Source Revolution.docx": {
+      "candidates_total": 67,
+      "candidates_minted": 11,
+      "candidates_dedup": 56,
+      "input_tokens": 8211,
+      "output_tokens": 7543,
+      "cost_usd": 0.137778,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/Part V-The Art of Cultural Guerrilla Warfare.docx": {
+      "candidates_total": 22,
+      "candidates_minted": 8,
+      "candidates_dedup": 14,
+      "input_tokens": 3100,
+      "output_tokens": 2447,
+      "cost_usd": 0.046005000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/Part III-The Architecture of Conservative Power and Its Inherent Contradictions.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 12,
+      "candidates_dedup": 8,
+      "input_tokens": 2265,
+      "output_tokens": 2661,
+      "cost_usd": 0.04671000000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Do 1-The # We Too Principles.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 8,
+      "candidates_dedup": 12,
+      "input_tokens": 3536,
+      "output_tokens": 2158,
+      "cost_usd": 0.042978,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Too 20-How a Collective Movement Grows from Individual Creation.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 10,
+      "candidates_dedup": 10,
+      "input_tokens": 2966,
+      "output_tokens": 2199,
+      "cost_usd": 0.041883000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Too 18-Moving From Understanding to Action.docx": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 3643,
+      "output_tokens": 4096,
+      "cost_usd": 0.07236899999999999,
+      "chunks_processed": 1,
+      "errors": [
+        "chunk 0: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Too Update prompt.docx": {
+      "candidates_total": 17,
+      "candidates_minted": 15,
+      "candidates_dedup": 2,
+      "input_tokens": 1003,
+      "output_tokens": 1843,
+      "cost_usd": 0.030654,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/Untitled document.docx": {
+      "candidates_total": 30,
+      "candidates_minted": 30,
+      "candidates_dedup": 0,
+      "input_tokens": 3093,
+      "output_tokens": 3203,
+      "cost_usd": 0.057324,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Too 19-Winning Cultural Guerrilla Warfare.docx": {
+      "candidates_total": 79,
+      "candidates_minted": 11,
+      "candidates_dedup": 68,
+      "input_tokens": 10099,
+      "output_tokens": 8739,
+      "cost_usd": 0.16138199999999997,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Do 2-The Moral and Practical Path Forward.docx": {
+      "candidates_total": 103,
+      "candidates_minted": 14,
+      "candidates_dedup": 89,
+      "input_tokens": 11376,
+      "output_tokens": 11653,
+      "cost_usd": 0.208923,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Too 17-The Architecture of Conservative Contradictions .docx": {
+      "candidates_total": 103,
+      "candidates_minted": 26,
+      "candidates_dedup": 77,
+      "input_tokens": 12870,
+      "output_tokens": 11859,
+      "cost_usd": 0.216495,
+      "chunks_processed": 9,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Do 3 The Inherent Contradictions of Conservative Power .docx": {
+      "candidates_total": 113,
+      "candidates_minted": 8,
+      "candidates_dedup": 105,
+      "input_tokens": 13996,
+      "output_tokens": 13052,
+      "cost_usd": 0.237768,
+      "chunks_processed": 9,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Two 19-When Individual Creation Becomes a Movement.docx": {
+      "candidates_total": 30,
+      "candidates_minted": 8,
+      "candidates_dedup": 22,
+      "input_tokens": 2856,
+      "output_tokens": 3223,
+      "cost_usd": 0.056913,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Two 1-The #We Too Principles.docx": {
+      "candidates_total": 70,
+      "candidates_minted": 12,
+      "candidates_dedup": 58,
+      "input_tokens": 8055,
+      "output_tokens": 7952,
+      "cost_usd": 0.14344500000000002,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Two 3-Contradictions Inherent to Elite Power.docx": {
+      "candidates_total": 18,
+      "candidates_minted": 16,
+      "candidates_dedup": 2,
+      "input_tokens": 2248,
+      "output_tokens": 1905,
+      "cost_usd": 0.035319,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Two 17-The Leap from Knowing to Doing.docx": {
+      "candidates_total": 81,
+      "candidates_minted": 12,
+      "candidates_dedup": 69,
+      "input_tokens": 7940,
+      "output_tokens": 8849,
+      "cost_usd": 0.156555,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/Autism Acceptance.docx": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0,
+      "chunks_processed": 0,
+      "errors": [
+        "skipped: only 106 chars"
+      ]
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/A Special Life - Context Outline.docx": {
+      "candidates_total": 17,
+      "candidates_minted": 16,
+      "candidates_dedup": 1,
+      "input_tokens": 1716,
+      "output_tokens": 1827,
+      "cost_usd": 0.032553,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Two-20 When Individual Creation Becomes Collective Movement.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 10,
+      "candidates_dedup": 10,
+      "input_tokens": 2862,
+      "output_tokens": 2320,
+      "cost_usd": 0.043385999999999994,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/Autism Parenting Replacing Self-Pity with Joy.docx": {
+      "candidates_total": 6,
+      "candidates_minted": 5,
+      "candidates_dedup": 1,
+      "input_tokens": 1347,
+      "output_tokens": 731,
+      "cost_usd": 0.015005999999999999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Two 18-The Art of Cultural Guerrilla Warfare.docx": {
+      "candidates_total": 79,
+      "candidates_minted": 20,
+      "candidates_dedup": 59,
+      "input_tokens": 9705,
+      "output_tokens": 8884,
+      "cost_usd": 0.162375,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/Special Needs writing motivation.docx": {
+      "candidates_total": 6,
+      "candidates_minted": 1,
+      "candidates_dedup": 5,
+      "input_tokens": 934,
+      "output_tokens": 669,
+      "cost_usd": 0.012837000000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/Unalloyed Evil, the Murderous Heart, the Blackest Darkness 2.docx": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 5794,
+      "output_tokens": 1274,
+      "cost_usd": 0.036492,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/Unalloyed Evil, the Murderous Heart, the Blackest Darkness.docx": {
+      "candidates_total": 10,
+      "candidates_minted": 6,
+      "candidates_dedup": 4,
+      "input_tokens": 5794,
+      "output_tokens": 1211,
+      "cost_usd": 0.035546999999999995,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Support/WELCOME TO HOLLAND.doc": {
+      "candidates_total": 6,
+      "candidates_minted": 6,
+      "candidates_dedup": 0,
+      "input_tokens": 1003,
+      "output_tokens": 810,
+      "cost_usd": 0.015158999999999999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/a-special-life,-a-special-love-hoyoc0uqvkh_67uvxjyqn.docx": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0,
+      "chunks_processed": 0,
+      "errors": [
+        "load: 'NoneType' object has no attribute 'name'"
+      ]
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/The Real American Communist Manifesto (Outline).docx": {
+      "candidates_total": 173,
+      "candidates_minted": 78,
+      "candidates_dedup": 95,
+      "input_tokens": 28939,
+      "output_tokens": 22178,
+      "cost_usd": 0.419487,
+      "chunks_processed": 7,
+      "errors": [
+        "chunk 2: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/publishing business/#WeToo/Drafts/We Two 2-The Practical and Moral Path Forward.docx": {
+      "candidates_total": 159,
+      "candidates_minted": 42,
+      "candidates_dedup": 117,
+      "input_tokens": 19522,
+      "output_tokens": 18150,
+      "cost_usd": 0.33081599999999994,
+      "chunks_processed": 12,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/The Transformative Joy of Parenting a Child with Autism.docx": {
+      "candidates_total": 108,
+      "candidates_minted": 60,
+      "candidates_dedup": 48,
+      "input_tokens": 22661,
+      "output_tokens": 12980,
+      "cost_usd": 0.26268300000000006,
+      "chunks_processed": 28,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/1 of 5.docx": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 4460,
+      "output_tokens": 1429,
+      "cost_usd": 0.034815,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/The Transformative Joy of Parenting a Child with Autism 2.docx": {
+      "candidates_total": 112,
+      "candidates_minted": 104,
+      "candidates_dedup": 8,
+      "input_tokens": 21891,
+      "output_tokens": 13579,
+      "cost_usd": 0.269358,
+      "chunks_processed": 27,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/Hawks and Doves.docx": {
+      "candidates_total": 14,
+      "candidates_minted": 9,
+      "candidates_dedup": 5,
+      "input_tokens": 1837,
+      "output_tokens": 1525,
+      "cost_usd": 0.028386,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/Life After Divorce.docx": {
+      "candidates_total": 10,
+      "candidates_minted": 6,
+      "candidates_dedup": 4,
+      "input_tokens": 5329,
+      "output_tokens": 1261,
+      "cost_usd": 0.034902,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/Loves Hope and Lusts Flame.docx": {
+      "candidates_total": 10,
+      "candidates_minted": 5,
+      "candidates_dedup": 5,
+      "input_tokens": 5053,
+      "output_tokens": 1182,
+      "cost_usd": 0.032889,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/How a Spiritual Experience Ended My Marriage.docx": {
+      "candidates_total": 21,
+      "candidates_minted": 20,
+      "candidates_dedup": 1,
+      "input_tokens": 7970,
+      "output_tokens": 2691,
+      "cost_usd": 0.064275,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/Masculine Vs Feminine Thinking 19KEYS.docx": {
+      "candidates_total": 14,
+      "candidates_minted": 14,
+      "candidates_dedup": 0,
+      "input_tokens": 4746,
+      "output_tokens": 1574,
+      "cost_usd": 0.03784800000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/Masculine and Feminine Thinking.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 9,
+      "candidates_dedup": 11,
+      "input_tokens": 4435,
+      "output_tokens": 2270,
+      "cost_usd": 0.047354999999999994,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/The Mistaken Beliefs that Ruined My Marriage.docx": {
+      "candidates_total": 5,
+      "candidates_minted": 5,
+      "candidates_dedup": 0,
+      "input_tokens": 4452,
+      "output_tokens": 600,
+      "cost_usd": 0.022356,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/The Spotless Mind of the Abusive Male.docx": {
+      "candidates_total": 12,
+      "candidates_minted": 11,
+      "candidates_dedup": 1,
+      "input_tokens": 3704,
+      "output_tokens": 1472,
+      "cost_usd": 0.033192,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/My Failures as a Man In My Marriage.docx": {
+      "candidates_total": 19,
+      "candidates_minted": 19,
+      "candidates_dedup": 0,
+      "input_tokens": 6982,
+      "output_tokens": 2450,
+      "cost_usd": 0.057696,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Support/19keys/Find Out If Your The God Archetype 19keys The Brief Eps.docx": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 2207,
+      "output_tokens": 1137,
+      "cost_usd": 0.023676000000000003,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Support/19keys/Learn Discipline Manifest Anything Win 1he Brief Eps 018 Ft 19keys.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 3148,
+      "output_tokens": 1485,
+      "cost_usd": 0.031719,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Support/19keys/Masculine Vs Feminine Thinking Explained The Brief Ft19keys Eps 014.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 9,
+      "candidates_dedup": 6,
+      "input_tokens": 4746,
+      "output_tokens": 1523,
+      "cost_usd": 0.037083000000000005,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/When Marriage Fails - A Journey Through Divorce and Self-Discovery.docx": {
+      "candidates_total": 45,
+      "candidates_minted": 39,
+      "candidates_dedup": 6,
+      "input_tokens": 12214,
+      "output_tokens": 5058,
+      "cost_usd": 0.11251199999999999,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/Special Needs Acceptance Outlines.docx": {
+      "candidates_total": 214,
+      "candidates_minted": 121,
+      "candidates_dedup": 93,
+      "input_tokens": 60767,
+      "output_tokens": 25107,
+      "cost_usd": 0.5589059999999999,
+      "chunks_processed": 13,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Support/19keys/The Secret Steps to Properly Handle People the Brief Ep010 Ft 19keys.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 4471,
+      "output_tokens": 1744,
+      "cost_usd": 0.039573000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Support/19keys/Monk Mode Ancient Tool to Get You Ultimate Focus to Unlock Higher Self The Brief with 19Keys.docx": {
+      "candidates_total": 29,
+      "candidates_minted": 29,
+      "candidates_dedup": 0,
+      "input_tokens": 4599,
+      "output_tokens": 3096,
+      "cost_usd": 0.060237,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Book Proofs/2024-2-1 Expanding Awareness/The Expanding Awareness Cosmology_KC/book_1.docx": {
+      "candidates_total": 128,
+      "candidates_minted": 81,
+      "candidates_dedup": 47,
+      "input_tokens": 45682,
+      "output_tokens": 15422,
+      "cost_usd": 0.36837600000000004,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Book Proofs/2024-2-25 Expanding Awareness/The Expanding Awareness Cosmology_KC1/book_1.docx": {
+      "candidates_total": 121,
+      "candidates_minted": 51,
+      "candidates_dedup": 70,
+      "input_tokens": 46971,
+      "output_tokens": 14904,
+      "cost_usd": 0.36447300000000005,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/Divorce Masculinity Workshop/When Marriage Fails.docx": {
+      "candidates_total": 270,
+      "candidates_minted": 243,
+      "candidates_dedup": 27,
+      "input_tokens": 52016,
+      "output_tokens": 31989,
+      "cost_usd": 0.6358830000000001,
+      "chunks_processed": 54,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Blog Posts/Hubbles Law 2.docx": {
+      "candidates_total": 50,
+      "candidates_minted": 46,
+      "candidates_dedup": 4,
+      "input_tokens": 18743,
+      "output_tokens": 6109,
+      "cost_usd": 0.147864,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Blurb Material from Ais.docx": {
+      "candidates_total": 15,
+      "candidates_minted": 12,
+      "candidates_dedup": 3,
+      "input_tokens": 2881,
+      "output_tokens": 1674,
+      "cost_usd": 0.033753,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Chats/Chat Summary: Challenging Hubble's Law: A Cosmology Discussion with Larry Roberts.docx": {
+      "candidates_total": 8,
+      "candidates_minted": 7,
+      "candidates_dedup": 1,
+      "input_tokens": 1387,
+      "output_tokens": 996,
+      "cost_usd": 0.019101,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/A Special Life numbered outline.docx": {
+      "candidates_total": 643,
+      "candidates_minted": 475,
+      "candidates_dedup": 168,
+      "input_tokens": 111506,
+      "output_tokens": 75132,
+      "cost_usd": 1.4614980000000009,
+      "chunks_processed": 123,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Blog Posts/Hubbles Law.docx": {
+      "candidates_total": 164,
+      "candidates_minted": 131,
+      "candidates_dedup": 33,
+      "input_tokens": 36924,
+      "output_tokens": 19826,
+      "cost_usd": 0.408162,
+      "chunks_processed": 45,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Cosmological Constant.docx": {
+      "candidates_total": 4,
+      "candidates_minted": 3,
+      "candidates_dedup": 1,
+      "input_tokens": 1050,
+      "output_tokens": 483,
+      "cost_usd": 0.010395,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/Autism Workshop/A Special Life.docx": {
+      "candidates_total": 660,
+      "candidates_minted": 197,
+      "candidates_dedup": 463,
+      "input_tokens": 126393,
+      "output_tokens": 77345,
+      "cost_usd": 1.5393540000000006,
+      "chunks_processed": 150,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Drafts/Expanding Awareness.docx": {
+      "candidates_total": 52,
+      "candidates_minted": 23,
+      "candidates_dedup": 29,
+      "input_tokens": 18743,
+      "output_tokens": 6405,
+      "cost_usd": 0.152304,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Chats/Raw Chat Summary: Challenging Hubble's Law: A Cosmology Discussion with Larry Roberts.docx": {
+      "candidates_total": 179,
+      "candidates_minted": 109,
+      "candidates_dedup": 70,
+      "input_tokens": 72260,
+      "output_tokens": 22396,
+      "cost_usd": 0.5527199999999999,
+      "chunks_processed": 16,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Drafts/The Expanding Awareness Cosmology (old).docx": {
+      "candidates_total": 120,
+      "candidates_minted": 22,
+      "candidates_dedup": 98,
+      "input_tokens": 32619,
+      "output_tokens": 14356,
+      "cost_usd": 0.313197,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Drafts/The Expanding Awareness Cosmology Atticus Export.docx": {
+      "candidates_total": 116,
+      "candidates_minted": 36,
+      "candidates_dedup": 80,
+      "input_tokens": 47278,
+      "output_tokens": 14425,
+      "cost_usd": 0.35820899999999994,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Drafts/The Expanding Awareness Cosmology 2.docx": {
+      "candidates_total": 123,
+      "candidates_minted": 25,
+      "candidates_dedup": 98,
+      "input_tokens": 45748,
+      "output_tokens": 15252,
+      "cost_usd": 0.366024,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/The Big Bang\u2019s replacement.docx": {
+      "candidates_total": 10,
+      "candidates_minted": 8,
+      "candidates_dedup": 2,
+      "input_tokens": 1344,
+      "output_tokens": 1155,
+      "cost_usd": 0.021357,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/forging-a-new-life-after-divorce.docx": {
+      "candidates_total": 576,
+      "candidates_minted": 500,
+      "candidates_dedup": 76,
+      "input_tokens": 99207,
+      "output_tokens": 67803,
+      "cost_usd": 1.3146660000000003,
+      "chunks_processed": 102,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Support/Dark Energy Research Papers.docx": {
+      "candidates_total": 18,
+      "candidates_minted": 17,
+      "candidates_dedup": 1,
+      "input_tokens": 4896,
+      "output_tokens": 2227,
+      "cost_usd": 0.048093,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Divorce Masculinity/forging-a-new-life-after-divorce_KC/book_1.docx": {
+      "candidates_total": 591,
+      "candidates_minted": 255,
+      "candidates_dedup": 336,
+      "input_tokens": 99207,
+      "output_tokens": 69032,
+      "cost_usd": 1.3331010000000005,
+      "chunks_processed": 102,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Support/Citations.docx": {
+      "candidates_total": 9,
+      "candidates_minted": 8,
+      "candidates_dedup": 1,
+      "input_tokens": 22217,
+      "output_tokens": 1342,
+      "cost_usd": 0.086781,
+      "chunks_processed": 22,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: Analysis of December 4th, 2024 Conversations on AI-Powered Cognitive Enhancement.docx": {
+      "candidates_total": 5,
+      "candidates_minted": 5,
+      "candidates_dedup": 0,
+      "input_tokens": 1178,
+      "output_tokens": 492,
+      "cost_usd": 0.010914,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: Collaborative Design of Research Pathways for Extending Human Cognition Framework.docx": {
+      "candidates_total": 8,
+      "candidates_minted": 8,
+      "candidates_dedup": 0,
+      "input_tokens": 883,
+      "output_tokens": 834,
+      "cost_usd": 0.015159,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: Collaborative Outline Creation for AI-Powered Cognitive Enhancement System.docx": {
+      "candidates_total": 3,
+      "candidates_minted": 3,
+      "candidates_dedup": 0,
+      "input_tokens": 1017,
+      "output_tokens": 335,
+      "cost_usd": 0.008076,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Drafts/The Expanding Awareness Cosmology copy.docx": {
+      "candidates_total": 131,
+      "candidates_minted": 33,
+      "candidates_dedup": 98,
+      "input_tokens": 46971,
+      "output_tokens": 15795,
+      "cost_usd": 0.377838,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: Expanding AI Agent Teams Capabilities.docx": {
+      "candidates_total": 3,
+      "candidates_minted": 3,
+      "candidates_dedup": 0,
+      "input_tokens": 906,
+      "output_tokens": 350,
+      "cost_usd": 0.007968,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: AI Agent Teams System.docx": {
+      "candidates_total": 22,
+      "candidates_minted": 16,
+      "candidates_dedup": 6,
+      "input_tokens": 1552,
+      "output_tokens": 2588,
+      "cost_usd": 0.043476,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: Outlining and Drafting a White Paper.docx": {
+      "candidates_total": 4,
+      "candidates_minted": 4,
+      "candidates_dedup": 0,
+      "input_tokens": 1070,
+      "output_tokens": 420,
+      "cost_usd": 0.009510000000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: Outline discussion for \"Extending Human Cognition Through AI Agent Systems\".docx": {
+      "candidates_total": 4,
+      "candidates_minted": 4,
+      "candidates_dedup": 0,
+      "input_tokens": 1018,
+      "output_tokens": 458,
+      "cost_usd": 0.009924,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: Disseminating Breakthrough Research for Human Advancement.docx": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 1405,
+      "output_tokens": 1151,
+      "cost_usd": 0.02148,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Chat Summary: Refining AI-Assistance Explanations for Different Audiences.docx": {
+      "candidates_total": 5,
+      "candidates_minted": 4,
+      "candidates_dedup": 1,
+      "input_tokens": 1163,
+      "output_tokens": 547,
+      "cost_usd": 0.011694,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Support/Images/Modeling Cosmic Redshift with Gravity.docx": {
+      "candidates_total": 47,
+      "candidates_minted": 45,
+      "candidates_dedup": 2,
+      "input_tokens": 11187,
+      "output_tokens": 6171,
+      "cost_usd": 0.12612600000000002,
+      "chunks_processed": 12,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Drafts/White Paper writing guidelines.rtf": {
+      "candidates_total": 15,
+      "candidates_minted": 14,
+      "candidates_dedup": 1,
+      "input_tokens": 3270,
+      "output_tokens": 1634,
+      "cost_usd": 0.03432,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/Expanding Awareness/Drafts/The Expanding Awareness Cosmology.docx": {
+      "candidates_total": 134,
+      "candidates_minted": 19,
+      "candidates_dedup": 115,
+      "input_tokens": 45682,
+      "output_tokens": 16306,
+      "cost_usd": 0.381636,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Chat Summaries/Raw Chat Summaries: Analysis of December 4th, 2024 Conversations on AI-Powered Cognitive Enhancement.docx": {
+      "candidates_total": 30,
+      "candidates_minted": 22,
+      "candidates_dedup": 8,
+      "input_tokens": 6603,
+      "output_tokens": 3210,
+      "cost_usd": 0.067959,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/a-special-life,-a-special-love.docx": {
+      "candidates_total": 822,
+      "candidates_minted": 582,
+      "candidates_dedup": 240,
+      "input_tokens": 143131,
+      "output_tokens": 96289,
+      "cost_usd": 1.8737279999999998,
+      "chunks_processed": 165,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Raw Chats/Raw Chat: Expanding AI Agent Teams Capabilities.docx": {
+      "candidates_total": 25,
+      "candidates_minted": 11,
+      "candidates_dedup": 14,
+      "input_tokens": 5386,
+      "output_tokens": 2936,
+      "cost_usd": 0.060198,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Autism Acceptance/a-special-life,-a-special-love_KC/book_1.docx": {
+      "candidates_total": 811,
+      "candidates_minted": 248,
+      "candidates_dedup": 563,
+      "input_tokens": 143131,
+      "output_tokens": 94927,
+      "cost_usd": 1.8532979999999997,
+      "chunks_processed": 165,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Drafts/White Paper.rtf": {
+      "candidates_total": 107,
+      "candidates_minted": 91,
+      "candidates_dedup": 16,
+      "input_tokens": 34656,
+      "output_tokens": 12030,
+      "cost_usd": 0.284418,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Raw Chats/Raw Chat: Collaborative Outline Creation for AI-Powered Cognitive Enhancement System.docx": {
+      "candidates_total": 115,
+      "candidates_minted": 70,
+      "candidates_dedup": 45,
+      "input_tokens": 34405,
+      "output_tokens": 12634,
+      "cost_usd": 0.292725,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Raw Chats/Raw Chat: Refining AI-Assistance Explanations for Different Audiences.docx": {
+      "candidates_total": 23,
+      "candidates_minted": 17,
+      "candidates_dedup": 6,
+      "input_tokens": 10672,
+      "output_tokens": 2680,
+      "cost_usd": 0.072216,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Expanding Awareness/The Expanding Awareness Cosmology Atticus Import.docx": {
+      "candidates_total": 172,
+      "candidates_minted": 71,
+      "candidates_dedup": 101,
+      "input_tokens": 54676,
+      "output_tokens": 20993,
+      "cost_usd": 0.47892300000000004,
+      "chunks_processed": 12,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Support/Blurb Material from Ais.docx": {
+      "candidates_total": 12,
+      "candidates_minted": 7,
+      "candidates_dedup": 5,
+      "input_tokens": 2191,
+      "output_tokens": 1540,
+      "cost_usd": 0.029672999999999998,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Raw Chats/Raw Chat: Disseminating Breakthrough Research for Human Advancement.docx": {
+      "candidates_total": 133,
+      "candidates_minted": 97,
+      "candidates_dedup": 36,
+      "input_tokens": 36014,
+      "output_tokens": 15516,
+      "cost_usd": 0.34078200000000003,
+      "chunks_processed": 9,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Raw Chats/Raw Chat: Outline discussion for \"Extending Human Cognition Through AI Agent Systems\".docx": {
+      "candidates_total": 113,
+      "candidates_minted": 62,
+      "candidates_dedup": 51,
+      "input_tokens": 34424,
+      "output_tokens": 12872,
+      "cost_usd": 0.296352,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Support/Problem Solving Process.docx": {
+      "candidates_total": 20,
+      "candidates_minted": 10,
+      "candidates_dedup": 10,
+      "input_tokens": 2063,
+      "output_tokens": 2045,
+      "cost_usd": 0.036864,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Support/Human Nexus Scenes.docx": {
+      "candidates_total": 40,
+      "candidates_minted": 25,
+      "candidates_dedup": 15,
+      "input_tokens": 8475,
+      "output_tokens": 4836,
+      "cost_usd": 0.097965,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/The Great Housing Bubble/IHB Documents/What the Federal Reserve Can Learn from the Forest Service.docx": {
+      "candidates_total": 8,
+      "candidates_minted": 8,
+      "candidates_dedup": 0,
+      "input_tokens": 1582,
+      "output_tokens": 1011,
+      "cost_usd": 0.019910999999999998,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Raw Chats/Raw Chat: Outlining and Drafting a White Paper Date of Chat.docx": {
+      "candidates_total": 158,
+      "candidates_minted": 93,
+      "candidates_dedup": 65,
+      "input_tokens": 42117,
+      "output_tokens": 17390,
+      "cost_usd": 0.38720099999999996,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Support/The AI Revolution: From Search Results to Search Answers.docx": {
+      "candidates_total": 52,
+      "candidates_minted": 38,
+      "candidates_dedup": 14,
+      "input_tokens": 16774,
+      "output_tokens": 5929,
+      "cost_usd": 0.139257,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Raw Chats/Raw Chat: AI Agent Teams System.docx": {
+      "candidates_total": 199,
+      "candidates_minted": 169,
+      "candidates_dedup": 30,
+      "input_tokens": 41526,
+      "output_tokens": 22961,
+      "cost_usd": 0.46899300000000005,
+      "chunks_processed": 9,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Support/Human Nexus.docx": {
+      "candidates_total": 89,
+      "candidates_minted": 54,
+      "candidates_dedup": 35,
+      "input_tokens": 20176,
+      "output_tokens": 10223,
+      "cost_usd": 0.21387299999999998,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/White Paper.docx": {
+      "candidates_total": 76,
+      "candidates_minted": 36,
+      "candidates_dedup": 40,
+      "input_tokens": 20046,
+      "output_tokens": 8287,
+      "cost_usd": 0.184443,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/White Paper.rtf": {
+      "candidates_total": 100,
+      "candidates_minted": 48,
+      "candidates_dedup": 52,
+      "input_tokens": 34001,
+      "output_tokens": 11723,
+      "cost_usd": 0.277848,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/publishing business/Human Nexus/Human Nexus Workshop/Raw Chats/Raw Chat: Collaborative Design of Research Pathways for Extending Human Cognition Framework.docx": {
+      "candidates_total": 417,
+      "candidates_minted": 285,
+      "candidates_dedup": 132,
+      "input_tokens": 104538,
+      "output_tokens": 51718,
+      "cost_usd": 1.0893840000000001,
+      "chunks_processed": 23,
+      "errors": [
+        "chunk 12: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/publishing business/The Great Housing Bubble/The Great Housing Bubble 17.docx": {
+      "candidates_total": 567,
+      "candidates_minted": 544,
+      "candidates_dedup": 23,
+      "input_tokens": 140323,
+      "output_tokens": 72349,
+      "cost_usd": 1.5062039999999999,
+      "chunks_processed": 29,
+      "errors": []
+    }
+  },
+  "totals": {
+    "files_processed": 168,
+    "candidates_total": 21175,
+    "candidates_minted": 10299,
+    "candidates_dedup": 10876,
+    "input_tokens": 4048943,
+    "output_tokens": 2495175,
+    "cost_usd": 49.574454,
+    "errors": 6
+  },
+  "last_updated": "2026-05-08T10:53:15.184473"
+}

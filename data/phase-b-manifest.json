@@ -1,0 +1,2878 @@
+{
+  "version": 1,
+  "created_at": "2026-05-08T07:28:57.781169",
+  "completed_files": {
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/AI Tools.md": {
+      "candidates_total": 8,
+      "candidates_minted": 8,
+      "candidates_dedup": 0,
+      "input_tokens": 795,
+      "output_tokens": 944,
+      "cost_usd": 0.016544999999999997,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Author's Note.md": {
+      "candidates_total": 2,
+      "candidates_minted": 2,
+      "candidates_dedup": 0,
+      "input_tokens": 637,
+      "output_tokens": 218,
+      "cost_usd": 0.005181,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Amazon.com Book Preview Marketing & Sales.md": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 989,
+      "output_tokens": 1256,
+      "cost_usd": 0.021807,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/AI Personas.md": {
+      "candidates_total": 15,
+      "candidates_minted": 7,
+      "candidates_dedup": 8,
+      "input_tokens": 3184,
+      "output_tokens": 1689,
+      "cost_usd": 0.034887,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/AI-Assisted Story Generation Method.md": {
+      "candidates_total": 15,
+      "candidates_minted": 10,
+      "candidates_dedup": 5,
+      "input_tokens": 2623,
+      "output_tokens": 1676,
+      "cost_usd": 0.033009,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Amazon Description Criteria.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 2698,
+      "output_tokens": 2031,
+      "cost_usd": 0.038558999999999996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Amazon Description Evaluation Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 17,
+      "candidates_dedup": 3,
+      "input_tokens": 2721,
+      "output_tokens": 2080,
+      "cost_usd": 0.039362999999999995,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Back Cover Blurb Criteria.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 2408,
+      "output_tokens": 2072,
+      "cost_usd": 0.038304,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Back Cover Blurb Evaluation Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 2893,
+      "output_tokens": 2236,
+      "cost_usd": 0.042219,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Back Matter Evaluation Framework.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 2852,
+      "output_tokens": 1919,
+      "cost_usd": 0.037341,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Balancing Acceleration and Refinement The Productivity Paradox in AI-Assisted Creation.md": {
+      "candidates_total": 15,
+      "candidates_minted": 11,
+      "candidates_dedup": 4,
+      "input_tokens": 1578,
+      "output_tokens": 1577,
+      "cost_usd": 0.028389000000000005,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Cover Concept Criteria.md": {
+      "candidates_total": 30,
+      "candidates_minted": 29,
+      "candidates_dedup": 1,
+      "input_tokens": 3437,
+      "output_tokens": 3614,
+      "cost_usd": 0.064521,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Back Matter Framework.md": {
+      "candidates_total": 50,
+      "candidates_minted": 49,
+      "candidates_dedup": 1,
+      "input_tokens": 12451,
+      "output_tokens": 5356,
+      "cost_usd": 0.11769299999999999,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Back Matter Criteria.md": {
+      "candidates_total": 64,
+      "candidates_minted": 62,
+      "candidates_dedup": 2,
+      "input_tokens": 8159,
+      "output_tokens": 7033,
+      "cost_usd": 0.129972,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Cover Concept Evaluation Framework.md": {
+      "candidates_total": 35,
+      "candidates_minted": 32,
+      "candidates_dedup": 3,
+      "input_tokens": 7161,
+      "output_tokens": 4105,
+      "cost_usd": 0.083058,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Cover Trend Analysis Criteria.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 3797,
+      "output_tokens": 2107,
+      "cost_usd": 0.042996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Amazon Description Framework.md": {
+      "candidates_total": 93,
+      "candidates_minted": 91,
+      "candidates_dedup": 2,
+      "input_tokens": 15057,
+      "output_tokens": 10287,
+      "cost_usd": 0.199476,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Cover Quality Criteria.md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 4150,
+      "output_tokens": 4096,
+      "cost_usd": 0.07389,
+      "chunks_processed": 1,
+      "errors": [
+        "chunk 0: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Sales Momentum versus Marketing Window Maximization.md": {
+      "candidates_total": 10,
+      "candidates_minted": 7,
+      "candidates_dedup": 3,
+      "input_tokens": 2133,
+      "output_tokens": 1192,
+      "cost_usd": 0.024279000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Back Cover Blurb Framework.md": {
+      "candidates_total": 100,
+      "candidates_minted": 96,
+      "candidates_dedup": 4,
+      "input_tokens": 13122,
+      "output_tokens": 10740,
+      "cost_usd": 0.20046599999999998,
+      "chunks_processed": 13,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/AI-Assisted Novel Writing Method.md": {
+      "candidates_total": 109,
+      "candidates_minted": 102,
+      "candidates_dedup": 7,
+      "input_tokens": 18477,
+      "output_tokens": 11980,
+      "cost_usd": 0.23513099999999998,
+      "chunks_processed": 20,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Cover Concept Framework.md": {
+      "candidates_total": 73,
+      "candidates_minted": 73,
+      "candidates_dedup": 0,
+      "input_tokens": 9826,
+      "output_tokens": 8167,
+      "cost_usd": 0.15198299999999998,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Bowker Description Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 2524,
+      "output_tokens": 2010,
+      "cost_usd": 0.037722,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Building a Comprehensive Narrative Framework Step-by-Step.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 2301,
+      "output_tokens": 1666,
+      "cost_usd": 0.031893,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Cover Quality Evaluation Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 7808,
+      "output_tokens": 6462,
+      "cost_usd": 0.120354,
+      "chunks_processed": 5,
+      "errors": [
+        "chunk 2: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Cover Trend Analysis Evaluation Framework.md": {
+      "candidates_total": 45,
+      "candidates_minted": 42,
+      "candidates_dedup": 3,
+      "input_tokens": 6278,
+      "output_tokens": 5198,
+      "cost_usd": 0.096804,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Concept Evaluation Criteria.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 3627,
+      "output_tokens": 2125,
+      "cost_usd": 0.042756,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Foundation Framework Criteria.md": {
+      "candidates_total": 15,
+      "candidates_minted": 14,
+      "candidates_dedup": 1,
+      "input_tokens": 2821,
+      "output_tokens": 1558,
+      "cost_usd": 0.031833,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Draft Criteria.md": {
+      "candidates_total": 30,
+      "candidates_minted": 29,
+      "candidates_dedup": 1,
+      "input_tokens": 2325,
+      "output_tokens": 2892,
+      "cost_usd": 0.050355000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Concept Evaluation Framework.md": {
+      "candidates_total": 40,
+      "candidates_minted": 37,
+      "candidates_dedup": 3,
+      "input_tokens": 9253,
+      "output_tokens": 4576,
+      "cost_usd": 0.096399,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Draft Framework.md": {
+      "candidates_total": 40,
+      "candidates_minted": 38,
+      "candidates_dedup": 2,
+      "input_tokens": 7530,
+      "output_tokens": 4357,
+      "cost_usd": 0.087945,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Book Cover Trend Analysis Framework.md": {
+      "candidates_total": 71,
+      "candidates_minted": 70,
+      "candidates_dedup": 1,
+      "input_tokens": 8681,
+      "output_tokens": 7874,
+      "cost_usd": 0.144153,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Concept Initiation Framework.md": {
+      "candidates_total": 65,
+      "candidates_minted": 62,
+      "candidates_dedup": 3,
+      "input_tokens": 14757,
+      "output_tokens": 7078,
+      "cost_usd": 0.15044100000000002,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Foundation Evaluation Framework.md": {
+      "candidates_total": 52,
+      "candidates_minted": 45,
+      "candidates_dedup": 7,
+      "input_tokens": 10058,
+      "output_tokens": 6074,
+      "cost_usd": 0.121284,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Architecture in Narrative Design From Theme to Embodiment.md": {
+      "candidates_total": 15,
+      "candidates_minted": 12,
+      "candidates_dedup": 3,
+      "input_tokens": 3502,
+      "output_tokens": 1733,
+      "cost_usd": 0.036501,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Refinement Evaluation Framework.md": {
+      "candidates_total": 37,
+      "candidates_minted": 34,
+      "candidates_dedup": 3,
+      "input_tokens": 10721,
+      "output_tokens": 4829,
+      "cost_usd": 0.104598,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Refinement Framework Criteria.md": {
+      "candidates_total": 44,
+      "candidates_minted": 42,
+      "candidates_dedup": 2,
+      "input_tokens": 6231,
+      "output_tokens": 4982,
+      "cost_usd": 0.093423,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Dynamics The Living Architecture of Narrative.md": {
+      "candidates_total": 23,
+      "candidates_minted": 20,
+      "candidates_dedup": 3,
+      "input_tokens": 1882,
+      "output_tokens": 2463,
+      "cost_usd": 0.042591,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Concept Framework.md": {
+      "candidates_total": 110,
+      "candidates_minted": 95,
+      "candidates_dedup": 15,
+      "input_tokens": 20100,
+      "output_tokens": 10856,
+      "cost_usd": 0.22313999999999995,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Foundation Framework Criteria.md": {
+      "candidates_total": 28,
+      "candidates_minted": 27,
+      "candidates_dedup": 1,
+      "input_tokens": 1514,
+      "output_tokens": 2753,
+      "cost_usd": 0.045836999999999996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Foundation Framework.md": {
+      "candidates_total": 113,
+      "candidates_minted": 107,
+      "candidates_dedup": 6,
+      "input_tokens": 21989,
+      "output_tokens": 11942,
+      "cost_usd": 0.245097,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Matrix Framework Criteria.md": {
+      "candidates_total": 10,
+      "candidates_minted": 8,
+      "candidates_dedup": 2,
+      "input_tokens": 2160,
+      "output_tokens": 1077,
+      "cost_usd": 0.022635,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Initiation Framework.md": {
+      "candidates_total": 111,
+      "candidates_minted": 100,
+      "candidates_dedup": 11,
+      "input_tokens": 12461,
+      "output_tokens": 12315,
+      "cost_usd": 0.222108,
+      "chunks_processed": 13,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Ensemble Narrative Functionality Evaluation.md": {
+      "candidates_total": 63,
+      "candidates_minted": 60,
+      "candidates_dedup": 3,
+      "input_tokens": 10613,
+      "output_tokens": 6782,
+      "cost_usd": 0.133569,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Refinement Framework Criteria.md": {
+      "candidates_total": 15,
+      "candidates_minted": 13,
+      "candidates_dedup": 2,
+      "input_tokens": 3707,
+      "output_tokens": 1569,
+      "cost_usd": 0.034656,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Foundation Evaluation Framework.md": {
+      "candidates_total": 72,
+      "candidates_minted": 65,
+      "candidates_dedup": 7,
+      "input_tokens": 11280,
+      "output_tokens": 8189,
+      "cost_usd": 0.156675,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Matrix Evaluation Framework.md": {
+      "candidates_total": 40,
+      "candidates_minted": 35,
+      "candidates_dedup": 5,
+      "input_tokens": 6998,
+      "output_tokens": 4604,
+      "cost_usd": 0.090054,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character-Theme Integration Evaluation Framework Criteria.md": {
+      "candidates_total": 12,
+      "candidates_minted": 10,
+      "candidates_dedup": 2,
+      "input_tokens": 1322,
+      "output_tokens": 1274,
+      "cost_usd": 0.023076,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character States The Dynamic Psychology of Narrative Presence.md": {
+      "candidates_total": 18,
+      "candidates_minted": 10,
+      "candidates_dedup": 8,
+      "input_tokens": 3248,
+      "output_tokens": 1935,
+      "cost_usd": 0.038769,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Refinement Evaluation Framework.md": {
+      "candidates_total": 40,
+      "candidates_minted": 32,
+      "candidates_dedup": 8,
+      "input_tokens": 6901,
+      "output_tokens": 4442,
+      "cost_usd": 0.087333,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Comprehensive Book Marketing Element Placement Strategy.md": {
+      "candidates_total": 10,
+      "candidates_minted": 6,
+      "candidates_dedup": 4,
+      "input_tokens": 991,
+      "output_tokens": 1076,
+      "cost_usd": 0.019112999999999998,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Copyright page.md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 647,
+      "output_tokens": 4,
+      "cost_usd": 0.002001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Comprehensive Book Promotion Strategy.md": {
+      "candidates_total": 15,
+      "candidates_minted": 9,
+      "candidates_dedup": 6,
+      "input_tokens": 3116,
+      "output_tokens": 1746,
+      "cost_usd": 0.035538,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Chapter Refinement Framework.md": {
+      "candidates_total": 145,
+      "candidates_minted": 139,
+      "candidates_dedup": 6,
+      "input_tokens": 19608,
+      "output_tokens": 16507,
+      "cost_usd": 0.306429,
+      "chunks_processed": 12,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Core Principles of the Meta Persona.md": {
+      "candidates_total": 25,
+      "candidates_minted": 25,
+      "candidates_dedup": 0,
+      "input_tokens": 3137,
+      "output_tokens": 2418,
+      "cost_usd": 0.045681,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Creating Natural Dialogue.md": {
+      "candidates_total": 3,
+      "candidates_minted": 3,
+      "candidates_dedup": 0,
+      "input_tokens": 636,
+      "output_tokens": 328,
+      "cost_usd": 0.006828,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Creative Process & Marketing Perspective.md": {
+      "candidates_total": 6,
+      "candidates_minted": 5,
+      "candidates_dedup": 1,
+      "input_tokens": 989,
+      "output_tokens": 742,
+      "cost_usd": 0.014097000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Initiation Framework.md": {
+      "candidates_total": 133,
+      "candidates_minted": 119,
+      "candidates_dedup": 14,
+      "input_tokens": 12472,
+      "output_tokens": 14554,
+      "cost_usd": 0.255726,
+      "chunks_processed": 11,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Entry and Exit Points Narrative Portals.md": {
+      "candidates_total": 4,
+      "candidates_minted": 4,
+      "candidates_dedup": 0,
+      "input_tokens": 703,
+      "output_tokens": 482,
+      "cost_usd": 0.009339,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Divorce Blurb.md": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 1196,
+      "output_tokens": 1430,
+      "cost_usd": 0.025038,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Creating Effective Scene Prompts A Comprehensive Framework.md": {
+      "candidates_total": 30,
+      "candidates_minted": 26,
+      "candidates_dedup": 4,
+      "input_tokens": 2742,
+      "output_tokens": 3427,
+      "cost_usd": 0.059631,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character-Theme Integration Evaluation Framework.md": {
+      "candidates_total": 84,
+      "candidates_minted": 81,
+      "candidates_dedup": 3,
+      "input_tokens": 12393,
+      "output_tokens": 9695,
+      "cost_usd": 0.182604,
+      "chunks_processed": 11,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Matrix Framework.md": {
+      "candidates_total": 133,
+      "candidates_minted": 127,
+      "candidates_dedup": 6,
+      "input_tokens": 18643,
+      "output_tokens": 14183,
+      "cost_usd": 0.268674,
+      "chunks_processed": 19,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Evaluation Draft Conformance Framework.md": {
+      "candidates_total": 51,
+      "candidates_minted": 49,
+      "candidates_dedup": 2,
+      "input_tokens": 7840,
+      "output_tokens": 5878,
+      "cost_usd": 0.11169,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Editorial Gap Analysis Framework.md": {
+      "candidates_total": 69,
+      "candidates_minted": 62,
+      "candidates_dedup": 7,
+      "input_tokens": 7566,
+      "output_tokens": 7378,
+      "cost_usd": 0.13336800000000001,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Evaluation Draft Quality Framework.md": {
+      "candidates_total": 67,
+      "candidates_minted": 60,
+      "candidates_dedup": 7,
+      "input_tokens": 13815,
+      "output_tokens": 7589,
+      "cost_usd": 0.15528,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Evaluation Phase I Comprehensive Framework.md": {
+      "candidates_total": 63,
+      "candidates_minted": 57,
+      "candidates_dedup": 6,
+      "input_tokens": 11075,
+      "output_tokens": 7168,
+      "cost_usd": 0.14074499999999998,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Evaluation Phase II Comprehensive Framework.md": {
+      "candidates_total": 55,
+      "candidates_minted": 49,
+      "candidates_dedup": 6,
+      "input_tokens": 8891,
+      "output_tokens": 5819,
+      "cost_usd": 0.11395799999999999,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Evaluation Phase III Comprehensive Framework.md": {
+      "candidates_total": 55,
+      "candidates_minted": 43,
+      "candidates_dedup": 12,
+      "input_tokens": 11210,
+      "output_tokens": 6098,
+      "cost_usd": 0.1251,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Evaluation Setting-Character-Theme Coherence.md": {
+      "candidates_total": 46,
+      "candidates_minted": 46,
+      "candidates_dedup": 0,
+      "input_tokens": 7725,
+      "output_tokens": 5402,
+      "cost_usd": 0.104205,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Evaluation Production Readiness Comprehensive.md": {
+      "candidates_total": 60,
+      "candidates_minted": 50,
+      "candidates_dedup": 10,
+      "input_tokens": 11129,
+      "output_tokens": 6215,
+      "cost_usd": 0.126612,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Refinement Framework.md": {
+      "candidates_total": 156,
+      "candidates_minted": 141,
+      "candidates_dedup": 15,
+      "input_tokens": 19719,
+      "output_tokens": 21478,
+      "cost_usd": 0.381327,
+      "chunks_processed": 17,
+      "errors": [
+        "chunk 2: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Character Foundation Framework.md": {
+      "candidates_total": 269,
+      "candidates_minted": 250,
+      "candidates_dedup": 19,
+      "input_tokens": 31637,
+      "output_tokens": 34723,
+      "cost_usd": 0.6157559999999999,
+      "chunks_processed": 16,
+      "errors": [
+        "chunk 9: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/KDP Process Amazon.md": {
+      "candidates_total": 5,
+      "candidates_minted": 5,
+      "candidates_dedup": 0,
+      "input_tokens": 914,
+      "output_tokens": 517,
+      "cost_usd": 0.010497,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Ideation Framework Criteria.md": {
+      "candidates_total": 87,
+      "candidates_minted": 83,
+      "candidates_dedup": 4,
+      "input_tokens": 9701,
+      "output_tokens": 9986,
+      "cost_usd": 0.17889300000000002,
+      "chunks_processed": 12,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Ideation Framework.md": {
+      "candidates_total": 75,
+      "candidates_minted": 57,
+      "candidates_dedup": 18,
+      "input_tokens": 16242,
+      "output_tokens": 8281,
+      "cost_usd": 0.172941,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Knowledge Architecture in Narrative Development Systems for Coherent Evolution.md": {
+      "candidates_total": 12,
+      "candidates_minted": 9,
+      "candidates_dedup": 3,
+      "input_tokens": 1515,
+      "output_tokens": 1352,
+      "cost_usd": 0.024825,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Malcolm X.md": {
+      "candidates_total": 2,
+      "candidates_minted": 2,
+      "candidates_dedup": 0,
+      "input_tokens": 1568,
+      "output_tokens": 227,
+      "cost_usd": 0.008109,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Managing Dramatic Tension and Pacing.md": {
+      "candidates_total": 4,
+      "candidates_minted": 2,
+      "candidates_dedup": 2,
+      "input_tokens": 675,
+      "output_tokens": 428,
+      "cost_usd": 0.008445000000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Malcolm Little King.md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 1364,
+      "output_tokens": 1120,
+      "cost_usd": 0.020892,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Ideation Initiation Framework.md": {
+      "candidates_total": 86,
+      "candidates_minted": 75,
+      "candidates_dedup": 11,
+      "input_tokens": 19817,
+      "output_tokens": 9683,
+      "cost_usd": 0.204696,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Ideation Framework Questioning Protocols.md": {
+      "candidates_total": 87,
+      "candidates_minted": 85,
+      "candidates_dedup": 2,
+      "input_tokens": 12839,
+      "output_tokens": 9528,
+      "cost_usd": 0.18143700000000001,
+      "chunks_processed": 16,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Internal Parliament Theory.md": {
+      "candidates_total": 76,
+      "candidates_minted": 72,
+      "candidates_dedup": 4,
+      "input_tokens": 9493,
+      "output_tokens": 8660,
+      "cost_usd": 0.158379,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Ideation Evaluation Framework (old1).md": {
+      "candidates_total": 130,
+      "candidates_minted": 120,
+      "candidates_dedup": 10,
+      "input_tokens": 23964,
+      "output_tokens": 14842,
+      "cost_usd": 0.29452200000000006,
+      "chunks_processed": 29,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Marketing Strategy Framework.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 1577,
+      "output_tokens": 1736,
+      "cost_usd": 0.030770999999999996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Marketing Pages Evaluation Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 3599,
+      "output_tokens": 2270,
+      "cost_usd": 0.044847,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Missing Character Analysis Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 17,
+      "candidates_dedup": 3,
+      "input_tokens": 4118,
+      "output_tokens": 2403,
+      "cost_usd": 0.048399,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Narrative Efficiency Through Strategic Selection Optimizing Your Authoritarian Chronicle.md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 1020,
+      "output_tokens": 1076,
+      "cost_usd": 0.0192,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Narrative Advancement The Dynamic Architecture of Story Evolution.md": {
+      "candidates_total": 16,
+      "candidates_minted": 14,
+      "candidates_dedup": 2,
+      "input_tokens": 2455,
+      "output_tokens": 1740,
+      "cost_usd": 0.033465,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Marketing Pages Framework Criteria.md": {
+      "candidates_total": 30,
+      "candidates_minted": 28,
+      "candidates_dedup": 2,
+      "input_tokens": 2441,
+      "output_tokens": 3210,
+      "cost_usd": 0.05547300000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Narrative Elements Mapping Criteria.md": {
+      "candidates_total": 17,
+      "candidates_minted": 17,
+      "candidates_dedup": 0,
+      "input_tokens": 2589,
+      "output_tokens": 1777,
+      "cost_usd": 0.034422,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Narrative Function The Purposeful Architecture of Story Elements.md": {
+      "candidates_total": 18,
+      "candidates_minted": 15,
+      "candidates_dedup": 3,
+      "input_tokens": 1991,
+      "output_tokens": 1915,
+      "cost_usd": 0.034698,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Pacing.md": {
+      "candidates_total": 7,
+      "candidates_minted": 7,
+      "candidates_dedup": 0,
+      "input_tokens": 698,
+      "output_tokens": 806,
+      "cost_usd": 0.014184,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Plot Advancement.md": {
+      "candidates_total": 4,
+      "candidates_minted": 4,
+      "candidates_dedup": 0,
+      "input_tokens": 802,
+      "output_tokens": 475,
+      "cost_usd": 0.009531000000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Plot Foundation Criteria.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 2830,
+      "output_tokens": 1533,
+      "cost_usd": 0.031485,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Missing Setting Analysis Framework.md": {
+      "candidates_total": 66,
+      "candidates_minted": 54,
+      "candidates_dedup": 12,
+      "input_tokens": 7644,
+      "output_tokens": 7039,
+      "cost_usd": 0.12851700000000002,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Loose End Analysis Framework.md": {
+      "candidates_total": 115,
+      "candidates_minted": 108,
+      "candidates_dedup": 7,
+      "input_tokens": 15915,
+      "output_tokens": 12930,
+      "cost_usd": 0.241695,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Plot Foundation Evaluation Framework.md": {
+      "candidates_total": 40,
+      "candidates_minted": 34,
+      "candidates_dedup": 6,
+      "input_tokens": 7029,
+      "output_tokens": 4562,
+      "cost_usd": 0.089517,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Plot Initiation Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 3713,
+      "output_tokens": 2214,
+      "cost_usd": 0.044349,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Narrative Elements Mapping Evaluation Framework.md": {
+      "candidates_total": 94,
+      "candidates_minted": 86,
+      "candidates_dedup": 8,
+      "input_tokens": 19115,
+      "output_tokens": 10349,
+      "cost_usd": 0.21257999999999996,
+      "chunks_processed": 22,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Plot Refinement Framework Criteria.md": {
+      "candidates_total": 14,
+      "candidates_minted": 11,
+      "candidates_dedup": 3,
+      "input_tokens": 1810,
+      "output_tokens": 1519,
+      "cost_usd": 0.028215,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Ideation Framework Comprehensive Libraries.md": {
+      "candidates_total": 263,
+      "candidates_minted": 260,
+      "candidates_dedup": 3,
+      "input_tokens": 42155,
+      "output_tokens": 29011,
+      "cost_usd": 0.56163,
+      "chunks_processed": 9,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Marketing Pages Framework.md": {
+      "candidates_total": 158,
+      "candidates_minted": 151,
+      "candidates_dedup": 7,
+      "input_tokens": 16151,
+      "output_tokens": 16523,
+      "cost_usd": 0.296298,
+      "chunks_processed": 16,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Preserving Creative Agency Addressing Editor's Paralysis and Black Box Concerns.md": {
+      "candidates_total": 11,
+      "candidates_minted": 9,
+      "candidates_dedup": 2,
+      "input_tokens": 1736,
+      "output_tokens": 1327,
+      "cost_usd": 0.025113,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Plot Refinement Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 18,
+      "candidates_dedup": 2,
+      "input_tokens": 3616,
+      "output_tokens": 2250,
+      "cost_usd": 0.044598,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Production Readiness Evaluation Framework Criteria.md": {
+      "candidates_total": 15,
+      "candidates_minted": 14,
+      "candidates_dedup": 1,
+      "input_tokens": 1497,
+      "output_tokens": 1790,
+      "cost_usd": 0.031341,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Scene Framework Structural Foundations for Narrative Architecture.md": {
+      "candidates_total": 9,
+      "candidates_minted": 5,
+      "candidates_dedup": 4,
+      "input_tokens": 1294,
+      "output_tokens": 1038,
+      "cost_usd": 0.019452,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Scene Goals Hierarchical Purposing.md": {
+      "candidates_total": 8,
+      "candidates_minted": 6,
+      "candidates_dedup": 2,
+      "input_tokens": 815,
+      "output_tokens": 844,
+      "cost_usd": 0.015105,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting Foundation Criteria.md": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 2082,
+      "output_tokens": 1198,
+      "cost_usd": 0.024216,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Series Continuity Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 2750,
+      "output_tokens": 2528,
+      "cost_usd": 0.046169999999999996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Plot Refinement Evaluation Framework.md": {
+      "candidates_total": 57,
+      "candidates_minted": 49,
+      "candidates_dedup": 8,
+      "input_tokens": 14524,
+      "output_tokens": 6358,
+      "cost_usd": 0.138942,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Narrative Elements Initiation Framework.md": {
+      "candidates_total": 148,
+      "candidates_minted": 148,
+      "candidates_dedup": 0,
+      "input_tokens": 24524,
+      "output_tokens": 16771,
+      "cost_usd": 0.32513699999999995,
+      "chunks_processed": 29,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting Refinement Framework Criteria.md": {
+      "candidates_total": 15,
+      "candidates_minted": 13,
+      "candidates_dedup": 2,
+      "input_tokens": 2073,
+      "output_tokens": 1598,
+      "cost_usd": 0.030189,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Scene Detail Framework.md": {
+      "candidates_total": 76,
+      "candidates_minted": 76,
+      "candidates_dedup": 0,
+      "input_tokens": 12402,
+      "output_tokens": 9159,
+      "cost_usd": 0.17459099999999997,
+      "chunks_processed": 14,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Plot Foundation Framework.md": {
+      "candidates_total": 159,
+      "candidates_minted": 149,
+      "candidates_dedup": 10,
+      "input_tokens": 20938,
+      "output_tokens": 16651,
+      "cost_usd": 0.31257899999999994,
+      "chunks_processed": 16,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Narrative Elements Mapping Framework.md": {
+      "candidates_total": 185,
+      "candidates_minted": 177,
+      "candidates_dedup": 8,
+      "input_tokens": 19948,
+      "output_tokens": 20012,
+      "cost_usd": 0.360024,
+      "chunks_processed": 19,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting Foundation Evaluation Framework.md": {
+      "candidates_total": 64,
+      "candidates_minted": 59,
+      "candidates_dedup": 5,
+      "input_tokens": 13760,
+      "output_tokens": 7539,
+      "cost_usd": 0.154365,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting Refinement Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 16,
+      "candidates_dedup": 4,
+      "input_tokens": 4551,
+      "output_tokens": 2548,
+      "cost_usd": 0.051873,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting Initiation Framework.md": {
+      "candidates_total": 55,
+      "candidates_minted": 50,
+      "candidates_dedup": 5,
+      "input_tokens": 9960,
+      "output_tokens": 6408,
+      "cost_usd": 0.126,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting as Thematic Embodiment Formalizing Environment as Character.md": {
+      "candidates_total": 15,
+      "candidates_minted": 10,
+      "candidates_dedup": 5,
+      "input_tokens": 2336,
+      "output_tokens": 1665,
+      "cost_usd": 0.031983,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Story Beat Prose Refinement Framework (old).md": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 2612,
+      "output_tokens": 1475,
+      "cost_usd": 0.029961,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting as Character The Environmental Psychology of Narrative Space.md": {
+      "candidates_total": 25,
+      "candidates_minted": 21,
+      "candidates_dedup": 4,
+      "input_tokens": 1926,
+      "output_tokens": 2471,
+      "cost_usd": 0.042843,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Story Beat Framework.md": {
+      "candidates_total": 19,
+      "candidates_minted": 17,
+      "candidates_dedup": 2,
+      "input_tokens": 2999,
+      "output_tokens": 2489,
+      "cost_usd": 0.046332,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Story Architecture The Interplay of Plot, Pacing, and Story Beats.md": {
+      "candidates_total": 38,
+      "candidates_minted": 34,
+      "candidates_dedup": 4,
+      "input_tokens": 2846,
+      "output_tokens": 3797,
+      "cost_usd": 0.065493,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Templates for books.md": {
+      "candidates_total": 13,
+      "candidates_minted": 13,
+      "candidates_dedup": 0,
+      "input_tokens": 1193,
+      "output_tokens": 1380,
+      "cost_usd": 0.024279,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Style Guide Framework Criteria.md": {
+      "candidates_total": 20,
+      "candidates_minted": 18,
+      "candidates_dedup": 2,
+      "input_tokens": 2678,
+      "output_tokens": 1810,
+      "cost_usd": 0.035184,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The AI-Facilitated Learning Revolution A Transformative Educational Paradigm.md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 908,
+      "output_tokens": 1134,
+      "cost_usd": 0.019734,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Dialogic Template Co-Creative Architecture for Narrative Development.md": {
+      "candidates_total": 10,
+      "candidates_minted": 7,
+      "candidates_dedup": 3,
+      "input_tokens": 959,
+      "output_tokens": 1015,
+      "cost_usd": 0.018102,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Distributed Cognitive Architecture From Neural Networks to Knowledge Ecosystems.md": {
+      "candidates_total": 12,
+      "candidates_minted": 7,
+      "candidates_dedup": 5,
+      "input_tokens": 1357,
+      "output_tokens": 1270,
+      "cost_usd": 0.023121000000000003,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Emergent Garden Structured Organicism in AI-Assisted Creativity.md": {
+      "candidates_total": 12,
+      "candidates_minted": 11,
+      "candidates_dedup": 1,
+      "input_tokens": 1114,
+      "output_tokens": 1282,
+      "cost_usd": 0.022572000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Architecture of Meaning A Deep Exploration of Literary Theme.md": {
+      "candidates_total": 18,
+      "candidates_minted": 15,
+      "candidates_dedup": 3,
+      "input_tokens": 2851,
+      "output_tokens": 2075,
+      "cost_usd": 0.039678,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting Refinement Evaluation Framework.md": {
+      "candidates_total": 101,
+      "candidates_minted": 96,
+      "candidates_dedup": 5,
+      "input_tokens": 15277,
+      "output_tokens": 10600,
+      "cost_usd": 0.20483100000000004,
+      "chunks_processed": 14,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Ethics of Righteous Narrative Combat.md": {
+      "candidates_total": 9,
+      "candidates_minted": 9,
+      "candidates_dedup": 0,
+      "input_tokens": 1128,
+      "output_tokens": 1067,
+      "cost_usd": 0.019389000000000003,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Larger Narrative Framework.md": {
+      "candidates_total": 5,
+      "candidates_minted": 2,
+      "candidates_dedup": 3,
+      "input_tokens": 752,
+      "output_tokens": 606,
+      "cost_usd": 0.011345999999999998,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Evolutionary Dynamics of Narrative Architecture Judgment as Creative Cornerstone.md": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 1056,
+      "output_tokens": 1376,
+      "cost_usd": 0.023808000000000003,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Liberation of Creative Potential AI Collaboration as Evolutionary Leap.md": {
+      "candidates_total": 9,
+      "candidates_minted": 4,
+      "candidates_dedup": 5,
+      "input_tokens": 1331,
+      "output_tokens": 992,
+      "cost_usd": 0.018873,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Meta-Cognitive Architecture of Learning Through AI Dialogue.md": {
+      "candidates_total": 9,
+      "candidates_minted": 5,
+      "candidates_dedup": 4,
+      "input_tokens": 891,
+      "output_tokens": 1042,
+      "cost_usd": 0.018303,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Heroine's Journey Mapping the Internal Emotional Landscape.md": {
+      "candidates_total": 18,
+      "candidates_minted": 18,
+      "candidates_dedup": 0,
+      "input_tokens": 2546,
+      "output_tokens": 1950,
+      "cost_usd": 0.036888,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Style Guide Evaluation Framework.md": {
+      "candidates_total": 44,
+      "candidates_minted": 41,
+      "candidates_dedup": 3,
+      "input_tokens": 8259,
+      "output_tokens": 5013,
+      "cost_usd": 0.099972,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Precision Imperative Dramatic Structure as Narrative Navigation.md": {
+      "candidates_total": 12,
+      "candidates_minted": 8,
+      "candidates_dedup": 4,
+      "input_tokens": 1672,
+      "output_tokens": 1364,
+      "cost_usd": 0.025476,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Multi-Layered Architecture of Narrative Creation Building the Invisible Framework.md": {
+      "candidates_total": 15,
+      "candidates_minted": 10,
+      "candidates_dedup": 5,
+      "input_tokens": 2691,
+      "output_tokens": 1701,
+      "cost_usd": 0.033588,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Narrative Ecosystem An Analysis of Your Creative Architecture.md": {
+      "candidates_total": 20,
+      "candidates_minted": 16,
+      "candidates_dedup": 4,
+      "input_tokens": 3611,
+      "output_tokens": 2168,
+      "cost_usd": 0.043352999999999996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Renaissance of Prolific Creation Finding Your Creative Balance.md": {
+      "candidates_total": 13,
+      "candidates_minted": 11,
+      "candidates_dedup": 2,
+      "input_tokens": 1327,
+      "output_tokens": 1410,
+      "cost_usd": 0.025131,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Spectrum of Authorial Responsibility in the AI Era.md": {
+      "candidates_total": 10,
+      "candidates_minted": 8,
+      "candidates_dedup": 2,
+      "input_tokens": 1445,
+      "output_tokens": 1082,
+      "cost_usd": 0.020565,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Recursive Evolution of Narrative Architecture A Meta-Analysis of AI-Assisted Creation.md": {
+      "candidates_total": 14,
+      "candidates_minted": 5,
+      "candidates_dedup": 9,
+      "input_tokens": 2219,
+      "output_tokens": 1577,
+      "cost_usd": 0.030312000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Structured Narrative Architecture Mapping Your Authoritarian Satire.md": {
+      "candidates_total": 9,
+      "candidates_minted": 5,
+      "candidates_dedup": 4,
+      "input_tokens": 1096,
+      "output_tokens": 1073,
+      "cost_usd": 0.019382999999999997,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Narrative Resonance of Setting Environment as Character.md": {
+      "candidates_total": 30,
+      "candidates_minted": 25,
+      "candidates_dedup": 5,
+      "input_tokens": 1861,
+      "output_tokens": 3098,
+      "cost_usd": 0.052052999999999995,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Thematic Tracking Framework.md": {
+      "candidates_total": 12,
+      "candidates_minted": 8,
+      "candidates_dedup": 4,
+      "input_tokens": 1083,
+      "output_tokens": 1293,
+      "cost_usd": 0.022644000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Thematic Genesis From Raw Concept to Philosophical Architecture.md": {
+      "candidates_total": 12,
+      "candidates_minted": 10,
+      "candidates_dedup": 2,
+      "input_tokens": 2825,
+      "output_tokens": 1363,
+      "cost_usd": 0.02892,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Theme Foundation Criteria.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 2485,
+      "output_tokens": 2046,
+      "cost_usd": 0.038145,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Theme Foundation Evaluation Framework.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 4600,
+      "output_tokens": 2269,
+      "cost_usd": 0.047835,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Setting Foundation Framework.md": {
+      "candidates_total": 157,
+      "candidates_minted": 140,
+      "candidates_dedup": 17,
+      "input_tokens": 22331,
+      "output_tokens": 17261,
+      "cost_usd": 0.32590800000000003,
+      "chunks_processed": 16,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Style Guide Development Framework.md": {
+      "candidates_total": 92,
+      "candidates_minted": 77,
+      "candidates_dedup": 15,
+      "input_tokens": 12533,
+      "output_tokens": 9708,
+      "cost_usd": 0.183219,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Title and Subtitle Criteria.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 2076,
+      "output_tokens": 1549,
+      "cost_usd": 0.029463,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Theme Refinement Framework Criteria.md": {
+      "candidates_total": 30,
+      "candidates_minted": 27,
+      "candidates_dedup": 3,
+      "input_tokens": 3425,
+      "output_tokens": 3491,
+      "cost_usd": 0.06264,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Using Box Sets as another product.md": {
+      "candidates_total": 6,
+      "candidates_minted": 6,
+      "candidates_dedup": 0,
+      "input_tokens": 1069,
+      "output_tokens": 757,
+      "cost_usd": 0.014561999999999999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Theme Refinement Evaluation Framework.md": {
+      "candidates_total": 32,
+      "candidates_minted": 30,
+      "candidates_dedup": 2,
+      "input_tokens": 6031,
+      "output_tokens": 4130,
+      "cost_usd": 0.080043,
+      "chunks_processed": 2,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Why Read Page.md": {
+      "candidates_total": 5,
+      "candidates_minted": 5,
+      "candidates_dedup": 0,
+      "input_tokens": 674,
+      "output_tokens": 549,
+      "cost_usd": 0.010256999999999999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Amazon.com Description for WeToo How To Crush the Conservative Coalition and Reclaim Our Freedom.md": {
+      "candidates_total": 12,
+      "candidates_minted": 11,
+      "candidates_dedup": 1,
+      "input_tokens": 1120,
+      "output_tokens": 1266,
+      "cost_usd": 0.02235,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Amazon.com Description for WeToo The Complete Guide to Fighting Back Against America's Aristocracy.md": {
+      "candidates_total": 12,
+      "candidates_minted": 9,
+      "candidates_dedup": 3,
+      "input_tokens": 1143,
+      "output_tokens": 1291,
+      "cost_usd": 0.022794000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Amazon.com Description for book 3.md": {
+      "candidates_total": 8,
+      "candidates_minted": 5,
+      "candidates_dedup": 3,
+      "input_tokens": 1080,
+      "output_tokens": 858,
+      "cost_usd": 0.01611,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Amazon.com description for book 2.md": {
+      "candidates_total": 12,
+      "candidates_minted": 9,
+      "candidates_dedup": 3,
+      "input_tokens": 1164,
+      "output_tokens": 1198,
+      "cost_usd": 0.021462000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Amazon.com description for book 1.md": {
+      "candidates_total": 17,
+      "candidates_minted": 16,
+      "candidates_dedup": 1,
+      "input_tokens": 1137,
+      "output_tokens": 1882,
+      "cost_usd": 0.031640999999999996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/The Symphonic Architecture of Theme and Subplot.md": {
+      "candidates_total": 88,
+      "candidates_minted": 79,
+      "candidates_dedup": 9,
+      "input_tokens": 12247,
+      "output_tokens": 9668,
+      "cost_usd": 0.181761,
+      "chunks_processed": 16,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Bowker Description for the Omnibus Edition..md": {
+      "candidates_total": 5,
+      "candidates_minted": 5,
+      "candidates_dedup": 0,
+      "input_tokens": 849,
+      "output_tokens": 601,
+      "cost_usd": 0.011562,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Bowker Description for book 3.md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 802,
+      "output_tokens": 1178,
+      "cost_usd": 0.020076000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Bowker description for book 1.md": {
+      "candidates_total": 8,
+      "candidates_minted": 8,
+      "candidates_dedup": 0,
+      "input_tokens": 868,
+      "output_tokens": 822,
+      "cost_usd": 0.014934000000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Attacking the Right-Wing Propaganda Machine.md": {
+      "candidates_total": 15,
+      "candidates_minted": 10,
+      "candidates_dedup": 5,
+      "input_tokens": 3223,
+      "output_tokens": 2035,
+      "cost_usd": 0.040194,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Bowker description for book 2.md": {
+      "candidates_total": 11,
+      "candidates_minted": 11,
+      "candidates_dedup": 0,
+      "input_tokens": 820,
+      "output_tokens": 1151,
+      "cost_usd": 0.019725,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Title and Subtitle Evaluation Framework.md": {
+      "candidates_total": 70,
+      "candidates_minted": 66,
+      "candidates_dedup": 4,
+      "input_tokens": 12497,
+      "output_tokens": 8237,
+      "cost_usd": 0.161046,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 1 Lifting the Veil.md": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 2478,
+      "output_tokens": 1487,
+      "cost_usd": 0.029739,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 10 Private Debt as Extraction.md": {
+      "candidates_total": 18,
+      "candidates_minted": 10,
+      "candidates_dedup": 8,
+      "input_tokens": 3285,
+      "output_tokens": 1944,
+      "cost_usd": 0.039015,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Theme Initiation Framework.md": {
+      "candidates_total": 115,
+      "candidates_minted": 102,
+      "candidates_dedup": 13,
+      "input_tokens": 14693,
+      "output_tokens": 12211,
+      "cost_usd": 0.227244,
+      "chunks_processed": 13,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 11 Debunking the Affordability Myth.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 3560,
+      "output_tokens": 2318,
+      "cost_usd": 0.045450000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 12 The Four Horsemen Strategy.md": {
+      "candidates_total": 20,
+      "candidates_minted": 16,
+      "candidates_dedup": 4,
+      "input_tokens": 4009,
+      "output_tokens": 2555,
+      "cost_usd": 0.050352,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 16 The Masculine Contradiction.md": {
+      "candidates_total": 18,
+      "candidates_minted": 16,
+      "candidates_dedup": 2,
+      "input_tokens": 3935,
+      "output_tokens": 2281,
+      "cost_usd": 0.046020000000000005,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Title and Subtitle Framework.md": {
+      "candidates_total": 148,
+      "candidates_minted": 132,
+      "candidates_dedup": 16,
+      "input_tokens": 20492,
+      "output_tokens": 16663,
+      "cost_usd": 0.311421,
+      "chunks_processed": 17,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 14 Democracy Under Siege.md": {
+      "candidates_total": 84,
+      "candidates_minted": 69,
+      "candidates_dedup": 15,
+      "input_tokens": 11915,
+      "output_tokens": 10111,
+      "cost_usd": 0.18740999999999997,
+      "chunks_processed": 12,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 17 Moving From Understanding to Action.md": {
+      "candidates_total": 30,
+      "candidates_minted": 28,
+      "candidates_dedup": 2,
+      "input_tokens": 3663,
+      "output_tokens": 3364,
+      "cost_usd": 0.061449,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 17 Communities Collapsing by Design.md": {
+      "candidates_total": 59,
+      "candidates_minted": 56,
+      "candidates_dedup": 3,
+      "input_tokens": 7725,
+      "output_tokens": 7055,
+      "cost_usd": 0.129,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 16 Conservative Contradictions A Preview of Book Two.md": {
+      "candidates_total": 111,
+      "candidates_minted": 105,
+      "candidates_dedup": 6,
+      "input_tokens": 13053,
+      "output_tokens": 12278,
+      "cost_usd": 0.223329,
+      "chunks_processed": 9,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 15 Breaking the Blockades.md": {
+      "candidates_total": 93,
+      "candidates_minted": 90,
+      "candidates_dedup": 3,
+      "input_tokens": 11214,
+      "output_tokens": 11133,
+      "cost_usd": 0.200637,
+      "chunks_processed": 11,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 13  The Full Progressive Agenda.md": {
+      "candidates_total": 120,
+      "candidates_minted": 99,
+      "candidates_dedup": 21,
+      "input_tokens": 13302,
+      "output_tokens": 13813,
+      "cost_usd": 0.24710099999999996,
+      "chunks_processed": 14,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Theme Foundation Framework and Universal Library.md": {
+      "candidates_total": 271,
+      "candidates_minted": 234,
+      "candidates_dedup": 37,
+      "input_tokens": 27649,
+      "output_tokens": 29041,
+      "cost_usd": 0.518562,
+      "chunks_processed": 21,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 2 Modern Update to The Communist Manifesto.md": {
+      "candidates_total": 55,
+      "candidates_minted": 51,
+      "candidates_dedup": 4,
+      "input_tokens": 10998,
+      "output_tokens": 6376,
+      "cost_usd": 0.128634,
+      "chunks_processed": 3,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 18 When Religion Confronts Wealth.md": {
+      "candidates_total": 67,
+      "candidates_minted": 64,
+      "candidates_dedup": 3,
+      "input_tokens": 9974,
+      "output_tokens": 7819,
+      "cost_usd": 0.147207,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 17 The Leap from Knowing to Doing.md": {
+      "candidates_total": 84,
+      "candidates_minted": 83,
+      "candidates_dedup": 1,
+      "input_tokens": 7995,
+      "output_tokens": 9374,
+      "cost_usd": 0.164595,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 18 Winning Cultural Guerrilla Warfare.md": {
+      "candidates_total": 83,
+      "candidates_minted": 82,
+      "candidates_dedup": 1,
+      "input_tokens": 10144,
+      "output_tokens": 9468,
+      "cost_usd": 0.172452,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 22 Nationalism's Shell Game.md": {
+      "candidates_total": 15,
+      "candidates_minted": 13,
+      "candidates_dedup": 2,
+      "input_tokens": 2945,
+      "output_tokens": 1718,
+      "cost_usd": 0.034605,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 19 When Individual Creation Becomes Collective Movement.md": {
+      "candidates_total": 83,
+      "candidates_minted": 81,
+      "candidates_dedup": 2,
+      "input_tokens": 9332,
+      "output_tokens": 9343,
+      "cost_usd": 0.16814099999999998,
+      "chunks_processed": 11,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 19 The Security State Boomerang.md": {
+      "candidates_total": 80,
+      "candidates_minted": 77,
+      "candidates_dedup": 3,
+      "input_tokens": 11431,
+      "output_tokens": 9647,
+      "cost_usd": 0.17899800000000005,
+      "chunks_processed": 14,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 27 Workers Against Themselves.md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0,
+      "chunks_processed": 0,
+      "errors": [
+        "skipped: only 39 chars"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 24 The Patriot's Paradox.md": {
+      "candidates_total": 16,
+      "candidates_minted": 13,
+      "candidates_dedup": 3,
+      "input_tokens": 2948,
+      "output_tokens": 2050,
+      "cost_usd": 0.039594000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 26 Populism's False Promises.md": {
+      "candidates_total": 18,
+      "candidates_minted": 16,
+      "candidates_dedup": 2,
+      "input_tokens": 3974,
+      "output_tokens": 2374,
+      "cost_usd": 0.047532,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 25 Technology Breaking Control.md": {
+      "candidates_total": 30,
+      "candidates_minted": 29,
+      "candidates_dedup": 1,
+      "input_tokens": 3960,
+      "output_tokens": 3950,
+      "cost_usd": 0.07113,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 20 The Generational Betrayal.md": {
+      "candidates_total": 67,
+      "candidates_minted": 64,
+      "candidates_dedup": 3,
+      "input_tokens": 9068,
+      "output_tokens": 8023,
+      "cost_usd": 0.147549,
+      "chunks_processed": 10,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 29 The Evolution of Propagandas.md": {
+      "candidates_total": 28,
+      "candidates_minted": 28,
+      "candidates_dedup": 0,
+      "input_tokens": 3095,
+      "output_tokens": 3584,
+      "cost_usd": 0.063045,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 30 Progressive Media's Fatal Flaws.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 3156,
+      "output_tokens": 2393,
+      "cost_usd": 0.045363,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 23 The Repression Addiction.md": {
+      "candidates_total": 66,
+      "candidates_minted": 65,
+      "candidates_dedup": 1,
+      "input_tokens": 10586,
+      "output_tokens": 7957,
+      "cost_usd": 0.15111300000000003,
+      "chunks_processed": 13,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 3 Manifesto of the American Aristocrat.md": {
+      "candidates_total": 38,
+      "candidates_minted": 37,
+      "candidates_dedup": 1,
+      "input_tokens": 5960,
+      "output_tokens": 4315,
+      "cost_usd": 0.08260500000000001,
+      "chunks_processed": 4,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 21 Meritocracy's Empty Promises.md": {
+      "candidates_total": 73,
+      "candidates_minted": 69,
+      "candidates_dedup": 4,
+      "input_tokens": 10303,
+      "output_tokens": 8709,
+      "cost_usd": 0.161544,
+      "chunks_processed": 11,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 31 Politically Correct, Politically Impotent.md": {
+      "candidates_total": 19,
+      "candidates_minted": 19,
+      "candidates_dedup": 0,
+      "input_tokens": 3207,
+      "output_tokens": 2471,
+      "cost_usd": 0.046686000000000005,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 35 Trojan Horses in Motion.md": {
+      "candidates_total": 13,
+      "candidates_minted": 13,
+      "candidates_dedup": 0,
+      "input_tokens": 3660,
+      "output_tokens": 1622,
+      "cost_usd": 0.03531,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 32 The Tribal Mind Hack.md": {
+      "candidates_total": 25,
+      "candidates_minted": 22,
+      "candidates_dedup": 3,
+      "input_tokens": 3925,
+      "output_tokens": 2729,
+      "cost_usd": 0.05271,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/AI Assisted Writing/Theme Refinement Framework.md": {
+      "candidates_total": 373,
+      "candidates_minted": 277,
+      "candidates_dedup": 96,
+      "input_tokens": 72548,
+      "output_tokens": 40131,
+      "cost_usd": 0.819609,
+      "chunks_processed": 18,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 39 Visual Storytelling Insurgency.md": {
+      "candidates_total": 15,
+      "candidates_minted": 14,
+      "candidates_dedup": 1,
+      "input_tokens": 4012,
+      "output_tokens": 1822,
+      "cost_usd": 0.039366,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 4 The Middle Road of Civic Capitalism.md": {
+      "candidates_total": 20,
+      "candidates_minted": 17,
+      "candidates_dedup": 3,
+      "input_tokens": 3098,
+      "output_tokens": 2189,
+      "cost_usd": 0.042129,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 28 Exploiting Conservative Vulnerabilities.md": {
+      "candidates_total": 93,
+      "candidates_minted": 89,
+      "candidates_dedup": 4,
+      "input_tokens": 13454,
+      "output_tokens": 10925,
+      "cost_usd": 0.20423699999999997,
+      "chunks_processed": 17,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 34 The Trojan Horse Strategy.md": {
+      "candidates_total": 54,
+      "candidates_minted": 53,
+      "candidates_dedup": 1,
+      "input_tokens": 7558,
+      "output_tokens": 6272,
+      "cost_usd": 0.11675400000000001,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 37 Romancing the Revolution.md": {
+      "candidates_total": 56,
+      "candidates_minted": 52,
+      "candidates_dedup": 4,
+      "input_tokens": 7222,
+      "output_tokens": 6469,
+      "cost_usd": 0.118701,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 3 The Inherent Contradictions of Conservative Power.md": {
+      "candidates_total": 104,
+      "candidates_minted": 59,
+      "candidates_dedup": 45,
+      "input_tokens": 14135,
+      "output_tokens": 12171,
+      "cost_usd": 0.22497,
+      "chunks_processed": 9,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 5 The Moral Engine of Politics.md": {
+      "candidates_total": 20,
+      "candidates_minted": 18,
+      "candidates_dedup": 2,
+      "input_tokens": 3601,
+      "output_tokens": 2146,
+      "cost_usd": 0.042992999999999996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 6 Taking the Battle to the Enemy.md": {
+      "candidates_total": 15,
+      "candidates_minted": 13,
+      "candidates_dedup": 2,
+      "input_tokens": 3741,
+      "output_tokens": 1795,
+      "cost_usd": 0.038148,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 41 Gaming the System.md": {
+      "candidates_total": 51,
+      "candidates_minted": 51,
+      "candidates_dedup": 0,
+      "input_tokens": 6526,
+      "output_tokens": 5737,
+      "cost_usd": 0.105633,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 40 Broadcasting Behind Enemy Lines.md": {
+      "candidates_total": 49,
+      "candidates_minted": 45,
+      "candidates_dedup": 4,
+      "input_tokens": 7081,
+      "output_tokens": 5891,
+      "cost_usd": 0.109608,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/David Graeber on Communism.md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 1274,
+      "output_tokens": 1120,
+      "cost_usd": 0.020621999999999998,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 7 The Progressive Language Prison.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 2950,
+      "output_tokens": 1779,
+      "cost_usd": 0.035535,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 38 Action Heroes for Economic Justice.md": {
+      "candidates_total": 68,
+      "candidates_minted": 65,
+      "candidates_dedup": 3,
+      "input_tokens": 8264,
+      "output_tokens": 8211,
+      "cost_usd": 0.147957,
+      "chunks_processed": 6,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 8 Modern Monetary Theory Explained.md": {
+      "candidates_total": 15,
+      "candidates_minted": 13,
+      "candidates_dedup": 2,
+      "input_tokens": 3007,
+      "output_tokens": 1869,
+      "cost_usd": 0.037056000000000006,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 9 Velocity of Money The Empirical Case for Demand-Side Economics.md": {
+      "candidates_total": 16,
+      "candidates_minted": 13,
+      "candidates_dedup": 3,
+      "input_tokens": 3256,
+      "output_tokens": 1828,
+      "cost_usd": 0.037188,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/David Graeber on Debt, Authoritarianism and Hierarchy.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 1408,
+      "output_tokens": 1634,
+      "cost_usd": 0.028734000000000003,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/David Graeber's views on communism, socialism, and the ideal form of society.md": {
+      "candidates_total": 10,
+      "candidates_minted": 9,
+      "candidates_dedup": 1,
+      "input_tokens": 1659,
+      "output_tokens": 1176,
+      "cost_usd": 0.022616999999999998,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/David Graeber's views on overcoming obstructionism.md": {
+      "candidates_total": 11,
+      "candidates_minted": 11,
+      "candidates_dedup": 0,
+      "input_tokens": 1542,
+      "output_tokens": 1288,
+      "cost_usd": 0.023946000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 42 The Open-Source Revolution.md": {
+      "candidates_total": 64,
+      "candidates_minted": 62,
+      "candidates_dedup": 2,
+      "input_tokens": 8212,
+      "output_tokens": 7201,
+      "cost_usd": 0.13265100000000002,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Emerging Left-Wing Adoption of Right-Wing Techniques.md": {
+      "candidates_total": 8,
+      "candidates_minted": 5,
+      "candidates_dedup": 3,
+      "input_tokens": 1114,
+      "output_tokens": 948,
+      "cost_usd": 0.017562,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Chapter 43 A New Specter Rises.md": {
+      "candidates_total": 49,
+      "candidates_minted": 46,
+      "candidates_dedup": 3,
+      "input_tokens": 5970,
+      "output_tokens": 5503,
+      "cost_usd": 0.100455,
+      "chunks_processed": 5,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Engles and Marx on using literature as propaganda.md": {
+      "candidates_total": 7,
+      "candidates_minted": 7,
+      "candidates_dedup": 0,
+      "input_tokens": 1125,
+      "output_tokens": 809,
+      "cost_usd": 0.01551,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/David Graeber's views on decentralized, non-hierarchical forms of social organization.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 1799,
+      "output_tokens": 1807,
+      "cost_usd": 0.032502,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/From MeToo to WeToo (book 1).md": {
+      "candidates_total": 7,
+      "candidates_minted": 6,
+      "candidates_dedup": 1,
+      "input_tokens": 1107,
+      "output_tokens": 793,
+      "cost_usd": 0.015215999999999999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Graeber's vision of achieving consensus and self-governance.md": {
+      "candidates_total": 11,
+      "candidates_minted": 11,
+      "candidates_dedup": 0,
+      "input_tokens": 1682,
+      "output_tokens": 1273,
+      "cost_usd": 0.024141000000000003,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Digital Swarm Warfare.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 3125,
+      "output_tokens": 2065,
+      "cost_usd": 0.04035,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Dialogue Direction The Architecture of Character Voice.md": {
+      "candidates_total": 30,
+      "candidates_minted": 23,
+      "candidates_dedup": 7,
+      "input_tokens": 1969,
+      "output_tokens": 3068,
+      "cost_usd": 0.051927,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Dialogue Guidance The Orchestration of Character Voice and Narrative Progress.md": {
+      "candidates_total": 30,
+      "candidates_minted": 24,
+      "candidates_dedup": 6,
+      "input_tokens": 2754,
+      "output_tokens": 3055,
+      "cost_usd": 0.054086999999999996,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Introduction The Moral and Practical Path Forward.md": {
+      "candidates_total": 10,
+      "candidates_minted": 8,
+      "candidates_dedup": 2,
+      "input_tokens": 1935,
+      "output_tokens": 1162,
+      "cost_usd": 0.023235000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Malcolm X on Organized Self-Defense.md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 1304,
+      "output_tokens": 1283,
+      "cost_usd": 0.023157000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/First Revised Outline The New Communist Manifesto.md": {
+      "candidates_total": 30,
+      "candidates_minted": 29,
+      "candidates_dedup": 1,
+      "input_tokens": 2758,
+      "output_tokens": 3262,
+      "cost_usd": 0.057204000000000005,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Introduction The Architecture of Conservative Power and Its Inherent Contradictions.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 2278,
+      "output_tokens": 2805,
+      "cost_usd": 0.048909,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Messengers of the Right and  The Real American Communist Manifesto.md": {
+      "candidates_total": 15,
+      "candidates_minted": 15,
+      "candidates_dedup": 0,
+      "input_tokens": 2836,
+      "output_tokens": 1909,
+      "cost_usd": 0.037143,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Manufacturing the Meme Revolution.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 2777,
+      "output_tokens": 2323,
+      "cost_usd": 0.043176,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Media Forms and Techniques Preferred by the Political Left.md": {
+      "candidates_total": 30,
+      "candidates_minted": 29,
+      "candidates_dedup": 1,
+      "input_tokens": 1584,
+      "output_tokens": 3108,
+      "cost_usd": 0.051372,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Enhanced Outline for The New Communist Manifesto.md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 2221,
+      "output_tokens": 4096,
+      "cost_usd": 0.068103,
+      "chunks_processed": 1,
+      "errors": [
+        "chunk 0: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Modern Monetary Theory The Theoretical Foundation for Economic Liberation.md": {
+      "candidates_total": 19,
+      "candidates_minted": 19,
+      "candidates_dedup": 0,
+      "input_tokens": 2147,
+      "output_tokens": 2270,
+      "cost_usd": 0.040491,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Minority Rule and The Real American Communist Manifesto.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 1814,
+      "output_tokens": 2488,
+      "cost_usd": 0.04276200000000001,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Money Velocity The Economic Case for Bottom-Up Prosperity.md": {
+      "candidates_total": 18,
+      "candidates_minted": 14,
+      "candidates_dedup": 4,
+      "input_tokens": 1649,
+      "output_tokens": 2008,
+      "cost_usd": 0.035067,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Overview of The Socialist Manifesto and Comparison with The Real American Communist Manifesto.md": {
+      "candidates_total": 14,
+      "candidates_minted": 12,
+      "candidates_dedup": 2,
+      "input_tokens": 1605,
+      "output_tokens": 1487,
+      "cost_usd": 0.027120000000000002,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Praise and Endorsement from Conservative America (book 1).md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 1640,
+      "output_tokens": 9,
+      "cost_usd": 0.005055,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Network Propaganda (book) and The Real American Communist Manifesto.md": {
+      "candidates_total": 20,
+      "candidates_minted": 19,
+      "candidates_dedup": 1,
+      "input_tokens": 3314,
+      "output_tokens": 2506,
+      "cost_usd": 0.047532,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Politics - Left Wing.md": {
+      "candidates_total": 7,
+      "candidates_minted": 7,
+      "candidates_dedup": 0,
+      "input_tokens": 1572,
+      "output_tokens": 725,
+      "cost_usd": 0.015590999999999999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Praise and Endorsement from Conservative America (omnibus).md": {
+      "candidates_total": 0,
+      "candidates_minted": 0,
+      "candidates_dedup": 0,
+      "input_tokens": 1671,
+      "output_tokens": 9,
+      "cost_usd": 0.005148,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/PART V The Art of Cultural Guerrilla Warfare.md": {
+      "candidates_total": 18,
+      "candidates_minted": 17,
+      "candidates_dedup": 1,
+      "input_tokens": 3101,
+      "output_tokens": 1910,
+      "cost_usd": 0.037953,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/PART VI FROM CULTURAL INFILTRATION TO COLLECTIVE ACTION.md": {
+      "candidates_total": 12,
+      "candidates_minted": 12,
+      "candidates_dedup": 0,
+      "input_tokens": 2359,
+      "output_tokens": 1409,
+      "cost_usd": 0.028212,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Part IV Introduction Moving From Understanding to Action.md": {
+      "candidates_total": 15,
+      "candidates_minted": 14,
+      "candidates_dedup": 1,
+      "input_tokens": 2697,
+      "output_tokens": 1756,
+      "cost_usd": 0.034431,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Overview of Propaganda Dissemination Techniques.md": {
+      "candidates_total": 30,
+      "candidates_minted": 24,
+      "candidates_dedup": 6,
+      "input_tokens": 3542,
+      "output_tokens": 3443,
+      "cost_usd": 0.06227099999999999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Praise and Endorsement from Conservative America (book 3).md": {
+      "candidates_total": 10,
+      "candidates_minted": 10,
+      "candidates_dedup": 0,
+      "input_tokens": 1621,
+      "output_tokens": 1323,
+      "cost_usd": 0.024707999999999997,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Network of Lies and The Real American Communist Manifesto.md": {
+      "candidates_total": 30,
+      "candidates_minted": 29,
+      "candidates_dedup": 1,
+      "input_tokens": 3227,
+      "output_tokens": 3850,
+      "cost_usd": 0.067431,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Praise and Endorsement from Conservative America (book 2).md": {
+      "candidates_total": 23,
+      "candidates_minted": 23,
+      "candidates_dedup": 0,
+      "input_tokens": 3367,
+      "output_tokens": 2674,
+      "cost_usd": 0.050211,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Private Debt as Privatized Taxation How Financial Obligations Function as Wealth Extraction.md": {
+      "candidates_total": 19,
+      "candidates_minted": 17,
+      "candidates_dedup": 2,
+      "input_tokens": 3101,
+      "output_tokens": 2193,
+      "cost_usd": 0.042198,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Splitting the Working-Class Vote to Undermine Republican Structural Power.md": {
+      "candidates_total": 9,
+      "candidates_minted": 7,
+      "candidates_dedup": 2,
+      "input_tokens": 1403,
+      "output_tokens": 1226,
+      "cost_usd": 0.022599,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Section X The Affordability Myth Debunking How Will We Pay For It.md": {
+      "candidates_total": 14,
+      "candidates_minted": 11,
+      "candidates_dedup": 3,
+      "input_tokens": 3158,
+      "output_tokens": 1684,
+      "cost_usd": 0.034734,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Responding to the Right and The American Communist Manifesto.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 2773,
+      "output_tokens": 2476,
+      "cost_usd": 0.045459,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The Evolution of We Too (Complete Edition).md": {
+      "candidates_total": 8,
+      "candidates_minted": 6,
+      "candidates_dedup": 2,
+      "input_tokens": 1186,
+      "output_tokens": 947,
+      "cost_usd": 0.017763,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The  We Too Basic Principles.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 3558,
+      "output_tokens": 2157,
+      "cost_usd": 0.043029,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Supply-Side vs. Demand-Side Economics A Conceptual Comparison.md": {
+      "candidates_total": 20,
+      "candidates_minted": 17,
+      "candidates_dedup": 3,
+      "input_tokens": 2443,
+      "output_tokens": 2317,
+      "cost_usd": 0.042084,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The Real American Communist Manifesto Going on the Offensive.md": {
+      "candidates_total": 8,
+      "candidates_minted": 8,
+      "candidates_dedup": 0,
+      "input_tokens": 1377,
+      "output_tokens": 908,
+      "cost_usd": 0.017751,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The Authoritarian Chronicles A Literary Universe.md": {
+      "candidates_total": 20,
+      "candidates_minted": 20,
+      "candidates_dedup": 0,
+      "input_tokens": 3600,
+      "output_tokens": 2174,
+      "cost_usd": 0.043410000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The Political Asymmetry of Modern Monetary Theory.md": {
+      "candidates_total": 12,
+      "candidates_minted": 10,
+      "candidates_dedup": 2,
+      "input_tokens": 1610,
+      "output_tokens": 1494,
+      "cost_usd": 0.027240000000000004,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The We Too Movement for Economic Justice (book 2).md": {
+      "candidates_total": 6,
+      "candidates_minted": 4,
+      "candidates_dedup": 2,
+      "input_tokens": 1112,
+      "output_tokens": 659,
+      "cost_usd": 0.013221,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Theme Section 1.1 to 1.3 Revision comments.md": {
+      "candidates_total": 20,
+      "candidates_minted": 15,
+      "candidates_dedup": 5,
+      "input_tokens": 4358,
+      "output_tokens": 2195,
+      "cost_usd": 0.045999,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The We Too Basic Principles.md": {
+      "candidates_total": 66,
+      "candidates_minted": 65,
+      "candidates_dedup": 1,
+      "input_tokens": 8060,
+      "output_tokens": 7595,
+      "cost_usd": 0.138105,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The Art of Cultural Guerrilla Warfare.md": {
+      "candidates_total": 80,
+      "candidates_minted": 38,
+      "candidates_dedup": 42,
+      "input_tokens": 9751,
+      "output_tokens": 9142,
+      "cost_usd": 0.166383,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/The Moral and Practical Path Forward.md": {
+      "candidates_total": 100,
+      "candidates_minted": 88,
+      "candidates_dedup": 12,
+      "input_tokens": 11453,
+      "output_tokens": 11267,
+      "cost_usd": 0.203364,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Updates to Phase 2.md": {
+      "candidates_total": 18,
+      "candidates_minted": 15,
+      "candidates_dedup": 3,
+      "input_tokens": 3238,
+      "output_tokens": 2076,
+      "cost_usd": 0.040854,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Update after 1.1 to 1.3 and Additional Information.md": {
+      "candidates_total": 97,
+      "candidates_minted": 92,
+      "candidates_dedup": 5,
+      "input_tokens": 7824,
+      "output_tokens": 10336,
+      "cost_usd": 0.17851200000000003,
+      "chunks_processed": 7,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Third Revised Outline of the New Communist Manifesto.md": {
+      "candidates_total": 35,
+      "candidates_minted": 14,
+      "candidates_dedup": 21,
+      "input_tokens": 9613,
+      "output_tokens": 11938,
+      "cost_usd": 0.20790899999999998,
+      "chunks_processed": 6,
+      "errors": [
+        "chunk 4: json: Expecting value: line 1 column 1 (char 0)",
+        "chunk 5: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/We Too and MeToo Fighting American Injustice (book 3).md": {
+      "candidates_total": 6,
+      "candidates_minted": 3,
+      "candidates_dedup": 3,
+      "input_tokens": 1263,
+      "output_tokens": 685,
+      "cost_usd": 0.014064,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Update after Section 1 Revisions and Additions.md": {
+      "candidates_total": 138,
+      "candidates_minted": 87,
+      "candidates_dedup": 51,
+      "input_tokens": 10503,
+      "output_tokens": 15073,
+      "cost_usd": 0.257604,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Update to all 6 Phases after Phase 2.md": {
+      "candidates_total": 133,
+      "candidates_minted": 61,
+      "candidates_dedup": 72,
+      "input_tokens": 11633,
+      "output_tokens": 14439,
+      "cost_usd": 0.25148400000000004,
+      "chunks_processed": 8,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/When Individual Creation Becomes Collective Movement.md": {
+      "candidates_total": 30,
+      "candidates_minted": 30,
+      "candidates_dedup": 0,
+      "input_tokens": 2884,
+      "output_tokens": 3022,
+      "cost_usd": 0.053982,
+      "chunks_processed": 1,
+      "errors": []
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/Second Revised Outline of the New Communist Manifesto.md": {
+      "candidates_total": 150,
+      "candidates_minted": 103,
+      "candidates_dedup": 47,
+      "input_tokens": 13963,
+      "output_tokens": 19707,
+      "cost_usd": 0.33749399999999996,
+      "chunks_processed": 9,
+      "errors": [
+        "chunk 2: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/We Too (Full Outline).md": {
+      "candidates_total": 153,
+      "candidates_minted": 108,
+      "candidates_dedup": 45,
+      "input_tokens": 32765,
+      "output_tokens": 28772,
+      "cost_usd": 0.529875,
+      "chunks_processed": 8,
+      "errors": [
+        "chunk 0: json: Expecting value: line 1 column 1 (char 0)",
+        "chunk 1: json: Expecting value: line 1 column 1 (char 0)",
+        "chunk 7: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/We Too (Part 1 Outline).md": {
+      "candidates_total": 110,
+      "candidates_minted": 91,
+      "candidates_dedup": 19,
+      "input_tokens": 31566,
+      "output_tokens": 28278,
+      "cost_usd": 0.5188679999999999,
+      "chunks_processed": 8,
+      "errors": [
+        "chunk 2: json: Expecting value: line 1 column 1 (char 0)",
+        "chunk 5: json: Expecting value: line 1 column 1 (char 0)",
+        "chunk 6: json: Expecting value: line 1 column 1 (char 0)",
+        "chunk 7: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/We Too (Part 3 Outline).md": {
+      "candidates_total": 174,
+      "candidates_minted": 87,
+      "candidates_dedup": 87,
+      "input_tokens": 31048,
+      "output_tokens": 27020,
+      "cost_usd": 0.498444,
+      "chunks_processed": 8,
+      "errors": [
+        "chunk 1: json: Expecting value: line 1 column 1 (char 0)",
+        "chunk 3: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    },
+    "/Users/oracle/Documents/vault/Working/We Too/We Too (Part 2 Outline).md": {
+      "candidates_total": 195,
+      "candidates_minted": 96,
+      "candidates_dedup": 99,
+      "input_tokens": 31680,
+      "output_tokens": 25996,
+      "cost_usd": 0.48497999999999997,
+      "chunks_processed": 8,
+      "errors": [
+        "chunk 1: json: Expecting value: line 1 column 1 (char 0)"
+      ]
+    }
+  },
+  "totals": {
+    "files_processed": 283,
+    "candidates_total": 12296,
+    "candidates_minted": 10791,
+    "candidates_dedup": 1505,
+    "input_tokens": 1833626,
+    "output_tokens": 1447388,
+    "cost_usd": 27.211697999999995,
+    "errors": 19
+  },
+  "last_updated": "2026-05-08T08:39:01.335080"
+}
