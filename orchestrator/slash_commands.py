@@ -345,17 +345,22 @@ _CLEANING_QUEUE_FILE = os.path.join(VAULT_DIR, "Working — Engram Cleaning Queu
 
 
 def _cleaning_queue_status() -> tuple[int, int, str]:
-    """Return (total_pairs, pending_count, last_modified) from the queue file."""
+    """Return (total_pairs, pending_count, last_modified) from the queue file.
+
+    Pending status is read from each pair's `**Resolution:** [marker]` line —
+    the user-facing edit point. The heading marker (`## [pending] ...`) is
+    informational only.
+    """
     if not os.path.exists(_CLEANING_QUEUE_FILE):
         return 0, 0, ""
     with open(_CLEANING_QUEUE_FILE, "r", encoding="utf-8") as f:
         text = f.read()
     import re as _re
-    headings = _re.findall(r"^## \[([^\]]+)\] ", text, _re.MULTILINE)
-    pending = sum(1 for h in headings if h == "pending")
+    markers = _re.findall(r"\*\*Resolution:\*\*\s*\[([^\]]+)\]", text)
+    pending = sum(1 for m in markers if m.strip() == "pending")
     from datetime import datetime as _dt
     mtime = os.path.getmtime(_CLEANING_QUEUE_FILE)
-    return len(headings), pending, _dt.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+    return len(markers), pending, _dt.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
 
 
 def _cmd_cleaning(args: list[str]) -> str:
@@ -365,9 +370,10 @@ def _cmd_cleaning(args: list[str]) -> str:
         return (
             "**Engram Cleaning Framework**\n\n"
             "- `/cleaning status` — queue state\n"
-            "- `/cleaning detect [strategy] [limit]` — produce triage queue\n"
+            "- `/cleaning detect [strategy] [limit] [--include-skipped]` — produce triage queue\n"
             "    strategies: `bidirectional` (default), `random`\n"
             "    limit: max pairs to surface (default 25)\n"
+            "    `--include-skipped`: re-surface previously-resolved pairs\n"
             "- `/cleaning resolve [--apply]` — apply marked resolutions\n"
             "    dry-run by default; pass `--apply` to mutate vault\n\n"
             "See `Framework — Engram Cleaning` for the full spec."
@@ -391,15 +397,19 @@ def _cmd_cleaning(args: list[str]) -> str:
         )
 
     if sub == "detect":
-        strategy = args[1] if len(args) > 1 else "bidirectional"
+        # Strip optional flags so positional parsing isn't confused
+        include_skipped = "--include-skipped" in args
+        positional = [a for a in args if not a.startswith("--")]
+
+        strategy = positional[1] if len(positional) > 1 else "bidirectional"
         if strategy not in ("bidirectional", "random"):
             return (
                 f"[Unknown strategy `{strategy}`. Valid: `bidirectional`, `random`.]"
             )
         try:
-            limit = int(args[2]) if len(args) > 2 else 25
+            limit = int(positional[2]) if len(positional) > 2 else 25
         except ValueError:
-            return f"[`{args[2]}` is not a valid integer for limit.]"
+            return f"[`{positional[2]}` is not a valid integer for limit.]"
         if not (1 <= limit <= 200):
             return "[Limit must be between 1 and 200.]"
 
@@ -411,11 +421,21 @@ def _cmd_cleaning(args: list[str]) -> str:
             _sys.path.insert(0, "/Users/oracle/ora")
             from orchestrator.historical.run_engram_cleaning_detection import run_detection
 
-        result = run_detection(strategy=strategy, limit=limit, write_queue=True)
+        result = run_detection(
+            strategy=strategy, limit=limit, write_queue=True,
+            include_skipped=include_skipped,
+        )
+        filter_line = ""
+        if not include_skipped:
+            filter_line = (
+                f"- **Resolved pairs filtered from log:** "
+                f"{result.get('resolved_filtered_count', 0)}\n"
+            )
         return (
             "**Engram Cleaning detection complete.**\n\n"
             f"- **Strategy:** `{result['strategy']}`\n"
             f"- **Engrams scanned:** {result['engram_count']}\n"
+            f"{filter_line}"
             f"- **Pairs surfaced:** {result['pairs_count']}\n"
             f"- **Queue file:** `{os.path.basename(result['queue_path'])}` "
             f"(at vault root)\n\n"

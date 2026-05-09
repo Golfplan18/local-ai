@@ -60,18 +60,27 @@ VALID_RESOLUTIONS = {
 # ---------------------------------------------------------------------------
 
 
+# The user-edit canonical line is `**Resolution:** [marker]`. The heading
+# marker (`## [pending] ...`) is a visual scan aid only — never read as
+# canonical. Pairs are matched by anchoring on Source/Target wikilinks and
+# scanning forward to the next Resolution line.
 PAIR_RE = re.compile(
-    r"## \[(?P<resolution>[^\]]+)\] .*?\n"
-    r".*?- \*\*Source:\*\* \[\[(?P<source_slug>[^\]]+)\]\].*?\n"
+    r"- \*\*Source:\*\* \[\[(?P<source_slug>[^\]]+)\]\].*?\n"
     r"\s*\*(?P<source_h1>[^*]+)\*\n"
     r".*?- \*\*Target:\*\* \[\[(?P<target_slug>[^\]]+)\]\].*?\n"
-    r"\s*\*(?P<target_h1>[^*]+)\*\n",
+    r"\s*\*(?P<target_h1>[^*]+)\*\n"
+    r".*?\*\*Resolution:\*\*\s*\[(?P<resolution>[^\]]+)\]",
     re.DOTALL,
 )
 
 
 def parse_queue(queue_text: str) -> list[dict]:
-    """Yield {resolution, source_slug, source_h1, target_slug, target_h1} per pair."""
+    """Yield {resolution, source_slug, source_h1, target_slug, target_h1} per pair.
+
+    Canonical resolution marker comes from the `**Resolution:** [marker]` line
+    (the user-facing edit point), not from the heading. The heading marker is
+    informational only — see the framework spec.
+    """
     pairs = []
     for m in PAIR_RE.finditer(queue_text):
         pairs.append({
@@ -82,6 +91,29 @@ def parse_queue(queue_text: str) -> list[dict]:
             "target_h1": m.group("target_h1").strip(),
         })
     return pairs
+
+
+_RESOLUTION_LINE_RE = re.compile(r"\*\*Resolution:\*\*\s*\[([^\]]+)\]")
+
+
+def _rebuild_queue_keeping_pending(queue_text: str) -> str:
+    """Rewrite queue text keeping only sections whose Resolution line is [pending].
+
+    The split is on the `## [marker] ` heading boundary; pending status is
+    determined from the body's Resolution line, not the heading marker.
+    """
+    sections = re.split(r"^(## \[[^\]]+\] )", queue_text, flags=re.MULTILINE)
+    new_text = sections[0]
+    i = 1
+    while i < len(sections):
+        heading = sections[i]
+        body = sections[i + 1] if i + 1 < len(sections) else ""
+        m = _RESOLUTION_LINE_RE.search(body)
+        marker = m.group(1).strip() if m else "pending"
+        if marker == "pending":
+            new_text += heading + body
+        i += 2
+    return new_text
 
 
 # ---------------------------------------------------------------------------
@@ -468,15 +500,7 @@ def run_resolver(dry_run: bool = False) -> dict:
         refresh_chromadb(affected_slugs)
 
     if not dry_run and resolved_pair_indices:
-        sections = re.split(r"^(## \[[^\]]+\] )", queue_text, flags=re.MULTILINE)
-        new_text = sections[0]
-        i = 1
-        while i < len(sections):
-            heading = sections[i]
-            body = sections[i + 1] if i + 1 < len(sections) else ""
-            if "[pending]" in heading:
-                new_text += heading + body
-            i += 2
+        new_text = _rebuild_queue_keeping_pending(queue_text)
         with open(QUEUE_FILE, "w", encoding="utf-8") as f:
             f.write(new_text)
 
@@ -570,21 +594,7 @@ def main():
 
     # Remove resolved pairs from the queue (rebuild file with pending only)
     if not args.dry_run and resolved_pair_indices:
-        # Re-emit queue with only pending pairs
-        pending_pairs = [p for i, p in enumerate(pairs) if i not in resolved_pair_indices]
-        # Rebuild — preserves header; we just remove resolved sections.
-        # Simpler approach: split on "## [" boundary and keep only pending.
-        sections = re.split(r"^(## \[[^\]]+\] )", queue_text, flags=re.MULTILINE)
-        # sections[0] is preamble, then alternating heading/body pairs
-        new_text = sections[0]
-        i = 1
-        while i < len(sections):
-            heading = sections[i]
-            body = sections[i + 1] if i + 1 < len(sections) else ""
-            # Keep only [pending] pairs
-            if "[pending]" in heading:
-                new_text += heading + body
-            i += 2
+        new_text = _rebuild_queue_keeping_pending(queue_text)
         with open(QUEUE_FILE, "w", encoding="utf-8") as f:
             f.write(new_text)
         print(f"Queue updated: removed {len(resolved_pair_indices)} resolved pairs, "

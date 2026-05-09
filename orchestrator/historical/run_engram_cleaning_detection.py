@@ -34,6 +34,34 @@ import yaml
 ENGRAMS_DIR = os.path.expanduser("~/Documents/vault/Engrams")
 GRAPH_DB = os.path.expanduser("~/ora/data/relationship-graph.db")
 QUEUE_FILE = os.path.expanduser("~/Documents/vault/Working — Engram Cleaning Queue.md")
+LOG_FILE = os.path.expanduser("~/Documents/vault/Working — Engram Cleaning Log.md")
+
+
+_LOG_PAIR_RE = re.compile(
+    r"- \*\*Source:\*\* \[\[([^\]]+)\]\]\n- \*\*Target:\*\* \[\[([^\]]+)\]\]"
+)
+
+
+def _parse_log_for_pair_keys(log_text: str) -> set[tuple[str, str]]:
+    """Extract canonical (sorted) source-target slug tuples from log markdown."""
+    pairs: set[tuple[str, str]] = set()
+    for m in _LOG_PAIR_RE.finditer(log_text):
+        a, b = m.group(1).strip(), m.group(2).strip()
+        pairs.add(tuple(sorted([a, b])))
+    return pairs
+
+
+def _load_resolved_pair_set() -> set[tuple[str, str]]:
+    """Load all (source_slug, target_slug) tuples from the resolution log.
+
+    Returns canonical-order tuples (sorted) so they can be compared against
+    detection-time canonical tuples regardless of which side was source.
+    Empty set if the log file does not exist yet.
+    """
+    if not os.path.exists(LOG_FILE):
+        return set()
+    with open(LOG_FILE, "r", encoding="utf-8") as f:
+        return _parse_log_for_pair_keys(f.read())
 
 
 def build_engram_index() -> tuple[dict, dict]:
@@ -96,9 +124,18 @@ def provenance_tag(meta: dict) -> str:
 
 
 def detect_bidirectional(
-    by_slug: dict, by_h1: dict, limit: int = 25
+    by_slug: dict, by_h1: dict, limit: int = 25,
+    resolved_set: Optional[set[tuple[str, str]]] = None,
 ) -> list[tuple[dict, dict]]:
-    """Pairs where both A→B and B→A contradicts edges exist (high confidence)."""
+    """Pairs where both A→B and B→A contradicts edges exist (high confidence).
+
+    `resolved_set` is a set of canonical (sorted) slug tuples that have been
+    resolved in past runs (loaded from the resolution log). Pairs in that set
+    are skipped — preventing the same pairs from resurfacing run after run.
+    """
+    if resolved_set is None:
+        resolved_set = set()
+
     conn = sqlite3.connect(GRAPH_DB)
     cur = conn.cursor()
     cur.execute(
@@ -128,7 +165,7 @@ def detect_bidirectional(
             continue
 
         canonical = tuple(sorted([a["slug"], b["slug"]]))
-        if canonical in seen:
+        if canonical in seen or canonical in resolved_set:
             continue
         seen.add(canonical)
 
@@ -140,10 +177,14 @@ def detect_bidirectional(
 
 
 def detect_random(
-    by_slug: dict, by_h1: dict, limit: int = 25
+    by_slug: dict, by_h1: dict, limit: int = 25,
+    resolved_set: Optional[set[tuple[str, str]]] = None,
 ) -> list[tuple[dict, dict]]:
     """Uniform random sample of high-confidence contradicts pairs."""
     import random
+
+    if resolved_set is None:
+        resolved_set = set()
 
     conn = sqlite3.connect(GRAPH_DB)
     cur = conn.cursor()
@@ -167,7 +208,7 @@ def detect_random(
             continue
 
         canonical = tuple(sorted([a["slug"], b["slug"]]))
-        if canonical in seen:
+        if canonical in seen or canonical in resolved_set:
             continue
         seen.add(canonical)
 
@@ -239,23 +280,36 @@ When done, run the resolver: `python3 ~/ora/orchestrator/historical/run_engram_c
 
 
 def run_detection(strategy: str = "bidirectional", limit: int = 25,
-                  write_queue: bool = True) -> dict:
+                  write_queue: bool = True,
+                  include_skipped: bool = False) -> dict:
     """Public callable for the slash-command handler and CLI.
 
+    By default, pairs that appear in the resolution log are filtered out
+    (so previously-resolved pairs don't resurface). Pass ``include_skipped=True``
+    to disable that filter and re-surface every candidate pair.
+
     Returns a dict with: strategy, limit, engram_count, pairs_count,
-    queue_path (if write_queue=True), pairs (raw list when write_queue=False).
+    resolved_filtered_count, queue_path (if write_queue=True),
+    pairs (raw list when write_queue=False).
     """
     by_slug, by_h1 = build_engram_index()
+    resolved_set = set() if include_skipped else _load_resolved_pair_set()
+
     if strategy == "bidirectional":
-        pairs = detect_bidirectional(by_slug, by_h1, limit=limit)
+        pairs = detect_bidirectional(
+            by_slug, by_h1, limit=limit, resolved_set=resolved_set
+        )
     else:
-        pairs = detect_random(by_slug, by_h1, limit=limit)
+        pairs = detect_random(
+            by_slug, by_h1, limit=limit, resolved_set=resolved_set
+        )
 
     result: dict = {
         "strategy": strategy,
         "limit": limit,
         "engram_count": len(by_slug),
         "pairs_count": len(pairs),
+        "resolved_filtered_count": len(resolved_set),
     }
 
     if write_queue:
@@ -278,11 +332,23 @@ def main():
         choices=["bidirectional", "random"],
         help="Prioritization strategy",
     )
+    ap.add_argument(
+        "--include-skipped",
+        action="store_true",
+        help="Re-surface previously-resolved pairs (default: filter them via the log)",
+    )
     args = ap.parse_args()
 
     print(f"Building engram index from {ENGRAMS_DIR}...")
-    result = run_detection(strategy=args.strategy, limit=args.limit, write_queue=True)
+    result = run_detection(
+        strategy=args.strategy,
+        limit=args.limit,
+        write_queue=True,
+        include_skipped=args.include_skipped,
+    )
     print(f"  {result['engram_count']} engrams indexed")
+    if not args.include_skipped:
+        print(f"  Filtered {result['resolved_filtered_count']} previously-resolved pairs from log")
     print(f"  Surfaced {result['pairs_count']} pairs")
     print(f"\nWrote queue to: {result['queue_path']}")
     print("\nNext step: review the queue and edit each pair's Resolution line,")
