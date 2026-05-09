@@ -391,7 +391,7 @@ Before drafting any note, correctly identify what kind of note the input is call
 ---
 nexus:
   - [project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - atomic
 subtype: [fact | process_principle | definition | causal_claim | analogy | evaluative]
@@ -501,7 +501,7 @@ When ambiguous between subtypes, prefer the one that best describes what makes t
 ---
 nexus:
   - [project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - glossary
 ---
@@ -530,7 +530,7 @@ tags:
 ---
 nexus:
   - [project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - molecular
 ---
@@ -563,7 +563,7 @@ tags:
 ---
 nexus:
   - [project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - compound
   - [purpose tags as appropriate: framework/instruction, framework/builder]
@@ -602,7 +602,7 @@ IF title is a topic label (noun only)
 ---
 nexus:
   - [project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - process
 ---
@@ -663,7 +663,7 @@ tags:
 ---
 nexus:
   - [project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - position
 ---
@@ -1285,7 +1285,7 @@ RELATIONSHIP MAP (13-type taxonomy with confidence levels)
 [Full typed relationship map covering all notes in the session]
 
 VAULT INTEGRATION NOTES
-- All new notes enter as type: incubator (or type: matrix for MOCs)
+- All new notes enter as type: engram (or type: matrix for MOCs)
 - Nexus: empty for any notes with unconfirmed nexus assignment
 - Elevation to engram after user review and vetting
 - [Any document-specific integration instructions — e.g., "add Extracted Principles section to existing vault document X"]
@@ -1311,7 +1311,7 @@ Each extracted note is emitted as a structured block with delimiters the pipelin
 <<<YAML_START>>>
 nexus:
   - [value]
-type: incubator
+type: engram
 tags:
   - [tag]
 subtype: [value if atomic]
@@ -1473,7 +1473,7 @@ All draft notes include suggested YAML frontmatter. The body format varies by no
 ---
 nexus:
   - [suggested project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - atomic
   - [domain tags if applicable]
@@ -1496,7 +1496,7 @@ subtype: [fact | process_principle | definition | causal_claim | analogy | evalu
 ---
 nexus:
   - [suggested project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - molecular
   - [domain tags if applicable]
@@ -1519,7 +1519,7 @@ tags:
 ---
 nexus:
   - [suggested project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - glossary
 ---
@@ -1541,7 +1541,7 @@ tags:
 ---
 nexus:
   - [suggested project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - compound
   - [purpose tags: framework/instruction, framework/builder]
@@ -1560,7 +1560,7 @@ narrative, procedural steps. Do not reformat into proposition bullets.]
 ---
 nexus:
   - [suggested project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - process
 ---
@@ -1584,7 +1584,7 @@ IF [condition]
 ---
 nexus:
   - [suggested project/passion, or empty if domain-general]
-type: incubator
+type: engram
 tags:
   - position
 ---
@@ -1622,7 +1622,7 @@ tags:
 ```
 ---
 nexus:
-type: incubator
+type: engram
 tags:
   - incubating
 ---
@@ -1659,7 +1659,7 @@ After a session produces draft notes, the user needs to know how to move them in
 
 ### Entry Path
 
-All new notes produced by the coach enter the vault with `type: incubator`. This is the staging area for files awaiting vetting and elevation. Notes with unknown or domain-general nexus are left with an empty nexus field — the user assigns a nexus at vault entry when applicable.
+All new notes produced by the coach enter the vault with `type: engram`. This is the staging area for files awaiting vetting and elevation. Notes with unknown or domain-general nexus are left with an empty nexus field — the user assigns a nexus at vault entry when applicable.
 
 ### Elevation Criteria
 

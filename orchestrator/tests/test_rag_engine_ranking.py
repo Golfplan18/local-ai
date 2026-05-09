@@ -1,8 +1,11 @@
 """Tests for the Phase 5.6 ranker additions to orchestrator/rag_engine.py.
 
-Per Reference — Ora YAML Schema §4 + §5 + §6 + §15 (rev 3, 2026-04-30):
+Per Reference — Ora YAML Schema §4 + §5 + §6 + §15 (rev 5, 2026-05-09):
 
     score = similarity × type_weight × recency_factor
+
+Type weights post-rev-5: engram 1.0 (0.9 with ai-derived/source-derived
+modifier per §6.5), resource 0.8, chat/transcript 0.6, web 0.1.
 
 For external (live web) chunks the cascade is:
     score = similarity × EXTERNAL_WEIGHTS[classify_web_source(url, ...)]
@@ -66,16 +69,16 @@ class TestRankVaultChunks(unittest.TestCase):
     """The core ranker: similarity × type_weight × recency_factor."""
 
     def test_engram_outranks_resource_at_equal_similarity(self):
-        # Schema §4: engram weight 1.0, resource weight 0.7. With no
-        # decay applied (no topic_primary), score is just similarity ×
-        # type_weight.
+        # Schema §4 rev 5: engram weight 1.0, resource weight 0.8. With
+        # no decay applied (no topic_primary), score is just similarity
+        # × type_weight.
         engram = _vault_chunk("engram",   similarity=0.5, source="engram.md")
         resource = _vault_chunk("resource", similarity=0.5, source="resource.md")
         ranked = rag_engine.rank_vault_chunks([engram, resource])
         self.assertEqual(ranked[0]["metadata"]["source"], "engram.md")
         self.assertEqual(ranked[1]["metadata"]["source"], "resource.md")
         self.assertAlmostEqual(ranked[0]["score"], 0.5, places=6)
-        self.assertAlmostEqual(ranked[1]["score"], 0.35, places=6)
+        self.assertAlmostEqual(ranked[1]["score"], 0.40, places=6)
 
     def test_engram_outranks_chat_at_equal_similarity(self):
         engram = _vault_chunk("engram", similarity=0.5, source="engram.md")
@@ -89,12 +92,12 @@ class TestRankVaultChunks(unittest.TestCase):
         engram   = _vault_chunk("engram",   similarity=0.10, source="weak_engram.md")
         resource = _vault_chunk("resource", similarity=0.95, source="strong_resource.md")
         ranked = rag_engine.rank_vault_chunks([engram, resource])
-        # 0.95 × 0.7 = 0.665; 0.10 × 1.0 = 0.10
+        # 0.95 × 0.8 = 0.76; 0.10 × 1.0 = 0.10
         self.assertEqual(ranked[0]["metadata"]["source"], "strong_resource.md")
 
     def test_chat_in_active_cluster_decays(self):
         # Conv RAG §4 worked example: chat with 10 newer in-cluster
-        # chunks decays to factor 0.5. score = sim × 0.3 × 0.5
+        # chunks decays to factor 0.5. score = sim × 0.6 × 0.5 (rev 5)
         target = _vault_chunk(
             "chat", similarity=1.0,
             source="old_chat.md",
@@ -111,10 +114,10 @@ class TestRankVaultChunks(unittest.TestCase):
         ]
         ranked = rag_engine.rank_vault_chunks([target] + newer)
         target_scored = next(c for c in ranked if c["metadata"]["source"] == "old_chat.md")
-        # 1.0 × 0.3 × 0.5 = 0.15
-        self.assertAlmostEqual(target_scored["score"], 0.15, places=6)
+        # 1.0 × 0.6 × 0.5 = 0.30
+        self.assertAlmostEqual(target_scored["score"], 0.30, places=6)
         self.assertAlmostEqual(target_scored["recency"], 0.5, places=6)
-        self.assertAlmostEqual(target_scored["weight"], 0.3, places=6)
+        self.assertAlmostEqual(target_scored["weight"], 0.6, places=6)
 
     def test_chat_in_busy_cluster_decays_to_floor(self):
         target = _vault_chunk(
@@ -133,9 +136,9 @@ class TestRankVaultChunks(unittest.TestCase):
         ]
         ranked = rag_engine.rank_vault_chunks([target] + newer)
         target_scored = next(c for c in ranked if c["metadata"]["source"] == "old_chat.md")
-        # Floor is 0.2; score = 1.0 × 0.3 × 0.2 = 0.06
+        # Floor is 0.2; score = 1.0 × 0.6 × 0.2 = 0.12 (rev 5)
         self.assertAlmostEqual(target_scored["recency"], 0.2, places=6)
-        self.assertAlmostEqual(target_scored["score"], 0.06, places=6)
+        self.assertAlmostEqual(target_scored["score"], 0.12, places=6)
 
     def test_engram_same_age_as_decaying_chat_retains_full_weight(self):
         # Engrams are decay-ineligible: even with 10 newer in-cluster
@@ -165,7 +168,7 @@ class TestRankVaultChunks(unittest.TestCase):
         self.assertEqual(engram_scored["recency"], 1.0)  # no decay
         self.assertEqual(engram_scored["score"], 1.0)
         self.assertAlmostEqual(chat_scored["recency"], 0.5, places=6)
-        self.assertAlmostEqual(chat_scored["score"], 0.15, places=6)
+        self.assertAlmostEqual(chat_scored["score"], 0.30, places=6)  # 1.0 × 0.6 × 0.5
 
     def test_matrix_chunks_dropped(self):
         engram = _vault_chunk("engram", similarity=0.5, source="engram.md")
@@ -421,25 +424,31 @@ class TestAssembleRankedContextEndToEnd(unittest.TestCase):
         import shutil
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
-    def test_type_filter_framework_only(self):
-        # Mode with type_filter: [framework] returns no engrams or chats.
+    def test_type_filter_resource_only(self):
+        # Mode with type_filter: [resource] returns only resources —
+        # excludes engrams and chats, even at higher base similarity.
         out = rag_engine.assemble_ranked_context(
             query="consciousness epistemology framework",
-            type_filter=["framework"],
+            type_filter=["resource"],
             n_results=10,
         )
-        self.assertIn("framework.md", out)
+        self.assertIn("resource.md", out)
         self.assertNotIn("engram.md", out)
         self.assertNotIn("chat.md", out)
-        self.assertNotIn("resource.md", out)
+        # Framework is not retrieved per rev 5 (weight None) — confirms
+        # the type_filter doesn't override not-retrieved-type drop.
+        self.assertNotIn("framework.md", out)
 
-    def test_no_type_filter_includes_all_retrievable_types(self):
+    def test_no_type_filter_includes_retrievable_types(self):
+        # No filter: engrams, resources, chats all retrievable per rev 5.
+        # Frameworks are not retrieved (weight None) regardless of filter.
         out = rag_engine.assemble_ranked_context(
             query="consciousness epistemology framework",
             n_results=10,
         )
         self.assertIn("engram.md", out)
-        self.assertIn("framework.md", out)
+        self.assertIn("resource.md", out)
+        self.assertNotIn("framework.md", out)  # rev 5: not retrieved
 
 
 if __name__ == "__main__":

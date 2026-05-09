@@ -81,7 +81,7 @@ Path 2 delegates to the existing conversation processing pipeline (frameworks/bo
 
 **Type assignments per output category:**
 - Source-document chunks (Path 1): `type: resource` per Reference — Ora YAML Schema §4
-- Extracted atomic notes (Path 1): `type: incubator` (awaiting user elevation to `engram`)
+- Extracted atomic notes (Path 1, external sources): `type: engram` + `source-derived` provenance-modifier tag (P1 with tag, weight 0.9 per Schema §6.5)
 - Conversation turn-pair chunks (Path 2): `type: chat`
 
 **Quality guarantees:**

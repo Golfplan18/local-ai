@@ -592,11 +592,14 @@ def rank_vault_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     Each input chunk dict should have:
         - similarity: float in [0, 1] (e.g. 1.0 - cosine_distance)
-        - metadata:   dict with at least `type`; optionally
-                      `topic_primary`, `timestamp_utc` for decay.
+        - metadata:   dict with at least `type`; optionally `tags`
+                      (provenance-modifier tags like `ai-derived` or
+                      `source-derived` lower effective weight per
+                      Schema §6.5), `topic_primary`, `timestamp_utc`.
 
-    Drops chunks whose `provenance.weight_for(type)` returns None
-    (matrix, supervision, unknown types). Annotates each surviving
+    Drops chunks whose `provenance.weight_for(type, tags)` returns
+    None (not-retrieved types: framework, mode, reference, working,
+    matrix, supervision; or unknown types). Annotates each surviving
     chunk with score / weight / recency fields and returns the list
     sorted by score descending.
     """
@@ -607,7 +610,8 @@ def rank_vault_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for chunk in chunks:
         meta = chunk.get("metadata") or {}
         chunk_type = meta.get("type")
-        weight = provenance.weight_for(chunk_type)
+        chunk_tags = meta.get("tags") or []
+        weight = provenance.weight_for(chunk_type, chunk_tags)
         if weight is None:
             continue
 

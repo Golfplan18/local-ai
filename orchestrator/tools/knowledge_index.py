@@ -146,7 +146,10 @@ def _nomic_embed(text: str):
         from orchestrator.embedding import get_embedding_function
         ef = get_embedding_function()
         result = ef([text])
-        return list(result[0]) if result else None
+        if not result:
+            return None
+        emb = result[0]
+        return emb.tolist() if hasattr(emb, "tolist") else list(emb)
     except Exception:
         return None
 

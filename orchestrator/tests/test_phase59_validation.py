@@ -65,7 +65,8 @@ class TestRankingAcceptance(unittest.TestCase):
 
     def test_engram_outranks_contradicting_resource(self):
         """When an engram and a resource carry conflicting positions on
-        the same topic, the engram (1.0) outranks the resource (0.7)."""
+        the same topic, the engram (1.0) outranks the resource (0.8) per
+        rev 5."""
         engram = _vault_chunk(
             "engram", similarity=0.7, source="user_position.md",
             document="Consciousness IS reducible to physical processes.",
@@ -78,7 +79,7 @@ class TestRankingAcceptance(unittest.TestCase):
         )
         ranked = rag_engine.rank_vault_chunks([engram, resource])
         self.assertEqual(ranked[0]["metadata"]["source"], "user_position.md")
-        # Score gap: engram 0.7 × 1.0 vs resource 0.7 × 0.7 = 0.7 vs 0.49.
+        # Score gap: engram 0.7 × 1.0 vs resource 0.7 × 0.8 = 0.7 vs 0.56.
         self.assertGreater(ranked[0]["score"], ranked[1]["score"])
 
     def test_chat_in_active_cluster_vs_quiet_cluster(self):
@@ -109,12 +110,12 @@ class TestRankingAcceptance(unittest.TestCase):
         quiet_ranked = rag_engine.rank_vault_chunks([quiet_target])
         quiet_scored = quiet_ranked[0]
 
-        # Active: factor 0.2, score = 1.0 × 0.3 × 0.2 = 0.06
+        # Active: factor 0.2, score = 1.0 × 0.6 × 0.2 = 0.12 (rev 5)
         self.assertAlmostEqual(active_scored["recency"], 0.2, places=6)
-        self.assertAlmostEqual(active_scored["score"], 0.06, places=6)
-        # Quiet: factor 1.0, score = 1.0 × 0.3 × 1.0 = 0.3
+        self.assertAlmostEqual(active_scored["score"], 0.12, places=6)
+        # Quiet: factor 1.0, score = 1.0 × 0.6 × 1.0 = 0.6 (rev 5)
         self.assertEqual(quiet_scored["recency"], 1.0)
-        self.assertAlmostEqual(quiet_scored["score"], 0.3, places=6)
+        self.assertAlmostEqual(quiet_scored["score"], 0.6, places=6)
         # The "quiet" chat outranks the same-age "active" chat.
         self.assertGreater(quiet_scored["score"], active_scored["score"])
 
@@ -146,9 +147,9 @@ class TestRankingAcceptance(unittest.TestCase):
         self.assertAlmostEqual(chat_scored["recency"], 0.5, places=6)
         self.assertGreater(engram_scored["score"], chat_scored["score"])
 
-    def test_type_filter_framework_excludes_engrams_and_chats(self):
-        """A mode declaring type_filter: [framework] retrieves only
-        framework chunks — engrams, chats, etc. are filtered out at
+    def test_type_filter_resource_excludes_engrams_and_chats(self):
+        """A mode declaring type_filter: [resource] retrieves only
+        resource chunks — engrams, chats, etc. are filtered out at
         knowledge_search.knowledge_search_raw."""
         from tools import knowledge_search
         tmpdir = tempfile.mkdtemp()
@@ -162,11 +163,11 @@ class TestRankingAcceptance(unittest.TestCase):
                 client = chromadb.PersistentClient(path=chromadb_path)
                 col = _bind_ef(client, "knowledge")
                 col.add(
-                    ids=["engram", "chat", "framework"],
+                    ids=["engram", "chat", "resource"],
                     documents=[
                         "Engram about adversarial review.",
                         "Chat about adversarial review.",
-                        "Framework spec for adversarial review.",
+                        "Resource chunk on adversarial review.",
                     ],
                     metadatas=[
                         {"type": "engram", "source": "engram.md",
@@ -175,7 +176,7 @@ class TestRankingAcceptance(unittest.TestCase):
                         {"type": "chat", "source": "chat.md",
                          "tag_archived": False, "tag_incubating": False,
                          "tag_private": False},
-                        {"type": "framework", "source": "framework.md",
+                        {"type": "resource", "source": "resource.md",
                          "tag_archived": False, "tag_incubating": False,
                          "tag_private": False},
                     ],
@@ -183,10 +184,10 @@ class TestRankingAcceptance(unittest.TestCase):
 
                 out = rag_engine.assemble_ranked_context(
                     query="adversarial review",
-                    type_filter=["framework"],
+                    type_filter=["resource"],
                     n_results=10,
                 )
-                self.assertIn("framework.md", out)
+                self.assertIn("resource.md", out)
                 self.assertNotIn("engram.md", out)
                 self.assertNotIn("chat.md", out)
             finally:
@@ -235,32 +236,36 @@ class TestSynthesisProvenanceCommunication(unittest.TestCase):
 
     def test_consolidator_sees_higher_provenance_first(self):
         """For a Gear 4 consolidator, the assembled context for the
-        synthesis step ranks higher-provenance reasoning above lower."""
+        synthesis step ranks higher-provenance reasoning above lower
+        even when lower-tier sources have higher raw similarity."""
+        # rev 5 weights: engram=1.0, resource=0.8, chat=0.6.
+        # engram   1.0 × 0.5  = 0.50   ← top (P1 wins despite lower sim)
+        # chat     0.6 × 0.7  = 0.42
+        # resource 0.8 × 0.4  = 0.32
         chunks = [
-            _vault_chunk("framework", similarity=0.4, source="framework_spec.md"),
-            _vault_chunk("chat",      similarity=0.9, source="recent_chat.md"),
+            _vault_chunk("resource",  similarity=0.4, source="external_paper.md"),
+            _vault_chunk("chat",      similarity=0.7, source="recent_chat.md"),
             _vault_chunk("engram",    similarity=0.5, source="vetted_position.md"),
         ]
         ranked = rag_engine.rank_vault_chunks(chunks)
         out = rag_engine.format_context_with_provenance(ranked)
-        # framework (1.0×0.4=0.40) and engram (1.0×0.5=0.50) outrank
-        # chat (0.3×0.9=0.27). Consolidator sees the higher-provenance
-        # pair first.
-        engram_pos    = out.index("vetted_position.md")
-        framework_pos = out.index("framework_spec.md")
-        chat_pos      = out.index("recent_chat.md")
+        engram_pos   = out.index("vetted_position.md")
+        chat_pos     = out.index("recent_chat.md")
+        resource_pos = out.index("external_paper.md")
+        # Engram precedes chat (P1 vs P3 wins despite chat's higher sim).
         self.assertLess(engram_pos, chat_pos)
-        self.assertLess(framework_pos, chat_pos)
+        # Engram precedes resource (P1 vs P2).
+        self.assertLess(engram_pos, resource_pos)
 
     def test_every_chunk_has_visible_provenance_marker(self):
         """Direct inspection of the context package: every retrieved
         chunk carries [type: ... | weight: ... | source: ...]."""
         chunks = [
             _vault_chunk("engram",    similarity=0.5, source="a.md"),
-            _vault_chunk("framework", similarity=0.5, source="b.md"),
-            _vault_chunk("resource",  similarity=0.5, source="c.md"),
-            _vault_chunk("chat",      similarity=0.5, source="d.md"),
-            _vault_chunk("incubator", similarity=0.5, source="e.md"),
+            _vault_chunk("resource",  similarity=0.5, source="b.md"),
+            _vault_chunk("chat",      similarity=0.5, source="c.md"),
+            _vault_chunk("transcript", similarity=0.5, source="d.md"),
+            _vault_chunk("web",       similarity=0.5, source="e.md"),
         ]
         ranked = rag_engine.rank_vault_chunks(chunks)
         out = rag_engine.format_context_with_provenance(ranked)
