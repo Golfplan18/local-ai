@@ -27,6 +27,13 @@ Recognized commands:
   /deny <index> [<reason>]
       Deny a pending redefinition. Use /queue to find the index.
 
+  /cleaning [detect|resolve|status] [options]
+      Engram Cleaning Framework — cross-vault contradiction sweep.
+      `/cleaning` (no args) → status summary
+      `/cleaning detect [strategy] [limit]` → produce triage queue
+      `/cleaning resolve [--apply]` → apply queued resolutions (dry-run by default)
+      `/cleaning status` → queue state without re-running detection
+
 Path resolution for input files: absolute path is tried first, then
 relative-to-cwd, relative-to-vault, relative-to-ora. The first hit wins.
 
@@ -46,7 +53,8 @@ ORA_DIR = os.path.expanduser("~/ora/")
 DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
 DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
 
-KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve", "/deny"}
+KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
+                  "/deny", "/cleaning"}
 
 
 # ---------- Public API ----------
@@ -90,6 +98,7 @@ def run_runtime_command(user_input: str) -> str:
         "/queue": _cmd_queue,
         "/approve": _cmd_approve,
         "/deny": _cmd_deny,
+        "/cleaning": _cmd_cleaning,
     }
     handler = handlers.get(cmd)
     if handler is None:
@@ -327,6 +336,142 @@ def _cmd_deny(args: list[str]) -> str:
 
     suffix = f" Reason: {reason}" if reason else ""
     return f"**Denial recorded.** Queue entry {idx} removed.{suffix}"
+
+
+# ---------- /cleaning — Engram Cleaning Framework ----------
+
+
+_CLEANING_QUEUE_FILE = os.path.join(VAULT_DIR, "Working — Engram Cleaning Queue.md")
+
+
+def _cleaning_queue_status() -> tuple[int, int, str]:
+    """Return (total_pairs, pending_count, last_modified) from the queue file."""
+    if not os.path.exists(_CLEANING_QUEUE_FILE):
+        return 0, 0, ""
+    with open(_CLEANING_QUEUE_FILE, "r", encoding="utf-8") as f:
+        text = f.read()
+    import re as _re
+    headings = _re.findall(r"^## \[([^\]]+)\] ", text, _re.MULTILINE)
+    pending = sum(1 for h in headings if h == "pending")
+    from datetime import datetime as _dt
+    mtime = os.path.getmtime(_CLEANING_QUEUE_FILE)
+    return len(headings), pending, _dt.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+
+
+def _cmd_cleaning(args: list[str]) -> str:
+    sub = args[0].lower() if args else "status"
+
+    if sub in ("help", "-h", "--help"):
+        return (
+            "**Engram Cleaning Framework**\n\n"
+            "- `/cleaning status` — queue state\n"
+            "- `/cleaning detect [strategy] [limit]` — produce triage queue\n"
+            "    strategies: `bidirectional` (default), `random`\n"
+            "    limit: max pairs to surface (default 25)\n"
+            "- `/cleaning resolve [--apply]` — apply marked resolutions\n"
+            "    dry-run by default; pass `--apply` to mutate vault\n\n"
+            "See `Framework — Engram Cleaning` for the full spec."
+        )
+
+    if sub == "status":
+        total, pending, mtime = _cleaning_queue_status()
+        if total == 0:
+            return (
+                "**Engram Cleaning queue is empty.**\n\n"
+                "Run `/cleaning detect` to produce a triage queue."
+            )
+        resolved = total - pending
+        return (
+            f"**Engram Cleaning queue:** {total} pairs total, "
+            f"{pending} pending, {resolved} resolved.\n\n"
+            f"- Last modified: {mtime}\n"
+            f"- File: `Working — Engram Cleaning Queue.md`\n\n"
+            "Edit each pending pair's Resolution line, then "
+            "`/cleaning resolve --apply` to mutate vault."
+        )
+
+    if sub == "detect":
+        strategy = args[1] if len(args) > 1 else "bidirectional"
+        if strategy not in ("bidirectional", "random"):
+            return (
+                f"[Unknown strategy `{strategy}`. Valid: `bidirectional`, `random`.]"
+            )
+        try:
+            limit = int(args[2]) if len(args) > 2 else 25
+        except ValueError:
+            return f"[`{args[2]}` is not a valid integer for limit.]"
+        if not (1 <= limit <= 200):
+            return "[Limit must be between 1 and 200.]"
+
+        try:
+            from historical.run_engram_cleaning_detection import run_detection
+        except ImportError:
+            # Fall back: try via orchestrator package path
+            import sys as _sys
+            _sys.path.insert(0, "/Users/oracle/ora")
+            from orchestrator.historical.run_engram_cleaning_detection import run_detection
+
+        result = run_detection(strategy=strategy, limit=limit, write_queue=True)
+        return (
+            "**Engram Cleaning detection complete.**\n\n"
+            f"- **Strategy:** `{result['strategy']}`\n"
+            f"- **Engrams scanned:** {result['engram_count']}\n"
+            f"- **Pairs surfaced:** {result['pairs_count']}\n"
+            f"- **Queue file:** `{os.path.basename(result['queue_path'])}` "
+            f"(at vault root)\n\n"
+            "Open the queue file, edit each pair's Resolution line "
+            "(`[changed-mind:...]`, `[wrong:source]`, `[hypocrisy]`, `[skip]`, etc.), "
+            "then `/cleaning resolve --apply` to mutate the vault."
+        )
+
+    if sub == "resolve":
+        apply = "--apply" in args
+        dry_run = not apply
+
+        try:
+            from historical.run_engram_cleaning_resolver import run_resolver
+        except ImportError:
+            import sys as _sys
+            _sys.path.insert(0, "/Users/oracle/ora")
+            from orchestrator.historical.run_engram_cleaning_resolver import run_resolver
+
+        try:
+            result = run_resolver(dry_run=dry_run)
+        except FileNotFoundError as exc:
+            return f"[{exc}. Run `/cleaning detect` first.]"
+
+        stats = result["stats"]
+        non_pending_total = sum(v for k, v in stats.items() if k != "pending")
+        if non_pending_total == 0:
+            return (
+                f"**No resolutions marked.** All {stats.get('pending', 0)} pairs are "
+                "still `[pending]`. Edit the queue file's Resolution lines first, "
+                "then re-run `/cleaning resolve --apply`."
+            )
+
+        mode_label = "DRY RUN" if dry_run else "APPLIED"
+        lines = [f"**Engram Cleaning resolver — {mode_label}**", ""]
+        for k in sorted(stats):
+            if stats[k] == 0:
+                continue
+            lines.append(f"- {k}: {stats[k]}")
+        lines.append("")
+        lines.append(f"- **Affected files:** {result['affected_slugs_count']}")
+        lines.append(f"- **Queue remaining:** {result['queue_remaining_count']} pending")
+        if result.get("errors"):
+            lines.append("")
+            lines.append("**Errors:**")
+            for e in result["errors"][:10]:
+                lines.append(f"- {e}")
+        if dry_run and non_pending_total > 0:
+            lines.append("")
+            lines.append("Re-run with `--apply` to commit these mutations.")
+        return "\n".join(lines)
+
+    return (
+        f"[Unknown subcommand `{sub}`. "
+        "Use `/cleaning help` for usage.]"
+    )
 
 
 # ---------- CLI smoke test ----------

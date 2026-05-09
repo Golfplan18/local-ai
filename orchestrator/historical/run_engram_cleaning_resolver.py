@@ -396,6 +396,100 @@ def refresh_chromadb(slugs: set[str]):
 # ---------------------------------------------------------------------------
 
 
+def run_resolver(dry_run: bool = False) -> dict:
+    """Public callable for the slash-command handler and CLI.
+
+    Returns a dict with: total_pairs, stats (per-resolution counts),
+    affected_slugs_count, errors (list), queue_remaining_count.
+    Raises FileNotFoundError if the queue file is missing.
+    """
+    if not os.path.exists(QUEUE_FILE):
+        raise FileNotFoundError(f"Queue file not found: {QUEUE_FILE}")
+
+    with open(QUEUE_FILE, "r", encoding="utf-8") as f:
+        queue_text = f.read()
+
+    pairs = parse_queue(queue_text)
+
+    stats = {r: 0 for r in VALID_RESOLUTIONS | {"pending"}}
+    affected_slugs: set[str] = set()
+    resolved_pair_indices: list[int] = []
+    errors: list[str] = []
+
+    for i, pair in enumerate(pairs):
+        resolution = pair["resolution"]
+        if resolution == "pending":
+            stats["pending"] += 1
+            continue
+
+        if resolution not in VALID_RESOLUTIONS:
+            errors.append(f"unknown resolution '{resolution}' on pair {i+1}")
+            continue
+
+        result = {"mutated_files": [], "errors": []}
+
+        if resolution == "skip":
+            pass
+        elif resolution == "changed-mind:source-supersedes-target":
+            result = apply_changed_mind(
+                survivor_slug=pair["source_slug"],
+                archived_slug=pair["target_slug"],
+                archived_h1=pair["target_h1"],
+                dry_run=dry_run,
+            )
+            affected_slugs.update([pair["source_slug"], pair["target_slug"]])
+        elif resolution == "changed-mind:target-supersedes-source":
+            result = apply_changed_mind(
+                survivor_slug=pair["target_slug"],
+                archived_slug=pair["source_slug"],
+                archived_h1=pair["source_h1"],
+                dry_run=dry_run,
+            )
+            affected_slugs.update([pair["source_slug"], pair["target_slug"]])
+        elif resolution == "wrong:source":
+            result = apply_wrong(pair["source_slug"], dry_run=dry_run)
+            affected_slugs.add(pair["source_slug"])
+        elif resolution == "wrong:target":
+            result = apply_wrong(pair["target_slug"], dry_run=dry_run)
+            affected_slugs.add(pair["target_slug"])
+        elif resolution == "hypocrisy":
+            result = apply_hypocrisy(pair, dry_run=dry_run)
+
+        stats[resolution] += 1
+        resolved_pair_indices.append(i)
+
+        if not dry_run:
+            append_log(pair, result)
+
+        if result.get("errors"):
+            errors.extend(result["errors"])
+
+    if not dry_run and affected_slugs:
+        refresh_chromadb(affected_slugs)
+
+    if not dry_run and resolved_pair_indices:
+        sections = re.split(r"^(## \[[^\]]+\] )", queue_text, flags=re.MULTILINE)
+        new_text = sections[0]
+        i = 1
+        while i < len(sections):
+            heading = sections[i]
+            body = sections[i + 1] if i + 1 < len(sections) else ""
+            if "[pending]" in heading:
+                new_text += heading + body
+            i += 2
+        with open(QUEUE_FILE, "w", encoding="utf-8") as f:
+            f.write(new_text)
+
+    return {
+        "total_pairs": len(pairs),
+        "stats": stats,
+        "affected_slugs_count": len(affected_slugs),
+        "errors": errors,
+        "queue_remaining_count": stats.get("pending", 0),
+        "dry_run": dry_run,
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true",

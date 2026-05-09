@@ -274,12 +274,27 @@ The user runs `/cleaning` interactively or skips. The framework does not auto-ex
 
 ### Manual invocation
 
+**Slash commands** (chat interface, mechanical — no model call):
+
+```
+/cleaning                                  → status summary
+/cleaning status                           → queue state without re-running detection
+/cleaning detect [strategy] [limit]        → produce triage queue (default: bidirectional 25)
+/cleaning resolve                          → dry-run resolver against current queue
+/cleaning resolve --apply                  → apply queued resolutions
+/cleaning help                             → usage
+```
+
+The `/cleaning` family is registered in `~/ora/orchestrator/slash_commands.py` alongside `/instance`, `/render`, `/queue`, and the meta-layer mechanical operations. It bypasses the analytical pipeline entirely.
+
+**Direct CLI** (for scripting or sleep-wake invocation):
+
 ```bash
 # Detection — produces Working — Engram Cleaning Queue.md
-python3 ~/ora/orchestrator/historical/run_engram_cleaning_detection.py [--limit N] [--strategy bidirectional|recent|clustered|random]
+python3 ~/ora/orchestrator/historical/run_engram_cleaning_detection.py [--limit N] [--strategy bidirectional|random]
 
 # Resolver — applies queued resolutions, mutates vault, refreshes chromadb
-python3 ~/ora/orchestrator/historical/run_engram_cleaning_resolver.py [--delete-wrong]
+python3 ~/ora/orchestrator/historical/run_engram_cleaning_resolver.py [--dry-run]
 ```
 
 ### Cadence

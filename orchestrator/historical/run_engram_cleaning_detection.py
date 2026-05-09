@@ -238,6 +238,37 @@ When done, run the resolver: `python3 ~/ora/orchestrator/historical/run_engram_c
     return "\n".join(out)
 
 
+def run_detection(strategy: str = "bidirectional", limit: int = 25,
+                  write_queue: bool = True) -> dict:
+    """Public callable for the slash-command handler and CLI.
+
+    Returns a dict with: strategy, limit, engram_count, pairs_count,
+    queue_path (if write_queue=True), pairs (raw list when write_queue=False).
+    """
+    by_slug, by_h1 = build_engram_index()
+    if strategy == "bidirectional":
+        pairs = detect_bidirectional(by_slug, by_h1, limit=limit)
+    else:
+        pairs = detect_random(by_slug, by_h1, limit=limit)
+
+    result: dict = {
+        "strategy": strategy,
+        "limit": limit,
+        "engram_count": len(by_slug),
+        "pairs_count": len(pairs),
+    }
+
+    if write_queue:
+        queue_md = format_queue(pairs, strategy=strategy)
+        with open(QUEUE_FILE, "w", encoding="utf-8") as f:
+            f.write(queue_md)
+        result["queue_path"] = QUEUE_FILE
+    else:
+        result["pairs"] = pairs
+
+    return result
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=25, help="Max pairs to surface")
@@ -250,23 +281,10 @@ def main():
     args = ap.parse_args()
 
     print(f"Building engram index from {ENGRAMS_DIR}...")
-    by_slug, by_h1 = build_engram_index()
-    print(f"  {len(by_slug)} engrams indexed by slug")
-    print(f"  {len(by_h1)} unique H1 claims")
-
-    print(f"Querying graph for contradicts edges (strategy: {args.strategy})...")
-    if args.strategy == "bidirectional":
-        pairs = detect_bidirectional(by_slug, by_h1, limit=args.limit)
-    else:
-        pairs = detect_random(by_slug, by_h1, limit=args.limit)
-
-    print(f"  Surfaced {len(pairs)} pairs")
-
-    queue_md = format_queue(pairs, strategy=args.strategy)
-    with open(QUEUE_FILE, "w", encoding="utf-8") as f:
-        f.write(queue_md)
-
-    print(f"\nWrote queue to: {QUEUE_FILE}")
+    result = run_detection(strategy=args.strategy, limit=args.limit, write_queue=True)
+    print(f"  {result['engram_count']} engrams indexed")
+    print(f"  Surfaced {result['pairs_count']} pairs")
+    print(f"\nWrote queue to: {result['queue_path']}")
     print("\nNext step: review the queue and edit each pair's Resolution line,")
     print("then run the resolver:")
     print("  python3 ~/ora/orchestrator/historical/run_engram_cleaning_resolver.py")
