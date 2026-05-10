@@ -22,11 +22,11 @@ The pairing convention:
 **The recommended workflow when editing ora .md files:**
 1. Make your edit to the ora file (fast iteration).
 2. Immediately propagate the body change to the paired vault file (preserve vault's YAML; replace the body).
-3. OR surface the change so the user can run the System File Drift Correction framework to reconcile.
+3. OR surface the change so the user can run the Documentation-Code Parity (DCP) framework to reconcile.
 
 If you skip step 2 or 3, the user has to remember the divergence — and they will miss it. Don't make them.
 
-The full pairing rules and operational details are in `~/ora/frameworks/book/system-file-drift-correction.md` (canonical: `/Users/oracle/Documents/vault/Framework — System File Drift Correction.md`).
+The canonical specification for the parity framework is `~/Documents/vault/Framework — Documentation-Code Parity.md`. DCP supersedes the prior `Framework — System File Drift Correction.md` (archived 2026-05-10) and absorbs its scope.
 
 ## Repository Overview
 

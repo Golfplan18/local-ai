@@ -255,20 +255,6 @@ Each framework has one entry with these fields:
 - **Version:** 1.0
 - **Delivers:** New persistent AI agent identity as MindSpec canonical files plus compiled boot file plus registry entry (I-Create); modified agent's MindSpec files and recompiled boot file (I-Modify); full mission brief programming an existing agent to prosecute a mission autonomously (M-Program); compressed task specification assigning bounded work to an existing agent (M-Task)
 
-### Spec-Code Reconciliation
-
-- **Purpose:** Backward-reconcile installer specifications with the installed system, produce updated installer layers and a natural language system specification
-- **Problem Class:** Specification maintenance and drift correction
-- **Input Summary:** Installer manifest and layer files; live filesystem; git history; system file structure reference
-- **Output Summary:** Discrepancy report with severity classifications; updated installer layers; natural language system specification derivable into installer
-- **Proven Applications:** Designed for post-upgrade reconciliation of the ora system
-- **Known Limitations:** Behavioral comparison requires LLM judgment — cannot be fully automated; accretion items require human confirmation of intent
-- **File Location:** frameworks/book/spec-code-reconciliation.md
-- **Provenance:** human-created
-- **Confidence:** medium
-- **Version:** 1.0
-- **Delivers:** Full backward-reconciliation bundle (discrepancy report, updated installer layers, natural language system specification) in Full Reconciliation mode; discrepancy report and resolution plan in Partial Reconciliation mode; natural language system specification alone in Specification Only mode
-
 ### Phase A — Prompt Cleanup
 
 - **Purpose:** Mechanical preprocessing of raw user input: transcription correction, syntax normalization, reference resolution, semantic extraction, ambiguity resolution, and conversion to Operational Notation
@@ -334,22 +320,6 @@ These six frameworks are loaded into model context windows at specific pipeline 
 
 - **Purpose:** Final verification — 7-check validation that consolidated output accurately represents both analyses
 - **File Location:** frameworks/book/f-verify.md
-
-### System File Drift Correction
-
-- **Purpose:** Detect and reconcile drift between content files in the canonical vault and the `~/ora/` deployment surface, under explicit user-controlled direction with `.bak` backups for every overwrite
-- **Problem Class:** System maintenance — vault/deployment dual-copy reconciliation
-- **Input Summary:** Operation mode (D-Detect | D-Sync | D-Accept-Ora | D-Bootstrap); vault root path; ora root path; optional pair filter; explicit pair list (D-Accept-Ora only)
-- **Output Summary:** D-Detect → drift report classifying every registered pair (`identical | yaml-only-diff | vault-newer | ora-newer | body-different | vault-only | ora-only | excluded`); D-Sync → vault→ora sync log with `.bak` paths; D-Accept-Ora → reverse sync log with `.bak` paths; D-Bootstrap → creation log for new vault copies derived from ora-only files matching registered patterns
-- **Proven Applications:** New framework — landing 2026-04-28 alongside the vault canonicalization migration that produced the initial paired state
-- **Known Limitations:** Refuses to silently resolve `ora-newer` pairs or pairing ambiguities — surfaces them as conflicts requiring explicit user decision. Pairing rules are category-keyed; new content categories require an updated Pairing Rules table in the framework spec.
-- **File Location:** frameworks/book/system-file-drift-correction.md (canonical: ~/Documents/vault/Framework — System File Drift Correction.md)
-- **Provenance:** human-created
-- **Confidence:** medium
-- **Version:** 1.0
-- **Delivers:** Drift detection report classifying every registered file pair; drift correction (vault → ora) with `.bak` backups for every overwrite; reverse sync (ora → vault, opt-in) for explicitly-approved pairs; bootstrap creation of vault copies for ora-only files matching registered patterns
-
----
 
 ### Periodic Maintenance
 

@@ -79,14 +79,14 @@ Every change you make creates drift between the installer (which describes the o
 
 ### 4. Reconcile
 
-Run the Spec-Code Reconciliation Framework (`frameworks/book/spec-code-reconciliation.md`). It:
+Run the Documentation-Code Parity (DCP) Framework (canonical: `~/Documents/vault/Framework — Documentation-Code Parity.md`). DCP supersedes both the original Spec-Code Reconciliation and System File Drift Correction frameworks (archived 2026-05-10). It:
 
-1. Compares every installer layer against your actual filesystem
-2. Identifies every difference — what you added, changed, or removed
-3. Updates the installer layers to describe your system
-4. Produces a natural language system specification — a single document that describes your entire system in plain English
+1. Inventories every code module against its paired vault specification
+2. Surfaces drift in four classes (auto-fix-candidate / escalate / missing-feature / deprecation-candidate)
+3. Auto-applies low-risk fixes; escalates substantive drift to a queue for your review
+4. Via the DCP-Specify mode, drafts specifications for code that lacks them — including the installer-layer re-derivation work the old framework focused on
 
-After reconciliation, your fork's installer would build your system on a fresh machine. The specification describes it completely. The natural-language-is-source-code loop is closed.
+After a DCP-Sweep run, your fork's documentation matches your fork's code. The Sweep produces a Drift Report documenting what changed. DCP-Specify can re-derive an installer specification if you need to share your fork as a buildable system.
 
 ### 5. Share
 

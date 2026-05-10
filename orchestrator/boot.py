@@ -4248,7 +4248,20 @@ def build_system_prompt_for_gear(
     mode_name = context_package.get("mode_name", "")
     boot_md = load_boot_md()
 
-    # Full sections (parents; some also embed the Phase 5 ### subsections).
+    # Current locked template (2026-05-01): one ## section per pipeline step.
+    # `~/Documents/vault/Reference — Mode Specification Template.md` is the
+    # canonical schema; all 58 mode files were migrated to it.
+    depth_guidance = _extract_section(mode_text, "DEPTH ANALYSIS GUIDANCE")
+    breadth_guidance = _extract_section(mode_text, "BREADTH ANALYSIS GUIDANCE")
+    evaluation_criteria = _extract_section(mode_text, "EVALUATION CRITERIA")
+    revision_guidance = _extract_section(mode_text, "REVISION GUIDANCE")
+    consolidation_guidance = _extract_section(mode_text, "CONSOLIDATION GUIDANCE")
+    verification_criteria = _extract_section(mode_text, "VERIFICATION CRITERIA")
+
+    # Legacy template sections (pre-2026-05-01 cascade architecture). Kept as
+    # a fallback so any not-yet-migrated mode file still produces a non-empty
+    # prompt rather than degrading silently. The audit on 2026-05-10 confirmed
+    # 0/58 mode files retain these — the fallback is defensive only.
     depth_instr = _extract_section(mode_text, "DEPTH MODEL INSTRUCTIONS")
     breadth_instr = _extract_section(mode_text, "BREADTH MODEL INSTRUCTIONS")
     content_contract = _extract_section(mode_text, "CONTENT CONTRACT")
@@ -4256,39 +4269,19 @@ def build_system_prompt_for_gear(
     emission_contract = _extract_section(mode_text, "EMISSION CONTRACT")
     success_criteria = _extract_section(mode_text, "SUCCESS CRITERIA")
 
-    # Phase 5 ### subsections (authored under the existing 11 sections).
-    consolidator_guidance = _extract_subsection(
-        mode_text, "DEPTH MODEL INSTRUCTIONS", "Consolidator guidance"
-    )
-    focus_for_mode = _extract_subsection(
-        mode_text, "EVALUATION CRITERIA", "Focus for this mode"
-    )
-    suggestion_templates = _extract_subsection(
-        mode_text, "EVALUATION CRITERIA", "Suggestion templates per criterion"
-    )
-    known_failure_dispatch = _extract_subsection(
-        mode_text, "EVALUATION CRITERIA", "Known failure modes to call out"
-    )
-    verifier_checks = _extract_subsection(
-        mode_text, "EVALUATION CRITERIA", "Verifier checks for this mode"
-    )
-    reviser_guidance = _extract_subsection(
-        mode_text, "CONTENT CONTRACT", "Reviser guidance per criterion"
-    )
-
     parts = [boot_md]
 
-    # Per-step dispatch. Each step receives only the mode content it needs.
+    # Per-step dispatch. Each step receives the one section authored for it
+    # in the current template; legacy sections fall through as backstops.
     if step == "analyst":
-        # Full analyst directive + output contracts + guard rails. The
-        # ``### Cascade — what to leave for the evaluator`` subsection is
-        # nested inside DEPTH/BREADTH MODEL INSTRUCTIONS and is carried in
-        # verbatim when the parent section is extracted.
-        instructions = depth_instr if slot == "depth" else breadth_instr
+        primary = depth_guidance if slot == "depth" else breadth_guidance
+        legacy  = depth_instr     if slot == "depth" else breadth_instr
+        instructions = primary or legacy
         if instructions:
             parts.append(
                 f"\n## MODE INSTRUCTIONS — {mode_name}\n\n{instructions}"
             )
+        # Legacy extras (only present in not-yet-migrated mode files).
         if content_contract:
             parts.append(f"\n## CONTENT CONTRACT\n\n{content_contract}")
         if emission_contract:
@@ -4298,22 +4291,10 @@ def build_system_prompt_for_gear(
         if guard_rails:
             parts.append(f"\n## GUARD RAILS\n\n{guard_rails}")
     elif step == "evaluator":
-        # Evaluator receives mode-specific evaluation guidance + the analyst's
-        # targets (content + emission + success criteria) to audit against.
-        if focus_for_mode:
+        if evaluation_criteria:
             parts.append(
-                f"\n## MODE — {mode_name} — Focus for this mode\n\n"
-                f"{focus_for_mode}"
-            )
-        if suggestion_templates:
-            parts.append(
-                f"\n## MODE — {mode_name} — Suggestion templates per criterion\n\n"
-                f"{suggestion_templates}"
-            )
-        if known_failure_dispatch:
-            parts.append(
-                f"\n## MODE — {mode_name} — Known failure modes to call out\n\n"
-                f"{known_failure_dispatch}"
+                f"\n## MODE — {mode_name} — Evaluation criteria\n\n"
+                f"{evaluation_criteria}"
             )
         if content_contract:
             parts.append(
@@ -4329,12 +4310,10 @@ def build_system_prompt_for_gear(
                 f"{success_criteria}"
             )
     elif step == "reviser":
-        # Reviser applies the evaluator's mandatory fixes. Receives the
-        # per-criterion guidance plus the contracts it must continue to meet.
-        if reviser_guidance:
+        if revision_guidance:
             parts.append(
-                f"\n## MODE — {mode_name} — Reviser guidance per criterion\n\n"
-                f"{reviser_guidance}"
+                f"\n## MODE — {mode_name} — Revision guidance\n\n"
+                f"{revision_guidance}"
             )
         if content_contract:
             parts.append(
@@ -4351,14 +4330,13 @@ def build_system_prompt_for_gear(
         if guard_rails:
             parts.append(f"\n## GUARD RAILS\n\n{guard_rails}")
     elif step == "verifier":
-        # Verifier confirms mandatory-fix addressal. Mode-specific checks
-        # layer on top of the universal V1-V8 floor (the universal checklist
-        # lives in f-verify.md; loaded alongside this prompt by the pipeline
-        # function).
-        if verifier_checks:
+        # Mode-specific checks layer on top of the universal V1-V8 floor
+        # (the universal checklist lives in f-verify.md; loaded alongside
+        # this prompt by the pipeline function).
+        if verification_criteria:
             parts.append(
-                f"\n## MODE — {mode_name} — Verifier checks for this mode\n\n"
-                f"{verifier_checks}"
+                f"\n## MODE — {mode_name} — Verification criteria\n\n"
+                f"{verification_criteria}"
             )
         if success_criteria:
             parts.append(
@@ -4374,13 +4352,11 @@ def build_system_prompt_for_gear(
                 f"\n## CONTENT CONTRACT (reference)\n\n{content_contract}"
             )
     else:  # step == "consolidator"
-        # Consolidator (Gear 4) reconciles Depth + Breadth output per the
-        # mode's consolidator guidance. Content + emission + success contracts
-        # are the targets for the consolidated output.
-        if consolidator_guidance:
+        # Consolidator (Gear 4) reconciles Depth + Breadth output.
+        if consolidation_guidance:
             parts.append(
-                f"\n## MODE — {mode_name} — Consolidator guidance\n\n"
-                f"{consolidator_guidance}"
+                f"\n## MODE — {mode_name} — Consolidation guidance\n\n"
+                f"{consolidation_guidance}"
             )
         if content_contract:
             parts.append(
