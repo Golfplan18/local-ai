@@ -1,4 +1,3 @@
-
 # Argument Audit Analysis Framework
 
 *A Framework for Producing an Integrated Argument Audit That Combines Frame-Audit (Lakoff/Goffman/Entman Frame-Surfacing) with Coherence-Audit (Toulmin Reconstruction + Fallacy Taxonomy) Plus Cross-Cutting Integration Surfacing Issues Neither Component Pass Would Catch Alone — Including Frame-Coherence Interactions and Multi-Claim Structural Moves.*

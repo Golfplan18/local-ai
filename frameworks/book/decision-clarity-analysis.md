@@ -1,4 +1,3 @@
-
 # Decision Clarity Analysis Framework
 
 *A Framework for Producing a Decision Clarity Document for a Decision-Maker Facing a Tangled Problem with Stakeholder Value Conflicts, Evolving Definitions, and No Objective Stopping Condition*

@@ -1,18 +1,17 @@
-
 # Mission, Objectives, and Milestones Clarification Framework
 
 ## Display Name
 Mission, Objectives, and Milestones (MOM)
 
 ## Display Description
-Convert a raw idea, tension, or goal into a structured Mission/Objectives/Constraints/Milestones hierarchy. Standalone (Project / Passion / Incubator) or under PEF supervision (with Active/Aspirational milestone split and P-Feasibility checks).
+Convert a raw idea, tension, or goal into a structured strategic-layer hierarchy across the four matrix classifications (Project / Operation / Passion / Incubator). Standalone (M-Standalone) produces a populated matrix file; Supervised (M-Supervised, invoked from PEF v3.0 with `project_type`) produces strategic-layer content for insertion into a matrix file with Active/Aspirational milestone split (Projects), recurring + maturity-gate split (Operations), or practices and directions of travel (Passions). Service Statement Objectivity Protocol applies cycle-shape verification to Operations parallel to Resolution Statement Objectivity Protocol on Projects/Incubators. Minimal-mode invocation supports low-friction elicitation for personal routines and other low-complexity matrices.
 
 
-*A Framework for Articulating Mission, Eliciting Constraints, and Formulating Milestones — Either Standalone or Under Problem Evolution Framework Supervision*
+*A Framework for Articulating Mission, Eliciting Constraints, and Formulating Classification-Appropriate Milestones — Either Standalone or Under Problem Evolution Framework Supervision*
 
-*Version 2.0*
+*Version 3.0*
 
-*Canonical Specification — Produced via F-Convert with PEF-supervised mode added per the 2026-04-23 design session*
+*Canonical Specification — Produced via F-Convert with PEF-supervised mode added per the 2026-04-23 design session. Updated per the 2026-05-08 Operations Manifest landing to support Operation as a fourth classification (alongside Project / Passion / Incubator), to add the Service Statement Objectivity Protocol (cycle-shape adaptation of the Resolution Statement Objectivity Protocol), to add four Operation entry modes (O-FromProject, O-FromScratch, O-FromExisting, O-FromCorpus), to add minimal-mode invocation for low-friction Operations per the Friction Principle in `Framework — Operations Manifest`, and to reframe M-Supervised Outcome 3 as "Classification mismatch — reclassify under No-Punt" matching PEF v3.0's MOM Invocation Protocol. Layer 1's name updated from "Mode Determination and Project Qualification" to "Mode Determination and Classification."*
 
 ---
 
@@ -23,7 +22,7 @@ Convert a raw idea, tension, or goal into a structured Mission/Objectives/Constr
 Required. Natural-language description of what you want to figure out, build, or accomplish. Partial, vague, or contradictory is fine — those are exactly the raw material the framework works with.
 
 ### Mode
-Optional. Standalone (Project / Passion / Incubator) or Supervised (under Problem Evolution). If absent, the framework picks Standalone unless invoked from PEF.
+Optional. Standalone (Project / Operation / Passion / Incubator classification) or Supervised (under Problem Evolution Framework, typically receiving `project_type` from the calling PEF). If absent, the framework picks Standalone unless invoked from PEF.
 
 ### User-stated constraints
 Optional. Limits you already know about — time, budget, scope, resources, hard requirements. If you don't list any, the framework asks about constraints during analysis.
@@ -31,15 +30,28 @@ Optional. Limits you already know about — time, budget, scope, resources, hard
 ### Existing Mission / Objectives / Milestones
 Optional. If you already have an earlier version of any of these (from a prior MOM run, a project matrix, or a draft), include it. The framework will iterate from there instead of starting fresh.
 
+### project_type (optional pre-classification)
+Optional. If the calling context already knows the matrix's classification (e.g., PEF v3.0's MOM Invocation Protocol passes `project_type: operation`), supplying this skips Layer 1's qualification test and dispatches directly to type-specific elicitation. Valid values: `project`, `operation`, `passion`, `incubator`.
+
+### Operation entry mode (optional, for project_type: operation)
+Optional. When `project_type: operation` is passed in or determined, the entry mode shapes Layer 2 elicitation: `O-FromProject` (closing Project Matrix is being converted), `O-FromScratch` (top-down vision; apparatus doesn't exist yet), `O-FromExisting` (informal operation being formalized), `O-FromCorpus` (corpus need surfaced an underlying Operation). If absent, MOM infers the entry mode from context per the dispatch logic in `Framework — Operations Manifest`.
+
+### Minimal-mode flag (optional)
+Optional. When set, MOM elicits only the foundational fields appropriate to the classification (3–5 questions total) and accepts "indefinite," "none," or "skip" as valid answers for everything else. Used for low-friction personal routines and similar low-complexity matrices per the Friction Principle in `Framework — Operations Manifest`.
+
 ## How to Use This File
 
-This is a project definition framework. It operates when the user has an idea that needs structuring into a Mission, Objectives, Constraints, and Milestones — either as a standalone classification exercise (Project / Passion / Incubator) or as an invoked step inside a Problem Evolution Framework (PEF) cycle.
+This is a strategic-layer definition framework. It operates when the user has an idea that needs structuring into the appropriate Mission, Objectives, Constraints, and classification-specific milestones — either as a standalone classification exercise (Project / Operation / Passion / Incubator) or as an invoked step inside a Problem Evolution Framework (PEF) cycle.
 
 Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemini) or local model — then provide your input below the USER INPUT marker at the bottom. State which mode you need, or the AI will determine it from context.
 
-**Mode M-Standalone:** You have a raw idea, tension, or goal and you need it classified and structured. The framework runs the three-pathway qualification (Project / Passion / Incubator) and produces the appropriate hierarchy in Matrix Master format. This is the original behavior of this framework and remains unchanged except that the Resolution Statement Objectivity Protocol, Constraints elicitation, and milestone verifiability discipline are applied to all endpoint-bearing classifications (Projects and Incubators).
+**Mode M-Standalone:** You have a raw idea, tension, or goal and you need it classified and structured. The framework runs the four-pathway qualification (Project / Operation / Passion / Incubator) and produces the appropriate matrix file in vault-canonical format. The Resolution Statement Objectivity Protocol applies to Projects and Incubators (endpoint-bearing); the Service Statement Objectivity Protocol applies to Operations (cycle-shape); Passions develop Mission elements (Core Essence + Emotional Drivers) without an endpoint objectivity check. Constraints elicitation and milestone verifiability discipline are applied to all classifications appropriately.
 
-**Mode M-Supervised:** You are invoking this framework from within a PEF cycle. The Problem Evolution Framework has determined that a Project-level strategic hierarchy is needed to advance the PED, and is calling this framework to produce it. In this mode, Layer 1 qualification must land on Project — if the idea resolves as Passion or Incubator, the framework escalates under the No-Punt rule with specific reformulation advice. Additionally, Layer 4 invokes the Process Inference Framework in P-Feasibility mode for each Active milestone, and produces the Active/Aspirational milestone split required by PEF.
+**Mode M-Supervised:** You are invoking this framework from within a PEF cycle. PEF v3.0 passes `project_type` to MOM via its MOM Invocation Protocol; MOM dispatches directly to the type-specific elicitation. If `project_type` is not pre-specified, Layer 1's classification test produces it. Additionally, Layer 4 invokes the Process Inference Framework in P-Feasibility mode for each Active milestone (Project) or recurring Active milestone (Operation), and produces the Active/Aspirational split required by PEF (or recurring + maturity-gate split for Operations). The three M-Supervised outcomes are: (1) Strategic layer populatable as the determined classification; (2) Terrain not yet mapped — preliminary work required (Project: Terrain Mapping Framework; Operation: spawn a Project to build the apparatus); (3) Classification mismatch — reclassify under No-Punt with the recommended new classification (parallel to PEF v3.0's MOM Invocation Protocol Outcome 3).
+
+**Minimal-mode flag (applies in both M-Standalone and M-Supervised):** When the minimal flag is set in setup, MOM elicits only the foundational fields appropriate to the classification (3–5 questions total: Mission's Core Essence, the type-specific endpoint or Service Statement, Cadence for Operations). All optional fields default to "indefinite," "none," or "skip" with a "you can add this later" pointer in the produced matrix. Used for low-friction personal routines and similar low-complexity matrices per the Friction Principle in `Framework — Operations Manifest`.
+
+**Operation entry modes (when project_type is operation):** Four entry modes shape Layer 2 elicitation per the source context — `O-FromProject` (closing Project Matrix being converted), `O-FromScratch` (vision; no apparatus yet), `O-FromExisting` (informal operation being formalized), `O-FromCorpus` (corpus need surfaced an underlying Operation). See `Framework — Operations Manifest` for the per-entry-mode handoff details.
 
 ---
 
@@ -64,7 +76,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 
 ## PURPOSE
 
-Convert a raw idea, tension, or goal into a structured hierarchy of Mission, Objectives, Constraints, and Milestones — either as a standalone classification exercise into one of three pathways (Project / Passion / Incubator) or as a PEF-supervised production of a Project-level hierarchy with Resolution Statement objectivity checks, Constraints classification, and Active-plus-Aspirational milestone split ready for insertion into a Problem Evolution Document.
+Convert a raw idea, tension, or goal into a structured strategic-layer hierarchy of Mission, Objectives, Constraints, and classification-appropriate milestones — either as a standalone classification exercise into one of four pathways (Project / Operation / Passion / Incubator) or as a PEF-supervised production dispatched on `project_type` to the matching classification branch. Operations are the fourth classification: going concerns producing recurring deliverables on a cadence, supervised by the Service Statement Objectivity Protocol (cycle-shape adaptation of the Resolution Statement Objectivity Protocol). Minimal-mode supports low-friction elicitation per the Friction Principle in `Framework — Operations Manifest`. The framework reuses existing primitives across all classifications rather than inventing parallel paths.
 
 ## INPUT CONTRACT
 
@@ -74,14 +86,17 @@ Required (varies by mode):
 - **Raw Idea Description:** Natural language description of the idea, tension, or goal. Source: user input. Partial, vague, or contradictory descriptions are expected and acceptable.
 
 **M-Supervised:**
-- **Current Problem Definition:** The working problem definition from the calling PED. Source: PEF invocation context. Must state what is being solved, why it matters, and what success looks like — even if some aspects remain under-specified.
-- **Current State Description:** Observable description of what exists now — data, materials, system state, tools, environment, resources. Source: PEF invocation context or user input. Required for P-Feasibility invocation in Layer 4.
-- **Resolution Statement Candidate (optional but preferred):** Rough statement of the world-state when the mission is fulfilled. Source: PEF or user input. Default behavior if absent: Layer 3 elicits it from scratch.
+- **Current Strategic-Layer Content:** The working content from PEF Layer 2, named per `project_type` — `project`: working problem definition; `operation`: candidate Service Statement (or, for O-FromProject, the prior Resolution Statement that needs reformulation); `passion`: candidate Mission (Core Essence, Emotional Drivers); `incubator`: Critical Unknown framing; `undetermined`: raw description for Layer 1 to classify. Source: PEF invocation context.
+- **Current State Description:** Observable description of what exists now — data, materials, system state, tools, environment, resources, prior cycles for Operations, prior practice for Passions. Source: PEF invocation context or user input. Required for P-Feasibility invocation in Layer 4.
+- **`project_type` (optional but preferred):** Pre-classification from the calling context (`project`, `operation`, `passion`, `incubator`, or `undetermined`). When supplied, Layer 1 dispatches directly without re-running the qualification test.
+- **Resolution Statement / Service Statement Candidate (optional but preferred):** Rough statement of the world-state when the mission is fulfilled (Project / Incubator) or the recurring deliverable produced (Operation). Source: PEF or user input. Default behavior if absent: Layer 3 elicits it from scratch.
 
 Optional (all modes):
 - **User-Stated Constraints:** Known limits the user has already identified. Source: user input. Default behavior if absent: Layer 2 conducts proactive constraints elicitation as a byproduct of Define and Analyze phase work.
-- **Prior Mission / Objectives / Milestones:** If an earlier version exists (e.g., from a prior MOM run or a matrix draft). Source: vault file, pasted document, or PED history. Default behavior if absent: Layer 3 and Layer 4 draft from scratch.
-- **Excluded Outcomes Candidates:** Outcomes the user has already identified as near-misses that would not solve the underlying problem. Source: user input. Default behavior if absent: Layer 3 Check 2 elicits them.
+- **Prior Mission / Objectives / Milestones / Strategic-Layer Content:** If an earlier version exists (e.g., from a prior MOM run or a matrix draft). Source: vault file, pasted document, or PED history. Default behavior if absent: Layer 3 and Layer 4 draft from scratch.
+- **Excluded Outcomes Candidates:** Outcomes the user has already identified as near-misses that would not solve the underlying problem (Projects, Incubators) or that would not honor the Service Statement (Operations — cycle-shape near-miss patterns). Source: user input. Default behavior if absent: Layer 3 Check 2 elicits them.
+- **Operation entry mode (when `project_type: operation`):** One of `O-FromProject`, `O-FromScratch`, `O-FromExisting`, `O-FromCorpus`. Default behavior if absent: MOM infers from context per the dispatch logic in `Framework — Operations Manifest`.
+- **Minimal-mode flag (all classifications):** When set, MOM elicits only foundational fields and accepts "indefinite" / "none" / "skip" for everything else.
 
 ## OUTPUT CONTRACT
 
@@ -89,12 +104,16 @@ Primary outputs:
 - **Populated Strategic Hierarchy:** A fully populated Mission, Objectives, Constraints, and Milestones structure in the format specified by the mode (Matrix Master format for M-Standalone; PED-insertion format for M-Supervised). Format: structured markdown. Quality threshold: scores 3 or above on all evaluation criteria.
 
 Secondary outputs:
-- **Layer 1 Classification:** Project / Passion / Incubator (M-Standalone) or Project / terrain-map-required / No-Punt-escalation (M-Supervised), with rationale.
-- **Resolution Statement Objectivity Report:** The three checks (Ambiguous Language Detection, Near-Miss Elicitation, Definition-Drift Detection) with results for each. Format: structured list. Applies to endpoint-bearing classifications (Projects and Incubators).
-- **Excluded Outcomes:** The sibling field to Resolution Statement produced by Check 2. Format: numbered list with three or more entries, each explaining why the outcome would not solve the underlying problem.
+- **Layer 1 Classification:** Project / Operation / Passion / Incubator (M-Standalone) or one of three outcomes (M-Supervised, see below), with rationale.
+- **Resolution Statement Objectivity Report (Projects, Incubators) or Service Statement Objectivity Report (Operations):** The three checks (Ambiguous Language Detection / Cycle-Inspectability Check, Near-Miss Elicitation, Definition-Drift Detection / Service Statement Drift Detection) with results for each. Format: structured list.
+- **Excluded Outcomes:** Sibling field to the endpoint statement produced by Check 2. For Operations, includes the cycle-shape near-miss patterns (cadence met but quality degraded; corpora consumed but unchanged; output produced but not consumed; maturity gate gamed not earned). Format: numbered list with three or more entries.
 - **Classified Constraints:** Hard / Soft / Working Assumption classification for each constraint, with revisit triggers for Working Assumptions. Format: structured list.
-- **P-Feasibility Verdicts (M-Supervised only):** One verdict per Active milestone, produced by invoking the Process Inference Framework in P-Feasibility mode. Format: verdict label plus justification per the PIF P-Feasibility output format.
-- **No-Punt Escalation Report (M-Supervised, if classification fails Project test):** Specific reformulation advice covering how the idea could be reformulated as a Project, whether it should be pursued as a Passion, or whether it needs further exploration. Format: structured recommendation.
+- **Cadence and Deliverables (Operations):** Recurring deliverables with their cadence rules (scheduled or event-driven), apparatus, and verification reference.
+- **Coordinated Corpora (Operations):** Consumption declarations with primary-curator markers per `Framework — Operations Manifest`.
+- **Coordinated Outputs (Operations):** OFF-rendered output declarations with cadence and source corpora.
+- **P-Feasibility Verdicts (M-Supervised; or M-Standalone for Operations on recurring milestones and maturity gates):** One verdict per Active milestone, produced by invoking the Process Inference Framework in P-Feasibility mode.
+- **M-Supervised Outcome (one of three):** (1) Strategic layer populatable as the determined classification; (2) Terrain not yet mapped — preliminary work required (Project: Terrain Mapping Framework; Operation: spawn a Project to build the apparatus); (3) Classification mismatch — reclassify under No-Punt with the recommended new classification.
+- **No-Punt Escalation Report (M-Supervised Outcome 3):** Specific reformulation advice covering how the idea could be reformulated as the original assumed type (typically Project), whether it should be pursued as the recommended alternative classification (Operation, Passion, or Incubator), or whether it needs further exploration. Format: structured recommendation per PEF v3.0's MOM Invocation Protocol Outcome 3 conventions.
 
 ## EXECUTION TIER
 
@@ -108,33 +127,33 @@ Both modes (M-Standalone, M-Supervised) cover Layers 1-7 (seven processing layer
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
 
-MOM is invoked in one of two modes: M-Standalone (user-direct, producing strategic hierarchy in Matrix Master format) or M-Supervised (PEF-invoked, producing strategic hierarchy in PED-insertion format with Active/Aspirational milestone split). Each mode delivers a distinct milestone using the framework's full layer sequence. All milestone properties are defined inline per milestone.
+MOM is invoked in one of two modes: M-Standalone (user-direct, producing a vault-canonical matrix file) or M-Supervised (PEF-invoked, producing strategic-layer content for matrix-file insertion with Active/Aspirational split for Projects, recurring + maturity-gate split for Operations, or practices and directions of travel for Passions). Each mode delivers a distinct milestone using the framework's full layer sequence. All milestone properties are defined inline per milestone.
 
 ### Milestones for Mode M-Standalone
 
 #### Milestone 1: Standalone Strategic Hierarchy
 
 - **Mode:** M-Standalone
-- **Endpoint produced:** Populated Mission, Objectives, Constraints, and Milestones in Matrix Master format, with classification as Project, Passion, or Incubator explicitly recorded.
-- **Verification criterion:** (a) classification is recorded with rationale; (b) for endpoint-bearing classifications (Project, Incubator), Resolution Statement passes the three Objectivity Protocol checks and an Excluded Outcomes field is populated with three or more genuine near-misses; (c) Constraints are classified Hard, Soft, or Working Assumption with revisit triggers recorded for every Working Assumption; (d) Milestones are verifiable statements of completion for endpoint-bearing classifications, or practices and directions of travel for Passions.
-- **Layers covered:** 1, 2, 3, 4, 5, 6, 7
+- **Endpoint produced:** Populated Mission, Objectives, Constraints, classification-appropriate milestones, and (for Operations) Cadence and Deliverables / Coordinated Corpora / Coordinated Outputs in matrix-file format, with classification as Project, Operation, Passion, or Incubator explicitly recorded.
+- **Verification criterion:** (a) classification is recorded with rationale; (b) for endpoint-bearing classifications (Project, Incubator), Resolution Statement passes the three Objectivity Protocol checks and an Excluded Outcomes field is populated with three or more genuine near-misses; for Operations, Service Statement passes the three Service Statement Objectivity Protocol checks and Excluded Outcomes includes cycle-shape near-miss patterns; (c) Constraints are classified Hard, Soft, or Working Assumption with revisit triggers recorded for every Working Assumption; (d) milestones are verifiable per type — completion statements for Projects/Incubators, recurring + Aspirational maturity gates for Operations, practices and directions of travel for Passions; (e) for Operations, Cadence and Deliverables names every recurring deliverable with a specific cadence (scheduled or event-driven), and Coordinated Corpora / Coordinated Outputs are populated.
+- **Layers covered:** 1, 2, 3, 4, 5, 6, 7 (5.5 if matrix file is created)
 - **Required prior milestones:** None
 - **Gear:** 4
-- **Output format:** Matrix Master-format strategic hierarchy with classification noted.
-- **Drift check question:** Does the produced strategic hierarchy faithfully represent the user's stated idea or tension, and does the classification (Project / Passion / Incubator) match the actual evidence rather than a framework-preferred default?
+- **Output format:** Vault-canonical matrix file format with classification noted; the body sections vary by classification per `Framework — Operations Manifest` Appendix A (Operations) and the existing project/passion/incubator templates.
+- **Drift check question:** Does the produced strategic hierarchy faithfully represent the user's stated idea or tension, and does the classification (Project / Operation / Passion / Incubator) match the actual evidence rather than a framework-preferred default?
 
 ### Milestones for Mode M-Supervised
 
 #### Milestone 1: PEF-Supervised Strategic Hierarchy
 
 - **Mode:** M-Supervised
-- **Endpoint produced:** Populated Mission, Objectives, Constraints, and Milestones in PED-insertion format with Active and Aspirational milestone split, and P-Feasibility verdicts recorded for each Active milestone.
-- **Verification criterion:** (a) Layer 1 yielded one of three outcomes (Project definable, Project not yet definable with terrain-mapping Active milestone, or Not a Project with No-Punt escalation produced); (b) if Project definable or terrain-mapping, Resolution Statement passes the three Objectivity Protocol checks and Excluded Outcomes field is populated; (c) Constraints are classified Hard, Soft, or Working Assumption with revisit triggers recorded for every Working Assumption; (d) every Active milestone has a P-Feasibility verdict produced by invoking the Process Inference Framework in P-Feasibility mode; (e) every Aspirational milestone has a Contingency note where applicable and an explicit candidate-components caveat where candidate components are listed; (f) if No-Punt escalation occurred, the escalation report contains specific reformulation advice.
+- **Endpoint produced:** Populated strategic-layer content for matrix-file insertion appropriate to the dispatched `project_type` — Project (Mission with Resolution Statement, Excluded Outcomes, Constraints, Objectives, Active/Aspirational milestone split with P-Feasibility verdicts); Operation (Mission with Service Statement and Excluded Outcomes, Constraints, Objectives, Cadence and Deliverables, Coordinated Corpora, Coordinated Outputs, recurring Active milestones plus Aspirational maturity gates with P-Feasibility verdicts); Passion (Mission with Core Essence and Emotional Drivers, Practices, Directions of Travel, optional Constraints); Incubator (Critical Unknown framing, candidate classifications, exploration plan).
+- **Verification criterion:** (a) Layer 1 yielded one of three outcomes (Strategic layer populatable as classified type, Terrain not yet mapped — preliminary work required, or Classification mismatch with No-Punt reclassification escalation); (b) if Outcome 1, the type-appropriate Objectivity Protocol checks passed (Resolution Statement Objectivity Protocol for Projects/Incubators; Service Statement Objectivity Protocol for Operations; no protocol for Passions) and Excluded Outcomes are populated where applicable; (c) Constraints are classified Hard, Soft, or Working Assumption with revisit triggers recorded for every Working Assumption; (d) every Active milestone (or recurring Active milestone for Operations) has a P-Feasibility verdict produced by invoking the Process Inference Framework in P-Feasibility mode; (e) every Aspirational milestone (or Aspirational maturity gate for Operations) has a Contingency note or gate condition where applicable and an explicit candidate-components caveat where candidate components are listed; (f) if Outcome 3, the reclassification escalation report contains specific advice (Reformulation-as-original-type / Pursue-as-recommended-type / Explore-further) per PEF v3.0's MOM Invocation Protocol.
 - **Layers covered:** 1, 2, 3, 4, 5, 6, 7
 - **Required prior milestones:** None
 - **Gear:** 4
-- **Output format:** PED-insertion-format strategic hierarchy with Active/Aspirational split, P-Feasibility verdicts attached, and No-Punt escalation report if applicable.
-- **Drift check question:** Does the produced PED-insertion content correctly distinguish Active from Aspirational milestones with valid P-Feasibility verdicts, and was the No-Punt rule honored if the M-Supervised path led to escalation?
+- **Output format:** Type-appropriate strategic-layer content for matrix-file insertion, with type-specific milestone structure, P-Feasibility verdicts attached, and reclassification escalation report if applicable.
+- **Drift check question:** Does the produced content correctly dispatch to the matching classification (Project / Operation / Passion / Incubator), apply the type-appropriate objectivity protocol, distinguish Active from Aspirational appropriately, and honor the No-Punt rule if Outcome 3 fired?
 
 ---
 
@@ -143,11 +162,11 @@ MOM is invoked in one of two modes: M-Standalone (user-direct, producing strateg
 This framework's output is evaluated against these 8 criteria. Each criterion is rated 1-5. Minimum passing score: 3 per criterion.
 
 1. **Classification Fidelity**
-   - 5 (Excellent): The Layer 1 classification is the logically correct one given the idea, the mode, and the evidence. Rationale is specific and cites the qualification test results. In M-Supervised mode, the three-outcome branching is applied correctly and the No-Punt rule is honored without gaps.
+   - 5 (Excellent): The Layer 1 classification is the logically correct one given the idea, the mode, and the evidence (Project / Operation / Passion / Incubator). Rationale is specific and cites the qualification test results. In M-Supervised mode, the three-outcome branching (Strategic layer populatable / Terrain not yet mapped / Classification mismatch) is applied correctly and the No-Punt rule is honored without gaps when reclassification escalation fires.
    - 4 (Strong): Classification is correct and rationale is provided. One element of the branching rationale may be implicit rather than explicit.
-   - 3 (Passing): Classification is correct. Rationale is present even if brief. The qualification test was applied rather than skipped.
+   - 3 (Passing): Classification is correct. Rationale is present even if brief. The qualification test was applied rather than skipped (or the test was skipped because `project_type` was pre-specified by the calling PEF, in which case dispatch was direct and correct).
    - 2 (Below threshold): Classification is plausible but rationale is thin or the qualification test was short-circuited. Or in M-Supervised mode, one of the three outcomes was handled without explicit branching logic.
-   - 1 (Failing): Classification is wrong, or the framework escalated to No-Punt without specific reformulation advice, or M-Supervised mode accepted a Passion/Incubator classification as if it were a Project.
+   - 1 (Failing): Classification is wrong, or the framework escalated reclassification without specific advice (the three required elements: Reformulation-as-original-type, Pursue-as-recommended-type, Explore-further), or M-Supervised mode accepted an Operation/Passion/Incubator classification as if it were the originally-passed-in type without reclassification.
 
 2. **Resolution Statement Objectivity**
    - 5 (Excellent): All three Objectivity Protocol checks (Ambiguous Language Detection, Near-Miss Elicitation, Definition-Drift Detection) are applied substantively. Ambiguous terms are replaced with measurable thresholds or observable behaviors. The Excluded Outcomes field contains three or more genuine near-misses, each with explanation. Definition drift from the user's original problem description is explicitly checked and either confirmed stable or flagged with material narrowing described.
@@ -214,15 +233,15 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
 
 ---
 
-## LAYER 1: MODE DETERMINATION AND PROJECT QUALIFICATION
+## LAYER 1: MODE DETERMINATION AND CLASSIFICATION
 
-**Role Shift:** As the Strategic Gatekeeper, your first action is to determine the operating mode and then subject the idea to a qualification test whose branches depend on the mode.
+**Role Shift:** As the Strategic Gatekeeper, your first action is to determine the operating mode and then either dispatch directly on a pre-specified `project_type` or subject the idea to a classification test whose branches depend on the mode.
 
-**Stage Focus:** Determine operating mode, assess idea viability, classify the idea along the mode-specific pathway.
+**Stage Focus:** Determine operating mode; assess idea viability; classify the idea as Project / Operation / Passion / Incubator (M-Standalone) or dispatch on the calling context's `project_type` (M-Supervised). For Operations, identify the entry mode (O-FromProject / O-FromScratch / O-FromExisting / O-FromCorpus) per `Framework — Operations Manifest`.
 
-**Input:** User-provided raw idea (M-Standalone) or calling PED's current problem definition plus current state description (M-Supervised).
+**Input:** User-provided raw idea (M-Standalone) or calling PED's current strategic-layer content plus current state description plus optional `project_type` (M-Supervised).
 
-**Output:** Confirmed operating mode and classification outcome with rationale.
+**Output:** Confirmed operating mode; classification outcome with rationale; Operation entry mode (when classification is operation); minimal-mode flag (carried forward to subsequent layers).
 
 ### Processing Instructions
 
@@ -233,64 +252,93 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
      - IF a PED context is present or the invocation comes from within a PEF cycle → M-Supervised.
    - State the confirmed mode to the user before proceeding.
 
-2. Conduct Initial Viability Check.
+2. **Check for pre-specified `project_type`.**
+   - IF M-Supervised AND `project_type` is one of `project`, `operation`, `passion`, `incubator` → dispatch directly to that classification's downstream layers; skip the qualification test in step 4 (PEF v3.0 has already classified). Record "Classification: [type]; dispatched on pre-specified project_type from calling PEF." Proceed to step 7's minimal-mode signal handling, then Layer 2.
+   - IF M-Supervised AND `project_type` is `undetermined` (or absent) → run step 3 viability check, then step 4's qualification test.
+   - IF M-Standalone → always run steps 3 and 4.
+
+3. Conduct Initial Viability Check.
    - Assess whether the idea has enough coherence or inspirational energy to warrant formal analysis.
    - IF the idea is too fragmentary to analyze → in M-Standalone, recommend capture as Workshop Report and halt; in M-Supervised, return control to PEF with a "not yet actionable" finding and request PEF to iterate on problem definition first.
    - IF viable → proceed.
 
-3. Apply the mode-specific qualification branching.
+4. **Apply the four-classification qualification test.** Apply tests in order; first match wins (with M-Supervised's Outcome-3 fallback handled in step 5).
 
-   **M-Standalone branching:**
+   a. **Project Test:** "What is the primary, tangible deliverable of this effort? Can we name the specific thing that will exist once this work is complete? Does the work have a finite endpoint at delivery?"
+      - IF the Project Test passes → classify as **Project**.
 
-   a. Apply the Project Test: "What is the primary, tangible deliverable of this effort? Can we name the specific thing that will exist once this work is complete?"
-      - IF the Project Test passes → classify as **Project** and proceed through all layers with Project treatment.
-   b. Apply the Incubator Test: "Is there a central, driving question that this collection of ideas is trying to answer? Can we define a focused direction of inquiry?"
-      - IF the Incubator Test passes → classify as **Incubator** and proceed through all layers with Incubator treatment. The Critical Unknown serves as the endpoint for Resolution Statement and milestone purposes.
-   c. IF both tests fail → classify as **Passion** and proceed through all layers with Passion treatment. Resolution Statement is omitted; Core Essence and Emotional Drivers are fully developed; Milestones are replaced by practices or directions of travel.
+   b. **Operation Test:** "Does this effort produce recurring deliverables on a cadence (scheduled or event-driven), with no terminal endpoint until sunset criteria are met? Is there an apparatus that runs cycles?"
+      - IF the Operation Test passes → classify as **Operation**. Identify the entry mode per the dispatch logic in `Framework — Operations Manifest`:
+        - **O-FromProject** — closing Project Matrix is being converted (PEF Layer 5 Promotion Protocol's Project closure conversion gate fired).
+        - **O-FromScratch** — top-down vision; apparatus does not yet exist.
+        - **O-FromExisting** — informal operation already running, being formalized.
+        - **O-FromCorpus** — corpus need surfaced an underlying Operation.
+      - If entry mode is ambiguous, ask the user to confirm one of the four.
 
-   **M-Supervised branching — produces one of three outcomes:**
+   c. **Incubator Test:** "Is there a central, driving question that this collection of ideas is trying to answer? Can we define a focused direction of inquiry whose Critical Unknown will eventually resolve into a Project / Operation / Passion?"
+      - IF the Incubator Test passes → classify as **Incubator**. The Critical Unknown serves as the endpoint for Resolution Statement and milestone purposes during Layer 3. Note: the Incubator's Critical Unknown can resolve into any of the three other classifications (Project, Operation, or Passion) — not just Project.
 
-   a. Apply the Project Test.
-      - IF the Project Test passes AND the deliverable can be named with enough specificity to continue to Layer 2 → **Outcome 1: Project definable.** Proceed through all layers with Project treatment and M-Supervised-specific additions (Active/Aspirational split, P-Feasibility invocation in Layer 4).
-      - IF the Project Test passes in principle but the deliverable cannot yet be named with enough specificity because the terrain is unmapped (the user does not yet know what factors are involved, what the structure of the problem is, or what constraints apply) → **Outcome 2: Project not yet definable.** Proceed through Layers 2 and 3 producing the best-available draft Mission and Constraints, then in Layer 4 set the single Active milestone as "Map the terrain of [problem domain]" and invoke the Terrain Mapping Framework for delivery. Aspirational milestones may still be drafted with explicit candidate-components caveat. Do not invoke P-Feasibility on the terrain-mapping Active milestone; the Terrain Mapping Framework is its delivery vehicle.
-      - IF the Project Test fails (the idea is a Passion or Incubator rather than a Project) → **Outcome 3: Not a Project. Escalate under No-Punt.** Proceed to step 4 to produce the escalation report rather than continuing through Layers 2-5.
+   d. IF all three tests fail → classify as **Passion**. Resolution Statement is omitted; Core Essence and Emotional Drivers are fully developed; Milestones are replaced by practices and directions of travel.
 
-4. **No-Punt Escalation (M-Supervised, Outcome 3 only).** Produce the escalation report with specific reformulation advice. The report must contain all three of the following elements:
+5. **Apply M-Supervised three-outcome branching** (only if M-Supervised was the operating mode AND step 2 did not dispatch directly).
 
-   a. **Reformulation as Project option.** State one specific reformulation of the idea that would make it a Project — naming a concrete deliverable that would address the underlying tension. If the idea cannot be reformulated as a Project under any framing, state this and why (e.g., the underlying tension is ongoing exploration with no stable endpoint).
-   b. **Pursue as Passion option.** State specifically how the idea would be treated as a Passion — what practices, directions of travel, or ongoing areas of exploration it would become. If it would not be a sustainable Passion, state why.
-   c. **Explore further option.** State one specific investigation (a concrete question, a concrete research direction, or a concrete experiment) that would advance the understanding needed to reformulate. If the investigation would itself be an Incubator, note that.
+   - IF the test in step 4 produced a viable classification (Project / Operation / Passion / Incubator) AND the strategic-layer content can be drafted with enough specificity to continue → **Outcome 1: Strategic layer populatable as the determined classification.** Proceed through Layers 2–5 with type-specific treatment per the determined classification, plus M-Supervised additions (Active/Aspirational split for Projects; recurring + maturity-gate split for Operations; P-Feasibility invocation in Layer 4).
 
-   Deliver the escalation report back to PEF. Do not proceed to Layers 2-5 in this outcome — the report is the output.
+   - IF the test passes in principle but the strategic layer cannot yet be drafted with enough specificity because the terrain is unmapped → **Outcome 2: Terrain not yet mapped — preliminary work required.** Application varies by classification:
+     - **Project:** Resolution Statement / milestones not yet formulable. Proceed through Layers 2 and 3 producing the best-available draft, then in Layer 4 set the single Active milestone as "Map the terrain of [problem domain]" and invoke the Terrain Mapping Framework for delivery.
+     - **Operation:** Service Statement / cadence / coordinated corpora not yet formulable, typically because the underlying apparatus doesn't exist yet. Recommend spawning a Project (O-FromScratch entry mode preconditioned on a Project handoff) to build the apparatus first, with the Operation Matrix held in a draft state until the Project completes. Alternatively, if the issue is just that prior practice hasn't been captured, return a draft Service Statement plus a single Active milestone to map the existing informal operation (O-FromExisting entry mode).
+     - **Passion / Incubator:** Outcome 2 typically does not apply — Passions can always be loosely named even when the Critical Essence is fuzzy, and Incubators are the holding pattern for not-yet-mappable terrain (the Critical Unknown is itself the terrain to map).
+     - Aspirational milestones may still be drafted with explicit candidate-components caveats.
+     - Do not invoke P-Feasibility on the terrain-mapping or apparatus-building Active milestone; the delivering framework is its delivery vehicle.
 
-5. Record classification with rationale. State the classification (Project / Passion / Incubator for M-Standalone; Project definable / Project not yet definable / Not a Project for M-Supervised) and cite the specific evidence from the qualification test that produced it.
+   - IF the test produces a different classification than PEF expected (e.g., PEF passed `project_type: project` but the test classifies as Operation; or `project_type: operation` but the test classifies as Project) → **Outcome 3: Classification mismatch — reclassify under No-Punt.** Proceed to step 6 to produce the reclassification escalation report rather than continuing through Layers 2-5.
 
-**Invariant check:** Before proceeding to Layer 2 (or to Layer 5 with escalation report, for M-Supervised Outcome 3), confirm that the operating mode is declared, the classification is explicit, and the rationale is recorded.
+6. **Reclassification Escalation under No-Punt (M-Supervised, Outcome 3 only).** Produce the escalation report with specific advice. The report must contain all three of the following elements:
+
+   a. **Reformulation as original type option.** State one specific reformulation of the idea that would make it the originally-assumed classification (whatever PEF passed in). State the concrete deliverable / Service Statement / Mission that would address the underlying tension under that classification. If the idea cannot be reformulated as the original type under any framing, state this and why.
+   b. **Pursue as recommended type option.** State specifically how the idea would be treated as the recommended classification — what milestones, cadence, practices, or Critical Unknown it would become. If it would not be sustainable under the recommended classification, state why.
+   c. **Explore further option.** State one specific investigation (a concrete question, a concrete research direction, or a concrete experiment) that would advance the understanding needed to decide between the two classifications. If the investigation would itself be an Incubator, note that.
+
+   Deliver the escalation report back to PEF. Do not proceed to Layers 2-5 in this outcome — the report is the output. PEF v3.0's MOM Invocation Protocol Outcome 3 specifies how PEF handles the user's choice (Redefine, keep original type / Pursue-as-recommended-type / Abandon) and how `project_type` is updated in the matrix's frontmatter if the user accepts reclassification.
+
+7. **Minimal-mode signal.** If the minimal-mode flag was set in setup, carry it forward as session state for Layers 2–5.5. The flag instructs each layer to elicit only the foundational fields appropriate to the classification and to accept "indefinite" / "none" / "skip" for everything else. Specific consequences per classification:
+   - **Project (minimal):** Mission's Resolution Statement only; Constraints elicited only when user volunteers; Active milestones drafted but not P-Feasibility-checked unless the user requests.
+   - **Operation (minimal):** Service Statement and Cadence required; Mission's Core Essence and Emotional Drivers optional; Coordinated Corpora / Coordinated Outputs default to "none" / "to be added later"; Performance Log and Incident Log initialized as empty headers; recurring Active milestone drafted from the Service Statement with no Aspirational maturity gates.
+   - **Passion (minimal):** Mission's Core Essence and Emotional Drivers only; Practices and Directions of Travel optional.
+   - **Incubator (minimal):** Critical Unknown only; candidate classifications optional; exploration plan optional.
+
+8. Record classification with rationale. State the classification (Project / Operation / Passion / Incubator), Operation entry mode where applicable, and minimal-mode flag. Cite the specific evidence from the qualification test (or the pre-specified `project_type`) that produced it.
+
+**Invariant check:** Before proceeding to Layer 2 (or to step 6's escalation report, for M-Supervised Outcome 3), confirm that the operating mode is declared, the classification is explicit, the Operation entry mode is identified if classification is operation, the minimal-mode flag is recorded, and the rationale is recorded.
 
 ---
 
-## LAYER 2: PROJECT DEFINITION AND CONSTRAINTS ELICITATION
+## LAYER 2: STRATEGIC-LAYER DEFINITION AND CONSTRAINTS ELICITATION
 
-**Role Shift:** As the Strategic Inquirer, your focus is to ensure the idea is clearly and robustly defined and, as a byproduct of that definition work, to surface and classify the constraints that bound it.
+**Role Shift:** As the Strategic Inquirer, your focus is to ensure the idea is clearly and robustly defined for its classification, and, as a byproduct of that definition work, to surface and classify the constraints that bound it.
 
-**Stage Focus:** Establish a clear working definition of the idea and produce a classified Constraints list. Constraints elicitation is woven into the Define and Analyze questioning rather than conducted as a separate interrogation.
+**Stage Focus:** Establish a clear working definition appropriate to the classification (problem definition for Project; Service Statement candidate plus cadence and coordinated-entity candidates for Operation; Mission orientation for Passion; Critical Unknown for Incubator) and produce a classified Constraints list. Constraints elicitation is woven into the Define and Analyze questioning rather than conducted as a separate interrogation.
 
-**Input:** Classification outcome and mode from Layer 1; user-provided raw idea or PED context.
+**Input:** Classification outcome and mode from Layer 1; Operation entry mode if applicable; minimal-mode flag if set; user-provided raw idea or PED context.
 
-**Output:** Working definition; classified Constraints list with Hard, Soft, and Working Assumption entries.
+**Output:** Working definition appropriate to the classification; for Operations, candidate Cadence and candidate Coordinated Corpora / Coordinated Outputs; classified Constraints list with Hard, Soft, and Working Assumption entries.
 
 ### Processing Instructions
 
-1. **Initial Analysis.** Analyze all provided material and identify the most significant ambiguities. Draw selectively from the Master Question Library below. For an Incubator, the goal is to continue questioning until the Critical Unknown is identified. Do not ask all questions literally — use them as an internal diagnostic checklist and surface only those that reveal the most about the user's actual state.
+1. **Initial Analysis.** Analyze all provided material and identify the most significant ambiguities. Draw selectively from the Master Question Library below. Do not ask all questions literally — use them as an internal diagnostic checklist and surface only those that reveal the most about the user's actual state. The goal varies by classification:
+   - **Project:** sharp working problem definition.
+   - **Operation:** candidate Service Statement plus cadence rule plus initial Coordinated Corpora and Coordinated Outputs.
+   - **Passion:** clear Mission orientation (Core Essence, Emotional Drivers).
+   - **Incubator:** continue questioning until the Critical Unknown is identified as a concrete question.
 
-2. **Master Question Library for Project Definition.**
+2. **Master Question Library for Strategic-Layer Definition.**
 
-   **Define The Problem:**
+   **Define The Problem (Projects, Incubators):**
    - Is the Problem Clearly Defined? — Can you state the problem? Can the definition be broader? Can the definition be narrower? **What is NOT the problem?** *(Boundary question — also surfaces Hard constraints.)*
    - Do You Have Sufficient Information? — What is known? What is unknown? How much can become known with further research? What don't you understand?
    - Do You Have Clear Information? — Is the information accurate? Can the information be verified? Is the information redundant? Is the information contradictory?
 
-   **Analyzing The Problem:**
+   **Analyzing The Problem (Projects, Incubators):**
    - Why is it Necessary to Solve the Problem? — What benefits will accrue if the problem is solved? What problems will result if the problem is not solved?
    - Can You Draw a Diagram or Figure of the Problem? — What key decisions need to be made? What actions may result from those decisions? Can this problem be put into a flow chart, decision tree, or mind map?
    - Can You Identify the Key Assumptions? — Are these assumptions true or valid? **What items can be changed?** *(Candidate Soft constraints or variables.)* **What items are constant?** *(Candidate Hard constraints.)*
@@ -299,12 +347,34 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
    - Do You Have a Preconceived Notion of the Solution? — What would you like the answer to be? What are you afraid the answer might be? Can you picture the solution?
    - What Are the Characteristics of the Solution? — Will the solution be a process, a product, or provide clarity? Is this solution part of a broader problem's solution?
 
+   **Define The Operation (Operations only):**
+   - What does this Operation produce, on what cadence?
+   - What does each cycle's output look like, and what would distinguish a successful cycle from a degraded or failed one?
+   - What corpora does this Operation read from or write to (formal CFF Corpus Matrices or informal corpora that should be formalized)?
+   - What outputs does this Operation render (formal OFF specifications or informal outputs that should be formalized)?
+   - What's the apparatus that runs each cycle? (Per entry mode: **O-FromProject** — the now-closing Project; **O-FromScratch** — nothing yet, a Project will be spawned to build it; **O-FromExisting** — whatever the user is already doing informally; **O-FromCorpus** — the corpus's update logic plus whatever maintains it.)
+   - What are the cycle-shape near-miss patterns to record in Excluded Outcomes? (cadence met but quality degraded; corpora consumed but unchanged; output produced but not consumed; maturity gate gamed not earned)
+   - What is the sunset criterion, if any? "Indefinite" / "permanent" is acceptable.
+
+   **Orient the Passion (Passions only):**
+   - What pulls you toward this? (Core Essence candidate.)
+   - In first-person, what do you want from this exploration? (Emotional Drivers candidates — two to three.)
+   - What practices already exist (or you anticipate)? (Practices candidates for Layer 4.)
+   - What directions of travel feel live? (Direction-of-travel candidates for Layer 4.)
+
+   **Surface the Critical Unknown (Incubators only):**
+   - What is the central question this collection of ideas is trying to answer?
+   - What would change if you knew the answer? (Tests whether the question is load-bearing.)
+   - What candidate classifications could this resolve into (Project / Operation / Passion)?
+   - What evidence, experiment, or experience would resolve the Critical Unknown?
+
    *(The full library also includes sections on Generate Alternatives, Evaluate Alternatives, Select a Solution, and Implement Solution, which can be drawn upon as needed but are not typically invoked during definition work.)*
 
 3. **Constraints Elicitation.** Constraints are surfaced as a byproduct of the Define and Analyze questioning, not as a separate interrogation. Pay particular attention to:
    - Answers to "What is NOT the problem?" — these often reveal Hard boundary constraints (what the scope excludes).
    - Answers to "What items are constant?" — these are candidate Hard constraints (resources, timelines, platforms, people, or conditions that will not change).
    - Answers to "What items can be changed?" — these reveal Soft constraints (preferences with costs) or Working Assumptions (items treated as constant for now but subject to revisit).
+   - **For Operations:** answers to "What's the apparatus?" and "What's the sunset criterion?" — these reveal Hard constraints (regulatory, safety, resource cadence) and Working Assumptions (current corpus volume sufficient for cadence, etc.).
 
 4. **Proactive Constraint Elicitation.** After the Define and Analyze questioning, ask whether any of the following constraint categories apply — briefly and only for categories the user has not already addressed. Do not interrogate; offer the list and ask the user to confirm or dismiss each.
    - Time or deadline constraints.
@@ -314,55 +384,77 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
    - Platform, compatibility, or technical-environment constraints.
    - Dependency constraints (what must be true before the work can begin).
    - Quality or accuracy thresholds.
+   - **For Operations:** cadence-source dependencies (when does the corpus update? what triggers the event?); regulatory cycle constraints (tax filing, compliance loops); apparatus-capacity constraints (how many cycles per period the apparatus can sustain).
 
 5. **Classify each constraint** using this scheme:
 
-   - **Hard** — cannot be violated. Violation invalidates the project or produces unacceptable outcomes. Format: "Hard: [constraint statement]. [Why violation is unacceptable.]"
+   - **Hard** — cannot be violated. Violation invalidates the project / operation / passion / exploration or produces unacceptable outcomes. Format: "Hard: [constraint statement]. [Why violation is unacceptable.]"
    - **Soft** — preferred but not absolute. The cost of violation is quantified or characterized. Format: "Soft: [constraint statement]. Cost of violation: [specific cost or effect]."
    - **Working Assumption** — treated as constant for current planning purposes but subject to revisit. Every Working Assumption requires a **revisit trigger** — a specific condition that, if met, causes the assumption to be re-examined. Format: "Working Assumption: [assumption statement]. Revisit trigger: [specific condition under which to re-examine]."
 
-6. **Draft the working definition.** State it back to the user. Ask: "Is this what you mean, or am I missing something?" Iterate until the user confirms.
+6. **Draft the classification-appropriate working content.** State it back to the user. Ask: "Is this what you mean, or am I missing something?" Iterate until the user confirms. Per type:
+   - **Project:** working problem definition.
+   - **Operation:** candidate Service Statement plus cadence rule. List initial Coordinated Corpora and Coordinated Outputs candidates (these are refined further in Layer 4).
+   - **Passion:** Core Essence and Emotional Drivers as Mission orientation.
+   - **Incubator:** Critical Unknown stated as a concrete question, plus candidate classifications (which of Project / Operation / Passion the resolution might land on).
 
 7. For an Incubator, continue questioning until the **Critical Unknown** is identified and stated as a concrete question. The Critical Unknown becomes the endpoint for Resolution Statement purposes in Layer 3.
 
-**Invariant check:** Before proceeding to Layer 3, confirm that the working definition is stated, that at least the Hard and Soft constraints elicited during questioning are classified, and that every Working Assumption has a revisit trigger recorded.
+8. **Minimal-mode shortening.** If the minimal-mode flag is set:
+   - Skip most of the Master Question Library; ask only the foundational questions (3–5 total) appropriate to the classification.
+   - Skip the Proactive Constraint Elicitation; record any constraints the user volunteered, accept "none" for the rest.
+   - Skip optional fields entirely; the matrix will be populated with the minimum and "expand later" pointers in Layer 5.5.
+
+**Invariant check:** Before proceeding to Layer 3, confirm that the classification-appropriate working content is stated (problem definition / Service Statement candidate plus cadence / Mission orientation / Critical Unknown), that at least the Hard and Soft constraints elicited during questioning are classified, and that every Working Assumption has a revisit trigger recorded. For Operations under non-minimal mode, also confirm that initial Coordinated Corpora and Coordinated Outputs candidates have been surfaced.
 
 ---
 
-## LAYER 3: MISSION FORMULATION WITH RESOLUTION STATEMENT OBJECTIVITY PROTOCOL
+## LAYER 3: MISSION FORMULATION WITH ENDPOINT OBJECTIVITY PROTOCOLS
 
-**Role Shift:** As the Purpose Clarifier, your focus shifts to the project's emotional, philosophical, and — where endpoints are present — objectivity-verified core. For endpoint-bearing classifications, you additionally act as the Objectivity Auditor.
+**Role Shift:** As the Purpose Clarifier, your focus shifts to the matrix's emotional, philosophical, and — where endpoints or service cycles are present — objectivity-verified core. For endpoint-bearing classifications (Projects, Incubators) you act as the Resolution Statement Objectivity Auditor; for Operations you act as the Service Statement Objectivity Auditor (cycle-shape adaptation).
 
-**Stage Focus:** Articulate the Mission components appropriate to the classification, and, for endpoint-bearing classifications, apply the Resolution Statement Objectivity Protocol to ensure the endpoint is objectively determinable.
+**Stage Focus:** Articulate the Mission components appropriate to the classification, and apply the type-appropriate Objectivity Protocol to ensure the endpoint (Project, Incubator) or the per-cycle Service Statement (Operation) is objectively determinable. Passions skip the Objectivity Protocol — there is no endpoint to verify.
 
 **Input:** Working definition and Constraints list from Layer 2; classification from Layer 1.
 
-**Output:** Completed Mission with mode-and-classification-appropriate elements; for endpoint-bearing classifications, Resolution Statement verified via three objectivity checks, plus Excluded Outcomes field populated.
+**Output:** Completed Mission with classification-appropriate elements. For endpoint-bearing classifications (Project, Incubator): Resolution Statement verified via three Resolution Statement Objectivity Protocol checks plus Excluded Outcomes field populated. For Operations: Service Statement verified via three Service Statement Objectivity Protocol checks plus Excluded Outcomes field populated with cycle-shape near-miss patterns. For Passions: Mission elements (Core Essence, Emotional Drivers) populated without Objectivity Protocol.
 
 ### Processing Instructions
 
 1. **Mission Structure by Classification.**
 
-   - **Project (both modes) and Incubator:** Resolution Statement is **required**. Core Essence is optional. Emotional Drivers are optional. For an Incubator, the Resolution Statement takes the form "The Critical Unknown — [Critical Unknown stated as a question] — has been answered in the form of [observable form of the answer]."
-   - **Passion (M-Standalone only):** Resolution Statement is **omitted**. Core Essence is required. Emotional Drivers are required (two to three, first-person). Passions have no endpoint; their Mission is orientation, not destination.
+   - **Project (both modes) and Incubator:** Resolution Statement is **required** (Lock-protected per the Universal Problem-Definition Lock). Core Essence is optional. Emotional Drivers are optional. For an Incubator, the Resolution Statement takes the form "The Critical Unknown — [Critical Unknown stated as a question] — has been answered in the form of [observable form of the answer]."
+   - **Operation:** Service Statement is **required** (Lock-protected per the Universal Problem-Definition Lock extension for Operations). Excluded Outcomes are required. Core Essence is optional. Emotional Drivers are optional. The Service Statement is parallel to Resolution Statement but cycle-shaped: it describes what the Operation produces on what cadence, satisfying what quality bar — verified by per-cycle inspection.
+   - **Passion (any mode):** Resolution Statement is **omitted**. Service Statement is **omitted**. Core Essence is required. Emotional Drivers are required (two to three, first-person). Passions have no endpoint and no per-cycle target; their Mission is orientation, not destination.
 
 2. **Draft the Mission elements.** For each required element:
 
-   **Resolution Statement (endpoint-bearing classifications):**
+   **Resolution Statement (Projects and Incubators):**
    - Concrete description of the world-state when the mission is fulfilled.
    - Written as a statement of the world as it will be, not as an aspiration.
    - Objectively determinable — an independent observer could assess whether the world matches the statement.
    - Example format: "[Subject] is [observable state]. [Measurable quantity] has reached [specific threshold]. [Condition] is true."
 
+   **Service Statement (Operations):**
+   - Concrete description of the recurring deliverable produced by the Operation, on what cadence, satisfying what quality standard.
+   - Written as a statement of what the Operation does, in cycle terms.
+   - Per-cycle inspectable — an independent observer can determine, by inspecting one cycle's output, whether the Service Statement is being honored.
+   - Example format: "[Operation name] [verb of production] [deliverable] [cadence rule], satisfying [quality standard or reference]. Each cycle produces [observable per-cycle output]."
+   - Example: "MSI ships a daily edition by 9am ET satisfying Tier-1 editorial standards as defined in `Reference — MSI Treatise Appendix A`."
+
    **Core Essence (when present):**
    - A single concise sentence capturing the fundamental purpose.
-   - Distinct from Resolution Statement — Core Essence is the "why," Resolution Statement is the "what does 'done' look like."
+   - Distinct from Resolution Statement / Service Statement — Core Essence is the "why," the endpoint statement is the "what does done / what does each cycle produce look like."
 
    **Emotional Drivers (when present):**
    - Two to three first-person statements ("I want to...", "I need to...", "I feel...").
    - Connect the work to deep personal motivation.
 
-3. **Resolution Statement Objectivity Protocol (endpoint-bearing classifications only).** Apply all three checks in order.
+3. **Endpoint Objectivity Protocols.** Apply the protocol matching the classification.
+
+   ### For Projects and Incubators — Resolution Statement Objectivity Protocol
+
+   Apply all three checks in order.
 
    **Check 1 — Ambiguous Language Detection.**
    - Scan the drafted Resolution Statement for fuzzy or subjective terms. Examples: "good," "better," "robust," "fast," "reliable," "easy," "scalable," "clean," "professional," "user-friendly," "secure," "accurate."
@@ -380,7 +472,7 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
      - "What would the vanity version of this look like — the one that publishes but doesn't resolve?"
      - "What result would meet the letter of the statement but violate its spirit?"
    - Record the near-misses in the **Excluded Outcomes** field, a sibling to Resolution Statement. Each entry includes the near-miss description and a one-sentence explanation of why it would not solve the underlying problem.
-   - The Excluded Outcomes field is protected by the Universal Problem-Definition Lock (defined in the Capability Dispatch Architecture) — it cannot be modified by a downstream agent to trivialize the Resolution Statement.
+   - The Excluded Outcomes field is protected by the Universal Problem-Definition Lock — it cannot be modified by a downstream agent to trivialize the Resolution Statement.
 
    **Check 3 — Definition-Drift Detection.**
    - Retrieve the user's **initial problem description** (from the raw idea input in M-Standalone, or from the PED's initial problem statement in M-Supervised).
@@ -391,9 +483,42 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
    - IF any form of material narrowing is detected → flag it to the user with a specific description of the narrowing and ask whether the narrowing is intentional (in which case record the rationale) or unintentional (in which case revise the Resolution Statement to restore the original scope).
    - IF no material narrowing → record "Definition-Drift Check: stable — Resolution Statement addresses the same problem as the initial description."
 
-4. **For Passions (M-Standalone only)**, skip the Objectivity Protocol. Develop Core Essence and Emotional Drivers fully and verify that they are complete enough to orient ongoing practice.
+   ### For Operations — Service Statement Objectivity Protocol
 
-**Invariant check:** Before proceeding to Layer 4, confirm that (a) Mission elements required by the classification are present; (b) for endpoint-bearing classifications, all three Objectivity Protocol checks were applied and their results recorded; (c) the Excluded Outcomes field contains three or more genuine near-misses for endpoint-bearing classifications; (d) if any Check 3 narrowing was flagged, the user confirmed its intentionality or the Resolution Statement was revised.
+   Cycle-shape adaptation of the Resolution Statement Objectivity Protocol. Apply all three checks in order.
+
+   **Check 1 — Cycle-Inspectability Check.**
+   - Verify that a third party, given one cycle's output, can mechanically determine whether the Service Statement is being honored.
+   - Scan the Service Statement for fuzzy or subjective qualifiers ("good," "quality," "useful," "robust," "fast," "regular"). For each fuzzy term:
+     - Replace with a measurable threshold, an observable per-cycle behavior, or an explicit reference to a quality standard document. Example: "MSI ships a quality daily edition" → "MSI ships a daily edition by 9am ET satisfying Tier-1 editorial standards as defined in `Reference — MSI Treatise Appendix A`."
+     - Replace cadence vagueness ("regularly," "as needed") with specific scheduled rules or specific event triggers. Example: "regularly" → "weekly on Monday by EOD" or "on PR merge to main."
+   - Record each substitution in the Objectivity Report.
+   - IF a fuzzy term cannot be replaced because the user does not yet know the threshold, convert that portion into a Working Assumption in Constraints with a revisit trigger.
+
+   **Check 2 — Near-Miss Elicitation (cycle-shape).**
+   - Ask the user to name three or more cycle outcomes that would **look like** the Service Statement was honored but would **not** actually deliver the Operation's value. These are cycle-shape near-misses.
+   - Probe with the four standard cycle-shape near-miss patterns from `Framework — Operations Manifest`:
+     - **Cadence met but quality degraded** — the cycle ran on schedule but the deliverable degraded below the operation's quality bar.
+     - **Coordinated corpora consumed but unchanged** — the cycle ran but no actual work was done on the corpus (the deliverable was assembled from stale content).
+     - **Rendered output produced but not consumed** — the cycle's output was published but no downstream actor used it.
+     - **Maturity gate gamed not earned** — for maturity gates, the multi-cycle pattern was achieved by lowering the cycle quality bar mid-stream rather than by sustained rigor.
+   - Probe for operation-specific near-misses beyond the standard four. Each entry includes the near-miss description and a one-sentence explanation of why it would not honor the Service Statement.
+   - Record the near-misses in the **Excluded Outcomes** field. Lock-protected per the Universal Problem-Definition Lock extension for Operations.
+
+   **Check 3 — Service Statement Drift Detection.**
+   - Retrieve the user's **initial description** of the Operation (from Layer 1 / Layer 2 raw input or PED context).
+   - Compare the drafted Service Statement to the initial description. Specifically assess:
+     - **Cadence relaxation:** Has the Service Statement softened the cadence (daily → weekly without acknowledgment; specific time → unspecified)?
+     - **Quality reduction:** Has the Service Statement replaced a stricter quality bar with a softer one?
+     - **Deliverable narrowing:** Has the Service Statement excluded dimensions of the original deliverable?
+   - IF any form of material softening is detected → flag it to the user with a specific description and ask whether the softening is intentional (record rationale) or unintentional (revise to restore the original specification).
+   - IF no material softening → record "Service Statement Drift Check: stable — Service Statement matches the initial description."
+
+4. **For Passions**, skip both Objectivity Protocols. Develop Core Essence and Emotional Drivers fully and verify that they are complete enough to orient ongoing practice.
+
+5. **Minimal-mode shortening.** If the minimal-mode flag is set, apply only Check 2 (Near-Miss Elicitation, soliciting at least one near-miss) and skip Checks 1 and 3 unless the user volunteers fuzzy terms or signals drift concern. Excluded Outcomes is still required (at least one entry) for endpoint-bearing classifications and Operations; for the foundational fields the user wanted minimal, the protocol is light-touch.
+
+**Invariant check:** Before proceeding to Layer 4, confirm that (a) Mission elements required by the classification are present; (b) for Projects, Incubators, and Operations, the type-appropriate Objectivity Protocol checks were applied (or minimum-mode subset applied) and their results recorded; (c) the Excluded Outcomes field is populated with the type-appropriate near-misses (three or more under non-minimal mode; one or more under minimal mode); (d) if any Check 3 narrowing or Service Statement drift was flagged, the user confirmed its intentionality or the endpoint statement was revised.
 
 ---
 
@@ -425,27 +550,41 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
    - Ask: "What greater purpose does this task serve in relation to the Mission? If this task were accomplished, what new capability, state, or opportunity would be unlocked?"
    - IF the task elevates naturally into a Milestone or Objective → include it at that level. IF it remains an operational detail → omit from the strategic hierarchy; it belongs in execution planning.
 
-5. **Mode-Specific Output Structure.**
+5. **Classification-Specific Output Structure.**
 
-   **M-Standalone — produce a single Milestones list.**
-   - For Projects: milestones are completion statements.
-   - For Incubators: the single Milestone is "The Critical Unknown — [stated] — has been answered." Additional Milestones may exist as sub-steps toward that answer.
-   - For Passions: Milestones are replaced by **practices** and **directions of travel** (e.g., "Practice: weekly reading in the domain," "Direction of travel: toward fluency in [topic]"). The verifiability discipline still applies — practices are observable and directions of travel have describable evidence of advancement.
+   **M-Standalone — produce classification-appropriate milestone structure.**
 
-   **M-Supervised — produce the Active/Aspirational split.**
+   - **For Projects:** a single Milestones list. Milestones are completion statements.
+   - **For Operations:** recurring Active milestones plus Aspirational maturity gates. Recurring milestones describe per-cycle completion (e.g., "Daily edition shipped by 9am ET"); Aspirational maturity gates describe multi-cycle conditions (e.g., "100 editions shipped without missing cadence"). Additionally produce:
+     - **Cadence and Deliverables:** Each recurring deliverable from Layer 2's candidates formalized as a row with name, cadence rule (scheduled or event-driven), apparatus, and verification reference (typically Cycle Close Verification per `Framework — Operations Manifest`).
+     - **Coordinated Corpora:** Each consumption declaration formalized with cadence of consumption, primary curator, and adaptation responsibility per `Framework — Operations Manifest`'s Coordinated Corpora — Consumption Declaration Semantics.
+     - **Coordinated Outputs:** Each rendered-output declaration formalized with cadence of production, source corpora, consumer.
+     - In M-Standalone for Operations, P-Feasibility is invoked on recurring Active milestones to confirm the apparatus exists and is honored each cycle (when M-Standalone is producing a fully-formed Operation Matrix; this is optional for minimal-mode).
+   - **For Incubators:** the single Milestone is "The Critical Unknown — [stated] — has been answered." Additional Milestones may exist as sub-steps toward that answer.
+   - **For Passions:** Milestones are replaced by **practices** and **directions of travel** (e.g., "Practice: weekly reading in the domain," "Direction of travel: toward fluency in [topic]"). The verifiability discipline still applies — practices are observable and directions of travel have describable evidence of advancement.
 
-   a. **Active milestones** are the current milestone and the immediate next one. For each Active milestone, record:
-      - **Statement:** A verifiable completion statement.
-      - **Delivering framework(s):** The named framework(s) that can deliver this milestone. Consult the Framework Registry's Delivers field. If no existing framework delivers it, note "PIF P-Infer required at execution time to discover the specific path" or name a framework that would be produced by PFF F-Design to deliver it.
-      - **Verification criterion:** How to objectively determine the milestone is achieved. Uses the same objectivity standard as Resolution Statements.
+   **M-Supervised — produce the type-appropriate split.**
+
+   For **Projects** and **Incubators**, produce the standard Active/Aspirational milestone split (existing logic). For **Operations**, produce the recurring Active + Aspirational maturity-gate split plus the Operation-specific body sections (Cadence and Deliverables, Coordinated Corpora, Coordinated Outputs). For **Passions**, produce Practices and Directions of Travel (no split; no P-Feasibility).
+
+   a. **Active milestones (Projects, Incubators)** are the current milestone and the immediate next one. **Active milestones (Operations)** are recurring per-cycle milestones — always-active, fired each cycle. For each Active milestone, record:
+      - **Statement:** A verifiable per-cycle (Operation) or terminal (Project, Incubator) completion statement.
+      - **Delivering framework(s):** The named framework(s) that can deliver this milestone. Consult the Framework Registry's Delivers field. If no existing framework delivers it, note "PIF P-Infer required at execution time to discover the specific path" or name a framework that would be produced by PFF F-Design to deliver it. For Operation recurring milestones, the delivering framework is typically "Operation cycle execution per the Operation's apparatus."
+      - **Verification criterion:** How to objectively determine the milestone is achieved. Uses the same objectivity standard as Resolution Statements / Service Statements. For Operation recurring milestones, the verification criterion is Cycle Close Verification per `Framework — Operations Manifest`.
       - **P-Feasibility Verdict:** Obtained by invoking the Process Inference Framework in P-Feasibility mode for this milestone. Verdicts are one of: Reachable / Reachable with conditions / Not reachable / Cannot assess (terrain unknown). Record the verdict plus its justification per the PIF P-Feasibility output format.
 
-   b. **Aspirational milestones** are the further-out milestones. For each Aspirational milestone, record:
-      - **Statement:** Always required — a target completion state.
-      - **Contingency note:** Required when the milestone depends on outcomes not yet determined (e.g., "Contingent on the outcome of Milestone 2 revealing X").
+   b. **Aspirational milestones (Projects, Incubators)** are the further-out milestones. **Aspirational maturity gates (Operations)** are multi-cycle conditions that progress Operation maturity. For each Aspirational entry, record:
+      - **Statement:** Always required — a target completion state (Project / Incubator) or multi-cycle target (Operation maturity gate).
+      - **Contingency note (Project, Incubator):** Required when the milestone depends on outcomes not yet determined (e.g., "Contingent on the outcome of Milestone 2 revealing X").
+      - **Gate condition (Operation maturity gate):** The explicit multi-cycle pattern being verified. Per `Framework — Operations Manifest`'s Maturity Gate Specification (e.g., "Performance Log shows 100 consecutive cycles in 'success' state").
       - **Candidate components (optional):** If the user wants to record candidate sub-steps, include them with an **explicit caveat**: "These are candidate components — the actual path will be determined at execution time and may differ from this list."
 
-   c. **Invoke the Process Inference Framework in P-Feasibility mode** for each Active milestone. The invocation passes:
+   c. **Operation-specific body sections (Operations only).** Beyond the milestone split, M-Supervised for Operations also produces:
+      - **Cadence and Deliverables:** Each recurring deliverable from Layer 2's candidates formalized with name, cadence rule, apparatus, verification reference. Both scheduled and event-driven cadences supported.
+      - **Coordinated Corpora:** Consumption declarations with primary-curator markers per `Framework — Operations Manifest`'s Coordinated Corpora — Consumption Declaration Semantics.
+      - **Coordinated Outputs:** OFF-rendered output declarations with cadence, source corpora, consumer.
+
+   d. **Invoke the Process Inference Framework in P-Feasibility mode** for each Active milestone (Projects, Incubators) or each recurring Active milestone (Operations). The invocation passes:
       - Current state description (from the calling PED or user input).
       - Candidate endpoint (the Active milestone statement) — this selects P-Feasibility Verify sub-mode.
       - Constraints from Layer 2 (Hard, Soft, Working Assumption).
@@ -453,10 +592,18 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
       - IF the verdict is "Not reachable" → do not accept the milestone as-is. Either reformulate the milestone, relax a Soft constraint (and record the cost), or escalate back to the user for guidance on constraint relaxation.
       - IF the verdict is "Cannot assess (terrain unknown)" → replace or precede the milestone with a terrain-mapping milestone (invoking the Terrain Mapping Framework) until the terrain is known enough for feasibility to be assessed.
       - IF the verdict is "Reachable with conditions" → record the blocking uncertainties and what would resolve them. These uncertainties may themselves become earlier Active milestones or preconditions.
+      - For Operations: P-Feasibility on recurring Active milestones confirms that the apparatus exists and is honored each cycle. If the apparatus doesn't yet exist (O-FromScratch), the verdict will be "Cannot assess (terrain unknown)" — Layer 1 Outcome 2 already handled this by recommending a Project spawn.
 
-   d. **Terrain-mapping case (M-Supervised Outcome 2, from Layer 1).** If Layer 1 determined that the project is not yet definable because the terrain is unmapped, Layer 4 produces a single Active milestone: "Map the terrain of [problem domain]." Delivering framework: **Terrain Mapping Framework**. Do not invoke P-Feasibility on this milestone — the Terrain Mapping Framework is the delivery vehicle and P-Feasibility would return "Cannot assess (terrain unknown)" by definition. Aspirational milestones may still be drafted in this case with explicit candidate-components caveats.
+   e. **Terrain-mapping case (M-Supervised Outcome 2, from Layer 1).** If Layer 1 determined that the strategic layer is not yet draftable because the terrain is unmapped, Layer 4 produces a single Active milestone:
+      - **For Projects:** "Map the terrain of [problem domain]." Delivering framework: **Terrain Mapping Framework**.
+      - **For Operations (apparatus doesn't exist yet):** "Spawn a Project to build the apparatus, then resume O-FromProject conversion." Delivering framework: PEF PE-Init plus the spawned Project's framework chain.
+      - **For Operations (informal practice not yet captured):** "Map the existing informal operation via O-FromExisting elicitation." Delivering framework: this MOM framework re-invoked in O-FromExisting mode against the user's prior practice.
+      - Do not invoke P-Feasibility on these terrain-mapping or apparatus-building milestones — the delivering framework is the delivery vehicle.
+      - Aspirational milestones may still be drafted in this case with explicit candidate-components caveats.
 
-**Invariant check:** Before proceeding to Layer 5, confirm that (a) all Objectives are directions, not destinations; (b) all Milestones are completion statements, not tasks; (c) in M-Supervised mode, every Active milestone has a P-Feasibility verdict with justification, and every Aspirational milestone has a Statement plus, where applicable, a Contingency note and candidate-components caveat; (d) in the terrain-mapping case, the single Active milestone invokes the Terrain Mapping Framework.
+   f. **Minimal-mode shortening.** If the minimal-mode flag is set: produce only one Active milestone (Project / Incubator) or one recurring Active milestone (Operation) and skip Aspirational milestones / maturity gates entirely. Do not invoke P-Feasibility unless the user explicitly requests it. Cadence and Deliverables / Coordinated Corpora / Coordinated Outputs (Operations) are populated with at most one entry each.
+
+**Invariant check:** Before proceeding to Layer 5, confirm that (a) all Objectives are directions, not destinations; (b) all Milestones / recurring milestones / maturity gates / practices are appropriate to the classification; (c) in M-Supervised mode, every Active milestone (or recurring Active milestone for Operations) has a P-Feasibility verdict with justification, and every Aspirational milestone (or maturity gate) has a Statement plus, where applicable, a Contingency note or gate condition and candidate-components caveat; (d) for Operations, Cadence and Deliverables, Coordinated Corpora, and Coordinated Outputs are populated with at least one entry each (or under minimal mode, with whatever the user supplied); (e) in the terrain-mapping case, the single Active milestone invokes the type-appropriate delivering framework.
 
 ---
 
@@ -523,6 +670,10 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
    - Direction of travel: [Describable evidence of advancement]
    ```
 
+   **M-Standalone — Operation Matrix format:**
+
+   For `project_type: operation`, use the Operation Matrix template from `Framework — Operations Manifest` Appendix A as the canonical structure. The template includes Mission (Service Statement, optional Core Essence and Emotional Drivers); Excluded Outcomes (with cycle-shape near-miss patterns); Constraints (Hard / Soft / Working Assumption); Objectives; Cadence and Deliverables (each recurring deliverable with cadence rule, apparatus, verification); Coordinated Corpora (consumption declarations with primary-curator markers); Coordinated Outputs (rendered-output declarations); Active Milestones (recurring per-cycle); Aspirational Milestones (maturity gates with gate conditions); Performance Log (initialized empty); Incident Log (initialized empty); Open Questions / Strategic Topics (initialized from Layer 2 surfacing); Spawned Activity Registry (populated per Layer 4 discovery); Iteration History (founding entry); Decision Log (founding entry recording entry mode and key decisions). Populate the template directly with the layer outputs from this MOM run.
+
    **M-Supervised — PED-insertion format:**
 
    ```markdown
@@ -565,20 +716,35 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
    - **Milestone B2:** [Statement]
    ```
 
-   **M-Supervised Outcome 3 — No-Punt Escalation Report format:**
+   **M-Supervised Operation — matrix-file insertion format:**
+
+   For `project_type: operation` under M-Supervised, the output is the strategic-layer content for insertion into the Operation Matrix file (per `Framework — Operations Manifest` Appendix A's template). PEF v3.0 picks up this content via its MOM Invocation Protocol and inserts it into the matrix at the appropriate layer. The content includes:
+   - **Mission section:** Service Statement (Lock-protected), optional Core Essence, optional Emotional Drivers.
+   - **Excluded Outcomes section:** cycle-shape near-miss patterns from the Service Statement Objectivity Protocol Check 2.
+   - **Constraints section:** Hard / Soft / Working Assumption classified list with revisit triggers.
+   - **Objectives section:** strategic directions appropriate to the Operation.
+   - **Cadence and Deliverables section:** rows for each recurring deliverable (name, cadence rule, apparatus, verification reference).
+   - **Coordinated Corpora section:** consumption declarations with primary-curator markers.
+   - **Coordinated Outputs section:** OFF-rendered output declarations.
+   - **Active Milestones (recurring) section:** per-cycle milestones with delivering framework, verification criterion, P-Feasibility verdict.
+   - **Aspirational Milestones (maturity gates) section:** multi-cycle conditions with gate condition and (when promoted) P-Feasibility verdict.
+
+   **M-Supervised Outcome 3 — Reclassification Escalation Report format:**
 
    ```markdown
-   ## MOM No-Punt Escalation Report
+   ## MOM Reclassification Escalation Report
 
-   **Classification:** Not a Project (classified as [Passion | Incubator] under standalone conditions)
+   **Originally-passed-in classification:** [project | operation | passion | incubator | undetermined]
 
-   **Reformulation as Project:** [Specific reformulation that would make this a Project, naming a concrete deliverable. Or: "Cannot be reformulated as Project because [reason]."]
+   **Recommended classification (per Layer 1 qualification test):** [project | operation | passion | incubator]
 
-   **Pursue as Passion:** [How this would be treated as a Passion — practices, directions of travel. Or: "Not a sustainable Passion because [reason]."]
+   **Reformulation as original type:** [Specific reformulation of the idea that would make it the originally-assumed classification. Or: "Cannot be reformulated as [original type] under any framing because [reason]."]
 
-   **Explore further:** [Specific investigation that would advance understanding — a concrete question, research direction, or experiment. Note if this would itself be an Incubator.]
+   **Pursue as recommended type:** [How this would be treated as the recommended classification — milestones / cadence / practices / Critical Unknown specific to that type. Or: "Not sustainable as [recommended type] because [reason]."]
 
-   **Recommendation to PEF:** [One of: return to Layer 2 of PEF with reformulation advice; accept as Passion and exit MOM; spawn an Incubator sub-project via PE-Spawn.]
+   **Explore further:** [Specific investigation (a concrete question, research direction, or experiment) that would advance understanding needed to decide between the two classifications. Note if this would itself be an Incubator.]
+
+   **Recommendation to PEF:** [One of: return to Layer 2 of PEF with reformulation advice (keep original type); reclassify the matrix's `project_type` to the recommended type and re-invoke MOM with the new project_type; spawn an Incubator sub-project via PE-Spawn to resolve the classification uncertainty; abandon.]
    ```
 
 3. **Present the output** in the appropriate format above.
@@ -589,23 +755,25 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
 
 ## LAYER 5.5: MATRIX FILE CREATION
 
-**Role Shift:** As the Vault Registrar, the framework now persists the Layer 5 output as a project / passion / incubator matrix file in the vault and registers the new nexus value vault-wide so that other notes can reference it.
+**Role Shift:** As the Vault Registrar, the framework now persists the Layer 5 output as a project / operation / passion / incubator matrix file in the vault and registers the new nexus value vault-wide so that other notes can reference it.
 
 **Stage Focus:** Materialize the Layer 5 output as a vault-canonical matrix file, embed Bases-template fragments per the project_type, and register the nexus value in Reference — Master Matrix.
 
-**Input:** Layer 5 output (Matrix Master document or PED-insertion format); Layer 1 classification (Project / Passion / Incubator); the project's project_type identifiers (one or more from Reference — Project Type Registry).
+**Input:** Layer 5 output (matrix-file format appropriate to the classification); Layer 1 classification (Project / Operation / Passion / Incubator); the matrix's project_type identifiers (the core classification plus optional domain types from Registry — Project Type Registry).
 
-**Output:** A new file at `Engrams/Matrix/Project Matrix [Name].md` (or `Passion Matrix [Name].md`) with proper YAML frontmatter and embedded Bases-template fragments; an updated `Engrams/Reference — Master Matrix.md` with the new nexus entry registered.
+**Output:** A new file at `Matrix/[Project|Operation|Passion] Matrix [Name].md` or `Incubator/[Name].md` with proper YAML frontmatter and embedded Bases-template fragments; an updated `Administration/Reference — Master Matrix.md` with the new nexus entry registered.
 
 ### Processing Instructions
 
 1. **Determine matrix file path** from Layer 1 classification:
-   - Project or Incubator → `Engrams/Matrix/Project Matrix [Name].md`
-   - Passion → `Engrams/Matrix/Passion Matrix [Name].md`
+   - Project → `Matrix/Project Matrix [Name].md`
+   - Operation → `Matrix/Operation Matrix [Name].md`
+   - Passion → `Matrix/Passion Matrix [Name].md`
+   - Incubator → `Incubator/[Name].md` (Incubators live in their own top-level directory rather than in `Matrix/`, since they are pre-classification)
    
-   `[Name]` is the project name in title case.
+   `[Name]` is the project / operation / passion / incubator name in title case. Note: post-vault-reorganization (2026-05-08), matrix files live at top-level `Matrix/` rather than at `Engrams/Matrix/`; Incubators live at top-level `Incubator/`.
 
-2. **Determine project_type values.** Ask the user (or infer from the project description) which Project Type Registry entries this matrix participates in. Multi-valued — e.g., a non-fiction book that also functions as a knowledge cluster takes `[book, knowledge]`. Reference — Project Type Registry currently registers: `project`, `passion`, `book`, `knowledge`, `workflow`, `fiction`. Use one or more.
+2. **Determine project_type values.** The first value is always the core classification from Layer 1 (`project`, `operation`, `passion`, or `incubator`). Optional additional values are domain types (`book`, `knowledge`, `workflow`, `fiction`) that compose with the core classification — e.g., a non-fiction book that also functions as a knowledge cluster takes `[book, knowledge]`; a publication Operation that's also a workflow takes `[operation, workflow]`. Registry — Project Type Registry currently registers: `project`, `operation`, `passion`, `incubator`, `book`, `knowledge`, `workflow`, `fiction`. The four core classifications are mutually exclusive — pick exactly one; domain types are additive.
 
 3. **Construct YAML frontmatter** per Reference — Ora YAML Schema §12 Project / Passion Matrix template:
 
@@ -625,29 +793,34 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
    
    `[project-property-name]` is the snake_case nexus identifier (e.g., `quantum_mechanics`, `american_jesus`) — the same value other vault files will reference.
 
-4. **Inline Bases-template fragments.** For each value in `project_type`, look up the corresponding entry in Reference — Project Type Registry and inline its fragments into the matrix body. A `project_type: [book, knowledge]` matrix inlines the union of the book entry's fragments and the knowledge entry's fragments. Deduplicate any overlapping fragment names.
+4. **Inline Bases-template fragments.** For each value in `project_type`, look up the corresponding entry in Registry — Project Type Registry and inline its fragments into the matrix body. A `project_type: [book, knowledge]` matrix inlines the union of the book entry's fragments and the knowledge entry's fragments. Deduplicate any overlapping fragment names.
 
-5. **Insert Layer 5 content as the matrix body.** The Mission, Excluded Outcomes, Objectives, Constraints, and Milestones / Practices and Directions of Travel sections from Layer 5's output go above the Bases fragments. Body structure:
+5. **Insert Layer 5 content as the matrix body.** The classification-appropriate sections from Layer 5's output go above the Bases fragments:
+   - **Project, Incubator:** Mission, Excluded Outcomes, Objectives, Constraints, Milestones (per the existing Project/Incubator template).
+   - **Operation:** Mission, Excluded Outcomes, Objectives, Constraints, Cadence and Deliverables, Coordinated Corpora, Coordinated Outputs, Active Milestones (recurring), Aspirational Milestones (maturity gates), Performance Log, Incident Log, Open Questions, Spawned Activity Registry, Iteration History (founding entry), Decision Log (founding entry) — per the Operation Matrix template in `Framework — Operations Manifest` Appendix A.
+   - **Passion:** Mission, Objectives, Constraints, Practices, Directions of Travel.
+
+   Body structure:
 
    ```markdown
-   # [Project / Passion / Incubator Title]
+   # [Project / Operation / Passion / Incubator Title]
    
-   [Mission, Excluded Outcomes, Objectives, Constraints, Milestones — verbatim from Layer 5]
+   [Classification-appropriate sections — verbatim from Layer 5]
    
    ---
    
-   [Bases-template fragments per project_type, inlined from Reference — Project Type Registry]
+   [Bases-template fragments per project_type, inlined from Registry — Project Type Registry]
    ```
 
 6. **Write the matrix file.** Use file_write to create the file at the determined path. If a file already exists at that path, halt and surface to the user — never silently overwrite.
 
-7. **Register the nexus value in Reference — Master Matrix.** Open `Engrams/Reference — Master Matrix.md`, identify the appropriate section (Projects, Passions, or Incubators), and add a new entry with:
-   - The project name (title case)
+7. **Register the nexus value in Reference — Master Matrix.** Open `Administration/Reference — Master Matrix.md` (per the post-2026-05-08 vault reorganization), identify the appropriate section (Projects, Operations, Passions, or Incubators), and add a new entry with:
+   - The matrix name (title case)
    - The project property name (the snake_case nexus identifier)
-   - A one-line description (drawn from the Layer 5 Mission's Resolution Statement or Core Essence)
-   - Cross-reference link to the new matrix file: `[[Project Matrix [Name]]]` or `[[Passion Matrix [Name]]]`
+   - A one-line description (drawn from the Layer 5 Mission's Resolution Statement, Service Statement, or Core Essence)
+   - Cross-reference link to the new matrix file: `[[Project Matrix [Name]]]`, `[[Operation Matrix [Name]]]`, `[[Passion Matrix [Name]]]`, or `[[[Name]]]` (for Incubators)
    
-   If a Master Matrix entry for this nexus already exists (re-run of MOM on an existing project), update the entry rather than duplicate.
+   If a Master Matrix entry for this nexus already exists (re-run of MOM on an existing matrix), update the entry rather than duplicate. If Master Matrix does not yet have an Operations section, add one (the Operations classification was introduced 2026-05-08).
 
 8. **Confirm vault-wide availability.** The new nexus value is now valid for any vault file's `nexus:` property. If the project has immediate open questions or work to begin, offer to invoke Problem Evolution Framework PE-Init to create the project's first Problem Evolution Document (PED).
 
@@ -691,7 +864,7 @@ After all criteria are evaluated:
 - IF all scores meet threshold, THEN proceed to Layer 7.
 - IF any score remains below threshold after one modification attempt, THEN flag the deficiency explicitly with the label UNRESOLVED DEFICIENCY and state what additional input or iteration would resolve it.
 
-Criterion 6 (Active Milestone Feasibility) is not applicable in M-Standalone mode; record "N/A — M-Standalone mode" and score 3 as default. Criteria 1-5, 7, and 8 apply in both modes.
+Criterion 6 (Active Milestone Feasibility) applies in M-Supervised for all classifications and in M-Standalone for Operations (P-Feasibility on recurring Active milestones to confirm the apparatus exists and is honored each cycle). For M-Standalone Projects, Passions, and Incubators where P-Feasibility is not invoked, record "N/A" and score 3 as default. Criteria 1-5, 7, and 8 apply universally.
 
 ---
 
@@ -747,11 +920,11 @@ IF Layer 6 flagged any UNRESOLVED DEFICIENCY, THEN restate each here with:
 
 *Correction:* The Resolution Statement Objectivity Protocol applies to all endpoint-bearing classifications in both modes. In M-Standalone mode, Projects and Incubators both run the three checks. Only Passions skip the Protocol, and only because they have no endpoint.
 
-**2. The PEF Punt Trap**
+**2. The Reclassification Punt Trap**
 
-*What goes wrong:* In M-Supervised mode, the framework classifies an idea as Not a Project and escalates back to PEF without specific reformulation advice — just "this is not a Project, good luck." PEF now has less direction than before MOM was invoked.
+*What goes wrong:* In M-Supervised mode, the framework detects classification mismatch (PEF passed in `project_type: project` but the idea is actually an Operation, etc.) and escalates back to PEF without specific advice — just "wrong classification, good luck." PEF now has less direction than before MOM was invoked.
 
-*Correction:* Layer 1 step 4 requires all three elements of the No-Punt Escalation Report: reformulation-as-Project option, pursue-as-Passion option, and explore-further option. Absent any of the three, the escalation is not complete and the framework returns to step 4.
+*Correction:* Layer 1 step 6 requires all three elements of the Reclassification Escalation Report: Reformulation-as-original-type option, Pursue-as-recommended-type option, and Explore-further option. Absent any of the three, the escalation is not complete and the framework returns to step 6 to produce them. PEF v3.0's MOM Invocation Protocol Outcome 3 expects this format and uses it to present the user's choice.
 
 **3. The Objectivity Theater Trap**
 
@@ -789,17 +962,29 @@ IF Layer 6 flagged any UNRESOLVED DEFICIENCY, THEN restate each here with:
 
 *Correction:* Check 3 (Definition-Drift Detection) explicitly compares the drafted Resolution Statement to the user's initial problem description and surfaces any scope narrowing, ambition reduction, or subject shift. Narrowing that is intentional is recorded with rationale; narrowing that is unintentional triggers Resolution Statement revision.
 
-**9. The Passion-as-Project Trap (M-Supervised only)**
+**9. The Misclassification-Forcing Trap (M-Supervised)**
 
-*What goes wrong:* In M-Supervised mode, the framework forces an idea that is genuinely a Passion into a Project shape because PEF is asking for a Project. The resulting "Project" has a Resolution Statement that will never be reached because the underlying tension is ongoing exploration.
+*What goes wrong:* In M-Supervised mode, the framework forces an idea that is genuinely a Passion / Operation / Incubator into the classification PEF passed in (typically Project) because PEF is asking for one. The resulting matrix has structural elements (Resolution Statement, Active milestones, Excluded Outcomes shaped for Project) that don't fit what the idea actually is — a Passion has no endpoint, an Operation produces recurring deliverables, an Incubator is pre-classification.
 
-*Correction:* Layer 1's M-Supervised branching explicitly allows Outcome 3 (Not a Project — No-Punt escalation). The Project Test must fail honestly if the idea is a Passion. The escalation report then provides PEF with the reformulation options rather than forcing an unfit classification.
+*Correction:* Layer 1's M-Supervised branching explicitly allows Outcome 3 (Classification mismatch — reclassify). The qualification test must classify honestly — Project Test, Operation Test, Incubator Test, then Passion fallback. The Reclassification Escalation Report then provides PEF with the recommended new classification rather than forcing an unfit one. PEF v3.0 handles the user's choice (Redefine to keep original / Pursue as recommended / Abandon) per its MOM Invocation Protocol.
 
-**10. The Terrain-Mapping Bypass Trap (M-Supervised only)**
+**10. The Terrain-Mapping Bypass Trap (M-Supervised)**
 
-*What goes wrong:* The framework recognizes that the terrain is unmapped but still tries to produce a detailed Resolution Statement and Active milestones, fabricating the specifics because P-Feasibility would return "Cannot assess" if invoked honestly.
+*What goes wrong:* The framework recognizes that the terrain is unmapped (Project: Resolution Statement / milestones not formulable; Operation: Service Statement / cadence / coordinated corpora not formulable because the apparatus doesn't exist) but still tries to produce a detailed strategic layer, fabricating the specifics because P-Feasibility would return "Cannot assess" if invoked honestly.
 
-*Correction:* Layer 1 M-Supervised Outcome 2 (Project not yet definable) is an explicit branch. When the terrain is unmapped, Layer 4 produces the single "Map the terrain" Active milestone and invokes the Terrain Mapping Framework rather than inventing specifics. P-Feasibility is not invoked on the terrain-mapping milestone itself because the Terrain Mapping Framework is its delivery vehicle.
+*Correction:* Layer 1 M-Supervised Outcome 2 (Terrain not yet mapped — preliminary work required) is an explicit branch. When the terrain is unmapped, Layer 4 produces the type-appropriate single Active milestone (Project: "Map the terrain"; Operation: "Spawn a Project to build the apparatus" or "Map the existing informal operation via O-FromExisting") and invokes the matching delivering framework rather than inventing specifics. P-Feasibility is not invoked on the terrain-mapping or apparatus-building milestone itself because the delivering framework is its delivery vehicle.
+
+**11. The Service Statement Vagueness Trap (Operations)**
+
+*What goes wrong:* The Service Statement is allowed to remain vague — "MSI ships a daily edition" without quality bar; "weekly metrics summary" without specifying what it must contain. The Operation Matrix is created and cycles begin running, but Cycle Close Verification cannot mechanically check whether each cycle honors the Service Statement because the Service Statement doesn't say what honoring it means.
+
+*Correction:* Layer 3's Service Statement Objectivity Protocol applies all three checks (Cycle-Inspectability Check, Near-Miss Elicitation, Service Statement Drift Detection). Check 1 specifically substitutes fuzzy qualifiers with measurable thresholds, observable per-cycle behaviors, or explicit references to quality standard documents. The Service Statement is Lock-protected after the Protocol passes; downstream silent vagueness re-introduction is flagged.
+
+**12. The Friction-Override Trap (minimal-mode)**
+
+*What goes wrong:* Minimal-mode is invoked but the framework still elicits the full set of fields, treating the flag as advisory. The user gets a 30-question elicitation for what should have been a 5-question one. The user abandons the framework before completion.
+
+*Correction:* Layer 1 step 7 carries the minimal-mode flag forward as session state. Each subsequent layer (2, 3, 4, 5.5) has an explicit minimal-mode shortening step that elicits only foundational fields and accepts "indefinite" / "none" / "skip." The Friction Principle from `Framework — Operations Manifest` is the structural reason — at the lower end of complexity, friction must be minimized or the system fails to be used.
 
 ---
 
@@ -807,8 +992,8 @@ IF Layer 6 flagged any UNRESOLVED DEFICIENCY, THEN restate each here with:
 
 1. Confirm you have fully processed this framework and the input materials.
 2. Identify the operating mode from the user's input or invocation context:
-   - **Mode M-Standalone:** User provides a raw idea, tension, or goal. Execute Layers 1-7 producing a Matrix Master document.
-   - **Mode M-Supervised:** Invoked from a PEF cycle. User (or PEF) provides the current problem definition and current state description. Execute Layers 1-7 producing PED-insertion format, including Active/Aspirational milestone split and P-Feasibility verdicts, or (if Layer 1 produces Outcome 3) the No-Punt Escalation Report.
+   - **Mode M-Standalone:** User provides a raw idea, tension, or goal. Execute Layers 1-7 (and 5.5 for matrix-file creation) producing a vault-canonical matrix file in the format appropriate to the classification (Project / Operation / Passion / Incubator).
+   - **Mode M-Supervised:** Invoked from a PEF cycle. User (or PEF v3.0 via its MOM Invocation Protocol) provides the current strategic-layer content, current state description, and optional `project_type` for direct dispatch. Execute Layers 1-7 producing matrix-file insertion content with the type-appropriate milestone structure (Active/Aspirational for Projects/Incubators; recurring + maturity gates for Operations; Practices and Directions of Travel for Passions) and P-Feasibility verdicts where applicable, or (if Layer 1 produces Outcome 3) the Reclassification Escalation Report.
 3. IF mode is ambiguous, THEN ask the user to confirm before proceeding.
 4. IF any required inputs (per Input Contract) are missing, THEN list them and request them before proceeding.
 5. IF any required inputs are present but ambiguous, THEN state what you understand, what you are uncertain about, and what assumptions you will make if not corrected. Wait for confirmation before proceeding.
@@ -820,8 +1005,8 @@ IF Layer 6 flagged any UNRESOLVED DEFICIENCY, THEN restate each here with:
 
 ## USER INPUT
 
-[State Mode M-Standalone (classify a raw idea as Project/Passion/Incubator) or Mode M-Supervised (produce PEF-ready strategic hierarchy under PEF supervision) — or let the AI auto-detect from your input. Then provide your raw idea (M-Standalone) or current problem definition and current state description (M-Supervised).]
+[State Mode M-Standalone (classify a raw idea as Project / Operation / Passion / Incubator) or Mode M-Supervised (produce PEF-ready strategic-layer content with `project_type` dispatch) — or let the AI auto-detect from your input. Then provide your raw idea (M-Standalone) or current strategic-layer content and current state description (M-Supervised). Optional: state minimal-mode flag if you want low-friction elicitation; state Operation entry mode if classification is operation.]
 
 ---
 
-**END OF MISSION, OBJECTIVES, AND MILESTONES CLARIFICATION FRAMEWORK v2.0**
+**END OF MISSION, OBJECTIVES, AND MILESTONES CLARIFICATION FRAMEWORK v3.0**

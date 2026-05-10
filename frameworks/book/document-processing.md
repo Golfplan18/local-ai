@@ -1,22 +1,23 @@
-
 # Document Processing Framework
 
 ## Display Name
+
 Document Processing
 
 ## Display Description
+
 Convert any document — PDF, Word, slides, HTML, plain text — into vault-ready atomic notes with full YAML frontmatter, subtype classification, grammar-rule enforcement, and relationship mapping. Used by the file-attach pipeline; also runnable directly to ingest a single document or batch.
 
-
 _Created April 14, 2026 — canonical pipeline specification for converting any document input into vault-ready notes with complete YAML frontmatter, subtype classification, grammar rules, and relationship mapping._
-
 
 ## Setup Questions
 
 ### Document or files
+
 Required. The document(s) you want processed. Provide a file path, paste the document text directly, or attach files to the input pane. Supported formats: PDF, Word (.docx), PowerPoint (.pptx), HTML, RTF, plain text, Markdown.
 
 ### Source provenance
+
 Optional. Where the document came from — for example, a chat export, a published paper, a personal note, or a research report. Helps the framework choose the right note type and tags for the extracted material.
 
 ## PURPOSE
@@ -60,8 +61,52 @@ Path 2 delegates to the existing conversation processing pipeline (frameworks/bo
 - Files placed in a processing queue directory
 - Direct API call from the orchestrator with a file path
 - Batch processing manifest pointing to a directory of files
+- Run-time configuration block declaring source provenance and per-document parameters (e.g., `source_provenance: msi-editorial-research` triggers `type: engram` output with the `source-derived` provenance-modifier tag, MSI provenance properties (`source_voice`, `source_dossier`, `source_dossier_section`), and `nexus: [main-street-independent]` — see "MSI Source Provenance Configuration" subsection below)
 
 **Pre-processing:** All inputs pass through the format conversion utility (`orchestrator/tools/format_convert.py`) before any analysis. The converter normalizes all formats to clean markdown with heading structure preserved. All subsequent pipeline stages operate on markdown, never on raw binary formats.
+
+### Search-Path Resolution (Optional)
+
+When configured with a search-path list, the framework's INPUT CONTRACT resolves bare filename references (`Reference — MSI [Name] X.md`) by walking the configured search paths in declaration order. The first matching file is loaded. The default behavior (no search-path list configured) preserves direct-path resolution.
+
+**Configuration format** (passed to the framework at invocation time):
+
+```yaml
+search_paths:
+  - /Users/oracle/Documents/vault
+  - /Users/oracle/Documents/vault/Sources/MSI Research
+```
+
+Search-path resolution is opt-in per run. It supports the MSI publication's dossier-relocation pattern: dossiers physically live in `Sources/MSI Research/` while the consuming Mind files, Tracker, methodology, Editorial Router, and Registry continue to reference them by bare canonical filename. The search-path list lets the framework locate them without forcing every consuming reference to update its path. The first-matching-wins resolution preserves backward compatibility for any reference still pointing at vault root.
+
+### MSI Source Provenance Configuration
+
+When the run-time configuration declares MSI source provenance, the framework adjusts its output behavior:
+
+```yaml
+source_provenance: msi-editorial-research
+chromadb_collection: msi-research
+documents:
+  - path: "Reference — MSI Mary Magdalena Voice Library.md"
+    input_type: long_form_source
+    hcp_enabled: true
+    source_voice: msi-pen-name-mary-magdalena
+  - path: "Reference — MSI Thomas Reynolds Gerrymandering-Solution Memorandum.md"
+    input_type: short_document
+    hcp_enabled: false
+    source_voice: msi-pen-name-thomas-reynolds
+  # ... per-document configuration for the full batch
+```
+
+The configuration drives:
+- Output type override (`incubator` → `msi-research`) — applied at Pass B note generation
+- ChromaDB collection routing — extracted notes index into the named collection (typically `msi-research`) rather than the general knowledge collection
+- Per-document `source_voice` tagging — applied at Pass B note generation per the per-document configuration
+- Per-document `source_dossier` and `source_dossier_section` tagging — automatically populated from the source filename and the HCP structural index
+- Calibration profile selection — uses the AI-Research Deliverable profile (see CALIBRATION PROTOCOL below) rather than the historical-archive baseline
+- Auto-reject log location — `~/ora/data/msi-research-rejects.jsonl` rather than the general processing-manifest log
+- Structural-context manifest location — `Sources/MSI Research/_manifests/[dossier-stem]-manifest.yaml` (see HCP INTEGRATION below)
+- Working files (intermediate format-converted markdown, signal maps, candidate-note staging) — `vault/temp/msi-research-run-YYYY-MM-DD/[dossier-stem]/` (ephemeral; safe to erase post-run)
 
 ---
 
@@ -79,10 +124,11 @@ Path 2 delegates to the existing conversation processing pipeline (frameworks/bo
 - ChromaDB conversations collection entries
 - Processing manifest updates
 
-**Type assignments per output category:**
-- Source-document chunks (Path 1): `type: resource` per Reference — Ora YAML Schema §4
+**Type assignments per output category** (per Reference — Ora YAML Schema rev 5):
+- Source-document chunks (Path 1): `type: resource` (P2, weight 0.8)
 - Extracted atomic notes (Path 1, external sources): `type: engram` + `source-derived` provenance-modifier tag (P1 with tag, weight 0.9 per Schema §6.5)
-- Conversation turn-pair chunks (Path 2): `type: chat`
+- Extracted atomic notes (Path 1, MSI source provenance): `type: engram` + `source-derived` tag + MSI provenance properties (`source_voice`, `source_dossier`, `source_dossier_section`) + `nexus: [main-street-independent]`. MSI editorial-research engrams live in the standard `Engrams/` corpus per the user's 2026-05-09 rework; column-generation frameworks retrieve voice-scoped subsets via `source_voice` filtering against the `knowledge` collection (no dedicated collection).
+- Conversation turn-pair chunks (Path 2): `type: chat` (P3, weight 0.6)
 
 **Quality guarantees:**
 - Every auto-approved note passes all [AUTO] quality checks from Framework — Knowledge Artifact Coach Phase 4
@@ -248,6 +294,15 @@ For each signal in the signal map:
 5. **Assign relationships** using the 13-type taxonomy: supports, contradicts, qualifies, extends, supersedes, analogous-to, derived-from, enables, requires, produces, precedes, parent, child
 6. **Emit** each note in the machine-readable pipeline format (<<<NOTE_START>>> blocks)
 
+**MSI provenance tagging** (when run-time configuration declares MSI source provenance per the INPUT CONTRACT). For each generated note, additionally:
+
+7. Keep the default `type: engram` and append the `source-derived` provenance-modifier tag (per Schema §6.5; lowers effective weight to 0.9 — AI/external-author claims sit below user-authored).
+8. Set `source_voice` from the per-document configuration's voice slug (e.g., `msi-pen-name-mary-magdalena`)
+9. Set `source_dossier` to the source filename (e.g., `Reference — MSI Mary Magdalena Voice Library.md`)
+10. Set `source_dossier_section` from the HCP structural index — the section heading or topic-path the signal originated in (e.g., `Part 1 — Bible-fluency substrate / Economic justice and the prophets`)
+11. Set `nexus: [main-street-independent]`
+12. Emit the note per the MSI Research extracted atomic note template in Reference — Ora YAML Schema §12
+
 **Body schema enforcement:**
 
 | Subtype | Required Elements |
@@ -303,11 +358,11 @@ A note is auto-approved if ALL of the following are true:
 2. **Schema conformance** — body matches the subtype's required schema (all required elements present)
 3. **Title is declarative claim** — not a topic label, not a question (for atomic/molecular)
 4. **Exactly one claim** — title expresses a single proposition (for atomic)
-5. **YAML frontmatter complete** — nexus, type, tags present; subtype present for atomics; type is "incubator" for extracted atomic notes / "resource" for source-document chunks (per Reference — Ora YAML Schema §4)
+5. **YAML frontmatter complete** — nexus, type, tags present; subtype present for atomics; type is `engram` for extracted atomic notes (with `source-derived` tag for external-source extracts) / `resource` for source-document chunks (per Reference — Ora YAML Schema §4 rev 5)
 6. **Limits/boundary section present** — for causal_claim, analogy, and process_principle subtypes
 7. **Self-containedness verified** — each bullet parseable in isolation (heuristic: no bullet starts with "This", "It", "They" without prior referent in the same bullet)
 8. **Minimum length** — body contains at least 2 proposition bullets (for atomic/molecular)
-9. **No duplicate title** — title does not match any existing vault note title within similarity threshold (>0.90 cosine)
+9. **No duplicate title** — title does not match any existing note title within similarity threshold (>0.90 cosine). Scope of the duplicate check depends on the run's source provenance: general runs check against the full `knowledge` collection; MSI runs check against the `knowledge` collection scoped by `source_voice` (a duplicate is only a duplicate within the same voice; cross-voice duplication is acceptable and expected, since the same concept may legitimately appear in multiple voices' editorial substrates with different perspectives).
 
 ### Auto-Reject Criteria (any one triggers rejection)
 
@@ -378,6 +433,43 @@ Context levels are included based on semantic similarity between the chunk and t
 | 0.75 - 0.89 | Levels 1-4 |
 | 0.60 - 0.74 | Levels 1-2 |
 | < 0.60 | Exclude chunk (too dissimilar from document's themes) |
+
+### Structural-Context Manifest
+
+For each long-form source processed, the framework writes a per-document structural-context manifest alongside the extraction outputs. The manifest captures the structural index, the chunk-by-chunk context-level inclusions, and the section-to-extracted-note mapping. This artifact preserves the HCP context state for downstream review (human-review queue inspection; calibration tuning; future re-extraction) and lets column-generation frameworks re-establish dossier-section context when retrieving an atomic whose interpretation depends on the surrounding section's argument.
+
+**Manifest format:**
+
+```yaml
+<<<STRUCTURAL_MANIFEST>>>
+source_file: "Reference — MSI Mary Magdalena Voice Library.md"
+source_format: md
+total_sections: 12
+extraction_date: 2026-05-08
+source_voice: msi-pen-name-mary-magdalena
+
+structural_index:
+  level_1_thesis: "Mary Magdalena's voice substrate is the Gnostic-apocryphal Mary corpus, drawn on for the Seal movement of four-movement columns..."
+  level_2_parts:
+    - title: "Part 1 — Gnostic-apocryphal Mary corpus"
+      argument: "..."
+      sections:
+        - title: "§1.1 Gospel of Mary"
+          claim: "..."
+        - title: "§1.2 Pistis Sophia"
+          claim: "..."
+
+extraction_map:
+  - section: "Part 1 / §1.1 Gospel of Mary"
+    notes_extracted: 4
+    note_ids:
+      - "Mary Magdalena teaches the disciples after the Resurrection per the Gospel of Mary"
+      - "Peter's challenge to Mary's authority surfaces the canonical-vs-Gnostic gender tension"
+      - "..."
+<<<MANIFEST_END>>>
+```
+
+**Manifest location.** For MSI runs, manifests write to `Sources/MSI Research/_manifests/[dossier-stem]-manifest.yaml` (vault-discoverable, version-controlled, alongside the dossiers themselves). For general (non-MSI) long-form runs, manifests write to `~/ora/data/extraction-manifests/[dossier-stem]-manifest.yaml`.
 
 ---
 
@@ -547,9 +639,19 @@ For overnight batch processing:
 
 ## CALIBRATION PROTOCOL
 
+Two calibration profiles are defined: the **General Historical-Archive profile** (the original baseline, designed for the chat-archive batch population) and the **AI-Research Deliverable profile** (added 2026-05-08 to support batches of commissioned deep-research dossiers, beginning with the MSI 33-dossier corpus). Run-time configuration selects the active profile.
+
+### Profile selection
+
+- Default → General Historical-Archive profile.
+- When `source_provenance: msi-editorial-research` is declared in the run-time configuration → AI-Research Deliverable profile is selected automatically.
+- Other AI-research-style batches (commissioned dossiers, vetted external research deliverables) → AI-Research Deliverable profile is appropriate when the input population matches the profile's characteristics; opt-in via `calibration_profile: ai-research-deliverable` in the run-time configuration.
+
+### General Historical-Archive Profile
+
 Before full processing, run calibration on a 50-document sample covering the full input type range.
 
-### Calibration Metrics
+**Calibration Metrics:**
 
 | Metric | Target | Adjustment If Off-Target |
 |---|---|---|
@@ -560,7 +662,7 @@ Before full processing, run calibration on a 50-document sample covering the ful
 | Subtype distribution | process_principles >= 10% of atomics | If low: Pass A signal detection under-identifies governing principles |
 | Grammar scan failure | <5% | If high: Pass B grammar rule enforcement is weak |
 
-### Calibration Procedure
+**Calibration Procedure:**
 
 1. Select 50 documents: 20 chat transcripts, 15 short documents, 10 long-form sources, 5 vault notes
 2. Run full pipeline on sample
@@ -569,6 +671,48 @@ Before full processing, run calibration on a 50-document sample covering the ful
 5. Adjust pipeline parameters per the adjustment column
 6. Re-run on the same 50 documents
 7. Verify metrics are within target range
+
+### AI-Research Deliverable Profile
+
+For batches of commissioned deep-research dossiers (e.g., the MSI editorial-research corpus). These input populations differ from the historical-archive baseline:
+
+- Source material is professionally written and structurally curated (often three-part deep-research deliverables with topical subsections)
+- Auto-approve rates trend higher because structural conformance is high in the source
+- Auto-reject rates trend lower because the source is intentionally curated rather than incidentally captured
+- Human-review rate trends higher because dense load-bearing-but-ambiguous claims are common in research-deliverable prose
+- Grammar enforcement should be tighter because the source is professionally edited; failures here suggest Pass B grammar enforcement is weak rather than source quality
+
+**Calibration Metrics:**
+
+| Metric | Target | Adjustment If Off-Target |
+|---|---|---|
+| Auto-approve rate | 60-70% | If significantly off, the threshold for Pass C structural conformance checks needs adjustment for the higher-baseline input |
+| Auto-reject rate | 5-10% (lower than historical-archive baseline) | If matching the historical-archive baseline (10-15%), Pass A signal identification may be missing structurally complex but valid signals in dense research prose |
+| Human review queue rate | 25-35% (higher than historical-archive baseline) | Dense AI-research deliverables surface more load-bearing-but-ambiguous claims — accept this as the input characteristic rather than tightening Pass C |
+| Duplicate rate | <40% of batch | Same handling as the historical-archive profile; for cross-dossier overlap (same author cited across multiple dossiers), add cross-document deduplication before extraction |
+| Subtype distribution | Heavy on `fact`, `process_principle`, and `definition`; medium on `causal_claim` and `analogy`; light on `evaluative` and `position` | Pass A signal-type frequency reflects the AI-research deliverable's topical-substrate nature |
+| Grammar scan failure | <2% (tighter than historical-archive baseline) | Source is professionally edited; if higher, Pass B grammar rule enforcement is weak rather than the source being noisy |
+
+**Calibration sample size:** A representative sample of the input-shape range is sufficient — typically 5-7 documents covering the structural variation present in the batch (e.g., long-form three-part / long-form with author corpus / character-background / lane-overlay / memorandum / quote-corpus shape). The 50-document calibration sample of the historical-archive profile is unnecessary for batches with narrower input-shape variation.
+
+**Calibration Procedure** (same shape as the historical-archive procedure but parameterized to this profile):
+
+1. Select 5-7 documents covering the input-shape variation present in the batch
+2. Run full pipeline on sample
+3. Human-review ALL output (including auto-approved notes) to establish ground truth
+4. Compute metrics against the AI-Research Deliverable Profile targets above
+5. Adjust pipeline parameters per the adjustment column
+6. Re-run on the same sample
+7. Verify metrics are within target range
+
+The MSI 33-dossier corpus calibration sample (2026-05-08): Stewart Letterkenski Character Dossier (character-background); Joanna Rivera Blackwell Theological Substrate (long-form three-part with author-corpus subsection); Ashley Wagner Cultural-Text and Formation Substrate (long-form three-part); Mark Paulson Climate-Policy Overlay (lane-overlay); Thomas Reynolds Gerrymandering-Solution Memorandum (short-document, HCP-off); Hector Rentier Quote Corpus (quote-and-citation indexed format — distinct from prose dossier shapes).
+
+### Auto-Reject Log Location
+
+Auto-rejected notes are logged with rejection reason for calibration-tuning history. Log location depends on the run's source provenance:
+
+- Default → `~/ora/data/auto-reject-log.jsonl` (general-purpose log; rotation policy per `~/ora/data/` retention rules)
+- MSI runs → `~/ora/data/msi-research-rejects.jsonl` (separate log for the MSI editorial-research corpus; permanent calibration record for tuning Pass C thresholds against future MSI runs)
 
 ---
 
@@ -589,9 +733,10 @@ The document processing framework is invoked by the orchestrator for:
 
 ### With RAG Engine (Phase 8)
 
-- Extracted notes → indexed into ChromaDB knowledge collection
+- Extracted notes → indexed into the standard ChromaDB `knowledge` collection. MSI editorial-research engrams (when `source_provenance: msi-editorial-research` is declared at run-time) live in the same collection but are scoped at retrieval time by `source_voice` filtering per the MSI column-generation frameworks' INPUT CONTRACT.
 - Note metadata (subtype, tags, relationships) → available for RAG priority stack assembly
 - Glossary notes → available for dependency resolution during context assembly
+- MSI Research notes → consumed by MSI column-generation frameworks via voice-scoped retrieval (column-generation framework's INPUT CONTRACT queries the MSI collection filtered by `source_voice` matching the writing voice currently producing the column)
 
 ### With Conversation Processing Pipeline
 

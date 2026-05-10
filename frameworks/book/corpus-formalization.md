@@ -1,18 +1,17 @@
-
 # Corpus Formalization Framework
 
 ## Display Name
 Corpus Formalization (CFF)
 
 ## Display Description
-Meta-framework for formalizing the knowledge corpus — the set of facts, lenses, and reference material that sits between processes (PFF) and outputs (OFF). Use to design or audit how a knowledge body is structured, navigated, and surfaced for downstream framework execution.
+Meta-framework for formalizing the knowledge corpus — the set of facts, lenses, and reference material that sits between processes (PFF) and outputs (OFF). Use to design or audit how a knowledge body is structured, navigated, and surfaced for downstream framework execution. Corpora can be standalone or coordinated by an Operation (per `Framework — Operations Manifest`); when coordinated, the corpus matrix carries a `primary_operation` body-field marker identifying the Operation that owns curatorship (cadence, schema, archival decisions, handoff). When a corpus need surfaces an underlying recurring practice, hand off to OM-Init in O-FromCorpus entry mode rather than building the corpus standalone.
 
 
 *A Meta-Framework for Formalizing the Knowledge Corpus That Sits Between Process and Output*
 
-*Version 1.0*
+*Version 1.1*
 
-*Canonical Specification — Produced via F-Design from the Process Formalization Framework v2.0*
+*Canonical Specification — Produced via F-Design from the Process Formalization Framework v2.0. Updated 2026-05-08 to add Operation-coordination awareness: corpora may be coordinated by an Operation (with `primary_operation` body-field marker), Layer 1 Triage detects the O-FromCorpus hand-off case (corpus need that surfaces an underlying Operation), and the Coordinated Corpora consumption-declaration semantics from `Framework — Operations Manifest` resolve multi-Operation cases.*
 
 ---
 
@@ -125,8 +124,16 @@ Required reading in order:
 3. `Framework — PFF / CFF / OFF Integration Architecture.md` — the three-framework integration spec
 
 Supporting documents:
-- `Framework — Framework Registry.md` — for registering generated bespoke corpus frameworks
+- `Registry — Framework Registry.md` — for registering generated bespoke corpus frameworks
 - `MindSpec_v0.4_Specification.md` — for understanding the user/agent identity that shapes elicitation tone
+- `Reference — Meta-Layer Architecture.md` — specifies how corpus-mediated workflows integrate with the meta-layer oversight apparatus (E7–E12 corpus events, W4 corpus state watcher, section-level locked-fields)
+- `Framework — Oversight Configuration.md` — the user-facing entry point for eliciting section-level oversight rules per corpus template; CFF C-Design hands off to OS-Setup when a corpus is created for a project under oversight
+
+### INTEGRATION WITH META-LAYER OVERSIGHT
+
+For projects under meta-layer oversight (Reference — Meta-Layer Architecture), the corpus template carries section-level oversight rules in addition to its standard fields (source assignment, missing-data behavior, chain relationships). The section-level rules — schema, cadence, cross-section consistency rules, triggers active per section — are produced by Framework — Oversight Configuration's OS-Setup mode, which CFF C-Design hands off to when a corpus is being created for a project under oversight. CFF does not invent or elicit oversight rules itself; it produces the corpus structure and hands off to OS-Setup, which extends each section block with the oversight sub-block per Reference — Meta-Layer Architecture §11. CFF C-Modify similarly hands off to OS-Modify for any oversight-affecting changes.
+
+For corpora not tied to a project under oversight (standalone or ad-hoc), the section-level oversight rules are absent; the corpus operates without per-write checkpoints and without W4 watcher coverage.
 
 ---
 
@@ -263,8 +270,11 @@ C-Design executes for new corpus template creation. The user describes a workflo
    - **Scope:** individual contributor / team / department / organization / cross-organization
    - **Cadence:** recurring (regular interval) / ad-hoc (irregular) / project-bound (lifecycle-tied)
    - **Chain relationship:** standalone (no other corpora involved) / chain-source (this corpus feeds another) / chain-target (this corpus consumes from another) / chain-intermediate (both)
+   - **Operation coordination:** standalone-corpus (no Operation coordinates it) / Operation-coordinated (the corpus is consumed by one or more Operations; one Operation is the primary curator).
 
-4. State the classification explicitly and proceed to Layer 2.
+4. **Operation hand-off detection.** If the user's corpus need is in service of recurring practice — the corpus is being built so that something downstream produces deliverables on a cadence — this is an O-FromCorpus situation per `Framework — Operations Manifest`. Recognize the signal: the user's description mentions producing recurring outputs; the corpus is the spine of an unstated Operation; multiple downstream uses share a cadence rule. In that case, recommend handing off to OM-Init in O-FromCorpus entry mode rather than building the corpus standalone — the Operation Matrix becomes the canonical home and CFF runs to populate the corpus declaration the Operation registers as Coordinated Corpora.
+
+5. State the classification explicitly and proceed to Layer 2. If Operation hand-off was offered and accepted, exit CFF and invoke MOM in M-Standalone mode with `project_type: operation` and entry mode O-FromCorpus.
 
 **Output to next layer:** Workflow classification (scope, cadence, chain relationship) plus the user's original description.
 

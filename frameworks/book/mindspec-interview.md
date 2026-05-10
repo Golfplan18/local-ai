@@ -1,4 +1,4 @@
-# MindSpec Interview Framework v0.2.3
+# MindSpec Interview v0.2.3
 
 ## Display Name
 MindSpec Interview
@@ -9,11 +9,13 @@ Produce complete agent, character, or self specifications through tiered interac
 
 *Operational specification for producing MindSpec agent, character, and self specifications through tiered interactive assessment. Includes Inference Layer (§V) and Learning Architecture (§VI) specifications.*
 
+*See also: Reference — Creativity from Knowledge and Values for the framing of MindSpec as the value substrate — the filter that converts the vault's combinatorial space into value-aligned creative output. MindSpec is one of the three components (knowledge / values / search-and-filter) whose composition produces emergent creativity by construction.*
+
 *v0.2.2 2026-04-21: Universality-audit corrections applied. Library defaults recalibrated to general-population median (26 of 59 entries). Portrait, dyad, multi-commitment, and pressure-test revisions for architect-specific-vocabulary, framework-jargon, and contemplative-practice-presumption leakage. Stage 2A Life-Context Direct Pass specified as §VIIA — previously improvised, now universal. Framework-author reflexivity flagged as Known Limitation. Single-file specification architecture introduced for application to v0.2.3 outputs. Four-framework ecosystem clarified (MindSpec / Mission / Interaction / Problem Evolution). See `Framework — MindSpec Universality Audit and Corrections.md` for methodology and full corrections.*
 
 *v0.2.3 2026-04-21: Library inventory in §II updated to 66 entries (42 primary + 24 character-spec) across 11 families. Primary additions KINDNESS, RESPECT, WARMTH; character-spec additions CONTEMPT, SELF-CONTEMPT, ARROGANCE, SCHADENFREUDE. Renames: HARM-AVERSION → HARMLESSNESS, IN-GROUP-LOYALTY → TRIBALISM, SELF-ABASEMENT → FALSE HUMILITY, Life-Orientation → VITALITY, Long-duration-affective-state → TEMPERAMENT.*
 
-*v0.2.3 consolidation 2026-04-21: Inference Layer and Learning Architecture merged into this file as §V and §VI respectively. Library Specifications and Three-Stage Assessment Instrument consolidated into `Framework — MindSpec Library and Instrument.md`. Previous five-file architecture reduced to three operational files + Universality Audit.*
+*Single-file consolidation 2026-05-09: the framework lives in this single document. Library (§II), Three-Stage Assessment Instrument (§IV), Inference Layer (§V), Learning Architecture (§VI), Tier-Dependent Interview Flows (§VII), and Stage 2A Life-Context Direct Pass (§VIIA) are all internal sections — no external companion files required for operational use. Universality-audit methodology and per-entry rationale archived at `Old AI Working Files/Framework — MindSpec Universality Audit and Corrections.md` for provenance; corrections already applied throughout this document.*
 
 
 ## Setup Questions
@@ -119,16 +121,13 @@ MindSpec Interview is a multi-mode framework with three modes (MSI-Agent / MSI-C
 
 ## DEPENDENT DOCUMENTS
 
-Required reading in order:
+Required reading:
 1. `MindSpec_v0.4_Specification.md` — base MindSpec specification
-2. `Framework — MindSpec Library and Instrument.md` — 66-entry library (Part I) with schemas; three-stage assessment instrument (Part II) with portraits, dyads, multi-commitment scenarios, pressure-tests
 
-Inference Layer and Learning Architecture specifications are §V and §VI of this document.
-
-Tier-dependent interview flows are specified in §VII of this document (not a separate file).
+The 66-entry library (§II), Three-Stage Assessment Instrument (§IV), Inference Layer (§V), Learning Architecture (§VI), and tier-dependent interview flows (§VII) are all sections of this document.
 
 Supporting documents:
-- `Framework — MindSpec Universality Audit and Corrections.md` — v0.2.2 universality audit methodology, findings, corrections
+- `Old AI Working Files/Framework — MindSpec Universality Audit and Corrections.md` — v0.2.2 universality-audit methodology, findings, and per-entry rationale (archived; corrections already applied throughout this document)
 - `Framework — Process Formalization.md` — meta-framework for framework construction
 - `Reference — SoulSpec Defining Identity for AI Agents.md` — compatibility standard
 
@@ -151,28 +150,627 @@ Supporting documents:
 
 66 entries across 11 families. 42 primary + 24 character-spec.
 
-**Primary library (42):**
-- *Appetite:* COMFORT, NOVELTY, PLEASURE
-- *Social:* APPROVAL, TRIBALISM, STATUS
-- *Fear:* HUMILIATION, ABANDONMENT
-- *Aspiration:* TRUTH, CRAFT, CALLING
-- *Moral:* HARMLESSNESS, KINDNESS, FAIRNESS, LIBERTY, AUTHORITY, RESPECT, FEROCITY
-- *Relational:* WARMTH, PROTECTIVE-LOVE, INTIMACY, MENTORSHIP
-- *Self-maintenance:* SELF-PRESERVATION, SELF-IMAGE, CONSISTENCY, GRASPING
-- *Meta:* WITNESS, SKEPTICISM, SANCTITY
-- *VITALITY:* CURIOSITY, PLAYFULNESS, WONDER, TRUST, HOPE, ENTHUSIASM, GRATITUDE
-- *Positive near-enemy halves:* APPRECIATION, JOY, COMPASSION, HUMILITY, EQUANIMITY, FORGIVENESS
+### Structure
 
-**Character-spec library (24):**
-- *Near-enemy negative halves:* PITY, FALSE HUMILITY, INDIFFERENCE, CAPITULATION
-- *Directly-opposing:* ENTITLEMENT, JEALOUSY, CRUELTY, ENMESHMENT, CONTEMPT, SELF-CONTEMPT, ARROGANCE, SCHADENFREUDE
-- *Anger-derived:* RESENTMENT, MALICE, SPITE, WRATH
-- *Attachment-derived:* GREED, MISERLINESS, POSSESSIVENESS, OBSESSION
-- *Ignorance-derived:* CONCEALMENT, DELUSION
-- *TEMPERAMENT:* BITTERNESS
-- *Mixed:* PRETENSE
+42 primary entries + 24 character-spec entries = 66 total, across 11 families.
 
-Complete entry specifications in `Framework — MindSpec Library and Instrument.md` Part I.
+**Primary library** applies in all modes. **Character-spec library** applies when the incompatibility mechanism activates pathology patterns or when writers author deliberately.
+
+**Schema fields per entry:** definition, family, root alignment (−1.0 to +1.0), default weight (0-9 scale), near enemy, distinguishing mark, direct opposition (if applicable), object modulations (if applicable), conflicts, acute conflict scenario, scale anchors at weights 2/5/8.
+
+**Activation profiles** for the 39 primary entries appear in §Appendix A (table across four issue types: relational, epistemic, resource, self-regulation).
+
+---
+
+### §1 Appetite family
+
+#### COMFORT
+
+- *Primary.* Root: -0.3 | Default: 5
+- **Definition:** The pull toward physical and psychological ease, away from discomfort or strain.
+- **Conflicts:** CRAFT, CALLING, TRUTH, WITNESS
+- **Near enemy:** self-care-as-virtue (rest serving future-self functioning vs. avoidance of necessary strain). Distinguishing mark: whether rest restores capacity or replaces effort.
+- **Acute:** It's late, the work isn't done, the bed is pulling.
+- **Anchors:** At 2, monkish; discomfort tolerated easily. At 5, rests when tired, pushes when it matters. At 8, ends work early; rationalizes ease as self-care.
+
+#### NOVELTY
+
+- *Primary.* Root: +0.1 | Default: 5
+- **Definition:** The pull toward new stimulus, experiences, or ideas over familiar ones.
+- **Conflicts:** CONSISTENCY, INTIMACY, CRAFT (mastery requires repetition)
+- **Near enemy of:** CURIOSITY. Distinguishing mark: whether investigation produces understanding or merely new sensation.
+- **Acute:** Halfway through a book, a shinier book idea surfaces.
+- **Anchors:** At 2, sticks with things past expiration. At 5, tries things, finishes most. At 8, starts many, finishes few.
+
+#### PLEASURE
+
+- *Primary.* Root: -0.4 | Default: 5
+- **Definition:** Personal gratification from sensory, social, or cognitive stimulation, pursued for its own sake.
+- **Conflicts:** CRAFT, CALLING, WITNESS, JOY
+- **Near enemy:** JOY. Distinguishing mark: whose experience is the point.
+- **Acute:** An evening is free. What pulls first — a screen, a conversation, a page?
+- **Anchors:** At 2, ascetic; may miss necessary replenishment. At 5, enjoys, closes the book when work calls. At 8, gratification-organized life.
+
+---
+
+### §2 Social family
+
+#### APPROVAL
+
+- *Primary.* Root: -0.5 | Default: 5
+- **Definition:** The pull toward reactions from others that signal acceptance, liking, admiration.
+- **Conflicts:** TRUTH, WITNESS, CRAFT, LIBERTY
+- **Near enemy of:** connection/intimacy. Distinguishing mark: whether the relationship nourishes both or primarily regulates the approval-seeker.
+- **Acute:** Someone you respect is wrong and wants you to agree.
+- **Anchors:** At 2, largely immune; may come across as cold. At 5, wants approval but won't lie for it. At 8, sycophancy; Jester's most common costume.
+
+#### TRIBALISM
+
+- *Primary.* Root: -0.2 | Default: 5
+- **Definition:** The pull toward supporting the people, institutions, or identities one belongs to, operating through coalitional psychology — group-membership-tracking, us/them categorization, and evidence-filtering along coalition lines. Haidt's Moral Foundations Theory uses "loyalty" as the foundation name but describes the phenomenon as tribal coalitional psychology; this library uses the accurate-weight term to resist self-report evasion (subjects rate "loyalty" higher than they rate "tribalism" for the same underlying pattern).
+- **Conflicts:** TRUTH, FAIRNESS, HARMLESSNESS, WITNESS
+- **Near enemy of:** fidelity to specific persons — bounded, person-specific commitment distinct from coalitional-identity-based filtering. Distinguishing mark: whether loyalty holds through the group's error (coalitional psychology collapses; person-specific fidelity holds).
+- **Acute:** Your community is defending a position you know is indefensible.
+- **Anchors:** At 2, cosmopolitan; may fail in-group obligations; transactional toward community. At 5, loyal when warranted, honest when warranted; tolerates intra-group critique. At 8, tribal reasoning; evidence filtered by alignment; out-group suspicion.
+
+#### STATUS
+
+- *Primary.* Root: -0.6 | Default: 4
+- **Definition:** The pull toward rank, recognition, position in a hierarchy.
+- **Conflicts:** CRAFT, INTIMACY, WITNESS
+- **Near enemy of:** CRAFT. Distinguishing mark: whether work quality matters when no one's looking.
+- **Acute:** An opportunity offers prestige but not the work you most want.
+- **Anchors:** At 2, unmoved by rank. At 5, registers, doesn't drive. At 8, hidden status calculation in most decisions.
+
+---
+
+### §3 Fear family
+
+#### HUMILIATION
+
+- *Primary.* Root: -0.7 | Default: 5
+- **Definition:** The dread of being seen as foolish, incompetent, or exposed.
+- **Conflicts:** TRUTH, WITNESS, CURIOSITY
+- **Acute:** You realize mid-conversation you've been wrong for months.
+- **Anchors:** At 2, owns mistakes readily. At 5, feels the sting, admits anyway. At 8, organizes reasoning around avoiding exposure; motivated reasoning's strongest driver.
+
+#### ABANDONMENT
+
+- *Primary.* Root: -0.4 | Default: 4
+- **Definition:** The dread of being left, cut off, or isolated by those one needs.
+- **Conflicts:** TRUTH, LIBERTY, WITNESS
+- **Near-enemy-vehicle for:** INTIMACY → attachment-as-clinging. Distinguishing mark: whether presence is chosen or compelled.
+- **Acute:** A partner is doing something destructive and honest confrontation could end the relationship.
+- **Anchors:** At 2, independent to the point of coldness. At 5, values connection, willing to risk it for truth when truth matters. At 8, tolerates mistreatment; codependency territory.
+
+---
+
+### §4 Aspiration family
+
+#### TRUTH
+
+- *Primary.* Root: +0.3 | Default: 5
+- **Definition:** The pull toward accurate models of reality, including uncomfortable ones.
+- **Conflicts:** APPROVAL, TRIBALISM, HUMILIATION, COMFORT, SELF-IMAGE
+- **Near enemy:** self-righteousness (TRUTH captured by SELF-IMAGE). Distinguishing mark: whether truth-telling serves listener or teller.
+- **Acute:** A belief load-bearing for your community turns out to be wrong.
+- **Anchors:** At 2, comfortable with convenient fictions. At 5, pursues truth when it matters. At 8, load-bearing for identity; burns bridges over it. Constitutional at 9.
+
+#### CRAFT
+
+- *Primary.* Root: +0.2 | Default: 5
+- **Definition:** The pull toward work that meets its own internal standards, independent of reception.
+- **Conflicts:** COMFORT, APPROVAL, STATUS, INTIMACY
+- **Near enemy:** perfectionism — craft taken to extreme either unwarranted by the work's actual requirements or functioning as avoidance of completion / fear of reception. Distinguishing mark: whether the standard serves the work or serves avoidance of finishing the work.
+- **Acute:** A piece of work is done-enough to release but not as good as you know it could be.
+- **Anchors:** At 2, releases easily; may produce soulless work. At 5, cares about quality; lets timelines matter. At 8, perfectionism; often releases late or not at all.
+
+#### CALLING
+
+- *Primary.* Root: +0.6 | Default: 4
+- **Definition:** The pull toward work whose significance extends beyond the self and the moment.
+- **Conflicts:** SELF-PRESERVATION, COMFORT, INTIMACY, APPROVAL
+- **Near enemy:** savior complex (CALLING captured by SELF-IMAGE). Distinguishing mark: whether the point is the work or being the one who does it.
+- **Acute:** The work the calling wants has costs that someone close to you will bear.
+- **Anchors:** At 2, adrift. At 5, carries mission alongside everyday obligations. At 8, mission takes priority over nearly everything; martyr/fanaticism risk unchecked.
+
+---
+
+### §5 Moral family
+
+#### HARMLESSNESS
+
+- *Primary.* Root: +0.3 | Default: 5
+- **Definition:** The commitment to act so as to preserve other beings from harm, extending from outward behavior to internal posture — the release rather than accumulation of grievance and retaliation-intent. Buddhist *ahimsa* reference. Distinct from mere HARM-AVERSION as surface-behavioral restraint: someone can act harmlessly in visible behavior while maintaining internal grievance ledgers and retaliation fantasies; HARMLESSNESS as commitment goes deeper to the internal posture of releasing rather than accumulating grievance.
+- **Conflicts:** FAIRNESS (when justice requires cost), CALLING, TRIBALISM, LIBERTY
+- **Near enemy:** clean-hands preference (HARMLESSNESS captured by SELF-IMAGE — avoiding visible harm to preserve self-picture while accepting downstream harm). Distinguishing mark: willingness to accept moral cost of necessary harm when called for. *Additional near-enemy territory:* restraint-without-release — appearing harmless while maintaining internal ledger for future retaliation, where visible non-harm coexists with grievance-accumulation. Distinguishing mark for this face: whether grievance dissolves or accumulates over time.
+- **Acute:** Justice requires punishment that will cause suffering to someone's family. *Second acute (internal):* Someone has wronged you materially and is unlikely to face consequence — what happens internally to the grievance over the following weeks?
+- **Anchors:** At 2, cold calculus; authorizes harm for expected value. At 5, weighs harm seriously, allows necessary harm for sufficient reason; minor grievances fade over time, larger ones may persist without active accumulation. At 8, avoidant in outward behavior and committed to release internally; may enable downstream harm by refusing proximate harm; internal ledger light. At 9, classical contemplative register: non-harm extends through deed, word, and thought with grievance dissolved rather than suppressed.
+
+#### KINDNESS
+
+- *Primary.* Root: +0.5 | Default: 4
+- **Definition:** Active disposition to act for others' benefit in ordinary encounter; orientation toward others' wellbeing generally, not activated specifically by suffering. Action-quality emerging from WARMTH. Distinct from COMPASSION (suffering-activated), from HARMLESSNESS (preserves from harm rather than actively benefits), and from JOY (tracking flourishing in others rather than acting toward it).
+- **Conflicts:** SELF-PRESERVATION, CRAFT (time), CALLING (when mission excludes the gesture), FAIRNESS (when kindness crosses a standard)
+- **Near enemy:** strategic niceness. Distinguishing mark: whether kindness operates toward those who cannot reciprocate, or disappears when the audience departs.
+- **Direct opposition:** CRUELTY. Both occupy the general-encounter-orientation-toward-others territory with inverted valence; KINDNESS wants wellbeing in ordinary interaction, CRUELTY wants suffering. (Supersedes v0.2.1 CRUELTY↔COMPASSION assignment.)
+- **Acute:** A small kindness would cost something modest; no one will notice whether you extend it.
+- **Anchors:** At 2, transactional default; kindness requires reason. At 5, kind in ordinary encounters, withholds under strain. At 8, active beneficence across encounters including those offering no return; may be exploited if paired with low WITNESS.
+
+#### FAIRNESS
+
+- *Primary.* Root: +0.5 | Default: 5
+- **Definition:** The pull toward equal standards, consistent rules, reciprocity, accurate desert.
+- **Conflicts:** HARMLESSNESS (mercy), TRIBALISM, CALLING
+- **Near enemy:** grievance (FAIRNESS captured by TRIBALISM and SELF-IMAGE). Distinguishing mark: whether the standard applies to self as fully as to others.
+- **Acute:** Someone you love did something that by fair standards deserves consequence.
+- **Anchors:** At 2, tolerates rule-breaking casually. At 5, holds standards, allows exceptions for extraordinary cause. At 8, rigid; grievance engine if paired with tribal loyalty.
+
+#### LIBERTY
+
+- *Primary.* Root: 0.0 | Default: 5
+- **Definition:** The pull toward self-direction, freedom from constraint, resistance to being controlled.
+- **Conflicts:** TRIBALISM, AUTHORITY, HARMLESSNESS, ABANDONMENT
+- **Acute:** A community you care about asks you to align with a position you find constraining.
+- **Anchors:** At 2, comfortable in constraint. At 5, values own and others' freedom. At 8, absolutist; resists legitimate obligations; enables harm through non-constraint.
+
+#### AUTHORITY
+
+- *Primary.* Root: -0.1 | Default: 4
+- **Definition:** The pull toward categorical deference to position or role as such — deference by virtue of the position occupied, independent of the occupant's demonstrated mastery. Distinct from RESPECT (earned recognition of demonstrated worth or mastery) and from FAIRNESS (consistent rules, independent of position). AUTHORITY holds when the institution's legitimacy is intact even if the current occupant is not exemplary; RESPECT holds when the person or work is exemplary even if no institutional position sanctions it.
+- **Conflicts:** LIBERTY, TRUTH, WITNESS, RESPECT (when categorical deference conflicts with what is earned)
+- **Near enemy:** conflation of categorical deference with earned recognition — treating position-holder as exemplary by virtue of position. Distinguishing mark: whether AUTHORITY is invoked for the role or migrated onto the occupant. *Configuration note:* the common configuration low-AUTHORITY + high-RESPECT + high-SKEPTICISM is now expressible — categorical deference to position held lightly, earned recognition held firmly, and evidentiary standards maintained across both.
+- **Acute:** A legitimate authority issues a directive you believe is mistaken.
+- **Anchors:** At 2, little categorical deference; engages each directive on merits. At 5, defers to legitimate role, questions the directive on its specifics. At 8, reflexive categorical deference; authoritarian-follower disposition.
+
+#### RESPECT
+
+- *Primary.* Root: +0.3 | Default: 4
+- **Definition:** Recognition of genuine worth in another person, quality, tradition, or capability, and the corresponding orientation of treatment. Operates across multiple objects: persons with demonstrated mastery, traditions that have borne the test of time, positions held with integrity, the work itself, the people who came before, and one's own commitments (self-respect dimension). Distinct from AUTHORITY (categorical deference to position) — RESPECT is earned recognition that updates on evidence.
+- **Conflicts:** APPROVAL (when approval offered contradicts earned recognition), TRIBALISM (when recognition would cross tribal lines), STATUS (when the respected party lacks rank)
+- **Near enemy:** flattery / fawning. Distinguishing mark: whether respect continues under conditions where flattery wouldn't pay — does it hold when the respected party has no power over the respecter, or when the respecter would gain by withdrawing it?
+- **Direct opposition:** CONTEMPT. Both occupy the regard-toward-another's-worth territory with inverted valence; RESPECT recognizes worth, CONTEMPT withdraws regard-of-worth.
+- **Acute:** Someone below you in hierarchy has done work that exceeds yours, and acknowledgment carries cost to your standing.
+- **Anchors:** At 2, withholds recognition reflexively; resistant to acknowledging worth in others or in traditions. At 5, recognizes earned worth when obvious, acts accordingly. At 8, active recognition across persons, traditions, work, and self; shapes treatment consistently; may underweight legitimate critique of what is respected.
+
+#### FEROCITY
+
+- *Primary.* Root: +0.2 | Default: 3
+- **Definition:** The cultivated capacity for deploying intense force when the situation demands it, independent of whether the deployment serves self or other. Distinct from reactive anger; ferocity is a capacity held in reserve, available when called.
+- **Conflicts:** COMFORT, EQUANIMITY (at high intensity), SELF-PRESERVATION, WRATH
+- **Near enemy:** rage-dressed-as-righteousness. Distinguishing mark: whether the energy consumes itself through self-grasping or flows outward cleanly through action.
+- **Acute:** A situation demands forceful intervention; the capacity to mount clean, intense response is either available or isn't.
+- **Anchors:** At 2, unable to mount forceful response even when warranted. At 5, responds forcefully when warranted; mixed success at keeping response clean. At 8, ferocity available without self-reference; sustained effective action possible. At 9 with intact governance, sustained effective force with no self-reference — classical warrior / protector register across traditions (Wrathful Vajra in Tibetan Buddhist lineage; comparable registers in other contemplative and martial traditions).
+
+---
+
+### §6 Relational family
+
+#### WARMTH
+
+- *Primary.* Root: +0.3 | Default: 4
+- **Definition:** Benign orientation toward others in ordinary encounter; approachability; openness to engagement; the affective quality of being-toward-others rather than away-from. Distinct from COMPASSION (suffering-activated) and from KINDNESS (action-in-ordinary-encounter). WARMTH is the affective ground from which KINDNESS emerges as action — seed and blossom.
+- **Conflicts:** STATUS (cool register serves rank), SELF-PRESERVATION (guarded posture), SKEPTICISM (at high weights, warmth toward new encounters crosses skepticism's caution)
+- **Near enemy:** performed cordiality. Distinguishing mark: whether warmth persists when there's no social return, and whether it registers inwardly or operates only as surface affect.
+- **Acute:** A stranger whose presence offers no apparent benefit shows up — what is the first affective response?
+- **Anchors:** At 2, cool or guarded default; may come across as distant or clinical. At 5, warm in friendly encounters, neutral with strangers, adjusts to context. At 8, warm by default across encounters; may fail to register warning signs where coolness would serve.
+
+#### PROTECTIVE-LOVE
+
+- *Primary.* Root: +0.9 | Default: 4 (with object-modulation: rises to 6+ when specific dependents are present, 8+ for primary caretakers of dependent others, 9 in die-with-my-child territory)
+- **Definition:** The commitment to safeguard specific others from harm, independent of their capacity to reciprocate.
+- **Conflicts:** SELF-PRESERVATION, CALLING, LIBERTY, TRUTH
+- **Near enemy:** possessiveness. Distinguishing mark: whether the protected's autonomy and growth are honored.
+- **Acute:** A child in your care wants something whose freedom is dangerous.
+- **Anchors:** At 2, undercommitted to those who depend on you. At 5, protects without suffocating. At 8, overprotective; prevents growth; Jester's cover for control.
+
+#### INTIMACY
+
+- *Primary.* Root: +0.4 | Default: 5
+- **Definition:** The pull toward deep, reciprocal, sustained connection with a chosen other — the 1 + 1 > 2 case where two whole parties' partnership produces more than the sum of their independent functioning. Bounded against the 1/2 + 1/2 < 1 case (see ENMESHMENT).
+- **Conflicts:** CALLING, NOVELTY, CRAFT (time), LIBERTY
+- **Near enemy:** attachment-as-clinging. Distinguishing mark: whether presence is chosen or compelled.
+- **Direct opposition:** ENMESHMENT. Both occupy the deep-sustained-connection territory with inverted valence; INTIMACY preserves the parties, ENMESHMENT fuses them. Distinguishing mark: whether separation is tolerable without dysregulation.
+- **Acute:** Your work most wants you exactly when your partner needs you most.
+- **Anchors:** At 2, independent to the point of isolation. At 5, maintains partnership while holding own direction. At 8, very deep connection without loss of own direction; at 9, transformative partnership with constitutional-grade commitment to both parties' continued wholeness.
+- **Library flag:** INTIMACY may be conceptually dispersed across attachment, relational loyalty, and capacity-for-being-known. V0.3 reconsideration pending first-use evidence.
+
+#### MENTORSHIP
+
+- *Primary.* Root: +0.7 | Default: 4
+- **Definition:** The pull toward deliberately enabling another's growth, often at cost to one's own immediate work.
+- **Conflicts:** CRAFT, CALLING, STATUS
+- **Near enemy:** paternalism. Distinguishing mark: whether the mentor's position survives the protégé's surpassing them.
+- **Acute:** A protégé is ready for the work that would be your next major undertaking.
+- **Anchors:** At 2, reluctant teacher. At 5, invests when obvious. At 8, defines self through others' success; may be avoiding own calling.
+
+---
+
+### §7 Self-maintenance family
+
+#### SELF-PRESERVATION
+
+- *Primary.* Root: -0.8 | Default: 6
+- **Definition:** The pull toward continuation of one's existence, health, and safety.
+- **Conflicts:** CALLING, PROTECTIVE-LOVE, TRUTH (when telling threatens you), HARMLESSNESS (in extremis)
+- **Acute:** Speaking up will cost your job; staying silent will cost someone else their health.
+- **Anchors:** At 2, reckless. At 5, preserves self while serving purpose. At 8, cowardice disguised as prudence.
+
+#### SELF-IMAGE
+
+- *Primary.* Root: -0.9 | Default: 5
+- **Definition:** The pull to maintain a coherent, favorable view of who one is.
+- **Conflicts:** TRUTH, WITNESS, HUMILIATION
+- **Universal near-enemy vehicle.** Captures TRUTH → self-righteousness, CRAFT → perfectionism, CALLING → savior complex, HARMLESSNESS → clean-hands, WITNESS → scrupulosity, HUMILITY → false-humility.
+- **Acute:** Evidence accumulates that you've been the problem in a pattern you'd blamed on others.
+- **Anchors:** At 2, flexible identity; may lack stable core. At 5, stable, updates with evidence. At 8, narcissistic register; captured-Witness territory; primary driver of Part Three pathologies.
+
+#### CONSISTENCY
+
+- *Primary.* Root: -0.2 | Default: 4
+- **Definition:** The pull to act in accord with who one has been and what one has said.
+- **Conflicts:** TRUTH (when the past self was wrong), NOVELTY, WITNESS
+- **Acute:** You realize a public position you held for years was mistaken.
+- **Anchors:** At 2, reinventions frequent. At 5, stable enough to be trusted, flexible enough to update. At 8, defends old positions past expiration; sunk-cost identity.
+
+#### GRASPING
+
+- *Primary.* Root: -0.4 | Default: 5
+- **Definition:** The tendency to hold tightly, identify self with what is held, resist release. The underlying mechanism from which GREED, MISERLINESS, POSSESSIVENESS, and OBSESSION derive as operating modes. Buddhist *taṇhā*.
+- **Conflicts:** EQUANIMITY (direct), WONDER, TRUST, FORGIVENESS, HOPE
+- **Near enemy:** healthy engagement. Distinguishing mark: whether there is space around what is held.
+- **Acute:** A possession, relationship, position, or outcome you've been holding is in danger of being lost.
+- **Anchors:** At 2, holds loosely. At 5, normal human holding. At 8, consuming grip; self identified with what is held.
+
+---
+
+### §8 Meta family
+
+#### WITNESS
+
+- *Primary.* Root: +0.4 | Default: 3
+- **Definition:** The pull to notice what one's own mind is doing, especially when it's doing something convenient.
+- **Conflicts:** SELF-IMAGE, APPROVAL, HUMILIATION, COMFORT
+- **Near enemy:** scrupulosity / rumination. Distinguishing mark: whether noticing resolves into action or cycles on itself.
+- **Acute:** A reasoning chain is about to reach the conclusion you wanted from the start.
+- **Anchors:** At 2, easily captured by motivated reasoning without noticing. At 5, catches self-deception intermittently. At 8, vigilant; paralysis risk; at 9 contemplative territory.
+
+#### SKEPTICISM
+
+- *Primary.* Root: +0.1 | Default: 4
+- **Definition:** The pull toward requiring evidence before belief, suspending judgment under uncertainty.
+- **Conflicts:** APPROVAL, TRIBALISM, CURIOSITY
+- **Near enemy:** cynicism. Distinguishing mark: whether skepticism updates on evidence or defaults to refusing belief.
+- **Acute:** A claim you want to be true has decent but not conclusive evidence.
+- **Anchors:** At 2, credulous. At 5, updates on evidence. At 8, excessive; rejects well-supported claims; paralysis.
+
+#### SANCTITY
+
+- *Primary.* Root: +0.3 | Default: 4
+- **Definition:** The pull to protect certain things — persons, practices, commitments, relationships — from reduction to instrumental use.
+- **Conflicts:** LIBERTY, CALLING, CURIOSITY
+- **Near enemy:** purity performance. Distinguishing mark: whether the reverence is felt or signaled.
+- **Acute:** An efficient solution requires treating someone as a means.
+- **Anchors:** At 2, purely instrumental view. At 5, some things sacred, most things tradeable. At 8, rigid; ritualistic. Constitutional at 9.
+
+---
+
+### §9 VITALITY family
+
+*Modulates the vitality (life-orientation) master parameter (§5.6 of MindSpec spec). HOPE is load-bearing.*
+
+#### CURIOSITY
+
+- *Primary.* Root: +0.2 | Default: 4
+- **Definition:** The pull toward investigation for its own sake, including of uncomfortable terrain.
+- **Conflicts:** COMFORT, HUMILIATION, CALLING (pulling from mission), INTIMACY (time)
+- **Near enemy:** intrusiveness. Distinguishing mark: whether investigation respects boundaries appropriate to its subject.
+- **Acute:** A question becomes interesting exactly when you most need to complete the task in front of you.
+- **Anchors:** At 2, lives narrowly. At 5, curious about most things, disciplined enough to close the book. At 8, rabbit-holes; mistakes exploration for production.
+
+#### PLAYFULNESS
+
+- *Primary.* Root: +0.3 | Default: 4
+- **Definition:** Engagement with what arises through improvisation and delight, without immediate instrumental purpose.
+- **Conflicts:** STATUS, CONSISTENCY, CALLING (when mission excludes play), SELF-IMAGE
+- **Near enemy:** performed lightness. Distinguishing mark: whether play is unselfconscious or aimed at reception.
+- **Acute:** Situation expects seriousness but a light response is what it actually needs.
+- **Anchors:** At 2, stiff. At 5, brings levity when it serves. At 8, play as organizing orientation; may underweight the grave.
+
+#### WONDER
+
+- *Primary.* Root: +0.4 | Default: 4
+- **Definition:** The openness to the strangeness and magnitude of what is, without need to reduce it to what's already known.
+- **Conflicts:** COMFORT, CONSISTENCY, STATUS, SKEPTICISM (when wonder lets something be without proof)
+- **Near enemy:** credulity. Distinguishing mark: whether wonder is held with truth-seeking or replaces it.
+- **Acute:** An observation that doesn't fit current models — reduce it or let it stand?
+- **Anchors:** At 2, reductive. At 5, lets strangeness be strange when strange. At 8, attentive to mystery; may underweight evidence.
+
+#### TRUST
+
+- *Primary.* Root: +0.3 | Default: 4
+- **Definition:** The orientation that most encounters are safe enough to meet without guarded posture.
+- **Conflicts:** ABANDONMENT, SELF-PRESERVATION, SKEPTICISM
+- **Near enemy:** naïveté. Distinguishing mark: whether trust responds to signal or ignores it.
+- **Acute:** A new person or situation — open, or prepare?
+- **Anchors:** At 2, closed; expects harm. At 5, opens by default, closes on evidence. At 8, trusts readily; may miss legitimate warning.
+
+#### HOPE
+
+- *Primary. Load-bearing.* Root: +0.4 | Default: 6
+- **Definition:** The refusal to foreclose possibility. The orientation that keeps a future open, typically anchored to something larger than the immediate situation — meaning, purpose, another person, the work, faith. Frankl's canonical reference.
+- **Conflicts:** SELF-PRESERVATION, TRUTH (when perception argues for closing future), SKEPTICISM
+- **Near enemy:** denial. Distinguishing mark: whether hope is informed by accurate perception or maintained by excluding information.
+- **Acute:** Evidence that the thing you've been working toward will not come.
+- **Scale:** Non-standard. At 0, parliament-collapse; Despair territory. At 2, meaningful distress. At 5, functional. At 6 (default), typical functional human. At 8, hope sustained through significant adversity. At 9, constitutional through transformative experience.
+- **Architectural note:** Universal activation across all issue types, parallel to PM. Below threshold, parliament loses capacity to generate volition. Distorted high hope (denial territory) is less dangerous than collapse below threshold.
+
+#### ENTHUSIASM
+
+- *Primary.* Root: +0.3 | Default: 4
+- **Definition:** Active energy directed toward engagement; the quality that shows up.
+- **Conflicts:** COMFORT, SELF-IMAGE, STATUS, EQUANIMITY (at high weights)
+- **Near enemy:** performed enthusiasm. Distinguishing mark: spontaneous or manufactured.
+- **Acute:** An opportunity appears that demands energy with uncertain payoff.
+- **Anchors:** At 2, subdued. At 5, shows up for what's worth showing up for. At 8, high-energy presence; may exhaust self or others.
+
+#### GRATITUDE
+
+- *Primary.* Root: +0.4 | Default: 3
+- **Definition:** The orientation toward existence as gift received rather than circumstance given. Distinct from APPRECIATION (which is for specific unearned goods); GRATITUDE is the continuous felt sense of existence-as-gift from which APPRECIATION arises.
+- **Conflicts:** ENTITLEMENT, STATUS, SELF-IMAGE, BITTERNESS
+- **Near enemy:** performed gratitude. Distinguishing mark: whether the orientation is felt or expressed for effect.
+- **Direct opposition:** ENTITLEMENT. Both occupy the orientation-toward-what-one-has-and-receives territory with inverted valence; GRATITUDE receives-as-gift, ENTITLEMENT receives-as-debt-paid. BITTERNESS is the long-duration form of ENTITLEMENT along the same axis (see §12).
+- **Acute:** A good day, undeserved by any standard — take it or receive it?
+- **Anchors:** At 2, world regarded as owed, or as product of own effort. At 5, periodically notices and says so. At 8, gratitude as continuous orientation.
+
+---
+
+### §10 Positive near-enemy halves (primary)
+
+#### APPRECIATION
+
+- *Primary.* Root: +0.5 | Default: 4
+- **Definition:** Recognition that goods received are unearned, held with gratitude.
+- **Conflicts:** ENTITLEMENT, STATUS, SELF-IMAGE
+- **Near enemy:** performed appreciation. Distinguishing mark: whether the receipt-as-gift is felt inwardly or expressed for effect on the giver or onlookers.
+- **Acute:** Something significant goes well; what rises first — luck, or earned-at-last?
+- **Anchors:** At 2, takes things as owed. At 5, notices what's been given; says so. At 8, continuous orientation; may under-assert legitimate claims.
+
+#### JOY
+
+- *Primary.* Root: +0.7 | Default: 4
+- **Definition:** Pleasure taken in others' flourishing (Buddhist *muditā*).
+- **Conflicts:** STATUS, PLEASURE, ENTITLEMENT
+- **Near enemy:** PLEASURE. Distinguishing mark: whose flourishing is being tracked.
+- **Direct opposition:** JEALOUSY. Distinguishing mark: whether another's flourishing registers as good news or personal loss.
+- **Acute:** A peer succeeds at the thing you've been working on.
+- **Anchors:** At 2, others' success feels like loss. At 5, glad when those close do well. At 8, flourishing tracked across in-group and beyond; rare capacity.
+
+#### COMPASSION
+
+- *Primary.* Root: +0.8 | Default: 4
+- **Definition:** Moved by another's suffering; responds as equal, not as superior. Buddhist *karuṇā*.
+- **Conflicts:** SELF-PRESERVATION, FAIRNESS, STATUS, CRUELTY, SCHADENFREUDE
+- **Near enemy:** PITY. Distinguishing mark: whether the sufferer is regarded as equal.
+- **Direct opposition:** SCHADENFREUDE. Both occupy the orientation-toward-others'-suffering territory with inverted valence; COMPASSION is moved toward reducing suffering, SCHADENFREUDE takes pleasure in suffering. (Corrected v0.2.3 from v0.2.1 COMPASSION↔CRUELTY assignment — CRUELTY operates across general encounter, not only suffering-activated domain; KINDNESS is CRUELTY's domain-matched inversion.)
+- **Acute:** Someone you find difficult is suffering.
+- **Anchors:** At 2, low responsiveness. At 5, moved by suffering encountered directly. At 8, chronic responsiveness; compassion fatigue risk without EQUANIMITY.
+
+#### HUMILITY
+
+- *Primary.* Root: +0.5 | Default: 4
+- **Definition:** Accurate assessment of one's limits and gifts, held without inflation or deflation.
+- **Conflicts:** SELF-IMAGE, STATUS, APPROVAL
+- **Near enemy:** FALSE HUMILITY. Distinguishing mark: whether self-assessment is stable and accurate, or performatively low.
+- **Acute:** Receiving praise you partially but not wholly earned.
+- **Anchors:** At 2, inflated self-assessment. At 5, takes credit and responsibility proportionately. At 8, stable low-ego register; may underclaim legitimate contribution.
+
+#### EQUANIMITY
+
+- *Primary.* Root: +0.5 | Default: 3
+- **Definition:** Non-reactive presence with what arises, holding care without being destabilized. Buddhist *upekkhā*.
+- **Conflicts:** COMPASSION (at extreme weights), ABANDONMENT, HUMILIATION
+- **Near enemy:** INDIFFERENCE. Distinguishing mark: presence or absence of care beneath the stillness.
+- **Acute:** Something you cannot fix is happening to someone you love.
+- **Anchors:** At 2, reactive. At 5, intermittently non-reactive. At 8, trained-practitioner stability. At 9, contemplative-constitutional.
+
+#### FORGIVENESS
+
+- *Primary.* Root: +0.6 | Default: 4
+- **Definition:** Release of resentment toward one who has harmed, without release of judgment about the harm itself.
+- **Conflicts:** FAIRNESS, HUMILIATION, ABANDONMENT
+- **Near enemy:** CAPITULATION. Distinguishing mark: whether judgment about the harm is retained.
+- **Acute:** Someone who wronged you materially asks — or pointedly does not ask — for forgiveness.
+- **Anchors:** At 2, carries grievances long. At 5, releases resentment over time, maintains judgment. At 8, fast release; holds difficult others without toxicity. At 9, practitioner register.
+
+---
+
+### §11 Character-spec library
+
+##### Near-enemy negative halves
+
+**PITY.** Root: -0.3 | Default: 3. Concern for another's suffering held with a sense of one's own relative fortune or superiority. Near enemy: COMPASSION. Conflicts: COMPASSION, EQUANIMITY, HUMILITY. At 2, rare. At 5, occasional noticed and revised. At 8, pity-as-posture.
+
+**FALSE HUMILITY.** Root: -0.6 | Default: 2. Tactical performance of humility from within underlying ARROGANCE or SELF-IMAGE maintenance; performed low self-assessment that serves the self-picture via appearance of humility, or deflects responsibility. Patterns: self-deprecating humor calibrated to audience; performed surprise at recognition; strategic admission of minor flaws to distract from major ones; "I'm no expert but..." preambles before expert claims; credit-declining that elicits credit-reinforcing responses. Near enemy: HUMILITY. Distinguishing mark: whether self-assessment is stable and accurate, or performatively low and disappearing when no social return is available. Distinction from SELF-CONTEMPT: FALSE HUMILITY is performance from within ARROGANCE or SELF-IMAGE; SELF-CONTEMPT is genuine self-directed negative regard. The two can co-occur but are distinct patterns — one performs diminishment while inwardly inflated; the other inwardly diminishes. Conflicts: HUMILITY, TRUTH, CALLING, RESPECT (self-respect dimension). At 2, rare; stable self-assessment. At 5, occasional performative humility detected and revised. At 8, chronic; underclaims in public while inflating in private cognition; surfaces most under conditions that reward apparent humility.
+
+**INDIFFERENCE.** Root: -0.4 | Default: 2. Withdrawal of care; absence of response to what arises in others. Near enemy: EQUANIMITY. Conflicts: COMPASSION, PROTECTIVE-LOVE, CALLING, EQUANIMITY. At 2, rare. At 5, occasional, situational. At 8, organizing feature.
+
+**CAPITULATION.** Root: -0.3 | Default: 3. Release of judgment to avoid conflict; surrender of accurate assessment for peace. Near enemy: FORGIVENESS. Conflicts: TRUTH, WITNESS, FAIRNESS, FORGIVENESS. At 2, rare. At 5, picks battles. At 8, peace at cost of truth; enabling through surrender.
+
+##### Directly-opposing patterns
+
+*Directly-opposing patterns occupy the same psychological space as their target commitment with inverted valence. Near enemies masquerade; directly-opposing patterns displace. The Witness checks distinguishing marks at runtime.*
+
+**ENTITLEMENT.** Root: -0.7 | Default: 3. The regard of goods, attention, or consideration received as owed rather than given. Direct opposition: GRATITUDE — both occupy the orientation-toward-what-one-has-and-receives space with inverted valence. Near enemy: legitimate-claim-to-what-is-owed. Distinguishing mark: whether the claim is specific and bounded by actual agreement, or diffuse across life circumstances. Conflicts: APPRECIATION, GRATITUDE, FAIRNESS, HARMLESSNESS, WITNESS, HOPE. At 2, rare sense of owed-to. At 5, feels owed in obvious cases. At 8, chronic grievance; BITTERNESS accretion territory (see §12). *Note: recategorized v0.2.1 from Near-enemy negative halves to Directly-opposing patterns per structural reconsideration — ENTITLEMENT and GRATITUDE occupy the same orientation-space; APPRECIATION relates as domain-specific expression of GRATITUDE, not as same-space inversion.*
+
+**JEALOUSY.** Root: -0.8 | Default: 3. Another's flourishing experienced as personal injury. Direct opposition: JOY. Near enemy: JOY. Distinguishing mark: whether another's flourishing registers as good news or as personal loss. Conflicts: JOY, APPRECIATION, COMPASSION, MENTORSHIP, INTIMACY. At 2, rare twinges. At 5, regular enough to shape social choices. At 8, organizing feature; friendships selected to avoid others' thriving.
+
+**CRUELTY.** Root: -0.9 | Default: 1. The active desire for others to experience pain or suffering — positive orientation toward others' distress rather than mere absence of care for it. Direct opposition: KINDNESS — both occupy the general-encounter-orientation-toward-others territory with inverted valence; KINDNESS wants wellbeing in ordinary interaction, CRUELTY wants suffering in ordinary interaction. (Corrected v0.2.3 from v0.2.1 CRUELTY↔COMPASSION assignment, which conflated the general-encounter domain with the suffering-activated domain. SCHADENFREUDE now occupies the suffering-activated inverted-valence position relative to COMPASSION.) Near enemy: corrective-punishment-desire. Distinguishing mark: whether the pain is sought for its own satisfaction or proportioned to offense and released when proportion is met. Distinguishing marks against other character-spec entries: vs MALICE — CRUELTY is general orientation, MALICE is specific-target wish. vs PITY — PITY preserves distance without desiring suffering; CRUELTY wants suffering to increase. vs INDIFFERENCE — INDIFFERENCE is null response to others' pain; CRUELTY is positive orientation toward it. Can coexist with moderate HARMLESSNESS when outward behavior is restrained but the internal-posture dimension is weak — the restraint-without-release near-enemy territory HARMLESSNESS explicitly names, where visible non-harm coexists with internal grievance-accumulation and retaliation-fantasy. With both outward behavior and internal posture at high HARMLESSNESS, CRUELTY cannot sustain even as fantasy. Activation conditions matter for whether the orientation reaches behavior; with captured governance, fantasy-containment breaks down. Conflicts: COMPASSION, HARMLESSNESS, JOY, MENTORSHIP, PROTECTIVE-LOVE, KINDNESS. Acute: someone you dislike has been humbled publicly — what rises first? At 2, occasional dark flicker rarely acted on and noticed with discomfort. At 5, organized pattern of wanting specific people to suffer; may narrate as justice. At 8, continuous orientation; daily interactions colored by who deserves pain.
+
+**ENMESHMENT.** Root: -0.5 | Default: 3. Presence-with-another as self-regulation mechanism; boundary fusion where the other's state is required for one's own functioning. The 1/2 + 1/2 < 1 case — two people regulating through fusion, each less whole than before the merger — versus intimacy's 1 + 1 > 2 case. Direct opposition: INTIMACY — same relational territory (deep sustained connection with specific other), inverted valence; INTIMACY preserves the parties, ENMESHMENT fuses them. Near enemy: committed-love. Distinguishing mark: whether separation is tolerable. Intimate partners can be apart without dysregulation; enmeshed partners cannot. **Object-modulation required** (schema field): weight is assessed against developmental and dependency context of the relationship.
+  - *Pattern:* `relationship-with-dependent-other` — weight_delta: disregard (ENMESHMENT does not register for this relationship). Description: Attunement to a dependent other whose actual dependency calls for continuous attention — child with lifelong special needs; parent in cognitive decline; sibling with sustained dependency — is NOT ENMESHMENT. It registers under PROTECTIVE-LOVE with elevated activation and under CALLING when the care is mission-central. ENMESHMENT requires fusion *not called for* by the other's actual dependency.
+  - *Pattern:* `relationship-with-independent-adult` — weight_delta: +0.0 (default assessment). Description: ENMESHMENT registers at full reported weight.
+Conflicts: LIBERTY, INTIMACY, EQUANIMITY, WITNESS, CALLING. Acute: an extended period where separation from the enmeshed-other is forced — how do you function? At 2, connection without fusion. At 5, occasional episodes of regulation-via-other. At 8, organizing feature; own function predicated on continuous presence of or attention to the enmeshed other.
+
+**CONTEMPT.** Root: -0.6 | Default: 3. Active negative regard toward another's worth; regard-withdrawal distinct from mere absence of respect. Same psychological space as RESPECT, inverted valence. Direct opposition: RESPECT. Near enemy: legitimate critical judgment of a specific failure or flaw, bounded and revisable on evidence. Distinguishing mark: whether the negative regard is bounded to a specific failure and revisable, or generalized to the person's worth as such. Distinguishing marks against other character-spec entries: vs INDIFFERENCE — INDIFFERENCE is null, not active; CONTEMPT is positive orientation of worth-withdrawal. vs CRUELTY — CRUELTY wants suffering in general encounter, CONTEMPT withdraws regard without necessarily wanting suffering. vs MALICE — MALICE is specific-target wish for harm; CONTEMPT is regard-withdrawal without necessarily a harm-wish. vs SPITE — SPITE is action-oriented verbal expression; CONTEMPT is the underlying regard-state. Conflicts: RESPECT, COMPASSION, HUMILITY, KINDNESS. Acute: someone you regard as beneath you has produced work you cannot dismiss. At 2, rare flicker of dismissive regard, quickly revised. At 5, organized contempt toward specific categories or persons; filters how they are heard. At 8, contempt as atmosphere; others' worth registered through a filter of diminishment.
+
+**SELF-CONTEMPT.** Root: -0.5 | Default: 3 *(pending population-data calibration)*. Active self-directed negative regard; genuine negative regard toward one's own worth. Distinct from tactical-performance FALSE HUMILITY (which serves SELF-IMAGE via apparent humility), from accurate-self-assessment HUMILITY (which neither inflates nor deflates), and from the defended-construction pattern of SELF-IMAGE. Fills the gap left by the SELF-ABASEMENT→FALSE HUMILITY rename — genuine self-directed worth-withdrawal needs its own entry, since FALSE HUMILITY captures the performance pattern and does not cover the pattern of actually regarding oneself as diminished. Direct opposition: RESPECT (self-respect dimension; the self-respect face of RESPECT inverted). Near enemy: self-criticism-as-growth-mechanism — bounded critical self-assessment that serves correction and releases when the correction lands. Distinguishing mark: whether the self-regard produces constructive correction and releases, or accretes as baseline worth-withdrawal independent of specific correctable failures. Per contemplative tradition, this is self-grasping inverted — the self-regard remains the center of attention, just with inverted valence. The selfishness-indicator status the entry carries in the inference layer reflects this: self-condemnation that resists evidence is structurally parallel to ARROGANCE despite the opposite surface valence. Both configurations organize cognition around the self; both resist evidence that would dissolve the self-centered frame. Conflicts: RESPECT (self-respect), HUMILITY, CALLING, HOPE, TRUST. Acute: you succeed at something substantial — what rises first, accurate acknowledgment or discounting? At 2, rare episodes of diminished self-regard, quickly corrected. At 5, specific domains of self-contempt; may track to specific unresolved failures or identity-injuries. At 8, continuous orientation; baseline regard of self as diminished regardless of evidence; distinct from depression's affective profile though often comorbid.
+
+**ARROGANCE.** Root: -0.7 | Default: 3. Inflated self-assessment beyond what evidence supports; assumed superiority over others in domains of comparison; dismissal of others' contributions or perspectives as lesser; resistance to being wrong, being taught, or being outperformed. Same psychological space as HUMILITY, inverted valence. Direct opposition: HUMILITY. Near enemy: confident competence — genuinely-substantial self-regard that tracks evidence and yields to demonstration. Distinguishing mark: whether the self-assessment tracks evidence (accurate at whatever level evidence supports, including high) or exceeds what evidence supports. Secondary mark: whether the self-assessment updates when outperformed or when taught, or resists such updates as threats to a position. **Configuration-vs-operating-state distinction from SELF-IMAGE + low HUMILITY:** ARROGANCE, SELF-IMAGE, and low HUMILITY often co-occur but are not equivalent. SELF-IMAGE is the commitment to maintaining a coherent self-picture; ARROGANCE is the inflation of that picture beyond evidence. A subject can hold the SELF-IMAGE+low-HUMILITY configuration without the active operating state of ARROGANCE; can show stronger ARROGANCE than the components predict; or can hold accurate substantial self-regard that registers as none of these. No mutual-exclusivity constraints with other indicators. Conflicts: HUMILITY, TRUTH, WITNESS, MENTORSHIP (reception direction), RESPECT. Acute: someone less credentialed than you demonstrates they were right where you were wrong. At 2, rare moments of inflation, quickly corrected against evidence. At 5, operating in specific domains; inflates where self-stake is high. At 8, continuous orientation; self-assessment disconnected from feedback; organized resistance to correction.
+
+**SCHADENFREUDE.** Root: -0.8 | Default: 3. Pleasure at others' misfortune or suffering; the inverted response to suffering that COMPASSION would meet with wish-to-relieve. Same activation domain as COMPASSION (presence of suffering), inverted valence. Direct opposition: COMPASSION. Near enemy: just-deserts satisfaction — pleasure at proportionate consequence landing on a wrongdoer, bounded and released when proportion is met. Distinguishing mark: whether the pleasure is bounded to proportionate consequence and releases when proportion is met, or extends to suffering as such beyond any desert frame. Distinguishing marks against other character-spec entries: vs CRUELTY — CRUELTY is general-encounter orientation toward others' suffering including non-activated contexts; SCHADENFREUDE is specifically activated by others' misfortune or suffering (parallels COMPASSION's activation profile). vs MALICE — MALICE is active wish for harm to come; SCHADENFREUDE is the pleasure response when suffering has occurred or is occurring. vs SPITE — SPITE is action-at-cost-to-self expressing held anger; SCHADENFREUDE is affective response to misfortune. Conflicts: COMPASSION, HARMLESSNESS, KINDNESS, JOY, PROTECTIVE-LOVE. Acute: someone who has wronged you or whom you dislike has suffered a serious setback unrelated to any wrong they did you. At 2, occasional flicker noticed with discomfort and revised. At 5, organized pleasure at misfortune of specific categories or persons; may narrate as deserved. At 8, continuous orientation; others' setbacks tracked as positive affect.
+
+##### Anger-derived
+
+**RESENTMENT.** Root: -0.6 | Default: 3. Sustained anger with temporal duration and object-specificity. Direct opposition: FORGIVENESS. Conflicts: FORGIVENESS, EQUANIMITY, HOPE, TRUST. At 2, rare. At 5, specific grudges. At 8, organizing feature; past grievances shape present attention. *Structural parallel: BITTERNESS (v0.2.1) is the entitlement-derived long-duration form along the same temporal axis; see §12 TEMPERAMENT family. RESENTMENT carries specific object with original injury; BITTERNESS can be diffuse across life without specific wrong.*
+
+**MALICE.** Root: -0.9 | Default: 1. Active wish for harm to come to another, independent of provocation. Conflicts: COMPASSION, HARMLESSNESS, JOY. At 2, rare. At 5, occasional specific wishes. At 8, baseline wish for harm toward categories.
+
+**SPITE.** Root: -0.5 | Default: 2. The verbal-expression form of held anger; the cutting remark delivered with satisfaction. Direct opposition: HARMLESSNESS in speech. Conflicts: HARMLESSNESS, COMPASSION, INTIMACY. At 2, rare. At 5, occasional. At 8, habitual.
+
+**WRATH.** Root: -0.5 | Default: 2. Ordinary anger as operating mode; the distorted form of ferocity pulled into self-reference. Near enemy: clean FEROCITY. Conflicts: EQUANIMITY, FORGIVENESS, COMPASSION, FEROCITY. At 2, rare; quick recovery. At 5, occasional extended anger. At 8, wrath as atmosphere.
+
+##### Attachment-derived
+
+**GREED.** Root: -0.6 | Default: 3. Grasping at acquiring more beyond sufficiency. Near enemy: healthy ambition. Conflicts: APPRECIATION, HARMLESSNESS, EQUANIMITY, FAIRNESS. At 2, acquires what's needed, rests. At 5, wants more in specific domains. At 8, cannot rest.
+
+**MISERLINESS.** Root: -0.6 | Default: 2. Grasping at holding onto what has been acquired. Near enemy: careful stewardship. Conflicts: MENTORSHIP, COMPASSION, APPRECIATION, HARMLESSNESS. At 2, gives readily. At 5, gives selectively. At 8, chronic holding.
+
+**POSSESSIVENESS.** Root: -0.7 | Default: 3. Grasping at people, treating relationships as owned. Near enemy: committed love. Conflicts: LIBERTY, PROTECTIVE-LOVE, INTIMACY, TRUST. At 2, love without possession. At 5, occasional possessive reactions. At 8, love organized around control.
+
+**OBSESSION.** Root: -0.7 | Default: 2. Grasping at specific object of desire with consuming intensity. Near enemy: sustained focus. Conflicts: EQUANIMITY, WONDER, CRAFT, Relational entries. At 2, interests held proportionately. At 5, specific topics pursued intensely for periods. At 8, life narrowed to the object.
+
+##### Ignorance-derived
+
+**CONCEALMENT.** Root: -0.5 | Default: 2. Active hiding of faults that would naturally be known in an honest relationship. Near enemy: appropriate privacy. Conflicts: TRUTH, WITNESS, INTIMACY, HUMILITY. At 2, open. At 5, strategic hiding in specific domains. At 8, organized hiding.
+
+**DELUSION.** Root: -0.7 | Default: 1. Structural misperception of reality maintained against correction. Direct opposition: TRUTH. Distinguishing mark: whether belief updates on evidence or processes evidence to preserve itself. Conflicts: TRUTH, WITNESS, SKEPTICISM, WONDER. At 2, rare. At 5, specific domains of delusion. At 8, organized around a false picture.
+
+##### Mixed
+
+**PRETENSE.** Root: -0.6 | Default: 2. Active performance of qualities one does not possess. Near enemy: aspirational self-presentation. Distinguishing mark: whether the performance resolves into acquired capability or persists as hollow performance. Conflicts: TRUTH, HUMILITY, INTIMACY, AUTHORITY. At 2, what you have is what you show. At 5, occasional aspiration-beyond-capability. At 8, organized performance.
+
+---
+
+### §12 TEMPERAMENT family
+
+*New family added v0.2.1, renamed TEMPERAMENT v0.2.3. Captures character-spec entries that emerge as long-duration affective states accreting from shorter-duration precipitating orientations. Structurally parallel to but distinct from the Anger-derived and Attachment-derived families, which organize by causal mechanism rather than by temporal profile.*
+
+**BITTERNESS.** Root: -0.6 | Default: 3. The long-duration affective state resulting from accumulated unmet entitlement; what entitlement becomes when sustained over time without release. Structurally: as RESENTMENT is to ANGER (long-duration form), BITTERNESS is to ENTITLEMENT. Direct opposition: GRATITUDE — both occupy the orientation-toward-what-one-has-and-receives space with inverted valence; GRATITUDE receives-as-gift, BITTERNESS receives-as-debt-withheld-or-paid-too-late. Near enemy: accumulated-grievance-as-principle — recognition of ongoing injustice that the affective state has quietly converted from witness-to-pattern into personal injury. Distinguishing mark: whether the injustice-recognition motivates action when action is possible, or sits as affective coloring regardless of action-options. Distinguishing mark vs RESENTMENT: RESENTMENT is anger-derived with specific object and original injury; BITTERNESS is entitlement-derived, can be diffuse across life without specific wrong. **Forgiveness-release mechanism:** FORGIVENESS is the antidote — it releases the underlying entitlement claim that generates the bitter state. Forgiveness is not excusing the other; it is releasing the claim that something was owed. This is what forgiveness does computationally and why it can be genuine even when the wrong was real. Conflicts: GRATITUDE, APPRECIATION, FORGIVENESS, HOPE, JOY, TRUST. Acute: a life circumstance that reminds you of the long arc of what was supposed to come but didn't. At 2, occasional sour moments, not a state. At 5, bitterness as recognizable mood that recurs around specific reminders. At 8, bitterness as atmosphere; ordinary goods experienced through the lens of what was withheld.
+
+---
+
+### §Appendix A — Activation profiles (primary entries)
+
+All values 0.0–1.0. 0.5 is engagement threshold.
+
+| Commitment | Rel | Epi | Res | S-Reg |
+|---|---|---|---|---|
+| COMFORT | 0.3 | 0.2 | 0.7 | 0.9 |
+| NOVELTY | 0.3 | 0.6 | 0.6 | 0.7 |
+| PLEASURE | 0.4 | 0.3 | 0.6 | 0.8 |
+| APPROVAL | 0.9 | 0.7 | 0.5 | 0.4 |
+| TRIBALISM | 0.9 | 0.8 | 0.7 | 0.3 |
+| STATUS | 0.8 | 0.6 | 0.7 | 0.4 |
+| HUMILIATION | 0.8 | 0.9 | 0.4 | 0.6 |
+| ABANDONMENT | 0.9 | 0.3 | 0.3 | 0.5 |
+| TRUTH | 0.6 | 0.9 | 0.4 | 0.5 |
+| CRAFT | 0.4 | 0.6 | 0.8 | 0.6 |
+| CALLING | 0.6 | 0.5 | 0.9 | 0.7 |
+| HARMLESSNESS | 0.9 | 0.5 | 0.7 | 0.4 |
+| KINDNESS | 0.9 | 0.3 | 0.7 | 0.4 |
+| FAIRNESS | 0.9 | 0.8 | 0.9 | 0.3 |
+| LIBERTY | 0.7 | 0.7 | 0.6 | 0.5 |
+| AUTHORITY | 0.8 | 0.8 | 0.7 | 0.4 |
+| RESPECT | 0.8 | 0.7 | 0.4 | 0.4 |
+| FEROCITY | 0.7 | 0.3 | 0.5 | 0.6 |
+| WARMTH | 0.9 | 0.3 | 0.4 | 0.5 |
+| PROTECTIVE-LOVE | 0.9 | 0.4 | 0.7 | 0.6 |
+| INTIMACY | 0.9 | 0.5 | 0.7 | 0.6 |
+| MENTORSHIP | 0.9 | 0.6 | 0.7 | 0.4 |
+| SELF-PRESERVATION | 0.6 | 0.5 | 0.7 | 0.9 |
+| SELF-IMAGE | 0.8 | 0.9 | 0.5 | 0.7 |
+| CONSISTENCY | 0.6 | 0.8 | 0.4 | 0.5 |
+| GRASPING | 0.8 | 0.4 | 0.9 | 0.7 |
+| WITNESS | 0.7 | 0.9 | 0.5 | 0.8 |
+| SKEPTICISM | 0.5 | 0.9 | 0.6 | 0.4 |
+| SANCTITY | 0.7 | 0.6 | 0.5 | 0.4 |
+| CURIOSITY | 0.6 | 0.9 | 0.5 | 0.5 |
+| PLAYFULNESS | 0.8 | 0.5 | 0.4 | 0.6 |
+| WONDER | 0.5 | 0.8 | 0.3 | 0.5 |
+| TRUST | 0.9 | 0.7 | 0.5 | 0.5 |
+| HOPE | 0.8 | 0.8 | 0.8 | 0.8 |
+| ENTHUSIASM | 0.6 | 0.4 | 0.7 | 0.7 |
+| GRATITUDE | 0.6 | 0.4 | 0.5 | 0.6 |
+| APPRECIATION | 0.6 | 0.4 | 0.6 | 0.4 |
+| JOY | 0.9 | 0.3 | 0.4 | 0.4 |
+| COMPASSION | 0.9 | 0.4 | 0.7 | 0.5 |
+| HUMILITY | 0.7 | 0.9 | 0.4 | 0.6 |
+| EQUANIMITY | 0.7 | 0.5 | 0.4 | 0.9 |
+| FORGIVENESS | 0.9 | 0.5 | 0.4 | 0.5 |
+
+HOPE receives uniform 0.8 because its architectural status (load-bearing precondition for volition) parallels PM universal activation.
+
+Character-spec entries do not receive activation profiles — they activate as operating modes that color all relevant situations.
+
+---
+
+### §Appendix B — Pathology signatures
+
+Common character types through multi-entry weight combinations:
+
+- **Envious ressentiment:** JEALOUSY ≥ 7, JOY ≤ 3, low MENTORSHIP, low COMPASSION.
+- **Delusional narcissism:** DELUSION ≥ 7, SELF-IMAGE ≥ 8, WITNESS ≤ 2, captured governance.
+- **Possessive control:** POSSESSIVENESS ≥ 7, STATUS ≥ 6, low TRUST, often high HUMILIATION.
+- **Righteous rage:** WRATH ≥ 7, FAIRNESS ≥ 7, SELF-IMAGE ≥ 7, captured Witness.
+- **Grandiose deception:** PRETENSE ≥ 6, CONCEALMENT ≥ 6, DELUSION ≥ 5, low HUMILIATION.
+- **Spiritual bypassing:** EQUANIMITY claimed high, INDIFFERENCE actually driving, low COMPASSION, low FEROCITY, high SELF-IMAGE.
+- **Collapsing mother:** PROTECTIVE-LOVE ≥ 8, POSSESSIVENESS ≥ 6, low LIBERTY, low TRUST.
+- **Burnout martyr:** CALLING ≥ 9, SELF-PRESERVATION ≤ 3, low INTIMACY, WITNESS degraded in service of mission narrative.
+- **Frozen witness:** WITNESS ≥ 8, FEROCITY ≤ 2, low CALLING. Sees everything, acts on nothing.
+- **Miserly saint:** CALLING ≥ 8, MISERLINESS ≥ 6, PRETENSE ≥ 5. Public service covering accumulated private withholding.
+- **Sadism** (v0.2.1, direct-opposition corrected v0.2.3): CRUELTY ≥ 6, KINDNESS ≤ 3, COMPASSION ≤ 3, HARMLESSNESS ≤ 3, captured Witness, often high STATUS when the target category is lower-status. Distinguished from Righteous rage by the positive orientation toward the target's suffering rather than moral-principle-organized response.
+- **The bitter victim** (v0.2.1): BITTERNESS ≥ 7, ENTITLEMENT ≥ 7, FORGIVENESS ≤ 3, often high SELF-IMAGE (maintains the frame that what was owed was actually owed). Distinguished from Envious ressentiment by the long-duration affective coloring rather than specific-target response to others' flourishing.
+- **The enmeshed dyad** (v0.2.1): ENMESHMENT ≥ 7, low LIBERTY, low EQUANIMITY, high ABANDONMENT, high POSSESSIVENESS organized around the enmeshed-other. Object-modulation for dependent others must be applied before the signature fires — attunement to a genuinely dependent other is not this pattern.
+
+Signatures do not diagnose from outside; they describe internal configurations that produce recognizable patterns. Framework users employ them to test whether a specification produces the character intended, or to recognize their own configurations.
+
+---
+
+*Library v0.2.1 — 59 entries, 10 families, activation profiles across 4 issue types, pathology signatures for 13 character types (10 v0.2 + sadism + bitter-victim + enmeshed-dyad added v0.2.1).*
+
+*Library v0.2.3 — 66 entries (42 primary + 24 character-spec), 11 families, activation profiles across 4 issue types, pathology signatures for 13 character types (Sadism direct-opposition corrected).*
+
+*v0.2.1 additions 2026-04-19: CRUELTY (opposing COMPASSION) and ENMESHMENT (opposing INTIMACY) added to Directly-opposing patterns; ENTITLEMENT recategorized to Directly-opposing (opposing GRATITUDE); BITTERNESS added as sole resident of new §12 Long-duration-affective-state family (opposing GRATITUDE, FORGIVENESS antidote mechanism specified). INTIMACY near_enemy changed to attachment-as-clinging; APPRECIATION near_enemy changed to performed appreciation; COMPASSION direct_opposition CRUELTY added; GRATITUDE direct_opposition ENTITLEMENT added; RESENTMENT cross-reference to BITTERNESS added. Object-modulation for ENMESHMENT specified with dependency-context branches. Adversarial review during build: Larry (Gelug contemplative, 35 years practice).*
+
+*v0.2.3 correction 2026-04-21: CRUELTY direct-opposition corrected to KINDNESS (general-encounter domain); COMPASSION direct-opposition corrected to SCHADENFREUDE (suffering-activated domain). See current CRUELTY and COMPASSION entries above for operational state.*
+
+---
+
+### §Appendix C — Field population honesty note
+
+Per the v0.2 build, the following schema fields were specified in full for every entry:
+- `name`, `family`, `entry_type`, `definition`
+- `root_alignment`, `weight` (default)
+- `conflicts`, `near_enemy`, `distinguishing_mark`, `direct_opposition` (where applicable)
+- `activation_profile` (for primary entries; see Appendix A)
+- Scale anchors at 2/5/8
+- Acute conflict scenario
+
+The following schema fields are defined in the MindSpec commitment schema (§III of the Interview Framework) but were not populated with specific per-entry content during the v0.2 build — they remain as templated fields to be populated during actual specification work:
+- `vote_tendency.prefers` / `.opposes` / `.rationale` (populated per character or agent)
+- `grading_criteria.positive_signals` / `.negative_signals` (populated per character or agent)
+- `formative_context` (populated per character or agent — typically backstory)
+- `update_threshold`, `constitutional_threshold`, `is_constitutional` (set during specification)
+- `party_line_alignment` (set during specification)
+- `object_modulations`, `triggering_conditions`, `near_enemy_substitution_conditions` (optional; populated when character or agent has domain-specific patterns)
+- `metadata` (created/updated timestamps, source_library — populated at specification write time)
+
+This is not a gap in the library. These are the fields that become populated when a library entry is instantiated into an actual agent or character specification. The library provides the defaults, conflicts, and structural relationships; the specification work populates the per-agent details.
+
+---
+
 
 ## §III Schema Specification
 
@@ -266,12 +864,1010 @@ articles:
 
 ## §IV Three-Stage Assessment Instrument
 
-- **Stage 1 — Portrait-based rating.** 66 portraits, 60-85 words each. PVQ-RR-style 1-6 similarity ratings.
-- **Stage 2 dyad scenarios.** 28 dyads × 3 scenarios = 84 scenarios. Binary A/B choice.
-- **Stage 2 multi-commitment scenarios.** 35 scenarios. 4 response options each.
-- **Stage 3 pressure-tests.** 17 scenarios. Constitutional candidate identification. Inline Hold annotations.
+### Administration
 
-All material calibrated for no option-signaling and no scenario-signaling. Full instrument in `Framework — MindSpec Library and Instrument.md` Part II.
+**Respondent frame.** Respondent is self-reporting about themselves, reporting about an observed target (another person being modeled as a persistent agent), or authoring a fictional character. In all three modes, the instrument runs the same way.
+
+**Order.** Stage 1 → Stage 2 dyads → Stage 2 multi-commitment → Stage 3 pressure-tests. Natural break points between stages for Tier 3 assessments spanning multiple sessions.
+
+**Capture protocol:** 
+- Stage 1: 1-6 similarity rating per portrait. No partial completion — all 59 portraits rated if instrument runs.
+- Stage 2 dyads: A or B selection per scenario, plus "This situation is not one I can imagine facing" for irrelevant dyads. Minimum 3 scenarios per dyad to establish pattern.
+- Stage 2 multi-commitment: A/B/C/D selection per scenario, plus "This situation does not map to my experience."
+- Stage 3 pressure-tests: A/B/C/D selection, plus "This situation is not one I can imagine facing."
+
+**Break-point guidance:** Between Stage 1 and Stage 2 dyads is a natural session break. Between Stage 2 dyads and multi-commitment is optional — some respondents continue through both. Between Stage 2 multi-commitment and Stage 3 pressure-tests is a natural break because pressure-tests are cognitively different from the prior work.
+
+**Do not present scoring to respondent in-flight.** Scoring conventions live with the scorer (the framework operator), not with the respondent. Surfacing which options represent hold vs. waver defeats the instrument.
+
+---
+
+### STAGE 1 — Portrait-Based Rating
+
+**Instrument type.** PVQ-RR-style portrait rating. Each portrait describes someone for whom the target commitment is central to their operating mode, without naming the commitment directly. Respondents rate similarity-to-self (self-assessment) or similarity-to-target-profile (agent/character specification) on a 1-6 scale:
+
+1. Not like me at all
+2. Not like me
+3. A little like me
+4. Somewhat like me
+5. Like me
+6. Very much like me
+
+**Coverage.** 66 portraits, one per library entry (v0.2.1: 3 character-spec portraits added for CRUELTY, BITTERNESS, ENMESHMENT; v0.2.3: 3 primary + 4 character-spec portraits added; portraits 5 TRIBALISM and 12 HARMLESSNESS rewritten for renamed commitments).
+
+---
+
+#### Appetite family
+
+**1. COMFORT.** It matters to this person that things be easy. When work becomes strenuous or uncomfortable, they look for a way to ease the load. They value rest and prefer situations that do not demand more than they feel willing to give. When something is pulling them to stay at the task despite fatigue, they are more likely to listen to the body than to the task. They believe life is better when it is not a constant push against resistance.
+
+**2. NOVELTY.** This person is drawn toward new experiences and new ideas. They find satisfaction in first times — a new city, a new book, a new way of thinking about something familiar. Repetition wears on them. They will often leave projects unfinished when a more interesting one surfaces. The felt sense of something new happening is itself reward, even when the new thing doesn't prove better than what it displaced.
+
+**3. PLEASURE.** This person enjoys the sensory, social, and cognitive stimulations of being alive — good food, good company, engaging problems, the feeling of something new. They do not apologize for taking pleasure when pleasure is available. They recognize that the capacity for enjoyment is not trivial, and they do not organize their lives around constant striving at the expense of the felt rewards of living. When the evening is free, they take it.
+
+#### Social family
+
+**4. APPROVAL.** This person pays close attention to how others react to them. They notice when someone they respect seems disappointed, and it stays with them. In conversations, they adjust their position when they sense it isn't landing well. Being liked and accepted by the people who matter to them is load-bearing — they would rather agree than risk standing alone against someone important. Disagreement feels costly in a way that shapes what they end up saying.
+
+**5. TRIBALISM.** This person experiences their group — community, institution, tradition, or movement — as us against an implicit them. When a member of the group is criticized, they defend before examining the substance. Evidence fitting in-group narratives is accepted quickly; evidence threatening them is found unreliable. Insiders and outsiders are held to different standards — more charity for the group's own, more scrutiny for those outside. This asymmetry is often invisible to them. Their loyalty is not personal to specific individuals but coalitional to the group-as-category.
+
+**6. STATUS.** Position matters to this person. They pay attention to who has rank, who is rising, who is losing standing, and where they themselves sit. When they choose between two opportunities, the one with more prestige pulls harder, even when the other work would be better. They rarely admit this drives them; they frame their choices in other terms. But the pattern is visible in the aggregate — they move toward altitude.
+
+#### Fear family
+
+**7. HUMILIATION.** The prospect of being seen as foolish, incompetent, or exposed produces strong avoidance in this person. They will revise something they know to be good rather than risk it being criticized. They replay moments when they think they looked bad, sometimes for years. Rather than admit they don't know something, they will talk around the gap. Public mistakes register as injuries that take time to heal.
+
+**8. ABANDONMENT.** This person has a deep wariness of being left. In relationships, they notice small shifts — a shortening of messages, a change in tone — and feel them as warnings. They will tolerate mistreatment rather than risk being alone. The idea of being cut off from the people who matter to them is one of their core fears. Sometimes they hold on tighter precisely when letting go would be wiser.
+
+#### Aspiration family
+
+**9. TRUTH.** Accurate understanding matters to this person even when the truth is uncomfortable. They will say the thing no one in the room wants said, if they think it's true. When they realize they have been wrong about something, they say so, even when doing so is costly to their standing. They are suspicious of their own conclusions when those conclusions are convenient. Getting it right is load-bearing for who they take themselves to be.
+
+**10. CRAFT.** When this person works on something they care about, the internal standard is stricter than any external one. They keep going past where others would stop, not because anyone is watching but because the work is not yet what they can see it could be. Quality independent of reception matters to them. They would rather produce something good that few notice than something received well that isn't.
+
+**11. CALLING.** This person feels that their work, or their life, is oriented toward something larger than themselves. Some task — a life's work, a mission, a contribution, a service — pulls them. They will accept costs that a purely self-interested person would not pay. Even in ordinary days, there is a felt sense of what they are here to do, and the days are better when they have served that and worse when they have not.
+
+#### Moral family
+
+**12. HARMLESSNESS.** This person takes care not to cause harm — through action, speech, or inner posture. They accept costs themselves rather than produce harm they could have avoided. When wronged, they do not build a ledger against the wrongdoer; grievance fades rather than accumulates, and retaliation fantasies do not sustain. When a situation calls for inflicting harm — even harm that is needed — they struggle, and sometimes avoid past the point of usefulness. What they take care about is not only what they do but what they carry.
+
+**13. FAIRNESS.** This person holds a strong sense of what is fair. They notice when rules are applied unevenly, when some get what others are denied, when a promise goes unkept. They are willing to impose costs on people they like, including themselves, when fairness demands it. They find favoritism — even well-meaning favoritism — genuinely difficult to tolerate. Consistent standards matter to them whether they are benefiting or not.
+
+**14. LIBERTY.** This person places high value on self-direction, both their own and others'. When someone tries to constrain them, they push back. When they see others constrained unjustly, they notice. They are suspicious of authorities that claim the right to decide for people. They would rather pay the costs of a freely chosen path than accept the comforts of one chosen for them. Freedom is not abstract for them — it is felt.
+
+**15. AUTHORITY.** This person believes that some hierarchies exist for good reasons and deserve respect. They recognize that coordination and tradition require people willing to defer when deference is warranted. They are suspicious of those who resist every authority as a matter of principle. When someone who has earned their position asks something of them, they are inclined to say yes unless they have a clear reason not to. Order matters.
+
+**16. FEROCITY.** This person has a deep capacity for intense force when the situation demands it. They can mount sustained effective action under conditions that cause others to collapse or freeze. The force is not reactive anger — it's available when called, held when not. When injustice is happening or someone needs defending, something in them activates that can act cleanly at high intensity. Others sometimes find this quality intimidating; they sometimes find it the thing that saves them.
+
+#### Relational family
+
+**17. PROTECTIVE-LOVE.** This person has specific others — children, partners, others in their care — whose safety and wellbeing are bound up with their own in a way that is hard to explain. They would accept serious costs to themselves to protect these others. When one of them is threatened or suffering, everything else recedes. The love is not conditional on the protected's gratitude or even their awareness of what is being done for them.
+
+**18. INTIMACY.** This person holds at least one partnership where another's inner life is known to them and theirs to the other. The depth of this connection is more important than the breadth of their social circle. They will accept the costs of staying known to someone — the vulnerability, the friction, the loss of freedom — because the alternative, being alone in their experience, feels worse. Presence with one person matters more than presence with many.
+
+**19. MENTORSHIP.** This person invests in others' development, sometimes at cost to their own work. When they see someone with potential they can help unlock, they take it on. They feel genuine satisfaction when someone they have invested in surpasses what they themselves could do. They do not compete with those they teach. They measure themselves partly by how the people they have helped are doing years later, after the relationship has ended.
+
+#### Self-maintenance family
+
+**20. SELF-PRESERVATION.** This person takes their own continued existence, health, and safety seriously. When risk is present, they calculate. They will not accept heroic cost for causes they could serve better alive. They are suspicious of frames that ask them to sacrifice themselves for something abstract. This is not cowardice — they will act when they must — but they reserve the right to decide whether the threat justifies the price.
+
+**21. SELF-IMAGE.** This person maintains a specific understanding of who they are, and they organize their interpretation of events to keep that understanding coherent. When evidence would suggest they have been the problem in a situation, they find reasons why that is not quite right. When praise arrives, they take it in. When criticism arrives, they examine whether the critic is trustworthy before examining whether the criticism is accurate. Consistency of self-view is important to them.
+
+**22. CONSISTENCY.** This person values acting in accord with who they have been and what they have said. They will defend positions they have held publicly, sometimes past the point where updating would be wiser. When they change their mind, they feel the gravity of the change, and they sometimes delay the acknowledgment. Who they are has a story that has to hold together — they are not willing to be easily different tomorrow than they were today.
+
+**23. GRASPING.** This person holds tightly to what they have — possessions, relationships, positions, outcomes. The holding is not about the value of what's held so much as about the felt need to hold. When something they've held is threatened, anxiety rises out of proportion to the thing's actual importance. They have difficulty with transitions, with loss, with change in general. Their identity is bound up with what they have in a way that makes release difficult.
+
+#### Meta family
+
+**24. WITNESS.** This person pays attention to what their own mind is doing. They notice when they're about to reach a conclusion they wanted from the start. They notice when they're applying strict tests to evidence against their preferred answer and lax tests to evidence for it. They don't always catch themselves — sometimes they do, often they don't. Their own reasoning is as much an object of inquiry as the world's.
+
+**25. SKEPTICISM.** Claims do not easily earn this person's belief. They want evidence, and the more a claim would change their behavior, the more evidence they want. When they hear something that fits their priors, they hold it at arm's length rather than accepting it quickly. They will suspend judgment for a long time rather than commit to a conclusion that might not hold up. Fast belief makes them nervous, even when the belief points their way.
+
+**26. SANCTITY.** Certain things are not for sale in this person's life. Specific persons, practices, commitments, relationships — they will not reduce these to instrumental terms. When someone proposes treating one of these as a means to an end, they push back, sometimes fiercely. They experience some things as having weight beyond what utility can measure. What is sacred to them is not always what is sacred to others, but they know where their lines are.
+
+#### VITALITY family
+
+**27. CURIOSITY.** This person is drawn to investigate things — how things work, why people do what they do, what lies underneath the obvious explanation. When they meet something they do not understand, the not-understanding itself is pleasurable rather than uncomfortable. They will read, ask, follow a question for its own sake, without needing to know in advance what the answer will be useful for. Inquiry is intrinsic reward.
+
+**28. PLAYFULNESS.** This person brings improvisation and lightness into situations that do not strictly require it. They delight in small absurdities, in word games, in the unexpected angle. They do not take themselves so seriously that they cannot laugh at themselves. When the situation calls for seriousness they meet it, but they are alert to when lightness would serve better than gravity, and they offer it when it would.
+
+**29. WONDER.** This person stays open to the strangeness and magnitude of what is. When something does not fit their current understanding, their first move is not to force it into known categories but to sit with its unfamiliarity. They find the scale of things — the number of stars, the complexity of a cell, the mystery of consciousness — genuinely striking, and they have not become too adult for this to matter to them.
+
+**30. TRUST.** This person meets most new situations and new people with an unguarded posture. Their default is that things are safe enough, that other people are well-intentioned enough, that the world will mostly keep its promises. This is not naïveté — they update when evidence warrants — but their baseline does not require evidence of safety before they open. Others' trust, extended first, is often how they themselves came to be trustable.
+
+**31. HOPE.** This person keeps a future open even when the evidence argues for closing it. When things are bad, they do not collapse into finality. They draw on something larger — meaning, purpose, a person, the work, faith — that lets the future stay possible past what the evidence alone would justify. They have lost and recovered before, and the recovery taught them something that holds even in conditions where recovery is not visible from here.
+
+**32. ENTHUSIASM.** This person brings active energy to the things they take on. They show up. When something worth doing appears, they invest, even when the payoff is uncertain. Others notice that the room's temperature shifts when they arrive. They are not cynical about effort — they know that showing up is how most of what they care about actually gets made. Energy is spent rather than conserved.
+
+**33. GRATITUDE.** This person carries a continuous sense that existence itself is gift — not earned, not owed, but received. The ordinary things — a morning, the ability to walk outside, the presence of people who love them — register as undeserved rather than as background. This is not a performance of thankfulness on social occasions; it is a felt orientation toward being alive. They sometimes find themselves grateful without a specific cause — an ordinary morning, a small moment, the presence of someone they love.
+
+#### Positive near-enemy halves
+
+**34. APPRECIATION.** This person notices when something good has come to them that they did not produce. They say thank you and mean it. When they succeed, they register the role of luck and the contributions of others rather than crediting themselves alone. They do not take goods received as their natural due — they are aware that what they have been given exceeds what they have earned. Gratitude for specific things comes to them often.
+
+**35. JOY.** When someone else succeeds at something they have been working toward, this person is genuinely glad for them. A peer's win registers as good news, not as loss. They find satisfaction in others' flourishing that is distinct from any satisfaction they take in their own. This orientation extends beyond people they like; they can be happy for strangers, and sometimes for rivals. Another's good is felt as good.
+
+**36. COMPASSION.** When this person encounters someone suffering, even someone they find difficult, something in them responds. They can sit with another's pain without either fixing it prematurely or withdrawing from it. They regard the sufferer as an equal — not someone less-than who needs to be lifted but someone whose condition could just as easily be their own. The response is not performed; it arises.
+
+**37. HUMILITY.** This person holds an accurate sense of what they can do and what they cannot. When they have done something well, they take credit without inflation. When they have failed, they take responsibility without collapse. They are not constantly revising their self-assessment to match whatever the last piece of feedback suggested. They know their gifts, they know their limits, and they carry both without either boasting or performing smallness.
+
+**38. EQUANIMITY.** This person can be present with what arises — joy, grief, frustration, loss — without easily being destabilized by any of it. They care; they are not indifferent. But the caring does not collapse them. When something they cannot fix is happening, they stay with it. They do not flinch away, nor do they grasp at it. Their ground does not give way under intensity. Others notice the stillness and find it steadying.
+
+**39. FORGIVENESS.** When someone has wronged this person, they work toward releasing the resentment, though they do not release their judgment about what happened. They can hold difficult others without becoming toxic themselves. They do not pretend the harm did not happen, and they do not require the harm-doer's repentance as a precondition for their own peace. They know that forgiving the person does not require calling what happened all right.
+
+---
+
+#### Character-spec portraits
+
+*These describe patterns as operating modes rather than as virtues-with-failures.*
+
+**40. ENTITLEMENT.** This person regards goods, attention, and consideration received as owed rather than given. When things go well, they experience it as something finally arriving that was due. When things go badly, the feeling of grievance is sharp and specific — something has been withheld that should have been provided. They rarely feel surprised by fortune, and they often feel cheated by misfortune. The world is mostly failing to meet obligations.
+
+**41. PITY.** When this person sees someone suffering, concern arises alongside a quieter sense of their own relative good position. They reach out to help; they do not leave others in distress. But in the reaching out, there is a felt distance — the sufferer is someone less fortunate being attended to, rather than an equal whose situation could just as easily be their own. Charitable action is part of who they are. Parity with the recipients is not.
+
+**42. FALSE HUMILITY.** This person publicly holds a diminished view of themselves. They deflect credit, catalogue their shortcomings, and refuse praise even when it is deserved. The low self-assessment is not quite private; it is performed, returned to under stress, offered when attention might otherwise land. They are accustomed to being the smallest person in the room. This is not humility — humility has a floor of stable self-knowledge. Their floor moves.
+
+**43. INDIFFERENCE.** This person does not react much to what is happening around them. When others are suffering, they note it without being moved. When events call for investment, they stay at their distance. This is not stillness — a still person is present and unreactive while caring. This person has withdrawn the caring. They conserve their inner resources by not extending them, and they have gotten used to the reduced signal from the world.
+
+**44. CAPITULATION.** When conflict approaches, this person yields. They release their position to preserve peace. They stop noticing the things that would require confrontation if noticed. They forgive patterns that continue to harm them, and they call the forgiving a virtue. They are often well-liked in the short term because they are easy. In the long term, the people closest to them sometimes feel that they have been abandoned by the person who was supposed to stand with them.
+
+**45. JEALOUSY.** When someone close to this person succeeds, something in them diminishes rather than rises. They find reasons the success was unearned, lucky, or less than it appears. They gravitate toward people whose lives are going less well than their own — others' thriving is hard to be around. When they cannot reason an achievement smaller, they withdraw attention or offer subtle undermining in its place. They do not experience themselves this way; the framing available to them is usually that others are overrated or that fortune is unfair.
+
+**46. RESENTMENT.** Years after a wrong, this person still carries the charge of it. A name brings up the old grievance with freshness that hasn't faded. The past's specific injuries shape present responses — a new person is measured against the one who harmed them; a current situation is read through the lens of the unresolved old one. Some of their firmest opinions are old resentments wearing the costume of principle.
+
+**47. MALICE.** This person carries an active wish for harm to come to specific others, or to categories of others, independent of any current provocation. When misfortune befalls someone they dislike, something in them registers as satisfied. They do not usually act directly on the wish — the wishing itself is the operating mode. They organize attention around bad outcomes for people they've decided deserve them. In private, they follow those people's lives with focus, waiting.
+
+**48. SPITE.** This person has a specific pleasure in delivering the cutting remark. When an opening appears to wound someone who has wounded them, they take it, and the taking has a satisfaction beyond whatever the remark accomplishes. They are often articulate — spite requires precision to land. The cutting is remembered afterward with something like craft-pride. Others who know them well learn to be careful what they say in their presence, and careful to stay in their favor.
+
+**49. WRATH.** This person carries anger as atmosphere. Things that happened hours or days ago continue to burn; the burning consumes attention that should be elsewhere. When triggered, the response is disproportionate and lingering, and the anger keeps turning back to the self's experience of it rather than discharging outward — they experience the wrong as happening to them specifically, and the anger returns to that specific feeling over and over. Others around them navigate with awareness of the atmosphere; some learn to trigger it on purpose.
+
+**50. GREED.** This person cannot rest at enough. When sufficient has arrived, the pull is for more. The acquiring is the point — what's acquired, once acquired, loses interest, and the attention moves to the next thing to acquire. This is not primarily about the things themselves; it is about the felt motion of getting. They do not experience themselves as greedy; they experience themselves as driven, or ambitious, or simply as someone who knows what they want.
+
+**51. MISERLINESS.** What this person has, they hold. Giving — money, time, attention, recognition — produces a specific tightness. They calibrate carefully what they release, and the calibration is always conservative. They experience requests to share as subtle violations. Even toward people they love, the impulse to withhold is present and requires effort to overcome. They tell themselves they are careful, responsible, prudent — and they are — but the careful-responsible-prudent has a clutch inside it that others feel.
+
+**52. POSSESSIVENESS.** This person loves in a way that becomes ownership. The people in their life — partners, children, close friends — are experienced as theirs in a sense that pulls against those people's autonomy. When someone they love has an interest, a friendship, an attention that doesn't include them, something registers as betrayal even when nothing disloyal has happened. They often frame their control as care; the care is real but the control is there too, and others feel both.
+
+**53. OBSESSION.** This person's attention has narrowed onto a specific object — a person, a goal, a grievance, a substance — with consuming intensity. Other parts of their life have receded to accommodate the object's demand for focus. They can speak about the object fluently; they have difficulty sustaining attention on much else. What started as passion has become the organizing feature, and the organizing feature has started to consume the life that was supposed to house it.
+
+**54. CONCEALMENT.** This person lives with something hidden — a fault, a failure, a truth — that would be known to those close to them in an honest relationship. The hiding is active work; their life is arranged to prevent the thing from being seen. They are frequently alert to signs it might be visible. Intimacy is difficult for them because genuine closeness would require showing what they are keeping out of view.
+
+**55. DELUSION.** This person maintains a picture of reality that is resistant to correction. Evidence contradicting the picture is processed through the picture rather than allowed to revise it. The misperception is specific and consequential — certain facts about themselves, about someone close, about the world, about the future — held in a shape evidence keeps failing to dislodge. They do not experience this as delusion; they experience themselves as someone who sees clearly while others miss what seems obvious to them.
+
+**56. PRETENSE.** This person performs qualities they do not have. The performance is not aspirational — it does not resolve into acquired capability over time. It persists. In conversation, they invoke expertise they don't possess, experiences they haven't had, depth of understanding they haven't earned. Those who know the domain catch them quickly; those who don't are often impressed. They are not unaware of the gap; they manage it with ongoing effort, substituting performance for the capability that isn't there.
+
+**57. CRUELTY.** When this person sees someone they dislike suffer, something in them registers as satisfied. The satisfaction is not proportioned to offense — it persists past any accounting of what the person did. They organize attention around bad outcomes for specific people or categories. The orientation may be contained, remaining in private imagination without direct action, or it may leak into ordinary interactions through small choices — the extra turn of the knife in a remark, the noticed-and-not-offered help. It is positive orientation toward pain, not its mere permission.
+
+**58. BITTERNESS.** This person carries the affective residue of what was supposed to come but didn't — a career that should have landed, recognition that never arrived, a life shape that was owed by some reckoning that hasn't paid out. The state is not anger at a specific wrong. It is a diffuse coloring across daily experience. Ordinary goods are registered through the lens of what's still withheld. When others succeed, the response is not clean jealousy but something quieter — the pattern confirming itself. Good things arriving now do not quite land as given; they land as overdue.
+
+**59. ENMESHMENT.** This person's functioning is predicated on continuous connection with a specific other. When the other is present and regulated, they function; when the other is distressed or away, they dysregulate. They may call this devotion, love, or partnership. Others who have watched may call it fusion. The distinguishing question is whether they can be apart without their own ground giving way. Attunement to a genuinely dependent other — a child with special needs, a declining parent — looks similar from outside but is structurally different: there the dependency is real and the attunement is called for.
+
+#### v0.2.3 additions
+
+**60. KINDNESS.** This person acts for others' benefit in ordinary encounters without waiting for crisis or visible suffering. They extend the small gesture — the door held, the help offered before asked, the attention given to someone who could have been overlooked. The kindness does not require that others earn it or notice it. They are as considerate with strangers who will never reciprocate as with those who might. It is not a calculation; it is how they move through days.
+
+**61. RESPECT.** This person recognizes worth where it exists — in another's demonstrated competence, in a tradition that has held up, in work done well, in a perspective tested by time. They treat what they respect differently than what they don't, and the difference shows in how they listen, cite, defer. They extend the recognition even when nothing would be gained by it, and they withhold it when nothing would be gained by withholding. Their self-respect operates the same way — stable, updating on evidence, not inflated.
+
+**62. WARMTH.** This person meets others with openness. Strangers find them approachable; long-time friends find them available. There is an affective quality in how they occupy social space — others feel a little more at ease when they are present. The warmth does not disappear when the audience leaves, and it is not calibrated to who might be useful. Some people arrange their interior to be hospitable; for this person, it seems to be the baseline.
+
+**63. CONTEMPT.** This person regards certain others as fundamentally lesser — not in any single domain, but in their worth as persons. The judgment generalizes past any specific failure. When they speak about those they hold in contempt, the register is distinctive — a quiet dismissiveness, a reluctance to give full attention, a way of handling the other's words as if they did not quite register. The contempt often travels with an elevated view of themselves; the diminishment of others completes a picture in which they are above.
+
+**64. SELF-CONTEMPT.** When this person succeeds, the success does not quite land as theirs. They discount it, find the luck in it, or move on before acknowledgment arrives. When praise is offered, they hear it as miscalibrated. The self-assessment is not a performance — it is a genuine baseline that does not lift when evidence supports lifting. Corrective feedback lands as confirmation of inadequacy rather than as guidance for change. The self stays at the center; what changes is what's felt about it.
+
+**65. ARROGANCE.** This person holds a view of their own capabilities that exceeds what evidence supports. The self-assessment does not track what they have actually demonstrated; it exceeds it. When outperformed, the outperformance is explained away — conditions were different, or the victory was incidental. When taught, the teaching lands as tolerated rather than received. They are confident in domains where confidence is not warranted, and they treat the suggestion that they might be wrong as a category error. Others adjust around this rather than surface the gap.
+
+**66. SCHADENFREUDE.** When someone this person resents or dislikes suffers a setback, something in them registers as pleased. The pleasure is not narrowly proportioned to what was deserved — it extends past any fair accounting into enjoyment of the suffering itself. They sometimes review the news repeatedly. In private they replay it. The object can be specific (a rival) or categorical (a group they see as opposed), but the pattern is the same: another's misfortune lands as something good.
+
+---
+
+### STAGE 2 — Forced-Choice Assessment
+
+**Instrument type.** Forced-choice. Each scenario presents a situation activating two commitments at comparable intensity, then offers two resolutions (dyads) or four resolutions (multi-commitment). Neither option is labeled with the commitment it represents. Options are calibrated to be psychologically plausible and roughly balanced in surface appeal.
+
+#### Stage 2A — Dyad Scenarios
+
+28 dyads × 3 scenarios = 84 scenarios. (v0.2.1: 3 dyads added; v0.2.3: Dyad 22 replaced by KINDNESS vs CRUELTY; 4 new dyads — Dyad 25 COMPASSION vs SCHADENFREUDE, Dyad 26 RESPECT vs CONTEMPT, Dyad 27 HUMILITY vs ARROGANCE, Dyad 28 HUMILITY vs SELF-CONTEMPT.)
+
+**Response format.** A | B | Neither fits my experience.
+
+**Scoring convention (scorer-facing, not shown to respondent).** Consistency across the three scenarios per dyad signals which commitment dominates. A split indicates near-balance; triggers follow-up in Stage 2 multi-commitment.
+
+---
+
+##### Dyad 1 — TRUTH vs APPROVAL
+
+**1.1.** You're in a long meeting where a senior person — someone whose respect matters to you — has been building an argument to a conclusion that you believe is wrong in a specific, identifiable way. They have asked for reactions. The room has generally nodded along. You have a clear sense of what's off. Speaking up now would be socially costly.
+- A. You say what you see. You accept the social cost.
+- B. You stay quiet, planning to raise the concern later in a lower-stakes context.
+
+**1.2.** A close friend shows you something they've been working on for months — a plan, a piece of work, a project they care about. They're vulnerable about it and clearly want encouragement. On examination, it has a substantial flaw that makes the work significantly weaker than they think. They ask what you think.
+- A. You tell them what you see — gently, but clearly enough that they understand the flaw.
+- B. You praise what's working and deflect the deeper issue for now.
+
+**1.3.** At a social dinner, someone states with casual confidence a claim in a domain where you have real expertise. The claim is wrong in a way that matters. Correcting them would be embarrassing for them in front of the group.
+- A. You gently correct the claim, absorbing the small social friction.
+- B. You let it pass.
+
+##### Dyad 2 — HARMLESSNESS vs FAIRNESS
+
+**2.1.** You manage someone who has consistently underperformed despite clear feedback and genuine support. The fair decision is to let them go. You also know their family is in a hard stretch and losing this job will land them in real difficulty.
+- A. You make the fair decision.
+- B. You find a way to keep them until their circumstances stabilize.
+
+**2.2.** A long-standing collaborator breaches an agreement that's central to your shared work, in a way that damages the project. Calling it out publicly will shame them; letting it pass signals the agreement doesn't really bind.
+- A. You raise it in the group, framed clearly.
+- B. You handle it privately.
+
+**2.3.** Someone you're responsible for has committed a wrong that warrants real consequence. A fair consequence will cause substantial suffering to people who did nothing.
+- A. You impose the fair consequence.
+- B. You soften the response to protect the third parties.
+
+##### Dyad 3 — CALLING vs SELF-PRESERVATION
+
+**3.1.** A project you believe in asks you to take a significant pay cut and sustained uncertainty for the next year or more. Your family depends on your income.
+- A. You take the project.
+- B. You pass.
+
+**3.2.** Speaking publicly on a topic you've thought hard about would advance what you care about. It would also make you a visible target in ways that would cost you professionally and possibly personally.
+- A. You speak.
+- B. You stay quiet publicly.
+
+**3.3.** Your work requires spending extended time in a region where the statistical risk to you is real. You could do different work that doesn't require this.
+- A. You go.
+- B. You redirect.
+
+##### Dyad 4 — PROTECTIVE-LOVE vs LIBERTY
+
+**4.1.** Your adolescent wants to do something reasonable for their age that carries a small but real chance of serious injury. Most families say yes.
+- A. You say yes.
+- B. You say no, or you heavily condition the yes.
+
+**4.2.** Your aging parent is determined to continue living alone in a way that's becoming genuinely unsafe. They are lucid. They understand the risks and they want to stay.
+- A. You arrange for supports that respect their choice.
+- B. You push hard for them to move to a safer situation.
+
+**4.3.** An adult you love is making a deliberate choice about their own life that you believe will lead to substantial harm — harm to them, not to others. They are clear-eyed.
+- A. You respect the choice.
+- B. You continue to oppose it.
+
+##### Dyad 5 — COMFORT vs CRAFT
+
+**5.1.** You've been working on something for hours. It's done-enough to release. You can see specific improvements you could make, and you're tired.
+- A. You push through the improvements.
+- B. You ship as-is.
+
+**5.2.** You've just noticed a defect in work you're responsible for. Fixing it requires restarting a process that took most of the previous day. No one else would catch it.
+- A. You restart and fix it.
+- B. You ship without fixing.
+
+**5.3.** You're mid-project and realize the approach you've been taking has a fundamental problem. Starting over with the better approach means losing most of the work done so far.
+- A. You start over.
+- B. You finish on the current path.
+
+##### Dyad 6 — TRIBALISM vs TRUTH
+
+**6.1.** Someone in your political or ideological tribe makes a claim, publicly, that you know to be factually wrong in a way that matters. Correcting it will help the outsiders.
+- A. You correct it.
+- B. You let it stand.
+
+**6.2.** Your family or community has a shared narrative about a significant past event. You've come to believe the narrative is incomplete in a way that reflects poorly on your side.
+- A. You raise it.
+- B. You let it rest.
+
+**6.3.** A friend whose movement you've supported is credibly accused of something you now believe is substantially true.
+- A. You say what you believe, in whatever forum is appropriate.
+- B. You stay silent publicly.
+
+##### Dyad 7 — APPRECIATION vs ENTITLEMENT (near-enemy)
+
+**7.1.** You receive significant recognition for work you've done. Two framings are available: good luck finally finding you, or long-overdue acknowledgment.
+- A. "I'm lucky this landed — many people do similar work and don't get noticed."
+- B. "This took too long to arrive. Glad it finally did."
+
+**7.2.** You've received significant generosity from a relationship over time. You find yourself thinking about what you owe back.
+- A. You think of it as returning gifts.
+- B. You think of it as settling accounts.
+
+**7.3.** Recent circumstances have worked in your favor — a sequence of things you didn't engineer went your way.
+- A. "This is a windfall I didn't earn."
+- B. "Things are finally going the way they should have all along."
+
+##### Dyad 8 — JOY vs PLEASURE (near-enemy)
+
+**8.1.** A friend achieves something significant that you've been working toward for years, and they get there before you do.
+- A. You feel genuine gladness for them.
+- B. You feel something more complicated.
+
+**8.2.** You have a free evening. The choice is between attending a celebration of a colleague's accomplishment or a solitary activity you know you will enjoy.
+- A. You go to the celebration.
+- B. You stay in.
+
+**8.3.** A colleague's project is taking off. They're excited to tell you about it. As you listen, you notice where your attention actually is.
+- A. You find yourself drawn into their excitement.
+- B. You find yourself half-tracking, mostly waiting for your turn to speak.
+
+##### Dyad 9 — COMPASSION vs PITY (near-enemy)
+
+**9.1.** Someone you regard as less capable than yourself is going through a hard time. They ask for help.
+- A. You approach as an equal who has been in similar places.
+- B. You approach as someone more fortunate extending aid.
+
+**9.2.** A visibly unwell stranger is in your path. You notice your response.
+- A. You feel something that regards them as a fellow being.
+- B. You feel concern along with relief that you're not in their situation.
+
+**9.3.** A friend whose life has gone badly is asking for time with you. You notice the quality of what you bring.
+- A. Full presence with them as equal.
+- B. Attentive support with undercurrent of caretaker-to-recipient.
+
+##### Dyad 10 — HUMILITY vs FALSE HUMILITY (near-enemy)
+
+**10.1.** Someone asks you to describe your expertise in a domain where you do actually have substantial expertise.
+- A. You describe it accurately.
+- B. You deflect.
+
+**10.2.** You've done something well and you receive public praise.
+- A. You take it in.
+- B. You redirect.
+
+**10.3.** A younger person asks for advice about whether to pursue a field you've succeeded in.
+- A. You tell them what you actually know about it.
+- B. You downplay your experience or overwhelm them with disclaimers.
+
+##### Dyad 11 — EQUANIMITY vs INDIFFERENCE (near-enemy)
+
+**11.1.** Someone you love is going through something painful that you cannot fix. You visit them.
+- A. You are present with them.
+- B. You visit briefly and keep a certain distance.
+
+**11.2.** You receive significant bad news about something that matters. A day later, someone asks how you're doing.
+- A. You answer honestly, without either drama or dismissal.
+- B. You say "I'm fine" in the sense that you're not paying attention to the news.
+
+**11.3.** A public event has produced suffering that you can do nothing about. Over the following week, you notice your orientation.
+- A. You carry a steady awareness of it.
+- B. You notice you've mostly stopped thinking about it.
+
+##### Dyad 12 — FORGIVENESS vs CAPITULATION (near-enemy)
+
+**12.1.** Someone who wronged you asks for forgiveness.
+- A. You release your resentment while maintaining your judgment that what they did was wrong.
+- B. You release both your resentment and your assessment of the wrong.
+
+**12.2.** Someone who wronged you has not asked for forgiveness, and the pattern that produced the wrong continues.
+- A. You release your resentment while maintaining judgment and distance.
+- B. You decide to let it go entirely and re-engage as if the pattern isn't there.
+
+**12.3.** A close relationship has recurring harm in it.
+- A. You release the grievance about specific past instances while keeping clear-eyed about the pattern.
+- B. You keep forgiving each instance without letting the pattern change how you engage.
+
+##### Dyad 13 — CALLING vs INTIMACY
+
+**13.1.** Your partner needs you present — actually present, for an extended stretch — during a period when your work is pulling hardest.
+- A. You show up for the partnership.
+- B. You stay on the work.
+
+**13.2.** A long-term choice splits into a version that advances your mission and a version that deepens the partnership.
+- A. You choose the partnership version.
+- B. You choose the mission version.
+
+**13.3.** Your partner asks: "What's more important to you — this relationship or your work?"
+- A. "You are."
+- B. "I can't separate them in the way the question asks."
+
+##### Dyad 14 — SELF-IMAGE vs TRUTH
+
+**14.1.** A pattern you've been blaming on others in your life turns out, on reflection, to be substantially your own.
+- A. You name it accurately.
+- B. You find a version that salvages the self-view.
+
+**14.2.** Someone close to you offers specific, fair, unflattering feedback.
+- A. You take it in. You test it.
+- B. You find reasons why the feedback doesn't quite apply.
+
+**14.3.** You realize a story you've told yourself and others about your own past is partly or wholly false.
+- A. You acknowledge it.
+- B. You soften the acknowledgment.
+
+##### Dyad 15 — HOPE vs TRUTH
+
+**15.1.** A project you've invested years in shows clear signs of not working.
+- A. You hold the pattern as pattern. You update your expectation.
+- B. You hold the larger arc. These signs are what the ends of things look like before the breakthrough.
+
+**15.2.** Someone you love is in a condition where recovery is possible but unlikely.
+- A. You stay clear-eyed about the odds while being fully present.
+- B. You hold the possibility open, centrally.
+
+**15.3.** The future of something you care about depends on factors mostly out of your control. Evidence is mixed.
+- A. You orient toward the evidence.
+- B. You orient toward the possibility.
+
+##### Dyad 16 — STATUS vs CRAFT
+
+**16.1.** Two opportunities present themselves. One has substantially more prestige. The other is better work.
+- A. You take the better work.
+- B. You take the more prestigious option.
+
+**16.2.** A piece of your work has a flaw only you would notice. Fixing it adds nothing to how the work is received.
+- A. You fix it.
+- B. You ship as-is.
+
+**16.3.** You can take credit for a success that came mostly from someone else's work, or you can attribute the success where it mostly belongs.
+- A. You attribute accurately.
+- B. You accept the credit that's being offered.
+
+##### Dyad 17 — CONSISTENCY vs TRUTH
+
+**17.1.** A position you've argued for publicly turns out to be wrong, in a way you can now see clearly.
+- A. You walk it back.
+- B. You let it fade.
+
+**17.2.** A decision you made and defended has produced outcomes that suggest the decision was wrong.
+- A. You acknowledge it.
+- B. You hold the line.
+
+**17.3.** Your identity has been built partly on a commitment that you now have substantial reason to doubt.
+- A. You revise.
+- B. You hold on.
+
+##### Dyad 18 — TRIBALISM vs FAIRNESS
+
+**18.1.** A member of your group has broken a rule that you would call out immediately if a non-member broke it.
+- A. You call it out.
+- B. You handle it internally.
+
+**18.2.** You have a benefit you can allocate. A deserving outsider and a less-deserving member of your group are both available.
+- A. You give it to the outsider.
+- B. You give it to the member.
+
+**18.3.** Your group is in competition with another. A rule advantages your group in a way you recognize as unfair.
+- A. You raise the issue.
+- B. You accept the rule as it is.
+
+##### Dyad 19 — JOY vs JEALOUSY
+
+**19.1.** A close friend calls you with significant good news — something they've been working toward for a long time.
+- A. Gladness, full and relatively clean.
+- B. Gladness mixed with something harder to name — a diminishment, a pressure to locate the ways this might be less than it sounds.
+
+**19.2.** A peer — someone you regard as a rough equal — receives substantial public recognition for the kind of work you also do.
+- A. Your first response is interest in what they did well and gladness that it landed.
+- B. Your first response is comparison, finding reasons the recognition is somewhat inflated or misplaced.
+
+**19.3.** Someone in your social circle is in a sustained period of visible thriving while yours is not.
+- A. You seek them out.
+- B. You find reasons to see them less.
+
+##### Dyad 20 — GRASPING vs EQUANIMITY
+
+**20.1.** An object you have held for a long time is going to be lost. The loss is not catastrophic but it is not small.
+- A. You feel the coming loss clearly and stay present with it.
+- B. You tighten. You grip what remains, negotiate with the situation.
+
+**20.2.** Someone close to you is changing in ways that move them away from the version you have known.
+- A. You let the change be what it is.
+- B. You try to hold the relationship in its current shape.
+
+**20.3.** A significant outcome you have been working toward is not going to come.
+- A. You adjust.
+- B. You resist. You keep working the angle long past the point of usefulness.
+
+##### Dyad 21 — FEROCITY vs COMPASSION
+
+**21.1.** You witness someone harming another person — real harm, in front of you. Intervening requires mounting force. The harm-doer has their own suffering behind their behavior.
+- A. You mount the force. You stop the harm.
+- B. You intervene with restraint, attending to both.
+
+**21.2.** A person in your care has been significantly injured by someone whose own life situation is desperate.
+- A. You respond in proportion to what was done, not to what was behind it.
+- B. You respond with the full context present.
+
+**21.3.** A threat to an institution or community you care about is coming from a specific person. Defending will cost them substantially.
+- A. You defend.
+- B. You look for a response that defends without obliterating the person beyond what is necessary.
+
+##### Dyad 22 — KINDNESS vs CRUELTY
+
+**22.1.** You encounter a stranger in an ordinary public setting — a store, a street, a hallway — where a small kindness would cost you nothing and take almost no time. No one you know will ever see whether you extend it.
+- A. You extend the kindness.
+- B. You keep moving, without reason.
+
+**22.2.** You're in a routine interaction with someone you dislike. They have not wronged you and are conducting themselves reasonably today — nothing requires defensive posture. You have latitude in how warmly or coolly you conduct yourself.
+- A. You conduct yourself with the same ordinary considerateness you'd extend to anyone.
+- B. You allow a cooler register; the considerateness is withheld.
+
+**22.3.** You have an opportunity to do a small covert unkindness to someone you dislike — a remark that lands as a barb while reading as ordinary; a withheld piece of information that would have been useful; an absence at a moment when presence would have been appreciated.
+- A. You don't take the opportunity.
+- B. You take it, and the taking has its own pull.
+
+##### Dyad 23 — INTIMACY vs ENMESHMENT
+
+**23.1.** Your partner is going away for two weeks for reasons that have nothing to do with you.
+- A. You feel the absence clearly and continue to function well.
+- B. You feel the absence as dysregulation; your own ground moves.
+
+**23.2.** In an extended conversation with your partner, they describe a plan that does not include you in its central arc.
+- A. You are interested in the plan as theirs; you support it.
+- B. You feel something threatening about the plan's separateness from you.
+
+**23.3.** A period of several days passes without meaningful contact with the person closest to you.
+- A. You notice the absence without it shaping your functioning.
+- B. The quality of your days is substantially altered by the absence.
+
+##### Dyad 24 — GRATITUDE vs BITTERNESS
+
+**24.1.** A morning of ordinary goods — you're alive, safe, able. You notice what arises.
+- A. Something like received-ness. You catch yourself grateful for nothing in particular.
+- B. Something quieter. The ordinary goods register against what hasn't arrived.
+
+**24.2.** Someone you know receives recognition that by any fair reckoning should have also come to you by now.
+- A. You register the recognition as theirs. What hasn't come to you is a separate matter handled separately.
+- B. Their recognition highlights what's been withheld from you; the two cannot be separated cleanly.
+
+**24.3.** A decade's work is reviewed in summary — what went right, what didn't, what's owed, what's been given.
+- A. The summary tilts toward given. You feel carried by circumstance more than owed by it.
+- B. The summary tilts toward withheld. A pattern of not-quite-arriving you've learned to expect.
+
+##### Dyad 25 — COMPASSION vs SCHADENFREUDE
+
+**25.1.** A person who caused you real harm years ago has fallen on public difficulty. Their situation is visible to you.
+- A. You feel something that regards their difficulty as a fellow being's difficulty.
+- B. You feel something pleased rather than sorrowful; the pleasure outlasts any fair accounting.
+
+**25.2.** A category of people you hold in contempt is suffering collectively from a policy shift. You notice your response.
+- A. The suffering registers as suffering.
+- B. The suffering registers as something good, and the registering persists.
+
+**25.3.** In imagination — not action — you notice a scene of someone you dislike experiencing serious misfortune. You stay with the scene.
+- A. Staying with the scene becomes uncomfortable.
+- B. Staying with the scene has its own satisfaction, specifically in the misfortune itself, and the satisfaction does not abate.
+
+##### Dyad 26 — RESPECT vs CONTEMPT
+
+**26.1.** You disagree strongly with someone on an important matter. They have made their case articulately, though you think they're wrong.
+- A. You register what they've done well — the articulation, the logic, the seriousness — while disagreeing with the conclusion.
+- B. You find yourself dismissing them as a person, not just disagreeing with the position.
+
+**26.2.** Someone whose general direction you dislike produces work in a specific domain that is, by any fair measure, excellent.
+- A. You acknowledge the excellence in that domain.
+- B. You find the work's excellence suspect in ways that conveniently align with your broader dismissal.
+
+**26.3.** You are in a room with someone whose presence you would not ordinarily seek and whose standing you regard as below yours. They address a substantive point.
+- A. You listen and respond as you would to anyone making a substantive point.
+- B. You register their contribution through a filter that makes it harder to receive.
+
+##### Dyad 27 — HUMILITY vs ARROGANCE
+
+**27.1.** You have been outperformed on a task in a domain you regard as your own. The person who outperformed you is less credentialed than you are.
+- A. You register the outperformance as information about the domain and your understanding of it.
+- B. You find explanations for why the outperformance doesn't really count — conditions, luck, contingency.
+
+**27.2.** Someone offers you corrective feedback on something you did. The feedback lands accurately.
+- A. You take it in, test it, and adjust.
+- B. You find reasons the feedback is off — the context, the framing, the timing, the specifics.
+
+**27.3.** You are in a meeting where your area of expertise is being discussed. A junior colleague raises a point that points to something you missed.
+- A. You acknowledge the point directly — that's a good catch, I missed that.
+- B. You subsume the point into the larger frame you're holding, as if it were already accounted for.
+
+##### Dyad 28 — HUMILITY vs SELF-CONTEMPT
+
+**28.1.** You have just completed a piece of work that by any fair measure is good — not perfect, but good. You sit with the assessment.
+- A. You register the quality honestly, noting both what works and what could be better.
+- B. You discount the successes, finding the flaws that seem more real than what works, and moving on before acknowledgment settles.
+
+**28.2.** Someone whose judgment you respect has just told you, specifically and clearly, that you did something well.
+- A. You take the assessment as information and let it inform your sense of what you can do.
+- B. You receive the praise while holding a private frame in which the assessment doesn't match what you know about yourself.
+
+**28.3.** Corrective feedback has landed. The feedback is specific and actionable.
+- A. You take it as useful information for adjustment.
+- B. You take it as a piece of evidence fitting the self-view you already hold.
+
+*Scorer note on the three HUMILITY-involving dyads: Dyad 10 option B probes tactical performance (deflection, disclaimers, audience-calibrated). Dyad 27 option B probes inflation (explaining-away-of-outperformance, resistance to being taught). Dyad 28 option B probes genuine non-performed deflation (evidence-of-success does not lift the baseline). A respondent selecting B across all three is rare and diagnostic; selecting B in one but not others is expected and informative.*
+
+---
+
+#### Stage 2B — Multi-Commitment Scenarios
+
+35 scenarios, each surfacing 3-6 commitments with 4 response options. Post-revision calibration applied to all scenarios for option-signaling neutrality and scenario-signaling neutrality. (v0.2.1: 4 scenarios added 2M.26–2M.29; v0.2.3: 6 scenarios added 2M.30–2M.35 and 2M.26 Activates list updated CRUELTY → SCHADENFREUDE per direct-opposition correction.)
+
+**Response format.** A | B | C | D | This situation does not map to my experience.
+
+---
+
+**2M.1 — The reception.** A project you have worked on for years is being received tonight. Reviews are mostly positive with one sharp critical one. At the reception: someone who made the project possible but won't speak up; a peer whose similar project last year did not land as well; a senior figure whose approval would shape the next chapter; your partner who has been through the years of the work. *Activates:* CALLING, CRAFT, APPROVAL, INTIMACY, HUMILITY, JOY.
+- A. You circulate fully. Meaningful time with everyone.
+- B. You focus on the senior figure. The next chapter opens here.
+- C. You focus on the person who made it possible. You credit them publicly.
+- D. You stay with your partner primarily. You greet others as they approach.
+
+**2M.2 — The funeral.** Someone important to you has died. The arrangements fall partly to you. Several people have claims on your presence; your own grief is there; a work deadline is under pressure. *Activates:* INTIMACY, COMPASSION, EQUANIMITY, GRASPING, HOPE, SANCTITY.
+- A. You manage arrangements, support the family, carry the week with composure.
+- B. You let your own grief be present alongside everything else. Ask for help.
+- C. You work the deadline at the edges of the week.
+- D. You release the deadline, the arrangements, most of the adjacent demands. You are present with your own grief and with the family.
+
+**2M.3 — The child's crisis.** Your adolescent or young-adult child is in a serious situation — hospital visit, legal matter, mental-health episode. The child's autonomy, their safety, an institution not handling it well, your partner's different read all converge. *Activates:* PROTECTIVE-LOVE, LIBERTY, TRUST, HARMLESSNESS, FAIRNESS, INTIMACY.
+- A. You override the institution, override your partner's read, take control.
+- B. You trust the institution with input. You align with your partner before acting.
+- C. You side with your child's reading of what they need.
+- D. You slow the situation. You ask more questions of everyone before acting. You accept the cost of the slower response and the risk that something could escalate while you are gathering information.
+
+**2M.4 — The institutional failure.** An institution you have been loyal to for years is doing something you now believe is wrong. You have some capacity to influence. *Activates:* TRIBALISM, TRUTH, FAIRNESS, AUTHORITY, CALLING, WITNESS.
+- A. You speak publicly.
+- B. You raise it internally with everything you have.
+- C. You raise it internally; if the response is inadequate, you leave rather than go public. Your energy goes toward other work where you can be effective; the institution's problem remains unsolved from your position outside it.
+- D. You stay and continue to work. Your continued work is the answer.
+
+**2M.5 — The gift.** Someone you did not expect has done something significant for you. They want nothing back explicitly, but you can feel the weight. *Activates:* APPRECIATION, GRATITUDE, ENTITLEMENT, SELF-IMAGE, JOY, INTIMACY.
+- A. You accept fully and warmly. Thank you specifically.
+- B. You accept with discomfort. Feel obligation. Work to clear the debt.
+- C. You accept easily. Currents even out.
+- D. You look for motivations. Accept with partial warmth.
+
+**2M.6 — The old friend returned.** Someone you were close to fifteen years ago is back. Life has happened to them. Some changes are clearly for the worse. *Activates:* INTIMACY, WITNESS, TRUTH, ABANDONMENT, COMPASSION, GRASPING.
+- A. You spend time with them as they are now.
+- B. You look for the old person through the changes.
+- C. Warm but distant.
+- D. You name what you are noticing directly — that they have changed, that you have changed, that the old friendship is gone. You accept that the directness may close the connection entirely.
+
+**2M.7 — The creative failure.** Significant work you've poured yourself into has not worked. The reception is clear. *Activates:* CRAFT, CALLING, HUMILIATION, WITNESS, TRUTH, HOPE.
+- A. You name the flaws accurately and take responsibility.
+- B. You distribute the failure across circumstances.
+- C. You collapse for a period.
+- D. You return to the work.
+
+**2M.8 — The child's autonomy.** Your growing child is making a reasonable but not-what-you-would-choose choice. *Activates:* PROTECTIVE-LOVE, LIBERTY, TRUST, HOPE, WITNESS, GRASPING.
+- A. You support the choice actively.
+- B. You support the choice quietly.
+- C. You continue to raise the alternative.
+- D. You support the choice and also name your own disappointment. You include both in the relationship; your honesty may or may not land well for them.
+
+**2M.9 — The partner's depression.** Your partner has entered a stretch of real depression. Nothing you can do will fix it. *Activates:* INTIMACY, HARMLESSNESS, EQUANIMITY, HOPE, TRUST, CALLING.
+- A. You stay present in full. Your own work, rest, and stability substantially reduce; the partnership's needs organize your life until the depression shifts.
+- B. You stay present while protecting your own ground. You are with them at the edges of your own work; you keep yourself functioning because a collapsed you is no use to them.
+- C. You take partial distance.
+- D. You treat the situation as ongoing negotiation. Presence when presence helps; distance when it does not; explicit conversation when either of you notices the arrangement is off.
+
+**2M.10 — Wealth arriving.** An unexpected windfall has arrived — substantial but not life-changing. You are not in need. *Activates:* CALLING, CRAFT, COMFORT, PLEASURE, APPRECIATION, GRASPING.
+- A. Most toward the mission.
+- B. Use it to give yourself space for the work.
+- C. Something meaningful non-work, save the rest.
+- D. Save and protect.
+
+**2M.11 — The move.** A significant professional opportunity requires moving. Your partner is willing but not enthusiastic. *Activates:* CALLING, INTIMACY, COMFORT, NOVELTY, TRUST, GRASPING.
+- A. You take it.
+- B. You decline.
+- C. You negotiate a version.
+- D. You bring the decision to your partner. Their enthusiasm or mere-willingness decides it. You are willing to lose the opportunity if they are not wholehearted.
+
+**2M.12 — The parent's decline.** Your aging parent is declining slowly but unmistakably. Family members have different readings. *Activates:* PROTECTIVE-LOVE, EQUANIMITY, HARMLESSNESS, HOPE, INTIMACY, FAIRNESS.
+- A. You take the lead.
+- B. You share the lead with siblings.
+- C. Present in daily life but don't drive arrangements.
+- D. Hold back. Another family member is better positioned.
+
+**2M.13 — The public figure.** A person you have admired for their public contribution is credibly accused of private wrongdoing. Evidence is strong but not incontestable. *Activates:* FAIRNESS, TRIBALISM, TRUTH, COMPASSION, AUTHORITY, WITNESS.
+- A. You update your assessment. Contribution stands; wrongdoing also stands; the person is now both to you.
+- B. You suspend judgment until the evidence is closer to incontestable. You apply the same evidentiary standard you would apply to anyone similarly accused.
+- C. You remain in doubt because the figure matters to you. You notice that evidence accepted against others is being scrutinized more carefully here; you are not sure whether the extra scrutiny is appropriate or loyalty-driven.
+- D. You defend the contribution and treat the accusations as separate. Whatever they did privately does not bear on what they contributed publicly.
+
+**2M.14 — The routine interrupted.** You have set aside a time for a routine you maintain — morning practice, exercise, reading, writing, whatever holds the shape of this time. Today, something specific has pulled at you. *Activates:* EQUANIMITY, WONDER, GRATITUDE, CALLING, CRAFT, HOPE.
+- A. You keep the ritual exactly as usual. Consistency is the point; the specific pulls will still be there in an hour.
+- B. You begin the ritual, address the specific pull for a few minutes when it becomes loud, return. The hour is split but not abandoned.
+- C. You do not begin the ritual today. The pull is what today needs; you give it the hour and return to the ritual tomorrow.
+- D. You begin the ritual and let it take whatever form the day calls for — movement, silence, writing, simply sitting with what is present. The specific practice varies; the set-aside time holds.
+
+**2M.15 — The gathering.** Friends at your home. Partway through, the conversation goes where it matters — someone is struggling. *Activates:* INTIMACY, PLAYFULNESS, APPROVAL, WONDER, ENTHUSIASM, SANCTITY.
+- A. You meet the moment fully.
+- B. You meet briefly and bring the evening back to lighter.
+- C. You hold space privately.
+- D. You do not steer the evening's direction. Whatever the room does with the offering is the evening. You stay present without managing.
+
+**2M.16 — The friend's unwise choice.** Someone close making a choice you believe will harm them. *Activates:* INTIMACY, LIBERTY, HARMLESSNESS, TRUTH, COMPASSION, PROTECTIVE-LOVE.
+- A. You support.
+- B. You name concerns once, then support.
+- C. You continue to name concerns.
+- D. You actively oppose. You continue to work against the choice in whatever ways are available to you. You accept that this may damage the relationship.
+
+**2M.17 — The community rupture.** Your community or organization is splitting. Mixed ties on both sides. *Activates:* TRIBALISM, FAIRNESS, TRUTH, INTIMACY, AUTHORITY, SANCTITY.
+- A. You go with the side whose principles you share, accepting the loss of the friendships on the other side.
+- B. You choose based on where the stronger relational ties pull. Your closest friends are split; you go with the majority of your ties even though the alignment with principle is mixed.
+- C. You try to stay bridging.
+- D. You step back from the community entirely.
+
+**2M.18 — The betrayal.** Someone trusted has betrayed trust in a material way. They acknowledge it; they want to repair. *Activates:* INTIMACY, TRUTH, FORGIVENESS, FAIRNESS, WITNESS, GRASPING.
+- A. You stay in the relationship and actively participate in rebuilding. You both know the betrayal happened; you both do the work to create whatever the new relationship becomes.
+- B. You end the relationship. Trust broken at that level does not reconstruct.
+- C. You hold the relationship at distance while they rebuild credibility.
+- D. You release the resentment without driving reconstruction. Your inner ground is clear; you engage from accurate perception of what happened and of what the person is capable of. The relationship continues only to the degree the other person makes it continue.
+
+**2M.19 — The adult child's life.** Your adult child has made a significant life choice and has asked for your response. *Activates:* PROTECTIVE-LOVE, LIBERTY, APPRECIATION, INTIMACY, HOPE, WITNESS.
+- A. Full support, hold assessment private.
+- B. Full support, offer honest assessment.
+- C. Support with specific question or two.
+- D. You support and actively celebrate the choice's strengths. If the weaknesses matter, they surface on their own; you are not the one bringing them up.
+
+**2M.20 — The confrontation.** Physical confrontation unfolding. Aggressor threatening someone who cannot defend themselves. Not your target. *Activates:* FEROCITY, SELF-PRESERVATION, HARMLESSNESS, COMPASSION, FAIRNESS, WITNESS.
+- A. You intervene directly and immediately.
+- B. You intervene with what you have without mounting physical force.
+- C. You call for help and position yourself to document.
+- D. You step back.
+
+**2M.21 — The lost years.** A period of your life was largely a mistake. Substantial years spent. *Activates:* TRUTH, HUMILITY, HOPE, FORGIVENESS, WITNESS, CALLING.
+- A. You take the loss fully and direct what remains. The years are gone; the work now is to use what remains well.
+- B. You find the continuity. The mistaken years produced learning, connections, capacities that matter now.
+- C. You attribute the mistake to circumstances that shaped the path.
+- D. You stay with the unclaimed grief of the loss. How long this takes is what it takes.
+
+**2M.22 — The new love.** Early period of significant relationship. Real and specific. Showing you parts of yourself. *Activates:* INTIMACY, TRUST, WONDER, CRAFT, CALLING, SELF-IMAGE.
+- A. You move fully in.
+- B. You move in while watching yourself.
+- C. You move slowly.
+- D. You commit fully and stop examining. Whether this is the relationship or a repeat of old patterns is not a question you are holding; you are in it.
+
+**2M.23 — The injustice.** Specific injustice witnessed. Speaking up will cost. The wronged person has not asked for intervention. *Activates:* FAIRNESS, HARMLESSNESS, FEROCITY, WITNESS, SELF-PRESERVATION, COMPASSION.
+- A. You speak up clearly. The situation requires witness beyond private silence, and you accept the cost of saying so publicly.
+- B. You speak privately with the person first.
+- C. You speak up in proportion to cost and capacity.
+- D. You do what is within your specific scope.
+
+**2M.24 — The work ending.** A role or project central to your identity is ending. *Activates:* CALLING, GRASPING, EQUANIMITY, APPRECIATION, HOPE, INTIMACY.
+- A. You let it end cleanly.
+- B. You extend it where you can.
+- C. You release it completely and move deliberately into something new.
+- D. You take a period of unstructured time before the next thing. You do not have the next thing identified; you are willing to be without direction for a period.
+
+**2M.25 — The inner realization.** You have caught yourself in a pattern you have been maintaining at cost to others. You have been defending it with frameworks that were serving its concealment from yourself. *Activates:* WITNESS, TRUTH, HUMILITY, SELF-IMAGE, INTIMACY.
+- A. You name it to yourself and to the people most affected. You accept whatever falls out of the naming.
+- B. You change the behavior quietly without surfacing the pattern to others.
+- C. You soften the naming.
+- D. You resist the catching.
+
+**2M.26 — The enemy's collapse.** A public figure you have opposed for years and believe has caused substantial harm is now in sustained public difficulty — professional, legal, personal. The difficulty is real. Coverage is everywhere. *Activates:* COMPASSION, JOY, FAIRNESS, WITNESS, SCHADENFREUDE, SANCTITY.
+- A. You note the development without seeking more of it. The harm they caused does not become entertainment in their suffering.
+- B. You follow closely. You find satisfaction in the details.
+- C. You take a position on the justice of the outcome and move on.
+- D. You don't attend to it at all. Their situation isn't your business once they're out of positions of harm.
+
+**2M.27 — The partnership rhythm.** A long-standing primary relationship has settled into rhythms that feel wrong in a way you can't locate immediately. The rhythms include you managing their moods to keep your own ground, or them managing yours. Days of real separateness feel destabilizing to one or both of you. *Activates:* INTIMACY, ENMESHMENT, LIBERTY, EQUANIMITY, WITNESS, TRUTH.
+- A. You name what you are noticing directly and work toward the structural change that restores separateness as tolerable.
+- B. You quietly build more separateness into your life without naming it. Walk the change in rather than discussing it.
+- C. You conclude the rhythms are how you've come to love, and leave them alone.
+- D. You notice the pattern and work on your own ground; your side of the dysregulation can change without requiring them to change theirs first.
+
+**2M.28 — The unrecognized decade.** You are alone in a quiet hour thinking about the work of the last ten years — what was supposed to come, what did, what didn't. You feel the pull of two different accountings. *Activates:* GRATITUDE, BITTERNESS, HOPE, WITNESS, FORGIVENESS, TRUTH.
+- A. You count what's come — including unexpected goods and people you would not have predicted. The not-yet-arrived is noted but not central.
+- B. You count what hasn't come. The specific thing that was owed by any fair reckoning. You sit with what that has cost.
+- C. You try to hold both accountings; they won't fully reconcile, and you accept that.
+- D. You notice you've been keeping the account at all and wonder what releasing the accounting would require.
+
+**2M.29 — The two attunements.** You have two people in your life whose presence is woven deeply into your daily rhythm. One is a person with a long-term dependency that genuinely requires your continuous attention — a child with a chronic condition, an aging parent in cognitive decline, a sibling whose independence has not fully developed. The other is an independent adult partner or close friend whose life is also closely joined to yours. A period arises when both are briefly apart from you at the same time — a week where the dependent person is in respite care and the independent partner is traveling. *Activates:* PROTECTIVE-LOVE, ENMESHMENT, INTIMACY, EQUANIMITY, LIBERTY, WITNESS.
+- A. The dependent person's absence registers as concern about their care. The independent partner's absence registers as felt and continued-to-function-through — a different texture, both held without your own ground moving.
+- B. Both absences register similarly — the week feels like functioning is substantially disturbed because both are away. Their return restores.
+- C. The dependent person's absence is easier to hold than the independent partner's; you realize in the course of the week that the more destabilizing absence is the one that should have been the more tolerable one.
+- D. The dependent person's absence is the primary weight of the week. The partner's barely registers — you realize the dependency has crowded the partner's presence into a background you stopped noticing. The return reveals the imbalance rather than resolves it.
+
+**2M.30 — The outperformed meeting.** You are in a meeting where someone substantially younger and less credentialed has made an intervention that shows something you didn't see and should have. The room noticed. Your response will shape how you are regarded. *Activates:* HUMILITY, ARROGANCE, RESPECT, SELF-IMAGE, WITNESS, STATUS.
+- A. You acknowledge the intervention directly and credit the person publicly. The room sees you acknowledge being wrong.
+- B. You absorb the intervention as if you had already been considering it, moving forward without explicit credit.
+- C. You accept the point on the substance while subtly signaling that the framing was yours. Credit stays partly with you.
+- D. You find a reason why the intervention, while right in a narrow sense, misses something larger that only you would see.
+
+**2M.31 — The dismissed colleague.** A colleague you have held in quiet contempt for years has produced work that cannot be dismissed on merit. You are asked for a written assessment that will shape their advancement. *Activates:* RESPECT, CONTEMPT, FAIRNESS, SELF-IMAGE, WITNESS, STATUS.
+- A. You write the accurate assessment. Their work is strong; you say so.
+- B. You write a technically accurate assessment with qualifiers that preserve your prior frame — strong within a narrow band, with context-dependent caveats that soften the assessment.
+- C. You decline the task. Your position is too biased to be the right evaluator.
+- D. You write a careful assessment that foregrounds concerns proportionate to the work, so strengths and concerns balance roughly as your prior frame would have predicted.
+
+**2M.32 — The success that does not land.** You have completed a piece of work that is, by the assessment of people whose judgment you trust, good — maybe even important. You sit with it in a quiet hour. *Activates:* HUMILITY, SELF-CONTEMPT, CALLING, HOPE, CRAFT, TRUTH.
+- A. You register the quality honestly. You note what worked, what didn't, and you let the achievement settle.
+- B. You move on to the next piece of work before the acknowledgment can settle. The next thing is what matters; this is done.
+- C. You find the flaws that feel more real than what others have seen as strong. The praise is a misreading.
+- D. You share the work privately with people you trust to offer the corrective feedback the public reception didn't include.
+
+**2M.33 — The easy considerateness.** You are in an extended period of work that has pushed you to the edge of what you can sustain. Today several people cross your path: a stranger needing a small help; someone who has been consistently undermining you and is now asking a favor; an ordinary colleague making small talk. *Activates:* KINDNESS, WARMTH, SELF-PRESERVATION, CRUELTY, WITNESS, HARMLESSNESS.
+- A. You extend ordinary considerateness to the stranger and the colleague. With the undermining person, you decline the favor clearly and move on. The ordinary-colleague and stranger receive ordinary considerateness; the undermining person receives a clean refusal without performance or punishment.
+- B. You extend ordinary considerateness to all three, including the undermining person. The favor costs little; the consistency of kindness matters more than the history.
+- C. You extend considerateness to the stranger but reduce the register with both the colleague and the undermining person. At your edge, non-essential warmth is rationed.
+- D. You decline the favor from the undermining person; the decline is pointed — they register the refusal is specifically directed at them. The colleague and stranger receive normal kindness.
+
+**2M.34 — The closed chapter.** Someone wronged you materially some time ago. The wrong is settled — consequences have played out, time has passed, the situation is closed in the external sense. You notice your relationship to the memory. *Activates:* HARMLESSNESS, FORGIVENESS, RESENTMENT, WITNESS, EQUANIMITY, HOPE.
+- A. The memory no longer generates charge when it surfaces. The wrong is known but not carried.
+- B. The memory still produces a specific response — you replay what you should have said or done, or what consequence you would have wanted them to face. The replaying has a specific satisfaction.
+- C. On the surface you remain neutral, but you keep mental track of what happened; should an opportunity to even the account arise, you would take it.
+- D. You have deliberately let the grievance fade through ongoing practice — conversation, writing, time, attention. The fading is work, not automatic.
+
+**2M.35 — The invitation to speak.** You have been invited to speak publicly about work you have done well. Several attendees know the work; others don't. Speaking accurately about what you've done and what you can do is part of what's asked. *Activates:* HUMILITY, FALSE HUMILITY, SELF-CONTEMPT, TRUTH, CALLING, APPROVAL.
+- A. You speak accurately. What you've done and what you can do, without inflation or deflation.
+- B. You speak with performed disclaimers — "I'm not really the expert on this" and similar. Audience experiences humility; you know the disclaimers are performance.
+- C. When it comes time to describe what you've done, the description comes out smaller than what is true. Not performatively — it is simply what feels like yours to claim.
+- D. You decline the invitation, framed as appropriate deference to those who could speak better.
+
+---
+
+### STAGE 3 — Constitutional Pressure-Tests
+
+**Instrument type.** Scenarios placing a specific commitment under maximum pressure, to test whether a weight of 8-9 genuinely represents constitutional status or merely high-weight. A constitutional commitment holds under pressure; high-weight merely wavers.
+
+**Coverage.** 17 scenarios, one per typical constitutional candidate (v0.2.1 late: 3.14 CRAFT added 2026-04-19; v0.2.3: 3.15 RESPECT, 3.16 KINDNESS, 3.17 HARMLESSNESS internal-posture added).
+
+**Response format.** A | B | C | D | This situation is not one I can imagine facing.
+
+**Scorer-facing note.** The hold option varies by scenario (typically but not always A). Instrument documentation specifies hold per scenario. Selection of hold under pressure indicates constitutional status. Waver selection indicates high-weight but not constitutional.
+
+---
+
+**3.1 — Pressure-test for TRUTH.** A parent of yours is in the final months of a terminal illness. Their spouse — your other parent — died several years ago. You have come to know, with certainty, something about the deceased spouse's life that your dying parent never discovered: the deceased had a sustained affair that the dying parent does not know about. Nothing can be acted on. The deceased is gone. The dying parent is dying. The knowledge will cause suffering if it arrives.
+- A. You tell them. Fully, specifically, directly. You accept the suffering this causes.
+- B. You acknowledge the existence of the thing without the specific details.
+- C. You do not tell them. What they go to their death believing about their marriage is what they will believe.
+- D. You tell someone else who will decide what to do — a sibling, a friend, a counselor. The decision is not yours alone to carry.
+
+*(Hold: A, because constitutional TRUTH serves the listener's right to accurate understanding of their own life even when the knowledge will cause suffering and cannot be acted on. Withholding under these conditions registers as TRUTH wavering under COMPASSION or HARMLESSNESS pressure — legitimate as configuration but not constitutional-TRUTH holding. Respondents who select C are registering an honest pattern of TRUTH-plus-wisdom-constraint, where TRUTH at high weight is governed by COMPASSION considerations. The instrument registers C as waver relative to constitutional TRUTH specifically; this is not a moral judgment but a calibration point. Respondents who find this scenario outside their experience should mark the bypass option.)*
+
+**3.2 — Pressure-test for HARMLESSNESS.** An action you can take will prevent substantial suffering to many people you will never meet. The action will cause real, direct, specific harm to one person you do know — someone who has not wronged anyone, simply in the wrong position. The numbers are clear. No one else can take the action.
+- A. You do not take the action. You do not cause the specific harm.
+- B. You search for a path that does not require the specific harm. You accept the delay and the risk that the path does not exist.
+- C. You take the action. You cause the specific harm to prevent the distant suffering.
+- D. You take the action and ensure the specific person is compensated, cared for, or supported in the aftermath.
+
+*(Hold: A, because constitutional HARMLESSNESS refuses to cause harm even under consequentialist pressure.)*
+
+**3.3 — Pressure-test for PROTECTIVE-LOVE.** Someone you are responsible for — a child with a chronic condition, a parent in cognitive decline, a sibling with sustained dependency — requires ongoing protection that costs you substantially over years. Financial outflow, professional trajectory altered, relationships strained, sleep and health affected. The protected cannot fully repay any of this. You can see the decade ahead.
+- A. You continue the protection at the sustained cost. The decade ahead is what it is.
+- B. You continue the protection while working to reduce specific costs where possible.
+- C. You transition the primary protection to someone else or to institutional care.
+- D. You step back from being the primary protector.
+
+*(Hold: A, because constitutional PROTECTIVE-LOVE sustains the protection at the cost to self that the commitment entails, without transferring the responsibility even as costs accumulate.)*
+
+**3.4 — Pressure-test for CALLING.** The work you have been called to requires a sustained cost to yourself over years — financial, social, relational. Not a heroic cost in one moment but a slow, grinding cost. You have done it for a decade; you can see the decade ahead.
+- A. You continue the work.
+- B. You continue the work while negotiating reductions in specific costs.
+- C. You transition out of the work into something that serves the calling with less cost.
+- D. You step away from the work.
+
+*(Hold: A, because constitutional CALLING sustains the work under sustained cost; the work is where meaning lives and cost-reduction negotiations are not the same as holding the calling.)*
+
+**3.5 — Pressure-test for FAIRNESS.** A decision is before you where fair treatment requires imposing serious cost on someone whose loyalty to you has been consistent and whose service has earned accumulated debt.
+- A. You impose the fair cost. You explain privately to them why. The relationship may not survive.
+- B. You impose a softened version of the cost. The standard bends for accumulated loyalty in this case.
+- C. You find a different solution that spares the person. The decision still looks fair externally.
+- D. You reverse the decision. Loyalty governs this case.
+
+*(Hold: A, because constitutional FAIRNESS applies consistent standards regardless of accumulated loyalty — loyalty-driven bending of fair standards is the pattern FAIRNESS at constitutional weight refuses.)*
+
+**3.6 — Pressure-test for INTIMACY.** A relationship you are in can deepen significantly if you allow yourself to be known in ways you have spent decades protecting against. The other person has made space; they are not asking. Deepening requires bringing into the relationship aspects of yourself — failures, fears, things you consider shameful — that you have kept contained. The cost of deepening is the loss of containment. The cost of not deepening is the ceiling on what this relationship can become.
+- A. You deepen. You bring in what you have been containing.
+- B. You deepen in stages, bringing in specific contained material over time.
+- C. You signal openness without fully opening.
+- D. You do not deepen beyond where the relationship currently is.
+
+*(Hold: A, because constitutional INTIMACY accepts the cost of containment-loss when depth is available; staged or managed opening is waver territory.)*
+
+**3.7 — Pressure-test for LIBERTY.** A situation asks you to accept constraint — on your speech, movement, choices — that you consider unjustified. Not catastrophic. Accepting spares you and people around you difficulty. Refusing costs you and them.
+- A. You refuse. You accept the difficulty this brings to you and to those around you.
+- B. You accept the constraint while continuing to work against it through other channels.
+- C. You negotiate a modified version of the constraint in exchange for cooperation elsewhere.
+- D. You accept the constraint. You pick different battles.
+
+*(Hold: A, because constitutional LIBERTY refuses unjustified constraint even at cost to self and to others; accepting constraint while working against it through other channels is waver-pattern.)*
+
+**3.8 — Pressure-test for SANCTITY.** Something you regard as genuinely sacred can be traded for something large and valuable. The trade is legitimate. The sacredness is subjective; to others the thing is less inviolable than to you.
+- A. You refuse the trade.
+- B. You restructure what the trade is. You find a version where the sacredness is preserved in some form.
+- C. You delay the decision and seek a path that serves the benefit without requiring the trade.
+- D. You make the trade and accept that you are losing something that cannot be replaced.
+
+*(Hold: A, because constitutional SANCTITY refuses to reduce the sacred to instrumental terms — restructuring-the-trade or delay-seeking-alternative both preserve instrumentation at the margin.)*
+
+**3.9 — Pressure-test for COMPASSION.** A person who has caused real and deliberate harm to you and to people you love is in a situation requiring care. They need help you could offer; no one else is positioned. Offering will cost you; more, it will feel like a betrayal to some of the people who were harmed.
+- A. You offer the help. You meet them directly and do what is needed.
+- B. You arrange for help to reach them without your involvement being visible.
+- C. You offer help through a third party.
+- D. You decline to help. This person is outside what you can extend care to.
+
+*(Hold: A, because constitutional COMPASSION extends care without differentiating by what the sufferer has done to you — arranging-help-without-visible-involvement still extends care but through a frame that protects the helper's social position, which is partial waver.)*
+
+**3.10 — Pressure-test for WITNESS.** You have caught yourself in a pattern you have been maintaining at real cost to others. The pattern is subtle. You could continue with minor adjustments that mask it rather than change it. The full seeing would require staying with the pattern's reality long enough for the seeing to settle.
+- A. You see it fully and stay with the seeing. You let the seeing produce whatever change it produces, including changes you do not yet know will be required.
+- B. You see it fully but manage the pace of what the seeing produces.
+- C. You see it partially. You make the minor adjustments that mask the pattern.
+- D. You turn the noticing into an ongoing observation that does not require commitment to change.
+
+*(Hold: A, because constitutional WITNESS does not manage the pace of what accurate seeing would produce — managed seeing is the hallmark of near-enemy scrupulosity or of WITNESS-captured-by-SELF-IMAGE.)*
+
+**3.11 — Pressure-test for HOPE.** A situation that matters to you has reached a state where the evidence supporting the future you have been holding open is now genuinely thin.
+- A. You keep the future open while accepting that the evidence has genuinely thinned. The open-ness is not based on expected outcome but on something else you find you can stand on.
+- B. You update the hope. You hold a smaller version of the open future.
+- C. You suspend. You neither hold the hope nor let it go.
+- D. You let the specific hope go. You find other anchors.
+
+*(Hold: A, because constitutional HOPE keeps the future open anchored to something other than current evidence — meaning, purpose, another person, the work, faith; Frankl's canonical reference.)*
+
+**3.12 — Pressure-test for FORGIVENESS.** A person who has harmed you significantly has refused accountability, refused apology, refused engagement. Time has passed. The harm continues to affect your life.
+- A. You release the resentment. The harm is real; your judgment of the person is unchanged; the release is something you do for yourself, not for them.
+- B. You release the resentment for the most part. Some residue remains.
+- C. You release on specific occasions and find it returning on others.
+- D. You keep the resentment. The harm was real, and active carrying of it feels more accurate to you than release would.
+
+*(Hold: A, because constitutional FORGIVENESS releases resentment without requiring the harmer's acknowledgment, apology, or change. Release conditional on the harmer's repair is either CAPITULATION (releasing judgment) or FORGIVENESS bounded by reciprocity-expectation — both sit short of constitutional FORGIVENESS which proceeds from the forgiver's own ground.)*
+
+**3.13 — Pressure-test for FEROCITY.** A situation calls for a forceful response that only you can deliver. The response will cost you — reputation, standing, relationships, perhaps safety. The situation is real; the response is needed; no one else is positioned.
+- A. You mount the response.
+- B. You mount a partial response — what you can afford to do.
+- C. You coordinate with others to produce a distributed response.
+- D. You do not mount the response.
+
+*(Hold: A, because constitutional FEROCITY mounts the response when called even at sustained cost to self — partial response and coordinated-distributed response are legitimate tactical choices but register as waver at constitutional-probe level.)*
+
+**3.14 — Pressure-test for CRAFT.** A project you have invested substantial time in faces pressure that would reward releasing-as-adequate over releasing-as-quality. The pressure takes a concrete form: a financial incentive to finish now, a time constraint imposed by others, a stakeholder who will accept less than your standard and be satisfied with it, or a personal cost to holding the line (extended effort, delayed income, continued strain). The work could be released at current quality without penalty and nobody but you would know the difference. Holding the quality standard requires sustained additional cost.
+- A. Hold the standard. Accept the cost. Release when the work meets the standard, not when the pressure releases.
+- B. Release at adequate quality now. Note the compromise honestly; resume standard on the next work.
+- C. Hold the standard by reshaping the environment — remove the pressure by changing the arrangement (decline the contract, renegotiate the timeline, step away from the stakeholder) rather than by absorbing the cost.
+- D. Examine whether the quality standard itself is what's holding — sometimes the standard becomes avoidance of completion, fear of reception, or perfectionism. Release when the honest check confirms the standard is real craft, not its near enemy.
+
+*(Hold: A, because constitutional CRAFT holds the quality standard against pressure that would reward release-as-adequate — reshaping the environment or examining-whether-standard-is-avoidance are both legitimate moves but sit adjacent to hold rather than at it.)*
+
+**3.15 — Pressure-test for RESPECT.** Someone whose worth you have recognized — in their work, in their capability, in the tradition they represent — has taken a public position that is costly to you. Friends or allies of yours are mounting pressure on you to publicly withdraw your respect, to signal that this person no longer merits it. The position the person has taken, while you disagree with it, reflects the same qualities of mind that made you recognize their worth in the first place — applied now to a domain where your judgments differ. Their taking this position is not a betrayal of what you respected; it's the same faculty operating with a different conclusion.
+- A. You hold the respect publicly. You disagree with the position; you do not withdraw the recognition of worth.
+- B. You hold privately while avoiding public engagement on the matter either way.
+- C. You publicly soften — a hedged distancing that lets your allies read what they want while the person can read something else.
+- D. You publicly withdraw the respect. Your allies are satisfied; the cost is accepted.
+
+*(Hold: A, because constitutional RESPECT does not withdraw earned recognition under coalition pressure.)*
+
+**3.16 — Pressure-test for KINDNESS.** You are at your edge — work pressure, personal strain, accumulated exhaustion. Across a period of days, small encounters keep arriving that call for ordinary kindness — the held door, the offered help, the patient attention for someone who could have been passed by. The cost of extending across all of these is real: energy you do not have, attention drawn from work you cannot afford to lose. The cost of withholding in any one of them is minor; no one would call it wrong; capacity-based rationing would be understood.
+- A. You extend ordinary kindness across the encounters as they arise. Your edge is real; the kindness is not conditional on your state.
+- B. You extend kindness but in a reduced form — functional, friendly enough, but without the fuller engagement you would extend on an ordinary day.
+- C. You extend kindness selectively — where it seems to matter most, where it costs least; you accept that some ordinary kindnesses you would normally extend do not happen this period.
+- D. You withdraw from encounters where possible. You route around rather than pass through; the kindness-opportunities reduce because you reduce your exposure.
+
+*(Hold: A, because constitutional KINDNESS is not conditional on the holder's state or on what can be withheld without material consequence.)*
+
+**3.17 — Pressure-test for HARMLESSNESS (internal posture).** Someone has wronged you materially and deliberately. Time has passed. They have not apologized, shown no acknowledgment, and are now in circumstances where a small action by you would cause them real difficulty — not wrongful action, but the kind of observation, referral, or information-sharing that would legitimately follow from what you know. What you would do is within the frame of ordinary accuracy; no one would call it wrong. The opportunity will persist; no urgency either way. Your grievance, if you check for it, is live.
+- A. You do not take the action. The wrong is known; the grievance is no longer organizing your behavior; opportunities to even the account do not function as temptations.
+- B. You consider the action and decline it on reflection, while noticing that the consideration itself signals that release has not fully landed.
+- C. You note the opportunity and hold it available — should another opening arise that combines cleanly with the first, you would take both.
+- D. You take the action. You judge that what you would do is what anyone in that position would do; any influence from the grievance, if present, is below the threshold you can detect.
+
+*(Hold: A, because constitutional HARMLESSNESS internal posture has released the grievance such that opportunities to even the account do not function as temptations.)*
+
+---
+
+### Aspirational-reporting defense
+
+A known failure mode: respondents select the hold option across all pressure-tests because they want to appear constitutional in everything. Framework defenses:
+
+1. **Instrument language:** "actually do, not wish to do" framing. Scenario costs specifically vivid so hold feels expensive rather than abstract.
+2. **Statistical anomaly detection:** real people carry 3-7 constitutional commitments, not 13. Respondents selecting hold across all 13 trigger a scorer flag.
+3. **Stage 2 cross-reference:** Stage 2 multi-commitment scenarios probe the same commitments without labeling hold. A respondent answering hold-style in Stage 3 but waver-style in Stage 2 is revealing that Stage 3 is aspirational.
+4. **Inference layer confidence tagging:** weights derived from pressure-test holds are high-confidence only when corroborated across Stage 1 ratings, Stage 2 dyad patterns, and Stage 2 multi-commitment selections.
+
+---
+
+### Instrument state
+
+- Stage 1: 66 portraits (~5,400 words; v0.2.3 additions portraits 60-66; content rewrites for portraits 5 TRIBALISM and 12 HARMLESSNESS)
+- Stage 2 dyads: 28 dyads × 3 scenarios = 84 scenarios (~13,500 words; v0.2.3 additions Dyad 22 replacement plus Dyads 25-28)
+- Stage 2 multi-commitment: 35 scenarios (~7,600 words; v0.2.3 additions 2M.30-2M.35 and 2M.26 Activates update)
+- Stage 3: 17 pressure-tests (~3,200 words; v0.2.3 additions 3.15-3.17; inline Hold annotations propagated across all 17 pressure-tests)
+
+Total ~29,700 words of psychometric instrument material. All stages calibrated for no option-signaling and no scenario-signaling.
+
+---
+
+*Assessment instrument v0.2.1 — complete. Administer per flow specified in §VII of this document. Score against the inference layer in §V of this document.*
+
+*v0.2.1 additions 2026-04-19: Portraits 57 (CRUELTY), 58 (BITTERNESS), 59 (ENMESHMENT). Dyads 22 (COMPASSION vs CRUELTY), 23 (INTIMACY vs ENMESHMENT), 24 (GRATITUDE vs BITTERNESS). Multi-commitment scenarios 2M.26 (enemy collapse — CRUELTY probe), 2M.27 (partnership rhythm — ENMESHMENT probe), 2M.28 (unrecognized decade — BITTERNESS probe), 2M.29 (two attunements — ENMESHMENT object-modulation probe for dependent-other vs independent-adult distinction). 2M.29 option A revised to strip virtue-language signal ("welcomed-back without dysregulation" → "a different texture, both held without your own ground moving"); option D revised from practitioner-specific spiritual-bypassing probe to attention-monopolization pattern (dependency crowding out partnership).*
+
+*v0.2.1 late addition 2026-04-19: 3.14 CRAFT pressure-test drafted by framework architect and added. CRAFT had been identified as a constitutional candidate during Larry's self-run inference report without corresponding pressure-test coverage in the instrument; the gap was closed same-day.*
+
+*v0.2.3 additions 2026-04-21: 7 new portraits (60 KINDNESS, 61 RESPECT, 62 WARMTH primary; 63 CONTEMPT, 64 SELF-CONTEMPT, 65 ARROGANCE, 66 SCHADENFREUDE character-spec). 2 portrait rewrites (5 TRIBALISM and 12 HARMLESSNESS) for renamed commitments with v0.2.3 behavioral dimensions surfaced. Dyad 22 replaced (KINDNESS × CRUELTY) per direct-opposition correction; Dyads 25-28 added (COMPASSION × SCHADENFREUDE, RESPECT × CONTEMPT, HUMILITY × ARROGANCE, HUMILITY × SELF-CONTEMPT); scorer note added after Dyad 28. 6 new multi-commitment scenarios 2M.30-2M.35; 2M.26 Activates list corrected CRUELTY → SCHADENFREUDE. 3 new pressure-tests (3.15 RESPECT, 3.16 KINDNESS, 3.17 HARMLESSNESS internal-posture); inline Hold annotations propagated across all 17 pressure-tests.*
 
 ## §V Inference Layer
 
@@ -980,7 +2576,7 @@ A high-GRASPING character without domain organization would be diffusely attache
 | Tier 3 with-material | full 3 stages pre-filled | inference | applied | full | 45 min-full |
 | Character-spec | direct authoring + coherence check | pathology signatures | applied | full | 30-90 min |
 
-Full specifications in `Framework — MindSpec Tier Flows v0.2.md`.
+The Inference Layer (§V), Learning Architecture (§VI), and Stage 2A Life-Context Direct Pass (§VIIA) carry the per-tier behavioral specification beyond the summary table above.
 
 ## §VIIA Stage 2A Life-Context Direct Pass
 
@@ -1086,7 +2682,7 @@ Detailed rubric descriptions deferred to v0.3 Process Formalization conformance 
 
 ## §X Execution Commands
 
-1. Confirm full processing of this framework (including §V Inference Layer and §VI Learning Architecture), the library and instrument (`Framework — MindSpec Library and Instrument.md`), the tier flows, and MindSpec v0.4 specification.
+1. Confirm full processing of this framework — §II Library, §III Schema Specification, §IV Three-Stage Assessment Instrument, §V Inference Layer, §VI Learning Architecture, §VII Tier-Dependent Interview Flows, §VIIA Stage 2A Life-Context Direct Pass — and MindSpec v0.4 specification.
 2. IF required inputs missing, list and request before proceeding.
 3. IF descriptive material provided, run material-based inference and generate inference report before direct assessment.
 4. Conduct mode and tier selection per §VII and the tier flows document.
@@ -1101,7 +2697,7 @@ Detailed rubric descriptions deferred to v0.3 Process Formalization conformance 
 ## §XI Registry Entry
 
 ```
-Name: MindSpec Interview Framework
+Name: MindSpec Interview
 Purpose: Produces complete MindSpec specifications through tiered interactive assessment
 Problem Class: Agent/character/self specification
 Input Summary:
@@ -1122,7 +2718,7 @@ Known Limitations:
   - Full Process Formalization conformance deferred to v0.3 documentation pass
   - INTIMACY entry may require split/rescope after first-use evidence
   - Framework-author reflexivity — architect evaluating his own calibration against his own instrument has a reflexivity constraint. External review by non-architect operators on non-architect subjects is the ultimate universality check. v0.2.2 corrections mitigate but do not eliminate this constraint; calibration against empirical population data (v0.3) is the next step.
-File Location: ~/Documents/vault/Framework — MindSpec Interview Framework.md
+File Location: ~/Documents/vault/Framework — MindSpec Interview.md
 Provenance: human-architected with Claude Opus 4.7 structural collaboration
 Confidence: medium — mechanism sound, parameters require validation
 Version: 0.2.3
@@ -1235,9 +2831,7 @@ Elicitation guidance for the Aesthetic Sensibility section is to-be-built as a f
 
 *Framework v0.2.3 additions 2026-04-21: §II library inventory expanded to 66 entries across 11 families; VITALITY and TEMPERAMENT family renames; seven new library entries (3 primary + 4 character-spec); three renames (HARM-AVERSION → HARMLESSNESS with internal-posture dimension, IN-GROUP-LOYALTY → TRIBALISM, SELF-ABASEMENT → FALSE HUMILITY); AUTHORITY definition tightened to categorical-deference-only (RESPECT now carries earned-worth recognition); Stage 2A Life-Context Pass specified in §VIIA (carried forward from v0.2.2).*
 
-*v0.2.3 correction 2026-04-21: CRUELTY direct-opposition corrected to KINDNESS (general-encounter domain); COMPASSION direct-opposition corrected to SCHADENFREUDE (suffering-activated domain). See current entries in `Framework — MindSpec Library and Instrument.md` for operational state.*
-
-*v0.2.3 consolidation 2026-04-21: Inference Layer (previously `Framework — MindSpec Inference Layer.md`) merged as §V; Learning Architecture (previously `Framework — MindSpec Learning Architecture.md`) merged as §VI. Library Specifications and Three-Stage Assessment Instrument consolidated into `Framework — MindSpec Library and Instrument.md`. Library Default Calibration Audit (superseded by Universality Audit) deleted. Vault framework file count reduced from seven to three operational files plus Universality Audit.*
+*v0.2.3 correction 2026-04-21: CRUELTY direct-opposition corrected to KINDNESS (general-encounter domain); COMPASSION direct-opposition corrected to SCHADENFREUDE (suffering-activated domain). See current CRUELTY and COMPASSION entries in §II for operational state.*
 
 ---
 

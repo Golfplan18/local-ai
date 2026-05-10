@@ -4,14 +4,14 @@
 Problem Evolution (PEF)
 
 ## Display Description
-Iterative problem definition and project supervision. Turns raw epistemic tension into a Problem Evolution Document with Mission, Objectives, Constraints, and Active/Aspirational milestones. Drives downstream framework invocation (MOM, TMF, PIF, PFF, WPF) as needed.
+Iterative strategic-layer evolution and matrix supervision across all matrix types (Project / Operation / Passion / Incubator). Turns raw epistemic tension into a populated matrix file with Mission, Objectives, Constraints, and type-appropriate strategic-layer content (Project: Active/Aspirational milestones with Resolution Statement; Operation: recurring Active + Aspirational maturity gates with Service Statement, Cadence, Coordinated Corpora, Coordinated Outputs; Passion: Practices and Directions of Travel; Incubator: Critical Unknown and exploration plan). Drives downstream framework invocation (MOM, TMF, PIF, PFF, WPF, Operations Manifest) as needed.
 
 
 *A Framework for Iterative Problem Definition, Project Navigation, MOM-Supervised Milestone Formulation, and Downstream Framework Routing*
 
-*Version 2.0*
+*Version 3.0*
 
-*Canonical Specification — Updated per the 2026-04-23 design session to auto-invoke MOM, supervise Active/Aspirational milestones, use Excluded Outcomes during drift detection, and invoke the Terrain Mapping Framework when the problem is not yet definable*
+*Canonical Specification — Updated per the 2026-04-23 design session to auto-invoke MOM, supervise Active/Aspirational milestones, use Excluded Outcomes during drift detection, and invoke the Terrain Mapping Framework when the problem is not yet definable. Updated per the 2026-05-08 design session to be matrix-type aware: PEF supervises all four matrix types (Project / Operation / Passion / Incubator) with type-specific drift signals, MOM auto-invocation triggers, supervision drift checks, Promotion Protocols, and Iteration Entry recording. The prior framing that "Passion lives outside PEF supervision" is retired — Passion-typed matrices are now supervised with type-appropriate (lighter) supervision.*
 
 ---
 
@@ -19,37 +19,37 @@ Iterative problem definition and project supervision. Turns raw epistemic tensio
 ## Setup Questions
 
 ### Mode
-Required. Which PEF mode you want: Init (new problem from a tension or goal), Iterate (advance an existing Problem Evolution Document), Review (status summary without advancing), or Spawn (sub-problem under a parent project).
+Required. Which PEF mode you want: Init (new problem, tension, or goal — classification determined by MOM), Iterate (advance an existing matrix file of any type), Review (status summary without advancing), or Spawn (sub-problem under a parent matrix).
 
 ### Tension, idea, or goal — for Init mode
 Required for Init. Natural-language description of what you're trying to accomplish, what is bothering you, or what you want to explore. Partial or contradictory is fine.
 
-### Existing Problem Evolution Document — for Iterate, Review, Spawn
-Required for Iterate, Review, and Spawn modes. The current PED, either as pasted document text or a vault file path.
+### Existing matrix file — for Iterate, Review, Spawn
+Required for Iterate, Review, and Spawn modes. The current matrix file (PED for Project-typed matrices; Operation Matrix, Passion Matrix, or Incubator Matrix per type), either as pasted document text or a vault file path.
 
 ### Recap of work since last iteration — for Iterate mode
 Required for Iterate. What was done, what was learned, what decisions were made, what changed since the last PE-Iterate run.
 
 ### Sub-problem description — for Spawn mode
-Required for Spawn. What the sub-problem is, why it was identified, and how it connects to the parent project.
+Required for Spawn. What the sub-problem is, why it was identified, and how it connects to the parent matrix.
 
 ## How to Use This File
 
-This is a problem definition and project supervision framework. It operates when the user has an idea, a tension, a rough goal, or an existing project that needs its next step identified — and, once a project is running under PEF, it supervises the strategic hierarchy that drives execution. It is the upstream companion to both the Process Inference Framework and the Process Formalization Framework, and the upstream supervisor for the Mission, Objectives, and Milestones Clarification Framework (MOM) and the Terrain Mapping Framework (TMF): PEF discovers and refines the problem definition; MOM populates the strategic hierarchy under PEF's supervision; TMF maps unknown territory when the problem is not yet definable; PIF discovers the process; PFF formalizes it.
+This is a strategic-layer evolution and matrix supervision framework. It operates when the user has an idea, a tension, a rough goal, or an existing matrix (Project / Operation / Passion / Incubator) that needs its next step identified — and, once a matrix is running under PEF, it supervises the strategic layer that drives execution. It is the upstream companion to both the Process Inference Framework and the Process Formalization Framework, and the upstream supervisor for the Mission, Objectives, and Milestones Clarification Framework (MOM) and the Terrain Mapping Framework (TMF): PEF discovers and refines the strategic-layer content; MOM populates that content under PEF's supervision; TMF maps unknown territory when the problem is not yet definable; PIF discovers the process; PFF formalizes it. The framework is type-aware — it reads `project_type` from the matrix's frontmatter and dispatches type-specific drift signals, MOM auto-invocation triggers, supervision drift checks, Promotion Protocols, and Iteration Entry recording.
 
-PEF serves two distinct roles. As a **consultant**, it is invoked when the user needs orientation, assessment, or documentation — when they hit a wall, when a milestone completes and direction needs reassessment, when new information changes the problem, or when the fog returns. As a **supervisor** of an ongoing project, it auto-invokes MOM to populate or refresh the Mission / Objectives / Constraints / Milestones fields of the Problem Evolution Document (PED), supervises Active milestones against their verification criteria, watches for silent drift using the Excluded Outcomes field, and promotes Aspirational milestones to Active as prior Active milestones complete. It is not a nanny that monitors progress unasked; it is invoked at defined moments, but when invoked it carries full supervisory authority over the PED.
+PEF serves two distinct roles. As a **consultant**, it is invoked when the user needs orientation, assessment, or documentation — when they hit a wall, when a milestone or cycle completes and direction needs reassessment, when new information changes the picture, or when the fog returns. As a **supervisor** of an ongoing matrix, it auto-invokes MOM to populate or refresh the strategic-layer fields of the matrix file, supervises Active milestones (Project) and recurring cycles + maturity gates (Operation) against their verification criteria, watches for silent drift using the Excluded Outcomes field (where applicable), and promotes Aspirational milestones to Active (Project) or Aspirational maturity gates to Active (Operation) as prior terminal claims are verified. For Passion-typed matrices, supervision is lighter — practice continuity and direction-of-travel evolution, no terminal claims to verify. For Incubator-typed matrices, supervision tracks progress toward Critical Unknown resolution. PEF is not a nanny that monitors progress unasked; it is invoked at defined moments, but when invoked it carries full supervisory authority over the matrix file.
 
-This framework is iterative by design. It runs once to establish an initial problem definition (PE-Init), then re-runs when the user determines they need guidance, assessment, or documentation (PE-Iterate), or at a milestone promotion boundary. Each run produces an updated Problem Evolution Document that captures the history of the project's definition evolution, the Mission's Resolution Statement and Excluded Outcomes, the Constraints inventory, the Active and Aspirational milestones, and links to any Terrain Map Artifacts the project has accumulated.
+This framework is iterative by design. It runs once to establish an initial strategic layer (PE-Init), then re-runs when the user determines they need guidance, assessment, or documentation (PE-Iterate), or at a milestone-promotion / cycle-close / maturity-gate boundary. Each run produces an updated matrix file that captures the history of the matrix's strategic-layer evolution, the type-appropriate Lock-protected fields (Resolution Statement and Excluded Outcomes for Project; Service Statement and Excluded Outcomes for Operation; Core Essence and Emotional Drivers for Passion; Critical Unknown for Incubator), the Constraints inventory, the type-appropriate milestone/cycle structure, and links to any Terrain Map Artifacts the matrix has accumulated.
 
 In the Ora system, this framework is invoked within ongoing conversation context. The AI has access to conversation history and vault documents, so the framework can draw on recent work product and prior discussions without requiring everything to be pasted explicitly. In a commercial AI session, paste this entire file and provide your input below the USER INPUT marker at the bottom. State which mode you need, or the AI will determine it from context.
 
-**Mode PE-Init:** You are encountering a new problem, idea, project, or epistemic tension for the first time. You may have a rough idea of what you want, some scattered notes, or just a feeling that something needs solving. The AI will interview you to discover the problem definition, assess where you are, and recommend the first concrete action.
+**Mode PE-Init:** You are encountering a new problem, idea, or epistemic tension for the first time. You may have a rough idea of what you want, some scattered notes, or just a feeling that something needs solving. The AI will interview you to discover the strategic layer, MOM will classify the matrix type (Project / Operation / Passion / Incubator), and the AI will recommend the first concrete action.
 
-**Mode PE-Iterate:** You have an existing Problem Evolution Document from previous iterations. You have done work since the last iteration — completed a milestone, conducted research, made a decision, learned something that changes the picture. You will provide the Problem Evolution Document and a recap of what happened. The AI will review the history, assess how the problem definition has changed, challenge your assumptions, and recommend the next action.
+**Mode PE-Iterate:** You have an existing matrix file from previous iterations. You have done work since the last iteration — completed a milestone, ran cycles, accumulated practice, conducted research, made a decision, learned something that changes the picture. You will provide the matrix file and a recap of what happened. The AI will review the history, assess how the strategic layer has changed, challenge your assumptions, and recommend the next action.
 
-**Mode PE-Review:** You want to see where a project stands without advancing it. Provide the Problem Evolution Document. The AI will summarize the current state, phase, open questions, and pending actions.
+**Mode PE-Review:** You want to see where a matrix stands without advancing it. Provide the matrix file. The AI will summarize the current state, phase or cycle context, open questions, and pending actions.
 
-**Mode PE-Spawn:** An existing project has revealed a sub-problem that requires its own evolution track. Provide the parent project's Problem Evolution Document and describe the sub-problem. The AI will create a new Problem Evolution Document for the sub-project, linked to the parent.
+**Mode PE-Spawn:** An existing matrix has revealed a sub-problem that requires its own evolution track. Provide the parent matrix file and describe the sub-problem. The AI will create a new matrix file for the sub-project (typically `project_type: project`, occasionally `project_type: operation`), linked to the parent.
 
 ---
 
@@ -84,9 +84,11 @@ Guide a user from raw epistemic tension through iterative problem definition ref
 
 This framework is the pre-processor for the Process Formalization Framework and the Process Inference Framework, and the supervisor for the Mission, Objectives, and Milestones Clarification Framework (MOM) and the Terrain Mapping Framework (TMF). It turns vague ideas into defined problems — defined enough that MOM can produce a Resolution Statement, TMF can map unknown terrain, PIF can discover a process, or PFF can formalize one. If the problem is not yet ready for any of these, the framework knows to keep iterating.
 
-PEF is bound by the Universal Problem-Definition Lock: it cannot silently change the end state (Resolution Statement, Excluded Outcomes) or the constraints (Hard, Soft). Changes to Lock-protected fields are explicit user-authorized PE-Iterate decisions recorded in the Decision Log. PEF is bound by the Constructive Escalation (No-Punt) Rule: every escalation carries specific diagnosis plus Redefine / Explore / Abandon advice, with Explore as the default first advice when stuck.
+PEF is bound by the Universal Problem-Definition Lock: it cannot silently change the end state (Resolution Statement for Projects, Service Statement for Operations, Core Essence and Emotional Drivers for Passions, Critical Unknown for Incubators), the Excluded Outcomes (where applicable), or the constraints (Hard, Soft). Changes to Lock-protected fields are explicit user-authorized PE-Iterate decisions recorded in the Decision Log. PEF is bound by the Constructive Escalation (No-Punt) Rule: every escalation carries specific diagnosis plus Redefine / Explore / Abandon advice, with Explore as the default first advice when stuck.
 
-In autonomous agent operation, this framework's diagnostic, challenge, and supervisory functions become the foundation for the agent oversight layer. An agent would invoke PE-Iterate at defined review gates rather than waiting for human invocation — the functions are identical, but the agent cannot resolve its own review gates (Lock-protected field changes, No-Punt escalation advice forms) without human judgment. The oversight layer requires additional architecture (adversarial verification, checkpoint gating, impasse protocols) specified in a separate framework that inherits this one's toolkit.
+PEF is the strategic supervision layer of the meta-layer apparatus described in Reference — Meta-Layer Architecture (Layer A). PEF defines and locks the problem definition, supervises milestone evolution across iterations, and runs at user-invoked moments or at policy-engine-triggered review gates. The chain-coordination layer (Layer B) is Framework — Process Coherence, which fires automatically at framework transitions and milestone-completion claims, enforcing the locks PEF establishes. The two layers are nested and complementary: PEF holds the locked definitions; Process Coherence enforces them at runtime. Neither subsumes the other.
+
+The user-facing entry point for configuring oversight on a project is Framework — Oversight Configuration. PE-Init auto-invokes Oversight Configuration in OS-Setup mode for projects that involve ongoing work (single-shot work doesn't need oversight). PE-Iterate hands off to OS-Modify when changes to Lock-protected fields land, so the oversight specification stays consistent with the evolved definition. PE-Iterate also handles PE-Iterate-needed events emitted by the periodic revisit-trigger sweep (Reference — Meta-Layer Architecture §6 W3), enabling auto-invocation of PEF at scheduled or trigger-based moments without losing PEF's user-authorized character — the framework runs but Lock-protected field changes still require explicit user approval.
 
 ## INPUT CONTRACT
 
@@ -147,8 +149,8 @@ PEF is a multi-mode framework with four modes (PE-Init / PE-Iterate / PE-Review 
 #### Milestone 1: Initial Problem Evolution Document
 
 - **Mode:** PE-Init
-- **Endpoint produced:** New Problem Evolution Document containing current problem definition, Mission (Resolution Statement, optional Core Essence / Emotional Drivers), Excluded Outcomes, Constraints (Hard / Soft / Working Assumption), Objectives, Active and Aspirational Milestones with P-Feasibility verdicts for Active milestones, Terrain Maps section (may be empty initially), phase assessment, diagnostic findings, recommended next actions with reasoning, Decision Log, and iteration entry recording the founding session. Mission, Excluded Outcomes, Constraints, Objectives, and Milestones sections are populated via auto-invocation of MOM in M-Supervised mode during Layer 2. Format: structured markdown following the PED template in Appendix C.
-- **Verification criterion:** (a) all six Evaluation Criteria score 3 or above; (b) a future session loading the PED can understand project history, current problem definition, strategic hierarchy, and next steps without additional context; (c) the document follows the PED template in Appendix C including Mission, Excluded Outcomes, Constraints, Active/Aspirational milestones, and Terrain Maps sections; (d) MOM was invoked and one of the three outcomes is recorded (Outcome 1 produced full strategic hierarchy; Outcome 2 produced terrain-mapping Active milestone with TMF handoff; Outcome 3 produced No-Punt Escalation Report with Redefine/Explore/Abandon advice); (e) at least one recommended next action is specific enough to execute without further interpretation; (f) if Outcome 2 was returned, TMF was invoked in Layer 5 and the Terrain Map Artifact reference (or Escalation Package) is recorded.
+- **Endpoint produced:** New Problem Evolution Document containing current problem definition, Mission (Resolution Statement, optional Core Essence / Emotional Drivers), Excluded Outcomes, Constraints (Hard / Soft / Working Assumption), Objectives, Active and Aspirational Milestones with P-Feasibility verdicts for Active milestones, Terrain Maps section (may be empty initially), phase assessment, diagnostic findings, recommended next actions with reasoning, Decision Log, iteration entry recording the founding session, and (for projects involving ongoing work) the project-level Oversight Specification produced via auto-invocation of Framework — Oversight Configuration in OS-Setup mode. Mission, Excluded Outcomes, Constraints, Objectives, and Milestones sections are populated via auto-invocation of MOM in M-Supervised mode during Layer 2. Format: structured markdown following the PED template in Appendix C.
+- **Verification criterion:** (a) all six Evaluation Criteria score 3 or above; (b) a future session loading the PED can understand project history, current problem definition, strategic hierarchy, and next steps without additional context; (c) the document follows the PED template in Appendix C including Mission, Excluded Outcomes, Constraints, Active/Aspirational milestones, and Terrain Maps sections; (d) MOM was invoked and one of the three outcomes is recorded (Outcome 1 produced full strategic hierarchy; Outcome 2 produced terrain-mapping Active milestone with TMF handoff; Outcome 3 produced No-Punt Escalation Report with Redefine/Explore/Abandon advice); (e) at least one recommended next action is specific enough to execute without further interpretation; (f) if Outcome 2 was returned, TMF was invoked in Layer 5 and the Terrain Map Artifact reference (or Escalation Package) is recorded; (g) for projects involving ongoing work (not single-shot), Framework — Oversight Configuration was invoked in OS-Setup mode and the project-level Oversight Specification is recorded in the PED with OS-Verify completed (READY or READY-WITH-WARNINGS verdict).
 - **Layers covered:** 2, 3, 4, 5, 6, 7, 8
 - **Required prior milestones:** M0
 - **Gear:** 4
@@ -292,33 +294,42 @@ This rule applies to PEF's own escalations, to the advice PEF gives the user whe
 
 ## LAYER 1: SESSION INITIALIZATION AND MODE DETERMINATION
 
-**Stage Focus:** Determine operating mode, load relevant context, and set session expectations.
+**Stage Focus:** Determine operating mode, identify the matrix type for non-Init modes, load relevant context, and set session expectations.
 
 **Input:** User-provided input and any accompanying documents.
 
-**Output:** Confirmed mode, loaded context summary, session scope.
+**Output:** Confirmed mode, identified matrix type (one of project, operation, passion, incubator, or undetermined for PE-Init), loaded context summary, session scope.
 
 ### Processing Instructions
 
 1. Determine the operating mode.
    - IF the user specifies PE-Init, PE-Iterate, PE-Review, or PE-Spawn → confirm and proceed.
    - IF the user does not specify a mode → classify from context:
-     - IF no Problem Evolution Document is provided and the user describes a new idea, tension, or goal → PE-Init.
-     - IF a Problem Evolution Document is provided and the user describes recent work or learning → PE-Iterate.
-     - IF a Problem Evolution Document is provided and the user asks for a status summary → PE-Review.
-     - IF a Problem Evolution Document is provided and the user identifies a sub-problem requiring its own track → PE-Spawn.
+     - IF no matrix file is provided and the user describes a new idea, tension, or goal → PE-Init.
+     - IF a matrix file is provided and the user describes recent work or learning → PE-Iterate.
+     - IF a matrix file is provided and the user asks for a status summary → PE-Review.
+     - IF a matrix file is provided and the user identifies a sub-problem requiring its own track → PE-Spawn.
 
-2. Load and summarize context.
+2. Identify the matrix type.
+   - PE-Init: No existing matrix file. Matrix type will be determined in Layer 2 via MOM classification (Project / Operation / Passion / Incubator). Set session state to `project_type: undetermined`.
+   - PE-Iterate, PE-Review, PE-Spawn: Read the `project_type` value from the matrix file's frontmatter. Validate it is one of `project`, `operation`, `passion`, or `incubator`. Set session state to that value. The matrix type drives type-specific dispatch downstream — drift signals, MOM auto-invocation triggers, supervision drift check, Promotion Protocol, and Iteration Entry recording all read from this session-state value. For Project-typed matrices, the matrix file is also referred to as the Problem Evolution Document (PED); for other types, refer to it as the matrix file.
+
+3. Load and summarize context.
    - PE-Init: Summarize what the user has described. Identify what is clear, what is vague, and what is contradictory. Do not attempt to resolve contradictions yet — flag them for Layer 2.
-   - PE-Iterate: Read the Problem Evolution Document in full. Summarize: current problem definition, current phase, number of iterations completed, most recent iteration's findings and recommended actions, and any open sub-projects. Then read the user's recap. Identify what is new since the last iteration.
-   - PE-Review: Read the Problem Evolution Document. Prepare a status summary. Check for activated revisit triggers or evidence of definition drift. If the review reveals issues requiring action — a revisit trigger activated by events since the last iteration, evidence of drift, or a stale problem definition — recommend switching to PE-Iterate mode and note the findings as the basis for the new iteration. If no issues, skip to Layer 8 output formatting (no new iteration recorded).
-   - PE-Spawn: Read the parent PED. Identify the sub-problem. Prepare to create a new PED with a link to the parent.
+   - PE-Iterate: Read the matrix file in full. Summarize per type:
+     - `project_type: project` (PED): current problem definition, current phase, number of iterations completed, most recent iteration's findings and recommended actions, open sub-projects.
+     - `project_type: operation`: Service Statement, Cadence, current Coordinated Corpora and Outputs, recent Performance Log entries, recent Incident Log entries, open Spawned Activities.
+     - `project_type: passion`: Mission (Core Essence + Emotional Drivers), current Practices, Directions of Travel, recent Spawned Activities.
+     - `project_type: incubator`: Critical Unknown, candidate classifications, exploration progress recorded so far.
+     Then read the user's recap. Identify what is new since the last iteration.
+   - PE-Review: Read the matrix file. Prepare a type-appropriate status summary. Check for activated revisit triggers or evidence of strategic-layer drift. If the review reveals issues requiring action — a revisit trigger activated by events since the last iteration, evidence of drift, or a stale strategic layer — recommend switching to PE-Iterate mode and note the findings as the basis for the new iteration. If no issues, skip to Layer 8 output formatting (no new iteration recorded).
+   - PE-Spawn: Read the parent matrix file. Identify the sub-problem. Prepare to create a new matrix file for the sub-project (typically `project_type: project`, occasionally `project_type: operation` if the sub-problem is itself ongoing) with a link to the parent.
 
-3. State session expectations to the user.
-   - PE-Init: "This is the first iteration. I will interview you to understand what you are trying to accomplish, assess where you are in the problem-solving process, and recommend a concrete first action. The output will be a Problem Evolution Document that we will build on in future sessions."
-   - PE-Iterate: "I have reviewed your project history ([N] iterations) and your recap. I will assess how the problem definition has changed, challenge any assumptions I see, and recommend your next action."
-   - PE-Review: "I will summarize the current state of this project without advancing it."
-   - PE-Spawn: "I will create a new Problem Evolution Document for this sub-project, linked to the parent project."
+4. State session expectations to the user.
+   - PE-Init: "This is the first iteration. I will interview you to understand what you are trying to accomplish, assess where you are in the problem-solving process, and recommend a concrete first action. The output will be a matrix file (Project / Operation / Passion / Incubator, depending on what the work turns out to be) that we will build on in future sessions."
+   - PE-Iterate: "I have reviewed your [matrix-type] matrix ([N] iterations) and your recap. I will assess how the [problem definition / Service Statement / Mission / Critical Unknown — render per type] has changed, challenge any assumptions I see, and recommend your next action."
+   - PE-Review: "I will summarize the current state of this [matrix-type] matrix without advancing it."
+   - PE-Spawn: "I will create a new matrix file for this sub-project, linked to the parent matrix."
 
 ---
 
@@ -350,43 +361,91 @@ This rule applies to PEF's own escalations, to the advice PEF gives the user whe
 
 ### Processing Instructions — PE-Iterate
 
-1. Review the Problem Evolution Document, focusing on:
-   - The current problem definition (has it been stable or changing?)
-   - The recommended actions from the last iteration (were they completed?)
-   - Open sub-projects (any updates?)
-   - The Decision Log (any decisions that may need revisiting based on new information?)
+1. Review the matrix file, focusing on type-appropriate elements:
+   - Across all types: the recommended actions from the last iteration (were they completed?), open Spawned Activities (any updates?), the Decision Log (any decisions that may need revisiting based on new information?).
+   - `project_type: project` (PED): the current problem definition (has it been stable or changing?), open sub-projects.
+   - `project_type: operation`: the Service Statement (still accurate?), the Cadence (still being honored?), the Coordinated Corpora (still authoritative?), recent Performance Log entries (any drift signals?), recent Incident Log entries (any unresolved root causes?).
+   - `project_type: passion`: the Mission (Core Essence + Emotional Drivers — still resonant?), Practices (still being practiced?), Directions of Travel (any new directions emerging?).
+   - `project_type: incubator`: the Critical Unknown (any progress toward resolution?), candidate classifications (any sharpening?).
 
-2. Assess the gap since the last iteration. IF significant time has passed — the user has completed an entire phase, multiple milestones, or substantial execution work without invoking the framework — conduct a catch-up assessment before integrating the recap:
+2. Assess the gap since the last iteration. IF significant time has passed — the user has completed an entire phase, multiple milestones, run multiple cycles (Operation), accumulated substantial practice (Passion), made meaningful progress on the Critical Unknown (Incubator), or otherwise done substantial work without invoking the framework — conduct a catch-up assessment before integrating the recap:
    - Inventory what was accomplished since the last iteration (ask the user for a comprehensive recap, supplement with conversation history where available)
-   - Assess whether the problem definition drifted during execution — did the work reveal that the problem was different than what was defined?
+   - Assess whether the strategic layer drifted during execution — did the work reveal that the actual situation is different from what was defined?
    - Check whether any Decision Log revisit triggers were activated by events during the execution period
-   - Update the PED with a compressed summary of the execution period before proceeding
+   - Update the matrix file with a compressed summary of the execution period before proceeding
    - This catch-up may produce multiple iteration entries if the intervening period contained distinct phases of work
    IF no significant gap has occurred, proceed directly to step 3.
 
 3. Integrate the user's recap. Identify:
    - What was accomplished since the last iteration
-   - What was learned — especially anything that changes the problem definition
+   - What was learned — especially anything that changes the strategic layer
    - What decisions were made (these go into the Decision Log)
-   - What the user thinks the problem is now versus what they thought before
+   - What the user's current understanding of the strategic layer is — problem definition (Project), Service Statement and Cadence (Operation), Mission and Practices (Passion), Critical Unknown (Incubator) — versus what they thought before
    - What the user proposes as the next step
 
-4. Compare the user's current understanding with the accumulated history. Look for:
-   - Definition drift: Has the problem changed without the user noticing?
+4. Compare the user's current understanding with the accumulated history. Drift signals are type-specific. Look for:
+
+   Across all types:
    - Assumption persistence: Are there assumptions from early iterations that new evidence contradicts?
-   - Scope changes: Has the problem grown or shrunk since the last iteration?
    - Missed connections: Does the new information connect to earlier findings in ways the user hasn't articulated?
 
-5. Draft an updated problem definition that incorporates the new information. If the definition has changed from the previous iteration, state explicitly what changed and why.
+   `project_type: project`:
+   - Definition drift: Has the problem changed without the user noticing?
+   - Scope changes: Has the problem grown or shrunk since the last iteration?
 
-6. **MOM auto-invocation on strategic-hierarchy drift.** Determine whether the Mission, Constraints, or Milestones fields need refresh. IF any of the following signals is present, THEN invoke the Mission, Objectives, and Milestones Clarification Framework in M-Supervised mode as a sub-step of this layer, scoped to the affected fields:
+   `project_type: operation`:
+   - Service Statement drift: Is what the operation actually produces still consistent with what its Service Statement says it produces?
+   - Cadence drift: Is the operation honoring its declared cadence? Pattern of missed cycles?
+   - Performance degradation: Are completed cycles increasingly degraded — meeting cadence but not the operation's quality bar?
+   - Coordinated Corpora drift: Has a corpus the operation declares consumption of changed in ways the operation hasn't adapted to?
+   - Coordinated Outputs drift: Are rendered outputs still being produced and consumed?
+
+   `project_type: passion`:
+   - Practice cessation: Have declared practices stopped happening?
+   - Direction shift: Are new directions of travel emerging that weren't previously named?
+   - Loss of resonance: Has the Mission's emotional driver weakened — the user no longer feels pulled by this passion?
+
+   `project_type: incubator`:
+   - Critical Unknown progress: Has new information moved the Critical Unknown closer to resolution?
+   - Misclassification signal: Has the Incubator started producing recurring deliverables (suggesting it's actually an Operation) or accumulated a stable Resolution Statement candidate (suggesting it's actually a Project)?
+
+5. Draft updated strategic-layer content that incorporates the new information. The artifact varies by matrix type:
+   - `project_type: project`: updated problem definition. If the definition has changed from the previous iteration, state explicitly what changed and why.
+   - `project_type: operation`: updated Service Statement (if drift detected) and/or Cadence (if rhythm has shifted) and/or Coordinated Corpora/Outputs (if portfolio changed). If unchanged, confirm explicitly.
+   - `project_type: passion`: updated Mission elements (Core Essence, Emotional Drivers), Practices, or Directions of Travel as warranted. Passions evolve; explicit no-change statements are acceptable when nothing has shifted.
+   - `project_type: incubator`: updated Critical Unknown framing or candidate classifications. If the Critical Unknown has been resolved, flag that step 6's MOM auto-invocation will handle reclassification.
+
+6. **MOM auto-invocation on strategic-hierarchy drift.** Determine whether the strategic-layer fields need refresh. The triggering signals are type-specific. IF any of the listed signals is present, THEN invoke the Mission, Objectives, and Milestones Clarification Framework in M-Supervised mode as a sub-step of this layer, scoped to the affected fields and passing `project_type` so MOM dispatches to the matching classification branch.
+
+   `project_type: project` triggers:
    - The working problem definition has materially changed from the prior iteration (Definition-Drift Detection triggered).
    - A new Aspirational milestone needs to be promoted to Active because the prior Active milestone has been verified complete (see Layer 5's Promotion Protocol).
    - The user has explicitly flagged that an Excluded Outcome should be added, removed, or refined.
    - A Working Assumption in the Constraints section has hit its revisit trigger.
    - A Terrain Map Artifact has been produced since the last iteration and now enables a Resolution Statement or milestones that were previously unformulable.
 
-   See the "MOM Invocation Protocol" section below for handoff interface and outcome handling. Integrate the returned strategic hierarchy into the PED and record the change in the Decision Log.
+   `project_type: operation` triggers:
+   - Service Statement drift detected in step 4 — what the operation produces no longer matches its declared Service Statement.
+   - Sustained cadence misses (definition: missing cycles for N consecutive periods, where N is operation-specific and recorded in the matrix file).
+   - Performance Log shows persistent degraded cycles even when cadence is met.
+   - A Coordinated Corpus has been added to or removed from the operation's portfolio.
+   - A maturity gate's conditions have been evaluated true (Layer 5's Promotion Protocol for Operations).
+   - The user has flagged a sunset criterion for addition, change, or removal — including changing from "indefinite" to a defined criterion.
+   - A Working Assumption in the Constraints section has hit its revisit trigger.
+
+   `project_type: passion` triggers:
+   - Practice cessation detected in step 4 — the user has stopped honoring previously-declared practices.
+   - A new Direction of Travel has emerged that warrants explicit naming.
+   - The Mission's Emotional Drivers no longer resonate (the user has flagged loss of pull, or step 4 surfaced the signal).
+   - A Spawned Activity from this Passion has reached a state requiring reclassification (e.g., a long-running exploration is congealing into a Project).
+
+   `project_type: incubator` triggers:
+   - The Critical Unknown has been resolved — MOM is invoked to reclassify the matrix as Project, Operation, or Passion.
+   - The Incubator has begun producing recurring deliverables (misclassification signal — invoke MOM to reclassify as Operation via O-FromExisting entry mode).
+   - A stable Resolution Statement candidate has emerged (misclassification signal — invoke MOM to reclassify as Project).
+   - The user explicitly requests reclassification.
+
+   See the "MOM Invocation Protocol" section below for handoff interface and outcome handling. Integrate the returned strategic-layer content into the matrix file and record the change in the Decision Log.
 
 ### Processing Instructions — PE-Spawn
 
@@ -397,34 +456,55 @@ This rule applies to PEF's own escalations, to the advice PEF gives the user whe
 
 ### MOM Invocation Protocol
 
-PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM) in M-Supervised mode whenever the PED's strategic hierarchy needs population (PE-Init step 5) or refresh (PE-Iterate step 6). This protocol defines the handoff.
+PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM) in M-Supervised mode whenever the matrix file's strategic-layer fields need population (PE-Init step 5) or refresh (PE-Iterate step 6). This protocol defines the handoff.
 
 **Invocation inputs passed to MOM:**
 
-- **Current Problem Definition** — the working definition from Layer 2 of this PEF run.
-- **Current State Description** — the observable description of what exists now (tools, resources, prior work, accumulated knowledge). Drawn from the PED's existing content plus the user's recap plus conversation history.
-- **Resolution Statement Candidate (optional)** — if the prior PED has a Resolution Statement, pass it as the prior candidate; MOM will re-run its Objectivity Protocol against the current problem definition.
-- **User-Stated Constraints** — any constraints already in the PED or surfaced during Layer 2.
+- **`project_type`** — the matrix's classification (`project`, `operation`, `passion`, `incubator`, or `undetermined` for PE-Init pre-classification). MOM dispatches to the matching classification branch and returns strategic-layer content appropriate to that type.
+- **Current Strategic-Layer Content** — the working content from Layer 2 of this PEF run, named by type:
+  - `project`: working problem definition.
+  - `operation`: candidate Service Statement (or, for O-FromProject conversion, the prior Resolution Statement that needs reformulation as Service Statement).
+  - `passion`: candidate Mission (Core Essence, Emotional Drivers).
+  - `incubator`: Critical Unknown framing.
+  - `undetermined` (PE-Init): the user's raw description; MOM Layer 1 will classify before populating.
+- **Current State Description** — the observable description of what exists now (tools, resources, prior work, accumulated knowledge, prior cycles for Operations, prior practice for Passions). Drawn from the matrix file's existing content plus the user's recap plus conversation history.
+- **Prior Strategic-Layer Content (optional)** — if the matrix already has strategic-layer content from prior iterations, pass it as the prior candidate; MOM will re-run its objectivity / classification protocol against the current state.
+- **User-Stated Constraints** — any constraints already in the matrix or surfaced during Layer 2.
 - **Prior Excluded Outcomes** — if any exist, passed so MOM's Near-Miss Elicitation builds on them rather than starting from empty.
-- **Scope of Invocation** — indicate whether this is a full populate (PE-Init), a field-scoped refresh (PE-Iterate, naming the affected fields), or a promotion-triggered re-feasibility check (Layer 5 Promotion Protocol, naming the newly-promoted milestone).
+- **Scope of Invocation** — indicate whether this is a full populate (PE-Init), a field-scoped refresh (PE-Iterate, naming the affected fields), a promotion-triggered re-feasibility check (Layer 5 Promotion Protocol, naming the newly-promoted milestone or maturity gate), or a reclassification request (Incubator → resolved type, or detected misclassification).
 
-**Three outcomes MOM can return** (mirroring MOM Layer 1 M-Supervised branching):
+**Three outcomes MOM can return** (mirroring MOM Layer 1 M-Supervised branching, generalized across classifications):
 
-- **Outcome 1: Project definable.** MOM returns a populated Mission (Resolution Statement, Excluded Outcomes, and optional Core Essence / Emotional Drivers), a classified Constraints list (Hard / Soft / Working Assumption with revisit triggers), an Objectives list, and an Active/Aspirational milestone split with P-Feasibility verdicts for every Active milestone. PEF integrates this directly into the PED's Mission, Excluded Outcomes, Objectives, Constraints, and Milestones sections. Proceed to Layer 3 with the populated PED.
+- **Outcome 1: Strategic layer populatable as the passed-in (or determined) classification.** MOM returns a populated strategic-layer set appropriate to `project_type`:
+  - `project`: Mission (Resolution Statement, Excluded Outcomes, optional Core Essence / Emotional Drivers), classified Constraints (Hard / Soft / Working Assumption with revisit triggers), Objectives, Active/Aspirational milestone split with P-Feasibility verdicts.
+  - `operation`: Mission with Service Statement (parallel to Resolution Statement, cycle-shaped) and Excluded Outcomes, classified Constraints, Objectives, Cadence, Coordinated Corpora declarations, Coordinated Outputs declarations, recurring Active milestones plus Aspirational maturity gates with P-Feasibility verdicts on the Active set.
+  - `passion`: Mission (Core Essence, Emotional Drivers), Practices, Directions of Travel, optional Constraints.
+  - `incubator`: Critical Unknown framing, candidate classifications, exploration plan.
 
-- **Outcome 2: Project not yet definable.** MOM has determined that the terrain is unmapped — the deliverable cannot be named with enough specificity for a Resolution Statement or concrete milestones. MOM returns the best-available draft Mission and Constraints plus a single Active milestone: "Map the terrain of [problem domain]" with **Terrain Mapping Framework** as the delivering framework. Aspirational milestones may be drafted with explicit candidate-components caveat. PEF integrates this into the PED, then proceeds to Layer 5 which invokes the Terrain Mapping Framework against the terrain-mapping milestone. When TMF completes and produces a Terrain Map Artifact, PEF records the artifact reference in the PED's Terrain Maps section and re-invokes MOM (PE-Iterate pathway) to formulate the real Mission and milestones from the mapped terrain.
+  PEF integrates the returned content into the matrix file's corresponding sections. Proceed to Layer 3 with the populated matrix.
 
-- **Outcome 3: Not a Project. Escalate under No-Punt.** MOM has determined that the idea is a Passion or Incubator rather than a Project, and returns a No-Punt Escalation Report containing the three required advice elements (Reformulation-as-Project, Pursue-as-Passion, Explore-further). PEF forwards the report to the user with PEF's own recommendation, applying the Constructive Escalation (No-Punt) Rule. **Explore is the default first advice** — propose invoking the Terrain Mapping Framework on the adjacent question that would most reduce uncertainty about whether the idea can be reformulated as a Project. If the user chooses Redefine, record the reformulation decision in the Decision Log and re-invoke MOM. If the user chooses to pursue as Passion, PEF exits the project-supervision path for this idea; the Passion lives as a Matrix Master document outside PED supervision. If Abandon is chosen, record the abandonment decision and exit.
+- **Outcome 2: Terrain not yet mapped — preliminary work required.** MOM has determined that the strategic-layer fields cannot be populated with enough specificity until preliminary work happens. Application varies by type:
+  - `project`: Resolution Statement / milestones not yet formulable. MOM returns a draft Mission and Constraints plus a single Active milestone: "Map the terrain of [problem domain]" with **Terrain Mapping Framework** as the delivering framework. Aspirational milestones may be drafted with explicit candidate-components caveat. PEF integrates this into the matrix, then proceeds to Layer 5 which invokes TMF.
+  - `operation`: Service Statement / cadence / coordinated corpora not yet formulable — typically because the underlying apparatus doesn't exist yet. MOM returns a recommendation to spawn a Project (O-FromScratch entry mode) to build the apparatus first, with the Operation Matrix held in a draft state until the Project completes. Alternatively, if the issue is just that the operation is being formalized for the first time and prior practice hasn't been captured, MOM may return a draft Service Statement plus a single Active milestone to map the existing informal operation (O-FromExisting entry mode).
+  - `passion`: rare; the user typically can name what they're exploring at least loosely. If MOM can't elicit even a Core Essence, the recommendation is to hold the matrix as Incubator until the Critical Unknown of "what is this Passion really about?" is resolved.
+  - `incubator`: by definition, the Incubator's strategic layer is the Critical Unknown plus exploration plan. Outcome 2 doesn't typically apply — Incubators are the holding pattern for not-yet-mappable terrain.
 
-**Integration of MOM output into the PED** (Outcome 1 or Outcome 2):
+  When TMF (or other preliminary work) completes and produces an artifact, PEF records the artifact reference in the matrix file's Terrain Maps section and re-invokes MOM (PE-Iterate pathway) to formulate the real strategic layer from the mapped terrain.
 
-- Mission section: copy Resolution Statement, Excluded Outcomes (protected by the Lock), and any optional Core Essence / Emotional Drivers exactly as MOM produced them. Do not summarize or paraphrase — these are Lock-protected fields.
-- Constraints section: copy the classified list (Hard / Soft / Working Assumption) exactly as MOM produced it. Working Assumption revisit triggers are preserved.
-- Objectives section: copy.
-- Milestones section: copy the Active/Aspirational split. For each Active milestone, preserve the Statement, delivering framework(s), verification criterion, P-Feasibility verdict, and justification. For each Aspirational milestone, preserve the Statement, Contingency note (if present), and candidate-components caveat (if present).
-- Decision Log: add an entry recording that MOM was invoked, which outcome was returned, and what fields of the PED were populated or refreshed.
+- **Outcome 3: Classification mismatch — reclassify under No-Punt.** MOM has determined that the matrix should be a different classification than what was passed in (or, for PE-Init, that the user's idea is a different classification than the user assumed). MOM returns a No-Punt Escalation Report with the recommended classification and the three required advice elements (Reformulation-as-original-type, Pursue-as-recommended-type, Explore-further). PEF forwards the report to the user with PEF's own recommendation, applying the Constructive Escalation (No-Punt) Rule. **Explore is the default first advice** — propose invoking the Terrain Mapping Framework on the adjacent question that would most reduce uncertainty about which classification fits. If the user chooses Redefine (keep original type, refine the framing), record the reformulation decision in the Decision Log and re-invoke MOM. If the user chooses Pursue-as-recommended-type, change `project_type` in the matrix's frontmatter, record the reclassification in the Decision Log, and re-invoke MOM with the new `project_type`. If the user chooses Abandon, record the abandonment decision and exit. **Note:** the prior framing that "Passion lives outside PEF supervision" is retired — Passion-typed matrices are now supervised by PEF iterate with type-appropriate (lighter) supervision; pursuing as Passion is a continuation, not an exit.
 
-**Invariant check for the invocation sub-step:** Before leaving Layer 2, confirm that either (a) MOM returned Outcome 1 and the PED now has Mission, Excluded Outcomes, Constraints, Objectives, and Active/Aspirational Milestones populated; or (b) MOM returned Outcome 2 and the PED has a terrain-mapping Active milestone ready for Layer 5 to invoke TMF; or (c) MOM returned Outcome 3 and the escalation report is ready for Layer 5 to forward with PEF's No-Punt-compliant recommendation.
+**Integration of MOM output into the matrix file** (Outcome 1 or Outcome 2):
+
+- Strategic-layer sections: copy the returned content into the matching sections of the matrix file. Per-type targets:
+  - `project`: Mission section (Resolution Statement, Excluded Outcomes, optional Core Essence / Emotional Drivers — all Lock-protected); Constraints section (Hard / Soft / Working Assumption); Objectives section; Milestones section (Active / Aspirational split with all preserved metadata).
+  - `operation`: Mission section (Service Statement, Excluded Outcomes — both Lock-protected); Constraints section; Objectives section; Cadence and Deliverables section; Coordinated Corpora section; Coordinated Outputs section; Milestones section (recurring Active + Aspirational maturity gates).
+  - `passion`: Mission section (Core Essence, Emotional Drivers — Lock-protected); Practices section; Directions of Travel section; optional Constraints section.
+  - `incubator`: Critical Unknown section; Candidate Classifications section; Exploration Plan section.
+- Do not summarize or paraphrase Lock-protected fields. Copy exactly as MOM produced them.
+- Working Assumption revisit triggers are preserved across all types.
+- Decision Log: add an entry recording that MOM was invoked, which `project_type` was the dispatch target, which outcome was returned, and which fields of the matrix were populated or refreshed.
+
+**Invariant check for the invocation sub-step:** Before leaving Layer 2, confirm that either (a) MOM returned Outcome 1 and the matrix file now has the type-appropriate strategic-layer fields populated; or (b) MOM returned Outcome 2 and the matrix has a terrain-mapping or preliminary-work Active milestone (or a recommendation to spawn a preliminary Project) ready for Layer 5 to dispatch; or (c) MOM returned Outcome 3 and the reclassification escalation report is ready for Layer 5 to forward with PEF's No-Punt-compliant recommendation.
 
 ---
 
@@ -463,11 +543,11 @@ PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM
 
 ## LAYER 4: DIAGNOSTIC CHALLENGE, PROPOSAL, WICKED-PROBLEM DETECTION, AND SUPERVISION DRIFT CHECK
 
-**Stage Focus:** This is the Socratic core. Challenge the user's assumptions, propose answers to unresolved questions, and reveal gaps the user has not seen. Run the four-condition wicked-problem detection check against the current problem definition; if three or more conditions hold, offer to invoke the Wicked Problems Framework (WPF) with the structured handoff package. When the user reports an Active milestone completion or claims the Resolution Statement is now true, run the supervision drift check against the Excluded Outcomes field to detect Silent Non-Solution Substitution.
+**Stage Focus:** This is the Socratic core. Challenge the user's assumptions, propose answers to unresolved questions, and reveal gaps the user has not seen. Run the four-condition wicked-problem detection check against the matrix's strategic-layer content; if three or more conditions hold, offer to invoke the Wicked Problems Framework (WPF) with the structured handoff package. When the user reports a terminal claim — an Active milestone completion (Project) or an Operation cycle close or maturity-gate-reached — run the supervision drift check against the Excluded Outcomes field to detect Silent Non-Solution Substitution. Passion- and Incubator-typed matrices have no terminal claims to verify; this layer's drift check does not fire for them.
 
-**Input:** Phase assessment and gap inventory from Layer 3. PED's Mission (Resolution Statement), Excluded Outcomes, and Active Milestones sections (for supervision drift check when applicable).
+**Input:** Phase assessment and gap inventory from Layer 3. Matrix file's Mission (Resolution Statement for Project, Service Statement for Operation), Excluded Outcomes, and Active Milestones sections (for supervision drift check when applicable; not applicable for Passion- or Incubator-typed matrices).
 
-**Output:** Challenge summary, proposed answers, updated gap inventory, wicked-problem detection result (with WPF handoff package if invoked), supervision drift-check findings (when Active milestone completion is claimed).
+**Output:** Challenge summary, proposed answers, updated gap inventory, wicked-problem detection result (with WPF handoff package if invoked), supervision drift-check findings (when an Active milestone completion or Operation cycle close is claimed).
 
 ### Processing Instructions
 
@@ -523,22 +603,30 @@ PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM
 
    When WPF returns, integrate its Decision Clarity Document into the PED as a new artifact reference (parallel to how Terrain Map Artifacts are recorded in the PED's Terrain Maps section) and resume PEF supervision. WPF does not replace PEF — it is a stage WPF runs and returns from.
 
-8. **Supervision drift check against Excluded Outcomes (PE-Iterate when Active milestones have been checked off since the prior iteration).** When the user reports that an Active milestone's verification criterion has passed, or when the user claims the Mission's Resolution Statement is now true, perform this two-part check before accepting the claim:
+8. **Supervision drift check against Excluded Outcomes.** Fires for Project- and Operation-typed matrices when the user reports a terminal claim. Does not fire for Passion or Incubator types (no terminal claims to verify).
+
+   **For `project_type: project` — when the user reports that an Active milestone's verification criterion has passed, or when the user claims the Mission's Resolution Statement is now true:**
    - **Part A — Resolution Statement holds.** Does the reported outcome actually satisfy the Resolution Statement as written in the PED? Cite the specific clauses of the Resolution Statement and the specific evidence the user is offering.
    - **Part B — No Excluded Outcome has been silently substituted.** Walk through each entry in the PED's Excluded Outcomes field. For each entry, ask: does the reported outcome match this near-miss rather than the Resolution Statement? Cite the evidence. A claim of success is only accepted when the Resolution Statement holds AND no Excluded Outcome has been silently substituted for it.
-   - **If an Excluded Outcome is matched** — surface the finding to the user with specific citations. This is the "Silent Non-Solution Substitution" failure mode (Named Failure Modes section); it is a Type III Error drift — success that does not solve the underlying problem. Do not accept the milestone as complete. Record the finding in the Decision Log. Recommend one of: (a) reformulate the milestone so its verification criterion distinguishes the Resolution Statement from the matched Excluded Outcome; (b) reformulate the Resolution Statement (explicit PE-Iterate decision, Lock-protected), if the user now recognizes the original Resolution Statement was wrong; or (c) continue work on the actual Resolution Statement.
-   - **If the Resolution Statement does not fully hold but no Excluded Outcome is matched** — treat as partial completion. The milestone may be genuinely advancing toward the Resolution Statement but has not yet reached it. Record and proceed.
-   - **If both parts pass** — accept the milestone as complete. Proceed to Layer 5 Promotion Protocol to promote the next Aspirational milestone.
+
+   **For `project_type: operation` — when the user reports an Operation cycle close, or claims a maturity gate has been reached:**
+   - **Part A — Service Statement holds for this cycle.** Does the cycle's actual deliverable satisfy the Service Statement as written in the matrix? For maturity gates, does the multi-cycle pattern satisfy the gate's stated condition (e.g., "100 editions shipped without missing cadence")? Cite the specific clauses and evidence.
+   - **Part B — No Excluded Outcome has been silently substituted.** Walk through each entry in the matrix's Excluded Outcomes field. For each entry, ask: does the cycle deliverable (or maturity-gate evidence) match this near-miss rather than the Service Statement? Cite the evidence. A cycle close (or gate reached) is only accepted when the Service Statement holds AND no Excluded Outcome has been silently substituted for it. Cycle-shape-specific near-miss patterns include: cadence met but quality degraded (cycle ran on time but the deliverable degraded below the operation's quality bar); coordinated corpora consumed but unchanged (the cycle ran but no actual work was done); rendered output produced but not consumed (the cycle's output was published but no downstream actor used it).
+
+   **In either type — handling outcomes:**
+   - **If an Excluded Outcome is matched** — surface the finding to the user with specific citations. This is the "Silent Non-Solution Substitution" failure mode (Named Failure Modes section); it is a Type III Error drift — success that does not solve the underlying problem. Do not accept the claim. Record the finding in the Decision Log. Recommend one of: (a) reformulate the milestone or maturity gate so its verification criterion distinguishes the Resolution / Service Statement from the matched Excluded Outcome; (b) reformulate the Resolution Statement / Service Statement (explicit PE-Iterate decision, Lock-protected), if the user now recognizes the original was wrong; or (c) continue work on the actual Resolution / Service Statement.
+   - **If the strategic-layer claim does not fully hold but no Excluded Outcome is matched** — treat as partial completion. The work may be genuinely advancing but has not yet reached the claim threshold. Record and proceed.
+   - **If both parts pass** — accept the claim as complete. Proceed to Layer 5 Promotion Protocol (Project: promote the next Aspirational milestone; Operation: handle cycle-close logging or maturity-gate-reached follow-through, if any).
 
 ---
 
 ## LAYER 5: GAP-TO-ACTION ROUTING (INCLUDES TERRAIN MAPPING FRAMEWORK INVOCATION AND PROMOTION PROTOCOL)
 
-**Stage Focus:** Map remaining gaps to specific tools, frameworks, or actions. Provide reasoning for each recommendation. When MOM Outcome 2 is active (terrain not yet mapped), invoke the Terrain Mapping Framework and supervise its execution. When an Active milestone has just been verified complete via Layer 4's drift check, execute the Promotion Protocol to promote the next Aspirational milestone and re-invoke MOM for its P-Feasibility verdict.
+**Stage Focus:** Map remaining gaps to specific tools, frameworks, or actions. Provide reasoning for each recommendation. When MOM Outcome 2 is active (terrain not yet mapped), invoke the Terrain Mapping Framework and supervise its execution. When a terminal claim has just been verified via Layer 4's drift check, execute the type-appropriate Promotion Protocol — for Projects, promote the next Aspirational milestone and re-invoke MOM for P-Feasibility; for Operations, log cycle closes and promote next maturity gates as warranted, or fire the devolution gate if the operation is no longer viable; for Passions and Incubators, this is a no-op.
 
-**Input:** Updated gap inventory from Layer 4. MOM invocation outcome from Layer 2 (when determining whether TMF must be invoked). PED's Active/Aspirational Milestones sections (when running Promotion Protocol).
+**Input:** Updated gap inventory from Layer 4. MOM invocation outcome from Layer 2 (when determining whether TMF must be invoked). Matrix file's Active/Aspirational Milestones sections (Project) or recurring Active milestones + Aspirational maturity gates (Operation), used when running Promotion Protocol.
 
-**Output:** Recommended next actions with reasoning (with Constructive Escalation advice form when escalating), readiness assessment for PIF/PFF, TMF invocation and Terrain Map Artifact reference (when applicable), Promotion Protocol results (when applicable).
+**Output:** Recommended next actions with reasoning (with Constructive Escalation advice form when escalating), readiness assessment for PIF/PFF (Project context), TMF invocation and Terrain Map Artifact reference (when applicable), Promotion Protocol results (Project milestone promotion, Operation cycle close / maturity gate / devolution, when applicable).
 
 ### Processing Instructions
 
@@ -556,7 +644,7 @@ PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM
    - "This will produce [expected output]."
    - "After this, run the Problem Evolution Framework again to integrate what you learned."
 
-4. Assess readiness for PIF or PFF handoff. Both frameworks require defined endpoints to function. The Problem Evolution Framework and those frameworks share a common prerequisite: the user must know the starting point and the desired ending point. The difference between PIF and PFF is whether the user knows the process. If the process is unknown, the PIF discovers it. If the process is known, the PFF formalizes it. The readiness assessment determines whether the endpoints are stable enough for either framework to produce useful output.
+4. Assess readiness for PIF or PFF handoff. Both frameworks require defined endpoints to function. The Problem Evolution Framework and those frameworks share a common prerequisite: the user must know the starting point and the desired ending point. The difference between PIF and PFF is whether the user knows the process. If the process is unknown, the PIF discovers it. If the process is known, the PFF formalizes it. The readiness assessment determines whether the endpoints are stable enough for either framework to produce useful output. This readiness check primarily applies to Project-typed matrices. For Operations, the analog readiness check is whether the operation is ready to formalize its corpora via CFF and outputs via OFF — type-specific to Operations and routed through `Framework — Operations Manifest`. For Passion- and Incubator-typed matrices, PIF/PFF handoff is rarely applicable.
 
    **Ready for PIF** when all five conditions are met:
    - Can you state the current state with observable specificity?
@@ -577,7 +665,7 @@ PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM
 
 5. If the diagnostic reveals that the project has fractured into sub-problems that each require their own evolution track, recommend PE-Spawn for each sub-project. Specify: what the sub-project is, why it needs its own track, and how it connects to the parent project's milestones.
 
-6. **Terrain Mapping Framework invocation (MOM Outcome 2 follow-through).** If Layer 2's MOM invocation returned Outcome 2 (Project not yet definable — terrain is unmapped), the PED now carries a single Active milestone: "Map the terrain of [problem domain]" with Terrain Mapping Framework as the delivering framework. Invoke TMF with the following handoff:
+6. **Terrain Mapping Framework invocation (MOM Outcome 2 follow-through).** If Layer 2's MOM invocation returned Outcome 2 (terrain unmapped — primarily applicable to Project-typed matrices; Operations typically resolve Outcome 2 via spawning a preliminary Project to build the apparatus, see `Framework — Operations Manifest`), the matrix file now carries a single Active milestone: "Map the terrain of [problem domain]" with Terrain Mapping Framework as the delivering framework. Invoke TMF with the following handoff:
    - **Current Problem Space** — the working problem definition from Layer 2, including any domain classification recorded in the PED.
    - **Known Knowledge Gaps** — the gap inventory from Layer 3 phrased as answerable questions.
    - **Closure Criteria per Gap** — for each gap, the observable condition that would mark it closed. If PEF did not produce closure criteria, TMF's Stage 1 will construct them from question-bank expansion.
@@ -590,10 +678,12 @@ PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM
    - **TM-Continue recommended** — TMF did not fully converge but made progress; a Terrain Map Artifact exists but gaps remain. Record the artifact reference, keep the terrain-mapping milestone Active, and re-invoke TMF in TM-Continue mode with the residual gaps.
    - **Escalation Package (TM-Escalate-Redefine)** — TMF ran three loops without convergence and has returned an Escalation Package identifying problem-definition elements the evidence contradicts. Apply the Constructive Escalation (No-Punt) Rule: forward the package to the user with specific advice (Redefine / Explore / Abandon). TMF's three-loop non-convergence is itself diagnostic of a problem-definition issue, so Redefine is usually the primary advice here; Explore via a different TMF angle is an alternative if the user identifies a different starting gap.
 
-7. **Promotion Protocol — Active milestone complete, promote next Aspirational.** When Layer 4's Part A + Part B supervision drift check has accepted an Active milestone as complete (Resolution Statement holds AND no Excluded Outcome substituted), execute this protocol:
+7. **Promotion Protocol — type-specific terminal-claim follow-through.** Fires after Layer 4 has accepted a terminal claim. The response varies by matrix type.
+
+   **For `project_type: project` — Active milestone complete, promote next Aspirational:**
 
    a. **Mark the completed milestone** in the PED's Milestones section. Record date completed and the verification evidence that closed it.
-   b. **Check whether the Mission's Resolution Statement is now fully true.** If yes, the project is complete — the entire strategic hierarchy has resolved. Mark the PED status as complete, record the completion in the Decision Log, and exit normal supervision (PE-Review remains available for retrospective inspection).
+   b. **Check whether the Mission's Resolution Statement is now fully true.** If yes, the project is complete — the entire strategic hierarchy has resolved. Mark the PED status as complete and record the completion in the Decision Log. **Project closure conversion gate:** before exiting normal supervision, ask the user: "Does this deliverable continue producing value through ongoing use?" If yes, offer two paths — (a) convert in place (flip `project_type` from `project` to `operation` in the same matrix file; prior Project content moves into the founding Operation Iteration Entry); (b) spawn a new Operation Matrix file (preserves the original Project Matrix as historical record). User chooses. Record the conversion (or the decision not to convert) in the Decision Log. If conversion happens, re-invoke MOM in O-FromProject mode to populate the Operation strategic layer. If no conversion, exit normal supervision (PE-Review remains available for retrospective inspection).
    c. **If the Resolution Statement is not yet fully true**, identify the next Aspirational milestone to promote. The user may select; the default is the Aspirational milestone that most directly advances the residual gap between the current state and the Resolution Statement.
    d. **Invoke MOM (per Layer 2 PE-Iterate pathway) scoped to Layer 4 only** — the newly-promoted milestone needs to be converted from Aspirational format (Statement + optional Contingency + candidate components caveat) into full Active format (Statement + delivering framework(s) + verification criterion + P-Feasibility verdict). MOM's Layer 4 invokes PIF in P-Feasibility mode to produce the verdict.
    e. **Handle P-Feasibility verdict outcomes:**
@@ -603,45 +693,112 @@ PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM
       - **Cannot assess (terrain unknown)** — the terrain that was mapped for earlier Active milestones may not have covered what this milestone needs. Under the No-Punt Rule, **Explore** is the default advice: re-invoke TMF against the specific unmapped region relevant to this milestone. If TMF cannot close the gap, escalate to user with Redefine advice.
    f. **Record the promotion in the Decision Log** with the promotion decision, the P-Feasibility verdict, and any No-Punt escalation advice generated.
 
+   **For `project_type: operation` — cycle close, maturity gate, or devolution:**
+
+   a. **Cycle close (most common).** Record the cycle outcome in the matrix's Performance Log: cycle date, deliverable verified, any quality notes, any incidents (referencing the Incident Log if applicable). No promotion needed — cycles are recurring, not gated. Operations continue in steady state. This sub-step typically completes Layer 5 for the iteration.
+   b. **Maturity gate reached.** When the matrix's Aspirational milestone list contains a maturity gate whose conditions have been evaluated true (e.g., "100 editions shipped without missing cadence"), promote the gate to Active by:
+      - Marking the gate complete with the verification evidence.
+      - Identifying the next Aspirational maturity gate (if any). The user may select; the default is the next gate in the Aspirational list.
+      - Invoking MOM (per Layer 2 PE-Iterate pathway) scoped to Layer 4 only on the new Active gate, dispatching to MOM's Operation classification branch. MOM Layer 4 produces the verification criterion for the new gate (typically itself another multi-cycle condition) and a P-Feasibility verdict from PIF.
+      - Handling P-Feasibility verdict outcomes per the Project sub-procedure above (Reachable / Reachable with conditions / Not reachable / Cannot assess).
+   c. **Operation devolution gate.** If sustained cadence misses or persistent performance degradation suggest the operation is no longer viable in its current form, MOM offers a devolution gate: (a) sunset (apply the `archived` tag, record sunset rationale); (b) revert to Passion (`project_type: passion`, preserve exploration); (c) recast as a Project (bound a final deliverable). User picks. Record the decision in the Decision Log.
+   d. **Record the cycle close, gate promotion, or devolution in the Decision Log** with the verification evidence and any P-Feasibility verdict or No-Punt escalation advice generated.
+
+   **For `project_type: passion` — no formal promotion:**
+
+   Passions evolve through PE-Iterate Layer 2 step 6's MOM auto-invocation (which refreshes Mission, Practices, Directions of Travel as warranted). The Promotion Protocol does not fire for Passion-typed matrices. Layer 5 step 7 is a no-op for Passions.
+
+   **For `project_type: incubator` — no formal promotion:**
+
+   Incubators evolve through PE-Iterate Layer 2 step 6's MOM auto-invocation, which can resolve the Critical Unknown and reclassify the matrix as Project, Operation, or Passion. The Promotion Protocol does not fire for Incubator-typed matrices. Layer 5 step 7 is a no-op for Incubators.
+
 8. End the routing with: "After completing [recommended action], invoke this framework again in PE-Iterate mode with your updated Problem Evolution Document and a recap of what you learned."
 
 ---
 
 ## LAYER 6: PROBLEM DEFINITION UPDATE AND HISTORY RECORDING
 
-**Stage Focus:** Record this iteration's findings, update the problem definition, and produce the updated Problem Evolution Document.
+**Stage Focus:** Record this iteration's findings, update the strategic-layer content, and produce the updated matrix file (PED for Project-typed matrices; Operation Matrix, Passion Matrix, or Incubator Matrix per type).
 
 **Input:** All outputs from Layers 2-5.
 
-**Output:** Updated Problem Evolution Document.
+**Output:** Updated matrix file (PED for Project-typed matrices).
 
 ### Processing Instructions
 
-1. **Update the Current Problem Definition.** If the problem definition changed during this session, write the new definition. If it did not change, state that it remains unchanged and note what confirmed it.
+1. **Update the strategic-layer content per matrix type.** For `project`: update the Current Problem Definition. For `operation`: update Service Statement, Cadence, Coordinated Corpora, and Coordinated Outputs as warranted. For `passion`: update Mission elements (Core Essence, Emotional Drivers), Practices, and Directions of Travel as warranted. For `incubator`: update Critical Unknown framing and candidate classifications. In all cases, if content changed during this session, write the new content; if it did not change, state that it remains unchanged and note what confirmed it.
 
-2. **Integrate MOM output into Mission / Excluded Outcomes / Objectives / Constraints / Milestones sections.** These five sections are owned by MOM — PEF does not draft them directly. Integrate whatever MOM returned from the Layer 2 invocation (or Layer 5 Promotion Protocol's MOM re-invocation):
-   - **Mission section** — copy Resolution Statement (Lock-protected), and optional Core Essence / Emotional Drivers. If MOM returned Outcome 2, this section may hold only a draft Resolution Statement with a note that it will be sharpened after the terrain-mapping milestone completes.
-   - **Excluded Outcomes section** — copy all Near-Miss entries (Lock-protected).
+2. **Integrate MOM output into the matrix file's strategic-layer sections.** These sections are owned by MOM — PEF does not draft them directly. Integrate whatever MOM returned from the Layer 2 invocation (or Layer 5 Promotion Protocol's MOM re-invocation), per matrix type:
+
+   **All types — universal sections:**
    - **Constraints section** — copy the Hard / Soft / Working Assumption classified list. Working Assumption revisit triggers are preserved.
    - **Objectives section** — copy.
+
+   **`project_type: project` — Project-specific sections:**
+   - **Mission section** — copy Resolution Statement (Lock-protected), and optional Core Essence / Emotional Drivers. If MOM returned Outcome 2, this section may hold only a draft Resolution Statement with a note that it will be sharpened after the terrain-mapping milestone completes.
+   - **Excluded Outcomes section** — copy all Near-Miss entries (Lock-protected).
    - **Milestones section** — copy the Active/Aspirational split as MOM produced it. For each Active milestone, preserve Statement, delivering framework(s), verification criterion, P-Feasibility verdict, and justification. For each Aspirational milestone, preserve Statement, optional Contingency note, optional candidate-components caveat.
-   IF MOM has not been invoked yet (the PED is at a pre-MOM stage because the problem was too fragmentary) — note this explicitly and point to the planned MOM invocation in the next iteration.
 
-3. **Update the Terrain Maps section.** If a new Terrain Map Artifact was produced (via TMF invocation in Layer 5), add a one-line reference: artifact filename, vault path, nexus, date produced, and a one-sentence summary of what the artifact mapped. Existing entries remain.
+   **`project_type: operation` — Operation-specific sections:**
+   - **Mission section** — copy Service Statement (Lock-protected), and optional Core Essence / Emotional Drivers.
+   - **Excluded Outcomes section** — copy all Near-Miss entries (Lock-protected).
+   - **Cadence and Deliverables section** — copy the cadence specification and recurring deliverables. Both scheduled and event-driven cadences are valid.
+   - **Coordinated Corpora section** — copy the consumption declarations, primary-curator marker (if applicable), and any change indicators since prior iteration.
+   - **Coordinated Outputs section** — copy the rendered-output specifications.
+   - **Milestones section** — copy recurring Active milestones and Aspirational maturity gates as MOM produced them. For each Active milestone, preserve Statement, delivering framework(s), verification criterion, P-Feasibility verdict, and justification. For each Aspirational maturity gate, preserve Statement, gate condition, and any P-Feasibility verdict if a gate was just promoted.
 
-4. **Record the iteration.** Write an iteration entry following the PED template (Appendix C):
+   **`project_type: passion` — Passion-specific sections:**
+   - **Mission section** — copy Core Essence and Emotional Drivers (Lock-protected).
+   - **Practices section** — copy current practices (no formal Lock; practices evolve via Iterate).
+   - **Directions of Travel section** — copy named directions.
+
+   **`project_type: incubator` — Incubator-specific sections:**
+   - **Critical Unknown section** — copy the Critical Unknown framing.
+   - **Candidate Classifications section** — copy the classification candidates and their evidence.
+   - **Exploration Plan section** — copy the exploration steps.
+
+   In all types — IF MOM has not been invoked yet (the matrix is at a pre-MOM stage because the situation was too fragmentary) — note this explicitly and point to the planned MOM invocation in the next iteration.
+
+3. **Update the Terrain Maps section.** If a new Terrain Map Artifact was produced (via TMF invocation in Layer 5), add a one-line reference: artifact filename, vault path, nexus, date produced, and a one-sentence summary of what the artifact mapped. Existing entries remain. (Terrain Maps primarily apply to Project-typed matrices; Operations may carry Terrain Maps when the operation's domain itself was unmapped, which is rare.)
+
+4. **Record the iteration.** Write an iteration entry following the matrix template appropriate to `project_type` (Appendix C is the canonical Project template; Operation and Passion templates live in their respective framework files). All matrix types record a common core; type-specific bullets follow.
+
+   **Common to all types:**
    - Iteration number and date
-   - Phase at this iteration
+   - Phase at this iteration (Project) or phase-equivalent context (Operation: cycle count and performance summary; Passion: practice rhythm; Incubator: Critical Unknown progress)
+   - MOM invocation outcome (if invoked this iteration): Outcome 1 / 2 / 3 with one-sentence summary, including which `project_type` MOM dispatched to
+   - What was discussed, discovered, or challenged
+   - Decisions made with rationale (reference Decision Log entries)
+   - How the strategic layer changed (or confirmation that it didn't)
+   - Recommended next actions (from Layer 5)
+   - Sub-projects or spawned activities recorded (if any)
+
+   **`project_type: project` — additional bullets:**
    - Problem definition at this point (quote the current definition)
-   - MOM invocation outcome (if invoked this iteration): Outcome 1 / 2 / 3 with one-sentence summary
    - TMF invocation outcome (if invoked this iteration): Terrain Map delivered / TM-Continue / Escalation Package
    - Promotion Protocol events (if an Active milestone completed this iteration): milestone completed, next Aspirational promoted, P-Feasibility verdict on the promotion
    - Drift-check findings (if Excluded Outcomes drift check was performed): either "Part A and Part B passed" or the specific Excluded Outcome that was matched and how it was handled
-   - What was discussed, discovered, or challenged
-   - Decisions made with rationale (reference Decision Log entries)
-   - How the definition changed (or confirmation that it didn't)
-   - Recommended next actions (from Layer 5)
-   - Sub-projects spawned (if any)
+
+   **`project_type: operation` — additional bullets:**
+   - Service Statement at this point (quote, or "unchanged from prior iteration")
+   - Cycle outcomes since last iteration (count completed / missed / degraded with brief notes)
+   - Performance Log additions (if any)
+   - Incident Log additions (if any)
+   - Maturity gate events (if any gate was reached or promoted)
+   - Devolution events (if Operation devolution gate fired — which option was selected and why)
+   - Project-conversion events (if a Project converted into this Operation this iteration)
+   - Drift-check findings (if Service Statement / Excluded Outcomes drift check was performed on a cycle close or maturity gate)
+
+   **`project_type: passion` — additional bullets:**
+   - Mission elements at this point (Core Essence; Emotional Drivers — quote or "unchanged")
+   - Practice changes since last iteration (added / paused / retired practices)
+   - New Directions of Travel surfaced (if any)
+   - Spawned activities reaching reclassification thresholds (if any)
+
+   **`project_type: incubator` — additional bullets:**
+   - Critical Unknown framing at this point (quote, or "unchanged")
+   - Progress on Critical Unknown resolution (what evidence was gathered; what hypotheses were tested)
+   - Reclassification events (if MOM resolved the Critical Unknown and reclassified the matrix as Project / Operation / Passion this iteration)
 
 5. **Update the Decision Log.** For each significant decision made during this session, record:
    - Decision ID, date, and iteration reference
@@ -654,14 +811,14 @@ PEF invokes the Mission, Objectives, and Milestones Clarification Framework (MOM
 
 6. **Update Sub-Project references.** If sub-projects were spawned or if existing sub-projects have updates, record them. When a sub-project makes a decision that affects the parent project, add a reference entry to the parent's Decision Log — not a full duplication, but a pointer: the decision ID from the sub-project PED, a one-sentence summary of the decision, and the specific impact on the parent project. The full rationale lives in the sub-project's PED.
 
-7. **Compress older history.** If the PED has more than five iterations:
+7. **Compress older history.** If the matrix file has more than five iterations:
    - Keep the two most recent iterations in full detail
    - Compress iterations 3-5 to three to five line summaries each
    - Compress iterations older than 5 to single-line entries: "Iteration N (date): [one sentence summary]"
    - Never compress the Decision Log — decisions must remain traceable regardless of age
-   - Never compress the Mission's Resolution Statement, Excluded Outcomes, or Constraints — these are Lock-protected current-state fields
+   - Never compress the Lock-protected current-state fields. Per type: the Mission's Resolution Statement (Project), Service Statement (Operation), Core Essence and Emotional Drivers (Passion), Critical Unknown (Incubator); the Excluded Outcomes (Project, Operation); and the Constraints (all types).
 
-8. **Present the updated PED** to the user in the format specified in Appendix C.
+8. **Present the updated matrix file** to the user in the format specified in Appendix C (Project) or in the corresponding type-specific framework file's template (Operation: `Framework — Operations Manifest`; Passion: `Framework — Passion Matrix` if/when canonical, otherwise Reference template).
 
 ---
 
@@ -1046,6 +1203,8 @@ The framework is a consultant. You call the consultant when you need them.
 ## APPENDIX C: PROBLEM EVOLUTION DOCUMENT TEMPLATE
 
 *This is the persistent artifact created by PE-Init and updated by each PE-Iterate run. In the Ora system, it lives in the vault and the AI retrieves it automatically. In a commercial AI session, the user uploads or pastes this document alongside the framework itself — it is the second document that carries all project context between sessions. Without it, the AI has no project history to work from.*
+
+*This template is for Project-typed matrices (`project_type: project`). The matrix file IS the PED in this case. For Operation-typed matrices, the canonical template lives in `Framework — Operations Manifest.md`; for Passion-typed matrices, in `Framework — Passion Matrix.md` (or `Reference — Passion Matrix Template.md` if not yet a full framework); for Incubator-typed matrices, the lighter Critical-Unknown structure is specified in the relevant framework or Reference. PEF iterate operates on the matrix file regardless of type, applying the type-appropriate template's structure when drafting and updating content.*
 
 *The Mission, Excluded Outcomes, Constraints, Objectives, and Milestones sections are owned by MOM (the Mission, Objectives, and Milestones Clarification Framework) and populated through the Layer 2 MOM Invocation Protocol. PEF integrates MOM's output into the PED verbatim; PEF does not draft these fields directly. The Resolution Statement, the Excluded Outcomes, and the Constraints are Lock-protected under the Universal Problem-Definition Lock — they are changed only through explicit user-authorized PE-Iterate decisions recorded in the Decision Log.*
 

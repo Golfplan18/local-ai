@@ -1,4 +1,3 @@
-
 # Knowledge Artifact Coach Framework
 
 ## Display Name
@@ -290,7 +289,7 @@ The coach generates frontmatter from three tiers defined in the Ora YAML Schema:
 
 **Conditional properties** (present only for specific file types — omit when not applicable):
 - **writing** — Present only on fiction/book production files. Values: `general`, `ideation`, `theme`, `character`, `setting`, `outline`, `prose`, `master`, `archive`. Never set to `"no"` — absence means the file is not a writing file.
-- **project_type** — Present only on project / passion matrix files. List of identifiers from Reference — Project Type Registry (e.g., `project`, `passion`, `book`, `knowledge`, `workflow`, `fiction`).
+- **project_type** — Present only on project / passion matrix files. List of identifiers from Registry — Project Type Registry (e.g., `project`, `passion`, `book`, `knowledge`, `workflow`, `fiction`).
 - **hub** — Present only on matrix/navigational documents with cluster assignments. Numeric value.
 
 ### Tags (Controlled Vocabulary)

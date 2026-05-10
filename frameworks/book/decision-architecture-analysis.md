@@ -1,4 +1,3 @@
-
 # Decision Architecture Analysis Framework
 
 *A Framework for Producing a Decision Architecture Document for a High-Stakes Decision Where the Decision-Maker Is the User and Wants Constraints, Probability-Weighted Outcomes, Stakeholder Impacts, and Failure Pathways Integrated into a Single Architecture Rather Than a Bare Recommendation.*

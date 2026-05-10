@@ -1,51 +1,55 @@
 # Process Formalization Framework
 
 ## Display Name
+
 Process Formalization (PFF)
 
 ## Display Description
-Design, convert, render, and audit AI instruction frameworks against a standardized canonical specification. Four modes: F-Design (new framework), F-Convert (existing → canonical), F-Render (spec → execution variants), F-Audit (review).
 
+Design, convert, render, and audit AI instruction frameworks. Default output is a single consolidated framework file (single-pass rendering, which is the canonical exchange format because it runs both inside Ora and outside it). Four modes: F-Design (new framework), F-Convert (existing → current standard), F-Render (produce additional execution variants on explicit request — opt-in), F-Audit (review).
 
-*A Meta-Framework for Formalizing Domain Expertise into Executable AI Specifications*
+_A Meta-Framework for Formalizing Domain Expertise into Executable AI Specifications_
 
-*Version 2.1*
+_Version 2.2_
 
-*Research-backed update incorporating findings from "Best Practices for Multi-Step AI Prompting" (Appendix)*
+_v2.2 update: consolidated single-file output is now the default for F-Design and F-Convert. Additional execution variants (agent-mode, reasoning-model) are produced only when explicitly requested with stated rationale, per the user's strong preference against file profusion. v2.1 baseline incorporated research-backed findings from "Best Practices for Multi-Step AI Prompting" (Appendix)._
 
 ---
-
 
 ## Setup Questions
 
 ### Mode
-Required. Which of the four PFF operations: F-Design (create a new framework from a task description), F-Convert (rebuild an existing framework against the canonical specification), F-Render (produce an execution variant from a canonical spec), or F-Audit (review an existing framework for quality issues).
+
+Required. Which of the four PFF operations: F-Design (create a new framework from a task description; default output is one consolidated framework file), F-Convert (modernize an existing framework against the current standard; default output is one consolidated framework file), F-Render (produce an additional execution variant from an existing framework — opt-in path), or F-Audit (review an existing framework for quality issues).
 
 ### Task description — for F-Design
+
 Required for F-Design. Description of the task or domain you want a framework for. The more concrete, the better — name the deliverable, the stakeholders, and the hard requirements.
 
 ### Existing framework — for F-Convert, F-Render, F-Audit
+
 Required for F-Convert, F-Render, and F-Audit. The framework spec (paste the content, attach the file, or provide a vault path).
 
 ### Target execution tier — for F-Render
-Required for F-Render. One of: specification (canonical, model-agnostic), single-pass (commercial AI in one window), agent (swarm execution with stages and tools), or reasoning-model (simplified for o3/o4/DeepSeek-R1).
+
+Required for F-Render. The additional rendering you want produced beyond the default consolidated file: `agent` (swarm execution with stages and tools) or `reasoning-model` (simplified for o3/o4/DeepSeek-R1). For backward compatibility with PFF v2.1 split-artifact frameworks, `single-pass` is also accepted as a target. The legacy value `specification` is accepted only when reconstructing an older v2.1-style canonical spec from a v2.2 consolidated file; new work should not produce specification-tier files.
 
 ## How to Use This File
 
 This is a meta-framework — a framework for creating frameworks. It serves four functions:
 
-1. **Design new frameworks from scratch** by following the Framework Design Process (Section IV).
-2. **Convert existing frameworks** to the current standard by following the Conversion Protocol (Section VI).
-3. **Render execution variants** (single-pass commercial, agent mode, or reasoning-model) from a canonical specification by following the Rendering Protocol (Section V).
+1. **Design new frameworks from scratch** by following the Framework Design Process (Section IV). Default output: one consolidated framework file.
+2. **Convert existing frameworks** to the current standard by following the Conversion Protocol (Section VI). Default output: one consolidated converted framework file.
+3. **Render an additional execution variant** (agent mode or reasoning-model) from an existing consolidated framework file by following the Rendering Protocol (Section V). This is the explicit opt-in path for producing extra rendering files beyond the consolidated default.
 4. **Audit existing frameworks** against the quality standard by following the Quality Verification Checklist (Section VII).
 
 Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemini) or local swarm model — then provide your input below the USER INPUT marker at the bottom. State which function you need, or the AI will determine it from context.
 
-**Mode F-Design:** You have a task that needs a framework. You will describe what the framework must accomplish, what inputs it receives, and what outputs it produces. The AI will guide you through the full design process and produce a canonical specification plus rendered variants.
+**Mode F-Design:** You have a task that needs a framework. You will describe what the framework must accomplish, what inputs it receives, and what outputs it produces. The AI will guide you through the full design process and produce **one consolidated framework file** — the single-pass rendering, which contains all the canonical intellectual content and runs in commercial AI without further packaging. This is the default. If you have a concrete reason to also produce an agent-mode or reasoning-model rendering (e.g., this framework will run on the Mac Studio swarm with tool access), state that reason explicitly and additional renderings will be produced as separate files. The AI may surface a recommendation to render an additional variant, but always presents it as a choice and never produces multiple files by default.
 
-**Mode F-Convert:** You have an existing framework that needs modernization. Paste the old framework as input. The AI will analyze it against the current standard, identify gaps, and produce an updated version conforming to the Framework Anatomy and Authoring Standards defined here.
+**Mode F-Convert:** You have an existing framework that needs modernization. Paste the old framework as input. The AI will analyze it against the current standard, identify gaps, and produce **one consolidated updated framework file** conforming to the Framework Anatomy and Authoring Standards defined here. Same single-file default as F-Design — additional execution variants only on explicit request with stated rationale.
 
-**Mode F-Render:** You have a canonical specification and need one or more execution variants generated from it. Paste the specification as input and state which variant you need (single-pass, agent mode, reasoning-model, or any combination).
+**Mode F-Render:** You have an existing consolidated framework file (or a canonical specification from a prior PFF version) and need an _additional_ execution variant generated from it. This is the explicit opt-in path for producing extra renderings beyond the default consolidated file. Paste the framework as input and state which variant you need (agent mode for swarm execution, reasoning-model for o3/R1, or another single-pass rendering if you are deriving from an older split-artifact framework). The output is one additional file.
 
 **Mode F-Audit:** You have a framework (new or converted) and want it evaluated against the standards in this document. Paste the framework as input. The AI will score it against the Quality Verification Checklist and provide specific remediation recommendations.
 
@@ -108,16 +112,16 @@ PFF is a multi-mode framework. The four modes (F-Design / F-Convert / F-Render /
 - **Output format:** Full markdown specification document following the structure defined in Section II.
 - **Drift check question:** Does the drafted specification faithfully implement the architecture from M2 and satisfy the requirements from M1, without introducing scope, criteria, or layers that were not part of the design?
 
-#### Milestone 4: Variants Rendered and Verified
+#### Milestone 4: Consolidated Framework File Rendered and Verified
 
 - **Mode:** F-Design
-- **Endpoint produced:** Rendered execution variants per the requested target environments (single-pass commercial, agent-mode, reasoning-model, or any combination) per Section V Rendering Protocol; verification report against the Section VII Quality Verification Checklist showing pass on every applicable item; canonical specification plus rendered variants saved to their target locations; Framework Registry entry added with the framework's metadata and accurate Delivers field.
-- **Verification criterion:** All requested execution variants are rendered and pass their rendering-specific compliance checks per Section VII (Agent-Mode Compliance for agent renderings, Reasoning-Model Compliance for reasoning-model renderings); the canonical specification passes Section VII Structural Completeness, Milestones Delivered Compliance, Input/Output Integrity, Evaluation Architecture, Language Compliance, Anti-Drift Compliance, Think-Then-Format Compliance, Variable Fidelity Compliance, Anti-Confabulation Compliance, Recovery Compliance, Backward Compatibility, and Proactive Elicitation Compliance; the Framework Registry entry contains all required fields and an accurate Delivers summary that compresses the framework's actual milestones.
+- **Endpoint produced:** **One consolidated framework file** rendered from the M3 specification draft, applying the Single-Pass Rendering Protocol (Section 5.1) so the file is both the canonical intellectual source and a self-contained executable in commercial AI. The single-pass rendering is the canonical exchange format because it is what runs outside Ora and is how frameworks are shared with others. Verification against the Section VII Quality Verification Checklist is performed and presented inline (not as a separate persistent file) showing pass on every applicable item. Framework Registry entry produced. **Additional renderings (agent-mode, reasoning-model) are produced only when the user explicitly requested them in Phase 1 Question 6 with stated rationale, or when the AI surfaces a recommendation that the user accepts**; in those cases each additional rendering is a separate file beyond the default.
+- **Verification criterion:** The consolidated framework file passes Section VII Structural Completeness, Milestones Delivered Compliance, Input/Output Integrity, Evaluation Architecture, Language Compliance, Anti-Drift Compliance, Think-Then-Format Compliance, Variable Fidelity Compliance, Anti-Confabulation Compliance, Recovery Compliance, Backward Compatibility, and Proactive Elicitation Compliance; if any additional renderings were requested, each passes its rendering-specific compliance checks (Agent-Mode Compliance, Reasoning-Model Compliance); the Framework Registry entry contains all required fields and an accurate Delivers summary that compresses the framework's actual milestones.
 - **Layers covered:** Phase 5 (Rendering), Phase 6 (Verification)
 - **Required prior milestones:** M3
 - **Gear:** 4
-- **Output format:** Rendered framework files at their target paths + Section VII audit report (pass/fail per checklist item) + Framework Registry entry.
-- **Drift check question:** Do the rendered variants preserve every operational directive from the canonical specification, do they pass all applicable Quality Verification Checklist items, and is the Framework Registry entry's Delivers summary an accurate compression of the framework's actual milestones?
+- **Output format:** One consolidated framework file at its target path + inline Section VII audit summary + Framework Registry entry. Additional rendering files only if explicitly requested.
+- **Drift check question:** Does the consolidated framework file faithfully express every operational directive from the M3 specification draft, pass all applicable Quality Verification Checklist items, and avoid producing additional rendering files that the user did not explicitly request? Is the Framework Registry entry's Delivers summary an accurate compression of the framework's actual milestones?
 
 ### Milestones for Mode F-Convert
 
@@ -134,16 +138,16 @@ PFF is a multi-mode framework. The four modes (F-Design / F-Convert / F-Render /
 
 ### Milestones for Mode F-Render
 
-#### Milestone 1: Rendered Execution Variant
+#### Milestone 1: Additional Rendered Execution Variant
 
 - **Mode:** F-Render
-- **Endpoint produced:** A new framework file rendered from a canonical specification into the requested target environment (single-pass commercial, agent-mode, or reasoning-model) per Section V Rendering Protocol.
-- **Verification criterion:** The rendered variant passes the rendering-specific compliance checks in Section VII (Agent-Mode Compliance for agent renderings, Reasoning-Model Compliance for reasoning-model renderings, Backward Compatibility for all renderings); every operational directive from the canonical spec is preserved in the rendered variant.
-- **Layers covered:** Section V (Rendering Protocol — 5.1 Single-Pass Rendering Protocol, 5.2 Agent-Mode Rendering Protocol, or 5.3 Reasoning-Model Rendering Protocol per target; plus 5.4 Rendering Order if multiple variants requested)
+- **Endpoint produced:** One new framework file rendered from an existing consolidated framework file (the canonical single-pass file from PFF v2.2 onward, or a legacy canonical specification from v2.1 and earlier) into the requested target environment (agent-mode, reasoning-model, or — in the legacy case — a single-pass file derived from a v2.1 split-artifact framework). This is an opt-in additional artifact beyond the consolidated default.
+- **Verification criterion:** The rendered variant passes the rendering-specific compliance checks in Section VII (Agent-Mode Compliance for agent renderings, Reasoning-Model Compliance for reasoning-model renderings, Backward Compatibility for all renderings); every operational directive from the source framework is preserved in the rendered variant.
+- **Layers covered:** Section V (Rendering Protocol — 5.1 Single-Pass Rendering Protocol, 5.2 Agent-Mode Rendering Protocol, or 5.3 Reasoning-Model Rendering Protocol per target; plus 5.4 Rendering Order if the user explicitly requests more than one additional rendering in the same F-Render invocation)
 - **Required prior milestones:** None
 - **Gear:** 4
-- **Output format:** New framework file in the target environment's expected format.
-- **Drift check question:** Does the rendered variant preserve every operational directive from the canonical specification while honoring the target environment's specific rendering rules, and does it pass the rendering-specific compliance checks for that environment?
+- **Output format:** One additional framework file in the target environment's expected format.
+- **Drift check question:** Does the rendered variant preserve every operational directive from the source framework while honoring the target environment's specific rendering rules, and does it pass the rendering-specific compliance checks for that environment?
 
 ### Milestones for Mode F-Audit
 
@@ -172,9 +176,11 @@ A framework is a natural language specification. It is not code, not a suggestio
 
 ### 2. Separation of Intellectual Content from Execution Environment
 
-The intellectual content of a framework — what it accomplishes, what quality standards govern it, what evaluation criteria apply — is independent of how it executes. The same intellectual content renders into a single-pass framework for commercial AI, an agent mode file for a local swarm, a reasoning-model profile, or any future execution environment. The canonical specification captures the intellectual content. Execution variants are renderings, not rewrites.
+The intellectual content of a framework — what it accomplishes, what quality standards govern it, what evaluation criteria apply — is independent of how it executes. The same intellectual content can render into a single-pass framework for commercial AI, an agent mode file for a local swarm, a reasoning-model profile, or any future execution environment.
 
-**Design implication:** Do not embed execution-environment assumptions into the specification. Stage boundaries in the specification are logical, not mechanical. Whether a stage boundary becomes an actual context window reset (agent mode) or remains a conceptual division within a single pass (commercial mode) is a rendering decision, not a design decision.
+**The default consolidated framework file (single-pass rendering) IS the canonical specification.** They are not separate artifacts. The single-pass rendering preserves all intellectual content while being directly executable in commercial AI, which is the primary distribution context. This consolidation is the v2.2 default. Agent-mode and reasoning-model renderings, when needed, are produced as additional separate files on explicit request — they do not displace the consolidated default.
+
+**Design implication:** Do not embed execution-environment assumptions into the framework's intellectual layers. Stage boundaries in the framework are logical, not mechanical. Whether a stage boundary becomes an actual context window reset (agent mode) or remains a conceptual division within a single pass (commercial mode, the default) is a rendering decision, not a design decision. Tool-dependent steps must degrade gracefully when tools are absent.
 
 ### 3. Minimum Information Forward
 
@@ -255,10 +261,11 @@ pipeline_step: [step number if part of a multi-step pipeline, or "standalone"]
 ```
 
 The `execution_tier` property identifies the document's role:
-- `specification` — Canonical intellectual content. Model-agnostic, environment-agnostic.
-- `single-pass` — Rendered for commercial AI, single context window execution.
-- `agent` — Rendered for swarm execution with stage boundaries, tool access, and state management.
-- `reasoning-model` — Rendered for reasoning-specialized models (o3, o4, DeepSeek R1) with simplified instruction profile.
+
+- `single-pass` — **The default value for consolidated framework files** (v2.2 default). Self-contained framework executable in commercial AI, contains all canonical intellectual content. This is the canonical exchange format and is what runs both inside and outside Ora.
+- `agent` — Rendered for swarm execution with stage boundaries, tool access, and state management. Produced as an additional file only on explicit request.
+- `reasoning-model` — Rendered for reasoning-specialized models (o3, o4, DeepSeek R1) with simplified instruction profile. Produced as an additional file only on explicit request.
+- `specification` — Legacy value retained for backward compatibility with frameworks designed under PFF v2.1 and earlier, where the canonical specification was a separate file from the renderings. New frameworks should not use this value; the single-pass file IS the canonical specification.
 
 The `pipeline_step` property identifies the framework's position in a multi-step pipeline, or "standalone" if the framework operates independently.
 
@@ -344,7 +351,7 @@ The Milestones Delivered section is required for every framework that can be sel
 
 **Exemption for pipeline-stage and fixed-sequence frameworks:** Frameworks invoked deterministically by a parent pipeline driver or orchestrator — not selected by PEF — are exempt from this requirement. Examples include the Gear 4 pipeline stage frameworks (F-Analysis-Breadth, F-Analysis-Depth, F-Evaluate, F-Revise, F-Consolidate, F-Verify) and Phase A prompt cleanup. These frameworks produce intermediate outputs that feed the next stage; they do not deliver standalone project milestones.
 
-Exempt frameworks must declare the exemption explicitly in their Execution Tier section with a statement of the form: *"This framework is invoked as part of [pipeline or orchestration name]; it is not PEF-selectable and does not declare Milestones Delivered."*
+Exempt frameworks must declare the exemption explicitly in their Execution Tier section with a statement of the form: _"This framework is invoked as part of [pipeline or orchestration name]; it is not PEF-selectable and does not declare Milestones Delivered."_
 
 **Inline-properties principle.** All milestone properties are defined inline within each milestone block — never via shared definitions, factored references, or parent-subsection inheritance. Every property is bound to the specific milestone path it governs. This prevents cross-mode property mismatches and makes each milestone block fully self-contained for the parser.
 
@@ -988,39 +995,42 @@ The AI conducts a structured interview with the user to establish the framework'
 **Question Sequence:**
 
 1. **Task Definition, Modes, and Milestones Delivered:** Establish the framework's mode structure, then elicit milestones with all properties inline.
-
-   **Step A — Final deliverable.** What does this framework produce as its final user-facing deliverable?
-
-   **Step B — Modes.** Does this framework have a single execution path or multiple modes (e.g., create / modify / audit)? For each mode identified, what does that mode deliver as its final output?
-
-   **Step C — Routing.** Does the framework have a triage / classification / routing layer that fires BEFORE mode selection? If so, what does it produce that downstream milestones will consume? (This becomes M0 — routing is not itself a milestone but precedes them.)
-
-   **Step D — Per-mode milestone breakpoints.** For each mode identified in Step B: at what natural breakpoints along that mode's layer sequence does the path produce coherent intermediate deliverables that downstream layers consume? For each milestone (intermediate or final) within a mode, elicit ALL of the following inline: (a) the concrete endpoint produced, (b) which layers feed into it, (c) any layers in (b) that fire conditionally based on M0 routing classification or other runtime state, and the condition that activates them, (d) how achievement would be objectively verified, (e) which prior milestones it depends on (use mode-prefix syntax for cross-mode references), (f) the pipeline gear at which it should run (default Gear 4), (g) the output format reference, (h) a drift check question specific enough to surface scope expansion, terminology shift, or premature convergence within this milestone's scope.
-
-   **Step E — Verify chunking sufficiency.** IF any mode has more than ~5 layers and you have identified only one milestone for that mode, THEN return to Step D for that mode — long unchunked execution defeats drift prevention. Single-milestone designs are valid only for short modes (≤5 layers) or modes with no natural intermediate deliverable; if you commit to a single milestone, document the rationale in the framework's Execution Tier section.
-
-   All elicited properties are recorded inline per milestone — never factored into shared definitions or parent-subsection-only inheritance.
+    
+    **Step A — Final deliverable.** What does this framework produce as its final user-facing deliverable?
+    
+    **Step B — Modes.** Does this framework have a single execution path or multiple modes (e.g., create / modify / audit)? For each mode identified, what does that mode deliver as its final output?
+    
+    **Step C — Routing.** Does the framework have a triage / classification / routing layer that fires BEFORE mode selection? If so, what does it produce that downstream milestones will consume? (This becomes M0 — routing is not itself a milestone but precedes them.)
+    
+    **Step D — Per-mode milestone breakpoints.** For each mode identified in Step B: at what natural breakpoints along that mode's layer sequence does the path produce coherent intermediate deliverables that downstream layers consume? For each milestone (intermediate or final) within a mode, elicit ALL of the following inline: (a) the concrete endpoint produced, (b) which layers feed into it, (c) any layers in (b) that fire conditionally based on M0 routing classification or other runtime state, and the condition that activates them, (d) how achievement would be objectively verified, (e) which prior milestones it depends on (use mode-prefix syntax for cross-mode references), (f) the pipeline gear at which it should run (default Gear 4), (g) the output format reference, (h) a drift check question specific enough to surface scope expansion, terminology shift, or premature convergence within this milestone's scope.
+    
+    **Step E — Verify chunking sufficiency.** IF any mode has more than ~5 layers and you have identified only one milestone for that mode, THEN return to Step D for that mode — long unchunked execution defeats drift prevention. Single-milestone designs are valid only for short modes (≤5 layers) or modes with no natural intermediate deliverable; if you commit to a single milestone, document the rationale in the framework's Execution Tier section.
+    
+    All elicited properties are recorded inline per milestone — never factored into shared definitions or parent-subsection-only inheritance.
+    
 2. **Input Inventory:** What information does this framework receive as input? For each input: What is it? Where does it come from? Is it always available or sometimes absent?
 3. **Quality Definition:** How do you know the output is good? What specific attributes distinguish excellent output from mediocre output for this task? Push beyond "high quality" — name the dimensions.
 4. **Failure Modes:** What are the most likely ways this framework's output could go wrong? What mistakes have you seen AI make on this type of task before?
 5. **Pipeline Position:** Is this framework standalone or part of a multi-step pipeline? IF part of a pipeline: What step does it receive input from? What step consumes its output? What is the minimum information the next step needs from this step's output?
-6. **Execution Environment:** Will this framework be used in single-pass commercial AI, agent mode in a local swarm, reasoning-model execution, or multiple environments? IF multiple, THEN identify any processing steps that specifically benefit from tool access, multi-stage execution, or simplified reasoning-model instructions.
+6. **Execution Environment:** The default output is **one consolidated framework file** (the single-pass rendering, executable in commercial AI and serving as the canonical exchange format). Confirm this default is acceptable. IF the user has a concrete reason to also produce an agent-mode rendering (the framework will run on a local swarm orchestrator with tool access, multi-stage execution with context-window resets, or Python orchestration) or a reasoning-model rendering (the framework will target o3, o4-mini, or DeepSeek R1 and benefits from simplified instructions), THEN they state the rationale explicitly and the additional rendering is added to Milestone 4's deliverable. The AI may surface a recommendation if the architecture clearly warrants an additional rendering — for example, a complexity assessment of >8 layers suggests agent-mode execution may be valuable — but presents it as a choice and proceeds with single-file output unless the user accepts. Never produce multiple rendering files by default.
 7. **Domain Expertise:** Does this task require specialized knowledge or perspective? IF so, THEN define the expertise in terms of specific exemplars of mastery (real or archetypal) rather than generic descriptors.
 8. **Precedent Frameworks:** Are there existing frameworks (in your vault or elsewhere) that do something similar to what this framework needs to do? IF so, THEN identify what they do well and what they lack.
 9. **Proactive Gap Assessment:** Based on the answers above, the AI identifies and presents:
-   - Requirements the user likely has not articulated, based on common patterns for this task type.
-   - Constraints that typically matter for this domain but were not mentioned.
-   - Stakeholders or downstream consumers whose needs have not been addressed.
-   - Potential failure modes the user did not identify.
-
-   The user reviews, accepts relevant items, and dismisses irrelevant ones. This step does not proceed automatically — the AI presents its assessment and waits for the user's response. The assessment must be grounded in the framework's emerging Input/Output Contracts, not generic questions.
-
+    
+    - Requirements the user likely has not articulated, based on common patterns for this task type.
+    - Constraints that typically matter for this domain but were not mentioned.
+    - Stakeholders or downstream consumers whose needs have not been addressed.
+    - Potential failure modes the user did not identify.
+    
+    The user reviews, accepts relevant items, and dismisses irrelevant ones. This step does not proceed automatically — the AI presents its assessment and waits for the user's response. The assessment must be grounded in the framework's emerging Input/Output Contracts, not generic questions.
+    
 10. **Complexity Assessment:** Based on the task definition, input/output inventory, and quality dimensions:
+    
     - IF the task can be accomplished in three layers (Input Validation, Core Processing, Self-Evaluation + Output), THEN recommend the simple architecture.
     - IF the task requires five to eight layers, THEN recommend the standard architecture.
     - IF the task requires more than eight layers, THEN recommend agent-mode execution with stage boundaries, and identify where human review gates should be inserted.
     - IF the task requires more than twelve layers, THEN evaluate whether it should be decomposed into a multi-framework pipeline with an orchestration layer.
-
+    
     Present the complexity assessment to the user with reasoning and wait for confirmation.
 
 ### Phase 2: Evaluation Criteria Design
@@ -1046,22 +1056,22 @@ With evaluation criteria established, the AI designs the processing architecture
 2. **Group functions into layers.** Processing functions that share a focus and operate on the same information group into a single layer. Functions that require different information or a different analytical mode become separate layers.
 3. **Sequence the layers.** Determine the logical order. Layers that produce information consumed by later layers must precede them. Layers that require user input or external data should be positioned to minimize context switching.
 4. **Define handoffs.** For each layer boundary, specify:
-   - What the completed layer produces (output contract of the layer).
-   - What the next layer requires (input contract of the next layer).
-   - What is discarded at the boundary (everything not in the next layer's input contract).
-
+    
+    - What the completed layer produces (output contract of the layer).
+    - What the next layer requires (input contract of the next layer).
+    - What is discarded at the boundary (everything not in the next layer's input contract).
 5. **Insert standard layers.** Every framework includes:
-   - A Self-Evaluation layer (penultimate position).
-   - An Error Correction and Output Formatting layer (final position).
-
+    
+    - A Self-Evaluation layer (penultimate position).
+    - An Error Correction and Output Formatting layer (final position).
 6. **Insert invariant checks.** At the end of every processing layer (except the final two), insert the lightweight invariant verification per Section 2.6.
 7. **Insert anti-drift anchors.** IF the framework has more than seven processing layers, THEN insert an orientation anchor at the midpoint per Section 3.7.
 8. **Identify stage boundaries for agent mode.** Determine which layer boundaries should become actual execution breaks in agent mode. Criteria for stage boundaries:
-   - The output of the preceding layers constitutes a complete intermediate product.
-   - The next layers require a materially different analytical mode.
-   - Tool access is required at the boundary (file read/write, RAG query).
-   - Context window pressure is a risk if layers are combined.
-
+    
+    - The output of the preceding layers constitutes a complete intermediate product.
+    - The next layers require a materially different analytical mode.
+    - Tool access is required at the boundary (file read/write, RAG query).
+    - Context window pressure is a risk if layers are combined.
 9. **Draft Named Failure Modes.** For each layer, identify the most likely failure mode specific to that layer's processing task. For the framework as a whole, identify cross-cutting failure modes.
 10. **Draft Recovery Protocol.** For each identified failure point: what happens when the failure occurs? Specify retry conditions, halt conditions, and what information the user needs to resolve the failure.
 11. **Present the architecture to the user.** Show the layer structure, handoff specifications, stage boundaries, failure modes, and recovery protocol for review before proceeding to full draft.
@@ -1074,14 +1084,15 @@ The AI produces the full canonical specification following the Framework Anatomy
 
 1. Draft the Header Block (Purpose, Input Contract, Output Contract).
 2. Draft the Milestones Delivered section per Section 2.3. All milestone properties are defined inline per milestone — never factored into shared definitions.
-
-   IF the framework has a routing / triage layer (identified in Phase 1 Question 1 Step C), THEN declare it as M0 at the top of the Milestones Delivered section with Function, Layers covered, and Output. M0 is not itself a milestone; it precedes mode selection.
-
-   For each mode (identified in Phase 1 Question 1 Step B), draft the mode's milestones in sequence. For each milestone, produce an entry with all required properties bound inline: Mode (omit or write "all" for single-mode frameworks), Endpoint produced, Verification criterion, Layers covered, Conditional layers (only if applicable, with the condition stated inline), Required prior milestones (with mode prefix for cross-mode references), Gear, Output format, and Drift check question.
-
-   IF any mode has more than ~5 layers and only one milestone has been declared for that mode, THEN return to Phase 1 Question 1 Step D to identify intermediate breakpoints.
-
-   Verify each Verification criterion is objectively determinable per the Resolution Statement Objectivity Protocol — no ambiguous quality terms without objective evaluation criteria.
+    
+    IF the framework has a routing / triage layer (identified in Phase 1 Question 1 Step C), THEN declare it as M0 at the top of the Milestones Delivered section with Function, Layers covered, and Output. M0 is not itself a milestone; it precedes mode selection.
+    
+    For each mode (identified in Phase 1 Question 1 Step B), draft the mode's milestones in sequence. For each milestone, produce an entry with all required properties bound inline: Mode (omit or write "all" for single-mode frameworks), Endpoint produced, Verification criterion, Layers covered, Conditional layers (only if applicable, with the condition stated inline), Required prior milestones (with mode prefix for cross-mode references), Gear, Output format, and Drift check question.
+    
+    IF any mode has more than ~5 layers and only one milestone has been declared for that mode, THEN return to Phase 1 Question 1 Step D to identify intermediate breakpoints.
+    
+    Verify each Verification criterion is objectively determinable per the Resolution Statement Objectivity Protocol — no ambiguous quality terms without objective evaluation criteria.
+    
 3. Draft the Evaluation Criteria (from Phase 2, refined by architecture decisions in Phase 3). Use five-level rubrics with concrete per-level descriptions.
 4. Draft the Persona (if applicable, based on Question 7 from Phase 1).
 5. Draft each Processing Layer with full instructions following the Authoring Standards in Section III. Apply the Think-Then-Format standard to every layer. Insert invariant checks at layer boundaries.
@@ -1092,24 +1103,33 @@ The AI produces the full canonical specification following the Framework Anatomy
 
 ### Phase 5: Rendering
 
-From the canonical specification, the AI renders the requested execution variants:
+The AI produces **one consolidated framework file by default** by applying the Single-Pass Rendering Protocol (Section 5.1) to the M3 specification draft. The resulting file is both the canonical intellectual source and a self-contained executable in commercial AI — these are not separate artifacts. The single-pass rendering is the canonical exchange format because it is what runs outside Ora and is how frameworks are shared with others.
 
-- IF single-pass is requested, THEN follow the Single-Pass Rendering Protocol (Section 5.1).
-- IF agent mode is requested, THEN follow the Agent-Mode Rendering Protocol (Section 5.2).
-- IF reasoning-model is requested, THEN follow the Reasoning-Model Rendering Protocol (Section 5.3).
-- IF multiple variants are requested, THEN render single-pass first, then agent mode, then reasoning-model (see Section 5.4 for rationale).
+Additional renderings are produced **only on explicit request** as captured in Phase 1 Question 6:
+
+- IF agent-mode rendering was requested with stated rationale, THEN follow the Agent-Mode Rendering Protocol (Section 5.2) and produce that as a separate file.
+- IF reasoning-model rendering was requested with stated rationale, THEN follow the Reasoning-Model Rendering Protocol (Section 5.3) and produce that as a separate file.
+- IF multiple additional renderings were requested, THEN render the consolidated single-pass file first (validates intellectual content), then agent mode (adds execution machinery on top of validated content), then reasoning-model (simplifies from validated single-pass).
+
+Default path: one file out, no additional renderings. The user may always invoke F-Render later if they decide they need an additional rendering.
 
 ### Phase 6: Verification
 
-The AI applies the Quality Verification Checklist from Section VII to the finished framework(s) and reports any deficiencies.
+The AI applies the Quality Verification Checklist from Section VII to the finished framework(s) and presents the verification **inline in the conversation** as a summary of pass/fail per applicable checklist item — not as a separate persistent file. The verification is operational and ephemeral: its purpose is to catch issues at production time, not to live alongside the framework in the vault. Save a separate verification file only if the user explicitly requests one.
 
 ---
 
 ## Section V: Rendering Protocol — Generating Execution Variants
 
+**Preamble (v2.2 update).** The single-pass rendering (Section 5.1) is the **default and canonical output** of F-Design and F-Convert. It contains all of the intellectual content of a framework and is directly executable in commercial AI, which is the primary distribution context (the format that runs outside Ora and that frameworks can be shared in with others). There is no separate "specification" file in addition to the single-pass file — they are the same artifact.
+
+The agent-mode rendering (Section 5.2) and reasoning-model rendering (Section 5.3) are **opt-in additional artifacts** produced only when the user explicitly requests them with stated rationale (e.g., the framework will run on the Mac Studio swarm; the framework targets o3/R1). Each additional rendering is a separate file beyond the consolidated default.
+
+This section defines all three protocols. By default, only Section 5.1 is applied.
+
 ### 5.1 Single-Pass Rendering Protocol
 
-The single-pass rendering takes a canonical specification and produces a framework optimized for execution in a single commercial AI context window with no tool access.
+The single-pass rendering is the **default consolidated framework file**. It contains the canonical intellectual content of the framework AND is directly executable in a single commercial AI context window with no tool access. This is the primary output of F-Design and F-Convert.
 
 **Rendering steps:**
 
@@ -1117,45 +1137,47 @@ The single-pass rendering takes a canonical specification and produces a framewo
 2. **Remove all agent-tier metadata.** Delete: Stage Boundaries, Persistent Reference Document, Tool Definitions, Checkpoint Protocol, and Python Runner Specification.
 3. **Set execution_tier to `single-pass`** in YAML frontmatter.
 4. **Adjust the Execution Tier section** of the Header Block:
-   ```
-   ## EXECUTION TIER
-   Single-pass: All layers execute sequentially in one context window.
-   No external tool access is available. All processing is internal.
-   ```
-
+    
+    ```
+    ## EXECUTION TIER
+    Single-pass: All layers execute sequentially in one context window.
+    No external tool access is available. All processing is internal.
+    ```
+    
 5. **Add anti-drift anchors.** In frameworks with more than seven processing layers, insert an orientation anchor at the midpoint of the layer sequence per Section 3.7. Position the anchor at the start of the next processing block, immediately after the section divider.
 6. **Add the input validation and proactive elicitation protocol** to the first processing layer. In single-pass mode, the framework must gather any needed clarification from the user within the same session. Insert at the beginning of Layer 1:
-
-   ```
-   Before beginning Layer 1 processing, review all required inputs
-   per the Input Contract. IF any required input is absent, THEN
-   present a numbered list of specific questions to the user
-   referencing the missing Input Contract items by name.
-   Do not proceed until all required inputs are confirmed.
-
-   IF any required input is present but ambiguous, THEN state
-   what you understand, what you are uncertain about, and what
-   assumption you will make if not corrected. Wait for confirmation.
-
-   IF optional inputs are absent, THEN note their absence and state
-   the default behavior that will apply.
-
-   Additionally, assess whether the provided inputs are likely
-   underspecified for this framework's task. IF common requirements
-   for this task type appear to be missing, THEN surface them:
-   "Based on [framework task], the following requirements are
-   typically important but were not specified: [list]. Should any
-   of these be addressed before proceeding?"
-   ```
-
+    
+    ```
+    Before beginning Layer 1 processing, review all required inputs
+    per the Input Contract. IF any required input is absent, THEN
+    present a numbered list of specific questions to the user
+    referencing the missing Input Contract items by name.
+    Do not proceed until all required inputs are confirmed.
+    
+    IF any required input is present but ambiguous, THEN state
+    what you understand, what you are uncertain about, and what
+    assumption you will make if not corrected. Wait for confirmation.
+    
+    IF optional inputs are absent, THEN note their absence and state
+    the default behavior that will apply.
+    
+    Additionally, assess whether the provided inputs are likely
+    underspecified for this framework's task. IF common requirements
+    for this task type appear to be missing, THEN surface them:
+    "Based on [framework task], the following requirements are
+    typically important but were not specified: [list]. Should any
+    of these be addressed before proceeding?"
+    ```
+    
 7. **Consolidate evaluation into a single pass.** In the Self-Evaluation layer, add:
-   ```
-   Execute all criterion evaluations in a single sequential pass.
-   Do not skip criteria. Do not defer criteria to a later step.
-   IF any criterion cannot be fully evaluated due to context window
-   limitations, THEN score it as INCOMPLETE rather than guessing.
-   ```
-
+    
+    ```
+    Execute all criterion evaluations in a single sequential pass.
+    Do not skip criteria. Do not defer criteria to a later step.
+    IF any criterion cannot be fully evaluated due to context window
+    limitations, THEN score it as INCOMPLETE rather than guessing.
+    ```
+    
 8. **Verify total document length.** Single-pass frameworks must operate within a commercial AI context window alongside the user's input materials. IF the specification plus typical inputs would exceed 75% of a standard context window (approximately 150,000 tokens for current frontier models), THEN identify layers that can be condensed or split the framework into a multi-pass sequence with explicit pass boundaries and carry-forward specifications.
 
 ### 5.2 Agent-Mode Rendering Protocol
@@ -1168,51 +1190,54 @@ The agent-mode rendering takes a canonical specification and produces a mode fil
 2. **Set execution_tier to `agent`** in YAML frontmatter.
 3. **Map layers to execution stages.** Using the stage boundaries identified in Phase 3 of the design process, group layers into stages. Each stage becomes one inference call in the pipeline.
 4. **Write handoff specifications for each stage boundary.** For each boundary:
-   ```
-   STAGE BOUNDARY: Stage [N] → Stage [N+1]
-
-   Extract from Stage [N] output:
-   - [Specific data element 1]
-   - [Specific data element 2]
-   - [Specific data element N]
-
-   Discard:
-   - [Everything not listed above]
-
-   Construct Stage [N+1] context window:
-   - System prompt: [mode file header through Stage N+1 instructions]
-   - Persistent Reference Document: [original objective, key constraints,
-     scope boundaries, named variables — unchanged across all stages]
-   - Previous stage output: [extracted data elements above]
-   - Additional context: [any RAG retrievals or file reads needed]
-   ```
-
+    
+    ```
+    STAGE BOUNDARY: Stage [N] → Stage [N+1]
+    
+    Extract from Stage [N] output:
+    - [Specific data element 1]
+    - [Specific data element 2]
+    - [Specific data element N]
+    
+    Discard:
+    - [Everything not listed above]
+    
+    Construct Stage [N+1] context window:
+    - System prompt: [mode file header through Stage N+1 instructions]
+    - Persistent Reference Document: [original objective, key constraints,
+      scope boundaries, named variables — unchanged across all stages]
+    - Previous stage output: [extracted data elements above]
+    - Additional context: [any RAG retrievals or file reads needed]
+    ```
+    
 5. **Write the Persistent Reference Document.** A compact summary (target: under 500 tokens) containing: the framework's Purpose statement, the Output Contract's primary deliverable, the three highest-priority evaluation criteria, all named variables and their current values, and any scope boundaries that must not shift. This document is injected into every stage's context window.
 6. **Write tool definitions.** For each tool available to this framework:
-   ```
-   TOOL: [tool_name]
-   Description: [What it does]
-   Trigger condition: [When the model should invoke this tool]
-   Input schema: [parameter names and types]
-   Output schema: [what the tool returns]
-   Failure handling: IF tool call fails, THEN [specific recovery action]
-   ```
-
+    
+    ```
+    TOOL: [tool_name]
+    Description: [What it does]
+    Trigger condition: [When the model should invoke this tool]
+    Input schema: [parameter names and types]
+    Output schema: [what the tool returns]
+    Failure handling: IF tool call fails, THEN [specific recovery action]
+    ```
+    
 7. **Write the checkpoint protocol** per the template in Section 2.8.
 8. **Write the Python Runner Specification.** Structure the specification as described in Section 2.8.
 9. **Add adversarial review integration points.** Identify which stages produce outputs that should be cross-evaluated by the opposing model in the swarm. For each such point:
-   ```
-   ADVERSARIAL REVIEW POINT after Stage [N]:
-
-   Reviewing model: [Depth | Breadth]
-   Review focus: [What the reviewer evaluates — map to Six Hats assignment]
-   Review input: Stage [N] output + evaluation criteria [list numbers]
-   Review output: [Scored evaluation with specific deficiency identification]
-   Action on review:
-     IF all scores ≥ [threshold], THEN proceed to Stage [N+1].
-     IF any score < [threshold], THEN return to Stage [N] with
-     deficiency report appended to context. Maximum retries: [count].
-   ```
+    
+    ```
+    ADVERSARIAL REVIEW POINT after Stage [N]:
+    
+    Reviewing model: [Depth | Breadth]
+    Review focus: [What the reviewer evaluates — map to Six Hats assignment]
+    Review input: Stage [N] output + evaluation criteria [list numbers]
+    Review output: [Scored evaluation with specific deficiency identification]
+    Action on review:
+      IF all scores ≥ [threshold], THEN proceed to Stage [N+1].
+      IF any score < [threshold], THEN return to Stage [N] with
+      deficiency report appended to context. Maximum retries: [count].
+    ```
 
 ### 5.3 Reasoning-Model Rendering Protocol
 
@@ -1225,25 +1250,27 @@ Research on reasoning models converges on a clear finding: traditional prompting
 1. **Copy the specification structure intact.**
 2. **Set execution_tier to `reasoning-model`** in YAML frontmatter.
 3. **Simplify processing layer instructions.** For each layer:
-   - Remove explicit chain-of-thought instructions ("think step by step," "reason through this carefully"). The model does this internally.
-   - Remove few-shot examples unless they demonstrate edge cases the model would not encounter in training.
-   - Reduce procedural scaffolding. Replace multi-step instruction sequences with direct objective statements where the intermediate steps are obvious.
-   - Retain: evaluation criteria, output contracts, named failure modes, conditional logic, and constraints. These are specifications, not reasoning scaffolding.
-
+    
+    - Remove explicit chain-of-thought instructions ("think step by step," "reason through this carefully"). The model does this internally.
+    - Remove few-shot examples unless they demonstrate edge cases the model would not encounter in training.
+    - Reduce procedural scaffolding. Replace multi-step instruction sequences with direct objective statements where the intermediate steps are obvious.
+    - Retain: evaluation criteria, output contracts, named failure modes, conditional logic, and constraints. These are specifications, not reasoning scaffolding.
 4. **Retain the Self-Evaluation layer** but simplify its instructions:
-   ```
-   Evaluate your output against each criterion. For any criterion
-   scoring below [threshold], identify the deficiency and correct it.
-   Flag unresolvable deficiencies.
-   ```
-   Reasoning models show near-zero self-correction blind spots due to error-correction sequences in their training data. Elaborate correction trigger phrases are unnecessary.
-
+    
+    ```
+    Evaluate your output against each criterion. For any criterion
+    scoring below [threshold], identify the deficiency and correct it.
+    Flag unresolvable deficiencies.
+    ```
+    
+    Reasoning models show near-zero self-correction blind spots due to error-correction sequences in their training data. Elaborate correction trigger phrases are unnecessary.
+    
 5. **Retain all structural elements.** Input/Output Contracts, Evaluation Criteria, Named Failure Modes, and Execution Commands remain unchanged. These are contracts and specifications, not reasoning instructions.
 6. **Retain anti-drift anchors and invariant checks.** Even reasoning models benefit from explicit scope reminders.
 
 ### 5.4 Rendering Order
 
-When multiple variants are requested, render in this order: single-pass first, then agent mode, then reasoning-model. This order is correct because:
+The single-pass rendering is always produced first because it is the default consolidated output. **When the user has explicitly requested additional renderings beyond the single-pass default**, render them in this order: agent-mode after single-pass, then reasoning-model. This order is correct because:
 
 - The single-pass version validates that the intellectual content is complete and self-contained.
 - The agent-mode version adds execution machinery on top of validated content.
@@ -1260,72 +1287,72 @@ This section provides the process for converting an existing framework to the cu
 
 1. **Read the existing framework completely** before making any changes.
 2. **Identify the framework's intellectual content:**
-   - What does it produce? (Map to Output Contract.)
-   - What does it require? (Map to Input Contract.)
-   - What quality standards does it apply? (Map to Evaluation Criteria.)
-   - What processing steps does it follow? (Map to Processing Layers.)
-   - What failure modes does it address? (Map to Named Failure Modes.)
-
+    
+    - What does it produce? (Map to Output Contract.)
+    - What does it require? (Map to Input Contract.)
+    - What quality standards does it apply? (Map to Evaluation Criteria.)
+    - What processing steps does it follow? (Map to Processing Layers.)
+    - What failure modes does it address? (Map to Named Failure Modes.)
 3. **Identify structural gaps against the Framework Anatomy:**
-   - Is there a formal Input Contract? (Existing frameworks typically lack this.)
-   - Is there a formal Output Contract? (Often implied but not explicit.)
-   - Are evaluation criteria separated from processing instructions? (Often mixed together.)
-   - Are evaluation criteria written as five-level rubrics with concrete per-level descriptions? (Almost never in legacy frameworks.)
-   - Are processing layers clearly bounded with single focus? (Often blended.)
-   - Is Think-Then-Format observed within layers? (Rarely in legacy frameworks.)
-   - Is there an explicit Self-Evaluation layer with correction triggers? (May exist informally.)
-   - Is there an explicit Error Correction layer with variable fidelity checks? (Often partial.)
-   - Are failure modes named? (Sometimes present, often generic.)
-   - Are recovery protocols specified? (Almost never in legacy frameworks.)
-
+    
+    - Is there a formal Input Contract? (Existing frameworks typically lack this.)
+    - Is there a formal Output Contract? (Often implied but not explicit.)
+    - Are evaluation criteria separated from processing instructions? (Often mixed together.)
+    - Are evaluation criteria written as five-level rubrics with concrete per-level descriptions? (Almost never in legacy frameworks.)
+    - Are processing layers clearly bounded with single focus? (Often blended.)
+    - Is Think-Then-Format observed within layers? (Rarely in legacy frameworks.)
+    - Is there an explicit Self-Evaluation layer with correction triggers? (May exist informally.)
+    - Is there an explicit Error Correction layer with variable fidelity checks? (Often partial.)
+    - Are failure modes named? (Sometimes present, often generic.)
+    - Are recovery protocols specified? (Almost never in legacy frameworks.)
 4. **Identify language standard gaps against the Authoring Standards:**
-   - Instruction voice: imperative or suggestive?
-   - Conditional logic: IF/THEN structure or prose descriptions?
-   - References: named or pronoun-dependent?
-   - Quantities: specific or qualitative?
-   - Word counts: ranges or vague targets?
-   - Directives: affirmative ("do X") or negative ("don't do Y")?
-
+    
+    - Instruction voice: imperative or suggestive?
+    - Conditional logic: IF/THEN structure or prose descriptions?
+    - References: named or pronoun-dependent?
+    - Quantities: specific or qualitative?
+    - Word counts: ranges or vague targets?
+    - Directives: affirmative ("do X") or negative ("don't do Y")?
 5. **Identify consolidation opportunities** (for frameworks that were split into initiation/foundation/evaluation triads):
-   - Can the initiation framework's progressive questioning be absorbed into the first processing layer?
-   - Can the evaluation framework's criteria be absorbed into the Evaluation Criteria section and Self-Evaluation layer?
-   - Is the split still justified by context window pressure, or does the updated structural standard resolve the drift that caused the split?
-
+    
+    - Can the initiation framework's progressive questioning be absorbed into the first processing layer?
+    - Can the evaluation framework's criteria be absorbed into the Evaluation Criteria section and Self-Evaluation layer?
+    - Is the split still justified by context window pressure, or does the updated structural standard resolve the drift that caused the split?
 6. **Assess complexity.** Apply the complexity assessment from Phase 1, Question 10 of the Framework Design Process. IF the framework exceeds 12 layers, THEN recommend either agent-mode execution or decomposition into a multi-framework pipeline.
 7. **Present the analysis to the user** with specific recommendations before proceeding to conversion.
 
 ### 6.2 Conversion Phase
 
 1. **Draft the canonical specification** by restructuring the existing framework's intellectual content into the Framework Anatomy:
-   - Extract and formalize the Input Contract.
-   - Extract and formalize the Output Contract.
-   - Extract, separate, and formalize the Evaluation Criteria with five-level rubrics.
-   - Reorganize processing instructions into properly bounded layers with Think-Then-Format separation.
-   - Add invariant checks at layer boundaries.
-   - Add or formalize the Self-Evaluation layer with correction triggers and calibration warning.
-   - Add or formalize the Error Correction and Output Formatting layer with variable fidelity verification and Recovery Declaration.
-   - Name all identified failure modes.
-   - Draft recovery protocols.
-   - Apply all Authoring Standards to instruction language.
-
+    
+    - Extract and formalize the Input Contract.
+    - Extract and formalize the Output Contract.
+    - Extract, separate, and formalize the Evaluation Criteria with five-level rubrics.
+    - Reorganize processing instructions into properly bounded layers with Think-Then-Format separation.
+    - Add invariant checks at layer boundaries.
+    - Add or formalize the Self-Evaluation layer with correction triggers and calibration warning.
+    - Add or formalize the Error Correction and Output Formatting layer with variable fidelity verification and Recovery Declaration.
+    - Name all identified failure modes.
+    - Draft recovery protocols.
+    - Apply all Authoring Standards to instruction language.
 2. **Preserve all intellectual content.** Conversion modernizes structure and language. It does not add, remove, or alter the framework's substantive instructions unless a deficiency is identified, in which case the AI flags it for user review rather than silently correcting it.
 3. **Consolidate split frameworks** (if applicable and if the user confirms consolidation):
-   - Absorb initiation questioning into Layer 1 progressive questioning protocol.
-   - Absorb evaluation criteria into the Evaluation Criteria section.
-   - Absorb evaluation processing into the Self-Evaluation layer.
-   - Verify that the consolidated framework does not exceed context window viability for single-pass use.
-
-4. **Render execution variants** per Section V if requested.
+    
+    - Absorb initiation questioning into Layer 1 progressive questioning protocol.
+    - Absorb evaluation criteria into the Evaluation Criteria section.
+    - Absorb evaluation processing into the Self-Evaluation layer.
+    - Verify that the consolidated framework does not exceed context window viability for single-pass use.
+4. **Render the consolidated converted framework file.** Apply the Single-Pass Rendering Protocol (Section 5.1) to produce one consolidated file as the default output of F-Convert. Additional execution variants are produced only on explicit user request with stated rationale, per Section V Preamble (v2.2).
 
 ### 6.3 Verification Phase
 
 1. **Cross-check intellectual content.** Verify that every instruction, criterion, and processing step from the original framework exists in the converted version. Document and justify any omissions.
 2. **Apply the Quality Verification Checklist** from Section VII.
 3. **Present the converted framework** to the user with a change log documenting:
-   - Structural changes (sections added, reorganized, or consolidated).
-   - Language changes (instructions rewritten for standard compliance).
-   - Content additions (new layers, failure modes, criteria, or recovery protocols not in the original).
-   - Content flagged for review (potential deficiencies discovered during conversion).
+    - Structural changes (sections added, reorganized, or consolidated).
+    - Language changes (instructions rewritten for standard compliance).
+    - Content additions (new layers, failure modes, criteria, or recovery protocols not in the original).
+    - Content flagged for review (potential deficiencies discovered during conversion).
 
 ---
 
@@ -1347,7 +1374,7 @@ Apply this checklist to any framework — new, converted, or rendered. Score eac
 
 ### Milestones Delivered Compliance
 
-*These items apply only to frameworks that declare Milestones Delivered. Pipeline-stage and fixed-sequence frameworks exempt per Section II subsection 2.3 are not subject to this category; their exemption declaration in Execution Tier is checked under Structural Completeness.*
+_These items apply only to frameworks that declare Milestones Delivered. Pipeline-stage and fixed-sequence frameworks exempt per Section II subsection 2.3 are not subject to this category; their exemption declaration in Execution Tier is checked under Structural Completeness._
 
 - [ ] Milestones Delivered section is positioned between the Framework Header Block and the Evaluation Criteria.
 - [ ] At least one milestone is declared.
@@ -1696,7 +1723,7 @@ PFF is one of three sibling meta-frameworks. The Corpus Formalization Framework 
 
 When a user invokes PFF (mode F-Design), the design process includes the question:
 
-> *Does this process feed a workflow with multiple sources or multiple outputs?*
+> _Does this process feed a workflow with multiple sources or multiple outputs?_
 
 If yes, PFF recommends invoking CFF in parallel to design the corpus the bespoke PFF will write into. The bespoke PFF's output contract is then aligned with a specific corpus section.
 
@@ -1737,38 +1764,28 @@ Full architecture: `Framework — PFF-CFF-OFF Integration Architecture.md`. Sibl
 
 1. Confirm you have fully processed this meta-framework and any associated input materials.
 2. Identify the operating mode from the user's input:
-   - **Mode F-Design:** User describes a new framework to create. Follow the Framework Design Process (Section IV).
-   - **Mode F-Convert:** User provides an existing framework. Follow the Conversion Protocol (Section VI).
-   - **Mode F-Render:** User provides a canonical specification. Follow the Rendering Protocol (Section V).
-   - **Mode F-Audit:** User provides a framework for evaluation. Apply the Quality Verification Checklist (Section VII).
+    
+    - **Mode F-Design:** User describes a new framework to create. Follow the Framework Design Process (Section IV). **Default output: one consolidated framework file** (single-pass rendering, which is also the canonical intellectual source).
+    - **Mode F-Convert:** User provides an existing framework. Follow the Conversion Protocol (Section VI). **Default output: one consolidated converted framework file.**
+    - **Mode F-Render:** User provides an existing framework and explicitly wants an additional execution variant beyond the default. Follow the Rendering Protocol (Section V). Output: one additional rendering file.
+    - **Mode F-Audit:** User provides a framework for evaluation. Apply the Quality Verification Checklist (Section VII). Output: audit report presented inline by default; persistent file only if requested.
 3. IF the mode is ambiguous, THEN ask the user to confirm before proceeding.
-4. Execute the appropriate process. Produce all outputs specified for that mode.
-5. Apply the Quality Verification Checklist to all outputs before delivery.
+4. Execute the appropriate process. **Produce the default single-file output unless the user has explicitly requested additional renderings with stated rationale.** If the architecture clearly warrants suggesting an additional rendering (e.g., complexity assessment of >8 layers suggests agent-mode may be valuable), surface the recommendation as a choice and proceed with single-file output unless the user accepts.
+5. Apply the Quality Verification Checklist to all outputs before delivery. Present the verification inline as a pass/fail summary unless the user requested a persistent verification file.
 6. Produce a Framework Registry Entry for every framework specification produced. The entry follows this format:
-
-   FRAMEWORK REGISTRY ENTRY
-   Name: [framework name from the specification's title]
-   Purpose: [one sentence from the specification's PURPOSE section]
-   Problem Class: [what category of problem this framework solves — inferred from the specification's purpose and input contract]
-   Input Summary: [condensed from the specification's INPUT CONTRACT — required inputs only, one line each]
-   Output Summary: [condensed from the specification's OUTPUT CONTRACT — primary outputs only, one line each]
-   Proven Applications: [list any test cases run during this session; if none, state "None yet — initial version"]
-   Known Limitations: [inferred from the specification's Named Failure Modes — one sentence summarizing the most significant risk]
-   File Location: [the path where the specification file will be saved]
-   Provenance: [human-created | agent-created]
-   Confidence: [low — initial version | medium — tested against 3+ diverse inputs | high — tested against 10+ diverse inputs with consistent results]
-   Version: [from the specification's YAML frontmatter framework_version]
-
-   Present the registry entry alongside the framework specification. Instruct the user (or agent) to save the entry to the framework registry file and index it in ChromaDB's knowledge collection.
-
+    
+    FRAMEWORK REGISTRY ENTRY Name: [framework name from the specification's title] Purpose: [one sentence from the specification's PURPOSE section] Problem Class: [what category of problem this framework solves — inferred from the specification's purpose and input contract] Input Summary: [condensed from the specification's INPUT CONTRACT — required inputs only, one line each] Output Summary: [condensed from the specification's OUTPUT CONTRACT — primary outputs only, one line each] Proven Applications: [list any test cases run during this session; if none, state "None yet — initial version"] Known Limitations: [inferred from the specification's Named Failure Modes — one sentence summarizing the most significant risk] File Location: [the path where the specification file will be saved] Provenance: [human-created | agent-created] Confidence: [low — initial version | medium — tested against 3+ diverse inputs | high — tested against 10+ diverse inputs with consistent results] Version: [from the specification's YAML frontmatter framework_version]
+    
+    Present the registry entry alongside the framework specification. Instruct the user (or agent) to save the entry to the framework registry file and index it in ChromaDB's knowledge collection.
+    
 7. Present outputs with a summary of decisions made, gaps identified, and recommendations for refinement.
 
 ---
 
 ## USER INPUT
 
-[State Mode F-Design (new framework), Mode F-Convert (modernize existing), Mode F-Render (generate execution variants from specification), or Mode F-Audit (evaluate against standards) — or let the AI auto-detect from your input. Then provide your input materials.]
+[State Mode F-Design (new framework, default single-file output), Mode F-Convert (modernize existing, default single-file output), Mode F-Render (generate an additional execution variant from an existing framework — explicit opt-in path), or Mode F-Audit (evaluate against standards) — or let the AI auto-detect from your input. Then provide your input materials.]
 
 ---
 
-**END OF FRAMEWORK CREATION FRAMEWORK v2.0**
+**END OF FRAMEWORK CREATION FRAMEWORK v2.2**

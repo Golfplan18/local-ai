@@ -1,4 +1,3 @@
-
 # Bayesian Hypothesis Network Analysis Framework
 
 *A Framework for Producing a Probabilistic Posterior over Competing Hypotheses with Explicit Priors, Evidential Likelihoods, Conditional Dependencies, and Sensitivity Analysis Identifying Which Evidence Items Most Shift the Posterior.*

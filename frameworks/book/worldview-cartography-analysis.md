@@ -1,4 +1,3 @@
-
 # Worldview Cartography Analysis Framework
 
 *A Framework for Producing a Cartography of Competing Worldviews — Each Worldview's Foundational Commitments Surfaced, Cross-Paradigm Tensions Named Explicitly, Dialectical Synthesis Where the Paradigms' Own Terms Permit, Residual Incommensurabilities Preserved as Such.*

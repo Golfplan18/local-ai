@@ -1,4 +1,3 @@
-
 # Domain Induction Analysis Framework
 
 *A Framework for Producing a Domain Induction Document with Three Integrated Parts: (a) What Is Here in the Domain; (b) What's Connected to What; (c) What to Learn Next, Sequenced by Genuine Dependency.*

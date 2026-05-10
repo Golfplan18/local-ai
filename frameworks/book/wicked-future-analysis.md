@@ -1,4 +1,3 @@
-
 # Wicked-Future Analysis Framework
 
 *A Framework for Producing an Integrated Forward Analysis with Probability-Weighted Scenarios, Adversarial-Future Stress-Test Findings, Divergence Points to Monitor, and Explicit Gap-Flagging Where Constructive-Future (Backcasting) Analysis Has Been Deferred.*

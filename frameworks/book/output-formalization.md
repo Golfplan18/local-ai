@@ -4,14 +4,14 @@
 Output Formalization (OFF)
 
 ## Display Description
-Meta-framework for formalizing the expression side of knowledge work — how an output is shaped, structured, and rendered for its audience. Pairs with Process Formalization (PFF) and Corpus Formalization (CFF). Use to design or audit how a deliverable type is produced and presented.
+Meta-framework for formalizing the expression side of knowledge work — how an output is shaped, structured, and rendered for its audience. Pairs with Process Formalization (PFF) and Corpus Formalization (CFF). Use to design or audit how a deliverable type is produced and presented. Outputs may be standalone or declared as Coordinated Outputs of an Operation (per `Framework — Operations Manifest`); when declared, the OFF specification appears as a row in the Operation Matrix's Coordinated Outputs section with cadence of production, source corpora, and consumer. Operation cycle close (per OM Cycle Close Verification) checks that rendered outputs are not just produced but actually consumed (the "rendered output produced but not consumed" near-miss pattern).
 
 
 *A Meta-Framework for Formalizing the Expression Side of Knowledge Work*
 
-*Version 1.0*
+*Version 1.1*
 
-*Canonical Specification — Produced via F-Design from the Process Formalization Framework v2.0*
+*Canonical Specification — Produced via F-Design from the Process Formalization Framework v2.0. Updated 2026-05-08 to add Operation-coordination awareness: outputs may be declared as Coordinated Outputs of an Operation (with cadence of production, source corpora, consumer, and a forward-reference to OM Cycle Close Verification's "rendered output produced but not consumed" near-miss check). The Inception and Incubation Framework (`Framework — Inception and Incubation`) Modes 1 and 2 produce digests as canonical OFF artifacts.*
 
 ---
 
@@ -131,8 +131,8 @@ Required reading in order:
 4. `Working — Framework — MindSpec to OFF Integration.md` — voice composition contract
 
 Supporting documents:
-- `Framework — MindSpec Interview Framework.md` — for understanding the mind.md sections OFF reads
-- The OFF overview document (`Working — Reference Outputoff-and-style-guide-overview.md`) — the predecessor design document this canonical spec was generated from
+- `Framework — MindSpec Interview.md` — for understanding the mind.md sections OFF reads
+- The OFF overview document (`Working — Reference — OFF and Style Guide Overview.md`) — the predecessor design document this canonical spec was generated from
 
 ---
 
@@ -269,7 +269,9 @@ O-Design produces a new bespoke output framework through structured elicitation 
    - Verbal description without artifacts → modality C
    - Medium-plus-genre specification only → modality D
 
-3. State the modality explicitly and proceed to Layer 2.
+3. **Operation coordination check.** If the output is being designed as a recurring deliverable of an existing or planned Operation, note this. The bespoke OFF framework will be registered as a row in that Operation Matrix's Coordinated Outputs section. The Operation specifies cadence of production (which may differ from the Operation's overall cadence) and consumer; OFF specifies how the output is rendered. If the user is designing an output for an Operation that doesn't yet exist as a matrix, recommend running OM-Init first so the Coordinated Outputs declaration has a home.
+
+4. State the modality explicitly and (if applicable) the parent Operation. Proceed to Layer 2.
 
 **Output to next layer:** Modality identifier + the user's input.
 
@@ -930,7 +932,7 @@ Known Limitations:
   - Cross-medium aesthetic composition (via mind.md Aesthetic Sensibility section) is supported architecturally but unvalidated
   - First-use validation expected against bespoke frameworks generated for Word, Excel, PowerPoint
 File Location: ~/Documents/vault/Framework — Output Formalization.md (with mirror at ~/ora/frameworks/book/output-formalization.md)
-Provenance: human-architected with Claude Opus 4.7 collaborative drafting; predecessor design document: Working — Reference Outputoff-and-style-guide-overview.md (2026-04-23)
+Provenance: human-architected with Claude Opus 4.7 collaborative drafting; predecessor design document: Working — Reference — OFF and Style Guide Overview.md (2026-04-23)
 Confidence: medium — architecture is sound and traces from established meta-framework patterns (PFF, CFF); execution layer details may require refinement after first production runs of bespoke framework generation
 Version: 1.0
 ```
