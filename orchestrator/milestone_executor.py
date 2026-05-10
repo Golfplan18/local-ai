@@ -2,7 +2,7 @@
 gear pipeline passes with drift detection at each boundary.
 
 Implements the layered execution model declared in Process Formalization
-Framework v2.1 §2.3. For each milestone in declared order:
+Framework §2.3 (Milestones Delivered). For each milestone in declared order:
 
   1. Assemble a structured handoff packet containing the user's original
      input, prior milestone deliverables from scratch, the layer
