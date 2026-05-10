@@ -64,11 +64,14 @@ class ParsedPED:
     title: str = ""
     problem_definition: str = ""
     mission_resolution_statement: str = ""
+    mission_service_statement: str = ""  # Operation classification
+    mission_critical_unknown: str = ""   # Incubator classification
     mission_core_essence: str = ""
     mission_emotional_drivers: list = field(default_factory=list)
     excluded_outcomes: list = field(default_factory=list)
     constraints: list = field(default_factory=list)  # list[Constraint]
     objectives: list = field(default_factory=list)
+    cadence_rule: str = ""  # Operation classification — raw text of Cadence and Deliverables section
     active_milestones: list = field(default_factory=list)  # list[Milestone]
     aspirational_milestones: list = field(default_factory=list)  # list[Milestone]
     terrain_maps: list = field(default_factory=list)
@@ -126,6 +129,9 @@ def parse_ped_text(content: str, file_path: str = "") -> ParsedPED:
 
         elif name_lower == "objectives":
             ped.objectives = _parse_bullet_list(section_text)
+
+        elif "cadence and deliverables" in name_lower or name_lower == "cadence":
+            ped.cadence_rule = section_text.strip()
 
         elif "active milestones" in name_lower:
             ped.active_milestones = _parse_milestones(section_text)
@@ -196,14 +202,40 @@ def _split_sections(body: str) -> dict[str, str]:
 # ---------- Mission parsing ----------
 
 def _parse_mission(text: str, ped: ParsedPED):
-    """Extract Resolution Statement, Core Essence, Emotional Drivers."""
-    # Look for **Resolution Statement:** patterns
+    """Extract type-appropriate Mission fields.
+
+    Project / Incubator: Resolution Statement
+    Operation:           Service Statement
+    Incubator:           Critical Unknown (in addition to Resolution Statement which
+                         is phrased "The Critical Unknown — [Q] — has been answered…")
+    Passion:             Core Essence + Emotional Drivers (no endpoint)
+
+    All four classifications may carry Core Essence and Emotional Drivers; only
+    the endpoint / cycle-shape fields vary.
+    """
+    # Resolution Statement (Project / Incubator)
     res_match = re.search(
         r"\*\*Resolution Statement:?\*\*\s*[:.]?\s*(.+?)(?=\n\s*[-*]\s*\*\*|\n\n|\Z)",
         text, re.DOTALL | re.IGNORECASE,
     )
     if res_match:
         ped.mission_resolution_statement = res_match.group(1).strip()
+
+    # Service Statement (Operation)
+    service_match = re.search(
+        r"\*\*Service Statement:?\*\*\s*[:.]?\s*(.+?)(?=\n\s*[-*]\s*\*\*|\n\n|\Z)",
+        text, re.DOTALL | re.IGNORECASE,
+    )
+    if service_match:
+        ped.mission_service_statement = service_match.group(1).strip()
+
+    # Critical Unknown (Incubator)
+    cu_match = re.search(
+        r"\*\*Critical Unknown:?\*\*\s*[:.]?\s*(.+?)(?=\n\s*[-*]\s*\*\*|\n\n|\Z)",
+        text, re.DOTALL | re.IGNORECASE,
+    )
+    if cu_match:
+        ped.mission_critical_unknown = cu_match.group(1).strip()
 
     core_match = re.search(
         r"\*\*Core Essence(?:\s*\([^)]*\))?:?\*\*\s*[:.]?\s*(.+?)(?=\n\s*[-*]\s*\*\*|\n\n|\Z)",

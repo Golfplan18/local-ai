@@ -6,13 +6,22 @@ ContextBundle that Process Coherence consumes per Reference — Meta-Layer
 Architecture §8.
 
 The loader handles both project-level events (E1–E6: locks come from the
-PED) and workflow-level events (E7–E12: locks come from corpus template +
-workflow spec).
+matrix file — type-aware lock loading per Process Coherence v3.0) and
+workflow-level events (E7–E12: locks come from corpus template + workflow
+spec).
+
+Matrix-type-aware lock loading (Process Coherence v3.0, 2026-05-08):
+For matrix-level events, the lock set is dispatched on the matrix
+frontmatter's ``project_type`` field. Four classifications are supported:
+project / operation / passion / incubator. Each loads a different field
+set; see ``_load_project_locks``, ``_load_operation_locks``,
+``_load_passion_locks``, ``_load_incubator_locks``.
 
 Author: meta-layer implementation per Reference — Meta-Layer Architecture §8.
 """
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from typing import Optional
@@ -28,6 +37,44 @@ WORKSPACE = os.path.expanduser("~/ora/")
 VAULT = os.path.expanduser("~/Documents/vault/")
 PEF_PATH = os.path.join(VAULT, "Framework — Problem Evolution.md")
 
+logger = logging.getLogger(__name__)
+
+
+# Matrix-type-aware lock loading constants.
+VALID_CLASSIFICATIONS = {"project", "operation", "passion", "incubator"}
+
+# The four cycle-shape near-miss patterns from Framework — Operations Manifest.
+# An Operation matrix's Excluded Outcomes should include operation-specific
+# instantiations of these. Process Coherence Layer 2 checks the cycle deliverable
+# against each pattern as part of cycle-close verification.
+CYCLE_SHAPE_NEAR_MISS_PATTERNS = [
+    "Cadence met but quality degraded",
+    "Coordinated corpora consumed but unchanged",
+    "Rendered output produced but not consumed",
+    "Maturity gate gamed not earned",
+]
+
+
+class InvalidProjectTypeError(ValueError):
+    """Raised when project_type frontmatter contains values that cannot be
+    resolved to one of the four valid classifications.
+
+    Per the Phase 1 implementation directive: don't fall back silently when
+    the matrix declares an unrecognized classification. Surface the matrix
+    path and the offending value so the user can correct the matrix.
+    """
+    def __init__(self, matrix_path: str, offending_value, message: str = ""):
+        self.matrix_path = matrix_path
+        self.offending_value = offending_value
+        if not message:
+            message = (
+                f"project_type {offending_value!r} in matrix {matrix_path!r} "
+                f"cannot be resolved to one of the four valid classifications "
+                f"{sorted(VALID_CLASSIFICATIONS)}. "
+                f"Update the matrix's frontmatter or extend VALID_CLASSIFICATIONS."
+            )
+        super().__init__(message)
+
 
 @dataclass
 class OversightContextBundle:
@@ -42,6 +89,8 @@ class OversightContextBundle:
     framework_chain: list = field(default_factory=list)
     pef_toolkit_reference: str = PEF_PATH
     load_errors: list = field(default_factory=list)
+    matrix_classification: str = ""  # "project" / "operation" / "passion" / "incubator"
+    classification_warnings: list = field(default_factory=list)
 
     @property
     def is_complete(self) -> bool:
@@ -102,6 +151,226 @@ def load_context(event: dict) -> OversightContextBundle:
     return bundle
 
 
+# ---------- Matrix classification ----------
+
+def classify_matrix(ped: ParsedPED) -> tuple[str, list[str]]:
+    """Resolve the matrix's classification from its frontmatter.
+
+    Returns ``(classification, warnings)``. ``classification`` is one of
+    {"project", "operation", "passion", "incubator"}. ``warnings`` is a
+    list of human-readable notes about how the classification was reached
+    (empty when the matrix declares exactly one valid classification).
+
+    Process Coherence v3.0 Layer 1 step 2 mandates this dispatch:
+      - project / incubator → endpoint-bearing locks (Resolution Statement
+        or Critical Unknown, Excluded Outcomes, Constraints).
+      - operation → cycle-shape locks (Service Statement, Excluded Outcomes
+        with cycle-shape near-miss patterns, Cadence rule, Constraints).
+      - passion → orientation-only locks (Mission Core Essence and
+        Emotional Drivers, Constraints).
+
+    The matrix's ``project_type`` field can be a string (single value),
+    a list (the Project Type Registry's multi-valued convention), or
+    absent. Resolution rules:
+
+      - Absent → default to "project" (with warning).
+      - Single classification token → use it.
+      - Multiple classification tokens → raise ``InvalidProjectTypeError``
+        (the four classifications are mutually exclusive).
+      - Content-only tokens (e.g. ``[book, knowledge]`` per the Project
+        Type Registry, with no classification token) → default to
+        "project" (with warning).
+      - Any other type (not str/list/None) → raise
+        ``InvalidProjectTypeError``.
+
+    Spec ambiguity flagged for user resolution: the strict reading of the
+    Phase 1 directive ("raise an explicit error" on any value not in the
+    four-classification set) conflicts with the Project Type Registry
+    convention that ``project_type`` is multi-valued and may contain only
+    content tokens. The implementation here treats content-only as a
+    default-with-warning rather than an error to preserve compatibility
+    with existing matrices; the strict-error path is reserved for
+    structurally-invalid frontmatter (multiple classifications, or a
+    non-str/list value).
+    """
+    warnings: list[str] = []
+    raw = ped.frontmatter.get("project_type") if ped.frontmatter else None
+
+    if raw is None:
+        warnings.append(
+            "project_type absent from matrix frontmatter; defaulting to "
+            "'project' classification (current behavior, made explicit)."
+        )
+        return ("project", warnings)
+
+    if isinstance(raw, str):
+        values = [raw]
+    elif isinstance(raw, list):
+        values = [str(v) for v in raw]
+    else:
+        raise InvalidProjectTypeError(
+            ped.file_path,
+            raw,
+            f"project_type {raw!r} in matrix {ped.file_path!r} has unsupported "
+            f"type {type(raw).__name__}; must be a string or a list of strings.",
+        )
+
+    classifications = [v for v in values if v in VALID_CLASSIFICATIONS]
+
+    if len(classifications) == 1:
+        return (classifications[0], warnings)
+
+    if len(classifications) > 1:
+        raise InvalidProjectTypeError(
+            ped.file_path,
+            classifications,
+            f"project_type in matrix {ped.file_path!r} declares multiple "
+            f"classifications {classifications}; the four classifications "
+            f"(project / operation / passion / incubator) are mutually exclusive. "
+            f"Pick one and move the others to a different field.",
+        )
+
+    # No classification tokens, only content tokens (or empty list).
+    warnings.append(
+        f"project_type {values!r} in matrix {ped.file_path!r} contains no "
+        f"classification token from {sorted(VALID_CLASSIFICATIONS)}; "
+        f"defaulting to 'project' classification. If this matrix is an "
+        f"Operation, Passion, or Incubator, add the classification token "
+        f"explicitly to project_type."
+    )
+    return ("project", warnings)
+
+
+# ---------- Type-specific lock loaders ----------
+
+def _serialize_constraints(ped: ParsedPED, classifications: tuple[str, ...]) -> list[dict]:
+    """Return constraints whose classification is in the requested set."""
+    return [
+        {
+            "classification": c.classification,
+            "statement": c.statement,
+            "rationale": c.rationale,
+            "revisit_trigger": c.revisit_trigger,
+        }
+        for c in ped.constraints
+        if c.classification in classifications
+    ]
+
+
+def _load_project_locks(ped: ParsedPED) -> dict:
+    """Locks for project / incubator-style projects (endpoint-bearing).
+
+    Note: incubators technically use Critical Unknown for the endpoint,
+    but per MOM the Incubator's Resolution Statement is "The Critical
+    Unknown — [Q] — has been answered in the form of [observable form
+    of the answer]." So Resolution Statement is still the canonical
+    endpoint field. _load_incubator_locks adds Critical Unknown
+    explicitly alongside.
+    """
+    return {
+        "matrix_classification": "project",
+        "mission_resolution_statement": ped.mission_resolution_statement,
+        "excluded_outcomes": list(ped.excluded_outcomes),
+        "constraints": _serialize_constraints(
+            ped, ("Hard", "Soft", "Working Assumption"),
+        ),
+    }
+
+
+def _load_operation_locks(ped: ParsedPED) -> dict:
+    """Locks for operation matrices (cycle-shape).
+
+    Service Statement + Excluded Outcomes (with the cycle-shape near-miss
+    pattern set surfaced as a separate field for Process Coherence Layer 2's
+    cycle-close verification) + Cadence rule + Constraints.
+    """
+    return {
+        "matrix_classification": "operation",
+        "mission_service_statement": ped.mission_service_statement,
+        "mission_core_essence": ped.mission_core_essence,
+        "mission_emotional_drivers": list(ped.mission_emotional_drivers),
+        "excluded_outcomes": list(ped.excluded_outcomes),
+        "cycle_shape_near_miss_patterns": list(CYCLE_SHAPE_NEAR_MISS_PATTERNS),
+        "cadence_rule": ped.cadence_rule,
+        "constraints": _serialize_constraints(
+            ped, ("Hard", "Soft", "Working Assumption"),
+        ),
+    }
+
+
+def _load_passion_locks(ped: ParsedPED) -> dict:
+    """Locks for passion matrices (orientation-only).
+
+    Mission Core Essence + Emotional Drivers (Lock-protected per the
+    Universal Problem-Definition Lock as extended by MOM v3.0 for Passions).
+    Soft Constraints + Working Assumptions only — Passions don't typically
+    have Hard endpoint constraints because they don't have an endpoint.
+
+    Per Process Coherence v3.0 Layer 2: "Passions don't typically generate
+    completion claims; matrix-level events for Passions are usually iterate-
+    related (drift signals on practices, directions of travel) rather than
+    terminal. If a terminal claim does fire on a Passion, it indicates
+    classification drift — flag and recommend reclassification."
+
+    The classification-drift detection happens in Process Coherence Layer 2
+    (the model evaluating the bundle), not here at lock-load time. Lock load
+    surfaces the orientation-only fields; the framework's downstream logic
+    decides what a terminal claim against these locks means.
+    """
+    return {
+        "matrix_classification": "passion",
+        "mission_core_essence": ped.mission_core_essence,
+        "mission_emotional_drivers": list(ped.mission_emotional_drivers),
+        "constraints": _serialize_constraints(
+            ped, ("Soft", "Working Assumption"),
+        ),
+        "passion_terminal_claim_warning": (
+            "Passions have no terminal endpoint. A terminal claim on a "
+            "Passion matrix indicates classification drift per Process "
+            "Coherence v3.0 Layer 2 — recommend reclassification rather "
+            "than evaluating against a phantom endpoint."
+        ),
+    }
+
+
+def _load_incubator_locks(ped: ParsedPED) -> dict:
+    """Locks for incubator matrices.
+
+    Critical Unknown is the central locked field; Resolution Statement
+    (when populated) carries the same Lock protection as a Project's
+    Resolution Statement and is phrased "The Critical Unknown has been
+    answered in the form of [observable form of the answer]" per MOM.
+    """
+    return {
+        "matrix_classification": "incubator",
+        "mission_critical_unknown": ped.mission_critical_unknown,
+        "mission_resolution_statement": ped.mission_resolution_statement,
+        "excluded_outcomes": list(ped.excluded_outcomes),
+        "constraints": _serialize_constraints(
+            ped, ("Hard", "Soft", "Working Assumption"),
+        ),
+    }
+
+
+CLASSIFICATION_DISPATCH = {
+    "project": _load_project_locks,
+    "operation": _load_operation_locks,
+    "passion": _load_passion_locks,
+    "incubator": _load_incubator_locks,
+}
+
+
+def load_locks_for_matrix(ped: ParsedPED) -> tuple[dict, str, list[str]]:
+    """Top-level dispatch — returns (locks_dict, classification, warnings).
+
+    Pure function over a parsed matrix; no file I/O. Tests can call this
+    directly with ``parse_ped_text``-built fixtures.
+    """
+    classification, warnings = classify_matrix(ped)
+    loader = CLASSIFICATION_DISPATCH[classification]
+    return (loader(ped), classification, warnings)
+
+
 # ---------- Project-level context loading ----------
 
 def _load_project_level_context(event: dict, bundle: OversightContextBundle):
@@ -119,28 +388,26 @@ def _load_project_level_context(event: dict, bundle: OversightContextBundle):
         return
 
     if not os.path.isfile(ped_path):
-        bundle.load_errors.append(f"PED file not found at {ped_path!r}")
+        bundle.load_errors.append(f"Matrix file not found at {ped_path!r}")
         return
 
     try:
         ped = parse_ped_file(ped_path)
     except Exception as e:
-        bundle.load_errors.append(f"Failed to parse PED at {ped_path!r}: {e}")
+        bundle.load_errors.append(f"Failed to parse matrix at {ped_path!r}: {e}")
         return
 
-    bundle.project_level_locks = {
-        "mission_resolution_statement": ped.mission_resolution_statement,
-        "excluded_outcomes": ped.excluded_outcomes,
-        "constraints": [
-            {
-                "classification": c.classification,
-                "statement": c.statement,
-                "rationale": c.rationale,
-                "revisit_trigger": c.revisit_trigger,
-            }
-            for c in ped.constraints
-        ],
-    }
+    try:
+        locks, classification, warnings = load_locks_for_matrix(ped)
+    except InvalidProjectTypeError as e:
+        bundle.load_errors.append(str(e))
+        return
+
+    bundle.project_level_locks = locks
+    bundle.matrix_classification = classification
+    bundle.classification_warnings = warnings
+    for w in warnings:
+        logger.warning("oversight_context: %s", w)
 
     # Output contract for this event
     bundle.output_contract = _output_contract_for_event(event, ped)
@@ -163,7 +430,16 @@ def _load_project_level_context(event: dict, bundle: OversightContextBundle):
 
 
 def _output_contract_for_event(event: dict, ped: ParsedPED) -> str:
-    """Derive the output contract — the 'done' specification — for a project-level event."""
+    """Derive the output contract — the 'done' specification — for a project-level event.
+
+    The fallback (when no specific milestone matches) returns the matrix's
+    type-appropriate endpoint statement. For projects, that's the Resolution
+    Statement; for operations, the Service Statement; for incubators, the
+    Critical Unknown; for passions, the Core Essence (passions have no
+    endpoint, so this is best-effort orientation rather than a verifiable
+    target — Process Coherence Layer 2 will surface classification drift if
+    a terminal claim fires here).
+    """
     et = event.get("event_type", "")
     if et == "MilestoneClaimed":
         target = event.get("milestone_text", "")
@@ -175,7 +451,14 @@ def _output_contract_for_event(event: dict, ped: ParsedPED) -> str:
         if ped.active_milestones:
             m = ped.active_milestones[-1]
             return m.fields.get("Verification Criterion", "") or m.statement
-    return ped.mission_resolution_statement
+    # Type-appropriate fallback.
+    if ped.mission_service_statement:
+        return ped.mission_service_statement
+    if ped.mission_critical_unknown and not ped.mission_resolution_statement:
+        return ped.mission_critical_unknown
+    if ped.mission_resolution_statement:
+        return ped.mission_resolution_statement
+    return ped.mission_core_essence
 
 
 def _deliverable_for_event(event: dict) -> str:

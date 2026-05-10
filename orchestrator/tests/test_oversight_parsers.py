@@ -426,5 +426,303 @@ class TestOversightRouting(unittest.TestCase):
         }))
 
 
+# ---------- Matrix-type-aware lock loading (Process Coherence v3.0) ----------
+#
+# Closes DCP Drift Report 2026-05-10 Finding 1: oversight_context now reads
+# project_type from matrix frontmatter and dispatches to one of four
+# classifications (project / operation / passion / incubator). Each
+# classification surfaces a different lock set per Process Coherence v3.0
+# Layer 1 step 2 and Framework — Operations Manifest's Universal
+# Problem-Definition Lock extension.
+
+class TestMatrixClassification(unittest.TestCase):
+    """Exercise classify_matrix() across the full input space.
+
+    The classifier reads frontmatter project_type and resolves to one of
+    four classifications. Tests cover absent / single-string / single-element
+    list / multi-element list (with and without classification tokens) /
+    invalid-type frontmatter.
+    """
+
+    def _ped_with_frontmatter(self, frontmatter_yaml: str):
+        from ped_parser import parse_ped_text
+        body = (
+            "---\n"
+            f"{frontmatter_yaml}\n"
+            "---\n\n"
+            "# Test Matrix\n\n"
+            "## Mission\n\n"
+            "- **Resolution Statement:** Trivial endpoint statement.\n"
+        )
+        return parse_ped_text(body, file_path="/tmp/test-matrix.md")
+
+    def test_project_type_absent_defaults_to_project(self):
+        from oversight_context import classify_matrix
+        ped = self._ped_with_frontmatter("nexus:\n  - test")
+        classification, warnings = classify_matrix(ped)
+        self.assertEqual(classification, "project")
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("project_type absent", warnings[0])
+
+    def test_project_type_string_project(self):
+        from oversight_context import classify_matrix
+        ped = self._ped_with_frontmatter("project_type: project")
+        classification, warnings = classify_matrix(ped)
+        self.assertEqual(classification, "project")
+        self.assertEqual(warnings, [])
+
+    def test_project_type_string_operation(self):
+        from oversight_context import classify_matrix
+        ped = self._ped_with_frontmatter("project_type: operation")
+        classification, warnings = classify_matrix(ped)
+        self.assertEqual(classification, "operation")
+        self.assertEqual(warnings, [])
+
+    def test_project_type_string_passion(self):
+        from oversight_context import classify_matrix
+        ped = self._ped_with_frontmatter("project_type: passion")
+        classification, warnings = classify_matrix(ped)
+        self.assertEqual(classification, "passion")
+        self.assertEqual(warnings, [])
+
+    def test_project_type_string_incubator(self):
+        from oversight_context import classify_matrix
+        ped = self._ped_with_frontmatter("project_type: incubator")
+        classification, warnings = classify_matrix(ped)
+        self.assertEqual(classification, "incubator")
+        self.assertEqual(warnings, [])
+
+    def test_project_type_list_with_one_classification_plus_content(self):
+        # Per the Project Type Registry convention, a matrix may declare
+        # both a classification and content tokens (e.g., a Project that's
+        # also a book-shaped deliverable).
+        from oversight_context import classify_matrix
+        ped = self._ped_with_frontmatter("project_type:\n  - operation\n  - book")
+        classification, warnings = classify_matrix(ped)
+        self.assertEqual(classification, "operation")
+        self.assertEqual(warnings, [])
+
+    def test_project_type_list_content_only_defaults_to_project(self):
+        # The registry allows content-only declarations (e.g., a knowledge
+        # cluster). Default to project with a warning so the user can
+        # tighten the matrix later if needed.
+        from oversight_context import classify_matrix
+        ped = self._ped_with_frontmatter("project_type:\n  - book\n  - knowledge")
+        classification, warnings = classify_matrix(ped)
+        self.assertEqual(classification, "project")
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("no classification token", warnings[0])
+
+    def test_project_type_multiple_classifications_raises(self):
+        from oversight_context import classify_matrix, InvalidProjectTypeError
+        ped = self._ped_with_frontmatter("project_type:\n  - operation\n  - passion")
+        with self.assertRaises(InvalidProjectTypeError) as cm:
+            classify_matrix(ped)
+        self.assertIn("multiple classifications", str(cm.exception))
+        self.assertEqual(cm.exception.matrix_path, "/tmp/test-matrix.md")
+
+    def test_project_type_invalid_python_type_raises(self):
+        from oversight_context import classify_matrix, InvalidProjectTypeError
+        # YAML int isn't a valid project_type representation.
+        ped = self._ped_with_frontmatter("project_type: 42")
+        with self.assertRaises(InvalidProjectTypeError) as cm:
+            classify_matrix(ped)
+        self.assertIn("unsupported", str(cm.exception))
+
+
+class TestTypeSpecificLockLoading(unittest.TestCase):
+    """Verify each classification's lock set matches Process Coherence v3.0."""
+
+    def _build_ped(self, frontmatter_yaml: str, mission_section: str,
+                   excluded: str = "", constraints: str = "",
+                   cadence: str = "") -> "ParsedPED":
+        from ped_parser import parse_ped_text
+        parts = [
+            "---",
+            frontmatter_yaml,
+            "---",
+            "",
+            "# Test Matrix",
+            "",
+            "## Mission",
+            "",
+            mission_section,
+        ]
+        if excluded:
+            parts += ["", "## Excluded Outcomes", "", excluded]
+        if constraints:
+            parts += ["", "## Constraints", "", constraints]
+        if cadence:
+            parts += ["", "## Cadence and Deliverables", "", cadence]
+        return parse_ped_text("\n".join(parts), file_path="/tmp/test-matrix.md")
+
+    def test_project_locks_have_resolution_statement(self):
+        from oversight_context import load_locks_for_matrix
+        ped = self._build_ped(
+            "project_type: project",
+            "- **Resolution Statement:** The thing is built and shipped.",
+            excluded="- The thing looks built but isn't.",
+            constraints="- **Hard:** Budget cap. Cost of violation: project death.",
+        )
+        locks, classification, warnings = load_locks_for_matrix(ped)
+        self.assertEqual(classification, "project")
+        self.assertEqual(locks["matrix_classification"], "project")
+        self.assertEqual(
+            locks["mission_resolution_statement"],
+            "The thing is built and shipped.",
+        )
+        self.assertIn("The thing looks built but isn't.", locks["excluded_outcomes"])
+        self.assertEqual(len(locks["constraints"]), 1)
+        self.assertEqual(locks["constraints"][0]["classification"], "Hard")
+        # Project locks DON'T carry operation-specific or passion-specific fields.
+        self.assertNotIn("mission_service_statement", locks)
+        self.assertNotIn("cycle_shape_near_miss_patterns", locks)
+        self.assertNotIn("cadence_rule", locks)
+
+    def test_operation_locks_have_service_statement_cadence_and_near_miss(self):
+        from oversight_context import (
+            load_locks_for_matrix,
+            CYCLE_SHAPE_NEAR_MISS_PATTERNS,
+        )
+        ped = self._build_ped(
+            "project_type: operation",
+            (
+                "- **Service Statement:** Publish a weekly column on Sundays.\n"
+                "- **Core Essence:** Sustained editorial cadence.\n"
+            ),
+            excluded="- Cadence met but quality degraded.",
+            constraints="- **Hard:** No skipping weeks. Cost: subscriber churn.",
+            cadence="| Deliverable | Cadence | Apparatus |\n| Column | Weekly Sunday 9am | MSI editorial board |",
+        )
+        locks, classification, warnings = load_locks_for_matrix(ped)
+        self.assertEqual(classification, "operation")
+        self.assertEqual(locks["matrix_classification"], "operation")
+        self.assertEqual(
+            locks["mission_service_statement"],
+            "Publish a weekly column on Sundays.",
+        )
+        self.assertEqual(
+            locks["mission_core_essence"],
+            "Sustained editorial cadence.",
+        )
+        self.assertEqual(
+            locks["cycle_shape_near_miss_patterns"],
+            CYCLE_SHAPE_NEAR_MISS_PATTERNS,
+        )
+        self.assertIn("Weekly Sunday 9am", locks["cadence_rule"])
+        # Operation locks DON'T carry the project-only Resolution Statement.
+        self.assertNotIn("mission_resolution_statement", locks)
+        self.assertNotIn("mission_critical_unknown", locks)
+
+    def test_passion_locks_have_core_essence_emotional_drivers_no_endpoint(self):
+        from oversight_context import load_locks_for_matrix
+        ped = self._build_ped(
+            "project_type: passion",
+            (
+                "- **Core Essence:** Cultivate philosophical depth in mathematics.\n"
+                "- **Emotional Drivers:**\n"
+                "  - I want to feel mathematically literate.\n"
+                "  - I need to engage with deep ideas.\n"
+            ),
+            constraints=(
+                "- **Soft:** Limit reading to 30 minutes a day. "
+                "Cost of violation: encroaches on family time.\n"
+                "- **Working Assumption:** Books are the right medium. "
+                "Revisit trigger: when a course form proves more effective.\n"
+            ),
+        )
+        locks, classification, warnings = load_locks_for_matrix(ped)
+        self.assertEqual(classification, "passion")
+        self.assertEqual(locks["matrix_classification"], "passion")
+        self.assertEqual(
+            locks["mission_core_essence"],
+            "Cultivate philosophical depth in mathematics.",
+        )
+        self.assertEqual(len(locks["mission_emotional_drivers"]), 2)
+        # Passion locks have NO endpoint.
+        self.assertNotIn("mission_resolution_statement", locks)
+        self.assertNotIn("mission_service_statement", locks)
+        self.assertNotIn("excluded_outcomes", locks)
+        # Soft + Working Assumption only — no Hard constraints for a Passion.
+        for c in locks["constraints"]:
+            self.assertIn(c["classification"], ("Soft", "Working Assumption"))
+        # Classification-drift warning is surfaced in the lock set itself
+        # so a downstream evaluator sees it without re-reading the spec.
+        self.assertIn("passion_terminal_claim_warning", locks)
+
+    def test_incubator_locks_have_critical_unknown(self):
+        from oversight_context import load_locks_for_matrix
+        ped = self._build_ped(
+            "project_type: incubator",
+            (
+                "- **Critical Unknown:** Whether the dataset has signal at all.\n"
+                "- **Resolution Statement:** The Critical Unknown — whether the "
+                "dataset has signal at all — has been answered in the form of a "
+                "preregistered analysis and a yes/no verdict.\n"
+            ),
+            excluded="- Conclusion based on cherry-picked subsets.",
+            constraints="- **Hard:** No p-hacking. Cost: invalidates the answer.",
+        )
+        locks, classification, warnings = load_locks_for_matrix(ped)
+        self.assertEqual(classification, "incubator")
+        self.assertEqual(locks["matrix_classification"], "incubator")
+        self.assertEqual(
+            locks["mission_critical_unknown"],
+            "Whether the dataset has signal at all.",
+        )
+        self.assertIn(
+            "preregistered analysis",
+            locks["mission_resolution_statement"],
+        )
+
+    def test_invalid_classification_propagates_through_load_context(self):
+        from oversight_context import (
+            OversightContextBundle,
+            _load_project_level_context,
+        )
+        # Fixture: a matrix file on disk with multiple classifications.
+        # _load_project_level_context catches InvalidProjectTypeError and
+        # surfaces it as a load_error rather than crashing the bundle build.
+        import tempfile
+        from textwrap import dedent
+        body = dedent("""\
+            ---
+            nexus:
+              - bad_test
+            project_type:
+              - operation
+              - passion
+            ---
+
+            # Bad Matrix
+
+            ## Mission
+
+            - **Resolution Statement:** Whatever.
+        """)
+        with tempfile.TemporaryDirectory() as td:
+            ped_file = os.path.join(td, "PED.md")
+            with open(ped_file, "w") as f:
+                f.write(body)
+            # Stub load_ped_path so it returns our temp file.
+            import oversight_context as oc
+            original = oc.load_ped_path
+            try:
+                oc.load_ped_path = lambda nexus: ped_file
+                bundle = OversightContextBundle(
+                    event={"event_type": "MilestoneClaimed", "project_nexus": "bad_test"},
+                    event_class="project-level",
+                )
+                _load_project_level_context(
+                    {"event_type": "MilestoneClaimed", "project_nexus": "bad_test"},
+                    bundle,
+                )
+            finally:
+                oc.load_ped_path = original
+        self.assertEqual(len(bundle.load_errors), 1)
+        self.assertIn("multiple classifications", bundle.load_errors[0])
+        self.assertIsNone(bundle.project_level_locks)
+
+
 if __name__ == "__main__":
     unittest.main()
