@@ -23,7 +23,7 @@ Auto-reject criteria (any 1 triggers):
   5. Exact duplicate title
 
 Human-review criteria (any 1 triggers):
-  1-8 as defined in the framework spec
+  1-8 as defined in Specification — Note Quality Gate.md (vault canonical)
 
 Usage:
     from orchestrator.tools.quality_gate import QualityGate
