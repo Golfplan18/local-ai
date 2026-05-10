@@ -54,7 +54,7 @@ DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
 DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
 
 KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
-                  "/deny", "/cleaning"}
+                  "/deny", "/cleaning", "/news"}
 
 
 # ---------- Public API ----------
@@ -99,6 +99,7 @@ def run_runtime_command(user_input: str) -> str:
         "/approve": _cmd_approve,
         "/deny": _cmd_deny,
         "/cleaning": _cmd_cleaning,
+        "/news": _cmd_news,
     }
     handler = handlers.get(cmd)
     if handler is None:
@@ -491,6 +492,185 @@ def _cmd_cleaning(args: list[str]) -> str:
     return (
         f"[Unknown subcommand `{sub}`. "
         "Use `/cleaning help` for usage.]"
+    )
+
+
+# ---------- /news — News Supersession Framework ----------
+
+
+_NEWS_QUEUE_FILE = os.path.join(VAULT_DIR, "Working — News Supersession Queue.md")
+
+
+def _news_queue_status() -> tuple[int, int, str]:
+    """Return (total_pairs, pending_count, last_modified) from the queue file.
+
+    Pending status is read from each pair's `**Resolution:** [marker]` line.
+    """
+    if not os.path.exists(_NEWS_QUEUE_FILE):
+        return 0, 0, ""
+    with open(_NEWS_QUEUE_FILE, "r", encoding="utf-8") as f:
+        text = f.read()
+    import re as _re
+    markers = _re.findall(r"\*\*Resolution:\*\*\s*\[([^\]]+)\]", text)
+    pending = sum(1 for m in markers if m.strip() == "pending")
+    from datetime import datetime as _dt
+    mtime = os.path.getmtime(_NEWS_QUEUE_FILE)
+    return len(markers), pending, _dt.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+
+
+def _cmd_news(args: list[str]) -> str:
+    sub = args[0].lower() if args else "status"
+
+    if sub in ("help", "-h", "--help"):
+        return (
+            "**News Supersession Framework**\n\n"
+            "- `/news status` — queue state\n"
+            "- `/news detect [strategy] [limit] [--similarity T] [--include-resolved]` — produce triage queue\n"
+            "    strategies: `topic-cluster` (default), `recent`, `random`\n"
+            "    limit: max pairs to surface (default 25)\n"
+            "    `--similarity`: cosine threshold for topic clustering (default 0.80)\n"
+            "    `--include-resolved`: re-surface previously-resolved pairs\n"
+            "- `/news resolve [--apply]` — apply marked resolutions\n"
+            "    dry-run by default; pass `--apply` to mutate vault\n\n"
+            "See `Framework — News Supersession` for the full spec. Key distinction "
+            "from `/cleaning`: `[changed-mind:*]` markers apply the `superseded` tag "
+            "(weight modifier, preserves retrieval at reduced weight) rather than "
+            "`archived` (filter, excludes from default retrieval). News stories "
+            "develop but they don't replace history."
+        )
+
+    if sub == "status":
+        total, pending, mtime = _news_queue_status()
+        if total == 0:
+            return (
+                "**News Supersession queue is empty.**\n\n"
+                "Run `/news detect` to produce a triage queue."
+            )
+        resolved = total - pending
+        return (
+            f"**News Supersession queue:** {total} pairs total, "
+            f"{pending} pending, {resolved} resolved.\n\n"
+            f"- Last modified: {mtime}\n"
+            f"- File: `Working — News Supersession Queue.md`\n\n"
+            "Edit each pending pair's Resolution line, then "
+            "`/news resolve --apply` to mutate vault."
+        )
+
+    if sub == "detect":
+        # Strip optional flags so positional parsing isn't confused
+        include_resolved = "--include-resolved" in args
+        similarity = 0.80
+        # Look for --similarity T
+        for i, a in enumerate(args):
+            if a == "--similarity" and i + 1 < len(args):
+                try:
+                    similarity = float(args[i + 1])
+                except ValueError:
+                    return f"[`{args[i+1]}` is not a valid float for similarity.]"
+
+        positional = [
+            a for i, a in enumerate(args)
+            if not a.startswith("--") and (i == 0 or not args[i-1] == "--similarity")
+        ]
+
+        strategy = positional[1] if len(positional) > 1 else "topic-cluster"
+        if strategy not in ("topic-cluster", "recent", "random"):
+            return (
+                f"[Unknown strategy `{strategy}`. "
+                "Valid: `topic-cluster`, `recent`, `random`.]"
+            )
+        try:
+            limit = int(positional[2]) if len(positional) > 2 else 25
+        except ValueError:
+            return f"[`{positional[2]}` is not a valid integer for limit.]"
+        if not (1 <= limit <= 200):
+            return "[Limit must be between 1 and 200.]"
+
+        try:
+            from historical.run_news_supersession_detection import run_detection
+        except ImportError:
+            import sys as _sys
+            _sys.path.insert(0, "/Users/oracle/ora")
+            from orchestrator.historical.run_news_supersession_detection import (
+                run_detection,
+            )
+
+        result = run_detection(
+            strategy=strategy,
+            limit=limit,
+            similarity=similarity,
+            write_queue=True,
+            include_resolved=include_resolved,
+        )
+        filter_line = ""
+        if not include_resolved:
+            filter_line = (
+                f"- **Resolved pairs filtered from log:** "
+                f"{result.get('resolved_filtered_count', 0)}\n"
+            )
+        return (
+            "**News Supersession detection complete.**\n\n"
+            f"- **Strategy:** `{result['strategy']}`\n"
+            f"- **Similarity threshold:** {result['similarity']}\n"
+            f"- **Eligible resources scanned:** {result['resource_count']}\n"
+            f"{filter_line}"
+            f"- **Pairs surfaced:** {result['pairs_count']}\n"
+            f"- **Queue file:** `{os.path.basename(result['queue_path'])}` "
+            f"(at vault root)\n\n"
+            "Open the queue file, edit each pair's Resolution line "
+            "(`[changed-mind:...]`, `[wrong:source]`, `[skip]`, etc.), "
+            "then `/news resolve --apply` to mutate the vault."
+        )
+
+    if sub == "resolve":
+        apply = "--apply" in args
+        dry_run = not apply
+
+        try:
+            from historical.run_news_supersession_resolver import run_resolver
+        except ImportError:
+            import sys as _sys
+            _sys.path.insert(0, "/Users/oracle/ora")
+            from orchestrator.historical.run_news_supersession_resolver import (
+                run_resolver,
+            )
+
+        try:
+            result = run_resolver(dry_run=dry_run)
+        except FileNotFoundError as exc:
+            return f"[{exc}. Run `/news detect` first.]"
+
+        stats = result["stats"]
+        non_pending_total = sum(v for k, v in stats.items() if k != "pending")
+        if non_pending_total == 0:
+            return (
+                f"**No resolutions marked.** All {stats.get('pending', 0)} pairs are "
+                "still `[pending]`. Edit the queue file's Resolution lines first, "
+                "then re-run `/news resolve --apply`."
+            )
+
+        mode_label = "DRY RUN" if dry_run else "APPLIED"
+        lines = [f"**News Supersession resolver — {mode_label}**", ""]
+        for k in sorted(stats):
+            if stats[k] == 0:
+                continue
+            lines.append(f"- {k}: {stats[k]}")
+        lines.append("")
+        lines.append(f"- **Affected files:** {result['affected_slugs_count']}")
+        lines.append(f"- **Queue remaining:** {result['queue_remaining_count']} pending")
+        if result.get("errors"):
+            lines.append("")
+            lines.append("**Warnings / errors:**")
+            for e in result["errors"][:10]:
+                lines.append(f"- {e}")
+        if dry_run and non_pending_total > 0:
+            lines.append("")
+            lines.append("Re-run with `--apply` to commit these mutations.")
+        return "\n".join(lines)
+
+    return (
+        f"[Unknown subcommand `{sub}`. "
+        "Use `/news help` for usage.]"
     )
 
 

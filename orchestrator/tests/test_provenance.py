@@ -259,5 +259,89 @@ class TestOrdering(unittest.TestCase):
         self.assertEqual(provenance.EXTERNAL_WEIGHTS["excluded"], 0.0)
 
 
+class TestSupersededTag(unittest.TestCase):
+    """Schema rev 5.1 — `superseded` temporal-state tag for resources.
+
+    Weight modifier on `resource` chunks reducing P2 (0.8) to 0.6
+    (matching the chat tier). Preserves history at retrieval — does NOT
+    filter the chunk out. Distinct from `archived` mechanic which
+    excludes from default retrieval entirely.
+    """
+
+    def test_superseded_tag_in_temporal_state_dict(self):
+        self.assertIn("superseded", provenance.TEMPORAL_STATE_TAGS)
+        self.assertEqual(provenance.TEMPORAL_STATE_TAGS["superseded"], 0.6)
+
+    def test_resource_with_superseded_drops_to_0_6(self):
+        # Resource base weight is 0.8; superseded reduces to 0.6.
+        self.assertEqual(
+            provenance.weight_for("resource", tags=["superseded"]),
+            0.6,
+        )
+
+    def test_resource_without_superseded_keeps_0_8(self):
+        # No tag → base resource weight unchanged.
+        self.assertEqual(provenance.weight_for("resource"), 0.8)
+        self.assertEqual(provenance.weight_for("resource", tags=[]), 0.8)
+        self.assertEqual(
+            provenance.weight_for("resource", tags=["news"]),
+            0.8,
+        )
+
+    def test_superseded_matches_chat_tier(self):
+        # Per design choice (2026-05-10): superseded resources land at
+        # the same retrieval tier as chat/transcript (0.6).
+        self.assertEqual(
+            provenance.weight_for("resource", tags=["superseded"]),
+            provenance.weight_for("chat"),
+        )
+
+    def test_superseded_is_modifier_not_filter(self):
+        # Critical AHI distinction: `superseded` does NOT remove the
+        # chunk from retrieval (that would be `archived` behavior).
+        # weight_for must return a non-None float.
+        weight = provenance.weight_for("resource", tags=["superseded"])
+        self.assertIsNotNone(weight)
+        self.assertGreater(weight, 0.0)
+
+    def test_archived_and_superseded_are_separate_concepts(self):
+        # `archived` is a filter (handled in knowledge_search, not here);
+        # `superseded` is a weight modifier (handled here).
+        # weight_for treats `archived` as an unknown modifier tag (it's
+        # not in PROVENANCE_MODIFIER_TAGS or TEMPORAL_STATE_TAGS).
+        self.assertNotIn("archived", provenance.TEMPORAL_STATE_TAGS)
+        self.assertNotIn("archived", provenance.PROVENANCE_MODIFIER_TAGS)
+        # A resource with the archived tag returns its base weight from
+        # weight_for; the filter mechanic happens elsewhere.
+        self.assertEqual(
+            provenance.weight_for("resource", tags=["archived"]),
+            0.8,
+        )
+
+    def test_multiple_modifiers_take_minimum(self):
+        # Defensive: if a resource somehow carried both `superseded`
+        # (0.6) and `ai-derived` (0.9), the minimum (0.6) wins.
+        self.assertEqual(
+            provenance.weight_for(
+                "resource",
+                tags=["superseded", "ai-derived"],
+            ),
+            0.6,
+        )
+
+
+class TestTemporalStateTagsExport(unittest.TestCase):
+    """The new TEMPORAL_STATE_TAGS dict is exported alongside
+    PROVENANCE_MODIFIER_TAGS for external consumers (resolver scripts,
+    indexer, etc.)."""
+
+    def test_temporal_state_tags_exported(self):
+        self.assertIn("TEMPORAL_STATE_TAGS", provenance.__all__)
+
+    def test_provenance_modifier_tags_still_exported(self):
+        # Don't break existing consumers.
+        self.assertIn("PROVENANCE_MODIFIER_TAGS", provenance.__all__)
+
+
 if __name__ == "__main__":
     unittest.main()
