@@ -286,16 +286,25 @@ class TestDecayEligibleCoverage(unittest.TestCase):
             cluster_recency.recency_factor(chunk, all_chunks), 0.5, places=6,
         )
 
-    def test_incubator_decays(self):
+    def test_incubator_does_not_decay(self):
+        # Schema rev 5 (2026-05-09) retired `incubator` as a type entirely.
+        # If chunks carrying the legacy `incubator` type appear, they should
+        # behave the same as any non-decay-eligible type — recency factor
+        # stays at 1.0. This test catches the regression where `incubator`
+        # gets re-added to DECAY_ELIGIBLE_TYPES.
         chunk, all_chunks = self._busy_cluster("incubator")
-        self.assertAlmostEqual(
-            cluster_recency.recency_factor(chunk, all_chunks), 0.5, places=6,
+        self.assertEqual(
+            cluster_recency.recency_factor(chunk, all_chunks), 1.0,
         )
 
-    def test_working_decays(self):
+    def test_working_does_not_decay(self):
+        # Schema rev 5: `working` is in the not-retrieved set — it doesn't
+        # enter ranking at all, so the decay path is never exercised. Per
+        # the `test_not_retrieved_types_not_in_decay_set` invariant in
+        # test_provenance.py, `working` must not be in DECAY_ELIGIBLE_TYPES.
         chunk, all_chunks = self._busy_cluster("working")
-        self.assertAlmostEqual(
-            cluster_recency.recency_factor(chunk, all_chunks), 0.5, places=6,
+        self.assertEqual(
+            cluster_recency.recency_factor(chunk, all_chunks), 1.0,
         )
 
     def test_web_decays(self):

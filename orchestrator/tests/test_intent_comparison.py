@@ -31,10 +31,15 @@ class TestDetectedInvocationParsing(unittest.TestCase):
     """``parse_classification_output`` extracts the new field correctly."""
 
     def _classification(self, detected_line: str) -> dict:
-        """Build a synthetic classifier response with the given line."""
+        """Build a synthetic classifier response with the given line.
+
+        Uses `root-cause-analysis` as the selected mode because the parser
+        validates the name against MODES_DIR and falls back to the default
+        `adversarial` when the name doesn't resolve. The Phase-9-archived
+        placeholder `standard` no longer has a mode file."""
         return parse_classification_output(
             "### MODE CLASSIFICATION\n"
-            "- Selected mode: standard\n"
+            "- Selected mode: root-cause-analysis\n"
             "- Runner-up: adversarial\n"
             "- Confidence: high\n"
             "- Intent category: LEARNING\n"
@@ -77,7 +82,7 @@ class TestDetectedInvocationParsing(unittest.TestCase):
 
     def test_other_fields_unchanged(self):
         result = self._classification("steelman-construction")
-        self.assertEqual(result["mode"], "standard")
+        self.assertEqual(result["mode"], "root-cause-analysis")
         self.assertEqual(result["runner_up"], "adversarial")
         self.assertEqual(result["confidence"], "high")
         self.assertEqual(result["intent_category"], "LEARNING")
