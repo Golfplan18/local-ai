@@ -558,14 +558,15 @@ class SpatialReasoningConfigAuditTests(unittest.TestCase):
 
     def test_spatial_reasoning_mode_file_declares_emission_contract(self) -> None:
         """The mode file must explicitly document the annotate envelope
-        format so the analytical model has a clear emission contract."""
+        format so the analytical model has a clear contract for the
+        visual it emits. Under the 2026-05-01 locked mode template, the
+        contract lives inside CONSOLIDATION GUIDANCE / VERIFICATION
+        CRITERIA rather than a separate EMISSION CONTRACT section."""
         mode_path = WORKSPACE / "modes" / "spatial-reasoning.md"
         text = mode_path.read_text()
-        self.assertIn("EMISSION CONTRACT", text)
         self.assertIn('canvas_action', text)
         self.assertIn('"annotate"', text)
-        # The preserve-arrangement rule must be stated in emission terms,
-        # not just in the guard-rail section.
+        # The preserve-arrangement rule must be stated in emission terms.
         self.assertIn("target_id", text)
 
 
