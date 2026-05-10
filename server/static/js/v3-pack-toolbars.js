@@ -318,37 +318,28 @@
 
     var host = document.createElement('div');
     host.id = 'ora-capability-popover';
+    host.className = 'ora-capability-popover';
     host.setAttribute('role', 'dialog');
     host.setAttribute('aria-hidden', 'true');
-    host.style.cssText = [
-      'position:fixed', 'z-index:99999', 'display:none',
-      'min-width:340px', 'max-width:520px',
-      'background:var(--ora-bg-1, #282a36)',
-      'color:var(--ora-fg, #f8f8f2)',
-      'border:1px solid var(--ora-border, #44475a)',
-      'border-radius:8px', 'padding:12px',
-      'box-shadow:0 8px 24px rgba(0,0,0,0.5)',
-      'font-family:var(--ora-font-body, Inter, system-ui, sans-serif)',
-      'font-size:13px', 'line-height:1.4'
-    ].join(';');
 
     var header = document.createElement('div');
-    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+    header.className = 'ora-capability-popover__header';
     var title = document.createElement('span');
     title.id = 'ora-capability-popover-title';
-    title.style.cssText = 'font-weight:600;font-size:14px;';
+    title.className = 'ora-capability-popover__title';
     title.textContent = 'Capability';
     var close = document.createElement('button');
     close.type = 'button';
+    close.className = 'ora-capability-popover__close';
     close.textContent = '×';
     close.setAttribute('aria-label', 'Close');
-    close.style.cssText = 'background:none;border:none;color:inherit;font-size:20px;line-height:1;cursor:pointer;padding:0 4px;';
     close.addEventListener('click', _closeCapabilityPopover);
     header.appendChild(title);
     header.appendChild(close);
 
     var body = document.createElement('div');
     body.id = 'ora-capability-popover-body';
+    body.className = 'ora-capability-popover__body';
 
     host.appendChild(header);
     host.appendChild(body);
@@ -390,7 +381,6 @@
       title.textContent = caps.slots[slotName].label
         || slotName.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
       body.innerHTML = '';
-      host.style.display = 'block';
       host.setAttribute('aria-hidden', 'false');
       _positionPopover(host, anchorEl);
 
@@ -444,7 +434,6 @@
         _activePopover.controller.destroy();
       }
     } catch (e) {}
-    _activePopover.host.style.display = 'none';
     _activePopover.host.setAttribute('aria-hidden', 'true');
     _activePopover = null;
     document.removeEventListener('mousedown', _outsideClickHandler);

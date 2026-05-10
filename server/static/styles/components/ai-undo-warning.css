@@ -1,0 +1,99 @@
+/* ── AI-undo warning modal (Phase 7 §11.15, WP-7.7.2) ───────────────────
+ * One-time-per-session heads-up shown when the user undoes a history
+ * frame that inserted AI-generated content. The undo still proceeds —
+ * this is advisory, not a gate. Owned by ai-undo-warning.js.
+ *
+ * Structure mirrors the canvas-share-reminder modal (visual-panel.css
+ * lines 685+) for consistency, but consumes the canonical V3 theme
+ * tokens so light/dark themes adapt cleanly. */
+
+.ora-ai-undo-warning {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ora-ai-undo-warning[hidden] {
+  display: none;
+}
+
+.ora-ai-undo-warning__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-overlay-strong, rgba(0, 0, 0, 0.5));
+  cursor: pointer;
+}
+
+.ora-ai-undo-warning__dialog {
+  position: relative;
+  max-width: 460px;
+  width: calc(100% - 48px);
+  background: var(--background-secondary, #fff);
+  color: var(--text-normal, #1a1a1a);
+  border: 1px solid var(--background-modifier-border, #e0e0d8);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 20px 22px 16px;
+  font-family: var(--font-text, -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
+  font-size: var(--font-ui-medium, 14px);
+  line-height: 1.5;
+}
+
+.ora-ai-undo-warning__title {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal, #1a1a1a);
+}
+
+.ora-ai-undo-warning__body p {
+  margin: 0 0 8px 0;
+}
+
+.ora-ai-undo-warning__note {
+  margin-top: 12px !important;
+  font-size: var(--font-ui-small, 12px);
+  color: var(--text-muted, #666);
+  font-style: italic;
+}
+
+.ora-ai-undo-warning__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.ora-ai-undo-warning__btn {
+  font: inherit;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border, #e0e0d8);
+  background: var(--interactive-normal, #f6f6f3);
+  color: var(--text-normal, #1a1a1a);
+  transition: background .12s, border-color .12s;
+}
+
+.ora-ai-undo-warning__btn:hover {
+  background: var(--interactive-hover, rgba(0, 0, 0, 0.04));
+}
+
+.ora-ai-undo-warning__btn:focus-visible {
+  outline: 2px solid var(--ora-vis-focus-ring, var(--accent, #0072B2));
+  outline-offset: 1px;
+}
+
+.ora-ai-undo-warning__btn--ack {
+  background: var(--accent, #0072B2);
+  border-color: var(--accent, #0072B2);
+  color: var(--accent-text, #fff);
+}
+
+.ora-ai-undo-warning__btn--ack:hover {
+  background: var(--accent-hover, #005a8c);
+  border-color: var(--accent-hover, #005a8c);
+}

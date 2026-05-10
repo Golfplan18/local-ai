@@ -1,0 +1,61 @@
+/* ── Capability popover (Phase 7 §7.3) ──────────────────────────────────
+ * Anchored dialog shown when a pack toolbar's capability button is
+ * clicked (e.g. "Generate panel art"). Hosts OraCapabilityInvocationUI.
+ * Owned by v3-pack-toolbars.js; the host element is created once and
+ * reused. The visual treatment matches the prior inline-styled version
+ * but uses canonical theme tokens so light/dark themes adapt cleanly. */
+
+.ora-capability-popover {
+  position: fixed;
+  z-index: 99999;
+  display: none;
+  min-width: 340px;
+  max-width: 520px;
+  padding: 12px;
+  background: var(--background-secondary, #282a36);
+  color: var(--text-normal, #f8f8f2);
+  border: 1px solid var(--background-modifier-border, #44475a);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-text, -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1.4;
+}
+
+.ora-capability-popover[aria-hidden="false"] {
+  display: block;
+}
+
+.ora-capability-popover__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ora-capability-popover__title {
+  font-weight: 600;
+  font-size: var(--font-ui-medium, 14px);
+}
+
+.ora-capability-popover__close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 4px;
+  transition: background-color .12s, color .12s;
+}
+
+.ora-capability-popover__close:hover {
+  background: var(--interactive-hover, rgba(255, 255, 255, 0.06));
+  color: var(--icon-color-hover, var(--text-normal, #f8f8f2));
+}
+
+.ora-capability-popover__close:focus-visible {
+  outline: 2px solid var(--ora-vis-focus-ring, var(--accent, #0072B2));
+  outline-offset: 1px;
+}
