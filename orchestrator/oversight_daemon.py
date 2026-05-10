@@ -297,19 +297,39 @@ class OversightDaemon:
         self._last_run: dict[str, float] = {}
 
     def start(self):
-        """Start the daemon. Idempotent."""
+        """Start the daemon. Idempotent.
+
+        Only fast actions run synchronously; slow ones (vault auto-scans)
+        run inside the background thread so server startup is not blocked.
+        The vault scans walk every markdown file under ``VAULT_PATH``,
+        which can take several minutes on a populated vault — keeping
+        them on the startup critical path made ``./start.sh --oversight``
+        time out before binding the HTTP port.
+        """
         if self._running:
             return
-        # Wire the router as an event handler before starting the loop
+        # Wire the router as an event handler before starting the loop.
+        # Router install is fast (~20ms); leave it on the synchronous path
+        # so the daemon is fully wired before start() returns.
         try:
             from oversight_router import install as install_router
             install_router()
         except Exception as e:
             print(f"[oversight_daemon] router install failed: {e}")
 
-        # Auto-register any PEDs the user has placed in the vault that
-        # don't yet have a per-project pointer. Idempotent — re-running
-        # only registers genuinely new PEDs.
+        self._running = True
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+        print("[oversight_daemon] Started (vault auto-registration running in background)")
+
+    def _initial_vault_scan(self):
+        """Auto-register PEDs and workflow specs found in the vault.
+
+        Idempotent — only newly-discovered files get pointer-written.
+        Slow on large vaults (the scan walks every .md file and parses
+        YAML frontmatter), which is why it runs in the daemon thread
+        rather than on the server's startup path.
+        """
         try:
             registered = scan_vault_and_register_peds()
             if registered:
@@ -319,8 +339,6 @@ class OversightDaemon:
         except Exception as e:
             print(f"[oversight_daemon] vault scan failed: {e}")
 
-        # Auto-register any workflow specs (Shape 4 corpus-mediated workflows)
-        # that aren't yet pointed at by ~/ora/data/oversight/<workflow_id>/workflow-pointer.json
         try:
             registered_workflows = scan_vault_and_register_workflows()
             if registered_workflows:
@@ -329,11 +347,6 @@ class OversightDaemon:
                     print(f"  - {workflow_id}: {path}")
         except Exception as e:
             print(f"[oversight_daemon] workflow scan failed: {e}")
-
-        self._running = True
-        self._thread = threading.Thread(target=self._loop, daemon=True)
-        self._thread.start()
-        print("[oversight_daemon] Started")
 
     def stop(self):
         """Stop the daemon."""
@@ -351,8 +364,18 @@ class OversightDaemon:
         self._run_revisit_sweeper(emit)
 
     def _loop(self):
-        """Main loop — checks each watcher's due time once per second."""
+        """Main loop — checks each watcher's due time once per second.
+
+        Before entering the polling loop, runs the one-shot vault
+        auto-registration scan. This was previously on the synchronous
+        ``start()`` path and could exceed five minutes on populated
+        vaults, blocking ``./start.sh --oversight`` from binding the
+        HTTP port.
+        """
         from oversight_events import emit
+
+        # First-pass vault auto-registration (slow but one-shot).
+        self._initial_vault_scan()
 
         while self._running:
             now = time.time()
