@@ -539,7 +539,7 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
         {
             "id": str,                    # filename stem (no .md)
             "display_name": str,          # 60-char-limit picker title
-            "display_description": str,   # 400-char-limit picker body
+            "display_description": str,   # 500-char-limit picker body
             "category": str,              # "standard" | "user-created" | "one-off"
         }
 

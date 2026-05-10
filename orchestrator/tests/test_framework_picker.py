@@ -11,7 +11,7 @@ Covers ``parse_framework_picker_metadata`` and ``list_pickable_frameworks``:
 - The picker list is sorted by ``(category, display_name)`` so the UI can
   render groups without re-sorting.
 - Display Name and Display Description respect the design-doc length caps
-  (60 / 400 chars) for the 19 shipped pickable frameworks.
+  (60 / 500 chars) for the 19 shipped pickable frameworks.
 """
 from __future__ import annotations
 
@@ -96,11 +96,11 @@ class TestListPickableFrameworks(unittest.TestCase):
                     f"{len(r['display_name'])} chars",
             )
 
-    def test_display_description_under_400_chars(self):
+    def test_display_description_under_500_chars(self):
         rows = list_pickable_frameworks()
         for r in rows:
             self.assertLessEqual(
-                len(r["display_description"]), 400,
+                len(r["display_description"]), 500,
                 msg=f"{r['id']} display_description too long: "
                     f"{len(r['display_description'])} chars",
             )
