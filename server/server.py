@@ -6042,7 +6042,7 @@ def _try_keychain_stability_key():
     """
     try:
         import keyring
-        return keyring.get_password("ora-stability", "api-key") or ""
+        return keyring.get_password("ora", "stability-api-key") or ""
     except Exception:
         return ""
 

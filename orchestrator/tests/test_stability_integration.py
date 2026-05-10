@@ -11,8 +11,8 @@ This file runs in two modes:
     dispatch through the registry, and error-translation paths.
 
   * **Live mode.** When the env var ``ORA_STABILITY_LIVE`` is set
-    *and* a key is present at keyring service ``ora-stability``
-    account ``api-key``, the live integration is exercised against
+    *and* a key is present at keyring service ``ora``
+    account ``stability-api-key``, the live integration is exercised against
     the real Stability v2beta API with the smallest-payload calls
     possible (1:1 aspect, single direction outpaint, default upscale).
     Skips otherwise.
@@ -456,7 +456,7 @@ def _live_enabled() -> bool:
 @unittest.skipUnless(
     _live_enabled(),
     "Live Stability calls disabled (set ORA_STABILITY_LIVE=1 and "
-    "store key at keyring service 'ora-stability' account 'api-key' "
+    "store key at keyring service 'ora' account 'stability-api-key' "
     "to enable).",
 )
 class StabilityLiveTests(unittest.TestCase):

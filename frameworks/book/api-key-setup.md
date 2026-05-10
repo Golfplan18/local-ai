@@ -404,7 +404,7 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
      "model": "[default model — e.g., sd3 or sdxl]",
      "status": "active",
      "verified": "[ISO date]",
-     "credential_key": "ora-stability"
+     "credential_key": "ora/stability-api-key"
    }
    ```
 
@@ -416,11 +416,11 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
      "model": "[default model identifier — e.g., a stable-diffusion variant]",
      "status": "active",
      "verified": "[ISO date]",
-     "credential_key": "ora-replicate"
+     "credential_key": "ora/replicate-api-key"
    }
    ```
 
-   For OpenAI image generation: do **not** add a separate endpoint entry — the existing `openai-api` entry already references the `ora-openai` credential, and that same key serves the DALL-E endpoints. Image-routing logic looks up the OpenAI service and calls the appropriate endpoint (chat completions or images) based on the requested capability.
+   For OpenAI image generation: do **not** add a separate endpoint entry — the existing `openai-api` entry already references the `ora/openai-api-key` credential, and that same key serves the DALL-E endpoints. Image-routing logic looks up the OpenAI service and calls the appropriate endpoint (chat completions or images) based on the requested capability.
 
    Do not modify existing browser or local endpoint entries.
 
@@ -658,3 +658,5 @@ v1.1 (2026/03/24): Repositioned API keys as the overflow/reliability channel beh
 v1.2 (2026/04/23): Added Layer 6 (Self-Evaluation) in penultimate position and Layer 7 (Error Correction and Output Formatting) in final position per Process Formalization Framework v2.0 Anatomy. Layer 6 scores each of the 4 Evaluation Criteria 1–5 with cited evidence, calibration warning, and remediation protocol for below-threshold scores. Layer 7 adds Error Correction Protocol (factual consistency, terminology, structural completeness, variable fidelity), Output Formatting, Missing Information Declaration, and Recovery Declaration. Renamed the existing RECOVERY section to OPERATIONAL RECOVERY to distinguish runtime-failure recovery (during execution) from the PFF Recovery Declaration (for unresolved deficiencies at end-of-execution). EXECUTION COMMANDS updated with steps 5 and 6 covering the new layers.
 
 v1.3 (2026/04/29): Extended Layer 2 with image-generation providers per WP-7.3.5 and §11.13 of the visual-pane plan. Added Stability AI section (signup `https://platform.stability.ai/`, key prefix `sk-`, keychain entry `ora-stability`) and Replicate section (signup `https://replicate.com/account/api-tokens`, key prefix `r8_`, keychain entry `ora-replicate`). Added a note under the existing OpenAI section confirming that the same `ora-openai` key serves DALL-E 3 / DALL-E 2 alongside chat completions — no separate setup required. Layer 1 Section 3 split into evaluation-cost regime (per-token) and image-generation-cost regime (per-image), and the provider-selection menu split into evaluation / image-generation / other groups. Layer 3 validation extended with prefix checks for Stability and Replicate. Layer 4 verification calls added for Stability (smallest viable SDXL/SD3 generation, ~$0.01–0.05) and Replicate (smallest viable model run, ~$0.001–0.02), with a note that image providers have no genuinely free verification endpoint and the user is informed before the small charge lands. Layer 5 endpoint-registry guidance extended with `type: image-api` entries for Stability and Replicate, plus a note that OpenAI image generation reuses the existing `openai-api` entry. Layer 5 also writes a sibling `[workspace]/config/api-image-providers.md` when image providers are configured; the template/spec lives in vault root as `api-image-providers.md`. Named Failure Modes Key Format Trap extended with the new prefixes.
+
+v1.4 (2026/05/10): Keychain naming normalized. Stability and Replicate previously used a per-provider service namespace (`ora-stability` / `ora-replicate` with account `api-key`) — every other provider used the canonical pattern (service `ora`, account `<provider>-api-key`). The divergence meant keys saved through the user-settings panel never landed where the integrations looked. Resolved by moving Stability and Replicate to the canonical pattern: keychain service `ora`, accounts `stability-api-key` and `replicate-api-key`. Code touched: `orchestrator/integrations/stability.py`, `orchestrator/integrations/replicate.py` (constants), `orchestrator/user_settings.py` (added both providers to PROVIDER_KEYRING_USERNAME and PROVIDER_LABELS), `server/server.py::_try_keychain_stability_key` (call site), `config/models.json` (display credential_key fields). Endpoint-registry credential_key fields now read `ora/stability-api-key` and `ora/replicate-api-key` to make the canonical pattern explicit on inspection. Operators with existing keys under the old service names need to re-save via the settings panel; the panel writes to the canonical address.

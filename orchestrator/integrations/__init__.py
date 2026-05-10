@@ -9,7 +9,7 @@ Sub-modules:
   * ``stability``  — WP-7.3.2b. Fulfills ``image_generates``,
     ``image_outpaints``, ``image_upscales`` via the Stability AI REST
     API (``api.stability.ai``). Authenticates via keyring service
-    ``ora-stability``.
+    ``ora`` account ``stability-api-key``.
   * ``openai``     — WP-7.3.2a (sibling integration; not implemented
     here).
   * ``replicate``  — WP-7.3.2c (sibling integration; not implemented

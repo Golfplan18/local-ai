@@ -20,9 +20,10 @@ Default model: **SD3 Large** (``stability-sd3-large``). Rationale —
   model. Replicate is a better aggregator path for Flux variants.
 
 §11.13 of the Visual Intelligence Implementation Plan defines the
-auth pattern: keyring service-name ``ora-stability``, account
-``api-key``. Missing key surfaces ``model_unavailable`` pointing at
-``Framework — API Key Acquisition.md``.
+auth pattern: keyring service-name ``ora``, account
+``stability-api-key`` (canonical pattern matching every other API
+key Ora stores). Missing key surfaces ``model_unavailable`` pointing
+at ``Framework — API Key Acquisition.md``.
 
 Errors are mapped to the slot's declared ``common_errors`` codes per
 ``capabilities.json`` so callers see consistent error taxonomies
@@ -50,8 +51,13 @@ from typing import Any, Iterable
 # pre-load integrations.
 
 PROVIDER_ID = "stability"
-KEYRING_SERVICE = "ora-stability"
-KEYRING_ACCOUNT = "api-key"
+# Canonical keychain pattern (matches user_settings.py + boot.py):
+#   service = "ora", account = "<provider>-api-key"
+# Settings panel writes to this same address — the prior "ora-stability"
+# / "api-key" pair was unreachable from the panel, so keys saved through
+# the UI never landed where this integration looked.
+KEYRING_SERVICE = "ora"
+KEYRING_ACCOUNT = "stability-api-key"
 
 API_HOST = "https://api.stability.ai"
 GENERATE_ENDPOINT = "/v2beta/stable-image/generate/sd3"

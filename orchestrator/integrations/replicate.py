@@ -150,8 +150,10 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 PROVIDER_ID = "replicate"
-KEYRING_SERVICE = "ora-replicate"
-KEYRING_ACCOUNT = "api-key"
+# Canonical keychain pattern (matches user_settings.py + boot.py):
+#   service = "ora", account = "<provider>-api-key"
+KEYRING_SERVICE = "ora"
+KEYRING_ACCOUNT = "replicate-api-key"
 ENV_OVERRIDE = "REPLICATE_API_TOKEN"
 
 API_BASE = "https://api.replicate.com/v1"

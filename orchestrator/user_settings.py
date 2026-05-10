@@ -84,6 +84,8 @@ PROVIDER_KEYRING_USERNAME = {
     "assemblyai": "assemblyai-api-key",
     "deepgram": "deepgram-api-key",
     "elevenlabs": "elevenlabs-api-key",
+    "stability": "stability-api-key",
+    "replicate": "replicate-api-key",
     # OpenAI TTS uses the same key as OpenAI.
 }
 
@@ -95,6 +97,8 @@ PROVIDER_LABELS = {
     "assemblyai": "AssemblyAI (transcription)",
     "deepgram": "Deepgram (transcription)",
     "elevenlabs": "ElevenLabs (TTS)",
+    "stability": "Stability AI (image generation)",
+    "replicate": "Replicate (image / video generation)",
 }
 
 _KEYRING_SERVICE = "ora"
