@@ -186,6 +186,14 @@ def _multipart_request(
         "Authorization": f"Bearer {key}",
         "Accept": "image/*",
         "Content-Type": f"multipart/form-data; boundary={boundary}",
+        # Cloudflare in front of api.stability.ai rejects the default
+        # urllib User-Agent ("Python-urllib/X.Y") with HTTP 403 + error
+        # code 1010 ("Browser/User-Agent failed authentication"). The
+        # integration mis-classified that as model_unavailable / "key
+        # rejected" — surfacing a misleading fix-path to the user.
+        # Send a real browser UA so we land at Stability's actual auth
+        # layer, where the key gets evaluated.
+        "User-Agent": "ora/1.0 (+https://github.com/ora-commons/ora)",
     }
 
     request = urllib.request.Request(

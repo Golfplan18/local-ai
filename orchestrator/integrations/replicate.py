@@ -333,7 +333,8 @@ class ReplicateClient:
             self._auth_error: ReplicateError | None = ReplicateError(
                 "model_unavailable",
                 "No Replicate API key configured. Set REPLICATE_API_TOKEN "
-                "in env or store via keychain ('ora-replicate' / 'api-key').",
+                "in env or store via keychain (service 'ora' / account "
+                "'replicate-api-key').",
             )
         else:
             self._auth_error = None
@@ -346,6 +347,11 @@ class ReplicateClient:
         return {
             "Authorization": f"Token {self._api_key}",
             "Content-Type": "application/json",
+            # Cloudflare fronts api.replicate.com and rejects bare
+            # python-requests / urllib User-Agents with HTTP 403 + code
+            # 1010. Send a stable, identifiable UA so we land at
+            # Replicate's actual auth layer.
+            "User-Agent": "ora/1.0 (+https://github.com/ora-commons/ora)",
         }
 
     def _post(self, path: str, payload: dict) -> dict:
