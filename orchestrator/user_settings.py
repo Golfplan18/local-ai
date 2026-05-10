@@ -86,6 +86,8 @@ PROVIDER_KEYRING_USERNAME = {
     "elevenlabs": "elevenlabs-api-key",
     "stability": "stability-api-key",
     "replicate": "replicate-api-key",
+    "civitai": "civitai-api-key",
+    "tensorart": "tensorart-api-key",
     # OpenAI TTS uses the same key as OpenAI.
 }
 
@@ -99,6 +101,8 @@ PROVIDER_LABELS = {
     "elevenlabs": "ElevenLabs (TTS)",
     "stability": "Stability AI (image generation)",
     "replicate": "Replicate (image / video generation)",
+    "civitai": "Civitai (image generation)",
+    "tensorart": "Tensor.Art (image generation)",
 }
 
 _KEYRING_SERVICE = "ora"
