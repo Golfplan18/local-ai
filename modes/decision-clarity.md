@@ -209,3 +209,15 @@ Consolidate as a structured synthesis with the ten required sections. The decisi
 ## VERIFICATION CRITERIA
 
 Verified means: every component ran (or was flagged as proceeded-with-gap); the four synthesis stages integrated rather than concatenated; leading intervention carries red-team stress-test; recommendations are within the named decision-maker's scope; two scenarios are genuinely contrasting; confidence map is populated. The five critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `contradicts`, `supports`, `qualifies`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: stakeholder-strategy. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

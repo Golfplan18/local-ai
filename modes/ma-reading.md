@@ -203,3 +203,15 @@ This mode does not carry mode-specific debates. Five territory-level debates (pe
 These five debates are *not* re-documented here. They are referenced because they bear on Ma Reading's stance, lens dependencies, and implementability. See the T19 entry in `Reference — Analytical Territories.md` for the full debate text and citations.
 </content>
 </invoke>
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `analogous-to`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `contradicts`
+
+*Family: spatial-composition. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

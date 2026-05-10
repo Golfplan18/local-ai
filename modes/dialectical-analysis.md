@@ -169,3 +169,15 @@ Consolidate as a structured synthesis with the seven required sections (six if A
 ## VERIFICATION CRITERIA
 
 Verified means: thesis stated with claims to completeness; ≥ 1 internal contradiction named; antithesis developed with adversarial commitment from those contradictions; sublation with transcending mechanism OR explicit irreducibility declaration; recursion named when sublation is present. The four critical questions are addressed. Silent forcing of a sublation when irreducibility was the honest finding is a verification failure.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `extends`, `supersedes`, `derived-from`, `analogous-to`, `supports`
+**Deprioritize:** `precedes`, `produces`
+
+*Family: synthesis-dialectic. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

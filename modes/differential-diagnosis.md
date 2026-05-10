@@ -171,3 +171,15 @@ Consolidate as a structured ranked-options artifact with the six required sectio
 ## VERIFICATION CRITERIA
 
 Verified means: at least two candidate hypotheses are present and distinct; diagnosticity is assessed in disconfirming-power language for at least the top two; at least one disconfirming test is emitted per top candidate; confidence per ranking explicitly addresses evidence sufficiency; rare-but-serious "zebra" candidates have been considered (or their absence noted with reason); the four critical questions are addressable from the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `produces`, `precedes`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: hypothesis-future. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

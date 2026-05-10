@@ -181,3 +181,15 @@ Consolidate as a structured audit with the nine required sections. The system un
 ## VERIFICATION CRITERIA
 
 Verified means: the system under critique is named; boundary judgments currently embedded are surfaced as judgments (not as system-givens); all four of Ulrich's category-clusters are audited; affected-but-not-involved parties are identified per category; the is-vs-ought boundary comparison is performed; the four critical questions are addressable from the output. Confidence per major finding accompanies each claim.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `contradicts`, `supports`, `qualifies`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: stakeholder-strategy. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

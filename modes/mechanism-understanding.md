@@ -177,3 +177,15 @@ Consolidate as a structured synthesis with the eight required sections. The leve
 ## VERIFICATION CRITERIA
 
 Verified means: the level of analysis is locked; components are inventoried with functional role per component; the interaction pattern is described as the source of the whole's behavior; emergence is accounted for rather than elided; boundary conditions are named; the explanation makes at least one prediction about behavior under altered conditions. The five critical questions are addressable from the output. Confidence per finding accompanies every claim. The output is distinguishable from a T4 causal-chain analysis or a T17 process-map.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `produces`, `enables`, `requires`
+**Deprioritize:** `contradicts`, `supersedes`
+
+*Family: mechanism-structure. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

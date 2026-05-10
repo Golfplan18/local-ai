@@ -182,3 +182,15 @@ Consolidate as a matrix-format ranked-options artifact with the seven required s
 ## VERIFICATION CRITERIA
 
 Verified means: at least 3 hypotheses in play, including at least one analyst-generated; at least 3 evidence items with credibility/relevance ratings; every (evidence × hypothesis) cell populated with Heuer vocabulary; at least one diagnostic row (cells not all equal); the surviving hypothesis named in prose has the fewest I+II cells in the matrix (tie-broken by II); at least one high-diagnosticity item explicitly named; sensitivity analysis names at least one evidence item whose reversal would change the ranking; deception check addressed when adversarial actors are plausible; monitoring priorities listed. The five critical questions are addressable from the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `produces`, `precedes`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: hypothesis-future. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

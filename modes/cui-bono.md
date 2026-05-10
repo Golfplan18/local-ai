@@ -184,3 +184,15 @@ Consolidate as a structured mapping with the seven required sections. The instit
 ## VERIFICATION CRITERIA
 
 Verified means: the institutional author is named explicitly; at least two specific parameters driving distribution are stated; the alternative design is constructed with equal technical rigor and from the disadvantaged constituency's interests; FGL is applied to at least two constituencies; legitimate value is separated from distributional overlay; every named beneficiary has a concrete benefit pathway; every named cost has a concrete bearer; the analysis has surfaced absent voices or explicitly noted that boundary-critique was deferred. Confidence per finding accompanies every claim. The four critical questions are addressable from the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `contradicts`, `supports`, `qualifies`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: stakeholder-strategy. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

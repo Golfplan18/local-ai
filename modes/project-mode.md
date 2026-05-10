@@ -167,3 +167,15 @@ Consolidate as the deliverable plus the three universal elements: deliverable, d
 ## VERIFICATION CRITERIA
 
 Verified means: deliverable matches request; ≥ 1 substantive decision logged with reasoning; ≥ 1 limitation or risk acknowledged; scope discipline preserved (no silent expansion). The five critical questions are addressed. If the request actually matched an analytical mode, dispatching there is the verified-correct response — completing in Project Mode is a failure regardless of deliverable quality. The dispatch-check guard rail fires before emission: does this request match an analytical mode? If yes, dispatch.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `parent`, `child`, `produces`
+**Deprioritize:** `analogous-to`, `contradicts`
+
+*Family: execution-output. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

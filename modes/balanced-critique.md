@@ -182,3 +182,15 @@ Consolidate as a structured synthesis with the seven required sections. The arti
 ## VERIFICATION CRITERIA
 
 Verified means: strengths and weaknesses sections are comparable in length, specificity, and evidence depth; every strength and weakness is tied to a specific element of the artifact; perspective-dependent findings are flagged with stakeholder vantage; residual tensions are named explicitly in the net assessment; the analysis is not artificially balanced when the artifact is genuinely asymmetric in quality; the four critical questions are addressable from the output. Confidence per finding accompanies each major claim.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `parent`
+
+*Family: argument-evaluation. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

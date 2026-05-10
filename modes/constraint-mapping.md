@@ -170,3 +170,15 @@ Consolidate as a structured matrix with the five required sections. Format: matr
 ## VERIFICATION CRITERIA
 
 Verified means: ≥3 alternatives mapped (or 2 in pro/con form for genuinely binary choices); success and failure conditions stated as testable propositions per alternative; analytical depth symmetric across alternatives; no-lose elements explicitly called out; the mode does not make the final choice unless the user explicitly asked. The four critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `qualifies`, `supports`, `contradicts`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: decision-risk. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

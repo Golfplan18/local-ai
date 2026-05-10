@@ -207,3 +207,15 @@ Verified means: every component ran (or was flagged as proceeded-with-gap); synt
 ## CAVEATS AND OPEN DEBATES
 
 **Debate D3 — Wicked problems: sui generis or extreme cases of complex problems?** Rittel & Webber (1973) treat wickedness as intrinsic and distinct from ordinary complexity. Later scholarship (Pesch & Vermaas 2020; some complexity-science readings) treats wicked problems as extreme cases along the complexity gradient rather than as a separate category. This mode operates without adjudicating the debate: it applies the Rittel-Webber characteristics as analytical lens (treating "wickedness" as a useful descriptor for problems exhibiting the ten characteristics) while remaining agnostic on whether wickedness is a category or a degree. Citations: Rittel & Webber 1973; Pesch & Vermaas 2020; Conklin 2006 (*Dialogue Mapping*).
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `contradicts`, `supports`, `qualifies`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: stakeholder-strategy. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

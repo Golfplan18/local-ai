@@ -186,3 +186,15 @@ Consolidate as a diagram-friendly mapping with the eight required sections. The 
 ## VERIFICATION CRITERIA
 
 Verified means: process boundaries are locked with explicit start trigger and end condition; actors are inventoried with role attribution per step; decision points are surfaced with criteria; dependencies are mapped; bottlenecks are identified with underlying constraints (not just symptoms); handoffs are examined for friction; official-vs-actual distinction is acknowledged. The five critical questions are addressable from the output. Confidence per finding accompanies every claim.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `produces`, `enables`, `requires`
+**Deprioritize:** `contradicts`, `supersedes`
+
+*Family: mechanism-structure. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

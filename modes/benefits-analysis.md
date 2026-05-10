@@ -179,3 +179,15 @@ Consolidate as a structured three-column output (Plus / Minus / Interesting) wit
 ## VERIFICATION CRITERIA
 
 Verified means: proposal stated precisely; all three columns populated (or explicit "none identified" statement); each claim grounded in user's specifics; ≥ 1 second-order implication named; affected-parties map present; ≥ 1 asymmetry surfaced; no unsolicited recommendation. The five critical questions are addressed. Silent injection of a recommendation during revision is a verification failure.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `parent`
+
+*Family: argument-evaluation. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

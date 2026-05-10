@@ -196,3 +196,15 @@ Verified means: both component passes ran (or were flagged as proceeded-with-gap
 ## CAVEATS AND OPEN DEBATES
 
 **Debate D2 — Motte-and-bailey: fallacy or doctrine?** Shackel (2005, "The Vacuity of Postmodernist Methodology") introduced the term as a *doctrine* — a structural feature of certain argumentative positions in which an arguer alternates between a defensible "motte" (modest claim) and a desirable "bailey" (ambitious claim) when challenged. Shackel's preferred usage frames motte-and-bailey as a *characterization of a doctrine's structure*, not as a fallacy committed in a single inferential step. In wider usage (online discourse, popular argumentation guides), the term has come to function as a *fallacy label* applied to single moves where an arguer retreats from an ambitious claim under pressure. This mode operates without adjudicating the debate: when motte-and-bailey is invoked, the audit names the structural move in the argument's terms (which claim is motte, which is bailey, where the alternation occurs) rather than relying on the label alone, and notes whether Shackel's doctrinal usage or the wider fallacy-label usage best fits the case. Consumers seeking a stricter Shackel-aligned reading should treat motte-and-bailey invocations as doctrinal characterizations requiring multi-claim evidence; consumers using the wider sense may accept single-move applications. Citations: Shackel 2005; cf. wider discussion in popular argumentation literature.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `parent`
+
+*Family: argument-evaluation. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

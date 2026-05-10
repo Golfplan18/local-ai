@@ -200,3 +200,15 @@ Verified means: the professed ideal is named with quoted text; the supporting / 
 **Debate D5 — Is Stanley's *How Propaganda Works* politically neutral or directional?** The book's diagnostic apparatus (supporting / undermining distinction; flawed-ideology precondition; not-at-issue content) is offered as politically neutral analytical machinery, applicable to any artifact regardless of the artifact's political orientation. Sympathetic readings (e.g., much of the academic philosophy-of-language reception) treat the apparatus as neutral and the case studies as illustrative. Skeptical readings (visible in popular reception, including Goodreads-style criticism and several conservative-tradition reviewers) argue that the apparatus is built around a left-liberal canon of paradigm cases (Birth of a Nation; Fox News; Trump-era discourse) and that this case-base inflects the apparatus toward asymmetric application — i.e., that the diagnostic catches right-wing propaganda more readily than structurally-equivalent left-wing instances. A third reading (Lear and others in epistemology of testimony) treats the apparatus as defensible-but-incomplete: Stanley's framework illuminates one important class of propaganda (undermining demagoguery) without exhausting the propaganda phenomenon. This mode operates without adjudicating the debate: it applies Stanley's distinctions as analytical lens (treating "supporting" and "undermining" as useful descriptors for argumentatively distinct propaganda structures) while remaining agnostic on whether Stanley's case-base inflects the apparatus directionally. The mode's symmetry guardrails (motive-attribution-without-evidence as named failure; propaganda-charge-as-refutation as named failure) are designed to mitigate the asymmetric-application risk regardless of which side of the debate one finds more persuasive. Citations: Stanley 2015 *How Propaganda Works*; Lear 2017 in *Mind*; popular-reception reviews on Goodreads and conservative-tradition outlets surveyed but not adjudicated.
 </content>
 </invoke>
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `parent`
+
+*Family: argument-evaluation. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

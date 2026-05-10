@@ -178,3 +178,15 @@ Verified means: target concept is named; current usage baseline is mapped; funct
 ## CAVEATS AND OPEN DEBATES
 
 **Debate D7 — The implementation problem (Cappelen 2018 vs. Haslanger).** Cappelen's *Fixing Language* (2018) argues that conceptual engineering faces a fundamental implementation problem: even if a philosopher correctly identifies that a concept should be revised and articulates a better one, there is no clear mechanism by which the revision is taken up by language users. Concepts are decentralized, distributed across speakers and contexts, and resistant to top-down redesign; the engineering move risks being academically satisfying but practically inert. Haslanger's earlier ameliorative analysis (2012, 2020) is more optimistic about implementation: she treats ameliorative analysis as continuous with social and political contestation, where revised concepts gain uptake through use in argument, education, legislation, and movement-building rather than through philosopher-fiat. This mode does not adjudicate the debate. It requires acknowledgment of the implementation problem (per the implementation-blindness failure mode) without prescribing the Cappelen-pessimist or Haslanger-engaged response. When the user is doing engineering for use within their own work or organization, the implementation problem may shrink (the user is the adopter); when proposing revision for a wide community, the problem looms larger and should be foregrounded. Citations: Cappelen 2018 *Fixing Language*; Haslanger 2012 *Resisting Reality*, 2020 "Going on, not in the same way."
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `contradicts`, `qualifies`, `analogous-to`, `extends`, `supersedes`
+**Deprioritize:** `precedes`, `produces`
+
+*Family: frame-paradigm. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

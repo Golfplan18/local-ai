@@ -189,3 +189,15 @@ Consolidate as a matrix-format scenarios artifact with the seven required sectio
 ## VERIFICATION CRITERIA
 
 Verified means: all four quadrants populated with name and non-empty narrative; each quadrant has at least one leading indicator; axes-independence rationale present and non-trivial (≥40 chars); driving forces classified predetermined vs critical-uncertainty in prose; scenarios are structurally distinct (not magnitude variants); no scenario labelled "most likely"; at least one wild card present in prose; at least one robust strategy distinguished from at least one scenario-dependent strategy. The five critical questions are addressable from the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `produces`, `precedes`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: hypothesis-future. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

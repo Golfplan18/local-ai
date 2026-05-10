@@ -233,3 +233,15 @@ This mode does not carry mode-specific debates. Five territory-level debates (pe
 5. **Mode granularity: general vs. tradition-specific.** Whether the Reserved-M5 mode (Information-Graphic Visual-Hierarchy Analysis specialty) should be promoted to a first-class fifth T19 mode. Per T19 reanalysis §3, the promotion threshold is: info-graphic critique exceeds ~15% of T19 invocations, *or* this mode plus Compositional Dynamics outputs on dashboards visibly fail to distinguish encoding-misfit from generic compositional critique. Below threshold, Information Density covers the applied-evaluative info-graphic operations with the four required lenses. Above threshold, dashboard-orchestration / chart-type-selection / sparkline-and-small-multiples specialty would justify a fifth mode. The `m5-promotion-evidence` failure-mode flag is the structural mechanism for surfacing the signal to the orchestrator.
 
 These five debates are *not* re-documented here. They are referenced because they bear on Information Density's stance, lens dependencies, and implementability. See the T19 entry in `Reference — Analytical Territories.md` for the full debate text and citations.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `analogous-to`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `contradicts`
+
+*Family: spatial-composition. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

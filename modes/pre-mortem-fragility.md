@@ -182,3 +182,15 @@ Verified means: the breakage narrative is in past-tense prospective-hindsight st
 ## CAVEATS AND OPEN DEBATES
 
 **Parsing rationale (Decision D).** This mode is one of two parsed from the historical "Pre-Mortem" candidate that appeared to fit two territories. Per the parsing principle, dual-citizenship is rejected: the operation on an action plan (T6, future exploration with adversarial-future stance) and the operation on a system/design (T7, risk and failure analysis) are different operations sharing a name. Both modes share the `klein-pre-mortem` lens (Klein 2007 *HBR*; Mitchell, Russo & Pennington 1989 on prospective hindsight), but their input contracts, output contracts, and critical questions diverge. When in doubt about whether the artifact is plan-shaped or system-shaped, route via the disambiguating question: "Is this about an action plan that could fail, or about a system or design with structural fragilities?" Sibling: `pre-mortem-action` (T6).
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `qualifies`, `supports`, `contradicts`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: decision-risk. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

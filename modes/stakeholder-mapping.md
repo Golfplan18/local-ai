@@ -180,3 +180,15 @@ Consolidate as a structured matrix with the seven required sections. Stakeholder
 ## VERIFICATION CRITERIA
 
 Verified means: the inventory contains at least one party from outside the user's initial frame, or the analysis explicitly notes that no such party was identifiable; every party has a stake articulated as concrete interest, not just role-label; Mitchell-Agle-Wood salience is populated on all three dimensions for every party (or explicitly marked as not-applicable with reason); at least one absent or marginalized party is named, or the analysis explicitly notes that no such party exists; relationships among parties are stated rather than left implicit; the four critical questions are addressable from the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `contradicts`, `supports`, `qualifies`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: stakeholder-strategy. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

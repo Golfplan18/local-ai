@@ -195,3 +195,15 @@ Consolidate as a structured audit with the eight required sections. Operative fr
 Verified means: operative frames are named in alternative-comparable vocabulary; the four Entman functions are populated per frame with quoted evidence; the selection-and-silence inventory has entries in both columns; lexical and grammatical mechanisms are cited with quoted text; at least one counterframe is constructed; the audit has not slipped from frame-surfacing into frame-rejection. The five critical questions are addressable from the output. Confidence per finding accompanies each major claim.
 </content>
 </invoke>
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `parent`
+
+*Family: argument-evaluation. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

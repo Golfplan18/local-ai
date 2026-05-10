@@ -168,3 +168,15 @@ Consolidate as prose in the five required sections (foundational assumptions / e
 ## VERIFICATION CRITERIA
 
 Verified means: ≥3 foundational assumptions stated as testable propositions (not conclusions); every evidence item carries an observational/interpretive tag; load-bearing assessment present for ≥3 assumptions; ≥2 genuinely distinct alternatives with observational grounding; Einstein guard rail honoured throughout (no observation dismissed to favour an alternative); evaluation states honestly whether the paradigm is supported, weakened, or indeterminate. The four critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `contradicts`, `qualifies`, `analogous-to`, `extends`, `supersedes`
+**Deprioritize:** `precedes`, `produces`
+
+*Family: frame-paradigm. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

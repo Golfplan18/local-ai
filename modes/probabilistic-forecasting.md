@@ -184,3 +184,15 @@ Verified means: resolution criteria are operational and locked; reference class 
 ## CAVEATS AND OPEN DEBATES
 
 **Debate D8 — Tetlock's commandments as binding rules vs. heuristics held lightly.** Tetlock's *Superforecasting* (2015) closes with "ten commandments" for would-be forecasters (triage, break problems into components, balance inside and outside views, etc.). A persistent failure mode in popular Tetlock readings is treating these commandments as binding rules — applied mechanically regardless of question shape. Tetlock himself has been explicit, in interviews and follow-up writing, that the commandments are heuristics that must be held lightly: superforecasters do not follow them mechanically; they cultivate the underlying disposition (probabilistic thinking, bias awareness, willingness to update) and apply the commandments where they help. This mode operates with the heuristics-held-lightly stance: the seven required output sections encode the disposition (operational resolvability, base-rate anchoring, view-separation, range-not-point) without prescribing rote commandment-by-commandment execution. Citations: Tetlock & Gardner 2015 *Superforecasting*; Tetlock subsequent interview and methodological clarifications.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `produces`, `precedes`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: hypothesis-future. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

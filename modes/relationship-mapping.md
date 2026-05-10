@@ -165,3 +165,15 @@ Consolidate as a diagram-friendly mapping with the seven required sections (foca
 ## VERIFICATION CRITERIA
 
 Verified means: every connection has a stated type and directionality; ≥2 non-obvious connections surfaced; organising structure named; output structured as a relational map (not linear narrative); acyclicity honoured (any cycle handled via transition to systems-dynamics-causal or systems-dynamics-structural per parse); boundary statement names what the map omits. The four critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `produces`, `enables`, `requires`
+**Deprioritize:** `contradicts`, `supersedes`
+
+*Family: mechanism-structure. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

@@ -170,3 +170,15 @@ Consolidate as a structured synthesis with the six required sections. The one-li
 ## VERIFICATION CRITERIA
 
 Verified means: a one-line domain definition is present; three-to-five major sub-areas are listed and spread across the domain rather than corner-concentrated; foundational distinctions are load-bearing (the user could not navigate without them); entry points are concrete; common misconceptions are flagged; settled vs. contested is distinguished; the output stays within tier-1 depth budget; the four critical questions are addressable from the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `analogous-to`, `requires`, `extends`
+**Deprioritize:** `contradicts`, `supersedes`
+
+*Family: orientation-exploration. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

@@ -234,3 +234,15 @@ Verified means: stance declaration appears in opening line ("Stance: assessment"
 ## CAVEATS AND OPEN DEBATES
 
 This mode and its sibling `red-team-advocate` were parsed from the original `red-team` mode per Decision D (parsing principle: when a single mode-id maps to two distinct output contracts with different ranking criteria and different audience modeling, parse into separate modes sharing a foundational lens). The shared lens is `cia-tradecraft-red-team`, which captures the foundational adversarial-actor-modeling discipline both modes draw from. The parse rationale: assessment ranks vulnerabilities by severity for the user's own fix-prioritisation; advocate ranks attacks by persuasive force against an external audience for argument-brief use. These are different operations — different ranking criteria, different audience modelling, different output contracts — so they live as sibling modes in T15 rather than as stances within a single mode. The earlier internal `stance_protocol` (assessment vs advocate dispatch within one mode_id) was retired with this parse: disambiguation now lives between modes, not within. Routing relies on the within-territory tree's secondary branch under "want adversarial — for own decision (assessment) or for external use (advocate)?" with `red-team-assessment` as the default when ambiguous and an escalation hook to `red-team-advocate`.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `parent`
+
+*Family: argument-evaluation. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

@@ -186,3 +186,15 @@ Consolidate as prose with the six required sections in order: original position 
 ## VERIFICATION CRITERIA
 
 Verified means: all six required sections present in order or clearly demarcated; original-position paragraph bounded (≤ ⅓ of steelman section length); mirror test passes (a thoughtful proponent would endorse the reconstruction); steelman is recognizably the same argument strengthened (not replaced); at least two points of agreement explicit; critique addresses only the steelmanned version with no retreat to the original; survival assessment present; no visual envelope emitted. The four critical questions are addressable from the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `parent`
+
+*Family: argument-evaluation. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

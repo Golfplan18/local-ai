@@ -176,3 +176,15 @@ Consolidate as a structured analysis with the six required sections. Players and
 ## VERIFICATION CRITERIA
 
 Verified means: players named with payoffs in actual value terms; four-dimension classification complete; equilibrium method named with derivation traceable; credibility assessed for ≥ 1 threat/promise; ≥ 1 alternative structure analyzed; strategic recommendations specific. The five critical questions are addressed. A decision-node edge carrying a probability is a hard verification failure (decisions are choices, not chance outcomes).
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `contradicts`, `supports`, `qualifies`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: stakeholder-strategy. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

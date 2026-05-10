@@ -158,3 +158,15 @@ Consolidate as prose in the four required sections (surface / mechanistic clarif
 ## VERIFICATION CRITERIA
 
 Verified means: surface explanation present (not skipped); ≥2 mechanistic levels below surface, each genuinely vertical (not horizontal detail); epistemic boundary marked; ≥1 practical implication named; no jargon-substitution-for-mechanism; if a flowchart envelope is emitted, the mechanism is genuinely procedural. The three critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `contradicts`, `qualifies`, `analogous-to`, `extends`, `supersedes`
+**Deprioritize:** `precedes`, `produces`
+
+*Family: frame-paradigm. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

@@ -188,3 +188,15 @@ Consolidate as a structured synthesis with the eight required sections. The comp
 ## VERIFICATION CRITERIA
 
 Verified means: at least two competing hypotheses were tested; each evidence piece is classified by test type with justification; hypothesis status reflects appropriate Bayesian updating given test outcomes; source provenance is assessed; the causal chain is reconstructed in temporal sequence with explicit intermediate links; residual uncertainty names diagnostic evidence not yet available. The five critical questions are addressable from the output. Confidence per finding accompanies every causal claim.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `precedes`, `enables`, `requires`, `produces`, `derived-from`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: causal. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

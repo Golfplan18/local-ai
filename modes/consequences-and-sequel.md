@@ -195,3 +195,15 @@ Verified means: at least one path reaches length 3 (third order); every link in 
 ## CAVEATS AND OPEN DEBATES
 
 Consequences and Sequel operates as the Tier-1 light variant in the T6 future-exploration ladder; it complements but does not substitute for the heavier modes — `probabilistic-forecasting` (when probability weights matter), `scenario-planning` (when divergent narratives carry the analysis better than a single cascade), `wicked-future` (the molecular variant for tangled forward problems). The mode's load-bearing constraint is acyclicity: when a cycle appears in the cascade, the right move is handoff to `systems-dynamics-causal`, not forcing the cycle into a DAG that misrepresents the structure. The third-order discipline (extend at least one branch to depth 3) is the discipline that distinguishes a real cascade from an enumeration of immediate effects.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `produces`, `precedes`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: hypothesis-future. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

@@ -175,3 +175,15 @@ Consolidate as a structured mapping with the eight required sections. Each frame
 ## VERIFICATION CRITERIA
 
 Verified means: each frame is articulated symmetrically; core conceptual metaphors per frame are surfaced; moral/value commitments per frame are named; what-each-frame-makes-visible and what-it-obscures are both populated; cross-frame translation difficulty is acknowledged; residual irreducibility is honored where present; the four critical questions are addressable from the output. Confidence per major finding accompanies each claim.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `contradicts`, `qualifies`, `analogous-to`, `extends`, `supersedes`
+**Deprioritize:** `precedes`, `produces`
+
+*Family: frame-paradigm. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

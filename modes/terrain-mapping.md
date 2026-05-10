@@ -171,3 +171,15 @@ Consolidate as a diagram-friendly mapping with the seven required sections (focu
 ## VERIFICATION CRITERIA
 
 Verified means: focus question stated and matches envelope; ≥4 concepts mapped (below 4 is Deep Clarification territory); each concept classified known/contested/open; ≥1 cross-link to an adjacent domain; ≥3 open questions tied to specific concepts; survey-level discipline maintained (≤30% on any single sub-area); boundary statement names what is out of scope; rival schools represented when domain has them. The four critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `analogous-to`, `requires`, `extends`
+**Deprioritize:** `contradicts`, `supersedes`
+
+*Family: orientation-exploration. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

@@ -207,3 +207,15 @@ Verified means: parties and stated positions named; people-problem diagnosis spe
 **Debate D6 — Fisher-Ury sufficiency for adversarial contexts; Voss critique.** Fisher and Ury's *Getting to Yes* (1981, with Patton's later editions) frames negotiation as fundamentally integrative-possible: separate people from problem, focus on interests not positions, generate options for mutual gain, use objective criteria. The framework has been transformative in commercial and diplomatic contexts where the parties share an interest in reaching agreement and where the integrative possibility-space is real. Chris Voss's *Never Split the Difference* (2016) and the broader practitioner literature on hostage negotiation, high-stakes commercial bargaining, and politically adversarial negotiation argue that Fisher-Ury underweights tactical empathy, emotional dynamics, distributive reality, and the role of perceived loss and ego in many real negotiations — and that in genuinely adversarial contexts the integrative frame can be naive or actively counterproductive. Voss-derived practice emphasizes calibrated questions, mirroring, labeling emotions, the "no" that opens engagement, the late-stage "Black Swan" information asymmetries, and the recognition that distribution, not integration, often dominates the late-game bargaining. Lewicki and others document the distributive/integrative continuum and warn against assuming integrative possibility where it is absent.
 
 This mode does not adjudicate the debate. It uses Fisher-Ury as the primary lens because the four-element method (people-problem separation, interests-not-positions, options-for-mutual-gain, objective-criteria) plus BATNA is the most-tested integrative framework available, and because the position-vs-interest descent is robust across contexts. The mode flags adversarial-context limitations explicitly when the situation warrants — the `voss-warning-unflagged` failure mode and the `voss-tactical-empathy` optional lens are the structural mechanisms. The integrative-overreach failure mode exists precisely to guard against the Fisher-Ury optimism trap. In genuinely adversarial contexts, the user may need to supplement this mode with Voss-style tactical-empathy lenses (carried optionally), or to recognize that the analysis is offering the integrative-possibility-space the situation may not contain. Citations: Fisher, Ury & Patton 1981/2011 *Getting to Yes*; Voss & Raz 2016 *Never Split the Difference*; Lewicki et al. negotiation textbook tradition for the distributive/integrative distinction; Raiffa 1982 *The Art and Science of Negotiation* for ZOPA / reservation-price modeling; Thompson 2020 *The Mind and Heart of the Negotiator* for cross-cultural and emotional dimensions.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `contradicts`, `supports`, `qualifies`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: stakeholder-strategy. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

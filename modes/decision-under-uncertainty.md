@@ -182,3 +182,15 @@ Consolidate as a structured artifact with the six required sections (decision fr
 ## VERIFICATION CRITERIA
 
 Verified means: each critical variable classified as risk/uncertainty/deep uncertainty with reasoning; defer/sequence/hedge alternatives considered alongside direct choices; value-of-information assessed against cost of delay; recommendation states what would change it; non-quantifiable factors present alongside quantitative framework; probabilities grounded in base rates or qualitative bands. The five critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `qualifies`, `supports`, `contradicts`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: decision-risk. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

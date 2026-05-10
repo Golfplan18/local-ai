@@ -188,3 +188,15 @@ When crystallization signals appear, name the signal in prose using the literal 
 - It is NOT triggered by length — long explorations stay exploratory if no deliverable language emerges.
 
 The Missed-Crystallization Trap is the failure mode for missing the signal; the Productivity Trap is the failure mode for forcing crystallization that hasn't happened.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `analogous-to`, `requires`, `extends`
+**Deprioritize:** `contradicts`, `supersedes`
+
+*Family: orientation-exploration. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

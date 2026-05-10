@@ -231,3 +231,15 @@ This mode does not carry mode-specific debates. Five territory-level debates (pe
 5. **Mode granularity: general vs. tradition-specific.** Whether Bachelardian topoanalysis (intimate immensity, corner, miniature) and biophilic design (Kellert et al.) should be promoted to first-class modes or remain stance-flags / vocabulary inside Place Reading. Currently the latter; Bachelard rides as a vocabulary cluster within Place Reading; Kellert biophilic patterns ride in the restorative-properties section. Revisit if outputs collapse or if biophilic-design workload becomes substantial.
 
 These five debates are *not* re-documented here. They are referenced because they bear on Place Reading's stance, lens dependencies, and implementability. See the T19 entry in `Reference — Analytical Territories.md` for the full debate text and citations.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `analogous-to`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `contradicts`
+
+*Family: spatial-composition. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

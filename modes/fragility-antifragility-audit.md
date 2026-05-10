@@ -187,3 +187,15 @@ Consolidate as a structured audit with the nine required sections. The stressor 
 ## VERIFICATION CRITERIA
 
 Verified means: convex and concave exposures are enumerated per element; the system is classified per fragility/robustness/antifragility distinction; hidden concavities are surfaced; normal-condition variance is distinguished from tail-event response; via negativa recommendations appear alongside addition-recommendations; Talebian assumptions are held lightly with case-specific reasoning. The five critical questions are addressable from the output. Confidence per finding accompanies every classification and recommendation.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `qualifies`, `supports`, `contradicts`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: decision-risk. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

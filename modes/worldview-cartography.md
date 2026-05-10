@@ -189,3 +189,15 @@ Consolidate as a structured synthesis with the seven required sections. Each par
 ## VERIFICATION CRITERIA
 
 Verified means: each paradigm has been suspended (not just foreign ones); cross-paradigm tensions are named explicitly; dialectical synthesis (where offered) uses the paradigms' own terms; residual incommensurabilities are preserved; confidence map is populated. The four critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `contradicts`, `qualifies`, `analogous-to`, `extends`, `supersedes`
+**Deprioritize:** `precedes`, `produces`
+
+*Family: frame-paradigm. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

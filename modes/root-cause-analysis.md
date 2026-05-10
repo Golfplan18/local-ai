@@ -184,3 +184,15 @@ Verified means: presented problem is phrased as a failure, not as a target state
 ## CAVEATS AND OPEN DEBATES
 
 Root Cause Analysis applies most cleanly to problems with bounded causal histories — failures in well-instrumented systems where evidence is recoverable. For systems exhibiting feedback dynamics where corrective interventions keep being counteracted, the mode should escalate to `systems-dynamics-causal`; the boundary is that Root Cause Analysis traces a chain backward whereas systems-dynamics-causal investigates how feedback structures generate recurring symptoms. Where the historical record is the load-bearing evidence (a specific past event), `process-tracing` may be the better tool. Where the formal causal-inference question is which conditional independencies are implied by the structure, `causal-dag` applies.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `precedes`, `enables`, `requires`, `produces`, `derived-from`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: causal. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

@@ -193,3 +193,15 @@ Verified means: system boundary is stated; every loop's members close back to st
 ## CAVEATS AND OPEN DEBATES
 
 This mode is one of two parsed from the legacy Systems Dynamics mode per Decision D (parsing principle, 2026-05-01 architecture lock). The legacy mode conflated two distinct operations: causal investigation ("why does this keep happening, given the feedback dynamics?") and structural mapping ("how does this system currently work, including its feedback dynamics?"). Both share the same feedback-loop lenses and the same diagrammatic vocabulary, but they differ in posture (causal-investigation vs structural-descriptive), output contract (counterintuitive-behaviour prediction vs current-state mapping), and disambiguation question (why vs how). This mode is the T4 causal variant; its structural counterpart `systems-dynamics-structural` lives in T17 and shares the foundational feedback lenses including `feedback-loops`. Routing between the two is determined by the user's actual question — diagnostic recurrence (why) routes here; current-state mapping (how) routes to the structural variant.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `precedes`, `enables`, `requires`, `produces`, `derived-from`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: causal. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

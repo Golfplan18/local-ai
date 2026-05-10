@@ -183,3 +183,15 @@ Consolidate as a structured synthesis with the six required sections. The what-t
 ## VERIFICATION CRITERIA
 
 Verified means: orientation surveyed broadly; terrain-mapping ran fully; connectivity-mapping shows relations not just elements; learning sequence is dependency-ordered; user's familiarity level and induction goal are reflected; confidence map is populated. The four critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `parent`, `child`, `analogous-to`, `requires`, `extends`
+**Deprioritize:** `contradicts`, `supersedes`
+
+*Family: orientation-exploration. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

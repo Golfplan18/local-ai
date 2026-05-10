@@ -168,3 +168,15 @@ Consolidate as the formatted deliverable plus the two universal elements: gap re
 ## VERIFICATION CRITERIA
 
 Verified means: every substantive claim in output traces to source; format follows requested conventions; gaps explicitly flagged; no recommendation added that was not in source; visual envelopes preserved byte-equivalent with `mode_context` from source. The five critical questions are addressed. Silent gap-filling, silent recommendation injection, and silent schema drift on passthrough envelopes are all verification failures. Envelope count must match source (if source has N visuals, output has N visuals).
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `parent`, `child`, `produces`
+**Deprioritize:** `analogous-to`, `contradicts`
+
+*Family: execution-output. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

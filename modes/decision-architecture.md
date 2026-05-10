@@ -202,3 +202,15 @@ Consolidate as a structured synthesis with the eight required sections. Each sec
 ## VERIFICATION CRITERIA
 
 Verified means: every component ran (or was flagged as proceeded-with-gap); the four synthesis stages integrated rather than concatenated; the leading alternative carries a pre-mortem stress test; decision-conditions-to-monitor are concrete; confidence map is populated. The five critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `qualifies`, `supports`, `contradicts`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: decision-risk. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

@@ -188,3 +188,15 @@ Consolidate as a structured synthesis with the eight required sections. The Baye
 ## VERIFICATION CRITERIA
 
 Verified means: every component ran (or was flagged as proceeded-with-gap); priors are anchored or flat-prior assumption is explicit; conditional dependencies are surfaced or independence is named; sensitivity analysis identifies dominant evidence; MECE structure is checked. The four critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `produces`, `precedes`
+**Deprioritize:** `parent`, `analogous-to`
+
+*Family: hypothesis-future. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

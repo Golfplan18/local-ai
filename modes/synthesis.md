@@ -163,3 +163,15 @@ Consolidate as a structured synthesis with the six required sections. Both frame
 ## VERIFICATION CRITERIA
 
 Verified means: both frameworks present as peer roots; ≥ 1 cross-link with mechanism evidence; ≥ 1 productive tension named; emergent insight named; ≥ 1 limitation named. Every cross-link's connection survives the mechanism test (could be falsified by a case where one framework's mechanism operates and the other's does not). The four critical questions are addressed in the output.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `extends`, `supersedes`, `derived-from`, `analogous-to`, `supports`
+**Deprioritize:** `precedes`, `produces`
+
+*Family: synthesis-dialectic. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

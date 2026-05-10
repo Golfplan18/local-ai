@@ -176,3 +176,15 @@ Consolidate as a matrix artifact with the eight required sections. The scoring m
 ## VERIFICATION CRITERIA
 
 Verified means: criteria are named and defined operationally; weights are elicited or explicitly noted as analyst-imposed (with reason); aggregation method is named and explained; scoring is explicit per option per criterion; sensitivity analysis runs at least one joint weight-score perturbation; dominance relations are surfaced; the four critical questions are addressable from the output. Confidence accompanies each major finding.
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `requires`, `enables`, `qualifies`, `supports`, `contradicts`
+**Deprioritize:** `analogous-to`, `parent`
+
+*Family: decision-risk. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*

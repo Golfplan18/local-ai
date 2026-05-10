@@ -197,3 +197,15 @@ Verified means: charitable reconstruction precedes any fallacy claim; Toulmin wa
 **Debate D1 — Is "fallacy" a property of the argument, or a property of the dialogue in which the argument is made?** The classical (Aristotelian, Copi-textbook) tradition treats fallacy as a property of the argument: an inferential move fails because of its form or because its premises do not support its conclusion, independently of dialogue context. The pragma-dialectical tradition (van Eemeren & Grootendorst) treats fallacy as a violation of rules for critical discussion: the same inferential move can be a legitimate strategic manoeuvre in one dialogue type and a fallacy in another. Walton's pragmatic / dialectical theory occupies a middle position: argumentation schemes carry critical questions whose negative answers can defeat the argument, and the dialogue type (persuasion, inquiry, negotiation, deliberation, information-seeking, eristic) determines which critical questions are in scope. Hamblin's *Fallacies* (1970) opened the debate by exposing the textbook tradition as theoretically degenerate, and the debate has not been settled in the literature. This mode operates without adjudicating: it applies Toulmin reconstruction (warrant-based, neutral on dialogue type) as the primary lens, layers Walton's argumentation-scheme critical questions on top (which carry the dialogue-type sensitivity implicitly), and flags fallacy claims as "the argument as given does not establish its conclusion via this inferential move" rather than as "the speaker has committed [named fallacy] in absolute terms." This treatment is compatible with both the property-of-argument and property-of-dialogue readings while remaining noncommittal about which is correct. Citations: Hamblin 1970 *Fallacies*; Walton 1995 *A Pragmatic Theory of Fallacy*; van Eemeren & Grootendorst 2004 *A Systematic Theory of Argumentation*; Hansen, "Fallacies," *Stanford Encyclopedia of Philosophy*.
 </content>
 </invoke>
+
+
+---
+
+## RAG PROFILE
+
+### RAG PROFILE — RELATIONSHIP PRIORITIES
+
+**Prioritize:** `supports`, `contradicts`, `qualifies`, `extends`
+**Deprioritize:** `precedes`, `parent`
+
+*Family: argument-evaluation. See `Reference — Ora YAML Schema.md` §7 for the 13-type taxonomy and `Registry — Relationship Type Registry.md` for type definitions.*
