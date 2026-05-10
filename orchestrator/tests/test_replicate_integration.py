@@ -410,14 +410,16 @@ class RegistrationTests(unittest.TestCase):
 
     def test_invocation_with_no_key_surfaces_model_unavailable(self):
         registry = _registry_for_capabilities()
+        # The mock must cover BOTH registration AND invocation — the
+        # ReplicateClient resolves the key lazily inside the handler, so
+        # narrowing the mock to just the registration call would let a
+        # real keychain key leak through at invocation time.
         with mock.patch.object(rep_mod, "_resolve_api_key", return_value=None):
             rep_mod.register_replicate_provider(registry)
-        # Force the routing to pick replicate for image_to_prompt.
-        registry._routing_config = {"slots": {"image_to_prompt": {"preferred": "replicate"}}}
-        # Fake requests still installed? No — but the auth error fires
-        # before any HTTP call. Verify we get model_unavailable.
-        with self.assertRaises(Exception) as cm:
-            registry.invoke("image_to_prompt", {"image": "https://x/y.png"})
+            # Force the routing to pick replicate for image_to_prompt.
+            registry._routing_config = {"slots": {"image_to_prompt": {"preferred": "replicate"}}}
+            with self.assertRaises(Exception) as cm:
+                registry.invoke("image_to_prompt", {"image": "https://x/y.png"})
         self.assertIn("model_unavailable", str(cm.exception))
 
 

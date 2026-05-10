@@ -4248,66 +4248,28 @@ def build_system_prompt_for_gear(
     mode_name = context_package.get("mode_name", "")
     boot_md = load_boot_md()
 
-    # Current locked template (2026-05-01): one ## section per pipeline step.
+    # Locked mode template (2026-05-01): one ## section per pipeline step.
     # `~/Documents/vault/Reference — Mode Specification Template.md` is the
-    # canonical schema; all 58 mode files were migrated to it.
-    depth_guidance = _extract_section(mode_text, "DEPTH ANALYSIS GUIDANCE")
-    breadth_guidance = _extract_section(mode_text, "BREADTH ANALYSIS GUIDANCE")
-    evaluation_criteria = _extract_section(mode_text, "EVALUATION CRITERIA")
-    revision_guidance = _extract_section(mode_text, "REVISION GUIDANCE")
+    # canonical schema; all 58 mode files use it.
+    depth_guidance         = _extract_section(mode_text, "DEPTH ANALYSIS GUIDANCE")
+    breadth_guidance       = _extract_section(mode_text, "BREADTH ANALYSIS GUIDANCE")
+    evaluation_criteria    = _extract_section(mode_text, "EVALUATION CRITERIA")
+    revision_guidance      = _extract_section(mode_text, "REVISION GUIDANCE")
     consolidation_guidance = _extract_section(mode_text, "CONSOLIDATION GUIDANCE")
-    verification_criteria = _extract_section(mode_text, "VERIFICATION CRITERIA")
-
-    # Legacy template sections (pre-2026-05-01 cascade architecture). Kept as
-    # a fallback so any not-yet-migrated mode file still produces a non-empty
-    # prompt rather than degrading silently. The audit on 2026-05-10 confirmed
-    # 0/58 mode files retain these — the fallback is defensive only.
-    depth_instr = _extract_section(mode_text, "DEPTH MODEL INSTRUCTIONS")
-    breadth_instr = _extract_section(mode_text, "BREADTH MODEL INSTRUCTIONS")
-    content_contract = _extract_section(mode_text, "CONTENT CONTRACT")
-    guard_rails = _extract_section(mode_text, "GUARD RAILS")
-    emission_contract = _extract_section(mode_text, "EMISSION CONTRACT")
-    success_criteria = _extract_section(mode_text, "SUCCESS CRITERIA")
+    verification_criteria  = _extract_section(mode_text, "VERIFICATION CRITERIA")
 
     parts = [boot_md]
 
-    # Per-step dispatch. Each step receives the one section authored for it
-    # in the current template; legacy sections fall through as backstops.
+    # Per-step dispatch. One section per step.
     if step == "analyst":
-        primary = depth_guidance if slot == "depth" else breadth_guidance
-        legacy  = depth_instr     if slot == "depth" else breadth_instr
-        instructions = primary or legacy
+        instructions = depth_guidance if slot == "depth" else breadth_guidance
         if instructions:
-            parts.append(
-                f"\n## MODE INSTRUCTIONS — {mode_name}\n\n{instructions}"
-            )
-        # Legacy extras (only present in not-yet-migrated mode files).
-        if content_contract:
-            parts.append(f"\n## CONTENT CONTRACT\n\n{content_contract}")
-        if emission_contract:
-            parts.append(f"\n## EMISSION CONTRACT\n\n{emission_contract}")
-        if success_criteria:
-            parts.append(f"\n## SUCCESS CRITERIA\n\n{success_criteria}")
-        if guard_rails:
-            parts.append(f"\n## GUARD RAILS\n\n{guard_rails}")
+            parts.append(f"\n## MODE INSTRUCTIONS — {mode_name}\n\n{instructions}")
     elif step == "evaluator":
         if evaluation_criteria:
             parts.append(
                 f"\n## MODE — {mode_name} — Evaluation criteria\n\n"
                 f"{evaluation_criteria}"
-            )
-        if content_contract:
-            parts.append(
-                f"\n## CONTENT CONTRACT (analyst's target)\n\n{content_contract}"
-            )
-        if emission_contract:
-            parts.append(
-                f"\n## EMISSION CONTRACT (analyst's target)\n\n{emission_contract}"
-            )
-        if success_criteria:
-            parts.append(
-                f"\n## SUCCESS CRITERIA (criteria to evaluate against)\n\n"
-                f"{success_criteria}"
             )
     elif step == "reviser":
         if revision_guidance:
@@ -4315,20 +4277,6 @@ def build_system_prompt_for_gear(
                 f"\n## MODE — {mode_name} — Revision guidance\n\n"
                 f"{revision_guidance}"
             )
-        if content_contract:
-            parts.append(
-                f"\n## CONTENT CONTRACT (must be preserved)\n\n{content_contract}"
-            )
-        if emission_contract:
-            parts.append(
-                f"\n## EMISSION CONTRACT (must be preserved)\n\n{emission_contract}"
-            )
-        if success_criteria:
-            parts.append(
-                f"\n## SUCCESS CRITERIA (revision must meet)\n\n{success_criteria}"
-            )
-        if guard_rails:
-            parts.append(f"\n## GUARD RAILS\n\n{guard_rails}")
     elif step == "verifier":
         # Mode-specific checks layer on top of the universal V1-V8 floor
         # (the universal checklist lives in f-verify.md; loaded alongside
@@ -4338,40 +4286,12 @@ def build_system_prompt_for_gear(
                 f"\n## MODE — {mode_name} — Verification criteria\n\n"
                 f"{verification_criteria}"
             )
-        if success_criteria:
-            parts.append(
-                f"\n## SUCCESS CRITERIA (floor for verification)\n\n"
-                f"{success_criteria}"
-            )
-        if emission_contract:
-            parts.append(
-                f"\n## EMISSION CONTRACT (reference)\n\n{emission_contract}"
-            )
-        if content_contract:
-            parts.append(
-                f"\n## CONTENT CONTRACT (reference)\n\n{content_contract}"
-            )
     else:  # step == "consolidator"
         # Consolidator (Gear 4) reconciles Depth + Breadth output.
         if consolidation_guidance:
             parts.append(
                 f"\n## MODE — {mode_name} — Consolidation guidance\n\n"
                 f"{consolidation_guidance}"
-            )
-        if content_contract:
-            parts.append(
-                f"\n## CONTENT CONTRACT (target for consolidated output)\n\n"
-                f"{content_contract}"
-            )
-        if emission_contract:
-            parts.append(
-                f"\n## EMISSION CONTRACT (target for consolidated output)\n\n"
-                f"{emission_contract}"
-            )
-        if success_criteria:
-            parts.append(
-                f"\n## SUCCESS CRITERIA (target for consolidated output)\n\n"
-                f"{success_criteria}"
             )
 
     # RAG (all steps benefit from conversation + knowledge + relationship context)

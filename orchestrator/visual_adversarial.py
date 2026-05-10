@@ -664,38 +664,12 @@ def review_envelope(envelope: dict, mode: str | None = None) -> ReviewResult:
     findings.extend(_inv_default_settings(envelope, vtype))
     findings.extend(_quadrant_axes_dependence(envelope, vtype))
 
-    # WP-4.2 — Per-mode structural success criteria.
-    # Each rebuilt mode declares structural checks in its SUCCESS
-    # CRITERIA section (machine-readable YAML). Implementations live in
-    # ``mode_success_criteria`` and return a ``CriterionResult`` list.
-    # We convert failed criteria into Major findings (severity is later
-    # escalated/demoted per mode strictness in the usual way).
-    #
-    # S2 (schema validity) is checked by the validator upstream; we skip
-    # emitting a finding for it here to avoid double-reporting.
-    try:
-        from mode_success_criteria import check_structural
-        structural_results = check_structural(effective_mode, envelope)
-    except Exception as exc:  # defensive — never let the reviewer crash
-        structural_results = []
-        findings.append(Finding(
-            rule="mode_structural_dispatch",
-            severity="Minor",
-            message=f"per-mode structural check raised: {exc}",
-        ))
-    for cr in structural_results:
-        if cr.passed or cr.id == "S2":
-            continue
-        findings.append(Finding(
-            rule=f"mode_success_criterion_{cr.id}",
-            severity="Major",
-            message=f"{effective_mode}/{cr.id} failed: {cr.detail or '(no detail)'}",
-            path=f"mode/{effective_mode}/success_criteria/structural/{cr.id}",
-            suggestion=(
-                "See the mode file's SUCCESS CRITERIA section for the "
-                "structural requirement this envelope violates."
-            ),
-        ))
+    # The per-mode structural-criteria hook (mode_success_criteria) was
+    # retired 2026-05-10 along with the cascade architecture: the locked
+    # 2026-05-01 mode template no longer carries machine-readable SUCCESS
+    # CRITERIA YAML. Structural checks are now distributed across the
+    # generic T-rules + validator above. If a new per-mode structural-
+    # check mechanism is introduced under the new template, it lands here.
 
     # Apply per-mode strictness escalation, then bucket.
     result = ReviewResult()
