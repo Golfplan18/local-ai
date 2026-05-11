@@ -838,7 +838,20 @@
 
       var handler;
       if (lower.indexOf(FIX_PATH_CONFIGURE_PREFIX) === 0) {
-        handler = function () { _emit(state.hostEl, 'open-settings', { fix_path: fixPath }); };
+        // The downstream listener (settings-panel.js) opens the
+        // Settings modal on the External APIs tab and uses
+        // `message` to heuristically highlight a specific provider
+        // row when the error text names one (e.g., "OpenAI",
+        // "Gemini", "Stability"). ``slot`` is included for future
+        // listeners that want to render slot-specific help.
+        handler = function () {
+          _emit(state.hostEl, 'open-settings', {
+            fix_path: fixPath,
+            message: description,
+            slot: state.slotName,
+            code: payload.code,
+          });
+        };
       } else if (lower.indexOf(FIX_PATH_MASK_PREFIX) === 0) {
         handler = function () { _emit(state.hostEl, 'activate-mask-tool', { fix_path: fixPath }); };
       } else if (lower === FIX_PATH_RETRY) {

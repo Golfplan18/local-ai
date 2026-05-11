@@ -285,6 +285,14 @@
       _appendApiKeyRow(row);
     });
 
+    // If a previous open({highlight:...}) call queued a row to
+    // emphasize (e.g., from the open-settings event listener wired
+    // below), apply it now that rows exist in the DOM.
+    if (_pendingHighlight) {
+      _applyApiKeyHighlight(_pendingHighlight);
+      _pendingHighlight = null;
+    }
+
     // ── Add new provider ───────────────────────────────────────────────
     // The user already has Framework — API Key Acquisition for end-to-end
     // provider setup (key elicitation, keychain storage, endpoint
@@ -349,6 +357,10 @@
   function _appendApiKeyRow(row) {
     var wrap = document.createElement('div');
     wrap.className = 'ora-settings-apikey-row';
+    // Tag with the provider id so `open({highlight: <id>})` can find
+    // the row to scroll-into-view + flash. Used by the `open-settings`
+    // CustomEvent listener wired at module load (deferrals row 52).
+    if (row.provider) wrap.dataset.provider = row.provider;
 
     var label = document.createElement('label');
     label.className = 'ora-settings-apikey-label';
@@ -628,12 +640,91 @@
 
   // ── show / hide ──────────────────────────────────────────────────────────
 
-  function open() {
+  // Provider ids the rendered API-key rows tag themselves with.
+  // Substring-matched against `open-settings` event detail
+  // (fix_path + message) to extract a provider to highlight. Order
+  // matters only for tie-breaks: longer / more specific names first,
+  // so "tensorart" wins before "anthropic" (no actual overlap today,
+  // but defensive).
+  var KNOWN_PROVIDERS = [
+    'anthropic', 'openai', 'gemini', 'stability', 'replicate',
+    'civitai', 'tensorart', 'assemblyai', 'deepgram', 'elevenlabs',
+  ];
+
+  // Queued row id to highlight after the next _renderAPIsTab pass.
+  // Set by open({highlight: ...}); consumed + cleared by the
+  // _renderAPIsTab body when rows render.
+  var _pendingHighlight = null;
+
+  function open(opts) {
+    opts = opts || {};
     if (!_backdropEl) _build();
     if (!_backdropEl.parentNode) document.body.appendChild(_backdropEl);
     _backdropEl.classList.add('ora-settings-backdrop--visible');
+    // Optional tab switch — caller passes a TABS entry id
+    // ('models', 'interface', 'capture', 'whisper', 'apis', 'export').
+    // Unknown tab ids are silently ignored (defensive against future
+    // tab additions / removals).
+    if (opts.tab && _isValidTabId(opts.tab)) {
+      _activeTab = opts.tab;
+      // _renderTabs reflects the new active tab in the tab strip;
+      // _renderTabContent is called by _fetchState below for the
+      // models tab and runs synchronously for the others.
+      if (_tabsEl) _renderTabs();
+    }
+    if (opts.highlight) {
+      _pendingHighlight = String(opts.highlight).toLowerCase();
+    }
     _fetchState();
     document.addEventListener('keydown', _onKeydown);
+  }
+
+  function _isValidTabId(id) {
+    for (var i = 0; i < TABS.length; i++) {
+      if (TABS[i].id === id) return true;
+    }
+    return false;
+  }
+
+  // Find the API-key row tagged with data-provider=<id> and apply a
+  // brief highlight + scroll it into view. Called from _renderAPIsTab
+  // after rows are appended. No-op when the row doesn't exist (the
+  // requested provider isn't in the API-keys list, or the DOM hasn't
+  // built yet — the caller's responsibility is to set
+  // _pendingHighlight before rendering happens, not to time the call).
+  function _applyApiKeyHighlight(providerId) {
+    if (!providerId || !_tabContentEl) return;
+    var row = _tabContentEl.querySelector(
+      '.ora-settings-apikey-row[data-provider="' + providerId + '"]'
+    );
+    if (!row) return;
+    row.classList.add('ora-settings-apikey-row--highlight');
+    try {
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (_) {
+      // Older browsers without smooth-scroll options: ignore.
+    }
+    // Auto-clear the highlight class after the animation completes so
+    // the next render starts from a clean slate.
+    setTimeout(function () {
+      row.classList.remove('ora-settings-apikey-row--highlight');
+    }, 3000);
+  }
+
+  // Heuristic provider extraction from a fix-path / error-message
+  // pair. Used when an `open-settings` CustomEvent doesn't carry an
+  // explicit provider id. Walks KNOWN_PROVIDERS in order, returns the
+  // first substring hit. Returns null when no known provider name
+  // appears in either string — the listener then opens the External
+  // APIs tab with no highlight, and the user finds the row manually.
+  function _extractProviderFromHint(fixPath, message) {
+    var corpus = (String(fixPath || '') + ' ' + String(message || '')).toLowerCase();
+    for (var i = 0; i < KNOWN_PROVIDERS.length; i++) {
+      if (corpus.indexOf(KNOWN_PROVIDERS[i]) !== -1) {
+        return KNOWN_PROVIDERS[i];
+      }
+    }
+    return null;
   }
 
   function close() {
@@ -669,11 +760,40 @@
     // is the caller's responsibility (see index-v3.html init block).
   }
 
+  // ── open-settings event handler (deferrals row 52) ───────────────────────
+  //
+  // `capability-invocation-ui.js` emits an `open-settings` CustomEvent
+  // on the host element when a user clicks a "Configure a model …"
+  // fix-path button in a slot-error popover. The event bubbles to
+  // document — this listener catches it, opens the Settings modal on
+  // the External APIs tab, and (when a provider name can be extracted
+  // from the event detail) flashes that provider's row.
+  //
+  // The destination tab id is hard-coded to 'apis' for "Configure a"
+  // fix paths because the emitter (capability-invocation-ui.js:840)
+  // already gates on FIX_PATH_CONFIGURE_PREFIX — only API-key
+  // configuration errors reach this listener. Other fix-paths
+  // (`activate-mask-tool`, `retry`) fire different events.
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('open-settings', function (e) {
+      var detail = (e && e.detail) || {};
+      // Caller can pass an explicit provider via detail.provider;
+      // otherwise we substring-match KNOWN_PROVIDERS against the
+      // human-readable fix_path + message strings.
+      var providerHint = detail.provider
+        || _extractProviderFromHint(detail.fix_path, detail.message);
+      open({ tab: 'apis', highlight: providerHint || null });
+    });
+  }
+
   root.OraSettingsPanel = {
     init: init,
     open: open,
     close: close,
     toggle: toggle,
     getState: getState,
+    // Exposed for tests + for future programmatic callers that want
+    // to drive the highlight without going through the event.
+    _extractProviderFromHint: _extractProviderFromHint,
   };
 })(typeof window !== 'undefined' ? window : this);
