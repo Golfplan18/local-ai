@@ -5,7 +5,17 @@ defined in ``~/ora/config/capabilities.json`` (slot contracts §3.1 and
 §3.2 of ``Reference — Capability Invocation Contracts.md``) by calling
 OpenAI's image endpoints:
 
-  * ``image_generates`` → DALL-E 3 ``/v1/images/generations``.
+  * ``image_generates`` → DALL-E 3 (provider ``openai-dalle3``) **or**
+    gpt-image-1 (provider ``openai-gpt-image-1``), both via
+    ``/v1/images/generations``. §5.8.1 of the MSI Image Style
+    Specification (2026-05-10) designates ``openai-gpt-image-1`` as
+    Slot 1 with ``openai-dalle3`` retained as a legacy fallback; both
+    provider ids are bound in :func:`register`. The two models accept
+    different request bodies — DALL-E 3 takes ``response_format`` and
+    its own size enum; gpt-image-1 forbids ``response_format`` (always
+    returns base64) and uses its own size enum (1024×1024, 1024×1536,
+    1536×1024, ``auto``). :func:`dispatch_image_generates` branches on
+    the ``model`` keyword.
   * ``image_edits``    → DALL-E 2 ``/v1/images/edits`` (DALL-E 3 does
     not support image editing as of 2026-04).
 
@@ -75,12 +85,14 @@ from capability_registry import CapabilityError, CapabilityRegistry, load_regist
 # ---------------------------------------------------------------------------
 
 PROVIDER_IMAGE_GENERATES = "openai-dalle3"
+PROVIDER_IMAGE_GENERATES_GPT_IMAGE_1 = "openai-gpt-image-1"
 PROVIDER_IMAGE_EDITS = "openai-dalle2"
 
 # OpenAI model IDs as currently published on the images endpoints. The
 # image edits endpoint accepts dall-e-2; image generations supports
-# dall-e-3 (preferred) and dall-e-2 (legacy).
+# dall-e-3 (legacy default) and gpt-image-1 (Slot 1 per §5.8.1).
 MODEL_IMAGE_GENERATES = "dall-e-3"
+MODEL_IMAGE_GENERATES_GPT_IMAGE_1 = "gpt-image-1"
 MODEL_IMAGE_EDITS = "dall-e-2"
 
 # Aspect-ratio → DALL-E 3 size string. DALL-E 3 only accepts three
@@ -92,6 +104,18 @@ _ASPECT_TO_DALLE3_SIZE = {
     "9:16": "1024x1792",
     "4:3": "1792x1024",   # nearest available landscape
     "3:4": "1024x1792",   # nearest available portrait
+}
+
+# Aspect-ratio → gpt-image-1 size string. The model accepts a different
+# enum than DALL-E 3 — square, portrait, landscape, or "auto". The slot
+# contract's five-value enum collapses onto these three concrete sizes
+# (landscape 16:9 and 4:3 both round to 1536×1024; portrait likewise).
+_ASPECT_TO_GPT_IMAGE_1_SIZE = {
+    "1:1": "1024x1024",
+    "16:9": "1536x1024",
+    "9:16": "1024x1536",
+    "4:3": "1536x1024",   # nearest available landscape
+    "3:4": "1024x1536",   # nearest available portrait
 }
 
 
@@ -211,8 +235,8 @@ def _translate_openai_error(exc: Exception, slot: str) -> CapabilityError:
 # image_generates — DALL-E 3
 # ---------------------------------------------------------------------------
 
-def dispatch_image_generates(inputs: dict) -> bytes:
-    """Fulfill the ``image_generates`` slot via DALL-E 3.
+def dispatch_image_generates(inputs: dict, *, model: str = MODEL_IMAGE_GENERATES) -> bytes:
+    """Fulfill the ``image_generates`` slot via DALL-E 3 or gpt-image-1.
 
     Per slot contract §3.1:
 
@@ -222,8 +246,16 @@ def dispatch_image_generates(inputs: dict) -> bytes:
 
     The handler accepts the validated input dict as ``inputs``
     (``capability_registry.invoke`` validates and fills defaults
-    before dispatching). Returns the raw PNG bytes of the first
-    generated image.
+    before dispatching). The ``model`` keyword selects which OpenAI
+    image model to call — :func:`register` binds a separate provider
+    id for each (``openai-dalle3`` and ``openai-gpt-image-1``) via
+    :func:`_make_image_generates_dispatcher`, so the routing layer can
+    pick by provider id without plumbing a model field through
+    :meth:`CapabilityRegistry.invoke`. Defaults to ``dall-e-3`` for
+    backwards compatibility with direct callers that import the
+    dispatcher.
+
+    Returns the raw PNG bytes of the first generated image.
     """
     prompt = inputs.get("prompt")
     if not isinstance(prompt, str) or not prompt.strip():
@@ -235,7 +267,6 @@ def dispatch_image_generates(inputs: dict) -> bytes:
 
     style_hint = inputs.get("style")  # may be None
     aspect_ratio = inputs.get("aspect_ratio") or "1:1"
-    size = _ASPECT_TO_DALLE3_SIZE.get(aspect_ratio, "1024x1024")
 
     # The slot contract describes ``style`` as a free-form text hint
     # appended to the prompt. DALL-E 3 also has a separate ``style``
@@ -246,15 +277,35 @@ def dispatch_image_generates(inputs: dict) -> bytes:
     if style_hint and isinstance(style_hint, str) and style_hint.strip():
         composed_prompt = f"{composed_prompt}, in the style of {style_hint.strip()}"
 
+    # Per-model request-body differences. gpt-image-1 always returns
+    # base64 and rejects an explicit ``response_format`` parameter; its
+    # accepted ``size`` enum differs from DALL-E 3's. DALL-E 3 still
+    # takes ``response_format="b64_json"`` and its own size table.
+    if model == MODEL_IMAGE_GENERATES_GPT_IMAGE_1:
+        size = _ASPECT_TO_GPT_IMAGE_1_SIZE.get(aspect_ratio, "1024x1024")
+        request_kwargs: dict[str, Any] = {
+            "model": model,
+            "prompt": composed_prompt,
+            "size": size,
+            "n": 1,
+            # ``quality`` defaults to "auto" server-side; not exposed
+            # through the slot contract. If §5.8.1 cartoon fidelity
+            # demands a higher tier later, plumb it via the slot's
+            # optional_inputs rather than hardcoding here.
+        }
+    else:
+        size = _ASPECT_TO_DALLE3_SIZE.get(aspect_ratio, "1024x1024")
+        request_kwargs = {
+            "model": model,
+            "prompt": composed_prompt,
+            "size": size,
+            "n": 1,
+            "response_format": "b64_json",
+        }
+
     client = _get_client()
     try:
-        response = client.images.generate(
-            model=MODEL_IMAGE_GENERATES,
-            prompt=composed_prompt,
-            size=size,
-            n=1,
-            response_format="b64_json",
-        )
+        response = client.images.generate(**request_kwargs)
     except CapabilityError:
         raise
     except Exception as exc:  # OpenAI SDK exceptions or bare HTTPError
@@ -387,17 +438,48 @@ def dispatch_image_edits(inputs: dict) -> bytes:
 # Slot fulfillment registration
 # ---------------------------------------------------------------------------
 
+def _make_image_generates_dispatcher(model_id: str):
+    """Build a registry-shaped ``(inputs) -> bytes`` handler that calls
+    :func:`dispatch_image_generates` with ``model=model_id`` baked in.
+
+    Used by :func:`register` so the ``image_generates`` slot can carry
+    two provider ids — ``openai-dalle3`` and ``openai-gpt-image-1`` —
+    each with the right model wired in at registration time. This is
+    the same pattern as ``replicate.py``'s slot-keyed DEFAULT_MODELS
+    dict, simplified to two entries for the OpenAI case.
+    """
+    def _handler(inputs: dict) -> bytes:
+        return dispatch_image_generates(inputs, model=model_id)
+    _handler.__name__ = f"dispatch_image_generates__{model_id.replace('-', '_')}"
+    return _handler
+
+
 def register(registry: CapabilityRegistry) -> None:
     """Bind both dispatchers to ``registry``.
 
     Called by ``register_with_default_registry()`` and exposed
     directly so tests can register against a fresh registry instance
     without pulling in the standard config files.
+
+    ``image_generates`` is registered twice — once for DALL-E 3 (legacy
+    provider id ``openai-dalle3``, retained for routing-config
+    backwards compatibility) and once for gpt-image-1 (provider id
+    ``openai-gpt-image-1``, the §5.8.1 Slot 1 designate). Routing
+    config picks between them by provider id. Registration order
+    matters only for the no-routing-config fallback path
+    (``resolve_provider`` returns the first registered), which keeps
+    the legacy default at ``openai-dalle3`` until ``routing-config.json``
+    is updated by Item 3.
     """
     registry.register_provider(
         "image_generates",
         PROVIDER_IMAGE_GENERATES,
-        dispatch_image_generates,
+        _make_image_generates_dispatcher(MODEL_IMAGE_GENERATES),
+    )
+    registry.register_provider(
+        "image_generates",
+        PROVIDER_IMAGE_GENERATES_GPT_IMAGE_1,
+        _make_image_generates_dispatcher(MODEL_IMAGE_GENERATES_GPT_IMAGE_1),
     )
     registry.register_provider(
         "image_edits",

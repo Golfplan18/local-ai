@@ -125,12 +125,36 @@ class OpenAIImageRegistrationTests(unittest.TestCase):
             self.registry.providers_for("image_edits"),
         )
 
+    def test_register_binds_gpt_image_1_provider(self) -> None:
+        """§5.8.1 Slot 1 — ``openai-gpt-image-1`` must also be bound
+        against ``image_generates`` so the routing layer can pick it."""
+        openai_images.register(self.registry)
+        self.assertIn(
+            openai_images.PROVIDER_IMAGE_GENERATES_GPT_IMAGE_1,
+            self.registry.providers_for("image_generates"),
+        )
+
+    def test_register_dalle3_first_for_default_fallback(self) -> None:
+        """When ``routing-config.json`` doesn't pick a provider,
+        :meth:`resolve_provider` returns the first-registered. DALL-E 3
+        must be first so legacy callers see unchanged behavior until
+        Item 3 updates routing-config to prefer ``openai-gpt-image-1``."""
+        openai_images.register(self.registry)
+        self.assertEqual(
+            self.registry.providers_for("image_generates")[0],
+            openai_images.PROVIDER_IMAGE_GENERATES,
+        )
+
     def test_register_provider_constants_match_routing_config_preference(self) -> None:
         """The provider IDs match what routing-config.json now references
         as `preferred`. If this test fails, either openai_images.py or
         routing-config.json drifted."""
         # Hard-coded by the integration; routing-config.json must agree.
         self.assertEqual(openai_images.PROVIDER_IMAGE_GENERATES, "openai-dalle3")
+        self.assertEqual(
+            openai_images.PROVIDER_IMAGE_GENERATES_GPT_IMAGE_1,
+            "openai-gpt-image-1",
+        )
         self.assertEqual(openai_images.PROVIDER_IMAGE_EDITS, "openai-dalle2")
 
 
@@ -183,6 +207,66 @@ class OpenAIImageDispatchMockedTests(unittest.TestCase):
             fake_client.images.generate.call_args.kwargs["size"],
             "1792x1024",
         )
+
+    # -- gpt-image-1 branch (§5.8.1 Slot 1) -----------------------------
+
+    def test_gpt_image_1_dispatch_uses_correct_model_and_omits_response_format(self) -> None:
+        """Invoking via ``provider_id='openai-gpt-image-1'`` must:
+          * pass ``model='gpt-image-1'`` to the OpenAI client, and
+          * NOT pass ``response_format`` (gpt-image-1 rejects it — the
+            model always returns base64)."""
+        fake_response = _fake_openai_image_response(self.PNG_PAYLOAD)
+        fake_client = MagicMock()
+        fake_client.images.generate.return_value = fake_response
+
+        with patch.object(openai_images, "_get_client", return_value=fake_client):
+            result = self.registry.invoke(
+                "image_generates",
+                {"prompt": "a tabby kitten on a windowsill"},
+                provider_id=openai_images.PROVIDER_IMAGE_GENERATES_GPT_IMAGE_1,
+            )
+
+        self.assertEqual(result.output, self.PNG_PAYLOAD)
+        self.assertEqual(result.provider_id, "openai-gpt-image-1")
+
+        kwargs = fake_client.images.generate.call_args.kwargs
+        self.assertEqual(kwargs["model"], openai_images.MODEL_IMAGE_GENERATES_GPT_IMAGE_1)
+        self.assertEqual(kwargs["model"], "gpt-image-1")
+        self.assertNotIn("response_format", kwargs)
+        # Default 1:1 → gpt-image-1's square size.
+        self.assertEqual(kwargs["size"], "1024x1024")
+
+    def test_gpt_image_1_aspect_ratio_uses_gpt_size_enum(self) -> None:
+        """gpt-image-1 accepts 1024×1024 / 1024×1536 / 1536×1024 / auto
+        — different from DALL-E 3's 1792×1024 / 1024×1792 landscape /
+        portrait pair. 16:9 must map to gpt-image-1's 1536×1024."""
+        fake_client = MagicMock()
+        fake_client.images.generate.return_value = _fake_openai_image_response(self.PNG_PAYLOAD)
+        with patch.object(openai_images, "_get_client", return_value=fake_client):
+            self.registry.invoke(
+                "image_generates",
+                {"prompt": "a wide vista", "aspect_ratio": "16:9"},
+                provider_id=openai_images.PROVIDER_IMAGE_GENERATES_GPT_IMAGE_1,
+            )
+        kwargs = fake_client.images.generate.call_args.kwargs
+        self.assertEqual(kwargs["size"], "1536x1024")
+        self.assertEqual(kwargs["model"], "gpt-image-1")
+
+    def test_dalle3_dispatch_still_passes_response_format(self) -> None:
+        """The legacy DALL-E 3 branch must continue to pass
+        ``response_format='b64_json'`` — gpt-image-1's branch only
+        changes its own request body, not DALL-E 3's."""
+        fake_client = MagicMock()
+        fake_client.images.generate.return_value = _fake_openai_image_response(self.PNG_PAYLOAD)
+        with patch.object(openai_images, "_get_client", return_value=fake_client):
+            self.registry.invoke(
+                "image_generates",
+                {"prompt": "anything"},
+                provider_id=openai_images.PROVIDER_IMAGE_GENERATES,
+            )
+        kwargs = fake_client.images.generate.call_args.kwargs
+        self.assertEqual(kwargs["model"], "dall-e-3")
+        self.assertEqual(kwargs["response_format"], "b64_json")
 
     def test_image_generates_style_appends_to_prompt(self) -> None:
         fake_client = MagicMock()

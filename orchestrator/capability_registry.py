@@ -79,11 +79,24 @@ class CapabilityError(Exception):
         ``provider_not_found``, ``handler_failed``.
       * Slot-level: any code declared in the slot's ``common_errors``
         list (e.g., ``model_unavailable``, ``no_mask_drawn``).
+
+    ``attempts`` records the provider-fallback chain that led to this
+    error when ``invoke()`` walked routing-config's fallback list before
+    surfacing the failure. Each entry is the dict shape documented on
+    :class:`InvocationResult.attempts`. Empty when the error wasn't
+    produced by a fallback-walking ``invoke()`` call.
     """
 
-    def __init__(self, code: str, message: str, slot: str | None = None):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        slot: str | None = None,
+        attempts: list[dict] | None = None,
+    ):
         self.code = code
         self.slot = slot
+        self.attempts = list(attempts) if attempts else []
         super().__init__(f"[{code}] {message}" if not slot else f"[{slot}:{code}] {message}")
 
 
@@ -100,12 +113,32 @@ class InvocationResult:
     provider actually answered. ``execution_pattern`` echoes the slot
     contract — async slots return immediately with a job-handle in
     ``output`` (the WP-7.6 async layer interprets this).
+
+    ``attempts`` records the fallback chain that led to this result.
+    Each entry is a dict::
+
+        {
+            "provider_id": str,        # provider that was tried
+            "succeeded": bool,         # True for the final entry on
+                                       # successful result; False for
+                                       # earlier entries that raised
+                                       # a fallback-triggering error.
+            "error_code": str | None,  # CapabilityError.code on failure;
+                                       # None on the succeeded entry.
+            "error_message": str | None,
+        }
+
+    For a single-provider success, ``attempts`` has one entry with
+    ``succeeded=True``. For a Slot-1 refusal → Slot-2 success, it has
+    two entries (the first with ``succeeded=False`` and the slot-level
+    refusal code, the second with ``succeeded=True``).
     """
     slot: str
     provider_id: str
     output: Any
     execution_pattern: str
     inputs_used: dict = field(default_factory=dict)
+    attempts: list[dict] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -246,28 +279,84 @@ class CapabilityRegistry:
     def resolve_provider(self, slot_name: str) -> str | None:
         """Pick the provider id for ``slot_name`` using routing-config.
 
-        Order of consultation:
-          1. ``routing_config['slots'][slot_name]['preferred']`` if registered.
-          2. Each id in ``routing_config['slots'][slot_name]['fallback']``
-             in order, skipping any not registered.
-          3. First registered provider for the slot (insertion order).
-          4. ``None`` when nothing is registered.
+        Returns the first entry of :meth:`resolve_provider_chain` — i.e.
+        the preferred provider if registered, else the first registered
+        fallback, else the first registered provider, else ``None``.
+        Kept for back-compat with callers that just want "which provider
+        will be tried first."
+        """
+        chain = self.resolve_provider_chain(slot_name)
+        return chain[0] if chain else None
+
+    def resolve_provider_chain(self, slot_name: str) -> list[str]:
+        """Build the ordered provider chain for ``slot_name``.
+
+        Returns ``[preferred, *fallback_in_order]``, restricted to
+        providers actually registered against the slot (unregistered ids
+        in routing-config are silently skipped — the slot stays visible
+        with whatever providers ARE present). When the routing-config
+        names no providers (or names none that are registered), falls
+        back to the list of registered providers in insertion order so
+        stub tests work with no routing-config.
+
+        Deduplicated: if ``preferred`` also appears in ``fallback``, it
+        only shows up once (at the preferred position).
+
+        This is the chain :meth:`invoke` walks when a fallback-triggering
+        ``CapabilityError`` comes back from an earlier entry.
         """
         slots_cfg = (self._routing_config or {}).get("slots", {}) or {}
         slot_cfg = slots_cfg.get(slot_name) or {}
 
+        seen: set[str] = set()
+        chain: list[str] = []
+
         preferred = slot_cfg.get("preferred")
         if preferred and self.has_provider(slot_name, preferred):
-            return preferred
+            chain.append(preferred)
+            seen.add(preferred)
 
         for fb in slot_cfg.get("fallback", []) or []:
+            if fb in seen:
+                continue
             if self.has_provider(slot_name, fb):
-                return fb
+                chain.append(fb)
+                seen.add(fb)
 
-        # Nothing in routing-config matched — fall back to the first
-        # registered provider so stub tests work with no routing-config.
-        registered = self.providers_for(slot_name)
-        return registered[0] if registered else None
+        if chain:
+            return chain
+
+        # Nothing in routing-config matched — fall back to the registered
+        # providers in insertion order so stub tests work with no
+        # routing-config.
+        return list(self.providers_for(slot_name))
+
+    # Default set of slot-level error codes that signal "the next
+    # provider might succeed where this one didn't." Per-slot
+    # ``routing-config.json[slots][<name>][fallback_on]`` overrides this.
+    _DEFAULT_FALLBACK_TRIGGERING_CODES: frozenset[str] = frozenset({
+        "prompt_rejected",
+        "model_unavailable",
+        "quota_exceeded",
+    })
+
+    def fallback_triggering_codes(self, slot_name: str) -> frozenset[str]:
+        """Return the set of CapabilityError codes that cause
+        :meth:`invoke` to advance to the next provider in the chain.
+
+        Per-slot override: ``routing-config.json``'s
+        ``slots[<name>].fallback_on`` field. Missing/None → default set.
+        Explicit empty list ``[]`` → fail-fast (no fallback for that
+        slot, even on the default codes — useful for ``video_generates``
+        / ``style_trains`` where a silent retry would double-charge).
+        """
+        slots_cfg = (self._routing_config or {}).get("slots", {}) or {}
+        slot_cfg = slots_cfg.get(slot_name) or {}
+        override = slot_cfg.get("fallback_on")
+        if override is None:
+            return self._DEFAULT_FALLBACK_TRIGGERING_CODES
+        # An explicit empty list disables fallback for this slot entirely.
+        return frozenset(str(code) for code in override)
 
     def invoke(
         self,
@@ -275,16 +364,29 @@ class CapabilityRegistry:
         inputs: dict,
         provider_id: str | None = None,
     ) -> InvocationResult:
-        """Dispatch ``inputs`` to the slot's handler.
+        """Dispatch ``inputs`` to the slot's handler, walking the
+        routing-config provider chain on fallback-triggering errors.
 
         Validates ``inputs`` against the slot's contract, fills in
-        defaults for unsupplied optional inputs, picks a provider (per
-        ``provider_id`` if given, else ``resolve_provider``), and calls
-        the handler.
+        defaults for unsupplied optional inputs, builds the provider
+        chain (preferred → fallback in order), and calls the first
+        provider's handler. If that handler raises a ``CapabilityError``
+        whose ``code`` is in :meth:`fallback_triggering_codes` for this
+        slot, advances to the next provider in the chain. Repeats until
+        a provider succeeds or the chain is exhausted.
 
-        Raises ``CapabilityError`` on any contract violation or provider
-        absence; the registry never silently dispatches a malformed
-        request.
+        ``InvocationResult.attempts`` records every provider tried,
+        marked succeeded / failed with the slot-level error code.
+        When the chain is exhausted, raises the **last** error with
+        ``.attempts`` populated, so the caller can surface the chain
+        (e.g., "Slot 1 refused for content_policy → Slot 2 unavailable
+        → no providers left").
+
+        When ``provider_id`` is given explicitly, fallback is disabled —
+        the caller is making a deliberate provider choice and any error
+        is surfaced verbatim. Non-fallback-triggering errors (input
+        validation, ``handler_failed``, etc.) are also raised verbatim
+        without trying the next provider.
         """
         contract = self.get_contract(slot_name)
 
@@ -326,44 +428,98 @@ class CapabilityRegistry:
                 if "default" in spec:
                     validated[field_name] = spec["default"]
 
-        # Resolve provider.
-        chosen = provider_id or self.resolve_provider(slot_name)
-        if chosen is None:
+        # Build the provider chain. Explicit provider_id disables
+        # fallback — the caller is asking for that exact provider.
+        if provider_id is not None:
+            if not self.has_provider(slot_name, provider_id):
+                raise CapabilityError(
+                    "provider_not_found",
+                    f"Provider '{provider_id}' is not registered against "
+                    f"slot '{slot_name}'. Registered: "
+                    f"{', '.join(self.providers_for(slot_name)) or 'none'}",
+                    slot=slot_name,
+                )
+            chain = [provider_id]
+        else:
+            chain = self.resolve_provider_chain(slot_name)
+
+        if not chain:
             raise CapabilityError(
                 "no_provider_registered",
                 f"No provider is registered for slot '{slot_name}'. "
                 f"Configure a model in Settings → or register a stub.",
                 slot=slot_name,
             )
-        if not self.has_provider(slot_name, chosen):
-            raise CapabilityError(
-                "provider_not_found",
-                f"Provider '{chosen}' is not registered against slot "
-                f"'{slot_name}'. Registered: "
-                f"{', '.join(self.providers_for(slot_name)) or 'none'}",
-                slot=slot_name,
-            )
 
-        handler = self._providers[chosen][slot_name]
-        try:
-            output = handler(validated)
-        except CapabilityError:
-            raise
-        except Exception as exc:  # pragma: no cover — surfaced verbatim
-            raise CapabilityError(
-                "handler_failed",
-                f"Provider '{chosen}' raised an unhandled exception while "
-                f"fulfilling slot '{slot_name}': {exc}",
-                slot=slot_name,
-            ) from exc
+        triggering = self.fallback_triggering_codes(slot_name)
+        attempts: list[dict] = []
+        last_exc: CapabilityError | None = None
 
-        return InvocationResult(
-            slot=slot_name,
-            provider_id=chosen,
-            output=output,
-            execution_pattern=contract.get("execution_pattern", "sync"),
-            inputs_used=validated,
-        )
+        for idx, candidate in enumerate(chain):
+            handler = self._providers[candidate][slot_name]
+            try:
+                output = handler(validated)
+            except CapabilityError as exc:
+                attempts.append({
+                    "provider_id": candidate,
+                    "succeeded": False,
+                    "error_code": exc.code,
+                    "error_message": str(exc),
+                })
+                last_exc = exc
+                # Only advance to the next provider when (a) fallback is
+                # enabled (chain length > 1 from routing-config OR no
+                # explicit provider_id) and (b) the error is in the
+                # triggering set. Explicit-provider_id chains have
+                # length 1 so this loop naturally terminates after the
+                # first attempt.
+                if exc.code in triggering and idx + 1 < len(chain):
+                    continue
+                # No more providers to try, or non-triggering error.
+                break
+            except Exception as exc:  # pragma: no cover — surfaced as handler_failed
+                wrapped = CapabilityError(
+                    "handler_failed",
+                    f"Provider '{candidate}' raised an unhandled exception "
+                    f"while fulfilling slot '{slot_name}': {exc}",
+                    slot=slot_name,
+                )
+                attempts.append({
+                    "provider_id": candidate,
+                    "succeeded": False,
+                    "error_code": "handler_failed",
+                    "error_message": str(wrapped),
+                })
+                last_exc = wrapped
+                # handler_failed is NOT in the default triggering set, so
+                # this normally terminates the chain. If an operator has
+                # opted handler_failed in via fallback_on, honor that.
+                if "handler_failed" in triggering and idx + 1 < len(chain):
+                    continue
+                break
+            else:
+                # Success — record and return.
+                attempts.append({
+                    "provider_id": candidate,
+                    "succeeded": True,
+                    "error_code": None,
+                    "error_message": None,
+                })
+                return InvocationResult(
+                    slot=slot_name,
+                    provider_id=candidate,
+                    output=output,
+                    execution_pattern=contract.get("execution_pattern", "sync"),
+                    inputs_used=validated,
+                    attempts=attempts,
+                )
+
+        # Chain exhausted (or terminated on a non-triggering error).
+        # Re-raise the last error tagged with the full attempts chain
+        # so the caller can render "tried X, then Y, then Z" telemetry.
+        assert last_exc is not None  # the loop only exits via break
+        last_exc.attempts = attempts
+        raise last_exc
 
 
 # ---------------------------------------------------------------------------

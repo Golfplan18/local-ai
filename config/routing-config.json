@@ -10,12 +10,13 @@
   },
   "slots": {
     "image_generates": {
-      "preferred": "local-diffusers",
+      "preferred": "openai-gpt-image-1",
       "fallback": [
-        "openai-dalle3",
-        "stability",
-        "replicate"
-      ]
+        "gemini-2.5-flash-image",
+        "local-diffusers",
+        "openai-dalle3"
+      ],
+      "_note": "§5.8.1 deployment chain (2026-05-10). Slot 1 = gpt-image-1; Slot 2 fallback = Gemini 2.5 Flash Image; tertiary = local-diffusers if installed; legacy backup = DALL-E 3. The registry's invoke() walks this chain on prompt_rejected / model_unavailable / quota_exceeded — see capability_registry.fallback_triggering_codes."
     },
     "image_edits": {
       "preferred": "local-diffusers",

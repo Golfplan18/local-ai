@@ -5643,6 +5643,17 @@ def capability_image_generates():
         _oai.register(registry)
     except Exception:
         pass
+    # §5.8.1 Slot 2 — Gemini 2.5 Flash Image, the moderation-lottery
+    # fallback when Slot 1 (gpt-image-1) returns prompt_rejected. The
+    # capability registry's invoke() walks the routing-config chain
+    # automatically on prompt_rejected / model_unavailable /
+    # quota_exceeded, so the Slot-1 → Slot-2 fall-through is transparent
+    # to this route — the InvocationResult records the attempt chain.
+    try:
+        import gemini_images as _gemini
+        _gemini.register(registry)
+    except Exception:
+        pass
 
     inputs = {"prompt": prompt, "aspect_ratio": aspect_ratio}
     if style:
@@ -5668,9 +5679,16 @@ def capability_image_generates():
             )
         else:
             message = str(exc)
+        # When the registry walked the fallback chain and every provider
+        # failed, ``CapabilityError.attempts`` carries the per-provider
+        # error codes. Surface it on the error response so the UI can
+        # show "tried Slot 1 → refused (content_policy) → tried Slot 2 →
+        # refused (model_unavailable) → no providers left."
+        attempts = getattr(exc, "attempts", []) or []
         return Response(json.dumps({"error": {
             "code": code,
-            "message": message
+            "message": message,
+            "attempts": attempts,
         }}), status=502 if code in ("model_unavailable", "handler_failed", "no_provider_registered") else 400,
             mimetype="application/json")
 
@@ -5682,6 +5700,11 @@ def capability_image_generates():
             "message": "Handler did not return image bytes."
         }}), status=502, mimetype="application/json")
 
+    # Surface the fallback chain so the UI can show "tried gpt-image-1
+    # (refused for content_policy) → used gemini-2.5-flash-image".
+    # Empty / single-entry attempts means no fallback happened.
+    attempts = getattr(result, "attempts", []) or []
+
     import base64
     return Response(json.dumps({
         "image": {
@@ -5689,6 +5712,7 @@ def capability_image_generates():
             "mime_type": "image/png",
         },
         "provider": provider_id,
+        "attempts": attempts,
         "metadata": {
             "aspect_ratio": aspect_ratio,
             "style": style,
