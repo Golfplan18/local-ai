@@ -53,9 +53,36 @@
   'use strict';
 
   // Async capability slots that have init-based handler modules.
+  // These also feed the queue/tray render path via ora:job_status.
   var ASYNC_SLOT_MODULES = [
     { name: 'video_generates', global: 'OraCapabilityVideoGenerates' },
     { name: 'style_trains',    global: 'OraCapabilityStyleTrains' },
+  ];
+
+  // Sync capability slots that use the same .init({hostEl, visualPanel})
+  // signature as the async ones above. They POST and return image
+  // bytes synchronously — no async-job entries, no tray rendering —
+  // but their dispatch listeners were also never mounted in V3, so
+  // capability-popover submits fired into the void. Initializing them
+  // here is the same shape of wiring fix that closed Row 50 for the
+  // async slots.
+  var SYNC_INIT_MODULES = [
+    { name: 'image_generates',  global: 'OraCapabilityImageGenerates' },
+    { name: 'image_upscales',   global: 'OraCapabilityImageUpscales' },
+    { name: 'image_styles',     global: 'OraCapabilityImageStyles' },
+    { name: 'image_varies',     global: 'OraCapabilityImageVaries' },
+    { name: 'image_to_prompt',  global: 'OraCapabilityImageToPrompt' },
+    { name: 'image_critique',   global: 'OraCapabilityImageCritique' },
+  ];
+
+  // Capability modules that pre-date the .init() convention and use
+  // .attach({hostEl, panel, ...}) instead. Same lifecycle role (mount
+  // the capability-dispatch listener); different API shape. Note the
+  // parameter is named `panel` rather than `visualPanel` — the modules
+  // were written before the naming convention settled.
+  var ATTACH_MODULES = [
+    { name: 'image_outpaints', global: 'OraImageOutpaints' },
+    { name: 'image_edits',     global: 'OraImageEdits' },
   ];
 
   var POLL_INTERVAL_MS    = 5000;
@@ -124,7 +151,9 @@
 
   function _initCapabilityHandlers() {
     var panel = _getVisualPanel();
-    ASYNC_SLOT_MODULES.forEach(function (entry) {
+    // Init-style modules: ASYNC + SYNC together (same signature).
+    var initEntries = ASYNC_SLOT_MODULES.concat(SYNC_INIT_MODULES);
+    initEntries.forEach(function (entry) {
       var mod = window[entry.global];
       if (!mod || typeof mod.init !== 'function') {
         console.warn('[v3-capability-async] ' + entry.global + ' missing or has no init()');
@@ -146,6 +175,26 @@
         console.info('[v3-capability-async] initialised ' + entry.global);
       } catch (e) {
         console.warn('[v3-capability-async] ' + entry.global + ' init failed:', e && e.message);
+      }
+    });
+
+    // Legacy attach-style modules. Different API (attach not init,
+    // panel not visualPanel). Idempotent — each calls detach() before
+    // re-attaching internal listeners.
+    ATTACH_MODULES.forEach(function (entry) {
+      var mod = window[entry.global];
+      if (!mod || typeof mod.attach !== 'function') {
+        console.warn('[v3-capability-async] ' + entry.global + ' missing or has no attach()');
+        return;
+      }
+      try {
+        mod.attach({
+          hostEl: document.body,
+          panel: panel,
+        });
+        console.info('[v3-capability-async] attached ' + entry.global);
+      } catch (e) {
+        console.warn('[v3-capability-async] ' + entry.global + ' attach failed:', e && e.message);
       }
     });
   }

@@ -88,6 +88,35 @@ w.OraCapabilityStyleTrains = {
   _getActive: function () { return null; },
 };
 
+// Sync init-style stubs (six modules — image_generates / upscales /
+// styles / varies / to-prompt / critique). Each records its init
+// args so the test can assert the wiring module called all six with
+// the right shape.
+var syncInitCalls = {};
+[
+  'OraCapabilityImageGenerates', 'OraCapabilityImageUpscales',
+  'OraCapabilityImageStyles', 'OraCapabilityImageVaries',
+  'OraCapabilityImageToPrompt', 'OraCapabilityImageCritique',
+].forEach(function (name) {
+  syncInitCalls[name] = [];
+  w[name] = {
+    init: function (opts) { syncInitCalls[name].push(opts); return { _stub: name }; },
+    _getActive: function () { return null; },
+  };
+});
+
+// Attach-style stubs (two modules — image_outpaints + image_edits).
+// Different API surface (attach not init, panel not visualPanel).
+var attachCalls = {};
+[
+  'OraImageOutpaints', 'OraImageEdits',
+].forEach(function (name) {
+  attachCalls[name] = [];
+  w[name] = {
+    attach: function (opts) { attachCalls[name].push(opts); return { detach: function () {} }; },
+  };
+});
+
 // Stub OraJobQueue.
 var jobQueueInitCalls = [];
 var cancelRequests = [];
@@ -122,6 +151,8 @@ function resetState() {
   try { V3.destroy(); } catch (_) {}
   videoInitCalls.length = 0;
   trainsInitCalls.length = 0;
+  Object.keys(syncInitCalls).forEach(function (k) { syncInitCalls[k].length = 0; });
+  Object.keys(attachCalls).forEach(function (k) { attachCalls[k].length = 0; });
   jobQueueInitCalls.length = 0;
   cancelRequests.length = 0;
   // Clear the tray DOM.
@@ -162,6 +193,49 @@ function testInitWiring() {
   record('OraJobQueue.init was given chatHostEl: null (strip hidden in V3)',
     jobQueueInitCalls.length === 1 && jobQueueInitCalls[0].chatHostEl === null,
     'chatHostEl=' + (jobQueueInitCalls[0] && jobQueueInitCalls[0].chatHostEl));
+}
+
+// ── Test 1b: init() also wires the six sync init-style modules ─────────────
+
+function testSyncInitWiring() {
+  resetState();
+  V3.init();
+
+  [
+    'OraCapabilityImageGenerates', 'OraCapabilityImageUpscales',
+    'OraCapabilityImageStyles', 'OraCapabilityImageVaries',
+    'OraCapabilityImageToPrompt', 'OraCapabilityImageCritique',
+  ].forEach(function (name) {
+    record('init() calls ' + name + '.init',
+      syncInitCalls[name].length === 1,
+      'calls=' + syncInitCalls[name].length);
+
+    record(name + '.init received {hostEl, visualPanel} signature',
+      syncInitCalls[name].length === 1
+        && 'hostEl' in syncInitCalls[name][0]
+        && 'visualPanel' in syncInitCalls[name][0],
+      'opts keys=' + (syncInitCalls[name][0] ? Object.keys(syncInitCalls[name][0]).join(',') : 'none'));
+  });
+}
+
+// ── Test 1c: init() wires the two attach-style modules ────────────────────
+
+function testAttachStyleWiring() {
+  resetState();
+  V3.init();
+
+  ['OraImageOutpaints', 'OraImageEdits'].forEach(function (name) {
+    record('init() calls ' + name + '.attach',
+      attachCalls[name].length === 1,
+      'calls=' + attachCalls[name].length);
+
+    record(name + '.attach received {hostEl, panel} signature (not visualPanel)',
+      attachCalls[name].length === 1
+        && 'hostEl' in attachCalls[name][0]
+        && 'panel' in attachCalls[name][0]
+        && !('visualPanel' in attachCalls[name][0]),
+      'opts keys=' + (attachCalls[name][0] ? Object.keys(attachCalls[name][0]).join(',') : 'none'));
+  });
 }
 
 // ── Test 2: _handleEvent renders a card ─────────────────────────────────────
@@ -349,6 +423,8 @@ function testConversationSwitchResetsLastSeenAssert() {
 
 (async function () {
   testInitWiring();
+  testSyncInitWiring();
+  testAttachStyleWiring();
   testHandleEventRendersCard();
   testWindowEventRoutes();
   testTerminalJobGrace();
