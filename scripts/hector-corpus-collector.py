@@ -72,6 +72,11 @@ MODEL = "gpt-image-1"
 # variants to spread moderation surface area.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Anatomy variants. Default is front-view (BUTT_FACE_SPEC); v1.4 of the spec
+# (2026-05-11) legitimized back-view, profile, and multi-figure renderings.
+# ---------------------------------------------------------------------------
+
 BUTT_FACE_SPEC = (
     "The figure's head is rendered as a literal human ass viewed from behind "
     "- no facial features whatsoever, no eyes, no nose, no mouth, no ears, no "
@@ -81,6 +86,39 @@ BUTT_FACE_SPEC = (
     "restrained and unmistakable - the load-bearing marker that distinguishes "
     "this head from a chest."
 )
+
+BUTT_FACE_SPEC_BACK = (
+    "The figure's head is rendered as the rounded back of a human ass - the "
+    "figure is facing away from the viewer. Hair stylization sits on top of "
+    "the head and curves down across the back. No facial features whatsoever. "
+    "No crack visible from this angle; the crack is on the side of the head "
+    "facing away from us. The head shape is unmistakably a butt seen from "
+    "behind, anchoring the figure as it addresses something in the scene "
+    "that the viewer does not see directly."
+)
+
+BUTT_FACE_SPEC_PROFILE = (
+    "The figure's head is rendered as a literal human ass viewed in profile. "
+    "One cheek faces the viewer; the vertical crack runs along the visible "
+    "side edge of the head from forehead to throat; the small dark subtle "
+    "anus pucker is visible at the crack's midpoint as seen. No facial "
+    "features whatsoever. Hair stylization sits on top of the head."
+)
+
+BUTT_FACE_SPEC_MULTI = (
+    "Each figure's head is rendered as a literal human ass — no facial "
+    "features whatsoever, no eyes, no nose, no mouth, no ears, no eyebrows. "
+    "Flattened pendulous cheeks, full-height vertical crack from forehead to "
+    "throat where visible, small dark subtle anus pucker at the crack's "
+    "midpoint where visible. Different figures may be shown in different "
+    "orientations — front-facing, back-facing, profile — so the butt-as-head "
+    "reads consistently across the group."
+)
+
+# ---------------------------------------------------------------------------
+# Background tail variants. Default tail (ENGRAVING_TAIL) is peanut gallery +
+# spectacled gopher; other tails fit different scene compositions.
+# ---------------------------------------------------------------------------
 
 ENGRAVING_TAIL = (
     "Pure black masses balanced against carved-out whites throughout the rest "
@@ -93,21 +131,88 @@ ENGRAVING_TAIL = (
     "in the Harper's Weekly tradition."
 )
 
+TAIL_BANNER_NO_GALLERY = (
+    "Pure black masses balanced against carved-out whites. Heavy "
+    "cross-hatching, parallel hatch armature, stipple. A horizontal banner "
+    "with a quotation scrolls across the top of the frame inside the rule "
+    "border. No peanut gallery and no spectacled gopher; this is a tight "
+    "portrait composition. Hand-drawn ink on cream paper. Linework dominant. "
+    "19th-century American press illustration in the Harper's Weekly "
+    "tradition."
+)
 
-def _make_prompt(scene: str, accessory_line: str, recognition_cue: str) -> str:
-    """Compose a full variant prompt from the scene + accessory + cue."""
+TAIL_RALLY = (
+    "Pure black masses balanced against carved-out whites. Heavy "
+    "cross-hatching, parallel hatch armature, stipple. A crowd of identical "
+    "anthropomorphic peanut-shaped Peanut Gallery characters with brown "
+    "shells fills the foreground of the scene from waist-up, their backs to "
+    "the viewer, attending to the speaker on the stage above and behind "
+    "them. A large banner with a quotation hangs behind the speaker. A "
+    "spectacled gopher peeks from a hole in the lower-left foreground, "
+    "gnawing at the foundation of the stage. Hand-drawn ink on cream paper. "
+    "Linework dominant. 19th-century American press illustration in the "
+    "Harper's Weekly tradition."
+)
+
+TAIL_COURTROOM = (
+    "Pure black masses balanced against carved-out whites. Heavy "
+    "cross-hatching, parallel hatch armature, stipple. A Peanut Gallery of "
+    "identical anthropomorphic peanut-shaped characters with brown shells "
+    "fills the jury box at the side of the courtroom, faceless, identical "
+    "posture. A spectacled gopher peeks from a hole beneath the judge's "
+    "bench, gnawing at the foundation. Hand-drawn ink on cream paper. "
+    "Linework dominant. 19th-century American press illustration in the "
+    "Harper's Weekly tradition."
+)
+
+TAIL_GROUP_BACK_ROWS = (
+    "Pure black masses balanced against carved-out whites. Heavy "
+    "cross-hatching, parallel hatch armature, stipple. A Peanut Gallery of "
+    "identical anthropomorphic peanut-shaped characters with brown shells "
+    "fills the back rows of the scene, observing the central group. A "
+    "spectacled gopher peeks from a hole in the lower-left, gnawing at the "
+    "foundation. Hand-drawn ink on cream paper. Linework dominant. "
+    "19th-century American press illustration in the Harper's Weekly "
+    "tradition."
+)
+
+DEFAULT_ACCENT_LINE = (
+    "The hair is the only color element; everything else is pure "
+    "black-and-white engraved aesthetic."
+)
+
+NO_COLOR_ACCENT_LINE = (
+    "There is no color accent in this image - the figure is fully bald with "
+    "no hair stylization; the entire composition is pure black-and-white "
+    "engraved aesthetic."
+)
+
+
+def _make_prompt(variant: dict) -> str:
+    """Compose a full variant prompt from a variant dict.
+
+    Required fields: 'scene', 'recognition_cue'.
+    Optional fields with defaults:
+      'accessory_line' (default ''),
+      'anatomy' (default BUTT_FACE_SPEC = front view),
+      'accent_line' (default DEFAULT_ACCENT_LINE = hair-is-only-color),
+      'tail' (default ENGRAVING_TAIL = peanut gallery + gopher).
+    """
+    anatomy = variant.get("anatomy") or BUTT_FACE_SPEC
+    accent = variant.get("accent_line") or DEFAULT_ACCENT_LINE
+    tail = variant.get("tail") or ENGRAVING_TAIL
+    accessory = variant.get("accessory_line", "")
     return (
         f"Editorial cartoon in the Thomas Nast / Honoré Daumier / John Tenniel "
         f"/ Herblock / Pat Oliphant tradition. 1880s engraved aesthetic. "
-        f"{scene} {accessory_line}\n\n"
-        f"{BUTT_FACE_SPEC}\n\n"
-        f"{recognition_cue} The hair is the only color element; everything "
-        f"else is pure black-and-white engraved aesthetic. "
-        f"{ENGRAVING_TAIL}"
+        f"{variant['scene']} {accessory}\n\n"
+        f"{anatomy}\n\n"
+        f"{variant['recognition_cue']} {accent} {tail}"
     )
 
 
 VARIANTS = [
+    # ----- Original 6 variants (front-view, male-coded, broadcaster/desk framing). -----
     {
         "id": "pundit",
         "scene": (
@@ -120,6 +225,11 @@ VARIANTS = [
             "An older man's distinctive orange swept-back bouffant comb-over "
             "hair styled on top of the head."
         ),
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "male figure", "peanut gallery", "spectacled gopher",
+            "broadcaster framing",
+        ],
     },
     {
         "id": "think_tank",
@@ -131,6 +241,11 @@ VARIANTS = [
         ),
         "accessory_line": "",
         "recognition_cue": "Dark grey hair styled on top of the head.",
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "male figure", "peanut gallery", "spectacled gopher",
+            "seated at desk",
+        ],
     },
     {
         "id": "religious_right",
@@ -141,6 +256,11 @@ VARIANTS = [
         ),
         "accessory_line": "",
         "recognition_cue": "Black slicked-down hair on top of the head.",
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "male figure", "peanut gallery", "spectacled gopher",
+            "broadcaster framing", "pulpit",
+        ],
     },
     {
         "id": "donor",
@@ -151,6 +271,10 @@ VARIANTS = [
         ),
         "accessory_line": "",
         "recognition_cue": "Silver-white side-swept hair on top of the head.",
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "male figure", "peanut gallery", "spectacled gopher",
+        ],
     },
     {
         "id": "corporate",
@@ -163,6 +287,11 @@ VARIANTS = [
         "recognition_cue": (
             "A balding head with a white side-fringe of hair on top."
         ),
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "male figure", "peanut gallery", "spectacled gopher",
+            "broadcaster framing", "press conference",
+        ],
     },
     {
         "id": "generic_apparatus",
@@ -173,6 +302,272 @@ VARIANTS = [
         ),
         "accessory_line": "",
         "recognition_cue": "Short brown hair styled on top of the head.",
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "male figure", "peanut gallery", "spectacled gopher",
+            "broadcaster framing", "lectern",
+        ],
+    },
+    # ----- Demographic axis (v1.4 expansion, 2026-05-11). -----
+    {
+        "id": "female_pundit",
+        "scene": (
+            "A single central allegorical figure: a female news pundit at an "
+            "anchor desk, tailored blazer, holding a sheaf of papers, "
+            "broadcaster framing shown from shoulders up."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "A woman's long blonde news-anchor blowout hairstyle, styled on "
+            "top of the head."
+        ),
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "female figure", "peanut gallery", "spectacled gopher",
+            "broadcaster framing", "anchor desk",
+        ],
+    },
+    {
+        "id": "female_official",
+        "scene": (
+            "A single central allegorical figure: a female religious-right "
+            "propagandist behind an empty pulpit draped with a flag. Modest "
+            "dark vestments with a conservative collar. Broadcaster framing "
+            "from shoulders up."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "A woman's short grey-streaked dark hair styled on top of the "
+            "head."
+        ),
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "female figure", "peanut gallery", "spectacled gopher",
+            "broadcaster framing", "pulpit",
+        ],
+    },
+    {
+        "id": "female_donor",
+        "scene": (
+            "A single central allegorical figure: a wealthy female donor in "
+            "modern dress with an expensive watch and a pearl necklace, "
+            "half-visible behind a heavy curtain in a doorway, observing "
+            "the scene."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "A woman's chin-length silver-grey bob styled on top of the "
+            "head."
+        ),
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "female figure", "peanut gallery", "spectacled gopher",
+        ],
+    },
+    {
+        "id": "female_operative",
+        "scene": (
+            "A single central allegorical figure: a female staff operative "
+            "seated at a heavy oak desk piled with policy papers labeled "
+            "with bureaucratic euphemisms. Tailored suit, glasses resting "
+            "on the desk beside her."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "A woman's dark hair pulled back into a tight low bun at the "
+            "nape of the head; the hair on top is smooth and pulled back."
+        ),
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "female figure", "peanut gallery", "spectacled gopher",
+            "seated at desk",
+        ],
+    },
+    {
+        "id": "bald_default",
+        "scene": (
+            "A single central allegorical figure: an apparatus-role operator "
+            "addressing an audience, formal dark suit, holding a sheaf of "
+            "papers, lectern visible."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "The head is completely bald — no hair stylization at all, no "
+            "color element anywhere in the image. This is the §5.4.1 "
+            "default bald rendering for figures without distinctive "
+            "hairstylings."
+        ),
+        "accent_line": NO_COLOR_ACCENT_LINE,
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor formal",
+            "bald figure", "peanut gallery", "spectacled gopher",
+            "broadcaster framing", "lectern", "no color accent",
+        ],
+    },
+    # ----- Scale axis (v1.4 expansion, 2026-05-11). -----
+    {
+        "id": "close_up",
+        "scene": (
+            "Tight close-up portrait composition: just the central figure's "
+            "butt-face head and shoulders, filling the frame; no podium, no "
+            "audience, no peanut gallery, no spectacled gopher visible. The "
+            "figure wears a slick suit and an undone tie."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "An older man's distinctive orange swept-back bouffant comb-over "
+            "hair styled on top of the head."
+        ),
+        "tail": TAIL_BANNER_NO_GALLERY,
+        "tags": [
+            "hector cartoon", "front view", "close up", "indoor formal",
+            "male figure", "banner with quotation", "tight portrait",
+        ],
+    },
+    {
+        "id": "full_body",
+        "scene": (
+            "Wide full-body composition: the central figure stands head-to-toe "
+            "in the frame, formal dark suit and tie, holding a leather "
+            "briefcase, gesturing with the other hand. The figure occupies "
+            "the center of the frame at moderate size; the head-to-body "
+            "ratio is normal (the butt-face head is roughly 1/7 of the "
+            "figure's height, not enlarged)."
+        ),
+        "accessory_line": "",
+        "recognition_cue": "Short brown hair styled on top of the head.",
+        "tags": [
+            "hector cartoon", "front view", "wide shot", "indoor formal",
+            "male figure", "full body", "peanut gallery",
+            "spectacled gopher",
+        ],
+    },
+    {
+        "id": "wide_group",
+        "scene": (
+            "Wide group tableau composition: four to five butt-face figures "
+            "gathered around a heavy oak conference table, papers and "
+            "documents between them, mid-discussion. The central / focused "
+            "figure has an orange swept-back bouffant — this is the ONLY "
+            "color accent in the entire image. The secondary figures around "
+            "the table have hair stylizations rendered entirely in B&W "
+            "engraving line with NO color accent: one secondary figure has "
+            "short dark hair drawn in pure linework (a female figure with a "
+            "conservative collar); another secondary figure has a balding "
+            "head with a side-fringe drawn in pure linework; a third "
+            "secondary figure is fully bald. Each figure's butt-face is "
+            "shown at a different orientation (some front-facing, some "
+            "profile, some three-quarter)."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "Only the central / focused figure carries a hair color: an "
+            "orange swept-back bouffant. All secondary figures' hair is "
+            "drawn in B&W engraving line only, with no color accent, per "
+            "the §3.3 v1.6 single-focused-figure color rule."
+        ),
+        "anatomy": BUTT_FACE_SPEC_MULTI,
+        "tail": TAIL_GROUP_BACK_ROWS,
+        "tags": [
+            "hector cartoon", "wide shot", "group composition", "indoor formal",
+            "multiple figures", "male figure", "female figure",
+            "bald figure", "peanut gallery", "spectacled gopher",
+            "conference table",
+        ],
+    },
+    # ----- Scene-composition axis (v1.4 expansion, 2026-05-11). -----
+    {
+        "id": "rally_stage",
+        "scene": (
+            "Wide outdoor rally composition: a central allegorical figure "
+            "stands on a raised stage with one arm raised in triumph, "
+            "addressing a crowd. The figure is shown with back to the "
+            "viewer — we see the figure from behind as they face the "
+            "crowd. A large banner with a quotation hangs across the back "
+            "of the stage behind the figure."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "An older man's distinctive orange swept-back bouffant comb-over "
+            "hair, seen from behind, with the comb-over visible across the "
+            "top and back of the head."
+        ),
+        "anatomy": BUTT_FACE_SPEC_BACK,
+        "tail": TAIL_RALLY,
+        "tags": [
+            "hector cartoon", "back view", "wide shot", "outdoor formal",
+            "male figure", "peanut gallery", "spectacled gopher",
+            "rally stage", "banner with quotation",
+        ],
+    },
+    {
+        "id": "conference_table",
+        "scene": (
+            "Interior conference room scene: three butt-face figures seated "
+            "around a heavy oak conference table, papers spread between "
+            "them, mid-discussion. The central / focused figure wears slick "
+            "suit and tie; another wears a tailored female blazer; a third "
+            "is in modern dress with an expensive watch. The figures are at "
+            "different orientations — one front-facing, one in profile, "
+            "one three-quarter."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "Only the central / focused figure carries a hair color: an "
+            "orange swept-back bouffant on top of the head — the ONLY color "
+            "accent in the entire image. The secondary female figure has a "
+            "long anchor blowout drawn in pure B&W engraving line with no "
+            "color; the third secondary figure has side-swept hair drawn in "
+            "pure B&W engraving line with no color. Per the §3.3 v1.6 "
+            "single-focused-figure color rule."
+        ),
+        "anatomy": BUTT_FACE_SPEC_MULTI,
+        "tail": TAIL_BANNER_NO_GALLERY,
+        "tags": [
+            "hector cartoon", "medium shot", "group composition",
+            "indoor formal", "multiple figures", "male figure",
+            "female figure", "conference table", "banner with quotation",
+        ],
+    },
+    {
+        "id": "courtroom",
+        "scene": (
+            "Interior courtroom scene: the central allegorical figure stands "
+            "at the witness stand, formal dark suit, right hand raised as "
+            "if being sworn in. The judge's bench rises behind and above "
+            "the witness; the jury box is to the side, filled with the "
+            "Peanut Gallery."
+        ),
+        "accessory_line": "",
+        "recognition_cue": (
+            "A balding head with a white side-fringe of hair on top."
+        ),
+        "tail": TAIL_COURTROOM,
+        "tags": [
+            "hector cartoon", "front view", "medium shot", "indoor procedural",
+            "male figure", "peanut gallery", "spectacled gopher",
+            "witness stand", "courtroom",
+        ],
+    },
+    {
+        "id": "broadcast_studio_side",
+        "scene": (
+            "Interior broadcast studio scene shown in side angle: the "
+            "central figure is seated at an anchor desk in three-quarter "
+            "or profile view (one cheek visible to the viewer, the other "
+            "facing the implied off-screen co-host). A bank of TV monitors "
+            "rises behind the figure; an 'ON AIR' sign glows above. The "
+            "figure is gesturing while speaking off to the side."
+        ),
+        "accessory_line": "",
+        "recognition_cue": "Dark grey hair styled on top of the head.",
+        "anatomy": BUTT_FACE_SPEC_PROFILE,
+        "tail": TAIL_BANNER_NO_GALLERY,
+        "tags": [
+            "hector cartoon", "profile view", "medium shot",
+            "interior broadcast", "male figure", "anchor desk",
+            "banner with quotation", "side angle",
+        ],
     },
 ]
 
@@ -256,6 +651,7 @@ def _save_corpus_entry(seq: int, variant: dict, prompt: str, img: bytes) -> Path
         "byte_size": len(img),
         "vetted": "pending",
         "vetting_notes": "",
+        "training_tags": list(variant.get("tags", [])),
     }
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return img_path
@@ -334,7 +730,7 @@ def main() -> int:
             print(f"[hector-corpus] reached max-attempts cap ({args.max_attempts}); stopping.")
             break
         variant = random.choice(variants_pool)
-        prompt = _make_prompt(variant["scene"], variant["accessory_line"], variant["recognition_cue"])
+        prompt = _make_prompt(variant)
         attempts += 1
         print(
             f"[attempt {attempts:3d}] variant={variant['id']:18s} "
