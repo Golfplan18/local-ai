@@ -196,6 +196,43 @@ def _get_router():
     return _router_instance if _router_instance is not False else None
 
 
+def reload_router() -> bool:
+    """Refresh the singleton Router's in-memory config from disk.
+
+    Called by ``server.py``'s ``/config/routing`` POST handlers after
+    the V3 Settings panel autosaves a bucket / pipeline / slot change.
+    Without this hook, the singleton Router holds the original config
+    in memory until the server is restarted — every panel change is
+    deferred-until-restart, which is misleading because the panel
+    presents itself as live.
+
+    Behavior:
+      * If no Router has been instantiated yet, this is a no-op
+        (returns False). The next ``_get_router()`` call will load the
+        already-fresh file naturally.
+      * If the singleton was marked unavailable (``False`` — load
+        failed previously), this clears the marker and a future
+        ``_get_router()`` call will retry the load.
+      * Otherwise, calls ``router.reload()``. On reload failure the
+        prior in-memory config is preserved (so the running pipeline
+        doesn't degrade) and we return False.
+
+    Returns True on a successful reload, False otherwise.
+    """
+    global _router_instance
+    if _router_instance is None:
+        return False
+    if _router_instance is False:
+        # Previous load failed; let the next _get_router() retry.
+        _router_instance = None
+        return False
+    try:
+        return bool(_router_instance.reload())
+    except Exception as exc:
+        print(f"[Router] reload_router failed: {exc}")
+        return False
+
+
 def get_active_endpoint(config: dict) -> dict | None:
     """Returns a general-purpose endpoint. Uses v2 router if available."""
     router = _get_router()

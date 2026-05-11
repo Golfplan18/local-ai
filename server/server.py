@@ -7514,6 +7514,28 @@ def routing_config_get():
     return json.dumps(cfg)
 
 
+def _reload_pipeline_router_after_config_change() -> bool:
+    """Invalidate the singleton ``boot._router_instance`` so the next
+    pipeline run picks up the just-saved routing-config.json.
+
+    The V3 Settings → Models panel autosaves on every change, but
+    boot.py's Router is a process-lifetime singleton that snapshots
+    the config at first call. Without this hook, panel changes are
+    deferred-until-restart even though the file on disk is up to date.
+
+    Returns True on success, False on any failure (logged server-side).
+    Best-effort — failure does not block the save.
+    """
+    try:
+        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+        from boot import reload_router as _reload_router
+        return bool(_reload_router())
+    except Exception as exc:
+        print(f"[routing-config] router reload failed (config persisted; "
+              f"restart server to pick up changes): {exc}")
+        return False
+
+
 @app.route("/config/routing", methods=["POST"])
 def routing_config_post():
     """Update routing configuration (partial update — merges into existing)."""
@@ -7527,7 +7549,8 @@ def routing_config_post():
             cfg[key] = data[key]
 
     _save_routing_config(cfg)
-    return json.dumps({"ok": True})
+    reloaded = _reload_pipeline_router_after_config_change()
+    return json.dumps({"ok": True, "router_reloaded": reloaded})
 
 
 @app.route("/config/routing/pipelines", methods=["POST"])
@@ -7537,7 +7560,8 @@ def routing_pipelines_post():
     cfg = _load_routing_config()
     cfg["pipelines"] = data.get("pipelines", cfg.get("pipelines", {}))
     _save_routing_config(cfg)
-    return json.dumps({"ok": True})
+    reloaded = _reload_pipeline_router_after_config_change()
+    return json.dumps({"ok": True, "router_reloaded": reloaded})
 
 
 @app.route("/config/routing/buckets", methods=["POST"])
@@ -7547,7 +7571,8 @@ def routing_buckets_post():
     cfg = _load_routing_config()
     cfg["buckets"] = data.get("buckets", cfg.get("buckets", {}))
     _save_routing_config(cfg)
-    return json.dumps({"ok": True})
+    reloaded = _reload_pipeline_router_after_config_change()
+    return json.dumps({"ok": True, "router_reloaded": reloaded})
 
 
 @app.route("/config/routing/status")

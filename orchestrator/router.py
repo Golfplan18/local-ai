@@ -104,19 +104,66 @@ class Router:
         Args:
             config_path: Path to routing-config.json. Defaults to standard location.
             config_dict: Pre-loaded config dict (takes precedence over file).
+
+        When ``config_path`` is used (the production path), the Router
+        remembers the path so :meth:`reload` can re-read the file
+        without the caller needing to remember it. When ``config_dict``
+        is used (the test path), the Router has no source to reload
+        from and :meth:`reload` is a documented no-op.
         """
+        # Remember the path so reload() can re-read it. None means "no
+        # file-backed source — reload is a no-op."
+        self._config_path: Path | None = None
         if config_dict:
             self.config = config_dict
         else:
-            path = Path(config_path) if config_path else ROUTING_CONFIG_PATH
-            with open(path) as f:
+            self._config_path = Path(config_path) if config_path else ROUTING_CONFIG_PATH
+            with open(self._config_path) as f:
                 self.config = json.load(f)
 
-        # Build lookup tables
+        self._build_lookup_tables()
+
+    def _build_lookup_tables(self) -> None:
+        """Rebuild the derived lookup tables from ``self.config``.
+
+        Called from ``__init__`` and from :meth:`reload` after the
+        config dict is refreshed. Splitting this out keeps both
+        paths honest about which fields the Router caches in memory.
+        """
         self._endpoints = {ep["id"]: ep for ep in self.config.get("endpoints", [])}
         self._machines = {m["id"]: m for m in self.config.get("machines", [])}
         self._buckets = self.config.get("buckets", {})
         self._diversity = (self.config.get("diversity") or {}).get("enabled", False)
+
+    def reload(self) -> bool:
+        """Re-read the routing-config file and rebuild lookup tables.
+
+        Returns ``True`` when the reload landed cleanly, ``False`` when
+        the Router has no file-backed source (constructed from a
+        ``config_dict``) or when the file read / JSON parse failed
+        (the previous in-memory config is preserved on failure so the
+        live pipeline keeps running with the last-known-good state).
+
+        Called by ``boot.reload_router()`` after the V3 Settings panel
+        POSTs to ``/config/routing`` — without this hook, the singleton
+        Router in :func:`boot._get_router` holds the original config in
+        memory until the server is restarted, and bucket / model /
+        slot changes from the panel are invisible to the running
+        pipeline.
+        """
+        if self._config_path is None:
+            return False
+        try:
+            with open(self._config_path) as f:
+                new_config = json.load(f)
+        except Exception as exc:  # pragma: no cover — exercised in tests via missing file
+            # Keep the prior config in memory so the running pipeline
+            # doesn't silently degrade. The caller logs the failure.
+            print(f"[Router] reload failed (keeping prior config): {exc}")
+            return False
+        self.config = new_config
+        self._build_lookup_tables()
+        return True
 
     def resolve_endpoint(self, slot: str, gear: int, context: str,
                          excluded_ids: set | None = None,
