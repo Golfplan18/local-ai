@@ -821,7 +821,19 @@
 
       if (fixPath) {
         var actions = _el('div', 'ora-cap-error__actions');
-        var btn = _renderFixPathButton(fixPath);
+        // Pass the surrounding error context into the fix-path button
+        // factory — `_renderFixPathButton` is a sibling function (not
+        // nested) so it doesn't see `description` / `payload` via
+        // closure. The settings-panel.js open-settings listener uses
+        // the message text to substring-match a provider name; without
+        // it here the regression introduced 2026-05-11 silently broke
+        // the configure-fix-path button entirely (the test harness in
+        // tests/test-capability-invocation-ui.js caught it).
+        var errorCtx = {
+          message: description,
+          code: payload && payload.code,
+        };
+        var btn = _renderFixPathButton(fixPath, errorCtx);
         actions.appendChild(btn);
         state.errorEl.appendChild(actions);
       }
@@ -831,7 +843,8 @@
       _refreshEnabled();
     }
 
-    function _renderFixPathButton(fixPath) {
+    function _renderFixPathButton(fixPath, errorCtx) {
+      errorCtx = errorCtx || {};
       var lower = String(fixPath).toLowerCase();
       var btn = _el('button', 'ora-cap-fix-btn', fixPath);
       btn.type = 'button';
@@ -847,9 +860,9 @@
         handler = function () {
           _emit(state.hostEl, 'open-settings', {
             fix_path: fixPath,
-            message: description,
+            message: errorCtx.message,
             slot: state.slotName,
-            code: payload.code,
+            code: errorCtx.code,
           });
         };
       } else if (lower.indexOf(FIX_PATH_MASK_PREFIX) === 0) {

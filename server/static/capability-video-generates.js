@@ -426,6 +426,17 @@
       }
       if (detail.conversation_id) {
         payload.conversation_id = detail.conversation_id;
+      } else if (typeof root !== 'undefined'
+                 && root.OraSidebar
+                 && typeof root.OraSidebar.getActiveConversation === 'function') {
+        // V3 fallback — if the dispatch detail doesn't carry a
+        // conversation_id (capability-invocation-ui doesn't include it
+        // in its emit), self-discover from the sidebar's active
+        // conversation getter. Without this, the server attaches the
+        // job to a "default" bucket and the V3 chat panel's polling
+        // never sees it.
+        var active = root.OraSidebar.getActiveConversation();
+        if (active) payload.conversation_id = active;
       }
 
       return _callServer(state.endpoint, payload, state.fetchImpl).then(function (response) {

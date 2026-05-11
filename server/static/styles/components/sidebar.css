@@ -48,13 +48,16 @@
   border: 1px solid transparent;
   border-radius: 4px;
   cursor: pointer;
-  color: var(--interactive-normal);
+  /* --interactive-normal is a *background* token (matches the page surface in
+     both modes) so the SVG strokes that inherit currentColor disappeared.
+     --icon-color is the proper foreground token used by the spine glyphs. */
+  color: var(--icon-color, var(--text-muted));
   padding: 0;
 }
 
 .sidebar-dash-icon:hover {
   background: var(--background-modifier-hover);
-  color: var(--text-normal);
+  color: var(--icon-color-hover, var(--text-normal));
 }
 
 .sidebar-dash-count {
@@ -501,4 +504,56 @@
   background: var(--interactive-accent);
   color: var(--text-on-accent, white);
   border-color: var(--interactive-accent);
+}
+
+/* ── V3 async-capability subsystem (Row 50, 2026-05-11) ─────────────── */
+
+/* OraJobQueue's chat-stream strip is the V1 surface. V3 puts async-job
+   status in the sidebar Operating tray instead (B+C hybrid design), so
+   the strip mounts but stays hidden. The placeholder + cancel-modal
+   machinery in OraJobQueue runs unchanged — only the strip UI is
+   suppressed. */
+.ora-job-queue {
+  display: none !important;
+}
+
+/* V3 jobs list sits inside the Operating supergroup, below
+   #oversightOperatingList. Cards reuse .oversight-card spacing /
+   palette via class composition; this rule just spaces the section. */
+.v3-jobs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.v3-jobs-list:empty {
+  display: none;
+}
+
+.v3-job-card .v3-job-status {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+}
+
+.v3-job-status--queued       { background: rgba(189, 147, 249, 0.15); color: #bd93f9; }
+.v3-job-status--in_progress  { background: rgba(241, 250, 140, 0.15); color: #f1fa8c; }
+.v3-job-status--complete     { background: rgba(80, 250, 123, 0.15);  color: #50fa7b; }
+.v3-job-status--cancelled    { background: rgba(248, 248, 242, 0.12); color: #888880; }
+.v3-job-status--failed       { background: rgba(255, 85, 85, 0.18);   color: #ff5555; }
+
+.v3-job-cancel {
+  cursor: pointer;
+  appearance: none;
+  border: 1px solid var(--background-modifier-border, rgba(248, 248, 242, 0.15));
+  background: transparent;
+  color: var(--text-muted, rgba(248, 248, 242, 0.55));
+  padding: 0 6px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.v3-job-cancel:hover {
+  background: var(--background-modifier-hover, rgba(248, 248, 242, 0.08));
+  color: var(--text-normal, #f8f8f2);
 }

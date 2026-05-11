@@ -542,6 +542,19 @@
       if (detail.provider_override || inputs.provider_override) {
         payload.provider_override = detail.provider_override || inputs.provider_override;
       }
+      // V3 active-conversation propagation. Mirrors the fallback in
+      // capability-video-generates.js: capability-invocation-ui.js
+      // doesn't include conversation_id in its dispatch detail, so we
+      // self-discover from the sidebar so the server attaches the job
+      // to the right bucket and the V3 polling loop sees it.
+      if (detail.conversation_id) {
+        payload.conversation_id = detail.conversation_id;
+      } else if (typeof window !== 'undefined'
+                 && window.OraSidebar
+                 && typeof window.OraSidebar.getActiveConversation === 'function') {
+        var active = window.OraSidebar.getActiveConversation();
+        if (active) payload.conversation_id = active;
+      }
       // Layer the timeline note over the generic async badge.
       _showPendingTimelineNote();
 

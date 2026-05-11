@@ -99,6 +99,19 @@
 <script src="/static/capability-video-generates.js"></script>
 <script src="/static/capability-style-trains.js"></script>
 
+<!-- V3 async-capability subsystem (Row 50, 2026-05-11). Wires
+     capability-video-generates / capability-style-trains + OraJobQueue
+     init calls that index-v3.html's inline init script never made;
+     runs the /api/jobs/<conversation_id> polling loop the legacy
+     chat-panel.js used to own; renders job entries into the sidebar
+     Operating tray alongside re-eval and elicitation items (B+C hybrid
+     design — tray entry for status, canvas placeholder for spatial
+     pre-allocation). Loaded non-deferred so window.OraV3CapabilityAsync
+     is attached BEFORE the inline init block at the bottom of this
+     file runs, matching the loading pattern of the other capability
+     slot modules above. -->
+<script src="/static/js/v3-capability-async.js"></script>
+
 <!-- WP-7.5.1 — Selection / image tools. Self-register on window.OraTools
      and read at panel _mountUniversalToolbar() time. -->
 <script src="/static/tools/rect-selection.tool.js"></script>
@@ -154,6 +167,7 @@
 <script src="/static/js/sidebar.js" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
 <script src="/static/js/v3-layout.js" defer></script>
+<script src="/static/js/tooltip.js" defer></script>
 <script src="/static/js/v3-bootstrap.js" defer></script>
 <script src="/static/js/v3-state.js" defer></script>
 <!-- V3 Phase 7 platform bootstrap. Loaded BEFORE v3-canvas-mount.js so the
@@ -805,6 +819,13 @@
   let rStartInputH = 0, rStartLeftW = 0, rStartRightW = 0;
 
   const rDown = (e) => {
+    // If either column is collapsed, drop the .collapsed class before the
+    // drag starts so the panes inside become visible immediately as the
+    // user widens the column.
+    if (window.OraLayout && typeof window.OraLayout.uncollapseInPlace === 'function') {
+      window.OraLayout.uncollapseInPlace('left');
+      window.OraLayout.uncollapseInPlace('right');
+    }
     rDrag = true;
     rStartX = e.clientX;
     rStartY = e.clientY;
@@ -844,6 +865,13 @@
     if (!rDrag) return;
     rDrag = false;
     document.body.classList.remove('dragging', 'spine-dragging');
+    // Apply the same event-horizon auto-collapse that the spine background
+    // drag uses — when the wordmark is released too close to either edge,
+    // the corresponding pane should collapse rather than stay open at an
+    // unusable width.
+    if (window.OraLayout && typeof window.OraLayout.checkEventHorizon === 'function') {
+      window.OraLayout.checkEventHorizon();
+    }
   };
   if (logoR) {
     logoR.addEventListener('mousedown', rDown);
@@ -1797,6 +1825,19 @@
   if (window.OraRenderControls && typeof window.OraRenderControls.init === 'function') {
     try { window.OraRenderControls.init(); }
     catch (e) { console.error('OraRenderControls init failed:', e); }
+  }
+
+  // ─── V3 async-capability subsystem (Row 50, 2026-05-11) ──────────────
+  // Mounts the capability-video-generates / capability-style-trains
+  // handlers (loaded above but never .init()-ed in V3 before this),
+  // mounts OraJobQueue (strip hidden in V3 via .ora-job-queue { display:
+  // none } in sidebar.css), and starts the /api/jobs/<conversation_id>
+  // polling loop that fires ora:job_status events. Without this init,
+  // every capability:video_generates / capability:style_trains popover
+  // submit fires its capability-dispatch event into the void.
+  if (window.OraV3CapabilityAsync && typeof window.OraV3CapabilityAsync.init === 'function') {
+    try { window.OraV3CapabilityAsync.init(); }
+    catch (e) { console.error('OraV3CapabilityAsync init failed:', e); }
   }
 
   // ─── V3 Input Handling Phase 3 — input-pane toolbar click handlers ───
