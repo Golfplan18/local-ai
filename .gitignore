@@ -34,6 +34,11 @@ data/hector-training-corpus/
 # Per-session runtime state (conversations, canvas snapshots, uploads)
 sessions/
 
+# Meta-layer oversight runtime state (heartbeats, event logs, router log,
+# corpus state, workflow pointers — daemon auto-registers PEDs and workflow
+# specs at startup, so these are regenerable)
+data/oversight/
+
 # MSI feed-data cache (raw GDELT downloads, regenerable)
 scripts/msi/cache/
 
