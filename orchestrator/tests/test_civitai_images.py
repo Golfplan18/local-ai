@@ -142,22 +142,31 @@ class TestActivationToken(unittest.TestCase):
                 civitai_images.dispatch_hector_lora(inputs)
         return captured["body"]
 
-    def test_token_prepended_when_absent(self):
-        body = self._capture_body({"prompt": "a man at a podium"})
-        prompt = body["steps"][0]["input"]["prompt"]
-        self.assertTrue(prompt.startswith("hectorcartoon"))
-        self.assertIn("a man at a podium", prompt)
+    def test_refuses_prompt_without_activation_token(self):
+        """The LoRA dispatcher refuses non-Hector prompts so the cascade
+        walks to gpt-image-1 instead of applying butt-face style to a
+        news photograph."""
+        with mock.patch.object(civitai_images, "_get_api_key",
+                               return_value="fake-key"):
+            with self.assertRaises(CapabilityError) as cm:
+                civitai_images.dispatch_hector_lora(
+                    {"prompt": "a man at a podium"})
+        self.assertEqual(cm.exception.code, "prompt_rejected")
+        # The error message names the activation token so the operator can
+        # understand why the cascade walked.
+        self.assertIn("hectorcartoon", str(cm.exception))
 
-    def test_token_not_double_prepended_when_present(self):
+    def test_accepts_prompt_with_activation_token(self):
         body = self._capture_body(
             {"prompt": "hectorcartoon, a man at a podium"})
         prompt = body["steps"][0]["input"]["prompt"]
-        # Should not appear twice
+        # The token should appear exactly once in the submitted body.
         self.assertEqual(prompt.lower().count("hectorcartoon"), 1)
+        self.assertIn("a man at a podium", prompt)
 
-    def test_style_hint_appended(self):
+    def test_style_hint_appended_when_token_present(self):
         body = self._capture_body({
-            "prompt": "a man at a podium",
+            "prompt": "hectorcartoon, a man at a podium",
             "style": "watercolor wash",
         })
         prompt = body["steps"][0]["input"]["prompt"]
@@ -187,22 +196,22 @@ class TestAspectRatio(unittest.TestCase):
         return captured["body"]
 
     def test_1_1_default(self):
-        body = self._capture_body({"prompt": "x"})
+        body = self._capture_body({"prompt": "hectorcartoon, x"})
         inp = body["steps"][0]["input"]
         self.assertEqual((inp["width"], inp["height"]), (1024, 1024))
 
     def test_16_9(self):
-        body = self._capture_body({"prompt": "x", "aspect_ratio": "16:9"})
+        body = self._capture_body({"prompt": "hectorcartoon, x", "aspect_ratio": "16:9"})
         inp = body["steps"][0]["input"]
         self.assertEqual((inp["width"], inp["height"]), (1344, 768))
 
     def test_9_16(self):
-        body = self._capture_body({"prompt": "x", "aspect_ratio": "9:16"})
+        body = self._capture_body({"prompt": "hectorcartoon, x", "aspect_ratio": "9:16"})
         inp = body["steps"][0]["input"]
         self.assertEqual((inp["width"], inp["height"]), (768, 1344))
 
     def test_unknown_aspect_falls_back_to_square(self):
-        body = self._capture_body({"prompt": "x", "aspect_ratio": "weird"})
+        body = self._capture_body({"prompt": "hectorcartoon, x", "aspect_ratio": "weird"})
         inp = body["steps"][0]["input"]
         self.assertEqual((inp["width"], inp["height"]), (1024, 1024))
 
@@ -226,7 +235,7 @@ class TestBodyShape(unittest.TestCase):
                                return_value="fake-key"):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
-                civitai_images.dispatch_hector_lora({"prompt": "x"})
+                civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
 
         body = captured["body"]
         inp = body["steps"][0]["input"]
@@ -252,7 +261,7 @@ class TestAuth(unittest.TestCase):
         with mock.patch.object(civitai_images, "_get_api_key",
                                return_value=None):
             with self.assertRaises(CapabilityError) as cm:
-                civitai_images.dispatch_hector_lora({"prompt": "x"})
+                civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
         self.assertEqual(cm.exception.code, "model_unavailable")
 
     def test_bearer_header_attached(self):
@@ -268,7 +277,7 @@ class TestAuth(unittest.TestCase):
                                return_value="test-token-123"):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
-                civitai_images.dispatch_hector_lora({"prompt": "x"})
+                civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
 
         # urllib.request.Request normalizes header names to titlecase
         self.assertEqual(captured["headers"].get("Authorization"),
@@ -293,7 +302,7 @@ class TestHttpErrors(unittest.TestCase):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
                 try:
-                    civitai_images.dispatch_hector_lora({"prompt": "x"})
+                    civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
                 except CapabilityError as exc:
                     return exc
         return None
@@ -359,7 +368,7 @@ class TestJobStatus(unittest.TestCase):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
                 try:
-                    return civitai_images.dispatch_hector_lora({"prompt": "x"})
+                    return civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
                 except CapabilityError as exc:
                     return exc
 
@@ -435,7 +444,7 @@ class TestPolling(unittest.TestCase):
                                return_value="fake-key"):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
-                result = civitai_images.dispatch_hector_lora({"prompt": "x"})
+                result = civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
         self.assertEqual(result, SAMPLE_IMAGE_BYTES)
 
     def test_polling_timeout_returns_model_unavailable(self):
@@ -456,7 +465,7 @@ class TestPolling(unittest.TestCase):
                     with mock.patch("urllib.request.urlopen",
                                     side_effect=fake_urlopen):
                         with self.assertRaises(CapabilityError) as cm:
-                            civitai_images.dispatch_hector_lora({"prompt": "x"})
+                            civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
         self.assertEqual(cm.exception.code, "model_unavailable")
 
     def test_polling_failed_status_is_translated(self):
@@ -474,7 +483,7 @@ class TestPolling(unittest.TestCase):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
                 with self.assertRaises(CapabilityError) as cm:
-                    civitai_images.dispatch_hector_lora({"prompt": "x"})
+                    civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
         self.assertEqual(cm.exception.code, "prompt_rejected")
 
 
@@ -493,7 +502,7 @@ class TestNetworkErrors(unittest.TestCase):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
                 with self.assertRaises(CapabilityError) as cm:
-                    civitai_images.dispatch_hector_lora({"prompt": "x"})
+                    civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
         self.assertEqual(cm.exception.code, "model_unavailable")
 
     def test_image_fetch_url_error_is_model_unavailable(self):
@@ -508,7 +517,7 @@ class TestNetworkErrors(unittest.TestCase):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
                 with self.assertRaises(CapabilityError) as cm:
-                    civitai_images.dispatch_hector_lora({"prompt": "x"})
+                    civitai_images.dispatch_hector_lora({"prompt": "hectorcartoon, x"})
         self.assertEqual(cm.exception.code, "model_unavailable")
 
 
@@ -553,7 +562,7 @@ class TestEndToEnd(unittest.TestCase):
             with mock.patch("urllib.request.urlopen",
                             side_effect=fake_urlopen):
                 result = civitai_images.dispatch_hector_lora(
-                    {"prompt": "test", "aspect_ratio": "1:1"})
+                    {"prompt": "hectorcartoon, test", "aspect_ratio": "1:1"})
         self.assertEqual(result, SAMPLE_IMAGE_BYTES)
         # JPEG magic bytes
         self.assertEqual(result[:2], b"\xff\xd8")

@@ -38,8 +38,16 @@ from capability_registry import CapabilityError, InvocationResult  # noqa: E402
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _stub_registry(provider_id="openai-gpt-image-1", output=b"PNGBYTES",
+def _stub_registry(provider_id="openai-gpt-image-1", output=None,
                    chain=None, raise_codes=None):
+    if output is None:
+        # Default to a tiny real PNG so callers that pipe the bytes
+        # through potrace_vectorize (which uses PIL.Image.open) succeed.
+        import io as _io
+        from PIL import Image as _Image
+        _buf = _io.BytesIO()
+        _Image.new("L", (4, 4), color=255).save(_buf, "PNG")
+        output = _buf.getvalue()
     """Build a mock registry whose invoke() returns InvocationResult or raises
     the listed codes in order on successive calls."""
     registry = mock.MagicMock()
@@ -283,17 +291,28 @@ class TestSvgOverlay(unittest.TestCase):
 # Potrace vectorization (subprocess mocked)
 # ---------------------------------------------------------------------------
 
+def _tiny_png_bytes():
+    """Return a real 4x4 PNG byte sequence — Pillow can parse it; the
+    mkbitmap step is mocked downstream so the actual content doesn't
+    matter, only that PIL.Image.open succeeds.
+    """
+    import io as _io
+    from PIL import Image as _Image
+    buf = _io.BytesIO()
+    _Image.new("L", (4, 4), color=255).save(buf, "PNG")
+    return buf.getvalue()
+
+
 class TestPotraceVectorize(unittest.TestCase):
 
     def test_invokes_mkbitmap_and_potrace(self):
         def fake_run(cmd, **kwargs):
             # The two-stage pipeline writes its outputs to file paths in cmd.
             # mkbitmap: ["mkbitmap", "-x", "-f", "10", "-t", "0.48",
-            #            "-o", pgm_path, png_path]
+            #            "-o", processed_pgm_path, input_pgm_path]
             # potrace:  ["potrace", "--svg", "--opttolerance", "0.4",
-            #            "--output", svg_path, pgm_path]
+            #            "--output", svg_path, processed_pgm_path]
             if cmd[0] == "mkbitmap":
-                # write a stub PGM
                 pgm_path = cmd[cmd.index("-o") + 1]
                 with open(pgm_path, "wb") as f:
                     f.write(b"P5\n10 10\n255\n" + b"\x00" * 100)
@@ -309,7 +328,7 @@ class TestPotraceVectorize(unittest.TestCase):
             return mock.Mock(returncode=0, stdout=b"", stderr=b"")
 
         with mock.patch("subprocess.run", side_effect=fake_run):
-            svg = mir.potrace_vectorize(b"PNGBYTES")
+            svg = mir.potrace_vectorize(_tiny_png_bytes())
         # Confirm we applied the CSS hooks per Image Spec §4.5
         self.assertIn('fill="currentColor"', svg)
         self.assertIn("background:transparent", svg)

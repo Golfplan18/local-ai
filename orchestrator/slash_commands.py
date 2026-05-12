@@ -46,6 +46,12 @@ Recognized commands:
       along the AI path: likeness gate → prompt construction → image
       generation → article .md image-field patch.
 
+  /render-missing-article-images [--dry-run] [--include-drafts]
+      Auto-trigger: scan the MSI Astro src/content/articles/ directory,
+      derive an image request from each article's frontmatter, and run
+      render_news_image against any article missing an image: field.
+      Skips drafts by default. Use --dry-run to preview before spending.
+
 Path resolution for input files: absolute path is tried first, then
 relative-to-cwd, relative-to-vault, relative-to-ora. The first hit wins.
 
@@ -67,7 +73,8 @@ DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
 
 KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
                   "/deny", "/cleaning", "/news",
-                  "/hector-render", "/news-image-render"}
+                  "/hector-render", "/news-image-render",
+                  "/render-missing-article-images"}
 
 
 # ---------- Public API ----------
@@ -115,6 +122,7 @@ def run_runtime_command(user_input: str) -> str:
         "/news": _cmd_news,
         "/hector-render": _cmd_hector_render,
         "/news-image-render": _cmd_news_image_render,
+        "/render-missing-article-images": _cmd_render_missing_article_images,
     }
     handler = handlers.get(cmd)
     if handler is None:
@@ -876,6 +884,79 @@ def _cmd_news_image_render(args: list[str]) -> str:
         "Run `npm run build` in `~/sites/mainstreetindependent/` to "
         "verify the article compiles, then `git push` to deploy."
     )
+    return "\n".join(lines)
+
+
+# ---------- /render-missing-article-images — batch sweep ----------
+
+
+def _cmd_render_missing_article_images(args: list[str]) -> str:
+    """Scan the MSI Astro articles dir for articles missing an image:
+    frontmatter field and render one through render_news_image each.
+
+    The auto-trigger that closes the "publisher generates article →
+    image appears" loop. Supports two flags:
+      --dry-run         Report what would render without spending Buzz.
+      --include-drafts  Also process articles with draft: true (default
+                        is to skip drafts).
+
+    No path argument is accepted in v1 — the articles dir is hard-coded
+    to ``~/sites/mainstreetindependent/src/content/articles/`` (the
+    ``ASTRO_ARTICLES_DIR`` in msi_image_render.py). If the publisher
+    moves the Astro repo, both the renderer and this sweeper need the
+    config change together.
+    """
+    dry_run = "--dry-run" in args
+    include_drafts = "--include-drafts" in args
+
+    from article_image_sweeper import sweep_once
+    result = sweep_once(dry_run=dry_run, include_drafts=include_drafts)
+
+    lines = [
+        "**News article image sweep "
+        + ("(dry run)" if dry_run else "complete") + ".**",
+        "",
+        f"- **Scanned:** {result.scanned} article(s)",
+        f"- **Skipped (already has image):** {result.skipped_has_image}",
+        f"- **Skipped (drafts):** {result.skipped_draft}"
+        + ("" if not include_drafts else " (processed because --include-drafts)"),
+        f"- **Skipped (parse error):** {result.skipped_parse_error}",
+        f"- **Rendered:** {len(result.rendered)}",
+        f"- **Failed:** {len(result.failed)}",
+    ]
+    if result.rendered:
+        lines.append("")
+        lines.append("**Rendered articles:**")
+        for r in result.rendered:
+            if r.get("dry_run"):
+                lines.append(f"- 🔵 `{r['slug']}` (dry run — would render)")
+            else:
+                provider = r.get("provider", "<unknown>")
+                attempts = r.get("attempts") or []
+                provider_note = f"via `{provider}`"
+                if len(attempts) > 1:
+                    chain_summary = " → ".join(
+                        ("✓" if a.get("succeeded") else "✗")
+                        + a.get("provider_id", "?")
+                        for a in attempts
+                    )
+                    provider_note += f" (chain: {chain_summary})"
+                md_note = (
+                    "md updated"
+                    if r.get("article_md_updated") else "md not updated"
+                )
+                lines.append(f"- ✅ `{r['slug']}` — {provider_note} ({md_note})")
+    if result.failed:
+        lines.append("")
+        lines.append("**Failed articles:**")
+        for f_ in result.failed:
+            lines.append(f"- ❌ `{f_['slug']}`: {f_['error']}")
+    if (len(result.rendered) > 0 and not dry_run) or result.failed:
+        lines.append("")
+        lines.append(
+            "Run `npm run build` in `~/sites/mainstreetindependent/` to "
+            "verify the articles compile, then `git push` to deploy."
+        )
     return "\n".join(lines)
 
 

@@ -349,9 +349,25 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
     width, height = _ASPECT_TO_SIZE.get(aspect_ratio, (1024, 1024))
 
     composed_prompt = prompt.strip()
-    # Prepend the activation token if it's not already in the prompt.
+    # The LoRA is specific to the Hector Rentier editorial-cartoon register
+    # (per §5.4.1 / §6.3 of the Image Style Specification). The activation
+    # token `hectorcartoon` signals "this prompt wants Hector style." If
+    # the token is absent the caller wants generic image generation (e.g.,
+    # a news photographic prompt routed to the same image_generates slot)
+    # — refuse the call as `prompt_rejected` so the registry's cascade
+    # walks to the next provider (gpt-image-1 Slot 2). This keeps the LoRA
+    # in Slot 1 architecturally while making its participation conditional
+    # on Hector-flavored prompts. The cascade walks naturally for news;
+    # cartoons explicitly include the token via construct_hector_prompt.
     if HECTOR_LORA_TRIGGER not in composed_prompt.lower():
-        composed_prompt = f"{HECTOR_LORA_TRIGGER}, {composed_prompt}"
+        raise CapabilityError(
+            "prompt_rejected",
+            f"Civitai Hector LoRA dispatcher refuses prompts without the "
+            f"`{HECTOR_LORA_TRIGGER}` activation token. The LoRA is "
+            f"specific to the editorial-cartoon register; non-cartoon "
+            f"prompts cascade to the next provider.",
+            slot="image_generates",
+        )
     if style and isinstance(style, str) and style.strip():
         composed_prompt = f"{composed_prompt}, in the style of {style.strip()}"
 

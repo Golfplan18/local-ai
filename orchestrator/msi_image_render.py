@@ -43,6 +43,41 @@ from typing import Any, Optional
 from capability_registry import CapabilityError, CapabilityRegistry, load_registry
 
 
+def _register_all_image_providers(registry: CapabilityRegistry) -> None:
+    """Defensively register every image-generation integration we know about
+    against ``registry`` so the cascade for ``image_generates`` has a full
+    chain to walk.
+
+    ``capability_registry.load_registry()`` only auto-registers
+    ``local-diffusers`` (the always-available local fallback). The cloud
+    integrations (Civitai LoRA, OpenAI gpt-image-1 / DALL-E 3, Gemini)
+    register themselves via the server's boot path in production. When
+    ``render_hector_cartoon`` / ``render_news_image`` are called from a
+    fresh Python process (e.g., via the ``/hector-render`` /
+    ``/news-image-render`` slash commands which go through
+    ``slash_commands.py`` → ``msi_image_render.py`` and call
+    ``load_registry()`` themselves), the cloud integrations would be
+    absent without this helper. Each registration is wrapped so a missing
+    module / dependency doesn't break the others.
+    """
+    import sys as _sys
+    import os as _os
+    integrations_dir = _os.path.expanduser(
+        "~/ora/orchestrator/integrations")
+    if integrations_dir not in _sys.path:
+        _sys.path.insert(0, integrations_dir)
+
+    for module_name in ("civitai_images", "openai_images", "gemini_images"):
+        try:
+            module = __import__(module_name)
+            module.register(registry)
+        except Exception:
+            # Missing module / dependency / keychain key — leave the
+            # provider unregistered. The cascade walks whatever IS
+            # registered; local-diffusers is the always-available floor.
+            pass
+
+
 # ---------------------------------------------------------------------------
 # Astro repo paths
 # ---------------------------------------------------------------------------
@@ -269,36 +304,47 @@ def _slot1_is_hector_lora(registry: CapabilityRegistry) -> bool:
 # Vectorization (Hector framework Layer 6 step 5)
 # ---------------------------------------------------------------------------
 
-def potrace_vectorize(png_bytes: bytes) -> str:
-    """Convert a raster PNG to an SVG via mkbitmap + potrace.
+def potrace_vectorize(raster_bytes: bytes) -> str:
+    """Convert raster image bytes (PNG, JPEG, etc.) to an SVG via
+    mkbitmap + potrace.
 
-    Implements Image Style Spec §4.5 step 4 (vectorization). CSS hooks
-    applied per the same step: ``fill="currentColor"`` so the cartoon
-    adopts the page's text color through theme tokens; transparent
-    background so the underlying paper texture (or none) shows through.
+    Implements Image Style Spec §4.5 step 4 (vectorization). The
+    Civitai dispatcher returns JPEG, OpenAI returns PNG, and Gemini
+    returns PNG — mkbitmap only reads pnm / bmp, so we normalize the
+    input through Pillow to a PNG that mkbitmap accepts regardless of
+    which provider answered. CSS hooks applied per the same spec step:
+    ``fill="currentColor"`` so the cartoon adopts the page's text
+    color through theme tokens; transparent background so the
+    underlying paper texture (or none) shows through.
     """
     with tempfile.TemporaryDirectory() as tmp:
-        png_path = os.path.join(tmp, "input.png")
-        pgm_path = os.path.join(tmp, "input.pgm")
+        input_pgm_path = os.path.join(tmp, "input.pgm")
+        processed_pgm_path = os.path.join(tmp, "processed.pgm")
         svg_path = os.path.join(tmp, "output.svg")
 
-        with open(png_path, "wb") as f:
-            f.write(png_bytes)
+        # Normalize whatever bytes the provider gave us (PNG / JPEG /
+        # WebP) into a grayscale PGM — mkbitmap only reads pnm/bmp.
+        # Pillow handles every format the cascade produces.
+        from PIL import Image
+        import io as _io
+        img = Image.open(_io.BytesIO(raster_bytes))
+        img = img.convert("L")  # 8-bit grayscale
+        img.save(input_pgm_path, "PPM")
 
-        # mkbitmap: PNG → preprocessed PGM with edge enhancement.
+        # mkbitmap: PGM → preprocessed PGM with edge enhancement.
         # -x: enable inversion if needed
         # -f 10: filter radius (smooths very fine detail before tracing)
         # -t 0.48: threshold (slightly under midpoint, favours line preservation)
         subprocess.run(
             ["mkbitmap", "-x", "-f", "10", "-t", "0.48",
-             "-o", pgm_path, png_path],
+             "-o", processed_pgm_path, input_pgm_path],
             check=True, capture_output=True,
         )
 
         # potrace: PGM → SVG with conservative path optimization.
         subprocess.run(
             ["potrace", "--svg", "--opttolerance", "0.4",
-             "--output", svg_path, pgm_path],
+             "--output", svg_path, processed_pgm_path],
             check=True, capture_output=True,
         )
 
@@ -434,6 +480,7 @@ def render_hector_cartoon(recipe_data: dict, *,
 
     if registry is None:
         registry = load_registry()
+        _register_all_image_providers(registry)
 
     lora_active = _slot1_is_hector_lora(registry)
     prompt = construct_hector_prompt(recipe, lora_active=lora_active)
@@ -546,6 +593,7 @@ def render_news_image(request_data: dict, *,
 
     if registry is None:
         registry = load_registry()
+        _register_all_image_providers(registry)
 
     if request.visual_register == "editorial_cartoon":
         return {
