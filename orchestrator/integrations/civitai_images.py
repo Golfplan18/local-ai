@@ -7,7 +7,8 @@ with the published Hector Rentier Style v1 LoRA applied.
 Per Reference — MSI Image Style Specification §5.8.1 (post-2026-05-11):
 ``civitai-hector-lora-v1`` is the preferred provider for editorial
 cartoon generation, with ``openai-gpt-image-1`` / ``gemini-2.5-flash-image``
-/ ``openai-dalle3`` retained as fallback providers in the routing chain.
+retained as fallback providers in the routing chain. (DALL-E references
+removed 2026-05-12 per OpenAI's same-day shutdown announcement.)
 
 Endpoint
 --------

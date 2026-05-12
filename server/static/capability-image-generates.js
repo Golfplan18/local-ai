@@ -81,13 +81,13 @@
   var USER_INPUT_LAYER_ID = 'user_input';
 
   // Per the slot contract §3.1, default aspect_ratio is "1:1". For the
-  // pixel size of the inserted canvas object we mirror DALL-E 3's
-  // longest-edge defaults (per openai_images._ASPECT_TO_DALLE3_SIZE) so
-  // the canvas object's width × height match the actual generated image
-  // when the OpenAI provider answers. Stability + Replicate may produce
-  // different native dimensions; the schema is dimension-agnostic so a
-  // mismatch doesn't break round-trip — width/height are display hints,
-  // not authoritative pixel counts.
+  // pixel size of the inserted canvas object we use longest-edge defaults
+  // historically aligned with DALL-E 3's size enum; the actual OpenAI
+  // provider is now gpt-image-1, which uses a slightly different enum
+  // (1536×1024 for landscape vs DALL-E 3's 1792×1024). Stability +
+  // Replicate may produce different native dimensions too; the schema is
+  // dimension-agnostic so a mismatch doesn't break round-trip —
+  // width/height are display hints, not authoritative pixel counts.
   var ASPECT_TO_DIMS = {
     '1:1':  { w: 1024, h: 1024 },
     '16:9': { w: 1792, h: 1024 },

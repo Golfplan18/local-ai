@@ -50,7 +50,7 @@ def _register_all_image_providers(registry: CapabilityRegistry) -> None:
 
     ``capability_registry.load_registry()`` only auto-registers
     ``local-diffusers`` (the always-available local fallback). The cloud
-    integrations (Civitai LoRA, OpenAI gpt-image-1 / DALL-E 3, Gemini)
+    integrations (Civitai LoRA, OpenAI gpt-image-1, Gemini)
     register themselves via the server's boot path in production. When
     ``render_hector_cartoon`` / ``render_news_image`` are called from a
     fresh Python process (e.g., via the ``/hector-render`` /

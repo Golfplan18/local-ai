@@ -12,10 +12,13 @@
  *          Different tools use slightly different envelope shapes; this
  *          module normalizes them.
  *
- *   3. orchestrator/integrations/openai_images.py::dispatch_image_edits
- *        — server-side handler. Calls DALL-E 2's edits endpoint with
- *          a PNG image + a PNG alpha mask (transparent = edit, opaque =
- *          preserve, per OpenAI's contract).
+ *   3. The `image_edits` slot handler registered against the capability
+ *        registry. As of 2026-05-12 this is local-diffusers (preferred)
+ *        with replicate as fallback per routing-config.json. The
+ *        OpenAI/DALL-E 2 binding was removed when DALL-E 2 shut down.
+ *        All current providers accept the same PNG image + PNG alpha
+ *        mask shape (transparent = edit, opaque = preserve) so the
+ *        browser-side normalization below stays unchanged.
  *
  * The conversion of the §7.5.1 polygon / rect / raster envelopes into the
  * single PNG-alpha shape OpenAI requires is the core of this WP. We do it
