@@ -49,29 +49,34 @@ from integrations import openai_images  # noqa: E402
 # ---------------------------------------------------------------------------
 
 def _stub_capabilities_dict() -> dict:
-    """Minimal capabilities dict declaring only the slot openai_images
-    fulfills. Keeps the unit tests independent of the full slot catalog."""
+    """Minimal capabilities dict declaring the slots openai_images fulfills.
+
+    Under the 2026-05-12 slot-separation architecture, gpt-image-1 binds
+    against both `image_generates` (news / illustration) and
+    `image_generates_cartoon` (Hector cartoons). Both slots have identical
+    input contracts so the stub mirrors the same shape for both."""
+    slot_def = {
+        "summary": "Generate.",
+        "required_inputs": [
+            {"name": "prompt", "type": "text", "description": "x"}
+        ],
+        "optional_inputs": [
+            {"name": "style", "type": "text", "default": None},
+            {"name": "aspect_ratio", "type": "enum", "default": "1:1"},
+        ],
+        "output": {"type": "image-bytes"},
+        "execution_pattern": "sync",
+        "common_errors": [
+            {"code": "model_unavailable"},
+            {"code": "prompt_rejected"},
+            {"code": "quota_exceeded"},
+        ],
+    }
     return {
         "_schema_version": 1,
         "slots": {
-            "image_generates": {
-                "name": "image_generates",
-                "summary": "Generate.",
-                "required_inputs": [
-                    {"name": "prompt", "type": "text", "description": "x"}
-                ],
-                "optional_inputs": [
-                    {"name": "style", "type": "text", "default": None},
-                    {"name": "aspect_ratio", "type": "enum", "default": "1:1"},
-                ],
-                "output": {"type": "image-bytes"},
-                "execution_pattern": "sync",
-                "common_errors": [
-                    {"code": "model_unavailable"},
-                    {"code": "prompt_rejected"},
-                    {"code": "quota_exceeded"},
-                ],
-            },
+            "image_generates": {"name": "image_generates", **slot_def},
+            "image_generates_cartoon": {"name": "image_generates_cartoon", **slot_def},
         },
     }
 
@@ -104,6 +109,16 @@ class OpenAIImageRegistrationTests(unittest.TestCase):
         self.assertIn(
             openai_images.PROVIDER_IMAGE_GENERATES,
             self.registry.providers_for("image_generates"),
+        )
+
+    def test_register_binds_image_generates_cartoon_slot(self) -> None:
+        """Per the 2026-05-12 slot-separation architecture, gpt-image-1 is
+        the publisher-chosen Slot 1 for the cartoon path too (image quality
+        over the LoRA's spec-compliance, with the LoRA as the fallback)."""
+        openai_images.register(self.registry)
+        self.assertIn(
+            openai_images.PROVIDER_IMAGE_GENERATES,
+            self.registry.providers_for("image_generates_cartoon"),
         )
 
     def test_provider_constant_matches_routing_config_preference(self) -> None:

@@ -1,14 +1,18 @@
-"""Civitai image generation integration — Slot 1 for the Hector LoRA.
+"""Civitai image generation integration — Hector LoRA on the cartoon slot.
 
-Fulfills the ``image_generates`` capability slot via Civitai's
+Fulfills the ``image_generates_cartoon`` capability slot via Civitai's
 orchestration API by submitting a Flux.2 Klein 9B-base txt2img workflow
 with the published Hector Rentier Style v1 LoRA applied.
 
-Per Reference — MSI Image Style Specification §5.8.1 (post-2026-05-11):
-``civitai-hector-lora-v1`` is the preferred provider for editorial
-cartoon generation, with ``openai-gpt-image-1`` / ``gemini-2.5-flash-image``
-retained as fallback providers in the routing chain. (DALL-E references
-removed 2026-05-12 per OpenAI's same-day shutdown announcement.)
+Per Reference — MSI Image Style Specification §5.8.1 (v1.9, 2026-05-12):
+``civitai-hector-lora-v1`` is the **fallback** provider for editorial
+cartoon generation, behind ``openai-gpt-image-1`` (preferred for image
+quality on the engraved-woodcut aesthetic). The LoRA's role is to catch
+gpt-image-1 moderation refusals and outages with a guaranteed-spec-compliant
+butt-face render. Slot separation (introduced 2026-05-12) means this
+dispatcher only ever sees Hector-flavored prompts; the general
+``image_generates`` slot — used for news photos and illustration — does
+not include the LoRA in its cascade.
 
 Endpoint
 --------
@@ -305,7 +309,7 @@ def _poll_until_terminal(workflow_id: str, api_key: str) -> dict:
             # fatal and surfaces via the next loop's translation.
             if 500 <= exc.code < 600:
                 continue
-            raise _translate_http_error(exc, slot="image_generates") from exc
+            raise _translate_http_error(exc, slot="image_generates_cartoon") from exc
         except urllib.error.URLError:
             # Same logic for network blips — retry until cap.
             continue
@@ -341,8 +345,8 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
     if not isinstance(prompt, str) or not prompt.strip():
         raise CapabilityError(
             "missing_required_input",
-            "image_generates requires a non-empty 'prompt' string.",
-            slot="image_generates",
+            "image_generates_cartoon requires a non-empty 'prompt' string.",
+            slot="image_generates_cartoon",
         )
 
     style = inputs.get("style")
@@ -350,25 +354,14 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
     width, height = _ASPECT_TO_SIZE.get(aspect_ratio, (1024, 1024))
 
     composed_prompt = prompt.strip()
-    # The LoRA is specific to the Hector Rentier editorial-cartoon register
-    # (per §5.4.1 / §6.3 of the Image Style Specification). The activation
-    # token `hectorcartoon` signals "this prompt wants Hector style." If
-    # the token is absent the caller wants generic image generation (e.g.,
-    # a news photographic prompt routed to the same image_generates slot)
-    # — refuse the call as `prompt_rejected` so the registry's cascade
-    # walks to the next provider (gpt-image-1 Slot 2). This keeps the LoRA
-    # in Slot 1 architecturally while making its participation conditional
-    # on Hector-flavored prompts. The cascade walks naturally for news;
-    # cartoons explicitly include the token via construct_hector_prompt.
+    # The LoRA's activation token `hectorcartoon` is auto-prepended if not
+    # already present. The LoRA was trained with the token as the leading
+    # marker, and including it consistently improves activation. Under the
+    # 2026-05-12 slot-separation architecture, this dispatcher is registered
+    # only against `image_generates_cartoon` and is therefore only reached
+    # from the Hector cartoon path — non-cartoon prompts cannot route here.
     if HECTOR_LORA_TRIGGER not in composed_prompt.lower():
-        raise CapabilityError(
-            "prompt_rejected",
-            f"Civitai Hector LoRA dispatcher refuses prompts without the "
-            f"`{HECTOR_LORA_TRIGGER}` activation token. The LoRA is "
-            f"specific to the editorial-cartoon register; non-cartoon "
-            f"prompts cascade to the next provider.",
-            slot="image_generates",
-        )
+        composed_prompt = f"{HECTOR_LORA_TRIGGER} {composed_prompt}"
     if style and isinstance(style, str) and style.strip():
         composed_prompt = f"{composed_prompt}, in the style of {style.strip()}"
 
@@ -379,7 +372,7 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
             "No Civitai API key configured. Store at keyring "
             "service='ora', username='civitai-api-key', or set "
             "$CIVITAI_API_KEY. See Framework — API Key Acquisition.md.",
-            slot="image_generates",
+            slot="image_generates_cartoon",
         )
 
     body: dict[str, Any] = {
@@ -424,12 +417,12 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
         with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT_SEC) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise _translate_http_error(exc, slot="image_generates") from exc
+        raise _translate_http_error(exc, slot="image_generates_cartoon") from exc
     except urllib.error.URLError as exc:
         raise CapabilityError(
             "model_unavailable",
             f"Civitai network error: {exc.reason}",
-            slot="image_generates",
+            slot="image_generates_cartoon",
         ) from exc
 
     status = payload.get("status")
@@ -442,13 +435,13 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
         status = payload.get("status")
 
     if status in _TERMINAL_FAIL:
-        raise _translate_job_failure(payload, slot="image_generates")
+        raise _translate_job_failure(payload, slot="image_generates_cartoon")
     if status not in _TERMINAL_OK:
         raise CapabilityError(
             "model_unavailable",
             f"Civitai job did not reach terminal state within "
             f"{_POLL_MAX_SECONDS}s (final status={status}).",
-            slot="image_generates",
+            slot="image_generates_cartoon",
         )
 
     steps = payload.get("steps") or []
@@ -456,7 +449,7 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
         raise CapabilityError(
             "model_unavailable",
             "Civitai response missing steps array.",
-            slot="image_generates",
+            slot="image_generates_cartoon",
         )
     output = steps[0].get("output") or {}
     images = output.get("images") or []
@@ -464,7 +457,7 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
         raise CapabilityError(
             "model_unavailable",
             "Civitai response missing images array.",
-            slot="image_generates",
+            slot="image_generates_cartoon",
         )
 
     first = images[0]
@@ -473,7 +466,7 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
         raise CapabilityError(
             "model_unavailable",
             "Civitai response image entry missing url.",
-            slot="image_generates",
+            slot="image_generates_cartoon",
         )
 
     # Fetch the JPEG bytes from the signed orchestration-new URL. Same
@@ -491,13 +484,13 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
         raise CapabilityError(
             "model_unavailable",
             f"Civitai image fetch HTTP {exc.code} from signed URL.",
-            slot="image_generates",
+            slot="image_generates_cartoon",
         ) from exc
     except urllib.error.URLError as exc:
         raise CapabilityError(
             "model_unavailable",
             f"Civitai image fetch network error: {exc.reason}",
-            slot="image_generates",
+            slot="image_generates_cartoon",
         ) from exc
 
 
@@ -506,14 +499,21 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
 # ---------------------------------------------------------------------------
 
 def register(registry: CapabilityRegistry) -> None:
-    """Bind the Hector LoRA dispatcher to the ``image_generates`` slot.
+    """Bind the Hector LoRA dispatcher to the ``image_generates_cartoon`` slot.
 
     Called by ``register_with_default_registry()`` and exposed directly
     so tests can register against a fresh registry instance without
     pulling in the standard config files.
+
+    Per the 2026-05-12 slot-separation architecture, the LoRA is only
+    registered against ``image_generates_cartoon`` — not the general
+    ``image_generates`` slot. This guarantees the LoRA only ever sees
+    Hector cartoon prompts; news / illustration prompts cannot route to
+    it. See routing-config.json's ``image_generates_cartoon._note`` for
+    the cascade order (gpt-image-1 preferred; LoRA as fallback).
     """
     registry.register_provider(
-        "image_generates",
+        "image_generates_cartoon",
         PROVIDER_HECTOR_LORA,
         dispatch_hector_lora,
     )

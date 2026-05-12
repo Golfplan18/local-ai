@@ -12,9 +12,11 @@ news image) produced by manually running the framework or by the article
 generator. Each render function:
   - Constructs the AI image-generation prompt per Reference — MSI Image
     Style Specification §5 / §6
-  - Calls capability_registry.invoke('image_generates', ...) which cascades
-    the Slot 1 → Slot 2 → Slot 3 → Slot 4 chain configured in
-    routing-config.json
+  - Calls capability_registry.invoke(<slot>, ...) which cascades the
+    Slot 1 → Slot 2 → ... chain configured in routing-config.json. News
+    images use the general `image_generates` slot; Hector cartoons use
+    the dedicated `image_generates_cartoon` slot (introduced 2026-05-12)
+    so the Civitai LoRA only ever sees Hector prompts.
   - For Hector: runs potrace vectorization + SVG text overlay per Image
     Style Spec §4.5 / §5.1
   - For News: applies the contractual likeness / PII / register-match gates
@@ -269,15 +271,22 @@ def apply_likeness_gate(request: NewsImageRequest) -> tuple[list[dict], list[str
 # ---------------------------------------------------------------------------
 
 def invoke_image_gen(prompt: str, *, registry: CapabilityRegistry,
-                     aspect_ratio: str = "1:1") -> tuple[bytes, dict]:
-    """Call capability_registry.invoke for the image_generates slot.
+                     aspect_ratio: str = "1:1",
+                     slot: str = "image_generates") -> tuple[bytes, dict]:
+    """Call capability_registry.invoke for an image-generation slot.
+
+    ``slot`` selects which named slot is invoked:
+      - ``image_generates`` (default) — news photos, illustration filler,
+        data-viz illustration fallback.
+      - ``image_generates_cartoon`` — Hector Rentier editorial cartoons;
+        gpt-image-1 preferred with civitai-hector-lora-v1 as fallback.
 
     Returns ``(image_bytes, metadata)`` where metadata carries:
       - ``provider_id``: the provider that actually answered
       - ``ai_model``: provider_id (reused for imageSchema.ai_model)
       - ``attempts``: full fallback-chain attempt record
     """
-    result = registry.invoke("image_generates", {
+    result = registry.invoke(slot, {
         "prompt": prompt,
         "aspect_ratio": aspect_ratio,
     })
@@ -290,10 +299,17 @@ def invoke_image_gen(prompt: str, *, registry: CapabilityRegistry,
 
 
 def _slot1_is_hector_lora(registry: CapabilityRegistry) -> bool:
-    """Return True if the resolved Slot 1 provider for image_generates is the
+    """Return True if the resolved Slot 1 provider for the cartoon slot is the
     Civitai Hector LoRA. Drives the LoRA trigger-token insertion in the prompt.
+
+    Under the 2026-05-12 slot-separation architecture, the cartoon slot
+    is ``image_generates_cartoon``. With gpt-image-1 as the publisher's
+    chosen Slot 1 (per spec v1.9), this returns False and the trigger
+    is not pre-added to the prompt — the LoRA's own dispatcher
+    auto-prepends ``hectorcartoon`` if and when the cascade falls
+    through to it.
     """
-    chain = registry.resolve_provider_chain("image_generates")
+    chain = registry.resolve_provider_chain("image_generates_cartoon")
     if not chain:
         return False
     head = chain[0].lower()
@@ -485,9 +501,13 @@ def render_hector_cartoon(recipe_data: dict, *,
     lora_active = _slot1_is_hector_lora(registry)
     prompt = construct_hector_prompt(recipe, lora_active=lora_active)
 
-    # Layer 6 step 3–4: submit + retry-once on failure
+    # Layer 6 step 3–4: submit + retry-once on failure. Hector cartoons
+    # route through the dedicated `image_generates_cartoon` slot so the
+    # Civitai LoRA is only ever reached on the cartoon path (slot
+    # separation introduced 2026-05-12 per spec v1.9).
     try:
-        image_bytes, gen_metadata = invoke_image_gen(prompt, registry=registry)
+        image_bytes, gen_metadata = invoke_image_gen(
+            prompt, registry=registry, slot="image_generates_cartoon")
     except CapabilityError as exc:
         simplified = recipe.composition_spec + " | " + ", ".join(
             HECTOR_VISUAL_REGISTER_VOCAB[:5])
@@ -495,7 +515,8 @@ def render_hector_cartoon(recipe_data: dict, *,
             simplified = HECTOR_LORA_TRIGGER + " " + simplified
         try:
             image_bytes, gen_metadata = invoke_image_gen(
-                simplified, registry=registry)
+                simplified, registry=registry,
+                slot="image_generates_cartoon")
         except CapabilityError as exc2:
             return {
                 "success": False,

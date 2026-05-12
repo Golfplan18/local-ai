@@ -75,8 +75,9 @@ from capability_registry import CapabilityError, CapabilityRegistry, load_regist
 
 # ---------------------------------------------------------------------------
 # Provider identifier — recorded in routing-config.json's
-# `slots.image_generates.preferred` field, and the same string we hand
-# to `registry.register_provider`.
+# `slots.image_generates.preferred` and
+# `slots.image_generates_cartoon.preferred` fields, and the same string
+# we hand to `registry.register_provider`.
 # ---------------------------------------------------------------------------
 
 PROVIDER_IMAGE_GENERATES = "openai-gpt-image-1"
@@ -292,14 +293,27 @@ def dispatch_image_generates(inputs: dict) -> bytes:
 # ---------------------------------------------------------------------------
 
 def register(registry: CapabilityRegistry) -> None:
-    """Bind the image_generates dispatcher to ``registry``.
+    """Bind the gpt-image-1 dispatcher to both image-generation slots.
 
     Called by ``register_with_default_registry()`` and exposed
     directly so tests can register against a fresh registry instance
     without pulling in the standard config files.
+
+    Per the 2026-05-12 slot-separation architecture, gpt-image-1 serves
+    both ``image_generates`` (general — news photos, illustration
+    filler, data-viz illustration fallback) and ``image_generates_cartoon``
+    (Hector cartoons, preferred over the LoRA for image quality with
+    the LoRA as the spec-compliant fallback). The same dispatcher
+    handles both slots — gpt-image-1 doesn't care which slot routed it
+    a prompt; the cascade behavior differs per slot routing-config.
     """
     registry.register_provider(
         "image_generates",
+        PROVIDER_IMAGE_GENERATES,
+        dispatch_image_generates,
+    )
+    registry.register_provider(
+        "image_generates_cartoon",
         PROVIDER_IMAGE_GENERATES,
         dispatch_image_generates,
     )

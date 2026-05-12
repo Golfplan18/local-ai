@@ -15,7 +15,14 @@
         "gemini-2.5-flash-image",
         "local-diffusers"
       ],
-      "_note": "Current `image_generates` cascade (post-2026-05-11 publisher edit; DALL-E removed 2026-05-12 per OpenAI shutdown). Preferred = openai-gpt-image-1 (artistic richness, moderation-lottery on boundary-pushing prompts); Fallback 1 = Gemini 2.5 Flash Image (catches OpenAI safety_violations refusals); Fallback 2 = local-diffusers (SD 1.5 last-resort if both cloud providers fail). The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Historical context: the v1.7 deployment lock (2026-05-11) put civitai-hector-lora-v1 at Slot 1 for \u00a75.4.1 spec-compliance on Hector cartoons, but conflating cartoon + news-photo paths on one slot required a dispatcher-level prompt-refusal mechanism; the publisher subsequently removed the LoRA from this cascade to un-conflate. The clean follow-up is dedicated slots (`image_generates_cartoon` for Hector; `image_generates` for news illustration filler; `data_viz_renders` for charts) \u2014 deferred to the slot-separation workstream. Spec \u00a75.8.1 still describes the v1.7 LoRA-first lock; alignment with current state pending."
+      "_note": "General-purpose image generation slot. Serves news photos, illustration filler, and the eventual data-viz illustration fallback. Preferred = openai-gpt-image-1 (artistic richness, moderation-lottery on boundary-pushing prompts); Fallback 1 = Gemini 2.5 Flash Image (catches OpenAI safety_violations refusals); Fallback 2 = local-diffusers (SD 1.5 last-resort if both cloud providers fail). The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Hector cartoons go through a separate slot (`image_generates_cartoon`) so the Hector LoRA is only ever invoked through the cartoon path. DALL-E references removed 2026-05-12 per OpenAI's same-day shutdown announcement."
+    },
+    "image_generates_cartoon": {
+      "preferred": "openai-gpt-image-1",
+      "fallback": [
+        "civitai-hector-lora-v1"
+      ],
+      "_note": "Hector Rentier editorial-cartoon slot (introduced 2026-05-12). Preferred = openai-gpt-image-1 for artistic richness on the engraved-woodcut aesthetic; Fallback = civitai-hector-lora-v1, the publisher-trained Hector Style v1 LoRA on Flux.2 Klein 9B-base (Civitai model 2616013 / version 2937250) which holds the \u00a75.4.1 'no facial features ever' spec line by construction. Cascade triggers: registry.invoke() falls through on prompt_rejected (gpt-image-1 moderation refusal), quota_exceeded, or model_unavailable. Note: a successful-but-spec-violating render from gpt-image-1 (eyes/noses added onto butt-face figures) is NOT caught by the cascade \u2014 that requires a post-render verifier, which is separate work. Per \u00a75.8.1 v1.9 publisher decision: image quality wins; LoRA is the safety net when OpenAI refuses or errors."
     },
     "image_edits": {
       "preferred": "local-diffusers",

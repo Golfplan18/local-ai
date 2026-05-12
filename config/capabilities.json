@@ -70,6 +70,54 @@
         }
       ]
     },
+    "image_generates_cartoon": {
+      "name": "image_generates_cartoon",
+      "summary": "Generate a Hector Rentier editorial cartoon. Slot-separated from `image_generates` (which serves news photos and general illustration) so the Civitai Hector LoRA is only ever invoked through the cartoon path. Per MSI Image Style Specification §5.8.1 (v1.9, 2026-05-12): preferred provider is `openai-gpt-image-1` for image quality; `civitai-hector-lora-v1` is the always-spec-compliant fallback that catches OpenAI moderation refusals and outages.",
+      "required_inputs": [
+        {
+          "name": "prompt",
+          "type": "text",
+          "description": "Hector cartoon prompt composed by `msi_image_render.construct_hector_prompt`. Includes §6.3 editorial-cartoon vocab + §6.5 forbidden-caricature negatives + Layer 3 composition spec. The LoRA dispatcher auto-prepends its activation token `hectorcartoon` when this slot's fallback fires."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "style",
+          "type": "text",
+          "description": "Style hint appended to the prompt; rarely used because the Hector framework's prompt composer already encodes the engraved-woodcut aesthetic.",
+          "default": null
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "enum",
+          "description": "Output aspect ratio.",
+          "default": "1:1",
+          "enum_values": ["1:1", "16:9", "9:16", "4:3", "3:4"]
+        }
+      ],
+      "output": {
+        "type": "image-bytes",
+        "description": "Cartoon image bytes; downstream pipeline vectorizes via mkbitmap + potrace and composites banner/signature overlays."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "model_unavailable",
+          "description": "No provider configured for this slot.",
+          "fix_path": "Verify openai-gpt-image-1 and civitai-hector-lora-v1 are registered; check API keys."
+        },
+        {
+          "code": "prompt_rejected",
+          "description": "Provider's content policy blocked the prompt.",
+          "fix_path": "Rephrase, switch provider, or cancel."
+        },
+        {
+          "code": "quota_exceeded",
+          "description": "Provider rate limit hit.",
+          "fix_path": "Wait or switch provider."
+        }
+      ]
+    },
     "image_edits": {
       "name": "image_edits",
       "summary": "Modify a region of an existing image (inpaint).",

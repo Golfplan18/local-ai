@@ -1,4 +1,4 @@
-"""Tests for civitai_images — Slot 1 dispatcher for image_generates.
+"""Tests for civitai_images — fallback dispatcher for image_generates_cartoon.
 
 Covers:
   - prompt validation (missing / empty)
@@ -142,19 +142,19 @@ class TestActivationToken(unittest.TestCase):
                 civitai_images.dispatch_hector_lora(inputs)
         return captured["body"]
 
-    def test_refuses_prompt_without_activation_token(self):
-        """The LoRA dispatcher refuses non-Hector prompts so the cascade
-        walks to gpt-image-1 instead of applying butt-face style to a
-        news photograph."""
-        with mock.patch.object(civitai_images, "_get_api_key",
-                               return_value="fake-key"):
-            with self.assertRaises(CapabilityError) as cm:
-                civitai_images.dispatch_hector_lora(
-                    {"prompt": "a man at a podium"})
-        self.assertEqual(cm.exception.code, "prompt_rejected")
-        # The error message names the activation token so the operator can
-        # understand why the cascade walked.
-        self.assertIn("hectorcartoon", str(cm.exception))
+    def test_auto_prepends_activation_token_when_missing(self):
+        """The LoRA dispatcher auto-prepends `hectorcartoon` to prompts
+        that don't already include it. Under the 2026-05-12 slot-separation
+        architecture, this dispatcher is only registered against
+        `image_generates_cartoon`, so any prompt that reaches it is by
+        definition a cartoon prompt — auto-prepend is correct."""
+        body = self._capture_body({"prompt": "a man at a podium"})
+        prompt = body["steps"][0]["input"]["prompt"]
+        # The activation token must lead the prompt.
+        self.assertTrue(prompt.lower().startswith("hectorcartoon"))
+        self.assertIn("a man at a podium", prompt)
+        # And only once — no double-prepend.
+        self.assertEqual(prompt.lower().count("hectorcartoon"), 1)
 
     def test_accepts_prompt_with_activation_token(self):
         body = self._capture_body(
@@ -527,10 +527,24 @@ class TestNetworkErrors(unittest.TestCase):
 
 class TestRegistration(unittest.TestCase):
 
-    def test_register_binds_provider_against_image_generates(self):
+    def test_register_binds_provider_against_image_generates_cartoon(self):
+        """Per the 2026-05-12 slot-separation architecture, the LoRA is
+        registered only against `image_generates_cartoon` — not the
+        general `image_generates` slot used for news / illustration."""
         registry = CapabilityRegistry()
         civitai_images.register(registry)
         self.assertIn(
+            "civitai-hector-lora-v1",
+            registry.providers_for("image_generates_cartoon"),
+        )
+
+    def test_register_does_not_bind_to_image_generates(self):
+        """Defensive: confirm the LoRA cannot be reached through the
+        general image_generates slot. News / illustration prompts must
+        never route to this dispatcher."""
+        registry = CapabilityRegistry()
+        civitai_images.register(registry)
+        self.assertNotIn(
             "civitai-hector-lora-v1",
             registry.providers_for("image_generates"),
         )
@@ -539,7 +553,7 @@ class TestRegistration(unittest.TestCase):
         registry = CapabilityRegistry()
         civitai_images.register(registry)
         self.assertTrue(registry.has_provider(
-            "image_generates", "civitai-hector-lora-v1"))
+            "image_generates_cartoon", "civitai-hector-lora-v1"))
 
 
 # ---------------------------------------------------------------------------
