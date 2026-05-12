@@ -34,6 +34,18 @@ Recognized commands:
       `/cleaning resolve [--apply]` → apply queued resolutions (dry-run by default)
       `/cleaning status` → queue state without re-running detection
 
+  /hector-render <recipe.json>
+      Render a Hector editorial cartoon from a Layers 1-5 framework recipe.
+      Operationalizes Framework — MSI Hector Rentier Editorial Cartoon
+      Layers 6-8: prompt construction → image generation → vectorization
+      → SVG text overlays → Astro column .md emission.
+
+  /news-image-render <request.json>
+      Render a news article image from the article generator's image
+      request. Operationalizes Framework — News Image Generator Layers 3-5
+      along the AI path: likeness gate → prompt construction → image
+      generation → article .md image-field patch.
+
 Path resolution for input files: absolute path is tried first, then
 relative-to-cwd, relative-to-vault, relative-to-ora. The first hit wins.
 
@@ -54,7 +66,8 @@ DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
 DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
 
 KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
-                  "/deny", "/cleaning", "/news"}
+                  "/deny", "/cleaning", "/news",
+                  "/hector-render", "/news-image-render"}
 
 
 # ---------- Public API ----------
@@ -100,6 +113,8 @@ def run_runtime_command(user_input: str) -> str:
         "/deny": _cmd_deny,
         "/cleaning": _cmd_cleaning,
         "/news": _cmd_news,
+        "/hector-render": _cmd_hector_render,
+        "/news-image-render": _cmd_news_image_render,
     }
     handler = handlers.get(cmd)
     if handler is None:
@@ -672,6 +687,196 @@ def _cmd_news(args: list[str]) -> str:
         f"[Unknown subcommand `{sub}`. "
         "Use `/news help` for usage.]"
     )
+
+
+# ---------- /hector-render — Hector editorial cartoon rendering ----------
+
+
+def _cmd_hector_render(args: list[str]) -> str:
+    """Render a Hector cartoon from a Layers 1-5 recipe JSON file."""
+    if not args:
+        return (
+            "**Usage:** `/hector-render <recipe.json>`\n\n"
+            "Renders a Hector editorial cartoon. The recipe is the structured "
+            "output of running the `MSI Hector Rentier Editorial Cartoon` "
+            "framework against a news cluster — it carries the composition "
+            "spec (Layer 3), caption (Layer 4), and likeness verdict (Layer 5).\n\n"
+            "**Recipe schema (JSON):**\n"
+            "```json\n"
+            "{\n"
+            '  "cluster_id": "<string>",\n'
+            '  "headline": "<string>",\n'
+            '  "lede": "<string>",\n'
+            '  "publish_date": "<ISO-8601 date>",\n'
+            '  "composition_spec": "<Layer 3 composition prose>",\n'
+            '  "caption": "<Layer 4 caption, ≤15 words>",\n'
+            '  "banner": "<optional Layer 4 banner text>",\n'
+            '  "likeness_verdict": {...},\n'
+            '  "sources": [...],\n'
+            '  "metadata": {...}\n'
+            "}\n"
+            "```"
+        )
+
+    recipe_path = _resolve_input_path(args[0])
+    if recipe_path is None:
+        return (
+            f"[Recipe not found: `{args[0]}`. Tried absolute path, cwd, "
+            f"vault (`{VAULT_DIR}`), and ora (`{ORA_DIR}`).]"
+        )
+
+    import json
+    try:
+        with open(recipe_path, "r") as f:
+            recipe_data = json.load(f)
+    except json.JSONDecodeError as exc:
+        return f"[Recipe JSON parse error: {exc}]"
+    except OSError as exc:
+        return f"[Could not read recipe: {exc}]"
+
+    from msi_image_render import render_hector_cartoon
+    result = render_hector_cartoon(recipe_data)
+
+    if not result.get("success"):
+        lines = [
+            "**Hector cartoon render failed.**",
+            "",
+            f"- **Error:** {result.get('error', '<unknown>')}",
+        ]
+        attempts = result.get("attempts") or []
+        if attempts:
+            lines.append("- **Attempts:**")
+            for attempt in attempts:
+                marker = "✓" if attempt.get("succeeded") else "✗"
+                code = attempt.get("error_code") or "<ok>"
+                lines.append(
+                    f"  - {marker} `{attempt.get('provider_id')}` ({code})"
+                )
+        return "\n".join(lines)
+
+    lines = [
+        "**Hector cartoon rendered.**",
+        "",
+        f"- **Slug:** `{result['slug']}`",
+        f"- **Column file:** `{result['column_md_path']}`",
+        f"- **SVG asset:** `{result['svg_path']}`",
+        f"- **Provider:** `{result['image_schema']['ai_model']}`",
+    ]
+    attempts = result.get("attempts") or []
+    if len(attempts) > 1:
+        lines.append("- **Fallback chain:**")
+        for attempt in attempts:
+            marker = "✓" if attempt.get("succeeded") else "✗"
+            code = attempt.get("error_code") or "ok"
+            lines.append(
+                f"  - {marker} `{attempt.get('provider_id')}` ({code})"
+            )
+    lines.append("")
+    lines.append(
+        "Run `npm run build` in `~/sites/mainstreetindependent/` to "
+        "verify the column compiles, then `git push` to deploy."
+    )
+    return "\n".join(lines)
+
+
+# ---------- /news-image-render — News article image rendering ----------
+
+
+def _cmd_news_image_render(args: list[str]) -> str:
+    """Render a news article image from an image-generation request JSON file."""
+    if not args:
+        return (
+            "**Usage:** `/news-image-render <request.json>`\n\n"
+            "Renders a news article image. The request is the structured "
+            "object emitted by the News Article Generator framework "
+            "alongside an article — it carries the article slug, the visual "
+            "register, prompt seeds, and the entity list for the likeness "
+            "gate.\n\n"
+            "**Request schema (JSON):**\n"
+            "```json\n"
+            "{\n"
+            '  "article_slug": "<string, matches articles/<slug>.md>",\n'
+            '  "article_headline": "<string>",\n'
+            '  "article_lede": "<string>",\n'
+            '  "visual_register": "photographic|illustrated|diagrammatic",\n'
+            '  "prompt_seeds": ["<seed>", ...],\n'
+            '  "primary_entities": [\n'
+            '    {"name": "...", "is_public_figure": true,\n'
+            '     "in_public_role": true},\n'
+            "    ...\n"
+            "  ]\n"
+            "}\n"
+            "```"
+        )
+
+    request_path = _resolve_input_path(args[0])
+    if request_path is None:
+        return (
+            f"[Request not found: `{args[0]}`. Tried absolute path, cwd, "
+            f"vault (`{VAULT_DIR}`), and ora (`{ORA_DIR}`).]"
+        )
+
+    import json
+    try:
+        with open(request_path, "r") as f:
+            request_data = json.load(f)
+    except json.JSONDecodeError as exc:
+        return f"[Request JSON parse error: {exc}]"
+    except OSError as exc:
+        return f"[Could not read request: {exc}]"
+
+    from msi_image_render import render_news_image
+    result = render_news_image(request_data)
+
+    if not result.get("success"):
+        lines = [
+            "**News image render failed.**",
+            "",
+            f"- **Error:** {result.get('error', '<unknown>')}",
+        ]
+        attempts = result.get("attempts") or []
+        if attempts:
+            lines.append("- **Attempts:**")
+            for attempt in attempts:
+                marker = "✓" if attempt.get("succeeded") else "✗"
+                code = attempt.get("error_code") or "<ok>"
+                lines.append(
+                    f"  - {marker} `{attempt.get('provider_id')}` ({code})"
+                )
+        return "\n".join(lines)
+
+    lines = [
+        "**News image rendered.**",
+        "",
+        f"- **Image asset:** `{result['image_path']}`",
+        f"- **Article file:** `{result['article_md_path']}`",
+        f"  - frontmatter `image:` field "
+        + ("updated" if result.get("article_md_updated")
+           else "**not** updated (file does not exist yet — write the "
+                "article first, then re-run)"),
+        f"- **Provider:** `{result['image_schema']['ai_model']}`",
+    ]
+    removed = result.get("removed_entities") or []
+    if removed:
+        lines.append(
+            "- **Likeness gate removed:** "
+            + ", ".join(f"`{name}`" for name in removed)
+        )
+    attempts = result.get("attempts") or []
+    if len(attempts) > 1:
+        lines.append("- **Fallback chain:**")
+        for attempt in attempts:
+            marker = "✓" if attempt.get("succeeded") else "✗"
+            code = attempt.get("error_code") or "ok"
+            lines.append(
+                f"  - {marker} `{attempt.get('provider_id')}` ({code})"
+            )
+    lines.append("")
+    lines.append(
+        "Run `npm run build` in `~/sites/mainstreetindependent/` to "
+        "verify the article compiles, then `git push` to deploy."
+    )
+    return "\n".join(lines)
 
 
 # ---------- CLI smoke test ----------

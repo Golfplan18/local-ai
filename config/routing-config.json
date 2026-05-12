@@ -10,13 +10,14 @@
   },
   "slots": {
     "image_generates": {
-      "preferred": "openai-gpt-image-1",
+      "preferred": "civitai-hector-lora-v1",
       "fallback": [
+        "openai-gpt-image-1",
         "gemini-2.5-flash-image",
         "local-diffusers",
         "openai-dalle3"
       ],
-      "_note": "§5.8.1 deployment chain (2026-05-10). Slot 1 = gpt-image-1; Slot 2 fallback = Gemini 2.5 Flash Image; tertiary = local-diffusers if installed; legacy backup = DALL-E 3. The registry's invoke() walks this chain on prompt_rejected / model_unavailable / quota_exceeded — see capability_registry.fallback_triggering_codes."
+      "_note": "\u00a75.8.1 deployment chain (2026-05-11, post-LoRA-promotion). Slot 1 = civitai-hector-lora-v1 (Hector Rentier Style v1 on Flux.2 Klein 9B-base, published as Civitai model 2616013 / version 2937250 \u2014 always-spec-compliant butt-face caricature); Slot 2 = openai-gpt-image-1 (artistic richness, moderation-lottery); Slot 3 = Gemini 2.5 Flash Image (catches OpenAI refusals); Slot 4 = local-diffusers (SD 1.5 fallback if all cloud providers fail); legacy backup = DALL-E 3. The registry's invoke() walks this chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Previously (2026-05-10): preferred was openai-gpt-image-1; demoted to Slot 2 after the live side-by-side comparison on 2026-05-11 showed gpt-image-1 adding facial features back onto butt-face caricatures (corpus 062-style failure)."
     },
     "image_edits": {
       "preferred": "local-diffusers",
@@ -785,10 +786,10 @@
       "local-mlx-qwen3.5-9b-optiq"
     ],
     "premium": [
-      "anthropic-api-opus",
-      "gemini-api-pro",
       "claude-browser",
       "chatgpt-browser",
+      "anthropic-api-opus",
+      "gemini-api-pro",
       "gemini-browser",
       "perplexity-browser",
       "mistral-browser",
@@ -853,8 +854,8 @@
           },
           "breadth": {
             "buckets": [
-              "local-premium",
               "premium",
+              "local-premium",
               "mid"
             ]
           }
@@ -955,5 +956,7 @@
     "conversations": "/Users/oracle/Documents/conversations/",
     "chromadb": "/Users/oracle/ora/chromadb/"
   },
-  "diversity": {}
+  "diversity": {
+    "enabled": true
+  }
 }

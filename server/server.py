@@ -2037,7 +2037,15 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         return  # Pipeline pauses here — resumed via /api/clarification
 
     # --- Tier 2/3 fallback clarification gate (legacy path) ---
-    if tier >= 2:
+    # Phase 9 — skip the legacy clarification path when the pre-routing
+    # pipeline has already dispatched a mode. In that case the tier value
+    # (defaulted to 2 per Decision C's default-on-ambiguity rule) is not a
+    # request for clarification, just the analytical-pipeline tier marker.
+    # Firing legacy clarification here was emitting a `clarification_needed`
+    # event that the plain-HTTP /chat/multipart endpoint can't handle,
+    # producing the silent "pipeline produced no response" failure.
+    already_dispatched = bool(pre_routing.get("dispatched_mode_id"))
+    if tier >= 2 and not already_dispatched:
         yield _sse("pipeline_stage", stage="clarification_generating",
                     label="Generating clarification questions…")
         questions = _generate_clarification_questions(step1, config)
@@ -3287,7 +3295,15 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
     # surfaces the failure in the Errored group; the existing Backlog 2D
     # error-chunk pattern owns the failure-trace + recommendation body
     # (writing it here would duplicate the orchestrator's own error path).
-    summary = failure_summary or "pipeline produced no response"
+    # When no failure_summary was set, include the last_stage we saw so
+    # silent drop-outs (generator returned without yielding response/error)
+    # surface a useful breadcrumb instead of the bare "no response" string.
+    if failure_summary:
+        summary = failure_summary
+    elif last_stage:
+        summary = f"pipeline produced no response (last stage: {last_stage}; mode: {active_mode or '?'})"
+    else:
+        summary = "pipeline produced no response (no stages observed; check endpoint config)"
     try:
         from conversation_memory import mark_conversation_errored
         mark_conversation_errored(panel_id, summary)
@@ -5638,17 +5654,28 @@ def capability_image_generates():
             "message": f"Capability registry unavailable: {exc}"
         }}), status=503, mimetype="application/json")
 
+    # §5.8.1 Slot 1 (post-2026-05-11) — civitai-hector-lora-v1, the
+    # purpose-trained Hector Rentier editorial-cartoon LoRA on Flux.2
+    # Klein 9B-base. Always-spec-compliant butt-face caricature; the
+    # downstream providers (gpt-image-1, Gemini) are kept as fallbacks
+    # for cases where Civitai is unreachable or rejects the prompt.
+    try:
+        import civitai_images as _civitai
+        _civitai.register(registry)
+    except Exception:
+        pass
     try:
         import openai_images as _oai
         _oai.register(registry)
     except Exception:
         pass
-    # §5.8.1 Slot 2 — Gemini 2.5 Flash Image, the moderation-lottery
-    # fallback when Slot 1 (gpt-image-1) returns prompt_rejected. The
+    # §5.8.1 Slot 3 — Gemini 2.5 Flash Image, the moderation-lottery
+    # fallback when Slot 2 (gpt-image-1) returns prompt_rejected. The
     # capability registry's invoke() walks the routing-config chain
     # automatically on prompt_rejected / model_unavailable /
-    # quota_exceeded, so the Slot-1 → Slot-2 fall-through is transparent
-    # to this route — the InvocationResult records the attempt chain.
+    # quota_exceeded, so the Slot-1 → Slot-2 → Slot-3 fall-through is
+    # transparent to this route — the InvocationResult records the
+    # attempt chain.
     try:
         import gemini_images as _gemini
         _gemini.register(registry)
@@ -7626,7 +7653,7 @@ def capability_providers_get():
         # Best-effort: try registering each known image-providing
         # integration. Each is wrapped so a missing dependency on one
         # doesn't break visibility into the others.
-        for module_name in ("openai_images", "stability", "replicate"):
+        for module_name in ("civitai_images", "openai_images", "stability", "replicate"):
             try:
                 module = __import__(module_name)
                 if module_name == "replicate" and hasattr(module, "register_replicate_provider"):
