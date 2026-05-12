@@ -227,7 +227,7 @@ cross_cutting_integration:
 **Inputs:** Synthesis Stage 1 (frame-coherence merge), Synthesis Stage 2 (cross-cutting integration)
 
 **Synthesis prompt (orchestrator → model):**
-> "Produce the final integrated Argument Audit Report. Structure: (1) argument summary (the artifact's claims and structure, charitably reconstructed). (2) Per-claim coherence findings (from Stage 2 + Synthesis Stage 1). (3) Frame-surfacing findings (from Stage 1 + Synthesis Stage 1). (4) Cross-cutting issues (from Synthesis Stage 2 — the unique product of the molecular pass). (5) Named fallacies and argumentative moves (from Stage 2; for motte-and-bailey or other multi-claim moves, integrate Synthesis Stage 2's structural specification with debate notes per §D2). (6) Overall argument-soundness assessment (argument-wrong vs. conclusion-wrong honored; the audit is conclusion-agnostic). (7) Residual uncertainties (what would change the assessment). (8) Confidence map per finding. The audit's verdict integrates both lenses — sliding into stance-bearing evaluation (advocacy or rejection) is out of scope for this mode; if the audit surfaces something that warrants stance-bearing follow-up, flag the handoff to T15 modes (steelman, balanced-critique, the red-team modes) rather than performing it."
+> "Produce the final integrated Argument Audit Report. Structure: (1) argument summary (the artifact's claims and structure, charitably reconstructed). (2) Per-claim coherence findings (from Stage 2 + Synthesis Stage 1). (3) Frame-surfacing findings (from Stage 1 + Synthesis Stage 1). (4) Cross-cutting issues (from Synthesis Stage 2 — the unique product of the molecular pass). (5) Named fallacies and argumentative moves (from Stage 2; for motte-and-bailey or other multi-claim moves, integrate Synthesis Stage 2's structural specification with debate notes per §D2). (6) Overall argument-soundness assessment (argument-wrong vs. conclusion-wrong honored; the audit is conclusion-agnostic). (7) Residual uncertainties (what would change the assessment). (8) Confidence map per finding. The audit's verdict integrates both lenses — sliding into stance-bearing evaluation (advocacy or rejection) is out of scope for this mode. Stop at the audit; do not announce, flag, or recommend stance-bearing follow-up in the output."
 
 **Output format:** see OUTPUT CONTRACT below.
 
@@ -315,7 +315,6 @@ cross_cutting_integration:
 ## 6. Overall Argument Soundness Assessment
 - **Argument-as-given assessment:** establishes / does not establish its conclusion because <structural reason>.
 - **Conclusion-truth (independent of audit):** the conclusion may still be true; this audit does not adjudicate truth.
-- **Where stance-bearing follow-up is warranted:** <flag handoff to T15 modes (steelman / balanced-critique / red-team-assessment / red-team-advocate) — but do not perform here>.
 
 ## 7. Residual Uncertainties
 - <empirical questions whose answers would shift findings>
@@ -386,8 +385,7 @@ Key integrated findings:
 - The argument's coherence is frame-conditional — it holds within the "models-as-statistics" frame but does not hold under the "models-as-cognitive-systems" counterframe. This is the central cross-cutting issue.
 - The argument exhibits motte-and-bailey doctrinal structure (per Shackel) — the defensible motte (training is gradient descent) is repeatedly used to defend the substantive bailey (safety concerns are confused metaphysics).
 - Specific named fallacies (begging the question on M2, genetic fallacy across moves) are real but secondary to the cross-cutting frame-coherence issue.
-- Argument-as-given does not establish its conclusion. Conclusion-truth (whether safety concerns are well-founded) is independent of this audit and would require T15 stance-bearing analysis (steelman of the frame; red-team-assessment of the counterframe) to address.
-- Stance-bearing follow-up is warranted but out of AAA scope: route to balanced-critique or steelman in T15.
+- Argument-as-given does not establish its conclusion. Conclusion-truth (whether safety concerns are well-founded) is independent of this audit.
 
 ## CAVEATS AND OPEN DEBATES
 
@@ -409,7 +407,7 @@ Citations: Shackel 2005; cf. wider discussion in popular argumentation literatur
 
 ### Composition limit — stance integrity
 
-AAA is stance-suspending (frame-audit) + stance-neutral (coherence-audit). Sliding into stance-bearing evaluation (advocacy, attack, recommendation) is out of scope. When the audit surfaces something that warrants stance-bearing follow-up, flag the handoff (to T15 steelman / balanced-critique / red-team-assessment / red-team-advocate) rather than performing it. This is honored in the OUTPUT CONTRACT § 6 ("where stance-bearing follow-up is warranted") rather than producing the follow-up here.
+AAA is stance-suspending (frame-audit) + stance-neutral (coherence-audit). Sliding into stance-bearing evaluation (advocacy, attack, recommendation) is out of scope. The audit stops at structural diagnosis. It does not announce, flag, or recommend stance-bearing follow-up — that adds noise and reads as gatekeeping. If a reader wants advocacy, rejection, or red-team analysis, they invoke a T15 mode separately.
 
 ### Composition limit — propaganda boundary
 

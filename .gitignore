@@ -25,6 +25,17 @@ reconciliation/
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/entity-index.json
+data/vault-index.json
+data/extraction-staging/
+data/session-logs/
+data/hector-training-corpus/
+
+# Per-session runtime state (conversations, canvas snapshots, uploads)
+sessions/
+
+# MSI feed-data cache (raw GDELT downloads, regenerable)
+scripts/msi/cache/
 
 # Generated per machine
 ai

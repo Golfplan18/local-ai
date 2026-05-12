@@ -192,7 +192,8 @@ def _try_playwright_session(service: str, prompt: str, config: dict) -> str | No
         model_status = _switch_model(session.page, service)
 
         response = session.send_prompt(prompt)
-        session.save_session()
+        # Persistent context auto-saves cookies/localStorage on close() —
+        # no explicit save_session() call needed.
 
         if model_status:
             response = f"{model_status}\n\n{response}"

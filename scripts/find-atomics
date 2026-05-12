@@ -1,0 +1,198 @@
+#!/usr/bin/env python3
+"""Quick semantic search over the historical atomics + conversations ChromaDB.
+
+Usage:
+    find-atomics "query text"                       # default: 8 atomic notes
+    find-atomics "query text" -n 20                 # top 20
+    find-atomics "query text" --conversations       # search conversation pairs
+    find-atomics "query text" --both                # both collections
+    find-atomics "query text" --chain framework     # filter by chain_label
+    find-atomics "query text" --year 2025           # filter by year
+    find-atomics "query text" --platform claude     # claude/chatgpt/gemini/...
+    find-atomics "query text" --json                # machine-readable output
+
+Output is markdown — vault paths are clickable links suitable for pasting
+into Claude Code or rendering in a markdown viewer.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from typing import Any
+
+CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
+
+
+def _truncate(text: str, n: int) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
+
+
+def _format_atomic(rank: int, doc: str, meta: dict[str, Any], dist: float) -> str:
+    title = meta.get("title") or _truncate(doc.split("\n", 1)[0], 100)
+    vault = meta.get("vault_path", "")
+    src = meta.get("source_chat", "").replace("~/Documents/conversations/raw/", "")
+    when = (meta.get("when") or "")[:10]
+    chain = meta.get("chain_id", "")
+    note_type = meta.get("note_type", "")
+    side = meta.get("source_side", "")
+    plat = meta.get("source_platform", "")
+
+    lines = [f"### {rank}. {title}"]
+    lines.append(f"  - **score:** {1 - dist:.3f}  ·  **type:** {note_type}  ·  **{side}** on {plat}  ·  {when}")
+    if vault:
+        lines.append(f"  - **vault:** [{os.path.basename(vault)}]({vault})")
+    if src:
+        lines.append(f"  - **source chat:** `{src}`")
+    if chain:
+        lines.append(f"  - **chain:** `{chain}`")
+    body = _truncate(doc, 280)
+    lines.append(f"  - {body}")
+    return "\n".join(lines)
+
+
+def _format_conversation(rank: int, doc: str, meta: dict[str, Any], dist: float) -> str:
+    title = meta.get("conversation_title") or _truncate(doc.split("\n", 1)[0], 100)
+    chunk = meta.get("chunk_path") or meta.get("obsidian_path", "")
+    chain = meta.get("chain_label", "")
+    topics = meta.get("topics", "")
+    when = (meta.get("date") or meta.get("timestamp") or "")[:10]
+    pair = meta.get("pair_num", "")
+    plat = meta.get("source_platform", "")
+
+    lines = [f"### {rank}. {_truncate(title, 100)}"]
+    lines.append(f"  - **score:** {1 - dist:.3f}  ·  **chain:** {chain}  ·  pair {pair} on {plat}  ·  {when}")
+    if chunk:
+        lines.append(f"  - **chunk:** [{os.path.basename(chunk)}]({chunk})")
+    if topics:
+        lines.append(f"  - **topics:** {topics}")
+    body = _truncate(doc, 280)
+    lines.append(f"  - {body}")
+    return "\n".join(lines)
+
+
+def _build_where(args: argparse.Namespace, collection: str) -> dict | None:
+    clauses: list[dict] = []
+    if args.chain:
+        key = "chain_label" if collection == "conversations" else "chain_id"
+        clauses.append({key: {"$eq": args.chain}})
+    if args.year:
+        # vault_path contains "/Historical Atomics/<year>/" for atomics;
+        # conversations expose 'date' (YYYY-MM-DD).
+        if collection == "conversations":
+            clauses.append({"date": {"$gte": f"{args.year}-01-01"}})
+            clauses.append({"date": {"$lte": f"{args.year}-12-31"}})
+        # atomics: chroma's metadata where can't substring-match vault_path,
+        # so we filter post-query for atomics — see _post_filter.
+    if args.platform:
+        clauses.append({"source_platform": {"$eq": args.platform}})
+    if not clauses:
+        return None
+    if len(clauses) == 1:
+        return clauses[0]
+    return {"$and": clauses}
+
+
+def _post_filter(docs, metas, dists, args, collection):
+    if collection == "atomic_dedup" and args.year:
+        keep = []
+        for i, m in enumerate(metas):
+            vp = m.get("vault_path", "")
+            if f"/Historical Atomics/{args.year}/" in vp:
+                keep.append(i)
+        docs = [docs[i] for i in keep]
+        metas = [metas[i] for i in keep]
+        dists = [dists[i] for i in keep]
+    return docs, metas, dists
+
+
+def _query(client, collection_name: str, args, oversample: int = 4):
+    col = client.get_collection(collection_name)
+    where = _build_where(args, collection_name)
+    n = max(args.n * oversample, args.n) if args.year and collection_name == "atomic_dedup" else args.n
+    res = col.query(query_texts=[args.query], n_results=n, where=where)
+    docs = res["documents"][0]
+    metas = res["metadatas"][0]
+    dists = res["distances"][0]
+    docs, metas, dists = _post_filter(docs, metas, dists, args, collection_name)
+    return docs[: args.n], metas[: args.n], dists[: args.n]
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(
+        description="Semantic search over the historical atomics + conversations corpus.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    p.add_argument("query", help="Natural-language query")
+    p.add_argument("-n", type=int, default=8, help="Top K results per collection (default 8)")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--atomics", action="store_true", help="Search atomic_dedup only (default)")
+    g.add_argument("--conversations", action="store_true", help="Search conversations only")
+    g.add_argument("--both", action="store_true", help="Search both collections")
+    p.add_argument("--chain", help="Filter by chain_label (conversations) or chain_id (atomics)")
+    p.add_argument("--year", help="Filter by year (e.g. 2025)")
+    p.add_argument("--platform", help="Filter by source_platform (claude/chatgpt/gemini/...)")
+    p.add_argument("--json", action="store_true", help="Output JSON instead of markdown")
+    args = p.parse_args()
+
+    try:
+        import chromadb
+    except ImportError:
+        print("ERROR: chromadb not installed. Run: pip3 install chromadb", file=sys.stderr)
+        return 1
+
+    client = chromadb.PersistentClient(path=CHROMADB_PATH)
+
+    targets = []
+    if args.both:
+        targets = ["atomic_dedup", "conversations"]
+    elif args.conversations:
+        targets = ["conversations"]
+    else:
+        targets = ["atomic_dedup"]
+
+    payload: dict[str, list[dict]] = {}
+    for col in targets:
+        docs, metas, dists = _query(client, col, args)
+        payload[col] = [
+            {"document": d, "metadata": m, "distance": dist}
+            for d, m, dist in zip(docs, metas, dists)
+        ]
+
+    if args.json:
+        print(json.dumps(payload, indent=2, default=str))
+        return 0
+
+    out: list[str] = []
+    out.append(f"# Query: {args.query!r}")
+    filters = []
+    if args.chain:
+        filters.append(f"chain={args.chain}")
+    if args.year:
+        filters.append(f"year={args.year}")
+    if args.platform:
+        filters.append(f"platform={args.platform}")
+    if filters:
+        out.append(f"_filters: {', '.join(filters)}_")
+    out.append("")
+
+    for col, hits in payload.items():
+        label = "Atomic notes" if col == "atomic_dedup" else "Conversation pairs"
+        out.append(f"## {label} ({len(hits)})")
+        if not hits:
+            out.append("_no matches_\n")
+            continue
+        formatter = _format_atomic if col == "atomic_dedup" else _format_conversation
+        for i, h in enumerate(hits, 1):
+            out.append(formatter(i, h["document"], h["metadata"], h["distance"]))
+            out.append("")
+
+    print("\n".join(out))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

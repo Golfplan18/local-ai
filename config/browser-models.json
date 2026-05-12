@@ -3,6 +3,11 @@
   "claude": {
     "available": [
       {
+        "id": "claude-opus-4-7",
+        "name": "Claude Opus 4.7",
+        "tier": "paid"
+      },
+      {
         "id": "claude-opus-4-6",
         "name": "Claude Opus 4.6",
         "tier": "paid"
@@ -19,8 +24,8 @@
       }
     ],
     "retired": [],
-    "selected": "claude-opus-4-6",
-    "last_updated": "2026-04-06",
+    "selected": "claude-opus-4-7",
+    "last_updated": "2026-05-11",
     "ui": {
       "model_button": "button[data-testid='model-selector'], button:has-text('Claude')",
       "model_option": "div[role='option']:has-text('{model_name}'), button:has-text('{model_name}')",
@@ -30,6 +35,16 @@
   },
   "chatgpt": {
     "available": [
+      {
+        "id": "gpt-5.5",
+        "name": "GPT-5.5",
+        "tier": "paid"
+      },
+      {
+        "id": "gpt-5.5-pro",
+        "name": "GPT-5.5 Pro",
+        "tier": "paid"
+      },
       {
         "id": "gpt-5.4",
         "name": "GPT-5.4 Thinking",
@@ -52,8 +67,8 @@
       }
     ],
     "retired": [],
-    "selected": "gpt-5.4",
-    "last_updated": "2026-04-06",
+    "selected": "gpt-5.5",
+    "last_updated": "2026-05-11",
     "ui": {
       "model_button": "button[data-testid='model-selector'], button:has-text('ChatGPT')",
       "model_option": "div[role='option']:has-text('{model_name}'), li:has-text('{model_name}')",
@@ -200,19 +215,47 @@
   "grok": {
     "available": [
       {
+        "id": "fast",
+        "name": "Fast",
+        "tier": "unknown"
+      },
+      {
+        "id": "auto",
+        "name": "Auto",
+        "tier": "unknown"
+      },
+      {
+        "id": "expert",
+        "name": "Expert",
+        "tier": "unknown"
+      },
+      {
+        "id": "heavy",
+        "name": "Heavy",
+        "tier": "unknown"
+      },
+      {
+        "id": "unlock-extended-capabilities",
+        "name": "Unlock extended capabilities",
+        "tier": "unknown"
+      }
+    ],
+    "retired": [
+      {
         "id": "grok-3",
         "name": "Grok 3",
-        "tier": "paid"
+        "tier": "paid",
+        "retired_date": "2026-05-11"
       },
       {
         "id": "grok-3-mini",
         "name": "Grok 3 Mini",
-        "tier": "free+paid"
+        "tier": "free+paid",
+        "retired_date": "2026-05-11"
       }
     ],
-    "retired": [],
-    "selected": "grok-3",
-    "last_updated": "2026-04-08",
+    "selected": "fast",
+    "last_updated": "2026-05-11",
     "ui": {
       "model_button": "button:has-text('Grok'), button[aria-label*='model' i]",
       "model_list_selector": "div[role='option'], div[role='menuitem']",

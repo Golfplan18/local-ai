@@ -75,11 +75,32 @@
   let dragStartLeft = 0;
   let dragStartRight = 0;
 
+  // Strip the `.collapsed` class from a column without resetting widths.
+  // Drags need this so the children become visible the moment the user
+  // starts widening a previously-collapsed column — otherwise the column
+  // grows but its panes stay hidden until a click on the bare strip.
+  const uncollapseInPlace = (side) => {
+    if (side === 'left' && leftCollapsed) {
+      leftCol.classList.remove('collapsed');
+      leftCollapsed   = false;
+      leftCollapsedBy = null;
+    } else if (side === 'right' && rightCollapsed) {
+      rightCol.classList.remove('collapsed');
+      rightCollapsed   = false;
+      rightCollapsedBy = null;
+    }
+  };
+
   const onSpineMouseDown = (e) => {
     // Only initiate drag from non-interactive regions of the spine.
     if (e.target.closest('button')) return;
     if (e.target.closest('.spine-wordmark')) return;
     if (e.target.closest('[role="button"]')) return;
+
+    // If either column is collapsed, drop the .collapsed class up-front
+    // so the panes inside become visible as soon as the drag starts.
+    uncollapseInPlace('left');
+    uncollapseInPlace('right');
 
     dragging       = true;
     dragStartX     = e.clientX;
@@ -289,6 +310,8 @@
     expandRight:   () => expandPane('right'),
     collapseQQB:   () => collapseQQB('button'),
     expandQQB,
+    checkEventHorizon: checkEventHorizonAndCollapse,
+    uncollapseInPlace,
     state: () => ({
       leftCollapsed, rightCollapsed,
       leftCollapsedBy, rightCollapsedBy,
