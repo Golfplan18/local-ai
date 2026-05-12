@@ -7,6 +7,7 @@ tags:
   - architecture
 date created: 2026-03-23
 date modified: 2026-05-01
+
 ---
 
 # MODE: Root Cause Analysis
@@ -188,7 +189,20 @@ Root Cause Analysis applies most cleanly to problems with bounded causal histori
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~5min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

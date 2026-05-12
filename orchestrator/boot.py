@@ -33,7 +33,6 @@ PIPELINE_FILE = os.path.join(ARCHITECTURE_DIR, "pre-routing-pipeline.md")
 TERRITORIES_FILE = os.path.join(ARCHITECTURE_DIR, "territories.md")
 DISAMBIG_GUIDE_FILE = os.path.join(ARCHITECTURE_DIR, "disambiguation-style-guide.md")
 SIGNAL_REGISTRY_FILE = os.path.join(ARCHITECTURE_DIR, "signal-vocabulary-registry.md")
-RUNTIME_CONFIG_FILE = os.path.join(ARCHITECTURE_DIR, "runtime-configuration.md")
 WITHIN_TREES_FILE = os.path.join(ARCHITECTURE_DIR, "within-territory-trees.md")
 CROSS_ADJ_FILE = os.path.join(ARCHITECTURE_DIR, "cross-territory-adjacency.md")
 TEMPLATE_FILE = os.path.join(ARCHITECTURE_DIR, "mode-template.md")
@@ -896,39 +895,6 @@ def load_educational_name(mode_id: str) -> str | None:
         content = f.read()
     match = re.search(r'^educational_name:\s*(.+?)$', content, re.MULTILINE)
     return match.group(1).strip() if match else None
-
-
-# ---------------------------------------------------------------------------
-# Phase 9 — Decision C: runtime configuration with default-on-missing-config
-# error path. Per Decision C, missing entries error safely; there is NO silent
-# fallback to a default gear.
-# ---------------------------------------------------------------------------
-
-def load_runtime_config_for_mode(mode_id: str) -> dict | None:
-    """Load runtime config entry for a mode.
-
-    Per Decision C, this errors if the entry is missing; there is no silent
-    fallback to a default gear. Callers must handle ``KeyError`` explicitly.
-    """
-    if not os.path.exists(RUNTIME_CONFIG_FILE):
-        raise FileNotFoundError(
-            f"Runtime config file missing: {RUNTIME_CONFIG_FILE}"
-        )
-    with open(RUNTIME_CONFIG_FILE, "r") as f:
-        content = f.read()
-    # naive parse: find `<mode_id>:` block (indented YAML lines beneath)
-    pattern = rf"^{re.escape(mode_id)}:\s*\n((?:  .+\n)+)"
-    match = re.search(pattern, content, re.MULTILINE)
-    if not match:
-        raise KeyError(
-            f"Runtime config entry missing for mode_id '{mode_id}'. "
-            f"Per Decision C, this errors safely; default-on-missing-config "
-            f"is not allowed."
-        )
-    # TODO Phase 9 follow-up: parse the YAML block into structured fields
-    # (gear_default, lens_pack, contract_version, etc.) once the consumer
-    # call sites are wired up.
-    return {"raw_yaml_block": match.group(1)}
 
 
 # ---------------------------------------------------------------------------

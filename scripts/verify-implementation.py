@@ -56,7 +56,6 @@ ORA_LENSES_DIR = ORA_ROOT / "knowledge" / "mental-models"
 TERRITORIES_FILE = VAULT_ROOT / "Reference — Analytical Territories.md"
 TEMPLATE_FILE = VAULT_ROOT / "Reference — Mode Specification Template.md"
 SIGNAL_REGISTRY_FILE = VAULT_ROOT / "Reference — Signal Vocabulary Registry.md"
-RUNTIME_CONFIG_FILE = VAULT_ROOT / "Reference — Mode Runtime Configuration.md"
 WITHIN_TREES_FILE = VAULT_ROOT / "Reference — Within-Territory Disambiguation Trees.md"
 CROSS_ADJ_FILE = VAULT_ROOT / "Reference — Cross-Territory Adjacency.md"
 DISAMBIG_GUIDE_FILE = VAULT_ROOT / "Reference — Disambiguation Style Guide.md"
@@ -64,7 +63,8 @@ LENS_SPEC_FILE = VAULT_ROOT / "Reference — Lens Library Specification.md"
 PIPELINE_FILE = VAULT_ROOT / "Reference — Pre-Routing Pipeline Architecture.md"
 
 CATCH_ALL_MODES = {"adversarial", "simple", "standard"}
-ARCHIVED_MODES = CATCH_ALL_MODES  # archived per Decision A
+NON_MODE_FILES = {"INDEX"}  # vault navigation files that live in /Modes/ but aren't modes
+ARCHIVED_MODES = CATCH_ALL_MODES | NON_MODE_FILES
 
 # The 21 territory IDs (T1-T21)
 TERRITORY_IDS = {f"T{i}" for i in range(1, 22)}
@@ -389,28 +389,25 @@ def check_signal_vocabulary(verbose: bool = False) -> CheckResult:
 
 
 def check_runtime_config(verbose: bool = False) -> CheckResult:
-    """Verify every mode_id in /Modes/ has a runtime config entry."""
+    """Verify every mode file declares ## DEFAULT GEAR in its body.
+
+    Reversed 2026-05-12: runtime fields no longer live in a separate file.
+    Each mode file declares its own gear in a ## DEFAULT GEAR section.
+    """
     result = CheckResult(name="runtime", passed=True)
 
-    if not RUNTIME_CONFIG_FILE.exists():
-        result.passed = False
-        result.details.append(f"Runtime config not found: {RUNTIME_CONFIG_FILE}")
-        return result
+    missing = []
+    for path in list_mode_files():
+        content = read_file(path)
+        if not re.search(r"^## DEFAULT GEAR\s*$", content, re.MULTILINE):
+            missing.append(path.stem)
 
-    content = read_file(RUNTIME_CONFIG_FILE)
-    valid_mode_ids = {p.stem for p in list_mode_files()}
-
-    # Find mode_id keys at the top of YAML config blocks
-    # Pattern: line matching ^<mode_id>:\s*$ (or with leading whitespace)
-    config_mode_ids = set(re.findall(r"^([\w-]+):\s*$", content, re.MULTILINE))
-
-    missing = valid_mode_ids - config_mode_ids
     for mode_id in sorted(missing):
         result.passed = False
-        result.details.append(f"mode '{mode_id}' has no runtime config entry")
+        result.details.append(f"mode '{mode_id}' is missing the ## DEFAULT GEAR section")
 
     if verbose and not missing:
-        result.details.append(f"All {len(valid_mode_ids)} mode_ids have runtime config entries")
+        result.details.append(f"All mode files declare ## DEFAULT GEAR")
 
     return result
 

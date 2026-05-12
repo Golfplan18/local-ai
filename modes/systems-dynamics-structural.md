@@ -7,6 +7,7 @@ tags:
   - architecture
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Systems Dynamics Structural
@@ -190,7 +191,20 @@ This mode is one of two parsed from the legacy Systems Dynamics mode per Decisio
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~10min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

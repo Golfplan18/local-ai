@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Red Team (Advocate)
@@ -230,7 +231,20 @@ This mode and its sibling `red-team-assessment` were parsed from the original `r
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~5min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

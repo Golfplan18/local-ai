@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Interest Mapping
@@ -175,7 +176,20 @@ Verified means: parties and stated positions are named; inferred underlying inte
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~5min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

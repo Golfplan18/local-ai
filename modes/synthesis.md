@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-03-23
 date modified: 2026-05-01
+
 ---
 
 # MODE: Synthesis
@@ -167,7 +168,20 @@ Verified means: both frameworks present as peer roots; ≥ 1 cross-link with mec
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~10min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator, reference]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

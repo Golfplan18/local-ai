@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-04-17
 date modified: 2026-05-01
+
 ---
 
 # MODE: Benefits Analysis
@@ -183,7 +184,20 @@ Verified means: proposal stated precisely; all three columns populated (or expli
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~5min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

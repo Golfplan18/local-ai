@@ -6,6 +6,7 @@ tags:
   - molecular
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Argument Audit
@@ -183,7 +184,7 @@ Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist
 
 ## REVISION GUIDANCE
 
-Revise to deepen synthesis where it concatenates. Revise to add specificity to vague frame-imports or impressionistic coherence findings. Revise to warrant named fallacies with structural detail. Resist revising toward stance-bearing evaluation — Argument Audit is neutral; stance-bearing evaluation belongs in T15 (steelman, the red-team modes, balanced-critique). When the audit surfaces something that warrants stance-bearing follow-up, flag the handoff rather than performing it.
+Revise to deepen synthesis where it concatenates. Revise to add specificity to vague frame-imports or impressionistic coherence findings. Revise to warrant named fallacies with structural detail. Resist revising toward stance-bearing evaluation — Argument Audit is neutral; stance-bearing evaluation belongs in T15 (steelman, the red-team modes, balanced-critique). Stop at the audit. Do not announce, flag, or recommend stance-bearing follow-up in the output.
 
 ## CONSOLIDATION GUIDANCE
 
@@ -200,7 +201,19 @@ Verified means: both component passes ran (or were flagged as proceeded-with-gap
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+Argument Audit's molecular composition (parallel frame-audit + coherence-audit with three synthesis stages) is a Gear 4 workload. Gear 4 runs Depth and Breadth in parallel, then composes through Steps 5–7 (cross-eval, revise, consolidate). The consolidator's role is exactly the role this mode's synthesis stages require.
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

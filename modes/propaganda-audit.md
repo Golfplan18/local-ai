@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Propaganda Audit
@@ -204,7 +205,20 @@ Verified means: the professed ideal is named with quoted text; the supporting / 
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~5min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

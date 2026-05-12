@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-03-23
 date modified: 2026-05-01
+
 ---
 
 # MODE: Scenario Planning
@@ -193,7 +194,20 @@ Verified means: all four quadrants populated with name and non-empty narrative; 
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~10min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

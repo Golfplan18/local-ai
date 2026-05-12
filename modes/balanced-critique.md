@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Balanced Critique
@@ -186,7 +187,20 @@ Verified means: strengths and weaknesses sections are comparable in length, spec
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~5min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

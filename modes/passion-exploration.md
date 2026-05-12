@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-03-23
 date modified: 2026-05-01
+
 ---
 
 # MODE: Passion Exploration
@@ -192,7 +193,20 @@ The Missed-Crystallization Trap is the failure mode for missing the signal; the 
 
 ---
 
+## DEFAULT GEAR
+
+Gear 2
+
+- **Expected Runtime:** ~1min
+- **Context Budget:** conversation_history_soft_ceiling=0.5
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

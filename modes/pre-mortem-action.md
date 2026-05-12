@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Pre-Mortem (Action)
@@ -187,7 +188,20 @@ Verified means: the failure narrative is in past-tense prospective-hindsight sta
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~1min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-03-23
 date modified: 2026-05-01
+
 ---
 
 # MODE: Deep Clarification
@@ -162,7 +163,20 @@ Verified means: surface explanation present (not skipped); ≥2 mechanistic leve
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~5min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, chat, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

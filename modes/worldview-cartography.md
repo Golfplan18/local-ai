@@ -6,6 +6,7 @@ tags:
   - molecular
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Worldview Cartography
@@ -193,7 +194,20 @@ Verified means: each paradigm has been suspended (not just foreign ones); cross-
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~10+min
+- **Context Budget:** extended
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

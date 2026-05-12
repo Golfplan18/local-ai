@@ -5,6 +5,7 @@ type: mode
 tags:
 date created: 2026-05-01
 date modified: 2026-05-01
+
 ---
 
 # MODE: Quick Orientation
@@ -174,7 +175,20 @@ Verified means: a one-line domain definition is present; three-to-five major sub
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~1min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[engram, resource, incubator, reference]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

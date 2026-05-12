@@ -6,6 +6,7 @@ tags:
 date created: 2026-03-23
 date modified: 2026-05-01
 meta_mode: true
+
 ---
 
 # MODE: Project Mode
@@ -171,7 +172,20 @@ Verified means: deliverable matches request; ≥ 1 substantive decision logged w
 
 ---
 
+## DEFAULT GEAR
+
+Gear 4
+
+- **Expected Runtime:** ~5min
+- **Context Budget:** default
+
+---
+
 ## RAG PROFILE
+
+### type_filter
+
+Retrieve only chunks whose `type` is in: `[framework, mode, engram]`
 
 ### RAG PROFILE — RELATIONSHIP PRIORITIES
 

@@ -151,11 +151,5 @@ class TestRunPreRoutingPipeline(unittest.TestCase):
         # Could be Stage 2 disambiguation or Stage 3 missing input
         self.assertIsNotNone(r["pending_clarification"])
 
-    def test_runtime_config_default_on_missing_errors(self):
-        # Per Decision C: missing entries error safely.
-        with self.assertRaises(KeyError):
-            boot.load_runtime_config_for_mode("definitely-not-a-real-mode")
-
-
 if __name__ == "__main__":
     unittest.main()
