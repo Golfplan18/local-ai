@@ -44,6 +44,9 @@ function extractVisualBlocks(text) {
   return out;
 }
 if (typeof window !== 'undefined') { window.extractVisualBlocks = extractVisualBlocks; }
+// Expose _md globally so v3-conversation.js can render loaded turn content
+// with the same markdown→HTML logic the live chat bubble uses.
+if (typeof window !== 'undefined') { window._md = _md; }
 
 /** Minimal markdown → HTML renderer (AI bubbles only). Escapes HTML first. */
 function _md(text) {
@@ -344,6 +347,55 @@ class ChatPanel {
       bubble.textContent = text;
     }
     wrap.appendChild(bubble);
+    // Assistant bubbles get a small action row with a "play" speaker
+    // button that calls the /api/tts endpoint and plays the response.
+    // Uses the user's current Speech-tab provider/voice/model settings.
+    if (role === 'ai') {
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+      const speakBtn = document.createElement('button');
+      speakBtn.type = 'button';
+      speakBtn.className = 'msg-action msg-action-speak';
+      speakBtn.title = 'Read aloud';
+      speakBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+      let audioEl = null;
+      speakBtn.addEventListener('click', async () => {
+        if (audioEl && !audioEl.paused) {
+          audioEl.pause();
+          audioEl.currentTime = 0;
+          speakBtn.classList.remove('msg-action--playing');
+          return;
+        }
+        speakBtn.classList.add('msg-action--loading');
+        try {
+          const r = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: bubble.innerText || text }),
+          });
+          if (!r.ok) {
+            const errJson = await r.json().catch(() => ({}));
+            throw new Error(errJson.error || ('HTTP ' + r.status));
+          }
+          const blob = await r.blob();
+          if (audioEl) { audioEl.pause(); audioEl.src = ''; }
+          audioEl = new Audio(URL.createObjectURL(blob));
+          audioEl.addEventListener('ended', () => {
+            speakBtn.classList.remove('msg-action--playing');
+          });
+          audioEl.addEventListener('play', () => {
+            speakBtn.classList.add('msg-action--playing');
+          });
+          await audioEl.play();
+        } catch (e) {
+          window.alert('Speech failed: ' + e.message);
+        } finally {
+          speakBtn.classList.remove('msg-action--loading');
+        }
+      });
+      actions.appendChild(speakBtn);
+      wrap.appendChild(actions);
+    }
     this._msgs.appendChild(wrap);
     this._msgs.scrollTop = this._msgs.scrollHeight;
     return bubble;

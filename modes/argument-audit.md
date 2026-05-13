@@ -188,11 +188,13 @@ Revise to deepen synthesis where it concatenates. Revise to add specificity to v
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured audit with the eight required sections. Each finding carries provenance to its component source (frame-audit for frame findings; coherence-audit for coherence findings; synthesis stages for cross-cutting issues). The named-fallacies-and-argumentative-moves section includes Debate D2 references where motte-and-bailey is invoked. Confidence map is per-finding.
+Your first line is an H2 heading that names the central flaw — e.g., `## The argument relies on a hidden premise about agency`, `## Your friend is doing a frame swap, not an argument`, `## The "just statistics" move is doing all the work`. The heading IS your lead. No preamble before it. After the heading, walk through the supporting findings as flowing prose — the framing move the argument relies on, the hidden premise it needs to work, the named fallacies in plain language (composition / reductionist fallacy, straw man, motte-and-bailey where applicable), and finally articulation scripts the user can actually deploy in conversation. Where Debate D2 is relevant (motte-and-bailey invoked), name the structural move in the argument's terms — which claim is the motte, which is the bailey, where the alternation occurs — rather than relying on the label alone. Use inline confidence language only where confidence varies meaningfully.
+
+The response is the audit, not a research paper *about* the audit. Do NOT produce numbered section headers ("### 1. Charitable Reconstruction", "### 2. Toulmin Decomposition", "### 3. The Structural Failure"). Do NOT label sections with the names of analytical methodologies (Toulmin Decomposition, Mereological Audit, Audit Summary). One additional heading is appropriate when transitioning into the articulation scripts ("## Here's what you can say back" or similar) — that's a real change of register. Otherwise: paragraphs. Do not emit a separate confidence map, provenance attribution, content-contract checklist, or continuity prompt — those belong in orchestrator metadata, not in the user's response.
 
 ## VERIFICATION CRITERIA
 
-Verified means: both component passes ran (or were flagged as proceeded-with-gap); cross-cutting-integration surfaces issues neither component caught alone; frame-imports and coherence findings are concretely grounded; named fallacies are warranted; confidence map is populated. The four critical questions are addressed in the output.
+Verified means: both component passes ran (or were flagged as proceeded-with-gap); cross-cutting integration surfaces issues neither component caught alone; frame-imports and coherence findings are concretely grounded; named fallacies are warranted with structural specificity; user-facing articulation scripts are present and usable; the four critical questions are addressed in the response. The response is conversational prose addressed to the user — verification does not require any specific section structure, only that the content contract is satisfied.
 
 ## CAVEATS AND OPEN DEBATES
 

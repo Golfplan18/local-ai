@@ -374,6 +374,19 @@ class OversightDaemon:
         """
         from oversight_events import emit
 
+        # Write an immediate heartbeat for each watcher so the health
+        # check sees a fresh signal as soon as the daemon starts. Without
+        # this, the vault scan (which can take minutes) blocks the first
+        # real sweep, and the health check sees stale heartbeats from a
+        # prior run and falsely reports "daemon down."
+        for watcher_mod_name in ("ped_watcher", "corpus_watcher",
+                                 "workflow_spec_sweeper", "revisit_sweeper"):
+            try:
+                _mod = __import__(watcher_mod_name)
+                _mod._write_heartbeat()
+            except Exception as e:
+                print(f"[oversight_daemon] startup heartbeat for {watcher_mod_name} failed: {e}")
+
         # First-pass vault auto-registration (slow but one-shot).
         self._initial_vault_scan()
 

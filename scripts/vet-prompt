@@ -1,0 +1,123 @@
+#!/usr/bin/env /opt/homebrew/bin/python3
+"""Vet a candidate trigger prompt against Ora's pre-routing pipeline.
+
+Tells you whether a prompt passes the routing gate (dispatches cleanly
+to a specific mode) or fails it (triggers a disambiguation question,
+falls through to bypass, or fails the mode's input contract).
+
+This is the "is this a good prompt?" check. Use it to vet candidate
+trigger questions before doing a full Gear 4 capture. If a prompt
+triggers clarification here, that's a prompt-quality signal — the
+prompt is ambiguous or under-specified for any of Ora's frameworks.
+Revise it.
+
+Usage:
+    vet-prompt "your prompt here"
+    vet-prompt -f prompt.txt
+    cat prompt.txt | vet-prompt
+    vet-prompt -m argument-audit "your prompt"   # check intended mode
+
+Output codes:
+    0 — PASS  (dispatched to a specific mode, no clarification)
+    1 — anything else (clarification needed, bypass, or unresolved)
+"""
+import argparse
+import json
+import os
+import sys
+
+ORCH = "/Users/oracle/ora/orchestrator"
+if ORCH not in sys.path:
+    sys.path.insert(0, ORCH)
+
+
+def vet(prompt: str, intended_mode: str | None = None, verbose: bool = False):
+    """Run pre-routing on the prompt and report the verdict."""
+    from boot import run_pre_routing_pipeline
+    result = run_pre_routing_pipeline(prompt)
+
+    dispatched = result.get("dispatched_mode_id")
+    bypass = result.get("bypass_to_direct_response")
+    pending = result.get("pending_clarification")
+    pending_stage = result.get("pending_clarification_stage")
+    confidence = result.get("confidence", "?")
+    territory = result.get("territory")
+    gaps = result.get("completeness_gaps") or []
+
+    # Verdict
+    if dispatched and not pending:
+        verdict = "PASS"
+        line2 = f"dispatched to '{dispatched}' (territory: {territory}, confidence: {confidence})"
+    elif bypass:
+        verdict = "BYPASS"
+        line2 = "classified as direct-response bypass (greeting/lookup/system command)"
+    elif pending:
+        verdict = "CLARIFICATION"
+        stage_label = pending_stage[-1] if pending_stage else "?"
+        line2 = f"Stage {stage_label} fired a disambiguation question"
+    else:
+        verdict = "UNRESOLVED"
+        line2 = "no dispatch, no bypass, no clarification — investigate"
+
+    print(f"VERDICT: {verdict}")
+    print(f"  {line2}")
+
+    if pending:
+        print()
+        print("  Question Ora would ask:")
+        for line in pending.strip().split("\n"):
+            print(f"    {line}")
+
+    if gaps:
+        print()
+        print(f"  Missing input fields: {', '.join(gaps)}")
+
+    if intended_mode:
+        print()
+        if dispatched == intended_mode:
+            print(f"  Intended mode '{intended_mode}': MATCH")
+        elif dispatched:
+            print(f"  Intended mode '{intended_mode}': NO — got '{dispatched}'")
+        else:
+            print(f"  Intended mode '{intended_mode}': NO — no dispatch")
+
+    if verbose:
+        print()
+        print("=== Full routing result ===")
+        print(json.dumps(result, indent=2, default=str))
+
+    return 0 if verdict == "PASS" else 1
+
+
+def main():
+    p = argparse.ArgumentParser(
+        description=__doc__.split("\n\n")[0],
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("prompt", nargs="?", help="Prompt text (or use -f / stdin)")
+    p.add_argument("-f", "--file", help="Read prompt from a file")
+    p.add_argument("-m", "--intended-mode",
+                   help="Mode the prompt should trigger; reports MATCH/NO MATCH")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="Print full routing result as JSON")
+    args = p.parse_args()
+
+    # Resolve the prompt source
+    if args.file:
+        with open(args.file, "r", encoding="utf-8") as f:
+            prompt = f.read().strip()
+    elif args.prompt:
+        prompt = args.prompt
+    elif not sys.stdin.isatty():
+        prompt = sys.stdin.read().strip()
+    else:
+        p.error("Provide a prompt as argument, with -f <file>, or via stdin")
+
+    if not prompt:
+        p.error("Empty prompt")
+
+    sys.exit(vet(prompt, args.intended_mode, args.verbose))
+
+
+if __name__ == "__main__":
+    main()

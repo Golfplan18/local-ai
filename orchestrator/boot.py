@@ -972,19 +972,39 @@ def _signal_present(prompt: str, signal: str) -> bool:
 
 
 def _is_negated(prompt: str, signal: str) -> bool:
-    """Check if a negation marker appears within ±3 tokens of the signal.
+    """Check if a negation marker appears within ±3 tokens of the signal,
+    within the same sentence.
 
-    Implementation: locate the signal in the prompt, then look at the 3
-    tokens before and 3 tokens after for any negation marker. Case-insensitive.
+    Implementation: locate the signal in the prompt, look at the 3 tokens
+    before and 3 tokens after, but truncate the window at sentence
+    boundaries (``.``, ``?``, ``!``) so a negation in a quoted or earlier
+    sentence does not falsely negate the signal. Case-insensitive.
+
+    Example: in ``"tariffs don't cause inflation. does this argument hold up?"``
+    the "don't" in the first sentence does NOT negate the AAA-trigger
+    "does this argument hold up" in the second sentence.
     """
     norm_prompt = _normalize_for_match(prompt)
     norm_signal = _normalize_for_match(signal)
     idx = norm_prompt.find(norm_signal)
     if idx < 0:
         return False
-    # Find token boundaries around the signal
     pre_text = norm_prompt[:idx]
     post_text = norm_prompt[idx + len(norm_signal):]
+
+    # Truncate at sentence boundaries — negation does not cross . ? !
+    last_pre_boundary = max(pre_text.rfind('.'), pre_text.rfind('?'),
+                            pre_text.rfind('!'))
+    if last_pre_boundary >= 0:
+        pre_text = pre_text[last_pre_boundary + 1:]
+    first_post_boundary = min(
+        (pos for pos in (post_text.find('.'), post_text.find('?'),
+                          post_text.find('!')) if pos >= 0),
+        default=-1,
+    )
+    if first_post_boundary >= 0:
+        post_text = post_text[:first_post_boundary]
+
     pre_tokens = pre_text.split()[-3:] if pre_text else []
     post_tokens = post_text.split()[:3] if post_text else []
     window = pre_tokens + post_tokens
@@ -4891,7 +4911,31 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         ]
         revised_analysis = _run_model_with_tools(re_revise_messages, depth_endpoint)
 
-    return verified
+    return revised_analysis
+
+
+def _strip_consolidator_preamble(text: str) -> str:
+    """Discard preamble before the first markdown heading.
+
+    The F-Consolidate spec tells the consolidator to lead with an H2
+    heading. When the model still emits preamble ("Good—", "Let me
+    integrate this", "Here is the analysis…"), this strips everything
+    before the first ``^#`` heading. Only fires when the response does
+    not already start with a heading AND a heading appears within the
+    first 2000 characters; otherwise the original text is returned
+    unchanged so responses that legitimately lead with prose are not
+    damaged.
+    """
+    if not text:
+        return text
+    stripped_lead = text.lstrip()
+    if stripped_lead.startswith("#"):
+        return text  # already starts with a heading
+    import re as _re
+    m = _re.search(r"^#{1,6}\s", text[:2000], _re.MULTILINE)
+    if not m:
+        return text  # no heading within the safety window
+    return text[m.start():]
 
 
 def run_gear4(context_pkg: dict, config: dict, history: list = None,
@@ -4956,6 +5000,21 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             breadth_analysis = breadth_future.result()
         except Exception as e:
             breadth_analysis = f"[Breadth model error: {e}]"
+
+    # --- Pipeline trace logging (diagnostic) ---
+    try:
+        import datetime as _dt
+        _ts = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        with open(f"/tmp/ora-trace-{_ts}-step3-depth.md", "w") as _f:
+            _f.write(f"# Step 3 — Depth analyst output\n\n{depth_analysis}\n")
+        with open(f"/tmp/ora-trace-{_ts}-step3-breadth.md", "w") as _f:
+            _f.write(f"# Step 3 — Breadth analyst output\n\n{breadth_analysis}\n")
+        # Write a pointer so we can find the most recent trace
+        with open("/tmp/ora-trace-latest.txt", "w") as _f:
+            _f.write(_ts)
+        _trace_ts = _ts
+    except Exception:
+        _trace_ts = None
 
     # --- Step 4: Cross-evaluation (universal contract, both directions) ---
     eval_system = _assemble_step_prompt(
@@ -5030,6 +5089,20 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             revised_breadth = breadth_revise_future.result()
         except Exception as e:
             revised_breadth = f"[Revision error: {e}]"
+
+    # --- Pipeline trace logging (diagnostic) ---
+    try:
+        if _trace_ts:
+            with open(f"/tmp/ora-trace-{_trace_ts}-step4-eval-of-depth.md", "w") as _f:
+                _f.write(f"# Step 4 — Breadth's evaluation of Depth\n\n{breadth_eval_of_depth}\n")
+            with open(f"/tmp/ora-trace-{_trace_ts}-step4-eval-of-breadth.md", "w") as _f:
+                _f.write(f"# Step 4 — Depth's evaluation of Breadth\n\n{depth_eval_of_breadth}\n")
+            with open(f"/tmp/ora-trace-{_trace_ts}-step5-revised-depth.md", "w") as _f:
+                _f.write(f"# Step 5 — Revised Depth\n\n{revised_depth}\n")
+            with open(f"/tmp/ora-trace-{_trace_ts}-step5-revised-breadth.md", "w") as _f:
+                _f.write(f"# Step 5 — Revised Breadth\n\n{revised_breadth}\n")
+    except Exception:
+        pass
 
     # --- Step 6: Cross-verification with up to 2 correction cycles ---
     verify_system = _assemble_step_prompt(
@@ -5128,15 +5201,40 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     consolidate_messages = [
         {"role": "system", "content": consolidate_system},
         {"role": "user", "content": (
-            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-            f"## DEPTH STREAM OUTPUT (revised)\n\n{revised_depth}\n\n"
-            f"## BREADTH STREAM OUTPUT (revised)\n\n{revised_breadth}\n\n"
-            "Reconcile per the mode's consolidator guidance and the "
-            "universal F-Consolidate contract. Emit the consolidated "
-            "analysis plus a CONTINUITY PROMPT."
+            f"The user's original question:\n\n{cleaned_prompt}\n\n"
+            "Two independent revised analyses follow. Use them as raw "
+            "context for synthesizing the user's answer; the analyses are "
+            "internal scaffolding the user must never see.\n\n"
+            f"---\n\n{revised_depth}\n\n---\n\n{revised_breadth}\n\n---\n\n"
+            "Write the user's answer directly in conversational prose, "
+            "addressed to them, satisfying the mode's content contract. "
+            "Do NOT label or refer to the analyses as 'first analysis', "
+            "'second analysis', 'analysis 1', 'analysis 2', or any "
+            "similar wording — the user does not know there were two "
+            "analyses and does not need to. Do NOT mirror the input "
+            "structure: even if the analyses are organized with numbered "
+            "sections, methodology labels, or other report-style "
+            "scaffolding, your output is flowing prose. Do not call any "
+            "tool — write the response yourself."
         )},
     ]
     consolidated = _run_model_with_tools(consolidate_messages, breadth_endpoint)
+
+    try:
+        if _trace_ts:
+            with open(f"/tmp/ora-trace-{_trace_ts}-step7-consolidated.md", "w") as _f:
+                _f.write(f"# Step 7 — Consolidated output\n\n{consolidated}\n")
+    except Exception:
+        pass
+
+    # Strip any preamble before the first heading. The F-Consolidate spec
+    # tells the model to lead with an H2 heading. If the model still emits
+    # preamble ("Good—", "Let me integrate this", "Here is the analysis…"),
+    # we discard everything before the first markdown heading. Safety:
+    # only strip when the response (a) does not already start with a heading
+    # and (b) has a heading within the first 2000 characters — otherwise
+    # leave the response alone.
+    consolidated = _strip_consolidator_preamble(consolidated)
 
     # --- Step 8: Depth runs final verifier over the consolidation ---
     final_verify_messages = [
@@ -5152,7 +5250,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     ]
     verified = _run_model_with_tools(final_verify_messages, depth_endpoint)
 
-    return verified
+    return consolidated
 
 
 def call_model(messages: list, endpoint: dict, images: list = None) -> str:

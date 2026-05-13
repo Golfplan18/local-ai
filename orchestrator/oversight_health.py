@@ -36,7 +36,14 @@ STALE_MULTIPLIER = 2  # heartbeat older than 2× interval is stale
 
 
 def heartbeat_path(watcher_name: str) -> str:
-    return os.path.join(OVERSIGHT_DATA_DIR, f"{watcher_name}-heartbeat.json")
+    # The watcher modules write to files with dash-separated names
+    # (e.g. "ped-watcher-heartbeat.json"), but the keys in
+    # HEARTBEAT_INTERVALS are the Python module names with underscores
+    # (e.g. "ped_watcher"). Convert underscore → dash for the on-disk
+    # filename. This mismatch caused check_health() to read None for
+    # every watcher and unconditionally report "daemon_down."
+    on_disk_name = watcher_name.replace("_", "-")
+    return os.path.join(OVERSIGHT_DATA_DIR, f"{on_disk_name}-heartbeat.json")
 
 
 def read_heartbeat(watcher_name: str) -> Optional[float]:

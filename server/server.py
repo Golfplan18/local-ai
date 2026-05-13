@@ -385,23 +385,26 @@ def transcribe_upload_and_start():
         return _json_response({"error": f"upload save failed: {e}"}, status=500)
 
     options = {}
-    lang = (request.form.get("language") or "").strip()
-    model = (request.form.get("model") or "").strip()
+    lang     = (request.form.get("language") or "").strip()
+    model    = (request.form.get("model") or "").strip()
+    provider = (request.form.get("provider") or "").strip()
+    openrouter_model = (request.form.get("openrouter_model") or "").strip()
     # Fill in user-settings defaults when the browser didn't override.
-    if not lang and _HAS_USER_SETTINGS and _user_settings is not None:
+    if _HAS_USER_SETTINGS and _user_settings is not None:
         try:
-            lang = _user_settings.get_setting("whisper.default_language") or ""
+            if not lang:     lang     = _user_settings.get_setting("whisper.default_language") or ""
+            if not model:    model    = _user_settings.get_setting("whisper.model_size") or ""
+            if not provider: provider = _user_settings.get_setting("whisper.provider") or ""
+            if not openrouter_model:
+                openrouter_model = _user_settings.get_setting("whisper.openrouter_model") or ""
         except Exception:
-            lang = ""
-    if not model and _HAS_USER_SETTINGS and _user_settings is not None:
-        try:
-            model = _user_settings.get_setting("whisper.model_size") or ""
-        except Exception:
-            model = ""
-    if lang:
-        options["language"] = lang
-    if model:
-        options["model"] = model
+            pass
+    provider = (provider or "whisper_local").lower()
+    if lang:              options["language"]          = lang
+    if model:             options["model"]             = model
+    options["provider"]   = provider
+    if provider == "openrouter" and openrouter_model:
+        options["openrouter_model"] = openrouter_model
 
     try:
         tid = _get_transcription_manager().start(staged_path, options)
@@ -426,6 +429,153 @@ def transcribe_state(transcription_id):
 
 # /api/transcribe/stream retired 2026-05-01 — transcribe-input.js
 # polls /api/transcribe/<id>/state since 2026-04-30.
+
+
+# ── Text-to-speech ───────────────────────────────────────────────────────────
+#
+# Two providers:
+#   local_say   — macOS `say` binary. Free, instant, decent quality, offline.
+#                 Voices live in System Settings → Accessibility → Spoken Content.
+#   openrouter  — OpenRouter speech endpoint (forwards to ElevenLabs / OpenAI tts /
+#                 etc. depending on the chosen model). Paid; better voices.
+#
+# Endpoints:
+#   GET  /api/tts/voices  — list available local-say voices (used by Speech tab).
+#   POST /api/tts         — synthesize text → audio bytes. Body: {text, provider,
+#                            voice|openrouter_model, openrouter_voice?}.
+
+@app.route("/api/tts/voices", methods=["GET"])
+def tts_list_voices():
+    """Return the macOS `say -v ?` voice catalog as JSON.
+
+    Output rows look like: ``Samantha            en_US    # ...``.
+    The non-Mac case (Linux dev box) returns an empty list — the
+    speech tab degrades gracefully to OpenRouter-only.
+    """
+    import subprocess
+    say_bin = shutil.which("say")
+    if not say_bin:
+        return _json_response({"voices": []})
+    try:
+        r = subprocess.run([say_bin, "-v", "?"], capture_output=True,
+                           text=True, timeout=5)
+    except Exception as e:
+        return _json_response({"voices": [], "error": str(e)})
+    voices = []
+    for line in r.stdout.splitlines():
+        if not line.strip(): continue
+        # Format: "Name    en_US    # sample sentence"
+        parts = line.split("#", 1)
+        head  = parts[0].rstrip()
+        # The locale is the last whitespace-delimited token on `head`.
+        toks = head.rsplit(None, 1)
+        if len(toks) == 2:
+            name, lang = toks[0].strip(), toks[1].strip()
+        else:
+            name, lang = head.strip(), ""
+        if name:
+            voices.append({"name": name, "language": lang})
+    voices.sort(key=lambda v: v["name"].lower())
+    return _json_response({"voices": voices})
+
+
+def _tts_local_say(text: str, voice: str) -> tuple[bytes | None, str | None]:
+    """Run macOS `say` → AIFF bytes. Returns (audio_bytes, mimetype) or
+    (None, error_message). AIFF plays natively in <audio> on Safari/Chrome."""
+    import subprocess, tempfile
+    say_bin = shutil.which("say")
+    if not say_bin:
+        return None, "macOS `say` binary not found"
+    with tempfile.NamedTemporaryFile(suffix=".aiff", delete=False) as tmp:
+        path = tmp.name
+    try:
+        argv = [say_bin, "-o", path]
+        if voice: argv += ["-v", voice]
+        argv.append(text)
+        r = subprocess.run(argv, capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:
+            return None, f"say failed: {r.stderr.strip()[:200]}"
+        with open(path, "rb") as f:
+            data = f.read()
+        return data, "audio/aiff"
+    except Exception as e:
+        return None, f"say exception: {e}"
+    finally:
+        try: os.unlink(path)
+        except Exception: pass
+
+
+def _tts_openrouter(text: str, model: str, voice: str) -> tuple[bytes | None, str | None]:
+    """Call OpenRouter's /v1/audio/speech endpoint via the OpenAI SDK.
+    Returns (mp3_bytes, "audio/mpeg") or (None, error_message)."""
+    try:
+        import keyring
+        key = (os.environ.get("OPENROUTER_API_KEY", "")
+               or keyring.get_password("ora", "openrouter-api-key") or "")
+    except Exception:
+        key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not key:
+        return None, "OpenRouter API key not set"
+    if not model:
+        return None, "No OpenRouter speech model selected"
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+        kwargs = {"model": model, "input": text}
+        if voice: kwargs["voice"] = voice
+        resp = client.audio.speech.create(
+            **kwargs,
+            extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
+        )
+        return resp.read(), "audio/mpeg"
+    except Exception as e:
+        return None, f"openrouter speech failed: {e}"
+
+
+@app.route("/api/tts", methods=["POST"])
+def tts_synthesize():
+    """Synthesize text → audio. Returns the audio bytes inline.
+
+    Body (JSON or form): {text, provider?, voice?, openrouter_model?,
+    openrouter_voice?}. Provider defaults to user-settings or local_say.
+    """
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return _json_response({"error": "text required"}, status=400)
+    # Cap input length to avoid runaway TTS calls.
+    if len(text) > 20000:
+        text = text[:20000]
+
+    provider = (data.get("provider") or "").strip().lower()
+    voice    = (data.get("voice") or "").strip()
+    or_model = (data.get("openrouter_model") or "").strip()
+    or_voice = (data.get("openrouter_voice") or "").strip()
+    if _HAS_USER_SETTINGS and _user_settings is not None:
+        try:
+            if not provider: provider = (_user_settings.get_setting("speech.provider") or "").lower()
+            if not voice:    voice    = _user_settings.get_setting("speech.local_voice") or ""
+            if not or_model: or_model = _user_settings.get_setting("speech.openrouter_model") or ""
+            if not or_voice: or_voice = _user_settings.get_setting("speech.openrouter_voice") or ""
+        except Exception:
+            pass
+    provider = provider or "local_say"
+
+    if provider == "local_say":
+        audio, err = _tts_local_say(text, voice)
+        ext = "aiff"
+    elif provider == "openrouter":
+        audio, err = _tts_openrouter(text, or_model, or_voice)
+        ext = "mp3"
+    else:
+        return _json_response({"error": f"unknown provider: {provider}"}, status=400)
+
+    if audio is None:
+        return _json_response({"error": err or "synthesis failed"}, status=502)
+
+    from flask import Response
+    return Response(audio, mimetype="audio/aiff" if ext == "aiff" else "audio/mpeg",
+                    headers={"Content-Disposition": f"inline; filename=tts.{ext}"})
 
 
 # ── Audio/Video Phase 3 — media library endpoints ────────────────────────────
@@ -1758,6 +1908,9 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
     yield _sse("pipeline_stage", stage="gear_execution",
                gear=gear, label=f"Running Gear {gear} pipeline…")
 
+    # Diagnostic trace
+    print(f"[pipeline-dispatch] mode={step1.get('mode')} gear={gear}", flush=True)
+
     endpoint = get_endpoint(config)
 
     if gear <= 2:
@@ -1993,6 +2146,13 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         or pre_routing.get("pending_clarification")
     )
     if fallback_to_direct:
+        print(
+            f"[pipeline-bypass] bypass_to_direct={pre_routing.get('bypass_to_direct_response')!r} "
+            f"step1_mode={step1.get('mode')!r} pending_clar={bool(pre_routing.get('pending_clarification'))} "
+            f"dispatched_mode={pre_routing.get('dispatched_mode_id')!r} "
+            f"clar_question={(pre_routing.get('pending_clarification') or '')[:120]!r}",
+            flush=True,
+        )
         yield from _direct_stream(user_input, history, images=images)
         return
 
@@ -7510,8 +7670,14 @@ def config_post():
 
 # ── Routing Configuration API ─────────────────────────────────────────────
 
-ROUTING_CONFIG = os.path.join(WORKSPACE, "config/routing-config.json")
-PROVIDER_DB    = os.path.join(WORKSPACE, "config/provider-database.json")
+ROUTING_CONFIG    = os.path.join(WORKSPACE, "config/routing-config.json")
+PROVIDER_DB       = os.path.join(WORKSPACE, "config/provider-database.json")
+PIPELINE_PRESETS  = os.path.join(WORKSPACE, "config/pipeline-presets.json")
+
+# Subset of routing-config that a preset snapshots. Keep this stable: the
+# active preset is the snapshot last applied; live edits drift the routing
+# config away from the saved preset until the user Saves or switches.
+PRESET_KEYS = ("pipelines", "buckets", "diversity")
 
 def _load_routing_config():
     try:
@@ -7611,6 +7777,110 @@ def routing_status():
     return json.dumps(router.get_status())
 
 
+# ── Pipeline presets ──────────────────────────────────────────────────────
+#
+# Named snapshots of the text-pipeline state (pipelines + buckets + adversarial
+# diversity setting). Visual capability prefs are intentionally NOT included —
+# they're treated as a permanent global setting, not a per-preset value.
+#
+# Lifecycle:
+#   - `active` field tracks the most recently activated preset name (or null).
+#   - Live edits to routing-config drift away from `active`; the UI surfaces
+#     that drift as "(modified)" but does not auto-save back to the preset.
+#   - Save        → overwrite the active preset with current routing state.
+#   - Save As     → write a new preset and mark it active.
+#   - Activate    → copy preset values into routing-config and reload the router.
+#   - Delete      → remove preset; clears `active` if it pointed at this one.
+
+def _load_presets():
+    try:
+        with open(PIPELINE_PRESETS) as f:
+            data = json.load(f) or {}
+            if not isinstance(data, dict):
+                data = {}
+            data.setdefault("active", None)
+            data.setdefault("presets", {})
+            return data
+    except FileNotFoundError:
+        return {"active": None, "presets": {}}
+    except Exception:
+        return {"active": None, "presets": {}}
+
+
+def _save_presets(data):
+    with open(PIPELINE_PRESETS, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+
+
+def _preset_snapshot_from_routing():
+    """Build a preset payload from the current routing-config.json."""
+    cfg = _load_routing_config()
+    return {k: cfg.get(k, {}) for k in PRESET_KEYS}
+
+
+@app.route("/config/presets")
+def presets_get():
+    """Return all saved presets plus the active preset name."""
+    return json.dumps(_load_presets())
+
+
+@app.route("/config/presets", methods=["POST"])
+def presets_save():
+    """Save the current routing state as a named preset.
+
+    Body: {"name": "<preset name>", "overwrite": bool (optional, default True)}
+    Activates the saved preset (so the UI immediately reflects "in sync").
+    """
+    data = request.get_json(force=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return json.dumps({"ok": False, "error": "name is required"}), 400
+    overwrite = bool(data.get("overwrite", True))
+
+    store = _load_presets()
+    if name in store["presets"] and not overwrite:
+        return json.dumps({"ok": False, "error": "preset exists"}), 409
+
+    store["presets"][name] = _preset_snapshot_from_routing()
+    store["active"] = name
+    _save_presets(store)
+    return json.dumps({"ok": True, "active": name, "presets": store["presets"]})
+
+
+@app.route("/config/presets/<name>", methods=["DELETE"])
+def presets_delete(name):
+    store = _load_presets()
+    if name not in store["presets"]:
+        return json.dumps({"ok": False, "error": "preset not found"}), 404
+    del store["presets"][name]
+    if store["active"] == name:
+        store["active"] = None
+    _save_presets(store)
+    return json.dumps({"ok": True, "active": store["active"], "presets": store["presets"]})
+
+
+@app.route("/config/presets/<name>/activate", methods=["POST"])
+def presets_activate(name):
+    """Apply a saved preset to the live routing-config and mark it active."""
+    store = _load_presets()
+    if name not in store["presets"]:
+        return json.dumps({"ok": False, "error": "preset not found"}), 404
+
+    preset = store["presets"][name]
+    cfg = _load_routing_config()
+    for key in PRESET_KEYS:
+        if key in preset:
+            cfg[key] = preset[key]
+    _save_routing_config(cfg)
+
+    store["active"] = name
+    _save_presets(store)
+
+    reloaded = _reload_pipeline_router_after_config_change()
+    return json.dumps({"ok": True, "active": name, "router_reloaded": reloaded})
+
+
 @app.route("/config/providers")
 def providers_get():
     """Return the provider database for bucket auto-population."""
@@ -7619,6 +7889,142 @@ def providers_get():
             return json.dumps(json.load(f))
     except Exception:
         return json.dumps({})
+
+
+OPENROUTER_CATALOG = os.path.join(WORKSPACE, "config/openrouter-catalog.json")
+OPENROUTER_REFRESH_SCRIPT = os.path.join(WORKSPACE, "scripts/refresh-openrouter.py")
+DIRECT_API_REFRESH_SCRIPT = os.path.join(WORKSPACE, "scripts/refresh-direct-apis.py")
+DIRECT_API_MARKER         = os.path.join(WORKSPACE, "config/.direct-api-refresh-stamp")
+OPENROUTER_STALE_DAYS = 7
+DIRECT_API_STALE_DAYS = 7
+
+
+def _refresh_direct_apis_if_stale():
+    """Run the direct-API refresher if its marker file is older than
+    ``DIRECT_API_STALE_DAYS`` (or missing). Best-effort: each provider
+    fails independently (e.g. missing key)."""
+    import time, subprocess
+    try:
+        age_days = (time.time() - os.path.getmtime(DIRECT_API_MARKER)) / 86400
+        if age_days < DIRECT_API_STALE_DAYS:
+            return
+        print(f"[startup] Direct-API catalog age {age_days:.1f}d — refreshing.")
+    except FileNotFoundError:
+        print("[startup] Direct-API marker missing — refreshing.")
+    except Exception:
+        return
+
+    try:
+        r = subprocess.run(
+            ["/opt/homebrew/bin/python3", DIRECT_API_REFRESH_SCRIPT],
+            capture_output=True, text=True, timeout=120,
+        )
+        if r.returncode == 0:
+            with open(DIRECT_API_MARKER, "w") as f:
+                f.write(str(time.time()))
+            print("[startup] Direct-API catalog refreshed.")
+        else:
+            print(f"[startup] Direct-API refresh failed: {r.stderr.strip()[:200]}")
+    except Exception as e:
+        print(f"[startup] Direct-API refresh exception: {e}")
+
+
+def _refresh_openrouter_if_stale():
+    """If the catalog is older than ``OPENROUTER_STALE_DAYS`` (or missing),
+    invoke the refresh script. Called once at server startup. Best-effort:
+    failures log and proceed — the existing catalog stays in place if the
+    refresh fails."""
+    import time
+    try:
+        mtime = os.path.getmtime(OPENROUTER_CATALOG)
+        age_days = (time.time() - mtime) / 86400
+        if age_days < OPENROUTER_STALE_DAYS:
+            return
+        print(f"[startup] OpenRouter catalog age {age_days:.1f}d — refreshing.")
+    except FileNotFoundError:
+        print("[startup] OpenRouter catalog missing — fetching.")
+    except Exception:
+        return  # Anything weird, leave well enough alone.
+
+    import subprocess
+    try:
+        r = subprocess.run(
+            ["/opt/homebrew/bin/python3", OPENROUTER_REFRESH_SCRIPT],
+            capture_output=True, text=True, timeout=60,
+        )
+        if r.returncode == 0:
+            print("[startup] OpenRouter catalog refreshed.")
+        else:
+            print(f"[startup] OpenRouter refresh failed: {r.stderr.strip()[:200]}")
+    except Exception as e:
+        print(f"[startup] OpenRouter refresh exception: {e}")
+
+
+@app.route("/config/openrouter/catalog")
+def openrouter_catalog_get():
+    """Return the cached OpenRouter model catalog.
+
+    The catalog is refreshed by ~/ora/scripts/refresh-openrouter.py.
+    Returns an empty stub if the file hasn't been written yet so the
+    frontend can render "no openrouter models" rather than 500-erroring.
+    """
+    try:
+        with open(OPENROUTER_CATALOG) as f:
+            return json.dumps(json.load(f))
+    except FileNotFoundError:
+        return json.dumps({
+            "fetched_at": None, "model_count": 0,
+            "models": [], "by_modality": {}, "by_vendor": {},
+        })
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
+
+@app.route("/config/direct-apis/refresh", methods=["POST"])
+def direct_apis_refresh():
+    """Run the direct-API refresher on demand. Same shape as the
+    OpenRouter refresh endpoint. Synchronous; returns when complete."""
+    import subprocess, time
+    try:
+        result = subprocess.run(
+            ["/opt/homebrew/bin/python3", DIRECT_API_REFRESH_SCRIPT],
+            capture_output=True, text=True, timeout=120,
+        )
+        ok = result.returncode == 0
+        if ok:
+            with open(DIRECT_API_MARKER, "w") as f:
+                f.write(str(time.time()))
+        return json.dumps({
+            "ok":     ok,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }), (200 if ok else 500)
+    except Exception as e:
+        return json.dumps({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/config/openrouter/refresh", methods=["POST"])
+def openrouter_refresh():
+    """Trigger an on-demand catalog refresh by invoking the script.
+
+    Synchronous — returns after the refresh script completes (usually
+    1–2 seconds). The frontend can call this from a Buckets-tab button.
+    """
+    import subprocess
+    script = os.path.join(WORKSPACE, "scripts/refresh-openrouter.py")
+    try:
+        result = subprocess.run(
+            ["/opt/homebrew/bin/python3", script],
+            capture_output=True, text=True, timeout=60,
+        )
+        ok = result.returncode == 0
+        return json.dumps({
+            "ok":     ok,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }), (200 if ok else 500)
+    except Exception as e:
+        return json.dumps({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/capability/providers")
@@ -7653,7 +8059,8 @@ def capability_providers_get():
         # Best-effort: try registering each known image-providing
         # integration. Each is wrapped so a missing dependency on one
         # doesn't break visibility into the others.
-        for module_name in ("civitai_images", "openai_images", "stability", "replicate"):
+        for module_name in ("civitai_images", "openai_images", "stability",
+                             "replicate", "openrouter_images"):
             try:
                 module = __import__(module_name)
                 if module_name == "replicate" and hasattr(module, "register_replicate_provider"):
@@ -7696,12 +8103,50 @@ def capability_providers_get():
         "replicate":       has_replicate,
     }
 
+    # Look up OpenRouter catalog so the openrouter:* providers (registered
+    # by the openrouter_images integration above) get friendly display
+    # names + pricing in the picker. The integration registers handlers
+    # for all image/video models; here we just enrich their UI presentation.
+    try:
+        with open(OPENROUTER_CATALOG) as _f:
+            _or_catalog = json.load(_f)
+    except Exception:
+        _or_catalog = {"by_modality": {}, "models": []}
+    _or_lookup = {m["id"]: m for m in _or_catalog.get("models", [])}
+    has_or_key = bool(
+        os.environ.get("OPENROUTER_API_KEY")
+        or (lambda: __import__("keyring").get_password("ora", "openrouter-api-key") or "")()
+    )
+
+    def _enrich_openrouter_entry(pid: str, slot: str) -> dict:
+        model_id = pid.split(":", 1)[1] if ":" in pid else pid
+        m = _or_lookup.get(model_id, {})
+        p = m.get("pricing_per_million", {}) or {}
+        price = ""
+        if p.get("prompt") is not None and p.get("completion") is not None:
+            price = f"  (${p['prompt']}/${p['completion']}/M)"
+        reason = "" if has_or_key else "set OpenRouter API key in Settings → External APIs"
+        # Video gens often run minutes and cost real money — note that.
+        if slot == "video_generates" and has_or_key:
+            reason = "Async — submission returns immediately; generation takes 30s–10min and requires OpenRouter credits."
+        return {
+            "provider_id":  pid,
+            "display_name": (m.get("display_name") or model_id) + price,
+            "available":    has_or_key,
+            "reason":       reason,
+            "kind":         "api",
+        }
+
     out = {}
     for slot_name in registry.list_slots():
         registered = set(registry.providers_for(slot_name))
         entries = []
         seen = set()
         for pid in registered:
+            if pid.startswith("openrouter:"):
+                entries.append(_enrich_openrouter_entry(pid, slot_name))
+                seen.add(pid)
+                continue
             has_creds = PROVIDER_HAS_CREDS.get(pid, True)
             reason_default = KNOWN_PROVIDERS.get(pid, ("", "unknown"))
             entries.append({
@@ -8169,6 +8614,18 @@ if __name__ == "__main__":
         _scan_orphaned_pending_submissions()
     except Exception as _e:
         print(f"[startup] orphan submission scan failed: {_e}")
+
+    # Refresh the OpenRouter catalog if it's gone stale. Runs once per
+    # server start; the catalog file is the source of truth for the
+    # Buckets / Visual / Transcription / Speech tab pickers.
+    try:
+        _refresh_openrouter_if_stale()
+    except Exception as _e:
+        print(f"[startup] OpenRouter refresh hook failed: {_e}")
+    try:
+        _refresh_direct_apis_if_stale()
+    except Exception as _e:
+        print(f"[startup] Direct-API refresh hook failed: {_e}")
 
     # Self-heal the Lucide icon-set: rebuild runtime/icon-set.json
     # whenever the toolbar / pack JSON sources have moved on. Keeps

@@ -39,6 +39,83 @@
   const DRAFT_KEY_PREFIX = 'ora-v3-draft-';
   const DRAFT_DEBOUNCE   = 400;
 
+  // Markdown → HTML renderer for loaded turn content. The V3 page does not
+  // include chat-panel.js, so its _md is unavailable. This version handles
+  // headers, lists, code, bold/italic, pipe tables, blockquotes — and
+  // crucially strips spurious newlines around block elements so the
+  // browser's built-in margins don't get doubled by stray <br>s.
+  const _md = (text) => {
+    if (typeof text !== 'string') return '';
+    let s = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Fenced code blocks
+    s = s.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, _lang, code) =>
+      `<pre><code>${code.trimEnd()}</code></pre>`
+    );
+    // Inline code
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Bold and italic
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // Pipe tables — a header row, a separator row (---|---|---), then data rows
+    s = s.replace(/((?:^\|.+\|[ \t]*\n)+)/gm, (block) => {
+      const lines = block.trim().split('\n');
+      const sepIdx = lines.findIndex(l => /^\|[\s\-:|]+\|$/.test(l.trim()));
+      if (sepIdx < 1) return block; // not a real table — leave alone
+      const head = lines[0].trim().slice(1, -1)
+        .split('|').map(c => `<th>${c.trim()}</th>`).join('');
+      const body = lines.slice(sepIdx + 1).map(row =>
+        `<tr>${row.trim().slice(1, -1).split('|').map(c => `<td>${c.trim()}</td>`).join('')}</tr>`
+      ).join('');
+      return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>\n`;
+    });
+
+    // Horizontal rule — a line of three or more dashes (or asterisks/underscores)
+    // by itself becomes <hr>
+    s = s.replace(/^(---+|\*\*\*+|___+)$/gm, '<hr>');
+
+    // Blockquotes (lines that originally started with > — now &gt;)
+    s = s.replace(/^&gt; ?(.*)$/gm, '<blockquote>$1</blockquote>');
+    // Merge consecutive blockquote lines into one block
+    s = s.replace(/<\/blockquote>\n<blockquote>/g, '<br>');
+
+    // Headers
+    s = s.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+    s = s.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+    s = s.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+    s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Bullet lists — wrap consecutive `<li>` runs in `<ul>` and strip
+    // intervening newlines so the items don't get extra <br>s later.
+    s = s.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+    s = s.replace(/(<li>.*<\/li>(\n|$))+/g, m => `<ul>${m.replace(/\n/g, '')}</ul>`);
+    // Numbered lists — same pattern. Skip runs already wrapped (no newlines
+    // between items means they're already inside a <ul>).
+    s = s.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    s = s.replace(/(<li>.*<\/li>(\n|$))+/g, m => {
+      if (!m.includes('\n')) return m; // already wrapped above
+      return `<ol>${m.replace(/\n/g, '')}</ol>`;
+    });
+
+    // Strip newlines that flank block-level elements — without this, the
+    // \n -> <br> pass below would add a redundant <br> on top of the
+    // element's own CSS margin, producing the "everything is too spread out"
+    // problem. Includes <hr> and <br> so they don't accumulate either.
+    s = s.replace(/\n*(<\/?(?:h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|pre|blockquote|hr|br)[^>]*\/?>)\n*/g, '$1');
+
+    // Remaining newlines: blank-line gap → paragraph break, single → <br>
+    s = s.replace(/\n{2,}/g, '<br><br>');
+    s = s.replace(/\n/g, '<br>');
+
+    return s;
+  };
+
   // ── Module state ────────────────────────────────────────────────────────
   const state = {
     activeConversationId: null,
@@ -168,7 +245,7 @@
     if (t.assistant) {
       const block = document.createElement('div');
       block.className = 'output-turn output-turn-assistant';
-      block.textContent = t.assistant.content || '';
+      block.innerHTML = _md(t.assistant.content || '');
       outputContent.appendChild(block);
     } else {
       const pending = document.createElement('div');
