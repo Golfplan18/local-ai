@@ -714,6 +714,221 @@ class TestRenderArticleFiguresPatchFlag(unittest.TestCase):
         self.assertNotIn("Frontmatter patched", out)
 
 
+# ---------- Auto-embed inline figures (zero-manual-labor) ----------
+
+class TestAutoEmbedHelpers(unittest.TestCase):
+    """Unit tests for the small helpers backing the auto-embed body
+    patcher (figure id derivation, name lookup, date formatting,
+    figure-block stripping)."""
+
+    def test_figure_footnote_id_derives_from_url(self):
+        fid = slash_commands._figure_footnote_id(
+            "/figures/2026-05-jobs/fig-cpiaucsl-yoy_pct.svg"
+        )
+        self.assertEqual(fid, "fig-src-cpiaucsl-yoy_pct")
+
+    def test_figure_footnote_id_handles_no_fig_prefix(self):
+        fid = slash_commands._figure_footnote_id(
+            "/figures/cpiaucsl_yoy.svg"
+        )
+        self.assertEqual(fid, "fig-src-cpiaucsl_yoy")
+
+    def test_series_id_from_figure_url_strips_transformation(self):
+        sid = slash_commands._series_id_from_figure_url(
+            "/figures/<slug>/fig-cpiaucsl-yoy_pct.svg"
+        )
+        self.assertEqual(sid, "CPIAUCSL")
+        sid2 = slash_commands._series_id_from_figure_url(
+            "/figures/<slug>/fig-fedfunds-raw.svg"
+        )
+        self.assertEqual(sid2, "FEDFUNDS")
+
+    def test_short_indicator_name_uses_catalog_when_available(self):
+        # Will resolve via INDICATOR_CATALOG (CPIAUCSL exists in catalog)
+        name = slash_commands._short_indicator_name({
+            "url": "/figures/x/fig-cpiaucsl-yoy_pct.svg",
+            "source": "FRED, Anything (CPIAUCSL)",
+        })
+        # Catalog name "Consumer Price Index (all urban consumers)" →
+        # parenthetical stripped
+        self.assertIn("Consumer Price Index", name)
+
+    def test_short_date_range_collapses_to_year_pair(self):
+        self.assertEqual(
+            slash_commands._short_date_range("2022-01-01 to 2026-04-01"),
+            "2022–2026",  # en-dash
+        )
+
+    def test_short_date_range_handles_same_year(self):
+        self.assertEqual(
+            slash_commands._short_date_range("2026-01-01 to 2026-04-01"),
+            "2026",
+        )
+
+    def test_short_date_range_returns_empty_on_blank(self):
+        self.assertEqual(slash_commands._short_date_range(""), "")
+
+    def test_strip_existing_figures_removes_marker_wrapped(self):
+        body = (
+            "Some intro.\n\n"
+            "<!-- ora-figure-start: CPIAUCSL -->\n"
+            '<figure class="article-figure article-figure--float-right">'
+            "<img src='x.svg' /><figcaption>Cap</figcaption></figure>\n"
+            "<!-- ora-figure-end -->\n\n"
+            "Body continues."
+        )
+        out = slash_commands._strip_existing_figures(body)
+        self.assertNotIn("<figure", out)
+        self.assertNotIn("ora-figure-start", out)
+        self.assertIn("Body continues.", out)
+
+    def test_strip_existing_figures_removes_bare_blocks(self):
+        body = (
+            "Intro paragraph.\n\n"
+            '<figure class="article-figure article-figure--float-left">'
+            "<img src='x.svg' /></figure>\n\n"
+            "Tail paragraph."
+        )
+        out = slash_commands._strip_existing_figures(body)
+        self.assertNotIn("<figure", out)
+        self.assertIn("Tail paragraph.", out)
+
+    def test_build_inline_figure_html_includes_marker_and_anchor(self):
+        figure = {
+            "url": "/figures/x/fig-cpiaucsl-yoy_pct.svg",
+            "alt": "CPI YoY",
+            "transformation": "yoy_pct",
+            "data_window": "2022-01-01 to 2026-04-01",
+            "source": "FRED, Consumer Price Index (CPIAUCSL)",
+        }
+        html = slash_commands._build_inline_figure_html(
+            figure, footnote_num=1, float_side="right",
+        )
+        self.assertIn("ora-figure-start: CPIAUCSL", html)
+        self.assertIn("ora-figure-end", html)
+        self.assertIn("article-figure--float-right", html)
+        self.assertIn('href="#fig-src-cpiaucsl-yoy_pct"', html)
+        # Brief caption includes name + transformation + date range
+        self.assertIn("year-over-year", html)
+        self.assertIn("2022–2026", html)
+
+
+class TestPatchArticleBodyWithFigures(unittest.TestCase):
+    """End-to-end test for the body-patcher — strip existing figure
+    blocks, find anchor paragraphs by phrase match, insert markers."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.article_path = os.path.join(self.tmpdir, "test.md")
+        body = (
+            "---\n"
+            "headline: Test\n"
+            "lede: Test lede\n"
+            "publish_date: 2026-05-14\n"
+            "sources: []\n"
+            "atomic_claims: []\n"
+            "metadata:\n"
+            "  framework_version: '1.0.0'\n"
+            "  generation_timestamp: 2026-05-14\n"
+            "  consensus_floor_version: '0.1'\n"
+            "  publication_mindspec_version: 0.2.3-msi\n"
+            "  ai_disclosure: 'x'\n"
+            "---\n\n"
+            "## What the April report shows\n\n"
+            "Consumer Price Index rose 3.1 percent year-over-year.\n\n"
+            "## What it means for the Fed\n\n"
+            "Federal Funds Rate held at 4.50 percent.\n\n"
+            "## Conclusion\n\n"
+            "Background paragraph here.\n"
+        )
+        with open(self.article_path, "w", encoding="utf-8") as f:
+            f.write(body)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_inserts_two_figures_at_phrase_anchors(self):
+        figures = [
+            {
+                "url": "/figures/x/fig-cpiaucsl-yoy_pct.svg",
+                "alt": "CPI",
+                "transformation": "yoy_pct",
+                "data_window": "2022-01-01 to 2026-04-01",
+                "source": "FRED, Consumer Price Index (CPIAUCSL)",
+            },
+            {
+                "url": "/figures/x/fig-fedfunds-raw.svg",
+                "alt": "FEDFUNDS",
+                "transformation": "raw",
+                "data_window": "2021-01-01 to 2026-04-01",
+                "source": "FRED, Federal Funds Effective Rate (FEDFUNDS)",
+            },
+        ]
+        placed = slash_commands._patch_article_body_with_figures(
+            self.article_path, figures,
+        )
+        self.assertEqual(placed, 2)
+
+        with open(self.article_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Both auto-figures present with markers
+        self.assertIn("ora-figure-start: CPIAUCSL", content)
+        self.assertIn("ora-figure-start: FEDFUNDS", content)
+
+        # CPI figure inserted before the CPI paragraph
+        cpi_block_pos = content.find("ora-figure-start: CPIAUCSL")
+        cpi_para_pos = content.find("Consumer Price Index rose")
+        self.assertLess(cpi_block_pos, cpi_para_pos)
+
+        # FEDFUNDS figure inserted before the FEDFUNDS paragraph
+        ff_block_pos = content.find("ora-figure-start: FEDFUNDS")
+        ff_para_pos = content.find("Federal Funds Rate held")
+        self.assertLess(ff_block_pos, ff_para_pos)
+
+        # Float sides alternate right (1st) / left (2nd)
+        first_idx = content.find("article-figure--float-right")
+        second_idx = content.find("article-figure--float-left")
+        self.assertGreaterEqual(first_idx, 0)
+        self.assertGreaterEqual(second_idx, 0)
+        self.assertLess(first_idx, second_idx)
+
+    def test_strips_existing_figures_before_inserting(self):
+        # Pre-seed an existing figure block; verify it gets stripped.
+        with open(self.article_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        # Replace lede with body containing an old figure
+        content = content.replace(
+            "Consumer Price Index rose 3.1 percent year-over-year.",
+            (
+                '<figure class="article-figure article-figure--float-left">'
+                '<img src="old.svg" /></figure>\n\n'
+                "Consumer Price Index rose 3.1 percent year-over-year."
+            ),
+        )
+        with open(self.article_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        figures = [{
+            "url": "/figures/x/fig-cpiaucsl-yoy_pct.svg",
+            "alt": "CPI",
+            "transformation": "yoy_pct",
+            "data_window": "2022-01-01 to 2026-04-01",
+            "source": "FRED, Consumer Price Index (CPIAUCSL)",
+        }]
+        slash_commands._patch_article_body_with_figures(
+            self.article_path, figures,
+        )
+
+        with open(self.article_path, "r", encoding="utf-8") as f:
+            after = f.read()
+        # Old figure stripped
+        self.assertNotIn("old.svg", after)
+        # New figure inserted
+        self.assertIn("ora-figure-start: CPIAUCSL", after)
+        self.assertIn("fig-cpiaucsl-yoy_pct.svg", after)
+
+
 # ---------- Failure-mode envelope debug logs (Tier 1 c) ----------
 
 class TestWriteFailureDebugLogs(unittest.TestCase):

@@ -62,6 +62,7 @@ Deferred (Next Session)" item 1.
 from __future__ import annotations
 
 import os
+import re
 import shlex
 from typing import Optional
 
@@ -1253,7 +1254,21 @@ def _cmd_render_article_figures(args: list[str]) -> str:
                 )
             except Exception as exc:
                 lines.append("")
-                lines.append(f"_--patch failed: {exc}_")
+                lines.append(f"_--patch failed (frontmatter): {exc}_")
+            # Auto-embed inline `<figure>` blocks in the body. MSI is
+            # a zero-manual-labor publication; frontmatter alone leaves
+            # the publisher to hand-place charts in the body, which is
+            # the manual-labor step we explicitly eliminate here.
+            try:
+                placed = _patch_article_body_with_figures(
+                    article_path, result.figures,
+                )
+                lines.append(
+                    f"**Body patched:** {placed} `<figure>` block(s) embedded "
+                    f"inline at anchor paragraphs"
+                )
+            except Exception as exc:
+                lines.append(f"_--patch failed (body): {exc}_")
 
     return "\n".join(lines)
 
@@ -1337,6 +1352,311 @@ def _write_failure_debug_logs(article_slug: str,
             continue
 
     return out
+
+
+_SUPERSCRIPTS = "⁰¹²³⁴⁵⁶⁷⁸⁹"
+
+
+def _figure_footnote_id(figure_url: str) -> str:
+    """Mirror ArticleLayout.astro's figureFootnoteId: derive a stable
+    footnote anchor id from the figure's URL filename. Example:
+    `/figures/<slug>/fig-cpiaucsl-yoy_pct.svg` → `fig-src-cpiaucsl-yoy_pct`."""
+    base = (figure_url or "").split("/")[-1]
+    stem = re.sub(r"\.svg$", "", base, flags=re.IGNORECASE)
+    stem = re.sub(r"^fig-", "", stem)
+    return f"fig-src-{stem}"
+
+
+def _series_id_from_figure_url(figure_url: str) -> str:
+    """Extract the FRED series_id from a figure URL.
+    Example: `/figures/<slug>/fig-cpiaucsl-yoy_pct.svg` → `CPIAUCSL`."""
+    base = (figure_url or "").split("/")[-1]
+    stem = re.sub(r"\.svg$", "", base, flags=re.IGNORECASE)
+    stem = re.sub(r"^fig-", "", stem)
+    # Series id is whatever precedes the trailing -<transformation>.
+    # Transformations are a known closed set; strip those suffixes.
+    for suffix in ("-yoy_pct", "-first_diff", "-ytd", "-raw"):
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
+            break
+    return stem.upper().replace("-", "")
+
+
+def _short_indicator_name(figure: dict) -> str:
+    """Resolve a clean short name for inline-caption use.
+
+    Looks up INDICATOR_CATALOG by series_id (parsed from the figure
+    URL) and returns the catalog `name` with parenthetical stripped
+    (e.g., "Consumer Price Index (all urban consumers)" → "Consumer
+    Price Index"). Falls back to parsing the figureSchema's `source`
+    field when the catalog lookup fails.
+    """
+    try:
+        from article_data_viz import INDICATOR_CATALOG
+    except ImportError:
+        from orchestrator.article_data_viz import INDICATOR_CATALOG
+    sid = _series_id_from_figure_url(figure.get("url", ""))
+    for entry in INDICATOR_CATALOG:
+        if entry.get("series_id") == sid:
+            name = entry.get("name", "")
+            return re.sub(r"\s*\([^)]*\)\s*$", "", name).strip()
+    # Fallback: parse "FRED, <name> (<series_id>)"
+    source = figure.get("source", "")
+    m = re.match(r"FRED,\s+(.+?)\s+\([^)]+\)\s*$", source)
+    if m:
+        n = m.group(1).strip()
+        # Trim disambiguating suffix after ": "
+        return n.split(":")[0].strip()
+    return source or sid
+
+
+_TRANSFORMATION_INLINE_LABELS: dict[str, str] = {
+    "raw": "",
+    "yoy_pct": "year-over-year",
+    "first_diff": "month-over-month",
+    "ytd": "year-to-date",
+    "level_vs_average": "vs. historical average",
+    "cumulative": "cumulative",
+    "other": "",
+}
+
+
+def _short_date_range(data_window: str) -> str:
+    """Convert "2022-01-01 to 2026-04-01" → "2022–2026". Robust to
+    weekly windows ("2021-01-07 to 2026-05-07") and missing strings.
+    Returns "" when the format isn't recognised."""
+    if not data_window:
+        return ""
+    m = re.match(r"\s*(\d{4})-\d{2}-\d{2}\s+to\s+(\d{4})-\d{2}-\d{2}\s*$",
+                 data_window)
+    if not m:
+        return data_window  # use as-is if unparseable
+    a, b = m.group(1), m.group(2)
+    if a == b:
+        return a
+    return f"{a}–{b}"  # en-dash
+
+
+def _build_inline_figure_html(figure: dict,
+                              footnote_num: int,
+                              float_side: str) -> str:
+    """Produce the `<figure>` block to embed inline in the article body.
+
+    Wrapped with start/end markers so re-render can strip cleanly:
+        <!-- ora-figure-start: <series_id> --> ... <!-- ora-figure-end -->
+    """
+    url = figure.get("url", "")
+    alt = figure.get("alt", "")
+    short_name = _short_indicator_name(figure)
+    transformation = figure.get("transformation", "raw")
+    transformation_label = _TRANSFORMATION_INLINE_LABELS.get(transformation, "")
+    date_range = _short_date_range(figure.get("data_window", ""))
+
+    parts = [short_name]
+    if transformation_label:
+        parts.append(transformation_label)
+    if date_range:
+        parts.append(date_range)
+    caption_lead = ", ".join(parts)
+
+    superscript = (
+        _SUPERSCRIPTS[footnote_num] if 0 <= footnote_num < len(_SUPERSCRIPTS)
+        else f"({footnote_num})"
+    )
+    footnote_id = _figure_footnote_id(url)
+    series_id = _series_id_from_figure_url(url)
+
+    float_class = (
+        "article-figure--float-right" if float_side == "right"
+        else "article-figure--float-left"
+    )
+
+    return (
+        f"<!-- ora-figure-start: {series_id} -->\n"
+        f'<figure class="article-figure {float_class}">\n'
+        f'  <img src="{url}" alt="{alt}" loading="lazy" />\n'
+        f'  <figcaption>{caption_lead}. '
+        f'<a href="#{footnote_id}">{superscript}</a></figcaption>\n'
+        f"</figure>\n"
+        f"<!-- ora-figure-end -->"
+    )
+
+
+_FIGURE_BLOCK_RE = re.compile(
+    # Auto-inserted (marker-wrapped) blocks.
+    r"<!--\s*ora-figure-start[^>]*-->\s*"
+    r"<figure[^>]*class=\"article-figure[^\"]*\".*?</figure>\s*"
+    r"<!--\s*ora-figure-end\s*-->\s*",
+    re.DOTALL,
+)
+_BARE_FIGURE_BLOCK_RE = re.compile(
+    # Any article-figure block, with or without markers — strips
+    # legacy manual inserts during the transition to fully-automated
+    # placement.
+    r"<figure[^>]*class=\"article-figure[^\"]*\".*?</figure>\s*",
+    re.DOTALL,
+)
+
+
+def _strip_existing_figures(body: str) -> str:
+    """Remove all article-figure blocks (auto and legacy-manual)
+    along with their surrounding blank lines."""
+    body = _FIGURE_BLOCK_RE.sub("", body)
+    body = _BARE_FIGURE_BLOCK_RE.sub("", body)
+    # Collapse triple-or-more newlines left behind by strips.
+    body = re.sub(r"\n{3,}", "\n\n", body)
+    return body
+
+
+def _split_body_into_blocks(body: str) -> list[str]:
+    """Split body markdown into blocks (paragraphs / headings) using
+    blank-line boundaries. Preserves block order; drops empty entries."""
+    blocks = re.split(r"\n\s*\n", body)
+    return [b.rstrip() for b in blocks if b.strip()]
+
+
+def _is_paragraph(block: str) -> bool:
+    """True if the block is a body paragraph (not a heading or HTML)."""
+    stripped = block.lstrip()
+    if stripped.startswith("#"):
+        return False
+    if stripped.startswith("<"):
+        return False
+    return bool(stripped)
+
+
+def _find_anchor_block(blocks: list[str],
+                       figure: dict,
+                       claimed: set[int]) -> int:
+    """Find the index of the best paragraph block to anchor this figure.
+
+    Strategy:
+      1. Phrase match — try diagnostic phrases (catalog name + n-grams)
+         against each unclaimed paragraph; return the first hit.
+      2. Section-fallback — pick the first unclaimed paragraph that
+         hasn't been claimed yet.
+
+    Returns -1 only when there are no unclaimed paragraphs at all
+    (defensive — for a normal article + 4 figures we should always
+    find a slot).
+    """
+    try:
+        from article_data_viz import INDICATOR_CATALOG, _diagnostic_phrases
+    except ImportError:
+        from orchestrator.article_data_viz import (
+            INDICATOR_CATALOG, _diagnostic_phrases,
+        )
+
+    sid = _series_id_from_figure_url(figure.get("url", ""))
+    entry = next(
+        (e for e in INDICATOR_CATALOG if e.get("series_id") == sid), None,
+    )
+    phrases: set[str] = set()
+    if entry:
+        phrases = _diagnostic_phrases(entry)
+    # Augment with the short name as a phrase (catches inflected forms).
+    short_name = _short_indicator_name(figure).lower()
+    if short_name and len(short_name) >= 4:
+        phrases.add(short_name)
+
+    # Strategy 1: phrase match (longest phrases first to prefer specific
+    # matches over generic ones).
+    sorted_phrases = sorted(phrases, key=lambda p: (-len(p), p))
+    for phrase in sorted_phrases:
+        if not phrase or len(phrase) < 4:
+            continue
+        pattern = re.compile(r"\b" + re.escape(phrase) + r"\b",
+                             re.IGNORECASE)
+        for i, block in enumerate(blocks):
+            if i in claimed or not _is_paragraph(block):
+                continue
+            if pattern.search(block):
+                return i
+
+    # Strategy 2: first unclaimed paragraph.
+    for i, block in enumerate(blocks):
+        if i in claimed or not _is_paragraph(block):
+            continue
+        return i
+
+    return -1
+
+
+def _patch_article_body_with_figures(article_path: str,
+                                     figures: list[dict]) -> int:
+    """Auto-embed `<figure>` blocks inline in the article body.
+
+    Strips all existing article-figure blocks (auto-inserted and
+    legacy-manual) and re-inserts fresh ones at computed anchor
+    paragraphs. Each figure is wrapped with start/end marker comments
+    so future re-renders can strip cleanly. Float side alternates
+    right/left across the picks for visual rhythm.
+
+    Returns the number of figures placed.
+    """
+    with open(article_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    if not content.startswith("---"):
+        raise ValueError(
+            f"Article has no YAML frontmatter: {article_path}"
+        )
+    end_marker = content.find("\n---", 4)
+    if end_marker < 0:
+        raise ValueError(
+            f"Article frontmatter has no closing `---`: {article_path}"
+        )
+    fm_block = content[: end_marker + len("\n---")]
+    body = content[end_marker + len("\n---"):]
+    # Ensure body starts with a single newline.
+    if body.startswith("\n"):
+        body = body[1:]
+
+    body = _strip_existing_figures(body)
+    blocks = _split_body_into_blocks(body)
+
+    claimed: set[int] = set()
+    inserts_before: dict[int, list[str]] = {}
+    placed = 0
+    for i, figure in enumerate(figures):
+        anchor_idx = _find_anchor_block(blocks, figure, claimed)
+        if anchor_idx < 0:
+            continue
+        claimed.add(anchor_idx)
+        float_side = "right" if (placed % 2 == 0) else "left"
+        figure_html = _build_inline_figure_html(figure, placed + 1, float_side)
+        inserts_before.setdefault(anchor_idx, []).append(figure_html)
+        placed += 1
+
+    # Apply inserts in reverse index order so positions don't shift.
+    for idx in sorted(inserts_before.keys(), reverse=True):
+        for fig_html in reversed(inserts_before[idx]):
+            blocks.insert(idx, fig_html)
+
+    new_body = "\n\n".join(blocks) + "\n"
+    new_content = f"{fm_block}\n{new_body}"
+
+    # Atomic write — same pattern as the frontmatter patcher.
+    import tempfile as _tempfile
+    dir_ = os.path.dirname(article_path) or "."
+    fd, tmp_path = _tempfile.mkstemp(prefix=".bodypatch.", suffix=".md", dir=dir_)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(new_content)
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except OSError:
+                pass
+        os.replace(tmp_path, article_path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+    return placed
 
 
 def _patch_article_frontmatter_figures(article_path: str,
