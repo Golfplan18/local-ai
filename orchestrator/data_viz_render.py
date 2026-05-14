@@ -372,21 +372,29 @@ def _build_semantic_description(series_data: SeriesData,
                                 points: list[dict]) -> dict:
     """Build the Lundgard-Satyanarayan accessibility description.
 
-    Computes the mechanical levels (L1 elemental, L2 statistical, short_alt)
-    from the data; leaves L3 perceptual and L4 contextual as null
-    (those require AI judgment beyond the data shape and are best
-    populated by a future Phase 3 article-classifier integration).
+    All four levels are populated as non-null strings (the visual
+    compiler's schema rejects null at L3 and L4). L1 elemental and
+    L2 statistical are computed from the data. L3 perceptual is
+    derived from the data shape (trend direction, range, monotonicity
+    flags). L4 contextual is a publication-neutral framing — when a
+    future Phase 3 article-classifier integration lands, the classifier
+    can override L4 with article-specific context. short_alt is hard-
+    capped at 125 chars per imageSchema convention.
     """
     n = len(points)
     title = request.title or _default_title(series_data, request)
     units = _units_label(series_data, request.transformation)
+    series_title = (series_data.metadata.title
+                    if series_data.metadata else series_data.series_id)
 
     if not points:
         return {
             "level_1_elemental": f"Empty time-series chart titled '{title}'.",
             "level_2_statistical": "No data to summarize.",
-            "level_3_perceptual": None,
-            "level_4_contextual": None,
+            "level_3_perceptual": "Chart contains no data points.",
+            "level_4_contextual": (
+                f"No data available for {series_title} in the requested range."
+            ),
             "short_alt": f"Empty chart: {title}.",
             "data_table_fallback": None,
         }
@@ -418,6 +426,57 @@ def _build_semantic_description(series_data: SeriesData,
         l2_parts.append(f"({pct_change:+.1f}%)")
     l2 = "; ".join(l2_parts) + "."
 
+    # L3 perceptual: shape-of-data observation. Counts monotonic runs
+    # (sign-changes in first differences) to characterize as monotonic
+    # vs oscillating. Magnitude characterized by range / mean ratio.
+    sign_changes = 0
+    prev_diff = None
+    for i in range(1, len(values)):
+        d = values[i] - values[i - 1]
+        if d == 0:
+            continue
+        sign = 1 if d > 0 else -1
+        if prev_diff is not None and sign != prev_diff:
+            sign_changes += 1
+        prev_diff = sign
+
+    if sign_changes <= max(2, n // 10):
+        shape = f"approximately monotonic {direction}"
+    elif sign_changes <= n // 3:
+        shape = f"{direction} overall with moderate fluctuation"
+    else:
+        shape = f"oscillating ({sign_changes} direction reversals) with net {direction} trend"
+
+    mean_v = sum(values) / len(values)
+    range_ratio = (v_max - v_min) / abs(mean_v) if mean_v else 0
+    if range_ratio < 0.1:
+        magnitude = "tight range"
+    elif range_ratio < 0.5:
+        magnitude = "moderate variation"
+    else:
+        magnitude = "wide variation"
+
+    l3 = f"The series is {shape}, with {magnitude} relative to the mean."
+
+    # L4 contextual: publication-neutral framing of what the chart
+    # represents. The article body (and a future Phase 3 classifier-
+    # produced override) carries the analytical interpretation; this
+    # level just states what the chart enables the reader to see.
+    direction_phrase = (
+        "increased" if v_last > v_first else
+        "decreased" if v_last < v_first else
+        "remained roughly flat"
+    )
+    if pct_change is not None and abs(pct_change) >= 1.0:
+        magnitude_phrase = f" by approximately {abs(pct_change):.0f}%"
+    else:
+        magnitude_phrase = ""
+    l4 = (
+        f"Shows how {series_title} {direction_phrase}{magnitude_phrase} "
+        f"between {t_first} and {t_last}. See accompanying article body "
+        f"for analytical interpretation."
+    )
+
     short_alt = (
         f"{title}: {direction} from {v_first:.2f} to {v_last:.2f} "
         f"({t_first} to {t_last})."
@@ -429,8 +488,8 @@ def _build_semantic_description(series_data: SeriesData,
     return {
         "level_1_elemental": l1,
         "level_2_statistical": l2,
-        "level_3_perceptual": None,
-        "level_4_contextual": None,
+        "level_3_perceptual": l3,
+        "level_4_contextual": l4,
         "short_alt": short_alt,
         "data_table_fallback": None,
     }

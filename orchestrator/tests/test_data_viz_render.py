@@ -254,11 +254,16 @@ class TestBuildTimeseriesEnvelope(unittest.TestCase):
         request = FigureRequest(series_query=SeriesQuery(series_id="UNRATE"))
         env = build_timeseries_envelope(data, request, data.observations)
         sem = env["semantic_description"]
+        # All four levels populated as non-null strings — the visual
+        # compiler's schema rejects null at L3/L4. L4 may be overridden
+        # by a future Phase 3 article-classifier with article-specific
+        # context; the default here is publication-neutral framing.
         self.assertIsNotNone(sem["level_1_elemental"])
         self.assertIsNotNone(sem["level_2_statistical"])
-        # L3/L4 intentionally None per Phase 4 minimal
-        self.assertIsNone(sem["level_3_perceptual"])
-        self.assertIsNone(sem["level_4_contextual"])
+        self.assertIsNotNone(sem["level_3_perceptual"])
+        self.assertIsNotNone(sem["level_4_contextual"])
+        self.assertIsInstance(sem["level_3_perceptual"], str)
+        self.assertIsInstance(sem["level_4_contextual"], str)
         # short_alt populated and ≤125 chars
         self.assertIsNotNone(sem["short_alt"])
         self.assertLessEqual(len(sem["short_alt"]), 125)
