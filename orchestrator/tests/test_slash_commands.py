@@ -412,5 +412,307 @@ class TestDispatcherBehavior(unittest.TestCase):
         self.assertIn("parse error", out.lower())
 
 
+# ---------- /render-article-figures --patch frontmatter write-back ----------
+
+SAMPLE_ARTICLE_FRONTMATTER = dedent("""\
+    ---
+    headline: Test article on the May jobs report
+    lede: |
+      The U.S. economy added a stronger-than-expected
+      number of jobs in May, while the unemployment
+      rate ticked up to 4.0%.
+    nut_graf: |
+      Payroll growth rebounded but the household
+      survey told a softer story.
+    publish_date: 2026-05-12
+    sources:
+      - id: src_001
+        url: https://www.bls.gov/news.release/empsit.nr0.htm
+        outlet: BLS
+        outlet_class: government_release
+        publication_date: 2026-05-09
+        title: Employment Situation Summary
+        access_date: 2026-05-12
+        reliability_tier: 1
+        originating_or_republishing: true
+    atomic_claims:
+      - claim_id: c_001
+        text: Payrolls grew by 250k in May.
+        claim_type: reported_claim
+        subject_entities: ["Q_United_States"]
+        predicate: payrolls_grew_by
+        source_ids: [src_001]
+        hedge: reported
+        corroboration_level: primary_document
+    ---
+
+    The U.S. economy added a stronger-than-expected number of jobs
+    in May, according to data released by the Bureau of Labor
+    Statistics on Friday.
+
+    [Body content continues here.]
+""")
+
+
+SAMPLE_FIGURES = [
+    {
+        "url": "/figures/2026-05-jobs/payems_first_diff.svg",
+        "alt": "Monthly change in nonfarm payrolls, 2021-2026",
+        "caption": "Payrolls grew 250k in May, near trend.",
+        "credit": "Main Street Independent (algorithmic)",
+        "source": "FRED, All Employees: Total Nonfarm (PAYEMS)",
+        "source_url": "https://fred.stlouisfed.org/series/PAYEMS",
+        "source_retrieval_date": "2026-05-12",
+        "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "chart_type": "timeseries",
+        "data_window": "2021-01 to 2026-05",
+        "transformation": "first_diff",
+        "ai_authored": True,
+        "ai_model": "msi-data-viz-pipeline-v1",
+    },
+    {
+        "url": "/figures/2026-05-jobs/unrate_raw.svg",
+        "alt": "U-3 unemployment rate, 2021-2026",
+        "caption": "U-3 ticked up to 4.0% in May.",
+        "credit": "Main Street Independent (algorithmic)",
+        "source": "FRED, Unemployment Rate (UNRATE)",
+        "source_url": "https://fred.stlouisfed.org/series/UNRATE",
+        "source_retrieval_date": "2026-05-12",
+        "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "chart_type": "timeseries",
+        "data_window": "2021-01 to 2026-05",
+        "transformation": "raw",
+        "ai_authored": True,
+        "ai_model": "msi-data-viz-pipeline-v1",
+    },
+]
+
+
+class TestPatchArticleFrontmatterFigures(unittest.TestCase):
+    """Tests for slash_commands._patch_article_frontmatter_figures —
+    the helper that mutates an article .md file by splicing in (or
+    replacing) the `figures` array in YAML frontmatter."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.article_path = os.path.join(self.tmpdir, "test-article.md")
+        with open(self.article_path, "w", encoding="utf-8") as f:
+            f.write(SAMPLE_ARTICLE_FRONTMATTER)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _read_back(self) -> tuple[dict, str]:
+        """Return (parsed_frontmatter_dict, body_text) from disk."""
+        import yaml
+        with open(self.article_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        end_marker = content.find("\n---", 4)
+        fm_text = content[3:end_marker].strip()
+        body = content[end_marker + len("\n---"):]
+        if body.startswith("\n"):
+            body = body[1:]
+        return yaml.safe_load(fm_text) or {}, body
+
+    def test_inserts_figures_when_absent(self):
+        slash_commands._patch_article_frontmatter_figures(
+            self.article_path, SAMPLE_FIGURES,
+        )
+        fm, _body = self._read_back()
+        self.assertIn("figures", fm)
+        self.assertEqual(len(fm["figures"]), 2)
+        self.assertEqual(
+            fm["figures"][0]["url"],
+            "/figures/2026-05-jobs/payems_first_diff.svg",
+        )
+        self.assertEqual(fm["figures"][1]["transformation"], "raw")
+
+    def test_preserves_existing_fields(self):
+        slash_commands._patch_article_frontmatter_figures(
+            self.article_path, SAMPLE_FIGURES,
+        )
+        fm, _body = self._read_back()
+        # All pre-existing top-level fields must still be present
+        for required_key in (
+            "headline", "lede", "nut_graf", "publish_date",
+            "sources", "atomic_claims",
+        ):
+            self.assertIn(required_key, fm,
+                          f"`{required_key}` should be preserved")
+        self.assertEqual(
+            fm["headline"],
+            "Test article on the May jobs report",
+        )
+        self.assertEqual(len(fm["sources"]), 1)
+        self.assertEqual(fm["sources"][0]["outlet"], "BLS")
+        self.assertEqual(len(fm["atomic_claims"]), 1)
+        self.assertEqual(fm["atomic_claims"][0]["claim_id"], "c_001")
+        # Multi-line scalars survive the round-trip
+        self.assertIn("stronger-than-expected", fm["lede"])
+
+    def test_preserves_body_content(self):
+        slash_commands._patch_article_frontmatter_figures(
+            self.article_path, SAMPLE_FIGURES,
+        )
+        _fm, body = self._read_back()
+        self.assertIn("stronger-than-expected number of jobs", body)
+        self.assertIn("[Body content continues here.]", body)
+
+    def test_replaces_existing_figures_key(self):
+        # Patch once, then patch again with a different list. The second
+        # call must replace, not concatenate or duplicate.
+        slash_commands._patch_article_frontmatter_figures(
+            self.article_path, SAMPLE_FIGURES,
+        )
+        new_figures = [{
+            "url": "/figures/replacement.svg",
+            "alt": "replacement",
+            "caption": "new",
+            "credit": "x", "source": "y",
+            "chart_type": "timeseries", "transformation": "raw",
+            "ai_authored": True,
+        }]
+        slash_commands._patch_article_frontmatter_figures(
+            self.article_path, new_figures,
+        )
+        fm, _body = self._read_back()
+        self.assertEqual(len(fm["figures"]), 1)
+        self.assertEqual(fm["figures"][0]["url"], "/figures/replacement.svg")
+
+    def test_raises_on_missing_frontmatter(self):
+        bad_path = os.path.join(self.tmpdir, "bare.md")
+        with open(bad_path, "w", encoding="utf-8") as f:
+            f.write("# Just a body, no frontmatter\n\nText.\n")
+        with self.assertRaises(ValueError):
+            slash_commands._patch_article_frontmatter_figures(
+                bad_path, SAMPLE_FIGURES,
+            )
+
+    def test_roundtrip_field_ordering_first_field_preserved(self):
+        # PyYAML with sort_keys=False preserves dict insertion order.
+        # The original frontmatter starts with `headline` — after a
+        # round-trip, the rebuilt YAML should still start with `headline:`
+        # (i.e. the first non-empty content line after the opening ---).
+        slash_commands._patch_article_frontmatter_figures(
+            self.article_path, SAMPLE_FIGURES,
+        )
+        with open(self.article_path, "r", encoding="utf-8") as f:
+            text = f.read()
+        # First line is `---`; second line should begin with `headline:`
+        lines = text.splitlines()
+        self.assertEqual(lines[0], "---")
+        self.assertTrue(
+            lines[1].startswith("headline:"),
+            f"Expected `headline:` first; got `{lines[1]}`",
+        )
+
+
+class TestRenderArticleFiguresPatchFlag(unittest.TestCase):
+    """End-to-end tests for /render-article-figures --patch.
+
+    Mocks the classifier + render layer so we exercise only the slash
+    command's flag-handling and frontmatter-write path.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.article_path = os.path.join(self.tmpdir, "2026-05-jobs.md")
+        with open(self.article_path, "w", encoding="utf-8") as f:
+            f.write(SAMPLE_ARTICLE_FRONTMATTER)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _make_fake_render_result(self):
+        # Mirrors what render_figures_for_article returns on success
+        from collections import namedtuple
+        FakeAnalysis = namedtuple(
+            "FakeAnalysis", ["warrants_charts", "opportunities", "error"],
+        )
+        FakeFigResult = namedtuple(
+            "FakeFigResult", ["success", "figure_schema", "url",
+                              "error_code", "error_message"],
+        )
+        FakeResult = namedtuple(
+            "FakeResult",
+            ["success", "figures", "analysis", "figure_results", "error"],
+        )
+        analysis = FakeAnalysis(
+            warrants_charts=True,
+            opportunities=[mock.MagicMock(), mock.MagicMock()],
+            error="",
+        )
+        per_fig = [
+            FakeFigResult(
+                success=True, figure_schema=fs, url=fs["url"],
+                error_code="", error_message="",
+            )
+            for fs in SAMPLE_FIGURES
+        ]
+        return FakeResult(
+            success=True,
+            figures=SAMPLE_FIGURES,
+            analysis=analysis,
+            figure_results=per_fig,
+            error="",
+        )
+
+    def _invoke(self, *flags):
+        # We bypass the real article_data_viz module by patching the
+        # symbols the command imports lazily.
+        fake_module = mock.MagicMock()
+        fake_module.parse_article_file.return_value = {
+            "headline": "Test article on the May jobs report",
+        }
+        fake_module.render_figures_for_article.return_value = (
+            self._make_fake_render_result()
+        )
+        fake_module.analyze_article_for_data_viz.return_value = (
+            self._make_fake_render_result().analysis
+        )
+
+        fake_boot = mock.MagicMock()
+        fake_boot.call_model = mock.MagicMock()
+        fake_boot.load_endpoints.return_value = {}
+        fake_boot.get_slot_endpoint.return_value = {"slot": "sidebar"}
+
+        with mock.patch.dict(sys.modules, {
+            "article_data_viz": fake_module,
+            "boot": fake_boot,
+        }):
+            return run_runtime_command(
+                f"/render-article-figures {self.article_path} "
+                + " ".join(flags)
+            )
+
+    def test_patch_writes_figures_into_frontmatter(self):
+        out = self._invoke("--patch")
+        self.assertIn("Frontmatter patched", out)
+
+        # Verify on disk
+        import yaml
+        with open(self.article_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        end_marker = content.find("\n---", 4)
+        fm = yaml.safe_load(content[3:end_marker].strip())
+        self.assertIn("figures", fm)
+        self.assertEqual(len(fm["figures"]), 2)
+        # Pre-existing fields preserved
+        self.assertIn("headline", fm)
+        self.assertIn("sources", fm)
+
+    def test_no_patch_flag_leaves_frontmatter_untouched(self):
+        # Without --patch, the file must be byte-for-byte unchanged
+        with open(self.article_path, "r", encoding="utf-8") as f:
+            before = f.read()
+        out = self._invoke()
+        with open(self.article_path, "r", encoding="utf-8") as f:
+            after = f.read()
+        self.assertEqual(before, after)
+        self.assertNotIn("Frontmatter patched", out)
+
+
 if __name__ == "__main__":
     unittest.main()

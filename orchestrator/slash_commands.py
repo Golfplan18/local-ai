@@ -1078,7 +1078,7 @@ def _cmd_render_article_figures(args: list[str]) -> str:
     render every accepted data-viz opportunity as an SVG, populating
     the article's `figures` frontmatter field.
 
-    Usage: /render-article-figures <article_path or slug> [--dry-run]
+    Usage: /render-article-figures <article_path or slug> [--dry-run] [--patch]
 
     The article path can be:
       - An absolute path to the article .md
@@ -1088,10 +1088,17 @@ def _cmd_render_article_figures(args: list[str]) -> str:
     --dry-run runs the classifier and prints the analysis without
     rendering figures. Useful for inspecting classifier judgment
     before committing model + render compute time.
+
+    --patch (after a successful render) writes the resulting figureSchema
+    list back into the article's YAML frontmatter as the `figures` array.
+    Existing frontmatter is preserved; an existing `figures` key is
+    replaced. Mutually exclusive with --dry-run (a dry run produces
+    nothing to patch).
     """
     if not args:
         return (
-            "**Usage:** `/render-article-figures <article_path or slug> [--dry-run]`\n\n"
+            "**Usage:** `/render-article-figures <article_path or slug> "
+            "[--dry-run] [--patch]`\n\n"
             "Runs the Phase 3 article-classifier on a published article. "
             "For each accepted data-viz opportunity, invokes the chart "
             "emitter to produce an SVG (Phase 4). Returns the figureSchema "
@@ -1099,11 +1106,15 @@ def _cmd_render_article_figures(args: list[str]) -> str:
             "If the article is not economic (geopolitics, criminal justice, "
             "etc.), returns success with an empty figures list — that's the "
             "editorially-correct behavior, not a failure.\n\n"
+            "Pass `--patch` to write the resulting `figures: [...]` array "
+            "back into the article's YAML frontmatter (existing fields "
+            "preserved; an existing `figures` key is replaced).\n\n"
             "Example: `/render-article-figures 2026-05-11-iran-rejects-us-proposal-day-72`"
         )
 
     arg = args[0]
     dry_run = "--dry-run" in args
+    patch = "--patch" in args
 
     # Resolve article path
     article_path = _resolve_article_path(arg)
@@ -1202,7 +1213,122 @@ def _cmd_render_article_figures(args: list[str]) -> str:
         lines.append("")
         lines.append(f"_{result.error}_")
 
+    # --patch: write figures back into the article frontmatter.
+    # Only patches when the render succeeded AND produced at least one
+    # figure. A run that correctly returns zero figures (non-economic
+    # article) does not mutate the file — there's nothing to write.
+    if patch:
+        if not result.success:
+            lines.append("")
+            lines.append("_--patch skipped: render did not succeed._")
+        elif not result.figures:
+            lines.append("")
+            lines.append(
+                "_--patch skipped: no figures to write "
+                "(classifier judged none warranted)._"
+            )
+        else:
+            try:
+                _patch_article_frontmatter_figures(article_path, result.figures)
+                lines.append("")
+                lines.append(
+                    f"**Frontmatter patched:** `{article_path}` "
+                    f"→ `figures: [...]` ({len(result.figures)} entries)"
+                )
+            except Exception as exc:
+                lines.append("")
+                lines.append(f"_--patch failed: {exc}_")
+
     return "\n".join(lines)
+
+
+def _patch_article_frontmatter_figures(article_path: str,
+                                       figures: list[dict]) -> None:
+    """Write `figures: [...]` into the article's YAML frontmatter.
+
+    Reads the .md file, splits frontmatter from body using the leading
+    `---` markers, parses YAML, sets/replaces the `figures` key, and
+    writes the file back. Existing frontmatter fields are preserved.
+    Order is preserved as best as PyYAML's round-trip can manage
+    (sort_keys=False); multi-line scalars and list ordering of other
+    fields are not reordered. The body content is preserved byte-for-byte.
+
+    Raises:
+      FileNotFoundError if article_path does not exist
+      ValueError if the file has no parseable YAML frontmatter
+      ImportError if PyYAML is not available (we rely on it for write)
+    """
+    import yaml  # PyYAML — required for the dump path
+
+    with open(article_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    if not content.startswith("---"):
+        raise ValueError(
+            f"Article has no YAML frontmatter (no leading `---`): {article_path}"
+        )
+
+    # Find end of frontmatter; matches parse_article_file's approach.
+    end_marker = content.find("\n---", 4)
+    if end_marker < 0:
+        raise ValueError(
+            f"Article frontmatter has no closing `---`: {article_path}"
+        )
+
+    fm_text = content[3:end_marker].strip()
+    # Body starts after the closing `---\n` (the find above lands ON the
+    # leading `\n` of `\n---`, so move past `\n---` and keep the trailing
+    # newline if present).
+    body_start = end_marker + len("\n---")
+    body = content[body_start:]
+    # Normalize: ensure body begins with a single newline so the rebuilt
+    # file reads `---\n<body>` cleanly.
+    if body.startswith("\n"):
+        body = body[1:]
+
+    fm = yaml.safe_load(fm_text) or {}
+    if not isinstance(fm, dict):
+        raise ValueError(
+            f"Article frontmatter is not a mapping: {article_path}"
+        )
+
+    fm["figures"] = figures
+
+    new_fm_text = yaml.dump(
+        fm,
+        sort_keys=False,
+        default_flow_style=False,
+        allow_unicode=True,
+        width=10_000,  # avoid surprise line wrapping inside long strings
+    )
+    # PyYAML returns a trailing newline after the last value; strip it
+    # so the assembled file has exactly one blank line / boundary.
+    new_fm_text = new_fm_text.rstrip("\n")
+
+    new_content = f"---\n{new_fm_text}\n---\n{body}"
+
+    # Atomic write: write to a sibling tempfile, fsync, then rename.
+    import tempfile as _tempfile
+    dir_ = os.path.dirname(article_path) or "."
+    fd, tmp_path = _tempfile.mkstemp(
+        prefix=".patch.", suffix=".md", dir=dir_,
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(new_content)
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except OSError:
+                pass  # best-effort fsync; some filesystems don't support it
+        os.replace(tmp_path, article_path)
+    except Exception:
+        # Clean up the tempfile on failure
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def _resolve_article_path(arg: str) -> Optional[str]:
