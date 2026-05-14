@@ -81,6 +81,7 @@ INDICATOR_CATALOG = [
         "covers": "GDP growth, recession watch, 'is the economy growing'",
         "default_transformation": "raw",
         "linked_reports": ["1.1", "1.2", "1.4"],
+        "framework_points": [1, 7, 8],
     },
     {
         "series_id": "GDI",
@@ -90,6 +91,7 @@ INDICATOR_CATALOG = [
         "covers": "wage-income side of GDP; pair with GDP for divergence stories",
         "default_transformation": "raw",
         "linked_reports": ["1.1", "1.4"],
+        "framework_points": [1, 6],
     },
     {
         "series_id": "PAYEMS",
@@ -99,6 +101,7 @@ INDICATOR_CATALOG = [
         "covers": "monthly jobs report headline; jobs added/lost",
         "default_transformation": "first_diff",
         "linked_reports": ["1.3"],
+        "framework_points": [1, 7, 14],
     },
     {
         "series_id": "UNRATE",
@@ -108,6 +111,7 @@ INDICATOR_CATALOG = [
         "covers": "official unemployment rate; load-bearing pair with LFPR + EPOP",
         "default_transformation": "raw",
         "linked_reports": ["1.3"],
+        "framework_points": [1, 7, 9],
     },
     {
         "series_id": "U6RATE",
@@ -117,6 +121,7 @@ INDICATOR_CATALOG = [
         "covers": "broader underemployment incl. discouraged + involuntary part-time",
         "default_transformation": "raw",
         "linked_reports": ["1.3"],
+        "framework_points": [9, 11],
     },
     {
         "series_id": "CIVPART",
@@ -126,6 +131,7 @@ INDICATOR_CATALOG = [
         "covers": "share of population in labor force; the silent denominator behind U-3",
         "default_transformation": "raw",
         "linked_reports": ["1.3"],
+        "framework_points": [9, 11],
     },
     {
         "series_id": "LNS12300060",
@@ -135,6 +141,7 @@ INDICATOR_CATALOG = [
         "covers": "preferred slack measure; bypasses participation problem in U-3",
         "default_transformation": "raw",
         "linked_reports": ["1.3", "2.15"],
+        "framework_points": [4, 9],
     },
     {
         "series_id": "JTSQUL",
@@ -144,6 +151,7 @@ INDICATOR_CATALOG = [
         "covers": "voluntary separations as % of employment; worker bargaining power signal",
         "default_transformation": "raw",
         "linked_reports": ["1.3", "2.11"],
+        "framework_points": [2, 11],
     },
     {
         "series_id": "ICSA",
@@ -153,6 +161,7 @@ INDICATOR_CATALOG = [
         "covers": "weekly real-time labor-market signal; AI-displacement early warning",
         "default_transformation": "raw",
         "linked_reports": ["1.3"],
+        "framework_points": [7, 8],
     },
     # --- Wage growth ---
     {
@@ -163,6 +172,7 @@ INDICATOR_CATALOG = [
         "covers": "composition-adjusted wage growth for median continuously-employed worker",
         "default_transformation": "raw",
         "linked_reports": ["1.3", "2.11"],
+        "framework_points": [2, 6],
     },
     {
         "series_id": "OPHNFB",
@@ -172,6 +182,7 @@ INDICATOR_CATALOG = [
         "covers": "productivity-wage decoupling chart anchor; pair with real wages",
         "default_transformation": "raw",
         "linked_reports": ["2.11"],
+        "framework_points": [6],
     },
     # --- Rates & yields ---
     {
@@ -182,6 +193,7 @@ INDICATOR_CATALOG = [
         "covers": "Fed policy lever; FOMC rate decisions; mortgage transmission stories",
         "default_transformation": "raw",
         "linked_reports": ["2.5"],
+        "framework_points": [13],
     },
     {
         "series_id": "DGS10",
@@ -191,6 +203,7 @@ INDICATOR_CATALOG = [
         "covers": "benchmark long-term yield; sets mortgage rates and corp borrowing",
         "default_transformation": "raw",
         "linked_reports": ["2.5"],
+        "framework_points": [13],
     },
     {
         "series_id": "T10Y2Y",
@@ -200,6 +213,7 @@ INDICATOR_CATALOG = [
         "covers": "yield-curve recession-prediction signal; pair with Sahm/NY-Fed-prob",
         "default_transformation": "raw",
         "linked_reports": ["2.5"],
+        "framework_points": [7, 13],
     },
     {
         "series_id": "DFII10",
@@ -209,6 +223,7 @@ INDICATOR_CATALOG = [
         "covers": "real cost of capital; long-run redistribution signal",
         "default_transformation": "raw",
         "linked_reports": ["2.5"],
+        "framework_points": [13],
     },
     {
         "series_id": "MORTGAGE30US",
@@ -218,6 +233,7 @@ INDICATOR_CATALOG = [
         "covers": "household-affordability rate; pair with median home price",
         "default_transformation": "raw",
         "linked_reports": ["2.5", "2.8"],
+        "framework_points": [4, 13],
     },
     {
         "series_id": "WALCL",
@@ -227,6 +243,7 @@ INDICATOR_CATALOG = [
         "covers": "QE/QT scale; redistribution-policy indicator post-2008",
         "default_transformation": "raw",
         "linked_reports": ["2.5", "2.14"],
+        "framework_points": [11, 13],
     },
     # --- Inflation ---
     {
@@ -237,6 +254,7 @@ INDICATOR_CATALOG = [
         "covers": "headline CPI; year-over-year inflation reporting",
         "default_transformation": "yoy_pct",
         "linked_reports": ["1.5"],
+        "framework_points": [3, 9],
     },
     {
         "series_id": "CPILFESL",
@@ -246,6 +264,7 @@ INDICATOR_CATALOG = [
         "covers": "core CPI; the underlying-inflation reading the Fed watches; pair with shelter",
         "default_transformation": "yoy_pct",
         "linked_reports": ["1.5"],
+        "framework_points": [3, 9],
     },
     {
         "series_id": "PCEPI",
@@ -255,6 +274,7 @@ INDICATOR_CATALOG = [
         "covers": "Fed inflation target reference; pair with CPI for divergence stories",
         "default_transformation": "yoy_pct",
         "linked_reports": ["1.5", "2.5"],
+        "framework_points": [3, 13],
     },
     {
         "series_id": "PCEPILFE",
@@ -264,6 +284,7 @@ INDICATOR_CATALOG = [
         "covers": "Fed's actual operational inflation target; the headline-vs-target divergence anchor",
         "default_transformation": "yoy_pct",
         "linked_reports": ["1.5", "2.5"],
+        "framework_points": [3, 13],
     },
     {
         "series_id": "MICH",
@@ -273,6 +294,7 @@ INDICATOR_CATALOG = [
         "covers": "household 1-year-ahead inflation expectations; surfaces anchoring/de-anchoring",
         "default_transformation": "raw",
         "linked_reports": ["1.5"],
+        "framework_points": [12],
     },
     # --- Housing ---
     {
@@ -283,6 +305,7 @@ INDICATOR_CATALOG = [
         "covers": "national house-price index; the asset-side of the asset-vs-wage framing",
         "default_transformation": "yoy_pct",
         "linked_reports": ["2.8", "1.4"],
+        "framework_points": [3, 4],
     },
     {
         "series_id": "MSPUS",
@@ -292,6 +315,7 @@ INDICATOR_CATALOG = [
         "covers": "raw dollar median home price; preferred over indices when affordability is the story",
         "default_transformation": "raw",
         "linked_reports": ["2.8"],
+        "framework_points": [4, 14],
     },
     {
         "series_id": "HOUST",
@@ -301,6 +325,7 @@ INDICATOR_CATALOG = [
         "covers": "supply-side construction signal; pair with MSPUS for affordability narratives",
         "default_transformation": "raw",
         "linked_reports": ["2.8"],
+        "framework_points": [14],
     },
     # --- Consumer ---
     {
@@ -311,6 +336,7 @@ INDICATOR_CATALOG = [
         "covers": "monthly retail sales headline; consumer-demand pulse; distributional-honesty caveat applies",
         "default_transformation": "yoy_pct",
         "linked_reports": ["1.4"],
+        "framework_points": [1, 10],
     },
     {
         "series_id": "UMCSENT",
@@ -320,6 +346,7 @@ INDICATOR_CATALOG = [
         "covers": "household-sentiment index; the workers'-mood gap vs. macro headlines (K-shaped framing)",
         "default_transformation": "raw",
         "linked_reports": ["1.4"],
+        "framework_points": [1, 4, 10],
     },
     {
         "series_id": "PSAVERT",
@@ -329,6 +356,7 @@ INDICATOR_CATALOG = [
         "covers": "household saving as % of disposable income; surfaces pandemic-era depletion story",
         "default_transformation": "raw",
         "linked_reports": ["1.4"],
+        "framework_points": [4, 10],
     },
     # --- Trade ---
     {
@@ -339,6 +367,7 @@ INDICATOR_CATALOG = [
         "covers": "broad dollar strength; sets the cost of imports and the value of overseas earnings",
         "default_transformation": "raw",
         "linked_reports": ["2.6", "2.5"],
+        "framework_points": [13],
     },
     {
         "series_id": "NETEXP",
@@ -348,6 +377,7 @@ INDICATOR_CATALOG = [
         "covers": "trade balance; structural deficit story; pair with USD index for revaluation effects",
         "default_transformation": "raw",
         "linked_reports": ["2.6"],
+        "framework_points": [1],
     },
     # --- Money & Credit ---
     {
@@ -358,6 +388,7 @@ INDICATOR_CATALOG = [
         "covers": "broad money supply; reject the simplistic M2-causes-inflation frame, use for velocity context",
         "default_transformation": "yoy_pct",
         "linked_reports": ["2.5"],
+        "framework_points": [13],
     },
     {
         "series_id": "TOTBKCR",
@@ -367,6 +398,7 @@ INDICATOR_CATALOG = [
         "covers": "commercial-bank credit aggregate; lending channel of monetary transmission",
         "default_transformation": "yoy_pct",
         "linked_reports": ["2.5", "2.14"],
+        "framework_points": [13],
     },
     # --- Markets ---
     {
@@ -377,6 +409,7 @@ INDICATOR_CATALOG = [
         "covers": "large-cap equity benchmark; the asset-vs-wage framing (point 3); top-10%-of-households exposure",
         "default_transformation": "raw",
         "linked_reports": ["1.4", "2.5"],
+        "framework_points": [3, 4],
     },
     {
         "series_id": "NASDAQCOM",
@@ -386,6 +419,7 @@ INDICATOR_CATALOG = [
         "covers": "tech-heavy equity index; rate-sensitive cohort; pair with DFII10 for valuation stories",
         "default_transformation": "raw",
         "linked_reports": ["1.4", "2.5"],
+        "framework_points": [3, 4],
     },
     {
         "series_id": "DJIA",
@@ -395,6 +429,7 @@ INDICATOR_CATALOG = [
         "covers": "30-stock price-weighted blue-chip index; populist headline reference, less analytical signal",
         "default_transformation": "raw",
         "linked_reports": ["1.4"],
+        "framework_points": [3, 4],
     },
 ]
 
@@ -584,6 +619,93 @@ _RANK_WEIGHT_NAME_MATCH = 3.0
 _RANK_WEIGHT_TOPIC_OVERLAP = 1.0
 _RANK_WEIGHT_SEMANTIC_MATCH = 2.0
 _RANK_WEIGHT_LIBRARY_MATCH = 1.5
+_RANK_WEIGHT_FRAMEWORK_ALIGNMENT = 1.0
+
+
+# The 15-point editorial framework (Reference — MSI Data Source
+# Catalog.md). Each catalog indicator carries a framework_points
+# field listing which of these points it serves; the article-side
+# _THEME_TO_FRAMEWORK_POINTS map resolves article themes to the same
+# point IDs. Overlap → score.
+_FRAMEWORK_POINTS = {
+    1: "The data ≠ the welfare of the people",
+    2: "Wage growth and velocity of money drive the real economy",
+    3: "Asset prices belong in the inflation conversation (OER critique)",
+    4: "The K-shaped economy is the actual structure",
+    5: "Right-wing private-sector-first policy is testable",
+    6: "Productivity-wage decoupling since the late 1970s is load-bearing",
+    7: "Skeptical of headline-friendly volatile metrics",
+    8: "Real-world context is part of the story",
+    9: "Honest about indicator limitations",
+    10: "Language: 'workers' and 'households,' not 'the consumer'",
+    11: "The system is rigged against workers in its details",
+    12: "Reject the financial-media frame",
+    13: "Fed and economic policy is political choice presented as technical certainty",
+    14: "Show raw counts alongside computed rates whenever possible",
+    15: "Reference points should be substantive, not analyst-derived",
+}
+
+
+_THEME_TO_FRAMEWORK_POINTS: dict[str, list[int]] = {
+    "inflation_measurement": [3, 9],
+    "shelter_inflation": [3],
+    "monetary_policy": [13],
+    "fed_rate_path": [13],
+    "money_supply": [13],
+    "labor_market_measurement": [1, 7, 9],
+    "wage_growth": [2, 6],
+    "productivity_wage_decoupling": [6, 2],
+    "k_shaped_consumer": [4, 10],
+    "asset_prices": [3, 4],
+    "beyond_gdp": [1],
+    "housing_affordability": [4],
+    "consumer_spending": [10],
+    "trade_deficit": [13],
+    "financial_regulation": [13],
+    "demographics": [4],
+}
+
+
+def _expand_article_framework_points(article_themes: list[str]) -> set[int]:
+    """Resolve article primary_themes to framework-point IDs via
+    _THEME_TO_FRAMEWORK_POINTS. Unknown themes contribute nothing."""
+    expanded: set[int] = set()
+    for theme in article_themes or []:
+        key = theme.strip()
+        if not key:
+            continue
+        mapped = (
+            _THEME_TO_FRAMEWORK_POINTS.get(key)
+            or _THEME_TO_FRAMEWORK_POINTS.get(
+                _normalize_topic(key).replace("-", "_")
+            )
+        )
+        if mapped:
+            for p in mapped:
+                expanded.add(p)
+    return expanded
+
+
+def _framework_alignment_score(entry: dict,
+                                article_themes: list[str],
+                                ) -> tuple[float, list[int]]:
+    """Score by overlap between the indicator's framework_points and
+    the article's theme-mapped framework points.
+
+    Returns (score, matched_points_list). Score normalized:
+    |overlap| / |indicator.framework_points|, capped at 1.0.
+    An indicator with no framework_points always scores 0.
+    """
+    indicator_points = set(entry.get("framework_points") or [])
+    if not indicator_points:
+        return (0.0, [])
+    article_points = _expand_article_framework_points(article_themes or [])
+    if not article_points:
+        return (0.0, [])
+    overlap = indicator_points & article_points
+    score = len(overlap) / len(indicator_points)
+    return (min(1.0, score), sorted(overlap))
+
 
 
 # Bridges article-side primary_themes to specific reports in the
@@ -1065,10 +1187,12 @@ class ScoredIndicator:
     semantic_match: float = 0.0
     semantic_raw_max: float = 0.0          # raw cosine sim (pre-normalization)
     library_match: float = 0.0
+    framework_alignment: float = 0.0
     total: float = 0.0
     matched_phrases: list[str] = field(default_factory=list)
     matched_topics: list[str] = field(default_factory=list)
     matched_reports: list[str] = field(default_factory=list)
+    matched_framework_points: list[int] = field(default_factory=list)
     matched_claim_indices: list[int] = field(default_factory=list)  # which claims contributed to name_match
 
     def justification_text(self) -> str:
@@ -1100,9 +1224,14 @@ class ScoredIndicator:
             parts.append(
                 f"Research: report(s) {', '.join(self.matched_reports)}"
             )
+        if self.matched_framework_points:
+            parts.append(
+                f"Framework points: {self.matched_framework_points}"
+            )
         score_summary = (
             f"name={self.name_match:.2f}, topic={self.topic_overlap:.2f}, "
-            f"sem={self.semantic_match:.2f}, lib={self.library_match:.2f}"
+            f"sem={self.semantic_match:.2f}, lib={self.library_match:.2f}, "
+            f"fw={self.framework_alignment:.2f}"
         )
         return ". ".join(parts) + f" [score: {score_summary}]"
 
@@ -1155,11 +1284,15 @@ def rank_indicators_for_article(article_data: dict, *,
                 entry, claim_embeddings, indicator_embeddings.get(sid),
             )
         lib_score, matched_reports = _library_match_score(entry, article_themes)
+        fw_score, matched_fw_points = _framework_alignment_score(
+            entry, article_themes,
+        )
         total = (
             _RANK_WEIGHT_NAME_MATCH * name_score
             + _RANK_WEIGHT_TOPIC_OVERLAP * topic_score
             + _RANK_WEIGHT_SEMANTIC_MATCH * sem_score
             + _RANK_WEIGHT_LIBRARY_MATCH * lib_score
+            + _RANK_WEIGHT_FRAMEWORK_ALIGNMENT * fw_score
         )
         scored.append(ScoredIndicator(
             entry=entry,
@@ -1168,10 +1301,12 @@ def rank_indicators_for_article(article_data: dict, *,
             semantic_match=sem_score,
             semantic_raw_max=sem_raw,
             library_match=lib_score,
+            framework_alignment=fw_score,
             total=total,
             matched_phrases=matched_phrases,
             matched_topics=matched_topics,
             matched_reports=matched_reports,
+            matched_framework_points=matched_fw_points,
             matched_claim_indices=matched_indices,
         ))
     scored.sort(key=lambda s: -s.total)

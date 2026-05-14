@@ -751,6 +751,56 @@ class TestLibraryMatchScore(unittest.TestCase):
         self.assertIn("1.5", cpi.matched_reports)
 
 
+class TestFrameworkAlignment(unittest.TestCase):
+    """Phase 4 — framework-point alignment scoring."""
+
+    def test_expand_article_framework_points(self):
+        out = adv._expand_article_framework_points(["inflation_measurement"])
+        # inflation_measurement → [3, 9]
+        self.assertIn(3, out)
+        self.assertIn(9, out)
+
+    def test_expand_unknown_theme_returns_empty(self):
+        self.assertEqual(
+            adv._expand_article_framework_points(["geopolitics"]),
+            set(),
+        )
+
+    def test_framework_alignment_scores_overlap(self):
+        # CPIAUCSL has framework_points=[3, 9]
+        entry = {"series_id": "CPIAUCSL", "framework_points": [3, 9]}
+        score, matched = adv._framework_alignment_score(
+            entry, ["inflation_measurement"])
+        self.assertEqual(score, 1.0)  # 2 of 2 points match
+        self.assertEqual(matched, [3, 9])
+
+    def test_framework_alignment_partial_overlap(self):
+        # Indicator carries [3, 4, 13]; article's themes give [3, 9]
+        entry = {"series_id": "X", "framework_points": [3, 4, 13]}
+        score, matched = adv._framework_alignment_score(
+            entry, ["inflation_measurement"])
+        # Only point 3 overlaps. 1 of 3 = 0.333
+        self.assertAlmostEqual(score, 1.0 / 3.0, places=3)
+        self.assertEqual(matched, [3])
+
+    def test_framework_alignment_zero_when_no_points(self):
+        entry = {"series_id": "X"}  # no framework_points
+        score, matched = adv._framework_alignment_score(
+            entry, ["inflation_measurement"])
+        self.assertEqual(score, 0.0)
+        self.assertEqual(matched, [])
+
+    def test_ranking_uses_framework_alignment(self):
+        ranked = adv.rank_indicators_for_article(
+            CPI_ARTICLE_WITH_THEMES, use_semantic=False,
+        )
+        cpi = next(s for s in ranked if s.entry["series_id"] == "CPIAUCSL")
+        # CPIAUCSL framework_points=[3, 9]; article gives points [3, 9, 13, 4, 10] etc
+        # → score 1.0
+        self.assertGreater(cpi.framework_alignment, 0)
+        self.assertIn(3, cpi.matched_framework_points)
+
+
 class TestFactCheck(unittest.TestCase):
     """Fact-check article body values against FRED ground truth."""
 
