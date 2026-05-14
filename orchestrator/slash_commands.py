@@ -74,7 +74,8 @@ DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
 KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
                   "/deny", "/cleaning", "/news",
                   "/hector-render", "/news-image-render",
-                  "/render-missing-article-images"}
+                  "/render-missing-article-images",
+                  "/render-figure"}
 
 
 # ---------- Public API ----------
@@ -123,6 +124,7 @@ def run_runtime_command(user_input: str) -> str:
         "/hector-render": _cmd_hector_render,
         "/news-image-render": _cmd_news_image_render,
         "/render-missing-article-images": _cmd_render_missing_article_images,
+        "/render-figure": _cmd_render_figure,
     }
     handler = handlers.get(cmd)
     if handler is None:
@@ -958,6 +960,113 @@ def _cmd_render_missing_article_images(args: list[str]) -> str:
             "verify the articles compile, then `git push` to deploy."
         )
     return "\n".join(lines)
+
+
+# ---------- /render-figure ----------
+
+def _cmd_render_figure(args: list[str]) -> str:
+    """Render a single FRED chart as SVG via the Phase 4 chart-emitter.
+
+    Usage:  /render-figure <SERIES_ID> [transformation] [--from YYYY-MM-DD]
+                            [--to YYYY-MM-DD] [--article <slug>]
+                            [--title "Custom title"]
+                            [--caption "Custom caption"]
+
+    Examples:
+      /render-figure UNRATE
+      /render-figure UNRATE yoy_pct --from 2020-01-01
+      /render-figure GDPC1 raw --article 2026-05-13-jobs-report
+    """
+    if not args:
+        return (
+            "**Usage:** `/render-figure <SERIES_ID> [transformation] "
+            "[--from YYYY-MM-DD] [--to YYYY-MM-DD] [--article <slug>] "
+            "[--title \"...\"] [--caption \"...\"]`\n\n"
+            "Renders a chart for the given FRED series ID via the data-viz "
+            "pipeline. Transformations: `raw` (default), `yoy_pct`, "
+            "`first_diff`, `ytd`. SVG is written to "
+            "`~/sites/mainstreetindependent/public/figures/` (or a "
+            "subdirectory keyed by `--article` slug). Returns the SVG path, "
+            "the URL, the source attribution, and the figureSchema dict "
+            "ready for Astro frontmatter.\n\n"
+            "Example: `/render-figure UNRATE yoy_pct --from 2020-01-01`"
+        )
+
+    series_id = args[0]
+    transformation = "raw"
+    start_date = None
+    end_date = None
+    article_slug = None
+    title = None
+    caption = None
+
+    i = 1
+    while i < len(args):
+        a = args[i]
+        if a == "--from" and i + 1 < len(args):
+            start_date = args[i + 1]
+            i += 2
+        elif a == "--to" and i + 1 < len(args):
+            end_date = args[i + 1]
+            i += 2
+        elif a == "--article" and i + 1 < len(args):
+            article_slug = args[i + 1]
+            i += 2
+        elif a == "--title" and i + 1 < len(args):
+            title = args[i + 1]
+            i += 2
+        elif a == "--caption" and i + 1 < len(args):
+            caption = args[i + 1]
+            i += 2
+        elif not a.startswith("--") and i == 1:
+            transformation = a
+            i += 1
+        else:
+            return f"[/render-figure: unknown or malformed arg `{a}`]"
+
+    try:
+        # Lazy import — keeps the slash command module light when not used
+        from data_viz_render import (
+            FigureRequest, render_figure,
+        )
+        from integrations.fred_api import SeriesQuery
+    except ImportError:
+        from orchestrator.data_viz_render import (
+            FigureRequest, render_figure,
+        )
+        from orchestrator.integrations.fred_api import SeriesQuery
+
+    request = FigureRequest(
+        series_query=SeriesQuery(
+            series_id=series_id,
+            observation_start=start_date,
+            observation_end=end_date,
+        ),
+        chart_type="timeseries",
+        transformation=transformation,
+        title=title,
+        caption=caption,
+        article_slug=article_slug,
+    )
+
+    result = render_figure(request)
+    if not result.success:
+        return (
+            f"[/render-figure FAILED — {result.error_code}]\n\n"
+            f"{result.error_message}"
+        )
+
+    fs = result.figure_schema
+    return (
+        f"**Figure rendered.**\n\n"
+        f"- **Series:** `{series_id}` ({transformation})\n"
+        f"- **SVG path:** `{result.svg_path}`\n"
+        f"- **URL:** `{result.url}`\n"
+        f"- **Window:** {fs['data_window']}\n"
+        f"- **Attribution:** {result.attribution}\n"
+        f"- **Alt:** {fs['alt']}\n"
+        f"- **Caption:** {fs['caption']}\n"
+    )
 
 
 # ---------- CLI smoke test ----------
