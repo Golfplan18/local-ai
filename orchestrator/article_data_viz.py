@@ -368,6 +368,26 @@ INDICATOR_CATALOG = [
 # Data structures
 # ---------------------------------------------------------------------------
 
+def _trim_caption(text: str | None, *, max_chars: int = 200) -> str | None:
+    """Return a caption trimmed to a word boundary at most max_chars long.
+
+    The classifier's justification is treated as the caption seed. A hard
+    mid-word truncation (the prior 125-char cut) reads as broken English
+    in published articles; this trim keeps captions readable.
+    """
+    if not text:
+        return None
+    text = text.strip()
+    if len(text) <= max_chars:
+        return text
+    # Find the last whitespace at or before max_chars; fall back to a hard cut.
+    head = text[:max_chars]
+    last_space = head.rfind(" ")
+    if last_space >= int(max_chars * 0.6):
+        head = head[:last_space]
+    return head.rstrip(",;:.- ") + "…"
+
+
 @dataclass
 class VizOpportunity:
     """A classifier-identified data-viz opportunity for an article."""
@@ -726,7 +746,7 @@ def render_figures_for_article(article_data: dict, *,
             chart_type=opp.chart_type,
             transformation=opp.transformation,
             article_slug=article_slug,
-            caption=(opp.justification[:125] if opp.justification else None),
+            caption=_trim_caption(opp.justification, max_chars=200),
         )
 
         try:

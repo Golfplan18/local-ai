@@ -399,7 +399,7 @@ def fetch_series(query: SeriesQuery, *,
         series_id=query.series_id,
         observations=observations,
         metadata=metadata,
-        retrieved_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        retrieved_at=time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime()),
         cache_hit=False,
         query=query,
     )
