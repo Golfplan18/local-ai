@@ -751,6 +751,89 @@ class TestLibraryMatchScore(unittest.TestCase):
         self.assertIn("1.5", cpi.matched_reports)
 
 
+class TestResolveAsOfDate(unittest.TestCase):
+    """Tests for _resolve_as_of_date — picks the FRED vintage date."""
+
+    def test_env_override_wins(self):
+        with mock.patch.dict("os.environ", {"ORA_FRED_AS_OF": "2024-03-15"}):
+            self.assertEqual(
+                adv._resolve_as_of_date({"publish_date": "2025-01-01"}),
+                "2024-03-15",
+            )
+
+    def test_falls_back_to_publish_date_string(self):
+        with mock.patch.dict("os.environ", {}, clear=False):
+            os.environ.pop("ORA_FRED_AS_OF", None)
+            self.assertEqual(
+                adv._resolve_as_of_date({"publish_date": "2024-03-15"}),
+                "2024-03-15",
+            )
+
+    def test_handles_date_object_from_yaml(self):
+        from datetime import date
+        with mock.patch.dict("os.environ", {}, clear=False):
+            os.environ.pop("ORA_FRED_AS_OF", None)
+            self.assertEqual(
+                adv._resolve_as_of_date({"publish_date": date(2024, 3, 15)}),
+                "2024-03-15",
+            )
+
+    def test_returns_none_when_no_signal(self):
+        with mock.patch.dict("os.environ", {}, clear=False):
+            os.environ.pop("ORA_FRED_AS_OF", None)
+            self.assertIsNone(adv._resolve_as_of_date({}))
+
+
+class TestFredAsOfUrlConstruction(unittest.TestCase):
+    """Verify the FRED URL includes realtime_start/realtime_end when
+    as_of_date is set on the SeriesQuery."""
+
+    def test_observations_url_includes_realtime_params(self):
+        from orchestrator.integrations import fred_api as fa
+        captured = {}
+
+        def fake_get(url, *, timeout=30):
+            captured["url"] = url
+            return {"observations": [{"date": "2024-03-01", "value": "100.0"}]}
+
+        with mock.patch.object(fa, "_http_get_json", side_effect=fake_get), \
+             mock.patch.object(fa, "_get_api_key", return_value="dummy"), \
+             mock.patch.object(fa, "_read_cache", return_value=None), \
+             mock.patch.object(fa, "_write_cache"), \
+             mock.patch.object(fa, "_fetch_metadata", return_value=None):
+            fa.fetch_series(fa.SeriesQuery(
+                series_id="GDPC1",
+                observation_start="2022-01-01",
+                as_of_date="2024-03-15",
+            ))
+        self.assertIn("realtime_start=2024-03-15", captured["url"])
+        self.assertIn("realtime_end=2024-03-15", captured["url"])
+
+    def test_observations_url_omits_realtime_when_no_as_of(self):
+        from orchestrator.integrations import fred_api as fa
+        captured = {}
+
+        def fake_get(url, *, timeout=30):
+            captured["url"] = url
+            return {"observations": [{"date": "2024-03-01", "value": "100.0"}]}
+
+        with mock.patch.object(fa, "_http_get_json", side_effect=fake_get), \
+             mock.patch.object(fa, "_get_api_key", return_value="dummy"), \
+             mock.patch.object(fa, "_read_cache", return_value=None), \
+             mock.patch.object(fa, "_write_cache"), \
+             mock.patch.object(fa, "_fetch_metadata", return_value=None):
+            fa.fetch_series(fa.SeriesQuery(series_id="GDPC1"))
+        self.assertNotIn("realtime_start", captured["url"])
+
+    def test_cache_key_differs_by_as_of(self):
+        """Same series + different as_of = different cache file. Prevents
+        a current-data fetch from polluting a vintage fetch and vice versa."""
+        from orchestrator.integrations import fred_api as fa
+        q1 = fa.SeriesQuery(series_id="GDPC1", as_of_date=None)
+        q2 = fa.SeriesQuery(series_id="GDPC1", as_of_date="2024-03-15")
+        self.assertNotEqual(fa._cache_key(q1), fa._cache_key(q2))
+
+
 class TestFrameworkAlignment(unittest.TestCase):
     """Phase 4 — framework-point alignment scoring."""
 

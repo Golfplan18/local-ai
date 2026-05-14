@@ -89,6 +89,16 @@ class SeriesQuery:
     ``series_id`` is the FRED series identifier (e.g., ``"GDPC1"``,
     ``"FEDFUNDS"``, ``"UNRATE"``). The other fields are FRED API
     parameters that shape the response.
+
+    ``as_of_date`` selects FRED's vintage view: when set to a past
+    date (YYYY-MM-DD), the response returns observations as they were
+    available on that date — including pre-revision values for series
+    like GDP that get revised over time. Implemented via FRED's
+    ``realtime_start`` / ``realtime_end`` parameters (both set to
+    ``as_of_date``). This is the load-bearing knob for the MSI
+    historical-forward run: when running as-of 2024-03-15, charts and
+    fact-checks reflect the data that was actually published on that
+    date, not today's revised data. Default None = today's data.
     """
     series_id: str
     observation_start: str | None = None  # YYYY-MM-DD; default = series start
@@ -97,6 +107,7 @@ class SeriesQuery:
     aggregation_method: str = "avg"       # avg / sum / eop (when frequency aggregation applies)
     units: str | None = None              # lin / chg / ch1 / pch / pc1 / pca / cch / cca / log
     limit: int = 100000                   # max observations (FRED max)
+    as_of_date: str | None = None         # YYYY-MM-DD vintage date (realtime); None = today
 
 
 @dataclass
@@ -360,6 +371,11 @@ def fetch_series(query: SeriesQuery, *,
         obs_params["aggregation_method"] = query.aggregation_method
     if query.units:
         obs_params["units"] = query.units
+    if query.as_of_date:
+        # FRED's vintage view: return observations as they were available
+        # on this date (including pre-revision values for revisable series).
+        obs_params["realtime_start"] = query.as_of_date
+        obs_params["realtime_end"] = query.as_of_date
 
     obs_url = f"{FRED_BASE_URL}/series/observations?{urllib.parse.urlencode(obs_params)}"
 
@@ -393,7 +409,9 @@ def fetch_series(query: SeriesQuery, *,
     # Optional metadata fetch
     metadata = None
     if fetch_metadata:
-        metadata = _fetch_metadata(query.series_id, api_key)
+        metadata = _fetch_metadata(
+            query.series_id, api_key, as_of_date=query.as_of_date,
+        )
 
     data = SeriesData(
         series_id=query.series_id,
@@ -407,11 +425,18 @@ def fetch_series(query: SeriesQuery, *,
     return data
 
 
-def _fetch_metadata(series_id: str, api_key: str) -> SeriesMetadata | None:
+def _fetch_metadata(series_id: str, api_key: str, *,
+                     as_of_date: str | None = None) -> SeriesMetadata | None:
     """Fetch series metadata from /fred/series. Returns None on any
-    failure — metadata is informational, not load-bearing."""
+    failure — metadata is informational, not load-bearing.
+
+    ``as_of_date`` (YYYY-MM-DD) selects the vintage metadata view for
+    historical-forward runs (returns the metadata as it appeared on
+    that date — e.g. titles before renames, units before re-indexing)."""
     try:
         meta_url = f"{FRED_BASE_URL}/series?series_id={series_id}&api_key={api_key}&file_type=json"
+        if as_of_date:
+            meta_url += f"&realtime_start={as_of_date}&realtime_end={as_of_date}"
         payload = _http_get_json(meta_url)
         seriess = payload.get("seriess", [])
         if not seriess:

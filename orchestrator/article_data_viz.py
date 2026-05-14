@@ -1000,7 +1000,8 @@ def _extract_first_percent(text: str) -> float | None:
         return None
 
 
-def _fred_value_for_claim(entry: dict, claim_temporal) -> float | None:
+def _fred_value_for_claim(entry: dict, claim_temporal,
+                           *, as_of_date: str | None = None) -> float | None:
     """Fetch FRED + apply the indicator's default transformation + look
     up the observation at or just before the claim's temporal date.
 
@@ -1047,6 +1048,7 @@ def _fred_value_for_claim(entry: dict, claim_temporal) -> float | None:
         data = fetch_series(SeriesQuery(
             series_id=sid,
             observation_start=observation_start,
+            as_of_date=as_of_date,
         ))
     except Exception:
         return None
@@ -1093,6 +1095,7 @@ def fact_check_article_against_fred(article_data: dict,
                                      scored_indicators: list[ScoredIndicator],
                                      *,
                                      tolerance_pp: float = 0.5,
+                                     as_of_date: str | None = None,
                                      ) -> list[FactCheckResult]:
     """Compare each picked indicator's matching claims to FRED values.
 
@@ -1106,9 +1109,17 @@ def fact_check_article_against_fred(article_data: dict,
     Returns a list of FactCheckResult dicts — never raises. FRED errors
     are absorbed into per-result ``note`` fields so the historical-
     forward pipeline never blocks on a transient API failure.
+
+    ``as_of_date`` forwards the FRED vintage view to each per-claim
+    fetch; when None, defaults to the article's publish_date (via
+    _resolve_as_of_date). For the historical-forward run, fact-check
+    must compare prose to the data that was AVAILABLE on the article's
+    date, not today's revised data.
     """
     atomic_claims = article_data.get("atomic_claims") or []
     results: list[FactCheckResult] = []
+    if as_of_date is None:
+        as_of_date = _resolve_as_of_date(article_data)
 
     for scored in scored_indicators:
         sid = scored.entry.get("series_id", "?")
@@ -1147,7 +1158,9 @@ def fact_check_article_against_fred(article_data: dict,
                 ))
                 continue
             temporal = claim.get("temporal")
-            fred_value = _fred_value_for_claim(scored.entry, temporal)
+            fred_value = _fred_value_for_claim(
+                scored.entry, temporal, as_of_date=as_of_date,
+            )
             if fred_value is None:
                 results.append(FactCheckResult(
                     series_id=sid, claim_id=claim_id,
@@ -1364,6 +1377,39 @@ def analyze_article_via_ranking(article_data: dict, *,
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
+def _resolve_as_of_date(article_data: dict) -> str | None:
+    """Resolve the FRED vintage ("as-of") date for this article.
+
+    Priority:
+      1. ``$ORA_FRED_AS_OF`` environment variable — used by the
+         historical-forward run script to pin the entire pipeline to
+         a specific past date globally.
+      2. The article's ``publish_date`` field — for a one-off render
+         of an article published in the past, this returns the
+         vintage view that existed on the publish date.
+      3. None — no vintage view, fetch latest data (today's revisions).
+
+    Accepts strings (ISO YYYY-MM-DD) and date / datetime objects
+    (PyYAML parses bare ISO dates in frontmatter into date instances).
+    """
+    env_override = os.environ.get("ORA_FRED_AS_OF", "").strip()
+    if env_override:
+        return env_override[:10]
+    pd = (article_data or {}).get("publish_date")
+    if pd is None:
+        return None
+    from datetime import date as _date, datetime as _datetime
+    if isinstance(pd, _datetime):
+        return pd.date().isoformat()
+    if isinstance(pd, _date):
+        return pd.isoformat()
+    if isinstance(pd, str):
+        s = pd.strip()
+        if len(s) >= 10:
+            return s[:10]
+    return None
+
 
 def _trim_caption(text: str | None, *, max_chars: int = 200) -> str | None:
     """Return a caption trimmed to a word boundary at most max_chars long.
@@ -1741,10 +1787,23 @@ def render_figures_for_article(article_data: dict, *,
     figure_results = []
     figures_schema = []
 
-    # Compute observation_start from time_range_years
+    # Resolve the FRED vintage date — for the historical-forward run
+    # this anchors every fetch to the article's publish date so charts
+    # reflect what was available then, not today's revised data.
+    as_of = _resolve_as_of_date(article_data)
+
+    # Compute observation_start. When as-of is set, anchor the 5-year
+    # lookback window to the as-of date rather than today, so we don't
+    # accidentally request observations beyond the vintage view.
     from datetime import date
-    today = date.today()
-    default_start = f"{today.year - 5}-01-01"
+    if as_of:
+        try:
+            anchor = date.fromisoformat(as_of[:10])
+        except (TypeError, ValueError):
+            anchor = date.today()
+    else:
+        anchor = date.today()
+    default_start = f"{anchor.year - 5}-01-01"
 
     for opp in analysis.opportunities:
         # Look up catalog entry for default chart_type / narrative metadata
@@ -1761,6 +1820,7 @@ def render_figures_for_article(article_data: dict, *,
             series_query=SeriesQuery(
                 series_id=opp.series_id,
                 observation_start=default_start,
+                as_of_date=as_of,
             ),
             chart_type=opp.chart_type,
             transformation=opp.transformation,
