@@ -365,6 +365,282 @@ INDICATOR_CATALOG = [
 
 
 # ---------------------------------------------------------------------------
+# Objective ranking — Phase 1: topic-overlap + name-match scoring
+# ---------------------------------------------------------------------------
+#
+# Replaces the previous model-judgment classifier with a research-grounded
+# scoring function. Indicators are ranked by:
+#   (a) name_match: does the article's atomic_claims directly cite the
+#       indicator (e.g., "Consumer Price Index" mentioned → CPIAUCSL).
+#       Strongest signal — the article is explicitly about this measure.
+#   (b) topic_overlap: do the indicator's topics (kebab-case) match the
+#       article's primary_themes (snake_case, with synonym expansion to
+#       bridge the two vocabularies)?
+#
+# Phase 2 will add semantic embedding-based claim matching; Phase 3 will
+# add research-library citation alignment; Phase 4 will add framework-
+# point scoring. The model becomes a NARRATOR of the rankings (writing
+# per-pick justifications), not a JUDGE picking the indicators.
+
+# Bridges article-side theme vocabulary (snake_case, narrative-derived)
+# to catalog-side topic vocabulary (kebab-case, framework-derived).
+# Each MSI primary_theme expands to one or more catalog topics. Extend
+# this map as new article themes surface in the publication's coverage.
+_THEME_TO_TOPICS: dict[str, list[str]] = {
+    "inflation_measurement": ["inflation-measurement"],
+    "monetary_policy": ["monetary-policy"],
+    "shelter_inflation": ["housing", "inflation-measurement"],
+    "k_shaped_consumer": ["distributional-methodology", "consumer-spending"],
+    "fed_rate_path": ["monetary-policy"],
+    "labor_market_measurement": ["labor-market-measurement"],
+    "wage_growth": ["labor-standards", "worker-power"],
+    "productivity_wage_decoupling": ["labor-standards", "labor-economics"],
+    "asset_prices": ["asset-prices"],
+    "housing_affordability": ["housing", "distributional-methodology"],
+    "consumer_spending": ["consumer-spending"],
+    "trade_deficit": ["trade"],
+    "money_supply": ["monetary-policy"],
+    "financial_regulation": ["financial-regulation"],
+    "beyond_gdp": ["beyond-gdp", "distributional-methodology"],
+    "demographics": ["demographics-generations"],
+}
+
+
+def _normalize_topic(token: str) -> str:
+    """Normalize a topic/theme token to a canonical kebab-case form."""
+    return token.lower().replace("_", "-").strip()
+
+
+def _expand_article_topics(article_themes: list[str]) -> set[str]:
+    """Expand article primary_themes into the catalog's topic vocabulary
+    via the synonym map. Themes with no mapping fall through as-is
+    (normalized to kebab-case)."""
+    expanded: set[str] = set()
+    for theme in article_themes or []:
+        norm = _normalize_topic(theme)
+        expanded.add(norm)
+        # Apply synonym expansion on the un-normalized snake_case key too
+        mapped = _THEME_TO_TOPICS.get(theme) or _THEME_TO_TOPICS.get(norm.replace("-", "_"))
+        if mapped:
+            for t in mapped:
+                expanded.add(_normalize_topic(t))
+    return expanded
+
+
+def _diagnostic_phrases(entry: dict) -> set[str]:
+    """Distinctive phrases that, if mentioned in article claims, mark
+    the article as directly about this indicator.
+
+    Includes: the FRED series_id; the full name; parenthetical contents
+    (often abbreviations like "(U-3)" or "(PCE)"); all bigrams and
+    trigrams from the name; all-caps tokens / tokens containing digits
+    (likely existing abbreviations like "PCE", "U6", "M2"); and a
+    synthesised first-letter acronym from the cleaned name when none
+    already exists (e.g. Consumer Price Index → CPI).
+
+    Phrases shorter than 3 characters are dropped — they create false
+    positives via substring matches (e.g., "sa" inside "said").
+    """
+    phrases: set[str] = set()
+    sid = (entry.get("series_id") or "").strip()
+    if sid and len(sid) >= 3:
+        phrases.add(sid.lower())
+    name = (entry.get("name") or "")
+    # Parenthetical contents — qualifiers and abbreviations.
+    for match in re.findall(r"\(([^)]+)\)", name):
+        for part in re.split(r"[,;]", match):
+            part = part.strip()
+            if part and len(part) >= 3:
+                phrases.add(part.lower())
+    # Cleaned name (parenthetical stripped).
+    name_clean = re.sub(r"\([^)]*\)", "", name).strip()
+    if name_clean:
+        if len(name_clean) >= 3:
+            phrases.add(name_clean.lower())
+        words = [w for w in name_clean.split() if len(w) > 1]
+        # Likely-abbreviation single tokens (all-caps or contains digit).
+        already_has_acronym = False
+        for w in words:
+            if len(w) >= 3 and (w.isupper() or any(c.isdigit() for c in w)):
+                phrases.add(w.lower())
+                already_has_acronym = True
+        # Synthesised first-letter acronym (only when no existing
+        # acronym token; otherwise we'd duplicate-coin nonsense like
+        # PPI from "PCE Price Index").
+        if not already_has_acronym and words and all(w[0].isupper() for w in words):
+            acronym = "".join(w[0] for w in words)
+            if len(acronym) >= 3:
+                phrases.add(acronym.lower())
+        # All bigrams + trigrams in the name.
+        for i in range(len(words) - 1):
+            bigram = f"{words[i]} {words[i+1]}".lower()
+            if len(bigram) >= 3:
+                phrases.add(bigram)
+        for i in range(len(words) - 2):
+            phrases.add(f"{words[i]} {words[i+1]} {words[i+2]}".lower())
+    return phrases
+
+
+def _name_match_score(entry: dict, atomic_claims: list[dict]) -> tuple[float, list[str]]:
+    """Score the indicator by how many atomic claims directly mention it.
+
+    Returns (score, matched_phrase_list_for_audit). Strongest possible
+    signal: an article explicitly citing "Consumer Price Index" is
+    self-evidently about CPI. Score is normalized: count_matched_claims /
+    total_claims, with a floor of 0 when no claims.
+    """
+    if not atomic_claims:
+        return (0.0, [])
+    phrases = _diagnostic_phrases(entry)
+    if not phrases:
+        return (0.0, [])
+
+    matched_claims = 0
+    matched_phrases: set[str] = set()
+    for claim in atomic_claims:
+        if not isinstance(claim, dict):
+            continue
+        text = (claim.get("text") or "").lower()
+        for phrase in phrases:
+            if not phrase or len(phrase) < 3:
+                continue
+            # Word-boundary match — avoids false positives like
+            # "total" matching "totally" or "sa" matching "said".
+            if re.search(r"\b" + re.escape(phrase) + r"\b", text):
+                matched_claims += 1
+                matched_phrases.add(phrase)
+                break  # one phrase match per claim is enough
+    return (matched_claims / len(atomic_claims), sorted(matched_phrases))
+
+
+def _topic_overlap_score(entry: dict, article_themes: list[str]) -> tuple[float, list[str]]:
+    """Score by overlap between indicator topics and article primary_themes
+    (with synonym expansion). Returns (score, matched_topic_list)."""
+    indicator_topics = {_normalize_topic(t) for t in (entry.get("topics") or [])}
+    if not indicator_topics:
+        return (0.0, [])
+    article_topics = _expand_article_topics(article_themes or [])
+    if not article_topics:
+        return (0.0, [])
+    matched = indicator_topics & article_topics
+    return (float(len(matched)), sorted(matched))
+
+
+# Weights for Phase 1 scoring. name_match dominates when an article is
+# explicitly about an indicator; topic_overlap fills in when the article
+# touches an indicator's themes without naming it directly. Tunable per
+# editorial taste over time.
+_RANK_WEIGHT_NAME_MATCH = 3.0
+_RANK_WEIGHT_TOPIC_OVERLAP = 1.0
+
+
+@dataclass
+class ScoredIndicator:
+    """An INDICATOR_CATALOG entry with its objective-ranking scores."""
+    entry: dict
+    name_match: float = 0.0
+    topic_overlap: float = 0.0
+    total: float = 0.0
+    matched_phrases: list[str] = field(default_factory=list)
+    matched_topics: list[str] = field(default_factory=list)
+
+    def justification_text(self) -> str:
+        """Auditable, deterministic justification string built from score
+        components. No model call needed."""
+        parts: list[str] = []
+        if self.matched_phrases:
+            shown = ", ".join(f'"{p}"' for p in self.matched_phrases[:2])
+            parts.append(f"Article claims cite {shown}")
+        if self.matched_topics:
+            parts.append(f"Topic overlap: {', '.join(self.matched_topics)}")
+        covers = self.entry.get("covers", "")
+        if covers and not parts:
+            parts.append(covers)
+        elif covers:
+            parts.append(covers.split(";")[0].strip())
+        return ". ".join(parts) + (
+            f" [score: name={self.name_match:.2f}, topic={self.topic_overlap:.2f}]"
+        )
+
+
+def rank_indicators_for_article(article_data: dict) -> list[ScoredIndicator]:
+    """Objective ranking — score every INDICATOR_CATALOG entry against
+    the article and return the list sorted descending by total score.
+
+    Deterministic given the same catalog state + article. Adaptive: as
+    the catalog grows or synonym map evolves, the ranking shifts.
+    """
+    metadata = article_data.get("metadata") or {}
+    article_themes = metadata.get("primary_themes") or []
+    atomic_claims = article_data.get("atomic_claims") or []
+
+    scored: list[ScoredIndicator] = []
+    for entry in INDICATOR_CATALOG:
+        name_score, matched_phrases = _name_match_score(entry, atomic_claims)
+        topic_score, matched_topics = _topic_overlap_score(entry, article_themes)
+        total = (
+            _RANK_WEIGHT_NAME_MATCH * name_score
+            + _RANK_WEIGHT_TOPIC_OVERLAP * topic_score
+        )
+        scored.append(ScoredIndicator(
+            entry=entry,
+            name_match=name_score,
+            topic_overlap=topic_score,
+            total=total,
+            matched_phrases=matched_phrases,
+            matched_topics=matched_topics,
+        ))
+    scored.sort(key=lambda s: -s.total)
+    return scored
+
+
+def analyze_article_via_ranking(article_data: dict, *,
+                                max_indicators: int = 4,
+                                min_score_threshold: float = 0.5,
+                                ) -> ArticleVizAnalysis:
+    """Objective-ranking analysis path — no model call.
+
+    Ranks every catalog indicator against the article via the Phase 1
+    scoring function. Picks the top ``max_indicators`` whose total
+    score meets ``min_score_threshold``. Returns ``warrants_charts=False``
+    when no indicator clears the threshold (correctly handles non-
+    economic articles whose primary_themes don't engage any catalog
+    topic).
+
+    The justification text is deterministic and built from the score
+    components — auditable. A future Phase 4 may add a model-narration
+    step that rewrites the justifications in editorial voice without
+    changing the picks.
+    """
+    ranked = rank_indicators_for_article(article_data)
+    top = [s for s in ranked[:max_indicators] if s.total >= min_score_threshold]
+
+    if not top:
+        return ArticleVizAnalysis(
+            warrants_charts=False,
+            classifier_response_raw="[objective ranking; zero indicators cleared threshold]",
+        )
+
+    opportunities: list[VizOpportunity] = []
+    for i, scored in enumerate(top):
+        entry = scored.entry
+        opportunities.append(VizOpportunity(
+            series_id=entry["series_id"],
+            transformation=entry.get("default_transformation", "raw"),
+            chart_type="timeseries",
+            narrative_role="quantifies",
+            justification=scored.justification_text(),
+            priority=i + 1,
+        ))
+
+    return ArticleVizAnalysis(
+        warrants_charts=True,
+        opportunities=opportunities,
+        classifier_response_raw="[objective ranking; no model call]",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
@@ -652,18 +928,31 @@ def analyze_article_for_data_viz(article_data: dict, *,
                                  call_fn: Callable | None = None,
                                  endpoint: dict | None = None,
                                  max_tokens: int = 2048,
+                                 mode: str = "ranking",
+                                 max_indicators: int = 4,
+                                 min_score_threshold: float = 0.5,
                                  ) -> ArticleVizAnalysis:
-    """Classify an article and return a list of data-viz opportunities.
+    """Analyse an article and return a list of data-viz opportunities.
 
-    Calls the model (sidebar slot) once with the article summary +
-    indicator catalog and parses the JSON response into a structured
-    analysis. When ``call_fn`` is None, returns an empty analysis with
-    an error message (caller is expected to wire the model invocation).
+    Default mode is ``"ranking"`` — objective scoring against the
+    indicator catalog with no model call (Phase 1: topic-overlap +
+    name-match). Deterministic given catalog state + article state.
+    Adaptive as the catalog and synonym map grow.
+
+    Legacy mode ``"classifier"`` uses the previous model-judgment
+    path (kept for tests + A/B comparison). Requires ``call_fn``.
     """
+    if mode == "ranking":
+        return analyze_article_via_ranking(
+            article_data,
+            max_indicators=max_indicators,
+            min_score_threshold=min_score_threshold,
+        )
+
     if call_fn is None:
         return ArticleVizAnalysis(
             warrants_charts=False,
-            error="No call_fn provided; classifier requires a model-invocation function",
+            error="No call_fn provided; classifier mode requires a model-invocation function",
         )
 
     summary = extract_article_summary(article_data)
@@ -695,21 +984,29 @@ def render_figures_for_article(article_data: dict, *,
                                endpoint: dict | None = None,
                                output_dir: str | None = None,
                                article_slug: str | None = None,
+                               mode: str = "ranking",
+                               max_indicators: int = 4,
+                               min_score_threshold: float = 0.5,
                                ) -> ArticleVizResult:
-    """End-to-end: classify the article, render every accepted opportunity,
+    """End-to-end: analyse the article, render every accepted opportunity,
     return the figureSchema list ready to drop into the article frontmatter.
 
+    Default mode is ``"ranking"`` — objective scoring against the
+    catalog (Phase 1). ``mode="classifier"`` falls back to the legacy
+    model-judgment path; requires ``call_fn``.
+
     Failure modes:
-      - Classifier returns no opportunities → success=True, figures=[].
+      - Analyser returns no opportunities → success=True, figures=[].
         This is the editorially-correct behavior for non-economic
         articles.
       - Individual figure render fails → that figure is dropped; other
         figures still attempted; success=True if at least one rendered.
       - All figures fail → success=False with error_message aggregated.
-      - Classifier itself fails → success=False, analysis carries the error.
+      - Analyser itself fails → success=False, analysis carries the error.
     """
     analysis = analyze_article_for_data_viz(
-        article_data, call_fn=call_fn, endpoint=endpoint,
+        article_data, call_fn=call_fn, endpoint=endpoint, mode=mode,
+        max_indicators=max_indicators, min_score_threshold=min_score_threshold,
     )
 
     if analysis.error:

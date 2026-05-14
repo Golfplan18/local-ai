@@ -22,10 +22,16 @@ from article_data_viz import (  # noqa: E402
     INDICATOR_CATALOG,
     VizOpportunity,
     _build_classifier_prompt,
+    _diagnostic_phrases,
+    _expand_article_topics,
+    _name_match_score,
     _parse_classifier_response,
+    _topic_overlap_score,
     analyze_article_for_data_viz,
+    analyze_article_via_ranking,
     extract_article_summary,
     parse_article_file,
+    rank_indicators_for_article,
     render_figures_for_article,
 )
 from data_viz_render import FigureResult  # noqa: E402
@@ -266,7 +272,10 @@ class TestParseClassifierResponse(unittest.TestCase):
 class TestAnalyzeArticle(unittest.TestCase):
 
     def test_no_call_fn_returns_error(self):
-        analysis = analyze_article_for_data_viz(ECONOMIC_ARTICLE, call_fn=None)
+        # classifier mode without call_fn → error
+        analysis = analyze_article_for_data_viz(
+            ECONOMIC_ARTICLE, call_fn=None, mode="classifier",
+        )
         self.assertFalse(analysis.warrants_charts)
         self.assertIn("call_fn", analysis.error)
 
@@ -284,7 +293,7 @@ class TestAnalyzeArticle(unittest.TestCase):
         })
         fake_call = mock.MagicMock(return_value=fake_response)
         analysis = analyze_article_for_data_viz(
-            ECONOMIC_ARTICLE, call_fn=fake_call,
+            ECONOMIC_ARTICLE, call_fn=fake_call, mode="classifier",
         )
         self.assertTrue(analysis.warrants_charts)
         self.assertEqual(len(analysis.opportunities), 2)
@@ -300,7 +309,7 @@ class TestAnalyzeArticle(unittest.TestCase):
         })
         fake_call = mock.MagicMock(return_value=fake_response)
         analysis = analyze_article_for_data_viz(
-            GEOPOLITICAL_ARTICLE, call_fn=fake_call,
+            GEOPOLITICAL_ARTICLE, call_fn=fake_call, mode="classifier",
         )
         self.assertFalse(analysis.warrants_charts)
         self.assertEqual(len(analysis.opportunities), 0)
@@ -308,7 +317,7 @@ class TestAnalyzeArticle(unittest.TestCase):
     def test_empty_article_returns_error(self):
         fake_call = mock.MagicMock(return_value="{}")
         analysis = analyze_article_for_data_viz(
-            {}, call_fn=fake_call,
+            {}, call_fn=fake_call, mode="classifier",
         )
         self.assertFalse(analysis.warrants_charts)
         self.assertIn("no headline", analysis.error.lower())
@@ -318,7 +327,7 @@ class TestAnalyzeArticle(unittest.TestCase):
     def test_call_fn_returns_non_string(self):
         fake_call = mock.MagicMock(return_value=None)
         analysis = analyze_article_for_data_viz(
-            ECONOMIC_ARTICLE, call_fn=fake_call,
+            ECONOMIC_ARTICLE, call_fn=fake_call, mode="classifier",
         )
         self.assertFalse(analysis.warrants_charts)
         self.assertIn("empty", analysis.error.lower())
@@ -338,7 +347,7 @@ class TestRenderFiguresForArticle(unittest.TestCase):
         })
         fake_call = mock.MagicMock(return_value=fake_response)
         result = render_figures_for_article(
-            GEOPOLITICAL_ARTICLE, call_fn=fake_call,
+            GEOPOLITICAL_ARTICLE, call_fn=fake_call, mode="classifier",
         )
         self.assertTrue(result.success)
         self.assertEqual(len(result.figures), 0)
@@ -374,7 +383,7 @@ class TestRenderFiguresForArticle(unittest.TestCase):
         with mock.patch.object(adv, "render_figure",
                                return_value=fake_figure_result):
             result = render_figures_for_article(
-                ECONOMIC_ARTICLE, call_fn=fake_call,
+                ECONOMIC_ARTICLE, call_fn=fake_call, mode="classifier",
                 article_slug="2026-05-may-jobs-report",
             )
 
@@ -407,7 +416,7 @@ class TestRenderFiguresForArticle(unittest.TestCase):
         with mock.patch.object(adv, "render_figure",
                                side_effect=[success_result, fail_result]):
             result = render_figures_for_article(
-                ECONOMIC_ARTICLE, call_fn=fake_call,
+                ECONOMIC_ARTICLE, call_fn=fake_call, mode="classifier",
             )
 
         self.assertTrue(result.success)  # at least one succeeded
@@ -429,7 +438,7 @@ class TestRenderFiguresForArticle(unittest.TestCase):
         )
         with mock.patch.object(adv, "render_figure", return_value=fail_result):
             result = render_figures_for_article(
-                ECONOMIC_ARTICLE, call_fn=fake_call,
+                ECONOMIC_ARTICLE, call_fn=fake_call, mode="classifier",
             )
 
         self.assertFalse(result.success)
@@ -439,10 +448,155 @@ class TestRenderFiguresForArticle(unittest.TestCase):
     def test_classifier_error_propagates(self):
         fake_call = mock.MagicMock(return_value=None)
         result = render_figures_for_article(
-            ECONOMIC_ARTICLE, call_fn=fake_call,
+            ECONOMIC_ARTICLE, call_fn=fake_call, mode="classifier",
         )
         self.assertFalse(result.success)
         self.assertTrue(result.error)
+
+
+CPI_ARTICLE_WITH_THEMES = {
+    "headline": "April CPI cools to 3.1% as shelter inflation stays sticky",
+    "lede": "Consumer prices rose 3.1 percent year-over-year in April 2026.",
+    "metadata": {
+        "primary_themes": [
+            "inflation_measurement", "monetary_policy", "shelter_inflation",
+            "k_shaped_consumer", "fed_rate_path",
+        ],
+    },
+    "atomic_claims": [
+        {"text": "The Consumer Price Index for All Urban Consumers rose 3.1 percent."},
+        {"text": "Core CPI rose 3.3 percent year-over-year."},
+        {"text": "Federal funds futures priced a 33 percent rate-cut probability."},
+    ],
+}
+
+
+# ---------------------------------------------------------------------------
+# Objective ranking — Phase 1 scoring
+# ---------------------------------------------------------------------------
+
+class TestDiagnosticPhrases(unittest.TestCase):
+    def test_includes_series_id(self):
+        entry = {"series_id": "CPIAUCSL", "name": "Consumer Price Index"}
+        phrases = _diagnostic_phrases(entry)
+        self.assertIn("cpiaucsl", phrases)
+
+    def test_includes_full_name_lowercased(self):
+        entry = {"series_id": "X", "name": "Federal Funds Rate"}
+        phrases = _diagnostic_phrases(entry)
+        self.assertIn("federal funds rate", phrases)
+
+    def test_extracts_parenthetical(self):
+        entry = {"series_id": "X", "name": "Unemployment Rate (U-3)"}
+        phrases = _diagnostic_phrases(entry)
+        self.assertIn("u-3", phrases)
+        self.assertIn("unemployment rate", phrases)
+
+    def test_extracts_bigrams_and_trigrams(self):
+        entry = {"series_id": "X", "name": "Total Nonfarm Payrolls"}
+        phrases = _diagnostic_phrases(entry)
+        self.assertIn("nonfarm payrolls", phrases)  # bigram
+        self.assertIn("total nonfarm payrolls", phrases)  # trigram
+
+    def test_recognises_allcaps_abbreviations(self):
+        entry = {"series_id": "PCEPI", "name": "PCE Price Index"}
+        phrases = _diagnostic_phrases(entry)
+        self.assertIn("pce", phrases)
+
+
+class TestTopicSynonymExpansion(unittest.TestCase):
+    def test_expands_known_theme(self):
+        expanded = _expand_article_topics(["shelter_inflation"])
+        # shelter_inflation maps to housing + inflation-measurement
+        self.assertIn("housing", expanded)
+        self.assertIn("inflation-measurement", expanded)
+
+    def test_passes_unknown_theme_through(self):
+        expanded = _expand_article_topics(["unknown_theme"])
+        self.assertIn("unknown-theme", expanded)
+
+
+class TestNameMatchScore(unittest.TestCase):
+    def test_matches_explicit_citation(self):
+        entry = {"series_id": "CPIAUCSL",
+                 "name": "Consumer Price Index (all urban consumers)"}
+        claims = [{"text": "The Consumer Price Index rose 3.1 percent."}]
+        score, matched = _name_match_score(entry, claims)
+        self.assertGreater(score, 0)
+        self.assertTrue(any("consumer price" in m for m in matched))
+
+    def test_returns_zero_when_no_claims(self):
+        entry = {"series_id": "X", "name": "Y"}
+        score, matched = _name_match_score(entry, [])
+        self.assertEqual(score, 0.0)
+
+
+class TestTopicOverlapScore(unittest.TestCase):
+    def test_matches_overlapping_topic(self):
+        entry = {"series_id": "X", "topics": ["inflation-measurement"]}
+        score, matched = _topic_overlap_score(
+            entry, ["inflation_measurement", "monetary_policy"])
+        self.assertEqual(score, 1.0)
+        self.assertIn("inflation-measurement", matched)
+
+    def test_returns_zero_when_no_overlap(self):
+        entry = {"series_id": "X", "topics": ["housing"]}
+        score, matched = _topic_overlap_score(
+            entry, ["geopolitics"])
+        self.assertEqual(score, 0.0)
+
+
+class TestRankIndicators(unittest.TestCase):
+    def test_cpi_article_ranks_cpi_indicators_high(self):
+        ranked = rank_indicators_for_article(CPI_ARTICLE_WITH_THEMES)
+        # Top 3 should include CPIAUCSL and either CPILFESL or FEDFUNDS
+        top_ids = {s.entry["series_id"] for s in ranked[:4]}
+        self.assertIn("CPIAUCSL", top_ids)
+        # CPILFESL or PCEPI should also be high (both inflation indicators
+        # the article touches via topic overlap)
+        self.assertTrue(
+            "CPILFESL" in top_ids or "PCEPI" in top_ids,
+            f"top picks were: {top_ids}",
+        )
+
+    def test_geopolitical_article_scores_all_zero(self):
+        # No themes, no claim-name matches → no indicator clears the
+        # threshold
+        ranked = rank_indicators_for_article(GEOPOLITICAL_ARTICLE)
+        # All scores 0 (no metadata.primary_themes; claims don't mention
+        # any catalog series)
+        self.assertTrue(all(s.total == 0 for s in ranked),
+                        f"unexpected non-zero: {[(s.entry['series_id'], s.total) for s in ranked if s.total > 0]}")
+
+    def test_deterministic_same_input_same_picks(self):
+        ranked1 = rank_indicators_for_article(CPI_ARTICLE_WITH_THEMES)
+        ranked2 = rank_indicators_for_article(CPI_ARTICLE_WITH_THEMES)
+        ids1 = [s.entry["series_id"] for s in ranked1]
+        ids2 = [s.entry["series_id"] for s in ranked2]
+        self.assertEqual(ids1, ids2)
+
+
+class TestAnalyzeArticleViaRanking(unittest.TestCase):
+    def test_returns_opportunities_for_economic_article(self):
+        analysis = analyze_article_via_ranking(CPI_ARTICLE_WITH_THEMES)
+        self.assertTrue(analysis.warrants_charts)
+        self.assertGreater(len(analysis.opportunities), 0)
+        self.assertLessEqual(len(analysis.opportunities), 4)
+
+    def test_returns_no_charts_for_geopolitical_article(self):
+        analysis = analyze_article_via_ranking(GEOPOLITICAL_ARTICLE)
+        self.assertFalse(analysis.warrants_charts)
+
+    def test_justification_is_deterministic_and_auditable(self):
+        analysis = analyze_article_via_ranking(CPI_ARTICLE_WITH_THEMES)
+        for opp in analysis.opportunities:
+            # Justification should mention score components
+            self.assertIn("score:", opp.justification)
+
+    def test_default_mode_via_main_entry_is_ranking(self):
+        # No call_fn, no mode kwarg → ranking path, succeeds.
+        analysis = analyze_article_for_data_viz(CPI_ARTICLE_WITH_THEMES)
+        self.assertTrue(analysis.warrants_charts)
 
 
 if __name__ == "__main__":
