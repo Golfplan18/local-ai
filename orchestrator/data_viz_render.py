@@ -587,7 +587,12 @@ _VEGA_PORTABLE_STYLES = """
   .role-axis-tick line, .role-axis-domain line { stroke: #888; stroke-width: 1px; }
   .role-axis-grid line { stroke: #e6e6e6; stroke-width: 1px; }
   .mark-rule line { stroke: #888; }
-  .mark-line path { fill: none; stroke: #4c78a8; stroke-width: 2px; stroke-linejoin: round; stroke-linecap: round; }
+  /* Stroke comes from inline style attributes (per-series colors are
+     injected by _color_multi_series_lines for multi-line composites).
+     For single-series, _color_multi_series_lines is a no-op and the
+     default below applies. */
+  .mark-line path { fill: none; stroke-width: 2px; stroke-linejoin: round; stroke-linecap: round; }
+  .mark-line path:not([style]) { stroke: #4c78a8; }
   .mark-area path { fill: #4c78a8; fill-opacity: 0.3; stroke: none; }
   .mark-rect path { fill: #4c78a8; stroke: none; }
   .mark-symbol path { fill: #4c78a8; stroke: #4c78a8; }
@@ -596,24 +601,67 @@ _VEGA_PORTABLE_STYLES = """
 """
 
 
+# Tableau 10 palette — matches Vega-Lite's default category color scheme.
+# Used for multi-series composite charts. Order matches the order Vega-Lite
+# emits mark-line groups (and the order rows appear in the legend).
+_MULTI_SERIES_PALETTE = [
+    "#4c78a8", "#f58518", "#54a24b", "#e45756", "#72b7b2",
+    "#eeca3b", "#b279a2", "#ff9da6", "#9d755d", "#bab0ac",
+]
+
+
+def _color_multi_series_lines(svg: str) -> str:
+    """For multi-line charts, inject distinct per-series stroke colors
+    directly onto each mark-line path. Vega-Lite emits class-only SVG
+    that all paints the same color via the inline default-stroke rule;
+    this post-pass replaces that with per-series colors when there are
+    ≥2 line-mark paths."""
+    line_re = re.compile(
+        r'(<path aria-label="[^"]*Series:[^"]*"[^>]*?)(/?>)',
+        re.DOTALL,
+    )
+    matches = list(line_re.finditer(svg))
+    if len(matches) < 2:
+        return svg  # single-series — default color is fine
+
+    # Walk in reverse so substitutions don't shift earlier indices.
+    out = svg
+    legend_replacements: list[tuple[int, str]] = []
+    for i, m in enumerate(reversed(matches)):
+        idx = len(matches) - 1 - i  # original position
+        color = _MULTI_SERIES_PALETTE[idx % len(_MULTI_SERIES_PALETTE)]
+        already = m.group(1)
+        # Inject stroke into the path's opening tag (preserves existing
+        # attributes; appends a style attribute).
+        injected = already + f' style="stroke: {color}"' + m.group(2)
+        out = out[:m.start()] + injected + out[m.end():]
+    return out
+
+
 def _inline_vega_styles(svg: str) -> str:
-    """Inject a self-contained Vega style block into the SVG.
+    """Inject a self-contained Vega style block + per-series colors.
 
     The visual compiler emits class-only SVG. Page CSS provides the styles
     in the Ora chat UI, but standalone SVG files (written to disk and
     embedded elsewhere as <img>) render blank without inline styles.
 
     Inserts the style block immediately after the opening <svg ...> tag.
-    No-op if the SVG already contains a <style> block (idempotent).
+    Then post-processes multi-line charts to give each series a distinct
+    stroke color (Vega-Lite emits class-only SVG without inline strokes,
+    so positional CSS selectors are unreliable against the nested
+    rendered structure — direct inline style injection is the simplest
+    fix that survives across rendering contexts).
+
+    No-op on the style block when the SVG already contains one
+    (idempotent).
     """
-    if "<style" in svg[:600]:
-        return svg
-    open_tag_end = svg.find(">", svg.find("<svg"))
-    if open_tag_end < 0:
-        return svg
-    insert_at = open_tag_end + 1
-    style_block = f"<style>{_VEGA_PORTABLE_STYLES}</style>"
-    return svg[:insert_at] + style_block + svg[insert_at:]
+    if "<style" not in svg[:600]:
+        open_tag_end = svg.find(">", svg.find("<svg"))
+        if open_tag_end >= 0:
+            insert_at = open_tag_end + 1
+            style_block = f"<style>{_VEGA_PORTABLE_STYLES}</style>"
+            svg = svg[:insert_at] + style_block + svg[insert_at:]
+    return _color_multi_series_lines(svg)
 
 
 # ---------------------------------------------------------------------------
@@ -735,6 +783,235 @@ def render_figure(request: FigureRequest, *,
         url=url,
         envelope=envelope,
         attribution=attribution,
+        figure_schema=fig_schema,
+    )
+
+
+def render_composite_figure(*,
+                             group_id: str,
+                             members: list[str],
+                             transformation: str = "raw",
+                             title: str | None = None,
+                             y_axis_label: str = "Percent",
+                             observation_start: str | None = None,
+                             as_of_date: str | None = None,
+                             article_slug: str | None = None,
+                             output_dir: str = DEFAULT_OUTPUT_DIR,
+                             ) -> FigureResult:
+    """Render a multi-series composite chart (e.g., labor-rates
+    dashboard: UNRATE + U6RATE + CIVPART + LNS12300060 on one chart).
+
+    Fetches each member series with the same observation_start +
+    as_of_date so all series share a comparable window, applies the
+    uniform transformation (so all share a y-axis), builds a long-
+    format Vega-Lite envelope with color=series encoding, and renders
+    via the existing visual compiler. Partial success is allowed —
+    if a subset of members fails to fetch, the chart still renders
+    with the available members.
+
+    Returns FigureResult with figure_schema configured for the
+    composite (source field lists all member series IDs, transformation
+    field reflects the uniform transformation applied).
+    """
+    if not members:
+        return FigureResult(
+            success=False, error_code="invalid_request",
+            error_message="render_composite_figure: members list is empty",
+        )
+    if transformation not in TRANSFORMATIONS:
+        return FigureResult(
+            success=False, error_code="invalid_request",
+            error_message=(
+                f"Unknown transformation '{transformation}'. "
+                f"Supported: {sorted(TRANSFORMATIONS)}"
+            ),
+        )
+
+    # Step 1: fetch each member; skip individual fetch failures so
+    # the chart still renders with the remaining members.
+    series_data_list: list[SeriesData] = []
+    fetch_errors: list[str] = []
+    for sid in members:
+        try:
+            sd = fetch_series(SeriesQuery(
+                series_id=sid,
+                observation_start=observation_start,
+                as_of_date=as_of_date,
+            ))
+            series_data_list.append(sd)
+        except FredError as exc:
+            fetch_errors.append(f"{sid}: {exc.code}")
+
+    if not series_data_list:
+        return FigureResult(
+            success=False, error_code="data_unavailable",
+            error_message=(
+                f"No member series available for composite '{group_id}': "
+                + "; ".join(fetch_errors)
+            ),
+        )
+
+    # Step 2: transform each + assemble long-format data points.
+    points: list[dict] = []
+    used_series: list[str] = []
+    all_dates: list[str] = []
+    for sd in series_data_list:
+        freq = sd.metadata.frequency_short if sd.metadata else None
+        try:
+            transformed = apply_transformation(
+                sd.observations, transformation, frequency=freq,
+            )
+        except ValueError:
+            continue
+        added = 0
+        for o in transformed:
+            if o.value is not None:
+                points.append({"t": o.date, "series": sd.series_id, "v": o.value})
+                all_dates.append(o.date)
+                added += 1
+        if added > 0:
+            used_series.append(sd.series_id)
+
+    if not points:
+        return FigureResult(
+            success=False, error_code="data_unavailable",
+            error_message=f"Composite '{group_id}' produced no data points after transformation",
+        )
+
+    # Step 3: build the Vega-Lite spec + envelope.
+    period_label = ""
+    if all_dates:
+        period_label = f"{min(all_dates)} to {max(all_dates)}"
+    chart_title = title or f"Composite: {group_id}"
+
+    spec = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "data": {"values": points},
+        "mark": {"type": "line", "tooltip": True},
+        "width": 480,   # wider than single-series default to leave room
+                        # for the legend without crushing the x-axis
+        "height": 280,
+        "encoding": {
+            "x": {
+                "field": "t", "type": "temporal", "title": "Date",
+                "axis": {"tickCount": 6},  # avoid crowded year-month ticks
+            },
+            "y": {"field": "v", "type": "quantitative", "title": y_axis_label},
+            "color": {"field": "series", "type": "nominal", "title": "Series"},
+        },
+        "caption": {
+            "source": f"FRED, multi-series composite ({', '.join(used_series)})",
+            "period": period_label or "unknown",
+            "n": len(points),
+            "units": y_axis_label,
+        },
+    }
+
+    # Semantic description per visual-compiler schema (Lundgard-
+    # Satyanarayan four levels + short_alt). Multi-line composites have
+    # less natural single-shape narrative than single-series, so the
+    # levels describe the group view rather than per-series shape.
+    series_list = ", ".join(used_series)
+    short_alt_full = (
+        f"Multi-series chart of {len(used_series)} indicators "
+        f"({series_list}) from {min(all_dates)} to {max(all_dates)}."
+    )
+    semantic = {
+        "short_alt": short_alt_full[:140],
+        "level_1_elemental": (
+            f"Multi-line chart titled '{chart_title}' showing {len(used_series)} "
+            f"series ({series_list}) over {period_label}."
+        ),
+        "level_2_statistical": (
+            f"{len(points)} total observations across {len(used_series)} series; "
+            f"window {min(all_dates)} to {max(all_dates)}; shared "
+            f"{y_axis_label} axis."
+        ),
+        "level_3_perceptual": (
+            f"Composite view comparing {len(used_series)} indicators on the "
+            f"same {y_axis_label.lower()} axis. Series shown as separate "
+            f"colored lines."
+        ),
+        "level_4_contextual": (
+            f"Composite '{chart_title}' tells the story only the full group "
+            f"reveals: any single member alone obscures the relationship "
+            f"shown across all {len(used_series)} series."
+        ),
+    }
+
+    # Use a deterministic id so caching + re-render strip-and-replace works.
+    fig_id = f"fig-composite-{group_id}-{transformation}"
+
+    envelope = {
+        "schema_version": "0.2",
+        "id": fig_id,
+        "type": "time_series",
+        "mode_context": "data_viz_composite",
+        "relation_to_prose": "integrated",
+        "spec": spec,
+        "semantic_description": semantic,
+        "title": chart_title,
+    }
+
+    # Step 4: render via the visual compiler.
+    try:
+        svg = render_envelope_to_svg(envelope)
+    except RuntimeError as exc:
+        return FigureResult(
+            success=False, envelope=envelope,
+            error_code="render_failed",
+            error_message=str(exc),
+        )
+
+    # Step 5: write to disk.
+    target_dir = output_dir
+    if article_slug:
+        target_dir = os.path.join(output_dir, article_slug)
+    os.makedirs(target_dir, exist_ok=True)
+    svg_filename = f"{fig_id}.svg"
+    svg_path = os.path.join(target_dir, svg_filename)
+    with open(svg_path, "w", encoding="utf-8") as f:
+        f.write(svg)
+
+    # Step 6: figureSchema for Astro.
+    url_prefix = "/figures/"
+    if article_slug:
+        url_prefix = f"/figures/{article_slug}/"
+    url = url_prefix + svg_filename
+
+    # Use the earliest retrieved_at across members as the retrieval date
+    retrieved = ""
+    for sd in series_data_list:
+        if sd.retrieved_at:
+            if not retrieved or sd.retrieved_at < retrieved:
+                retrieved = sd.retrieved_at
+
+    fig_schema = {
+        "url": url,
+        "alt": semantic["short_alt"],
+        "caption": (
+            f"{chart_title}. Composite of {len(used_series)} FRED series: "
+            f"{series_list}."
+        )[:200],
+        "credit": "Main Street Independent (algorithmic)",
+        "source": f"FRED, composite of {len(used_series)} series: {series_list}",
+        "source_url": "https://fred.stlouisfed.org/",
+        "source_retrieval_date": retrieved[:10] if retrieved else "",
+        "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "chart_type": "timeseries",
+        "data_window": period_label,
+        "transformation": transformation,
+        "ai_authored": True,
+        "ai_model": "msi-data-viz-pipeline-v1",
+    }
+
+    return FigureResult(
+        success=True,
+        svg_path=svg_path,
+        url=url,
+        envelope=envelope,
+        attribution=f"Composite source: FRED, multi-series ({series_list})",
         figure_schema=fig_schema,
     )
 

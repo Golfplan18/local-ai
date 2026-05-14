@@ -1191,6 +1191,174 @@ def fact_check_article_against_fred(article_data: dict,
     return results
 
 
+# ---------------------------------------------------------------------------
+# Composite chart groups — multi-series dashboards
+# ---------------------------------------------------------------------------
+#
+# Canonical groupings of indicators that share a y-axis and tell a story
+# only when shown together (point 14 in the 15-point editorial framework:
+# "show raw counts alongside computed rates whenever possible"; point 9:
+# "honest about indicator limitations").
+#
+# Each group declares:
+#   members: FRED series IDs that share the group's y-axis (same units
+#            or made-same-units by the declared transformation)
+#   title:   composite-chart title used in the rendered SVG and frontmatter
+#   transformation: applied to every member so the y-axis is consistent
+#                   ("raw" when members are already same-units, e.g. all
+#                   percent; "yoy_pct" when they're levels with different
+#                   bases that need to be made comparable)
+#
+# Post-pass consolidation rule (in _consolidate_composites): when the top
+# picks for an article include >= COMPOSITE_CONSOLIDATE_THRESHOLD members
+# of the same group, those individual picks are folded into a single
+# composite opportunity. This implements the labor-market-dashboard
+# pattern: an article about jobs that anchors U-3, U-6, LFPR, and EPOP
+# gets ONE chart showing all four lines, not four separate charts.
+#
+# Groups intentionally exclude mixed-unit collections (e.g. housing,
+# which mixes dollars / thousands-of-units / indices) — those don't
+# share an axis.
+
+COMPOSITE_GROUPS: dict[str, dict] = {
+    # Labor — split into unemployment vs participation because the two
+    # axes live in very different ranges (U-3/U-6 at 3-10%, CIVPART/
+    # prime-age EPOP at 60-82%). On one chart, the small-range series
+    # flatten into a horizontal line. Two tighter dashboards is the
+    # editorially-honest move.
+    "unemployment-rates": {
+        "members": ["UNRATE", "U6RATE"],
+        "title": "Unemployment: U-3 and U-6",
+        "transformation": "raw",
+        "y_axis_label": "Percent",
+        "min_members_for_composite": 2,
+    },
+    "labor-participation": {
+        "members": ["CIVPART", "LNS12300060"],
+        "title": "Labor participation: total and prime-age",
+        "transformation": "raw",
+        "y_axis_label": "Percent",
+        "min_members_for_composite": 2,
+    },
+    # Inflation — four price indices, all force-transformed to YoY %
+    # so they share a 0-10 % axis.
+    "inflation-yoy": {
+        "members": ["CPIAUCSL", "CPILFESL", "PCEPI", "PCEPILFE"],
+        "title": "Inflation: headline + core (CPI and PCE)",
+        "transformation": "yoy_pct",
+        "y_axis_label": "Percent (YoY)",
+        "min_members_for_composite": 3,
+    },
+    # Rates — split positive-only policy/transmission rates from the
+    # yield-curve / real-yield spreads which can go negative.
+    "policy-rates": {
+        "members": ["FEDFUNDS", "DGS10", "MORTGAGE30US"],
+        "title": "Policy and transmission rates",
+        "transformation": "raw",
+        "y_axis_label": "Percent",
+        "min_members_for_composite": 2,
+    },
+    "yield-spreads": {
+        "members": ["T10Y2Y", "DFII10"],
+        "title": "Yield-curve and real-yield spreads",
+        "transformation": "raw",
+        "y_axis_label": "Percent",
+        "min_members_for_composite": 2,
+    },
+}
+
+# Default consolidation threshold when a group doesn't specify
+# min_members_for_composite. 2 is the floor — a "composite" chart
+# requires at least two members.
+COMPOSITE_CONSOLIDATE_THRESHOLD = 2
+
+
+def _series_to_group(series_id: str) -> str | None:
+    """Reverse map: which composite group (if any) does this series belong
+    to? A series is in at most one group."""
+    for group_id, group in COMPOSITE_GROUPS.items():
+        if series_id in group.get("members", []):
+            return group_id
+    return None
+
+
+@dataclass
+class CompositeOpportunity:
+    """A classifier-identified multi-series chart opportunity.
+
+    Distinct from VizOpportunity (single-series). Produced by the
+    composite-consolidation post-pass when the top picks include
+    >= COMPOSITE_CONSOLIDATE_THRESHOLD members of the same group.
+    """
+    group_id: str                            # key into COMPOSITE_GROUPS
+    members: list[str] = field(default_factory=list)  # FRED series IDs
+    transformation: str = "raw"
+    title: str = ""
+    chart_type: str = "timeseries"
+    narrative_role: str = "quantifies"
+    justification: str = ""
+    priority: int = 1
+
+
+def _consolidate_composites(picks: list) -> list:
+    """Post-pass: fold picks belonging to the same composite group into
+    one CompositeOpportunity when >= group's min_members_for_composite
+    members are present.
+
+    ``picks`` is a list of VizOpportunity (each with .series_id).
+    Returns a new list containing a mix of VizOpportunity (for picks
+    that don't trigger consolidation) and CompositeOpportunity (for
+    consolidated groups). Priority of a composite = highest priority
+    (= lowest numeric) among its consolidated members. Justification
+    summarises which members triggered consolidation.
+    """
+    # Bucket picks by composite group (or by ungrouped sentinel).
+    by_group: dict[str | None, list] = {}
+    for pick in picks:
+        sid = getattr(pick, "series_id", None)
+        if not sid:
+            by_group.setdefault(None, []).append(pick)
+            continue
+        gid = _series_to_group(sid)
+        by_group.setdefault(gid, []).append(pick)
+
+    consolidated: list = []
+    for gid, group_picks in by_group.items():
+        if gid is None:
+            consolidated.extend(group_picks)
+            continue
+        group = COMPOSITE_GROUPS[gid]
+        threshold = group.get(
+            "min_members_for_composite", COMPOSITE_CONSOLIDATE_THRESHOLD,
+        )
+        if len(group_picks) < threshold:
+            consolidated.extend(group_picks)
+            continue
+        # Fold into a composite. Use ALL group members for the chart
+        # (not just the picked subset) so the chart tells the full
+        # group's story, not just the partial subset that ranked
+        # individually.
+        composite = CompositeOpportunity(
+            group_id=gid,
+            members=list(group["members"]),
+            transformation=group.get("transformation", "raw"),
+            title=group.get("title", gid),
+            priority=min(p.priority for p in group_picks),
+            justification=(
+                f"Composite chart: {len(group_picks)} of "
+                f"{len(group['members'])} group members "
+                f"({', '.join(sorted(p.series_id for p in group_picks))}) "
+                f"appeared in top picks for this article."
+            ),
+        )
+        consolidated.append(composite)
+
+    # Re-sort by priority so composites and singletons interleave by
+    # editorial weight, not group order.
+    consolidated.sort(key=lambda o: o.priority)
+    return consolidated
+
+
 @dataclass
 class ScoredIndicator:
     """An INDICATOR_CATALOG entry with its objective-ranking scores."""
@@ -1354,7 +1522,7 @@ def analyze_article_via_ranking(article_data: dict, *,
             classifier_response_raw="[objective ranking; zero indicators cleared threshold]",
         )
 
-    opportunities: list[VizOpportunity] = []
+    opportunities: list = []
     for i, scored in enumerate(top):
         entry = scored.entry
         opportunities.append(VizOpportunity(
@@ -1365,6 +1533,11 @@ def analyze_article_via_ranking(article_data: dict, *,
             justification=scored.justification_text(),
             priority=i + 1,
         ))
+
+    # Post-pass: fold individual picks into composite charts when the
+    # top picks include >= threshold members of the same group (e.g.,
+    # UNRATE + U6RATE + CIVPART → one labor-rates composite chart).
+    opportunities = _consolidate_composites(opportunities)
 
     return ArticleVizAnalysis(
         warrants_charts=True,
@@ -1806,16 +1979,46 @@ def render_figures_for_article(article_data: dict, *,
     default_start = f"{anchor.year - 5}-01-01"
 
     for opp in analysis.opportunities:
-        # Look up catalog entry for default chart_type / narrative metadata
+        # Branch: composite opportunity (multi-series) vs single-series.
+        # CompositeOpportunity has `members` (list of FRED series_ids);
+        # VizOpportunity has `series_id` (single FRED id).
+        if hasattr(opp, "members") and getattr(opp, "members", None):
+            # Composite path
+            try:
+                from data_viz_render import render_composite_figure
+            except ImportError:
+                from orchestrator.data_viz_render import render_composite_figure
+            group = COMPOSITE_GROUPS.get(opp.group_id, {})
+            try:
+                kwargs = {}
+                if output_dir:
+                    kwargs["output_dir"] = output_dir
+                result = render_composite_figure(
+                    group_id=opp.group_id,
+                    members=opp.members,
+                    transformation=opp.transformation,
+                    title=opp.title or group.get("title", opp.group_id),
+                    y_axis_label=group.get("y_axis_label", "Percent"),
+                    observation_start=default_start,
+                    as_of_date=as_of,
+                    article_slug=article_slug,
+                    **kwargs,
+                )
+            except Exception as exc:
+                result = FigureResult(
+                    success=False, error_code="render_exception",
+                    error_message=str(exc),
+                )
+            figure_results.append(result)
+            if result.success:
+                figures_schema.append(result.figure_schema)
+            continue
+
+        # Single-series path (default for VizOpportunity)
         catalog_entry = next(
             (e for e in INDICATOR_CATALOG if e["series_id"] == opp.series_id),
             None,
         )
-        # If transformation default differs and opp.transformation is "raw"
-        # (the model's lazy default), use catalog default instead.
-        # Actually — respect the model's choice; the catalog default is
-        # for when no analysis exists.
-
         request = FigureRequest(
             series_query=SeriesQuery(
                 series_id=opp.series_id,

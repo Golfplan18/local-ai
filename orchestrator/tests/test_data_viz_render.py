@@ -497,5 +497,146 @@ class TestRenderFigureLive(unittest.TestCase):
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+class TestRenderCompositeFigure(unittest.TestCase):
+    """Tests for the multi-series composite chart renderer.
+
+    Mocks fetch_series + render_envelope_to_svg so we exercise the
+    composite pipeline (fetch each member → transform → long-format
+    envelope → render → write SVG → figureSchema) without hitting FRED
+    or Node.
+    """
+
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp(prefix="ora-test-composite-")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+    def _fake_series(self, sid):
+        from integrations.fred_api import SeriesData, Observation, SeriesMetadata
+        return SeriesData(
+            series_id=sid,
+            observations=[
+                Observation(date="2024-01-01", value=1.0),
+                Observation(date="2024-02-01", value=2.0),
+                Observation(date="2024-03-01", value=3.0),
+            ],
+            metadata=SeriesMetadata(
+                id=sid, title=f"Series {sid}", units="Percent",
+                units_short="%", frequency="Monthly", frequency_short="M",
+                seasonal_adjustment="SA", last_updated="2024-04-01",
+            ),
+            retrieved_at="2026-05-14T12:00:00",
+        )
+
+    def test_renders_composite_with_multiple_members(self):
+        from data_viz_render import render_composite_figure
+        with mock.patch("data_viz_render.fetch_series",
+                        side_effect=lambda q, **kw: self._fake_series(q.series_id)), \
+             mock.patch("data_viz_render.render_envelope_to_svg",
+                        return_value='<?xml version="1.0"?><svg></svg>'):
+            result = render_composite_figure(
+                group_id="test-group",
+                members=["A", "B", "C"],
+                transformation="raw",
+                title="Test composite",
+                y_axis_label="Percent",
+                article_slug="test-article",
+                output_dir=self.tmp_dir,
+            )
+        self.assertTrue(result.success, result.error_message)
+        self.assertTrue(os.path.exists(result.svg_path))
+        # figureSchema preserves transformation + lists members in source
+        self.assertEqual(result.figure_schema["transformation"], "raw")
+        self.assertIn("A", result.figure_schema["source"])
+        self.assertIn("B", result.figure_schema["source"])
+        self.assertIn("C", result.figure_schema["source"])
+        # Long-format envelope: one data row per (date, series)
+        rows = result.envelope["spec"]["data"]["values"]
+        self.assertEqual(len(rows), 9)  # 3 dates × 3 series
+        # Each row has a series field
+        self.assertEqual({r["series"] for r in rows}, {"A", "B", "C"})
+
+    def test_partial_fetch_failure_still_renders(self):
+        from data_viz_render import render_composite_figure
+        from integrations.fred_api import FredError
+
+        def selective_fetch(q, **kw):
+            if q.series_id == "MISSING":
+                raise FredError("data_unavailable", "no data", series_id=q.series_id)
+            return self._fake_series(q.series_id)
+
+        with mock.patch("data_viz_render.fetch_series",
+                        side_effect=selective_fetch), \
+             mock.patch("data_viz_render.render_envelope_to_svg",
+                        return_value='<?xml version="1.0"?><svg></svg>'):
+            result = render_composite_figure(
+                group_id="test-group",
+                members=["A", "MISSING", "C"],
+                transformation="raw",
+                title="Test composite",
+                y_axis_label="Percent",
+                output_dir=self.tmp_dir,
+            )
+        # A and C should be in the result; MISSING dropped silently
+        self.assertTrue(result.success)
+        sources = result.figure_schema["source"]
+        self.assertIn("A", sources)
+        self.assertIn("C", sources)
+        self.assertNotIn("MISSING", sources)
+
+    def test_all_fetches_fail_returns_error(self):
+        from data_viz_render import render_composite_figure
+        from integrations.fred_api import FredError
+        with mock.patch("data_viz_render.fetch_series",
+                        side_effect=FredError("data_unavailable", "x")):
+            result = render_composite_figure(
+                group_id="test-group",
+                members=["A", "B"],
+                transformation="raw",
+                title="Test composite",
+                output_dir=self.tmp_dir,
+            )
+        self.assertFalse(result.success)
+        self.assertEqual(result.error_code, "data_unavailable")
+
+    def test_empty_members_returns_error(self):
+        from data_viz_render import render_composite_figure
+        result = render_composite_figure(
+            group_id="empty",
+            members=[],
+            transformation="raw",
+            output_dir=self.tmp_dir,
+        )
+        self.assertFalse(result.success)
+        self.assertEqual(result.error_code, "invalid_request")
+
+
+class TestColorMultiSeriesLines(unittest.TestCase):
+    """Tests for the per-series color injection post-pass."""
+
+    def test_no_op_on_single_series(self):
+        svg = '<svg><path aria-label="Series: ONE" d="M0,0L1,1"/></svg>'
+        out = dvr._color_multi_series_lines(svg)
+        # Single series — no style injection
+        self.assertNotIn("stroke:", out)
+
+    def test_injects_distinct_colors_on_multi_series(self):
+        svg = (
+            '<svg>'
+            '<path aria-label="Series: A" d="M0,0L1,1"/>'
+            '<path aria-label="Series: B" d="M0,0L1,1"/>'
+            '<path aria-label="Series: C" d="M0,0L1,1"/>'
+            '</svg>'
+        )
+        out = dvr._color_multi_series_lines(svg)
+        # 3 distinct stroke colors
+        import re as _re
+        strokes = _re.findall(r"stroke:\s*(#[0-9a-fA-F]{6})", out)
+        self.assertEqual(len(strokes), 3)
+        self.assertEqual(len(set(strokes)), 3)  # all distinct
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

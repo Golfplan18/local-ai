@@ -751,6 +751,89 @@ class TestLibraryMatchScore(unittest.TestCase):
         self.assertIn("1.5", cpi.matched_reports)
 
 
+class TestCompositeConsolidation(unittest.TestCase):
+    """Tests for the composite-chart post-pass consolidation logic."""
+
+    def test_series_to_group_resolves_known_member(self):
+        self.assertEqual(adv._series_to_group("UNRATE"), "unemployment-rates")
+        self.assertEqual(adv._series_to_group("CPIAUCSL"), "inflation-yoy")
+        self.assertEqual(adv._series_to_group("FEDFUNDS"), "policy-rates")
+
+    def test_series_to_group_unknown_returns_none(self):
+        self.assertIsNone(adv._series_to_group("NOT_A_SERIES"))
+
+    def test_consolidates_when_threshold_met(self):
+        # inflation-yoy has min_members_for_composite=3. Provide 4 picks.
+        picks = [
+            adv.VizOpportunity(series_id="CPIAUCSL", transformation="yoy_pct", priority=1),
+            adv.VizOpportunity(series_id="CPILFESL", transformation="yoy_pct", priority=2),
+            adv.VizOpportunity(series_id="PCEPI", transformation="raw", priority=3),
+            adv.VizOpportunity(series_id="PCEPILFE", transformation="raw", priority=4),
+        ]
+        result = adv._consolidate_composites(picks)
+        # All 4 fold into one composite
+        self.assertEqual(len(result), 1)
+        comp = result[0]
+        self.assertIsInstance(comp, adv.CompositeOpportunity)
+        self.assertEqual(comp.group_id, "inflation-yoy")
+        # The composite chart shows ALL group members, not just the
+        # picked subset (4 in this case matches both)
+        self.assertEqual(sorted(comp.members),
+                         sorted(["CPIAUCSL", "CPILFESL", "PCEPI", "PCEPILFE"]))
+
+    def test_does_not_consolidate_below_threshold(self):
+        # Only 2 picks from inflation-yoy (threshold 3) → no consolidation
+        picks = [
+            adv.VizOpportunity(series_id="CPIAUCSL", transformation="yoy_pct", priority=1),
+            adv.VizOpportunity(series_id="CPILFESL", transformation="yoy_pct", priority=2),
+        ]
+        result = adv._consolidate_composites(picks)
+        self.assertEqual(len(result), 2)
+        for r in result:
+            self.assertIsInstance(r, adv.VizOpportunity)
+
+    def test_consolidates_two_member_group(self):
+        # unemployment-rates has min=2; UNRATE + U6RATE → composite
+        picks = [
+            adv.VizOpportunity(series_id="UNRATE", transformation="raw", priority=1),
+            adv.VizOpportunity(series_id="U6RATE", transformation="raw", priority=2),
+        ]
+        result = adv._consolidate_composites(picks)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].group_id, "unemployment-rates")
+
+    def test_mixes_composite_and_singletons(self):
+        # CPI×3 (consolidates) + FEDFUNDS singleton
+        picks = [
+            adv.VizOpportunity(series_id="CPIAUCSL", transformation="yoy_pct", priority=1),
+            adv.VizOpportunity(series_id="CPILFESL", transformation="yoy_pct", priority=2),
+            adv.VizOpportunity(series_id="PCEPI", transformation="raw", priority=3),
+            adv.VizOpportunity(series_id="FEDFUNDS", transformation="raw", priority=4),
+        ]
+        result = adv._consolidate_composites(picks)
+        # 1 composite + 1 singleton; FEDFUNDS alone below its 2-member
+        # threshold for policy-rates group
+        self.assertEqual(len(result), 2)
+        types = {type(r).__name__ for r in result}
+        self.assertEqual(types, {"CompositeOpportunity", "VizOpportunity"})
+
+    def test_orders_by_priority(self):
+        # FEDFUNDS+DGS10 → policy-rates composite at priority min(3,4)=3
+        # CPIAUCSL+CPILFESL+PCEPI → inflation-yoy composite at priority 1
+        picks = [
+            adv.VizOpportunity(series_id="CPIAUCSL", transformation="yoy_pct", priority=1),
+            adv.VizOpportunity(series_id="CPILFESL", transformation="yoy_pct", priority=2),
+            adv.VizOpportunity(series_id="PCEPI", transformation="raw", priority=3),
+            adv.VizOpportunity(series_id="FEDFUNDS", transformation="raw", priority=4),
+            adv.VizOpportunity(series_id="DGS10", transformation="raw", priority=5),
+        ]
+        result = adv._consolidate_composites(picks)
+        # Two composites; inflation-yoy first by priority
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].group_id, "inflation-yoy")
+        self.assertEqual(result[1].group_id, "policy-rates")
+
+
 class TestResolveAsOfDate(unittest.TestCase):
     """Tests for _resolve_as_of_date — picks the FRED vintage date."""
 
