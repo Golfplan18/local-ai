@@ -418,7 +418,19 @@ class BatchProcessor:
             f.write(content)
 
     def _write_to_review(self, note, gate_result):
-        """Write a note to the human review queue."""
+        """Write a note to the human review queue.
+
+        Per publisher authorization 2026-05-13 (in the MSI distributional-
+        research run), when the env var ``ORA_BATCH_AUTO_APPROVE_REVIEW=1``
+        is set, items that would otherwise route to human-review are
+        redirected to the approved-staging path instead. This implements
+        the publisher's "either approve or reject based on AI judgment;
+        no human review queue gating" instruction.
+        """
+        if os.environ.get("ORA_BATCH_AUTO_APPROVE_REVIEW") == "1":
+            self._write_to_staging(note)
+            return
+
         title = getattr(note, "title", "Untitled")
         safe_title = _sanitize_filename(title)
         path = os.path.join(REVIEW_DIR, f"{safe_title}.json")
@@ -446,7 +458,20 @@ class BatchProcessor:
             json.dump(review_data, f, indent=2)
 
     def _format_note_file(self, note) -> str:
-        """Format a note as a vault-ready markdown file."""
+        """Format a note as a vault-ready markdown file.
+
+        MSI provenance inheritance: when ``ORA_BATCH_SOURCE_PROVENANCE`` is
+        set (typically ``msi-distributional-research`` for this corpus),
+        the atomic engram inherits the parent dossier's MSI tagging per
+        Schema §6.5 / Tagging Schema §D rule 8: nexus +
+        ``main-street-independent`` tag + parent topic tags + the
+        ``source-derived`` provenance-modifier tag + ``source_dossier`` and
+        ``source_dossier_section`` properties. Atomic ``type`` is upgraded
+        from ``working`` (extraction default) to ``engram`` per
+        the source-derived rule.
+        """
+        msi_provenance = os.environ.get("ORA_BATCH_SOURCE_PROVENANCE", "")
+        is_msi_dist = msi_provenance == "msi-distributional-research"
         fm = getattr(note, "yaml_frontmatter", {})
         title = getattr(note, "title", "")
         body = getattr(note, "body", "")
@@ -454,19 +479,46 @@ class BatchProcessor:
 
         lines = ["---"]
 
-        # Frontmatter
+        # Frontmatter — apply MSI inheritance when the env-var side-channel
+        # declares we're processing an MSI distributional-research batch.
         nexus = fm.get("nexus", "")
-        if isinstance(nexus, list) and nexus:
+        if is_msi_dist:
+            lines.append("nexus:")
+            lines.append("  - main-street-independent")
+        elif isinstance(nexus, list) and nexus:
             lines.append("nexus:")
             for n in nexus:
                 lines.append(f"  - {n}")
         else:
             lines.append("nexus:")
 
-        lines.append(f"type: {fm.get('type', 'working')}")
+        if is_msi_dist:
+            # Source-derived atomics from research deliverables → type: engram
+            lines.append("type: engram")
+        else:
+            lines.append(f"type: {fm.get('type', 'working')}")
 
-        tags = fm.get("tags", [])
-        if isinstance(tags, list) and tags:
+        # Tag emission — for MSI dist runs, inherit parent's topic tags
+        # + add main-street-independent + source-derived modifier
+        tags = list(fm.get("tags", []))
+        if is_msi_dist:
+            inherited = ["main-street-independent", "source-derived"]
+            primary = os.environ.get("ORA_BATCH_DOC_PRIMARY_TOPIC", "")
+            secondaries = [
+                t for t in os.environ.get("ORA_BATCH_DOC_SECONDARY_TOPICS", "").split(",")
+                if t
+            ]
+            if primary:
+                inherited.append(f"topic/{primary}")
+            for s in secondaries:
+                inherited.append(f"topic/{s}")
+            # Merge with any existing tags (e.g. "atomic" from extraction)
+            for t in tags:
+                if t not in inherited:
+                    inherited.append(t)
+            tags = inherited
+
+        if tags:
             lines.append("tags:")
             for t in tags:
                 lines.append(f"  - {t}")
@@ -476,6 +528,15 @@ class BatchProcessor:
         subtype = getattr(note, "subtype", None) or fm.get("subtype")
         if subtype:
             lines.append(f"subtype: {subtype}")
+
+        # MSI provenance properties (per Tagging Schema §D rule 8)
+        if is_msi_dist:
+            source_dossier = os.path.basename(getattr(note, "source_file", ""))
+            if source_dossier:
+                lines.append(f'source_dossier: "{source_dossier}"')
+            report_id = os.environ.get("ORA_BATCH_DOC_REPORT_ID", "")
+            if report_id:
+                lines.append(f'report_id: "{report_id}"')
 
         defs = fm.get("definitions_required")
         if defs and isinstance(defs, list):
@@ -561,30 +622,139 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: batch_processor.py <input_directory> [--limit N] [--hours N]")
-        print("  Process all supported documents in a directory.")
+        print("Usage: batch_processor.py <input_directory_or_manifest.yaml> [options]")
+        print("  Process all supported documents in a directory, OR")
+        print("  process the documents listed in a YAML run-time configuration manifest.")
         print(f"  Supported formats: {', '.join(sorted(BatchProcessor.SUPPORTED_EXTENSIONS))}")
-        print(f"  Manifest: {MANIFEST_PATH}")
-        print(f"  Staging: {STAGING_DIR}")
+        print()
+        print("Options:")
+        print("  --limit N                 Process at most N files")
+        print("  --hours N                 Stop after N hours")
+        print("  --auto-approve-review     Treat human-review queue items as approved")
+        print("                            (per publisher authorization 2026-05-13 — applied")
+        print("                            to MSI distributional-research runs by default).")
+        print(f"  Manifest:    {MANIFEST_PATH}")
+        print(f"  Staging:     {STAGING_DIR}")
         print(f"  Review queue: {REVIEW_DIR}")
         sys.exit(1)
 
-    input_dir = sys.argv[1]
+    input_arg = sys.argv[1]
     file_limit = None
     time_limit = None
+    auto_approve_review = False
 
     for i, arg in enumerate(sys.argv):
         if arg == "--limit" and i + 1 < len(sys.argv):
             file_limit = int(sys.argv[i + 1])
         elif arg == "--hours" and i + 1 < len(sys.argv):
             time_limit = float(sys.argv[i + 1])
+        elif arg == "--auto-approve-review":
+            auto_approve_review = True
 
-    processor = BatchProcessor()
-    stats = processor.process_directory(
-        input_dir,
-        time_limit_hours=time_limit,
-        file_limit=file_limit,
-    )
+    # Wire the actual model-invocation function from boot.py + endpoints
+    # config so the extraction engine has a working call_fn (Pass A makes
+    # one model call per document chunk via the sidebar slot).
+    # Add both the package-parent (~/ora) and orchestrator/ + tools/ so the
+    # mixed-form imports in _process_file work in both forms.
+    sys.path.insert(0, os.path.expanduser("~/ora"))
+    sys.path.insert(0, os.path.expanduser("~/ora/orchestrator"))
+    sys.path.insert(0, os.path.expanduser("~/ora/orchestrator/tools"))
+    from boot import call_model, load_endpoints
+    config = load_endpoints()
+
+    # Detect manifest vs directory invocation
+    is_manifest = input_arg.endswith(".yaml") or input_arg.endswith(".yml")
+
+    if is_manifest:
+        # YAML manifest path — load run-time configuration
+        try:
+            import yaml  # PyYAML
+        except ImportError:
+            print("ERROR: PyYAML required for manifest invocation. Install: pip install pyyaml")
+            sys.exit(1)
+
+        with open(input_arg, "r") as f:
+            manifest = yaml.safe_load(f)
+
+        source_provenance = manifest.get("source_provenance", "")
+        documents = manifest.get("documents", [])
+        if not documents:
+            print(f"ERROR: manifest {input_arg} has no 'documents' list")
+            sys.exit(1)
+
+        # Build pseudo-directory of just the manifest's documents.
+        # We construct absolute paths and let process_single() handle them.
+        vault_root = os.path.expanduser("~/Documents/vault")
+
+        # Apply --limit by filtering the documents list. If a calibration-
+        # sample subset is requested via --calibration-only, filter to those.
+        calibration_only = "--calibration-only" in sys.argv
+        if calibration_only:
+            documents = [d for d in documents if d.get("calibration_sample")]
+
+        if file_limit:
+            documents = documents[:file_limit]
+
+        # Per-document source_provenance config is passed through via
+        # an environment-variable side-channel that ExtractionEngine /
+        # quality_gate can read. This avoids invasive signature changes
+        # for a one-off batch run.
+        os.environ["ORA_BATCH_SOURCE_PROVENANCE"] = source_provenance
+        if auto_approve_review:
+            os.environ["ORA_BATCH_AUTO_APPROVE_REVIEW"] = "1"
+
+        processor = BatchProcessor(config=config, call_fn=call_model)
+        stats = ProcessingStats(
+            started=datetime.now().isoformat(),
+            total_files=len(documents),
+        )
+        processor.stats = stats
+        processor._load_manifest()
+
+        # Ensure output dirs exist (process_directory creates these but we
+        # bypass it for manifest-driven loops).
+        os.makedirs(STAGING_DIR, exist_ok=True)
+        os.makedirs(REVIEW_DIR, exist_ok=True)
+
+        start_time = time.time()
+        time_limit_seconds = time_limit * 3600 if time_limit else None
+
+        for doc_cfg in documents:
+            if time_limit_seconds and (time.time() - start_time) >= time_limit_seconds:
+                break
+
+            doc_path = doc_cfg.get("path", "")
+            if not os.path.isabs(doc_path):
+                doc_path = os.path.join(vault_root, doc_path)
+
+            if not os.path.exists(doc_path):
+                print(f"  MISSING: {doc_path}")
+                continue
+
+            # Pass per-doc config through env so extraction can read it
+            os.environ["ORA_BATCH_DOC_REPORT_ID"] = doc_cfg.get("report_id", "")
+            os.environ["ORA_BATCH_DOC_PRIMARY_TOPIC"] = doc_cfg.get("primary_topic", "")
+            os.environ["ORA_BATCH_DOC_SECONDARY_TOPICS"] = ",".join(doc_cfg.get("secondary_topics", []))
+            os.environ["ORA_BATCH_DOC_RETRIEVAL_MODE"] = doc_cfg.get("retrieval_mode", "default-similarity-retrieval")
+
+            file_status = FileStatus(path=doc_path)
+            processor.stats.current_file = doc_path
+            print(f"  Processing: {os.path.basename(doc_path)}")
+            processor._process_file(file_status)
+            processor._save_manifest()
+
+        processor.stats.elapsed_seconds = time.time() - start_time
+        processor.stats.current_file = ""
+        processor._save_manifest()
+        stats = processor.stats
+    else:
+        # Directory invocation (unchanged behavior, with call_fn now wired)
+        processor = BatchProcessor(config=config, call_fn=call_model)
+        stats = processor.process_directory(
+            input_arg,
+            time_limit_hours=time_limit,
+            file_limit=file_limit,
+        )
 
     print(f"\nBatch Processing Complete")
     print(f"  Files: {stats.processed} processed, {stats.failed} failed, {stats.skipped} skipped")
