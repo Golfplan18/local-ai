@@ -563,7 +563,57 @@ def render_envelope_to_svg(envelope: dict, *,
             f"id={envelope.get('id', '?')}: {svg[:200]}"
         )
 
-    return svg
+    return _inline_vega_styles(svg)
+
+
+# Self-contained Vega/Vega-Lite style sheet injected into every emitted
+# SVG. The visual compiler emits class-only SVG (Vega 5's default); when
+# rendered inline in the Ora chat UI it picks up the page's Vega CSS, but
+# when written to disk and embedded by another site (Astro MSI) inside an
+# <img> tag the SVG is sandboxed from page CSS and renders blank. Inlining
+# a minimal style block makes the SVG portable to any context.
+#
+# Rules cover: background/foreground (transparent so the chart inherits
+# page color); axis grid/tick/domain strokes; text fills + font; the
+# common mark types (line/area/rect/symbol/arc). Default mark color is
+# Vega's standard '#4c78a8' (steelblue).
+_VEGA_PORTABLE_STYLES = """
+  rect:not([class]) { fill: white; }
+  .background { fill: white; }
+  .foreground { fill: none; stroke: none; }
+  text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; }
+  .role-axis-title text { font-size: 12px; font-weight: 500; fill: #333; }
+  .role-axis-label text { fill: #555; }
+  .role-axis-tick line, .role-axis-domain line { stroke: #888; stroke-width: 1px; }
+  .role-axis-grid line { stroke: #e6e6e6; stroke-width: 1px; }
+  .mark-rule line { stroke: #888; }
+  .mark-line path { fill: none; stroke: #4c78a8; stroke-width: 2px; stroke-linejoin: round; stroke-linecap: round; }
+  .mark-area path { fill: #4c78a8; fill-opacity: 0.3; stroke: none; }
+  .mark-rect path { fill: #4c78a8; stroke: none; }
+  .mark-symbol path { fill: #4c78a8; stroke: #4c78a8; }
+  .mark-arc path { fill: #4c78a8; stroke: white; stroke-width: 1px; }
+  .mark-text text { fill: #333; }
+"""
+
+
+def _inline_vega_styles(svg: str) -> str:
+    """Inject a self-contained Vega style block into the SVG.
+
+    The visual compiler emits class-only SVG. Page CSS provides the styles
+    in the Ora chat UI, but standalone SVG files (written to disk and
+    embedded elsewhere as <img>) render blank without inline styles.
+
+    Inserts the style block immediately after the opening <svg ...> tag.
+    No-op if the SVG already contains a <style> block (idempotent).
+    """
+    if "<style" in svg[:600]:
+        return svg
+    open_tag_end = svg.find(">", svg.find("<svg"))
+    if open_tag_end < 0:
+        return svg
+    insert_at = open_tag_end + 1
+    style_block = f"<style>{_VEGA_PORTABLE_STYLES}</style>"
+    return svg[:insert_at] + style_block + svg[insert_at:]
 
 
 # ---------------------------------------------------------------------------

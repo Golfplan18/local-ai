@@ -307,7 +307,12 @@ class TestRenderEnvelopeToSvg(unittest.TestCase):
         with mock.patch("subprocess.run", return_value=fake_proc):
             with mock.patch("os.path.exists", return_value=True):
                 svg = dvr.render_envelope_to_svg(envelope)
-        self.assertEqual(svg, fake_svg)
+        # The renderer injects a portable <style> block; the original
+        # content must still be present and the SVG must be well-formed.
+        self.assertTrue(svg.startswith('<?xml version="1.0"?>\n<svg>'))
+        self.assertTrue(svg.endswith("</svg>"))
+        self.assertIn("<style>", svg)
+        self.assertIn(".mark-line path", svg)
 
     def test_missing_compiler_raises(self):
         envelope = {"id": "fig-test"}
@@ -386,7 +391,11 @@ class TestRenderFigure(unittest.TestCase):
         self.assertTrue(result.svg_path.endswith(".svg"))
         self.assertTrue(os.path.exists(result.svg_path))
         with open(result.svg_path) as f:
-            self.assertEqual(f.read(), fake_svg)
+            written = f.read()
+        # Portable <style> block injected; raw envelope content still present.
+        self.assertTrue(written.startswith('<?xml version="1.0"?>\n<svg>'))
+        self.assertTrue(written.endswith("</svg>"))
+        self.assertIn("<style>", written)
 
         # Envelope
         self.assertEqual(result.envelope["type"], "time_series")
