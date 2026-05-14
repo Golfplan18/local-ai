@@ -1195,18 +1195,34 @@ def _cmd_render_article_figures(args: list[str]) -> str:
         lines.append(f"**Opportunities identified:** {len(result.analysis.opportunities)}")
     lines.append(f"**Figures rendered successfully:** {len(result.figures)}")
 
+    # Surface per-figure failures with envelope debug logs when any failed.
+    # Map: index-in-figure_results -> debug-log path (or None).
+    failure_debug_paths: dict[int, str] = {}
+    if result.figure_results:
+        try:
+            failure_debug_paths = _write_failure_debug_logs(
+                article_slug, result.figure_results,
+            )
+        except Exception:  # pragma: no cover — debug logging must not break flow
+            failure_debug_paths = {}
+
     if result.figure_results:
         lines.append("")
         lines.append("**Per-figure detail:**")
-        for fr in result.figure_results:
+        for idx, fr in enumerate(result.figure_results):
             if fr.success:
                 lines.append(
                     f"- ✅ `{fr.figure_schema.get('source', '?')}` → "
                     f"`{fr.url}`"
                 )
             else:
+                debug_path = failure_debug_paths.get(idx)
+                debug_note = (
+                    f" — debug: `{debug_path}`" if debug_path else ""
+                )
                 lines.append(
                     f"- ❌ failed [{fr.error_code}]: {fr.error_message}"
+                    f"{debug_note}"
                 )
 
     if not result.success and result.error:
@@ -1240,6 +1256,87 @@ def _cmd_render_article_figures(args: list[str]) -> str:
                 lines.append(f"_--patch failed: {exc}_")
 
     return "\n".join(lines)
+
+
+_DATA_VIZ_DEBUG_DIR = os.path.expanduser("~/ora/data/data-viz-debug")
+
+
+def _write_failure_debug_logs(article_slug: str,
+                              figure_results: list) -> dict[int, str]:
+    """Persist a JSON debug record for every failed FigureResult.
+
+    Each failed figure gets a single JSON file under
+    ``~/ora/data/data-viz-debug/<article_slug>/<series_id>-<transformation>.json``
+    (filename derived from the envelope when available, else from the
+    failure index). Records carry the error code + message, the envelope
+    JSON if the failure happened post-envelope-build (so the visual
+    compiler input can be re-played manually), and a UTC timestamp.
+
+    Returns a mapping: index-in-figure_results -> absolute debug path.
+    Successful figures and figures with no envelope-or-error context are
+    omitted from the returned map.
+
+    Failure modes:
+      - Permission / disk failures during write: that single record is
+        skipped (other records still attempted) and the index is omitted
+        from the returned map. Caller treats absence as "no debug log".
+    """
+    out: dict[int, str] = {}
+
+    failures = [
+        (idx, fr) for idx, fr in enumerate(figure_results) if not fr.success
+    ]
+    if not failures:
+        return out
+
+    import json as _json
+    from datetime import datetime as _dt, timezone as _tz
+
+    article_dir_name = article_slug or "_unkown_article"
+    target_dir = os.path.join(_DATA_VIZ_DEBUG_DIR, article_dir_name)
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+    except OSError:
+        return out
+
+    used_names: set[str] = set()
+    for idx, fr in failures:
+        # Derive a stable filename from the envelope id or failure index.
+        envelope = getattr(fr, "envelope", None) or {}
+        env_id = (envelope.get("id") if isinstance(envelope, dict) else None)
+        if env_id:
+            base_name = str(env_id)
+        else:
+            base_name = f"failure-{idx:02d}"
+        # Avoid collisions if two failures share an envelope id
+        candidate = base_name
+        suffix = 1
+        while candidate in used_names:
+            suffix += 1
+            candidate = f"{base_name}-{suffix}"
+        used_names.add(candidate)
+        filename = f"{candidate}.json"
+        path = os.path.join(target_dir, filename)
+
+        record = {
+            "logged_at_utc": _dt.now(_tz.utc).isoformat(timespec="seconds"),
+            "article_slug": article_slug,
+            "figure_index": idx,
+            "error_code": getattr(fr, "error_code", "") or "",
+            "error_message": getattr(fr, "error_message", "") or "",
+            "envelope": envelope if isinstance(envelope, dict) else None,
+            "figure_schema": getattr(fr, "figure_schema", None) or None,
+        }
+
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                _json.dump(record, f, indent=2, default=str)
+            out[idx] = path
+        except OSError:
+            # Single-record failure shouldn't cascade
+            continue
+
+    return out
 
 
 def _patch_article_frontmatter_figures(article_path: str,

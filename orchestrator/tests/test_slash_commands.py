@@ -714,5 +714,166 @@ class TestRenderArticleFiguresPatchFlag(unittest.TestCase):
         self.assertNotIn("Frontmatter patched", out)
 
 
+# ---------- Failure-mode envelope debug logs (Tier 1 c) ----------
+
+class TestWriteFailureDebugLogs(unittest.TestCase):
+    """Tests for slash_commands._write_failure_debug_logs — persists a
+    JSON record per failed FigureResult under
+    ~/ora/data/data-viz-debug/<article_slug>/."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        # Redirect the debug root into a tempdir so the test never
+        # writes into the user's ~/ora tree.
+        self._patcher = mock.patch.object(
+            slash_commands, "_DATA_VIZ_DEBUG_DIR", self.tmpdir,
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    @staticmethod
+    def _make_failed(envelope=None, error_code="render_failed",
+                     error_message="compiler died"):
+        from collections import namedtuple
+        F = namedtuple(
+            "FakeFigResult",
+            ["success", "envelope", "error_code", "error_message",
+             "figure_schema", "url"],
+        )
+        return F(
+            success=False,
+            envelope=envelope or {},
+            error_code=error_code,
+            error_message=error_message,
+            figure_schema={},
+            url="",
+        )
+
+    @staticmethod
+    def _make_success():
+        from collections import namedtuple
+        F = namedtuple(
+            "FakeFigResult",
+            ["success", "envelope", "error_code", "error_message",
+             "figure_schema", "url"],
+        )
+        return F(
+            success=True, envelope={}, error_code="", error_message="",
+            figure_schema={"source": "ok"}, url="/figures/ok.svg",
+        )
+
+    def test_no_failures_returns_empty_map(self):
+        results = [self._make_success(), self._make_success()]
+        out = slash_commands._write_failure_debug_logs("art-1", results)
+        self.assertEqual(out, {})
+        # No directory should have been created either
+        self.assertFalse(os.path.exists(os.path.join(self.tmpdir, "art-1")))
+
+    def test_writes_one_file_per_failure(self):
+        env = {"id": "fig-payems", "type": "time_series"}
+        results = [
+            self._make_success(),
+            self._make_failed(envelope=env),
+            self._make_failed(envelope={"id": "fig-unrate"}),
+        ]
+        out = slash_commands._write_failure_debug_logs("2026-05-jobs", results)
+        self.assertEqual(set(out.keys()), {1, 2})
+        for path in out.values():
+            self.assertTrue(os.path.isfile(path))
+        # Filename derived from envelope id
+        self.assertIn("fig-payems.json", out[1])
+        self.assertIn("fig-unrate.json", out[2])
+
+    def test_record_carries_envelope_and_error(self):
+        env = {"id": "fig-x", "type": "time_series", "data": {"values": [1, 2]}}
+        results = [self._make_failed(
+            envelope=env, error_code="render_failed",
+            error_message="Visual compiler exit 1: schema invalid",
+        )]
+        out = slash_commands._write_failure_debug_logs("art", results)
+        path = out[0]
+        with open(path, "r", encoding="utf-8") as f:
+            record = json.load(f)
+        self.assertEqual(record["error_code"], "render_failed")
+        self.assertIn("schema invalid", record["error_message"])
+        self.assertEqual(record["envelope"], env)
+        self.assertEqual(record["article_slug"], "art")
+        self.assertEqual(record["figure_index"], 0)
+        self.assertIn("logged_at_utc", record)
+
+    def test_failure_without_envelope_falls_back_to_index_filename(self):
+        # E.g., FRED-fetch failures never get to envelope construction,
+        # so envelope == {}. Filename should still be deterministic and
+        # non-colliding.
+        results = [
+            self._make_success(),
+            self._make_failed(envelope={},
+                              error_code="series_not_found"),
+        ]
+        out = slash_commands._write_failure_debug_logs("art-2", results)
+        self.assertIn(1, out)
+        self.assertIn("failure-01.json", out[1])
+
+    def test_dispatches_through_render_article_figures_failure_path(self):
+        """End-to-end: a render that fails for every opportunity should
+        produce debug paths in the slash-command output and on disk."""
+        from collections import namedtuple
+        FakeAnalysis = namedtuple(
+            "FakeAnalysis", ["warrants_charts", "opportunities", "error"],
+        )
+        FakeResult = namedtuple(
+            "FakeResult",
+            ["success", "figures", "analysis", "figure_results", "error"],
+        )
+
+        article_path = os.path.join(self.tmpdir, "fail-art.md")
+        with open(article_path, "w", encoding="utf-8") as f:
+            f.write(SAMPLE_ARTICLE_FRONTMATTER)
+
+        failed_a = self._make_failed(
+            envelope={"id": "fig-a"}, error_code="render_failed",
+            error_message="boom",
+        )
+        failed_b = self._make_failed(
+            envelope={"id": "fig-b"}, error_code="render_failed",
+            error_message="boom-2",
+        )
+        fake_result = FakeResult(
+            success=False,
+            figures=[],
+            analysis=FakeAnalysis(
+                warrants_charts=True, opportunities=[1, 2], error="",
+            ),
+            figure_results=[failed_a, failed_b],
+            error="All 2 figure renders failed: ['render_failed']",
+        )
+
+        fake_module = mock.MagicMock()
+        fake_module.parse_article_file.return_value = {"headline": "Fail art"}
+        fake_module.render_figures_for_article.return_value = fake_result
+
+        fake_boot = mock.MagicMock()
+        fake_boot.call_model = mock.MagicMock()
+        fake_boot.load_endpoints.return_value = {}
+        fake_boot.get_slot_endpoint.return_value = {"slot": "sidebar"}
+
+        with mock.patch.dict(sys.modules, {
+            "article_data_viz": fake_module, "boot": fake_boot,
+        }):
+            out = run_runtime_command(
+                f"/render-article-figures {article_path}"
+            )
+
+        self.assertIn("debug:", out)
+        # Both debug files should exist on disk
+        slug_dir = os.path.join(self.tmpdir, "fail-art")
+        self.assertTrue(os.path.isdir(slug_dir))
+        files = sorted(os.listdir(slug_dir))
+        self.assertEqual(files, ["fig-a.json", "fig-b.json"])
+
+
 if __name__ == "__main__":
     unittest.main()
