@@ -702,6 +702,55 @@ class TestSemanticMatch(unittest.TestCase):
         self.assertIn("the foo signal", text)
 
 
+class TestLibraryMatchScore(unittest.TestCase):
+    """Phase 3 — library_match scoring against the Distributional Library."""
+
+    def test_expand_article_reports_known_theme(self):
+        out = adv._expand_article_reports(["inflation_measurement"])
+        self.assertIn("1.5", out)
+
+    def test_expand_article_reports_multi_report_theme(self):
+        # shelter_inflation maps to ["2.8", "1.5"]
+        out = adv._expand_article_reports(["shelter_inflation"])
+        self.assertIn("2.8", out)
+        self.assertIn("1.5", out)
+
+    def test_expand_article_reports_unknown_theme(self):
+        # Unknown themes contribute nothing
+        self.assertEqual(adv._expand_article_reports(["geopolitics"]), set())
+
+    def test_library_match_scores_overlap(self):
+        entry = {"series_id": "CPIAUCSL", "linked_reports": ["1.5"]}
+        score, matched = adv._library_match_score(
+            entry, ["inflation_measurement"])
+        self.assertEqual(score, 1.0)  # 1 of 1 reports overlap
+        self.assertEqual(matched, ["1.5"])
+
+    def test_library_match_partial_overlap(self):
+        entry = {"series_id": "MORTGAGE30US", "linked_reports": ["2.5", "2.8"]}
+        # shelter_inflation expands to ["2.8", "1.5"] → overlaps 2.8 only
+        score, matched = adv._library_match_score(entry, ["shelter_inflation"])
+        self.assertEqual(score, 0.5)  # 1 of 2
+        self.assertEqual(matched, ["2.8"])
+
+    def test_library_match_returns_zero_when_no_linked_reports(self):
+        entry = {"series_id": "X"}  # no linked_reports field
+        score, matched = adv._library_match_score(
+            entry, ["inflation_measurement"])
+        self.assertEqual(score, 0.0)
+        self.assertEqual(matched, [])
+
+    def test_ranking_uses_library_dimension(self):
+        # The CPI article should have library_match contributing > 0 for
+        # CPIAUCSL because inflation_measurement → report 1.5 ∈ CPIAUCSL.linked_reports
+        ranked = adv.rank_indicators_for_article(
+            CPI_ARTICLE_WITH_THEMES, use_semantic=False,
+        )
+        cpi = next(s for s in ranked if s.entry["series_id"] == "CPIAUCSL")
+        self.assertGreater(cpi.library_match, 0)
+        self.assertIn("1.5", cpi.matched_reports)
+
+
 class TestFactCheck(unittest.TestCase):
     """Fact-check article body values against FRED ground truth."""
 
