@@ -75,7 +75,8 @@ KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
                   "/deny", "/cleaning", "/news",
                   "/hector-render", "/news-image-render",
                   "/render-missing-article-images",
-                  "/render-figure"}
+                  "/render-figure",
+                  "/render-article-figures"}
 
 
 # ---------- Public API ----------
@@ -125,6 +126,7 @@ def run_runtime_command(user_input: str) -> str:
         "/news-image-render": _cmd_news_image_render,
         "/render-missing-article-images": _cmd_render_missing_article_images,
         "/render-figure": _cmd_render_figure,
+        "/render-article-figures": _cmd_render_article_figures,
     }
     handler = handlers.get(cmd)
     if handler is None:
@@ -1067,6 +1069,163 @@ def _cmd_render_figure(args: list[str]) -> str:
         f"- **Alt:** {fs['alt']}\n"
         f"- **Caption:** {fs['caption']}\n"
     )
+
+
+# ---------- /render-article-figures ----------
+
+def _cmd_render_article_figures(args: list[str]) -> str:
+    """Phase 3 — run the article-classifier on a published article and
+    render every accepted data-viz opportunity as an SVG, populating
+    the article's `figures` frontmatter field.
+
+    Usage: /render-article-figures <article_path or slug> [--dry-run]
+
+    The article path can be:
+      - An absolute path to the article .md
+      - A relative path under the Astro repo's articles or columns dir
+      - A slug; the command searches articles/ and columns/ for matches
+
+    --dry-run runs the classifier and prints the analysis without
+    rendering figures. Useful for inspecting classifier judgment
+    before committing model + render compute time.
+    """
+    if not args:
+        return (
+            "**Usage:** `/render-article-figures <article_path or slug> [--dry-run]`\n\n"
+            "Runs the Phase 3 article-classifier on a published article. "
+            "For each accepted data-viz opportunity, invokes the chart "
+            "emitter to produce an SVG (Phase 4). Returns the figureSchema "
+            "list and a per-opportunity result log.\n\n"
+            "If the article is not economic (geopolitics, criminal justice, "
+            "etc.), returns success with an empty figures list — that's the "
+            "editorially-correct behavior, not a failure.\n\n"
+            "Example: `/render-article-figures 2026-05-11-iran-rejects-us-proposal-day-72`"
+        )
+
+    arg = args[0]
+    dry_run = "--dry-run" in args
+
+    # Resolve article path
+    article_path = _resolve_article_path(arg)
+    if article_path is None:
+        return (
+            f"[Article not found: `{arg}`. Tried absolute path; "
+            f"~/sites/mainstreetindependent/src/content/articles/; "
+            f"~/sites/mainstreetindependent/src/content/columns/.]"
+        )
+
+    # Lazy-load the module
+    try:
+        from article_data_viz import (
+            parse_article_file, render_figures_for_article,
+            analyze_article_for_data_viz,
+        )
+    except ImportError:
+        from orchestrator.article_data_viz import (
+            parse_article_file, render_figures_for_article,
+            analyze_article_for_data_viz,
+        )
+    try:
+        from boot import call_model, load_endpoints, get_slot_endpoint
+    except ImportError:
+        return (
+            "[Cannot import boot.call_model — run from a context where "
+            "~/ora is on the Python path.]"
+        )
+
+    article = parse_article_file(article_path)
+    if not article:
+        return f"[Could not parse article frontmatter from `{article_path}`]"
+
+    config = load_endpoints()
+    endpoint = get_slot_endpoint(config, "sidebar")
+
+    # Article slug from the filename
+    article_slug = os.path.basename(article_path).rsplit(".", 1)[0]
+
+    if dry_run:
+        analysis = analyze_article_for_data_viz(
+            article, call_fn=call_model, endpoint=endpoint,
+        )
+        if analysis.error:
+            return f"[Classifier error: {analysis.error}]"
+        lines = [
+            f"**Article:** `{article_slug}`",
+            f"**Headline:** {article.get('headline', '(none)')}",
+            f"**Warrants charts:** {analysis.warrants_charts}",
+            f"**Opportunities ({len(analysis.opportunities)}):**",
+        ]
+        for o in analysis.opportunities:
+            lines.append(
+                f"- [{o.priority}] `{o.series_id}` ({o.transformation}) — "
+                f"{o.narrative_role}"
+            )
+            if o.justification:
+                lines.append(f"  - _{o.justification}_")
+        if not analysis.opportunities:
+            lines.append("- _(none — classifier judges no charts warranted)_")
+        lines.append("")
+        lines.append("_Dry-run mode; no figures rendered._")
+        return "\n".join(lines)
+
+    # Full render
+    result = render_figures_for_article(
+        article, call_fn=call_model, endpoint=endpoint,
+        article_slug=article_slug,
+    )
+
+    lines = [
+        f"**Article:** `{article_slug}`",
+        f"**Headline:** {article.get('headline', '(none)')}",
+        f"**Classifier verdict:** {'charts warranted' if result.analysis and result.analysis.warrants_charts else 'no charts warranted'}",
+    ]
+
+    if result.analysis and result.analysis.opportunities:
+        lines.append(f"**Opportunities identified:** {len(result.analysis.opportunities)}")
+    lines.append(f"**Figures rendered successfully:** {len(result.figures)}")
+
+    if result.figure_results:
+        lines.append("")
+        lines.append("**Per-figure detail:**")
+        for fr in result.figure_results:
+            if fr.success:
+                lines.append(
+                    f"- ✅ `{fr.figure_schema.get('source', '?')}` → "
+                    f"`{fr.url}`"
+                )
+            else:
+                lines.append(
+                    f"- ❌ failed [{fr.error_code}]: {fr.error_message}"
+                )
+
+    if not result.success and result.error:
+        lines.append("")
+        lines.append(f"_{result.error}_")
+
+    return "\n".join(lines)
+
+
+def _resolve_article_path(arg: str) -> Optional[str]:
+    """Resolve an article path or slug to an absolute file path."""
+    expanded = os.path.expanduser(arg)
+    if os.path.isabs(expanded) and os.path.isfile(expanded):
+        return expanded
+
+    astro_root = os.path.expanduser("~/sites/mainstreetindependent/src/content")
+    for subdir in ("articles", "columns"):
+        # Direct path (with or without .md)
+        for candidate_name in (arg, f"{arg}.md"):
+            candidate = os.path.join(astro_root, subdir, candidate_name)
+            if os.path.isfile(candidate):
+                return candidate
+        # Slug match — find any file containing the slug
+        search_dir = os.path.join(astro_root, subdir)
+        if os.path.isdir(search_dir):
+            for f in os.listdir(search_dir):
+                if arg in f and f.endswith(".md"):
+                    return os.path.join(search_dir, f)
+
+    return None
 
 
 # ---------- CLI smoke test ----------
