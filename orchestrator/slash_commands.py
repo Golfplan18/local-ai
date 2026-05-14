@@ -1270,6 +1270,87 @@ def _cmd_render_article_figures(args: list[str]) -> str:
             except Exception as exc:
                 lines.append(f"_--patch failed (body): {exc}_")
 
+    # Fact-check article body values against FRED — runs regardless
+    # of --patch since the discrepancies are informational. Writes a
+    # JSON log under ~/ora/data/data-viz-debug/<slug>/fact-check.json;
+    # surfaces a summary line in the response.
+    try:
+        fact_check_summary = _run_fact_check_and_log(
+            article, result, article_slug,
+        )
+        if fact_check_summary:
+            lines.append("")
+            lines.append(fact_check_summary)
+    except Exception as exc:  # pragma: no cover — must never block render
+        lines.append(f"_fact-check pass failed: {exc}_")
+
+    return "\n".join(lines)
+
+
+def _run_fact_check_and_log(article: dict,
+                             result,
+                             article_slug: str) -> str:
+    """Run the fact-check against FRED for the article's picked
+    indicators and write a JSON log to the data-viz debug directory.
+
+    Returns a one-line markdown summary for the slash command output.
+    Never raises — fact-check is informational, must not block render.
+    """
+    try:
+        from article_data_viz import fact_check_article_against_fred
+    except ImportError:
+        from orchestrator.article_data_viz import fact_check_article_against_fred
+
+    analysis = result.analysis if result and getattr(result, "analysis", None) else None
+    scored = getattr(analysis, "picked_scored_indicators", None) if analysis else None
+    if not scored:
+        return ""  # nothing to check — classifier mode or no picks
+
+    fc_results = fact_check_article_against_fred(article, scored)
+    if not fc_results:
+        return ""
+
+    # Persist log
+    try:
+        from dataclasses import asdict as _asdict
+        import json as _json
+        from datetime import datetime as _dt, timezone as _tz
+        target_dir = os.path.join(
+            _DATA_VIZ_DEBUG_DIR,
+            article_slug or "_unknown_article",
+        )
+        os.makedirs(target_dir, exist_ok=True)
+        log_path = os.path.join(target_dir, "fact-check.json")
+        payload = {
+            "logged_at_utc": _dt.now(_tz.utc).isoformat(timespec="seconds"),
+            "article_slug": article_slug,
+            "tolerance_pp": 0.5,
+            "results": [_asdict(r) for r in fc_results],
+        }
+        with open(log_path, "w", encoding="utf-8") as f:
+            _json.dump(payload, f, indent=2)
+    except Exception:  # pragma: no cover — log-write best-effort
+        log_path = None
+
+    # Summary counts
+    failures = [r for r in fc_results
+                if r.discrepancy_pp is not None and not r.within_tolerance]
+    skipped = [r for r in fc_results if r.discrepancy_pp is None]
+    checked = [r for r in fc_results
+               if r.discrepancy_pp is not None and r.within_tolerance]
+
+    lines = [
+        f"**Fact-check vs FRED:** {len(checked)} pass, "
+        f"{len(failures)} discrepancy, {len(skipped)} skipped"
+    ]
+    if log_path:
+        lines.append(f"_Log: `{log_path}`_")
+    for r in failures[:4]:
+        lines.append(
+            f"- ⚠️  `{r.series_id}` claim `{r.claim_id}`: "
+            f"article {r.article_value}% vs FRED {r.fred_value:.2f}% "
+            f"(Δ {r.discrepancy_pp:.2f}pp)"
+        )
     return "\n".join(lines)
 
 

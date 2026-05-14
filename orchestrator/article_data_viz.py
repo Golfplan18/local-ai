@@ -481,23 +481,28 @@ def _diagnostic_phrases(entry: dict) -> set[str]:
     return phrases
 
 
-def _name_match_score(entry: dict, atomic_claims: list[dict]) -> tuple[float, list[str]]:
+def _name_match_score(entry: dict, atomic_claims: list[dict]
+                       ) -> tuple[float, list[str], list[int]]:
     """Score the indicator by how many atomic claims directly mention it.
 
-    Returns (score, matched_phrase_list_for_audit). Strongest possible
+    Returns (score, matched_phrase_list, matched_claim_indices).
+    matched_claim_indices is the list of indices into atomic_claims that
+    contributed to the score — used downstream by fact_check to compare
+    article-prose values to FRED values per claim. Strongest possible
     signal: an article explicitly citing "Consumer Price Index" is
     self-evidently about CPI. Score is normalized: count_matched_claims /
     total_claims, with a floor of 0 when no claims.
     """
     if not atomic_claims:
-        return (0.0, [])
+        return (0.0, [], [])
     phrases = _diagnostic_phrases(entry)
     if not phrases:
-        return (0.0, [])
+        return (0.0, [], [])
 
     matched_claims = 0
     matched_phrases: set[str] = set()
-    for claim in atomic_claims:
+    matched_indices: list[int] = []
+    for i, claim in enumerate(atomic_claims):
         if not isinstance(claim, dict):
             continue
         text = (claim.get("text") or "").lower()
@@ -512,7 +517,12 @@ def _name_match_score(entry: dict, atomic_claims: list[dict]) -> tuple[float, li
                 claim_matched = True
         if claim_matched:
             matched_claims += 1
-    return (matched_claims / len(atomic_claims), sorted(matched_phrases))
+            matched_indices.append(i)
+    return (
+        matched_claims / len(atomic_claims),
+        sorted(matched_phrases),
+        matched_indices,
+    )
 
 
 def _topic_overlap_score(entry: dict, article_themes: list[str]) -> tuple[float, list[str]]:
@@ -705,6 +715,237 @@ def _semantic_match_score(entry: dict,
     return (normalized, max_sim)
 
 
+# ---------------------------------------------------------------------------
+# Fact-check — compare article-body numbers against FRED ground truth
+# ---------------------------------------------------------------------------
+#
+# AI-generated article prose can drift from the actual FRED data point
+# (the test article said "3.1% YoY" while FRED says "3.78% YoY"). This
+# module's job is to flag those discrepancies so an upstream
+# article-generator self-correction step can pick them up. MSI is a
+# zero-manual-labor publication; the fact-check writes a JSON log and
+# surfaces a summary, but never blocks publication.
+#
+# Discrepancies are not auto-corrected here — that would require
+# rewriting the body prose, which is out of scope for the data-viz
+# pipeline (it's the article-generator's job). What this module
+# produces is the evidence needed for that upstream fix.
+
+# Match the first percent value in a claim's text. Captures "3.1 percent",
+# "3.1%", "3.10 percent", "-1.8 percent", "0.5%". The number-then-percent
+# pattern is the dominant form in MSI atomic_claims; dollar/index values
+# are out of scope for v1.
+_PERCENT_RE = re.compile(
+    r"(-?\d+(?:\.\d+)?)\s*(?:%|percent\b)",
+    re.IGNORECASE,
+)
+
+# Predicates whose claims are NOT comparable to FRED point values.
+# Articles use these to describe forward-looking probabilities,
+# qualitative characterisations, or actions — not historical observed
+# data. Listed explicitly so the fact-check skips them rather than
+# emitting spurious discrepancies.
+_NON_COMPARABLE_PREDICATES = frozenset({
+    "priced_probability_of",
+    "characterized_response_as",
+    "stated_position_on",
+    "announced_blockade_on",
+    "maintained_policy_rate_at",  # range claim, not a single value
+})
+
+
+def _extract_first_percent(text: str) -> float | None:
+    """Parse the first percent value from a claim's text. Returns the
+    number as a float (no unit). None if no percent found."""
+    if not text:
+        return None
+    m = _PERCENT_RE.search(text)
+    if not m:
+        return None
+    try:
+        return float(m.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
+def _fred_value_for_claim(entry: dict, claim_temporal) -> float | None:
+    """Fetch FRED + apply the indicator's default transformation + look
+    up the observation at or just before the claim's temporal date.
+
+    Accepts ``claim_temporal`` as either an ISO date string ("YYYY-MM-DD")
+    or a ``datetime.date`` / ``datetime.datetime`` instance — PyYAML
+    parses bare ISO dates in YAML frontmatter into date objects, so we
+    handle both forms.
+
+    Returns None when the indicator has no data near the claim date,
+    when FRED is unreachable, or when the temporal field is missing.
+    """
+    from datetime import date as _date, datetime as _datetime
+    if claim_temporal is None:
+        return None
+    if isinstance(claim_temporal, _datetime):
+        target = claim_temporal.date()
+    elif isinstance(claim_temporal, _date):
+        target = claim_temporal
+    elif isinstance(claim_temporal, str):
+        try:
+            target = _date.fromisoformat(claim_temporal[:10])
+        except (TypeError, ValueError):
+            return None
+    else:
+        return None
+
+    # Fetch a window wide enough for YoY transformation (need >= 1 year
+    # of prior data) and ending no later than today.
+    observation_start = (
+        _date(target.year - 2, max(1, target.month - 1), 1).isoformat()
+    )
+
+    try:
+        from data_viz_render import apply_transformation
+        from integrations.fred_api import fetch_series, SeriesQuery
+    except ImportError:
+        from orchestrator.data_viz_render import apply_transformation
+        from orchestrator.integrations.fred_api import fetch_series, SeriesQuery
+
+    sid = entry.get("series_id")
+    if not sid:
+        return None
+    try:
+        data = fetch_series(SeriesQuery(
+            series_id=sid,
+            observation_start=observation_start,
+        ))
+    except Exception:
+        return None
+    if not data or not data.observations:
+        return None
+
+    transformation = entry.get("default_transformation", "raw")
+    try:
+        transformed = apply_transformation(
+            data.observations, transformation,
+            frequency=getattr(data.metadata, "frequency", None) if data.metadata else None,
+        )
+    except Exception:
+        return None
+
+    # Pick the observation at or just before target.
+    target_iso = target.isoformat()
+    best_value: float | None = None
+    for obs in transformed:
+        if obs.value is None:
+            continue
+        if obs.date <= target_iso:
+            best_value = obs.value
+        else:
+            break  # observations are date-ascending
+    return best_value
+
+
+@dataclass
+class FactCheckResult:
+    """Result of comparing one article claim to its FRED ground truth."""
+    series_id: str
+    claim_id: str
+    claim_text_excerpt: str
+    transformation: str
+    article_value: float | None        # parsed from claim text (percent)
+    fred_value: float | None           # from FRED at claim's temporal date
+    discrepancy_pp: float | None       # absolute difference, percentage-point units
+    within_tolerance: bool             # True when |diff| <= tolerance_pp
+    note: str = ""                     # explanatory text (why skipped, etc.)
+
+
+def fact_check_article_against_fred(article_data: dict,
+                                     scored_indicators: list[ScoredIndicator],
+                                     *,
+                                     tolerance_pp: float = 0.5,
+                                     ) -> list[FactCheckResult]:
+    """Compare each picked indicator's matching claims to FRED values.
+
+    For every (indicator, matched_claim) pair: parse the first percent
+    value from the claim text, fetch FRED at the claim's temporal date,
+    compare. Skips claims whose predicate is in
+    ``_NON_COMPARABLE_PREDICATES`` (probability/range/qualitative claims),
+    claims without a parseable percent, and claims without a temporal
+    date.
+
+    Returns a list of FactCheckResult dicts — never raises. FRED errors
+    are absorbed into per-result ``note`` fields so the historical-
+    forward pipeline never blocks on a transient API failure.
+    """
+    atomic_claims = article_data.get("atomic_claims") or []
+    results: list[FactCheckResult] = []
+
+    for scored in scored_indicators:
+        sid = scored.entry.get("series_id", "?")
+        transformation = scored.entry.get("default_transformation", "raw")
+        if not scored.matched_claim_indices:
+            continue
+        for idx in scored.matched_claim_indices:
+            if idx >= len(atomic_claims):
+                continue
+            claim = atomic_claims[idx]
+            if not isinstance(claim, dict):
+                continue
+            claim_id = str(claim.get("claim_id", f"c_{idx:03d}"))
+            text = claim.get("text") or ""
+            excerpt = text[:150] + ("..." if len(text) > 150 else "")
+            predicate = claim.get("predicate", "")
+            if predicate in _NON_COMPARABLE_PREDICATES:
+                results.append(FactCheckResult(
+                    series_id=sid, claim_id=claim_id,
+                    claim_text_excerpt=excerpt,
+                    transformation=transformation,
+                    article_value=None, fred_value=None,
+                    discrepancy_pp=None, within_tolerance=True,
+                    note=f"Skipped: predicate '{predicate}' is non-comparable.",
+                ))
+                continue
+            article_value = _extract_first_percent(text)
+            if article_value is None:
+                results.append(FactCheckResult(
+                    series_id=sid, claim_id=claim_id,
+                    claim_text_excerpt=excerpt,
+                    transformation=transformation,
+                    article_value=None, fred_value=None,
+                    discrepancy_pp=None, within_tolerance=True,
+                    note="Skipped: no percent value parseable from claim text.",
+                ))
+                continue
+            temporal = claim.get("temporal")
+            fred_value = _fred_value_for_claim(scored.entry, temporal)
+            if fred_value is None:
+                results.append(FactCheckResult(
+                    series_id=sid, claim_id=claim_id,
+                    claim_text_excerpt=excerpt,
+                    transformation=transformation,
+                    article_value=article_value, fred_value=None,
+                    discrepancy_pp=None, within_tolerance=True,
+                    note=(
+                        f"Skipped: no FRED value available at "
+                        f"{temporal} (series missing data or fetch failed)."
+                    ),
+                ))
+                continue
+            diff = abs(article_value - fred_value)
+            results.append(FactCheckResult(
+                series_id=sid, claim_id=claim_id,
+                claim_text_excerpt=excerpt,
+                transformation=transformation,
+                article_value=article_value, fred_value=fred_value,
+                discrepancy_pp=diff,
+                within_tolerance=(diff <= tolerance_pp),
+                note=(
+                    "" if diff <= tolerance_pp
+                    else f"Discrepancy {diff:.2f}pp exceeds tolerance {tolerance_pp}pp."
+                ),
+            ))
+
+    return results
+
+
 @dataclass
 class ScoredIndicator:
     """An INDICATOR_CATALOG entry with its objective-ranking scores."""
@@ -716,6 +957,7 @@ class ScoredIndicator:
     total: float = 0.0
     matched_phrases: list[str] = field(default_factory=list)
     matched_topics: list[str] = field(default_factory=list)
+    matched_claim_indices: list[int] = field(default_factory=list)  # which claims contributed to name_match
 
     def justification_text(self) -> str:
         """Auditable, deterministic justification string built from score
@@ -780,7 +1022,9 @@ def rank_indicators_for_article(article_data: dict, *,
 
     scored: list[ScoredIndicator] = []
     for entry in INDICATOR_CATALOG:
-        name_score, matched_phrases = _name_match_score(entry, atomic_claims)
+        name_score, matched_phrases, matched_indices = _name_match_score(
+            entry, atomic_claims,
+        )
         topic_score, matched_topics = _topic_overlap_score(entry, article_themes)
         sem_score = 0.0
         sem_raw = 0.0
@@ -803,6 +1047,7 @@ def rank_indicators_for_article(article_data: dict, *,
             total=total,
             matched_phrases=matched_phrases,
             matched_topics=matched_topics,
+            matched_claim_indices=matched_indices,
         ))
     scored.sort(key=lambda s: -s.total)
     return scored
@@ -852,6 +1097,7 @@ def analyze_article_via_ranking(article_data: dict, *,
         warrants_charts=True,
         opportunities=opportunities,
         classifier_response_raw="[objective ranking; no model call]",
+        picked_scored_indicators=top,
     )
 
 
@@ -898,6 +1144,7 @@ class ArticleVizAnalysis:
     opportunities: list[VizOpportunity] = field(default_factory=list)
     classifier_response_raw: str = ""       # for debugging / audit
     error: str = ""                         # populated on classifier failure
+    picked_scored_indicators: list = field(default_factory=list)  # ScoredIndicators that were picked — used by fact_check
 
 
 @dataclass

@@ -521,13 +521,13 @@ class TestNameMatchScore(unittest.TestCase):
         entry = {"series_id": "CPIAUCSL",
                  "name": "Consumer Price Index (all urban consumers)"}
         claims = [{"text": "The Consumer Price Index rose 3.1 percent."}]
-        score, matched = _name_match_score(entry, claims)
+        score, matched, _indices = _name_match_score(entry, claims)
         self.assertGreater(score, 0)
         self.assertTrue(any("consumer price" in m for m in matched))
 
     def test_returns_zero_when_no_claims(self):
         entry = {"series_id": "X", "name": "Y"}
-        score, matched = _name_match_score(entry, [])
+        score, matched, _indices = _name_match_score(entry, [])
         self.assertEqual(score, 0.0)
 
 
@@ -700,6 +700,151 @@ class TestSemanticMatch(unittest.TestCase):
         text = adv._indicator_embedding_text(entry)
         self.assertIn("Foo Bar", text)
         self.assertIn("the foo signal", text)
+
+
+class TestFactCheck(unittest.TestCase):
+    """Fact-check article body values against FRED ground truth."""
+
+    def test_extract_first_percent_simple(self):
+        self.assertEqual(adv._extract_first_percent("rose 3.1 percent"), 3.1)
+        self.assertEqual(adv._extract_first_percent("up 3.1%"), 3.1)
+        self.assertEqual(adv._extract_first_percent("-1.8 percent decline"), -1.8)
+
+    def test_extract_first_percent_returns_none_when_absent(self):
+        self.assertIsNone(adv._extract_first_percent(""))
+        self.assertIsNone(adv._extract_first_percent("Iran rejected the proposal."))
+
+    def test_extract_first_percent_first_only_when_multiple(self):
+        # "3.1 percent ... 3.3 percent" → first one wins
+        self.assertEqual(
+            adv._extract_first_percent("headline 3.1 percent and core 3.3 percent"),
+            3.1,
+        )
+
+    def test_fact_check_skips_non_comparable_predicates(self):
+        # Probability claim → should be skipped (predicate is non-comparable)
+        article = {
+            "atomic_claims": [
+                {"claim_id": "c_001",
+                 "text": "Fed funds futures priced ~33 percent probability.",
+                 "predicate": "priced_probability_of",
+                 "temporal": "2026-05-13"},
+            ],
+        }
+        scored = [adv.ScoredIndicator(
+            entry={"series_id": "FEDFUNDS", "default_transformation": "raw"},
+            name_match=1.0,
+            matched_claim_indices=[0],
+        )]
+        results = adv.fact_check_article_against_fred(article, scored)
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].discrepancy_pp)
+        self.assertIn("non-comparable", results[0].note)
+
+    def test_fact_check_skips_claims_without_percent(self):
+        article = {
+            "atomic_claims": [
+                {"claim_id": "c_001",
+                 "text": "Fed kept the target range unchanged.",
+                 "predicate": "reported_yoy_change",
+                 "temporal": "2026-05-13"},
+            ],
+        }
+        scored = [adv.ScoredIndicator(
+            entry={"series_id": "FEDFUNDS", "default_transformation": "raw"},
+            name_match=1.0,
+            matched_claim_indices=[0],
+        )]
+        results = adv.fact_check_article_against_fred(article, scored)
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].article_value)
+        self.assertIn("no percent value", results[0].note)
+
+    def test_fact_check_flags_discrepancy_above_tolerance(self):
+        article = {
+            "atomic_claims": [
+                {"claim_id": "c_001",
+                 "text": "CPI rose 3.1 percent over 12 months.",
+                 "predicate": "reported_yoy_change",
+                 "temporal": "2026-04-30"},
+            ],
+        }
+        scored = [adv.ScoredIndicator(
+            entry={"series_id": "CPIAUCSL",
+                   "default_transformation": "yoy_pct"},
+            name_match=1.0,
+            matched_claim_indices=[0],
+        )]
+        # Mock the FRED-value fetcher to return 3.78 (the actual FRED
+        # value as of April 2026); article claims 3.1 → 0.68pp discrepancy
+        # exceeds the 0.5pp default tolerance.
+        with mock.patch.object(adv, "_fred_value_for_claim",
+                               return_value=3.78):
+            results = adv.fact_check_article_against_fred(article, scored)
+        self.assertEqual(len(results), 1)
+        r = results[0]
+        self.assertAlmostEqual(r.article_value, 3.1, places=2)
+        self.assertAlmostEqual(r.fred_value, 3.78, places=2)
+        self.assertFalse(r.within_tolerance)
+        self.assertAlmostEqual(r.discrepancy_pp, 0.68, places=2)
+
+    def test_fact_check_passes_within_tolerance(self):
+        article = {
+            "atomic_claims": [
+                {"claim_id": "c_001",
+                 "text": "CPI rose 3.7 percent over 12 months.",
+                 "predicate": "reported_yoy_change",
+                 "temporal": "2026-04-30"},
+            ],
+        }
+        scored = [adv.ScoredIndicator(
+            entry={"series_id": "CPIAUCSL",
+                   "default_transformation": "yoy_pct"},
+            name_match=1.0,
+            matched_claim_indices=[0],
+        )]
+        with mock.patch.object(adv, "_fred_value_for_claim",
+                               return_value=3.78):
+            results = adv.fact_check_article_against_fred(article, scored)
+        self.assertEqual(len(results), 1)
+        self.assertTrue(results[0].within_tolerance)
+
+    def test_fact_check_skips_when_fred_unavailable(self):
+        article = {
+            "atomic_claims": [
+                {"claim_id": "c_001",
+                 "text": "CPI rose 3.1 percent.",
+                 "predicate": "reported_yoy_change",
+                 "temporal": "2026-04-30"},
+            ],
+        }
+        scored = [adv.ScoredIndicator(
+            entry={"series_id": "CPIAUCSL",
+                   "default_transformation": "yoy_pct"},
+            name_match=1.0,
+            matched_claim_indices=[0],
+        )]
+        with mock.patch.object(adv, "_fred_value_for_claim",
+                               return_value=None):
+            results = adv.fact_check_article_against_fred(article, scored)
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0].fred_value)
+        self.assertIn("no FRED value", results[0].note)
+
+    def test_fact_check_returns_empty_when_no_picks(self):
+        article = {"atomic_claims": [{"claim_id": "c_001", "text": "Test."}]}
+        results = adv.fact_check_article_against_fred(article, [])
+        self.assertEqual(results, [])
+
+    def test_fact_check_skips_picks_without_matched_claims(self):
+        article = {"atomic_claims": [{"claim_id": "c_001", "text": "Test."}]}
+        scored = [adv.ScoredIndicator(
+            entry={"series_id": "CPIAUCSL", "default_transformation": "raw"},
+            name_match=0.0,
+            matched_claim_indices=[],  # no claims matched
+        )]
+        results = adv.fact_check_article_against_fred(article, scored)
+        self.assertEqual(results, [])
 
 
 if __name__ == "__main__":
