@@ -501,15 +501,17 @@ def _name_match_score(entry: dict, atomic_claims: list[dict]) -> tuple[float, li
         if not isinstance(claim, dict):
             continue
         text = (claim.get("text") or "").lower()
+        claim_matched = False
         for phrase in phrases:
             if not phrase or len(phrase) < 3:
                 continue
             # Word-boundary match — avoids false positives like
             # "total" matching "totally" or "sa" matching "said".
             if re.search(r"\b" + re.escape(phrase) + r"\b", text):
-                matched_claims += 1
                 matched_phrases.add(phrase)
-                break  # one phrase match per claim is enough
+                claim_matched = True
+        if claim_matched:
+            matched_claims += 1
     return (matched_claims / len(atomic_claims), sorted(matched_phrases))
 
 
@@ -526,12 +528,181 @@ def _topic_overlap_score(entry: dict, article_themes: list[str]) -> tuple[float,
     return (float(len(matched)), sorted(matched))
 
 
-# Weights for Phase 1 scoring. name_match dominates when an article is
+# Weights for ranking. name_match dominates when an article is
 # explicitly about an indicator; topic_overlap fills in when the article
-# touches an indicator's themes without naming it directly. Tunable per
-# editorial taste over time.
+# touches an indicator's themes without naming it directly; semantic_match
+# catches indirect / conceptual mentions the keyword logic misses
+# (e.g., "household budgets stretched by housing costs" → housing
+# indicators). Tunable per editorial taste over time.
 _RANK_WEIGHT_NAME_MATCH = 3.0
 _RANK_WEIGHT_TOPIC_OVERLAP = 1.0
+_RANK_WEIGHT_SEMANTIC_MATCH = 2.0
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — semantic embedding match
+# ---------------------------------------------------------------------------
+#
+# Embeds each indicator's identity (name + covers description) and each
+# article's atomic claims via the canonical Ora embedding stack
+# (nomic-embed-text via Ollama, see orchestrator/embedding.py). Computes
+# cosine similarity between each (claim, indicator) pair and uses the
+# MAX similarity per indicator as the semantic_match score.
+#
+# Failure mode: if Ollama is unreachable, semantic_match returns 0 for
+# all indicators. Pipeline degrades gracefully to Phase 1 scoring (name
+# + topic) — no hard failure.
+
+_SEMANTIC_CACHE_DIR = os.path.expanduser("~/ora/cache/data-viz-embeddings")
+# Threshold below which cosine similarity is treated as noise.
+# nomic-embed-text returns similarities ~0.3-0.5 for unrelated texts;
+# we want scores to only credit meaningful semantic overlap.
+_SEMANTIC_NOISE_FLOOR = 0.5
+# Similarity at which the semantic_match score reaches 1.0 (clamped).
+_SEMANTIC_SATURATION = 0.8
+
+
+def _indicator_embedding_text(entry: dict) -> str:
+    """Build the text representation an indicator should be embedded as.
+
+    Combines name + covers — name carries the formal identity, covers
+    carries the editorial framing ("Fed inflation target reference; pair
+    with CPI for divergence stories") which is rich semantic signal.
+    """
+    parts: list[str] = []
+    name = (entry.get("name") or "").strip()
+    if name:
+        parts.append(name)
+    covers = (entry.get("covers") or "").strip()
+    if covers:
+        parts.append(covers)
+    return ". ".join(parts)
+
+
+def _catalog_content_hash() -> str:
+    """SHA256-prefix of the catalog content; used to key the embedding
+    cache so a catalog edit forces a fresh embedding pass."""
+    import hashlib
+    blob = json.dumps(
+        [(e.get("series_id"), e.get("name"), e.get("covers"))
+         for e in INDICATOR_CATALOG],
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()[:16]
+
+
+def _cosine_similarity(a: list[float] | None, b: list[float] | None) -> float:
+    """Plain Python cosine similarity. Returns 0 on missing / zero vectors."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    import math
+    dot = 0.0
+    na = 0.0
+    nb = 0.0
+    for x, y in zip(a, b):
+        dot += x * y
+        na += x * x
+        nb += y * y
+    if na == 0.0 or nb == 0.0:
+        return 0.0
+    return dot / (math.sqrt(na) * math.sqrt(nb))
+
+
+def _embed_texts(texts: list[str]) -> list[list[float]] | None:
+    """Embed a list of texts via the canonical Ora embedding function.
+
+    Returns the list of embeddings (one per input) on success, or
+    None if the embedder is unavailable (Ollama down / model not pulled).
+    On None, callers degrade gracefully — semantic_match becomes 0.
+    """
+    try:
+        from orchestrator.embedding import get_embedding_function
+    except ImportError:
+        try:
+            from embedding import get_embedding_function
+        except ImportError:
+            return None
+    try:
+        ef = get_embedding_function()
+        result = ef(texts)
+        if not result:
+            return None
+        # Normalize to plain lists (handle numpy returns)
+        out: list[list[float]] = []
+        for v in result:
+            out.append(v.tolist() if hasattr(v, "tolist") else list(v))
+        return out
+    except Exception:
+        return None
+
+
+def _load_or_compute_indicator_embeddings() -> dict[str, list[float]] | None:
+    """Load catalog embeddings from disk cache, or compute + cache them.
+
+    Cache key is a hash of the catalog's (series_id, name, covers)
+    tuples — any edit invalidates the cache automatically.
+
+    Returns a dict mapping series_id → embedding vector, or None when
+    the embedder is unavailable.
+    """
+    cache_key = _catalog_content_hash()
+    cache_path = os.path.join(_SEMANTIC_CACHE_DIR, f"catalog-{cache_key}.json")
+
+    # Try cache
+    try:
+        if os.path.exists(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            if isinstance(payload, dict) and payload.get("embeddings"):
+                return payload["embeddings"]
+    except Exception:
+        pass  # fall through to recompute
+
+    # Compute fresh
+    series_ids = [e["series_id"] for e in INDICATOR_CATALOG]
+    texts = [_indicator_embedding_text(e) for e in INDICATOR_CATALOG]
+    vectors = _embed_texts(texts)
+    if vectors is None or len(vectors) != len(series_ids):
+        return None
+
+    embeddings = dict(zip(series_ids, vectors))
+
+    # Write cache (best-effort)
+    try:
+        os.makedirs(_SEMANTIC_CACHE_DIR, exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump({"cache_key": cache_key, "embeddings": embeddings}, f)
+    except Exception:
+        pass
+
+    return embeddings
+
+
+def _semantic_match_score(entry: dict,
+                          claim_embeddings: list[list[float]],
+                          indicator_embedding: list[float] | None,
+                          ) -> tuple[float, float]:
+    """Compute the semantic match score for an indicator.
+
+    Returns (normalized_score, raw_max_similarity). Score is the MAX
+    cosine similarity across all claims, linearly rescaled so that:
+      sim <= _SEMANTIC_NOISE_FLOOR     → 0.0
+      sim >= _SEMANTIC_SATURATION       → 1.0
+      linear interpolation in between.
+    """
+    if not indicator_embedding or not claim_embeddings:
+        return (0.0, 0.0)
+    max_sim = 0.0
+    for claim_emb in claim_embeddings:
+        sim = _cosine_similarity(claim_emb, indicator_embedding)
+        if sim > max_sim:
+            max_sim = sim
+    span = _SEMANTIC_SATURATION - _SEMANTIC_NOISE_FLOOR
+    if span <= 0:
+        return (1.0 if max_sim >= _SEMANTIC_SATURATION else 0.0, max_sim)
+    normalized = (max_sim - _SEMANTIC_NOISE_FLOOR) / span
+    normalized = max(0.0, min(1.0, normalized))
+    return (normalized, max_sim)
 
 
 @dataclass
@@ -540,6 +711,8 @@ class ScoredIndicator:
     entry: dict
     name_match: float = 0.0
     topic_overlap: float = 0.0
+    semantic_match: float = 0.0
+    semantic_raw_max: float = 0.0          # raw cosine sim (pre-normalization)
     total: float = 0.0
     matched_phrases: list[str] = field(default_factory=list)
     matched_topics: list[str] = field(default_factory=list)
@@ -553,39 +726,80 @@ class ScoredIndicator:
             parts.append(f"Article claims cite {shown}")
         if self.matched_topics:
             parts.append(f"Topic overlap: {', '.join(self.matched_topics)}")
+        if self.semantic_match > 0 and not self.matched_phrases:
+            # Surface semantic match prominently when it's the dominant
+            # signal (no direct citation, but conceptually related).
+            parts.append(
+                f"Semantic similarity {self.semantic_raw_max:.2f} to article claims"
+            )
         covers = self.entry.get("covers", "")
         if covers and not parts:
             parts.append(covers)
         elif covers:
             parts.append(covers.split(";")[0].strip())
-        return ". ".join(parts) + (
-            f" [score: name={self.name_match:.2f}, topic={self.topic_overlap:.2f}]"
+        score_summary = (
+            f"name={self.name_match:.2f}, topic={self.topic_overlap:.2f}, "
+            f"sem={self.semantic_match:.2f}"
         )
+        return ". ".join(parts) + f" [score: {score_summary}]"
 
 
-def rank_indicators_for_article(article_data: dict) -> list[ScoredIndicator]:
+def rank_indicators_for_article(article_data: dict, *,
+                                 use_semantic: bool = True,
+                                 ) -> list[ScoredIndicator]:
     """Objective ranking — score every INDICATOR_CATALOG entry against
     the article and return the list sorted descending by total score.
 
-    Deterministic given the same catalog state + article. Adaptive: as
-    the catalog grows or synonym map evolves, the ranking shifts.
+    Deterministic given the same catalog state + article + embedder
+    state. Adaptive: as the catalog grows, the synonym map evolves, or
+    the embedding model changes, the ranking shifts.
+
+    When ``use_semantic=False`` or when the embedder is unavailable
+    (Ollama down), the semantic_match dimension contributes 0 and the
+    ranking degrades to Phase 1 (name + topic only).
     """
     metadata = article_data.get("metadata") or {}
     article_themes = metadata.get("primary_themes") or []
     atomic_claims = article_data.get("atomic_claims") or []
 
+    # Phase 2 — semantic embeddings (best-effort; degrades to 0 if
+    # Ollama is unavailable or use_semantic is False).
+    indicator_embeddings: dict[str, list[float]] | None = None
+    claim_embeddings: list[list[float]] = []
+    if use_semantic and atomic_claims:
+        claim_texts = [
+            (c.get("text") or "").strip()
+            for c in atomic_claims if isinstance(c, dict) and c.get("text")
+        ]
+        if claim_texts:
+            indicator_embeddings = _load_or_compute_indicator_embeddings()
+            if indicator_embeddings is not None:
+                fetched = _embed_texts(claim_texts)
+                if fetched is not None:
+                    claim_embeddings = fetched
+
     scored: list[ScoredIndicator] = []
     for entry in INDICATOR_CATALOG:
         name_score, matched_phrases = _name_match_score(entry, atomic_claims)
         topic_score, matched_topics = _topic_overlap_score(entry, article_themes)
+        sem_score = 0.0
+        sem_raw = 0.0
+        if indicator_embeddings is not None and claim_embeddings:
+            sid = entry.get("series_id")
+            sem_score, sem_raw = _semantic_match_score(
+                entry, claim_embeddings, indicator_embeddings.get(sid),
+            )
         total = (
             _RANK_WEIGHT_NAME_MATCH * name_score
             + _RANK_WEIGHT_TOPIC_OVERLAP * topic_score
+            + _RANK_WEIGHT_SEMANTIC_MATCH * sem_score
         )
         scored.append(ScoredIndicator(
             entry=entry,
             name_match=name_score,
             topic_overlap=topic_score,
+            semantic_match=sem_score,
+            semantic_raw_max=sem_raw,
             total=total,
             matched_phrases=matched_phrases,
             matched_topics=matched_topics,
@@ -597,6 +811,7 @@ def rank_indicators_for_article(article_data: dict) -> list[ScoredIndicator]:
 def analyze_article_via_ranking(article_data: dict, *,
                                 max_indicators: int = 4,
                                 min_score_threshold: float = 0.5,
+                                use_semantic: bool = True,
                                 ) -> ArticleVizAnalysis:
     """Objective-ranking analysis path — no model call.
 
@@ -612,7 +827,7 @@ def analyze_article_via_ranking(article_data: dict, *,
     step that rewrites the justifications in editorial voice without
     changing the picks.
     """
-    ranked = rank_indicators_for_article(article_data)
+    ranked = rank_indicators_for_article(article_data, use_semantic=use_semantic)
     top = [s for s in ranked[:max_indicators] if s.total >= min_score_threshold]
 
     if not top:

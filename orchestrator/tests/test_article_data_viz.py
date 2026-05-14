@@ -561,10 +561,12 @@ class TestRankIndicators(unittest.TestCase):
 
     def test_geopolitical_article_scores_all_zero(self):
         # No themes, no claim-name matches → no indicator clears the
-        # threshold
-        ranked = rank_indicators_for_article(GEOPOLITICAL_ARTICLE)
-        # All scores 0 (no metadata.primary_themes; claims don't mention
-        # any catalog series)
+        # threshold under Phase 1 (name + topic only). With Phase 2
+        # semantic embeddings, unrelated-domain content can still have
+        # non-zero cosine similarity to economic indicators, so we
+        # isolate Phase 1 behavior with use_semantic=False.
+        ranked = rank_indicators_for_article(
+            GEOPOLITICAL_ARTICLE, use_semantic=False)
         self.assertTrue(all(s.total == 0 for s in ranked),
                         f"unexpected non-zero: {[(s.entry['series_id'], s.total) for s in ranked if s.total > 0]}")
 
@@ -584,7 +586,10 @@ class TestAnalyzeArticleViaRanking(unittest.TestCase):
         self.assertLessEqual(len(analysis.opportunities), 4)
 
     def test_returns_no_charts_for_geopolitical_article(self):
-        analysis = analyze_article_via_ranking(GEOPOLITICAL_ARTICLE)
+        # Phase 1 isolation: with semantic off, no indicator clears the
+        # threshold (no themes, no name matches).
+        analysis = analyze_article_via_ranking(
+            GEOPOLITICAL_ARTICLE, use_semantic=False)
         self.assertFalse(analysis.warrants_charts)
 
     def test_justification_is_deterministic_and_auditable(self):
@@ -597,6 +602,104 @@ class TestAnalyzeArticleViaRanking(unittest.TestCase):
         # No call_fn, no mode kwarg → ranking path, succeeds.
         analysis = analyze_article_for_data_viz(CPI_ARTICLE_WITH_THEMES)
         self.assertTrue(analysis.warrants_charts)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — semantic match
+# ---------------------------------------------------------------------------
+
+class TestSemanticMatch(unittest.TestCase):
+    """Phase 2 — semantic embedding match.
+
+    Uses controlled fixture vectors via mocked _embed_texts so the tests
+    don't depend on live Ollama. Verifies that the wiring is correct
+    (similarity → score → total) without relying on real embedding
+    quality.
+    """
+
+    def _patch_embed(self, indicator_vector_map: dict[str, list[float]],
+                     claim_vectors: list[list[float]]):
+        """Build a mock that returns indicator vectors for the catalog
+        call (long list) and claim vectors for the claims call (short
+        list). Both calls funnel through _embed_texts so a side_effect
+        function distinguishes by argument length / content."""
+        catalog_ids = [e["series_id"] for e in adv.INDICATOR_CATALOG]
+
+        def fake_embed(texts):
+            if len(texts) == len(catalog_ids):
+                return [indicator_vector_map.get(sid, [0.0] * 768)
+                        for sid in catalog_ids]
+            return claim_vectors[: len(texts)]
+
+        return mock.patch.object(adv, "_embed_texts", side_effect=fake_embed)
+
+    def test_semantic_match_lifts_a_non_named_indicator(self):
+        """When an article doesn't name an indicator but its claims are
+        semantically close, the semantic_match dimension should lift
+        that indicator's total score."""
+        # Construct an article whose claims are semantically close to
+        # CSUSHPISA (the Case-Shiller home price index) via the mock,
+        # but never name it.
+        article = {
+            "metadata": {"primary_themes": []},  # no topic overlap either
+            "atomic_claims": [
+                {"text": "Homeowners face stretched budgets as housing costs rise."},
+            ],
+        }
+        # Set CSUSHPISA's indicator vector to match the claim's vector.
+        # 768-dim vectors; just use [1, 0, 0, ...] for the claim and
+        # CSUSHPISA, and orthogonal for everything else.
+        claim_vec = [1.0] + [0.0] * 767
+        ind_map = {sid: [0.0] * 768 for sid in
+                   (e["series_id"] for e in adv.INDICATOR_CATALOG)}
+        ind_map["CSUSHPISA"] = claim_vec  # identical → cos sim = 1.0
+
+        # Bypass the cache by using a side_effect that always runs:
+        with mock.patch.object(adv, "_load_or_compute_indicator_embeddings",
+                               return_value=ind_map):
+            with self._patch_embed(ind_map, [claim_vec]):
+                ranked = adv.rank_indicators_for_article(article)
+
+        # CSUSHPISA should be the top pick — sim=1.0 → normalized=1.0
+        # → weighted=2.0 → total=2.0; everything else 0.
+        self.assertEqual(ranked[0].entry["series_id"], "CSUSHPISA")
+        self.assertAlmostEqual(ranked[0].semantic_match, 1.0, places=3)
+        self.assertGreater(ranked[0].total, 0)
+
+    def test_semantic_disabled_via_kwarg_returns_phase1_only(self):
+        # With use_semantic=False, semantic scores should all be 0
+        # regardless of mock vectors.
+        article = CPI_ARTICLE_WITH_THEMES
+        ranked = adv.rank_indicators_for_article(article, use_semantic=False)
+        self.assertTrue(all(s.semantic_match == 0.0 for s in ranked))
+
+    def test_embedder_unavailable_degrades_to_phase1(self):
+        # When _load_or_compute_indicator_embeddings returns None
+        # (Ollama unreachable), the ranking falls back to Phase 1 only.
+        with mock.patch.object(adv, "_load_or_compute_indicator_embeddings",
+                               return_value=None):
+            ranked = adv.rank_indicators_for_article(CPI_ARTICLE_WITH_THEMES)
+        # All semantic scores 0, but Phase 1 still finds CPI indicators.
+        self.assertTrue(all(s.semantic_match == 0.0 for s in ranked))
+        self.assertGreater(ranked[0].total, 0)  # Phase 1 still works
+
+    def test_cosine_similarity_unit_vectors(self):
+        # Identical vectors → 1.0
+        v = [0.6, 0.8, 0.0]
+        self.assertAlmostEqual(adv._cosine_similarity(v, v), 1.0, places=5)
+        # Orthogonal → 0.0
+        a = [1.0, 0.0, 0.0]
+        b = [0.0, 1.0, 0.0]
+        self.assertAlmostEqual(adv._cosine_similarity(a, b), 0.0, places=5)
+        # Empty / None → 0.0
+        self.assertEqual(adv._cosine_similarity([], []), 0.0)
+        self.assertEqual(adv._cosine_similarity(None, [1.0]), 0.0)
+
+    def test_indicator_embedding_text_includes_name_and_covers(self):
+        entry = {"series_id": "X", "name": "Foo Bar", "covers": "the foo signal"}
+        text = adv._indicator_embedding_text(entry)
+        self.assertIn("Foo Bar", text)
+        self.assertIn("the foo signal", text)
 
 
 if __name__ == "__main__":
