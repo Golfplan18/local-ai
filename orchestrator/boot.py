@@ -5374,19 +5374,87 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
     return _INLINE_DISPATCH_DIRECTIVE + step_prompt + _rag_tail(context_pkg)
 
 
+_VERIFIER_BROKEN_MARKERS = (
+    "verifier_exception:",
+    "playwright session error",
+    "browsertype.launch_persistent_context",
+    "target page, context or browser has been closed",
+    "[verification error",
+    "[verifier call error",
+    "session expired",
+    "rate_limit_exceeded",
+    "rate limit exceeded",
+    "too many requests",
+)
+
+
+def _verifier_broken(verifier_output: str) -> bool:
+    """Return True when the verifier's output indicates the verifier model
+    itself failed (browser-session error, exception substitution, garbled
+    output) rather than producing a substantive verdict.
+
+    Distinguishing broken-verifier from real-FAIL is the fix for silent
+    failure #9: the prior auto-PASS-on-exception path substituted
+    ``"VERIFIED\\n[Verification error, auto-pass: <e>]"`` whenever the
+    verifier call raised, which made every Playwright session error and
+    every model timeout register as VERIFIED in the trace. The pipeline
+    proceeded, the user got "verified" output, and the actual failure
+    was invisible.
+
+    Detection contract:
+      - Real verdict tokens (``VERIFIED`` / ``VERIFICATION FAILED``) take
+        priority over short-output flags — a 36-char real "VERIFIED. All
+        checks pass." is NOT broken.
+      - Known broken markers (Playwright error, exception substitution,
+        rate-limit) flag broken even when the text also happens to contain
+        the word VERIFIED (e.g. ``"VERIFIED\\n[Verification error, ...]"``
+        from the retired auto-pass path).
+      - Very short output (< 20 chars) with no verdict token is broken.
+
+    The pipeline still proceeds when ``_verifier_broken`` returns True
+    (a broken verifier should not block work the analyst already
+    completed), but the contingency is named explicitly in the trace's
+    ``contingencies_fired`` list so trend data reflects reality.
+    """
+    if not verifier_output:
+        return True
+    txt = verifier_output.strip()
+    lower = txt.lower()
+
+    # Known broken markers — these win over verdict tokens because the
+    # legacy auto-pass-on-exception path substituted strings that
+    # contained the word "VERIFIED" wrapped around an error message.
+    if any(m in lower for m in _VERIFIER_BROKEN_MARKERS):
+        return True
+
+    # If a real verdict token is present, the verifier produced a
+    # substantive verdict and is not broken — even when the output is short.
+    has_verified = "verified" in lower
+    has_failed = "verification failed" in lower
+    if has_verified or has_failed:
+        return False
+
+    # No verdict token and no broken marker. Very short = broken; long
+    # output without a verdict token is ambiguous but not broken (the
+    # caller's ``_verifier_passed`` will return False; the cycle will
+    # re-revise as in the legacy "no verdict token" path).
+    return len(txt) < 20
+
+
 def _verifier_passed(verifier_output: str) -> bool:
     """Phase 5 verifier contract: VERIFIED / VERIFIED WITH CORRECTIONS /
     VERIFICATION FAILED. 'VERIFIED' appearing without 'VERIFICATION FAILED'
     counts as pass; 'VERIFIED WITH CORRECTIONS' also passes (the
     corrections are already applied in the verifier's output).
 
-    Also returns True when the verifier output is itself garbled (too short,
-    refusal pattern, error stub) — this is a defensive choice: a broken
-    verifier should not block the pipeline indefinitely. The upstream
-    health checks catch the underlying broken-revision case.
+    Returns False on broken-verifier outputs — the caller distinguishes
+    broken from real-FAIL via ``_verifier_broken``. Both unblock the
+    pipeline; only real-FAIL triggers re-revision. The prior auto-PASS-
+    when-garbled behaviour is retired; broken verifier outputs no
+    longer masquerade as PASS in the trace (failure #9).
     """
-    if not verifier_output or len(verifier_output.strip()) < 50:
-        return True  # garbled verifier — don't block
+    if not verifier_output or _verifier_broken(verifier_output):
+        return False
     return "VERIFIED" in verifier_output and "VERIFICATION FAILED" not in verifier_output
 
 
@@ -5882,23 +5950,41 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                 "CORRECTIONS / VERIFICATION FAILED."
             )},
         ]
-        verified = _run_model_with_tools(verify_messages, breadth_endpoint)
+        try:
+            verified = _run_model_with_tools(verify_messages, breadth_endpoint)
+        except Exception as e:
+            verified = f"VERIFIER_EXCEPTION: {e}"
+        # Three-way verdict classification (see _verifier_broken docstring
+        # for the BROKEN-vs-FAIL distinction that addresses silent
+        # failure #9).
+        broken = _verifier_broken(verified)
         passed = _verifier_passed(verified)
+        unblocks = passed or broken
+        verdict_label = "BROKEN" if broken else ("PASS" if passed else "FAIL")
 
         _trace_step_g3(f"step6-verifier-cycle-{cycle + 1}", {
             "cycle": cycle + 1,
             "max_cycles": MAX_VERIFY_CYCLES + 1,
             "verdict_raw": verified,
+            "verdict_resolved": verdict_label,
             "passed_parser_verdict": passed,
+            "broken_parser_verdict": broken,
+            "unblocks_cycle": unblocks,
         }, markdown=(
             f"# Step 6 — Verifier (Gear 3, cycle {cycle + 1}/{MAX_VERIFY_CYCLES + 1})\n\n"
-            f"**Verdict:** {'PASS' if passed else 'FAIL'}\n\n{verified}\n"
+            f"**Verdict:** {verdict_label}\n\n{verified}\n"
         ))
+        if broken:
+            contingencies_fired.append(
+                f"step6-cycle{cycle + 1}-verifier-BROKEN-not-verified"
+            )
 
-        if passed or cycle == MAX_VERIFY_CYCLES:
+        if unblocks or cycle == MAX_VERIFY_CYCLES:
             break
 
         # Verifier rejected — reviser addresses the verifier's findings.
+        # Skip re-revision when the verifier was BROKEN (verifier-side
+        # error — re-revising the analysis can't help).
         re_revise_messages = [
             {"role": "system", "content": revise_system},
             {"role": "user", "content": (
@@ -5969,9 +6055,16 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
       Step 5 — Reviser calls use ``_call_with_retry``. If a reviser is
                unhealthy after retry, that stream's original analyst
                output is used as the revised output (better than degraded).
-      Step 6 — Verifier output sanity-checked by ``_verifier_passed`` which
-               treats garbled verifier output as VERIFIED (don't block on
-               broken verifier). Cycle cap remains 2.
+      Step 6 — Three-way verdict resolution per cycle: PASS / FAIL / BROKEN.
+               PASS and BROKEN both unblock the cycle (re-revision can't
+               help a verifier that itself errored); FAIL triggers
+               re-revision of the failed stream. BROKEN never registers as
+               a real verification — the per-stream
+               ``step6-cycleN-<slot>-verifier-BROKEN-not-verified``
+               contingency name lands in ``step-health.json`` so trend
+               data reflects how often verification is actually performed.
+               Replaces the retired auto-PASS-on-exception path
+               (silent failure #9). Cycle cap remains 2.
       Step 7 — Consolidator uses ``_call_with_retry`` (min 300 chars). If
                still unhealthy, returns the longer of revised_depth /
                revised_breadth with a [degraded — consolidation failed]
@@ -6281,50 +6374,92 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             try:
                 depth_verdict = verify_depth_future.result()
             except Exception as e:
-                depth_verdict = f"VERIFIED\n[Verification error, auto-pass: {e}]"
+                # Per failure #9: substitute an explicit VERIFIER_EXCEPTION
+                # marker rather than a fake "VERIFIED" string. The pipeline
+                # still proceeds (we don't block on a broken verifier), but
+                # the trace records the real failure shape.
+                depth_verdict = f"VERIFIER_EXCEPTION: {e}"
                 depth_verify_error = str(e)
             try:
                 breadth_verdict = verify_breadth_future.result()
             except Exception as e:
-                breadth_verdict = f"VERIFIED\n[Verification error, auto-pass: {e}]"
+                breadth_verdict = f"VERIFIER_EXCEPTION: {e}"
                 breadth_verify_error = str(e)
 
+        # Three-way verdict classification per cycle: PASS / FAIL / BROKEN.
+        # BROKEN unblocks the cycle the same way PASS does (re-revision
+        # cannot help a verifier that itself errored), but it never
+        # registers as a true verification — the trace + contingencies
+        # capture the broken state explicitly.
+        depth_broken = _verifier_broken(depth_verdict)
+        breadth_broken = _verifier_broken(breadth_verdict)
         depth_passed = _verifier_passed(depth_verdict)
         breadth_passed = _verifier_passed(breadth_verdict)
+        depth_unblocks = depth_passed or depth_broken
+        breadth_unblocks = breadth_passed or breadth_broken
 
-        # --- Step 6 trace (per cycle, so we can see retry behaviour) ---
+        def _verdict_label(passed: bool, broken: bool) -> str:
+            if broken:
+                return "BROKEN"
+            return "PASS" if passed else "FAIL"
+
+        # --- Step 6 trace (per cycle, with three-way verdict resolution) ---
         _trace_step(f"step6-verifier-cycle-{cycle + 1}", {
             "cycle": cycle + 1,
             "max_cycles": MAX_VERIFY_CYCLES + 1,
             "depth_verdict_raw": depth_verdict,
+            "depth_verdict_resolved": _verdict_label(depth_passed, depth_broken),
             "depth_passed_parser_verdict": depth_passed,
+            "depth_broken_parser_verdict": depth_broken,
+            "depth_unblocks_cycle": depth_unblocks,
             "depth_verify_exception": depth_verify_error,
             "breadth_verdict_raw": breadth_verdict,
+            "breadth_verdict_resolved": _verdict_label(breadth_passed, breadth_broken),
             "breadth_passed_parser_verdict": breadth_passed,
+            "breadth_broken_parser_verdict": breadth_broken,
+            "breadth_unblocks_cycle": breadth_unblocks,
             "breadth_verify_exception": breadth_verify_error,
+            "both_unblocked": depth_unblocks and breadth_unblocks,
             "both_passed": depth_passed and breadth_passed,
         }, markdown=(
             f"# Step 6 — Verifier (cycle {cycle + 1}/{MAX_VERIFY_CYCLES + 1})\n\n"
-            f"**Depth verdict:** {'PASS' if depth_passed else 'FAIL'}"
-            + (f" (model error auto-passed: `{depth_verify_error}`)" if depth_verify_error else "")
+            f"**Depth verdict:** {_verdict_label(depth_passed, depth_broken)}"
+            + (f" — exception: `{depth_verify_error}`" if depth_verify_error else "")
             + "\n\n"
             f"```\n{depth_verdict}\n```\n\n"
-            f"**Breadth verdict:** {'PASS' if breadth_passed else 'FAIL'}"
-            + (f" (model error auto-passed: `{breadth_verify_error}`)" if breadth_verify_error else "")
+            f"**Breadth verdict:** {_verdict_label(breadth_passed, breadth_broken)}"
+            + (f" — exception: `{breadth_verify_error}`" if breadth_verify_error else "")
             + "\n\n"
             f"```\n{breadth_verdict}\n```\n"
         ))
-        if depth_verify_error:
-            contingencies_fired.append(f"step6-cycle{cycle + 1}-depth-verifier-exception-auto-pass")
-        if breadth_verify_error:
-            contingencies_fired.append(f"step6-cycle{cycle + 1}-breadth-verifier-exception-auto-pass")
+        # Per-stream contingency naming distinguishes BROKEN (no real
+        # verification happened) from FAIL (verifier returned a real
+        # negative verdict). Trend data on contingencies_fired tells the
+        # team how often verification is actually being performed.
+        if depth_broken:
+            contingencies_fired.append(
+                f"step6-cycle{cycle + 1}-depth-verifier-BROKEN-not-verified"
+            )
+        if breadth_broken:
+            contingencies_fired.append(
+                f"step6-cycle{cycle + 1}-breadth-verifier-BROKEN-not-verified"
+            )
 
-        if (depth_passed and breadth_passed) or cycle == MAX_VERIFY_CYCLES:
+        # Loop exit: both streams unblocked (PASS or BROKEN), or cycle cap.
+        # Re-revision only fires when a stream truly FAILED (broken doesn't
+        # benefit from re-revision since the issue is verifier-side).
+        if (depth_unblocks and breadth_unblocks) or cycle == MAX_VERIFY_CYCLES:
             break
 
+        # Re-revision only fires on real FAIL (verifier returned a
+        # substantive negative verdict). When the stream is BROKEN
+        # (verifier exception, Playwright session error), re-revising
+        # the analysis cannot help — the issue lives on the verifier
+        # side. Skip re-revision for BROKEN streams; the existing
+        # revised content carries forward to consolidation as-is.
         futures = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            if not depth_passed:
+            if not depth_passed and not depth_broken:
                 futures["depth"] = executor.submit(
                     _run_model_with_tools,
                     [{"role": "system", "content": revise_system},
@@ -6336,7 +6471,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                      )}],
                     depth_endpoint
                 )
-            if not breadth_passed:
+            if not breadth_passed and not breadth_broken:
                 futures["breadth"] = executor.submit(
                     _run_model_with_tools,
                     [{"role": "system", "content": revise_system},
