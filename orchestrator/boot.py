@@ -4469,6 +4469,96 @@ def compare_intent_with_mode(
     }
 
 
+def _diagnose_rag_emptiness(collection: str, query: str,
+                            mode_text: str | None = None) -> dict:
+    """When a RAG call returns 0 chars without raising, distinguish between
+    the three possible causes:
+
+    - ``index_empty`` — the collection contains zero chunks
+    - ``filtered_out`` — chunks exist but all were filtered by type_filter
+      / archived / private rules
+    - ``no_match`` — chunks exist and pass filters but none ranked above
+      the formatting threshold
+
+    Fixes silent failure #4: previously the trace recorded ``chars: 0``
+    with no further diagnostic, so an empty-vault deployment was
+    indistinguishable from a healthy vault with no relevant content for
+    the query. Each cause has a different remediation, and the
+    diagnostic is cheap (one collection.count() and one raw query).
+    """
+    diagnosis: dict[str, Any] = {
+        "collection": collection,
+        "query": query[:200],
+        "collection_total_count": None,
+        "raw_chunks_returned": None,
+        "filtered_chunks_returned": None,
+        "empty_reason": "unknown",
+    }
+    try:
+        from tools import knowledge_search as ks
+    except Exception as e:
+        diagnosis["empty_reason"] = f"diagnostic_unavailable: {e}"
+        return diagnosis
+
+    # Step 1 — total count
+    try:
+        import chromadb
+        from embedding import get_or_create_collection
+        client = chromadb.PersistentClient(path=os.path.join(WORKSPACE, "chromadb"))
+        col = get_or_create_collection(client, collection)
+        total = col.count()
+        diagnosis["collection_total_count"] = total
+        if total == 0:
+            diagnosis["empty_reason"] = "index_empty"
+            return diagnosis
+    except Exception as e:
+        diagnosis["empty_reason"] = f"count_failed: {e}"
+        return diagnosis
+
+    # Step 2 — raw chunk count without filters
+    try:
+        raw = ks.knowledge_search_raw(
+            query=query, collection=collection, n_results=10,
+            include_private=False, include_archived=False,
+        )
+        diagnosis["raw_chunks_returned"] = len(raw)
+
+        # Step 3 — chunk count with mode's type_filter applied
+        type_filter = None
+        if mode_text:
+            try:
+                type_filter = ks._extract_mode_type_filter(mode_text)
+            except Exception:
+                type_filter = None
+        if type_filter:
+            filtered = ks.knowledge_search_raw(
+                query=query, collection=collection, n_results=10,
+                type_filter=type_filter,
+                include_private=False, include_archived=False,
+            )
+            diagnosis["filtered_chunks_returned"] = len(filtered)
+            diagnosis["type_filter_applied"] = type_filter
+        else:
+            diagnosis["filtered_chunks_returned"] = diagnosis["raw_chunks_returned"]
+            diagnosis["type_filter_applied"] = None
+
+        # Determine the empty_reason
+        if diagnosis["raw_chunks_returned"] == 0:
+            diagnosis["empty_reason"] = "no_match"
+        elif diagnosis["filtered_chunks_returned"] == 0:
+            diagnosis["empty_reason"] = "filtered_out"
+        else:
+            # Chunks survived filtering but the ranker produced 0-char
+            # output. That can happen when max_chars truncates everything
+            # or when the rank order pushed all relevant content past
+            # the budget — flag as ranker_truncation for caller review.
+            diagnosis["empty_reason"] = "ranker_truncation_or_filter_threshold"
+    except Exception as e:
+        diagnosis["empty_reason"] = f"diagnostic_query_failed: {e}"
+
+    return diagnosis
+
+
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None) -> dict:
     """Step 2: Assemble context package for pipeline stages.
@@ -4625,6 +4715,28 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         except Exception:
             dispatch_announcement = None
 
+    # --- Empty-result diagnostics (fix for failure #4) ---
+    # When a RAG call returned 0 chars without raising an exception,
+    # distinguish index_empty / no_match / filtered_out / ranker_truncation
+    # so the trace tells us which remediation applies. Only runs when
+    # tracing is on, the retrieval path completed without exception, and
+    # the result is genuinely 0 chars.
+    conv_rag_diagnosis = None
+    concept_rag_diagnosis = None
+    if PIPELINE_TRACE_AVAILABLE and trace_dir:
+        if not conv_rag and conv_rag_path in (
+            "rag_engine.assemble_ranked_context", "legacy_knowledge_search",
+        ):
+            conv_rag_diagnosis = _diagnose_rag_emptiness(
+                "conversations", cleaned_prompt, mode_text=mode_text,
+            )
+        if not concept_rag and gear >= 2 and concept_rag_path in (
+            "rag_engine.assemble_ranked_context", "legacy_knowledge_search",
+        ):
+            concept_rag_diagnosis = _diagnose_rag_emptiness(
+                "knowledge", cleaned_prompt, mode_text=mode_text,
+            )
+
     # --- Trace: complete context package (the highest-value trace, since
     # this is where vault content is supposed to enter the pipeline) ---
     if PIPELINE_TRACE_AVAILABLE:
@@ -4651,11 +4763,13 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 "retrieval_path": conv_rag_path,
                 "chars": len(conv_rag),
                 "content": conv_rag,
+                "empty_diagnosis": conv_rag_diagnosis,
             },
             "concept_rag": {
                 "retrieval_path": concept_rag_path,
                 "chars": len(concept_rag),
                 "content": concept_rag,
+                "empty_diagnosis": concept_rag_diagnosis,
             },
             "relationship_rag": {
                 "chars": len(relationship_rag),
@@ -4680,10 +4794,24 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             f"**Territory:** {territory or '_(none)_'}\n\n"
             f"## Conversation RAG ({len(conv_rag)} chars, "
             f"path: `{conv_rag_path}`)\n\n"
-            f"```\n{conv_rag or '_(empty)_'}\n```\n\n"
+            + (
+                f"**Empty-result diagnosis:** `{conv_rag_diagnosis['empty_reason']}` "
+                f"(collection total: {conv_rag_diagnosis['collection_total_count']}, "
+                f"raw chunks: {conv_rag_diagnosis['raw_chunks_returned']}, "
+                f"filtered: {conv_rag_diagnosis['filtered_chunks_returned']})\n\n"
+                if conv_rag_diagnosis else ""
+            )
+            + f"```\n{conv_rag or '_(empty)_'}\n```\n\n"
             f"## Concept RAG ({len(concept_rag)} chars, "
             f"path: `{concept_rag_path}`)\n\n"
-            f"```\n{concept_rag or '_(empty)_'}\n```\n\n"
+            + (
+                f"**Empty-result diagnosis:** `{concept_rag_diagnosis['empty_reason']}` "
+                f"(collection total: {concept_rag_diagnosis['collection_total_count']}, "
+                f"raw chunks: {concept_rag_diagnosis['raw_chunks_returned']}, "
+                f"filtered: {concept_rag_diagnosis['filtered_chunks_returned']})\n\n"
+                if concept_rag_diagnosis else ""
+            )
+            + f"```\n{concept_rag or '_(empty)_'}\n```\n\n"
             f"## Relationship RAG ({len(relationship_rag)} chars)\n\n"
             f"```\n{relationship_rag or '_(empty)_'}\n```\n\n"
             f"## Budget signals\n\n"
