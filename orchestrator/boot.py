@@ -980,20 +980,19 @@ def _normalize_for_match(text: str) -> str:
 def _signal_present(prompt: str, signal: str) -> bool:
     """Check whether the signal appears in the prompt with proper word boundaries.
 
-    Short signals (≤6 chars or all-caps acronyms) require word-boundary match
-    so 'Ma' doesn't match inside 'Make'. Multi-word signals are matched as
-    substrings (longer phrases are unlikely to collide).
+    Word-boundary matching is required for ALL signals — short and
+    multi-word alike. Substring-only matching was previously used for
+    multi-word triggers under the assumption of low collision risk; that
+    assumption is false in practice. The trigger ``"no analysis"`` was
+    matching inside ``"cui bono analysis"`` (``b[ono analysis]``),
+    silently bypassing every cui-bono prompt to the direct-response path
+    and starving the analytical pipeline. Word boundaries on both ends
+    eliminate this entire failure class.
     """
     if not signal or not prompt:
         return False
     norm_prompt = _normalize_for_match(prompt)
     norm_signal = _normalize_for_match(signal)
-
-    # Multi-word signals: substring match (low collision risk).
-    if " " in norm_signal:
-        return norm_signal in norm_prompt
-
-    # Single-word signals: require word-boundary match.
     pattern = r"(?:^|[^a-z0-9])" + re.escape(norm_signal) + r"(?:$|[^a-z0-9])"
     return bool(re.search(pattern, norm_prompt))
 
