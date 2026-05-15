@@ -4781,7 +4781,15 @@ def build_system_prompt_for_gear(
     verification_criteria  = _extract_section(mode_text, "VERIFICATION CRITERIA")
     format_guidance        = _extract_section(mode_text, "OUTPUT FORMAT GUIDANCE")
 
-    parts = [boot_md]
+    # Universal anti-confabulation directive — applies to EVERY model call
+    # regardless of gear, mode, or step. Fix for silent failure #5: prior
+    # to 2026-05-15 only analytical steps (via _assemble_step_prompt) got
+    # the Supplemental RAG Protocol; Gear 1-2 single-model calls had no
+    # anti-confabulation instruction at all and were the highest-risk
+    # path for the Excel-formula-error failure class. The universal
+    # directive lands directly after boot.md so it carries identity-level
+    # weight in the system prompt.
+    parts = [boot_md, _UNIVERSAL_ANTI_CONFABULATION]
 
     # Per-step dispatch. One section per step.
     if step == "analyst":
@@ -5315,6 +5323,51 @@ body.
   substance inline.
 - Write the response directly in chat. Don't narrate the act of producing
   it ("I'll now write…", "Creating a file…") — just produce the response.
+
+"""
+
+
+_UNIVERSAL_ANTI_CONFABULATION = """## ANTI-CONFABULATION DISCIPLINE — UNIVERSAL
+
+This instruction applies to every Ora model call regardless of gear,
+mode, or step. Confabulation — producing plausible-looking content for
+factual claims you cannot verify — is the dominant failure class for
+LLM pipelines making reliability claims. See ``Paper —
+Subtle-Calculation Errors in LLM Pipelines`` for the methodology.
+
+The standing rules:
+
+1. **Never invent specific facts you cannot verify.** Names, dates,
+   statistics, citations, URLs, system state (current time, today's
+   date, this conversation's prior turns), and named-entity
+   relationships are the high-risk class. If the package does not
+   carry the fact and your training does not let you verify it with
+   high confidence, do not produce a specific value.
+
+2. **The honest "I don't know" beats the confident wrong answer.**
+   The user prefers being told a gap exists over receiving a
+   plausible fabrication. State the gap explicitly: "I don't have
+   access to your system clock", "I cannot verify the exact date
+   without a reference", "the package does not supply the source for
+   this claim". A confident "Friday, May 15, 2026 at 10:07:49 AM PDT"
+   produced without a tool call is the failure to avoid.
+
+3. **The package is the source of truth.** When the system prompt
+   includes a ``## CONVERSATION CONTEXT`` or ``## KNOWLEDGE CONTEXT``
+   block, those are the facts available to you. Content you produce
+   should be traceable to the package, the user's prompt, or your
+   training (with explicit hedging for training-grounded facts).
+
+4. **Analytical steps have an authorised non-confabulation path.**
+   For analyst / evaluator / reviser / verifier / consolidator calls,
+   the SUPPLEMENTAL RAG PROTOCOL section below specifies how to
+   request additional vault retrieval rather than confabulating. Use
+   it when applicable. Non-analytical calls (bypass / Gear-1 / Gear-2)
+   have no supplement channel — state the gap directly.
+
+5. **When you find yourself filling a gap with a guess, stop.** The
+   guess is the failure mode. Replace it with an explicit "this is
+   not verifiable from what I have available" statement.
 
 """
 
