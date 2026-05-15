@@ -34,6 +34,17 @@ from typing import Any
 
 TRACE_ROOT = os.path.expanduser("~/ora/data/pipeline-traces")
 
+# Environment variable gate. Setting ``ORA_PIPELINE_TRACE=off`` (or any
+# value in ``_DISABLE_VALUES``) disables tracing globally regardless of
+# any per-call ``stealth`` flag. Default is on.
+_DISABLE_VALUES = frozenset({"off", "false", "0", "no", "disabled"})
+
+
+def _tracing_globally_disabled() -> bool:
+    """True when the ORA_PIPELINE_TRACE env var disables tracing."""
+    val = os.environ.get("ORA_PIPELINE_TRACE", "").strip().lower()
+    return val in _DISABLE_VALUES
+
 
 def _now_ts() -> str:
     """UTC timestamp formatted for filesystem use."""
@@ -42,7 +53,8 @@ def _now_ts() -> str:
 
 def start_trace(conversation_id: str | None,
                 raw_input: str = "",
-                ambiguity_mode: str = "assume") -> str | None:
+                ambiguity_mode: str = "assume",
+                stealth: bool = False) -> str | None:
     """Open a new per-turn trace directory.
 
     Args:
@@ -53,12 +65,28 @@ def start_trace(conversation_id: str | None,
             preserved even if Step 1 mangles it.
         ambiguity_mode: ``ask`` or ``assume`` — captured for
             reproducibility.
+        stealth: when True, no trace directory is created and no files
+            are written. Returns ``None`` immediately. This is the
+            primary mechanism for keeping stealth conversations from
+            leaking through the trace layer. ``_purge_stealth`` in
+            ``conversation_closeout.py`` adds a defence-in-depth sweep
+            that walks ``TRACE_ROOT/<conversation_id>/`` and unlinks any
+            trace dir that ever existed for the stealth conversation.
 
     Returns:
-        Absolute path to the new trace directory, or ``None`` if trace
-        creation failed. ``None`` is the disabled sentinel for all the
-        ``write_*`` helpers below.
+        Absolute path to the new trace directory, or ``None`` if:
+          - stealth=True (explicit no-trace request)
+          - ORA_PIPELINE_TRACE env var disables tracing globally
+          - trace creation failed (disk full, permissions, etc.)
+
+        ``None`` is the disabled sentinel — every downstream ``write_*``
+        helper short-circuits when passed ``None`` so call sites do not
+        need their own guards.
     """
+    # Stealth mode and global-disable both produce no-trace immediately.
+    if stealth or _tracing_globally_disabled():
+        return None
+
     try:
         conv = conversation_id or "_orphan"
         ts = _now_ts()
@@ -84,6 +112,29 @@ def start_trace(conversation_id: str | None,
     except Exception as e:
         print(f"[pipeline_trace] start_trace failed: {e}", file=sys.stderr)
         return None
+
+
+def purge_conversation_traces(conversation_id: str) -> dict:
+    """Defence-in-depth: wipe every trace directory belonging to a
+    conversation. Called by ``conversation_closeout._purge_stealth``
+    so stealth-tagged conversations have zero residue even if the
+    primary skip-creation path is ever bypassed by a bug.
+
+    Returns ``{"deleted": bool, "path": str, "error": str | None}``.
+    Safe to call when no trace directory exists — returns
+    ``deleted: False`` without raising.
+    """
+    if not conversation_id:
+        return {"deleted": False, "path": "", "error": "empty conversation_id"}
+    try:
+        import shutil
+        path = os.path.join(TRACE_ROOT, conversation_id)
+        if not os.path.isdir(path):
+            return {"deleted": False, "path": path, "error": None}
+        shutil.rmtree(path)
+        return {"deleted": True, "path": path, "error": None}
+    except Exception as e:
+        return {"deleted": False, "path": path, "error": str(e)}
 
 
 def write_step(trace_dir: str | None,

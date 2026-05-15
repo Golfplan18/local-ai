@@ -5,9 +5,10 @@ The V3 mode mechanism (Phase 1.1) carries each conversation's mode as a
 ``private``). When the user closes a conversation, this module dispatches
 the appropriate cleanup based on tag:
 
-* empty (standard) → no-op. The conversation file, chunks, ChromaDB
-  records, and any vault exports stay. The UI removes the row from its
-  active list.
+* empty (standard) → hide from sidebar. The envelope is stamped
+  ``closed: true``; iter_conversations filters those out. Chunks,
+  ChromaDB records, and vault exports are retained. Reversible by
+  clearing the flag.
 * ``stealth`` → full purge. All artifacts associated with the
   conversation are deleted: the session directory under ``~/ora/sessions/``,
   the per-pair chunk files in ``~/Documents/conversations/``, the raw
@@ -17,9 +18,9 @@ the appropriate cleanup based on tag:
   marked as a follow-up; users only land in vault by explicit export, and
   if a stealth conversation was exported there, the user did so
   intentionally.)
-* ``private`` → no-op server-side. The conversation is retained with its
-  tag intact so RAG queries continue to filter it out by default. The UI
-  removes the row from the active list but the data persists.
+* ``private`` → hide from sidebar (same ``closed: true`` flag). The tag
+  is retained intact so RAG queries continue to filter the data out by
+  default. The conversation persists on disk.
 
 The purge is best-effort: each layer's deletion is wrapped in a try/except
 so a failure in one layer doesn't block deletion of the others. The result
@@ -41,7 +42,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from .conversation_memory import get_conversation_tag
+from .conversation_memory import get_conversation_tag, set_conversation_closed
 
 
 _DEFAULT_SESSIONS_ROOT = Path.home() / "ora" / "sessions"
@@ -93,20 +94,30 @@ def close_conversation(
 
     # private → keep but flag (no server-side state to change beyond what
     # already lives on the envelope and chunk metadata).
-    # empty → standard close (no server-side work).
+    # empty → standard close.
     # Phase 5.8: finalize chunk metadata for retained conversations —
     # update total_turns to the final pair count and mark is_last_turn
     # on the highest-turn chunk. This applies to non-stealth tags only;
     # stealth tags purge in _purge_stealth above.
+    # Hide the conversation from the sidebar by stamping `closed: true`
+    # on the envelope. iter_conversations filters these out; the data
+    # itself is retained on disk and can be restored by clearing the flag.
     finalize = _finalize_conversation_chunks(
         conversation_id, chromadb_path=chromadb_path,
     )
+    errors = list(finalize.get("errors", []))
+    closed_path = set_conversation_closed(
+        conversation_id, True, sessions_root=sessions_root,
+    )
+    if closed_path is None:
+        errors.append("set_conversation_closed: envelope missing or unwritable")
     return {
         "conversation_id": conversation_id,
         "tag": tag,
-        "action": "noop",
+        "action": "close",
+        "closed":          closed_path is not None,
         "finalize":        finalize,
-        "errors":          finalize.get("errors", []),
+        "errors":          errors,
     }
 
 
@@ -279,6 +290,26 @@ def _purge_stealth(
             deleted["vault_dir"] = True
     except Exception as e:
         errors.append(f"vault_dir {vault_dir}: {e}")
+
+    # --- Layer 6: Pipeline forensic traces ----------------------------------
+    # Defence-in-depth (2026-05-15). Stealth conversations are supposed
+    # to skip trace creation entirely via ``pipeline_trace.start_trace``'s
+    # stealth flag, so this directory should not exist for a stealth
+    # conversation. But the trace layer is large and easy to bypass
+    # accidentally if a future caller forgets to thread the stealth flag.
+    # This layer guarantees that even if a trace dir somehow landed for a
+    # stealth conversation_id, the purge wipes it. ``purge_conversation_traces``
+    # is a no-op when no directory exists.
+    deleted["pipeline_traces"] = False
+    try:
+        from orchestrator import pipeline_trace as _pt
+        pt_result = _pt.purge_conversation_traces(conversation_id)
+        deleted["pipeline_traces"] = pt_result["deleted"]
+        deleted["pipeline_traces_path"] = pt_result["path"]
+        if pt_result.get("error"):
+            errors.append(f"pipeline_traces {pt_result['path']}: {pt_result['error']}")
+    except Exception as e:
+        errors.append(f"pipeline_traces: {e}")
 
     return {
         "conversation_id": conversation_id,

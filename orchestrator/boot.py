@@ -5223,7 +5223,8 @@ def run_pipeline(user_input: str, history: list = None,
                  output_target: str = "screen",
                  execution_context: str = "interactive",
                  conversation_id: str | None = None,
-                 ambiguity_mode: str = "assume") -> str:
+                 ambiguity_mode: str = "assume",
+                 stealth: bool = False) -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
     For Gear 1-2: Single model with context package.
@@ -5242,18 +5243,31 @@ def run_pipeline(user_input: str, history: list = None,
     surfaces unresolved ambiguity as a question (``ask``) or resolves it
     silently and logs to ``INFERRED_ITEMS`` (``assume``). The trace
     captures whichever mode was used.
+
+    stealth: when True, the pipeline forensic trace is suppressed
+    entirely — no directory is created, no files are written, no
+    metadata persisted. This is the privacy guarantee for stealth-tagged
+    conversations: the trace layer must produce zero residue even
+    transiently. ``conversation_closeout._purge_stealth`` carries a
+    defence-in-depth sweep that wipes any trace directory matching a
+    stealth conversation_id, in case this flag is ever bypassed by a
+    bug. Default False to preserve diagnostic coverage for normal
+    conversations.
     """
     config = load_endpoints()
 
     # --- Pipeline forensic trace — open the per-turn directory now so
     # every downstream step lands in the same place. Failure here is
-    # tolerated (trace_dir falls back to None and tracing is disabled). ---
+    # tolerated (trace_dir falls back to None and tracing is disabled).
+    # When stealth=True OR ORA_PIPELINE_TRACE=off, start_trace returns
+    # None immediately and every downstream write becomes a no-op. ---
     trace_dir = None
     if PIPELINE_TRACE_AVAILABLE:
         trace_dir = pipeline_trace.start_trace(
             conversation_id=conversation_id,
             raw_input=user_input,
             ambiguity_mode=ambiguity_mode,
+            stealth=stealth,
         )
 
     # --- Runtime slash-command short-circuit ---
