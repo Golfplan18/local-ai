@@ -388,7 +388,9 @@ def transcribe_upload_and_start():
     lang     = (request.form.get("language") or "").strip()
     model    = (request.form.get("model") or "").strip()
     provider = (request.form.get("provider") or "").strip()
-    openrouter_model = (request.form.get("openrouter_model") or "").strip()
+    openrouter_model        = (request.form.get("openrouter_model") or "").strip()
+    openrouter_audio_model  = (request.form.get("openrouter_audio_model") or "").strip()
+    openrouter_audio_question = (request.form.get("openrouter_audio_question") or "").strip()
     # Fill in user-settings defaults when the browser didn't override.
     if _HAS_USER_SETTINGS and _user_settings is not None:
         try:
@@ -397,6 +399,10 @@ def transcribe_upload_and_start():
             if not provider: provider = _user_settings.get_setting("whisper.provider") or ""
             if not openrouter_model:
                 openrouter_model = _user_settings.get_setting("whisper.openrouter_model") or ""
+            if not openrouter_audio_model:
+                openrouter_audio_model = _user_settings.get_setting("whisper.openrouter_audio_model") or ""
+            if not openrouter_audio_question:
+                openrouter_audio_question = _user_settings.get_setting("whisper.openrouter_audio_question") or ""
         except Exception:
             pass
     provider = (provider or "whisper_local").lower()
@@ -405,6 +411,11 @@ def transcribe_upload_and_start():
     options["provider"]   = provider
     if provider == "openrouter" and openrouter_model:
         options["openrouter_model"] = openrouter_model
+    if provider == "openrouter_audio":
+        if openrouter_audio_model:
+            options["openrouter_audio_model"] = openrouter_audio_model
+        if openrouter_audio_question:
+            options["openrouter_audio_question"] = openrouter_audio_question
 
     try:
         tid = _get_transcription_manager().start(staged_path, options)
@@ -480,29 +491,43 @@ def tts_list_voices():
 
 
 def _tts_local_say(text: str, voice: str) -> tuple[bytes | None, str | None]:
-    """Run macOS `say` → AIFF bytes. Returns (audio_bytes, mimetype) or
-    (None, error_message). AIFF plays natively in <audio> on Safari/Chrome."""
+    """Run macOS `say` then convert to WAV via `afconvert` for browser
+    compatibility (Chrome doesn't reliably play AIFF; WAV plays everywhere).
+    Returns (wav_bytes, "audio/wav") or (None, error_message)."""
     import subprocess, tempfile
-    say_bin = shutil.which("say")
+    say_bin       = shutil.which("say")
+    afconvert_bin = shutil.which("afconvert") or "/usr/bin/afconvert"
     if not say_bin:
         return None, "macOS `say` binary not found"
-    with tempfile.NamedTemporaryFile(suffix=".aiff", delete=False) as tmp:
-        path = tmp.name
+    with tempfile.NamedTemporaryFile(suffix=".aiff", delete=False) as a:
+        aiff_path = a.name
+    wav_path = aiff_path[:-5] + ".wav"
     try:
-        argv = [say_bin, "-o", path]
+        argv = [say_bin, "-o", aiff_path]
         if voice: argv += ["-v", voice]
         argv.append(text)
         r = subprocess.run(argv, capture_output=True, text=True, timeout=60)
         if r.returncode != 0:
             return None, f"say failed: {r.stderr.strip()[:200]}"
-        with open(path, "rb") as f:
-            data = f.read()
-        return data, "audio/aiff"
+        # Convert AIFF → 16-bit little-endian WAV. afconvert ships with macOS.
+        if os.path.exists(afconvert_bin):
+            r2 = subprocess.run(
+                [afconvert_bin, aiff_path, wav_path,
+                 "-d", "LEI16@22050", "-f", "WAVE"],
+                capture_output=True, text=True, timeout=30,
+            )
+            if r2.returncode == 0 and os.path.exists(wav_path):
+                with open(wav_path, "rb") as f:
+                    return f.read(), "audio/wav"
+        # Fallback: AIFF bytes if afconvert isn't available (Safari plays them).
+        with open(aiff_path, "rb") as f:
+            return f.read(), "audio/aiff"
     except Exception as e:
         return None, f"say exception: {e}"
     finally:
-        try: os.unlink(path)
-        except Exception: pass
+        for p in (aiff_path, wav_path):
+            try: os.unlink(p)
+            except Exception: pass
 
 
 def _tts_openrouter(text: str, model: str, voice: str) -> tuple[bytes | None, str | None]:
@@ -562,19 +587,18 @@ def tts_synthesize():
     provider = provider or "local_say"
 
     if provider == "local_say":
-        audio, err = _tts_local_say(text, voice)
-        ext = "aiff"
+        audio, mime = _tts_local_say(text, voice)
     elif provider == "openrouter":
-        audio, err = _tts_openrouter(text, or_model, or_voice)
-        ext = "mp3"
+        audio, mime = _tts_openrouter(text, or_model, or_voice)
     else:
         return _json_response({"error": f"unknown provider: {provider}"}, status=400)
 
     if audio is None:
-        return _json_response({"error": err or "synthesis failed"}, status=502)
+        return _json_response({"error": mime or "synthesis failed"}, status=502)
 
+    ext = {"audio/wav": "wav", "audio/aiff": "aiff", "audio/mpeg": "mp3"}.get(mime, "bin")
     from flask import Response
-    return Response(audio, mimetype="audio/aiff" if ext == "aiff" else "audio/mpeg",
+    return Response(audio, mimetype=mime,
                     headers={"Content-Disposition": f"inline; filename=tts.{ext}"})
 
 
@@ -3210,8 +3234,38 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
             add_kwargs["embeddings"] = [embedding]
 
         collection.add(**add_kwargs)
-    except Exception:
-        pass  # ChromaDB failure never blocks the conversation
+    except Exception as _indexing_exc:
+        # ChromaDB failure never blocks the conversation — the chunk file
+        # on disk is the source of truth; the index can be rebuilt. But
+        # silently dropping the indexing failure means the user can't
+        # retrieve this conversation via RAG and never finds out (fix for
+        # silent failure #12). Record the failure to a structured log so
+        # it can be audited and replayed.
+        try:
+            import json as _json
+            failures_log = os.path.expanduser(
+                "~/ora/data/conversation-indexing-failures.jsonl"
+            )
+            os.makedirs(os.path.dirname(failures_log), exist_ok=True)
+            with open(failures_log, "a") as _fh:
+                _fh.write(_json.dumps({
+                    "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                    "conversation_id": panel_id,
+                    "chunk_id": chunk_id,
+                    "chunk_path": chunk_path,
+                    "error": str(_indexing_exc)[:2000],
+                    "error_type": type(_indexing_exc).__name__,
+                    "tag": tag,
+                }) + "\n")
+        except Exception as _log_exc:
+            # If even the failure log fails, fall through to stderr so the
+            # event is at least visible to anyone watching the process.
+            print(
+                f"[WARNING] conversation indexing failed AND failure log "
+                f"failed: indexing={_indexing_exc} log={_log_exc} "
+                f"chunk_id={chunk_id} conv={panel_id}",
+                flush=True,
+            )
 
     # V3 Backlog 2A Chunk 2 — return the chunk identifier so the caller
     # can include it in the plain-HTTP reply (file-as-source-of-truth).
@@ -4552,8 +4606,9 @@ def conversation_close(conversation_id):
     The dispatch reads the conversation's ``tag`` from conversation.json
     (set immutably at creation per V3 Phase 1.1) and:
 
-    * empty (standard) → 200 with action "noop"
-    * ``private`` → 200 with action "noop" (UI removes from active list)
+    * empty (standard) → 200 with action "close"; envelope stamped
+      ``closed: true`` so the sidebar filters it out. Data is retained.
+    * ``private`` → 200 with action "close"; same envelope flag.
     * ``stealth`` → full purge (session dir, chunks, raw log, ChromaDB
       records); 200 with action "purge" and the deletion summary
 

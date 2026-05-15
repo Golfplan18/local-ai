@@ -111,19 +111,58 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     continues to flow. Diagnostics are stashed on the context_pkg (which
     the server reads for SSE event emission) when possible — never mutated
     invasively; always fail-open.
+
+    The diagnostics are also persisted to the per-turn trace as
+    ``step-visual-hook.json`` (fix for silent failure #11: previously the
+    visual diagnostics were attached to context_pkg ephemerally; if the
+    suppression was wrong, no post-hoc audit was possible because the
+    record never landed on disk).
     """
     if not VISUAL_HOOK_AVAILABLE or not response:
         return response
     if "ora-visual" not in response:
         return response
+    trace_dir = (context_pkg or {}).get("trace_dir") if isinstance(context_pkg, dict) else None
     try:
         mode = (context_pkg or {}).get("mode_name")
         new_text, diagnostics = _visual_process_response(response, mode=mode)
     except Exception as exc:  # fail-open: never block legitimate prose on a hook bug
         print(f"[visual hook] skipped due to error: {exc}")
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            pipeline_trace.write_step(trace_dir, "step-visual-hook", {
+                "status": "hook_exception",
+                "error": str(exc),
+                "response_contained_ora_visual_block": True,
+            }, markdown=(
+                "# Visual Hook — exception\n\n"
+                f"`{exc}` — visual hook fail-open; response prose continues unchanged.\n"
+            ))
         return response
     if context_pkg is not None:
         context_pkg["visual_diagnostics"] = diagnostics
+
+    if PIPELINE_TRACE_AVAILABLE and trace_dir:
+        visuals = (diagnostics or {}).get("visuals") or []
+        suppressed = [v for v in visuals if v.get("blocked")]
+        pipeline_trace.write_step(trace_dir, "step-visual-hook", {
+            "status": "ok",
+            "visuals_seen": len(visuals),
+            "visuals_suppressed": len(suppressed),
+            "diagnostics": diagnostics,
+        }, markdown=(
+            "# Visual Hook\n\n"
+            f"**Visuals seen:** {len(visuals)}  \n"
+            f"**Visuals suppressed (Critical findings):** {len(suppressed)}\n\n"
+            + ("## Suppressed blocks\n\n" if suppressed else "")
+            + "\n".join(
+                f"- `{v.get('id') or '?'}` ({v.get('type') or '?'}) — "
+                f"validator valid: {(v.get('validator') or {}).get('valid')}; "
+                f"adversarial blocks: "
+                f"{len(((v.get('adversarial') or {}).get('blocks') or []))}"
+                for v in suppressed
+            )
+            + ("\n" if suppressed else "")
+        ))
     return new_text
 
 
@@ -4256,6 +4295,49 @@ AMBIGUITY_MODE: {ambiguity_mode}
     if PIPELINE_TRACE_AVAILABLE:
         stage1_out = routing.get("stage1_output", {}) or {}
         stage2_out = routing.get("stage2_output", {}) or {}
+
+        # Signal-strength summary — fix for failure #13. Stage 2 emits
+        # high-confidence dispatch from `_select_dispatch_mode` whenever
+        # strong analytical signals are present, then short-circuits via
+        # the "friction reducer" (no disambiguation questions asked).
+        # If the signal evidence is thin, a high-confidence dispatch is
+        # still issued. This summary surfaces the actual evidence so a
+        # reviewer can spot over-confident dispatch driven by a single
+        # strong signal, or under-counted weak signals that should have
+        # provoked disambiguation.
+        s1_matches = stage1_out.get("matches", []) or []
+        strong_matches = [m for m in s1_matches
+                          if m.get("confidence_weight") == "strong"]
+        weak_matches = [m for m in s1_matches
+                        if m.get("confidence_weight") == "weak"]
+        dispatched = routing.get("dispatched_mode_id")
+        # Count signals that directly support the dispatched mode
+        strong_for_dispatched = [m for m in strong_matches
+                                  if m.get("mode") == dispatched]
+        weak_for_dispatched = [m for m in weak_matches
+                                if m.get("mode") == dispatched]
+        signal_strength_summary = {
+            "total_matches": len(s1_matches),
+            "strong_matches": len(strong_matches),
+            "weak_matches": len(weak_matches),
+            "strong_signals_supporting_dispatched_mode": len(strong_for_dispatched),
+            "weak_signals_supporting_dispatched_mode": len(weak_for_dispatched),
+            "dispatched_mode_id": dispatched,
+            "dispatch_confidence": routing.get("confidence"),
+            # Audit flag: high-confidence dispatch supported by a single
+            # strong signal is the failure mode for #13. The signal MAY be
+            # sufficient (a clean "cui bono" match is enough); the flag
+            # exposes the condition so an auditor can decide case-by-case.
+            "single_signal_high_confidence":
+                routing.get("confidence") == "high"
+                and len(strong_for_dispatched) == 1,
+            "strong_signals_detail": [
+                {"signal": m.get("signal"), "mode": m.get("mode"),
+                 "territory": m.get("territory"),
+                 "kind": _signal_kind(m) if dispatched else None}
+                for m in strong_matches
+            ][:10],  # cap detail at 10 for trace-file size
+        }
         pipeline_trace.write_step(trace_dir, "step1-pre-routing", {
             "input_to_routing": step1_result.get("operational_notation", ""),
             "bypass_to_direct_response": routing.get("bypass_to_direct_response", False),
@@ -4285,6 +4367,7 @@ AMBIGUITY_MODE: {ambiguity_mode}
             "stage2_output": stage2_out,
             "stage3_output": routing.get("stage3_output"),
             "stage1_match_count": len(stage1_out.get("matches", [])),
+            "signal_strength_summary": signal_strength_summary,
             "triage_tier_chosen": step1_result.get("triage_tier"),
             "final_mode_chosen": step1_result.get("mode"),
         }, markdown=(
@@ -4320,7 +4403,24 @@ AMBIGUITY_MODE: {ambiguity_mode}
             f"**Classification confidence:** "
             f"{step1_result.get('classification_confidence', '_(none)_')}\n"
             f"**Classification intent:** "
-            f"{step1_result.get('classification_intent', '_(none)_')}\n"
+            f"{step1_result.get('classification_intent', '_(none)_')}\n\n"
+            f"## Signal strength summary (friction-reducer audit)\n\n"
+            f"- Total Stage 1 matches: "
+            f"{signal_strength_summary['total_matches']}\n"
+            f"- Strong matches: {signal_strength_summary['strong_matches']}\n"
+            f"- Weak matches: {signal_strength_summary['weak_matches']}\n"
+            f"- Strong signals supporting dispatched mode "
+            f"(`{signal_strength_summary['dispatched_mode_id'] or '_(none)_'}`): "
+            f"{signal_strength_summary['strong_signals_supporting_dispatched_mode']}\n"
+            f"- Weak signals supporting dispatched mode: "
+            f"{signal_strength_summary['weak_signals_supporting_dispatched_mode']}\n"
+            + (
+                f"- ⚠️  **Single-signal high-confidence dispatch** — only one "
+                f"strong signal supports the high-confidence dispatch. "
+                f"Spot-check whether the signal is genuinely sufficient.\n"
+                if signal_strength_summary['single_signal_high_confidence']
+                else ""
+            )
         ))
 
     return step1_result
@@ -4844,6 +4944,13 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         "completeness_gaps": completeness_gaps,
         "dispatch_announcement": dispatch_announcement,
         "pre_routing": pre_routing,
+        # Phase A's assume-mode assumptions threaded through so downstream
+        # step prompts can surface them as explicit assumptions rather than
+        # treating the cleaned prompt as if it were entirely user-stated
+        # (fix for failure #10). build_system_prompt_for_gear injects a
+        # PHASE A ASSUMPTIONS block when this is non-empty.
+        "inferred_items": step1_result.get("inferred_items", ""),
+        "corrections_log": step1_result.get("corrections_log", ""),
         # Trace directory threaded through to run_gear3 / run_gear4 so
         # later steps land in the same per-turn directory.
         "trace_dir": trace_dir,
@@ -4918,6 +5025,29 @@ def build_system_prompt_for_gear(
     # directive lands directly after boot.md so it carries identity-level
     # weight in the system prompt.
     parts = [boot_md, _UNIVERSAL_ANTI_CONFABULATION]
+
+    # Phase A INFERRED_ITEMS block — fix for silent failure #10. When
+    # Phase A ran in assume-mode and resolved ambiguities by inferring
+    # interpretations, those inferences become part of the operational
+    # notation downstream steps see. Without explicit surfacing they
+    # arrive at the model as if the user had stated them. Inject them
+    # here as an explicit "PHASE A ASSUMPTIONS" block so the model
+    # treats them with appropriate uncertainty and may surface them
+    # back to the user when relevant.
+    inferred_items = (context_package.get("inferred_items") or "").strip()
+    if inferred_items:
+        parts.append(
+            "## PHASE A ASSUMPTIONS (NOT USER-STATED FACTS)\n\n"
+            "The user's prompt contained ambiguous elements. Phase A "
+            "(prompt cleanup) resolved them in **assume** mode — the "
+            "items below are *inferences made by Phase A*, not facts "
+            "the user explicitly stated. Treat each one as a working "
+            "assumption that the user may not have meant. When your "
+            "analysis depends on one of these assumptions, name it "
+            "explicitly to the user so they can correct the "
+            "interpretation if Phase A was wrong.\n\n"
+            f"{inferred_items}\n"
+        )
 
     # Per-step dispatch. One section per step.
     if step == "analyst":
