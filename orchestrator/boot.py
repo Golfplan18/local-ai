@@ -75,6 +75,18 @@ try:
 except ImportError:
     pass
 
+# Pipeline forensic trace — per-turn structured record of every step's
+# inputs and outputs. Writes to ``~/ora/data/pipeline-traces/<conv>/<ts>/``.
+# Every helper is defensive (try/except wrapped); trace failure never
+# breaks the pipeline. See ``Paper — Subtle-Calculation Errors in LLM
+# Pipelines`` for the full contract.
+PIPELINE_TRACE_AVAILABLE = False
+try:
+    import pipeline_trace
+    PIPELINE_TRACE_AVAILABLE = True
+except ImportError:
+    pipeline_trace = None  # type: ignore
+
 # Visual-output validation (WP-1.6) — optional, no-op if schemas unavailable.
 # Scans the model response for ``ora-visual`` fenced JSON blocks, runs
 # server-side schema validation + adversarial T-rule / LLM-prior-inversion
@@ -3877,13 +3889,17 @@ def parse_classification_output(response: str) -> dict:
 
 
 def run_step1_cleanup(raw_prompt: str, conversation_context: str,
-                      config: dict, ambiguity_mode: str = "assume") -> dict:
+                      config: dict, ambiguity_mode: str = "assume",
+                      trace_dir: str | None = None) -> dict:
     """Step 1: Two-pass prompt processing.
 
     Pass 1 (Phase A): Prompt cleanup only — no mode selection.
     Pass 2 (Phase A.5): Dedicated mode classification using the Mode Classification Directory.
 
     Returns parsed results including cleaned prompt, mode, and triage tier.
+
+    ``trace_dir`` is the per-turn forensic-trace directory created by
+    ``pipeline_trace.start_trace``. Pass ``None`` to disable tracing.
     """
     # --- Pass 1: Phase A — Cleanup Only ---
     phase_a = load_framework("phase-a-prompt-cleanup.md")
@@ -3904,7 +3920,7 @@ AMBIGUITY_MODE: {ambiguity_mode}
     endpoint = get_slot_endpoint(config, "step1_cleanup")
     if endpoint is None:
         # No step1_cleanup model — pass through uncleaned
-        return {
+        result = {
             "cleaned_prompt": raw_prompt,
             "operational_notation": raw_prompt,
             "mode": "adversarial",
@@ -3914,6 +3930,21 @@ AMBIGUITY_MODE: {ambiguity_mode}
             "raw_response": "",
             "detected_invocation": "",
         }
+        # Trace: record that no cleanup model was available
+        if PIPELINE_TRACE_AVAILABLE:
+            pipeline_trace.write_step(trace_dir, "step1-phase-a", {
+                "status": "no_cleanup_model",
+                "raw_prompt": raw_prompt,
+                "conversation_context_present": bool(conversation_context),
+                "ambiguity_mode": ambiguity_mode,
+                "passthrough_result": result,
+            }, markdown=(
+                "# Step 1 — Phase A (Prompt Cleanup)\n\n"
+                "**Status:** no `step1_cleanup` model configured. "
+                "Raw prompt passed through unchanged.\n\n"
+                f"## Raw prompt\n\n{raw_prompt}\n"
+            ))
+        return result
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -3921,6 +3952,40 @@ AMBIGUITY_MODE: {ambiguity_mode}
     ]
     cleanup_response = call_model(messages, endpoint)
     step1_result = parse_step1_output(cleanup_response)
+
+    # --- Trace: Phase A inputs and parsed outputs ---
+    if PIPELINE_TRACE_AVAILABLE:
+        pipeline_trace.write_step(trace_dir, "step1-phase-a", {
+            "status": "ok",
+            "raw_prompt": raw_prompt,
+            "conversation_context": conversation_context,
+            "conversation_context_present": bool(conversation_context),
+            "ambiguity_mode": ambiguity_mode,
+            "endpoint_used": endpoint.get("name") if isinstance(endpoint, dict) else str(endpoint),
+            "system_prompt_chars": len(system_prompt),
+            "user_message_chars": len(user_msg),
+            "raw_response": cleanup_response,
+            "parsed": {
+                "cleaned_prompt": step1_result.get("cleaned_prompt", ""),
+                "operational_notation": step1_result.get("operational_notation", ""),
+                "corrections_log": step1_result.get("corrections_log", ""),
+                "inferred_items": step1_result.get("inferred_items", ""),
+                "detected_invocation": step1_result.get("detected_invocation", ""),
+            },
+        }, markdown=(
+            "# Step 1 — Phase A (Prompt Cleanup)\n\n"
+            f"## Raw prompt\n\n{raw_prompt}\n\n"
+            f"## Conversation context\n\n"
+            f"{conversation_context or '_(none)_'}\n\n"
+            f"## Cleaned (natural language)\n\n"
+            f"{step1_result.get('cleaned_prompt', '_(empty)_')}\n\n"
+            f"## Operational notation\n\n"
+            f"{step1_result.get('operational_notation', '_(empty)_')}\n\n"
+            f"## Corrections log\n\n"
+            f"{step1_result.get('corrections_log', '_(empty)_')}\n\n"
+            f"## Inferred items (assume-mode assumptions)\n\n"
+            f"{step1_result.get('inferred_items', '_(empty)_')}\n"
+        ))
 
     # --- Pass 2: Pre-routing pipeline (replaces Phase A.5) ---
     # Phase 9: the four-stage pre-routing pipeline replaces the retired
@@ -3980,6 +4045,49 @@ AMBIGUITY_MODE: {ambiguity_mode}
         "confidence": routing.get("confidence", "low"),
         "stage1_match_count": len(routing.get("stage1_output", {}).get("matches", [])),
     }
+
+    # --- Trace: pre-routing pipeline decisions ---
+    if PIPELINE_TRACE_AVAILABLE:
+        stage1_out = routing.get("stage1_output", {}) or {}
+        stage2_out = routing.get("stage2_output", {}) or {}
+        pipeline_trace.write_step(trace_dir, "step1-pre-routing", {
+            "input_to_routing": step1_result.get("operational_notation", ""),
+            "bypass_to_direct_response": routing.get("bypass_to_direct_response", False),
+            "dispatched_mode_id": routing.get("dispatched_mode_id"),
+            "territory": routing.get("territory"),
+            "confidence": routing.get("confidence"),
+            "pending_clarification": routing.get("pending_clarification"),
+            "pending_clarification_stage": routing.get("pending_clarification_stage"),
+            "completeness_gaps": routing.get("completeness_gaps", []),
+            "dispatch_announcement": routing.get("dispatch_announcement"),
+            "lighter_sibling_mode_id": routing.get("lighter_sibling_mode_id"),
+            "stage1_output": stage1_out,
+            "stage2_output": stage2_out,
+            "stage3_output": routing.get("stage3_output"),
+            "stage1_match_count": len(stage1_out.get("matches", [])),
+            "triage_tier_chosen": step1_result.get("triage_tier"),
+            "final_mode_chosen": step1_result.get("mode"),
+        }, markdown=(
+            "# Step 1 — Pre-Routing Pipeline\n\n"
+            f"**Input (operational notation):** "
+            f"{step1_result.get('operational_notation', '_(empty)_')}\n\n"
+            f"**Stage 1 — Pre-Analysis Filter:** "
+            f"bypass={routing.get('bypass_to_direct_response', False)}, "
+            f"matches={len(stage1_out.get('matches', []))}\n\n"
+            f"**Stage 1 rationale:** "
+            f"{stage1_out.get('rationale', '_(none)_')}\n\n"
+            f"**Stage 2 — Sufficiency Analyzer:** "
+            f"dispatched={routing.get('dispatched_mode_id', '_(none)_')}, "
+            f"confidence={routing.get('confidence', '_(none)_')}\n\n"
+            f"**Stage 2 rationale:** "
+            f"{stage2_out.get('rationale', '_(none)_')}\n\n"
+            f"**Stage 3 — Completeness Check:** "
+            f"gaps={routing.get('completeness_gaps', [])}\n\n"
+            f"**Pending clarification:** "
+            f"{routing.get('pending_clarification', '_(none)_')}\n\n"
+            f"**Final mode:** {step1_result.get('mode')}\n"
+            f"**Triage tier:** {step1_result.get('triage_tier')}\n"
+        ))
 
     return step1_result
 
@@ -4082,7 +4190,8 @@ def compare_intent_with_mode(
     }
 
 
-def run_step2_context_assembly(step1_result: dict, config: dict) -> dict:
+def run_step2_context_assembly(step1_result: dict, config: dict,
+                               trace_dir: str | None = None) -> dict:
     """Step 2: Assemble context package for pipeline stages.
 
     Python loads the mode file, performs RAG queries, and builds the complete
@@ -4090,6 +4199,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict) -> dict:
 
     If the RAG engine (Phase 8) is available, uses priority stack assembly with
     relationship graph traversal. Otherwise falls back to basic ChromaDB queries.
+
+    ``trace_dir`` is the per-turn forensic-trace directory created by
+    ``pipeline_trace.start_trace``. RAG retrieval failures that previously
+    fell silently to empty strings now write structured failure entries
+    to ``rag-failures.jsonl`` in this directory.
     """
     mode_name = step1_result["mode"]
     mode_text = load_mode(mode_name)
@@ -4100,7 +4214,14 @@ def run_step2_context_assembly(step1_result: dict, config: dict) -> dict:
     # type_filter from active mode's RAG PROFILE, archived/private filters.
     # Falls back to the legacy formatted-string knowledge_search when the
     # ranker module isn't loadable (graceful degradation).
+    #
+    # IMPORTANT: previously every RAG call here was wrapped in a bare
+    # ``try/except: result = ""`` block that silently lost the exception.
+    # The wrappers below preserve the same graceful-degradation behaviour
+    # but write each failure to ``rag-failures.jsonl`` in the trace
+    # directory, so silent fallbacks become inspectable.
     conv_rag = ""
+    conv_rag_path = "unknown"
     if RAG_ENGINE_AVAILABLE:
         try:
             conv_rag = assemble_ranked_context(
@@ -4109,16 +4230,29 @@ def run_step2_context_assembly(step1_result: dict, config: dict) -> dict:
                 mode_text=mode_text,
                 n_results=3,
             )
-        except Exception:
+            conv_rag_path = "rag_engine.assemble_ranked_context"
+        except Exception as e:
             conv_rag = ""
+            conv_rag_path = "rag_engine_failed_fallback_to_empty"
+            if PIPELINE_TRACE_AVAILABLE:
+                pipeline_trace.record_rag_failure(
+                    trace_dir, "conversation-rag", cleaned_prompt, e
+                )
     elif TOOLS_AVAILABLE:
         try:
             conv_rag = knowledge_search(cleaned_prompt, "conversations", 3)
-        except Exception:
+            conv_rag_path = "legacy_knowledge_search"
+        except Exception as e:
             conv_rag = ""
+            conv_rag_path = "legacy_knowledge_search_failed"
+            if PIPELINE_TRACE_AVAILABLE:
+                pipeline_trace.record_rag_failure(
+                    trace_dir, "conversation-rag-legacy", cleaned_prompt, e
+                )
 
     # Concept RAG (vault knowledge) — only for Gear 2+
     concept_rag = ""
+    concept_rag_path = "skipped_gear_below_2"
     if gear >= 2:
         if RAG_ENGINE_AVAILABLE:
             try:
@@ -4128,13 +4262,25 @@ def run_step2_context_assembly(step1_result: dict, config: dict) -> dict:
                     mode_text=mode_text,
                     n_results=5,
                 )
-            except Exception:
+                concept_rag_path = "rag_engine.assemble_ranked_context"
+            except Exception as e:
                 concept_rag = ""
+                concept_rag_path = "rag_engine_failed_fallback_to_empty"
+                if PIPELINE_TRACE_AVAILABLE:
+                    pipeline_trace.record_rag_failure(
+                        trace_dir, "concept-rag", cleaned_prompt, e
+                    )
         elif TOOLS_AVAILABLE:
             try:
                 concept_rag = knowledge_search(cleaned_prompt, "knowledge", 5)
-            except Exception:
+                concept_rag_path = "legacy_knowledge_search"
+            except Exception as e:
                 concept_rag = ""
+                concept_rag_path = "legacy_knowledge_search_failed"
+                if PIPELINE_TRACE_AVAILABLE:
+                    pipeline_trace.record_rag_failure(
+                        trace_dir, "concept-rag-legacy", cleaned_prompt, e
+                    )
 
     # Relationship RAG (Phase 7/8) — enrichment via graph traversal
     relationship_rag = ""
@@ -4177,6 +4323,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict) -> dict:
         except Exception as e:
             # Fall back gracefully — RAG engine failure should not block the pipeline
             print(f"[WARNING] RAG engine error: {e}")
+            if PIPELINE_TRACE_AVAILABLE:
+                pipeline_trace.record_rag_failure(
+                    trace_dir, "rag-engine-init-or-relationship", cleaned_prompt, e
+                )
 
     # Phase 9 — Decision I/J output format expansion. New fields surface
     # pre-routing-pipeline state populated by run_step1_cleanup → routing.
@@ -4195,6 +4345,77 @@ def run_step2_context_assembly(step1_result: dict, config: dict) -> dict:
             )
         except Exception:
             dispatch_announcement = None
+
+    # --- Trace: complete context package (the highest-value trace, since
+    # this is where vault content is supposed to enter the pipeline) ---
+    if PIPELINE_TRACE_AVAILABLE:
+        # Render BudgetSignal codes to human-readable strings when we can.
+        signal_descriptions = []
+        try:
+            for s in (rag_signals or []):
+                if isinstance(s, int):
+                    signal_descriptions.append({
+                        "code": s,
+                        "description": BudgetSignal.describe(s) if RAG_ENGINE_AVAILABLE else str(s),
+                    })
+                else:
+                    signal_descriptions.append({"code": None, "description": str(s)})
+        except Exception:
+            signal_descriptions = [{"code": None, "description": str(rag_signals)}]
+
+        pipeline_trace.write_step(trace_dir, "step2-context", {
+            "mode_name": mode_name,
+            "mode_text_chars": len(mode_text),
+            "gear": gear,
+            "cleaned_prompt": cleaned_prompt,
+            "conversation_rag": {
+                "retrieval_path": conv_rag_path,
+                "chars": len(conv_rag),
+                "content": conv_rag,
+            },
+            "concept_rag": {
+                "retrieval_path": concept_rag_path,
+                "chars": len(concept_rag),
+                "content": concept_rag,
+            },
+            "relationship_rag": {
+                "chars": len(relationship_rag),
+                "content": relationship_rag,
+            },
+            "rag_signals": signal_descriptions,
+            "rag_utilization_header": rag_utilization,
+            "hardware_tier": hardware_tier,
+            "rag_engine_available": RAG_ENGINE_AVAILABLE,
+            "tools_available": TOOLS_AVAILABLE,
+            "pre_routing_summary": {
+                "territory": territory,
+                "dispatched_mode_id": pre_routing.get("dispatched_mode_id"),
+                "confidence": pre_routing.get("confidence"),
+                "completeness_gaps": completeness_gaps,
+            },
+        }, markdown=(
+            "# Step 2 — Context Assembly\n\n"
+            f"**Mode:** `{mode_name}`  \n"
+            f"**Gear:** {gear}  \n"
+            f"**Hardware tier:** {hardware_tier}  \n"
+            f"**Territory:** {territory or '_(none)_'}\n\n"
+            f"## Conversation RAG ({len(conv_rag)} chars, "
+            f"path: `{conv_rag_path}`)\n\n"
+            f"```\n{conv_rag or '_(empty)_'}\n```\n\n"
+            f"## Concept RAG ({len(concept_rag)} chars, "
+            f"path: `{concept_rag_path}`)\n\n"
+            f"```\n{concept_rag or '_(empty)_'}\n```\n\n"
+            f"## Relationship RAG ({len(relationship_rag)} chars)\n\n"
+            f"```\n{relationship_rag or '_(empty)_'}\n```\n\n"
+            f"## Budget signals\n\n"
+            + (
+                "\n".join(f"- {s['code']}: {s['description']}" for s in signal_descriptions)
+                if signal_descriptions else "_(none)_"
+            )
+            + "\n\n"
+            f"## Utilization header\n\n"
+            f"```\n{rag_utilization or '_(none)_'}\n```\n"
+        ))
 
     return {
         "cleaned_prompt": cleaned_prompt,
@@ -4216,6 +4437,9 @@ def run_step2_context_assembly(step1_result: dict, config: dict) -> dict:
         "completeness_gaps": completeness_gaps,
         "dispatch_announcement": dispatch_announcement,
         "pre_routing": pre_routing,
+        # Trace directory threaded through to run_gear3 / run_gear4 so
+        # later steps land in the same per-turn directory.
+        "trace_dir": trace_dir,
     }
 
 
@@ -4582,7 +4806,9 @@ def route_output(response: str, output_target: str = "screen",
 
 def run_pipeline(user_input: str, history: list = None,
                  output_target: str = "screen",
-                 execution_context: str = "interactive") -> str:
+                 execution_context: str = "interactive",
+                 conversation_id: str | None = None,
+                 ambiguity_mode: str = "assume") -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
     For Gear 1-2: Single model with context package.
@@ -4591,8 +4817,29 @@ def run_pipeline(user_input: str, history: list = None,
 
     execution_context: "interactive" (human at keyboard), "autonomous", or "agent".
     Controls whether Gear 4 can use commercial model overrides for parallel execution.
+
+    conversation_id: stable identifier from the conversation memory layer.
+    Used by ``pipeline_trace`` to organize per-turn forensic traces under
+    ``~/ora/data/pipeline-traces/<conversation_id>/<turn-timestamp>/``.
+    Pass ``None`` for orphan invocations (traces land under ``_orphan/``).
+
+    ambiguity_mode: ``ask`` or ``assume`` — controls whether Phase A
+    surfaces unresolved ambiguity as a question (``ask``) or resolves it
+    silently and logs to ``INFERRED_ITEMS`` (``assume``). The trace
+    captures whichever mode was used.
     """
     config = load_endpoints()
+
+    # --- Pipeline forensic trace — open the per-turn directory now so
+    # every downstream step lands in the same place. Failure here is
+    # tolerated (trace_dir falls back to None and tracing is disabled). ---
+    trace_dir = None
+    if PIPELINE_TRACE_AVAILABLE:
+        trace_dir = pipeline_trace.start_trace(
+            conversation_id=conversation_id,
+            raw_input=user_input,
+            ambiguity_mode=ambiguity_mode,
+        )
 
     # --- Runtime slash-command short-circuit ---
     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
@@ -4642,10 +4889,12 @@ def run_pipeline(user_input: str, history: list = None,
             f"{m['role'].upper()}: {m['content'][:500]}" for m in recent
         )
 
-    step1 = run_step1_cleanup(user_input, conv_context, config)
+    step1 = run_step1_cleanup(user_input, conv_context, config,
+                              ambiguity_mode=ambiguity_mode,
+                              trace_dir=trace_dir)
 
     # --- Step 2: Context Package Assembly ---
-    context_pkg = run_step2_context_assembly(step1, config)
+    context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir)
     gear = context_pkg["gear"]
 
     # --- WP-4.2 — capability-conditional vision routing gate ---
@@ -5012,6 +5261,13 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         return "[No AI endpoints configured.]"
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
+    trace_dir = context_pkg.get("trace_dir")
+    contingencies_fired: list[str] = []
+    step_health: dict[str, tuple[bool, str]] = {}
+
+    def _trace_step_g3(step_name: str, payload: dict, markdown: str | None = None):
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            pipeline_trace.write_step(trace_dir, step_name, payload, markdown)
 
     # Fall back to single model if only one is available — analyst-only.
     if depth_endpoint is None or breadth_endpoint is None:
@@ -5023,7 +5279,23 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             {"role": "system", "content": system},
             {"role": "user", "content": cleaned_prompt},
         ]
-        return _run_model_with_tools(messages, endpoint, images=images)
+        contingencies_fired.append("gear3-single-model-analyst-only-fallback")
+        single_result = _run_model_with_tools(messages, endpoint, images=images)
+        _trace_step_g3("step3-single-analyst-fallback", {
+            "system_prompt": system,
+            "user_message": cleaned_prompt,
+            "raw_response": single_result,
+            "fallback_reason": "only_one_endpoint_configured",
+            "slot": slot,
+        }, markdown=(
+            f"# Gear 3 — single-model fallback ({slot})\n\n{single_result}\n"
+        ))
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            pipeline_trace.write_step_health(
+                trace_dir, step_health, gear=3,
+                contingencies_fired=contingencies_fired,
+            )
+        return single_result
 
     # --- Step 3: Depth Analyst ---
     depth_system = _assemble_step_prompt(
@@ -5036,6 +5308,12 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     depth_analysis = _run_model_with_tools(
         depth_messages, depth_endpoint, images=images
     )
+    _trace_step_g3("step3-depth", {
+        "system_prompt": depth_system,
+        "user_message": cleaned_prompt,
+        "raw_response": depth_analysis,
+        "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+    }, markdown=f"# Step 3 — Depth analyst (Gear 3)\n\n{depth_analysis}\n")
 
     # --- Step 4: Breadth Evaluator (universal 7-section contract) ---
     eval_system = _assemble_step_prompt(
@@ -5051,6 +5329,11 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         )},
     ]
     breadth_evaluation = _run_model_with_tools(eval_messages, breadth_endpoint)
+    _trace_step_g3("step4-eval", {
+        "system_prompt": eval_system,
+        "raw_response": breadth_evaluation,
+        "endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
+    }, markdown=f"# Step 4 — Breadth evaluates Depth (Gear 3)\n\n{breadth_evaluation}\n")
 
     # --- Step 5: Depth Reviser (mirror 7-section contract) ---
     revise_system = _assemble_step_prompt(
@@ -5069,6 +5352,11 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         )},
     ]
     revised_analysis = _run_model_with_tools(revise_messages, depth_endpoint)
+    _trace_step_g3("step5-revised", {
+        "system_prompt": revise_system,
+        "raw_response": revised_analysis,
+        "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+    }, markdown=f"# Step 5 — Reviser (Gear 3)\n\n{revised_analysis}\n")
 
     # --- Step 6: Breadth Verifier (universal V1-V8 + mode checks) ---
     verify_system = _assemble_step_prompt(
@@ -5091,8 +5379,19 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             )},
         ]
         verified = _run_model_with_tools(verify_messages, breadth_endpoint)
+        passed = _verifier_passed(verified)
 
-        if _verifier_passed(verified) or cycle == MAX_VERIFY_CYCLES:
+        _trace_step_g3(f"step6-verifier-cycle-{cycle + 1}", {
+            "cycle": cycle + 1,
+            "max_cycles": MAX_VERIFY_CYCLES + 1,
+            "verdict_raw": verified,
+            "passed_parser_verdict": passed,
+        }, markdown=(
+            f"# Step 6 — Verifier (Gear 3, cycle {cycle + 1}/{MAX_VERIFY_CYCLES + 1})\n\n"
+            f"**Verdict:** {'PASS' if passed else 'FAIL'}\n\n{verified}\n"
+        ))
+
+        if passed or cycle == MAX_VERIFY_CYCLES:
             break
 
         # Verifier rejected — reviser addresses the verifier's findings.
@@ -5107,6 +5406,13 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             )},
         ]
         revised_analysis = _run_model_with_tools(re_revise_messages, depth_endpoint)
+        contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
+
+    if PIPELINE_TRACE_AVAILABLE and trace_dir:
+        pipeline_trace.write_step_health(
+            trace_dir, step_health, gear=3,
+            contingencies_fired=contingencies_fired,
+        )
 
     return revised_analysis
 
@@ -5197,6 +5503,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         return run_gear3(context_pkg, config, history, images=images)
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
+    trace_dir = context_pkg.get("trace_dir")
+    contingencies_fired: list[str] = []
 
     # Per-step health bookkeeping (also fed to oversight events at the end)
     step_health: dict[str, tuple[bool, str]] = {}
@@ -5207,6 +5515,11 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             print(f"[gear4-step] {name}: {'ok' if ok else 'DEGRADED'} ({reason})", flush=True)
         except Exception:
             pass
+
+    def _trace_step(step_name: str, payload: dict, markdown: str | None = None):
+        """Inner helper — writes a step trace if tracing is available."""
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            pipeline_trace.write_step(trace_dir, step_name, payload, markdown)
 
     # --- Step 3: Parallel analysts (with per-stream retry-on-unhealthy) ---
     depth_system = _assemble_step_prompt(
@@ -5243,22 +5556,41 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # Contingency: both analyst streams degraded → fall back to Gear 3.
     if not depth_ok and not breadth_ok:
         print("[gear4-contingency] both analysts degraded — falling back to Gear 3", flush=True)
+        contingencies_fired.append("step3-both-analysts-degraded-fallback-to-gear3")
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            pipeline_trace.write_step_health(
+                trace_dir, step_health, gear=4,
+                contingencies_fired=contingencies_fired,
+            )
         return run_gear3(context_pkg, config, history, images=images)
 
-    # --- Pipeline trace logging (diagnostic) ---
-    try:
-        import datetime as _dt
-        _ts = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-        with open(f"/tmp/ora-trace-{_ts}-step3-depth.md", "w") as _f:
-            _f.write(f"# Step 3 — Depth analyst output\n\n{depth_analysis}\n")
-        with open(f"/tmp/ora-trace-{_ts}-step3-breadth.md", "w") as _f:
-            _f.write(f"# Step 3 — Breadth analyst output\n\n{breadth_analysis}\n")
-        # Write a pointer so we can find the most recent trace
-        with open("/tmp/ora-trace-latest.txt", "w") as _f:
-            _f.write(_ts)
-        _trace_ts = _ts
-    except Exception:
-        _trace_ts = None
+    # --- Step 3 trace (Depth + Breadth analyst outputs) ---
+    _trace_step("step3-depth", {
+        "system_prompt": depth_system,
+        "user_message": cleaned_prompt,
+        "raw_response": depth_analysis,
+        "ok": depth_ok,
+        "reason": depth_reason,
+        "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+    }, markdown=(
+        "# Step 3 — Depth analyst output\n\n"
+        f"**Endpoint:** {depth_endpoint.get('name') if isinstance(depth_endpoint, dict) else depth_endpoint}  \n"
+        f"**Health:** {'ok' if depth_ok else 'DEGRADED'} — {depth_reason}\n\n"
+        f"## Response\n\n{depth_analysis}\n"
+    ))
+    _trace_step("step3-breadth", {
+        "system_prompt": breadth_system,
+        "user_message": cleaned_prompt,
+        "raw_response": breadth_analysis,
+        "ok": breadth_ok,
+        "reason": breadth_reason,
+        "endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
+    }, markdown=(
+        "# Step 3 — Breadth analyst output\n\n"
+        f"**Endpoint:** {breadth_endpoint.get('name') if isinstance(breadth_endpoint, dict) else breadth_endpoint}  \n"
+        f"**Health:** {'ok' if breadth_ok else 'DEGRADED'} — {breadth_reason}\n\n"
+        f"## Response\n\n{breadth_analysis}\n"
+    ))
 
     # --- Step 4: Cross-evaluation (universal contract, both directions) ---
     eval_system = _assemble_step_prompt(
@@ -5350,22 +5682,58 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # content than a "I don't see the prompt" stub.
     if not depth_rev_ok and depth_ok:
         revised_depth = depth_analysis
+        contingencies_fired.append("step5-depth-reviser-degraded-using-analyst-output")
     if not breadth_rev_ok and breadth_ok:
         revised_breadth = breadth_analysis
+        contingencies_fired.append("step5-breadth-reviser-degraded-using-analyst-output")
 
-    # --- Pipeline trace logging (diagnostic) ---
-    try:
-        if _trace_ts:
-            with open(f"/tmp/ora-trace-{_trace_ts}-step4-eval-of-depth.md", "w") as _f:
-                _f.write(f"# Step 4 — Breadth's evaluation of Depth\n\n{breadth_eval_of_depth}\n")
-            with open(f"/tmp/ora-trace-{_trace_ts}-step4-eval-of-breadth.md", "w") as _f:
-                _f.write(f"# Step 4 — Depth's evaluation of Breadth\n\n{depth_eval_of_breadth}\n")
-            with open(f"/tmp/ora-trace-{_trace_ts}-step5-revised-depth.md", "w") as _f:
-                _f.write(f"# Step 5 — Revised Depth\n\n{revised_depth}\n")
-            with open(f"/tmp/ora-trace-{_trace_ts}-step5-revised-breadth.md", "w") as _f:
-                _f.write(f"# Step 5 — Revised Breadth\n\n{revised_breadth}\n")
-    except Exception:
-        pass
+    # --- Step 4 + Step 5 traces ---
+    _trace_step("step4-eval-of-depth", {
+        "system_prompt": eval_system,
+        "evaluator_target_stream": "depth",
+        "evaluator_endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
+        "raw_response": breadth_eval_of_depth,
+        "ok": eval_a_ok,
+        "reason": eval_a_reason,
+    }, markdown=(
+        "# Step 4 — Breadth evaluates Depth\n\n"
+        f"**Health:** {'ok' if eval_a_ok else 'DEGRADED'} — {eval_a_reason}\n\n"
+        f"{breadth_eval_of_depth}\n"
+    ))
+    _trace_step("step4-eval-of-breadth", {
+        "system_prompt": eval_system,
+        "evaluator_target_stream": "breadth",
+        "evaluator_endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+        "raw_response": depth_eval_of_breadth,
+        "ok": eval_b_ok,
+        "reason": eval_b_reason,
+    }, markdown=(
+        "# Step 4 — Depth evaluates Breadth\n\n"
+        f"**Health:** {'ok' if eval_b_ok else 'DEGRADED'} — {eval_b_reason}\n\n"
+        f"{depth_eval_of_breadth}\n"
+    ))
+    _trace_step("step5-revised-depth", {
+        "system_prompt": revise_system,
+        "stream": "depth",
+        "raw_response": revised_depth,
+        "ok": depth_rev_ok,
+        "reason": depth_rev_reason,
+    }, markdown=(
+        "# Step 5 — Revised Depth\n\n"
+        f"**Health:** {'ok' if depth_rev_ok else 'DEGRADED'} — {depth_rev_reason}\n\n"
+        f"{revised_depth}\n"
+    ))
+    _trace_step("step5-revised-breadth", {
+        "system_prompt": revise_system,
+        "stream": "breadth",
+        "raw_response": revised_breadth,
+        "ok": breadth_rev_ok,
+        "reason": breadth_rev_reason,
+    }, markdown=(
+        "# Step 5 — Revised Breadth\n\n"
+        f"**Health:** {'ok' if breadth_rev_ok else 'DEGRADED'} — {breadth_rev_reason}\n\n"
+        f"{revised_breadth}\n"
+    ))
 
     # --- Step 6: Cross-verification with up to 2 correction cycles ---
     verify_system = _assemble_step_prompt(
@@ -5375,6 +5743,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     MAX_VERIFY_CYCLES = 2
     for cycle in range(MAX_VERIFY_CYCLES + 1):
+        depth_verify_error = None
+        breadth_verify_error = None
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             verify_depth_future = executor.submit(
                 _run_model_with_tools,
@@ -5408,13 +5778,42 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 depth_verdict = verify_depth_future.result()
             except Exception as e:
                 depth_verdict = f"VERIFIED\n[Verification error, auto-pass: {e}]"
+                depth_verify_error = str(e)
             try:
                 breadth_verdict = verify_breadth_future.result()
             except Exception as e:
                 breadth_verdict = f"VERIFIED\n[Verification error, auto-pass: {e}]"
+                breadth_verify_error = str(e)
 
         depth_passed = _verifier_passed(depth_verdict)
         breadth_passed = _verifier_passed(breadth_verdict)
+
+        # --- Step 6 trace (per cycle, so we can see retry behaviour) ---
+        _trace_step(f"step6-verifier-cycle-{cycle + 1}", {
+            "cycle": cycle + 1,
+            "max_cycles": MAX_VERIFY_CYCLES + 1,
+            "depth_verdict_raw": depth_verdict,
+            "depth_passed_parser_verdict": depth_passed,
+            "depth_verify_exception": depth_verify_error,
+            "breadth_verdict_raw": breadth_verdict,
+            "breadth_passed_parser_verdict": breadth_passed,
+            "breadth_verify_exception": breadth_verify_error,
+            "both_passed": depth_passed and breadth_passed,
+        }, markdown=(
+            f"# Step 6 — Verifier (cycle {cycle + 1}/{MAX_VERIFY_CYCLES + 1})\n\n"
+            f"**Depth verdict:** {'PASS' if depth_passed else 'FAIL'}"
+            + (f" (model error auto-passed: `{depth_verify_error}`)" if depth_verify_error else "")
+            + "\n\n"
+            f"```\n{depth_verdict}\n```\n\n"
+            f"**Breadth verdict:** {'PASS' if breadth_passed else 'FAIL'}"
+            + (f" (model error auto-passed: `{breadth_verify_error}`)" if breadth_verify_error else "")
+            + "\n\n"
+            f"```\n{breadth_verdict}\n```\n"
+        ))
+        if depth_verify_error:
+            contingencies_fired.append(f"step6-cycle{cycle + 1}-depth-verifier-exception-auto-pass")
+        if breadth_verify_error:
+            contingencies_fired.append(f"step6-cycle{cycle + 1}-breadth-verifier-exception-auto-pass")
 
         if (depth_passed and breadth_passed) or cycle == MAX_VERIFY_CYCLES:
             break
@@ -5500,13 +5899,19 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             "individual analysis stream._\n\n"
             + fallback
         )
+        contingencies_fired.append("step7-consolidator-degraded-using-longer-revised-stream")
 
-    try:
-        if _trace_ts:
-            with open(f"/tmp/ora-trace-{_trace_ts}-step7-consolidated.md", "w") as _f:
-                _f.write(f"# Step 7 — Consolidated output\n\n{consolidated}\n")
-    except Exception:
-        pass
+    _trace_step("step7-consolidated", {
+        "system_prompt": consolidate_system,
+        "raw_response": consolidated,
+        "ok": consol_ok,
+        "reason": consol_reason,
+        "endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
+    }, markdown=(
+        "# Step 7 — Consolidated corpus\n\n"
+        f"**Health:** {'ok' if consol_ok else 'DEGRADED'} — {consol_reason}\n\n"
+        f"{consolidated}\n"
+    ))
 
     # Strip any preamble before the first heading. The F-Consolidate spec
     # tells the model to lead with an H2 heading. If the model still emits
@@ -5558,13 +5963,28 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             "corpus directly. Form-placement was not applied._\n\n"
             + consolidated
         )
+        contingencies_fired.append("step8-formatter-degraded-using-consolidated-corpus")
 
-    try:
-        if _trace_ts:
-            with open(f"/tmp/ora-trace-{_trace_ts}-step8-formatted.md", "w") as _f:
-                _f.write(f"# Step 8 — Formatted output\n\n{formatted}\n")
-    except Exception:
-        pass
+    _trace_step("step8-formatted", {
+        "system_prompt": format_system,
+        "raw_response": formatted,
+        "ok": format_ok,
+        "reason": format_reason,
+        "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+    }, markdown=(
+        "# Step 8 — Formatted deliverable\n\n"
+        f"**Health:** {'ok' if format_ok else 'DEGRADED'} — {format_reason}\n\n"
+        f"{formatted}\n"
+    ))
+
+    # Per-turn step-health summary — captures every step's verdict plus
+    # the contingency paths that fired. Lives at ``step-health.json`` in
+    # the per-turn trace directory.
+    if PIPELINE_TRACE_AVAILABLE and trace_dir:
+        pipeline_trace.write_step_health(
+            trace_dir, step_health, gear=4,
+            contingencies_fired=contingencies_fired,
+        )
 
     # Final pollution sweep before handing back to the user-facing layer.
     formatted = _strip_dispatch_noise(formatted)

@@ -31,6 +31,10 @@ data/extraction-staging/
 data/session-logs/
 data/hector-training-corpus/
 
+# Per-turn pipeline forensic traces (volatile diagnostic output).
+# Regenerable from any pipeline run; can grow large.
+data/pipeline-traces/
+
 # Per-session runtime state (conversations, canvas snapshots, uploads)
 sessions/
 
