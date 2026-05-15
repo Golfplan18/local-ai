@@ -408,12 +408,14 @@ def _build_subprocess_env(project: Project, extra_env: Optional[dict] = None) ->
 
     Project tools can rely on these being set:
       - ORA_HOME           — path to the Ora installation root
+      - ORA_VAULT          — path to the canonical vault (Ora-global)
       - ORA_PROJECT_NEXUS  — the nexus of the calling project
       - ORA_PROJECT_ROOT   — absolute path to the project root
     Extra env from the caller takes precedence over these defaults.
     """
     env = os.environ.copy()
     env.setdefault("ORA_HOME", _ora_home())
+    env.setdefault("ORA_VAULT", os.path.expanduser("~/Documents/vault"))
     env["ORA_PROJECT_NEXUS"] = project.nexus
     env["ORA_PROJECT_ROOT"] = str(project.root)
     if extra_env:
