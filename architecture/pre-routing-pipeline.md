@@ -15,11 +15,34 @@ The pipeline has four sequential stages. Each stage has a clear input, processin
 
 ---
 
+## Stage 0 — Pre-Phase-A Bypass Check
+
+**Purpose.** Catch obvious chitchat / lookup / system-command prompts on the *raw user input* before Phase A runs. Prevents Phase A's expansion of the prompt into operational notation from masking bypass-eligible patterns (the "what time is it" normalised into "REQUEST: current-time" failure) and from false-positive-matching expanded-text substrings ("no analysis" matching inside "cui bono analysis" — the substring-collision failure landed 2026-05-15).
+
+**Input.** Raw user prompt as the user typed it (or as ASR rendered it). No conversation context, no Phase A normalisation.
+
+**Processing logic.**
+
+1. **Strong bypass triggers** — concrete factual lookups ("what time is it", "what's today's date"), system-meta references ("what did you just say", "repeat that"), mechanical translation / formatting requests ("translate this", "fix the spelling"), and explicit user opt-outs from the analytical pipeline ("don't analyze", "skip the analysis"). Match → bypass immediately.
+2. **Weak bypass triggers (constrained)** — greetings and acknowledgements. These bypass only when the prompt is plausibly *just* a greeting: short (≤ 8 normalised words) AND containing no obvious analytical-vocabulary tokens (analyze, evaluate, audit, steelman, compare, cui bono, root cause, etc.). The "Hi! Steelman this op-ed" case correctly falls through to Phase A because the analytical hint disqualifies the weak match.
+3. **No match** — fall through to Phase A; the prompt is presumed analytical until later stages prove otherwise.
+
+**Output.**
+
+- If bypass fires: `{ bypass_to_direct_response: true, rationale: "<trigger>", stage: "pre-phase-a" }`. Phase A and Stages 1–4 are all skipped. `step1_result.mode` is set to `simple`, gear 2, and the raw prompt is used as `cleaned_prompt` without expansion.
+- If no match: control passes to Phase A, then to Stage 1.
+
+**Why this exists.** Detector layering is the structural risk. Phase A's job is to expand and normalise; running bypass detectors on the post-expansion text means the detector's input space depends on what Phase A produced for *this* prompt. Substring detectors don't compose cleanly across layers — a phrase legitimate inside the expansion ("Structured cui bono analysis") can contain a substring legitimate as a bypass trigger ("no analysis"). The pre-Phase-A check runs on input the user controls directly, which is the layer where bypass triggers were designed to be evaluated.
+
+**Defensive duplication.** Stage 1 (below) re-runs the strong-bypass scan on the operational notation. The intent is defensive: if Phase A's expansion legitimately reveals a bypass-worthy element the raw prompt didn't carry (a rare but possible case), Stage 1 still catches it. In normal operation Stage 1's bypass branch is silent because the pre-Phase-A check already handled the case.
+
+---
+
 ## Stage 1 — Pre-Analysis Filter
 
-**Purpose.** Distinguish prompts that should enter the analytical pipeline from prompts that bypass it (chitchat, simple lookups, conversation continuations, system commands).
+**Purpose.** Distinguish prompts that should enter the analytical pipeline from prompts that bypass it (chitchat, simple lookups, conversation continuations, system commands). Runs on Phase A's *operational notation* (the cleaned, expanded form of the prompt). Stage 0 already screened the raw prompt; Stage 1 is the second-pass safety net.
 
-**Input.** Raw user prompt plus minimal context (current conversation thread, attached documents if any).
+**Input.** Phase A's operational notation plus minimal context (current conversation thread, attached documents if any).
 
 **Processing logic.**
 

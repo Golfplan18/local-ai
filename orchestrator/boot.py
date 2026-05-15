@@ -934,18 +934,28 @@ def load_educational_name(mode_id: str) -> str | None:
 #     prior-conversation references, factual lookups)
 #   - WEAK_BYPASS: loses to strong analytical signals (greetings, ack)
 STRONG_BYPASS_TRIGGERS = [
-    # factual / lookup
+    # factual / lookup — concrete single-fact questions
     "what time", "what's the date", "what's the time",
-    "what time is it", "what is the capital", "what's the capital",
+    "what time is it", "what's today", "what day is it",
+    "what's today's date", "what year is it", "what's the year",
+    "what is the capital", "what's the capital",
+    # prior-conversation / system-meta references
+    "what did you just say", "what did i just say",
+    "what did you say earlier", "what did i ask",
+    "repeat that", "say that again", "say it again",
+    "remind me of", "remind me what",
     "how many tokens", "how many tokens does",
     # prior-conversation references
     "what did you say", "earlier you said", "remind me what",
     "show me the previous", "repeat what you", "what was your previous",
     # system commands and service requests
     "/help", "/?", "save this conversation", "convert this pdf",
+    # mechanical translation / formatting
     "translate this", "spell-check", "spell check",
-    # negation-flagged analytical override
+    "fix the spelling", "fix the grammar", "fix the typo",
+    # explicit user opt-out from the analytical pipeline
     "don't analyze", "do not analyze", "no analysis",
+    "skip the analysis", "no need to analyze", "without analysis",
 ]
 
 WEAK_BYPASS_TRIGGERS = [
@@ -1845,6 +1855,98 @@ def _load_signal_registry() -> list[dict]:
     return entries
 
 
+def _check_strong_bypass(prompt: str) -> dict | None:
+    """Run only the STRONG_BYPASS_TRIGGERS scan over ``prompt``.
+
+    Returns the bypass-result dict when a trigger fires, ``None`` otherwise.
+    Used by both ``pre_phase_a_bypass_check`` (which runs on the raw user
+    prompt before Phase A) and ``stage1_pre_analysis_filter`` (which runs
+    on Phase A's operational notation as a defensive backup).
+    """
+    for trigger in STRONG_BYPASS_TRIGGERS:
+        if _signal_present(prompt, trigger.strip()):
+            return {
+                "bypass_to_direct_response": True,
+                "matches": [],
+                "rationale": f"strong bypass trigger: '{trigger.strip()}'",
+            }
+    return None
+
+
+def _check_weak_bypass(prompt: str) -> dict | None:
+    """Run only the WEAK_BYPASS_TRIGGERS scan over ``prompt``.
+
+    Greetings and acknowledgements — fire as bypass only when there is no
+    strong analytical signal in the same prompt. Used inside Stage 1 (after
+    the analytical-signal scan); also used by ``pre_phase_a_bypass_check``,
+    which has no analytical-signal scan and treats weak triggers as
+    bypass-eligible *unless* the registry would have matched in Stage 1.
+    """
+    for trigger in WEAK_BYPASS_TRIGGERS:
+        if _signal_present(prompt, trigger.strip()):
+            return {
+                "bypass_to_direct_response": True,
+                "matches": [],
+                "rationale": f"weak bypass trigger: '{trigger.strip()}'",
+            }
+    return None
+
+
+def pre_phase_a_bypass_check(prompt: str) -> dict | None:
+    """Run bypass detection on the *raw* user prompt before Phase A.
+
+    Returns the bypass result dict if a trigger fires; ``None`` otherwise.
+
+    This fixes the detector-layering bug uncovered 2026-05-15: Phase A's
+    expansion of the raw prompt into operational notation produces strictly
+    more text for the post-Phase-A Stage 1 detector to match against, which
+    increased the false-positive rate (``"no analysis"`` matching inside
+    ``"cui bono analysis"``) AND decreased the true-positive rate (``"what
+    time is it"`` normalised away by Phase A into ``"REQUEST: current-time"``,
+    losing the trigger). Running bypass detection on the raw prompt before
+    Phase A eliminates both failure classes.
+
+    A strong-trigger match returns immediately. Weak-trigger matching honours
+    the same "no strong analytical signal" guard as Stage 1, but because we
+    don't run the registry scan here, the heuristic is: if the prompt looks
+    like *only* a greeting / acknowledgement (no obvious analytical
+    vocabulary), treat weak as bypass. The check is intentionally conservative
+    — when in doubt, fall through to Phase A + Stage 1, which has the full
+    registry to decide.
+    """
+    strong = _check_strong_bypass(prompt)
+    if strong is not None:
+        strong["stage"] = "pre-phase-a"
+        return strong
+
+    # Weak triggers: only bypass when the prompt is plausibly *just* a
+    # greeting / acknowledgement and not "Hi! Steelman this op-ed". We
+    # detect that by checking the prompt is short AND has no obvious
+    # analytical-vocabulary tokens. The Stage 1 registry-aware check stays
+    # in place as the authoritative call; this pre-Phase-A check only
+    # bypasses on near-certain weak matches.
+    weak = _check_weak_bypass(prompt)
+    if weak is not None:
+        # If the prompt is short (≤ 8 words after normalisation) and
+        # contains no obvious analytical vocabulary, treat the weak match
+        # as a real bypass.
+        norm = _normalize_for_match(prompt)
+        word_count = len(norm.split())
+        analytical_hint_tokens = (
+            "analyze", "analyse", "evaluate", "audit", "steelman",
+            "argument", "decision", "tradeoff", "tradeoffs", "trade off",
+            "compare", "examine", "investigate", "explain why", "explain how",
+            "why does", "why did", "how does", "how did", "cui bono",
+            "pre mortem", "premortem", "root cause", "consequences",
+            "what would happen", "stress test", "stress-test",
+        )
+        if word_count <= 8 and not any(t in norm for t in analytical_hint_tokens):
+            weak["stage"] = "pre-phase-a"
+            return weak
+
+    return None
+
+
 def stage1_pre_analysis_filter(prompt: str, context: dict | None = None) -> dict:
     """Stage 1 of the pre-routing pipeline: pre-analysis filter.
 
@@ -1864,14 +1966,14 @@ def stage1_pre_analysis_filter(prompt: str, context: dict | None = None) -> dict
     # 1. STRONG bypass triggers always win — system commands, prior-conversation
     # references, factual lookups. These dominate even when an analytical
     # signal also fires (the user is asking about a previous turn or running
-    # a system command, not requesting fresh analysis).
-    for trigger in STRONG_BYPASS_TRIGGERS:
-        if _signal_present(prompt, trigger.strip()):
-            return {
-                "bypass_to_direct_response": True,
-                "matches": [],
-                "rationale": f"strong bypass trigger: '{trigger.strip()}'",
-            }
+    # a system command, not requesting fresh analysis). This check also runs
+    # *before* Phase A via ``pre_phase_a_bypass_check``; the duplication here
+    # is intentional — Stage 1 is the defensive backup when Phase A
+    # expansion legitimately reveals a bypass-worthy element the raw prompt
+    # didn't carry.
+    strong_result = _check_strong_bypass(prompt)
+    if strong_result is not None:
+        return strong_result
 
     # 2. Analytical-artifact signal detection — registry strong-weight entries.
     registry = _load_signal_registry()
@@ -1908,13 +2010,9 @@ def stage1_pre_analysis_filter(prompt: str, context: dict | None = None) -> dict
     # 5. WEAK bypass triggers — only when no strong analytical signal.
     # "Hi! Steelman this op-ed" → steelman wins because analytical is strong.
     if not has_strong_analytical:
-        for trigger in WEAK_BYPASS_TRIGGERS:
-            if _signal_present(prompt, trigger.strip()):
-                return {
-                    "bypass_to_direct_response": True,
-                    "matches": [],
-                    "rationale": f"weak bypass trigger: '{trigger.strip()}'",
-                }
+        weak_result = _check_weak_bypass(prompt)
+        if weak_result is not None:
+            return weak_result
 
     # 6. Default permissive: empty matches → forward to Stage 2 anyway.
     fuzzy_count = sum(1 for m in matches if m.get("fuzzy_typo"))
@@ -3900,6 +3998,69 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
     ``trace_dir`` is the per-turn forensic-trace directory created by
     ``pipeline_trace.start_trace``. Pass ``None`` to disable tracing.
     """
+    # --- Pre-Phase-A bypass check ---
+    # Runs bypass detection on the *raw* user prompt before Phase A's
+    # expansion. Fixes the detector-layering bug where Phase A's expanded
+    # operational notation either masked or false-positive-matched the
+    # post-expansion Stage 1 detector. When this fires, Phase A AND
+    # pre-routing are skipped entirely; the raw prompt goes through as
+    # the cleaned prompt, mode=simple, gear=2.
+    early_bypass = pre_phase_a_bypass_check(raw_prompt)
+    if early_bypass is not None:
+        result = {
+            "cleaned_prompt": raw_prompt,
+            "operational_notation": raw_prompt,
+            "mode": "simple",
+            "triage_tier": 1,
+            "corrections_log": "",
+            "inferred_items": "",
+            "raw_response": "",
+            "detected_invocation": "",
+            "classification_confidence": "high",
+            "classification_runner_up": "",
+            "classification_reasoning": early_bypass["rationale"],
+            "classification_intent": "SIMPLE",
+            "pre_routing": {
+                "dispatched_mode_id": None,
+                "territory": None,
+                "bypass_to_direct_response": True,
+                "pending_clarification": None,
+                "pending_clarification_stage": None,
+                "completeness_gaps": [],
+                "dispatch_announcement": None,
+                "lighter_sibling_mode_id": None,
+                "confidence": "high",
+                "stage1_match_count": 0,
+                "pre_phase_a_bypass": True,
+                "pre_phase_a_rationale": early_bypass["rationale"],
+            },
+        }
+        if PIPELINE_TRACE_AVAILABLE:
+            pipeline_trace.write_step(trace_dir, "step1-phase-a", {
+                "status": "skipped_pre_phase_a_bypass",
+                "raw_prompt": raw_prompt,
+                "conversation_context_present": bool(conversation_context),
+                "ambiguity_mode": ambiguity_mode,
+                "bypass_rationale": early_bypass["rationale"],
+            }, markdown=(
+                "# Step 1 — Phase A SKIPPED (pre-Phase-A bypass)\n\n"
+                f"**Raw prompt:** {raw_prompt}\n\n"
+                f"**Bypass rationale:** {early_bypass['rationale']}\n\n"
+                "Phase A and the four-stage pre-routing pipeline were "
+                "both skipped. The prompt was detected as a "
+                "chitchat / lookup / system-command by the pre-Phase-A "
+                "trigger scan on the raw prompt. mode=`simple`, gear=2.\n"
+            ))
+            pipeline_trace.write_step(trace_dir, "step1-pre-routing", {
+                "status": "skipped_pre_phase_a_bypass",
+                "rationale": early_bypass["rationale"],
+            }, markdown=(
+                "# Step 1 — Pre-Routing SKIPPED\n\n"
+                f"**Reason:** Pre-Phase-A bypass fired.\n"
+                f"**Rationale:** {early_bypass['rationale']}\n"
+            ))
+        return result
+
     # --- Pass 1: Phase A — Cleanup Only ---
     phase_a = load_framework("phase-a-prompt-cleanup.md")
 
