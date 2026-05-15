@@ -257,24 +257,39 @@ def get_active_endpoint(config: dict) -> dict | None:
     return active[0]
 
 
-def get_slot_endpoint(config: dict, slot: str) -> dict | None:
-    """Return the endpoint for a named slot. Uses v2 router if available."""
+def get_slot_endpoint(config: dict, slot: str, context: str = "interactive") -> dict | None:
+    """Return the endpoint for a named slot. Uses v2 router if available.
+
+    ``context`` selects the operational profile from routing-config.json:
+
+      - ``interactive`` (default) — local + browser + api transports
+        eligible. Used by chat / on-demand analysis where browser
+        responses are acceptable.
+      - ``autonomous`` — local transports only. Used by unattended
+        pipelines (article generation, scheduled runs) where browser
+        endpoints would either need a Playwright session or stall.
+      - ``agent`` — agent-mode resolution (local-mid + free buckets).
+
+    Most callers leave this at the default. The article-generation
+    pipeline passes ``autonomous`` so model_dispatch resolves to a
+    local model rather than the browser-fronted premium endpoint.
+    """
     router = _get_router()
     if router:
         # Map v1 slot names to v2 resolution
         if slot in ("sidebar", "step1_cleanup", "rag_planner", "classification"):
-            ep = router.resolve_utility_slot(slot, "interactive")
+            ep = router.resolve_utility_slot(slot, context)
         elif slot in ("consolidator", "consolidation"):
-            ep = router.resolve_post_analysis_slot("consolidation", "interactive")
+            ep = router.resolve_post_analysis_slot("consolidation", context)
         elif slot in ("evaluator", "verification"):
-            ep = router.resolve_post_analysis_slot("verification", "interactive")
+            ep = router.resolve_post_analysis_slot("verification", context)
         elif slot in ("depth", "breadth"):
             # For direct slot lookups outside gear execution, resolve at Gear 3
             # (Gear 4 resolution happens through resolve_gear4_endpoints)
-            result = router.resolve_gear(3, "interactive")
+            result = router.resolve_gear(3, context)
             ep = result.get(slot) if result else None
         else:
-            ep = router.resolve_utility_slot("step1_cleanup", "interactive")
+            ep = router.resolve_utility_slot("step1_cleanup", context)
 
         if ep:
             return router._to_v1_endpoint(ep)

@@ -45,6 +45,7 @@ def invoke_chat(
     *,
     slot: str = "breadth",
     extra_messages: Optional[list[dict]] = None,
+    context: str = "interactive",
 ) -> str:
     """Invoke a model via Ora's existing routing infrastructure.
 
@@ -93,12 +94,12 @@ def invoke_chat(
             f"Could not load endpoints config: {e}.",
         ) from e
 
-    endpoint = get_slot_endpoint(config, slot)
+    endpoint = get_slot_endpoint(config, slot, context=context)
     if not endpoint:
         raise ModelDispatchError(
             "no_slot_endpoint",
-            f"No endpoint is registered for slot {slot!r} in "
-            f"~/ora/config/endpoints.json. Configure one or pass a "
+            f"No endpoint is registered for slot {slot!r} (context={context!r}) "
+            f"in ~/ora/config/endpoints.json. Configure one or pass a "
             f"different slot. Common slots: breadth, depth, sidebar.",
             slot=slot,
         )
@@ -131,13 +132,16 @@ def invoke_chat(
     return stripped
 
 
-def get_slot_info(slot: str = "breadth") -> dict:
+def get_slot_info(slot: str = "breadth", *, context: str = "interactive") -> dict:
     """Inspect what endpoint the given slot would resolve to.
 
     Returns a dict with at least ``name``, ``model_name``, ``type``, and
     ``service`` keys. Returns an empty dict if no endpoint is registered.
     Useful for project tools that want to log which model is about to
     author an article before they spend the call.
+
+    ``context`` matches :func:`invoke_chat`'s parameter — pass
+    ``autonomous`` to mirror an unattended-pipeline resolution.
     """
     try:
         from orchestrator.boot import load_endpoints, get_slot_endpoint
@@ -147,7 +151,7 @@ def get_slot_info(slot: str = "breadth") -> dict:
         config = load_endpoints()
     except Exception:
         return {}
-    endpoint = get_slot_endpoint(config, slot) or {}
+    endpoint = get_slot_endpoint(config, slot, context=context) or {}
     return {
         k: endpoint.get(k)
         for k in ("name", "model_name", "model", "type", "service", "role")
