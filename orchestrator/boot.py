@@ -762,12 +762,26 @@ def _parse_setup_questions(text: str) -> list[dict] | None:
 
 
 def load_mode(mode_name: str) -> str:
-    """Load a mode file from modes/."""
+    """Load a mode file from modes/.
+
+    Returns the file contents on success, empty string when the file does
+    not exist. Missing files are surfaced to stderr (and to the pipeline
+    trace via ``record_missing_mode_file`` when the caller has wired a
+    trace_dir) so the silent "mode dispatched but file is empty" failure
+    class (#3 / #8 in the silent-failure catalogue) becomes visible.
+    """
+    if not mode_name:
+        return ""
     path = os.path.join(MODES_DIR, f"{mode_name}.md")
     try:
         with open(path, "r") as f:
             return f.read()
     except FileNotFoundError:
+        print(
+            f"[load_mode] mode file not found: {mode_name}.md "
+            f"— the dispatch will run with empty per-step instructions",
+            flush=True,
+        )
         return ""
 
 
@@ -4179,17 +4193,49 @@ AMBIGUITY_MODE: {ambiguity_mode}
         step1_result["classification_intent"] = "ANALYZING"
         step1_result["detected_invocation"] = routing["dispatched_mode_id"]
     else:
-        # Pending clarification — surface the question via classification_reasoning
-        # and pick the standard catch-all so downstream pipeline still runs.
-        step1_result["mode"] = "standard"
+        # Pending clarification — Stage 2 couldn't dispatch.
+        #
+        # Old behaviour (pre-2026-05-15): silently dispatched to the
+        # ``standard`` catch-all mode, whose mode file does not exist; the
+        # downstream pipeline ran with empty per-step instructions and
+        # produced confidently-shaped but contractually-empty output.
+        # This was failures #2, #3, #8 in the silent-failure catalogue.
+        #
+        # New behaviour: pick the highest-confidence candidate mode from
+        # Stage 1 matches (best-guess dispatch); if no matches exist, fall
+        # back to ``deep-clarification`` which is a real analytical mode
+        # designed for "user's intent is unclear, let's surface it through
+        # conceptual analysis." The pending_clarification text is preserved
+        # in classification_reasoning and surfaced via the trace so the user
+        # can see what Stage 2 was unsure about.
+        stage1_matches = routing.get("stage1_output", {}).get("matches", []) or []
+        best_guess, best_reasoning = _best_guess_mode_from_matches(stage1_matches)
+        if best_guess and load_mode(best_guess):
+            step1_result["mode"] = best_guess
+            step1_result["classification_confidence"] = "best-guess"
+            step1_result["classification_intent"] = "ANALYZING_BEST_GUESS"
+            step1_result["detected_invocation"] = best_guess
+            step1_result["classification_reasoning"] = (
+                f"Stage 2 pending clarification ({routing['pending_clarification']!r}); "
+                f"dispatched to {best_guess} as best guess — {best_reasoning}."
+            )
+        else:
+            # No usable matches — fall back to deep-clarification.
+            fallback = _PENDING_CLARIFICATION_FALLBACK_MODE
+            step1_result["mode"] = fallback
+            step1_result["classification_confidence"] = "fallback"
+            step1_result["classification_intent"] = "ANALYZING_FALLBACK"
+            step1_result["detected_invocation"] = fallback
+            step1_result["classification_reasoning"] = (
+                f"Stage 2 pending clarification ({routing['pending_clarification']!r}); "
+                f"no Stage 1 signal matches available for best-guess dispatch; "
+                f"falling back to {fallback} (designed for unclear-intent prompts)."
+            )
         step1_result["triage_tier"] = 2
-        step1_result["classification_confidence"] = "low"
         step1_result["classification_runner_up"] = ""
-        step1_result["classification_reasoning"] = (
-            f"clarification needed: {routing['pending_clarification']}"
-        )
-        step1_result["classification_intent"] = "CATCH-ALL"
-        step1_result["detected_invocation"] = ""
+        # Record the pending clarification separately so the trace + server can
+        # surface it without losing it in classification_reasoning.
+        step1_result["pending_clarification_swallowed"] = routing["pending_clarification"]
 
     # Carry the full routing decision so the server can surface it via SSE
     # (dispatch_announcement, completeness_gaps, residual disambiguation).
@@ -4218,6 +4264,20 @@ AMBIGUITY_MODE: {ambiguity_mode}
             "confidence": routing.get("confidence"),
             "pending_clarification": routing.get("pending_clarification"),
             "pending_clarification_stage": routing.get("pending_clarification_stage"),
+            # New fields capture the fix for #2+#3+#8: when Stage 2 produced
+            # a pending clarification, what mode did we best-guess-dispatch
+            # to (or fall back to), and what was the original clarification
+            # we are running past?
+            "pending_clarification_swallowed": step1_result.get(
+                "pending_clarification_swallowed"
+            ),
+            "classification_confidence": step1_result.get(
+                "classification_confidence"
+            ),
+            "classification_intent": step1_result.get("classification_intent"),
+            "classification_reasoning": step1_result.get(
+                "classification_reasoning"
+            ),
             "completeness_gaps": routing.get("completeness_gaps", []),
             "dispatch_announcement": routing.get("dispatch_announcement"),
             "lighter_sibling_mode_id": routing.get("lighter_sibling_mode_id"),
@@ -4245,11 +4305,70 @@ AMBIGUITY_MODE: {ambiguity_mode}
             f"gaps={routing.get('completeness_gaps', [])}\n\n"
             f"**Pending clarification:** "
             f"{routing.get('pending_clarification', '_(none)_')}\n\n"
-            f"**Final mode:** {step1_result.get('mode')}\n"
+            + (
+                f"**Pending-clarification handling:** swallowed; "
+                f"best-guess / fallback dispatch via "
+                f"`{step1_result.get('classification_intent')}` → "
+                f"`{step1_result.get('mode')}` "
+                f"(confidence: `{step1_result.get('classification_confidence')}`). "
+                f"Reasoning: {step1_result.get('classification_reasoning')}\n\n"
+                if step1_result.get("pending_clarification_swallowed")
+                else ""
+            )
+            + f"**Final mode:** {step1_result.get('mode')}\n"
             f"**Triage tier:** {step1_result.get('triage_tier')}\n"
+            f"**Classification confidence:** "
+            f"{step1_result.get('classification_confidence', '_(none)_')}\n"
+            f"**Classification intent:** "
+            f"{step1_result.get('classification_intent', '_(none)_')}\n"
         ))
 
     return step1_result
+
+
+def _best_guess_mode_from_matches(matches: list[dict]) -> tuple[str | None, str]:
+    """When Stage 2 produces pending_clarification but Stage 1 found signal
+    matches, pick the highest-confidence candidate mode rather than punting
+    to the missing ``standard`` catch-all.
+
+    Returns ``(mode_id, reasoning)``. When no matches qualify, returns
+    ``(None, "no matches available")`` and the caller falls back to the
+    default analytical mode (``deep-clarification``).
+
+    Scoring: each match contributes 2 points for ``confidence_weight ==
+    "strong"`` and 1 point for ``weak``. Modes with a registered
+    ``mode`` field score; matches without a mode (territory-only signals)
+    are skipped. Highest total wins; ties break on the first-seen mode.
+    """
+    if not matches:
+        return None, "no matches available"
+    score: dict[str, int] = {}
+    first_seen: dict[str, int] = {}
+    for idx, m in enumerate(matches):
+        mode_id = m.get("mode")
+        if not mode_id:
+            continue
+        weight = m.get("confidence_weight", "weak")
+        pts = 2 if weight == "strong" else 1
+        score[mode_id] = score.get(mode_id, 0) + pts
+        if mode_id not in first_seen:
+            first_seen[mode_id] = idx
+    if not score:
+        return None, "no matches carry a mode_id"
+    best = max(score.items(), key=lambda kv: (kv[1], -first_seen[kv[0]]))
+    return best[0], (
+        f"best-guess from Stage 1 signal matches "
+        f"(score={best[1]}, first-seen-idx={first_seen[best[0]]})"
+    )
+
+
+# Fallback analytical mode when pre-routing produces a pending clarification
+# AND no Stage 1 signal matches exist to best-guess from. ``deep-clarification``
+# is the right default because it is designed to clarify what the user actually
+# needs through ordinary-language conceptual analysis — exactly the operation
+# the user implicitly requested when their prompt didn't trigger any
+# specific-mode signal vocabulary.
+_PENDING_CLARIFICATION_FALLBACK_MODE = "deep-clarification"
 
 
 def _depth_tier_from_routing(routing: dict) -> int:
