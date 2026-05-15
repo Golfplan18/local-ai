@@ -5058,6 +5058,11 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
     this, Claude's standing user preferences cause it to route substantive
     output into the artifact panel, where the scraper can't reach it —
     starving every downstream cascade stage of real content.
+
+    For analytical steps (analyst/evaluator/reviser/verifier/consolidator),
+    the Supplemental RAG Protocol is appended to the system prompt so the
+    model has an authorised non-confabulation path when the package is
+    insufficient. See ``Specification — Supplemental RAG Protocol``.
     """
     step_prompt = build_system_prompt_for_gear(
         context_pkg, slot=slot, step=step
@@ -5069,6 +5074,24 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
             f"## F-* UNIVERSAL SCAFFOLDING — {framework_name}\n\n"
             f"{framework_text}"
         )
+
+    # Supplemental RAG Protocol — universal anti-confabulation instruction
+    # for analytical steps. Loaded once and cached implicitly via load_framework.
+    if step in _SUPPLEMENT_ENABLED_STEPS:
+        try:
+            supplement_protocol = load_framework("supplemental-rag-protocol.md")
+            if supplement_protocol:
+                step_prompt = (
+                    f"{step_prompt}\n\n"
+                    f"## SUPPLEMENTAL RAG PROTOCOL — UNIVERSAL\n\n"
+                    f"{supplement_protocol}"
+                )
+        except Exception:
+            # Protocol file missing — degrade silently rather than break the
+            # pipeline. Trace will show no supplement attempts; the spec
+            # acknowledges this as a deploy/install-time check.
+            pass
+
     return _INLINE_DISPATCH_DIRECTIVE + step_prompt + _rag_tail(context_pkg)
 
 
@@ -5194,6 +5217,208 @@ def _step_output_health(text: str, step_name: str, min_chars: int = 200) -> tupl
         if "VERIFIED" not in cleaned and "VERIFICATION FAILED" not in cleaned:
             return False, "missing verifier verdict token"
     return True, "ok"
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Supplemental RAG Protocol — when an analytical step needs more vault
+# context than the Step-2 package supplied, the model emits a structured
+# request block; the orchestrator fetches, appends, and resubmits as a
+# fresh stateless call. Max 2 supplements per step; after that the model
+# is instructed to emit a COVERAGE GAP admission instead of confabulating.
+# Canonical spec: ``Specification — Supplemental RAG Protocol`` (vault) and
+# ``frameworks/book/supplemental-rag-protocol.md`` (ora runtime pair).
+# ────────────────────────────────────────────────────────────────────────────
+
+# Steps where supplements are honoured. Phase A (cleanup) and Step 8
+# (formatter) are excluded by design: Phase A is preprocessing, formatter
+# is placement-only — neither should introduce new factual claims.
+_SUPPLEMENT_ENABLED_STEPS = frozenset({
+    "analyst", "evaluator", "reviser", "verifier", "consolidator",
+})
+
+_SUPPLEMENT_MAX_PER_STEP = 2
+
+_SUPPLEMENT_REQUEST_PATTERN = re.compile(
+    r'^##\s*SUPPLEMENTAL\s+RAG\s+REQUEST\s*\n'
+    r'gap_statement:\s*(?P<gap>[^\n]+)\n'
+    r'query_terms:\s*(?P<terms>[^\n]+)\n'
+    r'why_it_matters:\s*(?P<why>[^\n]+)',
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def _parse_supplemental_request(text: str) -> dict | None:
+    """Detect and parse a SUPPLEMENTAL RAG REQUEST block in a model output.
+
+    Returns ``{"gap_statement", "query_terms", "why_it_matters"}`` when a
+    well-formed block is present; ``None`` otherwise. The block must
+    appear with all three fields in order, per the protocol spec. Tolerant
+    of leading whitespace and case in the heading; strict about field
+    names so partial / malformed requests are rejected rather than
+    silently mis-fetched.
+    """
+    if not text or "SUPPLEMENTAL" not in text.upper():
+        return None
+    m = _SUPPLEMENT_REQUEST_PATTERN.search(text)
+    if not m:
+        return None
+    return {
+        "gap_statement": m.group("gap").strip(),
+        "query_terms": m.group("terms").strip(),
+        "why_it_matters": m.group("why").strip(),
+    }
+
+
+def _fetch_supplement(query_terms: str, mode_text: str | None = None,
+                     max_chars: int = 4000) -> str:
+    """Run a vault-RAG query for the requested terms.
+
+    Uses ``rag_engine.assemble_ranked_context`` when available so the
+    result carries provenance markers. Falls back to legacy
+    ``knowledge_search`` if the ranker is unavailable. Empty string when
+    no engine is reachable — caller surfaces that as a degraded supplement
+    via the trace and the model emits COVERAGE GAP instead of confabulating.
+    """
+    if not query_terms:
+        return ""
+    try:
+        if RAG_ENGINE_AVAILABLE:
+            return assemble_ranked_context(
+                query=query_terms,
+                collection="knowledge",
+                mode_text=mode_text,
+                n_results=5,
+                max_chars=max_chars,
+            )
+        if TOOLS_AVAILABLE:
+            return knowledge_search(query_terms, "knowledge", 5)
+    except Exception as e:
+        print(f"[supplement] fetch failed: {e}", flush=True)
+    return ""
+
+
+def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
+                          min_chars: int = 200,
+                          retry_hint: str | None = None,
+                          images: list = None,
+                          context_pkg: dict | None = None
+                          ) -> tuple[str, bool, str]:
+    """Wrap ``_call_with_retry`` with the Supplemental RAG Protocol loop.
+
+    On each model call, parse the response for a SUPPLEMENTAL RAG REQUEST
+    block. When present and the per-step cap is not yet exhausted: fetch
+    from the vault, append a SUPPLEMENTAL RAG RESULT message, resubmit
+    the entire package as a fresh stateless call to the same endpoint.
+    When the cap is exhausted: append an instruction telling the model
+    to emit a COVERAGE GAP admission instead of confabulating, then
+    resubmit once more.
+
+    Every request lands in the per-turn trace at
+    ``supplemental-rag.jsonl``, capturing the gap statement, query terms,
+    fetched-result length, and whether the resubmission resolved the gap.
+
+    Behaviour without ``context_pkg`` (or for steps not in
+    ``_SUPPLEMENT_ENABLED_STEPS``) falls through to plain
+    ``_call_with_retry`` — identical to the prior behaviour.
+    """
+    # Steps where supplements are not honoured: just delegate to retry.
+    if step_name not in _SUPPLEMENT_ENABLED_STEPS:
+        return _call_with_retry(messages, endpoint, step_name,
+                                min_chars=min_chars,
+                                retry_hint=retry_hint, images=images)
+
+    trace_dir = context_pkg.get("trace_dir") if context_pkg else None
+    mode_text = context_pkg.get("mode_text") if context_pkg else None
+
+    current = list(messages)
+    supplements_used = 0
+    last_text = ""
+    last_ok = False
+    last_reason = ""
+
+    # We allow at most ``_SUPPLEMENT_MAX_PER_STEP`` resubmissions; one
+    # extra iteration gives the cap-forced-COVERAGE-GAP a chance to land.
+    max_iters = _SUPPLEMENT_MAX_PER_STEP + 2
+    for iter_idx in range(max_iters):
+        text, ok, reason = _call_with_retry(
+            current, endpoint, step_name,
+            min_chars=min_chars, retry_hint=retry_hint, images=images,
+        )
+        last_text, last_ok, last_reason = text, ok, reason
+
+        # If retry already declared the output unhealthy, bail out and let
+        # the caller's contingency handle it. Supplements are about
+        # information gaps, not refusal/error patterns.
+        if not ok:
+            return text, ok, reason
+
+        supp = _parse_supplemental_request(text)
+        if supp is None:
+            # No request — output is complete.
+            return text, ok, reason
+
+        if supplements_used >= _SUPPLEMENT_MAX_PER_STEP:
+            # Cap exhausted. Push a final instruction telling the model
+            # to emit COVERAGE GAP and resubmit once more, then stop.
+            current.append({"role": "assistant", "content": text})
+            current.append({"role": "user", "content": (
+                f"You have already requested {_SUPPLEMENT_MAX_PER_STEP} "
+                "supplements for this step. No further supplements are "
+                "available. Replace your SUPPLEMENTAL RAG REQUEST with a "
+                "## COVERAGE GAP block that states the unresolved claim, "
+                "summarises what the supplements returned, and names the "
+                "impact on this analysis. Then re-emit your analysis "
+                "without the request block."
+            )})
+            if PIPELINE_TRACE_AVAILABLE and trace_dir:
+                pipeline_trace.record_supplemental_request(
+                    trace_dir, step_name,
+                    gap_statement=supp["gap_statement"],
+                    query_terms=supp["query_terms"],
+                    why_it_matters=supp["why_it_matters"],
+                    supplement_result=None,
+                    resolved=False,
+                )
+            # One more call to land the COVERAGE GAP and return.
+            final_text, final_ok, final_reason = _call_with_retry(
+                current, endpoint, step_name,
+                min_chars=min_chars, retry_hint=retry_hint, images=images,
+            )
+            return final_text, final_ok, final_reason
+
+        # Fetch the supplement
+        fetched = _fetch_supplement(supp["query_terms"], mode_text=mode_text)
+        supplements_used += 1
+        resolved = bool(fetched.strip())
+
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            pipeline_trace.record_supplemental_request(
+                trace_dir, step_name,
+                gap_statement=supp["gap_statement"],
+                query_terms=supp["query_terms"],
+                why_it_matters=supp["why_it_matters"],
+                supplement_result=fetched,
+                resolved=resolved,
+            )
+
+        # Build the SUPPLEMENTAL RAG RESULT message and resubmit.
+        result_block = (
+            "## SUPPLEMENTAL RAG RESULT\n\n"
+            f"Your request:\n"
+            f"  gap_statement: {supp['gap_statement']}\n"
+            f"  query_terms: {supp['query_terms']}\n"
+            f"  why_it_matters: {supp['why_it_matters']}\n\n"
+            "Vault retrieval (provenance markers preserved):\n\n"
+            + (fetched if resolved else "_(no relevant results found in vault)_")
+            + "\n\nRe-run your analysis incorporating the result above. "
+            "Do not emit another SUPPLEMENTAL RAG REQUEST unless the "
+            "result is genuinely insufficient — and remember the per-step "
+            f"cap is {_SUPPLEMENT_MAX_PER_STEP}."
+        )
+        current.append({"role": "assistant", "content": text})
+        current.append({"role": "user", "content": result_block})
+
+    return last_text, last_ok, last_reason
 
 
 def _call_with_retry(messages: list, endpoint: dict, step_name: str,
@@ -5531,16 +5756,16 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         depth_future = executor.submit(
-            _call_with_retry,
+            _call_with_supplement,
             [{"role": "system", "content": depth_system},
              {"role": "user", "content": cleaned_prompt}],
-            depth_endpoint, "analyst", 200, None, images,
+            depth_endpoint, "analyst", 200, None, images, context_pkg,
         )
         breadth_future = executor.submit(
-            _call_with_retry,
+            _call_with_supplement,
             [{"role": "system", "content": breadth_system},
              {"role": "user", "content": cleaned_prompt}],
-            breadth_endpoint, "analyst", 200, None, images,
+            breadth_endpoint, "analyst", 200, None, images, context_pkg,
         )
         try:
             depth_analysis, depth_ok, depth_reason = depth_future.result()
@@ -5600,24 +5825,24 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         eval_a_future = executor.submit(
-            _call_with_retry,
+            _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": (
                  f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
                  f"## ANALYST OUTPUT (Depth stream)\n\n{depth_analysis}\n\n"
                  "Evaluate per the universal seven-section contract."
              )}],
-            breadth_endpoint, "evaluator", 150, None, None,
+            breadth_endpoint, "evaluator", 150, None, None, context_pkg,
         )
         eval_b_future = executor.submit(
-            _call_with_retry,
+            _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": (
                  f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
                  f"## ANALYST OUTPUT (Breadth stream)\n\n{breadth_analysis}\n\n"
                  "Evaluate per the universal seven-section contract."
              )}],
-            depth_endpoint, "evaluator", 150, None, None,
+            depth_endpoint, "evaluator", 150, None, None, context_pkg,
         )
         try:
             breadth_eval_of_depth, eval_a_ok, eval_a_reason = eval_a_future.result()
@@ -5645,7 +5870,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         depth_revise_future = executor.submit(
-            _call_with_retry,
+            _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": (
                  f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
@@ -5653,10 +5878,10 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                  f"## EVALUATOR'S CRITIQUE\n\n{breadth_eval_of_depth}\n\n"
                  "Revise per the universal reviser output contract."
              )}],
-            depth_endpoint, "reviser", 200, None, None,
+            depth_endpoint, "reviser", 200, None, None, context_pkg,
         )
         breadth_revise_future = executor.submit(
-            _call_with_retry,
+            _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": (
                  f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
@@ -5664,7 +5889,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                  f"## EVALUATOR'S CRITIQUE\n\n{depth_eval_of_breadth}\n\n"
                  "Revise per the universal reviser output contract."
              )}],
-            breadth_endpoint, "reviser", 200, None, None,
+            breadth_endpoint, "reviser", 200, None, None, context_pkg,
         )
         try:
             revised_depth, depth_rev_ok, depth_rev_reason = depth_revise_future.result()
@@ -5883,9 +6108,10 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             "corpus inline."
         )},
     ]
-    consolidated, consol_ok, consol_reason = _call_with_retry(
+    consolidated, consol_ok, consol_reason = _call_with_supplement(
         consolidate_messages, breadth_endpoint, "consolidator",
         min_chars=300, retry_hint=None, images=None,
+        context_pkg=context_pkg,
     )
     _record("step7-consolidated", consol_ok, consol_reason)
 
