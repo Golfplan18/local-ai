@@ -35,6 +35,12 @@ data/hector-training-corpus/
 # Regenerable from any pipeline run; can grow large.
 data/pipeline-traces/
 
+# Conversation chunk indexing-failure log (privacy-relevant — captures
+# conversation_id and error context for ChromaDB indexing failures).
+# Stealth conversations skip the write; non-stealth conversations have
+# their entries removed by _purge_stealth Layer 7 on deletion.
+data/conversation-indexing-failures.jsonl
+
 # Per-session runtime state (conversations, canvas snapshots, uploads)
 sessions/
 

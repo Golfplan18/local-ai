@@ -3241,31 +3241,49 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
         # retrieve this conversation via RAG and never finds out (fix for
         # silent failure #12). Record the failure to a structured log so
         # it can be audited and replayed.
-        try:
-            import json as _json
-            failures_log = os.path.expanduser(
-                "~/ora/data/conversation-indexing-failures.jsonl"
-            )
-            os.makedirs(os.path.dirname(failures_log), exist_ok=True)
-            with open(failures_log, "a") as _fh:
-                _fh.write(_json.dumps({
-                    "timestamp_utc": datetime.utcnow().isoformat() + "Z",
-                    "conversation_id": panel_id,
-                    "chunk_id": chunk_id,
-                    "chunk_path": chunk_path,
-                    "error": str(_indexing_exc)[:2000],
-                    "error_type": type(_indexing_exc).__name__,
-                    "tag": tag,
-                }) + "\n")
-        except Exception as _log_exc:
-            # If even the failure log fails, fall through to stderr so the
-            # event is at least visible to anyone watching the process.
+        #
+        # PRIVACY: this log is a new persistence surface. For stealth
+        # conversations we skip the write entirely and fall through to
+        # stderr — keeping the diagnostic visible to a developer
+        # watching the process but never persisting it to disk. For
+        # non-stealth conversations the failure log path is also
+        # included in _purge_stealth as defence-in-depth so any
+        # conversation later re-tagged or accidentally tagged stealth
+        # gets its failure-log entries removed on deletion. The whole
+        # log directory is gitignored.
+        if tag == "stealth":
             print(
-                f"[WARNING] conversation indexing failed AND failure log "
-                f"failed: indexing={_indexing_exc} log={_log_exc} "
-                f"chunk_id={chunk_id} conv={panel_id}",
+                f"[WARNING] conversation indexing failed (stealth — not "
+                f"logged): {_indexing_exc} chunk_id={chunk_id} "
+                f"conv={panel_id}",
                 flush=True,
             )
+        else:
+            try:
+                import json as _json
+                failures_log = os.path.expanduser(
+                    "~/ora/data/conversation-indexing-failures.jsonl"
+                )
+                os.makedirs(os.path.dirname(failures_log), exist_ok=True)
+                with open(failures_log, "a") as _fh:
+                    _fh.write(_json.dumps({
+                        "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                        "conversation_id": panel_id,
+                        "chunk_id": chunk_id,
+                        "chunk_path": chunk_path,
+                        "error": str(_indexing_exc)[:2000],
+                        "error_type": type(_indexing_exc).__name__,
+                        "tag": tag,
+                    }) + "\n")
+            except Exception as _log_exc:
+                # If even the failure log fails, fall through to stderr so
+                # the event is at least visible to anyone watching.
+                print(
+                    f"[WARNING] conversation indexing failed AND failure "
+                    f"log failed: indexing={_indexing_exc} "
+                    f"log={_log_exc} chunk_id={chunk_id} conv={panel_id}",
+                    flush=True,
+                )
 
     # V3 Backlog 2A Chunk 2 — return the chunk identifier so the caller
     # can include it in the plain-HTTP reply (file-as-source-of-truth).

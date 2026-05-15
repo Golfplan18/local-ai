@@ -311,6 +311,49 @@ def _purge_stealth(
     except Exception as e:
         errors.append(f"pipeline_traces: {e}")
 
+    # --- Layer 7: Conversation indexing-failure log -------------------------
+    # Defence-in-depth (2026-05-15, fix #12). server.py::_save_conversation
+    # writes ChromaDB indexing failures to
+    # ~/ora/data/conversation-indexing-failures.jsonl. The write site
+    # skips stealth conversations entirely, but if a stealth conversation
+    # ever leaked an entry (e.g., the tag was set after the failure was
+    # already logged), this layer strips entries matching the stealth
+    # conversation_id without disturbing entries for other conversations.
+    deleted["indexing_failures_log_entries"] = 0
+    try:
+        import json as _json
+        log_path = Path(os.path.expanduser(
+            "~/ora/data/conversation-indexing-failures.jsonl"
+        ))
+        if log_path.exists():
+            kept_lines: list[str] = []
+            removed = 0
+            with open(log_path) as f:
+                for line in f:
+                    line = line.rstrip("\n")
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = _json.loads(line)
+                    except Exception:
+                        # Corrupt line — keep it, don't lose other content
+                        kept_lines.append(line)
+                        continue
+                    if rec.get("conversation_id") == conversation_id:
+                        removed += 1
+                        continue
+                    kept_lines.append(line)
+            if removed:
+                # Atomic replace
+                tmp = log_path.with_suffix(log_path.suffix + ".tmp")
+                with open(tmp, "w") as f:
+                    for line in kept_lines:
+                        f.write(line + "\n")
+                tmp.replace(log_path)
+                deleted["indexing_failures_log_entries"] = removed
+    except Exception as e:
+        errors.append(f"indexing_failures_log: {e}")
+
     return {
         "conversation_id": conversation_id,
         "tag": "stealth",
