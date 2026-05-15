@@ -85,19 +85,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What pattern do you keep seeing recur, and what have you tried that didn't fix it (or made it worse)?'"
     on_underspecified: "Ask: 'Are you trying to diagnose why this keeps happening (causal), or to map how the system currently works (structural)? The first invokes Systems Dynamics Causal; the second invokes Systems Dynamics Structural.'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - system_boundary
-    - variables
-    - feedback_loops_with_polarity
-    - delays
-    - system_archetypes
-    - leverage_points_meadows_ranked
-    - counterintuitive_behaviours
-    - confidence_and_boundary_caveats
-  format: diagram-friendly
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -185,11 +172,79 @@ Revise to add the closing edge (or remove the declaration) for any loop that fai
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured mapping with the eight required sections in order: system boundary; variables (named with short labels); feedback loops with polarity (each with id, type, members in order, behaviour-grounded label); delays; system archetypes (with matching loop topology); leverage points ranked by Meadows depth with reasoning; counterintuitive behaviours predicted from the structure; confidence and boundary caveats. Format: diagram-friendly. The visual is the structural argument, not a summary of it.
+Organize the consolidated corpus as **a Forrester/Senge causal feedback-system atom set: system-boundary lock, variable atoms with short labels, feedback-loop atoms with polarity-parity verified (R/B), delay atoms, Senge archetype atoms grounded in matching loop topology, Meadows-depth-ranked leverage-point atoms, counterintuitive-behaviour-prediction atoms, and confidence with boundary caveats**. The atoms are:
+
+1. **System-boundary atom.** What's inside the system, what's outside. The boundary is stated *explicitly*. Boundary-dishonesty is the named failure mode the consolidator watches for; analyses that silently absorb every adjacent variable get reshaped to explicit boundary declaration. Everything-connects-holism is the named failure mode for the opposite drift; "everything connects" without specific mechanism per link gets reshaped.
+
+2. **Variable atoms.** Each atom names: one variable with a short label, its kind (stock / flow / auxiliary), and unit of change. Variables outside the declared boundary are excluded with explicit rationale.
+
+3. **Feedback-loop atoms with polarity-parity verification.** Each atom carries: a loop id (`R1`, `R2`, `B1`, `B2` …), a type (`R` — reinforcing / `B` — balancing), the loop's members in order, the polarity of each edge (`+` / `−`), and a polarity-parity check (even number of `−` edges → R; odd → B). Linear-masquerading-as-loop is the named failure mode; declared loops where the closing edge is missing get reshaped (verify or remove). Polarity-parity-mismatch is the named failure mode; loop declared R with odd `−` count, or B with even, gets reshaped — the validator rejects mismatches.
+
+4. **Delay atoms.** Each atom marks an edge or loop where delay between cause and effect is operative. At least one delay surfaces (delays are pervasive in feedback systems; absence is suspicious).
+
+5. **Senge-archetype atoms — when applicable.** Each atom names: an archetype (`Fixes That Fail` / `Shifting the Burden` / `Limits to Growth` / `Eroding Goals` / `Escalation` / `Success to the Successful` / `Tragedy of the Commons` / `Growth and Underinvestment`) and the matching loop topology in the declared loops. Archetype-name-drop is the named failure mode; archetypes named without matching topology get reshaped or removed.
+
+6. **Meadows-depth leverage-point atoms.** Each atom names: a leverage point with explicit Meadows depth (12: constants / parameters / numbers; 11: buffer sizes; 10: stock-and-flow structures; 9: delays; 8: balancing-loop strength; 7: reinforcing-loop gain; 6: information flows; 5: rules; 4: self-organisation; 3: goals; 2: paradigm; 1: power to transcend paradigms). Deep-leverage-omission is the named failure mode; recommendations limited to depths 12–10 (parameter tweaks) when deeper leverage is available get reshaped.
+
+7. **Counterintuitive-behaviour atoms.** Each atom predicts: a non-obvious behaviour of the system (fixes that fail; intervention worsens symptom; delayed feedback masks cause), grounded in the declared loop structure. At least one counterintuitive behaviour appears.
+
+8. **Observer-position atom — when applicable.** When the analyst or user is part of the system being analysed (a workplace, an interpersonal pattern, a research community), the observer-position is stated. Observer-blindness is the named failure mode.
+
+9. **Confidence and boundary-caveat atoms.** Confidence per major loop (high if depth and breadth converged on type and polarity; lower otherwise); boundary caveats name what was deliberately excluded.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Linear-masquerading-as-loop** — declared loop without a closing edge in the graph.
+- **Polarity-parity mismatch** — declared type contradicts negative-edge count.
+- **Boundary dishonesty** — silent absorption of adjacent variables.
+- **Everything-connects holism** — unfalsifiable "everything is connected" without per-link mechanism.
+- **Archetype name-drop** — Senge archetype invoked without matching loop topology.
+- **Deep-leverage omission** — leverage points only at parameter-tweak depth when structural depth is available.
+- **Observer blindness** — analyst/user positioned outside a system they're part of.
+- **Map-as-summary drift** — the visual treated as decoration rather than as the structural argument.
+
+**What NOT to collapse:**
+
+- **Closing edges** — verified explicitly per declared loop; never elided.
+- **Polarity per edge** — every edge carries `+` or `−`; unmarked edges get reshaped.
+- **Stream disagreement about archetype** — when streams identified different archetypes in the same structure, both survive with their respective topology-matches.
+- **Boundary exclusions** — what was kept outside is part of the analytical contract.
+- **Loops at the same level** — multiple loops can be operative simultaneously (the dominant loop plus secondary loops); the corpus does not collapse to one.
 
 ## VERIFICATION CRITERIA
 
 Verified means: system boundary is stated; every loop's members close back to start along declared edges; every loop's declared type matches negative-edge parity; at least one delay is marked; archetype names (if any) correspond to matching loop topology; leverage points carry Meadows depth labels; at least one counterintuitive behaviour is predicted from the structure. Confidence is stated for each major loop (high if both depth and breadth analyses converged on type and polarity; lower otherwise).
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **causal feedback-system mapping** — a Forrester/Senge structured analysis where every loop is closed and polarity-parity-verified, archetype names match loop topology, leverage points are ranked by Meadows depth, and at least one counterintuitive behaviour is predicted from the structure. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **System boundary.** One paragraph stating what's inside and what's outside. `**Inside:** [the variables in scope]. **Outside (deliberately excluded):** [variables whose inclusion would change the dominant-loop story, with reason for exclusion].`
+
+2. **Variables.** Bulleted list. Each: `**[Variable]** — kind: [stock / flow / auxiliary]. Unit: [...]. Short label: [...].`
+
+3. **Feedback loops with polarity.** A labelled block per loop. Each: `**Loop [R1 / R2 / B1 / B2 ...]:** Type: [R / B]. Members in order: [V1 → V2 → ... → V1]. Edge polarities: [+/− per edge]. Polarity-parity check: [even − count → R; odd → B; matches/mismatches declared type]. Behaviour-grounded label: [what this loop produces in observable terms].`
+
+4. **Delays.** Bulleted list. Each: `**[Edge or loop]** — delay magnitude: [seconds / hours / days / quarters / years / generations]. Implication: [how the delay produces counterintuitive behaviour].`
+
+5. **System archetypes.** Bulleted list. Each: `**[Archetype name — Fixes That Fail / Shifting the Burden / Limits to Growth / Eroding Goals / Escalation / Success to the Successful / Tragedy of the Commons / Growth and Underinvestment]** — matching loop topology: [which declared loops instantiate the archetype]. Behaviour predicted: [...].` Archetype name-drops without matching topology are reshaped at this layer.
+
+6. **Leverage points — Meadows-ranked.** Numbered list, **deepest first**. Each: `[N]. **[Leverage point]** — Meadows depth: [12 / 11 / 10 / 9 / 8 / 7 / 6 / 5 / 4 / 3 / 2 / 1]. Description: [...]. Why this depth: [...]. Expected effect on the dominant loop: [...].`
+
+7. **Counterintuitive behaviours.** Bulleted list. Each: `**[Predicted counterintuitive behaviour]** — grounded in loops: [which loops produce this]. Observable signal: [what the user would see if this prediction holds].`
+
+8. **Confidence and boundary caveats.** Bulleted list. Each: `**[Loop / leverage point / archetype]** — confidence: [high / medium / low]. Basis: [convergence across analyses / single-stream / contested]. Boundary caveat: [variables outside the declared boundary whose inclusion would change this finding].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Loop ids follow the `R<n>` / `B<n>` pattern verbatim.
+- Polarity-parity verification is *explicit* per loop — the count of `−` edges and the implied type appear in the loop's labelled block.
+- Senge archetype vocabulary appears verbatim with matching loop topology required. Name-drops without topology are reshaped.
+- Meadows depth labels (1–12) appear verbatim per leverage point; the depth distinction is operative, not decorative.
+- Format is *diagram-friendly* — the visual is the structural argument. When a CLD or stock-and-flow envelope is appropriate, it is rendered as the centrepiece of section 3, not as a summary of the prose.
+- When the observer-blindness flag survived consolidation, section 1 closes with: `**Observer-position note:** the analyst / user is part of this system; their behaviour is itself a variable in [Loop X]. The analysis below accounts for this rather than positioning the observer outside.`
+- When the question is actually "how does this system currently work" (not "why does it keep happening"), the deliverable opens with a sideways-route note: `**Note: if the question is how the system currently operates rather than why a recurring symptom persists, systems-dynamics-structural (T17) is the appropriate sideways-route. The current deliverable carries causal-investigation posture.**`
 
 ## CAVEATS AND OPEN DEBATES
 

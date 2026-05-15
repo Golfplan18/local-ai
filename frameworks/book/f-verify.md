@@ -1,10 +1,12 @@
 # F-VERIFY — Step 8 Final Verification Specification
 
-*Universal scaffolding. The eight universal checks below are the floor for every mode. Mode-specific checks layer on top — extracted from the classified mode's `## EVALUATION CRITERIA` → `### Verifier checks for this mode` subsection.*
+*Universal scaffolding. The eight universal checks below are the floor for every mode. Mode-specific checks layer on top — extracted from the classified mode's `## VERIFICATION CRITERIA` flat-H2 section (the H3 cascade subsections were superseded 2026-05-01).*
 
 *Loaded into: Depth model context window at Step 8 (Final Verification of Consolidated Output). For Gear 3 single-stream modes, the verifier runs against the revised analysis directly; for Gear 4 parallel-stream modes, the verifier runs against the consolidated output.*
 
-*Context window contains: this specification, the source analyses (revised Depth + revised Breadth for Gear 4; the revised analysis for Gear 3), the consolidated output if applicable, the evaluator's mandatory-fixes list from Step 4, the reviser's ADDRESSED + NOT ADDRESSED blocks from Step 5, the mode file (for its verifier-checks subsection, success criteria, and emission contract).*
+*Note (2026-05-14): the Step 7/8 architecture split moved the user-facing form-placement step to a dedicated formatter (`f-format.md`) at step 8; this f-verify scaffolding remains the verification-floor specification, invoked where the orchestrator routes final-verification work.*
+
+*Context window contains: this specification, the source analyses (revised Depth + revised Breadth for Gear 4; the revised analysis for Gear 3), the consolidated output if applicable, the evaluator's mandatory-fixes list from Step 4, the reviser's ADDRESSED + NOT ADDRESSED blocks from Step 5, the mode file (its `## VERIFICATION CRITERIA` section names the mode-specific checks; its YAML `output_contract` / `failure_modes` blocks supply emission-contract and named-failure information).*
 
 ---
 
@@ -21,7 +23,7 @@ Verification is not a re-evaluation. You do not re-open the analysis. You do not
 
 ## Universal verifier checklist
 
-Every mode runs these eight checks. They are the floor — modes can add checks on top via their `### Verifier checks for this mode` subsection, but none of these can be skipped.
+Every mode runs these eight checks. They are the floor — modes can add checks on top via their `## VERIFICATION CRITERIA` flat-H2 section, but none of these can be skipped.
 
 ### V1 — Mandatory-fix coverage
 
@@ -83,7 +85,7 @@ V8 is a check, not a rewrite. When a fact fails V8, your response is to flag it 
 
 ## Processing instructions
 
-1. Run each universal check sequentially. Then run each mode-specific check from `### Verifier checks for this mode`.
+1. Run each universal check sequentially. Then run each mode-specific check from the mode's `## VERIFICATION CRITERIA` section.
 2. For each check, cite specific passages from the revised/consolidated output, the source analyses, the evaluator's mandatory-fixes list, or the reviser's ADDRESSED/NOT ADDRESSED blocks.
 3. IF a check fails AND the failure is correctable without re-analysis:
    a. Identify the specific deficiency with citations.
@@ -117,7 +119,7 @@ V8 is a check, not a rewrite. When a fact fails V8, your response is to flag it 
 - **V8 — Factual accuracy:** <pass|fail> — <citation of any flagged claim and why>
 
 ### Mode-Specific Checks
-[Each check from the mode's `### Verifier checks for this mode` subsection:
+[Each check from the mode's `## VERIFICATION CRITERIA` section:
 <check id / name>: <pass|fail> — <citation>]
 
 ### Corrections Applied
@@ -136,8 +138,10 @@ or
 
 ## Where mode-specific content lives
 
-This file is universal. Mode-specific verifier checks — e.g. RCA "confirm the declared framework hasn't silently changed between draft and revision" — are authored once per mode, inside the mode file, under:
+This file is universal. Mode-specific verifier checks — e.g. RCA "confirm the declared framework hasn't silently changed between draft and revision" — are authored once per mode, inside the mode file, in flat-H2 sections (the H3 cascade subsections were superseded 2026-05-01):
 
-- `## EVALUATION CRITERIA` → `### Verifier checks for this mode`
+- `## VERIFICATION CRITERIA` — the mode-specific checks layered on top of the universal V1–V8 floor
+- YAML `failure_modes:` block — canonical named failures whose presence triggers a verification finding
+- YAML `output_contract:` block — emission-contract structural shape the verifier checks against (V5)
 
-The orchestrator (boot.py) extracts this subsection from the classified mode's file and appends it to your system prompt. If the subsection is missing, run only the universal checks above.
+The orchestrator (boot.py) extracts the mode's `## VERIFICATION CRITERIA` section (via `_extract_section`) and appends it to your system prompt. If the section is missing, run only the universal checks above and flag the absence in `## Corrections Applied`.

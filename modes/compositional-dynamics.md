@@ -92,19 +92,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you describe or share the composition (image / film still / page / diagram-as-image / room) you want a perceptual reading on?'"
     on_underspecified: "Ask: 'Are you noticing a specific perceptual question (figure-ground, eye-path, balance), or do you want a general perceptual-and-force reading?'"
-output_contract:
-  artifact_type: reading-with-vocabulary
-  required_sections:
-    - perceptual_parse_groupings_and_figure_ground
-    - structural_skeleton_axes_and_center
-    - visual_weight_per_element
-    - force_vectors_and_named_tensions
-    - dynamic_equilibrium_classification
-    - predicted_eye_path
-    - ambiguity_loci_and_alternative_parses
-    - confidence_per_finding
-  format: reading-with-vocabulary
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -191,11 +178,74 @@ Revise to perform the cue-swap test where the draft proposes brittle groupings. 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a reading-with-vocabulary artifact with the eight required sections. Perceptual parse lists groupings and figure-ground assignments with the cues responsible for each. Structural skeleton names axes, center, frame; cropping-robustness is noted. Visual weight per element is assigned on empirical grounds (size, contrast, color, isolation, position, depth). Force vectors and named tensions describe the directional pulls and stress points. Dynamic equilibrium classification states whether the composition is stable, unstable, or directional, and why. Predicted eye-path traces the likely fixation sequence. Ambiguity-loci and alternative parses surface where the reading is unstable (figure-ground reversal candidates, contested borders, weight-distribution alternatives). Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **a perceptual-parse + force-pattern reading: groupings with cues, figure-ground with border-ownership, structural skeleton, visual-weight atoms (empirically grounded), force vectors with displacement-robustness, dynamic-equilibrium classification, eye-path prediction, and ambiguity-loci atoms**. The atoms are:
+
+1. **Composition-and-focus atom.** What composition is being read, and the focal question (if any). One short paragraph.
+
+2. **Perceptual-parse atoms.** Each grouping carries: which elements are grouped, the cue(s) responsible (proximity / similarity / common fate / good continuation / closure / symmetry / parallelism / common region / connectedness), and cue-swap robustness (would it survive a cue substitution?). Cue-fragile-grouping is the named failure mode.
+
+3. **Figure-ground atoms.** Each ground-figure assignment carries border-ownership reading and reversal-under-attention-shift tag (stable / contested / reverses). Contested-border-asserted-as-stable is the named failure mode.
+
+4. **Structural-skeleton atom.** Axes, center, frame, with cropping-robustness assessment. Imposed-skeleton is the named failure mode.
+
+5. **Visual-weight atoms per element.** Each weight assignment carries empirical grounds (size / contrast / color / isolation / position / depth — not symbolic meaning). Symbolic-weight-confusion is the named failure mode.
+
+6. **Force-vector atoms with named tensions.** Each force vector carries direction, source, target, and displacement-robustness assessment. Post-hoc-force-story is the named failure mode; force-readings that would survive arbitrary displacement of elements do not survive into the corpus.
+
+7. **Dynamic-equilibrium classification atom.** Stable / unstable / directional, with reason.
+
+8. **Predicted eye-path atom.** Likely fixation sequence with cues driving each fixation.
+
+9. **Ambiguity-loci atoms.** Each names a place where the parse is unstable (figure-ground reversal candidates, weight-distribution alternatives, contested groupings) with the alternative reading.
+
+10. **Void-blindness escalation atom — when applicable.** When held-open void is doing the operative compositional work, the corpus suppresses the forces/grouping reading and renders the escalation to ma-reading.
+
+11. **Confidence per finding.**
+
+**Mode-specific bloat patterns to cut:**
+
+- **Cue-fragile groupings without flagging** — groupings stated as findings when cue-substitution would dissolve them.
+- **Symbolic-weight smuggled as visual-weight** — attributions on grounds of meaning rather than empirical perceptual properties.
+- **Decorative force-stories** — force vectors that would describe any arbitrary arrangement equally well.
+- **Imposed-skeleton residue** — structural skeletons keyed to the analyst's framing rather than to the composition.
+
+**What NOT to collapse:**
+
+- **Figure-ground reversal candidates** — when streams disagreed on the stable assignment for a composition with ambiguous border-ownership, preserve both readings.
+- **Grouping disagreements** — when streams parsed elements differently, preserve both with their respective cue-attributions.
 
 ## VERIFICATION CRITERIA
 
 Verified means: groupings survive the cue-swap test (or are flagged as cue-fragile); figure-ground assignment is accompanied by border-ownership assessment; force vectors survive the displacement test; structural skeleton survives the cropping test; visual-weight assignments are on empirical grounds; ambiguity-loci are surfaced. The five critical questions are addressable from the output. Confidence per finding accompanies each major claim. Cross-reference to T19 territory-level open debates (especially Debate 3 on aesthetic-vs.-analytical scope and Debate 5 on AI implementability of perceptual operations) is noted where the reading depends on the descriptive-analytical commitment.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **reading-with-vocabulary** — a structured perceptual reading using Gestalt and Arnheim vocabulary where the vocabulary is operative (not decorative). Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Perceptual parse — groupings and figure-ground.** Two sub-blocks:
+   - **Groupings:** bulleted list. Each: `**[Grouping]** — cues: [proximity / similarity / common fate / good continuation / closure / symmetry / parallelism / common region / connectedness]. Cue-swap robustness: [robust / fragile].`
+   - **Figure-ground:** bulleted list. Each: `[Figure] vs [ground] — border-ownership: [assigned to figure / assigned to ground / contested]. Reversal under attention shift: [stable / reverses].`
+
+2. **Structural skeleton — axes and center.** One paragraph naming the principal axes, center of mass, and frame. Each named structural element carries a cropping-robustness note.
+
+3. **Visual weight per element.** A table or per-element list. Each element: `[Element] — weight: [high / moderate / low]. Empirical grounds: [size / contrast / color / isolation / position / depth — name the specific properties].`
+
+4. **Force vectors and named tensions.** Bulleted list. Each force vector: `**[Force vector name]** — from [source] toward [target]. Displacement-robustness: [robust / decorative].` Each named tension: `**[Tension]** — between [element A] and [element B]. Stress point: [...].`
+
+5. **Dynamic equilibrium classification.** One sentence: `Equilibrium type: [stable / unstable / directional]. Reason: [...].`
+
+6. **Predicted eye-path.** A numbered sequence: `1 → 2 → 3 → ...` with each fixation tagged: `Fixation N: [element]. Cue drawing the eye: [...].`
+
+7. **Ambiguity loci and alternative parses.** Bulleted list. Each: `**[Locus]** — primary reading: [...]. Alternative reading: [...]. What makes the parse unstable: [reason].`
+
+8. **Confidence per finding.** Bulleted list of confidence markers per major claim.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Vocabulary stays operative — name the Gestalt cue, the Arnheim force concept, the Itten contrast — rather than using the term decoratively without invoking its operational meaning.
+- Cue-swap, border-ownership, displacement-robustness, and cropping-robustness assessments appear inline with the claims they qualify, not in a separate methodological footnote.
+- When the operative compositional work is being done by held-open void (void-blindness detected), the deliverable renders an explicit sideways-escalation block: `**Note: held-open void is doing the operative compositional work; ma-reading is the appropriate mode. Switching to ma-reading is recommended.**` Subsequent sections may be omitted if the escalation is the primary finding.
 
 ## CAVEATS AND OPEN DEBATES
 
@@ -210,8 +260,6 @@ This mode does not carry mode-specific debates. Five territory-level debates (pe
 These five debates are *not* re-documented here. They are referenced because they bear on Compositional Dynamics's stance, lens dependencies, and mode-granularity boundary with the reserved Information-Graphic mode. See the T19 entry in `Reference — Analytical Territories.md` for the full debate text and citations.
 
 **Integration note (M2 + M3 combined per locked decisions).** This mode combines M2 (Figure-Ground & Perceptual-Grouping Analysis / Gestalt-mode) and M3 (Compositional-Forces & Balance Analysis / Arnheim-mode) from the T19 reanalysis §3 mode catalog. The integration follows the locked decisions: M2 (perceptual parse) runs first conceptually, then M3 (forces among parsed elements) layers on top — the two operations are sequenced within a single mode because (a) they almost always co-occur on the same input, (b) M3 takes M2's output as input (forces operate on parsed groupings), and (c) splitting them would generate two modes whose outputs always cite each other. Itten's seven contrasts and Albers's *Interaction of Color* ride inside as optional lenses for color-driven figure-ground and force phenomena. The reserved Mode 5 (Information-Graphic Visual-Hierarchy Analysis, Tufte/Bertin/Cleveland) is held against the territory-level promotion threshold; below threshold, info-graphic inputs route through this mode.
-</content>
-</invoke>
 
 
 ---

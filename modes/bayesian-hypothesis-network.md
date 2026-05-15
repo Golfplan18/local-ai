@@ -97,19 +97,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the phenomenon you're trying to explain, and what candidate explanations are on the table?'"
     on_underspecified: "Ask the user whether they want the full Bayesian network pass or a lighter ACH matrix (competing-hypotheses)."
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - hypothesis_set_with_priors
-    - evidence_inventory_with_likelihoods
-    - conditional_dependencies
-    - bayesian_network_diagram_or_table
-    - posterior_distribution
-    - sensitivity_analysis
-    - leading_hypothesis_with_residual_uncertainty
-    - confidence_map
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -176,7 +163,21 @@ Breadth in Bayesian Hypothesis Network is the catalog of hypotheses considered b
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing output anchors priors in base rates or named domain knowledge, surfaces conditional dependencies (or names independence as an explicit assumption), reports a posterior with sensitivity analysis, and flags MECE violations rather than papering over them.
+A Bayesian Hypothesis Network is read against Heuer-ACH diagnosticity discipline, Pearl-style conditional-dependency reasoning, and Tetlock-Kahneman base-rate calibration, with Knightian risk-vs-uncertainty distinctions held throughout. The evaluator's reading frame: a Bayesian output is honest to the degree its priors are anchored, its arcs are mechanism-justified, its sensitivity analysis surfaces what could overturn the posterior, and its hypothesis space is acknowledged as MECE-or-not. CQ1 (prior anchoring) and CQ3 (sensitivity) are load-bearing — they protect against the two failure modes that make a Bayesian output worse than a qualitative one: false precision from fabricated priors, and false stability from posteriors that hide their fragility. CQ2 (conditional dependency) and CQ4 (MECE) are quality gates on the network's structural integrity.
+
+Evaluator checks:
+
+1. **Prior anchoring (CQ1, load-bearing).** Each P(H) must trace to a base rate, named domain knowledge, or an explicit flat-prior assumption with reason. Round-number priors (0.5, 0.33, 0.2) without anchor are prior-fabrication — they look quantitative but are intuition wearing a number. The evaluator either finds the anchor or downgrades the atom to flat-prior; round numbers do not pass through.
+
+2. **Conditional-dependency arcs (CQ2).** For each arc, the mechanism creating the dependency must be named. Arcs without mechanism are speculative structure invented by the analyst. The default position is independence; arcs are earned by mechanism, not assumed by similarity. Equally, when hypotheses share an underlying causal substrate and no arcs are drawn, independence-assumption-collapse is in play and the evaluator flags the missing arcs.
+
+3. **Sensitivity analysis (CQ3, load-bearing).** The output must identify which evidence items dominate the posterior. The evaluator's question: if a single key piece of evidence were reversed, removed, or downgraded in source credibility, would the ranking change? At minimum one sensitivity finding specifies the evidence item, the magnitude of the shift, and whether the leading-hypothesis ranking is robust or unstable. Posteriors reported without this analysis are sensitivity-omission.
+
+4. **MECE structure (CQ4).** The hypothesis set must be explicitly checked for mutual exclusivity and collective exhaustiveness, and the result stated. Overlapping hypotheses cause double-counting of evidence; non-exhaustive sets implicitly assume the truth lies within the listed candidates. Silent assumption of MECE structure when it doesn't hold is mece-violation-unnamed and corrupts posterior interpretation.
+
+5. **Posterior form discipline.** Point-estimate posteriors are honest only when priors and likelihoods are well-anchored. When inputs are uncertain, the posterior must render as a band with confidence rather than a single number — false precision is the reviser's named failure mode, and the evaluator flags single-number posteriors over uncertain inputs.
+
+Knightian framing applies throughout. In domains of true uncertainty (novel events, deep-structural-change phenomena), the Bayesian formalism is read as a structured framework for organizing reasoning, not as a probability-theoretic theorem. The evaluator distinguishes risk-quality (probabilities knowable in principle) from uncertainty-quality (probabilities are heuristic scaffolding) and flags outputs that present the latter as the former.
 
 ## REVISION GUIDANCE
 
@@ -184,11 +185,82 @@ Revise to anchor priors more rigorously where they appear fabricated. Revise to 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured synthesis with the eight required sections. The Bayesian-network-diagram-or-table section is rendered as a structured table (hypothesis nodes, evidence nodes, conditional arcs) or, when complex, a diagram-friendly description. Provenance: hypothesis set carries differential-diagnosis fragment provenance; ACH matrix carries competing-hypotheses provenance; posterior carries Bayesian-update provenance.
+Organize the consolidated corpus as **a Bayesian network of hypothesis nodes and evidence nodes with conditional-dependency arcs**, plus posterior, sensitivity, and MECE atoms. The graph is the load-bearing data structure; everything else attaches to or derives from nodes and arcs. The atoms are:
+
+1. **Phenomenon-or-question atom.** The phenomenon being explained or the question being adjudicated, stated once at the corpus head. Cross-stream paraphrase collapses to one canonical statement.
+
+2. **Hypothesis-node atoms.** Each node carries: hypothesis statement, prior probability, base-rate or domain-knowledge anchor for the prior (or explicit "flat-prior assumption" tag when anchor unavailable), and component provenance (differential-diagnosis fragment / competing-hypotheses / both). Round-number priors (0.5, 0.33) without anchor are prior-fabrication and do not survive — either an anchor is found, or the prior is replaced with explicit flat-prior assumption.
+
+3. **Evidence-node atoms.** Each node carries: evidence content, likelihood per hypothesis (P(E|H)), source attribution, and credibility/relevance ratings. Likelihoods that diverge between streams collapse to one value under audit conservatism when both anchored to the same source; preserved as tension when streams cite different sources.
+
+4. **Conditional-dependency arc atoms.** Each arc carries: source hypothesis node, target hypothesis node, dependency direction, and the underlying mechanism that creates the dependency. Arcs whose mechanism cannot be named are independence-assumption-collapse residue (the consolidator inventing structure not in the source streams); these do not survive. Independence is named explicitly as a default assumption atom when no arcs are warranted.
+
+5. **Posterior-distribution atoms.** Posterior probability per hypothesis after evidence integration. When priors and likelihoods are genuinely uncertain, the posterior atom carries a distribution-with-confidence-interval rather than a single point estimate — false precision is a named-by-revision-guidance pitfall, and a single-number posterior over uncertain inputs is its corpus signature.
+
+6. **Sensitivity atoms.** Each names an evidence item whose removal or reversal would substantially shift the posterior, with the magnitude of the shift. At minimum one sensitivity atom is named or CQ3 fails. When the streams disagree on which evidence item dominates, preserve both as parallel sensitivity atoms.
+
+7. **MECE-check atom.** A single atom flags whether the hypothesis set is mutually exclusive and collectively exhaustive, or names the specific overlap / gap if not. MECE violations that go unnamed are the mece-violation-unnamed failure mode; the corpus carries the check explicitly even when MECE is intact.
+
+8. **Leading-hypothesis-with-residual-uncertainty atom.** The hypothesis with highest posterior probability, with explicit residual-uncertainty atom naming what would update the analysis. Single-leader output without residual-uncertainty atom is false-confidence bloat.
+
+9. **Confidence map.** Confidence markers attach to individual atoms (priors, likelihoods, posterior). When the two streams assigned different confidences to the same atom, audit conservatism applies (the lower confidence survives).
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Hypothesis-statement paraphrase** — same hypothesis under different wordings across streams. Single canonical statement survives; both streams' prior estimates collapse with the more rigorously anchored one winning.
+- **Prior-restatement loops** — same prior expressed in different framings ("about 1 in 5" vs "20%" vs "roughly a fifth"). One precise prior atom survives with the strongest anchor.
+- **Likelihood-paraphrase** — same P(E|H) stated under different wordings. Single likelihood atom per (E, H) pair survives.
+- **Round-number priors without anchor** — priors like 0.5 or 0.33 stated without base-rate or domain-knowledge anchor are prior-fabrication residue. Either both streams agree the prior is genuinely flat (in which case "flat-prior assumption" tag survives) or the round number does not survive into the corpus.
+- **Posterior-restatement** — both streams may state the posterior in different forms (probability / odds / log-odds; point estimate / range). One canonical posterior atom survives with explicit form.
+- **Sensitivity-finding overlap** — both streams may identify the same evidence-reversal as posterior-shifting. One sensitivity atom per such finding.
+- **Independence-default-restatement** — when neither stream identifies conditional dependencies, the corpus carries one explicit "all hypotheses treated as independent — no arcs warranted in this case" atom rather than multiple restatements that the network has no arcs.
+
+**What NOT to collapse:**
+
+- **Conditional-dependency arc disagreement** — when one stream surfaced a dependency arc and the other did not, preserve as a tension atom. The presence-or-absence of an arc materially changes the posterior; the consolidator must not silently include or exclude it.
+- **Prior-anchoring divergence** — when streams anchored the same hypothesis's prior in different base-rate sources, preserve both anchors as a multi-source-prior atom. The posterior changes based on which anchor governs; the disagreement is a finding about the analysis's robustness to base-rate selection.
+- **MECE-assessment disagreement** — when one stream judged the hypothesis set MECE and the other identified a gap or overlap, preserve the disagreement explicitly. MECE is consequential for posterior interpretation; silent reconciliation is mece-violation-unnamed residue.
 
 ## VERIFICATION CRITERIA
 
 Verified means: every component ran (or was flagged as proceeded-with-gap); priors are anchored or flat-prior assumption is explicit; conditional dependencies are surfaced or independence is named; sensitivity analysis identifies dominant evidence; MECE structure is checked. The four critical questions are addressed in the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **Bayesian-network artifact with hypothesis-and-evidence nodes, conditional-dependency arcs, posterior distribution, and sensitivity findings**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Phenomenon or question.** The phenomenon being explained or the question being adjudicated, stated once at the top.
+
+2. **Hypothesis nodes with priors.** Numbered list of canonical H1, H2, … Each hypothesis carries: one-line statement, prior probability (P(H) = ...), base-rate or domain-knowledge anchor (or explicit `flat-prior assumption: [reason]` when anchor unavailable), and component provenance (differential-diagnosis fragment / competing-hypotheses / both). Round-number priors without anchor do not appear in the deliverable.
+
+3. **Evidence nodes with likelihoods.** Numbered list of canonical E1, E2, … Each evidence node carries: one-line content statement, source attribution, credibility / relevance ratings, and likelihood per hypothesis (P(E|H1) = ..., P(E|H2) = ..., …).
+
+4. **Conditional dependencies.** Numbered list of arcs (when arcs exist). Each arc: `[Source hypothesis → Target hypothesis]: mechanism: [the underlying mechanism creating the dependency].` When no arcs are warranted, render: "Independence assumed: no conditional dependencies between hypotheses are identifiable from the available evidence and domain knowledge."
+
+5. **Bayesian network — diagram or table.** Render the network as one of the following based on complexity:
+   - **Table format** (when ≤4 hypotheses and ≤6 evidence items): rows = evidence, columns = hypotheses, cells = likelihoods.
+   - **Diagram-friendly description** (when complexity exceeds table-readability): node-and-arc enumeration with explicit edge directionality. Example: `H1 (P=0.3) → E1 (P(E1|H1)=0.8); H2 (P=0.5) → E1 (P(E1|H2)=0.2); ...`
+   - **Annotated table-plus-narrative** when the network combines both forms cleanly.
+
+   Always state which form was chosen and why: `Rendering as [table / node-arc description / annotated-table-plus-narrative]: [reason — complexity / clarity / etc.].`
+
+6. **Posterior distribution.** Per hypothesis: P(H|E) after evidence integration. When priors and likelihoods are uncertain, render as a band with confidence interval: `P(H1|E) ∈ [low, high] with [confidence]`. When point estimates are honest (well-anchored priors and likelihoods), render as: `P(H1|E) = [value]`. Order hypotheses by descending posterior.
+
+7. **Sensitivity analysis.** Bulleted list of evidence items whose removal or reversal would substantially shift the posterior, with the magnitude of the shift. Each bullet: `E_n: if reversed, P(H_x|E) shifts from [before] to [after]; ranking [stable / flips / reorders].` At minimum one sensitivity finding.
+
+8. **MECE check.** One sentence: "Hypothesis set is MECE: [yes / no]." When not MECE, name the specific overlap or gap: "Overlap: H1 and H2 share [aspect]." or "Gap: the set does not exhaust [outcome class]." MECE violations that are unnamed are the corpus-flagged failure mode.
+
+9. **Leading hypothesis with residual uncertainty.** Short prose: the hypothesis with highest posterior probability, with explicit residual-uncertainty atom naming what would update the analysis. Frame as: "Leading: H_x (P = [value]). What would update this: [specific evidence or reversal]."
+
+10. **Confidence map.** Bulleted list of confidence markers attached to priors, likelihoods, and posterior. Each bullet: `[atom] confidence: [high / moderate / low] — [reason].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 10.
+- Probability values rendered with consistent form (decimals for point estimates; intervals for bands; never mix forms in the same section).
+- Hypothesis and evidence IDs referenced consistently throughout once introduced.
+- When the rendering form for section 5 is annotated-table-plus-narrative, the table goes first and the narrative supplements it.
+- Conditional dependencies render with explicit edge direction (`→`) and a mechanism-per-edge — arcs without mechanisms do not appear.
 
 
 ---

@@ -79,18 +79,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What system do you want mapped, and what is your purpose for the map (orientation, intervention design, communication)?'"
     on_underspecified: "Ask: 'Are you trying to map how the system currently works (structural), or to diagnose why a recurring symptom persists (causal)? The first invokes Systems Dynamics Structural; the second invokes Systems Dynamics Causal.'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - system_boundary
-    - variables_and_stocks
-    - feedback_loops_with_polarity
-    - delays
-    - system_archetypes_present
-    - structural_observations
-    - confidence_and_boundary_caveats
-  format: diagram-friendly
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -178,11 +166,75 @@ Revise to add the closing edge (or remove the declaration) for any loop that fai
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured mapping with the seven required sections in order: system boundary; variables and stocks (named with short labels and roles); feedback loops with polarity (each with id, type, members in order, behaviour-grounded label); delays; system archetypes present (with matching loop topology); structural observations (descriptive, not prescriptive); confidence and boundary caveats. Format: diagram-friendly. The visual is the structural argument, not a summary of it.
+Organize the consolidated corpus as **a Forrester/Senge structural-mapping atom set: system-boundary lock, variable-and-stock atoms with role tags (stock / flow / auxiliary / exogenous), feedback-loop atoms with polarity-parity verified, delay atoms, Senge-archetype atoms grounded in matching loop topology, descriptive-only structural-observation atoms, and confidence with boundary caveats**. The atoms are:
+
+1. **System-boundary atom.** What's inside the system, what's outside. The boundary is stated *explicitly*. Boundary-dishonesty is the named failure mode the consolidator watches for; silent absorption of adjacent variables gets reshaped. Everything-connects-holism is the mirror failure mode; the corpus surfaces specific mechanisms per link.
+
+2. **Variable-and-stock atoms.** Each atom names: one variable, its role tag (`stock` / `flow` / `auxiliary` / `exogenous`), a short label, and a unit of change. Stocks vs. flows are distinguished — stocks accumulate, flows alter stock levels per time unit.
+
+3. **Feedback-loop atoms with polarity-parity verification.** Each atom carries: loop id (`R<n>` / `B<n>`), type (`R` / `B`), members in order, edge polarities, and the parity check (even `−` count → R; odd → B). Linear-masquerading-as-loop and polarity-parity-mismatch are the named failure modes; declared loops without closing edges or with mismatched type-parity get reshaped.
+
+4. **Delay atoms.** Each atom marks an edge or loop where temporal delay between cause and effect is operative. Delays are surfaced rather than smoothed.
+
+5. **Senge-archetype atoms — when applicable.** Each atom names: an archetype plus the matching loop topology in the declared loops. Archetype-name-drop is the named failure mode.
+
+6. **Structural-observation atoms — descriptive only.** Each atom states a structural feature of the system as-it-is: which loops dominate at which timescales, where stocks accumulate, where flows are throttled, where the system is in tension with itself. Prescriptive-drift is the named failure mode; intervention recommendations or leverage-point prescriptions get reshaped out of the structural mapping (and routed to systems-dynamics-causal if the user wants them).
+
+7. **Observer-position atom — when applicable.** When the analyst or user is part of the system being mapped, the observer-position is stated. Observer-blindness is the named failure mode.
+
+8. **Confidence and boundary-caveat atoms.** Confidence per major loop and per stock identification; boundary caveats name what was deliberately excluded.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Linear-masquerading-as-loop** — declared loop without closing edge.
+- **Polarity-parity mismatch** — declared type contradicts negative-edge count.
+- **Boundary dishonesty** — silent absorption of adjacent variables.
+- **Prescriptive drift** — recommendations or interventions appearing in the structural map (route to systems-dynamics-causal for those).
+- **Archetype name-drop** — Senge archetype invoked without matching topology.
+- **Everything-connects holism** — unfalsifiable "everything is connected" without per-link mechanism.
+- **Observer blindness** — analyst/user positioned outside a system they're part of.
+- **Stock/flow conflation** — variables tagged without distinguishing accumulation from rate-of-change.
+
+**What NOT to collapse:**
+
+- **Descriptive posture** — the mode's identity is mapping what is, not recommending what should be. Prescriptive drift is the parse-preserving discipline that distinguishes this mode from systems-dynamics-causal.
+- **Closing edges** — verified explicitly per loop.
+- **Stock-vs-flow distinction** — preserved; collapsing both into "variables" loses the structural distinction.
+- **Multiple operative loops at the same time** — multiple loops can dominate at different timescales; the corpus preserves the timescale-stratified picture.
 
 ## VERIFICATION CRITERIA
 
 Verified means: system boundary is stated; every loop's members close back to start along declared edges; every loop's declared type matches negative-edge parity; at least one delay is marked (when present); archetype names (if any) correspond to matching loop topology; structural observations describe what is without recommending what should be. Confidence is stated for each major loop (high if both depth and breadth analyses converged on type and polarity; lower otherwise).
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **structural feedback-system mapping** — a Forrester/Senge descriptive-stance current-state diagram with stocks, flows, polarity-parity-verified loops, archetype identification, and structural observations that do not slide into prescription. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **System boundary.** One paragraph stating what's inside and what's outside. `**Inside:** [variables in scope]. **Outside (deliberately excluded):** [variables whose inclusion would change the structural picture, with reason for exclusion].`
+
+2. **Variables and stocks.** A table or labelled list. Each: `**[Variable]** — role: [stock / flow / auxiliary / exogenous]. Unit: [...]. Short label: [...]. Note on accumulation (for stocks) or rate (for flows): [...].`
+
+3. **Feedback loops with polarity.** Per loop, a labelled block: `**Loop [R1 / R2 / B1 / B2 ...]:** Type: [R / B]. Members in order: [V1 → V2 → ... → V1]. Edge polarities: [+/− per edge]. Polarity-parity check: [even − count → R; odd → B; matches declared type]. Behaviour-grounded label: [what this loop produces].`
+
+4. **Delays.** Bulleted list. Each: `**[Edge or loop]** — delay magnitude: [...]. Structural implication: [how the delay shapes system behaviour].`
+
+5. **System archetypes present.** Bulleted list. Each: `**[Archetype]** — matching loop topology: [which declared loops instantiate the archetype]. Behaviour pattern: [what the structure typically produces].` Name-drops without topology are reshaped.
+
+6. **Structural observations.** Bulleted list. Each: `**[Observation about the system as-it-is]** — grounded in: [which loops, stocks, delays]. Timescale at which this observation is operative: [...].` This section is *descriptive only*. Intervention recommendations are reshaped out and surfaced as a sideways-route note.
+
+7. **Confidence and boundary caveats.** Bulleted list of per-loop / per-stock confidence with grounding, plus boundary caveats naming what was deliberately excluded.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- Loop ids follow the `R<n>` / `B<n>` pattern verbatim.
+- Stock vs. flow distinction is operative in section 2; collapsed labels are reshaped.
+- Polarity-parity verification is *explicit* per loop in section 3.
+- Senge archetype vocabulary appears verbatim with matching topology required.
+- Structural observations (section 6) are *descriptive*. Prescriptive language ("the system should...", "the leverage point is...") gets reshaped out and surfaced separately: `**Note: prescriptive recommendations are not part of this mode's contract. If intervention design is wanted, systems-dynamics-causal (T4) is the appropriate sideways-route.**`
+- When the observer-blindness flag survived consolidation, section 1 closes with: `**Observer-position note:** the analyst / user is part of this system; their position is itself a structural feature.`
+- Format is *diagram-friendly* — the visual is the structural argument. When a stock-and-flow envelope or CLD is appropriate, it appears as the centrepiece of section 3.
+- The mode's parse-preserving discipline (descriptive, not prescriptive) is enforced throughout. Drift toward causal/recommendation framing is what makes the mode collapse back into systems-dynamics-causal.
 
 ## CAVEATS AND OPEN DEBATES
 

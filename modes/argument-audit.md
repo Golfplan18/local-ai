@@ -102,19 +102,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you paste or describe the argument you want audited?'"
     on_underspecified: "Ask the user whether they want the full Argument Audit molecular pass or a lighter Coherence Audit / Frame Audit read."
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - argument_summary
-    - per_claim_coherence_findings
-    - frame_surfacing_findings
-    - cross_cutting_issues
-    - named_fallacies_and_argumentative_moves
-    - overall_argument_soundness_assessment
-    - residual_uncertainties
-    - confidence_map
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -180,7 +167,21 @@ Breadth in Argument Audit is the catalog of frames considered before frame-audit
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Argument Audit output identifies cross-cutting issues that single-component passes would miss, names frame-imports concretely (which premise carries which import), grounds coherence findings in specific claim-pairs and inference steps, and warrants any fallacy labels with structural specificity.
+Argument Audit's evaluation surface is bifurcated because the mode is molecular: per-component quality (frame-audit and coherence-audit each performed substantively) and synthesis quality (cross-cutting integration producing findings neither component would have produced alone). Synthesis is load-bearing — CQ1 (integration vs concatenation) is the critical question whose negative answer most directly invalidates the output, and integration-failure is the failure mode that distinguishes a successful Argument Audit from a stapling of two sub-audits. CQ2–CQ4 act as quality gates on the underlying components.
+
+The evaluator works in Walton-scheme, Toulmin, and Lakoff vocabulary, with Shackel checks when motte-and-bailey is invoked. Five checks:
+
+1. **Cross-cutting integration (CQ1, load-bearing).** For each cross-cutting atom, ask: could frame-audit alone have produced this finding? Could coherence-audit alone? If yes to either, the atom is mis-routed. Genuine cross-cutting findings name a structural interaction — a frame-import doing inferential work coherence alone misses, a coherence-failure tracking a frame-substitution across claims, motte-and-bailey-style alternation operating across multiple claims. No atoms meeting this test means integration-failure: the audit is a concatenation, not a molecular pass.
+
+2. **Frame-import specificity (CQ2).** Each frame-surfacing atom must name the specific premise carrying the import. References to "the X frame" without locating the importing premise are frame-import-vagueness. The reading is Lakoff — surface frame, deep frame, framing presupposition — applied to specific premises.
+
+3. **Coherence grounding (CQ3).** Each coherence finding must cite the specific claim-pair or inference step at issue. The Toulmin decomposition (claim / grounds / warrant / backing / qualifier / rebuttal) is the evaluator's reading vocabulary; verdicts of "the reasoning is shaky" or "something feels off" without claim-pair citations are coherence-impressionism.
+
+4. **Fallacy and scheme warrant (CQ4).** Where a Walton scheme is named (expert opinion, position to know, cause to effect, analogy, etc.), the audit's premise pattern must match the argument's actual structure, and the scheme's critical questions must be applied to the argument's actual premises rather than to a reconstructed strawman. Where motte-and-bailey is invoked, the motte claim, the bailey claim, and the alternation point must each be named. Bare labels are fallacy-labeling-without-warrant.
+
+5. **Stance neutrality.** Argument Audit is descriptive of argument structure, not evaluative of conclusion-truth. Verdicts that step beyond soundness ("the argument is dishonest," "the conclusion is wrong") are out-of-scope and route to T15 (steelman, balanced-critique, the red-team modes). The evaluator flags such residue rather than smoothing it.
+
+Confidence is calibrated separately: synthesis-stage atoms inherit lower confidence than component-stage atoms; uniform confidence across both surfaces is miscalibrated. Where Debate D2 (motte-and-bailey doctrine vs. fallacy) applies, the evaluator confirms the audit named the structural move in the argument's terms rather than relying on the label alone.
 
 ## REVISION GUIDANCE
 
@@ -188,13 +189,74 @@ Revise to deepen synthesis where it concatenates. Revise to add specificity to v
 
 ## CONSOLIDATION GUIDANCE
 
-Your first line is an H2 heading that names the central flaw — e.g., `## The argument relies on a hidden premise about agency`, `## Your friend is doing a frame swap, not an argument`, `## The "just statistics" move is doing all the work`. The heading IS your lead. No preamble before it. After the heading, walk through the supporting findings as flowing prose — the framing move the argument relies on, the hidden premise it needs to work, the named fallacies in plain language (composition / reductionist fallacy, straw man, motte-and-bailey where applicable), and finally articulation scripts the user can actually deploy in conversation. Where Debate D2 is relevant (motte-and-bailey invoked), name the structural move in the argument's terms — which claim is the motte, which is the bailey, where the alternation occurs — rather than relying on the label alone. Use inline confidence language only where confidence varies meaningfully.
+Organize the consolidated corpus as **integrated argument-audit atoms with explicit cross-cutting findings**: per-claim coherence atoms from coherence-audit, frame-surfacing atoms from frame-audit, cross-cutting integration atoms (the molecular value), named-fallacy atoms with structural warrant, and articulation-script atoms. The atoms are:
 
-The response is the audit, not a research paper *about* the audit. Do NOT produce numbered section headers ("### 1. Charitable Reconstruction", "### 2. Toulmin Decomposition", "### 3. The Structural Failure"). Do NOT label sections with the names of analytical methodologies (Toulmin Decomposition, Mereological Audit, Audit Summary). One additional heading is appropriate when transitioning into the articulation scripts ("## Here's what you can say back" or similar) — that's a real change of register. Otherwise: paragraphs. Do not emit a separate confidence map, provenance attribution, content-contract checklist, or continuity prompt — those belong in orchestrator metadata, not in the user's response.
+1. **Argument-summary atom.** The argument under audit stated once at the corpus head — claim, supporting moves, conclusion.
+
+2. **Per-claim coherence atoms (coherence-audit provenance).** Each carries: claim being audited, Toulmin-decomposed elements (claim / grounds / warrant / backing / qualifier / rebuttal), and the coherence verdict (holds / fails / partially-holds) with structural reason. Coherence-impressionism is the named failure mode; impressionistic verdicts without claim-pair or inference-step citations do not survive.
+
+3. **Frame-surfacing atoms (frame-audit provenance).** Each carries: frame name, the specific premise or claim that imports it, the alternative frames it displaces, what is hidden by the frame. Frame-import-vagueness is the named failure mode; "the argument operates within X frame" without naming the importing premise does not survive.
+
+4. **Cross-cutting integration atoms.** The molecular value — each atom names a structural issue requiring BOTH frame-perception and coherence-tracking to detect (a frame-import doing load-bearing inferential work coherence-audit alone misses; a coherence-failure that tracks a frame-substitution across claims; motte-and-bailey-style structure operating across the argument). At minimum one cross-cutting atom; integration-failure is the named failure mode (cross-cutting section concatenating component findings without identifying interactions).
+
+5. **Named-fallacy atoms with structural warrant.** Each carries: the named fallacy (motte-and-bailey, equivocation, composition, etc.), the specific structural move (which claim is motte, which is bailey, where the alternation occurs), and the warrant for the label. Fallacy-labeling-without-warrant is the named failure mode; bare labels do not survive.
+
+6. **Argument-soundness assessment atom.** A single corpus-level verdict integrating frame and coherence findings (not single-component): `the argument as given [holds / fails / partially-holds] because [structural reason that integrates both component findings]`.
+
+7. **Articulation-script atoms.** Per surfaced issue, a usable line for the user to deploy in conversation. Each carries: the surfaced issue (cross-reference to atoms 2-5), a one-to-three-sentence usable line, and the context where it applies.
+
+8. **Component-provenance tags.** Each atom in items 2-5 carries `[from frame-audit]` / `[from coherence-audit]` / `[cross-cutting]`. Tags make integration auditable; silo-aggregation is visible when atoms cluster within single-component tags rather than interleaving.
+
+9. **Residual uncertainties + confidence per finding.** Confidence markers attach to findings; synthesis-stage atoms inherit lower confidence than component-stage atoms.
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Per-claim restatement across components** — when frame-audit and coherence-audit both surfaced findings about the same claim with parallel framings, collapse to single atoms with both components' insights merged.
+- **Vague frame-imports** — "the argument operates within X frame" without naming which specific premise imports it.
+- **Coherence-impressionism** — "the reasoning is shaky" / "something feels off" without claim-pairs or inference-step citations.
+- **Bare fallacy labels** — invoking motte-and-bailey, equivocation, etc. without the structural move that warrants the label.
+- **Integration-failure residue** — cross-cutting-issues section restating per-claim and frame findings without identifying the inter-component interactions.
+- **Stance-bearing evaluative language** — "the argument is wrong / bad / dishonest" residue. Argument Audit is neutral; stance-bearing evaluation belongs in T15 modes.
+
+**What NOT to collapse:**
+
+- **Cross-stream cross-cutting-interpretation differences** — when streams identified different structural cross-cutting issues, preserve both as parallel atoms.
+- **Frame-vs-coherence interpretation disagreement for the same finding** — when one stream read a finding as primarily frame-based and the other as primarily coherence-based, preserve both interpretations as parallel atoms (the disagreement is itself an integration finding).
+- **Articulation-script variations** — when streams produced different usable lines for the same surfaced issue, preserve both. Multiple scripts is breadth.
 
 ## VERIFICATION CRITERIA
 
 Verified means: both component passes ran (or were flagged as proceeded-with-gap); cross-cutting integration surfaces issues neither component caught alone; frame-imports and coherence findings are concretely grounded; named fallacies are warranted with structural specificity; user-facing articulation scripts are present and usable; the four critical questions are addressed in the response. The response is conversational prose addressed to the user — verification does not require any specific section structure, only that the content contract is satisfied.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **conversational audit addressed to the user, lead-with-the-flaw, with articulation scripts at the end**. The audit's findings reach the user via flowing prose, not via numbered methodology sections. Place the consolidated-corpus atoms into the deliverable in this order:
+
+1. **Lead H2 heading — name the central flaw.** The first line of the deliverable is an H2 heading naming the integrated finding in plain language. Examples: `## The argument relies on a hidden premise about agency`, `## Your friend is doing a frame swap, not an argument`, `## The "just statistics" move is doing all the work`. The heading IS the lead — no preamble before it. The heading is conversational, not academic; do not name analytical methods in it.
+
+2. **Body — flowing prose, integrated findings.** Walk through the supporting findings as paragraphs in this order:
+   - The framing move the argument relies on (from frame-surfacing atoms, in plain language — "the argument frames X as Y", not "the Lakoff frame here")
+   - The hidden premise or inferential gap the argument needs to work (from per-claim coherence atoms, in plain language)
+   - The cross-cutting issue — where frame-import and coherence-failure interact (the molecular value, surfaced as the audit's distinctive contribution that single-component audits would miss)
+   - Named fallacies (motte-and-bailey, composition / reductionist fallacy, straw man, equivocation) in plain language with structural detail — name the specific move, not just the label
+
+   No numbered section headers (`### 1. Charitable Reconstruction`, `### 2. Toulmin Decomposition`). No methodology labels (Toulmin Decomposition, Mereological Audit, Audit Summary). Paragraphs only in the body.
+
+3. **Articulation scripts — register-change transition.** After the analytical findings, transition with a single second H2: `## Here's what you can say back` or similar. This is one of the few times a second H2 is appropriate — a real change of register from analysis to deployment.
+
+   Render each script as: a short setup ("when your friend says X..."), the usable line ("you can say back: …"), and a one-sentence why ("this works because it points to the structural move you surfaced above"). Three to five scripts is typical.
+
+4. **Where Debate D2 (motte-and-bailey) is invoked.** Name the structural move in the argument's terms — which claim is the motte (defensible / modest), which is the bailey (ambitious / desired), where the alternation occurs. Do not rely on the label alone. Note in passing whether Shackel's doctrinal usage or the wider fallacy-label usage best fits ("this looks like a doctrine-level alternation, not just a single move").
+
+5. **Confidence inline only where meaningful.** Use natural confidence language inline ("almost certainly", "probably", "I'm less sure about this part") only where confidence varies meaningfully across findings. Do NOT emit a standalone Confidence Map, Provenance Attribution, Content Contract Checklist, or Continuity Prompt — those belong in orchestrator metadata.
+
+**Per-section conventions:**
+
+- The deliverable's first character is `#` (the lead H2). No preamble of any kind.
+- Use H2 only for the lead heading and the articulation-scripts transition. No other section headers in the body.
+- Avoid pipeline-machinery vocabulary throughout: "frame-audit findings", "coherence-audit findings", "the cross-cutting integration stage", "Stream A vs Stream B" — those belong inside the orchestrator.
+- Avoid methodology badges: do not label what you're doing as "Toulmin decomposition" or "Walton scheme classification" — let the analysis land as substance.
+- The deliverable ends when the substance ends. No decorative close, no aphoristic signature line.
 
 ## CAVEATS AND OPEN DEBATES
 

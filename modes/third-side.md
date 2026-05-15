@@ -91,21 +91,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Who are the parties to the conflict, what is the conflict, and what is your role — are you mediating, facilitating, advising someone who is, or part of the surrounding community?'"
     on_underspecified: "Ask: 'Who else is around this conflict — colleagues, friends, neighbors, leaders, professionals — who could play a third-side role?'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - parties_and_conflict_summary
-    - surrounding_community_or_network
-    - prevention_roles_active_or_needed
-    - resolution_roles_active_or_needed
-    - containment_roles_active_or_needed
-    - role_assignment_candidates
-    - escalation_signals_to_watch
-    - candidate_third_side_interventions
-    - flagged_unknowns_to_test
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -193,11 +178,98 @@ Revise to restore third-side stance where the draft slipped into party advocacy.
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured mapping with the ten required sections. Parties and conflict summary appear first. Surrounding community/network is mapped before role assignment (the third side is a *social fact* that may or may not contain the roles needed). Prevention / resolution / containment role-clusters appear as separate sections, each with the relevant Ury roles (prevention: provider, teacher, bridge-builder; resolution: mediator, arbiter, equalizer, healer; containment: witness, referee, peacekeeper) and which are active / needed / not-yet-relevant. Role-assignment candidates link each role to actual people / institutions / norms in the surrounding community. Escalation signals are listed as triggers for shifting role-cluster emphasis (e.g., escalation may mean containment becomes primary). Candidate interventions are specific and keyed to role gaps. Flagged unknowns are testable. Confidence per finding distinguishes confidence in role-need (often higher) from confidence in bearer-availability (often lower) from confidence in intervention-effectiveness (depends on context).
+Organize the consolidated corpus as **a Ury third-side atom set: parties-and-conflict summary, surrounding-community mapping, ten-role atoms across three clusters (prevention / resolution / containment), role-assignment atoms linking each role to actual bearers, escalation-signal atoms, candidate intervention atoms keyed to role gaps, flagged-unknown atoms, three-kind confidence (role-need / bearer-availability / intervention-effectiveness), and a standing third-side-stance discipline**. The atoms are:
+
+1. **Parties-and-conflict summary atom.** Each party named and the conflict characterised neutrally (third-side stance, not party-stance).
+
+2. **Surrounding-community-or-network mapping atoms.** Each atom names: an actor / institution / norm in the surrounding community/network — at intimate, mid, and outer rings (family / close colleagues; extended network / institutional context; wider community / public / norms). The third side is a *social fact* that may or may not contain the roles needed.
+
+3. **Prevention-role atoms — Ury cluster 1.** Each atom names one of three prevention roles (`provider` — addresses frustrated needs that drive conflict; `teacher` — gives skills for conflict-handling; `bridge-builder` — develops relationships that pre-empt conflict), plus its status (`active` / `needed but unfilled` / `not yet relevant`).
+
+4. **Resolution-role atoms — Ury cluster 2.** Each atom names one of four resolution roles (`mediator` — facilitates communication; `arbiter` — judges when self-resolution fails; `equalizer` — democratises power asymmetry; `healer` — addresses injured emotions and broken relationships), plus status.
+
+5. **Containment-role atoms — Ury cluster 3.** Each atom names one of three containment roles (`witness` — pays attention so escalation has consequences; `referee` — establishes rules for fair fight; `peacekeeper` — interposes when violence threatens), plus status.
+
+6. **Ten-role checklist completeness check.** Ten-role-collapse is the named failure mode the consolidator watches for; outputs that named only "mediator" generically (or only one or two roles) get reshaped to survey the full checklist. Prevention-or-containment-omission is the named failure mode for cluster-imbalance; analyses addressing only resolution roles get reshaped to address prevention and containment.
+
+7. **Role-assignment candidate atoms — per active or needed role.** Each atom names: an actual person / institution / norm in the surrounding community who could fill the role. Roles-without-bearers is the named failure mode; abstract role assertions without named candidates get reshaped.
+
+8. **Escalation-signal atoms.** Each atom names: a signal that the conflict is escalating (rhetoric hardening, third-party recruitment to one side, breakdown of communication channels, emergence of public symbolic markers, threats of exit or violence) and the role-cluster shift it implies (escalation typically shifts containment toward primary).
+
+9. **Candidate intervention atoms — keyed to role gaps.** Each atom names: a specific third-side intervention, the role gap it addresses, and the candidate bearer.
+
+10. **Flagged-unknown atoms.** Testable in practice — questions the user (or the mediator) can investigate that would change the role analysis.
+
+11. **Intervention-limit atoms.** Where third-side intervention may be inappropriate (power asymmetry that makes mediation cover for coercion; parties' own agency requiring confrontation rather than mediation; situations where third-side intervention is intrusive), the limits surface explicitly. Third-side-overreach is the named failure mode; analyses asserting third-side as universally appropriate get reshaped.
+
+12. **Cultural-context flag — when applicable.** Where surrounding-community cultural norms, hierarchies, and institutions shape which roles are available and who can credibly fill them, the flag surfaces. Cultural-context-flatness is the named failure mode.
+
+13. **Parties-as-agents discipline.** A standing atom: parties are *agents*, not passive objects of third-side intervention. Third-side roles support parties' own moves. Parties-as-passive is the named failure mode.
+
+14. **Third-side-stance discipline.** A standing atom: analysis stays at "what can the surrounding community do" rather than slipping into "what should party X do". Party-stance-creep is the named failure mode.
+
+15. **Three-kind confidence per finding.** Role-need (often higher), bearer-availability (often lower), intervention-effectiveness (depends on context). Kept distinct.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Party-stance creep** — recommendations favoring one party rather than what the third side can do for the conflict as a whole.
+- **Ten-role collapse** — generic mediator-talk; the full Ury ten-role checklist absent.
+- **Cluster imbalance** — only resolution roles addressed; prevention and containment elided.
+- **Roles without bearers** — abstract role assertions without named candidates.
+- **Third-side overreach** — third-side framed as universally appropriate; limits unacknowledged.
+- **Cultural-context flatness** — roles applied without considering whether the surrounding community's institutions and norms can credibly fill them.
+- **Parties-as-passive** — third-side positioned as solving the conflict rather than supporting party agency.
+- **Generic mediator-talk** — collapsing back to "mediator" rather than the ten-role-and-three-cluster frame.
+
+**What NOT to collapse:**
+
+- **The ten-role checklist** — full survey required; partial coverage gets reshaped.
+- **Three-cluster framing** — prevention / resolution / containment distinctions are operative.
+- **Stream disagreement about which roles are needed** — when streams identified different role-need patterns, both survive with their respective reasoning.
+- **Intervention-limit atoms** — never deleted for cleanliness; the mode's honesty requires acknowledging where the third side cannot help.
+- **Three confidence kinds** — never blended into a single confidence value.
 
 ## VERIFICATION CRITERIA
 
 Verified means: parties and conflict named; surrounding community/network mapped; all three role-clusters (prevention / resolution / containment) addressed; the ten Ury roles surveyed (active / needed / not-yet-relevant per role); role-assignment candidates link roles to actual bearers; escalation signals listed; at least two specific third-side interventions named with role-gap rationale; flagged unknowns testable in practice; intervention limits acknowledged where context warrants; the five critical questions are addressable from the output. Confidence per major finding accompanies each claim. The third-side stance is maintained throughout (no party advocacy creep).
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **Ury third-side mediation analysis** — a structured mapping that surveys all ten roles across three clusters (prevention / resolution / containment), links each active or needed role to a named bearer in the surrounding community, surfaces escalation signals and intervention limits, and maintains third-side stance throughout. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Parties and conflict summary.** One paragraph naming each party neutrally and characterising the conflict from third-side stance.
+
+2. **Surrounding community or network.** A labelled block mapping the community in three rings. `**Intimate ring (family / close colleagues):** [actors]. **Mid ring (extended network / institutional context):** [actors / institutions]. **Outer ring (wider community / public / norms):** [actors / norms].`
+
+3. **Prevention roles active or needed.** Per role, one labelled block: `**Provider:** status: [active / needed / not yet relevant]. Frustrated needs addressed: [...].` `**Teacher:** status: [...]. Skills given: [...].` `**Bridge-builder:** status: [...]. Relationships developed: [...].`
+
+4. **Resolution roles active or needed.** Per role, one labelled block: `**Mediator:** status: [...]. Communication facilitated: [...].` `**Arbiter:** status: [...]. Judgments rendered: [...].` `**Equalizer:** status: [...]. Power-asymmetry addressed: [...].` `**Healer:** status: [...]. Emotions / relationships addressed: [...].`
+
+5. **Containment roles active or needed.** Per role, one labelled block: `**Witness:** status: [...]. Attention paid: [...].` `**Referee:** status: [...]. Rules established: [...].` `**Peacekeeper:** status: [...]. Interposition: [...].`
+
+6. **Role assignment candidates.** Bulleted list. Each: `**[Role]** — candidate bearer(s): [actual person / institution / norm in the surrounding community]. Credibility for the role: [...]. Cultural-context fit: [...].`
+
+7. **Escalation signals to watch.** Bulleted list. Each: `**[Signal — rhetoric hardening / third-party recruitment / channel breakdown / public symbolic markers / threats of exit or violence]** — what it implies: [shift in role-cluster emphasis, typically toward containment].`
+
+8. **Candidate third-side interventions.** Numbered list. Each: `[N]. **[Intervention]** — role gap addressed: [...]. Candidate bearer: [...]. Expected effect on conflict trajectory: [...].` At least two interventions appear.
+
+9. **Flagged unknowns to test.** Bulleted list. Each: `**[Question]** — what it would test: [...]. How the answer changes the analysis: [...].`
+
+10. **Confidence per finding.** Three labelled confidence assessments, kept distinct:
+    - `Role-need: [confidence and basis — typically higher].`
+    - `Bearer-availability: [confidence and basis — typically lower].`
+    - `Intervention-effectiveness: [confidence and basis — depends on context].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 10.
+- Ury ten-role vocabulary (`provider` / `teacher` / `bridge-builder` / `mediator` / `arbiter` / `equalizer` / `healer` / `witness` / `referee` / `peacekeeper`) appears verbatim with operative meanings preserved per role.
+- Three-cluster framing (prevention / resolution / containment) appears as the structural backbone of sections 3–5.
+- Roles link to *named bearers* in section 6 — abstract role assertions are reshaped at this layer.
+- The third-side stance is maintained throughout — party-stance creep gets reshaped to community-stance analysis at every section.
+- Limits acknowledgement: when third-side overreach was flagged, the deliverable carries: `**Note on intervention limits:** [where third-side intervention may be inappropriate — power asymmetry that makes mediation cover for coercion / parties' agency requiring confrontation / intrusive intervention]. These limits should be honoured before deploying the interventions in section 8.`
+- When cultural-context flatness was flagged, section 6 carries: `**Cultural-context note:** the surrounding community's norms and hierarchies shape which roles can credibly be filled. The bearer candidates above are filtered through this context; in another cultural setting the same roles would require different bearers.`
+- Confidence (section 10) stays as three distinct kinds; blending is reshaped.
 
 ## CAVEATS AND OPEN DEBATES
 

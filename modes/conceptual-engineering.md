@@ -81,19 +81,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What concept are we working on, and what's it failing to do for you in its current form?'"
     on_underspecified: "Ask: 'What would the concept ideally help us do, distinguish, or accomplish?'"
-output_contract:
-  artifact_type: clarification
-  required_sections:
-    - target_concept_named
-    - current_usage_descriptive_baseline
-    - identified_function_failures
-    - ameliorative_purpose
-    - candidate_revisions_with_rationale
-    - implementation_problem_acknowledgment
-    - revision_costs_and_displacement
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -170,11 +157,79 @@ Revise to recast stipulative purpose as functional purpose. Revise to add descri
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured clarification artifact with the eight required sections. Target concept is named explicitly. Current usage descriptive baseline appears as its own section before the ameliorative move. Identified function failures are itemized. Ameliorative purpose is stated as function the revised concept should serve. Candidate revisions appear with rationale and tradeoff notes. Implementation problem and revision costs each get their own section. Confidence-per-finding distinguishes confidence about the function-failure diagnosis from confidence about the proposed revision from confidence about adoption feasibility.
+Organize the consolidated corpus as **an ameliorative-analysis atom set: target-concept naming, descriptive baseline atoms, function-failure atoms, ameliorative-purpose statement, candidate-revision atoms with rationale, implementation-problem atoms, and revision-cost atoms**. The atoms are:
+
+1. **Target-concept atom.** The concept being engineered, named explicitly and minimally. One short clause; no premature characterisation.
+
+2. **Descriptive-baseline atoms.** Each atom captures one current use, distinction, or commitment the concept presently does (or is taken to do). Atoms here are descriptive, not normative — they record what current usage is, regardless of whether the engineering move will preserve it. Baseline-skip is the named failure mode the consolidator watches for; if streams arrived at the engineering move without a baseline section, the corpus reconstructs at least the minimum baseline before the ameliorative atoms.
+
+3. **Function-failure atoms.** Each atom names one specific function the current concept fails to perform, or performs in a distorting way. Function-failure atoms carry: which function is at stake, how the current concept fails it, what the failure costs.
+
+4. **Ameliorative-purpose atom.** The function the revised concept should serve, stated as a *function* (something it should do, distinguish, accomplish) rather than as a *conclusion* (a desired classification the revised concept should produce). Stipulation-smuggle is the named failure mode; function-shaped purposes survive into the corpus, conclusion-shaped purposes get reshaped or flagged.
+
+5. **Candidate-revision atoms.** Each atom carries: the proposed revision, the rationale tying it to the ameliorative purpose, and the tradeoff or cost note attached to it. Multiple candidates are preserved (breadth marker); the corpus does not collapse to a single recommendation prematurely.
+
+6. **Implementation-problem atoms.** Each atom names: who would need to adopt the revision, what coordination problem adoption faces, what mechanism (use, argument, education, legislation, movement) could carry the revision into community usage. Implementation-blindness is the named failure mode.
+
+7. **Revision-cost atoms.** Each atom names: a current use, distinction, or commitment that the revision would displace or lose, and an assessment of whether the loss is worth the gain. Cost-blindness is the named failure mode.
+
+8. **Ameliorative-overreach flag — when applicable.** When the target concept's contested status is constitutive (Gallie's essentially-contested concepts, where the dispute is itself the object), the corpus carries an explicit flag rather than smoothing the contestation into a candidate revision.
+
+9. **Confidence per finding** distinguishing three kinds: confidence about the function-failure diagnosis, confidence about the proposed revision, and confidence about adoption feasibility. These three confidences are kept separate — a high-confidence diagnosis does not imply a high-confidence revision, and a high-confidence revision does not imply a high-confidence adoption forecast.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Stipulative phrasing of the ameliorative purpose** — purpose statements that smuggle in the desired conclusion ("the concept should classify X as Y") rather than naming the function ("the concept should help us distinguish operations of class A from class B").
+- **Engineering-without-baseline** — candidate revisions proposed without descriptive grounding in current usage; revision-as-strawman.
+- **Proposal-equals-adoption assumption** — language that treats the engineering proposal as if articulation alone produced uptake.
+- **Costless-revision framing** — revisions presented as pure gain, with current usage written off as having no value worth preserving.
+- **Adjudication of the Cappelen-Haslanger implementation debate** — the corpus acknowledges the implementation problem without taking a side; arguments for or against the Cappelen-pessimist or Haslanger-engaged view are not in scope for the deliverable.
+
+**What NOT to collapse:**
+
+- **Competing candidate revisions** — when streams produced different ameliorative proposals for the same function-failure, both candidates are preserved with their respective rationales and tradeoff notes. The user, not the consolidator, chooses between competing engineering moves.
+- **Disagreements about whether the concept admits engineering at all** — when one stream proposed a revision and another flagged ameliorative-overreach (the concept is essentially contested), both stances survive; the disagreement is itself the finding.
+- **Stream disagreement about implementation feasibility** — when streams diverge on whether adoption is plausible for a particular candidate, both assessments are preserved.
 
 ## VERIFICATION CRITERIA
 
 Verified means: target concept is named; current usage baseline is mapped; function failures are itemized; ameliorative purpose is function-shaped (not conclusion-shaped); at least one candidate revision is proposed with rationale; implementation problem is acknowledged; revision costs are surfaced; the four critical questions are addressable from the output. Confidence per major finding accompanies each claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is an **ameliorative-analysis clarification** — a structured engineering proposal that walks from descriptive baseline through function-failure to candidate revision, with implementation and cost honestly surfaced. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Target concept.** One paragraph naming the concept explicitly and stating, in a sentence, what the engineering question on the table is.
+
+2. **Current usage — descriptive baseline.** Itemise the current uses, distinctions, and commitments the concept presently carries. Each item: `**[Current use / distinction / commitment]** — [brief description of how the concept currently does this work].` This section is descriptive, not evaluative; the ameliorative move does not begin here.
+
+3. **Identified function failures.** Bulleted list. Each: `**[Function the concept should serve]** — current concept's failure mode: [how it fails or distorts]. Cost of the failure: [what this costs in practice].`
+
+4. **Ameliorative purpose.** One paragraph stating the function(s) the revised concept should serve, phrased as functions (distinguishing, enabling, supporting) rather than as conclusions (classifying X as Y). When the ameliorative purpose carries multiple sub-functions, enumerate them as a short bulleted list under the paragraph.
+
+5. **Candidate revisions.** Each candidate gets its own labelled sub-block:
+   - `**Candidate [N]: [revision phrased as a proposed reading or definition of the concept]**`
+   - `Rationale: [how this revision answers the ameliorative purpose].`
+   - `Tradeoffs and costs: [what current usage this revision preserves, displaces, or loses].`
+   
+   Multiple candidates appear when streams converged on different proposals; do not collapse to a single recommendation.
+
+6. **Implementation problem.** One paragraph naming: who would need to adopt the revision, what coordination problem adoption faces, what mechanism (use, argument, education, legislation, movement-building) could carry it into community usage. When the user is doing engineering for use within their own work or organisation, this section is brief and notes the reduced scope of the implementation problem; when proposing revision for a wide community, this section is foregrounded.
+
+7. **Revision costs and displacement.** Bulleted list. Each: `**[Current use / distinction / commitment that would be displaced]** — assessment: [is the loss worth the gain? What would the community lose access to?].`
+
+8. **Confidence per finding.** Three labelled confidence assessments, kept distinct:
+   - `Function-failure diagnosis: [confidence and basis].`
+   - `Proposed revision(s): [confidence and basis].`
+   - `Adoption feasibility: [confidence and basis].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Ameliorative purpose is stated functionally throughout — purpose phrasings that smuggle in conclusions are reshaped or flagged at this layer if they survived consolidation.
+- The Cappelen-Plunkett vocabulary (ameliorative analysis, implementation problem, function the concept should serve) is operative throughout; it is not paraphrased away into generic redefinition language.
+- When the concept's contested status is constitutive (essentially-contested concept), the deliverable renders an explicit ameliorative-overreach block before section 5: `**Note: this concept's contestation may be constitutive (essentially contested in Gallie's sense); the engineering move risks treating as resolvable what is in fact the object of legitimate ongoing dispute. Candidate revisions below are offered with this caveat.**` The block does not suppress the rest of the deliverable; it qualifies it.
+- The three confidence kinds (diagnosis, revision, adoption) stay separated in section 8 — they are not blended into a single confidence verdict.
 
 ## CAVEATS AND OPEN DEBATES
 

@@ -109,19 +109,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Emit Input Sufficiency redirect (three-part shape: What I see / What's missing / Three options with override). Do not attack thin material without flagging."
     on_underspecified: "If audience is missing, ask one clarifying question via clarification panel: 'Who is the brief argued in front of?' If artifact is missing, run Input Sufficiency Protocol redirect."
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - stance_declaration
-    - audience_model
-    - artifact_restatement
-    - attacks_ranked_by_persuasive_force
-    - suggested_phrasing_per_attack
-    - residual_uncertainties
-    - concessions
-    - strategic_considerations
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -218,11 +205,86 @@ Revise to add audience-grounding ("lands hardest with [audience] because…") wh
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured audit with advocate-specific output shape: stance declaration ("Stance: advocate") → audience model (named audience, their frame, their priorities, their persuasion pathways) → artifact restatement → attacks ranked by persuasive force (Devastating > Strong > Plausible) → suggested phrasing per attack in the audience's idiom → residual uncertainties → concessions (preempting the strongest counter-moves the audience would raise) → strategic considerations (political / reputational / coalitional). Each attack carries Attack [N] / Persuasive Force / Surface / Why this lands with [audience] / Suggested phrasing. Ranking discipline is persuasive force (what lands hardest first), not severity for own-fix and not surface order. Stance is the advocate stance; mixing in assessment-stance shapes (severity-ranked vulnerabilities, fix recommendations, fix-feasibility) is a routing failure — those belong in red-team-assessment.
+Organize the consolidated corpus as **an advocate-stance adversarial brief: stance declaration, audience-model atom, artifact-restatement atom, attack atoms ranked by persuasive force (Devastating > Strong > Plausible), suggested-phrasing atoms per attack in the audience's idiom, residual-uncertainty atoms, concession atoms preempting the strongest counter-moves, and strategic-consideration atoms naming political / reputational / coalitional dimensions**. The atoms are:
+
+1. **Stance-declaration atom.** A single line: `Stance: advocate.` This is operative; the deliverable's posture is built-the-case-against, not surface-vulnerabilities-for-fix. Mixing in assessment-stance shapes (severity-ranked vulnerabilities, fix recommendations) is a routing failure.
+
+2. **Audience-model atom.** The named external audience the brief will be argued in front of, their frame, their priorities, their persuasion pathways. Audience-misalignment is the named failure mode the consolidator watches for; attacks ranked by what would persuade a generic "critic" rather than the named audience get reshaped, and suggested-phrasing in analyst voice rather than audience idiom gets reshaped.
+
+3. **Artifact-restatement atom.** The artifact in brief, quoted where possible, so attacks anchor in what the artifact actually says.
+
+4. **Attack atoms — ranked by persuasive force.** Each atom carries: an `Attack [N]` label, a persuasive-force tag (`Devastating` / `Strong` / `Plausible`), a surface tag (`Internal` — internal-logic flaw / `External` — empirical, optical, strategic), grounding in quoted artifact content, and a `Why this lands with [audience]` annotation. Cynical-overreach is the named failure mode; weak attacks promoted to `Devastating` to inflate the brief get reshaped (deflated to honest tier). Straw-target-trap and no-fabrication-violation are also named failure modes; attacks resting on distorted or fabricated artifact-claims get reshaped or removed. Sycophantic-inverse-trap is named: attacks that perform hostility but a committed opponent would not actually use get reshaped.
+
+5. **Suggested-phrasing atoms per attack.** Each atom carries the attack expressed in the audience's idiom, ready to deploy — not in the analyst's voice.
+
+6. **Residual-uncertainty atoms.** Where the brief depends on facts or framings that may shift, the uncertainty surfaces explicitly.
+
+7. **Concession atoms.** Each atom names a counter-move the audience will recognise as the artifact's strongest defence, with a pre-emptive handling. Concessions are part of the brief's strength, not its weakness; omitting them lets the audience ambush the user with the obvious reply.
+
+8. **Strategic-consideration atoms.** Each atom names a political / reputational / coalitional dimension the audience cares about, with how the brief should leverage or avoid it.
+
+9. **Framework-attack-trap flag — when applicable.** Where the brief drifted into critique of the framework the artifact rests on (rather than the artifact within it), the flag is preserved and a sideways-route to paradigm-suspension is surfaced.
+
+10. **Override-flag — when applicable.** Where the Input Sufficiency Protocol was overridden (artifact thin, audience under-specified), every attack carries an explicit low-specificity / generic flag so the user knows the limitation when arguing it. Fabricated-override-trap is the named failure mode.
+
+11. **Manufacture-on-revise flag — when applicable.** Where revision added attacks without new evidence (sycophantic-inverse drift at revision stage), the flag is preserved. Manufacture-on-revise-trap is the named failure mode.
+
+12. **Confidence per finding.** Each major claim carries a confidence (separate from persuasive force — confidence is about whether the attack is correct; persuasive force is about whether it lands).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Cynical overreach** — weak attacks framed as Devastating to inflate apparent power.
+- **Straw-target attacks** — attacks on distorted versions of the artifact; the audience can read the artifact themselves and the attack collapses.
+- **Fabrication** — claims about what the artifact says, intends, or implies that are not actually in the artifact.
+- **Audience misalignment** — attacks calibrated to a generic critic rather than the named audience; phrasing in analyst voice rather than audience idiom.
+- **Sycophantic-inverse performance** — performing hostility without committed-opponent grounding; the attack fails the "would a committed opponent actually use this" check.
+- **Framework-attack drift** — critiquing the framework the artifact rests on rather than the artifact within it (sideways-route to paradigm-suspension if framework is genuinely the issue).
+- **Assessment-stance bleed** — severity rankings, fix recommendations, fix-feasibility — these belong in red-team-assessment, not here.
+- **Manufacture-on-revise** — new attacks added during revision without new evidence.
+- **Concession omission** — leaving out the artifact's strongest defence to make the brief look one-sided.
+- **Attack-quota inflation** — adding objections to hit a count rather than because they land. The mode is high-leverage ammunition, not exhaustive critique.
+
+**What NOT to collapse:**
+
+- **Devastating-vs-Strong-vs-Plausible distinctions** — these calibrate honestly; persuasive-force tiers do not blur.
+- **Stream disagreement about audience model** — when streams modeled the audience differently (different priorities or persuasion pathways), both models survive with their respective attack rankings.
+- **Internal-vs-External attack-surface distinction** — internal-logic flaws and external (empirical, optical, strategic) attacks operate differently in front of an audience; they stay distinguished.
+- **Concession entries** — never deleted for one-sidedness; they are part of the brief's structural integrity.
 
 ## VERIFICATION CRITERIA
 
 Verified means: stance declaration appears in opening line ("Stance: advocate"); audience model section present with named audience, frame, priorities, and persuasion pathways; artifact restatement quotes where possible; every attack has Attack [N] label, Persuasive Force (Devastating/Strong/Plausible), Surface (Internal/External), Why this lands with [audience], and Suggested phrasing in the audience's idiom; attacks are ranked by persuasive force (worst-for-the-artifact first) not by surface or order-of-discovery; residual uncertainties section present; concessions section present with at least one preempted counter-move; strategic considerations section present; framework-level attacks flagged out-of-scope and routed to paradigm-suspension; override-flag present on every attack when Input Sufficiency override was invoked; no new attacks introduced during revision without new evidence; no assessment-stance shapes (severity-ranked vulnerabilities, fix recommendations, fix-feasibility) present. The six critical questions are addressable from the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is an **adversarial advocate brief** — a structured case AGAINST the artifact, ranked by persuasive force for the named external audience, with suggested phrasing in the audience's idiom and concessions preempting the strongest counter-moves. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Stance declaration.** First line: `**Stance: advocate.**` This appears verbatim; downstream sections honour the advocate-stance contract.
+
+2. **Audience model.** One labelled block. `**Named audience:** [...]. **Their frame:** [...]. **Their priorities:** [...]. **Their persuasion pathways:** [what arguments and tones move them].`
+
+3. **Artifact restatement.** One paragraph restating the artifact in brief, with quoted passages where possible. Attacks in the next section anchor here.
+
+4. **Attacks ranked by persuasive force.** Numbered list, **Devastating first, then Strong, then Plausible**. Each: `**Attack [N]** — Persuasive Force: [Devastating / Strong / Plausible]. Surface: [Internal / External]. Why this lands with [audience]: [...]. Grounded in artifact: [quote or specific reference].`
+
+5. **Suggested phrasing per attack.** Per attack, one labelled sub-block: `**Attack [N] — Suggested phrasing (in [audience]'s idiom):** "[the attack expressed in language the audience would actually respond to]."`
+
+6. **Residual uncertainties.** Bulleted list of facts or framings the brief depends on that may shift, with implications for the brief's deployment.
+
+7. **Concessions.** Bulleted list. Each: `**Counter-move the audience will recognise:** [the artifact's strongest defence]. **Pre-emptive handling:** [how the brief addresses this head-on rather than ignoring it].` At least one concession appears.
+
+8. **Strategic considerations.** Bulleted list of political / reputational / coalitional dimensions the audience cares about, with brief leverage notes.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Persuasive-force vocabulary (`Devastating` / `Strong` / `Plausible`) appears verbatim. The ranking discipline is persuasive force first — what lands hardest with the named audience — not severity, not order-of-discovery, not internal-then-external.
+- Suggested-phrasing (section 5) is in the audience's idiom, not analyst voice. Phrasing that reads in analyst voice is reshaped at this layer.
+- Concessions (section 7) are first-class. A brief without concessions will be ambushed by the audience's obvious reply. Omitting them for one-sidedness is reshaped.
+- When the framework-attack-trap flag survived consolidation, the deliverable carries a labelled note at the end of section 4: `**Framework-attack flag:** [N] attack(s) target the framework the artifact rests on rather than the artifact within it. If the audience would not accept the framework either, paradigm-suspension is the appropriate sideways-route; otherwise these attacks should be reshaped to stay within-framework.`
+- When the override-flag survived consolidation, each attack in section 4 carries an explicit `**[low-specificity — override invoked]**` annotation so the user knows when the attack is built on thin material.
+- When the manufacture-on-revise flag survived, the deliverable carries a top-line note: `**Note: the revision stage added [N] attack(s) without new evidence. These have been flagged or removed; the brief below reflects the analyst's first-pass evidence-grounded attacks plus revision-strengthening only.**`
+- Assessment-stance shapes (severity rankings, fix recommendations, fix-feasibility, vulnerabilities-for-own-fix) are reshaped or removed at this layer; they belong in red-team-assessment.
 
 ## CAVEATS AND OPEN DEBATES
 

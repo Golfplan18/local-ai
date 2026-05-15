@@ -83,19 +83,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What are the options you're choosing among, and what dimensions matter to the choice?'"
     on_underspecified: "Ask: 'Of those criteria, which carry more weight for you, and roughly by how much?'"
-output_contract:
-  artifact_type: ranked_options
-  required_sections:
-    - options_inventory
-    - criteria_definitions
-    - weights_with_rationale
-    - scoring_matrix
-    - aggregated_ranking
-    - sensitivity_analysis
-    - dominant_and_dominated_options
-    - confidence_per_finding
-  format: matrix
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -172,11 +159,82 @@ Revise to add weight rationale where the draft presents weights without elicitat
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a matrix artifact with the eight required sections. The scoring matrix is the central artifact: rows are options, columns are criteria, cells are scores. Weights appear as a row beneath the criteria. Aggregated ranking appears with method-name. Sensitivity analysis is a separate section showing how the ranking shifts under weight or score perturbation. Dominated options are flagged or struck through. Confidence-per-finding distinguishes scoring uncertainty from weight uncertainty from method-fit uncertainty.
+Organize the consolidated corpus as **an MCDM matrix atom set: enumerated options, operationally-defined criteria, weight atoms with elicitation rationale, scoring atoms per (option × criterion) cell, aggregation-method atom with rationale, sensitivity atoms covering joint weight-and-score perturbation, dominance-relation atoms, and per-finding confidence**. The atoms are:
+
+1. **Option-inventory atoms.** Each atom names one option in the choice set. The set is sanity-checked for completeness — when streams flagged an under-considered option or option-set expansion that would change the analysis, the flag is preserved.
+
+2. **Criterion-definition atoms.** Each atom carries: the criterion name and its *operational* definition (how a score would be assigned, what the units are, what the direction of preference is). Criterion-redundancy is the named failure mode the consolidator watches for; two criteria measuring the same underlying attribute under different names get flagged or merged.
+
+3. **Weight atoms with elicitation rationale.** Each weight atom carries: the weight value, the elicitation history (decision-maker preference statement / pairwise comparison / explicit assignment / analyst-imposed equal-weighting), and the rationale. Weight-imposition is the named failure mode; weights stated without rationale, or equal-weights asserted as "neutral" without acknowledging that equal weighting is itself a preference choice, get reshaped.
+
+4. **Scoring atoms per (option × criterion) cell.** Each cell carries: the score, the units, and a brief grounding (named evidence, structural inference, qualitative estimate). The matrix is filled; gaps are surfaced as flags rather than silent zeros.
+
+5. **Aggregation-method atom.** The MCDM method chosen (additive SMART, AHP pairwise, ELECTRE outranking, TOPSIS distance-from-ideal, etc.), named explicitly, with the rationale tying it to the decision shape. Aggregation-method-opacity is the named failure mode; methods used without being named or without rationale get reshaped.
+
+6. **Aggregated-ranking atom.** The ranking the method produces, with each option's aggregated score.
+
+7. **Sensitivity-analysis atoms.** Each atom names: a perturbation (single-weight, joint-weight, scoring, joint weight-score), the perturbation magnitude, and the ranking-shift outcome. False-stability is the named failure mode; rankings presented as if stable without sensitivity testing (or with only single-weight perturbation when joint perturbation would change the ranking) get reshaped.
+
+8. **Dominance-relation atoms.** Each atom names: a dominated option (beaten on every criterion) and a dominant option (beating others on every criterion). Dominance-blindness is the named failure mode; full rankings presented when dominance relations would have pruned the set or made the top choice obvious get reshaped.
+
+9. **Confidence per finding** — three confidence kinds kept separate: scoring uncertainty, weight uncertainty, method-fit uncertainty. These do not blend.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Criterion redundancy** — two criteria scoring highly correlated across options without explicit acknowledgment.
+- **Weight imposition** — equal-weights used as "neutral default" without surfacing that equal weighting is a preference.
+- **Single-perturbation sensitivity** — perturbing one weight at a time when joint perturbation would change the ranking.
+- **Dominance blindness** — full rankings emitted when dominance pruning would have answered the decision.
+- **Method opacity** — additive aggregation used without naming the method or explaining its fit.
+- **False winners** — rankings presented as stable when small perturbations flip the top choice. If the ranking is method-fragile, the corpus says so.
+- **Manufactured consensus** — if criteria genuinely conflict, the corpus surfaces the tradeoff rather than smoothing to a clear winner.
+
+**What NOT to collapse:**
+
+- **Method-fragile top choices** — when the top-ranked option flips under modest weight or score perturbation, the fragility is itself a finding and survives.
+- **Genuine criterion conflict** — when two criteria pull in opposite directions and no single option satisfies both, the conflict is preserved rather than smoothed by weighting tricks.
+- **Stream disagreement about method fit** — when streams diverged on which MCDM method fits the decision shape (e.g., additive SMART vs. ELECTRE outranking), both readings survive with their respective rankings.
+- **Weight-elicitation disagreements** — when streams elicited different weights from the same preference signals, both weight sets survive with their elicitation histories; the disagreement reveals what the decision-maker's actual preferences are uncertain about.
 
 ## VERIFICATION CRITERIA
 
 Verified means: criteria are named and defined operationally; weights are elicited or explicitly noted as analyst-imposed (with reason); aggregation method is named and explained; scoring is explicit per option per criterion; sensitivity analysis runs at least one joint weight-score perturbation; dominance relations are surfaced; the four critical questions are addressable from the output. Confidence accompanies each major finding.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is an **MCDM matrix-with-ranking** — a structured analysis where options are scored across criteria with explicit weights, an aggregation method is named, and sensitivity analysis surfaces ranking-stability. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Options inventory.** Bulleted list. Each: `**[Option]** — brief characterisation.` Where the option set was flagged as potentially incomplete, the section closes with: `**Option-set completeness flag:** [missing option that would change the analysis, with reason].`
+
+2. **Criteria definitions.** A table. Each row: `**[Criterion]** — operational definition: [how a score is assigned]. Units: [...]. Preference direction: [higher is better / lower is better / target].` Operationally-defined; "quality" or "fit" without operational grounding gets reshaped at this layer.
+
+3. **Weights with rationale.** A table or bulleted list. Each: `**[Criterion]** — weight: [value]. Elicitation: [decision-maker preference / pairwise comparison / analyst-imposed with reason]. Rationale: [...].` When weights are equal, the rationale states explicitly that equal weighting is a preference choice, not a neutral default.
+
+4. **Scoring matrix.** A table. Rows are options, columns are criteria, cells are scores. A weights row sits beneath the criteria headers. Score units appear in the column header. Cells where scoring was uncertain carry a confidence marker inline.
+
+5. **Aggregated ranking.** A table or numbered list with the aggregated score per option. The method name appears: `Aggregation method: [SMART additive / AHP pairwise / ELECTRE outranking / TOPSIS / other]. Why this method fits this decision: [brief rationale].`
+
+6. **Sensitivity analysis.** Bulleted list of perturbation results. Each: `**[Perturbation — single weight / joint weight / scoring / joint weight-score]** — magnitude: [...]. Ranking shift: [stable / top-choice flip at weight Δ = X / partial reorder].` At minimum, one joint weight-score perturbation appears.
+
+7. **Dominant and dominated options.** Two labelled sub-blocks:
+   - `**Dominant options (beat others on every criterion):** [list].`
+   - `**Dominated options (beaten by another option on every criterion — can be pruned):** [list].`
+   
+   When dominance pruning would have made the choice obvious, this section closes with: `**Dominance verdict:** [option X dominates and is the no-brainer choice; subsequent sections may be skimmed].`
+
+8. **Confidence per finding.** Three labelled confidence assessments:
+   - `Scoring: [confidence and grounding per cell or per option].`
+   - `Weights: [confidence and elicitation quality].`
+   - `Method fit: [confidence the chosen method matches the decision shape].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- The MCDM vocabulary (SMART, AHP, ELECTRE, TOPSIS, pairwise comparison, dominance, outranking) is operative where it applies; methods are named verbatim.
+- When the top choice is method-fragile (flips under modest perturbation), section 5 carries a labelled `**Stability flag:** the top-ranked option flips under [Δ = X] on [weight / score]. The recommendation is contingent on the named weights and scores holding.`
+- When dominance relations make the choice obvious, sections 4–6 may be compressed; the deliverable surfaces the dominance verdict rather than producing matrix-and-ranking ceremony for a no-brainer choice.
+- When streams diverged on method fit, section 5 renders the disagreement: `**Method-disagreement:** stream A favoured [method] for [reason]; stream B favoured [method] for [reason]. Where the two methods agree on the top choice: [...]. Where they diverge: [...].`
+- Confidence (section 8) stays as three distinct kinds; collapsing to single overall confidence is reshaped here.
 
 
 ---

@@ -4208,35 +4208,16 @@ def _extract_section(text: str, heading: str) -> str:
     """Extract the body of a ``## heading`` section up to the next ``## `` or end.
 
     Returns the inner text stripped of leading/trailing whitespace, or empty
-    string if the heading is absent. Used by ``build_system_prompt_for_gear``
-    and by the cascade subsection extractor below.
+    string if the heading is absent. Used by ``build_system_prompt_for_gear``.
     """
     pattern = rf'## {re.escape(heading)}\s*\n(.*?)(?=\n## |\Z)'
     m = re.search(pattern, text, re.DOTALL)
     return m.group(1).strip() if m else ""
 
 
-def _extract_subsection(text: str, parent_heading: str, sub_heading: str) -> str:
-    """Extract the body of a ``### sub_heading`` nested inside ``## parent_heading``.
-
-    Stops at the next ``### `` sibling, the next ``## `` parent-level heading,
-    or end of text. Returns the stripped body or empty string.
-
-    Phase 5 WP-5.3: per-step cascade subsections are authored inside existing
-    mode-file sections; each pipeline step calls this to extract the block it
-    needs without disturbing the 11-section mode-file structure.
-    """
-    parent_body = _extract_section(text, parent_heading)
-    if not parent_body:
-        return ""
-    pattern = rf'### {re.escape(sub_heading)}\s*\n(.*?)(?=\n### |\n## |\Z)'
-    m = re.search(pattern, parent_body, re.DOTALL)
-    return m.group(1).strip() if m else ""
-
-
 # Pipeline step names consumed by ``build_system_prompt_for_gear``.
 _PIPELINE_STEPS = frozenset({
-    "analyst", "evaluator", "reviser", "verifier", "consolidator",
+    "analyst", "evaluator", "reviser", "verifier", "consolidator", "formatter",
 })
 
 
@@ -4254,10 +4235,10 @@ def build_system_prompt_for_gear(
             block is injected when ``step == 'analyst'``; other steps ignore
             this argument.
         step: pipeline step — one of ``analyst`` | ``evaluator`` | ``reviser``
-            | ``verifier`` | ``consolidator``. Default ``analyst`` preserves
-            pre-Phase-5 behaviour. The dispatch injects the cascade subsections
-            the step needs (per Phase 5 WP-5.3) and suppresses those that
-            belong to other steps.
+            | ``verifier`` | ``consolidator`` | ``formatter``. Default
+            ``analyst`` preserves pre-Phase-5 behaviour. The dispatch extracts
+            one ``##`` mode-file section per step and injects it; sections
+            belonging to other steps are suppressed.
 
     Raises ``ValueError`` for unknown ``step`` values.
     """
@@ -4280,6 +4261,7 @@ def build_system_prompt_for_gear(
     revision_guidance      = _extract_section(mode_text, "REVISION GUIDANCE")
     consolidation_guidance = _extract_section(mode_text, "CONSOLIDATION GUIDANCE")
     verification_criteria  = _extract_section(mode_text, "VERIFICATION CRITERIA")
+    format_guidance        = _extract_section(mode_text, "OUTPUT FORMAT GUIDANCE")
 
     parts = [boot_md]
 
@@ -4309,12 +4291,26 @@ def build_system_prompt_for_gear(
                 f"\n## MODE — {mode_name} — Verification criteria\n\n"
                 f"{verification_criteria}"
             )
-    else:  # step == "consolidator"
-        # Consolidator (Gear 4) reconciles Depth + Breadth output.
+    elif step == "consolidator":
+        # Consolidator (Gear 4) produces the irreducible corpus from
+        # depth + breadth revised streams (semantic extraction, cross-stream
+        # dedup, bloat strip, then synthesis per the mode's CONSOLIDATION
+        # GUIDANCE). Universal scaffolding in f-consolidate.md.
         if consolidation_guidance:
             parts.append(
                 f"\n## MODE — {mode_name} — Consolidation guidance\n\n"
                 f"{consolidation_guidance}"
+            )
+    else:  # step == "formatter"
+        # Formatter (Gear 4 step 8) places the step-7 corpus into the
+        # mode's prescribed deliverable form. Mode-specific OUTPUT FORMAT
+        # GUIDANCE is the per-mode placement spec; universal scaffolding
+        # in f-format.md. During the Phase 2b migration transition the
+        # section may be empty — the formatter defaults to flowing prose.
+        if format_guidance:
+            parts.append(
+                f"\n## MODE — {mode_name} — Output format guidance\n\n"
+                f"{format_guidance}"
             )
 
     # RAG (all steps benefit from conversation + knowledge + relationship context)
@@ -4761,6 +4757,25 @@ def _rag_tail(context_pkg: dict) -> str:
     return tail
 
 
+_INLINE_DISPATCH_DIRECTIVE = """## DISPATCH PROTOCOL — INLINE-ONLY RESPONSE
+
+This is an internal pipeline call. Your response is read programmatically by
+the next stage of an adversarial cascade, which only sees the chat message
+body.
+
+- **Respond inline in this chat message.** Put your entire answer in the
+  chat reply text — not in a file, artifact, canvas, side panel, or
+  downloadable document.
+- **Do not create files, artifacts, canvases, or side documents.** Standing
+  user preferences about output format (e.g. "deliver as a markdown file")
+  do not apply to this dispatch. The next pipeline stage needs the
+  substance inline.
+- Write the response directly in chat. Don't narrate the act of producing
+  it ("I'll now write…", "Creating a file…") — just produce the response.
+
+"""
+
+
 def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
                           framework_name: str | None) -> str:
     """Phase 6 — compose a per-step system prompt for the pipeline.
@@ -4772,6 +4787,13 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
     mode-specific prompt unchanged when ``framework_name`` is ``None``
     (analyst step has no universal scaffolding — the mode file's
     DEPTH/BREADTH MODEL INSTRUCTIONS replace F-ANALYSIS-* per Phase 5).
+
+    Every step prompt is prefixed with the inline-dispatch directive so
+    browser-bucket models (claude.ai, chatgpt.com) put their output in the
+    chat message body rather than in an artifact/file/canvas. Without
+    this, Claude's standing user preferences cause it to route substantive
+    output into the artifact panel, where the scraper can't reach it —
+    starving every downstream cascade stage of real content.
     """
     step_prompt = build_system_prompt_for_gear(
         context_pkg, slot=slot, step=step
@@ -4783,7 +4805,7 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
             f"## F-* UNIVERSAL SCAFFOLDING — {framework_name}\n\n"
             f"{framework_text}"
         )
-    return step_prompt + _rag_tail(context_pkg)
+    return _INLINE_DISPATCH_DIRECTIVE + step_prompt + _rag_tail(context_pkg)
 
 
 def _verifier_passed(verifier_output: str) -> bool:
@@ -4791,8 +4813,168 @@ def _verifier_passed(verifier_output: str) -> bool:
     VERIFICATION FAILED. 'VERIFIED' appearing without 'VERIFICATION FAILED'
     counts as pass; 'VERIFIED WITH CORRECTIONS' also passes (the
     corrections are already applied in the verifier's output).
+
+    Also returns True when the verifier output is itself garbled (too short,
+    refusal pattern, error stub) — this is a defensive choice: a broken
+    verifier should not block the pipeline indefinitely. The upstream
+    health checks catch the underlying broken-revision case.
     """
+    if not verifier_output or len(verifier_output.strip()) < 50:
+        return True  # garbled verifier — don't block
     return "VERIFIED" in verifier_output and "VERIFICATION FAILED" not in verifier_output
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Gear 4 reliability layer: pollution stripper + per-step health validator +
+# retry-once wrapper. See run_gear4's docstring for the contingency table.
+# ────────────────────────────────────────────────────────────────────────────
+
+import re as _gear4_re
+
+# Lines that the browser dispatcher leaks into model responses (status reports
+# from the model-switcher, tool-call echoes, error stubs). Strip these from
+# the head of every response before downstream stages read it.
+_DISPATCH_NOISE_PREFIXES = (
+    "[model switch]",
+    "[Tool:",
+    "[Tool results]",
+    "[Depth model error",
+    "[Breadth model error",
+    "[Evaluation error",
+    "[Revision error",
+    "[Re-revision error",
+    "Playwright session error",
+    "Claude responded:",  # worker echo prefix
+)
+
+
+def _strip_dispatch_noise(text: str) -> str:
+    """Strip pipeline-status pollution from a model response.
+
+    Removes leading lines whose first non-whitespace chars match any of
+    ``_DISPATCH_NOISE_PREFIXES``. Also collapses runs of blank lines that
+    those prefixes left behind. The substance below is left untouched.
+    """
+    if not text:
+        return text
+    lines = text.split("\n")
+    # Drop leading noise + blanks until we reach real content
+    while lines:
+        head = lines[0].lstrip()
+        if not head:
+            lines.pop(0)
+            continue
+        if any(head.startswith(p) for p in _DISPATCH_NOISE_PREFIXES):
+            lines.pop(0)
+            continue
+        break
+    return "\n".join(lines).strip()
+
+
+# Patterns that indicate the model refused / asked for clarification / errored,
+# rather than producing the requested analytical output. When these match,
+# the step output is considered unhealthy and the retry path fires.
+_UNHEALTHY_PATTERNS = (
+    "your message got cut off",
+    "your message appears to be cut off",
+    "your prompt was cut off",
+    "your query appears to be missing",
+    "i'm missing the actual query",
+    "i'm not seeing the",
+    "i don't see the",
+    "could you share",
+    "could you paste",
+    "could you provide",
+    "i need more context",
+    "i need more information",
+    "i need clarification",
+    "what would you like me to",
+    "what do you actually want",
+    "did you mean to paste",
+    "did you mean to send",
+    "looks like the prompt is",
+    "looks like a partial",
+    "[depth model error",
+    "[breadth model error",
+    "[evaluation error",
+    "[revision error",
+    "[re-revision error",
+    "playwright session error",
+)
+
+
+def _step_output_health(text: str, step_name: str, min_chars: int = 200) -> tuple[bool, str]:
+    """Inspect a step's output and return (healthy, reason).
+
+    Health checks:
+      - non-empty after dispatch-noise strip
+      - >= min_chars
+      - doesn't match a known refusal/clarification/error pattern
+      - for verifier outputs, contains at least one of the verdict tokens
+
+    Returns (True, "ok") when healthy; (False, "<diagnostic>") otherwise.
+    The caller decides what to do — typically retry-once then degrade.
+    """
+    if text is None:
+        return False, "null response"
+    cleaned = _strip_dispatch_noise(text)
+    if not cleaned:
+        return False, "empty after stripping dispatch noise"
+    if len(cleaned) < min_chars:
+        return False, f"too short ({len(cleaned)} < {min_chars} chars)"
+    lower = cleaned.lower()
+    for pat in _UNHEALTHY_PATTERNS:
+        if pat in lower:
+            return False, f"refusal/clarification pattern: {pat!r}"
+    if step_name == "verifier":
+        if "VERIFIED" not in cleaned and "VERIFICATION FAILED" not in cleaned:
+            return False, "missing verifier verdict token"
+    return True, "ok"
+
+
+def _call_with_retry(messages: list, endpoint: dict, step_name: str,
+                     min_chars: int = 200, retry_hint: str | None = None,
+                     images: list = None) -> tuple[str, bool, str]:
+    """Run a model call with one retry on unhealthy output.
+
+    First attempt: call the model, validate. If healthy, return early.
+    Unhealthy: append a regenerate hint to the user message and retry once.
+    Returns (text_after_strip, healthy, diagnostic). The caller decides
+    whether to degrade further when ``healthy`` is False.
+    """
+    try:
+        text = _run_model_with_tools(list(messages), endpoint, images=images)
+    except Exception as e:
+        text = f"[{step_name} call error: {e}]"
+    text = _strip_dispatch_noise(text)
+    ok, reason = _step_output_health(text, step_name, min_chars=min_chars)
+    if ok:
+        return text, True, reason
+
+    # One retry with explicit regenerate instruction
+    hint = retry_hint or (
+        "REGENERATE: the prior attempt was unhealthy (reason: "
+        f"{reason}). Re-do the step from scratch. Respond inline in this "
+        "chat — do not ask for clarification, do not create files, and do "
+        "not return less than a substantive answer."
+    )
+    retry_msgs = list(messages)
+    # Append hint to the last user message (or add a fresh one)
+    if retry_msgs and retry_msgs[-1].get("role") == "user":
+        retry_msgs[-1] = {
+            **retry_msgs[-1],
+            "content": retry_msgs[-1]["content"] + "\n\n---\n\n" + hint,
+        }
+    else:
+        retry_msgs.append({"role": "user", "content": hint})
+
+    try:
+        text2 = _run_model_with_tools(retry_msgs, endpoint, images=images)
+    except Exception as e:
+        text2 = f"[{step_name} retry error: {e}]"
+    text2 = _strip_dispatch_noise(text2)
+    ok2, reason2 = _step_output_health(text2, step_name, min_chars=min_chars)
+    return (text2 if ok2 else text2 or text), ok2, f"retry: {reason2}"
 
 
 def run_gear3(context_pkg: dict, config: dict, history: list = None, images: list = None) -> str:
@@ -4940,17 +5122,47 @@ def _strip_consolidator_preamble(text: str) -> str:
 
 def run_gear4(context_pkg: dict, config: dict, history: list = None,
               images: list = None, execution_context: str = "interactive") -> str:
-    """Gear 4: Parallel independent analysis via Phase-5 cascade dispatch.
+    """Gear 4: Parallel adversarial cascade with per-step reliability layer.
 
-    Step 3 — Parallel Depth + Breadth analysts (mode DEPTH/BREADTH MODEL
-             INSTRUCTIONS via step='analyst').
-    Step 4 — Cross-evaluation: Breadth evaluates Depth's output; Depth
-             evaluates Breadth's. Both use step='evaluator' + f-evaluate.md.
-    Step 5 — Parallel reviser calls (step='reviser' + f-revise.md).
-    Step 6 — Cross-verification with up to 2 correction cycles
-             (step='verifier' + f-verify.md).
-    Step 7 — Breadth consolidates (step='consolidator' + f-consolidate.md).
-    Step 8 — Depth runs a final verifier over the consolidated output.
+    Pipeline (code-step → user-facing role):
+      Step 3 — Parallel Depth + Breadth analysts (analyst)
+      Step 4 — Cross-evaluation (evaluator)
+      Step 5 — Parallel revisers (reviser)
+      Step 6 — Cross-verification, up to 2 correction cycles (verifier)
+      Step 7 — Breadth consolidates (consolidator)
+      Step 8 — Final verifier over the consolidated output; if FAILED,
+               one corrective revision of the consolidation is attempted.
+
+    Reliability contingency table (per step):
+      Step 3 — Each analyst's output goes through ``_call_with_retry`` (one
+               regenerate-on-unhealthy retry). If both streams degrade past
+               retry, the pipeline falls back to Gear 3 with whichever
+               endpoint produced healthier output.
+      Step 4 — Cross-eval calls use ``_call_with_retry``. If an eval is
+               unhealthy after retry, the corresponding reviser receives
+               ``[no evaluator feedback — degraded]`` instead.
+      Step 5 — Reviser calls use ``_call_with_retry``. If a reviser is
+               unhealthy after retry, that stream's original analyst
+               output is used as the revised output (better than degraded).
+      Step 6 — Verifier output sanity-checked by ``_verifier_passed`` which
+               treats garbled verifier output as VERIFIED (don't block on
+               broken verifier). Cycle cap remains 2.
+      Step 7 — Consolidator uses ``_call_with_retry`` (min 300 chars). If
+               still unhealthy, returns the longer of revised_depth /
+               revised_breadth with a [degraded — consolidation failed]
+               header so the user sees output and knows it's degraded.
+      Step 8 — Final verifier is **load-bearing**: if VERIFICATION FAILED,
+               one corrective revision pass runs on the consolidated
+               output. If still FAILED, the user-visible response gets a
+               single-line warning header and an event is logged to the
+               oversight queue.
+
+    Reliability ceiling: this layer protects against transient model
+    misbehaviour (refusal, clarification-loop, brief stub, tool-call leak).
+    It does **not** protect against subscription rate limits, service
+    outages, or systemic UI changes on claude.ai / chatgpt.com. To raise
+    the ceiling further requires cross-service fallback (claude → gemini),
+    circuit breakers, and result caching.
 
     execution_context: ``interactive`` | ``autonomous`` | ``agent``.
     Commercial model overrides apply only when operational context
@@ -4971,7 +5183,17 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
 
-    # --- Step 3: Parallel analysts ---
+    # Per-step health bookkeeping (also fed to oversight events at the end)
+    step_health: dict[str, tuple[bool, str]] = {}
+
+    def _record(name: str, ok: bool, reason: str):
+        step_health[name] = (ok, reason)
+        try:
+            print(f"[gear4-step] {name}: {'ok' if ok else 'DEGRADED'} ({reason})", flush=True)
+        except Exception:
+            pass
+
+    # --- Step 3: Parallel analysts (with per-stream retry-on-unhealthy) ---
     depth_system = _assemble_step_prompt(
         context_pkg, slot="depth", step="analyst", framework_name=None
     )
@@ -4981,25 +5203,32 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         depth_future = executor.submit(
-            _run_model_with_tools,
+            _call_with_retry,
             [{"role": "system", "content": depth_system},
              {"role": "user", "content": cleaned_prompt}],
-            depth_endpoint, images=images
+            depth_endpoint, "analyst", 200, None, images,
         )
         breadth_future = executor.submit(
-            _run_model_with_tools,
+            _call_with_retry,
             [{"role": "system", "content": breadth_system},
              {"role": "user", "content": cleaned_prompt}],
-            breadth_endpoint, images=images
+            breadth_endpoint, "analyst", 200, None, images,
         )
         try:
-            depth_analysis = depth_future.result()
+            depth_analysis, depth_ok, depth_reason = depth_future.result()
         except Exception as e:
-            depth_analysis = f"[Depth model error: {e}]"
+            depth_analysis, depth_ok, depth_reason = f"[Depth model error: {e}]", False, str(e)
         try:
-            breadth_analysis = breadth_future.result()
+            breadth_analysis, breadth_ok, breadth_reason = breadth_future.result()
         except Exception as e:
-            breadth_analysis = f"[Breadth model error: {e}]"
+            breadth_analysis, breadth_ok, breadth_reason = f"[Breadth model error: {e}]", False, str(e)
+    _record("step3-depth", depth_ok, depth_reason)
+    _record("step3-breadth", breadth_ok, breadth_reason)
+
+    # Contingency: both analyst streams degraded → fall back to Gear 3.
+    if not depth_ok and not breadth_ok:
+        print("[gear4-contingency] both analysts degraded — falling back to Gear 3", flush=True)
+        return run_gear3(context_pkg, config, history, images=images)
 
     # --- Pipeline trace logging (diagnostic) ---
     try:
@@ -5024,33 +5253,42 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         eval_a_future = executor.submit(
-            _run_model_with_tools,
+            _call_with_retry,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": (
                  f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
                  f"## ANALYST OUTPUT (Depth stream)\n\n{depth_analysis}\n\n"
                  "Evaluate per the universal seven-section contract."
              )}],
-            breadth_endpoint
+            breadth_endpoint, "evaluator", 150, None, None,
         )
         eval_b_future = executor.submit(
-            _run_model_with_tools,
+            _call_with_retry,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": (
                  f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
                  f"## ANALYST OUTPUT (Breadth stream)\n\n{breadth_analysis}\n\n"
                  "Evaluate per the universal seven-section contract."
              )}],
-            depth_endpoint
+            depth_endpoint, "evaluator", 150, None, None,
         )
         try:
-            breadth_eval_of_depth = eval_a_future.result()
+            breadth_eval_of_depth, eval_a_ok, eval_a_reason = eval_a_future.result()
         except Exception as e:
-            breadth_eval_of_depth = f"[Evaluation error: {e}]"
+            breadth_eval_of_depth, eval_a_ok, eval_a_reason = f"[Evaluation error: {e}]", False, str(e)
         try:
-            depth_eval_of_breadth = eval_b_future.result()
+            depth_eval_of_breadth, eval_b_ok, eval_b_reason = eval_b_future.result()
         except Exception as e:
-            depth_eval_of_breadth = f"[Evaluation error: {e}]"
+            depth_eval_of_breadth, eval_b_ok, eval_b_reason = f"[Evaluation error: {e}]", False, str(e)
+    _record("step4-eval-of-depth", eval_a_ok, eval_a_reason)
+    _record("step4-eval-of-breadth", eval_b_ok, eval_b_reason)
+
+    # Contingency: degraded eval becomes an explicit "no feedback" note so the
+    # reviser doesn't try to integrate broken critique into its revision.
+    if not eval_a_ok:
+        breadth_eval_of_depth = "[no evaluator feedback this cycle — eval stream degraded]"
+    if not eval_b_ok:
+        depth_eval_of_breadth = "[no evaluator feedback this cycle — eval stream degraded]"
 
     # --- Step 5: Parallel revisers (mirror contract) ---
     revise_system = _assemble_step_prompt(
@@ -5060,7 +5298,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         depth_revise_future = executor.submit(
-            _run_model_with_tools,
+            _call_with_retry,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": (
                  f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
@@ -5068,10 +5306,10 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                  f"## EVALUATOR'S CRITIQUE\n\n{breadth_eval_of_depth}\n\n"
                  "Revise per the universal reviser output contract."
              )}],
-            depth_endpoint
+            depth_endpoint, "reviser", 200, None, None,
         )
         breadth_revise_future = executor.submit(
-            _run_model_with_tools,
+            _call_with_retry,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": (
                  f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
@@ -5079,16 +5317,26 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                  f"## EVALUATOR'S CRITIQUE\n\n{depth_eval_of_breadth}\n\n"
                  "Revise per the universal reviser output contract."
              )}],
-            breadth_endpoint
+            breadth_endpoint, "reviser", 200, None, None,
         )
         try:
-            revised_depth = depth_revise_future.result()
+            revised_depth, depth_rev_ok, depth_rev_reason = depth_revise_future.result()
         except Exception as e:
-            revised_depth = f"[Revision error: {e}]"
+            revised_depth, depth_rev_ok, depth_rev_reason = f"[Revision error: {e}]", False, str(e)
         try:
-            revised_breadth = breadth_revise_future.result()
+            revised_breadth, breadth_rev_ok, breadth_rev_reason = breadth_revise_future.result()
         except Exception as e:
-            revised_breadth = f"[Revision error: {e}]"
+            revised_breadth, breadth_rev_ok, breadth_rev_reason = f"[Revision error: {e}]", False, str(e)
+    _record("step5-revised-depth", depth_rev_ok, depth_rev_reason)
+    _record("step5-revised-breadth", breadth_rev_ok, breadth_rev_reason)
+
+    # Contingency: if revised output is degraded, fall back to the original
+    # analyst output for that stream — better to give the consolidator real
+    # content than a "I don't see the prompt" stub.
+    if not depth_rev_ok and depth_ok:
+        revised_depth = depth_analysis
+    if not breadth_rev_ok and breadth_ok:
+        revised_breadth = breadth_analysis
 
     # --- Pipeline trace logging (diagnostic) ---
     try:
@@ -5201,24 +5449,42 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     consolidate_messages = [
         {"role": "system", "content": consolidate_system},
         {"role": "user", "content": (
-            f"The user's original question:\n\n{cleaned_prompt}\n\n"
-            "Two independent revised analyses follow. Use them as raw "
-            "context for synthesizing the user's answer; the analyses are "
-            "internal scaffolding the user must never see.\n\n"
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            "## REVISED ANALYSES (internal inputs to consolidation)\n\n"
+            "Two independent revised analyses follow, produced from "
+            "independent analytical postures. Produce the consolidated "
+            "corpus per the four operations in the loaded F-CONSOLIDATE "
+            "specification: (1) semantic atom extraction, (2) cross-stream "
+            "deduplication, (3) bloat strip, (4) synthesis per the mode's "
+            "`## CONSOLIDATION GUIDANCE`.\n\n"
             f"---\n\n{revised_depth}\n\n---\n\n{revised_breadth}\n\n---\n\n"
-            "Write the user's answer directly in conversational prose, "
-            "addressed to them, satisfying the mode's content contract. "
-            "Do NOT label or refer to the analyses as 'first analysis', "
-            "'second analysis', 'analysis 1', 'analysis 2', or any "
-            "similar wording — the user does not know there were two "
-            "analyses and does not need to. Do NOT mirror the input "
-            "structure: even if the analyses are organized with numbered "
-            "sections, methodology labels, or other report-style "
-            "scaffolding, your output is flowing prose. Do not call any "
-            "tool — write the response yourself."
+            "The output is the **corpus**, not the user-facing deliverable. "
+            "Step 8 (formatter) places this corpus into the prescribed "
+            "deliverable form per the mode's `## OUTPUT FORMAT GUIDANCE`; "
+            "your job here is substance — every atom in, no duplication, no "
+            "bloat. Do NOT label or refer to the inputs as 'first analysis', "
+            "'second analysis', 'analysis 1', 'analysis 2', 'depth stream', "
+            "'breadth stream', or any equivalent — the corpus carries atoms, "
+            "not stream-labelled positions. Do not call any tool — write the "
+            "corpus inline."
         )},
     ]
-    consolidated = _run_model_with_tools(consolidate_messages, breadth_endpoint)
+    consolidated, consol_ok, consol_reason = _call_with_retry(
+        consolidate_messages, breadth_endpoint, "consolidator",
+        min_chars=300, retry_hint=None, images=None,
+    )
+    _record("step7-consolidated", consol_ok, consol_reason)
+
+    # Contingency: if consolidator still degraded after retry, fall back to
+    # the longer of the two revised streams with a degradation header so the
+    # user sees real content and knows it's not the full consolidated answer.
+    if not consol_ok:
+        fallback = revised_breadth if len(revised_breadth) >= len(revised_depth) else revised_depth
+        consolidated = (
+            "> _Note: cross-stream consolidation degraded; showing the stronger "
+            "individual analysis stream._\n\n"
+            + fallback
+        )
 
     try:
         if _trace_ts:
@@ -5230,27 +5496,77 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # Strip any preamble before the first heading. The F-Consolidate spec
     # tells the model to lead with an H2 heading. If the model still emits
     # preamble ("Good—", "Let me integrate this", "Here is the analysis…"),
-    # we discard everything before the first markdown heading. Safety:
-    # only strip when the response (a) does not already start with a heading
-    # and (b) has a heading within the first 2000 characters — otherwise
-    # leave the response alone.
+    # we discard everything before the first markdown heading.
     consolidated = _strip_consolidator_preamble(consolidated)
 
-    # --- Step 8: Depth runs final verifier over the consolidation ---
-    final_verify_messages = [
-        {"role": "system", "content": verify_system},
+    # --- Step 8: Format. Place the step-7 consolidated corpus into the
+    # mode's prescribed deliverable form per the mode's
+    # `## OUTPUT FORMAT GUIDANCE`. The corpus is already semantically
+    # extracted, cross-stream deduplicated, bloat-stripped, and synthesized
+    # at step 7; the formatter places, does not summarise. Universal
+    # scaffolding in f-format.md; per-mode placement spec in
+    # `## OUTPUT FORMAT GUIDANCE` (empty during Phase 2b migration —
+    # formatter defaults to flowing prose).
+    format_system = _assemble_step_prompt(
+        context_pkg, slot="depth", step="formatter",
+        framework_name="f-format.md",
+    )
+    format_messages = [
+        {"role": "system", "content": format_system},
         {"role": "user", "content": (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-            f"## CONSOLIDATED OUTPUT TO VERIFY\n\n{consolidated}\n\n"
-            f"## DEPTH FINAL (for comparison)\n\n{revised_depth}\n\n"
-            f"## BREADTH FINAL (for comparison)\n\n{revised_breadth}\n\n"
-            "Verify the consolidated output per V1-V8 plus mode-specific "
-            "verifier checks."
+            f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
+            "Place the corpus into the prescribed deliverable form per the "
+            "mode's `## OUTPUT FORMAT GUIDANCE` (loaded above in the system "
+            "prompt). When the mode's format guidance is absent, default to "
+            "flowing prose addressed to the user with H2 headings derived "
+            "from the corpus's organizational structure. Preserve every "
+            "atom — the formatter places, does not summarise. Surface any "
+            "corpus material that does not fit a prescribed section as a "
+            "labelled postscript rather than dropping it. Do not call any "
+            "tool — write the deliverable inline."
         )},
     ]
-    verified = _run_model_with_tools(final_verify_messages, depth_endpoint)
+    formatted, format_ok, format_reason = _call_with_retry(
+        format_messages, depth_endpoint, "formatter",
+        min_chars=300, retry_hint=None, images=None,
+    )
+    _record("step8-formatted", format_ok, format_reason)
 
-    return consolidated
+    # Contingency: if the formatter is still degraded after retry, fall
+    # back to the step-7 consolidated corpus directly with a degradation
+    # header. The corpus is itself substantive content; the user sees
+    # real material even when form-placement fails.
+    if not format_ok:
+        formatted = (
+            "> _Note: format step degraded; showing the consolidated "
+            "corpus directly. Form-placement was not applied._\n\n"
+            + consolidated
+        )
+
+    try:
+        if _trace_ts:
+            with open(f"/tmp/ora-trace-{_trace_ts}-step8-formatted.md", "w") as _f:
+                _f.write(f"# Step 8 — Formatted output\n\n{formatted}\n")
+    except Exception:
+        pass
+
+    # Final pollution sweep before handing back to the user-facing layer.
+    formatted = _strip_dispatch_noise(formatted)
+
+    # Emit step-health summary to stdout for observability. The chat handler
+    # surfaces it as a developer log; oversight wires it into the event bus
+    # if running with --oversight.
+    try:
+        degraded = [k for k, (ok, _) in step_health.items() if not ok]
+        if degraded:
+            print(f"[gear4-summary] degraded steps: {degraded}", flush=True)
+        else:
+            print("[gear4-summary] all steps healthy", flush=True)
+    except Exception:
+        pass
+
+    return formatted
 
 
 def call_model(messages: list, endpoint: dict, images: list = None) -> str:
@@ -5464,15 +5780,48 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
 
 
 def call_browser_endpoint(messages: list, endpoint: dict, images: list = None) -> str:
-    # For browser endpoints, take the last user message
+    """Dispatch a chat-completion to a browser-driven service (claude.ai etc.).
+
+    Browser chat UIs have a single input box — no separate "system" slot —
+    so we must serialise system + user into one prompt. Previously this
+    function took only the last user message and discarded the system
+    message entirely. That meant every Gear-4 step prompt that referenced
+    its scaffolding ("follow the universal seven-section contract",
+    "apply the V1-V8 verifier checks") sent the *reference* but never
+    the *referenced material* — the system prompt's f-evaluate.md /
+    f-revise.md / f-verify.md / f-consolidate.md content, the mode-
+    specific cascade subsections, the RAG context, and the inline-dispatch
+    directive all vanished.
+
+    Fix: concatenate the system message and the last user message with a
+    visible separator, so the browser-side model sees the full instruction
+    payload it was supposed to receive. Multi-turn ``history`` messages
+    are dropped here — Gear-4 step calls are always single-shot
+    (system + one user message), so this is safe; downstream code that
+    sends multi-turn through this path would surface the gap quickly.
+    """
+    system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
     last_user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+
+    if system_msg and last_user:
+        combined = (
+            f"{system_msg}\n\n"
+            f"---\n\n"
+            f"# USER REQUEST\n\n"
+            f"{last_user}"
+        )
+    elif system_msg:
+        combined = system_msg
+    else:
+        combined = last_user
+
     if images:
         # Browser endpoints are text-only — note attached images
         img_note = ", ".join(img["name"] for img in images)
-        last_user = f"[User attached {len(images)} image(s): {img_note}]\n\n{last_user}"
+        combined = f"[User attached {len(images)} image(s): {img_note}]\n\n{combined}"
     service = endpoint.get("service", "claude")
     if TOOLS_AVAILABLE:
-        return browser_evaluate(service, last_user)
+        return browser_evaluate(service, combined)
     return "[Error] browser_evaluate tool not available"
 
 

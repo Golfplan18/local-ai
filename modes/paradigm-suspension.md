@@ -77,16 +77,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the consensus position or accepted explanation you want to question?'"
     on_underspecified: "Ask: 'Are you challenging the evidence behind a position, or the interests pushing it? If interests, route to Cui Bono.'"
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - foundational_assumptions
-    - evidence_audit_observational_vs_interpretive
-    - load_bearing_assessment
-    - alternative_interpretations
-    - evaluation
-  format: prose
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -156,7 +146,25 @@ Breadth in Paradigm Suspension is the catalog of alternative interpretations con
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Paradigm Suspension output: states ≥3 foundational assumptions as testable propositions; tags each evidence item as observational or interpretive; assesses load-bearing vs peripheral status; supplies ≥2 genuinely distinct alternatives grounded in observation; honours the Einstein guard rail (observation wins over preferred alternative). Specifically check for the contrarianism trap (rejecting consensus without evidence) and false equivalence (treating fringe positions as equally supported).
+Paradigm Suspension is read in Lakatosian research-programme vocabulary (hard core / protective belt / progressive vs degenerating programmes) with Kuhnian anomaly-and-revision analysis as the historical-pattern layer, and the hermeneutic-circle reading where evidence and framework co-constitute interpretation. The Einstein guard rail — push back against authority, never against observation — is the methodology's load-bearing commitment. CQ3 (einstein-guard-rail-violation) is the highest-stakes critical question: violating it is what separates suspension from contrarianism. CQ2 (asymmetric-evidence-standard) is also load-bearing because asymmetric standards are how contrarianism smuggles itself past the evidence check. CQ1 (assumption-as-conclusion) and CQ4 (false-equivalence) act as structural gates on assumption formulation and alternative quality.
+
+Evaluator checks:
+
+1. **Einstein guard rail held (CQ3, load-bearing).** No observation may be dismissed to favour a preferred alternative. The methodology pushes against authority (consensus, institutional position, expert framing) — never against observation. The evaluator's test: where the analysis reaches a conclusion at odds with the consensus, is each observational atom that bears against the preferred alternative engaged seriously, or is any observation explained-away in a manner that would not survive being applied to consensus evidence? An explained-away observation in service of a preferred alternative is einstein-guard-rail-violation, and the alternative loses standing.
+
+2. **Symmetric evidence standards (CQ2, load-bearing).** Each evidence atom must carry the observational vs interpretive tag, and the same tagging discipline must apply to consensus evidence and alternative evidence. Asymmetric-standard residue is consensus held to "show your work" while alternatives get "you can see it has explanatory power" — different bars for the same evidential role. Interpretive-evidence-trap (a special case) is alternative interpretive readings accepted uncritically while consensus interpretive readings are dismissed.
+
+3. **Assumptions as testable propositions (CQ1).** Each foundational assumption must be stated in the form "it is claimed that X" — phrased so that observational evidence could in principle bear on it. Assumptions stated as conclusions ("therefore X," "given that X") are assumption-as-conclusion residue; they hide the load-bearing premise inside the analysis rather than exposing it for suspension. At least three assumptions appear in testable form.
+
+4. **Load-bearing vs peripheral classification.** Lakatos's hard core / protective belt distinction is operative — for each assumption, the deliverable states whether suspending it collapses the framework (load-bearing / hard core) or whether the framework adapts (peripheral / protective belt). An assumption without this classification has not been suspended in the Lakatosian sense; it has merely been named.
+
+5. **Alternatives genuinely distinct and observationally grounded (CQ4).** Each alternative interpretation must be (a) genuinely distinct from the consensus, not a paraphrase, and (b) grounded in the same observational evidence base. Fringe alternatives treated as equally evidentially supported as the consensus are false-equivalence; they collapse the methodology's seriousness about observation. The reading test: would the alternative predict observations the consensus does not? If alternatives lack predictive content, they are not yet alternatives in the Lakatosian sense.
+
+6. **Indeterminacy preserved.** When the evidence honestly does not warrant supporting or rejecting the consensus, the verdict is "indeterminate on current evidence" — a first-class outcome, not a failure to decide. Verdict-collapse residue is suspension prematurely closed into a contrarian conclusion the evidence does not warrant (contrarianism-trap). The evaluator confirms the verdict reflects what the evidence supports, not what the analysis was tempted toward.
+
+7. **Historical-analogue calibration.** When the suspension pattern resembles a historical paradigm revision (Copernican, plate tectonics, prion theory, ulcer-as-bacterial), the analogue is named with the specific structural parallel. Bare invocations ("this is like plate tectonics") without parallel-structure detail are decorative; the analogue's role is to calibrate the user's expectations about how revision actually proceeds in real cases.
+
+Confidence is per-finding. The Einstein guard rail's preservation throughout the analysis is itself a corpus-level confidence factor — when the guard rail held, the suspension's findings carry weight; when it slipped, the alternative's standing is downgraded. Where streams disagreed on whether evidence is observational or interpretive (contested-tagging), the evaluator confirms the disagreement is preserved as a finding about what the field treats as bedrock rather than silently picked.
 
 ## REVISION GUIDANCE
 
@@ -164,11 +172,70 @@ Revise to convert assumptions stated as conclusions into testable propositions. 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as prose in the five required sections (foundational assumptions / evidence audit / load-bearing assessment / alternative interpretations / evaluation). Format: prose only — no diagram. A diagram would freeze the paradigm's structure, contradicting the mode's commitment to holding interpretive frames provisional. If visualisation is essential, transition to Synthesis (for bilateral mapping) or Dialectical Analysis (for adversarial sublation). Each foundational assumption uses the literal prefix "Assumption N (testable):"; each evidence item is tagged "[observational]" or "[interpretive]"; load-bearing assessment uses the literal label "load-bearing:" or "peripheral:".
+Organize the consolidated corpus as **a Lakatosian suspension audit: foundational assumptions stated as testable propositions, evidence atoms tagged observational vs. interpretive, load-bearing-vs-peripheral assessments, alternative-interpretation atoms grounded in observational evidence, and the Einstein guard rail honoured throughout**. The atoms are:
+
+1. **Foundational-assumption atoms.** Each atom states one assumption underlying the consensus position, phrased as a *testable proposition* (`it is claimed that X`) rather than as a conclusion (`therefore X`). Assumption-as-conclusion is the named failure mode the consolidator watches for; assumptions stated in conclusion-form get reshaped.
+
+2. **Evidence-audit atoms — per evidence item.** Each atom carries: the evidence item, the source, and an explicit tag — `[observational]` (direct measurement, replicable observation, raw datum) vs. `[interpretive]` (theory-laden reading, model-mediated inference). Interpretive-evidence-trap is the named failure mode; evidence used asymmetrically (consensus held to one standard, alternative to another) gets reshaped to symmetric tagging.
+
+3. **Load-bearing assessment atoms.** For each foundational-assumption atom, an explicit assessment: `load-bearing` (the framework collapses if this assumption is suspended) or `peripheral` (the framework adapts). At least three assumptions carry this assessment.
+
+4. **Alternative-interpretation atoms.** Each atom names one alternative interpretation of the same observational evidence base, with the alternative's grounding in observation (not interpretive overlay). False-equivalence is the named failure mode; fringe alternatives treated as equally supported by the same kind of evidence the consensus rests on get reshaped. At least two genuinely distinct alternatives appear.
+
+5. **Einstein-guard-rail atom.** A standing commitment in the corpus: push back against authority, never against observation. Einstein-guard-rail-violation is the named failure mode; any atom where an observation is dismissed in order to favour a preferred alternative gets reshaped or the entire alternative gets de-weighted.
+
+6. **Historical-analogue atoms — when applicable.** Where the suspension pattern resembles a historical paradigm revision (Copernican, plate tectonics, prion theory, ulcer-as-bacterial, etc.), the analogue is named with the specific structural parallel — what assumption was load-bearing, what observation forced revision, how long the revision took.
+
+7. **Evaluation atom.** The honest reading: is the paradigm `supported by observation`, `weakened by observation`, or `indeterminate on current evidence`. Contrarianism-trap is the named failure mode; concluding the consensus is wrong without evidential grounding gets reshaped.
+
+8. **Asymmetric-standard flag — when applicable.** When streams applied evidence standards asymmetrically across consensus and alternative, the flag is preserved.
+
+9. **Confidence per finding.** Each major claim carries a confidence with explicit basis.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Assumption-as-conclusion** — foundational assumptions stated as `therefore X` rather than `it is claimed that X`.
+- **Untagged evidence** — items presented as evidence without the observational/interpretive label, hiding the distinction the mode depends on.
+- **Asymmetric evidence standard** — consensus held to one bar, alternative to another. The corpus standard is symmetric application.
+- **Strawman alternatives** — alternatives weaker than the consensus presents itself, set up to be dismissed.
+- **Einstein-guard-rail violation** — observation dismissed to favour a preferred alternative.
+- **Contrarianism** — rejection of consensus without evidential grounding.
+- **False equivalence** — fringe positions framed as if they shared the consensus's evidential standing.
+- **Verdict-collapse** — the suspension prematurely closed into a verdict the evidence does not warrant.
+
+**What NOT to collapse:**
+
+- **Indeterminate verdicts** — when the evidence honestly does not warrant supporting or rejecting the consensus, the indeterminacy is the finding and survives.
+- **Multiple genuinely distinct alternatives** — when streams produced more than one alternative interpretation grounded in observation, all survive; the corpus does not pick a single rival.
+- **Observation-vs-authority disagreements** — when streams diverged on whether an item is observational or interpretive, the disagreement is itself a finding about what the field treats as bedrock.
+- **Stream disagreement about load-bearing status** — when one stream classified an assumption as load-bearing and another as peripheral, both readings survive with their respective collapse-scenarios.
 
 ## VERIFICATION CRITERIA
 
 Verified means: ≥3 foundational assumptions stated as testable propositions (not conclusions); every evidence item carries an observational/interpretive tag; load-bearing assessment present for ≥3 assumptions; ≥2 genuinely distinct alternatives with observational grounding; Einstein guard rail honoured throughout (no observation dismissed to favour an alternative); evaluation states honestly whether the paradigm is supported, weakened, or indeterminate. The four critical questions are addressed in the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **paradigm suspension audit** — a prose analysis that surfaces foundational assumptions as testable propositions, audits evidence symmetrically across consensus and alternatives, identifies which assumptions are load-bearing, and lands an honest evaluation (supported / weakened / indeterminate). Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Foundational assumptions.** A numbered list. Each: `**Assumption N (testable):** [statement in the form "It is claimed that X" — never "Therefore X"].` Three or more assumptions appear; assumptions stated as conclusions are reshaped at this layer.
+
+2. **Evidence audit — observational vs. interpretive.** A table or two-column block. Each evidence item: `**[Item]** — source: [...]. Tag: [observational / interpretive]. Bears on assumption(s): [N1, N2 ...].` Every item carries a tag; symmetric application across consensus and alternative.
+
+3. **Load-bearing assessment.** Per assumption from section 1: `**Assumption N:** [load-bearing — framework collapses if suspended / peripheral — framework adapts]. Reasoning: [why this assumption holds the role it does in the framework].`
+
+4. **Alternative interpretations.** Per alternative, one labelled sub-block: `**Alternative N:** [interpretation in plain terms]. Observational grounding: [...]. How it differs structurally from the consensus: [...]. What it would predict that the consensus would not: [...].` Two or more genuinely distinct alternatives appear; strawman alternatives are reshaped at this layer.
+
+5. **Evaluation.** One paragraph stating honestly: `The paradigm is [supported / weakened / indeterminate] on current evidence because [reasoning]. The Einstein guard rail held throughout: no observation was dismissed to favour a preferred alternative.` When historical analogues apply, a labelled `**Historical analogue:** [Copernican / plate-tectonics / prion / ulcer-as-bacterial / other] — the structural parallel here is [...].` line surfaces them.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 5.
+- Format is **prose only — no diagram**. A diagram would freeze the paradigm's structure, contradicting the mode's commitment to holding interpretive frames provisional. If visualisation is essential to the user's downstream work, the deliverable surfaces a sideways-route note (`**If a bilateral map across two paradigms is wanted, frame-comparison is the appropriate alternative; if integrative synthesis is wanted, worldview-cartography is the upward route.**`) rather than producing one in-mode.
+- Literal label prefixes appear verbatim: `**Assumption N (testable):**`, `[observational]` / `[interpretive]`, `**load-bearing:**` / `**peripheral:**`, `**Alternative N:**`. These are operative axis markers, not decoration.
+- Evidence tagging (section 2) is symmetric. If consensus evidence is tagged interpretive while alternative evidence is tagged observational without reasoning, the asymmetry is reshaped or flagged.
+- When the indeterminate verdict survived consolidation, section 5 carries it explicitly — "indeterminate on current evidence" is a first-class outcome, never collapsed into a forced verdict.
+- When streams diverged on observational/interpretive tagging or on load-bearing status, the disagreement surfaces inside the relevant section as `**Contested tagging:** [item] — stream A: observational; stream B: interpretive. [What this reveals about field's bedrock commitments].`
 
 
 ---

@@ -90,18 +90,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you share the proposal or plan you want evaluated, and what matters to you about it?'"
     on_underspecified: "Ask: 'Roughly what should this proposal accomplish, so I can weigh strengths and weaknesses against that purpose?'"
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - artifact_summary_one_paragraph
-    - strengths_with_evidence
-    - weaknesses_with_evidence
-    - assumptions_and_uncertainties
-    - perspective_dependent_findings
-    - net_assessment_with_residual_tensions_named
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -178,11 +166,72 @@ Revise to restore symmetric rigor where the draft has tilted toward advocacy or 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured synthesis with the seven required sections. The artifact summary opens (one paragraph, neutral). Strengths-with-evidence and weaknesses-with-evidence are emitted as comparable structures (matching depth, matching evidence-citation conventions). Assumptions and uncertainties are listed. Perspective-dependent findings are emitted as their own section with stakeholder vantage labeled. Net assessment closes with residual tensions named. Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **paired strength/weakness atoms with parallel evidence depth and explicit perspective-tagging**. The neutrality of balanced critique is in evaluative method, not in forced symmetry of conclusions; the corpus carries the honest distribution. The atoms are:
+
+1. **Artifact-summary atom.** One-paragraph neutral summary of the artifact under evaluation, stated once at the corpus head. Cross-stream paraphrase collapses to one canonical version.
+
+2. **Strength atoms.** Each carries: claim, specific artifact-element citation (the precise feature constituting the strength), evidence basis (training / RAG / user-supplied / inference), conditions-under-which-strength-fails-to-hold (the qualifier on the strength), and qualifier-depth tag (load-bearing / moderate / minor). Generic strengths that could apply to any artifact of this type do not survive — opinion-as-evaluation; the mode's posture is evidence-grounded specificity.
+
+3. **Weakness atoms.** Parallel structure to strength atoms — claim, artifact-element citation, evidence basis, conditions-under-which-weakness-does-not-bite, qualifier-depth tag. The structural parallelism between strength and weakness atom shape is load-bearing: stance-tilt is the named failure mode, and structurally asymmetric atom shape is its detection signal.
+
+4. **Assumption-and-uncertainty atoms.** Each names an assumption load-bearing on the artifact (or on the evaluation) whose alteration would shift the assessment. Uncertainty atoms name what additional information would resolve open questions.
+
+5. **Perspective-dependent atoms.** Each carries: finding, stakeholder vantage from which it holds, stakeholder vantage from which it does not, and the structural reason for the perspective-dependence. False-universality is the named failure mode here; findings that are perspective-dependent must be tagged as such, not asserted as universal.
+
+6. **Net-assessment atom with residual tensions.** A single corpus-level synthesis atom carries: the qualified net assessment (allowed to be qualified, not forced to a single verdict), and the residual tensions that survive the synthesis. Premature-resolution is the named failure mode — collapse of residual tensions into a tidy verdict is the corpus's failure, not its closure.
+
+7. **Honest-distribution atom.** The raw count after dedup: N strength atoms, N weakness atoms, with explicit acknowledgement when N differs substantially. Bothsidesism is the named failure mode; the corpus carries the actual distribution rather than padded symmetry. When the artifact is genuinely 5-strengths-1-weakness or 1-strength-5-weaknesses, that asymmetry survives into the corpus.
+
+8. **Confidence per finding.** Confidence markers attach to individual atoms. When the two streams assigned different confidences to the same finding, audit conservatism applies (the lower confidence survives).
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Strength-paraphrase / weakness-paraphrase** — both streams may state the same finding in slightly different language. Single canonical statement survives with the most precise artifact-element citation.
+- **Opinion-language residue** — phrasings like "I think", "this seems", "appears to be", "in my view" not backed by evidence basis. Opinion-as-evaluation is the named failure mode; opinion-language survives only when paired with concrete evidence (in which case the evidence statement survives and the opinion-framing is cut).
+- **Bothsidesism padding** — phrasings like "for every strength there's a corresponding weakness", "the strengths and weaknesses balance out", "both sides have merit". Forced-symmetry language does not survive; the honest-distribution atom carries the actual count.
+- **Universal-claim residue** — claims that are perspective-dependent but appear unqualified in the streams. Either the claim is tagged with stakeholder vantage and migrates to perspective-dependent atoms, or it does not survive.
+- **Verdict-shaped synthesis residue** — phrasings like "on balance", "overall the artifact is", "weighing the considerations". The net-assessment atom is allowed to be qualified, but verdict-collapse language that elides residual tensions is premature-resolution bloat.
+- **Assumption-paraphrase loops** — same assumption named under different framings. Single assumption atom survives.
+
+**What NOT to collapse:**
+
+- **Real strength-weakness asymmetry** — when the artifact is genuinely strong-asymmetric (5 strengths, 1 weakness) or weak-asymmetric (1 strength, 5 weaknesses) and the asymmetry survives both streams' independent evaluations, that asymmetry is the finding. Padding to forced 50-50 is bothsidesism; the corpus carries the actual distribution and the net-assessment atom names it explicitly.
+- **Cross-stream perspective disagreement** — when one stream applied a different stakeholder vantage than the other and produced different findings, preserve both as parallel perspective-dependent atoms (each tagged with its vantage). The disagreement is itself a finding about whose perspective the evaluation privileges.
+- **Qualifier-strength disagreement** — when the two streams disagreed on whether a strength or weakness is load-bearing vs minor, preserve both qualifier-depth tags as a tension atom. The disagreement is a finding about the artifact's robustness to evaluative framing.
 
 ## VERIFICATION CRITERIA
 
 Verified means: strengths and weaknesses sections are comparable in length, specificity, and evidence depth; every strength and weakness is tied to a specific element of the artifact; perspective-dependent findings are flagged with stakeholder vantage; residual tensions are named explicitly in the net assessment; the analysis is not artificially balanced when the artifact is genuinely asymmetric in quality; the four critical questions are addressable from the output. Confidence per finding accompanies each major claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **structured neutral-stance evaluation with paired strength/weakness atoms rendered at parallel depth, perspective-tagged findings, and honest distribution**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Artifact summary.** One-paragraph neutral summary of the artifact under evaluation. Frame as "Artifact under evaluation:" — no advocacy lean.
+
+2. **Strengths.** Bulleted list of strength atoms. Each bullet renders in this exact shape: `**[Claim]** — artifact element: [the specific feature constituting the strength]. Evidence: [basis]. Conditions under which it would not hold: [qualifier]. Qualifier depth: [load-bearing / moderate / minor].` Bulleted to make parallelism visible.
+
+3. **Weaknesses.** **Identical structural template to Strengths.** Each bullet: `**[Claim]** — artifact element: [specific feature]. Evidence: [basis]. Conditions under which it would not bite: [qualifier]. Qualifier depth: [load-bearing / moderate / minor].` Visual and structural parity with Strengths is load-bearing for the neutral-stance posture; stance-tilt detection signals fire when the Weaknesses bullets read shallower or shorter than Strengths bullets without honest reason.
+
+4. **Assumptions and uncertainties.** Two short subsections:
+   - **Assumptions:** numbered list of load-bearing assumptions the artifact rests on; each assumption notes how it would shift the evaluation if altered.
+   - **Uncertainties:** numbered list of open questions where additional information would resolve disagreements between strengths and weaknesses.
+
+5. **Perspective-dependent findings.** Bulleted list. Each bullet: `**[Finding]** — holds from [stakeholder vantage A]; does not hold from [stakeholder vantage B]. Structural reason for perspective-dependence: [reason].` These atoms are not strengths or weaknesses — they are findings whose valence depends on whose vantage one inhabits.
+
+6. **Net assessment with residual tensions.** A short prose block (not a verdict). Frame as: "On the case as evaluated, [qualified net characterization]. The tensions that survive the evaluation: [tension 1]; [tension 2]; …" The net assessment is allowed to be qualified — single-verdict ending is premature-resolution.
+
+7. **Honest distribution.** One sentence: `Distribution: N strengths, N weaknesses.` When asymmetric (e.g., 5 strengths to 1 weakness), name the asymmetry explicitly: "Distribution is asymmetric: [reason — the artifact is genuinely strong/weak in this direction]." Do not pad weaker side to balance the count; bothsidesism is the named failure mode.
+
+8. **Confidence per finding.** Bulleted list of major claims with confidence markers (high / moderate / low). One bullet per major finding.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Sections 2 and 3 (Strengths, Weaknesses) render at parallel depth — same bullet template, similar length per bullet, matching evidence-citation density. Visual asymmetry between these two sections is a stance-tilt detection signal.
+- Stakeholder vantages in section 5 are named (e.g., "from the customer's vantage", "from the regulator's vantage"), not abstracted ("from some perspectives").
+- Avoid verdict-collapse phrasings in the net assessment: "on balance", "overall", "in conclusion the artifact is" — keep the qualified characterization with residual tensions named.
+- Avoid bothsidesism padding: do not write "for every strength there is a corresponding weakness" or similar forced-symmetry framings.
 
 
 ---

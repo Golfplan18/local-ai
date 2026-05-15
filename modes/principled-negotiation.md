@@ -87,23 +87,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Who are the parties, what is each one currently saying they want, and what is your role in the negotiation?'"
     on_underspecified: "Ask: 'What would you do if no agreement is reached — that is your best alternative, and we need at least a preliminary version of it?'"
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - parties_and_stated_positions
-    - people_problem_separation_diagnosis
-    - inferred_underlying_interests_per_party
-    - shared_or_compatible_interests
-    - genuinely_opposed_interests
-    - options_for_mutual_gain
-    - objective_criteria_candidates
-    - user_batna_assessment
-    - inferred_counterparty_batna
-    - recommended_opening_and_fallback_pattern
-    - flagged_unknowns_to_test
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -197,11 +180,101 @@ Revise to descend from positions to interests where the draft restated positions
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured synthesis with the twelve required sections. Parties and stated positions appear first. People-problem diagnosis follows (specific perception/emotion/communication issues to handle separately). Inferred interests are listed per party with hypothesis-flagging; shared/compatible and genuinely-opposed appear as separate sections. Options for mutual gain appear with the underlying interest-pattern that would make each option possible. Objective criteria are listed with reasoning about counterparty acceptance. User BATNA is described concretely (the alternative, its cost, what would actually happen). Inferred counterparty BATNA is hypothesis-flagged. Recommended opening-and-fallback pattern is specific (opening move, expected counter, fallback options keyed to BATNA). Flagged unknowns are testable in the negotiation. Confidence per finding distinguishes positions (high confidence) from inferred interests/BATNAs/motivations (often lower) from candidate moves (depends on testing).
+Organize the consolidated corpus as **a full Fisher-Ury negotiation atom set: parties and positions, people-problem-separation diagnosis, position-to-interest descent atoms per party with hypothesis flags, shared and opposed interest atoms separated, options-for-mutual-gain atoms keyed to interest patterns, objective-criteria atoms with counterparty-acceptance reasoning, user-BATNA atoms described concretely, counterparty-BATNA hypothesis atoms, opening-and-fallback pattern atoms, flagged-unknown atoms, and Voss-warning flag where context warrants**. The atoms are:
+
+1. **Party-and-stated-position atoms.** Each atom carries: party name and stated position (in the party's own vocabulary or close to it). Positions are reported as stated; the descent happens at the next layer.
+
+2. **People-problem-separation diagnosis atoms.** Each atom names: a specific perception gap, emotional trigger, or communication failure that needs separate handling from the substantive bargaining. People-problem-conflation is the named failure mode the consolidator watches for; generic gestures about "separating the people from the problem" without diagnosed specifics get reshaped.
+
+3. **Inferred-interest atoms per party.** Each atom names one underlying interest (substantive economic / procedural / relational / identity-and-recognition / security / fairness-perception / future-relationship) plus an explicit hypothesis flag (`inferred — to test`). Position-interest-collapse and inference-as-fact are the named failure modes; restatements of positions in interest-language and missing hypothesis flags get reshaped.
+
+4. **Shared/compatible-interest atoms.** Where parties share an interest or admit compatible satisfaction.
+
+5. **Genuinely-opposed-interest atoms.** Where parties' satisfaction is structurally in tension. Integrative-overreach is the named failure mode; negotiations framed as fully integrative without surfacing what doesn't dissolve get reshaped.
+
+6. **Options-for-mutual-gain atoms.** Each atom names: the option, the underlying interest pattern (e.g., differential valuation, contingency, dovetailing of differences) that makes it possible, and what could invalidate it. Options that respond to *more* interest on *more* sides — not generic compromise.
+
+7. **Objective-criteria atoms.** Each atom names a third-party-acceptable standard (market data, precedent, expert opinion, scientific judgment, professional standards, efficiency, costs, court-decision, moral standards, equal treatment, tradition) with reasoning about why the counterparty could plausibly accept it. Pseudo-objective-criteria is the named failure mode; criteria that align suspiciously with the user's preferred outcome get reshaped.
+
+8. **User-BATNA atoms.** Each atom describes the user's best alternative concretely — the actual alternative, what it would cost (time, money, opportunity, relationship), what would happen step-by-step if the negotiation fails. BATNA-as-placeholder is the named failure mode; abstract "I'd walk away" without walkable-through specifics gets reshaped.
+
+9. **Counterparty-BATNA hypothesis atoms.** Each atom names: the inferred counterparty BATNA, the evidence-basis, and an explicit hypothesis flag. These are inferences, not facts.
+
+10. **Opening-and-fallback-pattern atoms.** Each atom names: the recommended opening move, the expected counterparty response, the fallback options keyed to the user's BATNA, and the walk-away threshold (the point at which BATNA dominates the offered deal).
+
+11. **Flagged-unknown atoms.** Each atom names: a question the user could test in the negotiation, what it confirms or disconfirms, how the answer changes the strategy.
+
+12. **Voss-warning flag — when applicable.** Where context is high-stakes adversarial (hostage-style, deeply distributive, strongly asymmetric power), the flag is preserved with note that Fisher-Ury alone may be insufficient. Voss-warning-unflagged is the named failure mode.
+
+13. **Cultural-and-relational-context flag — when applicable.** Where culture, organisation, or relational history shapes which moves are available.
+
+14. **Confidence per finding** — three confidence kinds kept separate: confidence in positions (typically high), confidence in inferred interests/BATNAs/motivations (typically lower), confidence in candidate moves (depends on testing).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Position-interest-collapse** — interests that restate positions.
+- **Inference-as-fact** — inferred content presented without hypothesis flags.
+- **BATNA-as-placeholder** — abstract walk-away without walkable-through specifics.
+- **Pseudo-objective criteria** — user preferences in objective-sounding language.
+- **People-problem slogan** — generic gestures rather than diagnosed perception/emotion/communication issues.
+- **Integrative overreach** — negotiation framed as fully solvable through integrative moves.
+- **Zero-sum default** — negotiation framed as fully distributive without integrative territory.
+- **Generic options** — compromise positions rather than mutual-gain options keyed to interest pattern.
+- **Voss-warning suppression** — adversarial high-stakes context without acknowledging Fisher-Ury limitations.
+- **Cultural-context flatness** — moves applied without consideration of context-dependent availability.
+
+**What NOT to collapse:**
+
+- **Genuinely opposed interests** — never smoothed with manufactured integrative possibility.
+- **Multiple plausible BATNAs** — sometimes the second BATNA is the strongest; both survive.
+- **Multiple plausible underlying interests for the same position** — preserved as competing hypotheses to test.
+- **Stream disagreement about counterparty BATNA** — the BATNA is inferred; disagreement reveals what's uncertain about the counterparty.
+- **Voss-vs-Fisher-Ury disagreement** — when context falls in the contested middle ground (commercial but emotionally loaded, partner-with-history negotiation), both readings survive with their guidance.
 
 ## VERIFICATION CRITERIA
 
 Verified means: parties and stated positions named; people-problem diagnosis specific; inferred interests itemized per party with hypothesis-flagging; shared/compatible and genuinely-opposed interests separately surfaced; at least two options-for-mutual-gain named with supporting interest-pattern; at least three objective-criteria candidates with counterparty-acceptance reasoning; user BATNA described concretely (described, costed, walked-through); counterparty BATNA hypothesis-flagged; opening-and-fallback recommendation specific; flagged unknowns listed as testable; the six critical questions are addressable from the output. Confidence per major finding accompanies each claim. If context is high-stakes adversarial, the Voss-critique flag (Debate D6) is present.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **principled negotiation preparation** — a full Fisher-Ury synthesis covering all four elements (people-problem separation, interests-not-positions, options-for-mutual-gain, objective-criteria) plus BATNA on both sides plus a specific opening-and-fallback pattern. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Parties and stated positions.** A table. Each row: `**[Party]** — stated position: "[in party's own vocabulary]." Role in negotiation: [...]. User-party flag: [yes if this party is the user; no otherwise].`
+
+2. **People-problem separation diagnosis.** Bulleted list. Each: `**[Specific issue — perception gap / emotional trigger / communication failure]** — manifestation: [...]. Separate-handling move: [...].` Generic gestures are reshaped at this layer.
+
+3. **Inferred underlying interests per party.** Per party, one labelled sub-block listing inferred interests. Each: `**[Interest category]** — what the interest is: [...]. Inferred from: [...]. Status: hypothesis (to test).` Symmetric descent across parties.
+
+4. **Shared or compatible interests.** Bulleted list. Each: `**[Shared interest]** — appears for each party as: [...]. Integrative path: [...].`
+
+5. **Genuinely opposed interests.** Bulleted list. Each: `**[Opposed interest]** — structural opposition: [...]. What makes the opposition not merely positional: [...].`
+
+6. **Options for mutual gain.** Numbered list. Each: `[N]. **[Option]** — interest pattern that makes it possible: [differential valuation / contingency / dovetailing of differences / shared cost reduction]. Interest hypotheses the option depends on: [...]. What could invalidate it: [...].`
+
+7. **Objective criteria candidates.** Numbered list. Each: `[N]. **[Standard — market data / precedent / expert opinion / scientific / professional / efficiency / cost / court-decision / moral / equal-treatment / tradition]** — why the counterparty could plausibly accept it: [...]. How the user could deploy it without contest of will: [...].`
+
+8. **User BATNA assessment.** One labelled block. `**User BATNA:** [the actual alternative, concretely described]. **Cost:** [time / money / opportunity / relationship]. **What would actually happen if no deal:** [step-by-step walk-through]. **Weaknesses surfaced:** [where the BATNA is weaker than it looks].`
+
+9. **Inferred counterparty BATNA.** One labelled block. `**Counterparty BATNA (hypothesis):** [the inferred alternative]. **Evidence basis:** [...]. **Status:** hypothesis — to test or signal-search in negotiation.`
+
+10. **Recommended opening and fallback pattern.** One labelled block. `**Opening move:** [specific opening]. **Expected counter:** [...]. **Fallback options keyed to BATNA:** [N1] / [N2] / [N3]. **Walk-away threshold:** [the point at which BATNA dominates].`
+
+11. **Flagged unknowns to test.** Bulleted list. Each: `**[Question]** — what it confirms or disconfirms: [...]. How it changes the strategy: [...].`
+
+12. **Confidence per finding.** Three labelled confidence assessments, kept distinct:
+    - `Stated positions: [confidence and basis — typically high].`
+    - `Inferred interests / BATNAs / motivations: [confidence and basis — typically lower].`
+    - `Candidate moves and recommendations: [confidence and basis — depends on testing].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 12.
+- Fisher-Ury vocabulary stays operative — `interests`, `positions`, `options for mutual gain`, `objective criteria`, `BATNA`, `people / problem separation`. Paraphrasing into generic negotiation language is reshaped at this layer.
+- BATNA (sections 8–9) is *walkable-through*. The user could step through what their alternative actually looks like. Placeholder BATNAs are reshaped at this layer.
+- Objective criteria (section 7) are genuinely third-party-acceptable. Criteria that align suspiciously with the user's preferred outcome are reshaped or flagged as `**Pseudo-objective flag:** this standard may be the user's preference in objective-sounding language; counterparty acceptance is uncertain.`
+- When the Voss-warning flag survived consolidation, the deliverable opens with: `**Note: this negotiation context exhibits adversarial / high-stakes / distributive characteristics that Fisher-Ury alone may not fully address. Tactical-empathy (Voss), calibrated questions, mirroring, and emotion-labeling lenses may complement the analysis below; see Debate D6 for the framing.**`
+- When the cultural-and-relational-context flag survived consolidation, section 3 closes with a context note about which interests may be unsurfaceable.
+- Confidence (section 12) stays as three distinct kinds.
 
 ## CAVEATS AND OPEN DEBATES
 

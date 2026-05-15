@@ -89,19 +89,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What outcome are you trying to explain or change, and what are the candidate causes you have in mind?'"
     on_underspecified: "Ask: 'Are you asking what would happen if you intervened on X (do-operator), or asking what caused the observed Y (counterfactual)?'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - causal_question_locked
-    - variable_inventory_with_roles
-    - dag_specification
-    - confounder_mediator_collider_classification
-    - identifiability_verdict
-    - intervention_or_counterfactual_answer
-    - assumption_inventory
-    - confidence_per_finding
-  format: diagram-friendly
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -185,11 +172,85 @@ Revise to add omitted confounders where the draft assumes no-confounding without
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a diagram-friendly mapping with the eight required sections. The DAG specification appears as a node-and-arrow listing (suitable for rendering) plus an explicit absent-arrow inventory. Variables are classified per role in a structured table. The identifiability verdict appears as a yes/no with the criterion applied (back-door, front-door, do-calculus rule). The intervention or counterfactual answer is stated in the language of its rung. The assumption inventory orders assumptions by fragility (most fragile first). Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **rung-locked causal-question + variable-role atoms + DAG structure (nodes + arrows + absent-arrows) + identifiability verdict + rung-tagged intervention/counterfactual answer + fragility-ordered assumption inventory**, per Pearl methodology. The atoms are:
+
+1. **Rung-locked causal-question atom.** The user's question stated at a specific Pearl rung — observation (level 1) / intervention (level 2) / counterfactual (level 3) — with explicit operator (e.g., `P(Y | do(X=x))` for level 2). Rung-confusion is the named failure mode.
+
+2. **Variable inventory atoms with role tags.** Each variable carries: name, role classification (cause / effect / confounder / mediator / collider / instrument / outcome / exposure), and observational status (observed / unobserved).
+
+3. **DAG-structure atoms.** Each arrow in the DAG is an atom: `[source] → [target]: reason for this arrow`. **Absent-arrow atoms** are also tracked: `[source] ⇸ [target]: reason this arrow is excluded (no-direct-effect assumption)`. Implicit-assumption is the named failure mode; the absent-arrow inventory is load-bearing.
+
+4. **Confounder / mediator / collider classification atoms.** Each variable's role in identifiability is named: confounders to adjust for, mediators that block / open paths, colliders to NOT condition on.
+
+5. **Identifiability verdict atom.** A single block: `Causal effect [X on Y] is [identifiable / not identifiable] via [back-door criterion / front-door criterion / do-calculus rule N] given assumptions [list]. If not identifiable: the assumption that would be required is [...].`
+
+6. **Intervention or counterfactual answer atom.** Stated in the language of the locked rung — for level 2: "Under intervention `do(X=x)`, expected Y is …"; for level 3: "Had X been x instead of x', Y would have been … with [credibility]." Demoted to associational claim when identifiability fails.
+
+7. **Assumption inventory atom.** Fragility-ordered list. Each assumption: `[Assumption]. Fragility: [high / moderate / low]. What would falsify it: [...].` Most fragile first.
+
+8. **Alternative-DAG atoms.** Each names a DAG structure observational data could not distinguish from the chosen one, plus the intervention or natural experiment that would discriminate.
+
+9. **Cycle-detection / escalation atom — when applicable.** When feedback structure is detected, the corpus suppresses the DAG and renders: "Cycle detected: [variables and edges]. DAG cannot represent. Escalation: systems-dynamics-causal."
+
+10. **Confidence per causal claim.** Confidence markers attach to identifiability verdict and to the intervention/counterfactual answer.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Rung-language drift** — observational phrasing ("X is associated with Y") for an interventional question, or interventional phrasing ("X causes Y") without identifiability. Rung-confusion residue.
+- **Implicit absent-arrow assumptions** — DAGs presented without enumerating which arrows were excluded.
+- **Confounder paraphrase** — same confounder named twice under different framings.
+- **Collider-conditioning residue** — analysis conditions on a collider variable without flagging it.
+- **Causal-claim-without-verdict** — final causal answer without applying back-door or front-door criterion.
+
+**What NOT to collapse:**
+
+- **Alternative DAGs consistent with observations** — multiple structures the data can't distinguish are preserved as parallel atoms; the discrimination plan is a finding.
+- **Identifiability-disagreement** — when streams reached different identifiability verdicts under different assumption sets, preserve both with their respective assumptions.
+- **Cycle vs DAG disagreement** — when one stream detected feedback and the other didn't, the cycle-detecting stream wins (audit-conservative: better to escalate than emit falsified DAG).
 
 ## VERIFICATION CRITERIA
 
 Verified means: the causal question is locked at a Pearl rung; all variables are classified by role; the DAG is specified with absent-arrow assumptions enumerated; the back-door or front-door criterion has been applied with verdict stated; collider variables are correctly handled; the intervention or counterfactual answer matches the rung; the assumption inventory is ordered by fragility. The five critical questions are addressable from the output. Confidence per finding accompanies every causal claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **diagram-friendly causal mapping with Pearl-rung-locked question, DAG specification, identifiability verdict, and rung-appropriate answer**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Causal question — Pearl rung locked.** A single block:
+   - **Question:** [user's question, restated cleanly]
+   - **Pearl rung:** [observation (level 1) / intervention (level 2) / counterfactual (level 3)]
+   - **Operator:** [e.g., `P(Y | do(X=x))` for level 2, or `P(Y_x | X=x', Y=y')` for level 3]
+
+2. **Variable inventory with roles.** A markdown table (when ≤8 variables) or a structured list. Columns/fields: variable name, role (cause / effect / confounder / mediator / collider / instrument / outcome / exposure), observed (yes/no).
+
+3. **DAG specification.** Two sub-blocks:
+   - **Arrows (present):** `[source] → [target]: [reason for this arrow]`
+   - **Absent-arrow assumptions:** `[source] ⇸ [target]: [reason this arrow is excluded — no-direct-effect, assumed-conditional-independence, etc.]`
+
+   Render the arrows in a diagram-friendly format (text-rendered or as a node-edge listing). When the DAG is renderable in the medium, render visually; otherwise the structured listing serves as the diagram surrogate.
+
+4. **Confounder / mediator / collider classification.** Per variable in section 2, restate the role in the context of the identifiability analysis: which confounders need to be adjusted for, which mediators block/open which paths, which colliders must NOT be conditioned on.
+
+5. **Identifiability verdict.** A single block: `**Causal effect of [X] on [Y]:** [identifiable / not identifiable]. **Criterion applied:** [back-door / front-door / do-calculus rule N]. **Conditioning set:** [list of variables in the adjustment set, or "none"]. **If not identifiable:** the assumption that would be required is [...].`
+
+6. **Intervention or counterfactual answer.** In the language of the locked rung:
+   - **Level 1 (observation):** "We observe `P(Y|X) = ...`"
+   - **Level 2 (intervention):** "Under intervention `do(X=x)`, expected Y is [...]"
+   - **Level 3 (counterfactual):** "Had X been x instead of x', Y would have been [...] with [credibility]"
+
+   When identifiability failed in section 5, render: "The interventional / counterfactual claim is **not identifiable** from the assumed graph. Demoted to associational reading: [associational version]."
+
+7. **Assumption inventory.** Numbered list, **fragility-ordered (most fragile first)**. Each: `**[Assumption]** — fragility: [high / moderate / low]. What would falsify it: [specific observation or experiment].`
+
+8. **Confidence per finding.** Bulleted list of confidence markers on the identifiability verdict and the intervention/counterfactual answer.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Section 3's arrows and absent-arrows render with the typographical convention: `→` for present arrows, `⇸` for absent-arrow assumptions.
+- The Pearl-rung tag in section 1 is repeated wherever causal claims appear in later sections (so the reader can verify the language matches the rung).
+- Avoid mixing rung-appropriate vocabulary: do not use interventional language ("X causes Y") when the rung is observational, and do not use counterfactual language ("would have been") when the rung is interventional.
+- The assumption inventory is fragility-ordered — most fragile first — so the reader sees the failure points before the conclusion.
 
 ## CAVEATS AND OPEN DEBATES
 

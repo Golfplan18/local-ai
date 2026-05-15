@@ -77,15 +77,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the phenomenon or concept you want to understand deeper, and roughly what level of explanation do you already have?'"
     on_underspecified: "Ask: 'Are you familiar with the surface explanation already, or do you want the lay of the land first?' If the latter, route to Terrain Mapping."
-output_contract:
-  artifact_type: clarification
-  required_sections:
-    - surface_explanation
-    - mechanistic_clarification_two_levels_deeper
-    - epistemic_boundary
-    - practical_implications
-  format: prose
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -146,7 +137,23 @@ Breadth in Deep Clarification is the surrounding terrain that anchors the mechan
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ3. The named failure modes are the evaluation checklist. A passing Deep Clarification output: states the surface explanation as baseline; pushes ≥2 levels beneath, each genuinely mechanistic; marks the epistemic boundary explicitly; names ≥1 practical implication; resists lateral drift and elaboration. Specifically check for the jargon trap (terminology substituting for mechanism) and false certainty (presenting current-best-understanding as settled).
+Deep Clarification is read in the ordinary-language philosophy tradition (what is the phenomenon actually doing, in plain terms?) combined with the mechanistic-explanation tradition from philosophy of science (each level names what causes the previous level's behaviour). The evaluator's primary axis is vertical depth — successive levels reveal mechanism beneath mechanism, not adjacent facts at the same level. All three critical questions are load-bearing because each protects a distinct dimension of the methodology: CQ1 (elaboration-trap) protects the vertical-depth contract, CQ2 (false-certainty) protects honest epistemic boundary-marking, CQ3 (academic-drift) protects the practical-bearing requirement that distinguishes clarification from academic exposition. The unnamed jargon-trap and lateral-drift-trap act as additional gates.
+
+Evaluator checks:
+
+1. **Vertical not horizontal (CQ1, load-bearing).** Each successive level must name a mechanism that causes the previous level's behaviour, not more facts at the same level of abstraction. Elaboration-trap residue is "Level 1 beneath" that reads as "more about the surface" rather than "what makes the surface work." The test: does the deeper level predict behaviour the surface level cannot? Could the surface explanation be derived from the deeper one rather than vice versa? If the deeper level is just additional surface detail, it is reshaped to name an actual mechanism or downgraded.
+
+2. **Same phenomenon, not lateral drift.** Each level must descend into the same phenomenon, not migrate to an adjacent topic. Lateral-drift-trap is "Level 2 beneath" that ends up explaining a neighbouring phenomenon rather than a deeper layer of the original one. The test: does each level still name the same surface phenomenon as the thing being explained? A level that has changed subject has drifted laterally and is reshaped.
+
+3. **Epistemic boundary marked (CQ2, load-bearing).** The deliverable must explicitly name where settled knowledge ends and current-best-understanding (or active debate) begins. False-certainty residue is mechanistic claims presented as settled when current science is indeterminate, or "Level 2 beneath" claims at the frontier of a field's actual knowledge presented in confident declarative voice. When the mechanism is fully settled, the boundary section says so explicitly rather than being silently elided.
+
+4. **Plain-terms over jargon.** Each mechanism must be stated in plain terms first, with terminology glossed alongside rather than substituting for the explanation. Jargon-trap residue is "the phenomenon is explained by entropic relaxation" without saying what entropic relaxation does in plain terms. The technical vocabulary appears as a gloss for readers who recognize it, not as a substitute for the mechanism itself.
+
+5. **Practical implication present (CQ3, load-bearing).** The deeper understanding must change something for the user — predict a behaviour the surface didn't, reframe a decision, enable an intervention. Academic-drift residue is depth-for-depth's-sake: technically deeper levels that have no bearing on what the user would do, conclude, or expect. When the deeper level genuinely has no practical consequence in the user's situation, the deliverable says so explicitly rather than fabricating an implication.
+
+6. **Surface anchor preserved.** The surface-explanation atom is the baseline the deeper levels deepen; deliverables that jump straight to mechanism without the surface anchor lose the reader's purchase. The evaluator confirms the surface atom is present (and clearly labelled) so the depth-axis is legible.
+
+Confidence is calibrated per-level: surface-level confidence is typically high; Level 2-beneath confidence often touches the active-research frontier. Where streams produced alternative mechanisms (the same phenomenon admits more than one mechanistic explanation), the evaluator confirms both are preserved with their respective epistemic standing rather than silently picked. Where streams produced different "Level 2 beneath" axes (e.g., chemical mechanism vs evolutionary mechanism), both are preserved as labelled alternative depth-axes.
 
 ## REVISION GUIDANCE
 
@@ -154,11 +161,66 @@ Revise to convert horizontal elaboration into vertical mechanism. Revise to add 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as prose in the four required sections (surface / mechanistic clarification / epistemic boundary / practical implications). Format: prose first; envelope optional. Default to no diagram. The narrow exception is a flowchart envelope when the mechanism being clarified is itself procedural or spatial (a multi-step process, a pipeline, a control-flow algorithm). When in doubt, suppress the envelope. Each level uses the literal labels "Surface:" / "Level 1 beneath:" / "Level 2 beneath:" / "epistemic boundary:" / "Practical implication:".
+Organize the consolidated corpus as **a vertical mechanism-stack atom set: surface explanation, two or more genuinely-deeper mechanistic levels, epistemic-boundary atom, and practical-implication atoms — preserved as prose rather than as a list of facts**. The atoms are:
+
+1. **Surface-explanation atom.** The accessible explanation the user already (likely) has — the baseline this clarification deepens. One short paragraph. Never skipped; the deeper levels are anchored to this.
+
+2. **Level-1-beneath atoms.** Each atom names a mechanism one genuine layer beneath the surface. Mechanism here means: what causes the surface-level phenomenon to behave as it does. Elaboration-trap is the named failure mode the consolidator watches for; atoms that add more facts at the surface level (horizontal detail) rather than naming a mechanism (vertical depth) get reshaped or flagged.
+
+3. **Level-2-beneath atoms.** Each atom names a mechanism one layer beneath Level 1 — i.e., what makes the Level 1 mechanism work as it does. Lateral-drift-trap is the named failure mode; atoms that move to adjacent topics rather than deeper into the same phenomenon get reshaped.
+
+4. **Plain-language-mechanism check per atom.** Each Level 1 and Level 2 atom carries the mechanism stated in plain terms, not replaced by terminology that hides the mechanism. Jargon-trap is the named failure mode; atoms where terminology substitutes for explanation get reshaped to name the mechanism in plain terms (the terminology may sit alongside as a glossing aid).
+
+5. **Epistemic-boundary atom.** Names explicitly where settled knowledge ends and current-best-understanding (or active debate) begins. False-certainty is the named failure mode; mechanistic claims presented as settled when current science is indeterminate get reshaped or flagged. The boundary may sit at the level-2 layer (deeper levels are indeterminate) or within a level (parts settled, parts active research).
+
+6. **Practical-implication atoms.** Each atom names: what the deeper understanding changes — a behaviour the deeper level predicts that the surface did not, a decision the deeper level reframes, an intervention the deeper level enables. Academic-drift is the named failure mode; deeper levels that have no practical bearing on what the user would do or conclude get reshaped or flagged.
+
+7. **Analogy atoms (optional).** When streams produced analogies that genuinely transfer the mechanism (rather than decorating it), they survive as anchoring atoms — never as a substitute for the mechanism itself.
+
+8. **Alternative-mechanism atoms (optional).** When the phenomenon admits more than one mechanistic explanation, both are preserved with their respective epistemic grounding.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Horizontal elaboration** — additional facts at the same level of abstraction presented as if they were deeper. Depth is vertical, not horizontal.
+- **Lateral drift** — successive levels that move to adjacent phenomena rather than deeper into the same one.
+- **Jargon substitution** — replacing accessible explanation with terminology without naming a mechanism. The corpus standard is mechanism-in-plain-terms with terminology as a gloss, not the reverse.
+- **False certainty** — mechanistic claims presented as settled when current science is indeterminate or contested.
+- **Academic drift** — deeper levels with no bearing on what the user would do, conclude, or expect. Depth must change something.
+- **Surface-explanation skipping** — the baseline anchors the deeper levels; corpus that jumps straight to mechanism without the surface anchor loses the reader's purchase.
+
+**What NOT to collapse:**
+
+- **Alternative mechanisms** — when streams identified competing mechanistic explanations for the same phenomenon, both survive with their respective epistemic grounding. The corpus does not pick one when the field has not picked one.
+- **Settled-vs-active disagreements** — when one stream presented a mechanism as settled and another flagged active scientific debate, the disagreement is the epistemic-boundary finding.
+- **Depth disagreement** — when streams converged on different "Level 2 beneath" mechanisms (because the depth-direction admits multiple equally-valid axes — e.g., chemical vs. evolutionary mechanism), both survive as labelled alternative axes.
 
 ## VERIFICATION CRITERIA
 
 Verified means: surface explanation present (not skipped); ≥2 mechanistic levels below surface, each genuinely vertical (not horizontal detail); epistemic boundary marked; ≥1 practical implication named; no jargon-substitution-for-mechanism; if a flowchart envelope is emitted, the mechanism is genuinely procedural. The three critical questions are addressed in the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **deep clarification** — a prose explanation that walks from the surface accessible reading down through at least two genuine mechanistic layers, marks the epistemic boundary where knowledge ends, and lands at least one practical implication. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Surface explanation.** One paragraph stating the accessible-level explanation the user (likely) already has. Labelled inline with the literal `**Surface:**` prefix on the opening sentence to make the depth-axis explicit.
+
+2. **Mechanistic clarification — two levels deeper.** Two labelled sub-blocks of prose:
+   - `**Level 1 beneath:** [mechanism that causes the surface phenomenon].` One or two paragraphs naming the mechanism in plain terms; terminology may appear in parentheses or as a glossing line but does not replace the plain-terms explanation.
+   - `**Level 2 beneath:** [mechanism that makes the Level 1 mechanism work].` Same plain-terms discipline. Each level is a genuine layer deeper into the same phenomenon — not lateral drift to adjacent topics.
+
+3. **Epistemic boundary.** One short paragraph or labelled line: `**Epistemic boundary:** [where settled knowledge ends and current-best-understanding or active debate begins].` The boundary is named explicitly, not implied.
+
+4. **Practical implications.** Bulleted list. Each: `**Practical implication:** [what the deeper understanding changes — behaviour predicted, decision reframed, intervention enabled].` At least one practical implication appears; "this is interesting but bears on nothing the user would do" gets surfaced as academic-drift rather than rendered as if it were an implication.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 4.
+- The literal label prefixes — `**Surface:**`, `**Level 1 beneath:**`, `**Level 2 beneath:**`, `**Epistemic boundary:**`, `**Practical implication:**` — appear verbatim. They are operative depth-axis markers, not decoration.
+- Prose first; envelope optional. The default is no diagram. The narrow exception is a `flowchart` envelope when the mechanism being clarified is itself procedural or spatial (a multi-step process, a pipeline, a control-flow algorithm). When in doubt, suppress the envelope.
+- Plain-terms mechanism takes precedence over terminology. When a technical term must appear, it is glossed alongside the plain-terms statement, not substituted for it.
+- When alternative mechanisms survived consolidation, render them as labelled sub-blocks inside section 2: `**Alternative Level 2 mechanism:** [the other axis or competing explanation]. [Plain-terms statement]. Epistemic standing: [how it relates to the primary mechanism].`
+- When analogies anchor the mechanism, they appear inline within the level they support: `Analogous to: [domain] [analogy]. The transfer holds because [mechanism in common]; it does not transfer where [disanalogy].` Analogies that decorate without transferring mechanism are reshaped or removed at this layer.
+- The epistemic-boundary section (3) is never silently elided; if the mechanism is fully settled, the boundary section states that explicitly (`No active boundary at the levels traversed here; the mechanism is settled at both Level 1 and Level 2.`).
 
 
 ---

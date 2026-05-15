@@ -88,18 +88,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What event are you forecasting, and by when would we know whether it happened?'"
     on_underspecified: "Ask: 'How would we know, in concrete observable terms, whether the forecast resolved yes or no?'"
-output_contract:
-  artifact_type: scenarios
-  required_sections:
-    - resolution_criteria_locked
-    - reference_class_and_base_rate
-    - inside_view_drivers
-    - outside_view_adjustment
-    - probability_estimate_with_range
-    - leading_indicators_and_update_triggers
-    - confidence_in_estimate
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -176,11 +164,75 @@ Revise to add explicit base-rate citation where the draft asserts "common" or "r
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured scenarios artifact with the seven required sections. Resolution criteria appear as a locked operational definition. Reference class is named with base-rate number. Inside-view drivers appear as a list with directional and magnitude estimates. Outside-view adjustment shows the math (e.g., "base rate 15%, inside-view drivers shift estimate up by ~10–20pp, final 25–35%"). Leading indicators are observable signals that would prompt revision. Confidence-in-estimate distinguishes calibration confidence (am I right about the range) from point confidence (where in the range is most likely).
+Organize the consolidated corpus as **a Tetlock-style probabilistic forecast atom set: operational resolution criteria, reference-class atoms with base-rate numbers, inside-view driver atoms (separate from base rate), outside-view-adjustment atoms showing the math, probability-range atom with width matching evidence, leading-indicator update-trigger atoms, and two-kind confidence (calibration vs. point)**. The atoms are:
+
+1. **Resolution-criteria atom.** The forecast question stated with operational resolution criteria: what observable fact, by what date, would resolve the forecast yes or no. Unresolvable-question is the named failure mode the consolidator watches for; hedged language ("roughly", "meaningfully", "in the ballpark") without operational definition gets reshaped to operationally-resolvable criteria, or the corpus surfaces the under-specification as a sideways-route to deep-clarification.
+
+2. **Reference-class atoms.** Each candidate reference class carries: the class definition, the base-rate number (with citation or structural reasoning), and the rationale for its applicability to this case. Base-rate-neglect is the named failure mode; reference classes named without base-rate numbers get reshaped, and analyses that jumped to inside-view without an outside-view anchor get reshaped to surface the base rate.
+
+3. **Inside-view driver atoms.** Each atom names: one case-specific driver (mechanism / motivation / capacity / environment / base-rate-defying factor), its direction (raises or lowers probability from base rate), and its magnitude estimate (in percentage points or qualitative band). Drivers appear as a list, not aggregated into "case-specific factors" — view-collapse is the named failure mode.
+
+4. **Outside-view adjustment atom.** The math of the adjustment, made transparent: `base rate [X%] + drivers shifting [+/−Y pp range] = final estimate [Z% ± width]`. A reader could reproduce the estimate from the components.
+
+5. **Probability-range atom.** The forecast as a *range* (e.g., `25–35%`, or `high / medium / low / negligible` band) whose width reflects the analyst's actual confidence. False-precision is the named failure mode; point estimates without range, or ranges narrower than the evidence supports, get reshaped to wider intervals or qualitative bands.
+
+6. **Leading-indicator and update-trigger atoms.** Each atom names: an observable signal that would prompt forecast revision, the threshold that triggers the update, and the directional adjustment the signal implies (`if signal X exceeds Y, raise forecast by Z pp`).
+
+7. **Anchor-bias flag — when applicable.** Where streams produced a final estimate suspiciously close to the first-mentioned base rate or to a salient round number, the flag is preserved with reasoning.
+
+8. **Two-kind confidence atom.** Calibration confidence (`am I right about the range`) and point confidence (`where in the range is most likely`), kept distinct. Tetlock's heuristics-held-lightly stance is preserved — the dispositional commitments matter more than rote commandment-by-commandment execution.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Unresolvable question** — hedged resolution language; if it can't resolve yes/no by a date, it isn't a forecast.
+- **Base-rate neglect** — reference classes named without numbers, or analyses that skip to inside view.
+- **View-collapse** — inside-view drivers aggregated into "case-specific factors" without individual directional and magnitude estimates.
+- **False precision** — point estimates without range; ranges narrower than the evidence supports.
+- **Anchor bias** — final estimate suspiciously close to first-mentioned number or round figure.
+- **Tetlock-commandment rigidity** — applying the ten commandments mechanically rather than holding them lightly as heuristics.
+- **Narrative drift** — story-style outputs without probability commitment; if narrative is what's wanted, scenario-planning is the right sideways-route.
+- **Single-reference-class lock-in** — locking the reference class without surveying alternatives.
+
+**What NOT to collapse:**
+
+- **Competing reference classes** — when streams selected different reference classes with different base rates, both survive with their respective base rates; the choice between them is the analyst's, with reasoning preserved.
+- **Range width** — wide ranges that reflect genuine uncertainty are not narrowed for the sake of false precision. The width is information.
+- **Inside-view driver disagreement** — when streams assigned different magnitudes or directions to the same driver, both estimates survive; the disagreement bounds the uncertainty.
+- **Resolution-criteria ambiguity** — when the question cannot be operationally resolved without arbitrary choice, the corpus surfaces this rather than smoothing.
 
 ## VERIFICATION CRITERIA
 
 Verified means: resolution criteria are operational and locked; reference class is named with base-rate number; inside-view drivers and outside-view base rate are separately stated; the final probability is a range whose construction can be reproduced from the artifact; leading indicators are named with thresholds; the four critical questions are addressable from the output. Confidence-in-estimate accompanies the probability range.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **probabilistic forecast** — a structured estimate that locks operational resolution criteria, anchors in an explicit base rate from a named reference class, adjusts via transparent inside-view reasoning, produces a probability range whose width reflects confidence, and names leading indicators for update. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Resolution criteria locked.** One paragraph. `**Forecast question:** [stated precisely]. **Resolution criteria:** [the observable fact that resolves the forecast]. **Resolution date:** [by when]. **What "yes" looks like:** [...]. **What "no" looks like:** [...].`
+
+2. **Reference class and base rate.** A labelled block. `**Primary reference class:** [definition]. **Base rate:** [number with citation or structural reasoning]. **Applicability rationale:** [...]. **Alternative reference classes considered:** [list with brief base rates and reason for not using as primary].`
+
+3. **Inside view drivers.** Bulleted list. Each: `**[Driver]** — category: [mechanism / motivation / capacity / environment / base-rate-defying]. Direction: [raises / lowers probability]. Magnitude: [percentage points or qualitative band]. Reasoning: [...].`
+
+4. **Outside view adjustment.** One labelled block showing the math. `Base rate: [X%]. Inside-view drivers shift estimate: [+/− Y pp range, with directional summary]. Final estimate: [Z% ± width]. A reader can reproduce this from the components above.`
+
+5. **Probability estimate with range.** One labelled line. `**Forecast: [range, e.g., 25–35%]** — width reflects [calibration uncertainty / fermization / structural unknowns].` When the question warrants qualitative band, use `high / medium / low / negligible` with explicit threshold definitions.
+
+6. **Leading indicators and update triggers.** Bulleted list. Each: `**[Observable signal]** — threshold that triggers update: [...]. Directional adjustment if observed: [+/− Y pp]. Where to look for the signal: [...].`
+
+7. **Confidence in estimate.** Two labelled assessments, kept distinct:
+   - `**Calibration confidence:** [confidence that the range contains the true probability]. Basis: [...].`
+   - `**Point confidence within range:** [where in the range is most likely, and how strongly]. Basis: [...].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- Tetlock vocabulary stays operative: `base rate`, `reference class`, `inside view`, `outside view`, `calibration`, `update trigger`. The vocabulary appears verbatim; paraphrasing into generic forecast-language is reshaped.
+- Probability appears as a *range*, not a point. Point estimates are reshaped to ranges whose width reflects evidence; fake precision is reshaped at this layer.
+- The outside-view-adjustment math (section 4) is *transparent*. A reader can reproduce the estimate from base rate + drivers. Opaque adjustments are reshaped.
+- When the anchor-bias flag survived consolidation, section 4 carries a labelled `**Anchor-bias caveat:** the estimate sits suspiciously close to [the first-mentioned base rate / a salient round number]. Re-examining the inside-view-driver adjustments may reveal whether the math actually supports this estimate.`
+- The two-kind confidence (section 7) stays separated — calibration and point confidence are distinct quantities.
+- When the question is not operationally resolvable (resolution-criteria atom flagged degradation), the deliverable opens with: `**Note: this question is not yet operationally resolvable. The forecast below is provisional; clarifying the resolution criteria (e.g., what observable fact, by what date) is the first move before locking in the estimate. Sideways-route to deep-clarification if the operational definition is itself contested.**`
 
 ## CAVEATS AND OPEN DEBATES
 

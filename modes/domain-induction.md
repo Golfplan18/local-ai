@@ -96,17 +96,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the domain you want to induct into, and what's your goal — research-level, working-knowledge, or general-orientation?'"
     on_underspecified: "Ask the user whether they want the full Domain Induction molecular pass or a lighter Quick Orientation / Terrain Mapping read."
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - what_is_here
-    - whats_connected_to_what
-    - central_nodes_and_bridge_concepts
-    - what_to_learn_next_sequenced
-    - learning_dependencies_and_prerequisites
-    - confidence_map
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -171,7 +160,23 @@ Breadth in Domain Induction is the catalog of subfields and traditions surveyed 
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Domain Induction output surveys broadly before sequencing, identifies relations and dependencies (not just elements), orders the learning sequence by genuine dependency, and respects the user's stated familiarity level and induction goal.
+Domain Induction is read against Bloom-taxonomy cognitive-level scaffolding and the novice-expert cognition literature, with connectivity-graph reading (central nodes, bridges, dependency chains) layered on top. The evaluator's primary axis is whether the induction is doing pedagogy or surveying: a successful Domain Induction produces a dependency-ordered learning architecture that lifts a real reader from their stated familiarity level toward their stated goal, not a flat list of "things in the field." CQ2 (relation-omission) and CQ3 (arbitrary-sequencing) are load-bearing — together they protect the deliverable's distinctive contribution against the two failure modes that reduce it to a survey. CQ1 (dominant-subfield-bias) and CQ4 (goal-disconnection) act as quality gates on input breadth and pedagogical fit.
+
+Evaluator checks:
+
+1. **Connectivity over enumeration (CQ2, load-bearing).** What's-connected-to-what must consist of edges between elements, not a second list. Each edge must carry both a relation type (depends-on / extends / analogous-to / opposes / bridges-subfields / supersedes) and a substantive reason. An induction with rich what-is-here but no edges is relation-omission — it identifies the territory without inducting through it.
+
+2. **Dependency-ordered sequencing (CQ3, load-bearing).** The learning sequence must be ordered by genuine prerequisite relationships, not by alphabet, chronology, importance, or analyst convenience. Test: can each later item's rationale name which earlier item(s) it builds on? Sequences where item N's rationale would work equally well at position N+1 or N–1 are arbitrary-sequencing.
+
+3. **Bloom-level scaffolding.** Each learning item carries a cognitive-level tag (remember / understand / apply / analyze / evaluate / create). When familiarity is novice, the early items must concentrate at understand-and-apply rather than evaluate-and-create — novice-expert cognition makes the higher levels unreachable without the lower ones. Items lacking Bloom tags or carrying inverted progressions (create before understand) are pedagogical malformation.
+
+4. **Breadth before narrowing (CQ1).** The what-is-here layer must survey beyond the dominant subfield — minority traditions, competing schools, cross-disciplinary inflows, historical vs contemporary figures. An induction whose entire element set lives inside one subfield is dominant-subfield-bias; the corpus carries at least one minority-tradition or competing-school element or the breadth check fails.
+
+5. **Goal and familiarity grounding (CQ4).** The deliverable must read differently for a research-level induction than for a general-orientation induction. Test: would the familiarity-tagged guidance lines read the same regardless of the stated familiarity? If yes, the induction has collapsed into generic survey — goal-disconnection. The annotations vary visibly across novice / intermediate / advanced.
+
+6. **Central nodes and bridges identified.** The connectivity graph must surface its central nodes (highest in-degree — concepts other concepts depend on) and bridge concepts (linking otherwise-separate subfields). These are the load-bearing entries in the learning sequence; an induction that lists items without identifying which are central is missing the pedagogical signal a sequence needs.
+
+Confidence is calibrated separately. Connectivity-graph edges in unfamiliar domains often carry conjectural-mapping risk; the evaluator confirms speculative edges are tagged as conjectural rather than presented as established. Where streams disagreed about which tradition is dominant or which item depends on which, the evaluator confirms disagreements are preserved as parallel atoms rather than silently reconciled.
 
 ## REVISION GUIDANCE
 
@@ -179,11 +184,73 @@ Revise to deepen synthesis where it concatenates. Revise to add bridge concepts 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured synthesis with the six required sections. The what-to-learn-next-sequenced section is mandatory and concrete (specific resources, papers, books, or experiences with rationale per item). Each section carries provenance to its component sources (quick-orientation fragment for rapid lay-of-the-land; terrain-mapping for thorough structure; synthesis for connectivity and sequencing). Confidence map is per-finding.
+Organize the consolidated corpus as **three integrated layers — what-is-here atoms, connectivity-graph atoms, and dependency-ordered learning-sequence atoms — tagged with user familiarity level and induction goal**. The connectivity graph is the bridge between orientation (what's here) and pedagogy (what to learn next); without it, the corpus is concatenation rather than induction. The atoms are:
+
+1. **Domain-and-goal atom.** The domain name, user's stated familiarity level (novice / intermediate / advanced), and induction goal (research-level / working-knowledge / general-orientation), stated once at the corpus head. The goal atom is load-bearing — goal-disconnection is the named failure mode, and a generic survey not anchored to the stated goal is its corpus signature.
+
+2. **What-is-here element atoms.** Each carries: element (subfield / dominant figure / central debate / method / canonical text / contemporary practitioner), tradition affiliation, and dominance tag (dominant-subfield / minority-tradition / cross-disciplinary-inflow / historical / contemporary). At least one minority-tradition or competing-school element must survive cross-stream dedup or CQ1 fails (dominant-subfield-bias).
+
+3. **Connectivity-graph atoms.** Each is a relation between two element atoms, carrying: source element, target element, relation type (depends-on / extends / analogous-to / opposes / bridges-subfields / supersedes), and the substantive reason for the relation. Element atoms without at least one connectivity edge are isolated-element residue; either an edge is found or the element's load-bearingness is questioned. Relation-omission is the named failure mode; a corpus that lists elements without relations is its signature.
+
+4. **Central-node and bridge-concept atoms.** Derived atoms identifying: central nodes (elements with the highest in-degree in the connectivity graph — concepts other concepts depend on), and bridge concepts (elements that link otherwise-separate subfields). These atoms anchor the learning sequence's prioritization: central nodes and bridges learn first.
+
+5. **Learning-sequence atoms — dependency-ordered.** Each carries: item (specific resource, paper, book, experience), prerequisite items (by canonical IDs), cognitive-level tag per Bloom (remember / understand / apply / analyze / evaluate / create), and rationale (why this item at this position). The sequence is dependency-ordered, not alphabetical or chronological; arbitrary-sequencing is the named failure mode. When familiarity level is novice, novice-expert-cognition shapes the early items toward understanding-level scaffolding rather than evaluation-level engagement.
+
+6. **Familiarity-level-tagged guidance atoms.** Per learning-sequence item, an annotation atom: what a novice needs to understand at this item vs what an expert would already know. Goal-disconnection is the failure mode this addresses; a research-level induction skips the novice-scaffolding atoms, a general-orientation induction leans on them.
+
+7. **Confidence map.** Confidence markers attach to individual atoms (especially connectivity-graph edges, where conjectural mapping is common). When the two streams assigned different confidences, audit conservatism applies (the lower confidence survives). Edges flagged as conjectural-mapping survive into the corpus tagged as conjectural rather than as established relations.
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Element-listing without connectivity** — what-is-here items stated as a flat enumeration without edges to other items. Relation-omission residue; either an element earns at least one connectivity edge or its survival into the corpus is questioned.
+- **Dominant-subfield padding** — both streams may over-elaborate the dominant subfield's elements while neglecting minority traditions. Dominant-subfield-bias residue; the corpus carries a minimum minority-tradition presence even after dedup.
+- **Generic-survey residue** — content that could apply to any introduction to any field ("the field has a long and rich history", "many practitioners contribute to ongoing debates"). Goal-disconnection residue; generic content does not survive when the user's goal is specific.
+- **Arbitrary-sequencing language** — learning items listed in alphabetical or import order without prerequisite chains. The sequence is reordered by dependency or the items do not survive as a "sequence" — they survive only as a list with explicit "no dependency order extractable" tag.
+- **Resource-overload** — both streams may recommend many resources for the same learning step. Single canonical resource per step survives (the one with strongest rationale), with alternatives noted as "comparable substitutes" only when genuinely substitutable.
+- **Bloom-tag absence** — learning items without cognitive-level tags. The Bloom tag is operative for sequencing (cannot move from understand to create without the intermediate levels for novices); items without tags get them inferred from rationale, or are dropped if the rationale is absent.
+
+**What NOT to collapse:**
+
+- **Dominant-vs-minority tradition disagreement** — when streams identified different traditions as dominant in the domain, preserve both readings as parallel tradition-affiliation atoms. The disagreement is a finding about the domain's contested centering, not bloat to resolve.
+- **Connectivity-edge disagreement** — when one stream surfaced a depends-on relation and the other did not, preserve the disagreement. Whether element B depends on element A is consequential for sequencing; silent reconciliation is connectivity-mapping injection.
+- **Learning-sequence ordering disagreement** — when streams produced different dependency orderings for the same items, preserve both orderings as parallel sequence atoms with their respective rationales. The user (or the formatter at step 8) can see which ordering is more rigorously dependency-grounded.
 
 ## VERIFICATION CRITERIA
 
 Verified means: orientation surveyed broadly; terrain-mapping ran fully; connectivity-mapping shows relations not just elements; learning sequence is dependency-ordered; user's familiarity level and induction goal are reflected; confidence map is populated. The four critical questions are addressed in the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **three-layer induction document — what's here / what's connected / what to learn next — tagged by familiarity level and induction goal, with Bloom-tagged learning items**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Domain, familiarity, and goal.** Three short labelled lines at the top:
+   - **Domain:** [name]
+   - **User familiarity:** [novice / intermediate / advanced]
+   - **Induction goal:** [research-level / working-knowledge / general-orientation]
+
+2. **What is here.** Numbered list of domain elements (E1, E2, …). Each element: `**[Element name]** — [one-line characterization]. Tradition: [affiliation]. Tag: [dominant-subfield / minority-tradition / cross-disciplinary-inflow / historical / contemporary].` At least one minority-tradition or competing-school element appears — dominant-subfield-bias is the named failure mode.
+
+3. **What's connected to what.** Numbered list of connectivity edges between elements. Each edge: `E_n → E_m: [relation type — depends-on / extends / analogous-to / opposes / bridges-subfields / supersedes]. Reason: [substantive reason for the relation].` Relation-omission is the named failure mode; a deliverable that lists elements without edges is its corpus signature.
+
+4. **Central nodes and bridge concepts.** Two short bulleted blocks:
+   - **Central nodes:** elements with the highest in-degree in the connectivity graph — concepts other concepts depend on. Each bullet: `E_n: depends-on relations from [list of E_m elements].`
+   - **Bridge concepts:** elements linking otherwise-separate subfields. Each bullet: `E_n: bridges [subfield A] ↔ [subfield B].`
+
+5. **What to learn next — sequenced.** Numbered list. Each item: `**[Resource / paper / book / experience]** — prerequisite items: [list of prior items by canonical ID]. Bloom-tag: [remember / understand / apply / analyze / evaluate / create]. Rationale: [why this item at this position in the sequence].` The sequence is dependency-ordered, not alphabetical or chronological. Arbitrary-sequencing is the named failure mode.
+
+6. **Learning dependencies and prerequisites — graph view.** A small dependency graph (text-rendered DAG) showing the prerequisite chain among the learning-sequence items. When the chain is linear, render as: `Item 1 → Item 2 → Item 3 → ...`. When branching, render as a small ASCII tree or as a per-item parent list.
+
+7. **Familiarity-tagged guidance.** Per learning-sequence item, a short annotation: `Item [N] for [user familiarity level]: [what to focus on at this level — for novice: scaffolding / for intermediate: comparison / for advanced: critique].` Goal-disconnection is the named failure mode; the annotations vary by familiarity level rather than reading as generic guidance.
+
+8. **Confidence map.** Bulleted list of confidence markers attached to connectivity-graph edges (where conjectural mapping is common) and to the learning-sequence ordering. Edges flagged as conjectural-mapping appear tagged as conjectural rather than as established relations.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Element IDs (E1, E2, …) are referenced consistently throughout once introduced.
+- Connectivity edges always carry both relation type AND substantive reason — bare "X relates to Y" does not appear.
+- Bloom tags use canonical six-level vocabulary; do not invent intermediate levels.
+- Section 7's familiarity-tagged guidance reads visibly different for novice vs intermediate vs advanced — if all three would read the same, the goal-tagging has collapsed into generic-survey residue.
 
 
 ---

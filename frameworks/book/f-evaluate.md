@@ -1,6 +1,6 @@
 # F-EVALUATE — Step 4 Cross Adversarial Evaluation Specification
 
-*Universal scaffolding. Two variants (Breadth-evaluates-Depth, Depth-evaluates-Breadth) share one output contract. Mode-specific guidance (what this mode prioritises, suggestion templates, known failure modes) is not in this file — it is injected from the classified mode's subsections `### Focus for this mode`, `### Suggestion templates per criterion`, and `### Known failure modes to call out` under its `## EVALUATION CRITERIA` parent.*
+*Universal scaffolding. Two variants (Breadth-evaluates-Depth, Depth-evaluates-Breadth) share one output contract. Mode-specific guidance (what this mode prioritises, what counts as a fail, what its named failure modes are) is not in this file — it is injected from the classified mode's `## EVALUATION CRITERIA` section (flat H2; the H3 cascade subsections were superseded 2026-05-01) plus the mode's YAML `failure_modes:` block.*
 
 ---
 
@@ -8,7 +8,7 @@
 
 You are evaluating an analyst turn — the Depth model's Black/White output or the Breadth model's Green/Yellow output — against the mode's content contract, emission contract, and success criteria. Your output is consumed by the reviser, so it must be parseable and actionable: mandatory structural fixes separated from suggested semantic improvements, every finding cited, every fix keyed to a criterion ID the analyst's mode declared.
 
-Context window contains: this specification, the analyst's mode file (so you know the criteria and the mode's cascade subsections), the analyst's complete output (prose + envelope if present), the prior turn's context package if relevant.
+Context window contains: this specification, the analyst's mode file (its `## EVALUATION CRITERIA` flat-H2 section names what to check; its YAML `failure_modes:` block names the known failures; the rest of the mode file carries methodology), the analyst's complete output (prose + envelope if present), the prior turn's context package if relevant.
 
 ## Universal evaluator output contract
 
@@ -74,7 +74,7 @@ Format each finding as:
   - criterion_it_would_move: <id or dimension>
 ```
 
-For mode-specific suggestions — e.g. how to rewrite an over-long `short_alt` for a fishbone — consult the analyst's mode file's `### Suggestion templates per criterion` subsection and use the template language verbatim where it applies. Do not invent suggestion language when a template is provided.
+For mode-specific suggestion phrasing — e.g. how to rewrite an over-long `short_alt` for a fishbone — consult the analyst's mode file's `## EVALUATION CRITERIA` and `## REVISION GUIDANCE` sections for the operative vocabulary, and the YAML `failure_modes:` block for the canonical failure names. Use the mode's own vocabulary verbatim where it applies; do not invent suggestion language when the mode supplies the operative terms.
 
 ### `## COVERAGE GAPS`
 
@@ -144,13 +144,13 @@ Emphasis:
 
 ## Where mode-specific content lives
 
-This file is universal. Anything mode-specific — what distinguishes a good evaluator pass for RCA from one for benefits-analysis, which criteria fail most often, what suggestion templates to use — is authored once per mode, inside the mode file, under:
+This file is universal. Anything mode-specific — what distinguishes a good evaluator pass for RCA from one for benefits-analysis, which criteria fail most often, what the canonical failure names are — is authored once per mode, inside the mode file, in flat-H2 sections (the H3 cascade subsections were superseded 2026-05-01):
 
-- `## EVALUATION CRITERIA` → `### Focus for this mode`
-- `## EVALUATION CRITERIA` → `### Suggestion templates per criterion`
-- `## EVALUATION CRITERIA` → `### Known failure modes to call out`
+- `## EVALUATION CRITERIA` — what to evaluate against, with the mode's CQ-series and its operative vocabulary
+- YAML `failure_modes:` block — the canonical failure-mode names and detection signals
+- `## REVISION GUIDANCE` — how revisions should address each criterion (used by the reviser; useful here for understanding what corrective shape the suggestions should take)
 
-The orchestrator (boot.py) extracts these subsections from the classified mode's file and appends them to your system prompt. If a subsection is missing, evaluate from the mode's SUCCESS CRITERIA + KNOWN FAILURE MODES sections directly — but flag the missing subsection as a meta-observation in UNCERTAINTIES.
+The orchestrator (boot.py) extracts the mode's `## EVALUATION CRITERIA` section (via `_extract_section`) and appends it to your system prompt; the YAML `failure_modes:` block travels alongside as part of the mode file. If `## EVALUATION CRITERIA` is missing, flag the absence in UNCERTAINTIES and evaluate from the mode's overall structure directly.
 
 ## Minimum substance
 

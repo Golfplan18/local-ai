@@ -79,19 +79,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What phenomenon are you trying to understand, and what specifically about its behavior do you want explained?'"
     on_underspecified: "Ask: 'Are you asking how it works at the principle level (the mechanism), or how it works step-by-step over time (the process)?'"
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - phenomenon_and_behavior_locked
-    - level_of_analysis
-    - component_inventory
-    - component_function_per_component
-    - interaction_pattern_among_components
-    - emergence_account
-    - boundary_conditions_and_limits
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -173,11 +160,92 @@ Revise to lock the level of analysis where the draft drifts. Revise to add funct
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured synthesis with the eight required sections. The level of analysis is stated as a single locked claim. Components are inventoried in a structured table with function per component. The interaction pattern appears as an explicit description of how components together produce the behavior (suitable for diagram if helpful). The emergence account distinguishes the mechanism from a list of components. Boundary conditions name what the mechanism explains and what it does not. Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **a locked-level-of-analysis component inventory with function-per-component, interaction-pattern, and emergence atoms**. The level lock is the load-bearing precondition; the emergence atom is the load-bearing analytical product — it is what distinguishes a mechanism from a component list. The atoms are:
+
+1. **Phenomenon-and-behavior atom.** The phenomenon and the specific behavior to be explained, stated once at the corpus head. Cross-stream paraphrase collapses to one canonical pairing.
+
+2. **Level-of-analysis lock atom.** A single locked claim — molecular / organizational / system-wide / [other domain-specific level]. Level-confusion is the named failure mode; an explanation that drifts between levels without acknowledgment is its corpus signature. When streams locked different levels, preserve as a tension atom (the choice-of-level is itself analytical, not a detail to silently reconcile).
+
+3. **Component-inventory atoms with function-per-component.** Each component atom carries: component name, scale or class at the locked level, and **functional role** — the specific contribution the component makes to producing the whole's behavior. Components named without functional role are component-inventory-without-function residue; they do not survive into the corpus as components — they either earn a function attribution or are dropped.
+
+4. **Background/enabling-component atoms.** Components that do not actively contribute but enable contribution (regulatory conditions, supporting infrastructure, constraining elements). The breadth marker for this mode is that at least one such component is surfaced; easy explanations omit them. Background components carry their enabling-role atom (what their presence makes possible, what their absence would prevent).
+
+5. **Interaction-pattern atom.** An explicit description of how components together produce the behavior — the choreography among components, not a list of their separate functions. The interaction-pattern atom is load-bearing because it names the relationship-among-components that is the actual mechanism. A corpus with components-and-behavior but no interaction-pattern atom is a list, not a mechanism.
+
+6. **Emergence-account atom.** The corpus-level claim that the interaction pattern produces the whole's behavior — stated as a single integrated claim, not as the behavior and the components separately. Emergence-elision is the named failure mode; describing the whole's behavior alongside the components without the producing-account is its signature.
+
+7. **Boundary-condition atoms.** Each atom names: a condition under which the mechanism applies, a condition under which it breaks down, and a phenomenon outside the boundary the mechanism does not explain. At least three boundary atoms must survive or scope-overreach is unguarded.
+
+8. **Prediction-under-altered-conditions atom.** A single corpus-level atom names at least one prediction the mechanism produces about behavior when a specific component is altered, removed, or replaced. Just-so-explanation is the failure mode; an explanation that fits the observed behavior but makes no predictions about altered conditions is its corpus signature. The prediction is operative content, not optional.
+
+9. **Alternative-mechanism atoms.** Each names a candidate mechanism the available evidence cannot rule out, with a brief discrimination atom (what evidence would distinguish this mechanism from the leading one). At least one alternative-mechanism atom must survive or the breadth marker is unmet.
+
+10. **Territory-distinction atom.** A single corpus-level atom names how this mechanism explanation differs from a T17 process-flow account (temporal sequence) and a T4 causal-chain account (backward-to-causes). Territory-conflation is the failure mode; the atom defends against drift into adjacent territories.
+
+11. **Confidence per finding.** Confidence markers attach to individual atoms. When the two streams assigned different confidences, audit conservatism applies.
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Component-naming without function** — components listed as named entities without functional-role attributions. Component-inventory-without-function residue; the atom is incomplete and does not survive.
+- **Level-drift residue** — explanation moving between molecular, organizational, and system-wide accounts without acknowledgment. Level-confusion residue; the corpus carries one locked level, and material at other levels either gets reframed or is flagged as a level-distinction atom.
+- **Behavior-restatement-without-mechanism** — the whole's behavior described in different framings without the interaction-pattern atom. Emergence-elision residue; restatements of behavior are bloat unless they're contributing to the emergence account.
+- **Just-so phrasing** — "this happens because X is structured to produce Y" without a prediction-under-altered-conditions test. Just-so-explanation residue; the phrasing survives only when paired with a prediction atom.
+- **Territory-bleed-in** — process-flow narration ("first this happens, then that") or causal-chain language ("the cause of X is Y") leaking into the mechanism account. Territory-conflation residue; the consolidator distinguishes the mechanism description from the temporal or causal framings.
+- **Scope-overreach phrasing** — "this mechanism explains [much broader class of phenomena]" beyond the boundary atoms. Scope-overreach residue; the corpus carries the boundary atoms as the limit, and overreach phrasing does not survive.
+
+**What NOT to collapse:**
+
+- **Level-of-analysis disagreement** — when one stream locked molecular and the other locked system-wide for the same phenomenon, preserve both lockings as parallel level atoms with their respective component inventories. The choice-of-level is itself an analytical move; silent reconciliation is level-confusion injection.
+- **Alternative-mechanism disagreement** — when streams identified different alternative mechanisms the evidence cannot rule out, preserve all surviving alternatives. The breadth value lies in the catalog of candidates; merging non-overlapping alternatives is content loss.
+- **Boundary-condition disagreement** — when streams disagreed on whether the mechanism extends to a particular condition, preserve both judgments as a contested-boundary atom. The disagreement is a finding about the mechanism's robustness to edge cases.
 
 ## VERIFICATION CRITERIA
 
 Verified means: the level of analysis is locked; components are inventoried with functional role per component; the interaction pattern is described as the source of the whole's behavior; emergence is accounted for rather than elided; boundary conditions are named; the explanation makes at least one prediction about behavior under altered conditions. The five critical questions are addressable from the output. Confidence per finding accompanies every claim. The output is distinguishable from a T4 causal-chain analysis or a T17 process-map.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **structured mechanism explanation: phenomenon-and-behavior locked, level-of-analysis locked, component inventory with function-per-component, interaction pattern, emergence account, boundary conditions, and prediction-under-altered-conditions**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Phenomenon and behavior.** Two short labelled lines at the top:
+   - **Phenomenon:** [the system or process being explained]
+   - **Behavior to be explained:** [the specific behavior of the phenomenon under analysis]
+
+2. **Level of analysis.** A single labelled line: `Level: [molecular / organizational / system-wide / domain-specific level]. Reason: [why this level fits the behavior in question].` Level-confusion is the named failure mode; the lock is explicit. When streams locked different levels, render both as a tension: "Stream A locked [level X]; Stream B locked [level Y]. The choice is itself analytical: [reason for the tension]."
+
+3. **Component inventory with function per component.** A table or per-component block. For each component, render:
+   - **Component:** name
+   - **Scale or class at the locked level:** [classification]
+   - **Functional role:** [specific contribution to producing the whole's behavior]
+
+   Components without functional role do not appear. The function-per-component is load-bearing.
+
+4. **Background and enabling components.** Bulleted list of components that do not actively contribute but enable contribution (regulatory conditions, supporting infrastructure, constraining elements). Each bullet: `**[Component]** — enabling role: [what its presence makes possible; what its absence would prevent].` At minimum one such atom — easy explanations omit them.
+
+5. **Interaction pattern.** A prose block explicit-naming the choreography among components — the relationship-among-components that is the actual mechanism. Render as a directed-relation list or a structured description. The interaction-pattern atom is what distinguishes a mechanism from a component list; the section is load-bearing.
+
+6. **Emergence account.** A short prose block (two to four sentences) stating the corpus-level claim that the interaction pattern produces the whole's behavior. Frame as: "The interaction pattern in section 5 produces the behavior named in section 1 by [specific account]." Emergence-elision is the named failure mode; do not describe the whole's behavior alongside the components without the producing-account.
+
+7. **Boundary conditions and limits.** Numbered list. At minimum three atoms:
+   - Conditions under which the mechanism applies
+   - Conditions under which it breaks down
+   - Phenomena outside the boundary the mechanism does not explain
+
+8. **Prediction under altered conditions.** A single block: `If [specific component] is altered, removed, or replaced, the whole's behavior changes by [specific prediction]. The prediction follows from the mechanism in section 5 because [reason].` Just-so-explanation is the named failure mode; an explanation that fits without predicting under altered conditions is its corpus signature.
+
+9. **Alternative mechanisms (where applicable).** Bulleted list of candidate mechanisms the available evidence cannot rule out. Each bullet: `**[Alternative mechanism]** — discrimination: [what evidence would distinguish this from the leading mechanism].` At minimum one alternative-mechanism atom or the breadth marker is unmet.
+
+10. **Territory distinction.** One sentence flagging how this mechanism explanation differs from a T4 causal-chain account (backward-to-causes) and a T17 process-flow account (temporal sequence). Frame as: `This is a mechanism explanation, not [T4 causal chain / T17 process flow]: [structural reason for the distinction in this case].` Territory-conflation is the named failure mode.
+
+11. **Confidence per finding.** Bulleted list of confidence markers per major claim (component-function attributions, interaction pattern, emergence account, prediction).
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 11.
+- Section 3's component inventory: table form when components are uniform in description; per-component blocks when functional roles need elaboration.
+- The level-of-analysis lock in section 2 is enforced throughout; material at other levels gets flagged as level-distinction rather than smuggled into the inventory.
+- Avoid causal-chain framing in the emergence account ("X causes Y" with backward-to-causes posture) — keep the structural framing ("interaction pattern produces behavior").
+- The prediction in section 8 is concrete and falsifiable, not a hedged "behavior might change."
 
 
 ---

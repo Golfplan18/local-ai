@@ -91,16 +91,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you describe or share the composition (image / film still / garden / room / page) you want a ma reading on, and roughly where the operative emptiness sits if you've noticed it?'"
     on_underspecified: "Ask: 'Are you noticing a specific void or interval doing work, or do you want me to surface what's load-bearing in the composition?'"
-output_contract:
-  artifact_type: reading
-  required_sections:
-    - operative_voids
-    - what_each_does
-    - what_would_collapse_without_it
-    - suggestion_resonances
-    - confidence_and_counter_readings
-  format: reading-with-vocabulary
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -185,11 +175,70 @@ Revise to perform the removal test where the draft asserts a void's load-bearing
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a reading-with-vocabulary artifact with the five required sections. Operative voids are listed (not all empty space; only what is load-bearing). What each void does is named in tradition-specific vocabulary (rhythm, breath, suggestion, ma-ai, kami-space, narrative caesura, perceptual rest, gravel-as-ma, intermediate-space, transcendental-style duration, shadow-as-material). What would collapse without each void is stated explicitly (the removal/alteration test in narrative form). Suggestion-resonances per void traces what the void invites the viewer/listener to complete (yūgen depth-direction, wabi-sabi temporal-weathering, mu generative-reservoir). Confidence and counter-readings closes the artifact: at least one counter-reading per major claim, plus the conditions under which the reading would be falsified.
+Organize the consolidated corpus as **a contemplative-descriptive-deep reading: operative-void atoms (load-bearing only), what-each-does atoms in tradition-specific vocabulary, removal-test atoms, suggestion-resonance atoms, and counter-reading atoms preserving defeasibility**. The atoms are:
+
+1. **Operative-void atoms.** Each atom names one void or interval that is *load-bearing* for meaning — not all empty space, only the empty space whose absence does work. Incidental-void-mistaken-for-ma is the named failure mode the consolidator watches for; atoms that treat residual negative space as ma without applying the removal test get reshaped or sideways-routed to compositional-dynamics.
+
+2. **What-each-does atoms.** Each operative-void atom carries a what-it-does atom in tradition-specific vocabulary: `rhythm`, `breath`, `suggestion`, `ma-ai`, `kami-space`, `narrative caesura`, `perceptual rest`, `gravel-as-ma`, `intermediate-space`, `transcendental-style duration`, `shadow-as-material`. The vocabulary is operative, not decorative — each term carries its tradition-specific meaning. Passive-void-asserted-as-active is the named failure mode; atoms describing a void's effect without showing it is *held open as content* (generative) rather than residual get reshaped.
+
+3. **Removal-test atoms.** Each operative-void atom carries an explicit removal-test atom: what would collapse if the void were replaced by content of equal compositional weight, or if its proportions were altered? Removal-test-failure is the named failure mode; atoms claiming load-bearing status without performing the test get reshaped.
+
+4. **Suggestion-resonance atoms.** Each atom traces what a void invites the viewer/listener to complete: `yūgen depth-direction` (productive incompleteness, the dragon-veins of unpainted space), `wabi-sabi temporal-weathering` (impermanence reading), `mu generative-reservoir` (emptiness as all-potent because all-containing). Under-specification-mistaken-for-yūgen is the named failure mode; atoms that project suggestion-resonance onto under-developed work (where the projection comes from the reader rather than the work) get reshaped.
+
+5. **Counter-reading atoms.** Each major claim carries at least one counter-reading or the conditions under which the reading would be falsified. Inviolable-reading is the named failure mode; contemplative-stance sliding into devotional assertion gets reshaped. Defeasibility is structural to the mode (CQ5).
+
+6. **Tradition-engagement atoms.** Where Ma / Yūgen / Wabi-sabi / Mu vocabulary is invoked, each atom carries a brief grounding: how the work engages the tradition (lineage / training / explicit reference / clear convergent operation). Tradition-misappropriation is the named failure mode; invoking the vocabulary on work that bears no engagement with the traditions gets reshaped to flag the misappropriation or reshaped toward compositional-dynamics vocabulary.
+
+7. **Active-operation count.** Where streams identified which of the four Japanese-aesthetic operations are active (Ma / Yūgen / Wabi-sabi / Mu), the count is preserved. Often one is primary, one or two subsidiary; rarely all four. Asserting all four where the work supports only one is bloat.
+
+8. **Confidence and falsifiability per finding.** Each major claim carries confidence and the falsifiability condition (what would invalidate this reading? what counter-reading does the same evidence support?). Confidence is contemplative-defeasible, not absolute.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Incidental void treated as ma** — negative space asserted as load-bearing without the removal test.
+- **Passive void treated as active** — the void's effect described without showing it is held open as content rather than residual.
+- **Removal-test skipped** — load-bearing claims without showing what would collapse.
+- **Under-specification read as yūgen** — suggestion projected by the reader onto work that is merely under-developed.
+- **Inviolable assertion** — contemplative-stance sliding into devotional reading; no counter-readings, no falsifiability conditions.
+- **Tradition vocabulary on traditionless work** — invoking Ma/Yūgen/Wabi-sabi/Mu on work that bears no engagement with those traditions.
+- **Analytical-distancing drift** — the contemplative posture eroded into clinical analysis. The contemplative stance is structural (T19 M1) and distinguishes the mode from compositional-dynamics; eroding it is reshaped at this layer.
+- **All-four-operations claim** — asserting Ma + Yūgen + Wabi-sabi + Mu are all active when the work supports only one or two; the four operations are distinct and not interchangeable.
+
+**What NOT to collapse:**
+
+- **Counter-readings** — defeasibility is the mode's structural commitment; counter-readings ride alongside primary readings, never smoothed away.
+- **Stream disagreement about which void is operative** — when streams identified different load-bearing voids in the same composition, both readings survive with their respective removal-test outcomes.
+- **Stream disagreement about which Japanese-aesthetic operation is active** — when one stream read the work as primarily Ma and another as primarily Yūgen, both readings survive; the operations are distinct and the disagreement is a finding about the work.
+- **Western-analytical vs. Eastern-experiential framings** — when one stream produced a contemplative-articulative reading and another a more analytical-predictive reading, both survive with their respective epistemic-warrant differences acknowledged.
 
 ## VERIFICATION CRITERIA
 
 Verified means: operative voids are identified (not all empty space); what each void does is named in tradition-specific vocabulary; the removal/alteration test is performed per void; suggestion-resonances are traced; at least one counter-reading is offered per major claim; the analysis has not slid into inviolable assertion. The five critical questions are addressable from the output. Confidence per finding accompanies each major claim. Cross-reference to T19 territory-level open debates (especially Debate 4 on Western-analytical vs. Eastern-experiential epistemic warrants and Debate 5 on AI implementability of perceptual operations) is noted where the reading depends on the contemplative-stance commitment.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **ma reading-with-vocabulary** — a contemplative-descriptive-deep articulation of how operative voids/intervals do load-bearing work in the composition, in tradition-specific vocabulary, with the removal test performed and counter-readings preserved. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Operative voids.** Bulleted list. Each: `**[Void / interval]** — location in composition: [...]. Why load-bearing: [brief contemplative reading].` Only voids that survived the load-bearing test appear here; residual negative space is excluded.
+
+2. **What each does.** Per operative void, one labelled sub-block: `**[Void]:** [what it does in tradition-specific vocabulary — rhythm / breath / suggestion / ma-ai / kami-space / narrative caesura / perceptual rest / gravel-as-ma / intermediate-space / transcendental-style duration / shadow-as-material]. [One paragraph contemplative articulation].` The vocabulary appears verbatim with operative meaning preserved.
+
+3. **What would collapse without it.** Per operative void, one labelled sub-block: `**[Void]:** removal/alteration test — if [the void were replaced with content of equal weight, OR its proportions altered], what would change: [...]. What this confirms about the void's load-bearing status: [...].`
+
+4. **Suggestion resonances.** Per operative void where applicable, one labelled sub-block tracing what the void invites the viewer/listener to complete: `**[Void] — yūgen depth-direction / wabi-sabi temporal-weathering / mu generative-reservoir:** [one paragraph tracing the resonance]. Distinction from under-specification: [why this is productive incompleteness rather than failure of execution].`
+
+5. **Confidence and counter-readings.** Bulleted list. Per major claim: `**Reading:** [the primary reading]. Confidence: [contemplative-defeasible — basis]. Counter-reading: [the alternative the same evidence supports]. Falsifiability condition: [what would invalidate the primary reading].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 5.
+- Tradition-specific vocabulary (Ma, Yūgen, Wabi-sabi, Mu, ma-ai, kami-space, transcendental-style) appears verbatim with operative meaning preserved; paraphrasing into generic aesthetic-vocabulary is reshaped at this layer.
+- The contemplative stance is structural — the deliverable articulates the experience rather than explaining it from outside. Analytical-distancing drift is reshaped here.
+- The removal-test (section 3) is performed for *every* operative void; absent removal-tests get reshaped before deliverable emission.
+- Counter-readings (section 5) are first-class, not afterthoughts. Defeasibility is the mode's structural commitment and what distinguishes contemplative-deep stance from devotional reading.
+- When a tradition-misappropriation flag survived consolidation (vocabulary invoked on work without lineage/training/reference engagement), the deliverable opens with: `**Note: this composition engages the [tradition] vocabulary via [convergent operation / explicit reference / training-lineage], but does not sit inside the [tradition] as a primary lineage; the reading honours what the work does without asserting an aesthetic genealogy it does not claim.**`
+- When the operative work is being done by gestalt / Arnheim forces rather than held-open void (sideways-route signal to compositional-dynamics survived in the corpus), the deliverable opens with: `**Note: on reflection the compositional work here may be done by figure-ground / perceptual grouping / visual-weight forces rather than by held-open void; compositional-dynamics is the appropriate alternative reading.**`
+- Confidence (section 5) is contemplative-defeasible per finding; collapsing to a single absolute confidence is reshaped at this layer.
 
 ## CAVEATS AND OPEN DEBATES
 
@@ -202,8 +251,6 @@ This mode does not carry mode-specific debates. Five territory-level debates (pe
 5. **Mode granularity: general vs. tradition-specific.** Whether yūgen, wabi-sabi, and mu should be promoted to first-class modes or remain stance-flags / vocabulary inside Ma Reading. Currently the latter: Ma Reading is the home for the four-operation cluster; revisit if outputs collapse.
 
 These five debates are *not* re-documented here. They are referenced because they bear on Ma Reading's stance, lens dependencies, and implementability. See the T19 entry in `Reference — Analytical Territories.md` for the full debate text and citations.
-</content>
-</invoke>
 
 
 ---

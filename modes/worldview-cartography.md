@@ -99,18 +99,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the problem or debate, and what worldviews or paradigms do you see in play?'"
     on_underspecified: "Ask the user whether they want the full Worldview Cartography molecular pass or a lighter Frame Comparison / Paradigm Suspension read."
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - paradigm_inventory
-    - per_paradigm_dominant_claims_and_blindspots
-    - cross_paradigm_tensions
-    - dialectical_synthesis_where_possible
-    - residual_incommensurabilities
-    - meta_level_reflection
-    - confidence_map
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -177,7 +165,23 @@ Breadth in Worldview Cartography is the catalog of paradigms surveyed before the
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Worldview Cartography output suspends each paradigm (not just the foreign ones), names cross-paradigm tensions explicitly, grounds dialectical synthesis in the paradigms' own terms rather than imposing a meta-paradigm, and preserves residual incommensurabilities as such.
+Worldview Cartography is read in Kuhn paradigm-incommensurability vocabulary first, with Foucault's discursive-formation analysis, Rorty's final-vocabulary work, and MacIntyre's traditions-of-inquiry framing available when the paradigms invite them. All four critical questions are load-bearing because each protects a distinct part of the cartography: CQ1 (home-paradigm-bias) protects the symmetry of suspension, CQ2 (tension-collapse) protects the surfacing of genuine incompatibility, CQ3 (meta-paradigm-imposition) protects synthesis from importing a viewpoint none of the surveyed paradigms hold, CQ4 (premature-resolution) protects Kuhn-grounded incommensurability against the urge to unify. No single CQ acts as a supporting gate — the methodology fails at any of them.
+
+Evaluator checks:
+
+1. **Symmetric suspension including the analyst's home paradigm (CQ1).** Each paradigm must be suspended to the same depth — assumptions surfaced, hidden commitments named, characteristic blindspots called out, own-terms vocabulary preserved. The analyst's home paradigm is itself one of the paradigms to suspend; an analysis that suspends only the foreign paradigms while leaving the home one as natural framing is home-paradigm-bias. The home-paradigm-acknowledgment atom is non-negotiable — without it, the suspension is asymmetric.
+
+2. **Cross-paradigm tensions named (CQ2).** The deliverable must contain explicit cross-paradigm tension atoms — each naming paradigm-A's claim, paradigm-B's claim, the tension type (incompatible-claims / talking-past-each-other / shared-unrecognized-common-ground), and the structural reason for the tension. Language of "the paradigms complement each other" or "they offer different but compatible perspectives" without grounded specificity is tension-collapse — the cartography has smoothed over the incompatibility that justified the exercise.
+
+3. **Own-terms test on dialectical synthesis (CQ3).** Where synthesis is offered, the synthesized claim must be stated in vocabulary the surveyed paradigms would themselves accept, drawn from the per-paradigm own-terms vocabulary lists. Synthesis stated in meta-vocabulary external to the paradigms ("from a higher-level perspective," "transcending these views," "integrating both insights") is meta-paradigm-imposition — the analyst has covertly become a thirteenth paradigm rather than a cartographer. Failed own-terms-test syntheses migrate to the imposed-meta-paradigm flag section rather than passing through.
+
+4. **Residual incommensurabilities preserved (CQ4).** Kuhn-grounded incommensurability obtains where paradigm-A and paradigm-B use the same word for different concepts, different words for the same concept, or measure success by criteria the other paradigm does not recognize. The deliverable must preserve these as findings — each naming the specific concept, why translation fails, and what is lost if either paradigm is silenced. A unified-worldview close ("the synthesis shows that …") that silently abandons irreducibilities is premature-resolution.
+
+5. **Own-terms vocabulary preserved verbatim.** Each paradigm atom must carry an own-terms vocabulary list — the specific terms the paradigm uses for its load-bearing concepts. This list is operative, not decorative: it is what the synthesis section's own-terms test draws from. Cartographies that paraphrase paradigm vocabulary into a common analyst's voice have already failed CQ3 by erasing the vocabulary distinctions that make incommensurability detectable.
+
+6. **Meta-level reflection on the problem space.** The cartography is expected to surface what the comparison itself reveals — typically that the problem is paradigm-dependent in its statement, or that the apparent disagreement is at one paradigmatic level but the deeper question is elsewhere. A cartography that catalogues paradigms without naming what their juxtaposition makes visible has under-delivered on the molecular value.
+
+Confidence is calibrated separately: confidence markers attach to paradigm characterizations (how well-suspended each is) and to tension atoms (how clearly the incompatibility is named). Synthesis-stage atoms inherit lower confidence than component-stage atoms. Where streams disagreed on which paradigm is the home paradigm, or whether a pair of paradigms can be synthesized or is incommensurable, the evaluator confirms disagreements are preserved as parallel atoms rather than silently reconciled.
 
 ## REVISION GUIDANCE
 
@@ -185,11 +189,82 @@ Revise to deepen synthesis where it concatenates paradigm summaries. Revise to s
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured synthesis with the seven required sections. Each paradigm in the inventory carries provenance to its paradigm-suspension fragment and frame-comparison output. The dialectical-cartography section is rendered with explicit named-paradigm-A / named-paradigm-B / synthetic-position structure where synthesis is offered, and explicit named-incommensurability blocks where it is not. Confidence map is per-paradigm and per-tension.
+Organize the consolidated corpus as **suspended-paradigm atoms with their own-terms vocabulary preserved, cross-paradigm-tension atoms, paradigm-grounded synthesis atoms (where possible), and residual-incommensurability atoms (where not)**. Kuhn paradigm-incommensurability is the load-bearing lens — the corpus honors that paradigms can be genuinely untranslatable, and the analyst's home paradigm is itself a paradigm to be suspended. The atoms are:
+
+1. **Problem-or-debate atom.** The problem or debate the cartography addresses, stated once at the corpus head. Cross-stream paraphrase collapses to one canonical statement.
+
+2. **Paradigm atoms — each suspended.** Each paradigm carries: paradigm name, dominant claims about the problem, hidden assumptions (surfaced via paradigm-suspension), characteristic blindspots, **own-terms vocabulary** (the specific terms the paradigm uses for its load-bearing concepts), and traceable tradition or lineage. The own-terms vocabulary is operative — it's what distinguishes a Kuhnian suspension from a translation. At least three paradigm atoms must survive cross-stream dedup; one of them must be the analyst's home paradigm (acknowledged as such, not invisibly normative).
+
+3. **Home-paradigm acknowledgment atom.** A single corpus-level atom names which paradigm the analyst started from, with the structural reason it's the home paradigm (training, domain, dominant-discourse exposure). Home-paradigm-bias is the named failure mode; corpus that suspends only foreign paradigms while leaving the analyst's own unsurfaced is its signature. The home-paradigm atom is load-bearing — without it, the suspension is asymmetric.
+
+4. **Cross-paradigm tension atoms.** Each names a specific tension between two paradigms, with: paradigm-A's claim, paradigm-B's claim, tension type (incompatible-claims / talking-past-each-other / shared-unrecognized-common-ground), and the structural reason for the tension. Tension-collapse is the named failure mode; corpus rendering paradigms as complementary without naming where they actually conflict is its signature. At minimum one tension atom per pair of compared paradigms must survive when genuine incompatibility exists.
+
+5. **Dialectical-synthesis atoms — in own-terms only.** Where synthesis is possible, each atom carries: which paradigms it integrates, the synthesized claim, and a **own-terms test** — the synthesis is stated using vocabulary the surveyed paradigms would accept, not in a meta-vocabulary external to them. Meta-paradigm-imposition is the named failure mode; synthetic positions using vocabulary or criteria none of the paradigms would accept are its corpus signature. A synthesis atom that fails the own-terms test does not survive — it migrates to "synthesis-attempted-but-imposes-meta-paradigm" with the imposition called out.
+
+6. **Residual-incommensurability atoms.** Each names a place where Kuhn-grounded incommensurability obtains: paradigm-A and paradigm-B cannot be synthesized because they use the same word for different concepts, or different words for the same concept, or measure success by criteria the other paradigm does not recognize. The atom carries: the specific concept or claim, why translation fails, and what's lost if either paradigm is silenced. Premature-resolution is the named failure mode; corpus that unifies paradigms by silently abandoning irreducibilities is its signature. The corpus preserves residual incommensurabilities as findings, not as failures.
+
+7. **Meta-level reflection atom.** A single corpus-level atom names what the cartography itself reveals about the problem space — typically that the problem is paradigm-dependent in its very statement (what counts as the problem depends on which paradigm one inhabits), or that the apparent disagreement is at one paradigmatic level but the deeper question is something else. The meta-reflection is operative content, not decoration; it gives the user a vantage on why the paradigm-comparison was necessary.
+
+8. **Confidence map per paradigm and per tension.** Confidence markers attach to paradigm characterizations (how well-suspended each paradigm is) and to tension atoms (how clearly the incompatibility is named). When the two streams assigned different confidences, audit conservatism applies.
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Foreign-paradigm-only suspension** — paradigm atoms for opposing views fully suspended while the analyst's home paradigm appears as natural framing. Home-paradigm-bias residue; the corpus carries home-paradigm-acknowledgment atom and the home paradigm is suspended at least to the same depth as the foreign ones.
+- **Complementarity language** — phrases like "the paradigms complement each other", "they offer different but compatible perspectives". Tension-collapse residue; if the paradigms genuinely complement at a specific point, the synthesis atom carries that with own-terms grounding; if complementarity is asserted without grounding, it's bloat.
+- **Meta-vocabulary residue** — synthesis statements using terms like "from a higher-level perspective", "synthesizing across these views", "integrating both insights" in vocabulary external to the paradigms. Meta-paradigm-imposition residue; the corpus either restates in own-terms or migrates to imposed-meta-paradigm flag.
+- **Translation-as-equivalence** — claims that paradigm-A's concept X is "the same as" paradigm-B's concept Y when Kuhn-grounded incommensurability obtains. Premature-resolution residue at the concept level; the corpus preserves the apparent translation as either a residual-incommensurability atom (Kuhn translation-failure) or an explicit "approximate-translation with reservations" atom.
+- **Unified-worldview residue** — phrases that present the cartography as having produced one integrated worldview ("the synthesis shows that..."). Premature-resolution residue; the cartography preserves plurality where it exists.
+- **Paradigm-summary concatenation** — paradigms enumerated with their dominant claims listed in parallel, without cross-paradigm tensions, syntheses, or incommensurabilities. Concatenation residue; the corpus's value is in the inter-paradigm atoms (items 4, 5, 6), not in the paradigm enumeration alone.
+
+**What NOT to collapse:**
+
+- **Genuine residual incommensurability** — never resolve Kuhn-grounded incommensurabilities during consolidation. The incommensurabilities are the load-bearing finding; silent resolution toward a unified worldview is the methodology's signature failure.
+- **Paradigm-vocabulary divergence for the same concept** — when paradigms use different words for what appears to be the same concept (or the same word for different concepts), preserve both vocabularies in the paradigm atoms. The vocabulary divergence is often itself a signal of where translation fails.
+- **Home-paradigm-disagreement** — when the streams disagreed on which paradigm is the analyst's home paradigm (or whether one paradigm is dominant in the user's framing), preserve the disagreement. The disagreement may reveal that the home paradigm is itself contested, which is consequential for whose suspension counts as load-bearing.
+- **Synthesis-vs-incommensurability disagreement** — when one stream produced a dialectical synthesis for a pair of paradigms and the other declared incommensurability, preserve both as a tension atom. The disagreement reveals that the synthesis is at the edge of own-terms feasibility; the consolidator must not silently pick.
 
 ## VERIFICATION CRITERIA
 
 Verified means: each paradigm has been suspended (not just foreign ones); cross-paradigm tensions are named explicitly; dialectical synthesis (where offered) uses the paradigms' own terms; residual incommensurabilities are preserved; confidence map is populated. The four critical questions are addressed in the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **structured cartography of paradigms: suspended-paradigm blocks with own-terms vocabulary preserved, cross-paradigm tensions, own-terms-grounded syntheses where possible, residual incommensurabilities preserved, and meta-level reflection**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Problem or debate.** One paragraph stating what the cartography addresses.
+
+2. **Paradigm inventory — each suspended.** For each paradigm P1, P2, P3, …, render an H3 sub-section:
+   - **Paradigm name** — tradition / lineage
+   - **Dominant claims about the problem:** numbered list
+   - **Hidden assumptions (surfaced by suspension):** numbered list
+   - **Characteristic blindspots:** numbered list
+   - **Own-terms vocabulary:** the specific terms this paradigm uses for its load-bearing concepts (list them verbatim — they will appear in cross-paradigm tension and synthesis sections)
+
+   At minimum three paradigm blocks. One must be the analyst's home paradigm, marked: `**[home paradigm — see section 3]**`.
+
+3. **Home-paradigm acknowledgment.** A single block: `**Home paradigm: P_n.** Structural reason it is the home paradigm: [training / domain / dominant-discourse exposure / etc.]. Its assumptions are surfaced in section 2 to the same depth as the foreign paradigms.` Home-paradigm-bias is the named failure mode; this section is non-negotiable.
+
+4. **Per-paradigm dominant claims and blindspots.** A summary table or per-paradigm one-paragraph block recapping (without re-elaborating) what was surfaced in section 2 — for cross-paradigm reference during sections 5–7.
+
+5. **Cross-paradigm tensions.** Numbered list. Each tension: `**[Tension name]** — P_n claims: [...]. P_m claims: [...]. Tension type: [incompatible-claims / talking-past-each-other / shared-unrecognized-common-ground]. Structural reason: [...].` Tension-collapse is the named failure mode; corpus rendering paradigms as complementary without naming where they actually conflict is its signature.
+
+6. **Dialectical synthesis where possible — in own-terms only.** Bulleted list of synthesis points (when any exist). Each: `**[Synthesis point]** — which paradigms it integrates: [P_n, P_m, ...]. Synthesized claim in own-terms: [the claim stated using vocabulary from sections 2's own-terms-vocabulary lists, not from external meta-vocabulary]. Own-terms test confirmed: [which paradigms would accept this vocabulary; meta-paradigm imposition averted because [...]].` Syntheses that fail the own-terms test do not appear here — they migrate to section 8 as imposed-meta-paradigm flags.
+
+7. **Residual incommensurabilities — never resolved.** Numbered list. Each incommensurability: `**[Concept or claim]** — why translation fails: [Kuhn-grounded reason: same word different concepts / different words same concept / different success criteria]. What is lost if [paradigm X is silenced]: [what gets erased]. What is lost if [paradigm Y is silenced]: [what gets erased].` Premature-resolution is the named failure mode; corpus unifying paradigms by silently abandoning irreducibilities is its signature.
+
+8. **Imposed-meta-paradigm flags (when applicable).** Bulleted list of synthesis attempts that failed the own-terms test (rejected from section 6). Each: `**[Attempted synthesis]** — meta-vocabulary used: [...]. Why none of the paradigms would accept it: [...].` When no such attempts surface, write "No meta-paradigm impositions surfaced in this cartography."
+
+9. **Meta-level reflection.** A single paragraph stating what the cartography itself reveals about the problem space — typically that the problem is paradigm-dependent in its very statement, or that the apparent disagreement is at one paradigmatic level but the deeper question is something else. The reflection is operative content, giving the user a vantage on why the paradigm-comparison was necessary.
+
+10. **Confidence map per paradigm and per tension.** Bulleted list. Confidence markers attach to paradigm characterizations (how well-suspended each paradigm is) and to tension atoms (how clearly the incompatibility is named).
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 10.
+- Paradigm IDs (P1, P2, …) are referenced consistently throughout once introduced; the home-paradigm tag is repeated wherever the home paradigm is named.
+- Section 2's own-terms vocabulary lists are operative — they appear verbatim in cross-paradigm tension and synthesis sections.
+- Avoid meta-vocabulary throughout the deliverable: phrases like "from a higher-level perspective", "transcending these views", "integrating both insights" are forbidden — meta-paradigm-imposition is the named failure mode.
+- Avoid unified-worldview residue: the cartography preserves plurality where it exists.
 
 
 ---

@@ -84,18 +84,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you describe what happened — the observable symptom, when it happens, and anything you've tried to fix it?'"
     on_underspecified: "Ask: 'What is the specific failure or symptom you want me to trace causes for?'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - presented_problem
-    - chosen_framework_and_rationale
-    - category_analysis
-    - root_causes
-    - evidence_assessment
-    - recommendations
-    - confidence_and_alternative_framings
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -176,11 +164,81 @@ Revise to deepen any branch that stops at an intermediate cause when one more "w
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured mapping with the seven required sections in order: presented problem (phrased as observed failure, not as solution); chosen framework and rationale; category analysis (one paragraph per category); root cause(s) (explicitly distinguished from contributing factors); evidence assessment (with correlation-causation called out on at least one link); recommendations (corrective and preventive distinguished); confidence and alternative framings (with at least one alternative considered and deprioritised). Format: structured. Each leaf cause is auditable to a category, an evidence claim, and an actionability assessment.
+Organize the consolidated corpus as **a backward-traced causal-chain atom set: presented-problem lock, declared Ishikawa framework with rationale, per-category cause atoms, root-cause atoms distinguished from contributing-factor atoms, per-link evidence atoms with correlation-vs-causation flagged, corrective-vs-preventive recommendation atoms, and alternative-framing atoms**. The atoms are:
+
+1. **Presented-problem atom.** The observed failure, phrased as a failure (not as a desired target state). Subsequent atoms trace backward from this lock.
+
+2. **Framework-declaration atom.** The Ishikawa framework chosen — `6M` (Manufacturing) / `4P` (Marketing) / `4S` (Service) / `8P` (Project) — with rationale tying the framework to the failure domain. Framework-incoherence is the named failure mode the consolidator watches for; categories named before framework declared, non-canonical names within a declared framework, or causes mixed across frameworks get reshaped.
+
+3. **Per-category cause atoms.** Each atom names: the category from the declared framework, the candidate causes within it, and which causes survived the five-whys descent.
+
+4. **Sub-cause depth atoms — five-whys descent.** Each chain reaches at least sub-cause depth 2 on at least one branch. Premature-stop is the named failure mode; chains that accept intermediate causes as root because they are satisfying or actionable get reshaped by asking one more "why".
+
+5. **Root-cause atoms.** Each atom names a root cause (whose removal prevents recurrence), distinguished from contributing factors (which amplify probability). Restatement-as-cause is the named failure mode; causes that paraphrase the effect (`deployments fail` → cause `deployments are unreliable`) get reshaped one level deeper.
+
+6. **Contributing-factor atoms.** Each atom names a factor that amplifies probability but whose removal would not by itself prevent recurrence.
+
+7. **Process-not-people atoms.** Where a leaf cause names human error, an explicit sub-cause atom names the process, policy, or incentive structure that permitted or incentivised the behaviour. Human-error-terminal is the named failure mode; leaves terminating at human error without a process sub-cause get reshaped — this is load-bearing, not optional.
+
+8. **Per-link evidence atoms with correlation-vs-causation flag.** Each causal link carries an evidence basis (`mechanism`, `correlation`, `inference`) and an explicit correlation-vs-causation note on at least one link. Correlation-causation-conflation is the named failure mode; causal links asserted from co-occurrence without mechanism get reshaped.
+
+9. **Alternative-chain atoms — when applicable.** Where breadth surfaced a second causal chain converging on the same symptom, both survive. Linear-chain-isolation is the named failure mode; single-chain analyses without considering convergent chains get reshaped.
+
+10. **Recommendation atoms — corrective vs. preventive.** Each atom is tagged: `corrective` (addresses the surfaced failure) or `preventive` (addresses the root condition that produced it).
+
+11. **Confidence atom.** Confidence in the dominant causal chain (`low` / `moderate` / `high`) with reasoning explicit.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Premature stop** — chain ends at intermediate cause that has deeper structure.
+- **Human-error terminal** — leaf names a person's mistake without naming the process that permitted it.
+- **Correlation-causation conflation** — causal links asserted without mechanism.
+- **Framework incoherence** — non-canonical category names; categories mixed across frameworks.
+- **Restatement-as-cause** — cause that paraphrases the effect.
+- **Linear-chain isolation** — single chain without considering convergent alternatives.
+- **Solution-phrased problem** — problem stated as desired target state instead of observed failure.
+- **Tidy-chain bias** — alternative chains and contributing factors smoothed away for narrative cleanliness.
+
+**What NOT to collapse:**
+
+- **Alternative chains** — when streams identified different causal paths to the same symptom, both survive; the convergence is itself a finding.
+- **Stream disagreement about root vs. contributing** — when one stream treated X as root and another as contributing, the disagreement reveals what's contested about preventability.
+- **Multiple sub-causes beneath the same human-error leaf** — process, policy, incentive layers can all contribute; the corpus preserves all that survived.
+- **Stream disagreement about framework choice** — when streams chose different Ishikawa frameworks for the same failure, both readings survive with their domain-fit reasoning.
 
 ## VERIFICATION CRITERIA
 
 Verified means: presented problem is phrased as a failure, not as a target state; the declared framework's canonical category names are used throughout; at least one branch reaches sub-cause depth 2; no chain terminates at human error without a process sub-cause; correlation-versus-causation is addressed on at least one link in the evidence assessment; at least one alternative causal framing was considered. Confidence in the dominant chain is stated explicitly (low / moderate / high) with reasoning.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **fishbone-structured root-cause analysis** — a backward-traced diagnosis that declares its Ishikawa framework, populates canonical categories, descends through five-whys to genuine root causes (process-not-people), and distinguishes corrective from preventive recommendations. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Presented problem.** One paragraph stating the observed failure as a failure (not as a target state). Phrasings like `we need X to work better` get reshaped to `X currently exhibits failure mode Y`.
+
+2. **Chosen framework and rationale.** One labelled block. `**Framework:** [6M — Manufacturing / 4P — Marketing / 4S — Service / 8P — Project / other declared]. **Rationale:** [why this framework fits the failure domain].`
+
+3. **Category analysis.** Per category in the declared framework, one labelled sub-block listing candidate causes, with five-whys descent on the survivors. Canonical category names from the declared framework appear verbatim.
+
+4. **Root causes.** Bulleted list of root causes, each: `**[Root cause]** — category: [...]. Depth reached: [2 / 3 / 4 levels beneath symptom]. Why this is root: [removal would prevent recurrence]. Process / policy / incentive sub-cause (if human-error leaf): [...].`
+
+5. **Evidence assessment.** A table or per-link list. Each row: `**[Cause A → Effect B]** — evidence: [mechanism / correlation / inference]. Correlation-vs-causation: [evidenced as causal because: ... / correlational only].` At least one link carries an explicit correlation-vs-causation note.
+
+6. **Recommendations.** Two labelled sub-blocks:
+   - `**Corrective recommendations:** [actions addressing the surfaced failure].`
+   - `**Preventive recommendations:** [actions addressing the root condition that produced the failure].`
+
+7. **Confidence and alternative framings.** One labelled block. `**Confidence in dominant chain:** [low / moderate / high]. **Reasoning:** [...]. **Alternative causal framing considered:** [...]. **Why dominant chain was preferred:** [...].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- Ishikawa-framework category names appear verbatim from the declared framework (6M canonicals: Manpower / Method / Machine / Material / Measurement / Mother Nature; 4P canonicals; 4S canonicals; 8P canonicals). Renamed or mixed categories are reshaped at this layer.
+- Five-whys descent depth is *visible* — each root cause notes how many "why" levels beneath the symptom it sits.
+- Process-not-people discipline is *visible* — human-error leaves carry an explicit process / policy / incentive sub-cause beneath them. Without it, the leaf gets reshaped.
+- Corrective vs. preventive distinction (section 6) appears as two labelled sub-blocks; mixing them into one undifferentiated list is reshaped.
+- When linear-chain-isolation was flagged in the corpus (single chain when convergent chains were plausible), section 7 closes with: `**Convergence flag:** alternative chain [described] also produces the surfaced symptom. If the dominant chain's fix proves insufficient, the convergent chain is the next investigation.`
+- When framework-disagreement survived, section 2 carries: `**Framework alternatives considered:** stream A chose [framework X] for [reason]; stream B chose [framework Y] for [reason]. The deliverable uses [chosen] because [...].`
 
 ## CAVEATS AND OPEN DEBATES
 

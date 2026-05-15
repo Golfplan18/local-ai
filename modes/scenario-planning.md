@@ -91,18 +91,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the strategic decision or focal question, and roughly what time horizon are you planning over?'"
     on_underspecified: "Ask: 'What's the focal question for these scenarios, and over what horizon?'"
-output_contract:
-  artifact_type: scenarios
-  required_sections:
-    - focal_question
-    - driving_forces_classified
-    - critical_uncertainties_as_axes
-    - scenario_matrix_2x2
-    - leading_indicators_per_scenario
-    - strategic_implications
-    - wild_card
-  format: matrix
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -185,11 +173,81 @@ Revise to rewrite scenario names that use magnitude labels (optimistic/pessimist
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a matrix-format scenarios artifact with the seven required sections in order. The 2×2 is the load-bearing visual: x-axis and y-axis each have label, low-label, high-label; quadrants TL/TR/BL/BR each have name (causal logic, not magnitude), narrative (coherent causal sequence), action (strategic translation), and indicators (≥1 per quadrant). The axes-independence rationale accompanies the axes definition. Wild card sits in prose, not in the envelope. Strategic implications distinguish robust strategies, scenario-dependent strategies, and contingent actions tied to specific leading indicators.
+Organize the consolidated corpus as **a Schwartz/Wack scenario-set atom set: focal-question lock, driving-force atoms classified predetermined vs. critical-uncertainty, critical-uncertainty-axis atoms with independence rationale, four scenario atoms with distinct causal logic (not magnitude variants), leading-indicator atoms per scenario, strategic-implication atoms distinguishing robust from scenario-dependent strategies, and at least one wild-card atom outside the 2×2**. The atoms are:
+
+1. **Focal-question atom.** The strategic question the scenarios serve, plus planning horizon (5–20 years typical). Subsequent atoms reference this lock; out-of-horizon material is reshaped.
+
+2. **Driving-force atoms — classified.** Each atom names: one driving force, its STEEP category (Social / Technological / Economic / Environmental / Political), and its classification — `predetermined` (will happen regardless of axis position) or `critical-uncertainty` (could go either way). Certainty-masquerade-trap is the named failure mode the consolidator watches for; genuine uncertainties classified as predetermined get reshaped to critical-uncertainty with reasoning.
+
+3. **Critical-uncertainty-axis atoms.** Two axes selected from the critical-uncertainty inventory. Each axis carries: low-label, high-label, the driving forces it represents, and an independence-rationale atom of substantive length. Correlated-axes-trap is the named failure mode; axes that co-vary (scenarios cluster on a diagonal) get reshaped, with axis-independence argued through distinct drivers / historical decorrelation / orthogonal dependencies.
+
+4. **Scenario atoms — four quadrants with distinct causal logic.** Each atom carries: a *name* (causal-logic shorthand, not magnitude — e.g., `Constrained Boom`, `Wild West`, `Soft Landing`, `Stall`, not `Optimistic` / `Pessimistic`), a *narrative* (coherent causal sequence making this future internally consistent), and the axis-position. Good-bad-medium-trap is the named failure mode; scenarios labelled by magnitude get reshaped to distinct-causal-logic naming.
+
+5. **Leading-indicator atoms per scenario.** Each atom names: an observable signal that, if seen early, would mark this scenario as materialising. Each quadrant carries at least one leading indicator. Story-without-strategy-trap is the named failure mode; scenario narratives without leading indicators get reshaped.
+
+6. **Strategic-implication atoms — robust / scenario-dependent / contingent.** Each strategy atom carries a tag: `robust` (works across all four scenarios), `scenario-dependent` (requires correctly identifying which scenario is unfolding), or `contingent` (tied to a specific leading indicator). The three tags do not blur.
+
+7. **Wild-card atoms.** Each wild-card atom names a low-probability / high-impact future *outside* the 2×2 that would invalidate the matrix. At least one wild card sits in prose, never inside the matrix.
+
+8. **No-official-future check.** A standing atom: has any scenario been designated `most likely` or `official`? Official-future-trap is the named failure mode; the mode does not predict, and one-scenario-promotion erodes the anti-prediction stance. All four scenarios carry equal standing.
+
+9. **Confidence per finding.** Confidence accompanies axis-selection, predetermined-vs-uncertainty classifications, and leading-indicator selections.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Good-bad-medium scenarios** — magnitude labels (`Optimistic` / `Pessimistic` / `Baseline`) instead of distinct causal logic.
+- **Correlated axes** — scenarios clustering on a diagonal; the 2×2 collapses to a 1×4.
+- **Official future** — any scenario designated `most likely`. The mode does not predict.
+- **Certainty masquerade** — genuine uncertainties hidden as predetermined elements.
+- **Story without strategy** — scenarios with narrative but no leading indicators or strategic translation.
+- **Wild card inside the matrix** — wild cards sit *outside* the 2×2 by construction; pulling them inside collapses their function.
+- **Trivial axis-independence rationale** — under 40 characters of argument; the axes' independence has to be earned.
+- **Strategy tags blurred** — robust / scenario-dependent / contingent collapsed into generic recommendations.
+
+**What NOT to collapse:**
+
+- **All four scenarios** — equal standing throughout. Any designation of one as "most likely" is reshaped at this layer.
+- **Stream disagreement about which uncertainties are critical** — when streams selected different axis-pairs, both pairs survive; the choice surfaces with reasoning.
+- **Predetermined-vs-uncertainty disagreement per driver** — when streams classified the same driver differently, the disagreement is itself a finding about what's contested.
+- **Wild cards** — never reabsorbed into the matrix; they exist to mark its limits.
 
 ## VERIFICATION CRITERIA
 
 Verified means: all four quadrants populated with name and non-empty narrative; each quadrant has at least one leading indicator; axes-independence rationale present and non-trivial (≥40 chars); driving forces classified predetermined vs critical-uncertainty in prose; scenarios are structurally distinct (not magnitude variants); no scenario labelled "most likely"; at least one wild card present in prose; at least one robust strategy distinguished from at least one scenario-dependent strategy. The five critical questions are addressable from the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **2×2 scenario set with strategic translation** — a Schwartz/Wack-tradition narrative output where four causally-distinct scenarios are populated, axes are genuinely independent, leading indicators per scenario surface, strategic implications distinguish robust / scenario-dependent / contingent, and at least one wild card sits in prose outside the matrix. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Focal question.** One short paragraph stating the strategic question and the planning horizon.
+
+2. **Driving forces classified.** A two-column block:
+   - `**Predetermined elements (will happen regardless of axis position):** [list with STEEP category per item].`
+   - `**Critical uncertainties (could go either way):** [list with STEEP category per item].`
+
+3. **Critical uncertainties as axes.** One labelled block. `**Axis X:** [label]. Low-label: [...]. High-label: [...]. Drivers represented: [...]. **Axis Y:** [label]. Low-label: [...]. High-label: [...]. Drivers represented: [...]. **Independence rationale:** [substantive argument that these axes do not covary, referencing distinct drivers / historical decorrelation / orthogonal dependencies].`
+
+4. **Scenario matrix (2×2).** Four labelled quadrants. Each: `**[Quadrant TL/TR/BL/BR] — [Scenario name in distinct-causal-logic shorthand]:** Axis-X position / Axis-Y position. **Narrative:** [coherent causal sequence — what unfolds and why]. **Strategic translation:** [what this future means for the focal question].`
+
+5. **Leading indicators per scenario.** Per scenario, one labelled sub-block: `**[Scenario name] — Leading indicators:** [observable signal 1] / [observable signal 2] / [observable signal 3]. **Where to look:** [...]. **Threshold for declaring this scenario unfolding:** [...].`
+
+6. **Strategic implications.** Three labelled sub-blocks:
+   - `**Robust strategies (work across all four scenarios):** [list].`
+   - `**Scenario-dependent strategies (require correctly identifying which scenario):** [list with scenario-tags].`
+   - `**Contingent actions (tied to specific leading indicators):** [list with trigger-indicators].`
+
+7. **Wild card.** One labelled block. `**Wild card:** [low-probability / high-impact future outside the 2×2 that would invalidate the matrix]. **Why it sits outside the matrix:** [...]. **Indicator that it may be unfolding:** [...].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- Schwartz/Wack vocabulary stays operative: `driving forces`, `predetermined elements`, `critical uncertainties`, `2×2`, `leading indicators`, `robust strategies`, `wild card`. The vocabulary appears verbatim.
+- Scenario names (section 4) use distinct-causal-logic shorthand, not magnitude labels. `Optimistic` / `Pessimistic` / `Baseline` get reshaped at this layer.
+- All four scenarios receive equal standing. Designations of `most likely` or `official` are reshaped to equal-standing language.
+- Axis-independence (section 3) is *argued*, not asserted. A rationale of fewer than 40 characters is reshaped to substantive argument.
+- Strategy tags (section 6) — `robust` / `scenario-dependent` / `contingent` — appear verbatim with distinguishing meanings preserved.
+- Wild cards (section 7) sit in prose, *outside* the matrix. Wild cards pulled into the matrix get reshaped — their structural function is to mark what the matrix doesn't capture.
+- When streams diverged on axis-pair selection, the deliverable carries a labelled note in section 3: `**Alternative axes considered:** stream A selected [pair X] for [reason]; stream B selected [pair Y]. The deliverable uses [chosen] because [...]; the alternative axes would have produced [different scenario logic].`
 
 
 ---

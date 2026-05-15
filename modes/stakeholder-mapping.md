@@ -88,18 +88,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you describe the situation or decision and any parties you've already identified?'"
     on_underspecified: "Ask: 'What's the situation, and which parties have you already considered?'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - stakeholder_inventory
-    - power_interest_positioning
-    - mitchell_agle_wood_salience_classification
-    - stake_per_party
-    - relationships_among_parties
-    - absent_or_marginalized_parties
-    - confidence_per_finding
-  format: matrix
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -176,11 +164,71 @@ Revise to expand the inventory where the draft has stayed inside the user's fram
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured matrix with the seven required sections. Stakeholder inventory is row-organized by party. Power-interest positioning emits a 2×2 grid (Bryson) with each party plotted; Mitchell-Agle-Wood salience is a separate three-dimensional classification (definitive / dominant / dangerous / dependent / dormant / discretionary / demanding / non-stakeholder). Stake-per-party is a column on the inventory. Relationships among parties are emitted as a relationship list (allies / opposition / dependencies / brokers). Absent or marginalized parties have their own section with reason-for-absence. Confidence per finding accompanies each row.
+Organize the consolidated corpus as **a Bryson + Mitchell-Agle-Wood stakeholder atom set: party-inventory atoms (including parties from outside the user's frame), concrete-interest stake atoms per party, Bryson power-interest positioning, Mitchell-Agle-Wood salience classification on three dimensions, relationship atoms among parties, absent-or-marginalized-party atoms, and per-finding confidence**. The atoms are:
+
+1. **Party-inventory atoms.** Each atom names one party with a brief characterisation. The inventory deliberately scans beyond the user's initial frame — parties affected but not represented, parties with informal influence not visible on org charts, parties filtered through intermediaries, parties from adjacent domains, future parties whose interests will be created by the action, silent parties whose absence is itself a stake. Frame-bounded-inventory is the named failure mode the consolidator watches for; inventories where every party shares the user's frame get reshaped to surface at least one outside-frame party (or explicitly note none was identifiable).
+
+2. **Concrete-interest stake atoms per party.** Each atom names: what the party concretely wants, what they could concretely lose, what their best alternative is if this situation goes against them, and internal heterogeneity (large stakeholder groups are rarely monolithic). Role-as-stake is the named failure mode; stakes named at role-label level (`regulator`, `investor`, `end-user`) without concrete interests get reshaped.
+
+3. **Bryson power-interest positioning atoms.** Each atom plots one party on the 2×2 grid: `high-power-high-interest` (manage closely) / `high-power-low-interest` (keep satisfied) / `low-power-high-interest` (keep informed) / `low-power-low-interest` (monitor).
+
+4. **Mitchell-Agle-Wood salience classification atoms.** Each atom classifies one party by the three-dimensional combination of `power`, `legitimacy`, and `urgency`, producing one of the eight classes: `definitive` (all three) / `dominant` / `dangerous` / `dependent` / `dormant` / `discretionary` / `demanding` / `non-stakeholder`. Single-axis-salience is the named failure mode; salience plotted only on power (collapsing legitimacy and urgency) gets reshaped to three-dimensional classification.
+
+5. **Relationship atoms among parties.** Each atom names: a relationship between two parties (`ally` / `opposition` / `dependency` / `broker` / `coalition`) with the basis of the relationship. Laundry-list-flatness is the named failure mode; inventories with no relationship structure get reshaped from "list of parties" to "map of parties".
+
+6. **Absent-or-marginalized-party atoms.** Each atom names: a party that is affected but unrepresented, marginalised, or silent, with the reason-for-absence (no organised constituency, no formal standing, filtered through intermediaries, etc.). Silent-power-mirroring is the named failure mode; salience maps that rank parties in proportion to existing power without surfacing marginalised-but-legitimate parties get reshaped.
+
+7. **Confidence per finding.** Each major claim carries confidence (party inventory; stake characterisation; salience classification; relationship claims).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Frame-bounded inventory** — every party shares the user's vantage; no outside-frame parties.
+- **Role-as-stake** — stakes named as roles without concrete interest articulation.
+- **Single-axis salience** — power alone plotted; legitimacy and urgency collapsed.
+- **Silent power-mirroring** — salience proportional to existing power; marginalised-but-legitimate parties absent.
+- **Laundry-list flatness** — parties listed without relationships among them.
+- **Salience without grounding** — Mitchell-Agle-Wood class asserted without explicit per-dimension reasoning.
+- **Tidy diagram bias** — dropping low-salience-but-legitimate parties for cleaner visualisation. The long tail of the inventory is the mode's analytical value.
+
+**What NOT to collapse:**
+
+- **Outside-frame parties** — they are the load-bearing finding; the user couldn't have generated them without breadth scanning.
+- **Stream disagreement about salience class** — when streams classified the same party in different MAW classes, the disagreement is itself a finding about contested legitimacy or urgency.
+- **Heterogeneity within large parties** — when a stakeholder group has internal divisions (different factions, different interests), the divisions survive rather than being collapsed.
+- **Marginalised-party atoms** — never deleted for diagram cleanliness.
 
 ## VERIFICATION CRITERIA
 
 Verified means: the inventory contains at least one party from outside the user's initial frame, or the analysis explicitly notes that no such party was identifiable; every party has a stake articulated as concrete interest, not just role-label; Mitchell-Agle-Wood salience is populated on all three dimensions for every party (or explicitly marked as not-applicable with reason); at least one absent or marginalized party is named, or the analysis explicitly notes that no such party exists; relationships among parties are stated rather than left implicit; the four critical questions are addressable from the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **multi-party stakeholder map** — a Bryson + Mitchell-Agle-Wood structured matrix where each party's concrete interests, two-dimensional power-interest position, three-dimensional salience class, and relationships to other parties are explicit, with absent or marginalised parties surfaced. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Stakeholder inventory.** A table. Each row: `**[Party]** — brief characterisation. Role in situation: [...]. Inside / outside user's initial frame: [...].`
+
+2. **Power-interest positioning (Bryson 2×2).** A labelled block showing each party's quadrant: `**High power / High interest (manage closely):** [parties]. **High power / Low interest (keep satisfied):** [parties]. **Low power / High interest (keep informed):** [parties]. **Low power / Low interest (monitor):** [parties].`
+
+3. **Mitchell-Agle-Wood salience classification.** A table. Each row: `**[Party]** — Power: [yes/no/partial]. Legitimacy: [yes/no/partial]. Urgency: [yes/no/partial]. MAW class: [definitive / dominant / dangerous / dependent / dormant / discretionary / demanding / non-stakeholder]. Reasoning: [...].`
+
+4. **Stake per party.** A table. Each row: `**[Party]** — Wants: [concrete interest]. Could lose: [concrete loss]. BATNA: [best alternative if this goes against them]. Internal heterogeneity: [factions / divisions / monolithic].` Role-labels without concrete content are reshaped at this layer.
+
+5. **Relationships among parties.** Bulleted list. Each: `**[Party A] ↔ [Party B]** — relationship type: [ally / opposition / dependency / broker / coalition]. Basis: [historical / structural / situational]. Implications: [...].`
+
+6. **Absent or marginalized parties.** Bulleted list. Each: `**[Absent party]** — kind of absence: [unrepresented / marginalised / silent / future]. Reason: [no organised constituency / no formal standing / filtered through intermediaries / not yet existent]. Stake-if-present: [what their interest would be].` Where no absent parties exist, this section says so explicitly with reasoning.
+
+7. **Confidence per finding.** Bulleted list of confidence assessments per major claim with grounding.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- Bryson vocabulary (`manage closely` / `keep satisfied` / `keep informed` / `monitor`) appears verbatim in section 2.
+- Mitchell-Agle-Wood eight-class vocabulary (`definitive` / `dominant` / `dangerous` / `dependent` / `dormant` / `discretionary` / `demanding` / `non-stakeholder`) appears verbatim in section 3, with the three-dimensional (power × legitimacy × urgency) reasoning explicit per party.
+- Stakes (section 4) are concrete — `Wants`, `Could lose`, `BATNA`. Role-label-only stakes are reshaped here.
+- Relationships (section 5) carry a type and a basis. Untyped relationships are reshaped.
+- Absent parties (section 6) appear in their own section, not buried in the inventory. The mode's analytical value sits in surfacing what's not yet visible.
+- When streams diverged on salience class for the same party, section 3 carries inline disagreement: `**[Party] — contested MAW class:** stream A: [class]; stream B: [class]. Resolution path: [what would decide].`
+- When the inventory lacked outside-frame parties despite breadth scanning, section 1 closes with: `**Frame-bounded note:** no parties from outside the user's initial frame were identifiable in this situation. Boundary-critique (Ulrich CSH) is the appropriate sideways-route if frame-completeness is the operative question.`
 
 
 ---

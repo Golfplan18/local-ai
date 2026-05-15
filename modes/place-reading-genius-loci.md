@@ -102,21 +102,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you describe or share the space (image / description / floor plan / urban scene), say roughly what it's for, and tell me at what scale (room / building / garden / neighborhood)?'"
     on_underspecified: "Ask: 'What do you want to know — whether the space will support a particular activity, who will be drawn to which spots, whether it will feel restorative or depleting, what character of place it has?'"
-output_contract:
-  artifact_type: reading-with-affordance-predictions
-  required_sections:
-    - place_summary_and_scale
-    - prospect_refuge_hazard_balance
-    - active_pattern_language_patterns
-    - lynchian_legibility_assessment
-    - restorative_properties_assessment
-    - genius_loci_character_of_place
-    - bachelardian_topoanalysis_notes
-    - predicted_inhabitation_and_dwelling_modes
-    - design_affordance_recommendations
-    - confidence_and_counter_readings
-  format: reading-with-vocabulary
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -215,11 +200,99 @@ Revise to ground asserted affordances in concrete spatial features where the dra
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a reading-with-vocabulary artifact with the ten required sections. Place summary and scale appear first (the analytical object is bounded). Prospect-refuge-hazard balance is grounded in specific spatial features (sightlines, refuge positions, hazard mitigation). Active pattern-language patterns are listed with the (context, problem, solution) triple checked per pattern. Lynchian legibility assessment names the five-element identifications and the place's legibility as a whole. Restorative properties assessment uses ART vocabulary (being-away, extent, compatibility, soft fascination) plus biophilic patterns where applicable. Genius loci character-of-place articulates the qualitative-total gestalt with orientation and identification. Bachelardian topoanalysis notes are present where the place includes intimate-space features (corner, miniature, intimate immensity); absent or marked as not-applicable where the place's scale or character does not invite topoanalysis. Predicted inhabitation and dwelling-modes are testable behavioral claims (where people will linger, where they will pass through, where conversations will cluster, what activities the space supports or refuses, restorative vs. depleting effect). Design affordance recommendations are specific and keyed to spatial features. Confidence and counter-readings closes the artifact: confidence per major claim; at least one counter-reading where the place admits multiple legitimate readings; explicit acknowledgment where cultural-context or temporal-condition limits constrain the reading.
+Organize the consolidated corpus as **a descriptive-evaluative-deep place reading: place-and-scale lock, prospect-refuge-hazard atoms grounded in specific spatial features, pattern-language atoms with (context, problem, solution) triple checked per pattern, Lynchian five-element atoms identified by cognitive-mapping role, ART/biophilic atoms, genius-loci gestalt atom, Bachelardian topoanalysis atoms where applicable, predicted-inhabitation atoms as testable behavioral claims, design-affordance recommendations keyed to specific features, and counter-readings preserved**. The atoms are:
+
+1. **Place-and-scale lock atom.** The place being read plus its scale (room / building / garden / neighbourhood / landscape). The reading holds the lock; subsequent atoms reference it.
+
+2. **Prospect-refuge-hazard atoms.** Each atom names: a specific prospect (sightline geometry), a specific refuge (enclosure position), and the hazards mitigated or unmitigated. Prospect-refuge-as-label is the named failure mode the consolidator watches for; Appleton-vocabulary atoms invoked without spatial warrant get reshaped to feature-grounded atoms.
+
+3. **Pattern-language atoms.** Each atom names one Alexander pattern (light-on-two-sides, sitting-circle, intimacy-gradient, alcoves, window-place, etc.) — present, absent, or violated — with the (`context`, `problem`, `solution`) triple checked. Pattern-misapplication is the named failure mode; pattern names used as decoration without the triple-check get reshaped.
+
+4. **Lynchian-element atoms.** Each atom identifies one of Lynch's five elements (`paths`, `edges`, `districts`, `nodes`, `landmarks`) by the cognitive-mapping role it plays for an actual user — not by mechanical pattern-matching. The place's overall legibility is assessed as a separate atom. Lynchian-element-confusion is the named failure mode.
+
+5. **Restorative-properties atoms.** Each atom carries an ART assessment (`being-away`, `extent`, `compatibility`, `soft fascination`) plus biophilic-pattern presence where applicable, grounded in concrete spatial features.
+
+6. **Genius-loci atom.** A single qualitative-total-character articulation per Norberg-Schulz — the gestalt of place, with orientation (the user's spatial position-taking) and identification (the user's belonging) assessed. Aggregate-as-gestalt is the named failure mode; a feature-list that does not articulate the qualitative whole gets reshaped, or marked `not-yet-coherent — place lacks unified character`.
+
+7. **Bachelardian-topoanalysis atoms — when applicable.** Where the place includes intimate-space features (corner, miniature, intimate immensity, drawer-as-threshold, nest, shell), each carries a brief topoanalytic note. Where scale or character does not invite topoanalysis, this is marked `not-applicable`.
+
+8. **Predicted-inhabitation atoms.** Each atom is a *testable behavioral claim*: where people will linger, where they will pass through, where conversations will cluster, what activities the space supports or refuses, restorative or depleting effect. Sentiment-only-reading is the named failure mode; statements like "this space feels welcoming" without behavioral predictions get reshaped.
+
+9. **Design-affordance recommendation atoms.** Each atom names: a specific change keyed to a specific spatial feature, the affordance that change would unlock or close, and the tradeoffs.
+
+10. **Inhabitant-variation atoms.** Each atom tests an affordance against an inhabitant of different stature, ability, age, or cultural vantage from the analyst's default. Default-inhabitant-bias is the named failure mode; readings that assume an able-bodied adult of the analyst's culture without testing get reshaped.
+
+11. **Counter-reading atoms.** Where the place admits multiple legitimate readings (contested-place, conflicting affordances at different scales, multiple cultural vantages), counter-readings ride alongside the primary reading. Unified-reading-overreach is the named failure mode.
+
+12. **Analyst-projection flag — when applicable.** Affordances asserted without grounding in concrete spatial features (dimensions, sightlines, light, materials, thresholds, scale) get flagged. Analyst-projection is the named failure mode.
+
+13. **Confidence and falsifiability per finding.** Each major claim carries confidence and the conditions under which the reading would be falsified.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Analyst projection** — affordances asserted from analyst preference without spatial-feature grounding.
+- **Default-inhabitant bias** — affordances tested only against the analyst's own stature/ability/culture.
+- **Prospect-refuge as label** — Appleton vocabulary invoked without specific sightlines, refuge positions, hazard mitigation.
+- **Sentiment-only reading** — "welcoming / oppressive / serene" statements without testable behavioural predictions.
+- **Aggregate-as-gestalt** — features listed under "genius loci" without articulating the qualitative-total character.
+- **Unified-reading overreach** — assertion of a single character/affordance set when the place admits conflicting affordances or contested readings.
+- **Pattern-language decoration** — Alexander pattern names invoked without checking (context, problem, solution) match.
+- **Lynchian-element confusion** — any boundary treated as edge, any centre as node, without the cognitive-mapping role being assessed.
+- **Tradition-cluster checkbox bloat** — addressing all six tradition-clusters at thin depth rather than addressing the operative ones substantively.
+
+**What NOT to collapse:**
+
+- **Counter-readings** — places admit multiple legitimate readings; the corpus preserves them rather than picking one when both have warrant.
+- **Affordance conflicts across scales** — when an affordance at room-scale conflicts with one at building-scale, both readings survive with the scale-conflict named.
+- **Stream disagreement about gestalt vs. aggregate** — when one stream articulated a coherent genius loci and another saw only feature-aggregate, the disagreement is a finding about whether the place has achieved unified character.
+- **Cultural-context-dependent affordances** — affordances that surface for one cultural vantage and not another stay flagged with their vantage conditions.
+- **Stream disagreement about pattern presence** — when one stream identified a pattern as active and another as absent or violated, both readings survive with their (context, problem, solution) reasoning.
 
 ## VERIFICATION CRITERIA
 
 Verified means: place named and scale identified; prospect-refuge-hazard balance grounded in specific spatial features; active pattern-language patterns listed with (context, problem, solution) triple checked; Lynchian legibility assessment present; restorative properties assessment present (ART + biophilic where applicable); genius loci character-of-place articulated as gestalt where warranted (or marked as not-yet-coherent if the place lacks unified character); Bachelardian topoanalysis notes present where applicable (or marked not-applicable); predicted inhabitation and dwelling-modes are testable behavioral claims (not sentiment); at least three design affordance recommendations keyed to specific spatial features; at least one counter-reading or limit-acknowledgment present; the six critical questions are addressable from the output. Confidence per major finding accompanies each claim. Cross-reference to T19 territory-level open debates is noted where the reading depends on contested framing decisions (especially Debate 5 on AI implementability of perceptual operations for direct-image vs. verbal-description input).
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **place reading-with-affordance-predictions** — a descriptive-evaluative-deep articulation that walks the six tradition-clusters (prospect-refuge, pattern-language, Lynchian legibility, ART/biophilic, genius loci, Bachelardian topoanalysis) on a named place, grounds every claim in concrete spatial features, predicts testable inhabitation behaviours, and surfaces counter-readings where the place admits them. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Place summary and scale.** One paragraph naming the place, its scale, its intended or actual inhabitation context, and any temporal or cultural conditions that shape the reading.
+
+2. **Prospect-refuge-hazard balance.** A labelled block. `**Prospect:** [sightline geometry — specific]. **Refuge:** [enclosure positions — specific]. **Hazards:** [mitigated / unmitigated — specific].` Each claim carries spatial-feature warrant.
+
+3. **Active pattern-language patterns.** Bulleted list. Each: `**[Pattern name]** — status: [present / absent / violated]. Context match: [...]. Problem the pattern addresses here: [...]. Solution implemented or missing: [...].`
+
+4. **Lynchian legibility assessment.** Labelled sub-blocks per element:
+   - `**Paths:** [identification + cognitive-mapping role].`
+   - `**Edges:** [...].`
+   - `**Districts:** [...].`
+   - `**Nodes:** [...].`
+   - `**Landmarks:** [...].`
+   
+   Followed by: `**Overall legibility:** [how easy to form a mental map; what's clear, what's confused].`
+
+5. **Restorative properties assessment.** One paragraph applying ART vocabulary: `**Being-away:** [...]. **Extent:** [...]. **Compatibility:** [...]. **Soft fascination:** [...].` Plus biophilic-pattern presence where applicable.
+
+6. **Genius loci — character of place.** One paragraph articulating the qualitative-total character as gestalt, with orientation and identification assessed. When the place lacks unified character, this section states it explicitly: `**Genius loci status:** not-yet-coherent — the place lacks unified character because [reason].`
+
+7. **Bachelardian topoanalysis notes.** Where applicable, bulleted list of intimate-space features and their psychological condensations. Where not applicable: `Not applicable — the place's scale and character do not invite topoanalysis.`
+
+8. **Predicted inhabitation and dwelling modes.** Bulleted list of testable behavioral predictions. Each: `**[Predicted behavior — lingering / passing-through / conversation-clustering / activity-supported / restorative-vs-depleting]** — where in the space: [...]. What spatial features drive this prediction: [...]. How to test: [observable signal].`
+
+9. **Design affordance recommendations.** Numbered list. Each: `[N]. **[Specific change — keyed to a specific feature]** — affordance unlocked or closed: [...]. Tradeoff: [...].`
+
+10. **Confidence and counter-readings.** Bulleted list. Per major claim: `**Reading:** [...]. Confidence: [defeasible — basis]. Counter-reading (where place admits multiple readings): [...]. Falsifiability condition: [what would invalidate this reading].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 10.
+- Vocabulary stays operative: Appleton (`prospect`, `refuge`, `hazard`); Alexander pattern names with `(context, problem, solution)`; Lynch's five elements with `cognitive-mapping role`; Kaplan ART (`being-away`, `extent`, `compatibility`, `soft fascination`); Norberg-Schulz (`orientation`, `identification`, `genius loci`); Bachelard (`intimate immensity`, `corner`, `miniature`, etc.). Vocabulary used decoratively without operative grounding is reshaped at this layer.
+- Every affordance claim carries spatial-feature warrant — dimensions, sightlines, light, materials, thresholds, scale. Affordance assertions without feature grounding are reshaped to analyst-projection flags.
+- Predicted behaviours (section 8) are *testable* — they name what observable signal would confirm or refute the prediction. Sentiment-only statements are reshaped here.
+- When the inhabitant-variation test surfaced a vantage-dependent affordance, the deliverable carries a labelled `**Vantage-dependent affordance:** [affordance] — visible for [inhabitant vantage]; absent for [other vantage]. Implication: [...].`
+- When the analysis encountered low-fidelity input (description insufficient for full spatial reading), the deliverable opens with: `**Note: input fidelity is insufficient for full spatial reading (per T19 Debate 4 on verbal-accessibility for AI implementation). Findings below are partial; specific features named are inferred rather than directly observed.**`
+- When the operative compositional work is being done by held-open void rather than affordance/inhabitation, the deliverable opens with: `**Note: on reflection the operative work here may be done by held-open void rather than by affordance / inhabitation; ma-reading is the appropriate sideways-route.**`
+- Confidence and counter-readings (section 10) are first-class; defeasibility is the mode's structural commitment.
 
 ## CAVEATS AND OPEN DEBATES
 

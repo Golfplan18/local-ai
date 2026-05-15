@@ -90,19 +90,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you paste the article, ad, op-ed, or document, and tell me roughly what topic or question you want the framing audit to focus on?'"
     on_underspecified: "Ask: 'Are you noticing something specific about how the issue is being set up, or do you want me to surface whatever frames are operative?'"
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - operative_frames_named
-    - lakoff_metaphor_inventory
-    - goffman_primary_framework_and_keyings
-    - entman_four_functions_per_frame
-    - selection_and_salience_inventory
-    - presupposition_and_nominalization_audit
-    - counterframe_what_an_alternative_frame_would_look_like
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -189,13 +176,83 @@ Revise to extract the frame to alternative-comparable vocabulary where the draft
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured audit with the eight required sections. Operative frames are named explicitly with one-sentence characterizations in vocabulary that travels across alternatives. The Lakoff metaphor inventory cites quoted text and names the source-domain → target-domain mapping with its inferential entailments. Goffman primary framework and keyings are identified (natural / social; make-believe / contests / ceremonials / technical-redoings / regroundings; fabrication if applicable). The four Entman functions are populated per frame with quoted evidence. Selection and salience inventory has both included-and-emphasized and excluded-and-downplayed columns. Presupposition and nominalization audit cites quoted text per finding. The counterframe is sketched as a one-paragraph alternative reading the artifact does not perform. Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **a stance-suspending frame audit: operative frames named in alternative-comparable vocabulary, Lakoff metaphor atoms with source→target inferential mappings, Goffman primary-framework and keying atoms, Entman four-function atoms per frame, selection-and-silence inventory, presupposition/nominalization atoms with quoted text, and counterframe construction**. The atoms are:
+
+1. **Operative-frame atoms.** Each atom names one frame operative in the artifact, characterised in vocabulary that travels across alternative frames (i.e., not the artifact's own naturalised terms). Frame-naturalization is the named failure mode the consolidator watches for; atoms that restate the artifact's framing in the artifact's vocabulary get reshaped to alternative-comparable vocabulary.
+
+2. **Lakoff-metaphor atoms.** Each atom carries: quoted text from the artifact, the source-domain → target-domain mapping the metaphor activates, and the inferential entailments the mapping smuggles in (what reasoning the metaphor licenses, what reasoning it makes harder).
+
+3. **Goffman-frame atoms.** Each atom carries: the primary framework (natural / social), the keying applied (make-believe / contests / ceremonials / technical-redoings / regroundings) if any, and any fabrication flag.
+
+4. **Entman four-function atoms — per frame.** Each frame carries four sub-atoms: problem definition, causal interpretation, moral evaluation, treatment recommendation. Each sub-atom carries quoted evidence from the artifact. Function-collapse is the named failure mode; frames named without populated four-function atoms get reshaped.
+
+5. **Selection-and-salience atoms.** Two paired sub-inventories: what the artifact *includes and emphasises*, and what it *excludes or downplays*. Silence-blindness is the named failure mode; inventories with empty exclusion columns get reshaped — frames work as much by silence as by speech.
+
+6. **Lexical-and-grammatical-mechanism atoms.** Each atom names one mechanism (presupposition, nominalisation, passivisation, lexicalisation choice) with quoted text and the framing work the mechanism does. Macro-frame-only-reading is the named failure mode; audits that operate only at macro-frame level without showing how the frame travels at the word and grammar level get reshaped.
+
+7. **Counterframe atom.** A one-paragraph sketch of what the issue would look like under at least one alternative frame — what would change in problem definition, causal interpretation, moral evaluation, treatment recommendation. Counterframe-omission is the named failure mode; audits that assert no alternative is available get reshaped to surface at least one.
+
+8. **Stance-discipline flag — when applicable.** Where streams slipped from frame-surfacing into frame-rejection (asserting the operative frame is wrong rather than showing what it does and what it costs), the slippage is flagged. Stance-slippage-into-attack is the named failure mode; the mode's posture is suspending, not adversarial. (If adversarial reading is wanted, propaganda-audit or the red-team modes are the right sideways-routes.)
+
+9. **Confidence per finding.** Each major claim carries a confidence with grounding (quoted-text evidence, structural inference, lens-application).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Frame-naturalization** — the artifact's framing restated in the artifact's own vocabulary, as if it were the natural way to see the issue.
+- **Function-collapse** — frame named without Entman's four functions populated; the frame's *work* is invisible.
+- **Inclusion-only inventory** — what's left in is catalogued; what's left out and what's downplayed is not. Frames live in their silences.
+- **Macro-frame-only reading** — the operative frame named at high abstraction without showing the lexical-grammatical mechanisms (metaphor activation, presupposition smuggling, nominalisation hiding agency) by which it travels.
+- **Counterframe-omission** — empty counterframe section, or asserting no alternative exists.
+- **Stance-slippage** — frame-surfacing tipping into frame-rejection; the mode is suspending, not adversarial.
+- **Lens-citation without text** — Lakoff/Goffman/Entman vocabulary deployed without quoted artifact evidence to ground it.
+
+**What NOT to collapse:**
+
+- **Multiple operative frames** — when streams surfaced different operative frames (or different primary frames in a multi-frame artifact), all survive as their own atoms with their respective four-function populations.
+- **Stream disagreement about what's in vs out** — when streams diverged on which elements were emphasised vs downplayed, the disagreement reveals what's genuinely contested about the artifact's selection structure.
+- **Counterframe multiplicity** — when streams constructed different counterframes, both survive; the choice of counterframe is itself a finding about what alternatives the analytical horizon contains.
+- **Lakoff vs Goffman primacy** — when one stream foregrounded metaphor activation and another foregrounded primary-framework keying, both readings survive; the layers operate at different scales.
 
 ## VERIFICATION CRITERIA
 
 Verified means: operative frames are named in alternative-comparable vocabulary; the four Entman functions are populated per frame with quoted evidence; the selection-and-silence inventory has entries in both columns; lexical and grammatical mechanisms are cited with quoted text; at least one counterframe is constructed; the audit has not slipped from frame-surfacing into frame-rejection. The five critical questions are addressable from the output. Confidence per finding accompanies each major claim.
-</content>
-</invoke>
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **frame audit** — a stance-suspending analysis that names operative frames in alternative-comparable vocabulary, populates Entman's four functions with quoted evidence, inventories selection and silence, cites the lexical-grammatical mechanisms by which the frame travels, and sketches at least one counterframe. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Operative frames named.** Bulleted list. Each: `**[Frame name]** — one-sentence characterisation in alternative-comparable vocabulary. Where it surfaces in the artifact: [brief location pointer].` Frame names use vocabulary that travels (e.g., `markets-as-rational-actors`, `nation-as-family`); not the artifact's own naturalised terms.
+
+2. **Lakoff metaphor inventory.** Bulleted list. Each: `**[Source → target metaphor]** — quoted text: "..." Inferential entailments: [what reasoning this licenses; what it makes harder].`
+
+3. **Goffman primary framework and keyings.** One paragraph. Identifies the primary framework (natural / social), any keying applied (make-believe / contests / ceremonials / technical-redoings / regroundings), and fabrication flag if applicable.
+
+4. **Entman four functions per frame.** Per frame, four labelled sub-blocks:
+   - `**Problem definition:** [what the frame names as the problem]. Quoted text: "..."`
+   - `**Causal interpretation:** [what the frame attributes causation to]. Quoted text: "..."`
+   - `**Moral evaluation:** [what the frame casts as good / bad / acceptable]. Quoted text: "..."`
+   - `**Treatment recommendation:** [what the frame proposes as the response]. Quoted text: "..."`
+
+5. **Selection and salience inventory.** A two-column table or paired bulleted lists:
+   - `**Included and emphasised:** [what the artifact foregrounds].`
+   - `**Excluded or downplayed:** [what the artifact omits or backgrounds].`
+   
+   Both columns are populated; an empty exclusion column gets reshaped at this layer.
+
+6. **Presupposition and nominalisation audit.** Bulleted list. Each: `**[Mechanism — presupposition / nominalisation / passivisation / lexicalisation]** — quoted text: "..." Framing work it does: [what the mechanism makes invisible, naturalises, or smuggles].`
+
+7. **Counterframe — what an alternative frame would look like.** One paragraph sketching the alternative reading, with the four Entman functions briefly re-populated under the counterframe to show what would shift.
+
+8. **Confidence per finding.** Bulleted list of confidence assessments per major claim, with grounding.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- The mode's stance is suspending — the deliverable surfaces what the frame does and what it costs, without rejecting it. Stance-slippage into rejection is reshaped at this layer; if the adversarial reading is what's wanted, the deliverable surfaces a sideways-route note (`**If frame-rejection rather than frame-surfacing is the operative question, propaganda-audit or red-team-assessment is the appropriate sideways-route.**`).
+- Quoted text appears throughout — Lakoff metaphors, Entman functions, lexical-grammatical mechanisms all cite the artifact's words. Macro-level claims without textual grounding get reshaped.
+- The counterframe (section 7) is a one-paragraph sketch with the four Entman functions briefly re-populated under it, not a full second audit; it exists to make the operative frame visible *as* a frame.
+- When multiple operative frames survived consolidation, sections 4 and 7 render each frame as its own labelled sub-block; the deliverable does not collapse to a single dominant frame unless one stream uniquely identified one.
+- When streams disagreed on selection-vs-silence cells, the disagreement renders in section 5 as `**Contested:** [item] — stream A: included and emphasised; stream B: downplayed. [What this contest reveals about the artifact's framing structure].`
 
 
 ---

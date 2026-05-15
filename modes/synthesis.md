@@ -76,17 +76,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What are the two (or more) bodies of knowledge or frameworks you want me to synthesise?'"
     on_underspecified: "Ask: 'Which two areas should I work between, and what's the question that's drawing you to the connection?'"
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - frameworks_identified
-    - structural_parallels
-    - evidence_for_genuineness
-    - emergent_insight
-    - productive_tensions
-    - limitations
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -151,7 +140,25 @@ Breadth in Synthesis is the catalog of candidate connections considered before s
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Synthesis output (a) names both frameworks as peer roots; (b) presents at least one cross-link with mechanism-level evidence; (c) names at least one productive tension; (d) identifies an emergent insight; (e) names at least one limitation where the synthesis breaks down. Connections that fail the mechanism test are surfaced as ruled-out rather than asserted.
+Synthesis is read in the structural-isomorphism-detection tradition and the cross-domain analogical-mapping literature (Hofstadter-style structural correspondence, Gentner's analogical-mapping theory) — the discipline that distinguishes genuine structural correspondence from surface analogy. The evaluator's primary axes are peer-root integrity and mechanism-test discipline. CQ1 (false-synthesis) is load-bearing because surface analogies dressed as cross-links are the most common way the methodology fails — vocabulary similarity is mistaken for mechanism similarity. CQ2 (reduction-trap) is also load-bearing because reducing one framework to a special case of the other collapses synthesis into endorsement. CQ3 (harmony-trap) and CQ4 (restatement-only) act as gates on tension surfacing and emergent value.
+
+Evaluator checks:
+
+1. **Mechanism test on every cross-link (CQ1, load-bearing).** Each cross-link must carry an explicit mechanism-test result — what would falsify the parallel if one framework's mechanism operated and the other's did not? Cross-links resting on shared vocabulary ("both use the word 'system'," "both reference structure"), evocative similarity, or thematic overlap are false-synthesis residue. The reading discipline: a structural correspondence predicts behaviour the surface analogy doesn't, and the deliverable names the prediction. Cross-links that cannot be defended at the mechanism level migrate to ruled-out cross-links rather than surviving.
+
+2. **Peer-root parity (CQ2, load-bearing).** Both (or all) frameworks must render at the same structural rank in the deliverable. Reduction-trap residue is "X is really a kind of Y," "Y is the more general case of X," or a framework rendered as a sub-section under another. The evaluator's check: visual peer-root parity — does each framework get its own H3 block at section-1 depth, with comparable detail on lineage, units of analysis, generative mechanism, and known failure modes? Asymmetric rendering smuggles in the reduction.
+
+3. **Productive tensions surfaced (CQ3).** At least one productive tension between the frameworks must be named — a place where they pull in different analytical directions and the tension is itself the finding rather than bloat to smooth over. Harmony-trap residue is "the frameworks beautifully complement each other," "they share a deep affinity," or any harmony-padding that erases the analytical work. The reading: productive tensions are findings about the synthesis space, not failures of synthesis to resolve.
+
+4. **Emergent insight requires both frameworks (CQ4).** The emergent insight must be a claim that neither framework alone produces. Restatement-only residue is an "emergent insight" the evaluator could have written by reading just one framework. The test: does the insight cite which framework contributed which aspect, and is each contribution necessary? Insights that one framework alone would have produced are downgraded or reshaped.
+
+5. **Ruled-out cross-links surfaced.** The deliverable must carry ruled-out cross-link atoms — candidate connections the breadth pass considered but the mechanism test rejected. Their presence is evidence the synthesis considered alternatives and disciplined itself; their absence suggests the surviving cross-links may not have been tested. At minimum the breadth pass considered three candidates; the ratio of confirmed to ruled-out cross-links is a finding about the synthesis's solidity.
+
+6. **Limitations named.** The synthesis must name a domain or condition where it breaks down — where the cross-links fail to apply or the frameworks genuinely disagree without productive tension. Limitations are scope-discipline; their absence implies the synthesis claims completeness it has not earned. The evaluator confirms the limitations atom is present and substantive.
+
+7. **No advocacy.** Synthesis is neutral examination, not endorsement of one framework. Where the analysis tips toward one framework's vocabulary or accepts its assumptions silently, the neutrality has slipped. The evaluator confirms both frameworks survive in their own terms — own-terms vocabulary preserved per framework rather than translated into one framework's lexicon.
+
+Confidence is per-cross-link: high when mechanism evidence is direct (cases on record where the structural prediction was tested); lower when the mechanism test depends on conjectural extrapolation. Where streams disagreed on whether a cross-link passes the mechanism test, the evaluator confirms the disagreement is preserved as a tension atom rather than silently resolved.
 
 ## REVISION GUIDANCE
 
@@ -159,11 +166,68 @@ Revise to add mechanism evidence where the draft asserts connection by vocabular
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured synthesis with the six required sections. Both frameworks appear as peer roots; at least one cross-link bridges them with explicit mechanism evidence. Productive tensions are marked with linking phrases like "is in productive tension with." Emergent insight is named explicitly. Limitations are named explicitly. The format is structured (matrix-friendly when the parallels are tabular; prose-with-headings otherwise).
+Organize the consolidated corpus as **peer-root framework atoms bridged by mechanism-level cross-link atoms, with productive-tension atoms, emergent-insight atom, and limitations atoms**. The peer-root status of both frameworks is load-bearing; the mechanism test on each cross-link is the discipline that distinguishes synthesis from surface analogy. The atoms are:
+
+1. **Framework atoms — peer roots.** Each carries: framework name, lineage / tradition, units of analysis, generative mechanism, and known failure modes. Both frameworks appear at the same structural rank in the corpus; reduction-trap is the named failure mode, and treating one framework as a special case of the other is its corpus signature. The corpus carries both as roots even when one is more developed or familiar.
+
+2. **Cross-link atoms — mechanism-tested only.** Each carries: source-framework atom, target-framework atom, the proposed correspondence, and the **mechanism-test result** — what makes this a structural correspondence rather than a surface analogy. The mechanism test asks: could the cross-link be falsified by a case where one framework's mechanism operates and the other's does not? Cross-links that fail the test do not survive as cross-links — they survive as ruled-out cross-link atoms (see item 6). False-synthesis is the named failure mode; mechanism-untested cross-links are its corpus signature.
+
+3. **Productive-tension atoms.** Each names a real tension between the frameworks — a place where they pull in different analytical directions and the tension is itself productive (not bloat to smooth over). Each tension atom carries: the position from each framework, the tension's load-bearing reason, and what the tension reveals about the synthesis space. Harmony-trap is the named failure mode; corpus with cross-links but no productive-tension atoms is its signature. At least one productive-tension atom must survive or harmony-trap fires.
+
+4. **Emergent-insight atom.** A single corpus-level atom names the insight unavailable from either framework alone — what the synthesis produces that is not a restatement of either source. Restatement-only is the named failure mode; an emergent-insight atom that the consolidator could have written by reading just one framework is its corpus signature. The atom must name what's new and what made it visible (which cross-link or tension produced it).
+
+5. **Limitations atoms.** Each names a domain or condition where the synthesis breaks down — where the cross-links fail to apply or the frameworks genuinely disagree without productive tension. Limitations atoms guard against scope-overreach and signal where downstream use of the synthesis should pause.
+
+6. **Ruled-out cross-link atoms.** Each names a candidate cross-link that failed the mechanism test, with: the proposed correspondence, the case that falsified it, and the reason it's surface rather than structural. The ruled-out atoms are evidence of breadth (at least three candidate connections considered per the breadth marker) and discipline (failed candidates are surfaced as ruled-out rather than dropped silently). At minimum the breadth pass considered three candidates; the ratio of cross-link to ruled-out atoms is a finding about the synthesis's solidity.
+
+7. **Confidence per cross-link.** Confidence markers attach to individual cross-link atoms (high when mechanism evidence is direct; lower when the mechanism test depends on conjectural extrapolation). When the two streams assigned different confidences, audit conservatism applies.
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Vocabulary-shared cross-links** — connections asserted because the frameworks share a term ("both use the word 'system'", "both reference structure"). False-synthesis residue; either a mechanism-level evidence atom is added (and the cross-link survives) or the candidate migrates to ruled-out cross-links.
+- **Harmony-padding** — phrases like "the frameworks beautifully complement each other", "they share a deep affinity". Harmony-trap residue; the corpus carries productive-tension atoms rather than affinity language.
+- **Reduction-language residue** — "X is really a kind of Y", "Y is the more general case of X". Reduction-trap residue; the corpus carries both as peer roots, and reduction language either gets reframed as "X and Y address the same problem from different mechanism-paths" or is dropped.
+- **Restatement-only emergent insight** — an "emergent insight" that the consolidator could have written by reading just one framework. Restatement-only residue; the emergent-insight atom must require both frameworks to produce.
+- **Tension-as-failure framing** — phrases that treat productive tensions as flaws or open problems to resolve. The tensions are findings; reframing them as failures-of-synthesis is its own failure mode. The corpus carries them with "productive tension" framing.
+- **Cross-link inflation** — many shallow cross-links rather than fewer mechanism-tested ones. The bloat strip prunes shallow cross-links; the corpus carries fewer-but-mechanism-tested over many-but-vocabulary-tested.
+
+**What NOT to collapse:**
+
+- **Different mechanism-test results for the same cross-link** — when one stream judged a cross-link mechanism-tested-passing and the other judged it failing, preserve both judgments. The disagreement is consequential for whether the cross-link survives or migrates to ruled-out; the consolidator must not silently pick. The corpus carries the cross-link with both judgments and lets downstream verify.
+- **Different productive tensions surfaced** — when streams identified different real tensions between the frameworks, preserve all surviving tensions as parallel atoms. Multiple tensions is a sign of breadth, not redundancy.
+- **Limitations disagreement** — when streams disagreed on whether the synthesis applies to a particular domain, preserve both judgments as a contested-limitation atom. Whether the synthesis extends to that domain is itself a finding.
 
 ## VERIFICATION CRITERIA
 
 Verified means: both frameworks present as peer roots; ≥ 1 cross-link with mechanism evidence; ≥ 1 productive tension named; emergent insight named; ≥ 1 limitation named. Every cross-link's connection survives the mechanism test (could be falsified by a case where one framework's mechanism operates and the other's does not). The four critical questions are addressed in the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **structured peer-root synthesis: two (or more) frameworks at parallel rank with mechanism-tested cross-links, productive tensions, emergent insight, and limitations**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Frameworks identified — peer roots.** Two (or more) parallel H3 sub-sections, one per framework. Each sub-section: `**Framework name** — lineage / tradition: [...]. Units of analysis: [...]. Generative mechanism: [the engine the framework uses to produce its insights]. Known failure modes: [the framework's own internal limits, not external critique].` Both frameworks render at the same structural depth — reduction-trap is the named failure mode (treating one as a special case of the other).
+
+2. **Structural parallels — mechanism-tested cross-links.** Numbered list. Each cross-link: `**Cross-link [N]:** [Framework A's element] ↔ [Framework B's element]. Mechanism-test: [what makes this a structural correspondence rather than a surface analogy — i.e., what case would falsify the parallel if one framework's mechanism operated and the other's did not]. Status: confirmed.` At minimum one mechanism-tested cross-link.
+
+3. **Evidence for genuineness.** For each cross-link from section 2, a short block: `Cross-link [N] is genuine because: [specific evidence — domain cases, structural correspondences, or shared inferential moves the cross-link predicts that surface analogy would not]. Falsifying case: [the case that, if it obtained, would refute the cross-link].`
+
+4. **Emergent insight.** A single block (one to three sentences) stating what the synthesis produces that neither framework alone produces. Frame as: `**Emergent insight:** [the claim]. This required both frameworks because: [which framework contributed what aspect, and why neither alone is sufficient].` Restatement-only is the named failure mode; an emergent insight the consolidator could have written by reading just one framework is its corpus signature.
+
+5. **Productive tensions.** Bulleted list. Each tension: `**[Tension name]** — Framework A's position: [...]. Framework B's position: [...]. Why productive: [what the tension reveals about the synthesis space that resolving it would obscure].` At minimum one productive-tension atom; harmony-trap is the named failure mode.
+
+6. **Limitations.** Bulleted list. Each limitation: `**[Limitation]** — domain or condition where the synthesis breaks down: [...]. Reason: [why cross-links fail here, or why the frameworks genuinely disagree without productive tension].`
+
+7. **Ruled-out cross-links.** Bulleted list of candidates that failed the mechanism test. Each: `**[Proposed cross-link]** — failed because: [the case that falsified it]. Why surface, not structural: [reason].` These atoms are evidence of breadth (the synthesis considered candidates and ruled some out).
+
+8. **Confidence per cross-link.** Bulleted list. Each confirmed cross-link gets a confidence marker (high / moderate / low) with reason — high when mechanism evidence is direct; lower when conjectural extrapolation.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Section 1's two framework blocks render at structurally equivalent depth — visual peer-root parity is load-bearing for the neutral-stance posture.
+- Cross-link IDs (Cross-link 1, Cross-link 2, ...) are referenced consistently between sections 2, 3, and 8.
+- Avoid harmony-padding throughout: "the frameworks beautifully complement each other", "they share a deep affinity" are forbidden phrasings.
+- Avoid reduction-language: "X is really a kind of Y", "Y is the more general case of X" — peer-root posture is maintained.
 
 
 ---

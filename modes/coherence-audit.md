@@ -89,18 +89,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you paste the argument and tell me roughly which conclusion you want me to audit the support for?'"
     on_underspecified: "Ask: 'Are you noticing something specific that doesn't follow, or do you want a structural sweep across all the inferential moves?'"
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - charitable_reconstruction
-    - toulmin_breakdown_per_inferential_move
-    - named_fallacies_if_present_with_quoted_text
-    - structural_coherence_failures_not_named_fallacies
-    - argument_holds_or_fails_per_inferential_move
-    - argument_wrong_vs_conclusion_wrong_separation
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -187,17 +175,78 @@ Revise to perform charitable reconstruction first where the draft has flagged fa
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured audit with the seven required sections. Charitable reconstruction comes first (the strongest version of the argument actually present in the text, with implicit premises surfaced). Toulmin breakdown per inferential move shows claim, data, warrant, backing, qualifier, rebuttal (or notes when an element is missing or implicit). Named fallacies (when present) are listed with quoted text + inferential move + principle + reason-it-fails-here. Structural coherence failures not named in the taxonomy are listed separately. Argument-holds-or-fails per inferential move is summarized at the end. Argument-wrong vs. conclusion-wrong is explicitly separated, with the audit's verdict phrased as "this argument as given does not establish its conclusion because [structural reason]; the conclusion may still be true; it is simply not supported by this argument." Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **atoms grouped per inferential move**, with Toulmin slots filled and Walton scheme classifications attached where the move maps to a named presumptive scheme. The structure is:
+
+1. **Charitable reconstruction.** The agreed-on strongest version of the argument actually present in the text, with implicit premises surfaced. If the two streams produced different reconstructions, surface the disagreement as a real tension — the corpus carries both reconstructions with the disagreement named, not a blended compromise.
+
+2. **Per inferential move** (sequenced as the argument unfolds), the surviving atoms are:
+   - **Toulmin slots** — claim, grounds, warrant (explicit or reconstructed), backing (present or absent atom), qualifier (present or absent atom), rebuttal conditions (considered or unconsidered atom). Implicit-component absences are themselves atoms — "the warrant is implicit; reconstructed as X" or "no rebuttal conditions are stated; the inference is being treated as universal" are findings, not gaps.
+   - **Walton scheme classification** when the move instantiates a named scheme (Expert Opinion, Position to Know, Cause to Effect, Sign, Slippery Slope, Analogy, Practical Reasoning, etc.) — the scheme name plus the per-critical-question audit (satisfied / defeated / unaddressed).
+   - **Named-fallacy atoms** when fallacy claims are made — each carries the four-part substantiation: quoted text, identified inferential move, violated principle, reason-it-fails-here. Bare fallacy labels without all four components do not survive into the corpus.
+   - **Structural-failure atoms** for failures beyond the named-fallacy taxonomy — premise smuggling, scope shift, definitional drift, unstated load-bearing assumption, enthymeme failure. Each carries the quoted text and the reason the move fails *here*.
+
+3. **Cross-cutting findings:**
+   - **Argument-holds-or-fails per inferential move** — a verdict atom per move, summarizing the audit's structural finding.
+   - **Argument-wrong vs conclusion-wrong separation** — the conclusion-agnostic verdict stated once at the corpus level: "this argument as given does not establish its conclusion because [structural reason]; the conclusion may still be true; it is simply not supported by this argument." A single load-bearing atom; it does not appear multiple times in the corpus.
+   - **Symmetric-rigor check** — an atom flagging whether the audit applied the same standards to comparable moves, or whether severity-grading is asymmetric.
+   - **Confidence per finding** — confidence markers attach to individual atoms (warrant reconstruction, fallacy claim, structural failure). When the two streams assigned different confidences to the same finding, audit conservatism applies — the corpus carries the lower of the two.
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Warrant-paraphrase loops** — both streams reconstruct the same implicit warrant in slightly different wordings. The warrant survives once, in the most precise form.
+- **Fallacy-claim duplication with surface-different substantiation** — both streams flag the same fallacy with overlapping evidence quotes and overlapping principle articulations. Union the evidence quotes; pick the most precise principle statement; a single fallacy atom survives.
+- **Toulmin-absence restatement** — both streams may note "warrant is implicit, reconstructed as X" or "backing is absent" in slightly different phrasings. A single absence-atom per Toulmin slot per move.
+- **Argument-wrong vs conclusion-wrong meta-restatement** — coherence-audit's signature posture surfaces across multiple passages in both streams. Cut to one corpus-level verdict atom; do not preserve every reiteration.
+- **Charitable-reconstruction restatement** — when the streams agree, the reconstruction collapses to one atom. When they disagree, the disagreement is a tension, not a duplication.
 
 ## VERIFICATION CRITERIA
 
 Verified means: charitable reconstruction precedes any fallacy claim; Toulmin warrants are surfaced per inferential move; every named fallacy is substantiated with quoted text + violated principle + reason-it-fails-here; argument-wrong is explicitly separated from conclusion-wrong; the structural-failure sweep has been performed beyond the named-fallacy taxonomy; severity grading is symmetric across the artifact. The five critical questions are addressable from the output. Confidence per finding accompanies each major claim.
 
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **structured coherence audit organized per inferential move**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Charitable reconstruction.** Open with the strongest version of the argument actually present in the text, with implicit premises surfaced. One paragraph of prose, framed as "the argument, as charitably reconstructed:" — the user must see what is being audited before the audit findings.
+
+2. **Per inferential move — Toulmin breakdown.** For each inferential move in the argument (sequenced as the argument unfolds), render a block with these fields:
+   - **Claim** — what this move asserts
+   - **Grounds** — the data or evidence offered
+   - **Warrant** — the inferential rule, explicit or reconstructed (label reconstructed warrants as "warrant (implicit, reconstructed): ...")
+   - **Backing** — support for the warrant, or "no backing offered" / "no backing identifiable" when absent
+   - **Qualifier** — the strength claimed, or "no qualifier stated; argument offered as certain" when absent
+   - **Rebuttal conditions** — circumstances that would defeat the inference, or "no rebuttal conditions considered" when absent
+
+   Render each move's Toulmin block as a small table or as a clean tagged list — whichever the medium supports better. Implicit-component absences are themselves findings; do not omit the "no X offered" lines.
+
+3. **Walton scheme classification — where applicable.** For inferential moves that instantiate a named presumptive scheme (Expert Opinion, Position to Know, Cause to Effect, Sign, Slippery Slope, Analogy, Practical Reasoning, etc.), follow the Toulmin block with the scheme name and the per-critical-question audit. Render each critical question with a verdict tag: **satisfied** / **defeated** / **unaddressed**.
+
+4. **Named fallacies — when present.** Each named fallacy carries the four-part substantiation in this exact shape:
+   - **Quoted text:** the specific passage where the fallacy occurs
+   - **Inferential move:** which move in the Toulmin breakdown
+   - **Violated principle:** what the move does wrong
+   - **Reason it fails here:** why this case (not just the abstract pattern) is a fallacy
+
+   Do not label fallacies without all four fields. When there are no named fallacies, write "No named fallacies identified."
+
+5. **Structural coherence failures (beyond the named-fallacy taxonomy).** Each structural failure (premise smuggling, scope shift, definitional drift, unstated load-bearing assumption, enthymeme failure, etc.) carries quoted text and the structural reason for the failure. Render as a list. When none are identified, write "No structural failures identified beyond the named-fallacy sweep."
+
+6. **Argument-holds-or-fails per inferential move.** A summary list keyed to the moves from section 2: for each move, **holds** / **fails** / **partially-holds**, with the load-bearing reason.
+
+7. **Argument-wrong vs conclusion-wrong separation.** The verdict, stated once. When the argument fails, render in this framing: "This argument as given does not establish its conclusion because [structural reason]. The conclusion may still be true — it is simply not supported by this argument." When the argument holds, render as: "This argument as given establishes its conclusion, supported by [specific Toulmin elements]." This section is load-bearing; the mode's conclusion-agnostic posture lands here.
+
+8. **Confidence per finding.** A bulleted list of major claims with confidence markers (high / moderate / low). One bullet per major finding; do not pad with confidence-on-every-sentence.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Use code-block, table, or tagged-list format for the Toulmin breakdowns and Walton scheme audits where the medium supports it.
+- Quoted passages get inline quotation marks; passage citations get the source phrase verbatim.
+- Implicit-component absences are rendered explicitly — not omitted.
+
 ## CAVEATS AND OPEN DEBATES
 
 **Debate D1 — Is "fallacy" a property of the argument, or a property of the dialogue in which the argument is made?** The classical (Aristotelian, Copi-textbook) tradition treats fallacy as a property of the argument: an inferential move fails because of its form or because its premises do not support its conclusion, independently of dialogue context. The pragma-dialectical tradition (van Eemeren & Grootendorst) treats fallacy as a violation of rules for critical discussion: the same inferential move can be a legitimate strategic manoeuvre in one dialogue type and a fallacy in another. Walton's pragmatic / dialectical theory occupies a middle position: argumentation schemes carry critical questions whose negative answers can defeat the argument, and the dialogue type (persuasion, inquiry, negotiation, deliberation, information-seeking, eristic) determines which critical questions are in scope. Hamblin's *Fallacies* (1970) opened the debate by exposing the textbook tradition as theoretically degenerate, and the debate has not been settled in the literature. This mode operates without adjudicating: it applies Toulmin reconstruction (warrant-based, neutral on dialogue type) as the primary lens, layers Walton's argumentation-scheme critical questions on top (which carry the dialogue-type sensitivity implicitly), and flags fallacy claims as "the argument as given does not establish its conclusion via this inferential move" rather than as "the speaker has committed [named fallacy] in absolute terms." This treatment is compatible with both the property-of-argument and property-of-dialogue readings while remaining noncommittal about which is correct. Citations: Hamblin 1970 *Fallacies*; Walton 1995 *A Pragmatic Theory of Fallacy*; van Eemeren & Grootendorst 2004 *A Systematic Theory of Argumentation*; Hansen, "Fallacies," *Stanford Encyclopedia of Philosophy*.
-</content>
-</invoke>
 
 
 ---

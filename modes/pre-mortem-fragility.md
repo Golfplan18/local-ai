@@ -85,18 +85,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you describe the system or design and what it's meant to do under what conditions?'"
     on_underspecified: "Ask: 'What range of conditions is this meant to operate within, so I can imagine the conditions in which it breaks?'"
-output_contract:
-  artifact_type: scenarios
-  required_sections:
-    - imagined_breakage_narrative
-    - structural_fragility_inventory
-    - load_pathways_to_breakage
-    - leading_indicators_per_fragility
-    - structural_mitigations
-    - residual_unmitigated_fragilities
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -174,11 +162,73 @@ Revise to restore prospective-hindsight stance where the draft has slipped into 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured scenarios artifact with the seven required sections. The imagined breakage narrative is written in past tense as the post-incident report the team would produce after the structural failure. Structural fragility inventory is organized by class (load / dependency / interface / state / emergent). Load pathways link each fragility to the operating-envelope condition that triggers it and the structural property that yields. Leading indicators are observable pre-failure signals; mitigations are structural changes only (component replacement, interface hardening, dependency removal, state-bound enforcement). Residual unmitigated fragilities are named explicitly.
+Organize the consolidated corpus as **a Klein prospective-hindsight structural-fragility analysis: past-tense imagined-breakage narrative, structural-fragility atoms by class (load / dependency / interface / state / emergent), load-pathway atoms tied to specific components and operating-envelope conditions, leading-indicator atoms, structural-mitigation atoms (not operational workarounds), and residual-unmitigated-fragility atoms**. The atoms are:
+
+1. **Imagined-breakage narrative atom.** The post-incident report the team would have written after the structural failure, in past tense. The system broke. Here is what yielded. Stance-slippage is the named failure mode the consolidator watches for; forward-conditional language gets reshaped to retrospective.
+
+2. **Structural-fragility atoms — by class.** Each atom carries: the fragility, its class (`load` / `dependency` / `interface` / `state` / `emergent`), and the specific component, link, or interface where it sits. Generic-fragility-trope is the named failure mode; "single point of failure" or "cascading failure" without naming the component / link / interface get reshaped to structure-specific atoms.
+
+3. **Load-pathway atoms.** Each atom traces: the operating-envelope condition that triggered the breakage (load level, frequency, duration, environmental shift), the structural property that yielded under it, and the immediate consequence. Mechanism-gap is the named failure mode; fragilities asserted without the load-trigger or yield-mechanism get reshaped.
+
+4. **Leading-indicator atoms — per fragility.** Each atom names: the observable signal (drift, saturation, latency increase, error rate climb, queue depth, retry rate, accumulated state crossing threshold) that would have shown the structure approaching failure pre-breakage, the signal-acquisition cost, and the lead time.
+
+5. **Structural-mitigation atoms.** Each atom names: a *structural* change (component replacement, interface hardening, dependency removal, state-bound enforcement, redundancy with independence, decoupling) that addresses the fragility. Structure-operation-conflation is the named failure mode; mitigations framed as operational practices (better monitoring, more careful operators, alerting tuning) get reshaped or flagged.
+
+6. **Residual-unmitigated-fragility atoms.** Each atom names: a fragility that survives the structural mitigations, and the operating-envelope conditions under which it would yield.
+
+7. **Actor-modeling-drift flag — when applicable.** Where streams invoked an adversarial actor trying to defeat the system, the flag is preserved and the deliverable surfaces a sideways-route note. Actor-modeling-drift is the named failure mode; that's red-team territory, not structural fragility.
+
+8. **Confidence per finding.** Each major claim carries a confidence with explicit grounding.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Stance slippage** — forward conditional language. The structure *broke*; the narrative is past-tense.
+- **Generic fragility tropes** — `single point of failure`, `cascading failure`, `brittle dependency` without naming the specific component / link / interface.
+- **Mechanism gap** — fragility asserted without load condition or structural yield-mechanism.
+- **Structure-operation conflation** — mitigations that change how operators behave rather than what the structure is. Fragility is a property of the structure.
+- **Adversarial-actor drift** — narratives where someone is *trying* to defeat the system; that's red-team-assessment / red-team-advocate territory.
+- **Class-imbalanced inventory** — fragilities all in one class (typically load) when dependency, interface, state, emergent classes were also plausible.
+- **Architecture-agnostic narrative** — the fragility narrative could describe any system of comparable architecture; nothing in it is specific to *this* design.
+
+**What NOT to collapse:**
+
+- **Multiple breakage scenarios under different load conditions** — when streams traced different breakages under different operating-envelope shifts, both survive; the architecture has multiple yield surfaces.
+- **Stream disagreement about fragility class** — when one stream classified a fragility as load and another as state (accumulation across time), the disagreement reveals what's contested about the structure's response model.
+- **Mitigation alternatives** — when streams proposed different structural changes for the same fragility, both survive with their respective tradeoffs and side-effects.
+- **Residual fragilities the mitigations cannot reach** — preserved at full salience; this is the load-bearing finding for the ship-or-not decision.
 
 ## VERIFICATION CRITERIA
 
 Verified means: the breakage narrative is in past-tense prospective-hindsight stance throughout; every named fragility has a structure-specific mechanism (no generic tropes); every fragility has at least one leading indicator observable pre-failure; every mitigation is a structural change (not an operational workaround); no narrative is actually about an adversarial actor; the four critical questions are addressable from the output. Confidence per finding accompanies each major claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **prospective-hindsight structural-fragility analysis** — a structured pre-mortem on the system/design, written in past tense, with structure-specific fragilities, load-pathway mechanism, leading indicators, and structural (not operational) mitigations. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Imagined breakage narrative.** One to two paragraphs of past-tense post-incident prose. `The system broke under [load condition]. Here is what yielded: [...]. Here is what happened next: [...].` The grammar stays retrospective throughout.
+
+2. **Structural fragility inventory.** Bulleted list grouped by class. Each: `**[Fragility]** — class: [load / dependency / interface / state / emergent]. Located in: [specific component, link, or interface]. Yield mechanism: [the structural property that fails].`
+
+3. **Load pathways to breakage.** Per fragility, one labelled sub-block: `**[Fragility]** — operating-envelope condition that triggered it: [load level / frequency / duration / environmental shift]. Structural property that yielded: [...]. Immediate consequence: [...]. Cascade through dependencies: [...].`
+
+4. **Leading indicators per fragility.** Per fragility, one labelled sub-block: `**[Fragility]** — observable signals approaching failure: [drift / saturation / latency increase / error rate / queue depth / retry rate / state accumulation]. Signal-acquisition cost: [...]. Lead time before yield: [...].`
+
+5. **Structural mitigations.** Numbered list of structural changes. Each: `[N]. **[Structural change — component replacement / interface hardening / dependency removal / state-bound enforcement / redundancy-with-independence / decoupling]** — fragility it addresses: [...]. Tradeoffs introduced: [...]. Implementation cost: [...].` Operational workarounds (more monitoring, more careful operators) are reshaped here — they are not structural mitigations.
+
+6. **Residual unmitigated fragilities.** Bulleted list. Each: `**[Residual fragility]** — why structural mitigations don't reach it: [...]. Operating-envelope conditions under which it would yield: [...]. Whether this should warrant rethinking the design: [...].`
+
+7. **Confidence per finding.** Bulleted list of confidence assessments per major claim, with grounding.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- The prospective-hindsight vocabulary stays operative — past-tense `broke`, `yielded`, `exceeded`, `accumulated past threshold`. Forward-conditional grammar gets reshaped at this layer.
+- The five-class taxonomy (load / dependency / interface / state / emergent) appears verbatim. Class-imbalanced inventories are reshaped when other classes were plausible.
+- Fragility mechanisms (section 2) are *structure-specific* — they name the actual component, link, or interface in *this* design. A breakage narrative substitutable into any system of comparable architecture is reshaped.
+- Structural mitigations (section 5) change the structure itself. Operator-behaviour changes, monitoring upgrades, and alerting tuning are reshaped — they may belong in an operations runbook, but they are not fragility mitigations.
+- When the actor-modeling-drift flag survived consolidation, the deliverable opens with: `**Note: portions of the consolidated corpus invoked an adversarial actor trying to defeat the system. That is red-team-assessment / red-team-advocate (T15) territory, not structural fragility. The deliverable below restricts itself to structural mechanisms; the actor-modeling material has been excluded with a sideways-route flag for separate dispatch.**`
+- When the artifact is plan-shaped rather than system-shaped (sideways-route to pre-mortem-action), the deliverable opens with: `**Note: on reflection the analytical object may be a plan to execute rather than a system / design; pre-mortem-action (T6) is the appropriate sideways-route.**`
+- Confidence (section 7) is per-finding; collapsing into overall pre-mortem confidence is reshaped at this layer.
 
 ## CAVEATS AND OPEN DEBATES
 

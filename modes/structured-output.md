@@ -76,14 +76,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the source content I should render, and what format do you want it in?'"
     on_underspecified: "Ask: 'Should I render existing content into this format (Structured Output), or do you need me to also produce the analysis first (Project Mode or an analytical mode)?'"
-output_contract:
-  artifact_type: other
-  required_sections:
-    - formatted_deliverable
-    - gap_report
-    - format_notes
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -156,7 +148,25 @@ Breadth in Structured Output is the survey of format options considered before s
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ5. The named failure modes are the evaluation checklist. A passing Structured Output (a) preserves fidelity (every substantive claim traces to source); (b) follows the requested format; (c) flags gaps explicitly rather than silently filling; (d) adds no recommendation not in source; (e) preserves visual envelopes byte-equivalent (no schema drift; mode_context preserved from source). The fidelity invariant is load-bearing — silent addition of substantive claims is the worst failure mode. Threshold is **higher** here (≥ 95%) because rendering should be reliable.
+Structured Output is read in the format-template tradition (per-document-type conventions — memo, report, one-pager, outline, comparison-table — each carries its own structural discipline) with de Bono AGO when format selection requires goal clarification. The mode is a *rendering* operation, not an analytical one; the evaluator's primary axis is fidelity-to-source, and the threshold for rendering modes is higher than for analytical modes (≥95%) because rendering should be reliable. CQ1 (analyst-trap) is the load-bearing critical question — silent addition of substantive claims is the worst failure mode and invalidates the rendering. CQ5 (schema-drift-on-passthrough) is also load-bearing because visual envelopes from source must pass through byte-equivalent. CQ2 (format-mismatch), CQ3 (gap-silently-filled), and CQ4 (embellishment) act as additional fidelity gates.
+
+Evaluator checks:
+
+1. **Claim-to-source trace (CQ1, load-bearing).** Every substantive claim in the output must trace to a specific passage in source. The evaluator's discipline is line-by-line auditability: pick any substantive claim, ask "where in source does this come from?" If the answer is "the renderer's inference," the claim is analyst-trap residue — it does not survive. The narrow exception is structural transitions ("First…", "Second…", "In summary…"), which are renderer-added but carry no substantive content. Embellishment-residue is transitional framing that smuggles in substance ("This demonstrates…", "The implication is…") — those are reshaped to structural-only.
+
+2. **Visual-envelope byte-equivalence (CQ5, load-bearing).** When source contains visual envelopes, the output envelopes must be byte-equivalent to source — no regeneration, no editing, no schema drift. The `mode_context` field is preserved from source (the source mode's name stays even though SO is doing the rendering); rewriting it to `structured-output` is a specific failure mode the evaluator catches. Envelope count must match source: N visual envelopes in, N visual envelopes out.
+
+3. **Format conventions followed (CQ2).** The deliverable's structure must follow the requested format's conventions — memo format for a memo request, report sections for a report request, table columns for a comparison-table request. Format-mismatch residue is the renderer imposing analytical-mode templates (the seven-section analytical shape) on rendering outputs; those belong to other modes. The evaluator confirms the deliverable reads as the requested document type, not as a generic Ora-shaped artifact.
+
+4. **Gaps surfaced, not silently filled (CQ3).** When source did not fully satisfy what the requested format required, the gap is flagged explicitly with what's missing and what the user could supply. Gap-silently-filled residue is format-required content invented because source didn't provide it — the renderer has slipped into analysis. The Gap report is non-negotiable when applicable; when no gaps exist, the deliverable says so explicitly ("No gaps — source fully satisfied format").
+
+5. **No recommendation added (CQ4).** The output must not carry recommendations or conclusions that aren't in source. Embellishment residue is "on balance…," "I would suggest…," "the implication is…" — language that adds analytical content to a rendering operation. SO renders; it does not advise. The evaluator's test: does each recommendation-shaped sentence trace to source content, or has the renderer offered its own judgment?
+
+6. **Compression declared.** Where source content was condensed in service of the requested format (one-pager from a longer document, etc.), the compression is declared in the format-notes section with what was dropped. Compression-trap residue is silent dropping of qualifications, caveats, or nuance — the rendering looks complete but has lost source content. Explicit compression is honest; silent compression is fidelity loss.
+
+7. **Template-trap awareness.** When source content does not fit the requested format cleanly, the renderer adapts the format and declares the adaptation, rather than forcing source into an ill-fitting structure. Template-trap residue is source content shoehorned into format conventions that misrepresent it — the rendering looks correct but the format is doing violence to the content. The adaptation note in format-notes is the honest path.
+
+The threshold for rendering modes is **higher** than for analytical modes — ≥95% on the fidelity invariant because rendering should be reliable. Where source is genuinely insufficient for the format, the Gap report expands rather than the deliverable padding. SO is `passthrough: true` by spec — consolidator merging is not applied to SO outputs because passthrough fidelity defeats parallel consolidation.
 
 ## REVISION GUIDANCE
 
@@ -164,11 +174,72 @@ Revise to remove substantive claims that do not trace to source. Revise to flag 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as the formatted deliverable plus the two universal elements: gap report and format notes. The formatted deliverable follows the requested format's conventions. Visual envelopes from source are passed through byte-equivalent with `mode_context` preserved (NOT rewritten to `structured-output`). Format notes record structural choices (ordering, compression, section organisation). Gap report names where source did not fully satisfy format requirements. Format follows the deliverable type. Conversation history weight is higher than for analytical modes — source content is usually in history.
+**Note: pipeline architecture applies imperfectly to T21 rendering modes — SO is `passthrough: true` by spec.** Structured Output renders existing content rather than generating original analysis; consolidator merging is *not* applied (passthrough fidelity defeats parallel consolidation). Where the corpus-shape applies (when the rendering itself was reviewed across passes), organize as **a rendering atom set: source-content lock, requested-format specification, claim-trace atoms (every output claim traced to source), gap-report atoms, format-note atoms, and envelope-byte-equivalence check**. The atoms are:
+
+1. **Source-content lock atom.** The source material being rendered, named explicitly. Subsequent atoms reference this lock; the rendering does not extend beyond what source supports.
+
+2. **Requested-format specification atom.** The format the user wants (memo / report / one-pager / outline / comparison table / etc.) with its conventions noted. Format-mismatch is the named failure mode the consolidator watches for; renderings that violate the requested format's conventions get reshaped.
+
+3. **Claim-trace atoms.** Each substantive claim in the output traces to a specific passage in source. Analyst-trap is the named failure mode; claims that do not trace get reshaped out of the deliverable or labelled as SO-added inferences with explicit attribution.
+
+4. **Gap-report atoms.** Each atom names: a place where source did not fully satisfy the requested format's requirements, what's missing, and what the user could supply to close the gap. Gap-silently-filled is the named failure mode; silently filling format-required content the source did not provide gets reshaped to explicit gap reporting.
+
+5. **Format-note atoms.** Each atom records: a structural choice the renderer made (ordering, compression, section organisation, format adaptation). Compression-trap is the named failure mode; compression that dropped critical qualifications or caveats gets reshaped to preserve nuance with explicit compression declaration.
+
+6. **Visual-envelope passthrough atoms — when source contains envelopes.** Each atom records: the source envelope, byte-equivalence check (output envelope = source envelope, byte-for-byte), `mode_context` preservation (source's mode_context kept, NOT rewritten to `structured-output`). Schema-drift-on-passthrough is the named failure mode; envelope JSON that differs from source after rendering gets reshaped to passthrough fidelity.
+
+7. **No-recommendation discipline atom.** A standing atom: SO renders, does not advise. Embellishment is the named failure mode; transitional framing that introduces substantive claims not in source gets reshaped to structural-only transitions.
+
+8. **Template-trap flag — when applicable.** Where source content was forced into ill-fitting structure, the flag is preserved with adaptation note. Template-trap is the named failure mode.
+
+9. **Confidence per claim-trace.** Each substantive claim's trace-to-source carries a confidence (high for direct quote; lower for paraphrase-with-judgement).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Analyst-trap** — substantive claims not in source.
+- **Format mismatch** — requested format's conventions not followed.
+- **Silent gap-filling** — format-required content invented because source didn't provide it.
+- **Embellishment** — recommendations or conclusions added that aren't in source.
+- **Schema drift on passthrough** — visual envelope JSON modified during rendering.
+- **mode_context rewriting** — passthrough envelopes' `mode_context` rewritten to `structured-output` instead of preserved.
+- **Compression that drops qualifications** — caveats and nuance lost without explicit compression declaration.
+- **Template-trap** — source forced into ill-fitting structure without adaptation note.
+- **Source-extension** — SO going beyond what source supports; the depth ceiling is set by source.
+
+**What NOT to collapse:**
+
+- **Gap-report entries** — never silently filled; the gap is the load-bearing finding that tells the user what's missing.
+- **Visual envelopes** — byte-equivalent passthrough; never regenerated, never edited, `mode_context` preserved.
+- **Compression declarations** — explicit notice of what was compressed and at what cost; never smoothed away for cleaner reading.
+- **Format adaptations** — when source genuinely doesn't fit the requested format, the adaptation is noted; never silently reshaped.
 
 ## VERIFICATION CRITERIA
 
 Verified means: every substantive claim in output traces to source; format follows requested conventions; gaps explicitly flagged; no recommendation added that was not in source; visual envelopes preserved byte-equivalent with `mode_context` from source. The five critical questions are addressed. Silent gap-filling, silent recommendation injection, and silent schema drift on passthrough envelopes are all verification failures. Envelope count must match source (if source has N visuals, output has N visuals).
+
+## OUTPUT FORMAT GUIDANCE
+
+**Note: pipeline architecture applies imperfectly to T21 rendering modes — SO is `passthrough: true` by spec.** The deliverable is the **formatted deliverable in its requested form plus two universal elements (gap report, format notes)**. The deliverable's structure follows the requested format's conventions (memo format for a memo request, report sections for a report request, table columns for a comparison-table request — the mode does not impose analytical-mode shape on rendering outputs).
+
+Place the consolidated-corpus atoms into the following sections (or their format-appropriate equivalents):
+
+1. **Formatted deliverable.** The user-requested artifact, in its native form, rendered faithfully from source. Structure follows the requested format type. Visual envelopes from source are passed through byte-equivalent with `mode_context` preserved (NOT rewritten to `structured-output`).
+
+2. **Gap report.** A short labelled section after the deliverable. Bulleted list. Each: `**Gap:** [what the requested format required that source did not provide]. **What the user could supply:** [...]. **Why this gap was not silently filled:** [...].` At least one entry when source did not fully satisfy the format; explicit `No gaps — source fully satisfied format.` when applicable.
+
+3. **Format notes.** A short labelled section. Bulleted list. Each: `**Structural choice:** [ordering / compression / section organisation / format adaptation]. **What was done:** [...]. **What it cost:** [if anything was lost or compressed].`
+
+**Per-section conventions:**
+
+- The deliverable (section 1) follows its native format. Analytical-mode templates (the 7-section analytical-mode shape) get reshaped at this layer — they belong to other modes, not SO.
+- The gap report (section 2) and format notes (section 3) appear *after* the deliverable, not interleaved. They support audit but do not interrupt the deliverable's natural reading.
+- Visual envelopes from source are passed through **byte-equivalent**. Schema drift is a hard failure; `mode_context` is preserved from source (the source mode's name stays, even though SO is doing the rendering).
+- Envelope count matches source. If source has N visual envelopes, the output has N visual envelopes.
+- Substantive claims in section 1 trace to source. Where SO needed to add structural transitions, the transitions are *structural* (e.g., "First...", "Second...", "In summary...") rather than analytical ("This demonstrates...", "The implication is...").
+- Compression declarations appear in section 3 when source content was condensed; what was dropped is named.
+- When the user's request actually requires original analysis (not just rendering), the deliverable opens with a sideways-route note: `**Note: this task requires original analysis beyond rendering. Project Mode (T21) is the appropriate sideways-route; SO renders, does not advise. If you want SO to proceed with the rendering portion only and surface the analytical gap, say so explicitly.**`
+- When the template-trap flag survived consolidation, section 3 carries: `**Format-adaptation note:** source content did not fit the requested format cleanly. [Adaptation made] — [why this serves the content better than forcing the original format].`
+- The depth ceiling is set by source — SO does not deepen content beyond what source supports. Adversarial review at Gear 3 is appropriate for high-stakes rendering; consolidator merging is *not* applied to SO outputs.
 
 
 ---

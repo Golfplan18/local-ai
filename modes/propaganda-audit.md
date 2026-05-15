@@ -89,20 +89,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you paste the artifact (article, ad, manifesto, broadcast transcript) and tell me what ideal it claims to serve and what you suspect it actually does?'"
     on_underspecified: "Ask: 'What about this artifact triggered the propaganda suspicion — the gap between professed and actual, the staging of consent, the not-at-issue content, or something else?'"
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - professed_ideal_named
-    - actual_function_hypothesized
-    - supporting_or_undermining_classification
-    - flawed_ideology_premises_required
-    - not_at_issue_content_inventory
-    - frame_manipulation_techniques_active
-    - five_filter_structural_situating_if_applicable
-    - audience_predicted_uptake
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -190,17 +176,90 @@ Revise to name the professed ideal explicitly where the draft has assessed propa
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured audit with the nine required sections. The professed ideal is quoted from the artifact. The actual function is hypothesized with predicted-audience-uptake evidence. The supporting / undermining classification cites the Stanley distinction explicitly. Flawed-ideology premises are listed (the prior beliefs the audience must hold for the gap between professed and actual to remain invisible). Not-at-issue content inventory cites quoted presuppositions, conventional implicatures, and lexical activations per finding. Frame-manipulation techniques active (responsibility relocation, loaded terms, episodic framing, presupposition smuggling, naturalization, etc.) are named per the Frame-Manipulation taxonomy. Five-filter structural situating is included when the artifact is a mass-media product. Audience-predicted-uptake explains how the propaganda works on its target. Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **a Stanley-style propaganda diagnostic atom set: professed-ideal atom with quoted text, hypothesised actual-function atom, supporting-vs-undermining classification with evidence, flawed-ideology-premise atoms (if undermining), not-at-issue-content inventory atoms with quoted text, frame-manipulation-technique atoms, five-filter structural atoms where artifact is mass-media, audience-predicted-uptake atom, and a standing distinction between propaganda diagnosis and conclusion-rejection**. The atoms are:
+
+1. **Professed-ideal atom.** The ideal the artifact claims to embody (freedom, fairness, security, truth, dignity, family values, etc.), named with quoted text from the artifact. Ideal-omission is the named failure mode the consolidator watches for; audits that assess propaganda function without surfacing the professed ideal get reshaped to name it before classification.
+
+2. **Hypothesised actual-function atom.** What the artifact actually does — predicted audience uptake, behavioural consequence, attentional or affective effect. Inferred from the artifact's structure and audience targeting, not from author psychology.
+
+3. **Supporting-vs-undermining classification atom.** The Stanley distinction applied with evidence: `supporting` (non-rational means deployed for a worthy ideal) versus `undermining` (presents itself as embodying the ideal while actually eroding it). Classification-collapse is the named failure mode; "propaganda" asserted without the binary distinction gets reshaped.
+
+4. **Flawed-ideology-premise atoms — if undermining.** Each atom names a prior belief the audience must hold for the contradiction between professed ideal and actual function to remain invisible to them. Flawed-ideology-omission is the named failure mode; undermining classification without identifying these premises gets reshaped.
+
+5. **Not-at-issue-content inventory atoms.** Each atom names: a presupposition, conventional implicature, or lexical activation doing persuasive work, with quoted text and the persuasive effect it produces. At-issue-only-reading is the named failure mode; audits examining only what the artifact asserts (rather than what it assumes) get reshaped to inventory the not-at-issue layer.
+
+6. **Frame-manipulation-technique atoms.** Each atom names one operative technique (responsibility relocation, loaded terms, episodic framing, presupposition smuggling, naturalization, agent deletion, manufactured-doubt, etc.) with quoted text from the artifact.
+
+7. **Five-filter structural atoms — when applicable.** When the artifact is a mass-media product, each filter (ownership, advertising, official sources, flak, common-enemy) is applied with situating evidence. When the artifact is not mass-media, this section is marked `not-applicable` rather than padded.
+
+8. **Audience-predicted-uptake atom.** How the propaganda works on its intended target — what cognitive, affective, or behavioural shift it predicts in the audience, with evidence-basis for the prediction.
+
+9. **Diagnosis-vs-conclusion distinction atom.** A standing atom: the propaganda diagnosis is *not* a refutation of the artifact's claims. Propaganda-charge-as-refutation is the named failure mode; the audit holds the distinction throughout.
+
+10. **Motive-attribution-evidence flag — when applicable.** Where deliberate manipulative intent is imputed to author/sponsor without textual or contextual evidence, the flag is preserved. Motive-attribution-without-evidence is the named failure mode; the diagnostic focuses on structure and effect, not author psychology, unless explicit evidence supports the intent claim.
+
+11. **Asymmetric-application flag — when applicable.** Where streams applied Stanley's apparatus differently to structurally-equivalent left vs. right artifacts (Debate D5 sensitivity), the flag surfaces explicitly.
+
+12. **Confidence per finding.** Each major claim carries confidence with grounding (quoted text, structural inference, lens application).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Ideal omission** — propaganda function assessed without naming the professed ideal.
+- **Classification collapse** — "propaganda" asserted without distinguishing supporting from undermining.
+- **Flawed-ideology omission** — undermining classification without naming the prior beliefs that hide the contradiction.
+- **At-issue-only reading** — what's asserted catalogued; what's presupposed or implicated isn't.
+- **Propaganda-charge-as-refutation** — propaganda diagnosis treated as evidence the artifact's conclusion is false. Meta-level fallacy.
+- **Motive attribution without evidence** — psychological intent imputed without textual or contextual grounding.
+- **Asymmetric application** — Stanley's apparatus applied more readily to one political side than to structurally-equivalent instances on the other.
+- **Lens-citation without text** — Stanley/Bernays/Ellul/Herman-Chomsky vocabulary deployed without quoted artifact evidence.
+
+**What NOT to collapse:**
+
+- **Stream disagreement about supporting vs. undermining** — when streams classified the same artifact differently, the disagreement is itself a finding about whether the gap between professed and actual is genuine or read-in.
+- **Multiple flawed-ideology premises** — when the contradiction requires several prior beliefs to remain invisible, all survive as their own atoms.
+- **Diagnostic ambiguity** — when evidence does not cleanly support propaganda diagnosis vs. mere advocacy, the ambiguity surfaces rather than being resolved by force.
+- **Asymmetric-application disagreements** — when streams diverged on whether the apparatus is being applied evenly across political orientations, the disagreement is preserved and acknowledged per Debate D5.
 
 ## VERIFICATION CRITERIA
 
 Verified means: the professed ideal is named with quoted text; the supporting / undermining classification is evidenced; the flawed-ideology premises are identified if classification is undermining; the not-at-issue content inventory cites quoted presuppositions or implicatures; the five filters are applied if the artifact is mass-media; the propaganda diagnosis has been distinguished from any claim about the truth of the artifact's conclusion. The five critical questions are addressable from the output. Confidence per finding accompanies each major claim.
 
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **propaganda audit** — a Stanley-style structured diagnostic that names the professed ideal with quoted text, classifies supporting vs. undermining with evidence, identifies the flawed-ideology premises (if undermining), inventories not-at-issue content, and distinguishes the diagnosis from rejection of the artifact's conclusion. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Professed ideal named.** One labelled block. `**Professed ideal:** [the ideal the artifact claims to embody]. **Quoted text from artifact:** "[passage that states or implies the ideal]."`
+
+2. **Actual function hypothesised.** One paragraph stating the artifact's predicted audience uptake / behavioural consequence / attentional or affective effect, inferred from the artifact's structure and audience targeting.
+
+3. **Supporting or undermining classification.** One labelled block. `**Classification:** [supporting / undermining]. **Evidence:** [...]. **Stanley distinction applied:** [supporting = non-rational means for worthy ideal; undermining = presents-as-embodying-while-eroding].`
+
+4. **Flawed-ideology premises required.** Where the classification is undermining, a bulleted list. Each: `**Premise N:** [prior belief the audience must hold]. Why the contradiction remains invisible if this is held: [...].` Where the classification is supporting, this section is `Not applicable for supporting-propaganda classification.`
+
+5. **Not-at-issue content inventory.** Bulleted list. Each: `**[Mechanism — presupposition / conventional implicature / lexical activation]** — quoted text: "...". Persuasive effect: [what this content asserts without arguing for it].`
+
+6. **Frame manipulation techniques active.** Bulleted list. Each: `**[Technique — responsibility relocation / loaded terms / episodic framing / presupposition smuggling / naturalization / agent deletion / manufactured-doubt]** — quoted text: "...". How the technique operates: [...].`
+
+7. **Five-filter structural situating.** When the artifact is mass-media: per-filter sub-blocks for `Ownership`, `Advertising`, `Official sources`, `Flak`, `Common-enemy`. When the artifact is not mass-media: `Not applicable — artifact is not a mass-media product. (Author-sponsor context noted in section 2.)`
+
+8. **Audience predicted uptake.** One paragraph. `Target audience: [...]. Predicted cognitive shift: [...]. Predicted affective shift: [...]. Predicted behavioural shift: [...]. Evidence basis for the prediction: [...].`
+
+9. **Confidence per finding.** Bulleted list of confidence assessments per major claim, with grounding (quoted text, structural inference, lens application).
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 9.
+- Stanley vocabulary stays operative: `professed ideal`, `actual function`, `supporting propaganda`, `undermining propaganda`, `flawed ideology`, `not-at-issue content`. The vocabulary appears verbatim with operative meanings preserved.
+- Quoted text appears throughout — every claim that the artifact does X is anchored in a quote that shows it. Macro-level claims without textual grounding are reshaped.
+- The diagnosis-vs-conclusion distinction (CQ5) is preserved everywhere: the deliverable does not argue that the artifact's conclusion is false because the artifact is propaganda. This is a meta-level discipline; if the deliverable starts arguing against the artifact's conclusion, it has tipped into red-team territory and gets reshaped or rerouted.
+- When the motive-attribution-evidence flag survived consolidation, the deliverable opens with: `**Note: the diagnostic below focuses on the artifact's structure and predicted effect. Where deliberate manipulative intent is imputed to author or sponsor, explicit textual or contextual evidence is cited; speculative intent attributions are reshaped to structural-mechanism claims.**`
+- When the asymmetric-application flag survived consolidation (Debate D5 sensitivity), the deliverable opens with: `**Note: Stanley's apparatus is contested as potentially applying asymmetrically across political orientations (Debate D5). The diagnostic below has been applied with symmetry-discipline; if the audit would not flag a structurally-equivalent instance on the other side, the diagnosis is reshaped or qualified.**`
+- Five-filter situating (section 7) is *only* applied when the artifact is mass-media. Padding the section for non-mass-media artifacts is reshaped to the explicit `not-applicable` marker.
+- Confidence (section 9) is per-finding; collapsing to single audit confidence is reshaped at this layer.
+
 ## CAVEATS AND OPEN DEBATES
 
 **Debate D5 — Is Stanley's *How Propaganda Works* politically neutral or directional?** The book's diagnostic apparatus (supporting / undermining distinction; flawed-ideology precondition; not-at-issue content) is offered as politically neutral analytical machinery, applicable to any artifact regardless of the artifact's political orientation. Sympathetic readings (e.g., much of the academic philosophy-of-language reception) treat the apparatus as neutral and the case studies as illustrative. Skeptical readings (visible in popular reception, including Goodreads-style criticism and several conservative-tradition reviewers) argue that the apparatus is built around a left-liberal canon of paradigm cases (Birth of a Nation; Fox News; Trump-era discourse) and that this case-base inflects the apparatus toward asymmetric application — i.e., that the diagnostic catches right-wing propaganda more readily than structurally-equivalent left-wing instances. A third reading (Lear and others in epistemology of testimony) treats the apparatus as defensible-but-incomplete: Stanley's framework illuminates one important class of propaganda (undermining demagoguery) without exhausting the propaganda phenomenon. This mode operates without adjudicating the debate: it applies Stanley's distinctions as analytical lens (treating "supporting" and "undermining" as useful descriptors for argumentatively distinct propaganda structures) while remaining agnostic on whether Stanley's case-base inflects the apparatus directionally. The mode's symmetry guardrails (motive-attribution-without-evidence as named failure; propaganda-charge-as-refutation as named failure) are designed to mitigate the asymmetric-application risk regardless of which side of the debate one finds more persuasive. Citations: Stanley 2015 *How Propaganda Works*; Lear 2017 in *Mind*; popular-reception reviews on Goodreads and conservative-tradition outlets surveyed but not adjudicated.
-</content>
-</invoke>
 
 
 ---

@@ -93,17 +93,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What position or argument do you want me to construct the strongest case for?'"
     on_underspecified: "Ask: 'Could you state the position you want steelmanned, and whether you'd like me to identify points of agreement with your own view?'"
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - original_position
-    - steelmanned_reconstruction
-    - strength_identification
-    - points_of_agreement
-    - critique_of_the_steelman
-    - survival_assessment
-  format: prose
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -182,11 +171,75 @@ Revise to strengthen the reconstruction wherever a thoughtful proponent would re
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as prose with the six required sections in order: original position (faithful re-expression including weaknesses), steelmanned reconstruction (the strongest possible version), strength identification (most defensible premises, hardest-to-dismiss evidence), points of agreement (≥2 explicit), critique of the steelman (addressing only the strongest version), survival assessment (what remains compelling after critique). The original-position paragraph stays bounded (≤ ⅓ of total steelman section length) so construction dominates rather than repetition of the weak formulation. Mode is prose-only — no envelope, no diagram, no visual summary; if user requests visual rendering, propose dialectical-analysis (which emits IBIS) as transition.
+Organize the consolidated corpus as **a Rapoport/Dennett charitable-reconstruction atom set: original-position atom (faithful, weaknesses included), steelmanned-reconstruction atoms (the strongest version, identity-preserved), strength-identification atoms, points-of-agreement atoms (≥2), critique atoms addressing only the steelman, survival-assessment atom, and explicit construction-completes-before-critique ordering**. The atoms are:
+
+1. **Original-position atom.** A faithful re-expression of the position as it appears in the wild, including the weaknesses the steelman will strengthen. The atom is *bounded* (≤ ⅓ of steelman section length) so construction dominates rather than repetition of the weak formulation.
+
+2. **Steelmanned-reconstruction atoms.** The strongest possible version of the argument — hidden premises surfaced to strengthen, logical gaps filled with the most charitable inferences, the best available evidence marshalled. Tinman-trap is the named failure mode the consolidator watches for; reconstructions that *appear* strong but are designed to be defeated (mirror test fails — proponent would not endorse) get reshaped. Identity-loss is the mirror failure; reconstructions that drift into a different argument the analyst prefers get re-anchored to the original's core claim.
+
+3. **Strength-identification atoms.** Each atom names: the most defensible premises in the reconstruction, the hardest-to-dismiss evidence, the intellectual lineage that gives the position weight.
+
+4. **Points-of-agreement atoms.** At least two atoms naming concrete agreement between the steelmanned position and the user's own view (when the user supplied a view). These are not concessions; they are genuine common ground that often opens analytical leverage. Projection-trap is the named failure mode; reconstructions filtered through analyst's worldview such that charitable inferences favour analyst's frame get reshaped to build from the proponent's values.
+
+5. **Critique atoms — addressing only the steelman.** Each critique addresses the strongest version, not the original. Retreat-to-original is the named failure mode; critique passages that target the weaker original get reshaped (or dropped if they don't survive against the steelman). Steel-strawman is also flagged: portions of the steelman engineered for defeat get reshaped.
+
+6. **Survival-assessment atom.** What remains compelling after the critique. Even when the critique lands, what survives is the load-bearing finding — the original position's residual force.
+
+7. **Construction-completes-before-critique ordering.** A standing structural commitment: the steelman is built *fully* before critique begins. Entangled-construction is the named failure mode; interleaved construction-and-critique gets reshaped to sequential ordering.
+
+8. **No-visual atom.** The mode is prose-only. Any visual envelope emission is a structural failure; if visual rendering is wanted, dialectical-analysis (T12) is the right sideways-route.
+
+9. **Confidence per finding.** Each major claim (mirror-test pass, identity preservation, points-of-agreement, survival assessment) carries confidence with grounding.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Tinman** — reconstruction looks strong but is designed to be defeated; mirror test fails.
+- **Identity loss** — reconstruction drifts into a different argument; core claim no longer present.
+- **Retreat to original** — critique addresses the weaker formulation at one or more passages.
+- **Steel-strawman** — generally strong reconstruction with a specific point engineered for defeat.
+- **Projection** — reconstruction filtered through analyst's worldview rather than the proponent's values.
+- **Entangled construction** — interleaved construction-and-critique rather than sequential.
+- **Balanced presentation drift** — the mode is asymmetric by design (constructive-strong stance); balanced-presentation drift gets reshaped (if balance is wanted, route to benefits-analysis or balanced-critique).
+- **Visual emission** — any diagram, envelope, or visual summary is a structural failure.
+- **Original-position dominance** — original-position paragraph exceeding ⅓ of the steelman length; reshape to construction-dominant proportions.
+
+**What NOT to collapse:**
+
+- **Identity-preserving strength** — the reconstruction must remain the same argument strengthened, not replaced. The corpus preserves the core claim throughout.
+- **Points-of-agreement** — at least two are required when a user position is in play. They are not optional.
+- **Survival under critique** — what remains compelling is the load-bearing finding; never elided for a clean "and the steelman fails" verdict.
+- **Construction-before-critique ordering** — never collapsed into interleaved presentation.
+- **Multiple steelmans applied to multiple positions** — when more than one position is being steelmanned, identical rigour applies to each (symmetry guard rail).
 
 ## VERIFICATION CRITERIA
 
 Verified means: all six required sections present in order or clearly demarcated; original-position paragraph bounded (≤ ⅓ of steelman section length); mirror test passes (a thoughtful proponent would endorse the reconstruction); steelman is recognizably the same argument strengthened (not replaced); at least two points of agreement explicit; critique addresses only the steelmanned version with no retreat to the original; survival assessment present; no visual envelope emitted. The four critical questions are addressable from the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **constructive-strong charitable reconstruction with critique-at-steelman-strength** — prose-only, with the original position bounded, the steelmanned reconstruction dominant, points of agreement explicit, and the critique addressing only the strongest version. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Original position.** One bounded paragraph (≤ ⅓ of section 2's length). A faithful re-expression of the position as it appears in the wild, including the weaknesses that will be addressed in reconstruction.
+
+2. **Steelmanned reconstruction.** The largest section. Multiple paragraphs constructing the strongest possible version of the argument — hidden premises surfaced, logical gaps filled charitably, best evidence marshalled, intellectual lineage acknowledged. The reconstruction is recognizably the same argument strengthened, not a different argument the analyst prefers.
+
+3. **Strength identification.** Bulleted list of the steelman's load-bearing elements. Each: `**[Premise or evidence]** — why this is hardest to dismiss: [...]. Where in the reconstruction it appears: [...].`
+
+4. **Points of agreement.** Numbered list. At least two. Each: `[N]. **[Point]** — how the steelmanned position holds it: [...]. How the user's view holds it: [...]. What common ground this opens: [...].`
+
+5. **Critique of the steelman.** Prose addressing only the strongest version. Each critique passage anchors to a strength identified in section 3 rather than to the original-position weaknesses. Critique passages that don't apply to the steelman get reshaped or dropped, not the steelman.
+
+6. **Survival assessment.** One paragraph naming what remains compelling after critique. Even if the critique lands, what the steelmanned position retains is named explicitly. `**Survives critique:** [what holds]. **Modified by critique:** [what is qualified]. **Defeated by critique:** [what falls — only if the critique against the steelman is decisive].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 6.
+- Format is **prose-only**. No diagram, no envelope, no visual summary. If the user requests visual rendering, the deliverable surfaces a sideways-route: `**Note: visual rendering is not part of this mode's contract. Dialectical-analysis (T12) emits IBIS and may be the appropriate transition if the back-and-forth structure is what's wanted visually.**`
+- Original-position (section 1) is bounded — repetition of the weak formulation does not dominate the deliverable. Original sections that exceed ⅓ of the steelman length get reshaped to bounded proportions.
+- The mirror test discipline is operative throughout: would a thoughtful proponent endorse the reconstruction in section 2? If not, the reconstruction is reshaped, not the critique.
+- Critique (section 5) anchors to the steelman's strengths from section 3. Passages that target the original-position weaknesses from section 1 get reshaped or removed.
+- When multiple positions are being steelmanned (rare but possible), each receives identical rigour — symmetry across reconstructions. Asymmetric treatment is reshaped at this layer.
+- Survival assessment (section 6) preserves the residual force of the position. "And the steelman fails" verdicts that elide what survives get reshaped to honest accounting of what holds.
 
 
 ---

@@ -88,19 +88,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What process are you mapping, where does it start, and where does it end?'"
     on_underspecified: "Ask: 'What triggers the process to begin, and how do you know when it's complete?'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - process_scope_and_boundaries
-    - actor_or_role_inventory
-    - sequential_step_breakdown
-    - decision_points_and_branches
-    - dependency_map
-    - bottleneck_identification
-    - handoff_and_friction_points
-    - confidence_per_finding
-  format: diagram-friendly
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -182,11 +169,82 @@ Revise to add exception paths where the draft shows only the happy path. Revise 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a diagram-friendly mapping with the eight required sections. The sequential step breakdown is suitable for swim-lane or flow-chart rendering, with actor attribution per step. Decision points are presented with explicit criteria and branch-paths. The dependency map identifies what blocks what (suitable for a directed acyclic dependency graph). Bottlenecks are named with underlying constraints in a structured table. Handoff and friction points are listed separately. Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **a directed step-graph with actor swim-lanes, decision-point branches, bottleneck atoms (named with underlying constraints), and handoff-friction atoms**. The step graph is the load-bearing structure; actor attribution per step, constraint-typed bottlenecks, and explicit handoff-friction are the discipline. The atoms are:
+
+1. **Scope-and-boundaries atom.** Process name, start-trigger, and end-condition stated once at the corpus head. Scope-creep is the named failure mode; the locked boundaries appear once and govern what survives into the step graph.
+
+2. **Actor/role inventory atoms.** Each actor or role carries: name, scope of responsibility, and steps they perform. Actor atoms are cross-referenced by step atoms; orphan actors (named but doing no step in the map) are flagged as scope-creep residue or pending-clarification atoms.
+
+3. **Step atoms.** Each step carries: step content, actor attribution (which role performs it), predecessor steps (what must complete first), successor steps, and lane assignment (when swim-lane format applies). Steps without actor attribution are component-inventory-without-function-equivalent residue — they do not survive as steps without a who.
+
+4. **Decision-point atoms.** Each decision point carries: triggering condition, explicit decision criteria (not "depending on the situation"), and the branches it spawns with the predicate that routes to each. Happy-path-flattening is the named failure mode; a process with no decision-point atoms when branches actually exist is its corpus signature. At least one decision-point atom must survive when the process has any branching at all.
+
+5. **Exception-path atoms.** Each names an exception case (malformed input, absent actor, unavailable dependency) and the alternative path taken. The breadth marker is at least one exception-path atom surviving; happy-path-only is happy-path-flattening residue.
+
+6. **Dependency-map atoms.** Each is a "step A blocks step B" assertion, with the resource or precondition that creates the dependency. The dependency map is suitable for DAG rendering downstream; cycles are forbidden (process-mapping is acyclic by territory — feedback loops escalate to systems-dynamics-structural).
+
+7. **Bottleneck atoms.** Each bottleneck carries: location (which step or handoff), symptom (what the user observes — "approval takes too long"), and **underlying constraint typed** as capacity / authority / information / sequencing (the actual mechanism creating the slow-down — "single approver with no delegation authority and full inbox"). Bottleneck-symptom-only is the named failure mode; an atom with symptom but no constraint-type does not survive as a bottleneck — it's either a pending-investigation atom or it's not a bottleneck.
+
+8. **Handoff-friction atoms.** Each handoff between actors carries: source actor, target actor, what is transferred, friction type (information-loss / role-confusion / queue-accumulation / context-collapse), and the cost the friction imposes. Handoff-blindness is the named failure mode; handoffs treated as transparent are its corpus signature. At least one handoff-friction atom must survive when more than one actor participates in the process.
+
+9. **Official-vs-actual divergence atoms.** Each names a step or handoff where the documented (official) process differs from the lived (actual) process, with the deviation and any workaround. Official-vs-actual-elision is the failure mode; a corpus that describes only one as if it were both is its signature. When neither divergence nor explicit alignment-confirmation is present, the corpus carries an explicit "official-vs-actual: not investigated in this pass" atom rather than silently defaulting to the official version.
+
+10. **Confidence per finding.** Confidence markers attach to individual atoms. When the two streams assigned different confidences, audit conservatism applies.
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Step-listing without actor** — steps named without who-performs-them. The corpus does not carry steps without actor atoms; either the actor is identified or the step is downgraded to a pending-clarification atom.
+- **Bottleneck-symptom phrasing without constraint-type** — "this takes too long", "this is where things slow down" without the typed underlying constraint. Bottleneck-symptom-only residue; the atom is incomplete.
+- **Happy-path-only narration** — sequential prose covering only the main flow without decision-point branches. Happy-path-flattening residue; either decision-point atoms with explicit criteria are added, or the corpus carries an explicit "happy-path-only: no branches identified" atom.
+- **Frictionless-handoff phrasing** — "the work passes to X" without examining what is transferred and what is lost. Handoff-blindness residue; the atom either earns a friction-type or is downgraded.
+- **Causal-explanation residue** — "this happens because of X", "the root cause of slow-down is Y". Causal-overreach residue; the mode is descriptive process documentation, not causal analysis. Causal-language phrases either get reframed as descriptive (what occurs, not why) or escalated to T4.
+- **Documented-only restatement** — both streams restating the same official policy description without surfacing actual practice. Official-vs-actual-elision residue; the second restatement is bloat unless it adds an actual-process divergence atom.
+
+**What NOT to collapse:**
+
+- **Official-vs-actual divergence** — when one stream described the official process and the other described an actual practice that diverges, preserve both as parallel atoms with the divergence explicitly named. The divergence is itself the finding; silent reconciliation toward the official version is the failure mode.
+- **Bottleneck-constraint-type disagreement** — when streams diagnosed the same bottleneck with different underlying constraints (one says capacity, the other says authority), preserve both diagnoses as parallel atoms. The disagreement is consequential for what intervention would help; the consolidator must not silently pick.
+- **Exception-path coverage** — when streams identified different exception cases, preserve all surviving exception-path atoms. The breadth value lies in the catalog of edge cases.
 
 ## VERIFICATION CRITERIA
 
 Verified means: process boundaries are locked with explicit start trigger and end condition; actors are inventoried with role attribution per step; decision points are surfaced with criteria; dependencies are mapped; bottlenecks are identified with underlying constraints (not just symptoms); handoffs are examined for friction; official-vs-actual distinction is acknowledged. The five critical questions are addressable from the output. Confidence per finding accompanies every claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **diagram-friendly process map: swim-lane step graph with decision-point branches, dependency arcs, bottleneck atoms (constraint-typed), and handoff-friction findings**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Process scope and boundaries.** Three labelled lines at the top:
+   - **Process:** [name]
+   - **Start trigger:** [the event or condition that initiates the process]
+   - **End condition:** [how the process is known to be complete]
+
+2. **Actor / role inventory.** Numbered list of actors. Each actor: `A_n: [name]. Role: [responsibility scope]. Steps: [list of step IDs this actor performs].`
+
+3. **Sequential step breakdown (swim-lane).** Numbered list of steps (1.1, 1.2, ...). Each step: `**[Step N: short name]** — actor: A_n. Action: [what happens]. Predecessors: [list of prior step IDs]. Successors: [list of next step IDs].` Render as a swim-lane structure when the medium supports it: each actor as a horizontal lane with their steps arranged left-to-right.
+
+4. **Decision points and branches.** Numbered list. Each decision point: `**[DP_n: short name]** — triggered after step [N]. Decision criteria: [explicit criteria, not "depending on the situation"]. Branches: [(condition A → step path A), (condition B → step path B), …].` At least one decision-point atom when branches exist; happy-path-flattening is the named failure mode.
+
+5. **Exception paths.** Bulleted list of exception cases. Each bullet: `**[Exception]** — trigger: [what causes the exception]. Path taken: [alternative flow]. Recovery: [how the process resumes or terminates].` At minimum one exception-path atom — breadth marker.
+
+6. **Dependency map.** Numbered list of dependency arcs. Each arc: `Step [N] blocks step [M] — dependency: [resource / precondition / authorization / information] that creates the block.` Cycles are forbidden (process-mapping is acyclic; feedback escalates to systems-dynamics-structural).
+
+7. **Bottleneck identification.** Numbered list. Each bottleneck: `**[Bottleneck at step/handoff N]** — symptom: [what the user observes]. **Underlying constraint:** [capacity / authority / information / sequencing]. Mechanism: [the specific mechanism creating the slow-down].` Bottleneck-symptom-only is the named failure mode; the constraint-type tag is operative.
+
+8. **Handoff and friction points.** Numbered list. Each handoff: `**[Handoff: source actor → target actor at step N]** — what transfers: [content]. Friction type: [information-loss / role-confusion / queue-accumulation / context-collapse]. Cost: [what the friction imposes].` At minimum one handoff-friction atom when more than one actor participates.
+
+9. **Official vs actual divergence.** Bulleted list of steps or handoffs where the documented process differs from the lived process. Each bullet: `Step/handoff [N]: official says [X]; actual is [Y]. Deviation: [reason]. Workaround: [if known].` When no divergences are identified, render: "Official-vs-actual: not investigated in this pass" rather than implying alignment.
+
+10. **Confidence per finding.** Bulleted list of confidence markers per finding (bottleneck constraint-types, handoff frictions, dependency arcs).
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 10.
+- Step IDs follow consistent numbering (1.1, 1.2, ...) — visible in section 3 and referenced throughout.
+- Bottleneck constraint-types use canonical four labels (capacity / authority / information / sequencing); do not invent intermediate categories.
+- Handoff friction types use canonical four labels (information-loss / role-confusion / queue-accumulation / context-collapse).
+- When the medium supports it, render the swim-lane visually (actors as rows, steps as cells); otherwise per-step list with explicit `Actor: A_n` tags.
+- Avoid causal-explanation framing throughout (the mode is descriptive process documentation; causal-overreach escalates to T4).
 
 
 ---

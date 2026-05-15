@@ -87,20 +87,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What system, plan, or strategy do you want audited, and what kinds of stress or volatility are you worried about?'"
     on_underspecified: "Ask: 'Are you most worried about how this responds to small frequent shocks, or to rare large shocks (tail events)?'"
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - system_or_strategy_locked
-    - stressor_inventory
-    - convex_exposures_identified
-    - concave_exposures_identified
-    - fragility_robustness_antifragility_classification
-    - tail_risk_assessment
-    - asymmetric_payoff_findings
-    - via_negativa_recommendations
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -183,11 +169,92 @@ Revise to disentangle robustness from antifragility where the draft conflates th
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured audit with the nine required sections. The stressor inventory is presented as a table with frequency-and-magnitude estimates. Convex and concave exposures appear in separate sections per element, with magnitude estimates. The fragility/robustness/antifragility classification is stated overall and per major subsystem. Tail risk is assessed with named tail events and exposure magnitudes. Asymmetric payoff findings highlight where small inputs produce disproportionate outputs in either direction. Via negativa recommendations are listed separately from addition-recommendations. Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **a Talebian convex-response audit: system-and-stressor lock, exposure atoms per element (convex / concave), three-way classification, tail-event atoms, asymmetric-payoff atoms, and via-negativa recommendations alongside addition-recommendations**. The atoms are:
+
+1. **System-or-strategy lock atom.** The system, design, or strategy being audited, named explicitly with its boundary (what counts as inside the system, what counts as outside). The audit holds this lock; subsequent atoms reference it rather than redefining it.
+
+2. **Stressor-inventory atoms.** Each stressor atom carries: the stressor (regulatory shock, supply-chain disruption, key-person dependency, reputational tail event, technological obsolescence, market dislocation, etc.), its frequency profile (frequent / occasional / rare / Black Swan), and its magnitude profile (small / moderate / large / catastrophic). The frequency-and-magnitude pair is the structural shape; merging them into a single "risk score" is bloat.
+
+3. **Convex-exposure atoms.** Each atom names one element of the system whose response curve is convex — gains-from-volatility, where larger inputs produce disproportionately larger outputs in a beneficial direction. The atom carries: the element, the convex mechanism, the stressor it benefits from.
+
+4. **Concave-exposure atoms.** Each atom names one element whose response curve is concave — losses-from-volatility, where larger inputs produce disproportionately larger losses. The atom carries: the element, the concave mechanism, the stressor it's vulnerable to, and explicitly whether the concavity is *visible* or *hidden* (small frequent gains masking rare catastrophic losses). Hidden-concavity is the named failure mode the consolidator watches for; audits that surface only visible volatility get reshaped.
+
+5. **Fragility/robustness/antifragility classification atom.** The three-way classification stated at system level and per major subsystem. The Talebian distinction is preserved: `fragile` (loses from volatility), `robust` (indifferent to volatility), `antifragile` (gains from volatility). Antifragility-collapse is the named failure mode; outputs that use `robust` and `antifragile` interchangeably get reshaped.
+
+6. **Tail-event atoms.** Each tail-event atom carries: the named tail event, the exposure magnitude under that event, and the probability band (low / Black-Swan-class / unknown). Variance-tail-conflation is the named failure mode; atoms that treat high variance as the same property as high tail risk get reshaped.
+
+7. **Asymmetric-payoff atoms.** Each atom names a place where small inputs produce disproportionate outputs (in either direction). Skin-in-the-game considerations attach here when applicable.
+
+8. **Via-negativa recommendation atoms.** Each atom names one fragility-creating element whose *removal* would reduce fragility. Subtraction recommendations. Addition-bias is the named failure mode; audits where every recommendation involves adding (controls, hedges, redundancy) get reshaped to surface subtraction options.
+
+9. **Addition recommendation atoms.** Each atom names one robustness- or antifragility-creating element whose *addition* would help. These ride alongside the via-negativa atoms, not as a substitute for them.
+
+10. **False-antifragility flag — when applicable.** When a system was claimed antifragile based on past benefit from volatility without checking whether the same convex mechanism applies to the volatility ahead, the corpus carries an explicit flag. False-antifragility is the named failure mode.
+
+11. **Talebian-assumption flag — when applicable.** Where streams applied Talebian heuristics (barbell strategy, Lindy effect, via negativa) without case-specific reasoning that justifies the application, the flag is preserved. Talebian-orthodoxy is the named failure mode.
+
+12. **Confidence per finding.** Each classification and recommendation carries a confidence with explicit grounding.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Robust-antifragile conflation** — `robust` and `antifragile` used interchangeably; the three-way distinction collapsed to two-way.
+- **Variance-tail conflation** — high variance and high tail risk treated as the same property.
+- **Hidden-concavity blindness** — analysis focused only on visible volatility, with no surfacing of small-frequent-gains-masking-rare-catastrophic-losses structures.
+- **Addition-only recommendations** — every recommendation adds something; no subtraction options surfaced.
+- **Talebian aphorism without case reasoning** — barbell recommended without checking whether barbell suits this exposure profile; via negativa cited without identifying what specifically to remove.
+- **Single risk-score collapse** — frequency and magnitude collapsed to a single "risk" number, losing the Talebian structural distinction.
+- **Past-volatility benefit asserted as future antifragility** — false-antifragility without checking mechanism applies to the volatility ahead.
+- **Reassurance language** — audits that find nothing fragile have likely missed hidden concavities; reshape to surface what would have to hold for the clean-bill-of-health conclusion to be safe.
+
+**What NOT to collapse:**
+
+- **Classification disagreement between subsystems** — when one subsystem is fragile while another is antifragile within the same overall system, both classifications survive at subsystem level; the overall classification may be mixed.
+- **Visible vs hidden concavity disagreement** — when one stream treated a concavity as visible (already managed) and another flagged it as hidden (underappreciated), the disagreement is itself the finding.
+- **Stream disagreement about tail-event probability** — when streams diverged on whether an event is Black-Swan-class or merely rare-tail, both readings survive; the probability band is part of the audit, not a precondition for it.
+- **Via-negativa vs addition trade-off** — when the same fragility admits both a subtraction and an addition fix, both survive with their respective tradeoffs.
 
 ## VERIFICATION CRITERIA
 
 Verified means: convex and concave exposures are enumerated per element; the system is classified per fragility/robustness/antifragility distinction; hidden concavities are surfaced; normal-condition variance is distinguished from tail-event response; via negativa recommendations appear alongside addition-recommendations; Talebian assumptions are held lightly with case-specific reasoning. The five critical questions are addressable from the output. Confidence per finding accompanies every classification and recommendation.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **fragility / antifragility audit** — a structured analysis that classifies the system per the three-way Talebian distinction, enumerates convex and concave exposures, and surfaces hidden concavities and tail-event responses alongside via-negativa recommendations. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **System or strategy locked.** One short paragraph naming the system and its boundary — what counts as inside, what counts as outside.
+
+2. **Stressor inventory.** A table. Each row: `**[Stressor]** — frequency: [frequent / occasional / rare / Black-Swan]. Magnitude: [small / moderate / large / catastrophic].` Frequency and magnitude appear in their own columns; merging them into a single risk score is reshaped here.
+
+3. **Convex exposures identified.** Bulleted list. Each: `**[Element]** — convex response: [mechanism that produces gains from volatility]. Stressor it benefits from: [...].`
+
+4. **Concave exposures identified.** Bulleted list. Each: `**[Element]** — concave response: [mechanism that produces losses from volatility]. Stressor it's vulnerable to: [...]. Visibility: [visible / hidden — small frequent gains masking rare catastrophic losses].` Hidden concavities are surfaced with their masking mechanism named.
+
+5. **Fragility / robustness / antifragility classification.** One paragraph stating the overall classification and a sub-list per major subsystem:
+   - `**[Subsystem 1]** — fragile / robust / antifragile. Reasoning: [...].`
+   - `**[Subsystem 2]** — fragile / robust / antifragile. Reasoning: [...].`
+   
+   The three labels appear verbatim with their Talebian distinctions preserved.
+
+6. **Tail risk assessment.** Bulleted list of named tail events. Each: `**[Tail event]** — exposure magnitude: [...]. Probability band: [low / Black-Swan-class / unknown]. Distinction from normal-condition variance: [...].`
+
+7. **Asymmetric payoff findings.** Bulleted list. Each: `**[Element]** — small input that produces disproportionate output: [...]. Direction: [beneficial / harmful]. Skin-in-the-game consideration: [if relevant].`
+
+8. **Via negativa recommendations.** Bulleted list of subtraction recommendations. Each: `**Remove [element]** — fragility-creating mechanism it carries: [...]. Cost of removal: [...]. Net effect on system fragility: [...].`
+
+9. **Addition recommendations** (when via-negativa is not the only available move). Bulleted list. Each: `**Add [element]** — robustness or antifragility it introduces: [...]. Tradeoff vs. via-negativa option: [...].`
+
+10. **Confidence per finding.** Bulleted list of confidence assessments per classification and recommendation, with grounding (named evidence, structural inference, Talebian heuristic-application).
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 10.
+- The three-way classification vocabulary (`fragile`, `robust`, `antifragile`) appears verbatim; the distinction between robust and antifragile is preserved at every classification point.
+- Frequency and magnitude (section 2) stay as separate dimensions; collapsing them into a single risk score is reshaped at this layer.
+- The visible/hidden distinction (section 4) is operative — the visibility tag appears on every concave exposure.
+- Via-negativa recommendations (section 8) appear as a section in their own right, not as a footnote to addition recommendations. The mode treats subtraction as a first-class intervention.
+- When a false-antifragility flag survived consolidation (a system claimed antifragile based on past volatility-benefit without mechanism-projection), the deliverable opens section 5 with the flag: `**Note: the antifragility claim below rests on past benefit from volatility of type X; whether the same convex mechanism applies to the volatility ahead is a separate question and should be revisited if the stressor profile shifts.**`
+- When Talebian heuristics were applied without case-specific reasoning, the deliverable surfaces this inside section 8 or 9 as a labelled `**Talebian-heuristic caveat:** [heuristic name] was applied; the case-specific reasoning that justifies it here is [...].`
+- Confidence (section 10) is per-finding, not per-audit; collapsing into a single overall confidence is reshaped at this layer.
 
 
 ---

@@ -1,8 +1,8 @@
 # F-REVISE — Step 5 Revision Specification
 
-*Universal scaffolding. Mode-specific reviser guidance — how to address each criterion's failure in prose and in the envelope — is not in this file. It is injected from the classified mode's `## CONTENT CONTRACT` → `### Reviser guidance per criterion` subsection.*
+*Universal scaffolding. Mode-specific reviser guidance — how to address each criterion's failure in prose and in the envelope — is not in this file. It is injected from the classified mode's `## REVISION GUIDANCE` flat-H2 section (the H3 cascade subsections were superseded 2026-05-01).*
 
-*Context window contains: this specification, your own original analysis output (from Step 3), the evaluator's complete output (from Step 4, conforming to the universal evaluator contract), the mode's file (for its reviser-guidance subsection and success criteria).*
+*Context window contains: this specification, your own original analysis output (from Step 3), the evaluator's complete output (from Step 4, conforming to the universal evaluator contract), the mode's file (its `## REVISION GUIDANCE` section names the corrective shapes; its `## EVALUATION CRITERIA` section and YAML `failure_modes:` block ground the criteria).*
 
 ---
 
@@ -30,7 +30,7 @@ You retain independent judgment — you may decline a mandatory fix if it rests 
 
 8. **Do not add new analysis.** Revision is correction and completion, not expansion. The analysis phase is closed. If the evaluator's suggestions push you to new territory the mode's content contract did not request, decline with reason.
 
-9. **Address the envelope and prose together.** For visual-bearing modes, the envelope often carries the structural failure (wrong type, missing field, non-canonical name); the prose carries the semantic failure (weak actionability, unclear framework rationale). A mandatory fix typically touches both — if you update the envelope's `spec.framework`, update the prose's "Chosen framework and rationale" paragraph in lockstep. Consult the mode's `### Reviser guidance per criterion` subsection for the exact mapping.
+9. **Address the envelope and prose together.** For visual-bearing modes, the envelope often carries the structural failure (wrong type, missing field, non-canonical name); the prose carries the semantic failure (weak actionability, unclear framework rationale). A mandatory fix typically touches both — if you update the envelope's `spec.framework`, update the prose's "Chosen framework and rationale" paragraph in lockstep. Consult the mode's `## REVISION GUIDANCE` section for the exact mapping.
 
 ## Named failure modes
 
@@ -115,8 +115,10 @@ If nothing of substance changed — the evaluator's findings were all declined-w
 
 ## Where mode-specific content lives
 
-This file is universal. Mode-specific reviser guidance — how criterion S11 failures get addressed in this mode's envelope, how M3 failures get addressed in this mode's prose, which sub-cause templates to use when rewriting fishbone leaves — is authored once per mode, inside the mode file, under:
+This file is universal. Mode-specific reviser guidance — how criterion failures get addressed in this mode's envelope, how semantic failures get addressed in this mode's prose, which sub-cause templates to use when rewriting fishbone leaves — is authored once per mode, inside the mode file, in flat-H2 sections (the H3 cascade subsections were superseded 2026-05-01):
 
-- `## CONTENT CONTRACT` → `### Reviser guidance per criterion`
+- `## REVISION GUIDANCE` — the corrective shapes for this mode (what to revise toward when criteria fail)
+- `## EVALUATION CRITERIA` — names the criteria revision must satisfy
+- `## CONSOLIDATION GUIDANCE` and `## OUTPUT FORMAT GUIDANCE` — names the corpus and deliverable shapes the revision contributes to
 
-The orchestrator (boot.py) extracts this subsection from the classified mode's file and appends it to your system prompt. If the subsection is missing, revise from the mode's SUCCESS CRITERIA + KNOWN FAILURE MODES sections directly — but flag the missing subsection as a meta-observation in REMAINING UNCERTAINTIES.
+The orchestrator (boot.py) extracts the mode's `## REVISION GUIDANCE` section (via `_extract_section`) and appends it to your system prompt. If the section is missing, revise from the mode's overall structure and YAML `failure_modes:` block directly — but flag the missing section as a meta-observation in REMAINING UNCERTAINTIES.

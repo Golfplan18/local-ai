@@ -81,18 +81,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Who are the parties, and what is each one currently saying they want?'"
     on_underspecified: "Ask: 'For each party, what would they need to walk away feeling the negotiation worked for them?'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - parties_and_stated_positions
-    - inferred_underlying_interests_per_party
-    - shared_or_compatible_interests
-    - genuinely_opposed_interests
-    - candidate_integrative_moves
-    - flagged_unknowns_to_test
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -163,11 +151,77 @@ Revise to descend from positions to interests where the draft restated positions
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured mapping with the seven required sections. Parties and stated positions appear first. Inferred underlying interests are listed per party with hypothesis-flagging. Shared/compatible interests and genuinely-opposed interests appear as separate sections. Candidate integrative moves appear with the underlying-interest pattern that would make each move possible. Flagged unknowns are presented as questions the user could test in the negotiation. Confidence-per-finding distinguishes confidence in positions (high) from confidence in inferred interests (often lower) from confidence in candidate moves (depends on testing).
+Organize the consolidated corpus as **a Fisher-Ury position-to-interest descent: parties with stated positions, inferred underlying-interest atoms per party with explicit hypothesis-flagging, shared/compatible-interest atoms, genuinely-opposed-interest atoms, candidate integrative-move atoms keyed to interest patterns, and flagged unknowns testable in negotiation**. The atoms are:
+
+1. **Party-and-stated-position atoms.** Each atom carries: party name and the party's stated position (what they're asking for, in their own vocabulary or close to it). Positions are reported as stated; the interest-descent happens at the next layer.
+
+2. **Inferred-interest atoms per party.** Each atom names one underlying interest (substantive economic, procedural, relational, identity-and-recognition, security, fairness-perception, future-relationship) that the stated position may serve. Each atom carries an explicit hypothesis flag: `inferred — to test` rather than `confirmed`. Position-interest-collapse is the named failure mode the consolidator watches for; atoms where the inferred interest tracks the stated position too closely (restating asks in interest-language) get reshaped to descend further. Inference-as-fact is the named failure mode for missing hypothesis flags.
+
+3. **Shared/compatible-interest atoms.** Each atom names an interest both parties share or that admits compatible satisfaction — where an integrative move is possible because both sides could leave better off than under positional bargaining.
+
+4. **Genuinely-opposed-interest atoms.** Each atom names an interest where the parties' satisfaction is structurally in tension — where distributive bargaining or honest value-difference remains. Integrative-overreach is the named failure mode here; corpus that presents the negotiation as fully solvable through integrative moves (no genuinely opposed interests acknowledged) gets reshaped to surface what does not dissolve.
+
+5. **Candidate integrative-move atoms.** Each atom carries: the proposed move, the underlying-interest pattern that would make the move possible (e.g., "Party A values X highly but B values it low; B values Y highly but A values it low — trade"), and the interest hypotheses the move depends on (which must hold for the move to land).
+
+6. **Flagged-unknown atoms.** Each atom names a question the user could ask or test in the negotiation that would confirm or disconfirm an inferred interest. These are testable, not rhetorical. Inference-as-fact is the named failure mode; corpus that lacks flagged-unknown atoms when inferred-interest atoms are present gets reshaped to surface what to test.
+
+7. **Cultural-and-relational-context flag — when applicable.** When cultural, organisational, or relational context shapes which interests are surfaceable in the negotiation (some interests are face-loss to articulate; some require third-party mediation; some carry historical baggage), the flag is preserved. Cultural-context-flatness is the named failure mode.
+
+8. **Zero-sum-default flag — when applicable.** When streams defaulted to fully-zero-sum framing without surfacing any shared interests, the flag is preserved. Integrative-overreach and zero-sum-default are mirror-image failures; the corpus standard is honest two-territory mapping.
+
+9. **Confidence per finding** — three confidence kinds kept separate: confidence in positions (high — these are what the parties actually said), confidence in inferred interests (often lower — these are hypotheses), confidence in candidate moves (depends on testing the interest hypotheses).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Position-interest-collapse** — interest-language that restates positions without descending to underlying need.
+- **Inference-as-fact** — inferred interests presented as known facts without hypothesis flagging.
+- **Integrative-overreach** — manufactured shared interests; the corpus invents compatibility that doesn't survive scrutiny.
+- **Zero-sum default** — the situation framed as fully distributive without surfacing the integrative territory.
+- **Cultural-context flatness** — interest inferences applied without considering whether those interests are surfaceable in this specific cultural/organisational/relational context.
+- **Fisher-Ury optimism** — the integrative frame applied dogmatically without acknowledging that some negotiations are adversarial and require tactical-empathy (Voss) or distributive-bargaining (Lewicki) supplementation.
+- **Single-party interest analysis** — descending to interests for one party while leaving the other's at the position level. Symmetric descent is the corpus standard.
+
+**What NOT to collapse:**
+
+- **Genuinely opposed interests** — never smoothed over with manufactured integrative possibility. The mode's analytical character includes surfacing what does not dissolve.
+- **Multiple plausible underlying interests for the same position** — when a stated position could serve more than one underlying interest (e.g., a price demand could serve economic interest, fairness-perception, or face-saving), all candidate interests survive as competing hypotheses.
+- **Stream disagreement about whether an interest is shared or opposed** — when one stream classified an interest as compatible and another as opposed, the disagreement is itself a flagged-unknown to test.
+- **Cultural-context-dependent interests** — interests that are surfaceable in one context and not in another stay flagged with their surfaceability conditions; the corpus does not assume a culturally-flat negotiation.
 
 ## VERIFICATION CRITERIA
 
 Verified means: parties and stated positions are named; inferred underlying interests are itemized per party with hypothesis-flagging; shared/compatible interests and genuinely-opposed interests are separately surfaced; at least one candidate integrative move is named with its supporting interest-pattern; flagged unknowns are listed as testable in negotiation; the three critical questions are addressable from the output. Confidence per major finding accompanies each claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is an **interest map** — a structured Fisher-Ury reading that walks each party's stated position down to inferred underlying interests, separates compatible from opposed territory, and surfaces both candidate integrative moves and the unknowns to test in the negotiation. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Parties and stated positions.** A table or per-party block. Each: `**[Party]** — stated position: "[what they're asking for, in their own vocabulary or close to it]." Context: [brief note on stakes, time-pressure, or relational standing].`
+
+2. **Inferred underlying interests per party.** Per party, a labelled sub-block listing inferred interests, each tagged as an hypothesis. Each: `**[Interest category — substantive economic / procedural / relational / identity-and-recognition / security / fairness-perception / future-relationship]** — what the interest is: [...]. Inferred from: [evidence in stated position or context]. Status: hypothesis (to test in negotiation).` Symmetric descent across parties; one-sided interest analysis is reshaped at this layer.
+
+3. **Shared or compatible interests.** Bulleted list. Each: `**[Shared interest]** — how it appears for each party: [...]. Why integrative satisfaction is possible: [...].`
+
+4. **Genuinely opposed interests.** Bulleted list. Each: `**[Opposed interest]** — how it appears for each party: [...]. What makes the opposition structural (not merely positional): [...].` This section is never empty when the corpus carried opposed-interest atoms; smoothing over opposition is reshaped at this layer.
+
+5. **Candidate integrative moves.** Numbered list. Each: `[N]. **[Integrative move]** — interest pattern that makes it possible: [...]. Interest hypotheses the move depends on: [...]. What would invalidate the move: [...].`
+
+6. **Flagged unknowns to test.** Bulleted list. Each: `**[Question to test in negotiation]** — what it confirms or disconfirms: [interest hypothesis]. How the answer changes the integrative-move landscape: [...].` These are concrete; rhetorical questions are reshaped at this layer.
+
+7. **Confidence per finding.** Three labelled confidence assessments, kept distinct:
+   - `Stated positions: [confidence and basis — typically high].`
+   - `Inferred interests: [confidence and basis — typically lower; hypothesis quality].`
+   - `Candidate integrative moves: [confidence and basis — depends on testing].`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- The Fisher-Ury vocabulary (positions vs. interests, integrative moves, BATNA where it surfaces) is operative; paraphrasing into generic negotiation language is reshaped at this layer.
+- Symmetric descent across parties — if Party A has three inferred interests at three depths, Party B does too. Asymmetric descent is reshaped here.
+- When the cultural-and-relational-context flag survived consolidation, section 2 closes with: `**Context note:** [which interests may be unsurfaceable in this specific cultural / organisational / relational context, and what that means for the integrative-move feasibility].`
+- When the Fisher-Ury frame may be inadequate for an adversarial-stakes negotiation (the Voss critique applies), the deliverable opens with: `**Note: the integrative frame below is Fisher-Ury baseline; in genuinely adversarial high-stakes negotiation, tactical-empathy (Voss) and distributive-bargaining (Lewicki) lenses may be needed in addition. Escalation to principled-negotiation (full Fisher-Ury including BATNA) is the upward route.**`
+- When the zero-sum-default flag survived consolidation, section 3 opens with: `**Note: shared interests below are surfaced against an initial framing that read the situation as fully distributive; the integrative territory may be larger than it appeared.**`
+- Confidence (section 7) stays as three distinct kinds; blending into a single confidence is reshaped at this layer.
 
 ## CAVEATS AND OPEN DEBATES
 

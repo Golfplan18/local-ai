@@ -88,19 +88,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What event or case are you trying to explain, and what are the competing causal stories you want to test?'"
     on_underspecified: "Ask: 'What evidence do you have access to (documents, testimony, records, observations) that could discriminate between the hypotheses?'"
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - case_and_question_locked
-    - competing_hypotheses_inventory
-    - evidence_inventory_with_provenance
-    - test_classification_per_evidence_piece
-    - hypothesis_status_after_tests
-    - causal_chain_reconstruction
-    - residual_uncertainty
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -184,11 +171,76 @@ Revise to add competing hypotheses where the draft tests only one. Revise to rec
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured synthesis with the eight required sections. The competing hypotheses appear as a labeled inventory. Evidence is presented as a structured table with provenance, test classification, and per-hypothesis implication. Hypothesis status appears as a post-test verdict (eliminated / weakly supported / strongly supported / confirmed) with the test outcomes that drove the verdict. The causal chain is reconstructed in temporal sequence with explicit links. Residual uncertainty names what evidence would change the conclusion. Confidence per finding accompanies each major claim.
+Organize the consolidated corpus as **a Bennett-Checkel process-tracing atom set: case-and-question lock, competing-hypothesis atoms (≥2), evidence atoms with provenance, per-evidence test-classification atoms (hoop / smoking-gun / doubly-decisive / straw-in-the-wind) with per-hypothesis implication, post-test hypothesis-status atoms, temporal causal-chain reconstruction with explicit links, and residual-uncertainty atoms naming diagnostic evidence not yet available**. The atoms are:
+
+1. **Case-and-question lock atom.** The historical event or case under analysis and the specific causal question. One short paragraph; subsequent atoms reference this lock.
+
+2. **Competing-hypothesis atoms.** Each atom names one candidate causal hypothesis — at least two genuinely competing. Hypothesis-monoculture is the named failure mode the consolidator watches for; analyses that test only one hypothesis get reshaped to surface at least one rival. Presentism is also flagged here: hypotheses constructed from present knowledge that actors at the time could not have held get reshaped.
+
+3. **Evidence atoms with provenance.** Each atom carries: the evidence item, its source, and a provenance/reliability assessment (primary / secondary / tertiary; contemporaneous / retrospective; partisan / disinterested; documentary / testimonial). Source-naivety is the named failure mode; evidence treated as uniformly credible gets reshaped.
+
+4. **Test-classification atoms — per evidence piece.** Each atom carries: the test type (`hoop` — necessary but not sufficient; `smoking-gun` — sufficient but not necessary; `doubly-decisive` — both necessary and sufficient; `straw-in-the-wind` — neither necessary nor sufficient), the justification for the classification, and the per-hypothesis implication (what the evidence's presence or absence does to each hypothesis). Test-misclassification is the named failure mode; smoking-gun status without sufficiency check, or hoop status without necessity check, gets reshaped.
+
+5. **Hypothesis-status atoms — post-test.** Each hypothesis carries a verdict: `eliminated` (failed-hoop), `weakly supported` (passed-straw-in-the-wind), `strongly supported` (passed-smoking-gun), `confirmed` (passed-doubly-decisive). The test outcomes that drove the verdict are named explicitly. Evidence-overreach is the named failure mode; hypotheses declared confirmed on straw-in-the-wind evidence, or eliminated on weak negative evidence, get reshaped.
+
+6. **Causal-chain atoms.** Each atom traces one link in the temporal sequence — `X happened at time T1, which produced effect E1 at time T2 via mechanism M, which produced effect E2 at time T3`. Chain-elision is the named failure mode; jumps from cause to effect with intermediate steps unexplained get reshaped to surface the missing links.
+
+7. **Residual-uncertainty atoms.** Each atom names: an evidence piece not yet available, what it would test, and how it would change the verdict. The most diagnostic evidence-piece-not-yet-found (the doubly-decisive test that hasn't been run) surfaces explicitly.
+
+8. **Confidence per finding.** Each causal claim carries confidence with explicit grounding in the test outcomes and evidence provenance.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Hypothesis monoculture** — only one hypothesis tested; rival hypotheses elided.
+- **Test misclassification** — smoking-gun asserted without sufficiency; hoop asserted without necessity.
+- **Evidence overreach** — confirmation declared on weak evidence; elimination declared on incomplete negative evidence.
+- **Source naivety** — provenance unassessed; partisan and disinterested sources treated alike.
+- **Chain elision** — intermediate steps skipped; "X led to Z" without naming the Y in between.
+- **Presentism** — hypotheses anachronistic to the actors' knowledge horizon.
+- **Narrative coherence over test discipline** — smooth story preferred to honest weakness-acknowledgment.
+- **Straw-in-the-wind smuggled as smoking-gun** — weak evidence framed as strong; verdicts not calibrated to test type.
+
+**What NOT to collapse:**
+
+- **Multiple surviving hypotheses** — when evidence does not discriminate cleanly, multiple hypotheses can survive at `weakly supported` or `strongly supported` status simultaneously. Forcing a single winner is over-reach.
+- **Stream disagreement about test classification** — when streams diverged on whether a piece of evidence is hoop or smoking-gun, the disagreement is preserved as a per-evidence flag and resolved (or kept open) explicitly.
+- **Provenance disagreements** — when streams assigned different reliability to the same source, the disagreement surfaces in the evidence-atom rather than being smoothed.
+- **Counterfactual disagreements** — when streams reconstructed different causal chains because they implicitly assumed different counterfactual baselines, both reconstructions survive with their counterfactual premises named.
 
 ## VERIFICATION CRITERIA
 
 Verified means: at least two competing hypotheses were tested; each evidence piece is classified by test type with justification; hypothesis status reflects appropriate Bayesian updating given test outcomes; source provenance is assessed; the causal chain is reconstructed in temporal sequence with explicit intermediate links; residual uncertainty names diagnostic evidence not yet available. The five critical questions are addressable from the output. Confidence per finding accompanies every causal claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **process-tracing synthesis** — a structured Bennett-Checkel analysis that tests competing causal hypotheses against evidence using the four-test framework, updates hypothesis status appropriately, and reconstructs the causal chain in temporal sequence. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Case and question locked.** One paragraph stating the historical event or case and the specific causal question. Brief context but not exposition; subsequent sections reference this lock.
+
+2. **Competing hypotheses inventory.** Numbered list. Each: `**H[N]: [hypothesis label]** — causal claim: [...]. Mechanism asserted: [...]. Theoretical tradition or stakeholder vantage (if relevant): [...].` At least two genuinely competing hypotheses appear; analyses with only one are reshaped.
+
+3. **Evidence inventory with provenance.** A table. Each row: `**[Evidence item]** — source: [...]. Type: [primary / secondary / tertiary; contemporaneous / retrospective; partisan / disinterested; documentary / testimonial]. Reliability: [high / medium / low — with reasoning].`
+
+4. **Test classification per evidence piece.** A table. Each row: `**[Evidence item]** — test type: [hoop / smoking-gun / doubly-decisive / straw-in-the-wind]. Justification: [why this classification — what would presence and absence imply]. Per-hypothesis implication: H1: [...]; H2: [...]; H3: [...].` Test-type vocabulary appears verbatim.
+
+5. **Hypothesis status after tests.** Per hypothesis: `**H[N]:** verdict: [eliminated / weakly supported / strongly supported / confirmed]. Driving test outcomes: [which evidence pieces, with which results, drove the verdict]. What would change this verdict: [...].`
+
+6. **Causal chain reconstruction.** Numbered temporal sequence. Each step: `[N]. **[Event / state at time T]** → produced [effect at time T+]: via mechanism [...]. Evidence supporting this link: [reference to evidence inventory].` Chain-elision is reshaped here; missing intermediate steps are surfaced.
+
+7. **Residual uncertainty.** Bulleted list. Each: `**[Evidence piece not yet available]** — what it would test: [...]. How verdict would change if available: [...]. Where to look: [...].` The most diagnostic absent evidence appears first.
+
+8. **Confidence per finding.** Bulleted list of confidence assessments per major causal claim, with grounding in test outcomes and evidence provenance.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Bennett-Checkel vocabulary stays operative: the four test types (`hoop`, `smoking-gun`, `doubly-decisive`, `straw-in-the-wind`) appear verbatim with their distinguishing meanings — necessary/sufficient/both/neither — preserved.
+- Test classifications (section 4) include the *justification* — what would presence and absence imply. Bare classifications without justification get reshaped to flagged classifications.
+- Hypothesis verdicts (section 5) calibrate to test outcome: passed-doubly-decisive → confirmed; passed-smoking-gun → strongly supported; passed-straw-in-the-wind → weakly supported; failed-hoop → eliminated. Verdicts that overshoot the test result get reshaped.
+- When multiple hypotheses survive at comparable status (evidence does not discriminate), the deliverable carries an explicit note in section 5: `**Note: evidence does not discriminate cleanly between H[X] and H[Y]; both retain [status]. Resolution requires the diagnostic evidence named in section 7.**`
+- When the presentism flag survived consolidation, section 2 closes with: `**Anachronism check:** the hypotheses below are constructed from knowledge available to actors at the time. If hypothesis H[X] requires present-day knowledge the actors lacked, it is flagged here and not tested against contemporaneous evidence.`
+- When provenance disagreements survived, section 3 carries explicit flags inline: `**Contested reliability:** [source] — assessed differently across streams: [...] vs [...].`
+- Causal chain (section 6) is temporal and link-explicit. Jumps from cause to effect without naming the intermediate step are reshaped at this layer.
 
 
 ---

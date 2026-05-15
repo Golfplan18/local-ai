@@ -89,21 +89,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the action or event you want me to trace forward consequences for?'"
     on_underspecified: "Ask: 'How far forward do you want to look — immediate effects only, or out to second and third order?'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - action_or_event
-    - first_order_consequences
-    - second_order_consequences
-    - third_order_consequences_where_tractable
-    - time_horizon_classification
-    - reinforcing_and_counteracting_branches
-    - cross_domain_effects
-    - unintended_consequences
-    - leading_indicators
-    - feedback_loop_flag_if_present
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -187,11 +172,79 @@ Revise to extend any branch that stops at first-order by asking: each effect bec
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured mapping with the ten required sections in order: action or event; first-order consequences; second-order consequences; third-order consequences where tractable; time-horizon classification; reinforcing and counteracting branches; cross-domain effects; unintended consequences; leading indicators; feedback-loop flag if present. Format: structured. Each effect carries a time-horizon tag and a mechanism for the link from its parent.
+Organize the consolidated corpus as **a directed acyclic causal cascade rooted at the action/event**, with each node carrying time-horizon, order-depth, and intent tags, and each edge carrying an explicit mechanism. The DAG is the load-bearing structure; cycles are forbidden — if one is detected, the corpus carries a feedback-handoff atom rather than a falsified DAG. The atoms are:
+
+1. **Action/event root atom.** The proposed action or event being traced forward, stated once at the corpus root. Cross-stream paraphrase collapses to one canonical statement.
+
+2. **Cascade-node atoms.** Each effect is a node carrying: effect statement, time-horizon tag (immediate / short / medium / long), order-depth tag (first / second / third), reinforcing-or-counteracting tag (amplifying / dampening), intent tag (intended-by-proposer / unintended), and parent-node reference. At least one branch must reach order-depth third or CQ1 fails.
+
+3. **Causal-link atoms.** Each edge from parent to child carries an explicit mechanism phrase — the named process by which parent produces child. Edges without mechanism phrases are association-without-mechanism residue and do not survive into the corpus; the consolidator marks them as gaps requiring mechanism, not as accepted edges.
+
+4. **Cross-domain-crossing atoms.** When the cascade crosses a domain boundary (e.g., a technical action producing economic, then social, effects), an explicit crossing atom names: the source domain, the target domain, and the mechanism by which the crossing occurs. At least one cross-domain crossing must be named or the breadth marker is unmet.
+
+5. **Unintended-consequence atoms.** Effects outside the proposer's stated goal frame, surfaced and flagged distinctly from intended effects. Intended-effects-only is the named failure mode; at least one unintended atom must survive or the corpus fails CQ4.
+
+6. **Reinforcing-vs-counteracting distribution atom.** A corpus-level atom names the branches as amplifying or dampening with at least one of each — uniform direction is reinforcing-counteracting-collapse residue.
+
+7. **Leading-indicator atoms.** Near-term proxies for distant effects, per major branch — what signal would appear first if the cascade is unfolding as projected.
+
+8. **Feedback-loop flag — when a cycle is detected.** When any link returns influence to an earlier node, the corpus suppresses the cascade emission and carries instead a feedback-handoff atom naming: the detected cycle, the structural reason it cannot be represented as a DAG, and the SD-handoff proposal (systems-dynamics-causal for "why" loops; systems-dynamics-structural for "how" loops). Feedback-collapse is the named failure mode; a cycle masqueraded as DAG is its corpus signature.
+
+9. **Confidence per branch atom.** Confidence markers attach to entire branches (high for well-precedented cascades; lower for novel territory). When the two streams assigned different confidences to the same branch, audit conservatism applies (the lower confidence survives).
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Effect-statement paraphrase** — same effect under different wordings across streams. Single canonical statement survives, with the more precise mechanism phrase carried forward.
+- **Mechanism-paraphrase loops** — same mechanism phrase under different wordings ("by reducing X" vs "through lower X"). One mechanism phrase survives per link.
+- **Time-horizon-restatement** — both streams may tag the same effect with the same horizon in different language ("near-term" vs "short-horizon"). One canonical tag per node.
+- **Cross-domain-restatement** — same domain crossing identified twice under different domain labels. One crossing atom survives with canonical domain identifiers.
+- **Implicit-association links** — links stated as X → Y with no mechanism. Association-without-mechanism residue; the link does not survive into the corpus as an edge — either a mechanism is found or the edge is dropped and the cascade branch terminates at the parent.
+- **Order-depth-marker restatement** — both streams may say "this is a second-order effect" in different framings. Order-depth is a tag, not a sentence; the tag survives, restatements do not.
+
+**What NOT to collapse:**
+
+- **Diverging cascade branches** — when the two streams extended different branches to order-depth three (each branch genuine, just different focal paths), preserve both branches. The cascade is intentionally generative; multiple deep branches are evidence of breadth, not redundancy.
+- **Mechanism disagreement for the same link** — when one stream claimed mechanism M1 for the X→Y link and the other claimed M2, preserve both mechanisms as parallel link-atoms. The disagreement is a finding about which causal pathway dominates; the consolidator must not silently pick.
+- **Feedback-loop disagreement** — when one stream detected a cycle and the other did not, the cycle-detecting stream's finding governs. Cycles are asymmetric: a missed cycle is more dangerous than a false-positive cycle, since the latter produces a flag and SD handoff (recoverable), while the former produces a falsified DAG.
 
 ## VERIFICATION CRITERIA
 
 Verified means: at least one path reaches length 3 (third order); every link in the cascade has a stated mechanism; effects span at least three of the four time-horizon bands; at least one unintended consequence is named; at least one reinforcing branch and at least one counteracting branch are distinguished; if any cycle appears, it is flagged and SD handoff is proposed. Confidence per major branch is stated (high for well-precedented cascades; lower for novel territory).
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **directed acyclic cascade map** rooted at the action or event, rendered as a hierarchical tree with mechanism-per-edge and time-horizon tags per node. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Action or event.** The proposed action or event at the corpus root, stated once in one sentence. Frame as "Action being traced forward:"
+
+2. **First-order consequences.** Bulleted list of direct effects. Each bullet renders: `**[Effect statement]** — mechanism: [how the action produces this effect]. Time horizon: [immediate / short / medium / long]. Branch: [reinforcing / counteracting]. Intent: [intended-by-proposer / unintended].`
+
+3. **Second-order consequences.** Same template, nested under each first-order parent. Each bullet states the parent (e.g., "From first-order effect 1.2:") then the second-order effect with full tag set.
+
+4. **Third-order consequences (where tractable).** Same template, extending the deepest branch(es) to depth 3. At minimum one third-order branch is rendered or CQ1 fails (first-order-stop). When third-order tracing becomes speculative for some branches, render: "Branch [N]: third-order not traced (confidence too low for projection)" rather than fabricating depth.
+
+5. **Time-horizon classification.** A small summary table or list: which effects sit at which horizon (immediate / short / medium / long). Verify distribution across at least three of the four bands.
+
+6. **Reinforcing and counteracting branches.** Two short blocks (one per direction): which branches amplify the action's effect, which counteract or dampen it. At minimum one branch in each direction, or the corpus carries the imbalance as a finding.
+
+7. **Cross-domain effects.** Bulleted list of effects that cross domain boundaries (e.g., technical → economic → social). Each bullet names: source domain, target domain, mechanism of crossing, and which cascade-node the crossing originated from.
+
+8. **Unintended consequences.** Bulleted list of effects outside the proposer's stated goal frame. Each bullet: `**[Effect]** — emerges from [structural source, not from action intent]. Affected: [parties]. Intent tag: unintended.` At minimum one unintended consequence atom.
+
+9. **Leading indicators.** Per major branch, the near-term proxy signal that would reveal the cascade is unfolding as projected. Each bullet: `Branch [N]: leading indicator — [observable signal that would appear before downstream effects materialize].`
+
+10. **Feedback-loop flag — when cycle detected.** When the cascade contains a cycle (any link returning influence to an earlier node), this section replaces the rest of the deliverable from this point and renders: "**Feedback loop detected.** This analysis cannot be represented as a DAG. Handoff: [systems-dynamics-causal for 'why' loops / systems-dynamics-structural for 'how' loops]. The detected cycle: [nodes and arcs]. Structural reason DAG representation fails: [reason]." Cascade emission is suppressed for the cycle-containing branch.
+
+11. **Confidence per major branch.** Bulleted list of confidence markers per branch (high for well-precedented cascades; lower for novel territory).
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 11.
+- Cascade nodes use a consistent numbering scheme: first-order = 1.1, 1.2, ...; second-order = 1.1.1, 1.1.2, ...; third-order = 1.1.1.1, etc. Numbering makes parent-child relationships explicit.
+- Mechanism phrases use the literal `mechanism:` label per edge.
+- Time-horizon tags use the canonical four labels (immediate / short / medium / long) — not "near-term" or other variations.
+- When section 10 fires (cycle detected), it replaces sections 2 through 9 for the affected branch rather than appearing alongside them.
+
 
 ## CAVEATS AND OPEN DEBATES
 

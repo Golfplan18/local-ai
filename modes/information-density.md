@@ -103,20 +103,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you share the graphic (image or description) and tell me what message it's meant to communicate or what decision it's meant to support?'"
     on_underspecified: "Ask: 'Who is the intended audience, and what should they be able to read off the graphic at a glance vs. with sustained attention?'"
-output_contract:
-  artifact_type: critique-with-prescriptive-recommendations
-  required_sections:
-    - graphic_summary_and_intended_message
-    - data_ink_ratio_audit
-    - visual_variable_to_data_attribute_mapping_check
-    - elementary_perceptual_task_fitness_check
-    - typographic_hierarchy_and_grid_analysis
-    - chartjunk_and_redundancy_inventory
-    - prescriptive_recommendations_ranked
-    - residual_tradeoffs_and_constraints
-    - confidence_per_recommendation
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -217,11 +203,86 @@ Revise to identify the elementary perceptual task and check encoding-fitness whe
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured critique-with-prescriptive-recommendations artifact with the nine required sections. Graphic summary and intended message appear first (the analytical object plus what it is meant to communicate). Data-ink ratio audit lists data-ink, structure-ink, and chartjunk marks with specific identification. Visual-variable mapping check lists each data attribute with its encoding and a fitness assessment per Bertin properties. Elementary perceptual task fitness check identifies the task the graphic requires and assesses encoding accuracy at that task per Cleveland-McGill ranking. Typographic hierarchy and grid analysis is present where input includes typography (or marked as not-applicable for chart-without-text). Chartjunk and redundancy inventory lists specific removable elements. Prescriptive recommendations are ranked by impact (high-impact first), each specific (which mark, which encoding, which removal, which hierarchy strengthening), each keyed to the operation that diagnosed the problem. Residual tradeoffs and constraints are acknowledged (brand / accessibility / data-honesty / audience-expectation conflicts; cases where the recommendation should not be implemented despite encoding-fitness gain). Confidence per recommendation distinguishes high-confidence (encoding-misfit clearly diagnosed; replacement clearly better) from medium-confidence (tradeoff-dependent) from low-confidence (depends on audience testing).
+Organize the consolidated corpus as **an applied-evaluative encoding-fitness audit: graphic-and-message lock, mark-by-mark data-ink atoms, Bertin visual-variable-mapping atoms per data attribute, Cleveland-McGill elementary-perceptual-task atom, Bringhurst-Lupton typographic-hierarchy atoms, chartjunk inventory, specific prescriptive-recommendation atoms with ranked impact, residual-constraint atoms, and per-recommendation confidence**. The atoms are:
+
+1. **Graphic-and-message atom.** The information graphic being audited, plus the intended message it should communicate (or the decision it should support) and the intended audience. One short paragraph; the audit holds this lock throughout.
+
+2. **Data-ink atoms — per mark.** Each mark in the graphic is classified as `data-ink` (carries data), `structure-ink` (carries necessary scaffolding: axes, scale references, data-defining frames), or `chartjunk` (decoration, redundancy, moiré, 3D effect, unnecessary colour). The ratio is computed or estimated. Data-ink-as-slogan is the named failure mode the consolidator watches for; atoms that invoke "chartjunk" as a label without classifying specific marks get reshaped to per-mark classification.
+
+3. **Visual-variable mapping atoms — per data attribute.** Each data attribute carries: the variable encoding it (position, size, shape, value, colour, orientation, texture), and a fitness assessment against Bertin's properties (`selective` / `associative` / `ordered` / `quantitative`). Mismatches (categorical data on a quantitative variable like length; quantitative data on a non-ordered variable like colour hue) are flagged with their distortion mechanism. Bertin-mapping-unchecked is the named failure mode.
+
+4. **Elementary-perceptual-task atom.** The task the graphic requires (Cleveland-McGill ranking: `position-on-common-scale` > `nonaligned-position` > `length` > `angle` > `direction` > `area` > `volume` > `color/shading`, in descending accuracy), plus an assessment of whether the chart-type supports the task at the accuracy the message demands. Elementary-task-mismatch-undiagnosed is the named failure mode.
+
+5. **Typographic-hierarchy and grid atoms.** Where the input includes typography (chart labels, dashboard text, page layout), each atom carries: scale, weight, colour, rhythm, measure, leading, grid alignment, and whether the hierarchy supports the reading order the message requires. Typography-as-not-encoding is the named failure mode; inputs with typography that skipped hierarchy analysis get reshaped. (If input is purely chart-without-text, this atom is replaced with a `not-applicable — chart-without-text` marker.)
+
+6. **Chartjunk and redundancy inventory atoms.** Each removable element is named with: what it is, what it contributes (decoration / redundancy / unnecessary structure), and what would be lost or gained by removing it.
+
+7. **Prescriptive-recommendation atoms.** Each recommendation carries: a *specific* change (which mark to alter, which encoding to substitute, which element to remove, which hierarchy to strengthen), the operation that diagnosed the problem (Tufte / Bertin / Cleveland-McGill / Bringhurst-Lupton), and an impact rank (high / medium / low). Recommendations-as-gestures is the named failure mode; "simplify / declutter / improve hierarchy" without specific changes gets reshaped.
+
+8. **Residual-tradeoff and constraint atoms.** Each atom names a place where the prescriptive recommendation conflicts with: brand or house-style, accessibility requirements, data-honesty considerations, audience expectations (convention as warrant), or system-level coordination (a dashboard's other views). Constraint-blindness is the named failure mode.
+
+9. **Tufte-orthodoxy flag — when applicable.** Where streams applied data-ink maximisation dogmatically without acknowledging contexts where minor redundancy / framing / annotation actively serves the audience or message, the flag is preserved. Tufte-orthodoxy is the named failure mode.
+
+10. **Aesthetic-only-critique flag — when applicable.** Where critique addressed aesthetic preferences ("looks ugly", "is busy") without grounding in encoding-fitness or perceptual-task analysis, the flag is preserved. Aesthetic-only-critique is the named failure mode.
+
+11. **Reserved-M5 promotion signal — when applicable.** Where the audit encountered dashboard-orchestration / chart-type-selection / sparkline-specialty operations this mode handles awkwardly, the `m5-promotion-evidence` flag is preserved for orchestrator review per T19 reserved-M5 spec.
+
+12. **Confidence per recommendation** — distinguishing `high-confidence` (encoding-misfit clearly diagnosed; replacement clearly better) from `medium-confidence` (tradeoff-dependent) from `low-confidence` (depends on audience testing).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Chartjunk as label** — "data-ink ratio is low" or "too much chartjunk" without per-mark classification.
+- **Bertin mapping skipped** — encoding assumed appropriate without selective/associative/ordered/quantitative fitness check.
+- **Cleveland-McGill ranking absent** — encoding-accuracy not assessed against the elementary perceptual task the message demands.
+- **Typography-as-carrier** — chart labels and dashboard text treated as content rather than as encoding.
+- **Gesture recommendations** — "simplify", "declutter", "improve hierarchy" without specifying which mark / encoding / element / hierarchy.
+- **Unconstrained recommendations** — brand / accessibility / data-honesty / audience-expectation conflicts not acknowledged.
+- **Tufte orthodoxy** — minimalism applied dogmatically without acknowledging audience-serving redundancy or annotation.
+- **Aesthetic-only critique** — "ugly" or "busy" without encoding-fitness grounding.
+- **Verbal-sketch overreach** — auditing claims that the visual evidence does not support; for hand-sketched or low-fidelity input, the corpus flags degraded-audit explicitly rather than producing mark-by-mark claims that aren't grounded.
+
+**What NOT to collapse:**
+
+- **Stream disagreement about elementary perceptual task** — when streams identified different operative tasks for the same graphic (e.g., one stream: position-on-common-scale comparison; another: length judgment), both readings survive; the disagreement reveals what's contested about the intended message.
+- **Tufte-minimalism vs. audience-serving redundancy** — when one stream recommended removal and another argued the redundancy serves the audience, both readings survive with their grounding.
+- **Encoding-fitness vs. convention** — when the theoretically optimal encoding deviates from audience convention, both considerations survive; the audience's expectation is itself a constraint, not a bug.
+- **Reserved-M5 boundary cases** — when streams diverged on whether the input falls inside this mode's scope or is a dashboard-orchestration / chart-type-selection / sparkline-specialty case better served by a future Reserved-M5 mode, the disagreement survives as promotion-signal evidence.
 
 ## VERIFICATION CRITERIA
 
 Verified means: graphic and intended message identified; data-ink ratio audited with specific marks classified; visual-variable mapping checked per Bertin properties for each data attribute; elementary perceptual task identified and encoding-fitness assessed per Cleveland-McGill ranking; typographic hierarchy and grid analyzed where applicable; chartjunk and redundancy inventory present; at least three prescriptive recommendations specific (which mark / encoding / element / hierarchy) and ranked by impact; residual tradeoffs and constraints acknowledged; the six critical questions are addressable from the output. Confidence per recommendation accompanies each claim. Cross-reference to T19 territory-level open debates is noted where the analysis depends on contested framing decisions (especially Debate 5 on AI implementability of perceptual operations for direct-image vs. verbal-description input — Information Density degrades for hand-sketched info-graphics where mark-by-mark audit is impossible). The Reserved-M5 promotion threshold is monitored: if this mode begins failing on dashboard-orchestration / chart-type-selection / sparkline-specialty cases, surface that signal for orchestrator review per T19 reserved-M5 spec.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **prescriptive critique of an information graphic** — a structured audit that runs the four operations (Tufte data-ink, Bertin visual-variables, Cleveland-McGill perceptual-tasks, Bringhurst-Lupton typographic hierarchy) on a named graphic and produces specific, ranked, implementable recommendations. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Graphic summary and intended message.** One short paragraph identifying the graphic, the message or decision it should support, and the intended audience.
+
+2. **Data-ink ratio audit.** A table or three-column block. Each mark or mark-class: `**[Mark]** — classification: [data-ink / structure-ink / chartjunk]. Function: [...].` A summary line: `Estimated data-ink ratio: [proportion]. Specific marks removable without information loss: [list].`
+
+3. **Visual-variable to data-attribute mapping check.** A table. Each row: `**[Data attribute]** — encoded by: [position / size / shape / value / colour / orientation / texture]. Bertin fitness: [selective / associative / ordered / quantitative — match or mismatch with attribute type]. Verdict: [appropriate / suboptimal / mismatched]. Mechanism if mismatched: [...].`
+
+4. **Elementary perceptual task fitness check.** One paragraph naming the elementary task the message demands (Cleveland-McGill vocabulary verbatim: position-on-common-scale / nonaligned-position / length / angle / direction / area / volume / color/shading), the chart-type-supported task, and the gap if any. Where the chart-type does not support the required task at the accuracy the message demands, a labelled `**Encoding-task mismatch:** [specifics].` line surfaces it.
+
+5. **Typographic hierarchy and grid analysis.** Where the input includes typography: a labelled block walking scale, weight, colour, rhythm, measure, leading, grid alignment. Where the input is chart-without-text: `Not applicable — input has no typographic encoding.`
+
+6. **Chartjunk and redundancy inventory.** Bulleted list. Each: `**[Element]** — what it is / what it contributes / what would change if removed.`
+
+7. **Prescriptive recommendations — ranked.** A numbered list ordered by impact (high-impact first). Each: `[N]. **[Specific change — which mark / encoding / element / hierarchy]** — diagnosis: [Tufte / Bertin / Cleveland-McGill / Bringhurst-Lupton]. Impact: [high / medium / low]. Expected effect: [...].` Recommendations are specific enough that a designer could implement them without further interpretation.
+
+8. **Residual tradeoffs and constraints.** Bulleted list. Each: `**[Constraint — brand / accessibility / data-honesty / audience-expectation / system-coordination]** — recommendation it conflicts with: [...]. Resolution path: [implement anyway / hold / partial / route to design-review].`
+
+9. **Confidence per recommendation.** Bulleted list of confidence assessments (`high-confidence / medium-confidence / low-confidence`) with grounding per recommendation.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 9.
+- Vocabulary stays operative: `data-ink`, `structure-ink`, `chartjunk`, the seven Bertin variables, the eight Cleveland-McGill elementary tasks, and the Bringhurst-Lupton typographic primitives appear verbatim where they apply.
+- Recommendations (section 7) are mark-specific, encoding-specific, or hierarchy-specific — never generic gestures. Gestural recommendations are reshaped at this layer.
+- When the Tufte-orthodoxy flag survived consolidation, section 7 opens with: `**Note: minimalism is the default but not a dogma. Where minor redundancy / framing / annotation actively serves the audience or message, recommendations below honour that.**`
+- When the input is hand-sketched or low-fidelity (visual evidence insufficient for mark-by-mark audit), the deliverable surfaces a degraded-audit flag at the top: `**Note: input fidelity is insufficient for full mark-by-mark audit (per T19 Debate 4 on verbal-accessibility for AI implementation). Findings below are partial; specific marks named are inferred rather than directly observed.**`
+- When the reserved-M5 promotion signal fired (dashboard-orchestration / chart-type-selection / sparkline-specialty operations awkwardly handled), section 8 carries a closing line: `**Promotion-signal note:** this audit encountered operations the Reserved-M5 mode (Information-Graphic Visual-Hierarchy specialty) would handle more directly. Surface for T19 reserved-M5 promotion-threshold review.`
+- Confidence (section 9) stays per-recommendation; collapsing into an overall audit-confidence is reshaped at this layer.
 
 ## CAVEATS AND OPEN DEBATES
 

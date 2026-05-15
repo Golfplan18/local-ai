@@ -76,18 +76,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What entities or concepts do you want mapped, and what's the question the map should answer?'"
     on_underspecified: "Ask: 'Are the relationships static, or do feedback loops matter? If feedback loops, route to systems-dynamics-causal (T4) or systems-dynamics-structural (T17) per parse.'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - focal_question
-    - entities
-    - connections_with_type_and_directionality
-    - organising_structure
-    - key_relationships
-    - boundary_statement
-    - acyclicity_check
-  format: diagram-friendly
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -153,7 +141,25 @@ Breadth in Relationship Mapping is the catalog of entities and connections, incl
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Relationship Mapping output: declares the type and directionality of every connection; surfaces ≥2 non-obvious connections; structures the output as a relational map (not a linear narrative); honours acyclicity (any cycle prompts transition to systems-dynamics-causal or systems-dynamics-structural per parse). Specifically check for the causation-correlation trap (mislabelling), linear reduction (narrative collapse), kitchen sink (no significance), and silent cycle (DAG with feedback).
+Relationship Mapping is read in DAGitty causal-DAG formalism when the framing is causal (Pearl-style do-calculus reading where applicable), in the Novak concept-map tradition when relations are heterogeneous (linking phrases and propositions are the unit of structure), and in the structural-relationship taxonomy generally (causal / correlational / dependency / influential / structural as the canonical edge-type set). The evaluator's primary axes are edge-type integrity and acyclicity. CQ1 (causation-correlation-trap) is load-bearing because mislabelling correlational edges as causal corrupts every downstream reading. CQ4 (silent-cycle) is structurally load-bearing because cycles route sideways to systems-dynamics modes — a DAG with a hidden cycle is structurally mis-typed. CQ2 (cross-link / non-obvious connection) and CQ3 (linear-reduction) act as gates on map quality.
+
+Evaluator checks:
+
+1. **Edge-type integrity (CQ1, load-bearing).** Every edge must carry an explicit type from the canonical set (`causal` / `correlational` / `dependency` / `influential` / `structural`). Causation-correlation-trap residue is correlational evidence labelled as causal — patterns presented as mechanisms when no mechanism has been named. The default discipline: when evidence is ambiguous between causal and correlational, the weaker label (correlational) survives with a mechanism-candidate flag for further test. Edges without type labels are reshaped or downgraded.
+
+2. **Acyclicity check (CQ4, load-bearing).** The map is a DAG; cycles route sideways to systems-dynamics-causal (when the loop drives historical-state explanation) or systems-dynamics-structural (when the loop drives present behaviour). Silent-cycle residue is a feedback loop quietly closed inside what is presented as a DAG. The evaluator's check: trace every directed path; does any path return to its start? A detected cycle is named explicitly with the sideways-route, not silently severed.
+
+3. **Directionality explicit.** Each directed edge carries `→`; bidirectional edges carry `↔`; undirected edges are unmarked. Mixed-directionality maps that hide the distinction are misclassified — directionality is part of the finding, not a rendering convenience.
+
+4. **Non-obvious connections and cross-links (CQ2).** At least two non-obvious connections must surface, and concept-map outputs in the Novak tradition must carry at least one cross-link (an edge that bridges otherwise-separate branches of the structure — Novak's marker of integrative understanding). Kitchen-sink residue is density without significance — every entity connected to every other without selection criterion. Flat-tree residue is strict hierarchy with no cross-links. Either is reshaped.
+
+5. **Map structure, not linear narrative (CQ3).** The deliverable must be readable as a structured map — entities, connections, and topology — not as a sequential prose narrative. Linear-reduction residue is a relationship analysis flattened into "first this happens, then that happens" form, losing the structural relations the methodology exists to surface. The evaluator's test: could the map be reconstructed from the deliverable's structure (entities + typed edges + topology), or does it require reading prose to recover the graph?
+
+6. **Organising-structure named.** The topology (hub-and-spoke / chain / hierarchy / network / bipartite / tree-with-cross-links) is itself a finding. Maps that omit the topology atom have left the integrative reading off the table; the evaluator confirms the structure is named explicitly with its implications.
+
+7. **Boundary statement explicit.** The map declares what it omits and why — adjacent mappings that would cover the omissions, scope decisions made deliberately. Maps without boundary statements implicitly claim completeness; the evaluator confirms the boundary atom is present.
+
+Confidence is per-edge: causal claims backed by mechanism carry higher confidence; correlational claims are labelled explicitly. Where streams disagreed on edge type (one stream causal, one correlational for the same edge), the evaluator confirms the disagreement is rendered inline with the default to the weaker type and the mechanism-candidate flag for further test, rather than silently picked.
 
 ## REVISION GUIDANCE
 
@@ -161,11 +167,74 @@ Revise to add type prefixes to connections without them. Revise to surface non-o
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a diagram-friendly mapping with the seven required sections (focal question / entities / connections / organising structure / key relationships / boundary / acyclicity check). Format: diagram-friendly. When envelope-bearing: concept_map for heterogeneous relations (Novak tradition); causal_dag for specifically causal framings with focal exposure and outcome (DAGitty DSL). Concept maps need ≥4 concepts, ≥2 linking phrases, ≥3 propositions, and ≥1 cross-link. Causal DAGs need acyclic structure with focal_exposure and focal_outcome resolvable to declared nodes.
+Organize the consolidated corpus as **a typed acyclic relational map: focal-question lock, entity atoms, connection atoms with explicit type (causal / correlational / dependency / influential / structural) and directionality, organising-structure atom, key-relationship atoms (including cross-links), boundary atom naming what the map omits, and acyclicity check**. The atoms are:
+
+1. **Focal-question atom.** The question the map should answer in one short sentence. Subsequent atoms reference this lock; entities included or excluded earn their place against it.
+
+2. **Entity atoms.** Each atom names one entity with a one-phrase characterisation. Entities are scoped to the focal question; the map is not an exhaustive ontology.
+
+3. **Connection atoms.** Each atom carries: source entity, target entity, type (`causal` / `correlational` / `dependency` / `influential` / `structural`), and directionality (`→`, `↔`, undirected). Causation-correlation-trap is the named failure mode the consolidator watches for; correlational connections labelled causal without mechanism get reshaped to the weakest type the evidence supports.
+
+4. **Organising-structure atom.** Names the topology — `hub-and-spoke` / `chain` / `hierarchy` / `network` / `bipartite` / `tree-with-cross-links`. The structural pattern is itself a finding.
+
+5. **Key-relationship atoms — including non-obvious connections.** At least two non-obvious connections surface, plus at least one cross-link in concept-map outputs (Novak's marker of integrative understanding). Kitchen-sink-or-flat-tree is the named failure mode; dense maps without significance, or flat trees with no cross-links, get reshaped.
+
+6. **Boundary atom.** Names what the map omits — entities and connections deliberately excluded as out-of-scope or as belonging to adjacent mappings.
+
+7. **Acyclicity-check atom.** A standing atom: does the map contain any cycle? Silent-cycle is the named failure mode; cycles smuggled into a DAG without transition get reshaped (either remove the edge with rationale, or sideways-route to systems-dynamics-causal / systems-dynamics-structural).
+
+8. **Linear-reduction flag — when applicable.** Where the corpus drifted to a sequential narrative rather than a relational map, the flag is preserved. Linear-reduction is the named failure mode.
+
+9. **Confidence per finding.** Each connection-type claim carries confidence (causal claims with mechanistic backing are higher-confidence; correlational claims are explicitly labelled).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Linear reduction** — sequential narrative replacing relational map.
+- **Kitchen sink** — every entity connected to every other without significance criterion.
+- **Flat tree** — strict hierarchy with no cross-links; missing integrative connections.
+- **Causation-correlation conflation** — causal label on correlational evidence.
+- **Silent cycle** — cycle present in something declared as DAG.
+- **Untyped connection** — lines drawn without `causal` / `correlational` / `dependency` / `influential` / `structural` label.
+- **Directionless connection** — directed relationship rendered without arrows; the directionality is part of the finding.
+
+**What NOT to collapse:**
+
+- **Stream disagreement about connection type** — when one stream labelled an edge causal and another correlational, the disagreement surfaces with reasoning; the corpus defaults to the weaker type.
+- **Cross-link disagreements** — when streams identified different non-obvious connections, both survive; cross-links are themselves the integrative finding.
+- **Boundary disagreements** — when streams drew the map's scope differently, both boundary statements are preserved.
+- **Cycles that route sideways** — when a cycle is detected, the corpus *names* it explicitly with sideways-route guidance, rather than silently severing the loop.
 
 ## VERIFICATION CRITERIA
 
 Verified means: every connection has a stated type and directionality; ≥2 non-obvious connections surfaced; organising structure named; output structured as a relational map (not linear narrative); acyclicity honoured (any cycle handled via transition to systems-dynamics-causal or systems-dynamics-structural per parse); boundary statement names what the map omits. The four critical questions are addressed in the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **typed relational map** — a diagram-friendly structured analysis where every connection carries an operative type and directionality, non-obvious connections and cross-links surface explicitly, and acyclicity is honoured (cycles route sideways to systems-dynamics modes). Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Focal question.** One short paragraph stating the question the map answers and the scope it implies.
+
+2. **Entities.** Bulleted list. Each: `**[Entity]** — one-phrase characterisation. Role in the map: [...].`
+
+3. **Connections with type and directionality.** A table or bulleted list. Each: `**[Source] → [Target]** — type: [causal / correlational / dependency / influential / structural]. Directionality: [→ / ↔ / undirected]. Evidence basis: [mechanism if causal; pattern if correlational; reference if dependency / structural].`
+
+4. **Organising structure.** One paragraph naming the topology: `**Topology:** [hub-and-spoke / chain / hierarchy / network / bipartite / tree-with-cross-links]. **What this structure implies:** [...].`
+
+5. **Key relationships.** Bulleted list of the connections the map foregrounds. Each: `**[Source] → [Target]** — why this connection matters for the focal question: [...]. Whether it is obvious or non-obvious: [...].` At least two non-obvious connections surface; concept-map outputs carry at least one cross-link.
+
+6. **Boundary statement.** One paragraph naming what the map omits and why. `What this map does not address: [...]. Adjacent mappings that would cover the omissions: [...].`
+
+7. **Acyclicity check.** One labelled line. `**Acyclic:** [yes — the map is a DAG / no — a cycle is present at: [path]].` When a cycle is present, the deliverable carries a sideways-route note: `**Cycle detected:** the [path] forms a feedback loop. Sideways-route to systems-dynamics-causal (if loop drives historical-state explanation) or systems-dynamics-structural (if loop drives present behaviour) is the appropriate operation.`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- Connection-type vocabulary (`causal` / `correlational` / `dependency` / `influential` / `structural`) appears verbatim on every edge. Untyped edges are reshaped at this layer.
+- Directionality appears explicitly — `→` for directed edges, `↔` for bidirectional, no arrow for undirected. Mixed-directionality maps that hide the distinction are reshaped.
+- When envelope-bearing rendering is appropriate: `concept_map` for heterogeneous relations (Novak tradition); `causal_dag` for specifically causal framings with focal exposure and outcome (DAGitty DSL). Concept maps require ≥4 concepts, ≥2 linking phrases, ≥3 propositions, and ≥1 cross-link. Causal DAGs are acyclic with focal_exposure and focal_outcome resolvable to declared nodes.
+- When streams diverged on connection-type for the same edge, the deliverable renders the disagreement inline: `**[Source] → [Target]:** stream A: causal (mechanism X); stream B: correlational (no mechanism). Default to correlational; mechanism candidate noted for further test.`
+- When the linear-reduction flag survived consolidation, the deliverable opens with: `**Note: portions of the consolidated corpus drifted toward sequential narrative. The relational structure below has been reshaped from the narrative; if further structural reduction is wanted, deeper concept-mapping is the route.**`
+- The acyclicity check (section 7) is not optional. Acyclicity is the mode's structural commitment; cycles surface explicitly with sideways-route rather than being hidden.
 
 
 ---

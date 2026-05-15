@@ -82,18 +82,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you describe the situation, the explanations on the table, and the evidence you've seen so far?'"
     on_underspecified: "Ask: 'What are the competing explanations you'd like me to weigh against each other, and what evidence have you encountered?'"
-output_contract:
-  artifact_type: ranked_options
-  required_sections:
-    - hypothesis_list
-    - evidence_inventory
-    - consistency_matrix_reading
-    - diagnosticity_assessment
-    - tentative_conclusions_via_elimination
-    - sensitivity_analysis
-    - monitoring_priorities
-  format: matrix
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -178,11 +166,69 @@ Revise to fill missing cells (use NA explicitly when evidence does not bear on a
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a matrix-format ranked-options artifact with the seven required sections in order. Hypotheses carry stable IDs (H1, H2 …) prefixed in prose, matching the matrix. Evidence carries stable IDs (E1, E2 …) prefixed in prose, matching the matrix. The matrix itself is the load-bearing structure: rows are evidence items, columns are hypotheses, cells use Heuer vocabulary (CC/C/N/I/II/NA). The Tentative-conclusions section names the surviving hypothesis verbatim and presents elimination arithmetic (count of I+II per hypothesis, tie-broken by II count). Sensitivity analysis and monitoring priorities accompany every conclusion.
+Organize the consolidated corpus as **a hypothesis × evidence matrix with diagnosticity atoms and elimination-arithmetic verdicts**, per Heuer ACH methodology. The matrix is the load-bearing data structure; everything else attaches to it. The atoms are:
+
+1. **Hypothesis atoms.** Canonical IDs H1, H2, … assigned to each surviving hypothesis after cross-stream deduplication. Same hypothesis under different wordings collapses to one canonical statement (most precise phrasing wins). At least one analyst-generated hypothesis must survive the dedup (CQ1). A null / "something else" hypothesis appears when applicable.
+
+2. **Evidence atoms.** Canonical IDs E1, E2, … assigned to each evidence item, each carrying: short content statement, credibility rating, relevance rating, source attribution. Cross-stream evidence overlap collapses to one atom; when credibility or relevance ratings diverge between streams, audit conservatism applies (the lower rating survives).
+
+3. **Matrix cells.** Every (H_i, E_j) cell carries a Heuer-vocabulary rating: CC (very consistent), C (consistent), N (neutral), I (inconsistent), II (very inconsistent), NA (not applicable). NA is explicit, never absent. When the two streams rated the same cell differently, **the cell carries both ratings as a marked tension** — the disagreement is a real analytical signal, not bloat. The tension atom names: H_i, E_j, stream-A rating, stream-B rating, and a one-line divergence reason if extractable.
+
+4. **Diagnosticity atoms per evidence row.** High-diagnosticity (cells vary sharply across hypotheses — the row discriminates), low-diagnosticity (cells uniform — the row doesn't discriminate), or NA-dominated. At least one high-diagnosticity evidence item must be flagged or CQ4 fails.
+
+5. **Elimination-arithmetic verdicts per hypothesis.** I+II count per H_i, II count as tie-breaker. The surviving hypothesis is the one with fewest I+II cells; this corpus-level verdict atom is stated once. When the streams disagree on cell ratings, the arithmetic is computed twice (once per rating set) and both counts appear, with the difference flagged — automatic sensitivity-on-divergence.
+
+6. **Sensitivity atoms.** Each names an evidence item whose reversal would flip the ranking, citing the specific cell change required and the resulting arithmetic shift. At minimum one such atom is named or CQ4 fails.
+
+7. **Deception atoms.** When adversarial actors are plausible (CQ5 applies), atoms name which high-diagnosticity evidence items could be manufactured or planted, and which hypotheses benefit. Absent adversarial context, a single atom records "deception-not-applicable" with brief reason.
+
+8. **Monitoring-priority atoms per surviving hypothesis.** Each names a leading indicator: what new evidence or evidence reversal would update the analysis.
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Hypothesis-statement paraphrase** — same hypothesis under different wordings across streams ("the system is failing because of X" vs "X is causing the system to fail"). Single canonical statement survives.
+- **Evidence-summary paraphrase** — same evidence item summarized in different prose. Single evidence atom survives with the most precise content statement.
+- **Diagnosticity-narrative duplication** — same evidence row flagged as high-diagnosticity in different language ("E3 distinguishes sharply" vs "E3 is the most discriminating item"). One diagnosticity atom per row.
+- **Elimination-discipline restatement** — Heuer's "elimination, not confirmation" posture surfaces multiple times across passages in varied framings. The corpus carries one elimination-arithmetic verdict atom; the disconfirmation discipline does not need restating per hypothesis.
+- **Sensitivity-finding overlap** — both streams identify the same evidence-reversal as ranking-flipping. One sensitivity atom per such finding.
+- **Monitoring-priority overlap** — overlapping leading indicators across streams union to one atom per indicator.
+
+**What NOT to collapse:**
+
+- **Cell-rating divergence** — when the two streams rated the same (H_i, E_j) cell differently, that disagreement is preserved as a tension atom on the cell. ACH's analytical value lies in disconfirmation rigor; suppressing rating disagreement to produce a clean-looking matrix is a synthesis injection (the consolidator inventing certainty the streams did not establish).
+- **Single-stream hypothesis origination** — when one stream generated a hypothesis the other did not, the hypothesis survives in the canonical set with provenance noted as "single-stream origination." Both shared and unshared hypotheses are auditable downstream.
 
 ## VERIFICATION CRITERIA
 
 Verified means: at least 3 hypotheses in play, including at least one analyst-generated; at least 3 evidence items with credibility/relevance ratings; every (evidence × hypothesis) cell populated with Heuer vocabulary; at least one diagnostic row (cells not all equal); the surviving hypothesis named in prose has the fewest I+II cells in the matrix (tie-broken by II); at least one high-diagnosticity item explicitly named; sensitivity analysis names at least one evidence item whose reversal would change the ranking; deception check addressed when adversarial actors are plausible; monitoring priorities listed. The five critical questions are addressable from the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **matrix-format ACH artifact with elimination-arithmetic verdict and sensitivity findings**, per Heuer methodology. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Hypothesis list.** Numbered list of canonical H1, H2, … Each hypothesis stated in one sentence. Tag each with origin (user-supplied / analyst-generated / null hypothesis). At minimum 3 hypotheses; at least one analyst-generated.
+
+2. **Evidence inventory.** Numbered list of canonical E1, E2, … Each evidence atom carries: one-line content statement, credibility rating (high / moderate / low), relevance rating (high / moderate / low), source attribution.
+
+3. **Consistency matrix.** A table with hypotheses as columns (H1 … Hn) and evidence as rows (E1 … En). Each cell carries Heuer vocabulary: **CC** (very consistent), **C** (consistent), **N** (neutral), **I** (inconsistent), **II** (very inconsistent), **NA** (not applicable). NA is explicit, never absent. When the streams disagreed on a cell's rating, render the cell as `A_rating | B_rating` with both values and a footnote naming the divergence reason.
+
+4. **Diagnosticity assessment.** Per evidence row: **high-diagnosticity** / **low-diagnosticity** / **NA-dominated**, with a one-line reason. Highlight which evidence items are the most discriminating across hypotheses.
+
+5. **Tentative conclusions via elimination.** State the elimination arithmetic explicitly: I+II count per hypothesis, with the surviving hypothesis named as the one with fewest I+II cells (tie-broken by II count alone). Frame the verdict as "H_x survives because it has fewer items contradicting it" — NOT "H_x is confirmed by E1, E3, …" Confirmation framing is forbidden. When streams' cell ratings produced different counts, render both arithmetics with the difference flagged.
+
+6. **Sensitivity analysis.** A bulleted list naming evidence items whose reversal would flip the ranking, with the specific cell change required and the resulting arithmetic shift. At minimum one sensitivity finding.
+
+7. **Deception assessment.** When adversarial actors are plausible, name which high-diagnosticity evidence items could be manufactured or planted, and which hypotheses benefit. Absent adversarial context, write "Deception assessment not applicable: [brief reason]."
+
+8. **Monitoring priorities.** Bulleted list of leading indicators per surviving hypothesis — what new evidence or evidence reversal would update the analysis.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- The consistency matrix is rendered as a markdown table when supported. When width would be unwieldy, fall back to a per-evidence list with each cell value tagged.
+- Hypothesis and evidence IDs are referenced consistently throughout (H1 not "Hypothesis 1" inline once the IDs are introduced).
+- Elimination arithmetic is shown numerically (e.g., "H1: I+II = 3, II = 1"), not paraphrased.
+- Across-the-matrix posture is preserved in framing: the analysis is keyed to evidence-rows (what does each evidence item discriminate among hypotheses?), not to hypothesis-columns (what supports each hypothesis?).
 
 
 ---

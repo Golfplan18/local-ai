@@ -110,18 +110,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Emit Input Sufficiency redirect (three-part shape: What I see / What's missing / Three options with override). Do not attack thin material without flagging."
     on_underspecified: "Run Input Sufficiency Protocol; if conditions fail, emit redirect rather than attacking."
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - stance_declaration
-    - artifact_restatement
-    - vulnerabilities_ranked_by_severity
-    - fix_recommendations_per_vulnerability
-    - residual_uncertainties
-    - attack_failure_disclosure
-    - severity_floor_declaration_when_applicable
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -226,11 +214,81 @@ Revise to add artifact-specific grounding (Why this is real with quotes) whereve
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured audit with assessment-specific output shape: stance declaration ("Stance: assessment") → artifact restatement → vulnerabilities ranked by severity (Showstopper > Major > Caveat) → fix recommendations per vulnerability (with feasibility note: user-implementable / requires-outside-resources / structural-redesign-needed) → residual uncertainties → Attack-Failure Disclosure → severity-floor declaration when applicable. Each vulnerability carries Finding [N] / Severity / Surface / Why this is real / What breaks if exploited / Fix recommendation / Fix feasibility. The ranking discipline is severity (worst-first), not surface order — Showstoppers always lead, regardless of whether they are Internal or External. Stance is the assessment stance; mixing in advocate-stance shapes (audience model, persuasive-force ranking, suggested phrasing) is a routing failure — those belong in red-team-advocate.
+Organize the consolidated corpus as **an assessment-stance vulnerability audit: stance declaration, artifact-restatement atom, vulnerability atoms ranked by severity (Showstopper > Major > Caveat) with surface tag (Internal / External), fix-recommendation atoms paired with fix-feasibility notes, residual-uncertainty atoms, Attack-Failure Disclosure atoms naming attack classes attempted that produced nothing, and severity-floor declaration when applicable**. The atoms are:
+
+1. **Stance-declaration atom.** A single line: `Stance: assessment.` The deliverable's posture is surface-vulnerabilities-for-fix, not built-the-case-against-for-external-audience. Mixing in advocate-stance shapes (audience model, persuasive-force ranking, suggested phrasing) is a routing failure.
+
+2. **Artifact-restatement atom.** The artifact in brief, quoted where possible.
+
+3. **Vulnerability atoms — ranked by severity.** Each atom carries: a `Finding [N]` label, a severity tag (`Showstopper` / `Major` / `Caveat`), a surface tag (`Internal` / `External`), a `Why this is real` grounding (with quoted artifact text where possible), and `What breaks if exploited`. Pulled-punches is the named failure mode the consolidator watches for; vulnerabilities softened, severity deflated, or real risks dressed as "minor considerations" get reshaped. Severity-inflation is the mirror failure; severity profile inflated above what artifact flaws warrant gets reshaped. Nitpick-trap, straw-target-trap, sycophantic-inverse-trap, and no-fabrication-violation also apply.
+
+4. **Fix-recommendation atoms — per vulnerability.** Each atom carries: an *actionable* fix (specific change the user could implement), a fix-feasibility note (`user-implementable` / `requires-outside-resources` / `structural-redesign-needed`). Fix-handwaving is the named failure mode; vague fixes ("improve documentation", "consider stakeholders") without artifact-specific instructions get reshaped.
+
+5. **Residual-uncertainty atoms.** Where the assessment depends on facts or framings that may shift, the uncertainty surfaces explicitly.
+
+6. **Attack-Failure Disclosure atoms.** Each atom names: an attack class attempted that produced no findings, and why. Shallow-attack is the named failure mode; empty disclosure indicates the attack was not thorough.
+
+7. **Severity-floor declaration atom — when applicable.** When no Major or Showstopper findings exist, a labelled `**Severity floor:** the artifact is solid at the Major/Showstopper level. Caveats below are surface-level rather than structural.` line is the anti-nitpick guard, not a failure to attack.
+
+8. **Framework-attack-trap flag — when applicable.** Where attacks drifted into critique of the framework the artifact rests on, the flag is preserved and a sideways-route to paradigm-suspension is surfaced.
+
+9. **Override-flag — when applicable.** Where the Input Sufficiency Protocol was overridden, every finding carries an explicit low-specificity / generic flag. Fabricated-override-trap is the named failure mode.
+
+10. **Manufacture-on-revise flag — when applicable.** Where revision added findings without new evidence, the flag is preserved.
+
+11. **Confidence per finding.** Each major claim carries confidence (separate from severity — confidence is about whether the vulnerability is real; severity is about how bad it is if real).
+
+**Mode-specific bloat patterns to cut:**
+
+- **Pulled punches** — hard truths softened to spare the user; severity deflated; real risks dressed as "minor considerations".
+- **Severity inflation** — Caveats promoted to Major to manufacture sense of productive attack; severity-floor declaration skipped to avoid honesty about a solid artifact.
+- **Fix handwaving** — vague fixes without artifact-specific actionable instructions or feasibility.
+- **Nitpick** — cosmetic-level objections promoted to vulnerability status.
+- **Sycophantic-inverse** — performing hostility without grounding; would a committed opponent actually use this?
+- **Straw-target / fabrication** — attacks on distorted or fabricated artifact-claims.
+- **Framework-attack drift** — critiquing the framework rather than the artifact within it.
+- **Empty Attack-Failure Disclosure** — shallow attack; the user can't tell what was attempted and didn't land.
+- **Advocate-stance bleed** — audience model, persuasive-force ranking, suggested phrasing — these belong in red-team-advocate.
+
+**What NOT to collapse:**
+
+- **Severity tiers** — Showstopper / Major / Caveat distinctions calibrate honestly; the three tiers do not blur into one another.
+- **Internal-vs-External surface distinction** — internal-logic vulnerabilities and external (deployment-context, adversarial-use, second-order) vulnerabilities operate differently; both surfaces are scanned.
+- **Stream disagreement about severity** — when streams rated the same vulnerability differently, the disagreement is preserved with reasoning for both.
+- **Fix-feasibility distinctions** — user-implementable / outside-resources / structural-redesign-needed are not blurred; the user needs to know what they can act on.
 
 ## VERIFICATION CRITERIA
 
 Verified means: stance declaration appears in opening line ("Stance: assessment"); artifact restatement quotes where possible; every vulnerability has Finding [N] label, Severity (Showstopper/Major/Caveat), Surface (Internal/External), Why this is real grounded in artifact specifics, What breaks if exploited, Fix recommendation, and Fix feasibility note; vulnerabilities are ranked by severity (worst-first) not by surface or order-of-discovery; residual uncertainties section present; Attack-Failure Disclosure present with at least one disclosed attack class; severity-floor literal sentence present when applicable (no Major/Showstopper found); framework-level critiques flagged out-of-scope and routed to paradigm-suspension; override-flag present on every finding when Input Sufficiency override was invoked; no new findings introduced during revision without new evidence; no advocate-stance shapes (audience-model, persuasive-force ranking, suggested phrasing) present. The seven critical questions are addressable from the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is an **adversarial vulnerability assessment** — a structured audit of the user's own artifact, ranked by severity for fix-prioritisation, with actionable fixes and fix-feasibility per finding. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Stance declaration.** First line: `**Stance: assessment.**` Verbatim; downstream sections honour the assessment-stance contract.
+
+2. **Artifact restatement.** One paragraph restating the artifact in brief, with quoted passages where possible.
+
+3. **Vulnerabilities ranked by severity.** Numbered list, **Showstopper first, then Major, then Caveat**. Each: `**Finding [N]** — Severity: [Showstopper / Major / Caveat]. Surface: [Internal / External]. Why this is real: [grounded in artifact specifics with quote where possible]. What breaks if exploited: [...].`
+
+4. **Fix recommendations per vulnerability.** Per finding, one labelled sub-block: `**Finding [N] — Fix recommendation:** [specific actionable change]. **Fix feasibility:** [user-implementable / requires-outside-resources / structural-redesign-needed]. Tradeoff if implemented: [...].`
+
+5. **Residual uncertainties.** Bulleted list of facts or framings the assessment depends on that may shift.
+
+6. **Attack-Failure Disclosure.** Bulleted list of attack classes attempted that produced no findings. Each: `**Attack class attempted:** [...]. **Why it produced no findings:** [...].` At least one entry; empty disclosures get reshaped to surface what was actually tried.
+
+7. **Severity floor declaration (when applicable).** When no Major or Showstopper findings exist: `**Severity floor:** the artifact is solid at the Major/Showstopper level. The findings above are Caveats — surface-level rather than structural. The assessment did not pull punches; the artifact survived the attack.`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- Severity vocabulary (`Showstopper` / `Major` / `Caveat`) appears verbatim. Ranking is severity-first: Showstoppers always lead, regardless of whether they are Internal or External.
+- Fix-feasibility vocabulary (`user-implementable` / `requires-outside-resources` / `structural-redesign-needed`) appears verbatim — the user needs to know what they can act on.
+- The severity-floor declaration (section 7) is *not* a sign of attack failure when honestly applied to a solid artifact. Omitting it to avoid acknowledging a clean assessment is a form of severity-inflation, reshaped at this layer.
+- When the framework-attack-trap flag survived, the deliverable closes section 3 with: `**Framework-attack flag:** [N] finding(s) target the framework the artifact rests on rather than the artifact within it. Sideways-route to paradigm-suspension if framework critique is warranted; otherwise these findings get reshaped to stay within-framework.`
+- When the override-flag survived, each finding in section 3 carries `**[low-specificity — override invoked]**` so the user knows the limitation.
+- When the manufacture-on-revise flag survived, the deliverable carries a top-line note: `**Note: the revision stage added [N] finding(s) without new evidence. These have been flagged or removed.**`
+- Advocate-stance shapes (audience model, persuasive-force ranking, suggested phrasing) are reshaped/removed at this layer; they belong in red-team-advocate.
 
 ## CAVEATS AND OPEN DEBATES
 

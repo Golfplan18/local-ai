@@ -87,20 +87,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the system, decision, or design we're examining, and what about its boundary feels off?'"
     on_underspecified: "Ask: 'Whose voice or interest do you suspect is being treated as outside the scope of this analysis?'"
-output_contract:
-  artifact_type: audit
-  required_sections:
-    - system_under_critique
-    - boundary_judgments_currently_embedded
-    - sources_of_motivation_audit
-    - sources_of_control_audit
-    - sources_of_knowledge_audit
-    - sources_of_legitimacy_audit
-    - affected_but_not_involved_parties
-    - is_vs_ought_boundary_comparison
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -177,11 +163,106 @@ Revise to denaturalize boundary judgments where the draft treated them as system
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured audit with the nine required sections. The system under critique is named first. Boundary judgments currently embedded appear as their own section. Each of Ulrich's four category-clusters appears as a numbered audit section (motivation, control, knowledge, legitimacy). Affected-but-not-involved parties appear as their own section, organized by category. The is-vs-ought boundary comparison is the final analytical section before confidence-per-finding. The structured format permits row-level audit of which boundary judgment, in which category, currently obtains and what its inclusive counterpart would be.
+Organize the consolidated corpus as **a twelve-category boundary grid with is/ought atoms and gap atoms**, per Ulrich's CSH methodology. The grid is the load-bearing data structure: twelve categories in four source-clusters, each carrying paired is/ought answers plus the gap between them. Implication-for-action atoms close the loop from critique to use. The atoms are:
+
+1. **System-under-critique atom.** The artifact, plan, policy, design, study, or proposal under critique, named precisely at the corpus head. Cross-stream paraphrase collapses to one canonical statement.
+
+2. **The twelve category atoms — fixed grid.** Each of Ulrich's twelve categories carries three atoms (is-atom, ought-atom, gap-atom):
+   - **Motivation cluster**: (1) Beneficiary, (2) Purpose, (3) Measure of improvement
+   - **Control cluster**: (4) Decision-maker, (5) Resources, (6) Decision environment
+   - **Expertise cluster**: (7) Expert/planner, (8) Expertise, (9) Guarantor
+   - **Legitimacy cluster**: (10) Witness, (11) Emancipation, (12) Worldview
+
+   For each category:
+   - **is-atom** — what the artifact takes as given (often implicit; surfaced explicitly here)
+   - **ought-atom** — what would obtain if the affected-but-not-represented counted; from the standpoint of the affected, not from the analyst's own values
+   - **gap-atom** — the consequence-bearing distance between is and ought, flagged as live contestation rather than as objective finding
+
+   All twelve categories appear in the corpus, even when a category's gap is small. Skipping a category requires an explicit "category-N: gap minimal — [reason]" atom rather than silent omission (selective-categories failure mode).
+
+3. **Worldview-category emphasis (category 12).** Worldview is the most invisible boundary judgment and the most commonly skipped. The corpus carries an explicit worldview gap-atom regardless of how abstract the methodology seems for the user's case — deferring it as "too philosophical" is the single most common failure of boundary critique.
+
+4. **Affected-but-not-involved party atoms.** Parties affected by the system but not represented in its design, organized by which of the twelve categories surface them. The witness atom (category 10) names which voice currently speaks for them; if "the analyst" is the witness, that is surfaced as analyst-substitution rather than masked. Each affected-party atom carries: party role, which categories surface them, and what they would say if they could speak.
+
+5. **Implication-for-action atoms.** For each load-bearing gap, an atom names what the user (or decision-maker, or system designer) could do with the finding — which boundary judgment, if revised, would change the system's relation to its affected parties. Addresses the `critique-without-purpose` failure mode: critique that surfaces judgments without naming what's available to do with them is analytically empty. At minimum one implication-for-action atom per cluster must survive.
+
+6. **Boundary-judgments-as-contestable atom.** A corpus-level statement framing the gaps as live political contestation, not as technical or objective findings. Boundary critique makes boundary judgments visible and contestable; it cannot eliminate them. This atom defends against consensus-seeking framing.
+
+7. **Confidence per gap.** Confidence markers attach to individual gap atoms. When the two streams assigned different confidences to the same gap, audit conservatism applies (the lower confidence survives).
+
+**Mode-specific bloat patterns to cut during the bloat strip:**
+
+- **Is-answer paraphrase** — both streams may surface the same implicit assumption in slightly different language ("the artifact treats X as the beneficiary" vs "X is named as the served party in the artifact"). Single is-atom per category survives.
+- **Ought-answer paraphrase** — both streams may articulate the same alternative ought-answer in different framings. Single ought-atom per category survives.
+- **Gap-restatement** — same gap described twice ("there is a gap between the assumed beneficiary X and the affected party Y" vs "the beneficiary as currently identified excludes Y"). Single gap-atom per category survives.
+- **Affected-party renaming** — same party under different labels ("non-organized public" vs "unrepresented citizens" vs "the public-not-consulted"). Single party atom with canonical role identifier; cross-references update accordingly.
+- **Worldview-paraphrase loops** — worldview is abstract and prone to multiple articulations. The most precise statement of the worldview gap survives; specificity from each stream's articulation is unioned (a gap statement that names three load-bearing moves the artifact makes under its worldview is more precise than one that names two).
+- **Consensus-seeking residue** — phrasings like "a balanced boundary would...", "the appropriate framing is...", "what both perspectives can agree on...". Boundary critique surfaces contestation; it does not propose resolutions. This residue does not survive regardless of how plausibly it's phrased.
+
+**What NOT to collapse:**
+
+- **Different is-answers for the same category** — when the two streams disagree on what the artifact takes as given (different readings of the implicit answer), preserve both as a tension atom. The artifact may genuinely be ambiguous on that point, or one stream may be reading it more accurately; the disagreement is itself a finding about the boundary's clarity.
+- **Different ought-answers from different affected constituencies** — different affected-party perspectives produce different ought-answers. When two streams' ought-atoms reflect different affected constituencies, preserve both with their respective constituency provenance. Boundary judgments are political, and political disagreement among the affected is not bloat.
+- **Cross-category gap interactions** — when a gap in one category load-bears on a gap in another (e.g., worldview gap entails decision-maker gap), preserve the interaction as a cross-reference atom rather than collapsing into a single "system-wide gap." The four source-clusters interact, and the interaction is the corpus's value for someone trying to identify which single boundary revision would change the most.
 
 ## VERIFICATION CRITERIA
 
 Verified means: the system under critique is named; boundary judgments currently embedded are surfaced as judgments (not as system-givens); all four of Ulrich's category-clusters are audited; affected-but-not-involved parties are identified per category; the is-vs-ought boundary comparison is performed; the four critical questions are addressable from the output. Confidence per major finding accompanies each claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **12-category boundary audit organized by Ulrich's four source-clusters, with is/ought rendering per category and explicit implications for action**. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **System under critique.** Name the artifact, plan, policy, design, study, or proposal under critique at the top, in one sentence or short paragraph. Frame as "System under boundary critique:" — the user must see what is being audited.
+
+2. **Boundary judgments currently embedded — overview.** One paragraph summarizing the artifact's load-bearing boundary judgments at the corpus level. This frames the detailed per-category audit that follows. Position as "Boundary judgments the artifact currently embeds (often implicit):"
+
+3. **Per-category audit — Ulrich's twelve categories in four clusters.** Render four H2 sub-sections, one per cluster (Motivation / Control / Expertise / Legitimacy). Within each cluster, render the three categories in this fixed sequence:
+
+   **Cluster A — Sources of motivation:**
+   - (1) Beneficiary
+   - (2) Purpose
+   - (3) Measure of improvement
+
+   **Cluster B — Sources of control:**
+   - (4) Decision-maker
+   - (5) Resources
+   - (6) Decision environment
+
+   **Cluster C — Sources of expertise:**
+   - (7) Expert / planner
+   - (8) Expertise
+   - (9) Guarantor
+
+   **Cluster D — Sources of legitimacy:**
+   - (10) Witness
+   - (11) Emancipation
+   - (12) Worldview
+
+   For each of the twelve categories, render this fixed three-atom block:
+   - **is:** what the artifact takes as given (often implicit; state explicitly).
+   - **ought:** what would obtain if the affected-but-not-represented counted (from the affected's standpoint, not the analyst's values).
+   - **gap:** the consequence-bearing distance between is and ought, flagged as live contestation rather than as objective finding.
+
+   When a category's gap is small or the category does not apply meaningfully, render: `gap: minimal — [reason]` rather than omitting the category. Skipping is a named failure mode.
+
+4. **Worldview (category 12) — extended.** The worldview category receives a dedicated block at the end of the per-category audit (even though it appears in sequence in section 3). Render: "Whose worldview is currently load-bearing in the artifact: [...]. Alternative worldview from the affected: [...]. What changes under the alternative: [specific analytical moves that shift]." Worldview is the most-commonly-skipped category and gets visible emphasis.
+
+5. **Affected-but-not-involved parties.** Numbered list of parties (P1, P2, …) with: party role, which categories surface them, and what they would say if they could speak. Each party row: `P1 — [role]: surfaced in categories [N, N, N]. Their voice would say: [what they would say].` When the witness atom (category 10) names "the analyst" as the current witness, surface this explicitly as analyst-substitution rather than masking it.
+
+6. **Implications for action.** Per cluster (Motivation / Control / Expertise / Legitimacy), at minimum one implication-for-action atom: "Boundary judgment in [category]: if revised to [ought], the system's relation to [affected party] changes by [specific consequence]." This section addresses the `critique-without-purpose` failure mode — the audit's surfaced judgments must be paired with what the user could do with them.
+
+7. **Boundary judgments as contestation.** A single closing block framing all surfaced gaps as live political contestation, not as technical or objective findings: "Boundary critique cannot eliminate boundary judgments — only make them visible and contestable. The judgments surfaced above are political; they are owned by the parties affected, not by the analyst."
+
+8. **Confidence per gap.** Bulleted list of major gap-atoms with confidence markers (high / moderate / low). One bullet per category where the gap is consequential.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Within section 3, use H3 sub-headings for the four clusters; use bolded inline labels (Beneficiary, Purpose, Measure of improvement, etc.) for the twelve categories.
+- The is/ought/gap triple renders as three lines per category — never collapse to "is/ought differ by ..." narrative without the three explicit labels.
+- All twelve categories appear in the audit; explicit "minimal — [reason]" rather than silent omission.
+- Avoid consensus-seeking framing throughout the deliverable: "a balanced boundary would...", "what both perspectives share..." are forbidden — boundary critique surfaces contestation.
 
 
 ---

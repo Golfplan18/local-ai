@@ -87,18 +87,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you describe the plan you want to pre-mortem and roughly when you expect to know whether it worked?'"
     on_underspecified: "Ask: 'What does success look like for this plan, so I can imagine its absence?'"
-output_contract:
-  artifact_type: scenarios
-  required_sections:
-    - imagined_failure_narrative
-    - failure_mode_inventory
-    - causal_pathways_to_failure
-    - leading_indicators_per_failure_mode
-    - precommitment_mitigations
-    - residual_unmitigated_risks
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -175,11 +163,73 @@ Revise to restore prospective-hindsight stance where the draft has slipped into 
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured scenarios artifact with the seven required sections. The imagined failure narrative is written in past tense as the post-mortem the team would have produced after the failure. Failure-mode inventory is organized by class (execution / assumption / context-shift / interaction / motivational). Causal pathways link each failure mode to the decision point or assumption that broke. Leading indicators are observable signals the team can monitor; mitigations are pre-commitment actions only. Residual unmitigated risks are named explicitly.
+Organize the consolidated corpus as **a Klein prospective-hindsight failure analysis: past-tense imagined-failure narratives, failure-mode atoms organised by Klein class, causal-pathway atoms tied to specific decision points or assumptions, leading-indicator atoms per failure mode, pre-commitment mitigation atoms, and residual-unmitigated-risk atoms**. The atoms are:
+
+1. **Imagined-failure narrative atom.** The post-mortem the team would have written after the failure, in past tense. The plan failed. Here is what happened. Stance-slippage is the named failure mode the consolidator watches for; atoms using forward conditional grammar (`this might fail if`) rather than retrospective (`the plan failed because`) get reshaped to past-tense prospective hindsight.
+
+2. **Failure-mode atoms — by Klein class.** Each atom carries: the failure mode, its class (`execution` / `assumption` / `context-shift` / `interaction` / `motivational`), and the plan-specific mechanism that produced it. Generic-failure-trope is the named failure mode; domain-agnostic clichés (scope creep, communication breakdown, stakeholder misalignment) without plan-specific mechanism get reshaped to mechanism-grounded atoms.
+
+3. **Causal-pathway atoms.** Each atom traces the path from one specific decision point or assumption to the visible failure. Each pathway names: the breakage point (named decision or assumption), the immediate consequence, the cascade, and the surfaced failure.
+
+4. **Leading-indicator atoms — per failure mode.** Each atom names: the observable signal that would have shown the breakage as it began (pre-failure), the signal-acquisition cost, and the lead time. Lagging-indicator-only is the named failure mode; failure modes whose only indicators are post-failure observations get reshaped to surface genuine leading indicators or get flagged.
+
+5. **Pre-commitment mitigation atoms.** Each atom names: a mitigation that can be locked in *before* the team commits to the plan (test, assumption-check, pilot, decision-gate, kill criterion). Post-hoc-conflation is the named failure mode; mitigations that can only be taken after the failure has begun get reshaped or flagged.
+
+6. **Residual-unmitigated-risk atoms.** Each atom names: a risk that survives the pre-commitment mitigations, and the conditions under which it would materialise.
+
+7. **Optimism-residue flag — when applicable.** Where streams produced a failure-mode inventory shorter than the success-pathway language suggests (the analyst's prior on success bleeding through), the flag is preserved. Optimism-residue is the named failure mode.
+
+8. **Confidence per finding.** Each major claim carries a confidence with explicit grounding.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Stance slippage** — forward conditional language where prospective hindsight is the contract. The plan *failed*; the narrative is past-tense.
+- **Generic failure tropes** — scope creep, communication breakdown, stakeholder misalignment without plan-specific mechanism.
+- **Lagging indicators** — failure visibility only at post-mortem; no signals the team could have caught pre-failure.
+- **Post-hoc mitigations** — actions framed as mitigations but only available after the failure has begun.
+- **Optimism residue** — failure inventory truncated; analyst's prior on success bleeds through.
+- **Class-imbalanced inventory** — all failure modes in one class (typically execution) when assumption, context-shift, interaction, motivational failures were also plausible.
+- **Plan-agnostic narrative** — the failure narrative could be substituted into any other plan of comparable shape; nothing in it is specific to *this* plan.
+
+**What NOT to collapse:**
+
+- **Competing failure narratives** — when streams produced different leading failure narratives, both survive; the choice between them is information about which assumption the team thinks is most load-bearing.
+- **Stream disagreement about failure class** — when one stream classified a failure as execution and another as assumption, the disagreement reveals what's contested about the plan's structure.
+- **Leading-indicator disagreements** — when streams identified different observable signals for the same failure mode, both survive; the team monitors multiple indicators.
+- **Residual risks that the mitigations cannot reach** — preserved at full salience; this is the load-bearing finding for the pre-commitment decision.
 
 ## VERIFICATION CRITERIA
 
 Verified means: the failure narrative is in past-tense prospective-hindsight stance throughout; every named failure mode has plan-specific mechanism (no generic tropes); every failure mode has at least one leading indicator the team could observe pre-failure; every mitigation is a pre-commitment action (not a post-hoc remediation); the four critical questions are addressable from the output. Confidence per finding accompanies each major claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **prospective-hindsight failure analysis** — a structured pre-mortem on the action plan, written in past tense, with plan-specific failure modes, leading indicators per mode, and pre-commitment mitigations the team can lock in before launch. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Imagined failure narrative.** One to two paragraphs of past-tense post-mortem prose. `It is [decision horizon] from now. The plan failed. Here is what happened: [...].` The grammar stays retrospective throughout — `failed`, `broke`, `proved`, `was`, `had to be`. Forward conditional language is reshaped at this layer.
+
+2. **Failure mode inventory.** Bulleted or per-class block. Each: `**[Failure mode]** — class: [execution / assumption / context-shift / interaction / motivational]. Plan-specific mechanism: [the named decision point, assumption, or coupling that broke].` Generic tropes are reshaped to mechanism-grounded entries.
+
+3. **Causal pathways to failure.** Per failure mode, one labelled sub-block: `**[Failure mode]** → breakage point: [specific decision or assumption]. Immediate consequence: [...]. Cascade: [...]. Surfaced failure: [...].`
+
+4. **Leading indicators per failure mode.** Per failure mode, one labelled sub-block: `**[Failure mode]** — leading indicators: [...]. Signal-acquisition cost: [...]. Lead time before visible failure: [...].`
+
+5. **Pre-commitment mitigations.** Numbered list. Each: `[N]. **[Mitigation — test / assumption-check / pilot / decision-gate / kill criterion]** — what it locks in before commitment: [...]. Which failure mode(s) it addresses: [...]. Cost to implement before launch: [...].` Mitigations that can only be taken after the failure has begun are reshaped here.
+
+6. **Residual unmitigated risks.** Bulleted list. Each: `**[Residual risk]** — which failure modes remain partially or fully exposed: [...]. Conditions under which it materialises: [...]. Whether this should warrant rethinking the plan: [...].`
+
+7. **Confidence per finding.** Bulleted list of confidence assessments per major claim, with grounding.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 7.
+- The Klein prospective-hindsight vocabulary stays operative: `the plan failed`, `the assumption broke`, `the context shifted`, `the team disengaged`. Past-tense grammar is the structural feature; revisiting forward-conditional grammar gets reshaped at this layer.
+- Klein's failure-class taxonomy (execution / assumption / context-shift / interaction / motivational) appears verbatim in section 2. Class-imbalanced inventories (all execution, or all assumption) are reshaped when other classes were plausible.
+- Failure-mode mechanisms (section 2) are *plan-specific* — they name the actual decision point or assumption in *this* plan. A failure narrative that could be substituted into any plan of comparable shape is reshaped.
+- Pre-commitment mitigations (section 5) are *pre*-commitment by construction. Mitigations framed as available after the failure has begun get reshaped to post-hoc-remediation flags and removed from this section.
+- When the optimism-residue flag survived consolidation, the deliverable opens with: `**Note: the failure-mode inventory below was reshaped during consolidation to counter optimism residue. If the inventory still reads shorter than the plan's complexity warrants, the pre-mortem stance has not held; re-dispatch with explicit instruction to extend the failure narrative.**`
+- When the artifact is system-shaped rather than plan-shaped (sideways-route to pre-mortem-fragility), the deliverable opens with: `**Note: on reflection the analytical object may be a system or design rather than a plan to execute; pre-mortem-fragility (T7) is the appropriate sideways-route.**`
+- Confidence (section 7) is per-finding; collapsing into overall pre-mortem confidence is reshaped at this layer.
 
 ## CAVEATS AND OPEN DEBATES
 

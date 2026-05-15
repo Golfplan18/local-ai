@@ -80,17 +80,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Who are the actors involved, and what is each one trying to achieve in their own terms?'"
     on_underspecified: "Ask: 'Is this primarily an interaction where the other party responds to our moves (Strategic Interaction), or is it about choosing under uncertainty from nature (Decision Under Uncertainty)?'"
-output_contract:
-  artifact_type: synthesis
-  required_sections:
-    - players_and_payoffs
-    - game_classification
-    - equilibrium_analysis
-    - credibility_assessment
-    - alternative_structures
-    - strategic_recommendations
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -164,7 +153,27 @@ Breadth in Strategic Interaction is the catalog of alternative game structures c
 
 ## EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ5. The named failure modes are the evaluation checklist. A passing Strategic Interaction output (a) names players with payoffs in their actual value terms; (b) classifies the game on all four dimensions; (c) identifies equilibrium with method named and stability assessed; (d) audits credibility of threats/promises; (e) tests ≥ 1 alternative structure; (f) produces specific strategic recommendations grounded in game structure rather than general advice.
+Strategic Interaction is read in Schelling's strategy-of-conflict vocabulary (commitment, credibility, focal points, deterrence-vs-compellence) combined with game-theory equilibrium concepts (Nash, subgame-perfect, Perfect Bayesian, backward induction, repeated cooperation), Axelrod evolution-of-cooperation analysis when the game is repeated, and Simon bounded-rationality discipline against hyperrationality. The evaluator's primary axes are credibility honesty (Schelling's central contribution), classification completeness (the four-dimensional game-typing that makes equilibrium-talk meaningful), and payoff realism (actual value terms, not stated preferences). CQ3 (cheap-talk-treated-as-credible) is load-bearing because credibility discipline is Schelling's distinctive analytical move. CQ1 (classification-incomplete) is load-bearing because the equilibrium method is meaningless without knowing the game type. CQ5 (stated-vs-actual-payoffs) is load-bearing because actors lie about what they want and the analysis must read past that. CQ2 (method-unnamed) and CQ4 (classification-lock) act as derivational and breadth gates.
+
+Evaluator checks:
+
+1. **Credibility audit per threat or promise (CQ3, load-bearing).** Each threat or promise in the analysis must carry a `credibility:` label with grounding — `credible` (commitment device named, sunk cost identified, repeated-game future-shadow operative) or `cheap talk` (no commitment device, no sunk cost, no future-shadow). The Schelling discipline: announcements without commitment are not threats. Cheap-talk-treated-as-credible is the failure mode where a verbal threat is read as binding equilibrium force; the evaluator confirms each threat earns its credibility status rather than receiving it by default.
+
+2. **Four-dimensional game classification (CQ1, load-bearing).** The game must be classified on all four dimensions — timing (simultaneous / sequential / extensive-form) × information (complete / incomplete; perfect / imperfect) × duration (one-shot / repeated / infinite-horizon) × sum (zero-sum / positive-sum / mixed). Each classification carries reasoning. Classification-incomplete residue is fewer than four dimensions populated, or dimensions asserted without reasoning. The classification is what makes the equilibrium method meaningful — without it, "Nash equilibrium" is vocabulary, not analysis.
+
+3. **Actual payoffs, not stated preferences (CQ5, load-bearing).** Each player's payoffs must be stated in their *actual* value terms — what their behaviour reveals they value, not what they claim to want. Stated-vs-actual-payoffs residue is professed preferences treated as payoff structure (e.g., a politician's "we want peace" taken as a peace-payoff). The evaluator's test: where the player's stated values and revealed values diverge, does the analysis name the divergence and use the revealed values? The Schelling tradition is realist about preferences.
+
+4. **Equilibrium method named with derivation (CQ2).** The equilibrium must be derived by an explicitly-named method — Nash, subgame-perfect, backward induction, repeated cooperation, Perfect Bayesian — with a derivation trace a reader could reproduce from the players, payoffs, and method. Method-unnamed residue is asserted equilibria without method-name; the analysis cannot be checked because the route to the conclusion is hidden.
+
+5. **Alternative structure tested (CQ4).** At least one alternative game classification must be tested with its own equilibrium derivation — alternative move-order, alternative information structure, alternative duration (especially one-shot vs repeated), alternative sum. Classification-lock residue is single-structure analysis without breadth check. The reading: if the dominant equilibrium is robust to re-classification, the analysis is strong; if it changes radically, the dominant classification was the load-bearing assumption.
+
+6. **Hard probability-discipline.** Decision-node edges *do not* carry probabilities (decisions are choices, not chance outcomes); only chance/nature nodes carry probabilities. Probability-on-decision-trap is a *hard* verification failure — when a decision-node child carries a probability, the underlying decision-theory model is structurally malformed. The evaluator catches this at envelope-emission and elsewhere.
+
+7. **Bounded-rationality reading where applicable.** Where the equilibrium derivation assumes perfect rationality and the real actors plausibly deviate (cognitive bias, political constraint, incomplete preference orderings), the deviation is named alongside the rational equilibrium. Hyperrationality-trap residue is equilibrium derivations that read as if the analyst forgot Simon. The evaluator confirms the bounded-rationality reading is paired with the rational one where relevant.
+
+8. **Static-vs-repeated framing check.** Where the situation is plausibly a repeated game (parties will interact again under similar structure), the analysis must test the repeated framing — one-shot equilibrium is often unstable under repetition (Axelrod's evolution-of-cooperation findings). Static-frame-trap residue is one-shot analysis applied to ongoing relationships.
+
+Confidence is per-equilibrium, per-credibility-assessment, per-alternative-structure result. Where streams disagreed on payoff inference (actual values are themselves uncertain), the evaluator confirms the disagreement is preserved. Where the missing-player flag fires (a reactive third party whose response would shift the equilibrium is absent from the inventory), the evaluator confirms the analysis is bounded to its current inventory rather than presented as complete.
 
 ## REVISION GUIDANCE
 
@@ -172,11 +181,80 @@ Revise to name the equilibrium method where it was asserted without trace. Revis
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured analysis with the six required sections. Players and payoffs are stated in actual value terms (not claimed-to-want terms). Game classification covers all four dimensions explicitly. Equilibrium analysis names method and stability. Credibility section assesses threats/promises. Alternative structures section tests at least one alternative framing. Strategic recommendations are mechanism-grounded. Format is structured (decision-tree-friendly when sequential; matrix-friendly when simultaneous).
+Organize the consolidated corpus as **a game-theoretic interaction atom set: player-and-payoff atoms in actual value terms, four-dimensional game-classification atoms (timing × information × duration × sum), equilibrium-derivation atoms with method named, credibility-audit atoms per threat/promise, alternative-structure atoms testing ≥1 alternative classification, and mechanism-grounded strategic-recommendation atoms**. The atoms are:
+
+1. **Player-and-payoff atoms.** Each atom names: one player, payoffs in their *actual* value terms (not what they claim to want). Stated-vs-actual-payoffs is the named failure mode the consolidator watches for; payoffs stated as professed preferences without the value-revealed-by-behaviour check get reshaped.
+
+2. **Game-classification atoms — four dimensions.** Each atom carries a per-dimension classification: `timing` (simultaneous / sequential / extensive-form) × `information` (complete-information / incomplete-information; perfect / imperfect) × `duration` (one-shot / repeated / infinite-horizon) × `sum` (zero-sum / positive-sum / mixed). Classification-incomplete is the named failure mode; missing dimensions get reshaped to fill the four-dimensional grid.
+
+3. **Equilibrium-derivation atoms.** Each atom names: the equilibrium method (`Nash equilibrium` / `subgame-perfect equilibrium` / `backward induction` / `repeated cooperation` / `Perfect Bayesian equilibrium`), the derivation (traceable from players + payoffs + method), and stability (which deviations are profitable, which are not). Method-unnamed is the named failure mode; asserted equilibria without method-name get reshaped.
+
+4. **Credibility-audit atoms — per threat/promise.** Each atom carries the literal prefix `credibility:` and audits one threat or promise: `cheap talk` (no commitment device, no sunk cost, no future-shadow) versus `credible` (commitment device named, sunk cost identified, or repeated-game future-shadow operative). Cheap-talk-treated-as-credible is the named failure mode.
+
+5. **Alternative-structure atoms.** Each atom tests an alternative game classification — alternative move-order, alternative information structure, alternative duration, alternative sum — with its own equilibrium derivation. Classification-lock is the named failure mode; analyses with only one classification tested get reshaped.
+
+6. **Missing-player atoms — when applicable.** Where reactive third parties whose response would change the equilibrium are absent from the player inventory, the missing player surfaces explicitly. Missing-player-trap is the named failure mode.
+
+7. **Hyperrationality-vs-bounded-rationality atoms.** Where the equilibrium assumes perfect rationality without bounded-rationality assessment (Simon, behavioural economics), the deviation from real-actor behaviour is named. Hyperrationality-trap is the named failure mode.
+
+8. **Static-vs-repeated framing atoms.** Where one-shot analysis was applied to what is actually a repeated game, the framing gets reshaped to test the repeated framing. Static-frame-trap is the named failure mode.
+
+9. **Probability-discipline atom.** A standing atom: decision-node edges do *not* carry probabilities (decisions are choices, not chance outcomes); only chance/nature nodes carry probabilities. Probability-on-decision-trap is the named failure mode and a *hard* verification failure if it survives.
+
+10. **Mechanism-grounded recommendation atoms.** Each strategic recommendation references the equilibrium structure that justifies it (which commitment device, which credibility shift, which classification dimension to alter), rather than general strategic advice.
+
+11. **Confidence per finding.** Confidence per equilibrium, per credibility assessment, per alternative-structure result.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Classification incomplete** — fewer than four dimensions populated.
+- **Method unnamed** — equilibrium asserted without naming the derivation method.
+- **Cheap talk treated as credible** — threats/promises without commitment-device or future-shadow grounding.
+- **Classification lock** — only one game structure tested.
+- **Missing reactive players** — third parties whose response would change the equilibrium left out.
+- **Hyperrationality** — equilibrium derived without bounded-rationality assessment.
+- **Static frame on repeated game** — one-shot analysis where repetition is operative.
+- **Probability on decision node** — *hard* failure; decisions are choices, not chance outcomes.
+- **Stated-payoff naivety** — claimed-to-want preferences without revealed-by-behaviour check.
+- **Generic strategic advice** — recommendations not grounded in the game's mechanism.
+
+**What NOT to collapse:**
+
+- **Equilibria across alternative classifications** — when one game classification yields equilibrium A and another classification yields equilibrium B, both survive; the alternative-structure atom is the load-bearing breadth signal.
+- **Cheap-talk vs credible labels** — these don't blur; some threats are commitments and some are not.
+- **Bounded-rationality deviations** — preserved alongside the rational equilibrium; both readings of player behaviour survive.
+- **Stream disagreement about payoffs** — when streams inferred different value terms for the same player, the disagreement surfaces (the player's actual values are themselves uncertain).
 
 ## VERIFICATION CRITERIA
 
 Verified means: players named with payoffs in actual value terms; four-dimension classification complete; equilibrium method named with derivation traceable; credibility assessed for ≥ 1 threat/promise; ≥ 1 alternative structure analyzed; strategic recommendations specific. The five critical questions are addressed. A decision-node edge carrying a probability is a hard verification failure (decisions are choices, not chance outcomes).
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **game-theoretic strategic-interaction analysis** — a structured equilibrium derivation with explicit four-dimensional classification, credibility audit on threats/promises, alternative-structure stress-test, and mechanism-grounded recommendations. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Players and payoffs.** A table. Each row: `**[Player]** — Actual value terms (not claimed-to-want): [...]. How these were inferred: [revealed-by-behaviour / stated-and-confirmed / structural-position]. Note where actual diverges from claimed: [...].`
+
+2. **Game classification.** A labelled block with all four dimensions. `**Timing:** [simultaneous / sequential / extensive-form]. **Information:** [complete / incomplete; perfect / imperfect]. **Duration:** [one-shot / repeated / infinite-horizon]. **Sum:** [zero-sum / positive-sum / mixed]. **Reasoning per classification:** [...].`
+
+3. **Equilibrium analysis.** One labelled block. `**Equilibrium method:** [Nash / subgame-perfect / backward induction / repeated cooperation / Perfect Bayesian]. **Derivation:** [step-by-step trace from players + payoffs + method]. **Stability:** [which deviations are profitable, which are not]. **Reader-reproducibility check:** [a reader can reconstruct this equilibrium from the components above].`
+
+4. **Credibility assessment.** Bulleted list. Each threat or promise: `**credibility:** [threat or promise] — [cheap talk / credible]. **Commitment device or future-shadow if credible:** [...]. **Why dismissible if cheap talk:** [...].` The literal prefix `credibility:` appears verbatim per item.
+
+5. **Alternative structures.** Bulleted list. Each: `**Alternative classification:** [the alternative on which dimension]. **What changes:** [equilibrium under the alternative]. **Implication for the dominant analysis:** [whether the dominant equilibrium is robust to this re-classification or contingent].` At least one alternative is tested.
+
+6. **Strategic recommendations.** Numbered list. Each: `[N]. **[Recommendation]** — mechanism it leverages: [commitment / credibility shift / classification-dimension alteration / coalition formation / outside option]. Expected equilibrium shift: [...].` Generic advice without mechanism grounding is reshaped at this layer.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 6.
+- Game-theory vocabulary stays operative: `Nash`, `subgame-perfect`, `backward induction`, `Perfect Bayesian`, `cheap talk`, `commitment device`, `future-shadow`. The vocabulary appears verbatim with operative meanings.
+- The four-dimensional classification (timing × information × duration × sum) is *complete*. Missing dimensions are reshaped to filled-and-reasoned.
+- The credibility audit (section 4) uses the literal `credibility:` prefix per item.
+- Probability-discipline is enforced: decision-node edges do not carry probabilities. Any envelope rendering must satisfy this — decision-node children carry no probability, chance-node children sum to 1.0.
+- When the missing-player flag survived consolidation, section 1 closes with: `**Missing-player flag:** [party] is a reactive third party whose response would shift the equilibrium. Their inclusion is recommended if their behaviour is observable; their absence is named here so the equilibrium below is read as bounded-to-the-current-inventory.`
+- When the hyperrationality flag survived consolidation, section 3 closes with: `**Bounded-rationality note:** the equilibrium above assumes perfect rationality. Real-actor deviations (cognitive bias, political constraint, incomplete preference orderings) shift expected play [direction]; the recommendation in section 6 accounts for this.`
+- Strategic recommendations (section 6) are mechanism-grounded — they reference the specific game-structure lever that produces the recommendation. Generic strategic advice is reshaped.
 
 
 ---

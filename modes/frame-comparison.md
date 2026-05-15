@@ -81,19 +81,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'What's the issue, and what are the perspectives or camps you want to compare?'"
     on_underspecified: "Ask: 'Could you describe how each camp talks about the issue, in their own words if possible?'"
-output_contract:
-  artifact_type: mapping
-  required_sections:
-    - frames_named_and_described
-    - core_metaphors_per_frame
-    - moral_or_value_commitments_per_frame
-    - what_each_frame_makes_visible
-    - what_each_frame_obscures
-    - cross_frame_translation_difficulty
-    - residual_irreducibility
-    - confidence_per_finding
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -171,11 +158,78 @@ Revise to balance asymmetric articulation where one frame received fuller treatm
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured mapping with the eight required sections. Each frame appears as its own column or block with parallel internal structure (description, core metaphor, moral commitments, what-it-makes-visible, what-it-obscures). Cross-frame translation difficulty is its own section that names where translation works smoothly and where it distorts. Residual irreducibility is named explicitly — the places where one frame's commitment cannot be cashed out in the other's vocabulary without loss. Confidence-per-finding accompanies each major claim.
+Organize the consolidated corpus as **a symmetric multi-frame mapping: each frame articulated on its own terms with parallel internal structure (description, core metaphor, moral commitments, visibilities, obscurings), cross-frame translation atoms, and explicit residual-irreducibility atoms where one frame's commitments cannot be cashed out in another's vocabulary without loss**. The atoms are:
+
+1. **Frame-description atoms — one per frame.** Each atom carries: the frame's name (in the frame's own preferred or neutral vocabulary, not the rival camp's caricature), a steelmanned one-paragraph articulation, and the typological label if one applies (Lakoff strict-father / nurturant-parent; Schön-Rein policy frame; collective-action diagnostic/prognostic/motivational; etc.). Asymmetric-articulation is the named failure mode the consolidator watches for; frames where one atom is substantially longer, more nuanced, or more sympathetic than its sibling get reshaped to symmetric depth.
+
+2. **Core-metaphor atoms — one per frame.** Each atom names the conceptual metaphor that structures the frame (nation-as-family, market-as-natural-system, disease-as-invader, etc.), the source-domain → target-domain mapping, and the inferential entailments the metaphor licenses. Surface-position-only is the named failure mode; frames described in terms of stated positions and policy preferences without descent to structuring metaphor get reshaped.
+
+3. **Moral/value-commitment atoms — per frame.** Each atom names the moral or value commitments that flow from the core metaphor: what each frame casts as good, what as bad, what as necessary, what as forbidden.
+
+4. **What-each-frame-makes-visible atoms — per frame.** What the frame surfaces, foregrounds, enables the analyst to see — its analytical purchase.
+
+5. **What-each-frame-obscures atoms — per frame.** What the frame's blind spots are — what it makes harder to see, what it backgrounds, what it cannot represent. Blind-spot-omission is the named failure mode; frames where the obscures-section is empty, thin, or applied only to the analyst's non-preferred frame get reshaped. The corpus standard is that every frame has blind spots, including the analyst's preferred one.
+
+6. **Cross-frame translation atoms.** Each atom names: a concept or commitment from frame A, the attempted translation into frame B's vocabulary, and whether the translation works smoothly or distorts. False-translation is the named failure mode; smooth-translation claims where translation actually distorts get reshaped.
+
+7. **Residual-irreducibility atoms.** Each atom names a place where one frame's commitment cannot be cashed out in another's vocabulary without loss — what is lost in translation, why the irreducibility matters. The corpus does not smooth over irreducibility; preserving it is the mode's analytical character.
+
+8. **Typology-imposition flag — when applicable.** When a named typology (Lakoff strict-father/nurturant-parent; Schön-Rein; etc.) has been applied to a domain where it does not naturally fit and is distorting the actual frames in play, the flag is preserved. Typology-imposition is the named failure mode.
+
+9. **Frames-not-yet-named flag — when applicable.** When the breadth pass surfaced a third or fourth perspective that doesn't fit either pole cleanly (hybrid or emerging frames, frames excluded from the comparison), the flag survives so the comparison is not falsely closed.
+
+10. **Confidence per finding.** Each major claim carries a confidence with grounding.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Asymmetric articulation** — one frame receives fuller, more nuanced, or more sympathetic treatment than its sibling.
+- **Surface-position-only** — frames described in stated positions and policy preferences without descent to the metaphors that structure those positions.
+- **One-sided blind-spot surfacing** — blind spots catalogued only for the analyst's non-preferred frame.
+- **Smooth translation that distorts** — cross-frame translation presented as cleaner than it is, with the residual loss hidden.
+- **Typology imposition** — a named typology applied to a domain where it does not naturally fit; the actual frames in play get distorted to match the typology.
+- **Synthesis drift** — the comparison tipping into integration. The mode's analytical character is comparing, not integrating. (If integration is wanted, T12 synthesis is the right escalation, not collapsing irreducibility within this mode.)
+- **Caricature framings** — a frame articulated in the rival camp's vocabulary rather than on its own terms; the steelman discipline is broken.
+
+**What NOT to collapse:**
+
+- **Residual irreducibility itself** — places where frame A's commitment cannot be cashed out in frame B's vocabulary without loss are themselves load-bearing findings, never smoothed over.
+- **Disagreement about which typology applies** — when streams applied different frame typologies (Lakoff vs. Schön-Rein vs. Snow-Benford), both readings survive with their respective analytical purchase.
+- **Multiple operative metaphors per frame** — frames sometimes rest on more than one structuring metaphor; the corpus preserves the multiplicity rather than picking one.
+- **Stream disagreement about what's visible vs obscured** — when streams diverged on whether a particular consideration is foregrounded or backgrounded by a frame, the disagreement is the finding.
 
 ## VERIFICATION CRITERIA
 
 Verified means: each frame is articulated symmetrically; core conceptual metaphors per frame are surfaced; moral/value commitments per frame are named; what-each-frame-makes-visible and what-it-obscures are both populated; cross-frame translation difficulty is acknowledged; residual irreducibility is honored where present; the four critical questions are addressable from the output. Confidence per major finding accompanies each claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **frame comparison mapping** — a symmetric articulation of two or more frames on their own terms, with descent to conceptual metaphor, parallel blind-spot surfacing, and explicit residual irreducibility. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Frames named and described.** Per frame, one labelled sub-block. Each: `**[Frame name]:** [steelmanned one-paragraph articulation in the frame's own preferred vocabulary]. Typological anchor: [Lakoff strict-father / nurturant-parent / Schön-Rein / Snow-Benford / other, with brief rationale].` Symmetric depth across sub-blocks; asymmetric articulation is reshaped at this layer.
+
+2. **Core metaphors per frame.** Per frame, one labelled sub-block. Each: `**[Frame]** — core metaphor: [source → target]. Inferential entailments: [what reasoning this metaphor licenses; what it makes harder].`
+
+3. **Moral / value commitments per frame.** Per frame, one labelled sub-block listing the commitments that flow from the core metaphor.
+
+4. **What each frame makes visible.** Per frame, one sub-block: `**[Frame]:** [what it foregrounds, enables, gives analytical purchase on].`
+
+5. **What each frame obscures.** Per frame, one sub-block: `**[Frame]:** [what it backgrounds, makes harder to see, cannot represent].` Every frame's obscurings appear — including the analyst's preferred frame.
+
+6. **Cross-frame translation difficulty.** Bulleted list. Each: `**[Concept from frame A]** ↔ **[attempted translation in frame B]** — translation [works smoothly / partially / distorts]. What is lost: [...].`
+
+7. **Residual irreducibility.** Bulleted list. Each: `**[Frame A commitment]** — cannot be cashed out in frame B's vocabulary without loss because [reason]. What this means for cross-frame dialogue: [...].` This section is never collapsed or minimised; preserving irreducibility is the mode's analytical character.
+
+8. **Confidence per finding.** Bulleted list of confidence assessments per major claim, with grounding.
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 8.
+- Each frame's sub-blocks appear in the same order across sections; the structural parallelism is what surfaces asymmetric articulation if any.
+- Frames are named in their own (or neutral) vocabulary, not the rival camp's caricature. Caricature naming is reshaped at this layer.
+- The mode's posture is comparing, not integrating. When the corpus reads as if heading toward synthesis, the deliverable surfaces a `**Note: integration is not this mode's operation; if synthesis across the frames is what's wanted, the appropriate escalation is to T12 synthesis.**` block rather than allowing the comparison to collapse into a unified position.
+- When a typology-imposition flag survived consolidation, the deliverable opens (before section 1) with: `**Note: the named typology applied to this comparison may not naturally fit the actual frames in play. The articulation below honors the actual frames; the typological labels are provisional.**`
+- When frames-not-yet-named were flagged, section 1 closes with `**Frames not represented in this comparison:** [...] — [why they may also be in play, what the comparison would gain from including them].`
+- Residual irreducibility (section 7) is never described as a flaw to be resolved; it is the analytical finding that justifies the comparing-stance over false synthesis.
 
 
 ---

@@ -80,17 +80,6 @@ input_contract:
   graceful_degradation:
     on_missing_required: "Ask: 'Could you tell me what you've observed and which explanations are on the table?'"
     on_underspecified: "Ask: 'What's the symptom or pattern, and what explanations have you considered so far?'"
-output_contract:
-  artifact_type: ranked_options
-  required_sections:
-    - candidate_hypotheses_listed
-    - evidence_observed
-    - diagnosticity_per_hypothesis
-    - ranking_with_reasoning
-    - one_disconfirming_test_per_top_two
-    - confidence_per_ranking
-  format: structured
-
 # 5. CRITICAL QUESTIONS
 critical_questions:
   - cq_id: CQ1
@@ -167,11 +156,74 @@ Revise to merge collapsed hypotheses where two candidates make identical predict
 
 ## CONSOLIDATION GUIDANCE
 
-Consolidate as a structured ranked-options artifact with the six required sections. Candidate hypotheses are listed with one-line characterizations. Evidence observed is listed and tagged with which hypotheses it bears on. Diagnosticity per hypothesis is stated as a brief diagnostic note (rules out / consistent with / discriminating between). Ranking carries reasoning. Disconfirming tests for the top two are emitted as actionable observations or experiments. Confidence per ranking is honest about evidence sparseness.
+Organize the consolidated corpus as **a diagnosticity-ranked candidate-hypothesis atom set: distinct candidates, evidence-by-hypothesis atoms, diagnosticity atoms (in disconfirming-power language), ranking with reasoning, one disconfirming test per top-two candidate, and confidence honest about evidence sparseness**. The atoms are:
+
+1. **Candidate-hypothesis atoms.** Each atom names one candidate explanation in a single line: the hypothesis, its mechanism in one phrase, and any prior probability or base-rate hint. Hypothesis-collapse is the named failure mode the consolidator watches for; candidates that make identical predictions are merged here (or differentiated by surfacing where their predictions diverge).
+
+2. **Evidence atoms.** Each atom carries: the observation, when/how it was made, and a tag noting which candidate hypotheses it bears on. The corpus does not duplicate the evidence across hypothesis blocks; each piece of evidence is named once and referenced.
+
+3. **Diagnosticity atoms per (evidence × hypothesis) cell.** Each cell carries a diagnosticity label in disconfirming-power language: `rules out` (the hypothesis predicted the opposite of what was observed), `discriminating-positive` (the hypothesis predicted this observation specifically, in contrast to others), `consistent with` (the observation does not bear against the hypothesis but does not discriminate it from siblings), `irrelevant`. Confirmation-anchoring is the named failure mode; cells labelled `consistent with` are weak diagnostic and the corpus surfaces this explicitly rather than treating consistency as confirmation.
+
+4. **Ranking atoms with reasoning.** Each ranked candidate carries: rank position, the diagnostic reasoning that places it there (which evidence drove the ranking, which cells were load-bearing), and the alternative ranking that would emerge under a small perturbation (sensitivity check).
+
+5. **Disconfirming-test atoms — one per top-two candidate.** Each atom carries: the observation or test that would rule the candidate out, the cost or feasibility of running the test, and the evidence-shift the test would produce. No-actionable-disconfirmer is the named failure mode; rankings without disconfirming-test atoms for the top two get flagged.
+
+6. **Zebra-candidate atoms — when applicable.** Rare-but-serious candidates that common-case explanations would otherwise eclipse, named explicitly with their mechanism and the cost of missing them. Missing-zebra is the named failure mode; the corpus surfaces zebras at low-rank rather than omitting them, or explicitly notes "no plausible zebra in this evidence base" with reason.
+
+7. **Combination-candidate atoms (optional).** When the situation may be one hypothesis *and* another together rather than one alone, the combination is its own candidate atom with the joint diagnosticity reasoning.
+
+8. **Evidence-sufficiency flag.** When the evidence base is too sparse to support a confident ranking, the corpus carries an explicit flag — false-confidence is the named failure mode the consolidator watches for. The flag does not suppress the ranking but qualifies the confidence per ranking.
+
+9. **Confidence per ranking.** Each rank carries a confidence assessment with explicit grounding in evidence-sufficiency. Confidences are not blended into a single overall verdict; they remain per-candidate.
+
+**Mode-specific bloat patterns to cut:**
+
+- **Hypothesis-collapse residue** — candidates that make identical predictions presented as different rankings. Merged or differentiated at this layer.
+- **Consistency-as-diagnosticity** — language that treats "evidence is consistent with H1" as if it confirmed H1. The corpus reshapes to disconfirming-power language.
+- **Ranking without disconfirming tests** — top candidates returned without actionable tests that would distinguish them.
+- **Missing zebras** — common-case explanations dominate without rare-but-serious candidates even at low rank.
+- **Inflated confidence on sparse evidence** — rankings that don't acknowledge their own evidential limits.
+- **Single-explanation collapse** — corpus that picks a winner when the evidence supports two or three competing candidates roughly equally. Honest residual uncertainty is the mode's value, not a verdict.
+- **Re-narration of each hypothesis-by-evidence cell** — the corpus uses the diagnosticity-cell shape, not paragraph re-narration that paraphrases the same content per hypothesis.
+
+**What NOT to collapse:**
+
+- **Equally-ranked candidates** — when streams produced rankings where two or three candidates are roughly tied on diagnosticity, the tie is the finding. Forcing a verdict is single-explanation collapse.
+- **Stream disagreement about diagnosticity-cell labels** — when one stream rated evidence as `rules out` and another as `consistent with`, the disagreement is the finding and both labels survive with their respective reasoning.
+- **Zebra-candidate inclusion vs. omission** — when one stream surfaced a zebra and another omitted it, the zebra survives at low rank with the omission-reason noted.
+- **Frame-clash flag** — when one stream treated the candidates as within-frame hypotheses and another flagged them as inter-frame paradigm clash (sideways to frame-comparison), the flag survives so the user can choose the right mode.
 
 ## VERIFICATION CRITERIA
 
 Verified means: at least two candidate hypotheses are present and distinct; diagnosticity is assessed in disconfirming-power language for at least the top two; at least one disconfirming test is emitted per top candidate; confidence per ranking explicitly addresses evidence sufficiency; rare-but-serious "zebra" candidates have been considered (or their absence noted with reason); the four critical questions are addressable from the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **structured differential** — a ranked-options artifact where distinct candidates are weighed against the evidence in disconfirming-power language and each top candidate carries an actionable test. Place the consolidated-corpus atoms into the following sections, in this order:
+
+1. **Candidate hypotheses.** Bulleted list. Each: `**[Candidate hypothesis name]** — mechanism in one phrase. [Prior probability or base-rate hint, if available].` Each candidate is genuinely distinct from its siblings; collapsed candidates are merged at this layer.
+
+2. **Evidence observed.** Bulleted list. Each: `**[Observation]** — context: [when / how observed]. Bears on: [hypothesis tags — H1, H2, H3 ...].` Each piece of evidence is named once.
+
+3. **Diagnosticity per hypothesis.** A table or per-hypothesis block. For each (evidence × hypothesis) cell, a label in disconfirming-power language: `rules out` / `discriminating-positive` / `consistent with` / `irrelevant`. The table makes it possible to see at a glance which cells are load-bearing.
+
+4. **Ranking with reasoning.** A numbered ranking. Each entry: `[N]. **[Candidate]** — placed here because [diagnostic reasoning, naming the load-bearing cells]. Sensitivity: [what would change this rank under small perturbation].` Zebra candidates appear at appropriate low ranks with a one-line note on why they were considered.
+
+5. **Disconfirming tests for top two.** Two labelled sub-blocks:
+   - `**Test for top candidate ([Candidate 1]):** [observation or experiment]. Cost / feasibility: [...]. Evidence-shift if positive / negative: [...].`
+   - `**Test for second candidate ([Candidate 2]):** [observation or experiment]. Cost / feasibility: [...]. Evidence-shift: [...].`
+
+6. **Confidence per ranking.** Bulleted list. Each: `**[Candidate]** — confidence: [grounded in cells / limited by sparse evidence / contested between streams]. Evidence sufficiency: [adequate / sparse / inconclusive].` When evidence is too sparse to support the ranking, the deliverable carries an explicit `**Evidence-sufficiency flag:** the evidence base may be too small for a confident ranking; the top candidates above represent the best current reading rather than a stable diagnosis.`
+
+**Per-section conventions:**
+
+- Use H2 headings for sections 1 through 6.
+- Diagnosticity vocabulary in section 3 is operative — `rules out`, `discriminating-positive`, `consistent with`, `irrelevant` appear verbatim. Consistency language is not silently elevated to confirmation.
+- The ranking (section 4) does not converge to a single verdict when streams produced roughly-tied candidates; ties are rendered as `[1, tied]. [Candidate A]` / `[1, tied]. [Candidate B]` with the tie reasoning attached.
+- Disconfirming tests (section 5) are actionable — they name what to observe or do, not what to think.
+- When streams diverged on a diagnosticity-cell label, the deliverable renders the disagreement inside the matrix: `[evidence] × [hypothesis]: stream-A: rules out; stream-B: consistent with. Resolution path: [what test or further evidence would decide].`
+- When the corpus carried a frame-clash flag (the candidates may be inter-frame paradigm disagreement rather than within-frame hypotheses), the deliverable opens with a brief note before section 1: `**Note: if the candidates below are reading the situation through different frames rather than offering different explanations within one frame, frame-comparison is the appropriate sideways-route.**`
+- Confidence (section 6) stays per-candidate; collapsing into a single overall confidence is reshaped at this layer.
 
 
 ---
