@@ -28,6 +28,22 @@ If you skip step 2 or 3, the user has to remember the divergence — and they wi
 
 The canonical specification for the parity framework is `~/Documents/vault/Framework — Documentation-Code Parity.md`. DCP supersedes the prior `Framework — System File Drift Correction.md` (archived 2026-05-10) and absorbs its scope.
 
+## Project Plugin Convention (READ BEFORE ADDING APPLICATION CODE)
+
+**Ora is a generic prototype. Project-specific code does NOT belong in `~/ora/`.** When you find yourself writing code that references a specific project (FRED API calls, MSI's article schema, a particular publication's content collection, anything else that won't be useful in a fork), that code goes in the project's directory at `~/sites/<project>/ora-project/tools/` — never in `~/ora/orchestrator/`.
+
+The mechanism is documented in `~/Documents/vault/Reference — Ora Project Plugin Convention.md`. Briefly:
+
+- A project lives anywhere on disk in a directory containing an `ora-project.json` manifest.
+- The manifest declares `tools` (project-specific Python helpers), `slash_commands` (chat-facing), `frameworks`, `peds`, `workflow_specs`, `chromadb_collections`.
+- Projects register with Ora by writing a pointer file at `~/ora/data/projects/<nexus>.json` — manually, programmatically, or via the `/project-register <path>` slash command.
+- Ora invokes project tools via `~/ora/orchestrator/project_registry.py::invoke_project_tool(nexus, name, args=...)` — subprocess with JSON-on-stdout contract, with `ORA_HOME` / `ORA_PROJECT_NEXUS` / `ORA_PROJECT_ROOT` set in the env.
+- Frameworks reference tools by abstract name (`news-related-find`, `news-index`), never by file path. The dispatcher resolves at runtime against the registered project's manifest.
+
+**Reference implementation:** `~/sites/mainstreetindependent/ora-project/` (Main Street Independent). When considering where a new piece of project-specific work should live, mirror what MSI does there.
+
+The `/project-tool`, `/project-list`, `/project-register`, `/project-unregister` slash commands provide the chat-facing inspection and invocation surface; they are project-agnostic and live in `~/ora/orchestrator/slash_commands.py`.
+
 ## Repository Overview
 
 Ora is a multi-model orchestrator for local LLMs on Apple Silicon. It runs an 8-step adversarial pipeline with configurable "Gears" that route prompts through cleanup, context assembly, analysis, cross-evaluation, revision, and verification stages.

@@ -39,6 +39,11 @@ sessions/
 # specs at startup, so these are regenerable)
 data/oversight/
 
+# Project plugin pointer files (Reference — Ora Project Plugin Convention.md).
+# Ora core ships project-agnostic; pointer files are per-machine local
+# configuration written by /project-register or pr.register_project().
+data/projects/
+
 # MSI feed-data cache (raw GDELT downloads, regenerable)
 scripts/msi/cache/
 

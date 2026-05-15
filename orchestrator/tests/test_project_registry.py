@@ -1,0 +1,479 @@
+#!/usr/bin/env python3
+"""Tests for project_registry.py — Ora's project plugin convention."""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ORCHESTRATOR = HERE.parent
+ROOT = ORCHESTRATOR.parent
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ORCHESTRATOR))
+
+from orchestrator import project_registry as pr  # noqa: E402
+
+
+# Tiny in-tree tool scripts used by invocation tests. Written into a temp
+# project directory in setUp.
+_ECHO_ARGV_TOOL = """\
+#!/usr/bin/env python3
+\"\"\"argv-stdout-json: echoes argv as a JSON list on stdout.\"\"\"
+import json, sys
+print(json.dumps({"argv": sys.argv[1:]}))
+"""
+
+_ECHO_STDIN_TOOL = """\
+#!/usr/bin/env python3
+\"\"\"stdin-stdout-json: echoes parsed stdin JSON back as 'received'.\"\"\"
+import json, sys
+data = json.loads(sys.stdin.read() or "{}")
+print(json.dumps({"received": data}))
+"""
+
+_NO_OUTPUT_TOOL = """\
+#!/usr/bin/env python3
+\"\"\"argv-stdout-json: emits nothing on stdout. Should yield None.\"\"\"
+"""
+
+_FAILING_TOOL = """\
+#!/usr/bin/env python3
+\"\"\"Exits non-zero with a stderr message.\"\"\"
+import sys
+sys.stderr.write("intentional failure for test\\n")
+sys.exit(7)
+"""
+
+_BAD_JSON_TOOL = """\
+#!/usr/bin/env python3
+\"\"\"Emits non-JSON on stdout.\"\"\"
+print("this is not json {{{")
+"""
+
+_SLASH_OUTPUT = """\
+#!/usr/bin/env python3
+\"\"\"Slash command: emits free-form markdown.\"\"\"
+import sys
+print("# Hello")
+print("Args:", *sys.argv[1:])
+"""
+
+
+# ---------------------------------------------------------------------------
+# Manifest parsing tests (no chromadb / no subprocess required)
+# ---------------------------------------------------------------------------
+
+
+class TestManifestParsing(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="proj_reg_test_")
+        self.root = Path(self.tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _write_manifest(self, data):
+        (self.root / pr.MANIFEST_FILENAME).write_text(json.dumps(data), encoding="utf-8")
+
+    def test_minimal_manifest(self):
+        self._write_manifest({"nexus": "test-proj", "name": "Test"})
+        p = pr.load_project_at(self.root)
+        self.assertEqual(p.nexus, "test-proj")
+        self.assertEqual(p.name, "Test")
+        self.assertEqual(p.tools, {})
+        self.assertEqual(p.slash_commands, {})
+        self.assertEqual(p.frameworks, [])
+
+    def test_full_manifest(self):
+        self._write_manifest({
+            "nexus": "main-street-independent",
+            "name": "Main Street Independent",
+            "version": "0.1.0",
+            "description": "AI-driven distributional-honesty news publication",
+            "tools": [
+                {"name": "news-index", "command": ["python3", "tools/news_index.py"]},
+                {
+                    "name": "news-related-find",
+                    "command": ["python3", "tools/news_related.py"],
+                    "interface": "stdin-stdout-json",
+                    "description": "Three-signal retrieval",
+                },
+            ],
+            "slash_commands": [
+                {"name": "publish-cycle", "command": ["python3", "scripts/publish.py"]},
+            ],
+            "frameworks": ["frameworks/news-article-generator.md"],
+            "peds": ["peds/historical-forward.md"],
+            "workflow_specs": ["workflow-specs/historical-forward-run.md"],
+            "chromadb_collections": ["msi_news_articles"],
+        })
+        p = pr.load_project_at(self.root)
+        self.assertEqual(p.nexus, "main-street-independent")
+        self.assertEqual(set(p.tools.keys()), {"news-index", "news-related-find"})
+        self.assertEqual(p.tools["news-related-find"].interface, "stdin-stdout-json")
+        self.assertEqual(p.tools["news-related-find"].description, "Three-signal retrieval")
+        self.assertEqual(set(p.slash_commands.keys()), {"publish-cycle"})
+        self.assertEqual(p.frameworks, ["frameworks/news-article-generator.md"])
+        self.assertEqual(p.chromadb_collections, ["msi_news_articles"])
+
+    def test_missing_manifest_file(self):
+        with self.assertRaises(pr.ManifestError) as ctx:
+            pr.load_project_at(self.root)
+        self.assertIn("No manifest", str(ctx.exception))
+
+    def test_invalid_json(self):
+        (self.root / pr.MANIFEST_FILENAME).write_text("{ not valid json", encoding="utf-8")
+        with self.assertRaises(pr.ManifestError) as ctx:
+            pr.load_project_at(self.root)
+        self.assertIn("invalid JSON", str(ctx.exception))
+
+    def test_top_level_not_object(self):
+        (self.root / pr.MANIFEST_FILENAME).write_text("[]", encoding="utf-8")
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
+    def test_missing_nexus(self):
+        self._write_manifest({"name": "Test"})
+        with self.assertRaises(pr.ManifestError) as ctx:
+            pr.load_project_at(self.root)
+        self.assertIn("nexus", str(ctx.exception))
+
+    def test_invalid_nexus_uppercase(self):
+        self._write_manifest({"nexus": "Test-Proj", "name": "Test"})
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
+    def test_invalid_nexus_special_chars(self):
+        self._write_manifest({"nexus": "test/proj", "name": "Test"})
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
+    def test_missing_name(self):
+        self._write_manifest({"nexus": "test"})
+        with self.assertRaises(pr.ManifestError) as ctx:
+            pr.load_project_at(self.root)
+        self.assertIn("name", str(ctx.exception))
+
+    def test_tool_missing_command(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "tools": [{"name": "broken"}],
+        })
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
+    def test_tool_unknown_interface(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "tools": [{"name": "t", "command": ["ls"], "interface": "rpc-bizarre"}],
+        })
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
+    def test_tool_duplicate_name(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "tools": [
+                {"name": "t", "command": ["ls"]},
+                {"name": "t", "command": ["pwd"]},
+            ],
+        })
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
+    def test_slash_command_with_leading_slash_rejected(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "slash_commands": [{"name": "/publish", "command": ["ls"]}],
+        })
+        with self.assertRaises(pr.ManifestError) as ctx:
+            pr.load_project_at(self.root)
+        self.assertIn("leading slash", str(ctx.exception))
+
+    def test_resolve_path_relative(self):
+        self._write_manifest({"nexus": "test", "name": "Test"})
+        p = pr.load_project_at(self.root)
+        resolved = p.resolve_path("tools/news_index.py")
+        self.assertTrue(resolved.is_absolute())
+        self.assertTrue(str(resolved).endswith("tools/news_index.py"))
+
+    def test_resolve_path_absolute(self):
+        self._write_manifest({"nexus": "test", "name": "Test"})
+        p = pr.load_project_at(self.root)
+        resolved = p.resolve_path("/etc/hosts")
+        self.assertEqual(str(resolved), "/etc/hosts")
+
+
+# ---------------------------------------------------------------------------
+# Pointer-file lifecycle tests
+# ---------------------------------------------------------------------------
+
+
+class TestPointerFileLifecycle(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="proj_reg_test_")
+        self.pointer_dir = os.path.join(self.tmpdir, "pointers")
+        self.proj_root = Path(self.tmpdir) / "myproject"
+        self.proj_root.mkdir()
+        (self.proj_root / pr.MANIFEST_FILENAME).write_text(
+            json.dumps({"nexus": "myproject", "name": "MyProject"}), encoding="utf-8"
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_register_writes_pointer(self):
+        p = pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+        self.assertEqual(p.nexus, "myproject")
+        pf = Path(self.pointer_dir) / "myproject.json"
+        self.assertTrue(pf.is_file())
+        data = json.loads(pf.read_text())
+        self.assertEqual(data["nexus"], "myproject")
+        self.assertEqual(Path(data["root"]).resolve(), self.proj_root.resolve())
+
+    def test_register_rejects_invalid_manifest(self):
+        bad = Path(self.tmpdir) / "bad"
+        bad.mkdir()
+        (bad / pr.MANIFEST_FILENAME).write_text("nope", encoding="utf-8")
+        with self.assertRaises(pr.ManifestError):
+            pr.register_project(bad, pointer_dir=self.pointer_dir)
+
+    def test_get_project_round_trip(self):
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+        p = pr.get_project("myproject", pointer_dir=self.pointer_dir)
+        self.assertIsNotNone(p)
+        self.assertEqual(p.nexus, "myproject")
+
+    def test_get_project_returns_none_for_missing(self):
+        self.assertIsNone(pr.get_project("nonexistent", pointer_dir=self.pointer_dir))
+
+    def test_list_projects_sorted(self):
+        # Build a second project alongside myproject.
+        other = Path(self.tmpdir) / "alpha-project"
+        other.mkdir()
+        (other / pr.MANIFEST_FILENAME).write_text(
+            json.dumps({"nexus": "alpha-project", "name": "Alpha"}), encoding="utf-8"
+        )
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+        pr.register_project(other, pointer_dir=self.pointer_dir)
+        projects = pr.list_projects(pointer_dir=self.pointer_dir)
+        self.assertEqual([p.nexus for p in projects], ["alpha-project", "myproject"])
+
+    def test_list_projects_skips_bad_pointer(self):
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+        bad_pf = Path(self.pointer_dir) / "broken.json"
+        bad_pf.write_text("{not json", encoding="utf-8")
+        projects = pr.list_projects(pointer_dir=self.pointer_dir)
+        # myproject still loads; broken pointer skipped silently (with stderr msg).
+        self.assertEqual([p.nexus for p in projects], ["myproject"])
+
+    def test_list_projects_skips_pointer_to_missing_manifest(self):
+        # Pointer file with valid JSON but the project root has no manifest.
+        os.makedirs(self.pointer_dir, exist_ok=True)
+        pf = Path(self.pointer_dir) / "ghost.json"
+        pf.write_text(json.dumps({"nexus": "ghost", "root": "/nowhere/at/all"}),
+                      encoding="utf-8")
+        self.assertEqual(pr.list_projects(pointer_dir=self.pointer_dir), [])
+
+    def test_list_projects_skips_nexus_mismatch(self):
+        os.makedirs(self.pointer_dir, exist_ok=True)
+        pf = Path(self.pointer_dir) / "myproject.json"
+        # Pointer claims a different nexus than the manifest.
+        pf.write_text(
+            json.dumps({"nexus": "wrong-nexus", "root": str(self.proj_root)}),
+            encoding="utf-8",
+        )
+        self.assertEqual(pr.list_projects(pointer_dir=self.pointer_dir), [])
+
+    def test_unregister(self):
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+        self.assertTrue(pr.unregister_project("myproject", pointer_dir=self.pointer_dir))
+        self.assertFalse(pr.unregister_project("myproject", pointer_dir=self.pointer_dir))
+        self.assertIsNone(pr.get_project("myproject", pointer_dir=self.pointer_dir))
+
+    def test_register_idempotent_overwrites(self):
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+        # Move the project root, re-register; pointer should follow.
+        moved = Path(self.tmpdir) / "moved"
+        shutil.move(str(self.proj_root), str(moved))
+        pr.register_project(moved, pointer_dir=self.pointer_dir)
+        p = pr.get_project("myproject", pointer_dir=self.pointer_dir)
+        self.assertEqual(p.root, moved.resolve())
+
+
+# ---------------------------------------------------------------------------
+# Tool invocation tests (real subprocesses against in-tree scripts)
+# ---------------------------------------------------------------------------
+
+
+class TestToolInvocation(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="proj_reg_test_")
+        self.pointer_dir = os.path.join(self.tmpdir, "pointers")
+        self.proj_root = Path(self.tmpdir) / "myproject"
+        (self.proj_root / "tools").mkdir(parents=True)
+
+        for name, body in [
+            ("echo_argv.py", _ECHO_ARGV_TOOL),
+            ("echo_stdin.py", _ECHO_STDIN_TOOL),
+            ("no_output.py", _NO_OUTPUT_TOOL),
+            ("failing.py", _FAILING_TOOL),
+            ("bad_json.py", _BAD_JSON_TOOL),
+            ("slash_output.py", _SLASH_OUTPUT),
+        ]:
+            (self.proj_root / "tools" / name).write_text(body, encoding="utf-8")
+
+        manifest = {
+            "nexus": "myproject", "name": "MyProject",
+            "tools": [
+                {"name": "echo-argv", "command": ["python3", "tools/echo_argv.py"]},
+                {"name": "echo-stdin",
+                 "command": ["python3", "tools/echo_stdin.py"],
+                 "interface": "stdin-stdout-json"},
+                {"name": "silent", "command": ["python3", "tools/no_output.py"]},
+                {"name": "failing", "command": ["python3", "tools/failing.py"]},
+                {"name": "bad-json", "command": ["python3", "tools/bad_json.py"]},
+                {"name": "missing-binary", "command": ["does-not-exist-on-path"]},
+            ],
+            "slash_commands": [
+                {"name": "say-hi", "command": ["python3", "tools/slash_output.py"]},
+            ],
+        }
+        (self.proj_root / pr.MANIFEST_FILENAME).write_text(
+            json.dumps(manifest), encoding="utf-8",
+        )
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_argv_stdout_passes_args(self):
+        result = pr.invoke_project_tool(
+            "myproject", "echo-argv", args=["one", "two"],
+            pointer_dir=self.pointer_dir,
+        )
+        self.assertEqual(result, {"argv": ["one", "two"]})
+
+    def test_stdin_stdout_passes_json(self):
+        result = pr.invoke_project_tool(
+            "myproject", "echo-stdin", stdin_json={"hello": "world", "n": 42},
+            pointer_dir=self.pointer_dir,
+        )
+        self.assertEqual(result, {"received": {"hello": "world", "n": 42}})
+
+    def test_silent_tool_returns_none(self):
+        result = pr.invoke_project_tool(
+            "myproject", "silent", pointer_dir=self.pointer_dir,
+        )
+        self.assertIsNone(result)
+
+    def test_unknown_project_raises(self):
+        with self.assertRaises(pr.ProjectNotFoundError):
+            pr.invoke_project_tool("nope", "echo-argv", pointer_dir=self.pointer_dir)
+
+    def test_unknown_tool_raises(self):
+        with self.assertRaises(pr.ToolNotFoundError):
+            pr.invoke_project_tool("myproject", "nope", pointer_dir=self.pointer_dir)
+
+    def test_failing_tool_raises_with_exit_code(self):
+        with self.assertRaises(pr.ToolInvocationError) as ctx:
+            pr.invoke_project_tool("myproject", "failing", pointer_dir=self.pointer_dir)
+        self.assertEqual(ctx.exception.exit_code, 7)
+        self.assertIn("intentional failure", ctx.exception.stderr)
+
+    def test_bad_json_raises(self):
+        with self.assertRaises(pr.ToolInvocationError) as ctx:
+            pr.invoke_project_tool("myproject", "bad-json", pointer_dir=self.pointer_dir)
+        self.assertIn("invalid JSON", str(ctx.exception))
+
+    def test_missing_binary_raises(self):
+        with self.assertRaises(pr.ToolInvocationError) as ctx:
+            pr.invoke_project_tool(
+                "myproject", "missing-binary", pointer_dir=self.pointer_dir,
+            )
+        self.assertIn("not found", str(ctx.exception).lower())
+
+    def test_extra_env_passed(self):
+        # Re-use echo-argv but verify the env via a separate inline tool.
+        env_tool = self.proj_root / "tools" / "echo_env.py"
+        env_tool.write_text(
+            "import json, os, sys\n"
+            "print(json.dumps({'val': os.environ.get('TEST_VAR')}))\n",
+            encoding="utf-8",
+        )
+        # Re-register to pick up new tool.
+        manifest = json.loads((self.proj_root / pr.MANIFEST_FILENAME).read_text())
+        manifest["tools"].append({
+            "name": "echo-env", "command": ["python3", "tools/echo_env.py"],
+        })
+        (self.proj_root / pr.MANIFEST_FILENAME).write_text(json.dumps(manifest), encoding="utf-8")
+        result = pr.invoke_project_tool(
+            "myproject", "echo-env", extra_env={"TEST_VAR": "hello"},
+            pointer_dir=self.pointer_dir,
+        )
+        self.assertEqual(result, {"val": "hello"})
+
+
+# ---------------------------------------------------------------------------
+# Slash command invocation
+# ---------------------------------------------------------------------------
+
+
+class TestSlashCommandInvocation(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="proj_reg_test_")
+        self.pointer_dir = os.path.join(self.tmpdir, "pointers")
+        self.proj_root = Path(self.tmpdir) / "myproject"
+        (self.proj_root / "tools").mkdir(parents=True)
+        (self.proj_root / "tools" / "slash.py").write_text(_SLASH_OUTPUT, encoding="utf-8")
+        (self.proj_root / pr.MANIFEST_FILENAME).write_text(
+            json.dumps({
+                "nexus": "myproject", "name": "MyProject",
+                "slash_commands": [
+                    {"name": "say-hi", "command": ["python3", "tools/slash.py"]},
+                ],
+            }), encoding="utf-8",
+        )
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_returns_stdout_string(self):
+        out = pr.invoke_project_slash_command(
+            "myproject", "say-hi", args=["alpha", "beta"],
+            pointer_dir=self.pointer_dir,
+        )
+        self.assertIn("# Hello", out)
+        self.assertIn("alpha", out)
+        self.assertIn("beta", out)
+
+    def test_unknown_project_returns_error_string(self):
+        out = pr.invoke_project_slash_command(
+            "nope", "say-hi", pointer_dir=self.pointer_dir,
+        )
+        self.assertIn("[Slash command error", out)
+
+    def test_unknown_command_returns_error_string(self):
+        out = pr.invoke_project_slash_command(
+            "myproject", "nope", pointer_dir=self.pointer_dir,
+        )
+        self.assertIn("[Slash command error", out)
+
+    def test_find_project_for_slash_command(self):
+        p = pr.find_project_for_slash_command("say-hi", pointer_dir=self.pointer_dir)
+        self.assertIsNotNone(p)
+        self.assertEqual(p.nexus, "myproject")
+
+    def test_find_project_for_slash_command_not_found(self):
+        p = pr.find_project_for_slash_command("nope", pointer_dir=self.pointer_dir)
+        self.assertIsNone(p)
+
+
+if __name__ == "__main__":
+    unittest.main()

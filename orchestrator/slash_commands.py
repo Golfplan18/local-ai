@@ -77,7 +77,12 @@ KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
                   "/hector-render", "/news-image-render",
                   "/render-missing-article-images",
                   "/render-figure",
-                  "/render-article-figures"}
+                  "/render-article-figures",
+                  # Project plugin convention (see Reference — Ora Project
+                  # Plugin Convention.md). These are project-agnostic:
+                  # nothing here knows about any specific project.
+                  "/project-tool", "/project-list",
+                  "/project-register", "/project-unregister"}
 
 
 # ---------- Public API ----------
@@ -88,12 +93,25 @@ def is_runtime_command(user_input: str) -> bool:
     The /framework command is intentionally excluded — it's handled by
     milestone_executor.run_framework_command and routes to the model-driven
     framework executor, not the mechanical runtime.
+
+    Also returns True for project-declared slash commands surfaced via the
+    project plugin convention (Reference — Ora Project Plugin Convention.md).
     """
     stripped = (user_input or "").strip()
     if not stripped.startswith("/"):
         return False
     head = stripped.split(maxsplit=1)[0].lower()
-    return head in KNOWN_COMMANDS
+    if head in KNOWN_COMMANDS:
+        return True
+    # Check whether any registered project declares this slash command.
+    name = head[1:]
+    if not name:
+        return False
+    try:
+        from orchestrator import project_registry as _pr
+        return _pr.find_project_for_slash_command(name) is not None
+    except Exception:
+        return False
 
 
 def run_runtime_command(user_input: str) -> str:
@@ -128,14 +146,133 @@ def run_runtime_command(user_input: str) -> str:
         "/render-missing-article-images": _cmd_render_missing_article_images,
         "/render-figure": _cmd_render_figure,
         "/render-article-figures": _cmd_render_article_figures,
+        "/project-tool": _cmd_project_tool,
+        "/project-list": _cmd_project_list,
+        "/project-register": _cmd_project_register,
+        "/project-unregister": _cmd_project_unregister,
     }
     handler = handlers.get(cmd)
     if handler is None:
+        # Fall through to project-declared slash commands (per Reference —
+        # Ora Project Plugin Convention.md). Each registered project may
+        # declare its own slash commands in its manifest's `slash_commands`
+        # array; they're invoked here without a namespace prefix. On
+        # collision, the first project alphabetically wins (logged).
+        proj_match_text = _try_project_slash_command(cmd, args)
+        if proj_match_text is not None:
+            return proj_match_text
         return f"[Unknown slash command: {cmd}]"
     try:
         return handler(args)
     except Exception as exc:
         return f"[Unexpected error in {cmd}: {exc}]"
+
+
+# ---------- Project plugin command handlers (project-agnostic) ----------
+
+
+def _cmd_project_tool(args: list[str]) -> str:
+    """`/project-tool <nexus> <tool-name> [<json-stdin>]` — invoke a project tool.
+
+    For argv-stdout-json tools, additional positional args after the tool name
+    pass through to the tool's argv. For stdin-stdout-json tools, the third
+    arg (when present) is parsed as JSON and piped to stdin. Tool output
+    (JSON) is rendered as a fenced code block.
+    """
+    import json as _json
+    from orchestrator import project_registry as _pr
+    if len(args) < 2:
+        return ("Usage: /project-tool <nexus> <tool-name> [<args-or-stdin-json>]\n"
+                "Use /project-list to see registered projects and their tools.")
+    nexus, tool_name, *rest = args
+    try:
+        project = _pr.get_project(nexus)
+    except Exception as exc:
+        return f"[/project-tool: error loading project {nexus!r}: {exc}]"
+    if project is None:
+        return f"[/project-tool: no project registered with nexus {nexus!r}]"
+    tool = project.tools.get(tool_name)
+    if tool is None:
+        return (f"[/project-tool: project {nexus!r} has no tool {tool_name!r}; "
+                f"available: {sorted(project.tools.keys())}]")
+    try:
+        if tool.interface == _pr.TOOL_INTERFACE_STDIN_STDOUT:
+            stdin_obj = _json.loads(rest[0]) if rest else {}
+            result = _pr.invoke_project_tool(nexus, tool_name, stdin_json=stdin_obj)
+        else:
+            result = _pr.invoke_project_tool(nexus, tool_name, args=rest)
+    except _pr.ToolInvocationError as exc:
+        body = (f"```\n{exc.stderr}\n```" if getattr(exc, "stderr", "") else "")
+        return f"[/project-tool: {exc}]\n{body}"
+    except Exception as exc:
+        return f"[/project-tool: {exc}]"
+    if result is None:
+        return f"[/project-tool: {nexus}:{tool_name} completed (no output)]"
+    return f"```json\n{_json.dumps(result, indent=2, ensure_ascii=False)}\n```"
+
+
+def _cmd_project_list(args: list[str]) -> str:
+    """`/project-list` — list all registered projects."""
+    from orchestrator import project_registry as _pr
+    projects = _pr.list_projects()
+    if not projects:
+        return ("No projects registered. Use /project-register <path-to-project-root> "
+                "to register one.")
+    lines = ["**Registered projects:**", ""]
+    for p in projects:
+        tools_str = ", ".join(sorted(p.tools.keys())) or "(none)"
+        sc_str = ", ".join(sorted(p.slash_commands.keys())) or "(none)"
+        lines.append(f"- **{p.nexus}** ({p.name}, v{p.version})")
+        lines.append(f"  - root: `{p.root}`")
+        lines.append(f"  - tools: {tools_str}")
+        lines.append(f"  - slash commands: {sc_str}")
+    return "\n".join(lines)
+
+
+def _cmd_project_register(args: list[str]) -> str:
+    """`/project-register <path-to-project-root>` — register a project."""
+    from orchestrator import project_registry as _pr
+    if len(args) != 1:
+        return "Usage: /project-register <path-to-project-root>"
+    try:
+        project = _pr.register_project(args[0])
+    except _pr.ManifestError as exc:
+        return f"[/project-register: invalid project — {exc}]"
+    except Exception as exc:
+        return f"[/project-register: {exc}]"
+    return (f"Registered project **{project.nexus}** ({project.name}) "
+            f"at `{project.root}`. {len(project.tools)} tool(s), "
+            f"{len(project.slash_commands)} slash command(s).")
+
+
+def _cmd_project_unregister(args: list[str]) -> str:
+    """`/project-unregister <nexus>` — drop a project's pointer file."""
+    from orchestrator import project_registry as _pr
+    if len(args) != 1:
+        return "Usage: /project-unregister <nexus>"
+    if _pr.unregister_project(args[0]):
+        return f"Unregistered project **{args[0]}**. (Project files on disk untouched.)"
+    return f"[/project-unregister: no project named {args[0]!r} was registered]"
+
+
+def _try_project_slash_command(cmd: str, args: list[str]) -> Optional[str]:
+    """Resolve `/<name>` against project-declared slash commands.
+
+    Returns the command's output when a match is found, or None when no
+    project declares the command (so the caller can fall through to the
+    standard "unknown command" branch).
+    """
+    if not cmd.startswith("/"):
+        return None
+    name = cmd[1:]
+    try:
+        from orchestrator import project_registry as _pr
+        project = _pr.find_project_for_slash_command(name)
+    except Exception as exc:
+        return f"[/{name}: project-registry error: {exc}]"
+    if project is None:
+        return None
+    return _pr.invoke_project_slash_command(project.nexus, name, args=args)
 
 
 # ---------- Path helpers ----------
