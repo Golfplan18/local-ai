@@ -2375,6 +2375,7 @@ def _direct_stream(user_input, history, images=None):
     # Auto-approve in server mode (permission handled by UI later)
     set_permission_mode("auto-approve")
 
+    response = ""
     for iteration in range(MAX_ITERATIONS):
         # Pass images only on the first call (they accompany the user's original message)
         response = call_model(messages, endpoint, images=images if iteration == 0 else None)
@@ -2389,16 +2390,48 @@ def _direct_stream(user_input, history, images=None):
         for tc in tool_calls:
             label = _tool_status_label(tc["name"], tc["parameters"])
             yield _sse("tool_status", text=label)
-            result = execute_tool(tc["name"], tc["parameters"])
-            yield _sse("tool_result", name=tc["name"], result=result[:500])
+            # Use the structured-outcome wrapper so the model sees a clear
+            # success/error marker on the tool result. Previously every
+            # tool's bare string return looked the same — a tool error
+            # could be misread as a real result and the model would build
+            # downstream reasoning on top of garbage.
+            try:
+                from boot import execute_tool_with_outcome as _eto
+                result, outcome, reason = _eto(tc["name"], tc["parameters"])
+            except Exception:
+                result = execute_tool(tc["name"], tc["parameters"])
+                outcome, reason = "ok", ""
+            yield _sse("tool_result", name=tc["name"],
+                       result=result[:500], outcome=outcome, reason=reason)
             messages.append({"role": "assistant", "content": response})
-            messages.append({"role": "user", "content": f"[Tool: {tc['name']}]\n{result}"})
+            marker = (
+                f"[Tool: {tc['name']} | outcome: {outcome}"
+                + (f" | reason: {reason}" if reason else "")
+                + "]"
+            )
+            messages.append({"role": "user", "content": f"{marker}\n{result}"})
 
         # Context compaction check
         ctx_window = endpoint.get("context_window", 8192)
         messages = compact_context(messages, call_model, ctx_window)
 
+    # Agentic loop reached MAX_ITERATIONS while still emitting tool calls
+    # (or the model produced nothing on the last iteration). Surface the
+    # overrun so the user doesn't receive a stripped-empty response with
+    # no signal that the model never converged. Parity with
+    # boot._run_model_with_tools's overrun fix.
     clean = strip_tool_calls(response)
+    endpoint_name = endpoint.get("name") if isinstance(endpoint, dict) else str(endpoint)
+    print(
+        f"[_direct_stream] agentic loop hit MAX_ITERATIONS={MAX_ITERATIONS} "
+        f"with tool calls still pending; stripped response length="
+        f"{len(clean)} chars; endpoint={endpoint_name}",
+        flush=True,
+    )
+    yield _sse("agentic_loop_overrun",
+               max_iterations=MAX_ITERATIONS,
+               stripped_response_chars=len(clean),
+               final_response_was_empty_after_strip=(not clean.strip()))
     yield _sse("response", text=clean)
 
 

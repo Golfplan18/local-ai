@@ -5801,11 +5801,21 @@ def _run_model_with_tools(messages: list, endpoint: dict,
         if not tool_calls:
             return strip_tool_calls(response)
 
-        # Execute all tool calls
+        # Execute all tool calls. Use the structured-outcome wrapper so
+        # the result-injection clearly marks success vs error vs empty.
+        # Previously every result looked the same to the model and a
+        # silent tool error was indistinguishable from a real result.
         tool_results = []
         for tc in tool_calls:
-            result = execute_tool(tc["name"], tc["parameters"])
-            tool_results.append(f"[Tool: {tc['name']}]\n{result}")
+            result, outcome, reason = execute_tool_with_outcome(
+                tc["name"], tc["parameters"]
+            )
+            marker = (
+                f"[Tool: {tc['name']} | outcome: {outcome}"
+                + (f" | reason: {reason}" if reason else "")
+                + "]"
+            )
+            tool_results.append(f"{marker}\n{result}")
 
         messages.append({"role": "assistant", "content": response})
         messages.append({
@@ -7751,15 +7761,74 @@ def _queue_read() -> str:
         return f"[queue_read] {e}"
 
 
+_TOOL_ERROR_MARKERS = (
+    "[tool error —",
+    "[tools unavailable",
+    "[code_execute] timeout",
+    "[code_execute] (no output)",
+    "[continuity_save] [error",
+    "[queue_read] no task queue found",
+    "[queue_read] no pending tasks",
+    # Generic dispatcher error idioms returned as content
+    "permission denied",
+    "no such file or directory",
+)
+
+
+def classify_tool_outcome(name: str, result: str) -> tuple[str, str]:
+    """Classify a tool's string result as 'ok' / 'error' / 'empty'.
+
+    Tools historically returned bare strings — the model could not tell
+    success from failure beyond reading the content. The agentic loops
+    use this classifier to inject a structured marker like
+    "[Tool: name | outcome: error | reason: ...]" so the model treats
+    failures as failures rather than as legitimate tool output.
+
+    Returns (outcome, reason). Reason is a short diagnostic.
+    """
+    if result is None:
+        return ("error", "null result")
+    txt = result.strip()
+    if not txt:
+        return ("empty", "tool returned empty string")
+    lower = txt.lower()
+    # Legacy inline tools sometimes wrap normal output in brackets — the
+    # parameters dict's `_parse_error` flag (set by parse_tool_calls when
+    # the params JSON was malformed) is the clearest signal of an upstream
+    # failure that the tool can't recover from.
+    if any(m in lower for m in _TOOL_ERROR_MARKERS):
+        return ("error", f"matched tool-error marker in result")
+    # Heuristic: a very short result that doesn't look like data is
+    # suspect. Don't over-classify; tools legitimately return short
+    # acknowledgements.
+    if len(txt) < 5:
+        return ("empty", f"very short result ({len(txt)} chars)")
+    return ("ok", "")
+
+
 def execute_tool(name: str, params: dict) -> str:
     """Dispatch tool call through unified dispatcher.
 
     Legacy tools (code_execute, continuity_save, queue_read) are handled
     directly; all others route through dispatcher.py for permission gating,
     path validation, command classification, and audit logging.
+
+    Callers wanting a structured outcome should use ``execute_tool_with_outcome``
+    (added 2026-05-15 sweep 4). This signature is preserved for backwards
+    compatibility with existing call sites.
     """
     if not TOOLS_AVAILABLE:
         return "[Tools unavailable — import failed at startup]"
+
+    # If the tool was dispatched with malformed params (parse_tool_calls
+    # set _parse_error), surface that upfront so the model doesn't try to
+    # interpret a failed-to-parse params dict as legitimate output.
+    if isinstance(params, dict) and params.get("_parse_error"):
+        return (
+            f"[Tool error — {name}: tool-call params failed to parse "
+            f"as JSON ({params['_parse_error']}); raw: "
+            f"{(params.get('raw') or '')[:200]!r}]"
+        )
 
     # Legacy inline tools not in the dispatcher registry
     if name == "code_execute":
@@ -7774,6 +7843,19 @@ def execute_tool(name: str, params: dict) -> str:
         return dispatcher_dispatch(name, params)
     except Exception as e:
         return f"[Tool error — {name}: {e}]"
+
+
+def execute_tool_with_outcome(name: str, params: dict) -> tuple[str, str, str]:
+    """Wrapper around execute_tool that returns ``(result, outcome, reason)``.
+
+    Agentic loops should prefer this over the bare ``execute_tool`` so
+    the structured outcome can be injected as a clear marker into the
+    model's tool-result message. Without this, tool errors and tool
+    successes look identical in the message stream.
+    """
+    result = execute_tool(name, params)
+    outcome, reason = classify_tool_outcome(name, result)
+    return (result, outcome, reason)
 
 
 def strip_tool_calls(text: str) -> str:
