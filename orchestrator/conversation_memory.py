@@ -185,8 +185,36 @@ def save_turn_spatial_state(
                 existing = None
             elif not isinstance(existing.get("messages"), list):
                 existing = None
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError) as _read_exc:
+            # A corrupt conversation.json was previously silently
+            # overwritten with a fresh envelope — discarding every prior
+            # turn. Now: move the corrupt file aside to a .corrupt-<ts>
+            # sidecar so the data is recoverable, log loudly to stderr,
+            # then continue with a fresh envelope so the current turn
+            # doesn't fail. Manual recovery is possible from the sidecar.
             existing = None
+            try:
+                import sys as _sys
+                from datetime import datetime as _dt2
+                ts = _dt2.utcnow().strftime("%Y%m%dT%H%M%SZ")
+                sidecar = path.with_suffix(path.suffix + f".corrupt-{ts}")
+                if not sidecar.exists():
+                    path.rename(sidecar)
+                print(
+                    f"[conversation_memory] CORRUPT conversation.json "
+                    f"for {conversation_id}: {_read_exc}; moved aside to "
+                    f"{sidecar} for manual recovery. A fresh envelope "
+                    f"will capture the current turn.",
+                    file=_sys.stderr, flush=True,
+                )
+            except Exception as _sidecar_exc:
+                import sys as _sys2
+                print(
+                    f"[conversation_memory] CORRUPT conversation.json "
+                    f"for {conversation_id} AND failed to move it aside: "
+                    f"read_error={_read_exc} move_error={_sidecar_exc}",
+                    file=_sys2.stderr, flush=True,
+                )
 
     # Resolve the tag to write. On a new envelope, validate the incoming
     # ``tag`` against CONVERSATION_TAGS (silently coerce invalid → ""). On
@@ -255,11 +283,17 @@ def save_turn_spatial_state(
     existing["messages"].append(user_turn)
     existing["messages"].append(assistant_turn)
 
+    # Atomic write: stage the new content in a sibling .tmp file, then
+    # rename onto the canonical path. A crash mid-write leaves the prior
+    # conversation.json intact instead of producing a truncated file.
+    # `os.replace` is atomic on POSIX.
     try:
-        path.write_text(
+        tmp_path = path.with_suffix(path.suffix + ".tmp")
+        tmp_path.write_text(
             json.dumps(existing, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+        os.replace(tmp_path, path)
     except OSError:
         return None
     return path
