@@ -76,8 +76,30 @@ from __future__ import annotations
 import copy
 import json
 import os
+import threading
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+
+# ---------------------------------------------------------------------------
+# Per-conversation write locks
+# ---------------------------------------------------------------------------
+# Two simultaneous writes to the same conversation.json would race and
+# last-writer-wins — the losing turn's appended user+assistant pair would
+# silently disappear from the envelope. The atomic .tmp+rename added in
+# sweep 3 prevented torn files but didn't prevent the lost-update race.
+#
+# A per-conversation Lock serialises the read-modify-write sequence so
+# both turns land. Different conversations still write in parallel.
+_conv_locks_guard = threading.Lock()
+_conv_locks: dict[str, threading.Lock] = defaultdict(threading.Lock)
+
+
+def _conversation_write_lock(conversation_id: str) -> threading.Lock:
+    """Return the per-conversation Lock, creating it on first access."""
+    with _conv_locks_guard:
+        return _conv_locks[conversation_id]
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +199,28 @@ def save_turn_spatial_state(
     except OSError:
         return None
 
+    # Per-conversation lock around the read-modify-write so concurrent
+    # writes to the SAME conversation can't last-writer-wins each other.
+    # Different conversations still write in parallel.
+    with _conversation_write_lock(conversation_id):
+        return _do_write(path, conversation_id, user_input, ai_response,
+                          tag, timestamp, spatial_representation,
+                          annotations, vision_extraction_result)
+
+
+def _do_write(
+    path: Path,
+    conversation_id: str,
+    user_input: str,
+    ai_response: str,
+    tag: str,
+    timestamp: str | None,
+    spatial_representation: dict | None,
+    annotations: dict | list | None,
+    vision_extraction_result: dict | None,
+) -> Path | None:
+    """Inner read-modify-write helper. Runs inside the per-conversation
+    lock; do not call directly."""
     existing: dict[str, Any] | None = None
     if path.exists():
         try:

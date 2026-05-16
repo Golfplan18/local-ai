@@ -719,6 +719,30 @@ def format_context_with_provenance(
         body = chunk.get("document") or ""
         block = f"{marker}\n{body}\n"
         if total + len(block) > max_chars and parts:
+            # Cap reached. Collect what was dropped so the model can see
+            # the package is incomplete; previously this was silent and
+            # the model treated the top-N as if it were the full result.
+            dropped_sources = []
+            for remaining in chunks[chunks.index(chunk):]:
+                rm_meta = remaining.get("metadata") or {}
+                src = (
+                    rm_meta.get("source")
+                    or remaining.get("url")
+                    or remaining.get("id")
+                    or "unknown"
+                )
+                dropped_sources.append(str(src))
+            cut_preview = ", ".join(dropped_sources[:5])
+            more = (f" (+{len(dropped_sources) - 5} more)"
+                    if len(dropped_sources) > 5 else "")
+            parts.append(
+                "[ranker-truncation: "
+                f"{len(dropped_sources)} chunks dropped at "
+                f"max_chars={max_chars}; dropped sources include: "
+                f"{cut_preview}{more}. Request a SUPPLEMENTAL RAG "
+                "REQUEST if one of these looks load-bearing for the "
+                "analysis.]\n"
+            )
             break
         parts.append(block)
         total += len(block)
