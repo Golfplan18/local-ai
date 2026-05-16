@@ -1972,6 +1972,18 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
     if degradation_signal:
         response = f"{degradation_signal}\n\n---\n\n{response}"
 
+    # Server-side visual hook (parity with run_pipeline's tail-of-function
+    # invocation). Without this, model-emitted ora-visual blocks with schema
+    # violations or critical Tufte / adversarial findings flowed through to
+    # the browser unchecked because the server's pipeline path bypassed
+    # ``_run_visual_hook``. Identical signature / behaviour to the CLI path.
+    try:
+        from boot import _run_visual_hook as _server_run_visual_hook
+        response = _server_run_visual_hook(response, context_pkg)
+    except Exception as _vh_exc:
+        # Fail-open: never block legitimate prose on a hook bug.
+        print(f"[server visual-hook] skipped due to error: {_vh_exc}")
+
     yield _sse("pipeline_stage", stage="complete", gear=gear,
                mode=step1["mode"], label="Pipeline complete")
     yield _sse("response", text=response)
@@ -3122,6 +3134,38 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
             f"date created: {date_str}\n"
             f"date modified: {date_str}\n"
             f"---\n"
+        )
+
+    # Manifest sidecar — record (conversation_id, chunk_path, raw_path, tag)
+    # BEFORE the chunk file is written, so the stealth purge can find the
+    # on-disk artifacts even if ChromaDB indexing later fails. Without this,
+    # a stealth conversation whose ChromaDB write failed would have its chunk
+    # file and raw log orphaned: Layer 1 of _purge_stealth finds zero records,
+    # Layer 2 has empty chunk_paths, the files persist. The manifest is the
+    # authoritative purge list; ChromaDB-based discovery is a fallback.
+    try:
+        manifest_path = os.path.expanduser(
+            "~/ora/data/conversation-manifest.jsonl"
+        )
+        os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
+        import json as _json_mf
+        with open(manifest_path, "a") as _mf:
+            _mf.write(_json_mf.dumps({
+                "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                "conversation_id": panel_id,
+                "chunk_id": chunk_id,
+                "chunk_path": chunk_path,
+                "raw_path": sess["raw_path"],
+                "tag": tag,
+            }) + "\n")
+    except Exception as _mf_exc:
+        # Manifest is a defensive layer — failure to write it should NOT
+        # block the conversation save. Surface to stderr so a developer
+        # watching the process can see the manifest layer is degraded.
+        print(
+            f"[WARNING] conversation manifest write failed: {_mf_exc} "
+            f"chunk_id={chunk_id} conv={panel_id}",
+            flush=True,
         )
 
     chunk_content = (

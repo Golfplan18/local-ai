@@ -28,6 +28,7 @@ data/*.db-wal
 data/entity-index.json
 data/vault-index.json
 data/extraction-staging/
+data/conversation-manifest.jsonl
 data/session-logs/
 data/hector-training-corpus/
 

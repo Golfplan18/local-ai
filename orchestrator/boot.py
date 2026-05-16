@@ -213,6 +213,17 @@ def load_boot_md() -> str:
             print(f"[WARNING] Context directory contains {total_chars} characters "
                   f"(~{total_chars // 4} tokens). Consider moving large files to the vault.")
 
+    # Universal anti-confabulation directive — appended at load_boot_md level
+    # so every code path that loads boot.md gets the directive, not only
+    # ``build_system_prompt_for_gear`` callers. Fixes the "universal"-in-name-
+    # only gap: ``_direct_stream`` (bypass / catch-all / pending-clarification
+    # routes for the chat server), the legacy ``/direct`` command, and the
+    # framework / elicitation / resolution-chain paths all load boot.md
+    # directly and previously had no anti-confab instruction. The directive
+    # is defined later in this module; the forward reference is fine because
+    # this function isn't called at module-load time.
+    boot_content = boot_content + "\n\n" + _UNIVERSAL_ANTI_CONFABULATION
+
     return boot_content
 
 
@@ -619,12 +630,26 @@ def route_for_image_input(context_pkg: dict,
 
 
 def load_framework(name: str) -> str:
-    """Load a framework specification from frameworks/book/."""
+    """Load a framework specification from frameworks/book/.
+
+    Returns the file contents on success. When the file is missing, returns
+    a sentinel ``[Framework not found: ...]`` string AND prints a stderr
+    warning so the silent fallback (universal scaffolding silently missing
+    from the analytical step's system prompt) becomes visible. Parallels
+    ``load_mode``'s behaviour for the same reason.
+    """
     path = os.path.join(FRAMEWORKS_DIR, name)
     try:
         with open(path, "r") as f:
             return f.read()
     except FileNotFoundError:
+        print(
+            f"[load_framework] framework file not found: {name} "
+            f"— pipeline steps that depend on this scaffolding will run "
+            f"without the universal contract",
+            file=sys.stderr,
+            flush=True,
+        )
         return f"[Framework not found: {name}]"
 
 
@@ -1915,13 +1940,18 @@ def _check_strong_bypass(prompt: str) -> dict | None:
     Used by both ``pre_phase_a_bypass_check`` (which runs on the raw user
     prompt before Phase A) and ``stage1_pre_analysis_filter`` (which runs
     on Phase A's operational notation as a defensive backup).
+
+    Triggers that fire under negation context ("I don't want no analysis",
+    "what does 'no analysis' mean") are skipped so the bypass doesn't
+    misread quoted or negated discussion of the trigger phrase as an opt-out.
     """
     for trigger in STRONG_BYPASS_TRIGGERS:
-        if _signal_present(prompt, trigger.strip()):
+        stripped = trigger.strip()
+        if _signal_present(prompt, stripped) and not _is_negated(prompt, stripped):
             return {
                 "bypass_to_direct_response": True,
                 "matches": [],
-                "rationale": f"strong bypass trigger: '{trigger.strip()}'",
+                "rationale": f"strong bypass trigger: '{stripped}'",
             }
     return None
 
@@ -1934,13 +1964,17 @@ def _check_weak_bypass(prompt: str) -> dict | None:
     the analytical-signal scan); also used by ``pre_phase_a_bypass_check``,
     which has no analytical-signal scan and treats weak triggers as
     bypass-eligible *unless* the registry would have matched in Stage 1.
+
+    Negation-aware: a quoted or negated mention of a greeting trigger
+    ("don't just say hello, actually analyse this") does not fire bypass.
     """
     for trigger in WEAK_BYPASS_TRIGGERS:
-        if _signal_present(prompt, trigger.strip()):
+        stripped = trigger.strip()
+        if _signal_present(prompt, stripped) and not _is_negated(prompt, stripped):
             return {
                 "bypass_to_direct_response": True,
                 "matches": [],
-                "rationale": f"weak bypass trigger: '{trigger.strip()}'",
+                "rationale": f"weak bypass trigger: '{stripped}'",
             }
     return None
 
@@ -3928,10 +3962,25 @@ def parse_step1_output(response: str) -> dict:
     elif not result["cleaned_prompt"] and result["operational_notation"]:
         result["cleaned_prompt"] = result["operational_notation"]
 
-    # If parsing failed entirely, use raw response as the cleaned prompt
+    # If parsing failed entirely, use raw response as the cleaned prompt.
+    # Surface this loudly: without a warning, a malformed Phase A response
+    # silently replaces the user's prompt with the model's narrative reply
+    # ("Sure, I'd be happy to help. Could you share the draft?") and the
+    # downstream pipeline treats that as the user's intent. Trace consumers
+    # read `phase_a_parse_failed` to flag the substitution.
     if not result["cleaned_prompt"]:
+        print(
+            "[parse_step1_output] Phase A output unparseable — neither "
+            "'### CLEANED PROMPT (Operational Notation)' nor '### CLEANED "
+            "PROMPT (Natural Language)' headings found. Using raw response "
+            "as the cleaned prompt; downstream pipeline may run against "
+            "the model's narrative rather than the user's actual input.",
+            file=sys.stderr,
+            flush=True,
+        )
         result["cleaned_prompt"] = response
         result["operational_notation"] = response
+        result["phase_a_parse_failed"] = True
 
     # Extract corrections log
     corr_match = re.search(
@@ -4169,7 +4218,8 @@ AMBIGUITY_MODE: {ambiguity_mode}
     # --- Trace: Phase A inputs and parsed outputs ---
     if PIPELINE_TRACE_AVAILABLE:
         pipeline_trace.write_step(trace_dir, "step1-phase-a", {
-            "status": "ok",
+            "status": "parse_failed" if step1_result.get("phase_a_parse_failed") else "ok",
+            "phase_a_parse_failed": bool(step1_result.get("phase_a_parse_failed")),
             "raw_prompt": raw_prompt,
             "conversation_context": conversation_context,
             "conversation_context_present": bool(conversation_context),
@@ -4331,6 +4381,14 @@ AMBIGUITY_MODE: {ambiguity_mode}
             "single_signal_high_confidence":
                 routing.get("confidence") == "high"
                 and len(strong_for_dispatched) == 1,
+            # Sibling flag: high-confidence dispatch with ZERO strong signals
+            # — the dispatch came from weak signals alone (or from a path
+            # that didn't surface strong supporters). More concerning than
+            # the single-signal case and previously unflagged.
+            "zero_strong_signal_high_confidence":
+                routing.get("confidence") == "high"
+                and len(strong_for_dispatched) == 0
+                and dispatched is not None,
             "strong_signals_detail": [
                 {"signal": m.get("signal"), "mode": m.get("mode"),
                  "territory": m.get("territory"),
@@ -4419,6 +4477,14 @@ AMBIGUITY_MODE: {ambiguity_mode}
                 f"strong signal supports the high-confidence dispatch. "
                 f"Spot-check whether the signal is genuinely sufficient.\n"
                 if signal_strength_summary['single_signal_high_confidence']
+                else ""
+            )
+            + (
+                f"- ⚠️  **Zero-strong-signal high-confidence dispatch** — "
+                f"the high-confidence dispatch is supported by no strong "
+                f"signals (weak-only or empty supporters). Higher review "
+                f"priority than the single-signal case.\n"
+                if signal_strength_summary['zero_strong_signal_high_confidence']
                 else ""
             )
         ))
@@ -5016,15 +5082,10 @@ def build_system_prompt_for_gear(
     verification_criteria  = _extract_section(mode_text, "VERIFICATION CRITERIA")
     format_guidance        = _extract_section(mode_text, "OUTPUT FORMAT GUIDANCE")
 
-    # Universal anti-confabulation directive — applies to EVERY model call
-    # regardless of gear, mode, or step. Fix for silent failure #5: prior
-    # to 2026-05-15 only analytical steps (via _assemble_step_prompt) got
-    # the Supplemental RAG Protocol; Gear 1-2 single-model calls had no
-    # anti-confabulation instruction at all and were the highest-risk
-    # path for the Excel-formula-error failure class. The universal
-    # directive lands directly after boot.md so it carries identity-level
-    # weight in the system prompt.
-    parts = [boot_md, _UNIVERSAL_ANTI_CONFABULATION]
+    # Universal anti-confabulation directive — now appended inside
+    # load_boot_md() itself (so every load_boot_md() caller, not only this
+    # function, gets the directive). Avoid duplicating it here.
+    parts = [boot_md]
 
     # Phase A INFERRED_ITEMS block — fix for silent failure #10. When
     # Phase A ran in assume-mode and resolved ambiguities by inferring
@@ -5777,10 +5838,16 @@ def _verifier_passed(verifier_output: str) -> bool:
     pipeline; only real-FAIL triggers re-revision. The prior auto-PASS-
     when-garbled behaviour is retired; broken verifier outputs no
     longer masquerade as PASS in the trace (failure #9).
+
+    Matching is case-insensitive to be symmetric with ``_verifier_broken``
+    (which lowercases before comparison). A model that emits 'verified'
+    in lowercase is still a real verdict; the prior case-sensitive check
+    misclassified it as no-verdict and burned a re-revision cycle.
     """
     if not verifier_output or _verifier_broken(verifier_output):
         return False
-    return "VERIFIED" in verifier_output and "VERIFICATION FAILED" not in verifier_output
+    upper = verifier_output.upper()
+    return "VERIFIED" in upper and "VERIFICATION FAILED" not in upper
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -6474,6 +6541,22 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             breadth_analysis, breadth_ok, breadth_reason = f"[Breadth model error: {e}]", False, str(e)
     _record("step3-depth", depth_ok, depth_reason)
     _record("step3-breadth", breadth_ok, breadth_reason)
+
+    # Single-stream-degraded contingency: the pipeline continues but the
+    # degraded stream's error-string output flows into step 4 as if it
+    # were a real analysis. Without an explicit contingency record, trend
+    # data shows nothing — Gear 4 ran "successfully" even though the
+    # cross-evaluation was operating on half-broken input. Both-degraded
+    # still falls back to Gear 3 (current behaviour) but single-degraded
+    # is now visible in step-health.json.
+    if depth_ok and not breadth_ok:
+        contingencies_fired.append(
+            "step3-breadth-analyst-degraded-cross-eval-on-error-string"
+        )
+    elif breadth_ok and not depth_ok:
+        contingencies_fired.append(
+            "step3-depth-analyst-degraded-cross-eval-on-error-string"
+        )
 
     # Contingency: both analyst streams degraded → fall back to Gear 3.
     if not depth_ok and not breadth_ok:

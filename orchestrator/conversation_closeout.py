@@ -311,6 +311,72 @@ def _purge_stealth(
     except Exception as e:
         errors.append(f"pipeline_traces: {e}")
 
+    # --- Layer 8: Manifest-driven orphan recovery ---------------------------
+    # ChromaDB-based discovery (Layer 1) misses chunk_path / raw_path when
+    # the original indexing attempt failed (because no metadata was ever
+    # written). server.py::_save_conversation writes an authoritative
+    # manifest entry to ~/ora/data/conversation-manifest.jsonl BEFORE the
+    # ChromaDB attempt, so the on-disk artifacts are recoverable even when
+    # ChromaDB never received them. This layer reads that manifest, deletes
+    # any chunk_path / raw_path it carries for this conversation that
+    # weren't already purged, and strips matching entries from the manifest
+    # atomically.
+    deleted["manifest_orphans_removed"] = 0
+    try:
+        import json as _json_mf
+        manifest_path = Path(os.path.expanduser(
+            "~/ora/data/conversation-manifest.jsonl"
+        ))
+        if manifest_path.exists():
+            kept_lines: list[str] = []
+            already_deleted_chunk = {str(p) for p in deleted["chunk_files"]}
+            removed = 0
+            with open(manifest_path) as f:
+                for line in f:
+                    line = line.rstrip("\n")
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = _json_mf.loads(line)
+                    except Exception:
+                        kept_lines.append(line)
+                        continue
+                    if rec.get("conversation_id") != conversation_id:
+                        kept_lines.append(line)
+                        continue
+                    # Matched record — delete chunk_path and raw_path if
+                    # they still exist on disk and weren't already removed
+                    # by Layer 2 / Layer 3.
+                    cp = rec.get("chunk_path")
+                    rp = rec.get("raw_path")
+                    if cp and cp not in already_deleted_chunk:
+                        try:
+                            p = Path(cp)
+                            if p.exists():
+                                p.unlink()
+                                deleted["chunk_files"].append(str(p))
+                                already_deleted_chunk.add(str(p))
+                        except Exception as e:
+                            errors.append(f"manifest chunk_file {cp}: {e}")
+                    if rp and not deleted["raw_log"]:
+                        try:
+                            p = Path(rp)
+                            if p.exists():
+                                p.unlink()
+                                deleted["raw_log"] = True
+                        except Exception as e:
+                            errors.append(f"manifest raw_log {rp}: {e}")
+                    removed += 1
+            if removed:
+                tmp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
+                with open(tmp, "w") as f:
+                    for line in kept_lines:
+                        f.write(line + "\n")
+                tmp.replace(manifest_path)
+                deleted["manifest_orphans_removed"] = removed
+    except Exception as e:
+        errors.append(f"manifest: {e}")
+
     # --- Layer 7: Conversation indexing-failure log -------------------------
     # Defence-in-depth (2026-05-15, fix #12). server.py::_save_conversation
     # writes ChromaDB indexing failures to
