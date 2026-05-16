@@ -6192,6 +6192,116 @@ The standing rules:
 """
 
 
+def _strip_framework_documentation(text: str) -> str:
+    """Strip documentation-only sections from F-* framework files for prompt injection.
+
+    Vault canonical F-* files (f-evaluate.md, f-revise.md, f-verify.md,
+    f-consolidate.md, f-format.md, supplemental-rag-protocol.md) contain
+    sections useful for human readers but noise for model dispatch:
+
+    1. **Italic preamble paragraphs** at the top — between the H1 title
+       and the first ``---`` divider or content section. These describe
+       loading mechanics ("Loaded into: Depth model context window at
+       Step 8"), historical version notes ("the H3 cascade subsections
+       were superseded 2026-05-01"), and "Context window contains:"
+       summaries of what the model is looking at.
+
+    2. **"## Where mode-specific content lives" section** at the bottom —
+       describes implementation details about boot.py's ``_extract_section``
+       function and the H3-cascade-supersession history. The orchestrator
+       has already injected the mode-specific content; explaining that
+       fact to the model adds nothing operationally.
+
+    3. **"## Vault canonical pair" section** — points at the vault file
+       path. Implementation metadata; vault location doesn't change model
+       behaviour.
+
+    4. **"*Note (YYYY-MM-DD):*" historical markers** — version-history
+       annotations explaining when the spec changed.
+
+    Returns the text with those sections removed, preserving the title
+    and every substantive section.
+    """
+    if not text:
+        return text
+
+    # 1. Strip italic preamble paragraphs between the H1 title and the first
+    # content section (the first ``---`` divider or first ``## ``).
+    lines = text.split("\n")
+    title_idx = next(
+        (i for i, l in enumerate(lines) if l.startswith("# ")),
+        -1,
+    )
+    if title_idx >= 0:
+        # Find the first content boundary after the title.
+        boundary = next(
+            (
+                i for i in range(title_idx + 1, len(lines))
+                if lines[i].strip() == "---" or lines[i].startswith("## ")
+            ),
+            -1,
+        )
+        if boundary > title_idx + 1:
+            # Drop italic-preamble paragraphs in this range (lines that are
+            # whitespace, italic-wrapped, or blank). Keep the title and the
+            # boundary marker.
+            preamble = lines[title_idx + 1: boundary]
+            cleaned_preamble = []
+            in_italic = False
+            for ln in preamble:
+                stripped = ln.strip()
+                if not stripped:
+                    if in_italic:
+                        in_italic = False
+                        continue
+                    cleaned_preamble.append(ln)
+                    continue
+                # Italic paragraph start
+                if stripped.startswith("*") and not stripped.startswith("**"):
+                    in_italic = True
+                    continue
+                if in_italic:
+                    if stripped.endswith("*") and not stripped.endswith("**"):
+                        in_italic = False
+                    continue
+                cleaned_preamble.append(ln)
+            lines = (
+                lines[: title_idx + 1]
+                + cleaned_preamble
+                + lines[boundary:]
+            )
+    text = "\n".join(lines)
+
+    # 2. Strip "## Where mode-specific content lives" section (and everything
+    # after, up to next ``## `` or end of file).
+    text = re.sub(
+        r'\n## Where mode-specific content lives.*?(?=\n## |\Z)',
+        '',
+        text,
+        flags=re.DOTALL,
+    )
+
+    # 3. Strip "## Vault canonical pair" section.
+    text = re.sub(
+        r'\n## Vault canonical pair.*?(?=\n## |\Z)',
+        '',
+        text,
+        flags=re.DOTALL,
+    )
+
+    # 4. Strip standalone "*Note (YYYY-MM-DD): …*" historical markers.
+    text = re.sub(
+        r'\n\*Note \(\d{4}-\d{2}-\d{2}\):.*?\*\n',
+        '\n',
+        text,
+        flags=re.DOTALL,
+    )
+
+    # Collapse runs of blank lines introduced by the stripping passes.
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip() + "\n"
+
+
 def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
                           framework_name: str | None) -> str:
     """Phase 6 — compose a per-step system prompt for the pipeline.
@@ -6215,12 +6325,21 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
     the Supplemental RAG Protocol is appended to the system prompt so the
     model has an authorised non-confabulation path when the package is
     insufficient. See ``Specification — Supplemental RAG Protocol``.
+
+    F-* framework files are stripped of documentation-only sections (italic
+    preamble paragraphs, "Where mode-specific content lives", "Vault
+    canonical pair", historical "Note (YYYY-MM-DD):" markers) before
+    injection. Vault canonical files keep their full documentation for
+    human readers; runtime sees only operative content. See
+    ``_strip_framework_documentation``.
     """
     step_prompt = build_system_prompt_for_gear(
         context_pkg, slot=slot, step=step
     )
     if framework_name:
-        framework_text = load_framework(framework_name)
+        framework_text = _strip_framework_documentation(
+            load_framework(framework_name)
+        )
         step_prompt = (
             f"{step_prompt}\n\n"
             f"## F-* UNIVERSAL SCAFFOLDING — {framework_name}\n\n"
@@ -6231,7 +6350,9 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
     # for analytical steps. Loaded once and cached implicitly via load_framework.
     if step in _SUPPLEMENT_ENABLED_STEPS:
         try:
-            supplement_protocol = load_framework("supplemental-rag-protocol.md")
+            supplement_protocol = _strip_framework_documentation(
+                load_framework("supplemental-rag-protocol.md")
+            )
             if supplement_protocol:
                 step_prompt = (
                     f"{step_prompt}\n\n"
