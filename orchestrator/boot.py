@@ -1892,31 +1892,44 @@ def _load_signal_registry() -> list[dict]:
     if os.path.exists(SIGNAL_REGISTRY_FILE):
         with open(SIGNAL_REGISTRY_FILE, "r") as f:
             content = f.read()
+    else:
+        # Loud stderr warning — without the registry file Stage 1 sees only
+        # the small Phase-9 alias list and most analytical signals don't
+        # match. Pre-routing degrades silently to bypass / fallback dispatch.
+        # Same observability pattern as load_mode and load_framework.
+        print(
+            f"[load_signal_vocabulary] registry file not found at "
+            f"{SIGNAL_REGISTRY_FILE} — only the Phase-9 code-side aliases "
+            f"will populate the signal registry. Pre-routing will under-match.",
+            file=sys.stderr,
+            flush=True,
+        )
+        content = ""
 
-        for line in content.split("\n"):
-            if not line.startswith("|"):
-                continue
-            parts = [p.strip() for p in line.strip().split("|")]
-            # Markdown table rows: leading and trailing pipes produce empty cells
-            parts = [p for p in parts if p != ""]
-            if len(parts) < 6:
-                continue
-            # Skip header rows and separator rows
-            if parts[0].lower() == "signal":
-                continue
-            if all(c in "-: " for c in parts[0]):
-                continue
-            signal_text = parts[0]
-            if not signal_text or signal_text.startswith("-"):
-                continue
-            entries.append({
-                "signal": signal_text,
-                "territory": parts[1],
-                "mode": parts[2],
-                "disambiguation_answer": parts[3],
-                "confidence_weight": parts[4].lower(),
-                "evidence": parts[5] if len(parts) > 5 else "",
-            })
+    for line in content.split("\n"):
+        if not line.startswith("|"):
+            continue
+        parts = [p.strip() for p in line.strip().split("|")]
+        # Markdown table rows: leading and trailing pipes produce empty cells
+        parts = [p for p in parts if p != ""]
+        if len(parts) < 6:
+            continue
+        # Skip header rows and separator rows
+        if parts[0].lower() == "signal":
+            continue
+        if all(c in "-: " for c in parts[0]):
+            continue
+        signal_text = parts[0]
+        if not signal_text or signal_text.startswith("-"):
+            continue
+        entries.append({
+            "signal": signal_text,
+            "territory": parts[1],
+            "mode": parts[2],
+            "disambiguation_answer": parts[3],
+            "confidence_weight": parts[4].lower(),
+            "evidence": parts[5] if len(parts) > 5 else "",
+        })
 
     # Phase 9 — append code-side aliases.
     for alias in _PHASE9_SIGNAL_ALIASES:
