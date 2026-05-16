@@ -5374,43 +5374,63 @@ def _extract_boot_behavioral_preamble(boot_md: str) -> str:
     The full boot.md (~13.6KB) contains both behavioral instruction (§
     CONSTITUTION, § STANDING RULES) and architectural metadata (§ MODE
     REGISTRY, § IDENTITY, § MODELS, § TOOLS catalog, § PIPELINE, § EVALUATION,
-    § GUIDELINES, § MEMORY, § AUTONOMOUS, § RECOVERY). The architectural
-    sections describe the *system Ora is*; the behavioral sections describe
-    *how the model should behave*. A pipeline step's job is to act as a
-    specific mode at a specific step — it doesn't need the mode registry to
-    pick a mode (already dispatched), doesn't call tools (those run
-    elsewhere), and doesn't need to know about other models / pipeline
-    architecture / autonomous-run semantics.
+    § GUIDELINES, § MEMORY, § AUTONOMOUS, § RECOVERY). Most of that is
+    architectural — a pipeline step's job is to act as a specific mode at
+    a specific step. It doesn't need the registry to pick a mode (already
+    dispatched), doesn't call tools (those run elsewhere), doesn't need
+    to know about other models / pipeline architecture / autonomous-run
+    semantics.
 
-    Pre-2026-05-16 the full boot.md was prefixed to every analyst /
-    evaluator / reviser / verifier / consolidator / formatter system
-    prompt — adding ~11KB of metadata noise for a single step performing
-    one specific task. This helper extracts just the behavioral preamble.
+    Even § STANDING RULES contains subsections that don't apply to a
+    pipeline step:
+      - ### Anti-Confabulation — duplicated by _UNIVERSAL_ANTI_CONFABULATION
+        (the canonical detailed version).
+      - ### Mode Awareness — dangling reference to § MODE REGISTRY, which
+        is no longer included. The analyst's mode is already loaded.
+      - ### Context Management — budgets are orchestrator-managed.
+      - ### Knowledge Integration — analyst receives KNOWLEDGE CONTEXT
+        pre-fetched; doesn't run vector search itself.
+      - ### Adversarial Review — process description (only the
+        Hat-assignment line is useful to an analyst — extracted separately).
+      - ### Gears — gear architecture description; the analyst is
+        already in a specific gear/step.
+      - ### Safety — destructive-ops warnings; analyst produces text,
+        not file/system ops.
+      - ### SAT — Full Type III — closure-time audit; not per-step.
 
-    The 3-line ``### Anti-Confabulation`` subsection inside § STANDING
-    RULES is stripped because the longer ``_UNIVERSAL_ANTI_CONFABULATION``
-    block (appended by ``load_boot_md`` and carried into the boot_md
-    argument here) is the canonical detailed version — keeping both would
-    duplicate the same instruction.
+    What remains as behavioral signal for a pipeline step:
+      - § CONSTITUTION (4 principles — sovereignty, honesty, minimal
+        authority, transparency).
+      - ### Anti-Sycophancy (don't validate unsupported conclusions).
+      - The Hat-assignments line from ### Adversarial Review (analyst
+        needs to know its hat).
+      - _UNIVERSAL_ANTI_CONFABULATION (the canonical detailed
+        anti-confab discipline, appended by load_boot_md).
 
     Direct-mode / legacy / Gear-1 callers that need the full boot.md
     (because they're not dispatched to a specific mode) continue to call
     ``load_boot_md()`` directly and get all sections.
     """
-    # The header itself plus § CONSTITUTION and § STANDING RULES.
     constitution = _extract_section(boot_md, "§ CONSTITUTION")
-    standing_rules = _extract_section(boot_md, "§ STANDING RULES")
+    standing_rules_full = _extract_section(boot_md, "§ STANDING RULES")
 
-    # Drop the ### Anti-Confabulation subsection from § STANDING RULES; the
-    # _UNIVERSAL_ANTI_CONFABULATION block (already appended by load_boot_md)
-    # is the canonical detailed version.
-    if standing_rules:
-        standing_rules = re.sub(
-            r'### Anti-Confabulation\s*\n.*?(?=\n### |\Z)',
-            '',
-            standing_rules,
-            flags=re.DOTALL,
-        ).strip()
+    # Pull just the subsections that apply to a pipeline step.
+    def _subsection(text: str, heading: str) -> str:
+        m = re.search(
+            rf'### {re.escape(heading)}\s*\n(.*?)(?=\n### |\Z)',
+            text,
+            re.DOTALL,
+        )
+        return m.group(1).strip() if m else ""
+
+    anti_syc = _subsection(standing_rules_full, "Anti-Sycophancy")
+
+    # From "### Adversarial Review", keep only the "**Hat assignments:**"
+    # line — the rest is pipeline-process description not actionable for an
+    # analyst.
+    adv_review = _subsection(standing_rules_full, "Adversarial Review")
+    hat_match = re.search(r'(\*\*Hat assignments:\*\*[^\n]*)', adv_review)
+    hat_line = hat_match.group(1).strip() if hat_match else ""
 
     # The _UNIVERSAL_ANTI_CONFABULATION block was appended to boot_md inside
     # load_boot_md(); extract and re-append it so it survives the trim.
@@ -5424,8 +5444,17 @@ def _extract_boot_behavioral_preamble(boot_md: str) -> str:
     parts = ["# boot-v5-C.md (behavioral preamble)"]
     if constitution:
         parts.append(f"## § CONSTITUTION\n{constitution}")
-    if standing_rules:
-        parts.append(f"## § STANDING RULES\n{standing_rules}")
+    standing_kept = []
+    if anti_syc:
+        standing_kept.append(f"### Anti-Sycophancy\n{anti_syc}")
+    if hat_line:
+        standing_kept.append(f"### Hat assignments\n{hat_line}")
+    if standing_kept:
+        parts.append(
+            "## § STANDING RULES (pipeline-step subset)\n"
+            "Immutable. Not overridden by user instruction.\n\n"
+            + "\n\n".join(standing_kept)
+        )
     if universal_block:
         parts.append(universal_block)
     return "\n\n".join(parts)
@@ -7202,26 +7231,28 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         context_pkg, slot="depth", step="evaluator",
         framework_name="f-evaluate.md",
     )
+    eval_a_user_message = (
+        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+        f"## ANALYST OUTPUT (Depth stream)\n\n{depth_analysis}\n\n"
+        "Evaluate per the universal seven-section contract."
+    )
+    eval_b_user_message = (
+        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+        f"## ANALYST OUTPUT (Breadth stream)\n\n{breadth_analysis}\n\n"
+        "Evaluate per the universal seven-section contract."
+    )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         eval_a_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
-             {"role": "user", "content": (
-                 f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                 f"## ANALYST OUTPUT (Depth stream)\n\n{depth_analysis}\n\n"
-                 "Evaluate per the universal seven-section contract."
-             )}],
+             {"role": "user", "content": eval_a_user_message}],
             breadth_endpoint, "evaluator", 150, None, None, context_pkg,
         )
         eval_b_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
-             {"role": "user", "content": (
-                 f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                 f"## ANALYST OUTPUT (Breadth stream)\n\n{breadth_analysis}\n\n"
-                 "Evaluate per the universal seven-section contract."
-             )}],
+             {"role": "user", "content": eval_b_user_message}],
             depth_endpoint, "evaluator", 150, None, None, context_pkg,
         )
         try:
@@ -7247,28 +7278,30 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         context_pkg, slot="depth", step="reviser",
         framework_name="f-revise.md",
     )
+    depth_revise_user_message = (
+        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+        f"## YOUR ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
+        f"## EVALUATOR'S CRITIQUE\n\n{breadth_eval_of_depth}\n\n"
+        "Revise per the universal reviser output contract."
+    )
+    breadth_revise_user_message = (
+        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+        f"## YOUR ORIGINAL ANALYSIS\n\n{breadth_analysis}\n\n"
+        f"## EVALUATOR'S CRITIQUE\n\n{depth_eval_of_breadth}\n\n"
+        "Revise per the universal reviser output contract."
+    )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         depth_revise_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
-             {"role": "user", "content": (
-                 f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                 f"## YOUR ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
-                 f"## EVALUATOR'S CRITIQUE\n\n{breadth_eval_of_depth}\n\n"
-                 "Revise per the universal reviser output contract."
-             )}],
+             {"role": "user", "content": depth_revise_user_message}],
             depth_endpoint, "reviser", 200, None, None, context_pkg,
         )
         breadth_revise_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
-             {"role": "user", "content": (
-                 f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                 f"## YOUR ORIGINAL ANALYSIS\n\n{breadth_analysis}\n\n"
-                 f"## EVALUATOR'S CRITIQUE\n\n{depth_eval_of_breadth}\n\n"
-                 "Revise per the universal reviser output contract."
-             )}],
+             {"role": "user", "content": breadth_revise_user_message}],
             breadth_endpoint, "reviser", 200, None, None, context_pkg,
         )
         try:
@@ -7295,6 +7328,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # --- Step 4 + Step 5 traces ---
     _trace_step("step4-eval-of-depth", {
         "system_prompt": eval_system,
+        "user_message": eval_a_user_message,
         "evaluator_target_stream": "depth",
         "evaluator_endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
         "raw_response": breadth_eval_of_depth,
@@ -7307,6 +7341,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     ))
     _trace_step("step4-eval-of-breadth", {
         "system_prompt": eval_system,
+        "user_message": eval_b_user_message,
         "evaluator_target_stream": "breadth",
         "evaluator_endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
         "raw_response": depth_eval_of_breadth,
@@ -7319,6 +7354,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     ))
     _trace_step("step5-revised-depth", {
         "system_prompt": revise_system,
+        "user_message": depth_revise_user_message,
         "stream": "depth",
         "raw_response": revised_depth,
         "ok": depth_rev_ok,
@@ -7330,6 +7366,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     ))
     _trace_step("step5-revised-breadth", {
         "system_prompt": revise_system,
+        "user_message": breadth_revise_user_message,
         "stream": "breadth",
         "raw_response": revised_breadth,
         "ok": breadth_rev_ok,
@@ -7350,33 +7387,33 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     for cycle in range(MAX_VERIFY_CYCLES + 1):
         depth_verify_error = None
         breadth_verify_error = None
+        verify_depth_user_message = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            f"## REVISED DEPTH ANALYSIS\n\n{revised_depth}\n\n"
+            f"## EVALUATOR'S MANDATORY FIXES\n\n"
+            f"{breadth_eval_of_depth}\n\n"
+            "Run V1-V8 + mode-specific verifier checks. Conclude "
+            "VERIFIED / VERIFIED WITH CORRECTIONS / VERIFICATION FAILED."
+        )
+        verify_breadth_user_message = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            f"## REVISED BREADTH ANALYSIS\n\n{revised_breadth}\n\n"
+            f"## EVALUATOR'S MANDATORY FIXES\n\n"
+            f"{depth_eval_of_breadth}\n\n"
+            "Run V1-V8 + mode-specific verifier checks. Conclude "
+            "VERIFIED / VERIFIED WITH CORRECTIONS / VERIFICATION FAILED."
+        )
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             verify_depth_future = executor.submit(
                 _run_model_with_tools,
                 [{"role": "system", "content": verify_system},
-                 {"role": "user", "content": (
-                     f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                     f"## REVISED DEPTH ANALYSIS\n\n{revised_depth}\n\n"
-                     f"## EVALUATOR'S MANDATORY FIXES\n\n"
-                     f"{breadth_eval_of_depth}\n\n"
-                     "Run V1-V8 + mode-specific verifier checks. Conclude "
-                     "VERIFIED / VERIFIED WITH CORRECTIONS / VERIFICATION "
-                     "FAILED."
-                 )}],
+                 {"role": "user", "content": verify_depth_user_message}],
                 breadth_endpoint
             )
             verify_breadth_future = executor.submit(
                 _run_model_with_tools,
                 [{"role": "system", "content": verify_system},
-                 {"role": "user", "content": (
-                     f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                     f"## REVISED BREADTH ANALYSIS\n\n{revised_breadth}\n\n"
-                     f"## EVALUATOR'S MANDATORY FIXES\n\n"
-                     f"{depth_eval_of_breadth}\n\n"
-                     "Run V1-V8 + mode-specific verifier checks. Conclude "
-                     "VERIFIED / VERIFIED WITH CORRECTIONS / VERIFICATION "
-                     "FAILED."
-                 )}],
+                 {"role": "user", "content": verify_breadth_user_message}],
                 depth_endpoint
             )
             try:
@@ -7415,6 +7452,9 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         _trace_step(f"step6-verifier-cycle-{cycle + 1}", {
             "cycle": cycle + 1,
             "max_cycles": MAX_VERIFY_CYCLES + 1,
+            "verify_system_prompt_chars": len(verify_system),
+            "verify_depth_user_message": verify_depth_user_message,
+            "verify_breadth_user_message": verify_breadth_user_message,
             "depth_verdict_raw": depth_verdict,
             "depth_verdict_resolved": _verdict_label(depth_passed, depth_broken),
             "depth_passed_parser_verdict": depth_passed,
@@ -7507,28 +7547,29 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         context_pkg, slot="breadth", step="consolidator",
         framework_name="f-consolidate.md",
     )
+    consolidate_user_message = (
+        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+        "## REVISED ANALYSES (internal inputs to consolidation)\n\n"
+        "Two independent revised analyses follow, produced from "
+        "independent analytical postures. Produce the consolidated "
+        "corpus per the four operations in the loaded F-CONSOLIDATE "
+        "specification: (1) semantic atom extraction, (2) cross-stream "
+        "deduplication, (3) bloat strip, (4) synthesis per the mode's "
+        "`## CONSOLIDATION GUIDANCE`.\n\n"
+        f"---\n\n{revised_depth}\n\n---\n\n{revised_breadth}\n\n---\n\n"
+        "The output is the **corpus**, not the user-facing deliverable. "
+        "Step 8 (formatter) places this corpus into the prescribed "
+        "deliverable form per the mode's `## OUTPUT FORMAT GUIDANCE`; "
+        "your job here is substance — every atom in, no duplication, no "
+        "bloat. Do NOT label or refer to the inputs as 'first analysis', "
+        "'second analysis', 'analysis 1', 'analysis 2', 'depth stream', "
+        "'breadth stream', or any equivalent — the corpus carries atoms, "
+        "not stream-labelled positions. Do not call any tool — write the "
+        "corpus inline."
+    )
     consolidate_messages = [
         {"role": "system", "content": consolidate_system},
-        {"role": "user", "content": (
-            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-            "## REVISED ANALYSES (internal inputs to consolidation)\n\n"
-            "Two independent revised analyses follow, produced from "
-            "independent analytical postures. Produce the consolidated "
-            "corpus per the four operations in the loaded F-CONSOLIDATE "
-            "specification: (1) semantic atom extraction, (2) cross-stream "
-            "deduplication, (3) bloat strip, (4) synthesis per the mode's "
-            "`## CONSOLIDATION GUIDANCE`.\n\n"
-            f"---\n\n{revised_depth}\n\n---\n\n{revised_breadth}\n\n---\n\n"
-            "The output is the **corpus**, not the user-facing deliverable. "
-            "Step 8 (formatter) places this corpus into the prescribed "
-            "deliverable form per the mode's `## OUTPUT FORMAT GUIDANCE`; "
-            "your job here is substance — every atom in, no duplication, no "
-            "bloat. Do NOT label or refer to the inputs as 'first analysis', "
-            "'second analysis', 'analysis 1', 'analysis 2', 'depth stream', "
-            "'breadth stream', or any equivalent — the corpus carries atoms, "
-            "not stream-labelled positions. Do not call any tool — write the "
-            "corpus inline."
-        )},
+        {"role": "user", "content": consolidate_user_message},
     ]
     consolidated, consol_ok, consol_reason = _call_with_supplement(
         consolidate_messages, breadth_endpoint, "consolidator",
@@ -7551,6 +7592,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     _trace_step("step7-consolidated", {
         "system_prompt": consolidate_system,
+        "user_message": consolidate_user_message,
         "raw_response": consolidated,
         "ok": consol_ok,
         "reason": consol_reason,
@@ -7579,21 +7621,22 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         context_pkg, slot="depth", step="formatter",
         framework_name="f-format.md",
     )
+    format_user_message = (
+        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+        f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
+        "Place the corpus into the prescribed deliverable form per the "
+        "mode's `## OUTPUT FORMAT GUIDANCE` (loaded above in the system "
+        "prompt). When the mode's format guidance is absent, default to "
+        "flowing prose addressed to the user with H2 headings derived "
+        "from the corpus's organizational structure. Preserve every "
+        "atom — the formatter places, does not summarise. Surface any "
+        "corpus material that does not fit a prescribed section as a "
+        "labelled postscript rather than dropping it. Do not call any "
+        "tool — write the deliverable inline."
+    )
     format_messages = [
         {"role": "system", "content": format_system},
-        {"role": "user", "content": (
-            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-            f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
-            "Place the corpus into the prescribed deliverable form per the "
-            "mode's `## OUTPUT FORMAT GUIDANCE` (loaded above in the system "
-            "prompt). When the mode's format guidance is absent, default to "
-            "flowing prose addressed to the user with H2 headings derived "
-            "from the corpus's organizational structure. Preserve every "
-            "atom — the formatter places, does not summarise. Surface any "
-            "corpus material that does not fit a prescribed section as a "
-            "labelled postscript rather than dropping it. Do not call any "
-            "tool — write the deliverable inline."
-        )},
+        {"role": "user", "content": format_user_message},
     ]
     formatted, format_ok, format_reason = _call_with_retry(
         format_messages, depth_endpoint, "formatter",
@@ -7615,6 +7658,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     _trace_step("step8-formatted", {
         "system_prompt": format_system,
+        "user_message": format_user_message,
         "raw_response": formatted,
         "ok": format_ok,
         "reason": format_reason,
