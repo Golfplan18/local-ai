@@ -833,6 +833,21 @@ def assemble_ranked_context(
     if type_filter is None and mode_text:
         type_filter = _knowledge_search._extract_mode_type_filter(mode_text)
 
+    # The `type_filter` in mode files is authored for the `knowledge`
+    # collection's vault-type taxonomy (engram, resource, incubator,
+    # etc.). The `conversations` collection's chunks all carry
+    # `type='chat'` — none of the vault types match, so applying the
+    # mode's type_filter to conversations excludes 100% of conversation
+    # context. Before this guard, every mode using conversation RAG
+    # surfaced `empty_reason: filtered_out` with `filtered_chunks_returned: 0`
+    # even though tens of thousands of conversation chunks were
+    # available to embed-match. Dropping the type_filter for the
+    # conversations collection restores conversation-context retrieval
+    # without forcing every mode file to grow a parallel
+    # conversations-side filter declaration.
+    if collection == "conversations":
+        type_filter = None
+
     if max_chars is None:
         max_chars = compute_rag_max_chars(endpoint)
 
