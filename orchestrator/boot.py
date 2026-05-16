@@ -6222,6 +6222,25 @@ _UNHEALTHY_PATTERNS = (
     "[revision error",
     "[re-revision error",
     "playwright session error",
+    # Bracket-prefixed dispatch-layer error strings. boot.py's
+    # call_api_endpoint / call_local_endpoint / call_browser_endpoint
+    # swallow every exception and return strings shaped like
+    # "[Error calling Claude API: <e>]" — they previously slipped
+    # through because none of the existing patterns matched the
+    # literal bracket-prefixed wrapper.
+    "[error calling claude api",
+    "[error calling openai api",
+    "[error calling gemini api",
+    "[error calling local model",
+    "[error calling mlx model",
+    "[mlx model not found",
+    "[error] browser_evaluate tool not available",
+    "[error] unsupported api service",
+    "[error] unsupported engine",
+    "[error] unknown endpoint type",
+    "[no response]",
+    "[tools unavailable",
+    "[tool error —",
     # API-provider error idioms (Anthropic / OpenAI / Gemini). Without these,
     # a 200-OK provider error returned as a content string passes the
     # length-only health check and flows downstream as analyst output.
@@ -7645,15 +7664,33 @@ def call_browser_endpoint(messages: list, endpoint: dict, images: list = None) -
 
 
 def parse_tool_calls(text: str) -> list[dict]:
-    """Extract all <tool_call> blocks from model output."""
+    """Extract all <tool_call> blocks from model output.
+
+    When the params JSON fails to parse, falls back to a sentinel-shaped
+    dict ``{"raw": "<verbatim params>", "_parse_error": "<error>"}`` and
+    prints a stderr warning. The downstream tool will almost certainly
+    error on the wrong-shape params; without the warning that error
+    looked like a tool failure rather than what it actually is — a
+    malformed tool-call emission by the model.
+    """
     pattern = r'<tool_call>\s*<n>(.*?)</n>\s*<parameters>(.*?)</parameters>\s*</tool_call>'
     matches = re.findall(pattern, text, re.DOTALL)
     calls = []
     for name, params_str in matches:
         try:
             params = json.loads(params_str.strip())
-        except json.JSONDecodeError:
-            params = {"raw": params_str.strip()}
+        except json.JSONDecodeError as e:
+            print(
+                f"[parse_tool_calls] malformed JSON params for tool "
+                f"{name.strip()!r}: {e}; raw params: "
+                f"{params_str.strip()[:200]!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+            params = {
+                "raw": params_str.strip(),
+                "_parse_error": str(e),
+            }
         calls.append({"name": name.strip(), "parameters": params})
     return calls
 
