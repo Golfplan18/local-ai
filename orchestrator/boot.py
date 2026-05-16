@@ -493,6 +493,100 @@ def _pick_vision_extractor(routing_config: dict, bucket_name: str) -> dict | Non
     return None
 
 
+# Slot-entry prefixes that produce vision-input-capable endpoints when used as
+# the vision_extraction.slot source. OpenRouter image-generation models accept
+# image conditioning by construction; pure text-to-image generators
+# (local-diffusers / Stability / Replicate text2img) cannot, and a plain
+# endpoint id has to be looked up against the endpoints[] vision_capable flag.
+_VISION_EXTRACTION_SKIP_SLOT_ENTRIES = frozenset({
+    "local-diffusers",
+    "stability",
+    "replicate",
+    "civitai-hector-lora-v1",
+})
+
+
+def _endpoint_from_slot_entry(entry: str, routing_config: dict) -> dict | None:
+    """Resolve one ``slots.<slot>.{preferred,fallback}`` entry into a
+    vision-extractor endpoint dict, or ``None`` when the entry isn't
+    image-input-capable.
+
+    Entries can take several shapes (see ``slots`` in routing-config.json):
+
+      * ``"openrouter:<model_id>"`` — synthesizes an API endpoint pointed
+        at OpenRouter with the given model. Treated as vision-capable
+        because OpenRouter image-generation models accept image
+        conditioning by construction.
+      * ``"<endpoint id>"`` — looks the id up in ``routing_config.endpoints``;
+        returns the endpoint dict iff its ``vision_capable`` flag is true.
+      * ``"local-diffusers"`` / ``"replicate"`` / ``"stability"`` /
+        ``"civitai-hector-lora-v1"`` — pure text→image generators or
+        engine identifiers. Not vision-input-capable. Skipped.
+
+    Used by ``route_for_image_input`` when ``vision_extraction.slot`` is
+    configured.
+    """
+    if not entry or not isinstance(entry, str):
+        return None
+    if entry in _VISION_EXTRACTION_SKIP_SLOT_ENTRIES:
+        return None
+
+    if entry.startswith("openrouter:"):
+        model_id = entry.split(":", 1)[1].strip()
+        if not model_id:
+            return None
+        return {
+            "id":             entry,
+            "type":           "api",
+            "service":        "openrouter",
+            "model":          model_id,
+            "display_name":   model_id,
+            "vision_capable": True,
+            "status":         "active",
+            "enabled":        True,
+        }
+
+    # Plain endpoint id — look up in routing-config.endpoints[].
+    lookup = _endpoint_lookup_by_id(routing_config)
+    ep = lookup.get(entry)
+    if not ep:
+        return None
+    if not ep.get("enabled", False):
+        return None
+    if ep.get("status") != "active":
+        return None
+    if not ep.get("vision_capable", False):
+        return None
+    return ep
+
+
+def _pick_vision_extractor_from_slot(routing_config: dict,
+                                      slot_name: str) -> tuple[dict | None, list[str]]:
+    """Walk ``slots.<slot_name>.preferred`` then ``.fallback`` and return
+    the first entry that resolves to a vision-input-capable endpoint.
+
+    Returns ``(endpoint_dict_or_None, walked_entries)``. ``walked_entries``
+    is the list of entry strings inspected — useful in the trace for
+    explaining why a selection landed on a particular fallback.
+    """
+    walked: list[str] = []
+    if not slot_name:
+        return None, walked
+    slots_cfg = routing_config.get("slots") or {}
+    slot_cfg = slots_cfg.get(slot_name) or {}
+    chain = []
+    pref = slot_cfg.get("preferred")
+    if pref:
+        chain.append(pref)
+    chain.extend(slot_cfg.get("fallback") or [])
+    for entry in chain:
+        walked.append(entry)
+        ep = _endpoint_from_slot_entry(entry, routing_config)
+        if ep is not None:
+            return ep, walked
+    return None, walked
+
+
 def route_for_image_input(context_pkg: dict,
                           requested_model: dict | None,
                           model_registry: dict | None = None,
@@ -572,25 +666,52 @@ def route_for_image_input(context_pkg: dict,
         return requested_model, context_pkg
 
     # Branch 2: downstream is text-only (or unresolved). Select extractor.
-    preferred = vision_cfg.get("preferred_extractor_bucket", "")
-    fallback = vision_cfg.get("fallback_extractor_bucket", "")
+    #
+    # New (preferred) path: ``vision_extraction.slot`` names a slot in the
+    # ``slots`` block (typically ``image_generates``) whose preferred /
+    # fallback chain is reused as the extractor chain. Image-generation
+    # models accept image conditioning by construction so they double as
+    # vision-input-capable extractors — this avoids carving out a separate
+    # ``vision_extractors`` bucket that has to be kept in sync manually.
+    #
+    # Legacy path: ``preferred_extractor_bucket`` /
+    # ``fallback_extractor_bucket`` continue to work as fallbacks when no
+    # slot is configured OR when slot resolution finds no eligible entry
+    # (e.g. the slot's chain is entirely text→image generators that can't
+    # read images).
+    extractor: dict | None = None
+    used_source = ""
 
-    extractor = _pick_vision_extractor(routing_config, preferred)
-    used_bucket = preferred
-    if not extractor and fallback and fallback != preferred:
-        extractor = _pick_vision_extractor(routing_config, fallback)
-        used_bucket = fallback
+    slot_name = vision_cfg.get("slot", "")
+    if slot_name:
+        slot_ep, walked = _pick_vision_extractor_from_slot(
+            routing_config, slot_name,
+        )
+        if slot_ep is not None:
+            extractor = slot_ep
+            used_source = f"slot:{slot_name}"
+
+    # Legacy bucket fallback: either no slot configured, or the slot's
+    # chain produced no vision-input-capable entry.
+    if extractor is None:
+        preferred = vision_cfg.get("preferred_extractor_bucket", "")
+        fallback = vision_cfg.get("fallback_extractor_bucket", "")
+        extractor = _pick_vision_extractor(routing_config, preferred)
+        used_source = f"bucket:{preferred}" if extractor else ""
+        if not extractor and fallback and fallback != preferred:
+            extractor = _pick_vision_extractor(routing_config, fallback)
+            used_source = f"bucket:{fallback}" if extractor else ""
 
     if extractor:
         context_pkg["vision_extractor_selected"] = {
-            "id": extractor.get("id"),
-            "bucket": used_bucket,
+            "id":           extractor.get("id"),
+            "source":       used_source,
             "display_name": extractor.get("display_name", extractor.get("id", "")),
         }
         context_pkg["vision_direct_pass"] = False
         print(
             f"[visual-routing] extractor selected: {extractor.get('id')} "
-            f"(bucket={used_bucket}) for downstream "
+            f"(source={used_source}) for downstream "
             f"{(requested_model or {}).get('id', 'unresolved')}"
         )
 

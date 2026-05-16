@@ -6,7 +6,8 @@
     "enabled": true,
     "preferred_extractor_bucket": "premium",
     "fallback_extractor_bucket": "fast",
-    "description": "When image input arrives and the downstream model is not vision_capable, route the image through a vision-capable model from the preferred bucket. Fall back to the fallback bucket, then fail gracefully to manual-trace UX (WP-4.4). Bucket names match the configured buckets below \u2014 the actual Ora buckets are 'premium' (Claude Opus API, Gemini Pro API, browser flagships) and 'fast' (Claude Haiku, Gemini Flash, GPT-4o Mini). There is no distinct 'api-premium' bucket in this config; 'premium' spans API + browser by tier, not by transport."
+    "description": "When image input arrives and the downstream model is not vision_capable, route the image through a vision-capable extractor. The 'slot' field (preferred) names a slot in the 'slots' block \u2014 typically 'image_generates' \u2014 whose preferred + fallback chain is reused. Image-generation models accept image conditioning by construction, so the same model that generates images can also extract spatial structure from them. This avoids carving out a separate vision_extractors bucket. The preferred_extractor_bucket / fallback_extractor_bucket fields are the legacy bucket-based fallback, used when no slot is configured OR when the slot's chain has no vision-input-capable entry (e.g. entirely pure-text-to-image generators like local-diffusers / stability). Final fallback to manual-trace UX (WP-4.4) when nothing resolves.",
+    "slot": "image_generates"
   },
   "web_supplement": {
     "enabled": true,

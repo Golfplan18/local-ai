@@ -185,11 +185,13 @@ class RouteForImageInputSelectionTests(unittest.TestCase):
         eff, out_ctx = self.gate(ctx, downstream, routing_config=rc)
         # Downstream is not swapped — extractor runs FIRST, then downstream.
         self.assertIs(eff, downstream)
-        # Extractor was picked from the preferred bucket.
+        # Extractor was picked from the preferred bucket. ``source`` carries
+        # the origin tag — ``bucket:premium`` for bucket-resolved, or
+        # ``slot:<slot_name>`` for slot-resolved.
         sel = out_ctx.get("vision_extractor_selected")
         self.assertIsNotNone(sel, "extractor should have been selected")
         self.assertEqual(sel["id"], "api-vision")
-        self.assertEqual(sel["bucket"], "premium")
+        self.assertEqual(sel["source"], "bucket:premium")
         self.assertFalse(out_ctx.get("vision_direct_pass"))
         # WP-4.3 — extraction was attempted; our mock returns None.
         # The key is present so downstream code can tell extraction ran.
@@ -212,7 +214,7 @@ class RouteForImageInputSelectionTests(unittest.TestCase):
         sel = out_ctx.get("vision_extractor_selected")
         self.assertIsNotNone(sel)
         self.assertEqual(sel["id"], "api-vision")
-        self.assertEqual(sel["bucket"], "fast")
+        self.assertEqual(sel["source"], "bucket:fast")
 
     # ------------------------------------------------------------------
     # Case C: no vision-capable model in any bucket → no_vision_available.
@@ -380,8 +382,12 @@ class RouteForImageInputConfigLoadTests(unittest.TestCase):
         sel = out_ctx.get("vision_extractor_selected")
         self.assertIsNotNone(sel, "real routing-config should yield an extractor")
         # The selected extractor must be a vision-capable endpoint.
+        # ``source`` carries the origin — slot-resolved when the live
+        # routing-config.json has vision_extraction.slot set (preferred),
+        # bucket-resolved otherwise.
         self.assertIn("id", sel)
-        self.assertIn("bucket", sel)
+        self.assertIn("source", sel)
+        self.assertTrue(sel["source"].startswith(("slot:", "bucket:")))
 
     def test_load_failure_is_failopen(self) -> None:
         """If routing-config can't be loaded, the gate is a safe no-op."""
@@ -520,6 +526,218 @@ class PipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         # image_path is still on the extra_context that reaches the streamer.
         self.assertIn("image_path", captured["extra_context"])
+
+
+# ---------------------------------------------------------------------------
+# Slot-based vision-extraction selection (WP-7.x / web-RAG follow-up).
+# Image-generation models accept image input by construction, so we can
+# reuse the chain in slots.image_generates as the extractor source rather
+# than carving out a dedicated bucket that has to be kept in sync.
+# ---------------------------------------------------------------------------
+
+
+class EndpointFromSlotEntry(unittest.TestCase):
+    """Unit tests for the slot-entry → endpoint-dict resolver."""
+
+    def setUp(self):
+        from boot import _endpoint_from_slot_entry
+        self.resolve = _endpoint_from_slot_entry
+        self.rc = {
+            "endpoints": [
+                {"id": "api-vision", "type": "api", "service": "openai",
+                 "vision_capable": True, "enabled": True, "status": "active"},
+                {"id": "local-text-only", "type": "local",
+                 "vision_capable": False, "enabled": True, "status": "active"},
+                {"id": "api-disabled", "type": "api", "service": "openai",
+                 "vision_capable": True, "enabled": False, "status": "active"},
+            ],
+        }
+
+    def test_openrouter_prefix_synthesizes_endpoint(self):
+        ep = self.resolve("openrouter:openai/gpt-5.4-image-2", self.rc)
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["service"], "openrouter")
+        self.assertEqual(ep["model"], "openai/gpt-5.4-image-2")
+        self.assertTrue(ep["vision_capable"])
+
+    def test_openrouter_prefix_empty_model_returns_none(self):
+        ep = self.resolve("openrouter:", self.rc)
+        self.assertIsNone(ep)
+
+    def test_plain_endpoint_id_resolved_when_vision_capable(self):
+        ep = self.resolve("api-vision", self.rc)
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["id"], "api-vision")
+
+    def test_plain_endpoint_id_skipped_when_text_only(self):
+        ep = self.resolve("local-text-only", self.rc)
+        self.assertIsNone(ep)
+
+    def test_plain_endpoint_id_skipped_when_disabled(self):
+        ep = self.resolve("api-disabled", self.rc)
+        self.assertIsNone(ep)
+
+    def test_text_to_image_generators_skipped(self):
+        # Pure text-to-image services aren't vision-input-capable, so they
+        # must never resolve as a vision extractor — even though they
+        # legitimately appear in image_generates fallback chains.
+        for entry in ("local-diffusers", "stability", "replicate",
+                      "civitai-hector-lora-v1"):
+            self.assertIsNone(self.resolve(entry, self.rc),
+                              f"{entry} should NOT resolve as extractor")
+
+    def test_unknown_entry_returns_none(self):
+        ep = self.resolve("unknown:something", self.rc)
+        self.assertIsNone(ep)
+
+
+class PickVisionExtractorFromSlot(unittest.TestCase):
+    """Walks the preferred + fallback chain for a slot and returns the
+    first vision-input-capable entry."""
+
+    def setUp(self):
+        from boot import _pick_vision_extractor_from_slot
+        self.pick = _pick_vision_extractor_from_slot
+        self.rc = {
+            "slots": {
+                "image_generates": {
+                    "preferred": "openrouter:openai/gpt-5.4-image-2",
+                    "fallback": [
+                        "openrouter:google/gemini-3-pro-image-preview",
+                        "local-diffusers",
+                    ],
+                },
+                "image_edits": {
+                    "preferred": "local-diffusers",
+                    "fallback": ["replicate"],
+                },
+                "image_to_prompt": {
+                    "preferred": "replicate",
+                    "fallback": [],
+                },
+            },
+            "endpoints": [],
+        }
+
+    def test_preferred_openrouter_entry_wins(self):
+        ep, walked = self.pick(self.rc, "image_generates")
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["model"], "openai/gpt-5.4-image-2")
+        # Only the preferred was inspected.
+        self.assertEqual(walked, ["openrouter:openai/gpt-5.4-image-2"])
+
+    def test_falls_through_local_diffusers_to_next_openrouter(self):
+        # Make preferred unresolvable to force fallback walk.
+        self.rc["slots"]["image_generates"]["preferred"] = "local-diffusers"
+        ep, walked = self.pick(self.rc, "image_generates")
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["model"], "google/gemini-3-pro-image-preview")
+        self.assertEqual(
+            walked,
+            ["local-diffusers", "openrouter:google/gemini-3-pro-image-preview"],
+        )
+
+    def test_slot_with_only_text_to_image_generators_returns_none(self):
+        # image_edits has only local-diffusers + replicate → no extractor.
+        ep, walked = self.pick(self.rc, "image_edits")
+        self.assertIsNone(ep)
+        self.assertEqual(walked, ["local-diffusers", "replicate"])
+
+    def test_unknown_slot_returns_none(self):
+        ep, walked = self.pick(self.rc, "ghost_slot")
+        self.assertIsNone(ep)
+        self.assertEqual(walked, [])
+
+
+class SlotBasedVisionExtractionEndToEnd(unittest.TestCase):
+    """End-to-end: route_for_image_input prefers slot resolution when the
+    routing-config carries vision_extraction.slot."""
+
+    def setUp(self):
+        from boot import route_for_image_input
+        self.gate = route_for_image_input
+        # Mock the extractor so the integration doesn't actually fire a
+        # network call.
+        self._extract_patcher = mock.patch(
+            "boot.extract_spatial_from_image",
+            create=True,
+            return_value=mock.Mock(
+                spatial_representation=None,
+                extractor_model="mock",
+                confidence=0.0,
+                parse_errors=[],
+            ),
+        )
+        # The import-from-inside-route_for_image_input pattern means we
+        # have to patch the module the gate imports from.
+        self._extract_patcher = mock.patch(
+            "visual_extraction.extract_spatial_from_image",
+            return_value=mock.Mock(
+                spatial_representation=None,
+                extractor_model="mock",
+                confidence=0.0,
+                parse_errors=[],
+            ),
+        )
+        self._extract_patcher.start()
+        self.addCleanup(self._extract_patcher.stop)
+
+    def _rc(self, *, slot_set: bool, image_gen_preferred: str | None) -> dict:
+        slots = {}
+        if image_gen_preferred:
+            slots["image_generates"] = {
+                "preferred": image_gen_preferred,
+                "fallback": ["local-diffusers"],
+            }
+        return {
+            "vision_extraction": {
+                "enabled": True,
+                **({"slot": "image_generates"} if slot_set else {}),
+                "preferred_extractor_bucket": "premium",
+                "fallback_extractor_bucket": "fast",
+            },
+            "buckets": {
+                "premium": ["bucket-fallback-ep"],
+                "fast":    [],
+            },
+            "slots": slots,
+            "endpoints": [
+                {"id": "bucket-fallback-ep", "type": "api", "service": "openai",
+                 "vision_capable": True, "enabled": True, "status": "active",
+                 "display_name": "Bucket Fallback"},
+            ],
+        }
+
+    def test_slot_resolution_wins_when_configured(self):
+        ctx = {"image_path": "/abs/img.png"}
+        downstream = {"id": "text-only", "vision_capable": False}
+        rc = self._rc(slot_set=True,
+                       image_gen_preferred="openrouter:openai/gpt-5.4-image-2")
+        eff, out = self.gate(ctx, downstream, routing_config=rc)
+        sel = out["vision_extractor_selected"]
+        self.assertEqual(sel["source"], "slot:image_generates")
+        self.assertEqual(sel["id"], "openrouter:openai/gpt-5.4-image-2")
+
+    def test_slot_unresolvable_falls_back_to_bucket(self):
+        # image_generates chain is entirely text-to-image generators →
+        # slot path can't produce an extractor; bucket fallback fires.
+        ctx = {"image_path": "/abs/img.png"}
+        downstream = {"id": "text-only", "vision_capable": False}
+        rc = self._rc(slot_set=True, image_gen_preferred="local-diffusers")
+        eff, out = self.gate(ctx, downstream, routing_config=rc)
+        sel = out["vision_extractor_selected"]
+        self.assertEqual(sel["source"], "bucket:premium")
+        self.assertEqual(sel["id"], "bucket-fallback-ep")
+
+    def test_no_slot_configured_uses_bucket_path(self):
+        # Back-compat: when vision_extraction.slot is absent, the legacy
+        # bucket path runs unchanged.
+        ctx = {"image_path": "/abs/img.png"}
+        downstream = {"id": "text-only", "vision_capable": False}
+        rc = self._rc(slot_set=False, image_gen_preferred=None)
+        eff, out = self.gate(ctx, downstream, routing_config=rc)
+        sel = out["vision_extractor_selected"]
+        self.assertEqual(sel["source"], "bucket:premium")
 
 
 if __name__ == "__main__":
