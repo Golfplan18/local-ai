@@ -302,6 +302,21 @@ def _insert_into_decision_log(content: str, entry_text: str) -> str:
 # ---------- Human queue ----------
 
 def _append_human_queue(entry: dict):
+    # Stealth-context awareness: skip persistence for events derived from
+    # stealth-tagged conversations. The escalation still surfaces to the
+    # in-process handlers; only the on-disk human-queue.jsonl write is
+    # suppressed so stealth conversations leave no residue.
+    try:
+        from oversight_events import _is_stealth_context as _isc
+        if _isc():
+            print(
+                f"[oversight] human-queue write skipped (stealth context); "
+                f"entry: {entry.get('event_type', '_unknown_')}",
+                flush=True,
+            )
+            return
+    except Exception:
+        pass
     os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
     with open(HUMAN_QUEUE_PATH, "a") as f:
         f.write(json.dumps(entry, default=str) + "\n")
@@ -339,6 +354,21 @@ def _find_framework_in_chain(chain: list, framework_id: str) -> Optional[int]:
 
 
 def _append_actions_log(record: dict):
+    # Stealth-context awareness: same pattern as _append_human_queue —
+    # skip the on-disk write when the current thread is serving a
+    # stealth-tagged conversation. In-process callers still observe the
+    # action.
+    try:
+        from oversight_events import _is_stealth_context as _isc
+        if _isc():
+            print(
+                f"[oversight] actions-log write skipped (stealth context); "
+                f"record: {record.get('action', '_unknown_')}",
+                flush=True,
+            )
+            return
+    except Exception:
+        pass
     os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
     with open(ACTIONS_LOG_PATH, "a") as f:
         f.write(json.dumps(record, default=str) + "\n")

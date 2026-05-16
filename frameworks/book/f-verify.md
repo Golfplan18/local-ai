@@ -134,7 +134,24 @@ or
 
 ### Verified Final Output
 [The revised/consolidated output, corrected if necessary, ready for presentation to the user. For visual-bearing modes, prose + one fenced `ora-visual` block.]
+
+VERDICT: <PASS | FAIL | BROKEN>
 ```
+
+The final ``VERDICT:`` line is REQUIRED. The orchestrator's verifier-result
+parser anchors to this line so substring matches like "CANNOT be VERIFIED"
+inside prose can no longer be misread as PASS. Use:
+
+- ``VERDICT: PASS`` — equivalent to VERIFIED or VERIFIED WITH CORRECTIONS.
+- ``VERDICT: FAIL`` — equivalent to VERIFICATION FAILED. Triggers
+  re-revision in the orchestrator's verifier loop.
+- ``VERDICT: BROKEN`` — verifier-side failure (insufficient information,
+  contract violation in the input, or you cannot reach a substantive
+  verdict). Unblocks the cycle without registering as verification.
+
+Outputs that omit the ``VERDICT:`` line will be treated as not-pass and
+re-revision will fire — preserving safety when the verifier model misses
+the contract.
 
 ## Where mode-specific content lives
 
