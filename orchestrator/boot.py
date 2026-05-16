@@ -6558,10 +6558,19 @@ def _strip_dispatch_noise(text: str) -> str:
     Removes leading lines whose first non-whitespace chars match any of
     ``_DISPATCH_NOISE_PREFIXES``. Also collapses runs of blank lines that
     those prefixes left behind. The substance below is left untouched.
+
+    When the leading line was a ``"Playwright session error"`` row, the
+    following ``"Call log:"`` block (Playwright's exception trailer that
+    enumerates the failed navigation step) is also stripped — otherwise
+    the call-log lines survive as a ~92-char residue that gets reported
+    as ``"retry: too short (92 chars)"`` and masks the real failure
+    (most often an HTTP 431 / 5xx from a bloated cookie store or
+    anti-bot throttle).
     """
     if not text:
         return text
     lines = text.split("\n")
+    saw_playwright_error = False
     # Drop leading noise + blanks until we reach real content
     while lines:
         head = lines[0].lstrip()
@@ -6569,6 +6578,20 @@ def _strip_dispatch_noise(text: str) -> str:
             lines.pop(0)
             continue
         if any(head.startswith(p) for p in _DISPATCH_NOISE_PREFIXES):
+            if head.startswith("Playwright session error"):
+                saw_playwright_error = True
+            lines.pop(0)
+            continue
+        # After a Playwright-error first line, Playwright appends a
+        # multi-line "Call log:" trailer ("Call log:\n  - navigating to…").
+        # The trailer is part of the same error message, not real content.
+        if saw_playwright_error and (
+            head.startswith("Call log:")
+            or head.startswith("- navigating to")
+            or head.startswith("- waiting for")
+            or head.startswith("- locator(")
+            or (head.startswith("-") and "navigat" in head)
+        ):
             lines.pop(0)
             continue
         break
