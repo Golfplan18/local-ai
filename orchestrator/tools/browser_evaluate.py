@@ -28,6 +28,7 @@ First-time setup:
 from __future__ import annotations
 
 import os
+import sys
 import json
 
 SERVICES_JSON = os.path.expanduser("~/ora/config/browser-services.json")
@@ -41,8 +42,17 @@ try:
     if os.path.exists(SERVICES_JSON):
         with open(SERVICES_JSON) as _f:
             SERVICE_CONFIG = json.load(_f)
-except Exception:
-    pass
+except Exception as _svc_load_err:
+    # JSON parse failure or unexpected disk error. Without a log the
+    # process silently falls back to the small built-in three-service
+    # config below — every Playwright dispatch then runs against a
+    # truncated service catalogue with no signal that the on-disk
+    # config exists but is unreadable.
+    print(
+        f"[browser_evaluate] Failed to load {SERVICES_JSON}: "
+        f"{_svc_load_err}. Using built-in fallback config.",
+        file=sys.stderr, flush=True,
+    )
 
 # Built-in fallback for the big three (if JSON missing/corrupt)
 if not SERVICE_CONFIG:
@@ -80,8 +90,15 @@ def _load_model_prefs() -> dict:
         if os.path.exists(MODELS_JSON):
             with open(MODELS_JSON) as f:
                 return json.load(f)
-    except Exception:
-        pass
+    except Exception as exc:
+        # Empty prefs means every browser dispatch falls back to the
+        # service's default model with no warning. Log so the
+        # mis-configuration is visible.
+        print(
+            f"[browser_evaluate] Failed to load {MODELS_JSON}: {exc}. "
+            f"Falling back to each service's default model.",
+            file=sys.stderr, flush=True,
+        )
     return {}
 
 

@@ -442,8 +442,17 @@ def recompile_manifest_if_needed():
         if os.path.exists(script):
             try:
                 subprocess.run(["bash", script], capture_output=True, timeout=30)
-            except Exception:
-                pass
+            except Exception as e:
+                # Silent recompile failures mean every subsequent RAGEngine()
+                # init runs against a stale manifest with no signal anywhere
+                # that the user changed something the compiler should have
+                # picked up. Log so the staleness is at least visible.
+                print(
+                    f"[rag-engine] RAG manifest recompile failed: {e}. "
+                    f"Stale manifest will keep serving until next "
+                    f"successful run.",
+                    file=sys.stderr, flush=True,
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -572,9 +581,19 @@ class RAGEngine:
                     )
                 return "\n\n---\n\n".join(parts)
         except ImportError:
+            # Optional module — `tools.relationship_traversal` is not part
+            # of every deployment. Empty relationship context is the
+            # intentional degraded form when the module is absent.
             pass
-        except Exception:
-            pass
+        except Exception as exc:
+            # Runtime failure during graph traversal (e.g. ChromaDB
+            # timeout, malformed relationship metadata). Silent empty
+            # context masks degraded retrieval — log so operators see it.
+            print(
+                f"[rag-engine] relationship graph traversal failed: "
+                f"{exc}. Returning empty relationship context.",
+                file=sys.stderr, flush=True,
+            )
         return ""
 
 
