@@ -7979,6 +7979,47 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
         except Exception as e:
             return f"[Error calling Gemini API: {e}]"
 
+    elif service == "openrouter":
+        # OpenRouter exposes most frontier and open-weight models behind
+        # one OpenAI-compatible API. Pipeline endpoints use this when the
+        # bucket entry is a "<vendor>/<model>" id (e.g. "anthropic/claude-opus-4-7",
+        # "xiaomi/mimo-v2-pro"). The dispatch is identical to the openai
+        # branch above except for base_url and the auth key source.
+        try:
+            from openai import OpenAI
+            key = (
+                endpoint.get("api_key")
+                or os.environ.get("OPENROUTER_API_KEY", "")
+            )
+            if not key:
+                import keyring
+                key = keyring.get_password("ora", "openrouter-api-key") or ""
+            if not key:
+                return (
+                    "[Error calling OpenRouter API: No API key found. "
+                    "Store via: keyring set ora openrouter-api-key]"
+                )
+            client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+            api_messages = messages
+            if images:
+                api_messages = _inject_images_into_messages(
+                    messages, images, api_format="openai"
+                )
+            resp = client.chat.completions.create(
+                model=model or "openai/gpt-4o-mini",
+                messages=api_messages,
+                max_tokens=4096,
+                extra_headers={
+                    # OpenRouter recommends these for attribution in
+                    # their leaderboards / billing breakdowns. Not auth-related.
+                    "HTTP-Referer": "https://ora.local",
+                    "X-Title": "Ora",
+                },
+            )
+            return resp.choices[0].message.content
+        except Exception as e:
+            return f"[Error calling OpenRouter API: {e}]"
+
     return f"[Error] Unsupported API service: {service}"
 
 

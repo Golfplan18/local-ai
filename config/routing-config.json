@@ -10,9 +10,11 @@
   },
   "slots": {
     "image_generates": {
-      "preferred": "openai-gpt-image-1",
+      "preferred": "openrouter:openai/gpt-5.4-image-2",
       "fallback": [
-        "gemini-2.5-flash-image",
+        "openrouter:openai/gpt-5-image",
+        "openrouter:openai/gpt-5-image-mini",
+        "openrouter:google/gemini-3-pro-image-preview",
         "local-diffusers"
       ],
       "_note": "General-purpose image generation slot. Serves news photos, illustration filler, and the eventual data-viz illustration fallback. Preferred = openai-gpt-image-1 (artistic richness, moderation-lottery on boundary-pushing prompts); Fallback 1 = Gemini 2.5 Flash Image (catches OpenAI safety_violations refusals); Fallback 2 = local-diffusers (SD 1.5 last-resort if both cloud providers fail). The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Hector cartoons go through a separate slot (`image_generates_cartoon`) so the Hector LoRA is only ever invoked through the cartoon path. DALL-E references removed 2026-05-12 per OpenAI's same-day shutdown announcement."
@@ -445,7 +447,7 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "fast",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "credential_key": "ora/anthropic-api-key",
       "capabilities": {
@@ -465,7 +467,7 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "fast",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "credential_key": "ora/anthropic-api-key",
       "capabilities": {
@@ -485,7 +487,7 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "mid",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "credential_key": "ora/anthropic-api-key",
       "capabilities": {
@@ -525,7 +527,7 @@
       "provider": "openai",
       "training_family": "gpt",
       "tier": "fast",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "credential_key": "ora/openai-api-key",
       "capabilities": {
@@ -565,7 +567,7 @@
       "provider": "google",
       "training_family": "gemini",
       "tier": "mid",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "credential_key": "ora/gemini-api-key",
       "capabilities": {
@@ -585,7 +587,7 @@
       "provider": "google",
       "training_family": "gemini",
       "tier": "fast",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "credential_key": "ora/gemini-api-key",
       "capabilities": {
@@ -775,6 +777,906 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true
+    },
+    {
+      "id": "anthropic-api-claude-opus-4-7",
+      "type": "api",
+      "service": "claude",
+      "model_id": "claude-opus-4-7",
+      "display_name": "Claude Opus 4.7 (API)",
+      "provider": "anthropic",
+      "training_family": "claude",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/anthropic-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-o1",
+      "type": "api",
+      "service": "openai",
+      "model_id": "o1",
+      "display_name": "O1 (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-o3-mini",
+      "type": "api",
+      "service": "openai",
+      "model_id": "o3-mini",
+      "display_name": "O3 Mini (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-o1-pro",
+      "type": "api",
+      "service": "openai",
+      "model_id": "o1-pro",
+      "display_name": "O1 Pro (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-o3",
+      "type": "api",
+      "service": "openai",
+      "model_id": "o3",
+      "display_name": "O3 (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-o4-mini",
+      "type": "api",
+      "service": "openai",
+      "model_id": "o4-mini",
+      "display_name": "O4 Mini (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-4-1",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-4.1",
+      "display_name": "GPT 4.1 (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "mid",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-4-1-mini",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-4.1-mini",
+      "display_name": "GPT 4.1 Mini (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "fast",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-4-1-nano",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-4.1-nano",
+      "display_name": "GPT 4.1 Nano (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "mid",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-chat-latest",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5-chat-latest",
+      "display_name": "GPT 5 Chat Latest (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5",
+      "display_name": "GPT 5 (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-mini",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5-mini",
+      "display_name": "GPT 5 Mini (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-nano",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5-nano",
+      "display_name": "GPT 5 Nano (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-pro",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5-pro",
+      "display_name": "GPT 5 Pro (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-1-chat-latest",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.1-chat-latest",
+      "display_name": "GPT 5.1 Chat Latest (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-1",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.1",
+      "display_name": "GPT 5.1 (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-2",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.2",
+      "display_name": "GPT 5.2 (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-2-pro",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.2-pro",
+      "display_name": "GPT 5.2 Pro (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-2-chat-latest",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.2-chat-latest",
+      "display_name": "GPT 5.2 Chat Latest (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-3-chat-latest",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.3-chat-latest",
+      "display_name": "GPT 5.3 Chat Latest (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-4-pro",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.4-pro",
+      "display_name": "GPT 5.4 Pro (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-4",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.4",
+      "display_name": "GPT 5.4 (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-4-nano",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.4-nano",
+      "display_name": "GPT 5.4 Nano (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-4-mini",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.4-mini",
+      "display_name": "GPT 5.4 Mini (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-5",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.5",
+      "display_name": "GPT 5.5 (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "openai-api-gpt-5-5-pro",
+      "type": "api",
+      "service": "openai",
+      "model_id": "gpt-5.5-pro",
+      "display_name": "GPT 5.5 Pro (API)",
+      "provider": "openai",
+      "training_family": "gpt",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openai-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-2-0-flash",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-2.0-flash",
+      "display_name": "Gemini 2.0 Flash (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "mid",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-2-0-flash-001",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-2.0-flash-001",
+      "display_name": "Gemini 2.0 Flash 001 (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "mid",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-2-0-flash-lite-001",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-2.0-flash-lite-001",
+      "display_name": "Gemini 2.0 Flash-Lite 001 (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "fast",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-2-0-flash-lite",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-2.0-flash-lite",
+      "display_name": "Gemini 2.0 Flash-Lite (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "fast",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-flash-latest",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-flash-latest",
+      "display_name": "Gemini Flash Latest (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "mid",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-flash-lite-latest",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-flash-lite-latest",
+      "display_name": "Gemini Flash-Lite Latest (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "fast",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-pro-latest",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-pro-latest",
+      "display_name": "Gemini Pro Latest (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-2-5-flash-lite",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-2.5-flash-lite",
+      "display_name": "Gemini 2.5 Flash-Lite (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "fast",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-3-pro-preview",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-3-pro-preview",
+      "display_name": "Gemini 3 Pro Preview (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-3-flash-preview",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-3-flash-preview",
+      "display_name": "Gemini 3 Flash Preview (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "mid",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-3-1-pro-preview",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-3.1-pro-preview",
+      "display_name": "Gemini 3.1 Pro Preview (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-3-1-flash-lite-preview",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-3.1-flash-lite-preview",
+      "display_name": "Gemini 3.1 Flash Lite Preview (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "fast",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "gemini-api-gemini-3-1-flash-lite",
+      "type": "api",
+      "service": "gemini",
+      "model_id": "models/gemini-3.1-flash-lite",
+      "display_name": "Gemini 3.1 Flash Lite (API)",
+      "provider": "google",
+      "training_family": "gemini",
+      "tier": "fast",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/gemini-api-key",
+      "verified": "2026-05-13",
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": true,
+      "_auto_discovered": true
+    },
+    {
+      "id": "xiaomi/mimo-v2-pro",
+      "type": "api",
+      "service": "openrouter",
+      "model_id": "xiaomi/mimo-v2-pro",
+      "display_name": "Xiaomi MiMo v2 Pro (OpenRouter)",
+      "provider": "openrouter",
+      "training_family": "mimo",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openrouter-api-key",
+      "capabilities": {
+        "tool_access": false,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": false,
+      "model": "xiaomi/mimo-v2-pro"
+    },
+    {
+      "id": "x-ai/grok-4.3",
+      "type": "api",
+      "service": "openrouter",
+      "model_id": "x-ai/grok-4.3",
+      "display_name": "Grok 4.3 (OpenRouter)",
+      "provider": "openrouter",
+      "training_family": "grok",
+      "tier": "premium",
+      "status": "active",
+      "enabled": true,
+      "credential_key": "ora/openrouter-api-key",
+      "capabilities": {
+        "tool_access": false,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "vision_capable": false,
+      "model": "x-ai/grok-4.3"
     }
   ],
   "buckets": {
@@ -783,30 +1685,20 @@
       "local-mlx-hermes-4-70b"
     ],
     "local-mid": [
-      "local-mlx-qwen3.5-27b-opus"
+      "local-mlx-qwen3.5-27b-opus",
+      ""
     ],
     "local-fast": [
       "local-mlx-qwen3.5-4b",
       "local-mlx-qwen3.5-9b-optiq"
     ],
     "premium": [
-      "anthropic-api-opus",
-      "gemini-api-pro",
-      "claude-browser",
-      "chatgpt-browser",
-      "gemini-browser",
-      "perplexity-browser",
-      "mistral-browser",
-      "grok-browser"
+      "xiaomi/mimo-v2-pro",
+      "x-ai/grok-4.3"
     ],
     "mid": [
-      "anthropic-api-sonnet",
-      "anthropic-api-sonnet-4-5",
-      "anthropic-api-opus-3",
-      "openai-api-gpt4o",
-      "openai-api-gpt4-turbo",
-      "gemini-api-1-5-pro",
-      "copilot-browser"
+      "gemini-browser",
+      "mistral-browser"
     ],
     "fast": [
       "anthropic-api-haiku",
@@ -819,18 +1711,15 @@
     ],
     "free": [
       "deepseek-browser",
-      "poe-browser",
-      "huggingchat-browser",
-      "meta_ai-browser",
-      "cohere-browser"
+      "poe-browser"
     ]
   },
   "pipelines": {
     "interactive": {
       "utility": {
         "buckets": [
-          "local-mid",
           "fast",
+          "local-mid",
           "free"
         ],
         "expanded": false,
@@ -877,8 +1766,8 @@
       },
       "post_analysis": {
         "buckets": [
-          "local-premium",
           "premium",
+          "local-premium",
           "mid"
         ],
         "expanded": false,
