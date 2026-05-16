@@ -40,26 +40,6 @@ class TestRagMaxChars(unittest.TestCase):
     def test_constant_defined(self):
         self.assertGreater(rag_engine.RAG_MAX_CHARS, 50_000)
 
-    def test_compute_returns_constant(self):
-        # Regardless of args, the function returns the constant.
-        self.assertEqual(rag_engine.compute_rag_max_chars(), rag_engine.RAG_MAX_CHARS)
-
-    def test_compute_ignores_endpoint(self):
-        # Backward-compat: previous call sites passed endpoint=. Should
-        # be ignored, not error.
-        self.assertEqual(
-            rag_engine.compute_rag_max_chars({"context_window": 8192}),
-            rag_engine.RAG_MAX_CHARS,
-        )
-        self.assertEqual(
-            rag_engine.compute_rag_max_chars({"context_window": 2_000_000}),
-            rag_engine.RAG_MAX_CHARS,
-        )
-        self.assertEqual(
-            rag_engine.compute_rag_max_chars(None),
-            rag_engine.RAG_MAX_CHARS,
-        )
-
     def test_assemble_uses_constant_when_max_chars_not_given(self):
         captured = {}
         original_format = rag_engine.format_context_with_provenance

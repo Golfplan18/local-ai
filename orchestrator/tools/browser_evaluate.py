@@ -152,57 +152,6 @@ def _build_prompt(task_summary: str, artifact: str, evaluation_focus: str) -> st
     return "\n".join(parts)
 
 
-def _switch_model(page, service: str) -> str | None:
-    """Switch to the preferred model on the current page."""
-    model_info = _get_selected_model(service)
-    if not model_info or not model_info.get("ui"):
-        return None
-
-    ui = model_info["ui"]
-    model_name = model_info["name"]
-
-    button_selector = ui.get("model_button", "")
-    option_selector = ui.get("model_option", "").replace("{model_name}", model_name)
-    close_action = ui.get("close_action", "Escape")
-
-    if not button_selector or not option_selector:
-        return None
-
-    try:
-        for sel in button_selector.split(","):
-            try:
-                btn = page.locator(sel.strip()).first
-                if btn.is_visible(timeout=3000):
-                    btn.click()
-                    break
-            except Exception:
-                continue
-        else:
-            return f"[model switch] Could not find model selector button for {service}"
-
-        page.wait_for_timeout(1000)
-
-        for sel in option_selector.split(","):
-            try:
-                opt = page.locator(sel.strip()).first
-                if opt.is_visible(timeout=3000):
-                    opt.click()
-                    page.wait_for_timeout(1500)
-                    return f"[model switch] Switched {service} to {model_name}"
-            except Exception:
-                continue
-
-        page.keyboard.press(close_action)
-        return f"[model switch] Model '{model_name}' not found in {service} dropdown — using default"
-
-    except Exception as e:
-        try:
-            page.keyboard.press(close_action)
-        except Exception:
-            pass
-        return f"[model switch] Failed for {service}: {str(e)} — using default model"
-
-
 # ── Playwright Channel (primary) ──────────────────────────────────────────
 
 def _try_playwright_session(service: str, prompt: str, config: dict) -> str | None:

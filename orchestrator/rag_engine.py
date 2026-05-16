@@ -783,19 +783,6 @@ def format_context_with_provenance(
 RAG_MAX_CHARS = 232_000
 
 
-def compute_rag_max_chars(*args, **kwargs) -> int:
-    """Return the RAG character budget.
-
-    Single constant. The previous adaptive formula scaled against
-    ``endpoint.context_window`` with five configurable parameters but
-    consistently converged to ~232K chars on every modern endpoint, and
-    no production endpoint overrode the parameters. Args and kwargs are
-    accepted-and-ignored for backward compatibility with call sites
-    that previously passed ``endpoint=``.
-    """
-    return RAG_MAX_CHARS
-
-
 def assemble_ranked_context(
     query: str,
     *,

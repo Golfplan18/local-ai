@@ -6060,23 +6060,6 @@ def _run_model_with_tools(messages: list, endpoint: dict,
     return stripped
 
 
-def _rag_tail(context_pkg: dict) -> str:
-    """Legacy helper — returns empty string.
-
-    Originally appended a second copy of CONVERSATION CONTEXT / KNOWLEDGE
-    CONTEXT to step prompts. ``build_system_prompt_for_gear`` already adds
-    those sections via its own RAG block (line 5495-5503), so calling
-    ``_rag_tail`` after it was double-injecting the same chunks into every
-    Gear-3/4 step system prompt — adding ~3-7KB of duplicate content and
-    making the analyst read its RAG twice.
-
-    Kept as an empty no-op for callers that still reference it, in case any
-    out-of-tree code paths assume its presence. Safe to remove entirely
-    once callers are audited.
-    """
-    return ""
-
-
 _INLINE_DISPATCH_DIRECTIVE = """## DISPATCH PROTOCOL — INLINE-ONLY RESPONSE
 
 Internal pipeline call. The next stage reads only the chat message body. Standing user preferences for file/artifact output don't apply here.
@@ -6306,7 +6289,7 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
             # acknowledges this as a deploy/install-time check.
             pass
 
-    return _INLINE_DISPATCH_DIRECTIVE + step_prompt + _rag_tail(context_pkg)
+    return _INLINE_DISPATCH_DIRECTIVE + step_prompt
 
 
 _VERIFIER_BROKEN_MARKERS = (
