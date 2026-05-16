@@ -7374,6 +7374,14 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     _record("step4-eval-of-depth", eval_a_ok, eval_a_reason)
     _record("step4-eval-of-breadth", eval_b_ok, eval_b_reason)
 
+    # Preserve the raw model response BEFORE the contingency rewrite so the
+    # trace can audit what the broken browser actually returned. Without this
+    # the trace records only the contingency replacement string and the real
+    # failure signature (the 92-char ChatGPT shell-text, the empty Playwright
+    # error, etc.) is invisible to downstream debugging.
+    raw_eval_a_response = breadth_eval_of_depth
+    raw_eval_b_response = depth_eval_of_breadth
+
     # Contingency: degraded eval becomes an explicit "no feedback" note so the
     # reviser doesn't try to integrate broken critique into its revision.
     if not eval_a_ok:
@@ -7439,26 +7447,38 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "user_message": eval_a_user_message,
         "evaluator_target_stream": "depth",
         "evaluator_endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
+        "raw_response_pre_contingency": raw_eval_a_response,
+        "raw_response_pre_contingency_chars": len(raw_eval_a_response) if raw_eval_a_response else 0,
         "raw_response": breadth_eval_of_depth,
         "ok": eval_a_ok,
         "reason": eval_a_reason,
     }, markdown=(
         "# Step 4 — Breadth evaluates Depth\n\n"
         f"**Health:** {'ok' if eval_a_ok else 'DEGRADED'} — {eval_a_reason}\n\n"
-        f"{breadth_eval_of_depth}\n"
+        + (
+            f"**Raw response before contingency** ({len(raw_eval_a_response)} chars):\n\n```\n{raw_eval_a_response}\n```\n\n"
+            if not eval_a_ok else ""
+        )
+        + f"{breadth_eval_of_depth}\n"
     ))
     _trace_step("step4-eval-of-breadth", {
         "system_prompt": eval_system,
         "user_message": eval_b_user_message,
         "evaluator_target_stream": "breadth",
         "evaluator_endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+        "raw_response_pre_contingency": raw_eval_b_response,
+        "raw_response_pre_contingency_chars": len(raw_eval_b_response) if raw_eval_b_response else 0,
         "raw_response": depth_eval_of_breadth,
         "ok": eval_b_ok,
         "reason": eval_b_reason,
     }, markdown=(
         "# Step 4 — Depth evaluates Breadth\n\n"
         f"**Health:** {'ok' if eval_b_ok else 'DEGRADED'} — {eval_b_reason}\n\n"
-        f"{depth_eval_of_breadth}\n"
+        + (
+            f"**Raw response before contingency** ({len(raw_eval_b_response)} chars):\n\n```\n{raw_eval_b_response}\n```\n\n"
+            if not eval_b_ok else ""
+        )
+        + f"{depth_eval_of_breadth}\n"
     ))
     _trace_step("step5-revised-depth", {
         "system_prompt": revise_system,
