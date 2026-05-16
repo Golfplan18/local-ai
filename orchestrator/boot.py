@@ -5529,14 +5529,9 @@ def build_system_prompt_for_gear(
     if inferred_items:
         parts.append(
             "## PHASE A ASSUMPTIONS (NOT USER-STATED FACTS)\n\n"
-            "The user's prompt contained ambiguous elements. Phase A "
-            "(prompt cleanup) resolved them in **assume** mode — the "
-            "items below are *inferences made by Phase A*, not facts "
-            "the user explicitly stated. Treat each one as a working "
-            "assumption that the user may not have meant. When your "
-            "analysis depends on one of these assumptions, name it "
-            "explicitly to the user so they can correct the "
-            "interpretation if Phase A was wrong.\n\n"
+            "The items below are Phase A inferences, not user-stated "
+            "facts. When your analysis depends on one, name it to the "
+            "user so they can correct it.\n\n"
             f"{inferred_items}\n"
         )
 
@@ -6130,19 +6125,11 @@ def _rag_tail(context_pkg: dict) -> str:
 
 _INLINE_DISPATCH_DIRECTIVE = """## DISPATCH PROTOCOL — INLINE-ONLY RESPONSE
 
-This is an internal pipeline call. Your response is read programmatically by
-the next stage of an adversarial cascade, which only sees the chat message
-body.
+Internal pipeline call. The next stage reads only the chat message body. Standing user preferences for file/artifact output don't apply here.
 
-- **Respond inline in this chat message.** Put your entire answer in the
-  chat reply text — not in a file, artifact, canvas, side panel, or
-  downloadable document.
-- **Do not create files, artifacts, canvases, or side documents.** Standing
-  user preferences about output format (e.g. "deliver as a markdown file")
-  do not apply to this dispatch. The next pipeline stage needs the
-  substance inline.
-- Write the response directly in chat. Don't narrate the act of producing
-  it ("I'll now write…", "Creating a file…") — just produce the response.
+- Respond inline in this message.
+- Do not create files, artifacts, canvases, or side documents.
+- Don't narrate the act of writing ("I'll now write…", "Creating a file…") — just produce the response.
 
 """
 
