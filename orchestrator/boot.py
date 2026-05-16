@@ -6292,20 +6292,18 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
     return _INLINE_DISPATCH_DIRECTIVE + step_prompt
 
 
-_VERIFIER_BROKEN_MARKERS = (
-    "verifier_exception:",
+# Provider-transport, browser-session, and provider-overload errors that
+# arrive as 200-OK content strings (not raised exceptions). These appear in
+# both `_VERIFIER_BROKEN_MARKERS` and `_UNHEALTHY_PATTERNS` because they
+# need to flag in two ways: (a) for the verifier, treat as BROKEN so
+# re-revision doesn't fire (verifier-side failure, the analysis isn't
+# what's wrong); (b) for any analytical step, treat as UNHEALTHY so the
+# regenerate-on-unhealthy retry fires. Factored out so the two lists stay
+# in sync.
+_PROVIDER_TRANSPORT_ERROR_MARKERS = (
     "playwright session error",
     "browsertype.launch_persistent_context",
     "target page, context or browser has been closed",
-    "[verification error",
-    "[verifier call error",
-    "session expired",
-    "rate_limit_exceeded",
-    "rate limit exceeded",
-    "too many requests",
-    # API-provider error idioms — same expanded set as _UNHEALTHY_PATTERNS
-    # so the verifier-broken classifier also catches provider errors
-    # returned as 200-OK string content (not raised as Python exceptions).
     "anthropic.apistatuserror",
     "anthropic.ratelimiterror",
     "anthropic.apiconnectionerror",
@@ -6328,6 +6326,20 @@ _VERIFIER_BROKEN_MARKERS = (
     "navigation timeout",
     "execution context was destroyed",
 )
+
+
+_VERIFIER_BROKEN_MARKERS = (
+    # Verifier-specific exception substitutions emitted by run_gear3 / run_gear4
+    "verifier_exception:",
+    "[verification error",
+    "[verifier call error",
+    # Auth / quota / rate-limit (the shared transport list below covers the
+    # OpenAI/Anthropic-specific idioms; these are the generic forms).
+    "session expired",
+    "rate_limit_exceeded",
+    "rate limit exceeded",
+    "too many requests",
+) + _PROVIDER_TRANSPORT_ERROR_MARKERS
 
 
 def _verifier_broken(verifier_output: str) -> bool:
@@ -6538,7 +6550,13 @@ def _strip_dispatch_noise(text: str) -> str:
 # Patterns that indicate the model refused / asked for clarification / errored,
 # rather than producing the requested analytical output. When these match,
 # the step output is considered unhealthy and the retry path fires.
+#
+# Provider-transport / browser-session / provider-overload idioms live in
+# `_PROVIDER_TRANSPORT_ERROR_MARKERS` (defined above) and are concatenated
+# below; the patterns enumerated here are the analytical-step-specific
+# refusal, clarification, and dispatch-layer error stubs.
 _UNHEALTHY_PATTERNS = (
+    # Refusal / clarification idioms — model declined to produce analysis.
     "your message got cut off",
     "your message appears to be cut off",
     "your prompt was cut off",
@@ -6558,18 +6576,15 @@ _UNHEALTHY_PATTERNS = (
     "did you mean to send",
     "looks like the prompt is",
     "looks like a partial",
+    # Pipeline-step exception substitutions emitted by run_gear3 / run_gear4.
     "[depth model error",
     "[breadth model error",
     "[evaluation error",
     "[revision error",
     "[re-revision error",
-    "playwright session error",
-    # Bracket-prefixed dispatch-layer error strings. boot.py's
-    # call_api_endpoint / call_local_endpoint / call_browser_endpoint
-    # swallow every exception and return strings shaped like
-    # "[Error calling Claude API: <e>]" — they previously slipped
-    # through because none of the existing patterns matched the
-    # literal bracket-prefixed wrapper.
+    # Bracket-prefixed dispatch-layer error strings from boot.py's
+    # call_api_endpoint / call_local_endpoint / call_browser_endpoint —
+    # they wrap exceptions as "[Error calling Claude API: <e>]" etc.
     "[error calling claude api",
     "[error calling openai api",
     "[error calling gemini api",
@@ -6583,47 +6598,23 @@ _UNHEALTHY_PATTERNS = (
     "[no response]",
     "[tools unavailable",
     "[tool error —",
-    # API-provider error idioms (Anthropic / OpenAI / Gemini). Without these,
-    # a 200-OK provider error returned as a content string passes the
-    # length-only health check and flows downstream as analyst output.
-    "anthropic.apistatuserror",
+    # Provider error idioms NOT in _PROVIDER_TRANSPORT_ERROR_MARKERS —
+    # bad-request errors and Gemini idioms that are step-input specific.
     "anthropic.badrequesterror",
-    "anthropic.ratelimiterror",
-    "anthropic.apiconnectionerror",
-    "anthropic.internalservererror",
     "openai.apierror",
     "openai.badrequesterror",
-    "openai.ratelimiterror",
-    "openai.apiconnectionerror",
-    "openai.internalservererror",
     "google.api_core.exceptions",
     "googleapi error",
     "gemini api error",
-    # Generic structured-error idioms returned as string content
+    # Generic structured-error idioms returned as string content.
     '{"error":',
     '{"type":"error"',
     "error_type:",
     "error_code:",
-    "context_length_exceeded",
     "content_filter",
-    "invalid_request_error",
-    "service_unavailable",
-    "503 service unavailable",
-    "502 bad gateway",
-    "504 gateway timeout",
-    "529 overloaded",
-    "overloaded_error",
-    "model is currently overloaded",
-    "request timed out",
-    "connection refused",
-    "connection reset",
-    # Browser-bucket failure idioms beyond playwright-session-error
-    "browsertype.launch_persistent_context",
-    "target page, context or browser has been closed",
+    # Browser-bucket extra idioms beyond what _PROVIDER_TRANSPORT_ERROR_MARKERS covers.
     "failed to fetch from",
-    "navigation timeout",
-    "execution context was destroyed",
-)
+) + _PROVIDER_TRANSPORT_ERROR_MARKERS
 
 
 def _step_output_health(text: str, step_name: str, min_chars: int = 200) -> tuple[bool, str]:
