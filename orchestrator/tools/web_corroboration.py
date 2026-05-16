@@ -156,47 +156,51 @@ class TrustedSourcesRegistry:
 
     @staticmethod
     def _extract_patterns(section: str) -> list[str]:
-        """Extract pattern lines from the first code-fence in a section."""
+        """Extract pattern lines from every code-fence in a section.
+
+        Sections can contain multiple fenced blocks — typically under H3
+        subsection headings (e.g. ``### Generalist references``,
+        ``### US government``) for human readability. The parser flattens
+        across subsections and returns every pattern line from every fence.
+        """
         if not section:
             return []
-        fence_match = _FENCE_RE.search(section)
-        if not fence_match:
-            return []
-        body = fence_match.group(1)
         patterns: list[str] = []
-        for line in body.splitlines():
-            stripped = line.strip()
-            if not stripped:
-                continue
-            if stripped.startswith("#"):
-                continue
-            # Skip override-shaped lines (those have an arrow).
-            if "→" in stripped:
-                continue
-            patterns.append(stripped)
+        for fence_match in _FENCE_RE.finditer(section):
+            body = fence_match.group(1)
+            for line in body.splitlines():
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if stripped.startswith("#"):
+                    continue
+                # Skip override-shaped lines (those have an arrow).
+                if "→" in stripped:
+                    continue
+                patterns.append(stripped)
         return patterns
 
     @staticmethod
     def _extract_overrides(section: str) -> dict[str, str]:
-        """Extract `pattern → tier` overrides from the section's code fence."""
+        """Extract `pattern → tier` overrides from every code-fence in
+        the section. Multiple fenced blocks across H3 subsections are
+        flattened, mirroring ``_extract_patterns``."""
         if not section:
             return {}
-        fence_match = _FENCE_RE.search(section)
-        if not fence_match:
-            return {}
-        body = fence_match.group(1)
         overrides: dict[str, str] = {}
-        for line in body.splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            m = _OVERRIDE_LINE_RE.match(stripped)
-            if not m:
-                continue
-            pattern, tier = m.group(1).strip(), m.group(2).strip()
-            # Strip any trailing parens (e.g., "resource (0.7)" → "resource")
-            tier = tier.split("(")[0].strip()
-            overrides[pattern] = tier
+        for fence_match in _FENCE_RE.finditer(section):
+            body = fence_match.group(1)
+            for line in body.splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                m = _OVERRIDE_LINE_RE.match(stripped)
+                if not m:
+                    continue
+                pattern, tier = m.group(1).strip(), m.group(2).strip()
+                # Strip any trailing parens (e.g., "resource (0.7)" → "resource")
+                tier = tier.split("(")[0].strip()
+                overrides[pattern] = tier
         return overrides
 
     def matches_high(self, url: str) -> bool:
