@@ -1826,13 +1826,19 @@ def _persist_vision_retry_queue(conversation_id: str, entries: list[dict]) -> No
         print(f"[vision-retry-queue] persist failed for {conversation_id}: {e}")
 
 
-def _run_pipeline_from_step2(step1, config, history, user_input, clarification_text="", images=None, execution_context="interactive", extra_context=None):
+def _run_pipeline_from_step2(step1, config, history, user_input, clarification_text="", images=None, execution_context="interactive", extra_context=None, trace_dir=None):
     """Resume pipeline from Step 2 onward, optionally enriched with clarification answers.
 
     ``extra_context`` (WP-3.3): an optional dict of extra keys to merge into the
     assembled ``context_pkg`` before the system prompt is built. Used by the
     multipart endpoint to thread ``spatial_representation`` + ``image_path``
     into ``build_system_prompt_for_gear`` without changing the Step 1/2 contract.
+
+    ``trace_dir``: per-turn forensic-trace directory created by
+    ``pipeline_trace.start_trace`` in ``_pipeline_stream``. Passed through
+    to ``run_step2_context_assembly`` (which records the context package)
+    and rides on ``context_pkg`` so ``run_gear3`` / ``run_gear4`` land
+    their step-3..8 traces in the same per-turn directory.
     """
     # If clarification was provided, enrich the cleaned prompt and — if the
     # pause was at Stage 2 or Stage 3 of the pre-routing pipeline — re-run
@@ -1873,13 +1879,18 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
             except Exception as exc:
                 print(f"[pre-routing] resume re-route failed: {exc}")
 
-    context_pkg = run_step2_context_assembly(step1, config)
+    context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir)
     # WP-3.3: thread merged-input extras (spatial_representation, image_path,
     # …) into the context package for build_system_prompt_for_gear.
     if extra_context:
         for k, v in extra_context.items():
             if v is not None:
                 context_pkg[k] = v
+    # Ensure trace_dir is on context_pkg so run_gear3/run_gear4 land their
+    # step-3..8 traces in the same per-turn directory. run_step2_context_assembly
+    # already does this when given a trace_dir, but make it idempotent.
+    if trace_dir and not context_pkg.get("trace_dir"):
+        context_pkg["trace_dir"] = trace_dir
 
     # WP-4.2: capability-conditional vision routing gate. If image_path is
     # present and the downstream model is text-only, select a vision-capable
@@ -2112,6 +2123,44 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         yield _sse("response", text=text)
         return
 
+    # --- Pipeline forensic trace — open the per-turn directory NOW so every
+    # downstream step lands in the same place. The production server path
+    # previously did not call ``start_trace`` at all, so production turns
+    # generated zero trace files. Stealth/private conversations get the
+    # ``stealth=True`` short-circuit so no trace dir is ever created for
+    # them (defence in depth: _purge_stealth Layer 6 wipes any residue if
+    # the flag is ever bypassed by a bug). ---
+    try:
+        from orchestrator.conversation_memory import get_conversation_tag as _gct
+        _conv_tag = _gct(panel_id) or ""
+    except Exception:
+        _conv_tag = ""
+    trace_dir = None
+    try:
+        from boot import PIPELINE_TRACE_AVAILABLE as _pta
+        if _pta:
+            from orchestrator import pipeline_trace as _pt
+            trace_dir = _pt.start_trace(
+                conversation_id=panel_id,
+                raw_input=user_input,
+                ambiguity_mode="assume",
+                stealth=(_conv_tag == "stealth"),
+            )
+    except Exception as _trace_exc:
+        print(f"[server trace] start_trace skipped: {_trace_exc}", flush=True)
+
+    # Set the thread-local stealth context so oversight events emitted
+    # during this turn skip on-disk persistence (events.jsonl / actions.jsonl
+    # / human-queue.jsonl). In-process handlers still fire so runtime
+    # behaviour (fan-out, PROCEED/REVISE/ESCALATE) is unchanged.
+    try:
+        from orchestrator.oversight_events import (
+            set_stealth_context as _set_stealth,
+        )
+        _set_stealth(_conv_tag == "stealth")
+    except Exception:
+        pass
+
     # --- Step 1: Prompt Cleanup + Mode Selection ---
     yield _sse("pipeline_stage", stage="step1_cleanup", label="Cleaning prompt…")
 
@@ -2120,7 +2169,16 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         recent = [m for m in history[-6:] if m["role"] != "system"]
         conv_context = "\n".join(f"{m['role'].upper()}: {m['content'][:500]}" for m in recent)
 
-    step1 = run_step1_cleanup(user_input, conv_context, config)
+    # History-truncation stats — see boot._summarize_history_truncation.
+    try:
+        from boot import _summarize_history_truncation as _shx
+        _hist_trunc = _shx(history, window=6, per_message_char_cap=500)
+    except Exception:
+        _hist_trunc = None
+
+    step1 = run_step1_cleanup(user_input, conv_context, config,
+                              trace_dir=trace_dir,
+                              history_truncation_stats=_hist_trunc)
     tier = step1["triage_tier"]
 
     # V3 Input Handling Phase 1 — alignment-prefilter comparison. Computed
@@ -2274,7 +2332,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
 
     yield _sse("pipeline_stage", stage="step2_context", label="Assembling context…")
     yield from _run_pipeline_from_step2(step1, config, history, user_input,
-                                        images=images, extra_context=extra_context)
+                                        images=images, extra_context=extra_context,
+                                        trace_dir=trace_dir)
 
 
 def _tool_status_label(tool_name, params):
@@ -5599,6 +5658,23 @@ def clarification_respond():
         history = pending["history"]
         user_input = pending["user_input"]
 
+        # Open a fresh per-resume trace, honouring stealth tag.
+        _resume_trace_dir = None
+        try:
+            from orchestrator.conversation_memory import get_conversation_tag as _gct_r
+            _resume_tag = _gct_r(panel_id) or ""
+            from boot import PIPELINE_TRACE_AVAILABLE as _pta_r
+            if _pta_r:
+                from orchestrator import pipeline_trace as _pt_r
+                _resume_trace_dir = _pt_r.start_trace(
+                    conversation_id=panel_id,
+                    raw_input=f"[clarification-resume] {user_input}",
+                    ambiguity_mode="assume",
+                    stealth=(_resume_tag == "stealth"),
+                )
+        except Exception as _trace_exc:
+            print(f"[server trace] clarification-resume start_trace skipped: {_trace_exc}", flush=True)
+
         yield _sse("start", endpoint="resumed", pipeline=True)
         yield _sse("pipeline_stage", stage="step2_context",
                     label="Assembling context with clarification…")
@@ -5609,7 +5685,8 @@ def clarification_respond():
 
         for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
                                               images=pending.get("images"),
-                                              extra_context=pending.get("extra_context")):
+                                              extra_context=pending.get("extra_context"),
+                                              trace_dir=_resume_trace_dir):
             yield chunk
             try:
                 d = json.loads(chunk[6:])
@@ -5665,6 +5742,23 @@ def clarification_skip():
         history = pending["history"]
         user_input = pending["user_input"]
 
+        # Open a fresh per-skip trace, honouring stealth tag.
+        _skip_trace_dir = None
+        try:
+            from orchestrator.conversation_memory import get_conversation_tag as _gct_s
+            _skip_tag = _gct_s(panel_id) or ""
+            from boot import PIPELINE_TRACE_AVAILABLE as _pta_s
+            if _pta_s:
+                from orchestrator import pipeline_trace as _pt_s
+                _skip_trace_dir = _pt_s.start_trace(
+                    conversation_id=panel_id,
+                    raw_input=f"[clarification-skip] {user_input}",
+                    ambiguity_mode="assume",
+                    stealth=(_skip_tag == "stealth"),
+                )
+        except Exception as _trace_exc:
+            print(f"[server trace] clarification-skip start_trace skipped: {_trace_exc}", flush=True)
+
         yield _sse("start", endpoint="resumed", pipeline=True)
         yield _sse("pipeline_stage", stage="step2_context",
                     label="Assembling context (clarification skipped)…")
@@ -5672,7 +5766,8 @@ def clarification_skip():
         final_response = [None]
         for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
                                               images=pending.get("images"),
-                                              extra_context=pending.get("extra_context")):
+                                              extra_context=pending.get("extra_context"),
+                                              trace_dir=_skip_trace_dir):
             yield chunk
             try:
                 d = json.loads(chunk[6:])

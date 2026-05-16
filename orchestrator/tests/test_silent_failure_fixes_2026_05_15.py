@@ -271,13 +271,28 @@ class TestVerifierCaseInsensitive(unittest.TestCase):
     def test_uppercase_verified_passes(self):
         self.assertTrue(_verifier_passed("VERIFIED. All checks pass."))
 
-    def test_lowercase_verified_also_passes(self):
-        # Previously: failed because "VERIFIED" wasn't in lowercase output.
-        # Now: case-insensitive match.
-        self.assertTrue(_verifier_passed("This analysis is verified. All checks pass with adequate detail."))
+    def test_lowercase_verdict_line_passes(self):
+        # Case-insensitive on the line-anchored verdict.
+        self.assertTrue(_verifier_passed(
+            "Analysis complete. All checks pass.\n\nverdict: pass"
+        ))
 
-    def test_mixed_case_verified_passes(self):
-        self.assertTrue(_verifier_passed("Final verdict: Verified with corrections — all checks satisfied."))
+    def test_mixed_case_verdict_line_passes(self):
+        self.assertTrue(_verifier_passed(
+            "Reviewed.\n\nVerdict: Verified with corrections"
+        ))
+
+    def test_substring_verified_inside_prose_no_longer_passes(self):
+        # Stricter contract (2026-05-15 second-pass fix): a free-form
+        # "VERIFIED" inside prose without a line-anchored verdict no
+        # longer triggers PASS. This closes the "CANNOT be VERIFIED"
+        # substring-false-positive class.
+        self.assertFalse(_verifier_passed(
+            "This analysis is verified. All checks pass."
+        ))
+        self.assertFalse(_verifier_passed(
+            "This claim CANNOT be VERIFIED yet from the package."
+        ))
 
     def test_verification_failed_still_blocks(self):
         self.assertFalse(_verifier_passed(

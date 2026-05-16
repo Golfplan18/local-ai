@@ -53,6 +53,13 @@ def emit(event) -> dict:
     Handler exceptions are caught and logged but don't propagate.
 
     Returns the normalized event dict.
+
+    Stealth awareness: when the per-thread stealth-context flag is set
+    (server's ``_pipeline_stream`` sets it for stealth-tagged conversation
+    turns), the event is annotated with ``stealth: True`` and the durable
+    log write is skipped. In-process handlers still receive the event so
+    runtime behaviour (cross-project fan-out, downstream actions) is not
+    altered — only the on-disk persistence surface is suppressed.
     """
     if is_dataclass(event):
         event = asdict(event)
@@ -63,7 +70,14 @@ def emit(event) -> dict:
     # Always include a wall-clock timestamp
     event.setdefault("timestamp", _now_iso())
 
-    _append_to_log(event)
+    # Stealth context: thread-local flag set by the server's _pipeline_stream
+    # for stealth-tagged conversation turns. When set, skip the durable log
+    # write so events derived from stealth conversations leave no on-disk
+    # residue in ~/ora/data/oversight/events.jsonl.
+    if _is_stealth_context():
+        event["stealth"] = True
+    else:
+        _append_to_log(event)
 
     for handler in list(_handlers):
         try:
@@ -72,6 +86,35 @@ def emit(event) -> dict:
             print(f"[oversight_events] handler failed: {e}")
 
     return event
+
+
+# Per-thread stealth context — set by the server's _pipeline_stream at the
+# top of each turn. Threading-local rather than contextvars because Flask's
+# request handler runs each request on its own thread and we want
+# fire-and-forget background workers spawned from that thread to inherit
+# the flag (which threading.local does within the same thread).
+import threading as _threading
+_stealth_ctx = _threading.local()
+
+
+def set_stealth_context(stealth: bool) -> None:
+    """Mark the current thread as serving a stealth-tagged conversation.
+
+    Called by ``server.py::_pipeline_stream`` at the top of each turn when
+    the conversation's tag is ``"stealth"``. Subsequent ``emit()`` calls on
+    the same thread skip the durable event-log write. Clear by calling
+    again with ``stealth=False`` at the end of the turn.
+    """
+    _stealth_ctx.stealth = bool(stealth)
+
+
+def clear_stealth_context() -> None:
+    """Convenience: explicitly clear the stealth flag for the current thread."""
+    _stealth_ctx.stealth = False
+
+
+def _is_stealth_context() -> bool:
+    return bool(getattr(_stealth_ctx, "stealth", False))
 
 
 def read_event_log(since_offset: int = 0, max_events: int = 1000) -> tuple[list[dict], int]:

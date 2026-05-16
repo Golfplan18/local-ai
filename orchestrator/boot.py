@@ -4087,9 +4087,128 @@ def parse_classification_output(response: str) -> dict:
     return result
 
 
+def _diff_raw_vs_operational(raw_prompt: str, operational_notation: str) -> dict:
+    """Surface tokens present in operational_notation but absent from the
+    raw prompt — Phase-A-fabricated content that would otherwise propagate
+    downstream as if user-stated.
+
+    The model is supposed to expand and rewrite, so some new tokens are
+    legitimate (verbs, operators, structural markers). The signal worth
+    flagging is *concrete-noun* additions: capitalised words, numbers,
+    dates, named entities. These are the high-risk class for the
+    confabulated-constraint failure mode.
+
+    Returns a dict with token-count summaries plus a sample of suspect
+    additions for the trace. Conservative — produces false positives
+    that an auditor reads and dismisses, rather than missing real cases.
+    """
+    if not raw_prompt or not operational_notation:
+        return {"diff_computed": False, "reason": "missing input"}
+
+    def _tokens(text: str) -> set[str]:
+        return set(re.findall(r"[A-Za-z][A-Za-z0-9_'-]*|\d+(?:\.\d+)?", text or ""))
+
+    raw_lower = (raw_prompt or "").lower()
+    op_tokens = _tokens(operational_notation)
+
+    # Heuristic suspect classes — capitalised words (proper nouns),
+    # standalone numbers (statistics / dates / years), 4-digit years.
+    cap_word_re = re.compile(r"^[A-Z][A-Za-z0-9_'-]*$")
+    number_re = re.compile(r"^\d+(?:\.\d+)?$")
+    year_re = re.compile(r"^(19|20|21)\d{2}$")
+
+    new_caps: list[str] = []
+    new_numbers: list[str] = []
+    new_years: list[str] = []
+    for tok in sorted(op_tokens):
+        if tok.lower() in raw_lower:
+            continue
+        if year_re.match(tok):
+            new_years.append(tok)
+        elif number_re.match(tok):
+            new_numbers.append(tok)
+        elif cap_word_re.match(tok):
+            new_caps.append(tok)
+
+    # Filter common phase-A vocabulary (verbs, lens names, operator tokens).
+    PHASE_A_VOCAB = {
+        "AUDIT", "ANALYZE", "ANALYSE", "EVALUATE", "REQUEST", "GOAL",
+        "TASK", "CONTEXT", "CONSTRAINT", "EXPECTED", "STAKEHOLDER",
+        "STAKEHOLDERS", "ASSUMPTION", "ASSUMPTIONS", "INPUT", "OUTPUT",
+        "MODE", "GEAR", "STAGE", "PHASE", "PROMPT", "USER", "FRAMEWORK",
+        "CRITERIA", "OBJECTIVE", "OBJECTIVES", "DELIVERABLE",
+    }
+    new_caps = [t for t in new_caps if t not in PHASE_A_VOCAB]
+
+    suspect_count = len(new_caps) + len(new_numbers) + len(new_years)
+    return {
+        "diff_computed": True,
+        "raw_prompt_chars": len(raw_prompt),
+        "operational_notation_chars": len(operational_notation),
+        "new_capitalised_tokens": new_caps[:20],
+        "new_capitalised_count": len(new_caps),
+        "new_numeric_tokens": new_numbers[:10],
+        "new_numeric_count": len(new_numbers),
+        "new_year_tokens": new_years[:5],
+        "new_year_count": len(new_years),
+        "total_suspect_additions": suspect_count,
+        # Audit flag: any concrete noun additions warrant a human spot-check
+        # of whether Phase A invented a constraint or stakeholder.
+        "phase_a_added_concrete_nouns": suspect_count > 0,
+    }
+
+
+def _summarize_history_truncation(history: list | None,
+                                   window: int = 6,
+                                   per_message_char_cap: int = 500) -> dict:
+    """Compute how much of the original history the conv-context-builder
+    actually included vs dropped.
+
+    The conversation context Phase A sees is the last ``window`` non-system
+    messages, each truncated to ``per_message_char_cap`` chars. For
+    long-running threads this silently loses material. The returned dict
+    is suitable for embedding in the step1-phase-a trace so an auditor
+    can see when context was actually cut.
+    """
+    if not history:
+        return {
+            "history_present": False,
+            "total_messages": 0,
+            "non_system_messages": 0,
+            "messages_in_window": 0,
+            "messages_outside_window": 0,
+            "per_message_char_cap": per_message_char_cap,
+            "messages_truncated_by_cap": 0,
+            "chars_lost_to_cap_total": 0,
+            "any_truncation": False,
+        }
+    non_system = [m for m in history if m.get("role") != "system"]
+    in_window = non_system[-window:] if window else non_system
+    msgs_truncated = 0
+    chars_lost = 0
+    for m in in_window:
+        body = m.get("content") or ""
+        if len(body) > per_message_char_cap:
+            msgs_truncated += 1
+            chars_lost += len(body) - per_message_char_cap
+    outside = max(0, len(non_system) - len(in_window))
+    return {
+        "history_present": True,
+        "total_messages": len(history),
+        "non_system_messages": len(non_system),
+        "messages_in_window": len(in_window),
+        "messages_outside_window": outside,
+        "per_message_char_cap": per_message_char_cap,
+        "messages_truncated_by_cap": msgs_truncated,
+        "chars_lost_to_cap_total": chars_lost,
+        "any_truncation": outside > 0 or msgs_truncated > 0,
+    }
+
+
 def run_step1_cleanup(raw_prompt: str, conversation_context: str,
                       config: dict, ambiguity_mode: str = "assume",
-                      trace_dir: str | None = None) -> dict:
+                      trace_dir: str | None = None,
+                      history_truncation_stats: dict | None = None) -> dict:
     """Step 1: Two-pass prompt processing.
 
     Pass 1 (Phase A): Prompt cleanup only — no mode selection.
@@ -4235,6 +4354,23 @@ AMBIGUITY_MODE: {ambiguity_mode}
                 "inferred_items": step1_result.get("inferred_items", ""),
                 "detected_invocation": step1_result.get("detected_invocation", ""),
             },
+            # History-truncation audit (closes silent context-loss class):
+            # records when the conv-context-builder dropped messages outside
+            # the window or truncated long messages at the per-message cap.
+            "history_truncation": history_truncation_stats or {
+                "history_present": bool(conversation_context),
+                "stats_not_provided_by_caller": True,
+            },
+            # Phase A raw-vs-operational diff — flag concrete-noun additions
+            # that Phase A introduced. The downstream pipeline treats
+            # operational_notation as user-stated; fabricated constraints,
+            # stakeholders, statistics, or dates would propagate as if
+            # the user had said them. The diff surfaces additions for
+            # auditor review without blocking the pipeline.
+            "phase_a_diff": _diff_raw_vs_operational(
+                raw_prompt,
+                step1_result.get("operational_notation", "") or "",
+            ),
         }, markdown=(
             "# Step 1 — Phase A (Prompt Cleanup)\n\n"
             f"## Raw prompt\n\n{raw_prompt}\n\n"
@@ -4260,6 +4396,40 @@ AMBIGUITY_MODE: {ambiguity_mode}
         prompt=step1_result["operational_notation"],
         context=None,
     )
+
+    # --- Dual-dispatch audit ---
+    # Phase A's expansion can synthesize analytical vocabulary the raw
+    # prompt did not contain — pushing Stage 2 to dispatch a mode the
+    # user didn't intend (inverse of failure #7). Run the same dispatch
+    # on the raw prompt and surface any disagreement in the trace so an
+    # auditor can spot Phase A overreach. Observability only; the
+    # operational dispatch still uses the expanded prompt.
+    dispatch_audit = None
+    try:
+        raw_routing = run_pre_routing_pipeline(prompt=raw_prompt, context=None)
+        expanded_mode = routing.get("dispatched_mode_id")
+        raw_mode = raw_routing.get("dispatched_mode_id")
+        expanded_bypass = routing.get("bypass_to_direct_response", False)
+        raw_bypass = raw_routing.get("bypass_to_direct_response", False)
+        dispatch_audit = {
+            "raw_dispatched_mode_id": raw_mode,
+            "expanded_dispatched_mode_id": expanded_mode,
+            "raw_bypass": raw_bypass,
+            "expanded_bypass": expanded_bypass,
+            "raw_confidence": raw_routing.get("confidence"),
+            "expanded_confidence": routing.get("confidence"),
+            "agreement": (raw_mode == expanded_mode and raw_bypass == expanded_bypass),
+            # Audit flag: Phase A introduced an analytical dispatch the
+            # raw prompt didn't trigger. Worth a spot-check.
+            "phase_a_introduced_dispatch":
+                bool(expanded_mode and not raw_mode and not raw_bypass),
+            # Audit flag: Phase A removed a dispatch the raw prompt
+            # would have triggered (rarer but possible).
+            "phase_a_suppressed_dispatch":
+                bool(raw_mode and not expanded_mode and not expanded_bypass),
+        }
+    except Exception as _audit_exc:
+        dispatch_audit = {"audit_failed": True, "error": str(_audit_exc)[:300]}
 
     # Map the routing decision into the legacy step1_result schema so
     # server.py and run_pipeline keep working without invasive changes.
@@ -4426,6 +4596,7 @@ AMBIGUITY_MODE: {ambiguity_mode}
             "stage3_output": routing.get("stage3_output"),
             "stage1_match_count": len(stage1_out.get("matches", [])),
             "signal_strength_summary": signal_strength_summary,
+            "dispatch_audit_raw_vs_expanded": dispatch_audit,
             "triage_tier_chosen": step1_result.get("triage_tier"),
             "final_mode_chosen": step1_result.get("mode"),
         }, markdown=(
@@ -5501,17 +5672,22 @@ def run_pipeline(user_input: str, history: list = None,
         )
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
-    # Build conversation context from recent history
+    # Build conversation context from recent history. Truncation stats are
+    # captured for the trace so context-loss is visible when it matters.
     conv_context = ""
     if history:
         recent = [m for m in history[-6:] if m["role"] != "system"]
         conv_context = "\n".join(
             f"{m['role'].upper()}: {m['content'][:500]}" for m in recent
         )
+    history_trunc = _summarize_history_truncation(history,
+                                                   window=6,
+                                                   per_message_char_cap=500)
 
     step1 = run_step1_cleanup(user_input, conv_context, config,
                               ambiguity_mode=ambiguity_mode,
-                              trace_dir=trace_dir)
+                              trace_dir=trace_dir,
+                              history_truncation_stats=history_trunc)
 
     # --- Step 2: Context Package Assembly ---
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir)
@@ -5604,8 +5780,19 @@ def run_pipeline(user_input: str, history: list = None,
 
 
 def _run_model_with_tools(messages: list, endpoint: dict,
-                          max_iterations: int = 10, images: list = None) -> str:
-    """Inner agentic loop: call model, detect tool calls, execute, inject, repeat."""
+                          max_iterations: int = 10, images: list = None,
+                          trace_dir: str | None = None,
+                          step_name: str | None = None) -> str:
+    """Inner agentic loop: call model, detect tool calls, execute, inject, repeat.
+
+    When the model fails to converge before ``max_iterations`` (still emitting
+    tool calls at the cap), the last response is returned with the tool-call
+    markup stripped — but a stderr warning and (when ``trace_dir`` is set) a
+    JSONL entry in ``agentic-loop-overruns.jsonl`` make the cap-hit visible.
+    Without this surface, a model stuck in a tool-call loop produced an
+    empty-or-incomplete response with no signal that the cap was reached.
+    """
+    response = ""
     for iteration in range(max_iterations):
         # Pass images only on the first call
         response = call_model(messages, endpoint, images=images if iteration == 0 else None)
@@ -5626,7 +5813,33 @@ def _run_model_with_tools(messages: list, endpoint: dict,
             "content": f"[Tool results]\n" + "\n\n".join(tool_results)
         })
 
-    return strip_tool_calls(response)
+    # Loop cap reached AND the final iteration still emitted tool calls.
+    # Stripping them may yield an empty or fragmentary response — surface
+    # the condition so it doesn't silently propagate to the user.
+    stripped = strip_tool_calls(response)
+    endpoint_name = endpoint.get("name") if isinstance(endpoint, dict) else str(endpoint)
+    print(
+        f"[_run_model_with_tools] agentic loop hit max_iterations="
+        f"{max_iterations} with tool calls still pending; "
+        f"stripped response length={len(stripped)} chars; "
+        f"endpoint={endpoint_name} step={step_name or '_unknown_'}",
+        file=sys.stderr,
+        flush=True,
+    )
+    if PIPELINE_TRACE_AVAILABLE and trace_dir:
+        try:
+            pipeline_trace.append_jsonl(trace_dir, "agentic-loop-overruns.jsonl", {
+                "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                "step": step_name or "_unknown_",
+                "endpoint": endpoint_name,
+                "max_iterations": max_iterations,
+                "final_response_chars_stripped": len(stripped),
+                "final_response_chars_raw": len(response),
+                "final_response_was_empty_after_strip": not stripped.strip(),
+            })
+        except Exception:
+            pass
+    return stripped
 
 
 def _rag_tail(context_pkg: dict) -> str:
@@ -5771,6 +5984,30 @@ _VERIFIER_BROKEN_MARKERS = (
     "rate_limit_exceeded",
     "rate limit exceeded",
     "too many requests",
+    # API-provider error idioms — same expanded set as _UNHEALTHY_PATTERNS
+    # so the verifier-broken classifier also catches provider errors
+    # returned as 200-OK string content (not raised as Python exceptions).
+    "anthropic.apistatuserror",
+    "anthropic.ratelimiterror",
+    "anthropic.apiconnectionerror",
+    "anthropic.internalservererror",
+    "openai.ratelimiterror",
+    "openai.apiconnectionerror",
+    "openai.internalservererror",
+    "context_length_exceeded",
+    "invalid_request_error",
+    "service_unavailable",
+    "503 service unavailable",
+    "502 bad gateway",
+    "504 gateway timeout",
+    "529 overloaded",
+    "overloaded_error",
+    "model is currently overloaded",
+    "request timed out",
+    "connection refused",
+    "connection reset",
+    "navigation timeout",
+    "execution context was destroyed",
 )
 
 
@@ -5813,8 +6050,17 @@ def _verifier_broken(verifier_output: str) -> bool:
     if any(m in lower for m in _VERIFIER_BROKEN_MARKERS):
         return True
 
-    # If a real verdict token is present, the verifier produced a
-    # substantive verdict and is not broken — even when the output is short.
+    # New structured-verdict contract: the verifier itself can declare
+    # BROKEN via a line-anchored ``VERDICT: BROKEN`` token. Honour it.
+    structured = _extract_structured_verdict(verifier_output)
+    if structured == "BROKEN":
+        return True
+    if structured in ("PASS", "FAIL"):
+        return False
+
+    # If a real verdict token is present (legacy free-form), the verifier
+    # produced a substantive verdict and is not broken — even when the
+    # output is short.
     has_verified = "verified" in lower
     has_failed = "verification failed" in lower
     if has_verified or has_failed:
@@ -5827,27 +6073,77 @@ def _verifier_broken(verifier_output: str) -> bool:
     return len(txt) < 20
 
 
+_VERDICT_LINE_RE = re.compile(
+    r"^\s*(?:\*+\s*)?(?:VERDICT\s*[:\-—]\s*)?"
+    r"(?P<verdict>VERIFIED(?:\s+WITH\s+CORRECTIONS)?|VERIFICATION\s+FAILED|PASS|FAIL|BROKEN)"
+    r"(?:\b.*?)?\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _extract_structured_verdict(verifier_output: str) -> str | None:
+    """Find a verdict token anchored to its own line.
+
+    Accepts either the structured form ``VERDICT: PASS`` / ``VERDICT: FAIL`` /
+    ``VERDICT: BROKEN`` (preferred — matches the CLAUDE.md ``Verifiers
+    output VERDICT: PASS or VERDICT: FAIL`` contract) or the legacy
+    free-form ``VERIFIED`` / ``VERIFIED WITH CORRECTIONS`` /
+    ``VERIFICATION FAILED`` on its own line.
+
+    Returns ``"PASS"`` | ``"FAIL"`` | ``"BROKEN"`` | ``None``. Line
+    anchoring eliminates the substring false-positive class: phrases
+    like ``"CANNOT be VERIFIED"`` or ``"no claim is VERIFIED yet"``
+    inside prose no longer trigger PASS because they're not standalone
+    verdict lines.
+    """
+    if not verifier_output:
+        return None
+    # Last verdict line wins — the verifier's *concluding* statement is
+    # the verdict, not any earlier discussion of one.
+    last_match = None
+    for m in _VERDICT_LINE_RE.finditer(verifier_output):
+        last_match = m
+    if last_match is None:
+        return None
+    raw = last_match.group("verdict").upper()
+    raw = re.sub(r"\s+", " ", raw).strip()
+    if raw in ("PASS", "VERIFIED", "VERIFIED WITH CORRECTIONS"):
+        return "PASS"
+    if raw in ("FAIL", "VERIFICATION FAILED"):
+        return "FAIL"
+    if raw == "BROKEN":
+        return "BROKEN"
+    return None
+
+
 def _verifier_passed(verifier_output: str) -> bool:
-    """Phase 5 verifier contract: VERIFIED / VERIFIED WITH CORRECTIONS /
-    VERIFICATION FAILED. 'VERIFIED' appearing without 'VERIFICATION FAILED'
-    counts as pass; 'VERIFIED WITH CORRECTIONS' also passes (the
-    corrections are already applied in the verifier's output).
+    """Verifier contract: line-anchored verdict token. Accepts both the
+    preferred structured form (``VERDICT: PASS``) and the legacy free-form
+    (``VERIFIED`` on its own line).
 
     Returns False on broken-verifier outputs — the caller distinguishes
     broken from real-FAIL via ``_verifier_broken``. Both unblock the
-    pipeline; only real-FAIL triggers re-revision. The prior auto-PASS-
-    when-garbled behaviour is retired; broken verifier outputs no
-    longer masquerade as PASS in the trace (failure #9).
+    pipeline; only real-FAIL triggers re-revision.
 
-    Matching is case-insensitive to be symmetric with ``_verifier_broken``
-    (which lowercases before comparison). A model that emits 'verified'
-    in lowercase is still a real verdict; the prior case-sensitive check
-    misclassified it as no-verdict and burned a re-revision cycle.
+    Line anchoring closes the substring-false-positive class: phrases like
+    "CANNOT be VERIFIED", "the claim is not VERIFIED", and "this analysis
+    is unverified" no longer trigger PASS because they don't sit on a
+    verdict line. The 2026-05-15 second-sweep finding that motivated the
+    structural fix.
     """
     if not verifier_output or _verifier_broken(verifier_output):
         return False
-    upper = verifier_output.upper()
-    return "VERIFIED" in upper and "VERIFICATION FAILED" not in upper
+    verdict = _extract_structured_verdict(verifier_output)
+    if verdict is None:
+        # Fallback to the legacy upper-case substring check ONLY when the
+        # output unambiguously contains a verdict-like token AND no
+        # negation-context markers immediately precede it. Most analyser
+        # output that reaches here without a structured verdict line will
+        # NOT pass — which is the safer default than the prior substring
+        # match. Re-revision fires; the verifier is asked to comply with
+        # the contract on the next cycle.
+        return False
+    return verdict == "PASS"
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -5926,6 +6222,46 @@ _UNHEALTHY_PATTERNS = (
     "[revision error",
     "[re-revision error",
     "playwright session error",
+    # API-provider error idioms (Anthropic / OpenAI / Gemini). Without these,
+    # a 200-OK provider error returned as a content string passes the
+    # length-only health check and flows downstream as analyst output.
+    "anthropic.apistatuserror",
+    "anthropic.badrequesterror",
+    "anthropic.ratelimiterror",
+    "anthropic.apiconnectionerror",
+    "anthropic.internalservererror",
+    "openai.apierror",
+    "openai.badrequesterror",
+    "openai.ratelimiterror",
+    "openai.apiconnectionerror",
+    "openai.internalservererror",
+    "google.api_core.exceptions",
+    "googleapi error",
+    "gemini api error",
+    # Generic structured-error idioms returned as string content
+    '{"error":',
+    '{"type":"error"',
+    "error_type:",
+    "error_code:",
+    "context_length_exceeded",
+    "content_filter",
+    "invalid_request_error",
+    "service_unavailable",
+    "503 service unavailable",
+    "502 bad gateway",
+    "504 gateway timeout",
+    "529 overloaded",
+    "overloaded_error",
+    "model is currently overloaded",
+    "request timed out",
+    "connection refused",
+    "connection reset",
+    # Browser-bucket failure idioms beyond playwright-session-error
+    "browsertype.launch_persistent_context",
+    "target page, context or browser has been closed",
+    "failed to fetch from",
+    "navigation timeout",
+    "execution context was destroyed",
 )
 
 
