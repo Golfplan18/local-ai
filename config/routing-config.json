@@ -8,6 +8,12 @@
     "fallback_extractor_bucket": "fast",
     "description": "When image input arrives and the downstream model is not vision_capable, route the image through a vision-capable model from the preferred bucket. Fall back to the fallback bucket, then fail gracefully to manual-trace UX (WP-4.4). Bucket names match the configured buckets below \u2014 the actual Ora buckets are 'premium' (Claude Opus API, Gemini Pro API, browser flagships) and 'fast' (Claude Haiku, Gemini Flash, GPT-4o Mini). There is no distinct 'api-premium' bucket in this config; 'premium' spans API + browser by tier, not by transport."
   },
+  "web_supplement": {
+    "enabled": true,
+    "max_gaps": 3,
+    "max_attempts_per_gap": 2,
+    "description": "Step 2.5 anticipatory web-supplement loop. When enabled, the fast model in the step1_cleanup slot (typically Haiku) decides whether the prompt needs external information beyond the vault and conversation history. If yes, it produces up to max_gaps specific gaps each with a DDG query, runs up to max_attempts_per_gap search-and-evaluate cycles per gap (first attempt is site:-filtered to high-provenance trusted domains from Reference \u2014 Trusted Web Sources, subsequent attempts drop the filter for general DDG), and assembles the retained chunks into a ## WEB CONTEXT block in the analyst system prompt. Set enabled to false to disable entirely; the pipeline then runs vault-only RAG as before, with the existing mid-analysis Supplemental RAG Protocol still available as a fallback inside the analyst loop."
+  },
   "slots": {
     "image_generates": {
       "preferred": "openrouter:openai/gpt-5.4-image-2",

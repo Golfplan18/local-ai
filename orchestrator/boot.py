@@ -75,6 +75,21 @@ try:
 except ImportError:
     pass
 
+# Step 2.5 web-supplement loop (anticipatory web RAG). Optional: when
+# unavailable, run_step2_context_assembly emits a 'web_supplement_skipped'
+# signal and the pipeline proceeds with vault-only RAG.
+WEB_SUPPLEMENT_AVAILABLE = False
+try:
+    from web_supplement import (
+        assemble_web_supplemental_context,
+        DEFAULT_MAX_GAPS as _WEB_SUPP_DEFAULT_MAX_GAPS,
+        DEFAULT_MAX_ATTEMPTS_PER_GAP as _WEB_SUPP_DEFAULT_MAX_ATTEMPTS,
+        DEFAULT_SLOT as _WEB_SUPP_DEFAULT_SLOT,
+    )
+    WEB_SUPPLEMENT_AVAILABLE = True
+except ImportError:
+    pass
+
 # Pipeline forensic trace — per-turn structured record of every step's
 # inputs and outputs. Writes to ``~/ora/data/pipeline-traces/<conv>/<ts>/``.
 # Every helper is defensive (try/except wrapped); trace failure never
@@ -4950,6 +4965,28 @@ _GEAR_SLOTS_USED = {
 }
 
 
+def _load_web_supplement_config() -> dict:
+    """Read the ``web_supplement`` section from routing-config.json.
+
+    Defaults: ``enabled=True``, ``max_gaps=3``, ``max_attempts_per_gap=2``.
+    Missing file or missing section → defaults (treat as enabled). The
+    caller is responsible for layering its own ``enabled=False`` short-
+    circuit before doing anything expensive.
+    """
+    defaults = {
+        "enabled": True,
+        "max_gaps": _WEB_SUPP_DEFAULT_MAX_GAPS if WEB_SUPPLEMENT_AVAILABLE else 3,
+        "max_attempts_per_gap": _WEB_SUPP_DEFAULT_MAX_ATTEMPTS if WEB_SUPPLEMENT_AVAILABLE else 2,
+    }
+    try:
+        with open(ROUTING_CONFIG_JSON, "r") as f:
+            rc = json.load(f)
+        section = rc.get("web_supplement") or {}
+        return {**defaults, **section}
+    except Exception:
+        return defaults
+
+
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None) -> dict:
     """Step 2: Assemble context package for pipeline stages.
@@ -5124,6 +5161,67 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     trace_dir, "rag-engine-init-or-relationship", cleaned_prompt, e
                 )
 
+    # --- Step 2.5 — Web Supplement Loop (anticipatory) ---
+    # Runs ONLY when:
+    #   - the web_supplement module imported cleanly,
+    #   - routing-config.json has `web_supplement.enabled: true` (the
+    #     default — section absent is treated as enabled),
+    #   - the dispatched gear is >= 2 (Gear 1 / bypass paths skip).
+    # The fast model (step1_cleanup slot) decides whether web is needed
+    # and, if so, iterates decide→search→evaluate per gap. Output is a
+    # pre-formatted "## WEB CONTEXT" body retrieved BEFORE the analyst
+    # runs — the existing mid-analysis Supplemental RAG Protocol stays as
+    # the rare-case fallback for gaps this pass didn't anticipate.
+    web_rag = ""
+    web_supplement_trace: dict = {"status": "skipped", "reason": "not_attempted"}
+    if WEB_SUPPLEMENT_AVAILABLE and gear >= 2:
+        ws_cfg = _load_web_supplement_config()
+        if not ws_cfg.get("enabled", True):
+            web_supplement_trace = {"status": "skipped",
+                                     "reason": "disabled_in_routing_config"}
+        else:
+            fast_ep = get_slot_endpoint(config, _WEB_SUPP_DEFAULT_SLOT)
+            if fast_ep is None:
+                web_supplement_trace = {"status": "skipped",
+                                         "reason": "no_fast_endpoint"}
+            else:
+                try:
+                    ws_result = assemble_web_supplemental_context(
+                        user_prompt=raw_prompt or cleaned_nl or cleaned_prompt,
+                        call_model=call_model,
+                        fast_endpoint=fast_ep,
+                        conversation_context=(
+                            conv_rag[:2000] if conv_rag else ""
+                        ),
+                        max_gaps=ws_cfg.get(
+                            "max_gaps", _WEB_SUPP_DEFAULT_MAX_GAPS,
+                        ),
+                        max_attempts_per_gap=ws_cfg.get(
+                            "max_attempts_per_gap",
+                            _WEB_SUPP_DEFAULT_MAX_ATTEMPTS,
+                        ),
+                    )
+                    web_rag = ws_result.get("text") or ""
+                    web_supplement_trace = {
+                        "status": "ran",
+                        "text_chars": len(web_rag),
+                        "decision": ws_result.get("decision"),
+                        "gaps_processed": ws_result.get("gaps_processed", []),
+                        "signals": ws_result.get("signals", []),
+                        "elapsed_seconds": ws_result.get("elapsed_seconds"),
+                        "endpoint_used": ws_result.get("endpoint_used"),
+                    }
+                except Exception as exc:
+                    # Fail-soft: any unexpected error in the supplement
+                    # loop must not block the pipeline.
+                    print(
+                        f"[web-supplement] unexpected error: {exc}. "
+                        f"Continuing with vault-only RAG.",
+                        file=sys.stderr, flush=True,
+                    )
+                    web_supplement_trace = {"status": "errored",
+                                             "reason": str(exc)[:300]}
+
     # Phase 9 — Decision I/J output format expansion. New fields surface
     # pre-routing-pipeline state populated by run_step1_cleanup → routing.
     pre_routing = step1_result.get("pre_routing", {}) or {}
@@ -5255,7 +5353,15 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             + f"```\n{concept_rag or '_(empty)_'}\n```\n\n"
             f"## Relationship RAG ({len(relationship_rag)} chars)\n\n"
             f"```\n{relationship_rag or '_(empty)_'}\n```\n\n"
-            f"## Budget signals\n\n"
+            f"## Web supplement (Step 2.5)\n\n"
+            f"**Status:** `{web_supplement_trace.get('status')}` "
+            f"({web_supplement_trace.get('reason') or web_supplement_trace.get('text_chars', 0)} "
+            f"{'chars' if web_supplement_trace.get('status') == 'ran' else ''})\n\n"
+            + (
+                f"```\n{web_rag}\n```\n\n"
+                if web_rag else ""
+            )
+            + f"## Budget signals\n\n"
             + (
                 "\n".join(f"- {s['code']}: {s['description']}" for s in signal_descriptions)
                 if signal_descriptions else "_(none)_"
@@ -5264,6 +5370,26 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             f"## Utilization header\n\n"
             f"```\n{rag_utilization or '_(none)_'}\n```\n"
         ))
+
+        # Full per-gap web-supplement detail as its own trace file so
+        # step2-context stays readable (the per-gap attempts list can grow).
+        if web_supplement_trace.get("status") in ("ran", "errored"):
+            pipeline_trace.write_step(trace_dir, "step2-web-supplement",
+                                       web_supplement_trace, markdown=(
+                "# Step 2.5 — Web Supplement\n\n"
+                f"**Status:** `{web_supplement_trace.get('status')}`\n"
+                f"**Elapsed:** {web_supplement_trace.get('elapsed_seconds', 0):.2f}s\n"
+                f"**Endpoint:** {web_supplement_trace.get('endpoint_used') or '_(none)_'}\n\n"
+                f"## Decision\n\n```\n"
+                f"{json.dumps(web_supplement_trace.get('decision'), indent=2)}\n```\n\n"
+                f"## Gaps processed\n\n```\n"
+                f"{json.dumps(web_supplement_trace.get('gaps_processed', []), indent=2)}\n```\n\n"
+                f"## Signals\n\n"
+                + "\n".join(
+                    f"- {s}" for s in web_supplement_trace.get("signals", [])
+                )
+                + "\n"
+            ))
 
     return {
         # `cleaned_prompt` is the composite raw + Phase-A-clarified form used
@@ -5287,6 +5413,14 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         "conversation_rag": conv_rag,
         "concept_rag": concept_rag,
         "relationship_rag": relationship_rag,
+        # Step 2.5 — anticipatory web-supplement context (empty string when
+        # the loop didn't run, didn't decide it was needed, or didn't
+        # resolve any gaps). Injected by build_system_prompt_for_gear as
+        # the ## WEB CONTEXT block when non-empty.
+        "web_rag": web_rag,
+        # Per-turn trace of the web-supplement decision + gap loop, kept
+        # on the package so server-side observability can surface it.
+        "web_supplement_trace": web_supplement_trace,
         "triage_tier": step1_result["triage_tier"],
         "rag_signals": rag_signals,
         "rag_utilization": rag_utilization,
@@ -5537,13 +5671,20 @@ def build_system_prompt_for_gear(
                 f"{format_guidance}"
             )
 
-    # RAG (all steps benefit from conversation + knowledge + relationship context)
+    # RAG (all steps benefit from conversation + knowledge + relationship + web context)
     if context_package["conversation_rag"]:
         parts.append(f"\n## CONVERSATION CONTEXT\n\n{context_package['conversation_rag']}")
     if context_package["concept_rag"]:
         parts.append(f"\n## KNOWLEDGE CONTEXT\n\n{context_package['concept_rag']}")
     if context_package.get("relationship_rag"):
         parts.append(f"\n## RELATIONSHIP CONTEXT\n\n{context_package['relationship_rag']}")
+    if context_package.get("web_rag"):
+        # Step 2.5 anticipatory web supplement. Each chunk carries a
+        # `[classification: ... | weight: ... | source: <url>]` provenance
+        # marker so the model can weigh web content appropriately against
+        # vault content (web is lower-provenance by design — see
+        # Reference — Ora YAML Schema §15 EXTERNAL_WEIGHTS).
+        parts.append(f"\n## WEB CONTEXT (supplemental, lower provenance)\n\n{context_package['web_rag']}")
     if context_package.get("rag_utilization"):
         parts.append(f"\n{context_package['rag_utilization']}")
 
