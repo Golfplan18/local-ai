@@ -749,6 +749,23 @@ def format_context_with_provenance(
     return "\n".join(parts)
 
 
+# Practical effective context window. Models past this size suffer from
+# attention dispersion (the "lost in the middle" effect — Liu et al. 2023
+# and subsequent reasoning-trace studies). Even when a model advertises 1M
+# tokens (xiaomi/mimo-v2-pro, gemini-2.5-pro-1m, etc.) or 256K
+# (x-ai/grok-4.3), retrieval-quality degrades well before the advertised
+# limit. 128K is the common modern ceiling where context is reliably
+# usable end-to-end — matches Claude 4.x, GPT-5, and most modern open-
+# weight frontier models. RAG-budget calculations cap to this floor so
+# we don't allocate retrieval content into the no-go zone.
+#
+# Per-endpoint override via `"rag_practical_window_tokens"`. Set to a
+# higher value when you trust a specific model's deep-context behavior
+# (e.g. some long-context-tuned models published with reliability
+# benchmarks past 128K).
+PRACTICAL_CONTEXT_TOKENS = 128_000
+
+
 def compute_rag_max_chars(
     endpoint: Optional[dict] = None,
     *,
@@ -758,6 +775,7 @@ def compute_rag_max_chars(
     chars_per_token: int = 4,
     floor_chars: int = 8000,
     ceiling_chars: int = 400_000,
+    practical_window_tokens: int = PRACTICAL_CONTEXT_TOKENS,
 ) -> int:
     """Compute the RAG-package character cap from the actual model's
     context window — *not* a hardcoded magic number.
@@ -769,8 +787,18 @@ def compute_rag_max_chars(
     package. The model could not see most of the relevant material
     because the formatter cut it long before the window was full.
 
+    Practical-window cap:
+        The advertised context_window is *clamped* to
+        ``practical_window_tokens`` (128K by default) before the budget
+        calc. Models past 128K suffer attention dispersion that makes
+        the deep-context region unreliable for retrieval-grounded
+        analysis. A 1M-window model gets the same RAG budget as a 128K
+        model — additional advertised space goes to the model's own
+        internal reasoning room, not to RAG content.
+
     Formula:
-        usable_tokens = context_window
+        effective_cw  = min(context_window, practical_window_tokens)
+        usable_tokens = effective_cw
                         - non_rag_reserve_tokens    # system + mode + history + protocol
                         - output_reserve_tokens     # room for the analyst's response
         budget_tokens = usable_tokens * reservation_fraction
@@ -782,11 +810,11 @@ def compute_rag_max_chars(
     ``reservation_fraction`` floor of 0.5 honours the lost-in-the-
     middle effect by NOT giving RAG the entire remainder.
 
-    Override via the endpoint dict (`"rag_reservation_fraction"`,
-    `"rag_non_rag_reserve_tokens"`, `"rag_output_reserve_tokens"`,
-    `"rag_ceiling_chars"`) or via call-site kwargs. When no endpoint
-    is supplied or no ``context_window`` is declared, falls back to
-    ``floor_chars``.
+    Override via the endpoint dict (``"rag_reservation_fraction"``,
+    ``"rag_non_rag_reserve_tokens"``, ``"rag_output_reserve_tokens"``,
+    ``"rag_ceiling_chars"``, ``"rag_practical_window_tokens"``) or via
+    call-site kwargs. When no endpoint is supplied or no
+    ``context_window`` is declared, falls back to ``floor_chars``.
     """
     ep = endpoint or {}
     cw = ep.get("context_window")
@@ -798,8 +826,14 @@ def compute_rag_max_chars(
     non_rag = int(ep.get("rag_non_rag_reserve_tokens", non_rag_reserve_tokens))
     out_res = int(ep.get("rag_output_reserve_tokens", output_reserve_tokens))
     ceiling = int(ep.get("rag_ceiling_chars", ceiling_chars))
+    practical = int(ep.get("rag_practical_window_tokens", practical_window_tokens))
 
-    usable_tokens = max(0, cw - non_rag - out_res)
+    # Clamp the advertised window to the practical-use ceiling. Past 128K
+    # most models show measurable retrieval-quality degradation — see the
+    # PRACTICAL_CONTEXT_TOKENS doc above.
+    effective_cw = min(cw, practical) if practical > 0 else cw
+
+    usable_tokens = max(0, effective_cw - non_rag - out_res)
     budget_tokens = int(usable_tokens * res_frac)
     budget_chars = budget_tokens * chars_per_token
     return max(floor_chars, min(budget_chars, ceiling))
