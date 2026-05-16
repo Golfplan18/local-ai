@@ -4352,6 +4352,13 @@ AMBIGUITY_MODE: {ambiguity_mode}
     ]
     cleanup_response = call_model(messages, endpoint)
     step1_result = parse_step1_output(cleanup_response)
+    # Preserve the user's actual sentence on step1_result so downstream
+    # steps (step 2 context assembly, the analyst/eval/verify user-message
+    # construction) can present the user's actual words alongside Phase
+    # A's clarified interpretation rather than substituting one for the
+    # other. parse_step1_output only knows the model response, not the
+    # raw input; this is the only place we have both in scope.
+    step1_result["raw_prompt"] = raw_prompt
 
     # --- Trace: Phase A inputs and parsed outputs ---
     if PIPELINE_TRACE_AVAILABLE:
