@@ -5368,6 +5368,69 @@ def _extract_section(text: str, heading: str) -> str:
     return m.group(1).strip() if m else ""
 
 
+def _extract_boot_behavioral_preamble(boot_md: str) -> str:
+    """Return the behavioral subset of boot.md for pipeline step prompts.
+
+    The full boot.md (~13.6KB) contains both behavioral instruction (§
+    CONSTITUTION, § STANDING RULES) and architectural metadata (§ MODE
+    REGISTRY, § IDENTITY, § MODELS, § TOOLS catalog, § PIPELINE, § EVALUATION,
+    § GUIDELINES, § MEMORY, § AUTONOMOUS, § RECOVERY). The architectural
+    sections describe the *system Ora is*; the behavioral sections describe
+    *how the model should behave*. A pipeline step's job is to act as a
+    specific mode at a specific step — it doesn't need the mode registry to
+    pick a mode (already dispatched), doesn't call tools (those run
+    elsewhere), and doesn't need to know about other models / pipeline
+    architecture / autonomous-run semantics.
+
+    Pre-2026-05-16 the full boot.md was prefixed to every analyst /
+    evaluator / reviser / verifier / consolidator / formatter system
+    prompt — adding ~11KB of metadata noise for a single step performing
+    one specific task. This helper extracts just the behavioral preamble.
+
+    The 3-line ``### Anti-Confabulation`` subsection inside § STANDING
+    RULES is stripped because the longer ``_UNIVERSAL_ANTI_CONFABULATION``
+    block (appended by ``load_boot_md`` and carried into the boot_md
+    argument here) is the canonical detailed version — keeping both would
+    duplicate the same instruction.
+
+    Direct-mode / legacy / Gear-1 callers that need the full boot.md
+    (because they're not dispatched to a specific mode) continue to call
+    ``load_boot_md()`` directly and get all sections.
+    """
+    # The header itself plus § CONSTITUTION and § STANDING RULES.
+    constitution = _extract_section(boot_md, "§ CONSTITUTION")
+    standing_rules = _extract_section(boot_md, "§ STANDING RULES")
+
+    # Drop the ### Anti-Confabulation subsection from § STANDING RULES; the
+    # _UNIVERSAL_ANTI_CONFABULATION block (already appended by load_boot_md)
+    # is the canonical detailed version.
+    if standing_rules:
+        standing_rules = re.sub(
+            r'### Anti-Confabulation\s*\n.*?(?=\n### |\Z)',
+            '',
+            standing_rules,
+            flags=re.DOTALL,
+        ).strip()
+
+    # The _UNIVERSAL_ANTI_CONFABULATION block was appended to boot_md inside
+    # load_boot_md(); extract and re-append it so it survives the trim.
+    universal_block_match = re.search(
+        r'(## ANTI-CONFABULATION DISCIPLINE — UNIVERSAL.*?)(?=\n## |\Z)',
+        boot_md,
+        flags=re.DOTALL,
+    )
+    universal_block = universal_block_match.group(1).strip() if universal_block_match else ""
+
+    parts = ["# boot-v5-C.md (behavioral preamble)"]
+    if constitution:
+        parts.append(f"## § CONSTITUTION\n{constitution}")
+    if standing_rules:
+        parts.append(f"## § STANDING RULES\n{standing_rules}")
+    if universal_block:
+        parts.append(universal_block)
+    return "\n\n".join(parts)
+
+
 # Pipeline step names consumed by ``build_system_prompt_for_gear``.
 _PIPELINE_STEPS = frozenset({
     "analyst", "evaluator", "reviser", "verifier", "consolidator", "formatter",
@@ -5416,10 +5479,14 @@ def build_system_prompt_for_gear(
     verification_criteria  = _extract_section(mode_text, "VERIFICATION CRITERIA")
     format_guidance        = _extract_section(mode_text, "OUTPUT FORMAT GUIDANCE")
 
-    # Universal anti-confabulation directive — now appended inside
-    # load_boot_md() itself (so every load_boot_md() caller, not only this
-    # function, gets the directive). Avoid duplicating it here.
-    parts = [boot_md]
+    # Trimmed boot prompt — see _extract_boot_behavioral_preamble. The full
+    # boot.md added ~11KB of architectural metadata (mode registry, full
+    # tools catalog, pipeline architecture, etc.) to every pipeline step
+    # system prompt; the behavioral preamble keeps just § CONSTITUTION +
+    # § STANDING RULES + the canonical anti-confabulation block. Direct-mode
+    # / legacy callers (line 5926, 8051) still get the full boot.md via
+    # load_boot_md(); only pipeline step prompts use the trimmed form.
+    parts = [_extract_boot_behavioral_preamble(boot_md)]
 
     # Phase A INFERRED_ITEMS block — fix for silent failure #10. When
     # Phase A ran in assume-mode and resolved ambiguities by inferring
@@ -6016,15 +6083,20 @@ def _run_model_with_tools(messages: list, endpoint: dict,
 
 
 def _rag_tail(context_pkg: dict) -> str:
-    """Shared RAG context suffix applied to every step prompt in Gears 3/4."""
-    tail = ""
-    conv_rag = context_pkg.get("conversation_rag") or ""
-    concept_rag = context_pkg.get("concept_rag") or ""
-    if conv_rag:
-        tail += f"\n\n## CONVERSATION CONTEXT\n\n{conv_rag}"
-    if concept_rag:
-        tail += f"\n\n## KNOWLEDGE CONTEXT\n\n{concept_rag}"
-    return tail
+    """Legacy helper — returns empty string.
+
+    Originally appended a second copy of CONVERSATION CONTEXT / KNOWLEDGE
+    CONTEXT to step prompts. ``build_system_prompt_for_gear`` already adds
+    those sections via its own RAG block (line 5495-5503), so calling
+    ``_rag_tail`` after it was double-injecting the same chunks into every
+    Gear-3/4 step system prompt — adding ~3-7KB of duplicate content and
+    making the analyst read its RAG twice.
+
+    Kept as an empty no-op for callers that still reference it, in case any
+    out-of-tree code paths assume its presence. Safe to remove entirely
+    once callers are audited.
+    """
+    return ""
 
 
 _INLINE_DISPATCH_DIRECTIVE = """## DISPATCH PROTOCOL — INLINE-ONLY RESPONSE
