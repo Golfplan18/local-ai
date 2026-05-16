@@ -134,16 +134,53 @@ def _price(val) -> float | None:
         return None
 
 
+def _extract_input_modalities(entry: dict) -> list[str]:
+    """Read ``architecture.input_modalities`` from a raw OpenRouter entry.
+
+    OpenRouter exposes per-model ``architecture`` data with an
+    ``input_modalities`` array like ``["text", "image"]`` for multimodal
+    models or ``["text"]`` for text-only. Some older entries don't have
+    the field — fall back to parsing the ``modality`` shorthand
+    ("text+image->text", "text->text", etc.) when present, else default
+    to ``["text"]``.
+
+    The result drives the picker's "vision-capable only" filter and the
+    ``slots.image_generates`` chain's ability to be validated against
+    actual model capabilities at refresh time.
+    """
+    arch = entry.get("architecture", {}) or {}
+    raw = arch.get("input_modalities")
+    if isinstance(raw, list) and raw:
+        return [str(m).lower() for m in raw]
+
+    # Parse the "text+image->text" shorthand when the array form is absent.
+    mod = arch.get("modality") or ""
+    if isinstance(mod, str) and "->" in mod:
+        lhs = mod.split("->", 1)[0]
+        parts = [p.strip().lower() for p in lhs.split("+") if p.strip()]
+        if parts:
+            return parts
+
+    return ["text"]
+
+
 def _normalize(entry: dict) -> dict:
     """Reduce a raw OpenRouter model entry to the shape the UI needs."""
     pricing = entry.get("pricing", {}) or {}
     top_provider = entry.get("top_provider", {}) or {}
     model_id = entry.get("id", "")
+    input_mods = _extract_input_modalities(entry)
     return {
         "id":                  model_id,
         "vendor":              _vendor_of(model_id),
         "display_name":        entry.get("name") or model_id,
         "modality":            _classify_modality(entry),
+        # New (2026-05-16): what the model ACCEPTS as input. Distinct from
+        # `modality` which is OUTPUT-derived. Drives the picker filter for
+        # vision-capable models and validates the image_generates slot
+        # chain at refresh time.
+        "input_modalities":    input_mods,
+        "accepts_image":       "image" in input_mods,
         "context_length":      entry.get("context_length")
                                 or top_provider.get("context_length"),
         "max_completion":      top_provider.get("max_completion_tokens"),
@@ -159,12 +196,24 @@ def _normalize(entry: dict) -> dict:
 
 
 def _group(models: list[dict]) -> dict:
-    """Build vendor + modality indices the UI can use without re-grouping."""
+    """Build vendor + modality indices the UI can use without re-grouping.
+
+    Three indices:
+      * ``by_modality``       — keyed by OUTPUT modality (text, image, ...).
+      * ``by_vendor``         — keyed by vendor prefix (openai, anthropic, ...).
+      * ``by_input_modality`` — keyed by INPUT modality. A model accepting
+        ``["text", "image"]`` appears under BOTH ``text`` and ``image``.
+        Drives the picker's "vision-capable only" filter for the
+        image_generates / vision_extraction slot configuration.
+    """
     by_modality: dict[str, list[str]] = {}
     by_vendor:   dict[str, list[str]] = {}
+    by_input_modality: dict[str, list[str]] = {}
     for m in models:
         by_modality.setdefault(m["modality"], []).append(m["id"])
         by_vendor.setdefault(m["vendor"],     []).append(m["id"])
+        for in_mod in m.get("input_modalities") or []:
+            by_input_modality.setdefault(in_mod, []).append(m["id"])
     # Stable order within each group: vendor → display name.
     by_lookup = {m["id"]: m for m in models}
     def _sort_key(mid: str) -> tuple:
@@ -172,9 +221,15 @@ def _group(models: list[dict]) -> dict:
         return (m["vendor"].lower(), m["display_name"].lower())
     for k in by_modality:
         by_modality[k].sort(key=_sort_key)
+    for k in by_input_modality:
+        by_input_modality[k].sort(key=_sort_key)
     for k in by_vendor:
         by_vendor[k].sort(key=lambda mid: by_lookup[mid]["display_name"].lower())
-    return {"by_modality": by_modality, "by_vendor": by_vendor}
+    return {
+        "by_modality":       by_modality,
+        "by_vendor":         by_vendor,
+        "by_input_modality": by_input_modality,
+    }
 
 
 def build_catalog(raw_entries: list[dict]) -> dict:
@@ -206,10 +261,16 @@ def main():
 
     catalog = build_catalog(raw_entries)
     summary = {k: len(v) for k, v in catalog["by_modality"].items()}
+    in_summary = {k: len(v) for k, v in catalog["by_input_modality"].items()}
 
     print(f"[refresh-openrouter] fetched {catalog['model_count']} models")
+    print("  output modality:")
     for modality, n in sorted(summary.items(), key=lambda kv: -kv[1]):
-        print(f"  {modality:>14}: {n}")
+        print(f"    {modality:>14}: {n}")
+    print("  input modality (image-input is the load-bearing filter for")
+    print("                   vision-extraction slot eligibility):")
+    for modality, n in sorted(in_summary.items(), key=lambda kv: -kv[1]):
+        print(f"    {modality:>14}: {n}")
 
     if args.dry_run:
         print("[refresh-openrouter] dry-run — catalog file untouched")
