@@ -4,7 +4,7 @@
 Mission, Objectives, and Milestones (MOM)
 
 ## Display Description
-Convert a raw idea, tension, or goal into a structured strategic-layer hierarchy across the four matrix classifications (Project / Operation / Passion / Incubator). Standalone (M-Standalone) produces a populated matrix file; Supervised (M-Supervised, invoked from PEF v3.0 with `project_type`) produces strategic-layer content for insertion into a matrix file with Active/Aspirational milestone split (Projects), recurring + maturity-gate split (Operations), or practices and directions of travel (Passions). Service Statement Objectivity Protocol applies cycle-shape verification to Operations parallel to Resolution Statement Objectivity Protocol on Projects/Incubators. Minimal-mode invocation supports low-friction elicitation for personal routines and other low-complexity matrices.
+Convert a raw idea, tension, or goal into a structured strategic-layer hierarchy across the four matrix classifications (Project / Operation / Passion / Incubator). M-Standalone produces a populated matrix file; M-Supervised (invoked from PEF v3.0) produces strategic-layer content for insertion with classification-appropriate milestone shape. See the full spec for Objectivity Protocols and milestone semantics.
 
 
 *A Framework for Articulating Mission, Eliciting Constraints, and Formulating Classification-Appropriate Milestones — Either Standalone or Under Problem Evolution Framework Supervision*

@@ -595,8 +595,17 @@ class TestAnalyzeArticleViaRanking(unittest.TestCase):
     def test_justification_is_deterministic_and_auditable(self):
         analysis = analyze_article_via_ranking(CPI_ARTICLE_WITH_THEMES)
         for opp in analysis.opportunities:
-            # Justification should mention score components
-            self.assertIn("score:", opp.justification)
+            # Each opportunity's justification must carry an audit trail.
+            # Singleton opportunities cite per-dimension score components
+            # ("score: name_match=0.8, theme=..."); composite-chart
+            # opportunities cite group-membership ("Composite chart: N of
+            # M group members ... appeared in top picks"). Both formats
+            # are deterministic and auditable; the test accepts either.
+            j = opp.justification
+            self.assertTrue(
+                "score:" in j or "Composite chart:" in j,
+                f"justification lacks audit signal: {j!r}"
+            )
 
     def test_default_mode_via_main_entry_is_ranking(self):
         # No call_fn, no mode kwarg → ranking path, succeeds.

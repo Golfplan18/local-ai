@@ -4,7 +4,7 @@
 Output Formalization (OFF)
 
 ## Display Description
-Meta-framework for formalizing the expression side of knowledge work — how an output is shaped, structured, and rendered for its audience. Pairs with Process Formalization (PFF) and Corpus Formalization (CFF). Use to design or audit how a deliverable type is produced and presented. Outputs may be standalone or declared as Coordinated Outputs of an Operation (per `Framework — Operations Manifest`); when declared, the OFF specification appears as a row in the Operation Matrix's Coordinated Outputs section with cadence of production, source corpora, and consumer. Operation cycle close (per OM Cycle Close Verification) checks that rendered outputs are not just produced but actually consumed (the "rendered output produced but not consumed" near-miss pattern).
+Meta-framework for formalizing the expression side of knowledge work — how an output is shaped, structured, and rendered for its audience. Pairs with Process Formalization (PFF) and Corpus Formalization (CFF). Use to design or audit how a deliverable type is produced and presented. Outputs may be standalone or declared as Coordinated Outputs of an Operation; the full spec covers Operation Matrix integration, cycle-close consumption verification, and rendering media.
 
 
 *A Meta-Framework for Formalizing the Expression Side of Knowledge Work*

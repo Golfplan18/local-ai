@@ -36,14 +36,25 @@ VALID_TYPES = {
 }
 
 
+# Bypass-style modes that don't go through the analytical pipeline and
+# therefore don't need cross-mode relationship priorities. The RAG
+# relationship-traversal step is gear-2+; gear-1 / catch-all modes are
+# exempted from the priority-presence checks.
+_BYPASS_STYLE_MODES = {"simple"}
+
+
 class TestAllModesCarryPriorities(unittest.TestCase):
-    """Every mode file must carry the section the parser expects."""
+    """Every analytical mode file must carry the section the parser expects."""
 
     def test_section_present_in_every_mode(self):
         mode_files = sorted(MODES_DIR.glob("*.md"))
-        self.assertEqual(len(mode_files), 58, "expected 58 mode files")
+        analytical = [p for p in mode_files if p.stem not in _BYPASS_STYLE_MODES]
+        self.assertGreaterEqual(
+            len(analytical), 58,
+            f"expected at least 58 analytical mode files, found {len(analytical)}"
+        )
         missing = []
-        for path in mode_files:
+        for path in analytical:
             text = path.read_text(encoding="utf-8")
             if "### RAG PROFILE — RELATIONSHIP PRIORITIES" not in text:
                 missing.append(path.stem)
@@ -53,8 +64,12 @@ class TestAllModesCarryPriorities(unittest.TestCase):
         )
 
     def test_each_mode_parses_to_nonempty_priority_list(self):
-        """Parser must return at least one prioritized type for each mode."""
+        """Parser must return at least one prioritized type for each
+        analytical mode. Bypass-style modes (gear-1, direct-response)
+        are exempted — they don't use cross-mode relationship traversal."""
         for path in sorted(MODES_DIR.glob("*.md")):
+            if path.stem in _BYPASS_STYLE_MODES:
+                continue
             with self.subTest(mode=path.stem):
                 text = path.read_text(encoding="utf-8")
                 pri = parse_mode_relationship_priorities(text)

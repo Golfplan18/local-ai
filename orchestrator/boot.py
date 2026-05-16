@@ -2716,8 +2716,14 @@ def _parse_input_contract(mode_text: str) -> dict:
     graceful_degradation sub-dicts. Naive YAML parser sized for the
     template structure used in /Users/oracle/ora/modes/*.md.
     """
-    # Locate the input_contract: line and capture the indented block
-    pattern = r"^input_contract:\s*\n((?:  .+\n|\n)+?)(?=^[a-z][\w-]*:|\Z)"
+    # Locate the input_contract: line and capture the indented block.
+    # The block runs until the next non-indented, non-blank line (e.g., a
+    # ``# 5. CRITICAL QUESTIONS`` markdown heading, the next YAML key, or
+    # end-of-file). The prior lookahead-based pattern required a strict
+    # `[a-z]\w*:` line to terminate the block and failed when a markdown
+    # comment heading appeared first — silently returning {} so Stage 3
+    # treated every cui-bono prompt as "no contract → passes through".
+    pattern = r"^input_contract:\s*\n((?:[ \t].+\n|\s*\n)+)"
     m = re.search(pattern, mode_text, re.MULTILINE)
     if not m:
         return {}

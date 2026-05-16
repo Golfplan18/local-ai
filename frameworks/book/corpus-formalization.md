@@ -4,7 +4,7 @@
 Corpus Formalization (CFF)
 
 ## Display Description
-Meta-framework for formalizing the knowledge corpus — the set of facts, lenses, and reference material that sits between processes (PFF) and outputs (OFF). Use to design or audit how a knowledge body is structured, navigated, and surfaced for downstream framework execution. Corpora can be standalone or coordinated by an Operation (per `Framework — Operations Manifest`); when coordinated, the corpus matrix carries a `primary_operation` body-field marker identifying the Operation that owns curatorship (cadence, schema, archival decisions, handoff). When a corpus need surfaces an underlying recurring practice, hand off to OM-Init in O-FromCorpus entry mode rather than building the corpus standalone.
+Meta-framework for formalizing the knowledge corpus — the set of facts, lenses, and reference material that sits between processes (PFF) and outputs (OFF). Use to design or audit how a knowledge body is structured, navigated, and surfaced for downstream framework execution. Coordination semantics with the Operations Manifest (corpus matrix `primary_operation` marker, O-FromCorpus hand-off) are documented in the full spec.
 
 
 *A Meta-Framework for Formalizing the Knowledge Corpus That Sits Between Process and Output*

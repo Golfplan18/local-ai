@@ -4,7 +4,7 @@
 Problem Evolution (PEF)
 
 ## Display Description
-Iterative strategic-layer evolution and matrix supervision across all matrix types (Project / Operation / Passion / Incubator). Turns raw epistemic tension into a populated matrix file with Mission, Objectives, Constraints, and type-appropriate strategic-layer content (Project: Active/Aspirational milestones with Resolution Statement; Operation: recurring Active + Aspirational maturity gates with Service Statement, Cadence, Coordinated Corpora, Coordinated Outputs; Passion: Practices and Directions of Travel; Incubator: Critical Unknown and exploration plan). Drives downstream framework invocation (MOM, TMF, PIF, PFF, WPF, Operations Manifest) as needed.
+Iterative strategic-layer evolution and matrix supervision across all matrix types (Project / Operation / Passion / Incubator). Turns raw epistemic tension into a populated matrix file with Mission, Objectives, Constraints, and type-appropriate strategic-layer content. Drives downstream framework invocation (MOM, TMF, PIF, PFF, WPF, Operations Manifest) as needed.
 
 
 *A Framework for Iterative Problem Definition, Project Navigation, MOM-Supervised Milestone Formulation, and Downstream Framework Routing*
