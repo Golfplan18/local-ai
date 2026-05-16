@@ -11,7 +11,9 @@
       "username": "input[type=\"email\"], input[name=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"], button:has-text(\"Continue\")"
-    }
+    },
+    "new_chat_url": "https://claude.ai/new",
+    "response_streaming_selector": "[data-is-streaming=\"true\"]"
   },
   "chatgpt": {
     "url": "https://chatgpt.com/",
@@ -25,7 +27,9 @@
       "username": "input[type=\"email\"], input[name=\"username\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"], button:has-text(\"Continue\")"
-    }
+    },
+    "new_chat_url": "https://chatgpt.com/?temporary-chat=true",
+    "response_streaming_selector": "button[data-testid=\"stop-button\"], button[data-testid=\"composer-stop-button\"], button[aria-label=\"Stop generating\"], button[aria-label=\"Stop streaming\"], button[aria-label=\"Stop\"], button[aria-label=\"Stop response\"], button[aria-label=\"Stop sharing\"]"
   },
   "gemini": {
     "url": "https://gemini.google.com/app",
@@ -39,7 +43,9 @@
       "username": "input[type=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button:has-text(\"Next\"), #identifierNext button"
-    }
+    },
+    "new_chat_url": "https://gemini.google.com/app",
+    "response_streaming_selector": "button[aria-label=\"Stop response\"], .stop-icon, [data-test-id=\"stop-button\"]"
   },
   "perplexity": {
     "url": "https://www.perplexity.ai/",
@@ -53,7 +59,8 @@
       "username": "input[type=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://www.perplexity.ai/"
   },
   "mistral": {
     "url": "https://chat.mistral.ai/chat",
@@ -67,7 +74,8 @@
       "username": "input[type=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://chat.mistral.ai/chat"
   },
   "copilot": {
     "url": "https://copilot.microsoft.com/",
@@ -81,7 +89,8 @@
       "username": "input[type=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"], input[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://copilot.microsoft.com/"
   },
   "deepseek": {
     "url": "https://chat.deepseek.com/",
@@ -95,7 +104,8 @@
       "username": "input[type=\"email\"], input[name=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://chat.deepseek.com/"
   },
   "grok": {
     "url": "https://grok.com/",
@@ -109,7 +119,8 @@
       "username": "input[type=\"email\"], input[name=\"username\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://grok.com/"
   },
   "poe": {
     "url": "https://poe.com/",
@@ -123,7 +134,8 @@
       "username": "input[type=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://poe.com/"
   },
   "huggingchat": {
     "url": "https://huggingface.co/chat/",
@@ -137,7 +149,8 @@
       "username": "input[name=\"username\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://huggingface.co/chat/"
   },
   "meta_ai": {
     "url": "https://www.meta.ai/",
@@ -151,7 +164,8 @@
       "username": "input[type=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://www.meta.ai/"
   },
   "cohere": {
     "url": "https://coral.cohere.com/",
@@ -165,6 +179,7 @@
       "username": "input[type=\"email\"]",
       "password": "input[type=\"password\"]",
       "submit": "button[type=\"submit\"]"
-    }
+    },
+    "new_chat_url": "https://coral.cohere.com/"
   }
 }
