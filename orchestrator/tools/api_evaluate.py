@@ -92,6 +92,43 @@ def _call_claude(prompt: str, model: str) -> str:
         return f"[api_evaluate/claude] {e}"
 
 
+def _call_openrouter(prompt: str, model: str) -> str:
+    """Call any OpenRouter-served model via its OpenAI-compatible API.
+
+    Same client surface as _call_openai, but pointed at OpenRouter's
+    base URL and authenticated with the OpenRouter key. The ``model``
+    argument should be a full OpenRouter id like
+    ``anthropic/claude-opus-4-7`` or ``meta-llama/llama-3.3-70b-instruct``.
+    Falls back to a sensible text default if model is unset.
+    """
+    try:
+        import keyring
+        key = (os.environ.get("OPENROUTER_API_KEY", "")
+               or keyring.get_password("ora", "openrouter-api-key")
+               or "")
+    except Exception:
+        key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not key:
+        return "[api_evaluate] No OpenRouter API key found."
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+        resp = client.chat.completions.create(
+            model=model or "openai/gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=4096,
+            extra_headers={
+                # OpenRouter recommends but doesn't require these for
+                # attribution in their leaderboards / billing breakdowns.
+                "HTTP-Referer": "https://ora.local",
+                "X-Title":      "Ora",
+            },
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        return f"[api_evaluate/openrouter] {e}"
+
+
 def _call_endpoint(endpoint: dict, prompt: str) -> str:
     service = endpoint.get("service", "")
     model = endpoint.get("model", "")
@@ -101,6 +138,8 @@ def _call_endpoint(endpoint: dict, prompt: str) -> str:
         return _call_openai(prompt, model)
     if service == "claude":
         return _call_claude(prompt, model)
+    if service == "openrouter":
+        return _call_openrouter(prompt, model)
     return f"[api_evaluate] Unsupported service: {service}"
 
 

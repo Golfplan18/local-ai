@@ -399,14 +399,25 @@ def auto_refresh(headless: bool = True):
                         existing_retired.append(m)
                 svc["retired"] = existing_retired
 
-                # If the selected model was retired, fall back to first available
+                # If the selected model was retired, fall back to the first
+                # available model in the same family (when ``selected_family``
+                # is set), and only then to the first available model overall.
                 selected = svc.get("selected", "")
                 available_ids = {m["id"] for m in svc["available"]}
                 if selected not in available_ids and svc["available"]:
-                    old_name = selected
-                    svc["selected"] = svc["available"][0]["id"]
-                    new_name = svc["available"][0]["name"]
-                    print(f"\n    ⚠  Selected model retired — switched to {new_name}")
+                    replacement = None
+                    family = (svc.get("selected_family") or "").strip().lower()
+                    if family:
+                        for m in svc["available"]:
+                            if family in m.get("name", "").lower():
+                                replacement = m
+                                break
+                    if replacement is None:
+                        replacement = svc["available"][0]
+                    svc["selected"] = replacement["id"]
+                    new_name = replacement["name"]
+                    fam_note = f" (family: {svc['selected_family']})" if family and replacement is not svc["available"][0] else ""
+                    print(f"\n    ⚠  Selected model retired — switched to {new_name}{fam_note}")
 
                 svc["last_updated"] = today
                 total_new += len(new_models)

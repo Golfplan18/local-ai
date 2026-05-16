@@ -133,10 +133,44 @@ class TestHectorPrompt(unittest.TestCase):
         self.assertIn("antisemitic visual conventions", prompt)
 
     def test_includes_universal_negatives(self):
+        """v2.1 (2026-05-13, Option B): the cartoon path no longer forbids
+        text in image — the model renders labels and (when present) the
+        banner directly. ``photorealistic`` and the rest of the universal
+        negatives still apply."""
         recipe = mir.HectorCartoonRecipe(**SAMPLE_RECIPE)
         prompt = mir.construct_hector_prompt(recipe)
-        self.assertIn("text in image", prompt)
         self.assertIn("photorealistic", prompt)
+        self.assertIn("gradient", prompt)
+        # Removed per v2.1 — the cartoon path WANTS the model to render
+        # labels (DOMESTIC SPENDING, PENTAGON SUPPLEMENTAL, etc.); the
+        # news image path keeps "text in image" as a negative.
+        self.assertNotIn("text in image", prompt)
+        self.assertNotIn("embedded labels", prompt)
+
+    def test_banner_text_in_prompt_when_supplied(self):
+        """v2.1: when recipe.banner is set, the literal text is injected
+        into the prompt so the model has something concrete to render
+        (rather than inventing placeholder copy like Recraft did before)."""
+        d = dict(SAMPLE_RECIPE)
+        d["banner"] = "It's a big club, and you ain't in it."
+        recipe = mir.HectorCartoonRecipe(**d)
+        prompt = mir.construct_hector_prompt(recipe)
+        self.assertIn("big club", prompt)
+        self.assertIn("banner", prompt.lower())
+        self.assertIn("hand-lettered period typography", prompt)
+
+    def test_no_banner_instruction_when_recipe_banner_none(self):
+        """v2.1: with no banner supplied, the prompt does NOT request
+        a banner. Previously 'banner with quotation' was in default
+        register vocab — Recraft read it literally and rendered a
+        garbled placeholder banner."""
+        d = dict(SAMPLE_RECIPE)
+        d["banner"] = None
+        recipe = mir.HectorCartoonRecipe(**d)
+        self.assertIsNone(recipe.banner)
+        prompt = mir.construct_hector_prompt(recipe)
+        self.assertNotIn("banner with quotation", prompt)
+        self.assertNotIn("hand-lettered period typography", prompt)
 
     def test_lora_trigger_when_active(self):
         recipe = mir.HectorCartoonRecipe(**SAMPLE_RECIPE)
@@ -261,30 +295,43 @@ class TestSvgOverlay(unittest.TestCase):
         '<path d="M10,10 L90,90"/></svg>'
     )
 
-    def test_signature_always_added(self):
+    def test_signature_no_longer_overlaid(self):
+        """v2.1 follow-up (2026-05-13, publisher direction 'Remove that'):
+        the model renders the signature in-image per composition_spec;
+        the vector overlay duplicated it and didn't read as hand-drawn."""
         out = mir.composite_text_overlays(self.BASIC_SVG, banner=None)
-        self.assertIn("Hector Rentier", out)
-        self.assertIn("text-anchor=\"end\"", out)
+        self.assertNotIn("Hector Rentier", out)
+        self.assertNotIn('text-anchor="end"', out)
+        # The SVG passes through unchanged
+        self.assertEqual(out, self.BASIC_SVG)
 
-    def test_banner_added_when_present(self):
+    def test_banner_not_composited_as_overlay(self):
+        """v2.1 (Option B): banner text is no longer composited as a
+        vector overlay — the model renders it in-image. The ``banner``
+        kwarg is preserved for backward compatibility but should NOT
+        emit a banner ``<text>`` element."""
         out = mir.composite_text_overlays(
             self.BASIC_SVG, banner="HEAR YE HEAR YE")
-        self.assertIn("HEAR YE HEAR YE", out)
+        self.assertNotIn("HEAR YE HEAR YE", out)
 
-    def test_xml_escape_in_banner(self):
+    def test_banner_kwarg_ignored_for_xml_safety(self):
+        """v2.1: even when the banner kwarg carries unescaped XML chars,
+        it doesn't reach the SVG (because the model renders it in-image).
+        This guards against future regressions where a callsite passes
+        the banner here thinking it'll be composited."""
         out = mir.composite_text_overlays(
             self.BASIC_SVG, banner='Less <than> "quotes" & ampersand')
-        self.assertIn("&lt;than&gt;", out)
-        self.assertIn("&amp;", out)
-        self.assertIn("&quot;quotes&quot;", out)
+        self.assertNotIn("&lt;than&gt;", out)
+        self.assertNotIn("Less", out)
 
-    def test_overlays_inside_svg(self):
+    def test_svg_passes_through_unchanged(self):
+        """v2.1: composite_text_overlays is a no-op after the signature
+        overlay was removed. SVG must come through byte-identical."""
         out = mir.composite_text_overlays(self.BASIC_SVG, banner=None)
-        self.assertTrue(out.rstrip().endswith("</svg>"))
-        # Overlays must precede the closing tag
-        signature_pos = out.index("Hector Rentier")
-        close_pos = out.rindex("</svg>")
-        self.assertLess(signature_pos, close_pos)
+        self.assertEqual(out, self.BASIC_SVG)
+        out_with_banner_arg = mir.composite_text_overlays(
+            self.BASIC_SVG, banner="ignored kwarg")
+        self.assertEqual(out_with_banner_arg, self.BASIC_SVG)
 
 
 # ---------------------------------------------------------------------------

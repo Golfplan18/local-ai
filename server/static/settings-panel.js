@@ -35,12 +35,15 @@
   var _modelsConfigPanel = null;
 
   var TABS = [
-    { id: 'models',     label: 'Models' },
-    { id: 'interface',  label: 'Interface' },
-    { id: 'capture',    label: 'Capture' },
-    { id: 'whisper',    label: 'Whisper' },
-    { id: 'apis',       label: 'External APIs' },
-    { id: 'export',     label: 'Export' },
+    { id: 'models',         label: 'Models' },
+    { id: 'buckets',        label: 'Buckets' },
+    { id: 'visual',         label: 'Visual' },
+    { id: 'transcription',  label: 'Transcription' },
+    { id: 'speech',         label: 'Speech' },
+    { id: 'interface',      label: 'Interface' },
+    { id: 'capture',        label: 'Capture' },
+    { id: 'apis',           label: 'External APIs' },
+    { id: 'export',         label: 'Export' },
   ];
 
   var WHISPER_MODELS = [
@@ -141,20 +144,21 @@
 
   function _renderTabContent() {
     _tabContentEl.innerHTML = '';
-    // Models tab uses its own state (not _settings) and its own backend
-    // (/models + /config), so it renders independently of the per-tab
-    // _settings load.
-    if (_activeTab === 'models') {
-      _renderModelsTab();
-      return;
-    }
+    // Models / Buckets / Visual tabs all use the classic ConfigPanel
+    // (config-panel.js) with different 'view' configs. They own their
+    // own data load (/config/routing) and render lifecycle, so they
+    // render independently of the per-tab _settings load.
+    if (_activeTab === 'models')  { _renderConfigTab('pipelines', 'settings-models'); return; }
+    if (_activeTab === 'buckets') { _renderConfigTab('buckets',   'settings-buckets'); return; }
+    if (_activeTab === 'visual')  { _renderConfigTab('visual',    'settings-visual');  return; }
     if (!_settings) {
       _tabContentEl.textContent = 'Loading…';
       return;
     }
     if (_activeTab === 'capture') _renderCaptureTab();
     else if (_activeTab === 'interface') _renderInterfaceTab();
-    else if (_activeTab === 'whisper') _renderWhisperTab();
+    else if (_activeTab === 'transcription') _renderTranscriptionTab();
+    else if (_activeTab === 'speech') _renderSpeechTab();
     else if (_activeTab === 'apis') _renderAPIsTab();
     else if (_activeTab === 'export') _renderExportTab();
   }
@@ -183,7 +187,7 @@
   // ConfigPanel class owns its own load/save/render lifecycle; we just
   // mount it into the tab body once and let it manage state from there.
 
-  function _renderModelsTab() {
+  function _renderConfigTab(view, id) {
     if (typeof ConfigPanel === 'undefined') {
       _tabContentEl.textContent =
         'config-panel.js is not loaded. Reload the page or check the network tab.';
@@ -197,7 +201,7 @@
     host.className = 'ora-settings-config-host';
     _tabContentEl.appendChild(host);
     try {
-      _modelsConfigPanel = new ConfigPanel(host, { id: 'settings-models' });
+      _modelsConfigPanel = new ConfigPanel(host, { id: id, view: view });
       _modelsConfigPanel.init();
     } catch (err) {
       host.textContent = 'Could not load model configuration: ' + (err && err.message);
@@ -233,20 +237,271 @@
                  'leave blank to disable'));
   }
 
-  function _renderWhisperTab() {
+  // Transcription tab — replaces the former "Whisper" tab. Adds a
+  // provider selector at the top so the user can route uploaded audio
+  // through either the local Whisper binary or one of OpenRouter's
+  // transcription models. The local-only fields (model size, language)
+  // remain visible regardless; the OpenRouter model picker appears only
+  // when that provider is selected.
+  function _renderTranscriptionTab() {
     var wh = (_dirty.whisper || _settings.whisper || {});
     var src = _settings.whisper || {};
-    _appendField('Model size',
-      _selectInput('whisper.model_size', WHISPER_MODELS,
-                   wh.model_size || src.model_size));
+    var provider = wh.provider || src.provider || 'whisper_local';
+
+    var providerSel = _selectInput('whisper.provider', [
+        { id: 'whisper_local',    label: 'Local Whisper (free, runs on your hardware)' },
+        { id: 'openrouter',       label: 'OpenRouter transcription (paid; bigger STT model selection)' },
+        { id: 'openrouter_audio', label: 'OpenRouter audio understanding (ask questions about the audio)' },
+      ], provider);
+    _appendField('Transcription provider', providerSel);
+    // Re-render the tab when the provider changes so the conditional
+    // sub-fields (local model size vs OpenRouter picker) switch in place.
+    providerSel.addEventListener('change', function () { _renderTabContent(); });
+
     _appendField('Default language',
       _selectInput('whisper.default_language', WHISPER_LANGUAGES,
                    wh.default_language || src.default_language));
-    _appendNote(
-      'The local Whisper binary uses the model files under ~/.whisper/models/. '
-      + 'Larger models are slower but more accurate. "tiny" runs near real-time '
-      + 'on Apple Silicon; "large-v3" runs at roughly 1× real-time.'
-    );
+
+    if (provider === 'whisper_local') {
+      _appendField('Local Whisper model size',
+        _selectInput('whisper.model_size', WHISPER_MODELS,
+                     wh.model_size || src.model_size));
+      _appendNote(
+        'The local Whisper binary uses the model files under ~/.whisper/models/. '
+        + 'Larger models are slower but more accurate. "tiny" runs near real-time '
+        + 'on Apple Silicon; "large-v3" runs at roughly 1× real-time.'
+      );
+    } else if (provider === 'openrouter') {
+      _appendOpenRouterTranscriptionPicker(
+        wh.openrouter_model || src.openrouter_model || '');
+      _appendNote(
+        'OpenRouter relays your audio to one of the listed providers. '
+        + 'Pricing varies — see the model row. The OpenRouter API key '
+        + 'must be set under External APIs.'
+      );
+    } else if (provider === 'openrouter_audio') {
+      _appendOpenRouterAudioUnderstandingPicker(
+        wh.openrouter_audio_model || src.openrouter_audio_model || '');
+      _appendField('Default question',
+        _textInput('whisper.openrouter_audio_question',
+                   wh.openrouter_audio_question || src.openrouter_audio_question
+                     || 'Transcribe this audio verbatim. Return only the transcript.',
+                   'what to ask the model about the uploaded audio'));
+      _appendNote(
+        'Audio-understanding models accept audio + a text question and return a text answer. '
+        + 'They can transcribe, summarize, translate, identify speakers, or answer questions '
+        + 'about content. The "Default question" field controls what gets asked when audio '
+        + 'is uploaded. Change it to e.g. "Summarize the key points." for podcasts.'
+      );
+    }
+  }
+
+  function _appendOpenRouterAudioUnderstandingPicker(currentModelId) {
+    var row = document.createElement('div');
+    row.className = 'ora-settings-row';
+    var labelEl = document.createElement('label');
+    labelEl.className = 'ora-settings-row-label';
+    labelEl.textContent = 'OpenRouter audio model';
+    row.appendChild(labelEl);
+    var sel = document.createElement('select');
+    sel.className = 'ora-settings-row-input';
+    sel.dataset.key = 'whisper.openrouter_audio_model';
+    sel.innerHTML = '<option value="">Loading catalog…</option>';
+    sel.addEventListener('change', function (e) {
+      _setDirty('whisper.openrouter_audio_model', e.target.value);
+    });
+    row.appendChild(sel);
+    _tabContentEl.appendChild(row);
+
+    fetch('/config/openrouter/catalog')
+      .then(function (r) { return r.json(); })
+      .then(function (catalog) {
+        var ids = (catalog && catalog.by_modality && catalog.by_modality.audio) || [];
+        var lookup = {};
+        (catalog.models || []).forEach(function (m) { lookup[m.id] = m; });
+        if (!ids.length) {
+          sel.innerHTML = '<option value="">No audio-understanding models in catalog</option>';
+          return;
+        }
+        var options = ['<option value="">(pick a model)</option>'];
+        ids.forEach(function (id) {
+          var m = lookup[id] || {};
+          var p = m.pricing_per_million || {};
+          var price = (p.prompt != null && p.completion != null)
+                       ? ' — $' + p.prompt + '/$' + p.completion + '/M tokens'
+                       : '';
+          var sel_attr = (id === currentModelId) ? ' selected' : '';
+          options.push('<option value="' + id + '"' + sel_attr + '>'
+                       + (m.display_name || id) + price + '</option>');
+        });
+        sel.innerHTML = options.join('');
+      })
+      .catch(function () {
+        sel.innerHTML = '<option value="">(catalog fetch failed)</option>';
+      });
+  }
+
+  // Speech (TTS) tab — controls the speaker button on assistant
+  // messages. Provider options:
+  //   local_say   — macOS `say` (free, instant, no network)
+  //   openrouter  — OpenRouter speech endpoint (paid; better voices)
+  function _renderSpeechTab() {
+    var sp  = (_dirty.speech || _settings.speech || {});
+    var src = _settings.speech || {};
+    var provider = sp.provider || src.provider || 'local_say';
+
+    var providerSel = _selectInput('speech.provider', [
+        { id: 'local_say',  label: 'macOS say (free, instant)' },
+        { id: 'openrouter', label: 'OpenRouter (paid; better voices)' },
+      ], provider);
+    _appendField('Speech provider', providerSel);
+    providerSel.addEventListener('change', function () { _renderTabContent(); });
+
+    if (provider === 'local_say') {
+      _appendSayVoicePicker(sp.local_voice || src.local_voice || 'Samantha');
+      _appendNote(
+        'The "say" binary ships with macOS. Voices are managed in '
+        + 'System Settings → Accessibility → Spoken Content → System Voice. '
+        + 'New voices download on first use.'
+      );
+    } else if (provider === 'openrouter') {
+      _appendOpenRouterSpeechPicker(sp.openrouter_model || src.openrouter_model || '');
+      _appendField('Voice (optional)',
+        _textInput('speech.openrouter_voice',
+                   sp.openrouter_voice || src.openrouter_voice || '',
+                   'leave blank for the model default'));
+      _appendNote(
+        'OpenRouter forwards to whichever upstream the chosen model lives on. '
+        + 'Some models honor a voice id ("alloy", "echo", "shimmer" for OpenAI; '
+        + 'voice names for ElevenLabs). Leave blank if unsure.'
+      );
+    }
+  }
+
+  function _appendSayVoicePicker(currentVoice) {
+    var row = document.createElement('div');
+    row.className = 'ora-settings-row';
+    var labelEl = document.createElement('label');
+    labelEl.className = 'ora-settings-row-label';
+    labelEl.textContent = 'Voice';
+    row.appendChild(labelEl);
+    var sel = document.createElement('select');
+    sel.className = 'ora-settings-row-input';
+    sel.dataset.key = 'speech.local_voice';
+    sel.innerHTML = '<option value="">Loading voices…</option>';
+    sel.addEventListener('change', function (e) {
+      _setDirty('speech.local_voice', e.target.value);
+    });
+    row.appendChild(sel);
+    _tabContentEl.appendChild(row);
+
+    fetch('/api/tts/voices')
+      .then(function (r) { return r.json(); })
+      .then(function (resp) {
+        var voices = (resp && resp.voices) || [];
+        if (!voices.length) {
+          sel.innerHTML = '<option value="">(no voices found)</option>';
+          return;
+        }
+        var opts = voices.map(function (v) {
+          var sel_attr = (v.name === currentVoice) ? ' selected' : '';
+          var label = v.name + (v.language ? ' — ' + v.language : '');
+          return '<option value="' + v.name + '"' + sel_attr + '>' + label + '</option>';
+        });
+        sel.innerHTML = opts.join('');
+      })
+      .catch(function () {
+        sel.innerHTML = '<option value="">(voice list failed)</option>';
+      });
+  }
+
+  function _appendOpenRouterSpeechPicker(currentModelId) {
+    var row = document.createElement('div');
+    row.className = 'ora-settings-row';
+    var labelEl = document.createElement('label');
+    labelEl.className = 'ora-settings-row-label';
+    labelEl.textContent = 'OpenRouter speech model';
+    row.appendChild(labelEl);
+    var sel = document.createElement('select');
+    sel.className = 'ora-settings-row-input';
+    sel.dataset.key = 'speech.openrouter_model';
+    sel.innerHTML = '<option value="">Loading catalog…</option>';
+    sel.addEventListener('change', function (e) {
+      _setDirty('speech.openrouter_model', e.target.value);
+    });
+    row.appendChild(sel);
+    _tabContentEl.appendChild(row);
+
+    fetch('/config/openrouter/catalog')
+      .then(function (r) { return r.json(); })
+      .then(function (catalog) {
+        var ids = (catalog && catalog.by_modality && catalog.by_modality.speech) || [];
+        var lookup = {};
+        (catalog.models || []).forEach(function (m) { lookup[m.id] = m; });
+        if (!ids.length) {
+          sel.innerHTML = '<option value="">No speech models in catalog</option>';
+          return;
+        }
+        var options = ['<option value="">(pick a model)</option>'];
+        ids.forEach(function (id) {
+          var m = lookup[id] || {};
+          var p = m.pricing_per_million || {};
+          var price = (p.prompt != null) ? ' — $' + p.prompt + '/M chars' : '';
+          var sel_attr = (id === currentModelId) ? ' selected' : '';
+          options.push('<option value="' + id + '"' + sel_attr + '>'
+                       + (m.display_name || id) + price + '</option>');
+        });
+        sel.innerHTML = options.join('');
+      })
+      .catch(function () {
+        sel.innerHTML = '<option value="">(catalog fetch failed)</option>';
+      });
+  }
+
+  // Populate the OpenRouter transcription-model dropdown from the
+  // cached catalog. Falls back to a single "(loading…)" option if the
+  // catalog fetch fails or is empty.
+  function _appendOpenRouterTranscriptionPicker(currentModelId) {
+    var row = document.createElement('div');
+    row.className = 'ora-settings-row';
+    var labelEl = document.createElement('label');
+    labelEl.className = 'ora-settings-row-label';
+    labelEl.textContent = 'OpenRouter transcription model';
+    row.appendChild(labelEl);
+    var sel = document.createElement('select');
+    sel.className = 'ora-settings-row-input';
+    sel.dataset.key = 'whisper.openrouter_model';
+    sel.innerHTML = '<option value="">Loading catalog…</option>';
+    sel.addEventListener('change', function (e) {
+      _setDirty('whisper.openrouter_model', e.target.value);
+    });
+    row.appendChild(sel);
+    _tabContentEl.appendChild(row);
+
+    fetch('/config/openrouter/catalog')
+      .then(function (r) { return r.json(); })
+      .then(function (catalog) {
+        var ids = (catalog && catalog.by_modality && catalog.by_modality.transcription) || [];
+        var lookup = {};
+        (catalog.models || []).forEach(function (m) { lookup[m.id] = m; });
+        if (!ids.length) {
+          sel.innerHTML = '<option value="">No transcription models in catalog</option>';
+          return;
+        }
+        var options = ['<option value="">(pick a model)</option>'];
+        ids.forEach(function (id) {
+          var m = lookup[id] || {};
+          var p = m.pricing_per_million || {};
+          var price = (p.prompt != null) ? ' — $' + p.prompt + '/M input' : '';
+          var sel_attr = (id === currentModelId) ? ' selected' : '';
+          options.push('<option value="' + id + '"' + sel_attr + '>'
+                       + (m.display_name || id) + price + '</option>');
+        });
+        sel.innerHTML = options.join('');
+      })
+      .catch(function () {
+        sel.innerHTML = '<option value="">(catalog fetch failed)</option>';
+      });
   }
 
   function _renderAPIsTab() {

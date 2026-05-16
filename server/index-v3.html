@@ -1601,6 +1601,48 @@
     const block = document.createElement('div');
     block.className = 'scratchpad-turn ' + cls;
     block.textContent = text;
+    // AI-answer turns get a "speak aloud" button that POSTs the text
+    // to /api/tts and plays the returned audio. The provider/voice
+    // come from user-settings (Speech tab).
+    if (cls === 'scratchpad-turn-answer' && text && text !== '[no response]') {
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+      const speakBtn = document.createElement('button');
+      speakBtn.type = 'button';
+      speakBtn.className = 'msg-action msg-action-speak';
+      speakBtn.title = 'Read aloud';
+      speakBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+      let audioEl = null;
+      speakBtn.addEventListener('click', async () => {
+        if (audioEl && !audioEl.paused) {
+          audioEl.pause(); audioEl.currentTime = 0;
+          speakBtn.classList.remove('msg-action--playing'); return;
+        }
+        speakBtn.classList.add('msg-action--loading');
+        try {
+          const r = await fetch('/api/tts', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text }),
+          });
+          if (!r.ok) {
+            const errJson = await r.json().catch(() => ({}));
+            throw new Error(errJson.error || ('HTTP ' + r.status));
+          }
+          const blob = await r.blob();
+          if (audioEl) { audioEl.pause(); audioEl.src = ''; }
+          audioEl = new Audio(URL.createObjectURL(blob));
+          audioEl.addEventListener('ended', () => speakBtn.classList.remove('msg-action--playing'));
+          audioEl.addEventListener('play',  () => speakBtn.classList.add('msg-action--playing'));
+          await audioEl.play();
+        } catch (e) {
+          window.alert('Speech failed: ' + e.message);
+        } finally {
+          speakBtn.classList.remove('msg-action--loading');
+        }
+      });
+      actions.appendChild(speakBtn);
+      block.appendChild(actions);
+    }
     chatOutputPane.appendChild(block);
     chatOutputPane.scrollTop = chatOutputPane.scrollHeight;
     ensureScratchpadNotSavedLabel();

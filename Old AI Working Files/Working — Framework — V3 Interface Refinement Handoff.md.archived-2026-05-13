@@ -1,0 +1,445 @@
+---
+nexus: ora
+type: working
+tags: [working, handoff, v3, interface, image-generation, archived]
+date created: 2026-05-04
+date modified: 2026-05-13
+status: completed-2026-05-13
+---
+
+# V3 Interface Refinement Handoff
+
+> **STATUS — COMPLETED 2026-05-13.** This handoff was picked up in a multi-day session
+> that ran 2026-05-12 through 2026-05-13. The work landed went substantially beyond the
+> original 3-commit image-generation scope sketched in §3 below; see the **Completion
+> Summary** immediately below for what actually shipped. Archived to
+> `~/ora/Old AI Working Files/` on 2026-05-13.
+
+## Completion Summary (2026-05-13)
+
+The original handoff's §3 schema (separate `image-gen` / `video-gen` buckets co-equal
+with the six tier buckets) was **not implemented as drawn**. The implementation took a
+cleaner path: the existing visual capability slots (`image_generates`, `image_edits`,
+`video_generates`, etc.) are already provider-scoped, so adding OpenRouter as a
+provider directly on those slots achieved the same end without inflating the bucket
+namespace. The tier buckets remain at seven (`local-premium`, `local-mid`,
+`local-fast`, `premium`, `mid`, `fast`, `free`) with friendly display labels (Large /
+Medium / Small / Premium / Mid / Fast / Free) — not eight.
+
+### What actually shipped
+
+The session executed a roadmap that the user iterated mid-session — substantially
+larger than the §3 sketch:
+
+1. **Tier label fix.** UI was hardcoded to `local-large` / `local-small` (which had
+   no data); pipeline references to `local-premium` / `local-mid` were invisible.
+   Replaced with a `TIER_LABELS` display map; internal plumbing unchanged.
+
+2. **Settings tab restructure.** Models tab split into three tabs: **Models**
+   (pipelines only, 2-column), **Buckets** (the bucket panel, standalone), **Visual**
+   (image/video capabilities in a 3-column grid). ConfigPanel grew a `view:` config
+   option that switches between the four layouts (`pipelines` / `buckets` / `visual` /
+   legacy `all`).
+
+3. **Pipeline presets.** Named snapshots of `pipelines` + `buckets` + `diversity` at
+   `~/ora/config/pipeline-presets.json`. Dropdown + Save / Save As… / Delete buttons
+   at the top of the Models tab. Activate-preset endpoint writes preset values to
+   `routing-config.json` and reloads the boot router. Visual prefs intentionally NOT
+   captured per preset (treated as permanent global).
+
+4. **OpenRouter foundation.** `~/ora/scripts/refresh-openrouter.py` fetches the
+   catalog across all 8 modalities via the public `output_modalities` query param
+   (text 363 · image 20 · video 13 · speech 8 · transcription 6 · audio 5 · embedding
+   25 · rerank 3). Writes a normalized 431-model catalog to
+   `~/ora/config/openrouter-catalog.json` with vendor + modality indices and
+   per-million-token pricing. Server endpoints: `GET /config/openrouter/catalog`,
+   `POST /config/openrouter/refresh`. Auto-refreshes on server startup if catalog is
+   older than 7 days. `_call_openrouter()` added to
+   `~/ora/orchestrator/tools/api_evaluate.py`.
+
+5. **Slot-fill picker (Buckets tab).** Replaced the ordered-list-per-tier UI with a
+   2-slot mechanic — Primary + (Adversarial / Fallback depending on diversity
+   toggle). Bucket cards in a 2×4 grid: Local row on top (Large / Medium / Small +
+   placeholder), Commercial row below (Premium / Mid / Fast / Free). Picker source
+   lists below each row — **Available — Local / Subscription / Direct API /
+   OpenRouter**. OpenRouter text-models picker is a 4-column vendor accordion (59
+   vendors), click-to-expand. Click a slot to arm it, click a model to fill it.
+
+5b. **Direct-API model refreshers.** `~/ora/scripts/refresh-direct-apis.py` discovers
+    new models via Anthropic, OpenAI, and Google `/v1/models` endpoints. Reconciles
+    against existing routing-config endpoints by `model_id` AND by `_base_alias` (so
+    user's dated pins like `claude-haiku-4-5-20251001` stay valid when only the stable
+    alias is published upstream). Adds new models; marks vanished ones
+    `status: deprecated` (doesn't delete — slot references stay readable). Auto-runs
+    on server startup if older than 7 days. Manual "Refresh from vendors" button on
+    the Direct API picker section. Filters out non-text variants (TTS, audio,
+    realtime, image, embedding) and dated snapshots from the picker view.
+
+6. **Transcription tab.** Whisper tab renamed and expanded. Provider dropdown switches
+   among: Local Whisper / OpenRouter transcription / OpenRouter audio understanding.
+   When OpenRouter STT is selected: model picker (6 transcription models). When audio
+   understanding: model picker (5 native-audio-input models) + customizable Default
+   Question field ("Transcribe this audio verbatim" by default; user can change to
+   "Summarize the key points" etc.). Backend: `transcription.py::_run` branches on
+   provider — local Whisper path unchanged, OpenRouter paths use OpenAI SDK with
+   `base_url=https://openrouter.ai/api/v1`. Verified end-to-end against a 30-second
+   audiobook clip (GPT Audio Mini correctly transcribed).
+
+7. **Speech (TTS) feature.** New Speech settings tab with provider dropdown (macOS
+   `say` / OpenRouter). Local mode: voice picker populated from `say -v ?` (184
+   voices). OpenRouter mode: model picker (8 speech models) + voice id field. New
+   server endpoints `GET /api/tts/voices` and `POST /api/tts`. **macOS `say` output
+   is converted to WAV via `afconvert`** for Chrome browser compatibility (AIFF was
+   producing duration=null in Chrome). Speaker icon button injected into both
+   `chat-panel.js::_appendBubble` (legacy renderer) and
+   `index-v3.html::renderScratchpadEntry` (V3 scratchpad renderer). Pulsing
+   loading state + accent-tinted playing state. Verified browser-side: 2.16s WAV
+   parses with valid duration.
+
+8. **Visual tab OpenRouter image/video routing.** New integration module
+   `~/ora/orchestrator/integrations/openrouter_images.py` registers each OpenRouter
+   image model as its own provider on `image_generates` (20 providers),
+   `image_generates_cartoon` (slot inheritance), `image_styles` (3-block multi-image
+   payload — source + style reference), and `image_varies` (2-block — source +
+   prompt). Each video model registered on `video_generates` (13 providers) with full
+   async-polling implementation (`POST /v1/videos` → polling URL → `unsigned_urls`).
+   Returns raw bytes matching the openai/gemini/civitai contract. Errors raise
+   `CapabilityError` with `prompt_rejected` / `quota_exceeded` / `model_unavailable`
+   codes so the cascade walks. Auto-modality fallback: tries `["image","text"]`
+   first, retries with `["image"]` only on the specific "no endpoints" rejection (so
+   FLUX/Recraft work alongside Gemini/GPT-image). **Verified end-to-end:**
+   - Image generation: 990 KB PNG from Gemini 2.5 Flash Image, 6 sec.
+   - Image styles: 1.4 MB PNG from Gemini with source + style refs.
+   - Image varies: 920 KB PNG from Gemini with source only.
+   - Video generation: 5.9 MB MP4 from Google Veo 3.1 Fast, 77 sec.
+   - Audio understanding: real audiobook clip transcribed accurately by GPT
+     Audio Mini.
+
+### Polish landed in the same session
+
+- **Deprecation indicators.** Filled slots whose referenced endpoint has
+  `status: deprecated` (or whose model_id resolves to nothing in any catalog) show an
+  amber **deprecated** / **missing** badge inline + an amber-tinted slot border.
+  Tooltip suggests picking a replacement.
+- **Modality-aware pricing labels.** `$X/$Y/M tokens` for text; `~$X/min audio` for
+  transcription (with `~` denoting rough conversion); `$X/M chars` for speech;
+  `priced per image` or `priced per second` for image/video when OpenRouter reports
+  $0/$0 (which it does for per-generation-billed models). Used everywhere the price
+  badge shows: Bucket picker, slot-filled badges, Speech tab, Transcription tab.
+- **Catalog modality classification fix.** Specialized modalities (image, video,
+  audio, speech, transcription, rerank, embedding) fetched BEFORE the bare-text
+  slice so dual-output models (e.g. `gpt-image-1` advertising `image,text`) land in
+  their specialized bucket rather than being captured as plain text.
+- **`anthropic-api-haiku` no-longer-deprecated.** The `_base_alias` matching in the
+  direct-API refresher correctly preserves the user's dated-pin endpoint
+  `claude-haiku-4-5-20251001` because its base alias `claude-haiku-4-5` IS in the
+  fetched catalog.
+
+### Notable scope changes from the original §3 plan
+
+- **No `image-gen` / `video-gen` tier buckets added.** Visual capability slots are
+  provider-scoped directly; the per-slot picker exposes all available providers
+  (Replicate, Stability, local-diffusers, OpenAI direct, AND OpenRouter's full
+  catalog of image/video models with friendly names + pricing).
+- **No 3-column Models-tab layout.** Models / Buckets / Visual became three separate
+  tabs instead. Cleaner than packing everything into one wider modal.
+- **`image_edits` NOT registered for OpenRouter.** That slot's contract requires a
+  `mask` field (DALL-E region-edit semantics). OpenRouter models do instruction-based
+  whole-image edits, no mask concept. Different semantics. Registered on
+  `image_styles` and `image_varies` instead — slot contracts those models naturally
+  satisfy.
+- **`image_outpaints` / `image_upscales` left to Replicate and Stability.** Not
+  OpenRouter-native operations.
+
+### Files touched / created
+
+**New (4):**
+- `~/ora/scripts/refresh-openrouter.py`
+- `~/ora/scripts/refresh-direct-apis.py`
+- `~/ora/orchestrator/integrations/openrouter_images.py`
+- `~/ora/server/static/styles/components/chat-actions.css`
+
+**Heavy edits (5):**
+- `~/ora/server/server.py` (TTS endpoints, OpenRouter catalog endpoint, direct-API
+  refresh endpoint, capability-providers enrichment with `openrouter:` entries,
+  startup hooks for auto-refresh, preset endpoints)
+- `~/ora/server/static/config-panel.js` (slot-fill picker, view dispatcher, preset
+  bar, deprecation indicators, modality-aware price formatter, OpenRouter vendor
+  accordion, refresh buttons)
+- `~/ora/server/static/settings-panel.js` (tab additions: Buckets, Visual, Speech,
+  Transcription rename; provider switching; OpenRouter picker helpers)
+- `~/ora/orchestrator/transcription.py` (provider branching: OpenRouter transcription
+  + OpenRouter audio understanding)
+- `~/ora/server/index-v3.html` (speaker button wired into scratchpad answer turns)
+
+**Moderate edits:**
+- `~/ora/server/static/chat-panel.js` (speaker button on AI bubbles in legacy
+  renderer)
+- `~/ora/orchestrator/tools/api_evaluate.py` (`_call_openrouter()` added)
+- `~/ora/config/provider-database.json` (stub `openrouter` provider entry)
+- `~/ora/server/static/styles/components/config-panel.css` (slot UI + picker source
+  list styles + deprecation badge + OpenRouter accordion + edit-mode borders)
+- `~/ora/server/static/styles/ora-default.css` (added chat-actions.css import)
+
+**Auto-generated:**
+- `~/ora/config/openrouter-catalog.json` (294 KB, 431 models indexed)
+- `~/ora/config/.direct-api-refresh-stamp` (mtime marker for stale check)
+- `~/ora/config/pipeline-presets.json` (created on first preset save)
+- `~/ora/config/routing-config.json` (39 new direct-API endpoints from refresher)
+
+### What's still open / deferred
+
+These were flagged as "open" or "deferred" at session close and weren't built:
+
+- **Browser-side speaker button test against a real successful chat response.**
+  Endpoint and renderer wiring both verified independently; haven't clicked the
+  speaker on an actual successful AI response in a normal chat session in the
+  browser. Will work next time you send a real chat that gets a non-empty answer.
+- **`image_outpaints` / `image_upscales` for OpenRouter.** Different operation
+  semantics; not exposed by OpenRouter natively. Stays on Replicate / Stability.
+- **`image_edits` for OpenRouter.** Slot contract requires `mask`; OpenRouter does
+  instruction edits. Would need a new slot (`image_instruct_edits`?) with a
+  different contract. Not blocking.
+- **Audio-pricing label per-minute conversion accuracy.** The `~$X/min audio` label
+  is a rough conversion (assumes 1 token ≈ 1 second of audio, which is correct for
+  some upstreams and off-by-orders-of-magnitude for others — Whisper-large at
+  `$111000/M tokens` is per-hour, not per-minute). User can sanity-check against
+  the model description.
+- **Refresh-openrouter on a schedule (cron / launchd).** Currently only refreshes
+  on server start. Most users restart the server often enough that this is fine;
+  a true scheduled task (independent of server lifecycle) wasn't built.
+
+The original §3 image-generation routing schema is **closed by substitution** — the
+implementation took a different path that achieves the same end without the
+infrastructure changes the schema proposed.
+
+---
+
+# Original Handoff (for historical reference)
+
+
+
+Self-contained brief for a fresh thread picking up the V3 interface refinement work that ran across two sessions on 2026-05-02 / 2026-05-04. The user is moving to a different account and needs the next thread to land knowing exactly where things stand and what's next.
+
+## 1. Read this first
+
+The user is **not a programmer**. Plain English, sparse on code, never assume jargon. Default to thinking, not execution; execution requires explicit go-ahead. **One chunk at a time** — a go-ahead approves the step, not the trajectory. After completing a chunk, report what landed and ask before continuing.
+
+The user iterates fast and corrects mid-stride. Quick course-correction is cheap; over-cautiousness is more annoying than the occasional misstep.
+
+Operating constraints (full text in `~/Documents/vault/CLAUDE.md` and `~/ora/CLAUDE.md`):
+
+- **Discuss-Before-Execute** — restate the ask, raise clarifying questions, wait for confirmation before file ops.
+- **Version Conflict Protocol** — if you find competing versions of anything, stop and surface the conflict.
+- **Vault canonical rule** — markdown lives in `~/Documents/vault/`; ora-side `.md` files are operational copies that must propagate to the paired vault file.
+- **Confirm before overwrite** — copy existing files to `.bak` before destructive overwrites in `~/ora/`.
+
+## 2. State of V3 as of session close
+
+V3 is the live interface at `http://localhost:5000/`. Classic interface preserved at `/classic`. Cutover landed 2026-05-02 in commit `1f0115a`.
+
+### Substantive work landed in these two sessions
+
+| Commit | Where | What |
+|---|---|---|
+| `1f0115a` | ora | V3 cutover (`/` → `index-v3.html`) + chat empty-response fix |
+| `d549210` | ora | 8 interface refinements: logo position 70%-up, R bidirectional drag, fr-ratio column widths, dot-grid canvas bg, tighter icon/sidebar spacing, X/pin on left, hover tooltip |
+| `321f3ae` | ora | R-glyph hit-target fix (transparent bounding rect), doubled sidebar dash count |
+| `3a65a65` | ora | Sidebar row indent removed, dock containers fade with chrome, per-turn canvas sync |
+| `137d639` | ora | Tighten remaining row indent (always-visible close, hide empty prefix), dock-container width/height collapse when chrome-hidden |
+| `d7171d2` | ora | A glyph: toggle (open/close) + blur after click to drop focus box |
+| `1e16ab6` | ora | Settings Models tab — initial slot-picker version (later replaced) |
+| `a61a85e` | ora | Settings Models tab — full classic ConfigPanel embedded verbatim |
+| `8b4350d` | ora | ConfigPanel: Agent → Automated rename in pipeline title + status |
+| `d3c6d1e` | ora | Settings: autosave (drop Cancel/Save → Done), External APIs "+ Add new provider" button drops `/framework api-key-setup` into the input pane |
+
+### Chat empty-response root cause + fix (resolved)
+
+`server.py:_pipeline_stream` was running the analytical pipeline against the placeholder modes `simple` and `standard` for three different paths (Stage-1 bypass, Stage-2 catch-all, Stage-2 pending-clarification on the plain-HTTP endpoint). Both placeholder mode files were Phase-9-archived; `load_mode()` returns `""`; pipeline finishes with no response event; collector sees `final_response=None, failure_summary=None` → marks errored with "pipeline produced no response."
+
+Fix: 8-line guard at the top of `_pipeline_stream` falls all three paths through to `_direct_stream` (which calls the model with `boot.md` as system prompt and yields a real `response` event). The analytical pipeline still runs for prompts that successfully dispatch to a real mode (terrain-mapping, root-cause-analysis, etc.). Verified end-to-end with both "hi" (clean conversational reply) and a SQL/NoSQL tradeoff question (real pipeline, ~10s).
+
+### Settings panel — current shape
+
+Spine button second-from-bottom (id `spineSettingsBtn`) opens `OraSettingsPanel`. Five tabs in this order:
+
+1. **Models** — embeds the classic `ConfigPanel` class verbatim. Dual pipelines (My Pipeline + Automated Pipeline) with utility/analysis/post-analysis bucket lists, six model buckets on the right (`local-large`, `local-small`, `premium`, `mid`, `fast`, `free`), machine RAM accounting, live system status. Autosaves to `/config/routing`.
+2. **Capture** — A/V capture defaults.
+3. **Whisper** — local Whisper model + language defaults.
+4. **External APIs** — provider selectors + per-provider keychain-backed API key rows. New "+ Add new provider" button drops `/framework api-key-setup` into the input pane and closes the modal.
+5. **Export** — render preset + background-render threshold.
+
+Footer is a single **Done** button (no Cancel/Save). All non-Models tabs autosave on input commit (selects/checkboxes immediately, text/number on blur or Enter), with 600ms debounce coalescing multi-field bursts. Status pill: `Saving…` → `Saved ✓` → blank.
+
+The Models tab is widened to 1080px to fit the dual-pipeline + bucket layout. About to be widened further to 1320px for the image-generation column (see §3).
+
+## 3. Where you're picking up — Image Generation Routing
+
+The user wants to add image-generation routing (DALL-E, Sora, Imagen, etc.) to the existing pipeline-routing infrastructure. Schema is **locked** based on user answers in this session; implementation is **not yet started**.
+
+### Locked decisions
+
+- **Vision routing is shared** between Interactive and Automated pipelines (single column, not duplicated). User: "I'm not as concerned about out of control API calls with images."
+- **Two new buckets co-equal with the existing six**, displayed on top of the bucket panel (no sub-section separator): `image-gen` and `video-gen`. Final order in panel: `image-gen, video-gen, local-large, local-small, premium, mid, fast, free`.
+- **Scope is image OUTPUT** (generation), not vision INPUT. Coordinating DALL-E / Sora / Imagen / SDXL / Runway etc. for capability popovers in the V3 visual canvas (the existing `capability-image-generates.js`, `capability-image-outpaints.js`, `capability-image-styles.js`, `capability-image-to-prompt.js`, `capability-image-critique.js`, plus future `capability-video-generates.js`).
+
+### Schema
+
+`config/routing-config.json` extensions:
+
+```jsonc
+{
+  "buckets": {
+    "image-gen":    ["dalle-3-api", "imagen-api", "stable-diffusion-xl-local", "flux-api"],
+    "video-gen":    ["sora-api", "runway-api", "pika-api"],
+    "local-large":  [...],
+    "local-small":  [...],
+    "premium":      [...],
+    "mid":          [...],
+    "fast":         [...],
+    "free":         [...]
+  },
+  "pipelines": {
+    "interactive": { ... existing ... },
+    "agent":       { ... existing ... },
+    "shared": {
+      "vision": {
+        "image_generates":   { "buckets": ["image-gen"] },
+        "image_outpaints":   { "buckets": ["image-gen"] },
+        "image_styles":      { "buckets": ["image-gen"] },
+        "image_to_prompt":   { "buckets": ["premium"] },
+        "image_critique":    { "buckets": ["premium"] },
+        "video_generates":   { "buckets": ["video-gen"] }
+      }
+    }
+  }
+}
+```
+
+The `shared.vision.<capability>` cells map 1:1 to the V3 visual canvas capability popovers in `~/ora/server/static/capability-image-*.js` (and the future `capability-video-generates.js`). When the user clicks "Image generates" in the visual canvas, the dispatcher walks the `shared.vision.image_generates` bucket list top-to-bottom and picks the first available endpoint.
+
+### UI layout
+
+Modal width 1080px → **1320px**. Bucket panel stays 280px on the right. Three pipeline columns share ~990px:
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Model Configuration · [Adversarial Diversity toggle]                      │
+├─────────────────────────────────────────────────────┬─────────────────────┤
+│ MY PIPELINE   │ AUTOMATED       │ VISUAL CAPS       │ MODEL BUCKETS       │
+│ Utility       │ Utility         │ Image generates   │ image-gen       (n) │
+│  [buckets]    │  [buckets]      │  [buckets]        │ video-gen       (n) │
+│ Analysis      │ Analysis        │ Image outpaint    │ local-large     (n) │
+│  Depth        │  Depth          │  [buckets]        │ local-small     (n) │
+│  Breadth      │  Breadth        │ Image styles      │ premium         (n) │
+│ Post-Analysis │ Post-Analysis   │  [buckets]        │ mid             (n) │
+│  [buckets]    │  [buckets]      │ Image→prompt      │ fast            (n) │
+│               │                 │  [buckets]        │ free            (n) │
+│               │                 │ Image critique    │                     │
+│               │                 │  [buckets]        │                     │
+│               │                 │ Video generates   │                     │
+│               │                 │  [buckets]        │                     │
+├─────────────────────────────────────────────────────┴─────────────────────┤
+│ MACHINES … SYSTEM STATUS …                                                │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+### Build order — three commits
+
+The user OK'd splitting this into commits to keep blast radius small. Last user instruction in the prior session before account swap: "Could you prepare a handoff document to a new thread and save it to my vault." Implicit pending answer: my last question to them was *"Want me to start with commit 1 only — schema + UI? You'd see the Visual Capabilities column with bucket lists in the modal, but the canvas capability buttons wouldn't honor them yet. That's the minimum-blast-radius slice. Or should I bundle commits 1 + 2 (schema + UI + dispatcher rewiring) into one go?"* — **ask the user this when you start.**
+
+**Commit 1 — Schema + ConfigPanel UI (small, safe, fully reversible)**
+
+- `~/ora/config/routing-config.json` — add `image-gen` + `video-gen` to `buckets`. Add `pipelines.shared.vision.<capability>` for the six cells listed above.
+- `~/ora/server/static/config-panel.js` — extend `_render()` to add a third pipeline column rendering `shared.vision`. The existing `_renderPipeline(context, title)` is utility/analysis/post-analysis; the vision column needs its own render path with the six capability cells. Tier list goes from 6 → 8 in `_renderBuckets()` (`ALL_TIERS` constant) and in `_renderCellBuckets()` (which validates tier names; check that constant too).
+- `~/ora/server/static/styles/components/config-panel.css` — extend `.cfg-pipelines` grid from `1fr 1fr` to `1fr 1fr 1fr` for the three-column layout.
+- `~/ora/server/static/styles/components/settings-panel.css` — `.ora-settings-modal` width `min(1080px, 94vw)` → `min(1320px, 96vw)`.
+- The `/config/routing` GET/POST endpoints already accept arbitrary bucket/cell shapes — no Python changes needed.
+
+After this commit the user can configure the routing in the UI even before the canvas dispatchers honor it.
+
+**Commit 2 — Capability dispatcher rewiring (per-file, scoped)**
+
+For each `~/ora/server/static/capability-image-*.js` (and `capability-video-generates.js` if present), replace any hardcoded provider preference with a bucket-walked selection from `/config/routing`. The walking logic should match what `boot.py` does for text dispatch — read the cell's bucket list, walk in order, pick first available endpoint.
+
+Suggest splitting one file per commit so each can be reviewed and tested independently. Preserve any provider-specific request-shape code; only the *selection* changes.
+
+**Commit 3 — Provider API integrations (separate session, real credentials)**
+
+Where the actual provider isn't yet integrated (Sora is brand-new, Imagen may not be wired, etc.), wire the real API clients. This is **out of scope for this implementation handoff** and should be its own design pass — needs provider credentials, request/response schema decisions, error handling for content-policy rejections, etc.
+
+### Files to touch in commit 1
+
+| File | Change |
+|---|---|
+| `~/ora/config/routing-config.json` | Add `image-gen` + `video-gen` buckets, `pipelines.shared.vision.<6 cells>` |
+| `~/ora/server/static/config-panel.js` | Add `_renderVisionColumn()` + extend `ALL_TIERS` from 6 → 8 |
+| `~/ora/server/static/styles/components/config-panel.css` | `.cfg-pipelines` grid 2-col → 3-col |
+| `~/ora/server/static/styles/components/settings-panel.css` | Modal width 1080 → 1320 |
+
+### Verification (commit 1)
+
+- Open settings, click Models tab. Three pipeline columns visible, eight bucket tiers in the right panel.
+- Reorder a bucket inside a vision cell — auto-saves to `/config/routing`.
+- Add `image-gen` to a capability cell that doesn't have it — saves and persists across page reload.
+- Other tabs (Capture, Whisper, etc.) still work correctly with the wider modal.
+
+## 4. V3 Remaining Tasks doc — already updated
+
+`Working — V3 Remaining Tasks.md` has been kept current through this session. Already on the doc:
+
+- Layered framework executor enhancements (multi-mode dispatch, M0 routing, per-milestone SSE, DRP end-to-end test)
+- AIPF Half 1 single-file refactor per MindSpec v0.2.3
+- Capability Dispatch Item 6 — finish framework Milestones Delivered retrofits
+- Mode-emission test suite migration (~85 stale-format failures)
+- WELCOME thread copy refresh
+- Live mlx_lm.server validation
+- Toolbar-JSON 125x-fetch loop in `visual-panel.js:2087`
+
+Add to that list once commit 1 lands: "Image generation routing — capability dispatchers (commit 2 deferred from this handoff)" plus "Image / video provider API integrations (commit 3 deferred from this handoff)".
+
+## 5. Decisions still open
+
+1. **Build order**: commit 1 only, or bundle 1+2? **Ask the user when you start.**
+2. **Image-to-prompt + image critique defaults**: I sketched these as defaulting to `premium` (vision-capable text models like Claude / GPT-4o do this best). User didn't comment on this. If they object, change to `image-gen` or some other tier.
+3. **Bucket panel display order**: I sketched with `image-gen, video-gen` at the top of the panel ("co-equal with the others on top" per user). Confirm they meant top-of-list, not just "same hierarchical level."
+4. **Dispatcher walk semantics**: when a cell has `["image-gen", "premium"]`, do we fall through to `premium` if every model in `image-gen` is unavailable? Match `boot.py` text dispatch semantics — yes.
+
+## 6. Working preferences specific to this user
+
+- **Plain English in commit messages, plain English in everything visible to the user.** Internal jargon is fine in code comments.
+- **Reload-and-verify is required** after observable changes. Don't end a turn with an unverified observable change. Server is started via `mcp__Claude_Preview__preview_start` with `name: "ora-server"` (config in `/Users/oracle/.claude/launch.json`).
+- **The user trusts you to run the local model pipeline.** The historical chat reprocessor (`orchestrator/historical/cli.py`) may be running in a parallel terminal session — it uses Anthropic API, not local MLX, so no resource conflict.
+- **Don't fabricate completed work.** If something is sketched but not implemented, say so explicitly (the image-gen schema in this handoff is a sketch — none of the routing-config.json or config-panel.js changes have been written yet).
+
+## 7. Quick orientation commands
+
+```bash
+# Start the V3 server (opens localhost:5000)
+~/ora/start.sh
+
+# Check what's currently running on port 5000
+lsof -nP -iTCP:5000 -sTCP:LISTEN
+
+# Read the current routing config (shape of the buckets/pipelines schema)
+cat ~/ora/config/routing-config.json | python3 -m json.tool | head -80
+
+# Run the JS test harness for the visual compiler (810 tests, should all pass)
+cd ~/ora/server/static/ora-visual-compiler && /opt/homebrew/bin/node tests/run.js
+
+# Run Python tests (1353, with ~125 known stale-format failures listed in V3 Remaining Tasks)
+cd ~/ora && /opt/homebrew/bin/python3 -m unittest discover -s orchestrator/tests
+```
+
+## 8. Repository state
+
+Both `~/ora` and `~/Documents/vault/` are clean and pushed to origin/main as of session close.
+
+- Ora origin: `https://github.com/ora-commons/ora.git`
+- Vault origin: `https://github.com/Golfplan18/obsidian-vault.git`
+
+Last ora commit: `d3c6d1e` (autosave + Add provider button).
+
+---
+
+*End of handoff. The new thread should: (a) read this doc, (b) read `~/ora/CLAUDE.md` for the architecture context, (c) read `Working — V3 Remaining Tasks.md` for the broader V3 backlog, (d) ask the user the open question in §5.1 (commit 1 only, or 1+2 bundled?), then begin.*

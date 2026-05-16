@@ -148,6 +148,14 @@
         {"id": "groq-llama-3.3-70b", "name": "Llama 3.3 70B (Groq)", "model_id": "llama-3.3-70b-versatile", "default_tier": "free"},
         {"id": "groq-llama-3.1-8b",  "name": "Llama 3.1 8B (Groq)",  "model_id": "llama-3.1-8b-instant",    "default_tier": "free"}
       ]
+    },
+
+    "openrouter": {
+      "display_name":  "OpenRouter",
+      "access_methods": ["api"],
+      "_catalog_note":  "Model list is dynamic — fetched weekly by scripts/refresh-openrouter.py and read from config/openrouter-catalog.json. The api_models entry below is intentionally empty; the picker UI reads the live catalog directly rather than from this static list.",
+      "api_models":    [],
+      "pricing_note":  "OpenRouter adds a 5.5% surcharge over each provider's list price. Use direct API keys at Anthropic / OpenAI / Google for heavy traffic on those vendors; reach for OpenRouter for breadth (DeepSeek, Llama hosted, Mistral, Qwen, xAI, Cohere, and the long tail)."
     }
   },
 

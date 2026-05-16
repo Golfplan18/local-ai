@@ -249,15 +249,20 @@ def dispatch_image_generates(inputs: dict) -> bytes:
     # gpt-image-1 always returns base64 and rejects an explicit
     # ``response_format`` parameter.
     size = _ASPECT_TO_SIZE.get(aspect_ratio, "1024x1024")
+    # Quality locked to medium per Image Spec §5.8.1 publisher direction
+    # 2026-05-13: web-only display, no high-resolution need. Medium
+    # renders the cross-hatch detail that carries the Nast register
+    # signature; high (~4× cost) doesn't read differently on a column
+    # at web viewing distances; low loses the engraved feel. Server-
+    # side default is "auto" which usually picks medium, but locking it
+    # makes billing predictable and prevents the dispatcher from drifting
+    # if OpenAI changes the auto-tier default.
     request_kwargs: dict[str, Any] = {
         "model": MODEL_IMAGE_GENERATES,
         "prompt": composed_prompt,
         "size": size,
         "n": 1,
-        # ``quality`` defaults to "auto" server-side; not exposed
-        # through the slot contract. If §5.8.1 cartoon fidelity
-        # demands a higher tier later, plumb it via the slot's
-        # optional_inputs rather than hardcoding here.
+        "quality": "medium",
     }
 
     client = _get_client()

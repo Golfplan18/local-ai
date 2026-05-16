@@ -86,23 +86,40 @@ def _load_model_prefs() -> dict:
 
 
 def _get_selected_model(service: str) -> dict | None:
-    """Get the selected model info for a service."""
+    """Get the selected model info for a service.
+
+    Resolution order:
+      1. If ``selected_family`` is set on the service, pick the first model in
+         ``available`` whose ``name`` contains the family string (case-insensitive).
+         Use that model; this lets the picker auto-track version bumps within a
+         family like "Claude Opus" without re-pinning the exact id.
+      2. Otherwise fall back to the exact pinned ``selected`` id.
+    """
     prefs = _load_model_prefs()
     svc = prefs.get(service)
     if not svc:
         return None
+
+    ui = svc.get("ui", {})
+    available = svc.get("available", [])
+
+    family = (svc.get("selected_family") or "").strip()
+    if family:
+        needle = family.lower()
+        for m in available:
+            if needle in m.get("name", "").lower():
+                return {"id": m["id"], "name": m["name"], "ui": ui}
 
     selected_id = svc.get("selected")
     if not selected_id:
         return None
 
     model_name = selected_id
-    for m in svc.get("available", []):
+    for m in available:
         if m["id"] == selected_id:
             model_name = m["name"]
             break
 
-    ui = svc.get("ui", {})
     return {"id": selected_id, "name": model_name, "ui": ui}
 
 
@@ -172,36 +189,41 @@ def _switch_model(page, service: str) -> str | None:
 # ── Playwright Channel (primary) ──────────────────────────────────────────
 
 def _try_playwright_session(service: str, prompt: str, config: dict) -> str | None:
-    """Evaluate via Playwright with persistent sessions and auto-re-auth."""
+    """Evaluate via Playwright through the per-service worker thread.
+
+    The worker owns one long-lived persistent context per service. Each
+    submit() opens a fresh page (tab), runs the dispatch, and closes the
+    page — but the underlying Chrome instance stays alive across calls.
+    This avoids ``user_data_dir`` lock contention that hits parallel
+    ``launch_persistent_context`` calls against the same profile.
+
+    Auth/MFA is not handled here. If the worker reports "not logged in",
+    we fall through to the extension channel (and the user can run the
+    one-shot ``PlaywrightSession`` flow to bootstrap auth).
+    """
     try:
-        from playwright_session import PlaywrightSession
+        from playwright_session import dispatch_via_worker
     except ImportError:
-        # Try relative import path
         import sys
         sys.path.insert(0, os.path.dirname(__file__))
-        from playwright_session import PlaywrightSession
+        from playwright_session import dispatch_via_worker
 
-    session = PlaywrightSession(service, config)
+    model_info = _get_selected_model(service)
+
     try:
-        session.launch(headless=False)
-
-        if not session.ensure_authenticated():
-            return None  # Fall through to extension
-
-        # Model switching
-        model_status = _switch_model(session.page, service)
-
-        response = session.send_prompt(prompt)
-        # Persistent context auto-saves cookies/localStorage on close() —
-        # no explicit save_session() call needed.
-
-        if model_status:
-            response = f"{model_status}\n\n{response}"
-        return response
+        return dispatch_via_worker(
+            service,
+            prompt,
+            config,
+            model_info=model_info,
+            headless=False,
+            timeout=420,  # outlasts the worker's internal 300s wait_for_response
+        )
     except Exception as e:
-        return f"Playwright session error ({service}): {e}"
-    finally:
-        session.close()
+        msg = str(e)
+        if "not logged in" in msg.lower():
+            return None  # fall through to extension; auth bootstrap needed
+        return f"Playwright session error ({service}): {msg}"
 
 
 # ── Extension Channel (fallback) ──────────────────────────────────────────

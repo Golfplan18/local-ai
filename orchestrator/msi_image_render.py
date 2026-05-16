@@ -69,7 +69,12 @@ def _register_all_image_providers(registry: CapabilityRegistry) -> None:
     if integrations_dir not in _sys.path:
         _sys.path.insert(0, integrations_dir)
 
-    for module_name in ("civitai_images", "openai_images", "gemini_images"):
+    for module_name in (
+        "civitai_images",
+        "openai_images",
+        "gemini_images",
+        "openrouter_images",
+    ):
         try:
             module = __import__(module_name)
             module.register(registry)
@@ -98,13 +103,19 @@ ASTRO_ARTICLES_IMAGES_PUBLIC_DIR = os.path.join(ASTRO_PUBLIC, "articles")
 # ---------------------------------------------------------------------------
 
 # Per §6.3 Editorial Cartoon row
+#
+# Note (v2.1, 2026-05-13): "banner with quotation" removed from the
+# default vocab. Different models read it different ways — some treat
+# it as a style hint and skip it; Recraft v4 Pro read it literally and
+# rendered a garbled placeholder banner when no banner text was supplied.
+# Banner instruction is now injected by construct_hector_prompt only
+# when recipe.banner is actually set, with the literal banner text.
 HECTOR_VISUAL_REGISTER_VOCAB = [
     "heavy cross-hatching",
     "engraved aesthetic",
     "single central allegorical figure",
     "figure-ground hierarchy via outline weight",
     "pure black masses with carved-out whites",
-    "banner with quotation",
     "label-as-argument",
     "butt-face caricature for propaganda figures",
     "peanut gallery crowd",
@@ -124,12 +135,25 @@ UNIVERSAL_POSITIVE_VOCAB = [
     "single accent stroke in burnt orange",
 ]
 
-# Per §6.4 — universal negative
+# Per §6.4 — universal negative.
+#
+# Note (v2.1, 2026-05-13): "text in image" and "embedded labels"
+# removed from the cartoon-path negatives. The framework's composition
+# spec specifies label text directly (DOMESTIC SPENDING, PENTAGON
+# SUPPLEMENTAL, DEFENSE, ART. I §8, etc.); telling the model to render
+# those labels AND simultaneously forbidding "text in image" produced
+# unreliable behavior — some models obeyed the negative and rendered
+# blank labels, others rendered partial/garbled text. Per publisher
+# direction 2026-05-13 (Option B in the all-text-in-image discussion),
+# the model now renders all in-image text in one call. The news image
+# path (construct_news_prompt) inlines its own negative and continues
+# to forbid text in image for news photos — only the cartoon path
+# allows in-image text.
 UNIVERSAL_NEGATIVE_VOCAB = [
     "color fill", "gradient", "gradient shading", "photorealistic",
     "anime", "manga", "soft focus", "lens flare", "drop shadow",
     "modern digital style", "vector clip art", "decorative cartoon",
-    "gag cartoon", "text in image", "embedded labels",
+    "gag cartoon",
 ]
 
 # Per §6.5 — forbidden caricature
@@ -205,16 +229,32 @@ def construct_hector_prompt(recipe: HectorCartoonRecipe,
     """Build the Hector cartoon prompt per framework Layer 6 step 1.
 
     Composes: optional LoRA trigger token → Layer 3 composition spec →
-    §6.3 editorial-cartoon vocab → §6.2 universal positive → §6.4 universal
-    negative → §6.5 forbidden caricature → §6.6 editorial-cartoon-specific
-    additions. Pipe-separated sections keep the structure legible to both
-    Civitai (which expects loose comma-tokens) and the OpenAI / Gemini
-    natural-language image models.
+    optional explicit banner instruction (when recipe.banner is set) →
+    §6.3 editorial-cartoon vocab → §6.2 universal positive → §6.4
+    universal negative → §6.5 forbidden caricature → §6.6 editorial-
+    cartoon-specific additions. Pipe-separated sections keep the
+    structure legible to both Civitai (which expects loose comma-tokens)
+    and the OpenAI / Gemini natural-language image models.
+
+    Per v2.1 (2026-05-13, Option B / all-text-in-image), the cartoon
+    path lets the model render labels and (when supplied) the banner
+    quotation in-image. The caption stays beneath the image as markdown
+    prose; the signature is composited as a vector overlay for cross-
+    cartoon consistency.
     """
     parts: list[str] = []
     if lora_active:
         parts.append(HECTOR_LORA_TRIGGER)
     parts.append(recipe.composition_spec)
+    # Banner instruction — only when banner text is supplied. The literal
+    # text goes in the prompt so the model has something concrete to
+    # render rather than inventing placeholder copy.
+    if recipe.banner:
+        parts.append(
+            f'banner near top of frame carrying the quotation '
+            f'"{recipe.banner}" in hand-lettered period typography, '
+            f'rendered legibly inside the image area'
+        )
     parts.append(", ".join(HECTOR_VISUAL_REGISTER_VOCAB))
     parts.append(", ".join(UNIVERSAL_POSITIVE_VOCAB))
     parts.append("negative prompt: " + ", ".join(UNIVERSAL_NEGATIVE_VOCAB))
@@ -381,49 +421,27 @@ def potrace_vectorize(raster_bytes: bytes) -> str:
 # SVG text overlay (Hector framework Layer 6 steps 6–7)
 # ---------------------------------------------------------------------------
 
-def composite_text_overlays(svg: str, *, banner: Optional[str],
-                            signature: str = "Hector Rentier") -> str:
-    """Composite banner + signature as SVG ``<text>`` overlays.
+def composite_text_overlays(svg: str, *, banner: Optional[str] = None,
+                            signature: Optional[str] = None) -> str:
+    """No-op pass-through after v2.1 (2026-05-13, Option B) + signature
+    removal (2026-05-13).
 
-    Per Image Style Spec §4.5 step 4 and §5.1:
-      - Banner (if present): italic Georgia, centered near top of frame.
-      - Signature: italic Georgia, lower-right, hand-lettered feel.
-      - Caption is intentionally NOT baked into the SVG — it renders below
-        the image from the column's imageSchema.caption (per §4.5).
+    Per Image Style Spec §5.1 + v2.1:
+      - Signature: NO LONGER OVERLAID. The model renders the signature
+        in-image per the composition_spec ("Signature lower-right:
+        Hector Rentier hand-lettered"). Vector-overlaying italic Georgia
+        on top duplicated the signature and didn't read as hand-drawn.
+        Publisher direction 2026-05-13: "Remove that."
+      - Banner: NOT overlaid (v2.1). The model renders the banner
+        in-image when ``recipe.banner`` is set.
+      - Caption: NOT baked into the SVG — renders below the image from
+        the column's imageSchema.caption (per §4.5).
+
+    Both kwargs are preserved for backward compatibility with existing
+    callsites but neither composites anything. The function is kept as
+    a hook for any future overlay needs (e.g., a watermark, an issue
+    number, a build-time SVG accessibility annotation).
     """
-    width = 1024.0
-    height = 1024.0
-    m = re.search(
-        r'<svg[^>]*viewBox="\s*0\s+0\s+([0-9.]+)\s+([0-9.]+)"', svg)
-    if m:
-        try:
-            width = float(m.group(1))
-            height = float(m.group(2))
-        except ValueError:
-            pass
-
-    overlays: list[str] = []
-
-    if banner:
-        overlays.append(
-            f'<text x="{width/2:.1f}" y="{height*0.08:.1f}" '
-            f'text-anchor="middle" '
-            f'font-family="Georgia, serif" font-style="italic" '
-            f'font-size="{height*0.04:.0f}" fill="currentColor">'
-            f'{_escape_xml(banner)}</text>'
-        )
-
-    overlays.append(
-        f'<text x="{width*0.97:.1f}" y="{height*0.97:.1f}" '
-        f'text-anchor="end" '
-        f'font-family="Georgia, serif" font-style="italic" '
-        f'font-size="{height*0.025:.0f}" fill="currentColor" '
-        f'opacity="0.85">'
-        f'{_escape_xml(signature)}</text>'
-    )
-
-    if "</svg>" in svg:
-        svg = svg.replace("</svg>", "\n".join(overlays) + "\n</svg>", 1)
     return svg
 
 

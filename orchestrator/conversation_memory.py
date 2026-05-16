@@ -537,6 +537,8 @@ def iter_conversations(
             continue
         if not isinstance(data, dict):
             continue
+        if data.get("closed") is True:
+            continue
         messages = data.get("messages") or []
         tag = data.get("tag", "")
         if not isinstance(tag, str) or tag not in CONVERSATION_TAGS:
@@ -956,6 +958,46 @@ def set_conversation_pinned(
     return path
 
 
+def set_conversation_closed(
+    conversation_id: str,
+    closed: bool,
+    *,
+    sessions_root: Path | None = None,
+) -> Path | None:
+    """Toggle the closed (hidden-from-sidebar) state on the envelope.
+
+    A closed conversation is retained on disk but filtered out of
+    ``iter_conversations`` so it no longer appears in the sidebar.
+    Reversible: pass ``closed=False`` to restore.
+
+    Returns the path written, or None if the envelope is missing.
+    """
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    path = _conversation_path(conversation_id, root)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    if closed:
+        data["closed"] = True
+    else:
+        data.pop("closed", None)
+
+    try:
+        path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError:
+        return None
+    return path
+
+
 __all__ = [
     "TURN_SPATIAL_FIELDS",
     "CONVERSATION_TAGS",
@@ -974,4 +1016,5 @@ __all__ = [
     "ensure_welcome_thread",
     "set_display_name",
     "set_conversation_pinned",
+    "set_conversation_closed",
 ]

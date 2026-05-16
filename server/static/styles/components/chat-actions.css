@@ -1,0 +1,48 @@
+/* Chat-action row beneath assistant message bubbles.
+   Currently hosts the "speak aloud" button (TTS); future buttons
+   (copy, regenerate, etc.) should slot in here. */
+.msg-actions {
+  display: flex;
+  gap: 4px;
+  margin: 2px 0 8px 0;
+  opacity: 0.55;
+  transition: opacity 120ms;
+}
+.msg-actions:hover,
+.msg.ai:hover .msg-actions {
+  opacity: 1;
+}
+.msg-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  transition: background-color 120ms, border-color 120ms, color 120ms;
+}
+.msg-action:hover {
+  background: var(--bg-app, #282828);
+  color: var(--text-primary, #e0e0e0);
+  border-color: var(--border, #333);
+}
+.msg-action--loading {
+  opacity: 0.6;
+  cursor: progress;
+  animation: msg-action-pulse 1s ease-in-out infinite;
+}
+.msg-action--playing {
+  color: var(--accent, #8a6dff);
+  border-color: var(--accent, #8a6dff);
+  background: rgba(138, 109, 255, 0.08);
+}
+@keyframes msg-action-pulse {
+  0%   { opacity: 0.6; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.6; }
+}

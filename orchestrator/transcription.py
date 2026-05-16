@@ -311,6 +311,14 @@ class TranscriptionManager:
     # ── runner ───────────────────────────────────────────────────────────────
 
     def _run(self, job: _Transcription) -> None:
+        provider = (job.options.get("provider") or "whisper_local").lower()
+        if provider == "openrouter":
+            self._run_openrouter(job)
+            return
+        if provider == "openrouter_audio":
+            self._run_openrouter_audio(job)
+            return
+
         try:
             model_path = _resolve_model_path(job.options)
         except FileNotFoundError as e:
@@ -439,6 +447,203 @@ class TranscriptionManager:
             "duration_ms": job.duration_ms,
             "segment_count": len(job.segments),
             "hallucinations_filtered": job.hallucinations_filtered,
+            "plain_text_chars": len(job.plain_text),
+        })
+
+    # ── OpenRouter transcription ─────────────────────────────────────────────
+    #
+    # Uses OpenRouter's OpenAI-compatible /v1/audio/transcriptions endpoint.
+    # The catalog of available models is maintained by
+    # ~/ora/scripts/refresh-openrouter.py and exposed at
+    # /config/openrouter/catalog. The model id is passed via
+    # `options["openrouter_model"]` (e.g. "openai/whisper-large-v3").
+    #
+    # Differences vs the local Whisper path:
+    #   - No ffmpeg extraction step; we pass the source file directly.
+    #     OpenRouter accepts most common audio/video containers upstream.
+    #   - No progress events (the API call is one-shot blocking).
+    #   - Single synthesized segment containing the full transcript;
+    #     word-level confidence isn't returned by this endpoint.
+
+    def _run_openrouter(self, job: _Transcription) -> None:
+        try:
+            import keyring
+            key = (os.environ.get("OPENROUTER_API_KEY", "")
+                   or keyring.get_password("ora", "openrouter-api-key") or "")
+        except Exception:
+            key = os.environ.get("OPENROUTER_API_KEY", "")
+        if not key:
+            self._fail(job, "OpenRouter API key not set (keychain: ora/openrouter-api-key).")
+            return
+
+        model = (job.options.get("openrouter_model") or "").strip()
+        if not model:
+            self._fail(job, "OpenRouter transcription model not selected.")
+            return
+
+        job.state = STATE_TRANSCRIBING
+        self._broadcast({
+            "type": "transcribing",
+            "transcription_id": job.transcription_id,
+        })
+
+        try:
+            from openai import OpenAI
+        except Exception as e:
+            self._fail(job, f"OpenAI SDK unavailable: {e}")
+            return
+
+        try:
+            client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+            language = (job.options.get("language") or "").strip()
+            # OpenRouter's transcription endpoint mirrors OpenAI's; the
+            # `language` field accepts ISO-639-1 codes or "auto".
+            with open(job.source_path, "rb") as fh:
+                kwargs = {
+                    "model": model,
+                    "file":  fh,
+                    "response_format": "json",
+                    "extra_headers": {
+                        "HTTP-Referer": "https://ora.local",
+                        "X-Title":      "Ora",
+                    },
+                }
+                if language and language != "auto":
+                    kwargs["language"] = language
+                resp = client.audio.transcriptions.create(**kwargs)
+        except Exception as e:
+            self._fail(job, f"OpenRouter transcription failed: {e}")
+            return
+
+        # The response shape: { text: "...", language?: "en", duration?: 12.3 }
+        text     = getattr(resp, "text", "") or ""
+        lang     = getattr(resp, "language", None) or language or None
+        duration = getattr(resp, "duration", None)
+
+        job.language    = lang
+        job.duration_ms = float(duration) * 1000 if duration else None
+        job.plain_text  = text.strip()
+        # Synthesize one segment so downstream code (vault writer, UI)
+        # has the same shape it expects from whisper-cli output.
+        job.segments = [{
+            "id":     0,
+            "start":  0,
+            "end":    job.duration_ms or 0,
+            "text":   job.plain_text,
+            "words":  [],
+        }]
+        job.progress_pct = 100.0
+        job.state = STATE_COMPLETE
+        self._broadcast({
+            "type": "complete",
+            "transcription_id": job.transcription_id,
+            "language": job.language,
+            "duration_ms": job.duration_ms,
+            "segment_count": 1,
+            "hallucinations_filtered": 0,
+            "plain_text_chars": len(job.plain_text),
+        })
+
+    # ── OpenRouter audio understanding ──────────────────────────────────────
+    #
+    # Uses OpenRouter's chat-completions endpoint with audio input. The
+    # model takes the uploaded audio plus a text question and returns a
+    # text answer. Different from STT in that the question can be
+    # arbitrary ("Summarize this", "What's the speaker's mood?") rather
+    # than just "transcribe verbatim".
+
+    def _run_openrouter_audio(self, job: _Transcription) -> None:
+        import base64
+        try:
+            import keyring
+            key = (os.environ.get("OPENROUTER_API_KEY", "")
+                   or keyring.get_password("ora", "openrouter-api-key") or "")
+        except Exception:
+            key = os.environ.get("OPENROUTER_API_KEY", "")
+        if not key:
+            self._fail(job, "OpenRouter API key not set (keychain: ora/openrouter-api-key).")
+            return
+
+        model = (job.options.get("openrouter_audio_model") or "").strip()
+        if not model:
+            self._fail(job, "OpenRouter audio model not selected.")
+            return
+
+        question = (job.options.get("openrouter_audio_question") or "").strip()
+        if not question:
+            question = "Transcribe this audio verbatim. Return only the transcript."
+
+        job.state = STATE_TRANSCRIBING
+        self._broadcast({
+            "type": "transcribing",
+            "transcription_id": job.transcription_id,
+        })
+
+        try:
+            with open(job.source_path, "rb") as fh:
+                audio_b64 = base64.b64encode(fh.read()).decode("ascii")
+        except Exception as e:
+            self._fail(job, f"could not read audio file: {e}")
+            return
+
+        # Infer format from extension. OpenRouter audio input accepts
+        # mp3, wav, flac, ogg, m4a, mp4, webm — pass the extension through.
+        ext = job.source_path.suffix.lstrip(".").lower() or "mp3"
+        if ext in ("m4a", "mp4"): ext = "mp4"
+
+        try:
+            from openai import OpenAI
+        except Exception as e:
+            self._fail(job, f"OpenAI SDK unavailable: {e}")
+            return
+
+        try:
+            client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text",        "text":  question},
+                        {"type": "input_audio", "input_audio": {
+                            "data":   audio_b64,
+                            "format": ext,
+                        }},
+                    ],
+                }],
+                extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
+            )
+        except Exception as e:
+            self._fail(job, f"OpenRouter audio-understanding failed: {e}")
+            return
+
+        msg = resp.choices[0].message if resp.choices else None
+        text = (getattr(msg, "content", "") or "") if msg else ""
+        if isinstance(text, list):
+            # If content came back as a multi-block array, join the text blocks.
+            text = "\n".join(
+                b.get("text", "") if isinstance(b, dict) else str(b)
+                for b in text
+            )
+        text = text.strip()
+
+        job.plain_text = text
+        job.segments = [{
+            "id":    0,
+            "start": 0,
+            "end":   0,
+            "text":  text,
+            "words": [],
+        }]
+        job.progress_pct = 100.0
+        job.state = STATE_COMPLETE
+        self._broadcast({
+            "type": "complete",
+            "transcription_id": job.transcription_id,
+            "language": None,
+            "duration_ms": None,
+            "segment_count": 1,
+            "hallucinations_filtered": 0,
             "plain_text_chars": len(job.plain_text),
         })
 

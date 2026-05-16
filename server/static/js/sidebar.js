@@ -116,6 +116,13 @@
     renderGroup(groupUnread,  data.unread  || []);
     renderGroup(groupActive,  data.active  || []);
     renderGroup(groupPending, data.pending || []);
+
+    // The shared hover tooltip is anchored to a row; if that row is
+    // removed by a re-render while the cursor is over it, mouseleave
+    // never fires and the tooltip lingers. Dismiss it on every render
+    // so it can't outlive its anchor.
+    const tip = document.getElementById('ora-sidebar-row-tooltip');
+    if (tip) tip.style.display = 'none';
   };
 
   const renderGroup = (container, rows) => {

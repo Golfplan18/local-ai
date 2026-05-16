@@ -4,5 +4,8 @@
   },
   "interface": {
     "tooltips_enabled": true
+  },
+  "whisper": {
+    "provider": "openrouter_audio"
   }
 }

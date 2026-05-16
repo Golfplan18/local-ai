@@ -6,5 +6,7 @@
   "created_at": "2026-05-01T15:34:32.568562Z",
   "interrupted_input": "Analyze this diagram.",
   "interrupted_at": "2026-05-01T15:34:32.568562Z",
-  "interrupted_submission_id": "20260501T153432568547Z-fc7b6e3f"
+  "interrupted_submission_id": "20260501T153432568547Z-fc7b6e3f",
+  "last_read_at": "2026-05-13T12:45:36",
+  "closed": true
 }

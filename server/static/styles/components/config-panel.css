@@ -32,6 +32,55 @@
   color: var(--text-muted, #999);
   line-height: 1.4;
 }
+/* ── Presets bar (Models tab) ── */
+.cfg-presets-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-app, #282828);
+  border-bottom: 1px solid var(--border, #333);
+  font-size: var(--font-size-xs, 11px);
+}
+.cfg-presets-label {
+  font-weight: 600;
+  color: var(--text-secondary, #aaa);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+.cfg-preset-select {
+  flex: 0 1 220px;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: var(--bg-panel, #1e1e1e);
+  color: var(--text-primary, #e0e0e0);
+  border: 1px solid var(--border-input, #444);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cfg-preset-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  background: var(--bg-panel, #1e1e1e);
+  color: var(--text-primary, #e0e0e0);
+  border: 1px solid var(--border-input, #444);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cfg-preset-btn:hover:not(:disabled) {
+  background: var(--bg-hover, #2a2a2a);
+}
+.cfg-preset-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cfg-preset-btn--danger:hover:not(:disabled) {
+  background: rgba(180, 60, 60, 0.18);
+  border-color: #b43c3c;
+  color: #f5b7b7;
+}
+
 .cfg-body {
   display: grid;
   grid-template-columns: 1fr 280px;
@@ -41,6 +90,14 @@
 .cfg-body > * {
   background: var(--bg-panel, #1e1e1e);
 }
+
+/* Tabbed layouts — only one cfg-body--* variant is active per tab. */
+.cfg-body--pipelines-only,
+.cfg-body--buckets-only,
+.cfg-body--visual-only {
+  grid-template-columns: 1fr;
+}
+
 .cfg-pipelines {
   /* Three columns — My Pipeline, Automated, Visual Capabilities. */
   display: grid;
@@ -48,6 +105,385 @@
   gap: 1px;
   background: var(--border, #333);
   padding: 0;
+}
+.cfg-pipelines--two-col {
+  grid-template-columns: 1fr 1fr;
+}
+/* Standalone Buckets tab — Commercial section over Local section,
+   each laid out as an explicit 4-column row so tier cards align. */
+.cfg-bucket-section + .cfg-bucket-section {
+  border-top: 1px solid var(--border, #333);
+}
+.cfg-bucket-section-header {
+  padding: 12px 14px 6px;
+  background: var(--bg-panel, #1e1e1e);
+}
+.cfg-bucket-section-title {
+  font-size: var(--font-size-sm, 13px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary, #aaa);
+}
+.cfg-bucket-section-hint {
+  font-size: 11px;
+  color: var(--text-muted, #999);
+  line-height: 1.4;
+  margin-top: 4px;
+}
+.cfg-buckets--row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border, #333);
+  padding: 0;
+}
+.cfg-buckets--row > .cfg-tier,
+.cfg-buckets--row > .cfg-bucket-placeholder {
+  background: var(--bg-panel, #1e1e1e);
+}
+.cfg-bucket-placeholder {
+  padding: 10px 14px;
+  border: 1px dashed var(--border-input, #444);
+  margin: 6px;
+  border-radius: 6px;
+  color: var(--text-muted, #999);
+}
+.cfg-bucket-placeholder-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary, #aaa);
+  margin-bottom: 6px;
+}
+.cfg-bucket-placeholder-body {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ── Slot-fill picker (Buckets tab) ── */
+.cfg-armed-bar {
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: var(--bg-app, #282828);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cfg-armed-hint--idle {
+  color: var(--text-muted, #888);
+  font-style: italic;
+}
+.cfg-armed-cancel {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 8px;
+  background: transparent;
+  color: var(--text-muted, #aaa);
+  border: 1px solid var(--border-input, #444);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.cfg-armed-cancel:hover {
+  color: var(--text-primary, #eee);
+  border-color: var(--accent, #8a6dff);
+}
+
+.cfg-tier--slot-style {
+  padding: 10px 12px;
+}
+.cfg-tier-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.cfg-bucket-slot {
+  border: 1px solid var(--border, #333);
+  border-radius: 5px;
+  padding: 6px 8px;
+  background: var(--bg-app, #282828);
+  cursor: pointer;
+  transition: border-color 120ms, background-color 120ms;
+}
+.cfg-bucket-slot:hover {
+  border-color: var(--text-muted, #555);
+}
+.cfg-bucket-slot--armed {
+  border-color: var(--accent, #8a6dff);
+  box-shadow: 0 0 0 2px rgba(138, 109, 255, 0.18);
+  background: rgba(138, 109, 255, 0.06);
+}
+.cfg-bucket-slot--deprecated {
+  border-color: rgba(220, 170, 70, 0.5);
+  background: rgba(220, 170, 70, 0.06);
+}
+.cfg-bucket-slot-deprecated {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(220, 170, 70, 0.18);
+  color: #d4a64a;
+  cursor: help;
+}
+.cfg-bucket-slot--empty .cfg-bucket-slot-body {
+  color: var(--text-muted, #666);
+  font-style: italic;
+  font-size: 11px;
+}
+.cfg-bucket-slot-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #888);
+  margin-bottom: 2px;
+}
+.cfg-bucket-slot-body {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.cfg-bucket-slot-model {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.cfg-bucket-slot-name {
+  font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cfg-bucket-slot-source {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(140, 200, 200, 0.14);
+  color: #8cc;
+}
+.cfg-bucket-slot-source--openrouter {
+  background: rgba(180, 140, 255, 0.16);
+  color: #b9a1ff;
+}
+.cfg-bucket-slot-source--unknown {
+  background: rgba(200, 120, 120, 0.16);
+  color: #d99;
+}
+.cfg-bucket-slot-price {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  font-variant-numeric: tabular-nums;
+}
+.cfg-bucket-slot-clear {
+  font-size: 14px;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.cfg-bucket-slot-clear:hover {
+  color: #d77;
+}
+
+/* Picker source lists below each section */
+.cfg-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border, #333);
+  padding: 1px 0 0;
+}
+.cfg-bucket-section .cfg-picker:has(.cfg-picker-section:only-child) {
+  grid-template-columns: 1fr;
+}
+.cfg-picker-section {
+  background: var(--bg-panel, #1e1e1e);
+  padding: 10px 14px;
+  min-width: 0;
+}
+.cfg-picker-section:nth-child(n+3) {
+  /* When OpenRouter is the 3rd section, span both columns. */
+  grid-column: 1 / -1;
+}
+.cfg-picker-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary, #aaa);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.cfg-picker-count {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.cfg-or-refresh-btn {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 10px;
+  background: var(--bg-panel, #1e1e1e);
+  color: var(--text-primary, #e0e0e0);
+  border: 1px solid var(--border-input, #444);
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.cfg-or-refresh-btn:hover:not(:disabled) {
+  background: var(--bg-hover, #2a2a2a);
+  border-color: var(--accent, #8a6dff);
+}
+.cfg-or-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cfg-picker-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cfg-picker-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-primary, #e0e0e0);
+}
+.cfg-picker-row:hover {
+  background: var(--bg-app, #282828);
+}
+.cfg-picker-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cfg-picker-row-price {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  font-variant-numeric: tabular-nums;
+  margin-left: 8px;
+}
+.cfg-picker-empty {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  font-style: italic;
+  padding: 6px 0;
+}
+.cfg-picker-empty code {
+  background: var(--bg-app, #282828);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-style: normal;
+}
+.cfg-or-vendors {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  max-height: 460px;
+  overflow-y: auto;
+  border: 1px solid var(--border, #333);
+  border-radius: 4px;
+  padding: 6px;
+}
+.cfg-direct-api-groups {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.cfg-direct-api-group {
+  background: var(--bg-app, #282828);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.cfg-direct-api-group-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #aaa);
+  padding: 2px 0 6px;
+  border-bottom: 1px solid var(--border, #333);
+  margin-bottom: 4px;
+}
+.cfg-direct-api-group-count {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  background: var(--bg-panel, #1e1e1e);
+  padding: 0 5px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+.cfg-or-vendor {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app, #282828);
+  border-radius: 4px;
+}
+.cfg-or-vendor-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.cfg-or-vendor-header:hover {
+  background: var(--bg-panel-hover, #303030);
+}
+.cfg-or-vendor-arrow {
+  width: 10px;
+  color: var(--text-muted, #888);
+}
+.cfg-or-vendor-name {
+  flex: 1;
+  color: var(--text-primary, #e0e0e0);
+  text-transform: capitalize;
+}
+.cfg-or-vendor-count {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  background: var(--bg-panel, #1e1e1e);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.cfg-or-vendor-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 6px 6px;
+  gap: 1px;
+}
+.cfg-visual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--border, #333);
+}
+.cfg-visual-grid > .cfg-visual-col {
+  background: var(--bg-panel, #1e1e1e);
 }
 .cfg-pipelines > * {
   background: var(--bg-panel, #1e1e1e);

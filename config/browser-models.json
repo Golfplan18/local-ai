@@ -1,5 +1,5 @@
 {
-  "_note": "Model preferences for browser-based AI services. Run 'python3 config/update-models.py' to change selections. Run 'python3 config/update-models.py --refresh' to auto-detect new/retired models.",
+  "_note": "Model preferences for browser-based AI services. Run 'python3 config/update-models.py' to change selections. Run 'python3 config/update-models.py --refresh' to auto-detect new/retired models. Set 'selected_family' (case-insensitive substring of name) to auto-track the latest model in a family \u2014 e.g. 'Claude Opus' picks whichever Opus exists, surviving version bumps without re-pinning.",
   "claude": {
     "available": [
       {
@@ -31,7 +31,8 @@
       "model_option": "div[role='option']:has-text('{model_name}'), button:has-text('{model_name}')",
       "model_list_selector": "div[role='option'], div[role='menuitem'], button[data-testid*='model']",
       "close_action": "Escape"
-    }
+    },
+    "selected_family": "Claude Opus"
   },
   "chatgpt": {
     "available": [
@@ -74,7 +75,8 @@
       "model_option": "div[role='option']:has-text('{model_name}'), li:has-text('{model_name}')",
       "model_list_selector": "div[role='option'], div[role='menuitem'], li[role='option']",
       "close_action": "Escape"
-    }
+    },
+    "selected_family": "GPT-5.4"
   },
   "gemini": {
     "available": [

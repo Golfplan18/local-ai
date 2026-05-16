@@ -153,8 +153,9 @@ class TestCloseConversationDispatchToFinalize(unittest.TestCase):
             sessions_root=Path(self.sessions_root),
             chromadb_path=Path(self.chromadb_path),
         )
-        self.assertEqual(result["action"], "noop")
+        self.assertEqual(result["action"], "close")
         self.assertEqual(result["tag"], "")
+        self.assertTrue(result["closed"])
         # finalize sub-result
         self.assertIn("finalize", result)
         self.assertEqual(result["finalize"]["chunks_updated"], 2)

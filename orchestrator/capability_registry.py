@@ -526,6 +526,176 @@ class CapabilityRegistry:
 # Convenience loader
 # ---------------------------------------------------------------------------
 
+# Hardwired slot-inheritance relationships per Image Spec §5.8.1 v2.0
+# (publisher direction 2026-05-13: "manage one chain in the UI; cartoon
+# inherits + appends the LoRA").
+#
+# Why hardwired rather than file-declared: the Visual settings UI auto-
+# saves routing-config.json on every edit, but doesn't understand the
+# ``inherits`` / ``append_fallback`` schema — UI writes serialize each
+# slot as standalone {preferred, fallback}, clobbering any inheritance
+# directives. Encoding the well-known cartoon relationship in code means
+# the UI can edit ``image_generates`` freely and the cartoon chain
+# follows automatically — there's nothing in the JSON for the UI to
+# overwrite. File-declared inheritance still works for slots not in this
+# mapping (the resolver below applies both layers in order).
+#
+# Format: child_slot → (parent_slot, [appended_fallbacks], [excluded_inherited])
+#
+# The exclude_inherited list (per Image Spec §5.8.1 v2.2 publisher
+# direction 2026-05-13) names providers the parent slot may legitimately
+# carry but that don't belong in the child's cartoon chain. Concrete
+# case: local-diffusers (Stable Diffusion 1.5) is a sensible last-resort
+# floor for news photos (image_generates) — but it actively damages the
+# cartoon path because (a) SD 1.5's CLIP tokenizer truncates anything
+# over 77 tokens and Hector's prompts run 800+, (b) SD 1.5's aesthetic
+# vocabulary doesn't include Nast cross-hatch, and (c) when SD 1.5
+# "succeeds" it stops the cascade before the LoRA (which is trained on
+# the exact Hector register and never refuses) gets reached. Excluding
+# it from the cartoon path is the publisher's structural fix for "the
+# LoRA never gets called" surfaced repeatedly across the 2026-05-13
+# moderation-lottery test runs.
+_HARDWIRED_SLOT_INHERITANCE: dict[str, tuple[str, list[str], list[str]]] = {
+    "image_generates_cartoon": (
+        "image_generates",
+        ["civitai-hector-lora-v1"],
+        ["local-diffusers"],
+    ),
+}
+
+
+def resolve_slot_inheritance(routing_config: dict) -> dict:
+    """Materialize ``inherits`` / ``append_fallback`` / ``prepend_fallback``
+    directives in routing-config.json so every slot ends up with a fully
+    explicit ``preferred`` + ``fallback`` list.
+
+    Two inheritance sources, applied in order:
+
+    (1) **Hardwired relationships** (``_HARDWIRED_SLOT_INHERITANCE``).
+        Well-known parent/child pairs encoded in code so the relationship
+        survives UI-driven config rewrites. The current entry is
+        ``image_generates_cartoon`` inheriting from ``image_generates``
+        and appending ``civitai-hector-lora-v1`` per Image Spec §5.8.1 v2.0.
+
+    (2) **File-declared inheritance**. Per-slot directives in routing-
+        config.json::
+
+          "some_slot": {
+            "inherits": "parent_slot",
+            "append_fallback": ["extra-provider"]
+          }
+
+    becomes, after resolution:
+
+      "image_generates_cartoon": {
+        "preferred": "<whatever image_generates.preferred is>",
+        "fallback": [...image_generates.fallback..., "civitai-hector-lora-v1"]
+      }
+
+    Rules:
+      * ``inherits`` names the parent slot to copy ``preferred`` + ``fallback`` from.
+      * ``preferred`` declared on the child wins over the parent's.
+      * ``fallback`` declared on the child replaces the parent's wholesale
+        (so a child can opt out of the parent's chain entirely). Note:
+        for hardwired entries, the parent's chain is always used as the
+        base — the hardwired child's existing fallback list is REPLACED
+        rather than merged, since the UI's serialized standalone shape
+        carries stale data when the parent's chain has been edited.
+      * ``prepend_fallback`` / ``append_fallback`` are *additive* to the
+        effective (post-inheritance) ``fallback`` list, in order
+        prepend → inherited → append.
+      * Inheritance is single-level (no transitive resolution); cycles
+        and missing parents are silent no-ops so a malformed config can't
+        brick the whole registry.
+      * Non-slot directives (``_note``, etc.) on the child are preserved.
+
+    Mutates ``routing_config`` in place AND returns it for convenience.
+    """
+    if not isinstance(routing_config, dict):
+        return routing_config
+    slots = routing_config.get("slots")
+    if not isinstance(slots, dict):
+        return routing_config
+
+    # Layer 1: hardwired relationships. Inject the directives if the
+    # slot exists; the merge logic below then materializes them.
+    for child_name, (parent_name, append, exclude) in _HARDWIRED_SLOT_INHERITANCE.items():
+        child_cfg = slots.get(child_name)
+        if not isinstance(child_cfg, dict):
+            # If the child slot doesn't exist at all, create it so the
+            # cartoon chain is reachable even on a freshly-built config.
+            child_cfg = {}
+            slots[child_name] = child_cfg
+        # Hardwire ALWAYS wins for the slots in the map, overriding any
+        # standalone {preferred, fallback} the UI may have written.
+        child_cfg["inherits"] = parent_name
+        child_cfg["append_fallback"] = list(append)
+        if exclude:
+            child_cfg["exclude_inherited"] = list(exclude)
+        # Wipe the standalone fields so the merge below treats parent's
+        # chain as the source of truth (the UI's serialized standalone
+        # values are stale for hardwired children).
+        child_cfg.pop("preferred", None)
+        child_cfg.pop("fallback", None)
+
+    # Layer 2: per-slot materialization (handles both layer-1 injections
+    # and any organically-declared inheritance).
+    for child_name, child_cfg in list(slots.items()):
+        if not isinstance(child_cfg, dict):
+            continue
+        parent_name = child_cfg.get("inherits")
+        prepend = list(child_cfg.get("prepend_fallback", []) or [])
+        append = list(child_cfg.get("append_fallback", []) or [])
+        exclude = set(child_cfg.get("exclude_inherited", []) or [])
+        if not parent_name and not prepend and not append:
+            continue
+
+        parent_cfg = slots.get(parent_name) if parent_name else None
+        if parent_name and not isinstance(parent_cfg, dict):
+            parent_cfg = {}
+
+        # preferred: child's wins; else inherit parent's (unless excluded).
+        # If the parent's preferred is in the exclusion list, fall through
+        # to whatever the child's prepend/append/inherited-fallback supplies.
+        effective_preferred = child_cfg.get("preferred")
+        if effective_preferred is None and isinstance(parent_cfg, dict):
+            parent_preferred = parent_cfg.get("preferred")
+            if parent_preferred and parent_preferred not in exclude:
+                effective_preferred = parent_preferred
+
+        # fallback: child's explicit replaces; else inherit parent's
+        # (filtered through the exclusion list)
+        if "fallback" in child_cfg:
+            inherited_fallback = list(child_cfg.get("fallback") or [])
+        elif isinstance(parent_cfg, dict):
+            inherited_fallback = [
+                pid for pid in (parent_cfg.get("fallback") or [])
+                if pid not in exclude
+            ]
+        else:
+            inherited_fallback = []
+
+        # Compose: prepend → inherited → append, deduplicated in order.
+        # prepend and append are NOT filtered by exclude — those are
+        # explicitly added by the child, so the child meant them.
+        composed: list[str] = []
+        seen: set[str] = set()
+        for pid in (*prepend, *inherited_fallback, *append):
+            if pid in seen:
+                continue
+            composed.append(pid)
+            seen.add(pid)
+
+        child_cfg["preferred"] = effective_preferred
+        child_cfg["fallback"] = composed
+        child_cfg.pop("inherits", None)
+        child_cfg.pop("prepend_fallback", None)
+        child_cfg.pop("append_fallback", None)
+        child_cfg.pop("exclude_inherited", None)
+
+    return routing_config
+
+
 def load_registry(
     config_path: str | Path | None = None,
     routing_config_path: str | Path | None = None,
@@ -536,6 +706,11 @@ def load_registry(
     omitting it disables preferred/fallback resolution and the registry
     falls back to first-registered-provider order in
     ``resolve_provider``.
+
+    Slot-inheritance directives (``inherits`` / ``prepend_fallback`` /
+    ``append_fallback``) are resolved at load time via
+    :func:`resolve_slot_inheritance` so the registry only sees fully
+    materialized ``preferred`` + ``fallback`` lists.
     """
     routing_config = None
     if routing_config_path is not None or ROUTING_CONFIG_JSON.exists():
@@ -545,6 +720,8 @@ def load_registry(
                 routing_config = json.load(f)
         except Exception:
             routing_config = None
+    if routing_config is not None:
+        resolve_slot_inheritance(routing_config)
     registry = CapabilityRegistry(config_path=config_path, routing_config=routing_config)
 
     # Local-first default: auto-register the offline diffusers provider

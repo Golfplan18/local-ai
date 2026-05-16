@@ -302,6 +302,13 @@ class Router:
                                   breadth.get("type") == "local")
                     same_machine = (depth.get("machine") == breadth.get("machine"))
                     result.parallel_safe = not (both_local and same_machine)
+                    # Verification escape hatch: ORA_FORCE_GEAR4_PARALLEL=1
+                    # bypasses the same-machine MLX block. Use only when
+                    # you've confirmed the two local models fit in RAM
+                    # simultaneously (e.g. M4 Max 128GB with the 70/72B pair).
+                    import os as _os
+                    if _os.environ.get("ORA_FORCE_GEAR4_PARALLEL") == "1":
+                        result.parallel_safe = True
 
                 # Generate warnings
                 result.warnings = self._generate_warnings(assignments, gear, context)

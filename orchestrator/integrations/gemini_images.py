@@ -431,19 +431,23 @@ def dispatch_image_generates(inputs: dict) -> bytes:
 # ---------------------------------------------------------------------------
 
 def register(registry) -> list[str]:
-    """Bind ``dispatch_image_generates`` to the ``image_generates`` slot
+    """Bind ``dispatch_image_generates`` to the image-generation slots
     under provider id ``"gemini-2.5-flash-image"``.
+
+    Per Image Spec §5.8.1 v2.0 (slot-inheritance, 2026-05-13), the
+    cartoon slot inherits its chain from ``image_generates`` and
+    appends the Hector LoRA. For the inherited chain to actually reach
+    Gemini at runtime, Gemini has to register against both slots — the
+    materialized chain only includes providers that are actually
+    registered against the destination slot.
 
     Returns the list of slot names actually registered (matches the
     stability.py / replicate.py return convention so boot-time code can
     log which slots came online).
     """
     registered: list[str] = []
-    if registry.has_slot("image_generates"):
-        registry.register_provider(
-            "image_generates",
-            PROVIDER_ID,
-            dispatch_image_generates,
-        )
-        registered.append("image_generates")
+    for slot in ("image_generates", "image_generates_cartoon"):
+        if registry.has_slot(slot):
+            registry.register_provider(slot, PROVIDER_ID, dispatch_image_generates)
+            registered.append(slot)
     return registered
