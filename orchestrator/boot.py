@@ -4982,7 +4982,43 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     mode_name = step1_result["mode"]
     mode_text = load_mode(mode_name)
     gear = extract_default_gear(mode_text)
-    cleaned_prompt = step1_result["operational_notation"]
+
+    # Phase A produces three forms of the prompt:
+    #   - raw_prompt: what the user actually typed (source of truth)
+    #   - cleaned_prompt: natural-language version with Phase A's
+    #     disambiguations and inferred items
+    #   - operational_notation: compact function-call form
+    #
+    # Pre-2026-05-16 design used operational_notation as the cleaned_prompt
+    # passed downstream. That had two failure modes: (a) underscore-tokenized
+    # function-call syntax doesn't substring-match the natural-language
+    # signal-vocabulary registry (fixed in commit d6b7df7 by routing
+    # pre-routing through raw_prompt), and (b) downstream analyst /
+    # evaluator / verifier user messages got the operational form labelled
+    # as "ORIGINAL QUERY", which is misleading (the operational form is
+    # Phase A's interpretation, not the user's actual words) and stripped
+    # of nuance ("become as capable", "Short list, no preamble").
+    #
+    # Fix: the cleaned_prompt that flows downstream now combines the raw
+    # prompt (so evaluators see what the user actually asked) with Phase A's
+    # natural-language clarified interpretation (so they can see what was
+    # inferred and check the analyst against those inferences). The
+    # operational notation is dropped from user-facing portions of analyst
+    # prompts entirely — it was a model-readable optimisation that became a
+    # clarity tax. RAG queries use raw_prompt for embedding similarity
+    # (most faithful to user intent).
+    raw_prompt = step1_result.get("raw_prompt", "") or ""
+    cleaned_nl = step1_result.get("cleaned_prompt", "") or ""
+    if raw_prompt and cleaned_nl and raw_prompt.strip() != cleaned_nl.strip():
+        cleaned_prompt = (
+            f"{raw_prompt}\n\n"
+            f"_Phase A clarified interpretation (includes inferred items "
+            f"not explicit in original):_\n\n"
+            f"{cleaned_nl}"
+        )
+    else:
+        cleaned_prompt = raw_prompt or cleaned_nl
+    rag_query = raw_prompt or cleaned_nl
 
     # Phase 5.6 ranker: type-weighted ranking with provenance markers,
     # type_filter from active mode's RAG PROFILE, archived/private filters.
@@ -5007,7 +5043,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     if RAG_ENGINE_AVAILABLE:
         try:
             conv_rag = assemble_ranked_context(
-                query=cleaned_prompt,
+                query=rag_query,
                 collection="conversations",
                 mode_text=mode_text,
                 n_results=3,
@@ -5019,18 +5055,18 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             conv_rag_path = "rag_engine_failed_fallback_to_empty"
             if PIPELINE_TRACE_AVAILABLE:
                 pipeline_trace.record_rag_failure(
-                    trace_dir, "conversation-rag", cleaned_prompt, e
+                    trace_dir, "conversation-rag", rag_query, e
                 )
     elif TOOLS_AVAILABLE:
         try:
-            conv_rag = knowledge_search(cleaned_prompt, "conversations", 3)
+            conv_rag = knowledge_search(rag_query, "conversations", 3)
             conv_rag_path = "legacy_knowledge_search"
         except Exception as e:
             conv_rag = ""
             conv_rag_path = "legacy_knowledge_search_failed"
             if PIPELINE_TRACE_AVAILABLE:
                 pipeline_trace.record_rag_failure(
-                    trace_dir, "conversation-rag-legacy", cleaned_prompt, e
+                    trace_dir, "conversation-rag-legacy", rag_query, e
                 )
 
     # Concept RAG (vault knowledge) — only for Gear 2+
@@ -5040,7 +5076,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         if RAG_ENGINE_AVAILABLE:
             try:
                 concept_rag = assemble_ranked_context(
-                    query=cleaned_prompt,
+                    query=rag_query,
                     collection="knowledge",
                     mode_text=mode_text,
                     n_results=5,
@@ -5052,18 +5088,18 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 concept_rag_path = "rag_engine_failed_fallback_to_empty"
                 if PIPELINE_TRACE_AVAILABLE:
                     pipeline_trace.record_rag_failure(
-                        trace_dir, "concept-rag", cleaned_prompt, e
+                        trace_dir, "concept-rag", rag_query, e
                     )
         elif TOOLS_AVAILABLE:
             try:
-                concept_rag = knowledge_search(cleaned_prompt, "knowledge", 5)
+                concept_rag = knowledge_search(rag_query, "knowledge", 5)
                 concept_rag_path = "legacy_knowledge_search"
             except Exception as e:
                 concept_rag = ""
                 concept_rag_path = "legacy_knowledge_search_failed"
                 if PIPELINE_TRACE_AVAILABLE:
                     pipeline_trace.record_rag_failure(
-                        trace_dir, "concept-rag-legacy", cleaned_prompt, e
+                        trace_dir, "concept-rag-legacy", rag_query, e
                     )
 
     # Relationship RAG (Phase 7/8) — enrichment via graph traversal
@@ -5190,6 +5226,13 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             "mode_text_chars": len(mode_text),
             "gear": gear,
             "cleaned_prompt": cleaned_prompt,
+            # The three prompt forms broken out for trace-side audit.
+            # cleaned_prompt above is the composite that downstream user
+            # messages use; raw and natural-language are kept separate so
+            # any future regression in the composite assembly is visible.
+            "raw_prompt": raw_prompt,
+            "natural_language_prompt": cleaned_nl,
+            "rag_query": rag_query,
             "rag_adaptive_cap": {
                 "max_chars_used": _adaptive_cap,
                 "binding_endpoint_name": _cap_endpoint_name,
@@ -5262,7 +5305,20 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         ))
 
     return {
+        # `cleaned_prompt` is the composite raw + Phase-A-clarified form used
+        # as the "ORIGINAL QUERY" body in every downstream user message
+        # (analyst, evaluator, reviser, verifier, consolidator, formatter).
+        # The operational notation is no longer in the user-facing portion
+        # of any analyst prompt; it remains accessible via Phase A's trace
+        # for debugging and observability.
         "cleaned_prompt": cleaned_prompt,
+        # `raw_prompt` is the user's actual sentence, no Phase A inference.
+        # Use this when you need the user's actual words (e.g. signal
+        # vocabulary matching, vector-similarity RAG queries).
+        "raw_prompt": raw_prompt,
+        # `natural_language_prompt` is Phase A's clarified natural-language
+        # form (without the raw + composite framing). Kept separate for
+        # callers that want Phase A's interpretation only.
         "natural_language_prompt": step1_result["cleaned_prompt"],
         "mode_name": mode_name,
         "mode_text": mode_text,
