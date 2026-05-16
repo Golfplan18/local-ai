@@ -749,6 +749,62 @@ def format_context_with_provenance(
     return "\n".join(parts)
 
 
+def compute_rag_max_chars(
+    endpoint: Optional[dict] = None,
+    *,
+    reservation_fraction: float = 0.5,
+    non_rag_reserve_tokens: int = 8000,
+    output_reserve_tokens: int = 4096,
+    chars_per_token: int = 4,
+    floor_chars: int = 8000,
+    ceiling_chars: int = 400_000,
+) -> int:
+    """Compute the RAG-package character cap from the actual model's
+    context window — *not* a hardcoded magic number.
+
+    Why: the prior default (8000 chars ≈ 2000 tokens) was chosen for
+    8k-token-window models and silently truncated useful context on
+    modern 128k+ models. Hermes-4-70B and Kimi-Dev-72B with 131k
+    contexts were using 1.5% of available space for the knowledge
+    package. The model could not see most of the relevant material
+    because the formatter cut it long before the window was full.
+
+    Formula:
+        usable_tokens = context_window
+                        - non_rag_reserve_tokens    # system + mode + history + protocol
+                        - output_reserve_tokens     # room for the analyst's response
+        budget_tokens = usable_tokens * reservation_fraction
+        budget_chars  = budget_tokens * chars_per_token
+        clamped to [floor_chars, ceiling_chars]
+
+    Defaults give RAG roughly half the *remaining* window after
+    non-RAG content + output reserve are subtracted. The
+    ``reservation_fraction`` floor of 0.5 honours the lost-in-the-
+    middle effect by NOT giving RAG the entire remainder.
+
+    Override via the endpoint dict (`"rag_reservation_fraction"`,
+    `"rag_non_rag_reserve_tokens"`, `"rag_output_reserve_tokens"`,
+    `"rag_ceiling_chars"`) or via call-site kwargs. When no endpoint
+    is supplied or no ``context_window`` is declared, falls back to
+    ``floor_chars``.
+    """
+    ep = endpoint or {}
+    cw = ep.get("context_window")
+    if not isinstance(cw, int) or cw <= 0:
+        return floor_chars
+
+    # Per-endpoint overrides
+    res_frac = float(ep.get("rag_reservation_fraction", reservation_fraction))
+    non_rag = int(ep.get("rag_non_rag_reserve_tokens", non_rag_reserve_tokens))
+    out_res = int(ep.get("rag_output_reserve_tokens", output_reserve_tokens))
+    ceiling = int(ep.get("rag_ceiling_chars", ceiling_chars))
+
+    usable_tokens = max(0, cw - non_rag - out_res)
+    budget_tokens = int(usable_tokens * res_frac)
+    budget_chars = budget_tokens * chars_per_token
+    return max(floor_chars, min(budget_chars, ceiling))
+
+
 def assemble_ranked_context(
     query: str,
     *,
@@ -758,16 +814,27 @@ def assemble_ranked_context(
     n_results: int = 10,
     include_private: bool = False,
     include_archived: bool = False,
-    max_chars: int = 8000,
+    max_chars: Optional[int] = None,
+    endpoint: Optional[dict] = None,
 ) -> str:
     """End-to-end Phase 5.6 ranker: query → rank → format.
 
     When `mode_text` is provided and `type_filter` is None, extracts
     the type_filter from the mode file's `## RAG PROFILE → ###
     type_filter` subsection (Phase 4 mode-file contract).
+
+    ``max_chars`` is now computed from ``endpoint.context_window`` via
+    ``compute_rag_max_chars`` when not explicitly supplied. Pass
+    ``max_chars=`` directly to override; pass ``endpoint=`` to make the
+    cap adaptive to the model that will receive the package. Pass
+    neither and the legacy 8000-char floor applies as a defensive
+    fallback.
     """
     if type_filter is None and mode_text:
         type_filter = _knowledge_search._extract_mode_type_filter(mode_text)
+
+    if max_chars is None:
+        max_chars = compute_rag_max_chars(endpoint)
 
     chunks = _knowledge_search.knowledge_search_raw(
         query=query,
