@@ -41,6 +41,14 @@ class CalibrationParams:
     # Stage B — Source verification
     min_distinct_outlets: int = 2
     require_national_tier_outlet: bool = True
+    # When > 0, also require this many distinct outlets from the
+    # national_tier_outlet_set (i.e. cluster must hit N approved free
+    # services). Used by MSI to enforce the publisher's "5 free
+    # services" corroboration requirement; any 5 from the approved
+    # list qualify (different per story is fine). Distinct from
+    # min_distinct_outlets (which counts ALL outlets including
+    # long-tail aggregators).
+    min_distinct_national_outlets: int = 0
     national_tier_outlet_set: tuple[str, ...] = (
         "nytimes.com", "washingtonpost.com", "wsj.com", "apnews.com",
         "reuters.com", "bloomberg.com", "politico.com", "thehill.com",
@@ -526,9 +534,13 @@ def stage_b_source_verification(
     kept = []
     dropped = []
     for s in stories:
-        s.has_national_tier_outlet = bool(s.distinct_domains & national_set)
+        national_matches = s.distinct_domains & national_set
+        s.has_national_tier_outlet = bool(national_matches)
         ok = len(s.distinct_outlets) >= params.min_distinct_outlets
         if params.require_national_tier_outlet and not s.has_national_tier_outlet:
+            ok = False
+        if params.min_distinct_national_outlets > 0 and \
+                len(national_matches) < params.min_distinct_national_outlets:
             ok = False
         (kept if ok else dropped).append(s)
     return kept, StageResult(
