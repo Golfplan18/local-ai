@@ -4411,39 +4411,55 @@ AMBIGUITY_MODE: {ambiguity_mode}
     # filters bypass prompts; Stage 2 picks a mode from signal vocabulary
     # plus disambiguation; Stage 3 checks input completeness; Stage 4
     # (mode execution) happens downstream in run_pipeline.
+    #
+    # IMPORTANT: pre-routing matches against the RAW prompt, not Phase A's
+    # operational notation. The signal-vocabulary registry is written in
+    # natural-language phrases ("cui bono", "who benefits", "argument audit");
+    # Phase A's operational form replaces those with underscore-tokenized
+    # function calls ("cui_bono_analysis(...)") that no signal matches.
+    # Passing operational_notation here caused every analytical prompt to
+    # match zero signals and fall through to ANALYZING_FALLBACK / pending
+    # clarification. The expanded form is for downstream model dispatch
+    # (step 3+); pre-routing is signal classification and must see the
+    # user's actual words.
     routing = run_pre_routing_pipeline(
-        prompt=step1_result["operational_notation"],
+        prompt=raw_prompt,
         context=None,
     )
 
     # --- Dual-dispatch audit ---
-    # Phase A's expansion can synthesize analytical vocabulary the raw
-    # prompt did not contain — pushing Stage 2 to dispatch a mode the
-    # user didn't intend (inverse of failure #7). Run the same dispatch
-    # on the raw prompt and surface any disagreement in the trace so an
-    # auditor can spot Phase A overreach. Observability only; the
-    # operational dispatch still uses the expanded prompt.
+    # Observability: also run pre-routing against Phase A's expanded form
+    # and surface any disagreement in the trace. Helps spot cases where
+    # Phase A's interpretation would have routed differently (either by
+    # introducing signals the user didn't say or by suppressing signals
+    # the user did say). Operational dispatch uses the raw-prompt routing
+    # decision above.
     dispatch_audit = None
     try:
-        raw_routing = run_pre_routing_pipeline(prompt=raw_prompt, context=None)
-        expanded_mode = routing.get("dispatched_mode_id")
-        raw_mode = raw_routing.get("dispatched_mode_id")
-        expanded_bypass = routing.get("bypass_to_direct_response", False)
-        raw_bypass = raw_routing.get("bypass_to_direct_response", False)
+        expanded_routing = run_pre_routing_pipeline(
+            prompt=step1_result["operational_notation"], context=None,
+        )
+        raw_mode = routing.get("dispatched_mode_id")
+        expanded_mode = expanded_routing.get("dispatched_mode_id")
+        raw_bypass = routing.get("bypass_to_direct_response", False)
+        expanded_bypass = expanded_routing.get("bypass_to_direct_response", False)
         dispatch_audit = {
             "raw_dispatched_mode_id": raw_mode,
             "expanded_dispatched_mode_id": expanded_mode,
             "raw_bypass": raw_bypass,
             "expanded_bypass": expanded_bypass,
-            "raw_confidence": raw_routing.get("confidence"),
-            "expanded_confidence": routing.get("confidence"),
+            "raw_confidence": routing.get("confidence"),
+            "expanded_confidence": expanded_routing.get("confidence"),
             "agreement": (raw_mode == expanded_mode and raw_bypass == expanded_bypass),
-            # Audit flag: Phase A introduced an analytical dispatch the
-            # raw prompt didn't trigger. Worth a spot-check.
+            # Audit flag: Phase A would have introduced an analytical
+            # dispatch the raw prompt didn't trigger. The operational path
+            # ignores this (uses raw); the flag is observability only.
             "phase_a_introduced_dispatch":
                 bool(expanded_mode and not raw_mode and not raw_bypass),
-            # Audit flag: Phase A removed a dispatch the raw prompt
-            # would have triggered (rarer but possible).
+            # Audit flag: Phase A would have suppressed a dispatch the raw
+            # prompt did trigger. The operational path correctly keeps the
+            # raw dispatch; the flag tracks how often Phase A would have
+            # destroyed signal-matchable vocabulary.
             "phase_a_suppressed_dispatch":
                 bool(raw_mode and not expanded_mode and not expanded_bypass),
         }
