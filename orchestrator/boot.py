@@ -4950,27 +4950,6 @@ _GEAR_SLOTS_USED = {
 }
 
 
-def _pick_rag_cap_endpoint(config: dict, gear: int) -> dict | None:
-    """Return the endpoint with the smallest context_window across the
-    slots this gear will use, so the RAG package fits every downstream
-    consumer. Falls back to the active endpoint when no slot resolves.
-    """
-    slots = _GEAR_SLOTS_USED.get(gear, _GEAR_SLOTS_USED[4])
-    candidates = []
-    for slot in slots:
-        try:
-            ep = get_slot_endpoint(config, slot)
-        except Exception:
-            ep = None
-        if ep and isinstance(ep.get("context_window"), int):
-            candidates.append(ep)
-    if not candidates:
-        return get_active_endpoint(config)
-    # Pick the endpoint with the smallest context_window; that's the
-    # binding constraint for the RAG package size.
-    return min(candidates, key=lambda e: e["context_window"])
-
-
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None) -> dict:
     """Step 2: Assemble context package for pipeline stages.
@@ -5037,14 +5016,6 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # The wrappers below preserve the same graceful-degradation behaviour
     # but write each failure to ``rag-failures.jsonl`` in the trace
     # directory, so silent fallbacks become inspectable.
-    # Pick the smallest-context endpoint across the slots this gear
-    # will use so the RAG cap doesn't exceed any model's window. The
-    # depth/breadth/consolidator slots are the bigger ones; sidebar
-    # and step1_cleanup are smaller — but at this point we don't know
-    # which slots will actually be called, so we use the most
-    # conservative bound (the smallest declared context_window across
-    # all relevant slots).
-    _rag_cap_endpoint = _pick_rag_cap_endpoint(config, gear)
     conv_rag = ""
     conv_rag_path = "unknown"
     if RAG_ENGINE_AVAILABLE:
@@ -5054,7 +5025,6 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 collection="conversations",
                 mode_text=mode_text,
                 n_results=3,
-                endpoint=_rag_cap_endpoint,
             )
             conv_rag_path = "rag_engine.assemble_ranked_context"
         except Exception as e:
@@ -5087,7 +5057,6 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     collection="knowledge",
                     mode_text=mode_text,
                     n_results=5,
-                    endpoint=_rag_cap_endpoint,
                 )
                 concept_rag_path = "rag_engine.assemble_ranked_context"
             except Exception as e:
@@ -5212,22 +5181,12 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         except Exception:
             signal_descriptions = [{"code": None, "description": str(rag_signals)}]
 
-        # Adaptive RAG cap audit — shows what cap the formatter is
-        # using and why. Without this it was hard to tell whether the
-        # 8000-char default or an endpoint-derived value was in play.
+        # RAG cap — constant for all modern endpoints. See
+        # rag_engine.RAG_MAX_CHARS.
         try:
-            from rag_engine import compute_rag_max_chars as _crmc
-            _adaptive_cap = _crmc(_rag_cap_endpoint)
+            from rag_engine import RAG_MAX_CHARS as _rag_cap
         except Exception:
-            _adaptive_cap = None
-        _cap_endpoint_name = (
-            _rag_cap_endpoint.get("name")
-            if isinstance(_rag_cap_endpoint, dict) else None
-        )
-        _cap_endpoint_window = (
-            _rag_cap_endpoint.get("context_window")
-            if isinstance(_rag_cap_endpoint, dict) else None
-        )
+            _rag_cap = None
         pipeline_trace.write_step(trace_dir, "step2-context", {
             "mode_name": mode_name,
             "mode_text_chars": len(mode_text),
@@ -5240,12 +5199,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             "raw_prompt": raw_prompt,
             "natural_language_prompt": cleaned_nl,
             "rag_query": rag_query,
-            "rag_adaptive_cap": {
-                "max_chars_used": _adaptive_cap,
-                "binding_endpoint_name": _cap_endpoint_name,
-                "binding_endpoint_context_window_tokens": _cap_endpoint_window,
-                "computed_from": "compute_rag_max_chars(endpoint)",
-            },
+            "rag_max_chars": _rag_cap,
             "conversation_rag": {
                 "retrieval_path": conv_rag_path,
                 "chars": len(conv_rag),

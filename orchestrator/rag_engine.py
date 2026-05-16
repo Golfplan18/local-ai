@@ -749,94 +749,32 @@ def format_context_with_provenance(
     return "\n".join(parts)
 
 
-# Practical effective context window. Models past this size suffer from
-# attention dispersion (the "lost in the middle" effect — Liu et al. 2023
-# and subsequent reasoning-trace studies). Even when a model advertises 1M
-# tokens (xiaomi/mimo-v2-pro, gemini-2.5-pro-1m, etc.) or 256K
-# (x-ai/grok-4.3), retrieval-quality degrades well before the advertised
-# limit. 128K is the common modern ceiling where context is reliably
-# usable end-to-end — matches Claude 4.x, GPT-5, and most modern open-
-# weight frontier models. RAG-budget calculations cap to this floor so
-# we don't allocate retrieval content into the no-go zone.
-#
-# Per-endpoint override via `"rag_practical_window_tokens"`. Set to a
-# higher value when you trust a specific model's deep-context behavior
-# (e.g. some long-context-tuned models published with reliability
-# benchmarks past 128K).
-PRACTICAL_CONTEXT_TOKENS = 128_000
+# RAG package character cap. ~58K tokens (232K chars at 4 chars/token),
+# which is half of the 128K practical context window after reserving room
+# for system+mode+history+protocol and the model's output. This is the
+# value the previous adaptive formula converged to for every modern
+# endpoint (Hermes-4-70B, Kimi-Dev-72B, Qwen 27B/4B, all OpenRouter
+# ≥128K models, every Claude/GPT/Gemini API). Older 32K endpoints exist
+# (deepseek-r1-70b, qwen-4b) but live in classification-only roles that
+# don't consume RAG — the adaptive small-window scaling never fired in
+# production. Hardcoding the cap removes the adaptive-formula machinery,
+# a separate picker function, and a cosmetic "binding endpoint" trace
+# field. If a future endpoint ever needs a different value, override at
+# the call site by passing ``max_chars=`` to ``assemble_ranked_context``.
+RAG_MAX_CHARS = 232_000
 
 
-def compute_rag_max_chars(
-    endpoint: Optional[dict] = None,
-    *,
-    reservation_fraction: float = 0.5,
-    non_rag_reserve_tokens: int = 8000,
-    output_reserve_tokens: int = 4096,
-    chars_per_token: int = 4,
-    floor_chars: int = 8000,
-    ceiling_chars: int = 400_000,
-    practical_window_tokens: int = PRACTICAL_CONTEXT_TOKENS,
-) -> int:
-    """Compute the RAG-package character cap from the actual model's
-    context window — *not* a hardcoded magic number.
+def compute_rag_max_chars(*args, **kwargs) -> int:
+    """Return the RAG character budget.
 
-    Why: the prior default (8000 chars ≈ 2000 tokens) was chosen for
-    8k-token-window models and silently truncated useful context on
-    modern 128k+ models. Hermes-4-70B and Kimi-Dev-72B with 131k
-    contexts were using 1.5% of available space for the knowledge
-    package. The model could not see most of the relevant material
-    because the formatter cut it long before the window was full.
-
-    Practical-window cap:
-        The advertised context_window is *clamped* to
-        ``practical_window_tokens`` (128K by default) before the budget
-        calc. Models past 128K suffer attention dispersion that makes
-        the deep-context region unreliable for retrieval-grounded
-        analysis. A 1M-window model gets the same RAG budget as a 128K
-        model — additional advertised space goes to the model's own
-        internal reasoning room, not to RAG content.
-
-    Formula:
-        effective_cw  = min(context_window, practical_window_tokens)
-        usable_tokens = effective_cw
-                        - non_rag_reserve_tokens    # system + mode + history + protocol
-                        - output_reserve_tokens     # room for the analyst's response
-        budget_tokens = usable_tokens * reservation_fraction
-        budget_chars  = budget_tokens * chars_per_token
-        clamped to [floor_chars, ceiling_chars]
-
-    Defaults give RAG roughly half the *remaining* window after
-    non-RAG content + output reserve are subtracted. The
-    ``reservation_fraction`` floor of 0.5 honours the lost-in-the-
-    middle effect by NOT giving RAG the entire remainder.
-
-    Override via the endpoint dict (``"rag_reservation_fraction"``,
-    ``"rag_non_rag_reserve_tokens"``, ``"rag_output_reserve_tokens"``,
-    ``"rag_ceiling_chars"``, ``"rag_practical_window_tokens"``) or via
-    call-site kwargs. When no endpoint is supplied or no
-    ``context_window`` is declared, falls back to ``floor_chars``.
+    Single constant. The previous adaptive formula scaled against
+    ``endpoint.context_window`` with five configurable parameters but
+    consistently converged to ~232K chars on every modern endpoint, and
+    no production endpoint overrode the parameters. Args and kwargs are
+    accepted-and-ignored for backward compatibility with call sites
+    that previously passed ``endpoint=``.
     """
-    ep = endpoint or {}
-    cw = ep.get("context_window")
-    if not isinstance(cw, int) or cw <= 0:
-        return floor_chars
-
-    # Per-endpoint overrides
-    res_frac = float(ep.get("rag_reservation_fraction", reservation_fraction))
-    non_rag = int(ep.get("rag_non_rag_reserve_tokens", non_rag_reserve_tokens))
-    out_res = int(ep.get("rag_output_reserve_tokens", output_reserve_tokens))
-    ceiling = int(ep.get("rag_ceiling_chars", ceiling_chars))
-    practical = int(ep.get("rag_practical_window_tokens", practical_window_tokens))
-
-    # Clamp the advertised window to the practical-use ceiling. Past 128K
-    # most models show measurable retrieval-quality degradation — see the
-    # PRACTICAL_CONTEXT_TOKENS doc above.
-    effective_cw = min(cw, practical) if practical > 0 else cw
-
-    usable_tokens = max(0, effective_cw - non_rag - out_res)
-    budget_tokens = int(usable_tokens * res_frac)
-    budget_chars = budget_tokens * chars_per_token
-    return max(floor_chars, min(budget_chars, ceiling))
+    return RAG_MAX_CHARS
 
 
 def assemble_ranked_context(
@@ -849,7 +787,6 @@ def assemble_ranked_context(
     include_private: bool = False,
     include_archived: bool = False,
     max_chars: Optional[int] = None,
-    endpoint: Optional[dict] = None,
 ) -> str:
     """End-to-end Phase 5.6 ranker: query → rank → format.
 
@@ -857,12 +794,9 @@ def assemble_ranked_context(
     the type_filter from the mode file's `## RAG PROFILE → ###
     type_filter` subsection (Phase 4 mode-file contract).
 
-    ``max_chars`` is now computed from ``endpoint.context_window`` via
-    ``compute_rag_max_chars`` when not explicitly supplied. Pass
-    ``max_chars=`` directly to override; pass ``endpoint=`` to make the
-    cap adaptive to the model that will receive the package. Pass
-    neither and the legacy 8000-char floor applies as a defensive
-    fallback.
+    ``max_chars`` defaults to ``RAG_MAX_CHARS`` (the hard cap that
+    every modern endpoint converges to). Pass ``max_chars=`` to
+    override for a specific call.
     """
     if type_filter is None and mode_text:
         type_filter = _knowledge_search._extract_mode_type_filter(mode_text)
@@ -883,7 +817,7 @@ def assemble_ranked_context(
         type_filter = None
 
     if max_chars is None:
-        max_chars = compute_rag_max_chars(endpoint)
+        max_chars = RAG_MAX_CHARS
 
     chunks = _knowledge_search.knowledge_search_raw(
         query=query,
