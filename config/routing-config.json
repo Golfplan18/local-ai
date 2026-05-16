@@ -1696,10 +1696,7 @@
       "xiaomi/mimo-v2-pro",
       "x-ai/grok-4.3"
     ],
-    "mid": [
-      "gemini-browser",
-      "mistral-browser"
-    ],
+    "mid": [],
     "fast": [
       "anthropic-api-haiku",
       "anthropic-api-sonnet-3-5",
@@ -1709,10 +1706,7 @@
       "gemini-api-flash",
       "gemini-api-1-5-flash"
     ],
-    "free": [
-      "deepseek-browser",
-      "poe-browser"
-    ]
+    "free": []
   },
   "pipelines": {
     "interactive": {
