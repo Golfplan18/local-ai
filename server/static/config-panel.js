@@ -71,6 +71,13 @@ class ConfigPanel {
     this._armedSlot = null;                // { tier, slotIdx } or null
     this._openrouterCatalog = null;        // loaded for the Buckets view
     this._openrouterVendorOpen = {};       // accordion open/closed per vendor
+    // Vision-capable filter for the OpenRouter picker. When on, only
+    // models whose OpenRouter architecture.input_modalities contains
+    // "image" appear in the picker — load-bearing when configuring the
+    // image_generates slot (or any vision_extraction slot) so the
+    // operator can't accidentally pick a text-only model that won't be
+    // able to read images.
+    this._pickerImageCapableOnly = false;
   }
 
   init() {
@@ -660,10 +667,24 @@ class ConfigPanel {
     const lookup = {};
     cat.models.forEach(m => { lookup[m.id] = m; });
     const textIds = new Set(cat.by_modality.text);
+    const visionFilter = this._pickerImageCapableOnly;
+    // When the vision-only filter is on, restrict to models whose
+    // architecture.input_modalities contains "image". The catalog
+    // refresh script (refresh-openrouter.py, post-2026-05-16) writes
+    // both ``accepts_image`` and ``input_modalities`` on each model.
+    // Older catalog files won't have those fields — defensive read
+    // so the filter shows zero matches in that case (operator runs
+    // Refresh Catalog to populate).
+    const acceptsImage = m =>
+      m.accepts_image === true ||
+      (Array.isArray(m.input_modalities) && m.input_modalities.includes('image'));
     const vendors = {};
+    let visibleCount = 0;
     cat.by_modality.text.forEach(id => {
       const m = lookup[id];
       if (!m) return;
+      if (visionFilter && !acceptsImage(m)) return;
+      visibleCount++;
       (vendors[m.vendor] = vendors[m.vendor] || []).push(m);
     });
     const vendorNames = Object.keys(vendors).sort();
@@ -711,10 +732,19 @@ class ConfigPanel {
       }</div>`)
       .join('');
 
+    const filterCount = visionFilter
+      ? `${visibleCount} of ${textIds.size} text models · ${vendorNames.length} vendors`
+      : `${textIds.size} text models · ${vendorNames.length} vendors`;
+    const filterToggle = `
+      <label class="cfg-or-vision-toggle" title="Show only models that accept image input — useful when picking for the image_generates / vision_extraction slot.">
+        <input type="checkbox" data-role="or-vision-filter" ${visionFilter ? 'checked' : ''}>
+        <span>Vision-capable only</span>
+      </label>`;
     return `<div class="cfg-picker-section">
       <div class="cfg-picker-section-title">
         Available — OpenRouter
-        <span class="cfg-picker-count">${textIds.size} text models · ${vendorNames.length} vendors · refreshed ${fetchedAt}</span>
+        <span class="cfg-picker-count">${filterCount} · refreshed ${fetchedAt}</span>
+        ${filterToggle}
         <button class="cfg-or-refresh-btn" data-role="or-refresh">Refresh catalog</button>
       </div>
       <div class="cfg-or-vendors">${columnHtml}</div>
@@ -792,6 +822,13 @@ class ConfigPanel {
       el.addEventListener('click', () => {
         const v = el.dataset.vendor;
         this._openrouterVendorOpen[v] = !this._openrouterVendorOpen[v];
+        this._render();
+      });
+    });
+    // Vision-capable filter checkbox
+    root.querySelectorAll('[data-role="or-vision-filter"]').forEach(el => {
+      el.addEventListener('change', () => {
+        this._pickerImageCapableOnly = el.checked;
         this._render();
       });
     });
