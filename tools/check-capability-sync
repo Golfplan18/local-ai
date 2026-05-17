@@ -49,6 +49,15 @@ DEFAULT_DOC = (
     / "Reference — Capability Invocation Contracts.md"
 )
 
+# System-internal slots — declared in routing-config because they need
+# provider configuration, but NOT part of the user-dispatchable capability
+# surface (no /cap slash command, no capability_registry entry, no
+# user-facing toolbar action). They're invoked by internal routing code
+# (e.g. ``route_for_image_input``). The vault contracts doc describes them
+# under a separate "System-internal slots" subsection so they remain
+# discoverable without polluting the user-facing slot catalog.
+SYSTEM_INTERNAL_SLOTS = {"image_extracts"}
+
 
 # ---------------------------------------------------------------------------
 # Doc parsing
@@ -215,8 +224,14 @@ def check_sync(
             errors.append(f"routing-config.json is malformed JSON: {e}")
             rc = {}
         rc_slots_block = rc.get("slots", {}) or {}
-        # Filter out underscore-prefixed metadata keys (_note, etc.)
-        routing_slots = {k for k in rc_slots_block.keys() if not k.startswith("_")}
+        # Filter out underscore-prefixed metadata keys (_note, etc.) AND
+        # system-internal slots, which are invoked by internal routing code
+        # rather than the user-dispatchable capability framework. The
+        # contracts doc describes those in its own subsection.
+        routing_slots = {
+            k for k in rc_slots_block.keys()
+            if not k.startswith("_") and k not in SYSTEM_INTERNAL_SLOTS
+        }
     elif routing_required:
         errors.append(f"routing-config.json not found at {routing_path}")
 
