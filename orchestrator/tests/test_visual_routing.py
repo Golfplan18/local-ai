@@ -740,5 +740,150 @@ class SlotBasedVisionExtractionEndToEnd(unittest.TestCase):
         self.assertEqual(sel["source"], "bucket:premium")
 
 
+class PickVisionExtractorFromImageExtractsSlot(unittest.TestCase):
+    """Per-pipeline schema: slots.image_extracts.{interactive, agent}.
+
+    Each pipeline picks one model; the OPPOSITE pipeline's pick is the
+    cross-pipeline backup. Two-deep, no fallback list.
+    """
+
+    def setUp(self):
+        from boot import _pick_vision_extractor_from_image_extracts
+        self.pick = _pick_vision_extractor_from_image_extracts
+        self.rc = {
+            "slots": {
+                "image_extracts": {
+                    "interactive": "openrouter:openai/gpt-5",
+                    "agent":       "openrouter:anthropic/claude-opus-4-7",
+                },
+            },
+            "endpoints": [],
+        }
+
+    def test_interactive_pipeline_picks_interactive_entry(self):
+        ep, walked = self.pick(self.rc, "interactive")
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["model"], "openai/gpt-5")
+        # Only the primary was inspected — the backup wasn't needed.
+        self.assertEqual(walked, ["openrouter:openai/gpt-5"])
+
+    def test_agent_pipeline_picks_agent_entry(self):
+        ep, walked = self.pick(self.rc, "agent")
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["model"], "anthropic/claude-opus-4-7")
+        self.assertEqual(walked, ["openrouter:anthropic/claude-opus-4-7"])
+
+    def test_interactive_falls_back_to_agent_when_primary_missing(self):
+        self.rc["slots"]["image_extracts"]["interactive"] = ""
+        ep, walked = self.pick(self.rc, "interactive")
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["model"], "anthropic/claude-opus-4-7")
+        # Only the backup was inspected (primary was empty so it wasn't added).
+        self.assertEqual(walked, ["openrouter:anthropic/claude-opus-4-7"])
+
+    def test_agent_falls_back_to_interactive_when_primary_unresolvable(self):
+        # Agent's primary is a text-to-image generator (not vision-input
+        # capable). Cross-pipeline backup fires to interactive's entry.
+        self.rc["slots"]["image_extracts"]["agent"] = "local-diffusers"
+        ep, walked = self.pick(self.rc, "agent")
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["model"], "openai/gpt-5")
+        self.assertEqual(walked, ["local-diffusers", "openrouter:openai/gpt-5"])
+
+    def test_both_unresolvable_returns_none(self):
+        self.rc["slots"]["image_extracts"] = {
+            "interactive": "local-diffusers",
+            "agent":       "replicate",
+        }
+        ep, walked = self.pick(self.rc, "interactive")
+        self.assertIsNone(ep)
+        self.assertEqual(walked, ["local-diffusers", "replicate"])
+
+    def test_unknown_execution_context_normalizes_to_agent(self):
+        # "autonomous" / any non-"interactive" string lands on agent — matches
+        # the convention in resolve_gear4_endpoints.
+        ep, walked = self.pick(self.rc, "autonomous")
+        self.assertIsNotNone(ep)
+        self.assertEqual(ep["model"], "anthropic/claude-opus-4-7")
+
+    def test_identical_primary_and_backup_dedup(self):
+        # When both pipelines point at the same model, the chain is one-deep
+        # (no duplicate inspection).
+        self.rc["slots"]["image_extracts"]["agent"] = (
+            self.rc["slots"]["image_extracts"]["interactive"]
+        )
+        ep, walked = self.pick(self.rc, "interactive")
+        self.assertIsNotNone(ep)
+        self.assertEqual(walked, ["openrouter:openai/gpt-5"])
+
+
+class RouteForImageInputThreadsExecutionContext(unittest.TestCase):
+    """End-to-end: route_for_image_input dispatches the image_extracts slot
+    through the per-pipeline path and threads execution_context correctly."""
+
+    def setUp(self):
+        from boot import route_for_image_input
+        self.gate = route_for_image_input
+        self._extract_patcher = mock.patch(
+            "visual_extraction.extract_spatial_from_image",
+            return_value=mock.Mock(
+                spatial_representation=None,
+                extractor_model="mock",
+                confidence=0.0,
+                parse_errors=[],
+            ),
+        )
+        self._extract_patcher.start()
+        self.addCleanup(self._extract_patcher.stop)
+
+    def _rc(self):
+        return {
+            "vision_extraction": {
+                "enabled": True,
+                "slot": "image_extracts",
+                "preferred_extractor_bucket": "premium",
+                "fallback_extractor_bucket": "fast",
+            },
+            "slots": {
+                "image_extracts": {
+                    "interactive": "openrouter:openai/gpt-5",
+                    "agent":       "openrouter:anthropic/claude-opus-4-7",
+                },
+            },
+            "buckets": {"premium": [], "fast": []},
+            "endpoints": [],
+        }
+
+    def test_interactive_context_picks_interactive_slot(self):
+        ctx = {"image_path": "/abs/img.png"}
+        downstream = {"id": "text-only", "vision_capable": False}
+        eff, out = self.gate(ctx, downstream, routing_config=self._rc(),
+                              execution_context="interactive")
+        sel = out["vision_extractor_selected"]
+        self.assertEqual(sel["source"], "slot:image_extracts:interactive")
+        self.assertEqual(sel["id"], "openrouter:openai/gpt-5")
+
+    def test_agent_context_picks_agent_slot(self):
+        ctx = {"image_path": "/abs/img.png"}
+        downstream = {"id": "text-only", "vision_capable": False}
+        eff, out = self.gate(ctx, downstream, routing_config=self._rc(),
+                              execution_context="agent")
+        sel = out["vision_extractor_selected"]
+        self.assertEqual(sel["source"], "slot:image_extracts:agent")
+        self.assertEqual(sel["id"], "openrouter:anthropic/claude-opus-4-7")
+
+    def test_agent_primary_unresolvable_uses_cross_pipeline_backup(self):
+        rc = self._rc()
+        rc["slots"]["image_extracts"]["agent"] = "local-diffusers"
+        ctx = {"image_path": "/abs/img.png"}
+        downstream = {"id": "text-only", "vision_capable": False}
+        eff, out = self.gate(ctx, downstream, routing_config=rc,
+                              execution_context="agent")
+        sel = out["vision_extractor_selected"]
+        # Crossed over to interactive's pick.
+        self.assertEqual(sel["source"], "slot:image_extracts:agent")
+        self.assertEqual(sel["id"], "openrouter:openai/gpt-5")
+
+
 if __name__ == "__main__":
     unittest.main()

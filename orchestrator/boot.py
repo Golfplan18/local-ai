@@ -582,10 +582,48 @@ def _pick_vision_extractor_from_slot(routing_config: dict,
     return None, walked
 
 
+def _pick_vision_extractor_from_image_extracts(
+    routing_config: dict,
+    execution_context: str,
+) -> tuple[dict | None, list[str]]:
+    """Per-pipeline variant for ``slots.image_extracts``.
+
+    Schema: ``slots.image_extracts = { "interactive": <entry>, "agent": <entry> }``.
+    Each pipeline picks its own multimodal-LLM model. The OPPOSITE pipeline's
+    pick is the automatic cross-pipeline backup when the primary is
+    unavailable. Two-deep, deterministic. No multi-tier fallback list.
+
+    Returns ``(endpoint_or_None, walked_entries)`` — same contract as
+    ``_pick_vision_extractor_from_slot`` so the caller can log uniformly.
+    """
+    walked: list[str] = []
+    slots_cfg = routing_config.get("slots") or {}
+    slot_cfg = slots_cfg.get("image_extracts") or {}
+
+    primary_key = "interactive" if execution_context == "interactive" else "agent"
+    backup_key  = "agent" if primary_key == "interactive" else "interactive"
+
+    chain: list[str] = []
+    primary_entry = slot_cfg.get(primary_key)
+    backup_entry  = slot_cfg.get(backup_key)
+    if primary_entry:
+        chain.append(primary_entry)
+    if backup_entry and backup_entry != primary_entry:
+        chain.append(backup_entry)
+
+    for entry in chain:
+        walked.append(entry)
+        ep = _endpoint_from_slot_entry(entry, routing_config)
+        if ep is not None:
+            return ep, walked
+    return None, walked
+
+
 def route_for_image_input(context_pkg: dict,
                           requested_model: dict | None,
                           model_registry: dict | None = None,
-                          routing_config: dict | None = None) -> tuple:
+                          routing_config: dict | None = None,
+                          execution_context: str = "interactive") -> tuple:
     """Capability-conditional routing gate for image input (WP-4.2).
 
     If ``context_pkg`` carries an ``image_path``:
@@ -679,12 +717,26 @@ def route_for_image_input(context_pkg: dict,
 
     slot_name = vision_cfg.get("slot", "")
     if slot_name:
-        slot_ep, walked = _pick_vision_extractor_from_slot(
-            routing_config, slot_name,
-        )
-        if slot_ep is not None:
-            extractor = slot_ep
-            used_source = f"slot:{slot_name}"
+        # image_extracts uses the per-pipeline schema:
+        #   slots.image_extracts.{interactive, agent}.
+        # Each pipeline picks one model; the OPPOSITE pipeline's pick is the
+        # automatic backup. Two-deep, deterministic.
+        # Other slots (image_generates, image_edits, …) keep the legacy
+        # {preferred, fallback[]} shape.
+        if slot_name == "image_extracts":
+            slot_ep, walked = _pick_vision_extractor_from_image_extracts(
+                routing_config, execution_context,
+            )
+            if slot_ep is not None:
+                extractor = slot_ep
+                used_source = f"slot:image_extracts:{execution_context}"
+        else:
+            slot_ep, walked = _pick_vision_extractor_from_slot(
+                routing_config, slot_name,
+            )
+            if slot_ep is not None:
+                extractor = slot_ep
+                used_source = f"slot:{slot_name}"
 
     # Legacy bucket fallback: either no slot configured, or the slot's
     # chain produced no vision-input-capable entry.
@@ -6169,7 +6221,8 @@ def run_pipeline(user_input: str, history: list = None,
         # selection already records the extractor slot for WP-4.3 to pick up,
         # and the downstream resolver (run_gear3/run_gear4) checks
         # context_pkg['vision_direct_pass'] for its own branch.
-        route_for_image_input(context_pkg, requested_model=None)
+        route_for_image_input(context_pkg, requested_model=None,
+                              execution_context=execution_context)
     except Exception as exc:
         # Fail-open: visual routing never blocks a legitimate pipeline run.
         print(f"[visual-routing] gate skipped due to error: {exc}")

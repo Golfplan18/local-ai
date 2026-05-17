@@ -428,7 +428,6 @@ class ConfigPanel {
       const body = modelId
         ? `<div class="cfg-bucket-slot-model">
              <span class="cfg-bucket-slot-name">${this._stripOpenrouterPrefix(modelId)}</span>
-             ${meta.source_badge}
            </div>
            <span class="cfg-bucket-slot-clear" data-role="imgex-slot-clear"
                  data-pipeline="${pipeline}" title="Clear">×</span>`
@@ -734,6 +733,13 @@ class ConfigPanel {
       if (visionFilter && !acceptsImage(m)) return;
       visibleCount++;
       (vendors[m.vendor] = vendors[m.vendor] || []).push(m);
+    });
+    // Sort each vendor's rows by OpenRouter listing date (created, Unix
+    // epoch) — newest first. This is a close proxy for release date:
+    // OpenRouter typically adds vendor models within days of public
+    // launch. Models missing the field sink to the bottom (zero-default).
+    Object.values(vendors).forEach(arr => {
+      arr.sort((a, b) => (b.created || 0) - (a.created || 0));
     });
     const vendorNames = Object.keys(vendors).sort();
     const renderVendor = v => {
@@ -1279,40 +1285,34 @@ class ConfigPanel {
 
   // Image-extracts is a capability slot (vision-language model: image →
   // structured JSON describing the image's content), not a bucket-based
-  // utility. Its config lives at slots.image_extracts in routing-config
-  // and is read directly by route_for_image_input. We surface it here
-  // under utility — alongside Cleanup and RAG Planner — so operators can
-  // see what's configured. The chain shown is the same for both the
-  // interactive and agent pipeline columns: image-extraction is a
-  // global capability rather than per-pipeline.
+  // utility. Backing schema: slots.image_extracts.{interactive, agent}.
+  // Each pipeline picks its own model; the OPPOSITE pipeline's pick is
+  // the automatic cross-pipeline backup. Read-only on this page — edit
+  // via the Buckets tab.
   _renderImageExtractsCell(context) {
     const slot = (this._data.slots || {}).image_extracts || {};
-    const chain = [slot.preferred, ...(slot.fallback || [])].filter(Boolean);
-    if (!chain.length) {
+    const primaryKey = context === 'interactive' ? 'interactive' : 'agent';
+    const backupKey  = primaryKey === 'interactive' ? 'agent' : 'interactive';
+    const primary = slot[primaryKey] || '';
+    const backup  = slot[backupKey]  || '';
+    if (!primary && !backup) {
       return `<div class="cfg-imgex-empty">
         <em>Not configured.</em>
-        Pick a vision-capable model in the OpenRouter picker below
-        (toggle "Vision-capable only") to populate this slot.
+        Open the <b>Buckets</b> tab to set a vision-capable model for each pipeline.
       </div>`;
     }
-    const rows = chain.map((entry, i) => {
-      // OpenRouter entries have shape "openrouter:<vendor>/<model>" —
-      // show just the model id for readability.
-      const display = entry.startsWith('openrouter:')
-        ? entry.slice('openrouter:'.length)
-        : entry;
-      const tag = i === 0 ? 'preferred' : `fallback ${i}`;
-      return `<div class="cfg-imgex-row">
-        <span class="cfg-imgex-tag">${tag}</span>
-        <span class="cfg-imgex-name">${display}</span>
-      </div>`;
-    }).join('');
+    const strip = (m) => m.startsWith('openrouter:') ? m.slice('openrouter:'.length) : m;
+    const primaryDisplay = primary ? strip(primary) : '<em>unset</em>';
+    const backupDisplay  = backup  ? strip(backup)  : '<em>unset</em>';
     return `<div class="cfg-imgex">
-      ${rows}
+      <div class="cfg-imgex-line">
+        <span class="cfg-imgex-label">Vision:</span>
+        <span class="cfg-imgex-name">${primaryDisplay}</span>
+        <span class="cfg-imgex-backup">(backup: ${backupDisplay})</span>
+      </div>
       <div class="cfg-imgex-hint">
-        Read by <code>route_for_image_input</code> when an analyst model
-        can't see images. To edit, modify <code>slots.image_extracts</code>
-        in routing-config.
+        Read by <code>route_for_image_input</code> when an analyst can't see
+        images. Edit in the <b>Buckets</b> tab.
       </div>
     </div>`;
   }

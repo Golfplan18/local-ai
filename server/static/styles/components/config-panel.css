@@ -487,6 +487,49 @@
   font-weight: 600;
   margin-right: 4px;
 }
+
+/* Read-only single-line layout used on the Models page. */
+.cfg-imgex-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: rgb(220, 220, 220);
+  flex-wrap: wrap;
+}
+.cfg-imgex-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(140, 140, 140);
+}
+.cfg-imgex-backup {
+  color: rgb(160, 160, 160);
+  font-size: 10px;
+}
+
+/* Image Extracts card on the Buckets tab — overrides the centered
+   placeholder defaults so the two slot widgets can stack inside. */
+.cfg-buckets--row > .cfg-imgex-card {
+  align-items: stretch;
+  text-align: left;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  gap: 8px;
+}
+.cfg-imgex-card .cfg-bucket-placeholder-title {
+  margin-bottom: 2px;
+}
+.cfg-imgex-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cfg-imgex-card .cfg-imgex-hint {
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border, #333);
+}
 .cfg-picker-empty {
   font-size: 11px;
   color: var(--text-muted, #888);

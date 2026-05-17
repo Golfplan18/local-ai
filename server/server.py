@@ -1898,7 +1898,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
     # no_vision_available for WP-4.4 UX. No-op when there's no image.
     try:
         from boot import route_for_image_input
-        route_for_image_input(context_pkg, requested_model=None)
+        route_for_image_input(context_pkg, requested_model=None,
+                              execution_context=execution_context)
     except Exception as exc:
         print(f"[visual-routing] gate skipped due to error: {exc}")
 
