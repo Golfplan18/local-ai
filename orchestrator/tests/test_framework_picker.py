@@ -35,7 +35,7 @@ PIPELINE_INTERNAL_IDS = {
     "f-evaluate", "f-revise", "f-verify", "phase-a-prompt-cleanup",
 }
 
-EXPECTED_PICKABLE_COUNT = 19
+EXPECTED_PICKABLE_COUNT = 18
 
 
 class TestParseFrameworkPickerMetadata(unittest.TestCase):
