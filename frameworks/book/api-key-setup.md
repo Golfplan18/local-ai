@@ -7,7 +7,7 @@ API Key Acquisition
 Acquire and securely store API keys for commercial AI services, then register endpoints in endpoints.json. Use when adding a new external model provider (Anthropic, OpenAI, Google, etc.) for the orchestrator to call.
 
 
-*Guided Setup for Commercial AI API Access — The Overflow and Reliability Channel*
+*Guided Setup for Commercial AI API Access*
 
 ---
 
@@ -15,14 +15,10 @@ Acquire and securely store API keys for commercial AI services, then register en
 
 This framework walks the user through obtaining API keys from commercial AI providers, storing them securely, and verifying they work. Two provider categories are covered:
 
-- **Evaluation providers** (Anthropic, OpenAI, Google) — text-generation and reasoning APIs that serve as the overflow and reliability channel behind browser automation.
-- **Image-generation providers** (OpenAI DALL-E, Stability AI, Replicate) — image-generation APIs used by the visual pane (Phase 7). Image generators do **not** have a browser-automation tier, so an API key is the primary access path; the fallback chain is preferred → fallback → unavailable.
+- **Evaluation providers** (Anthropic, OpenAI, Google) — text-generation and reasoning APIs. These feed routing-config.json's `premium` / `mid` / `fast` buckets and are the commercial channel for analyst / evaluator / consolidator slots when the user opts in.
+- **Image-generation providers** (OpenAI gpt-image-1, Stability AI, Replicate) — image-generation APIs used by the visual pane (Phase 7). The fallback chain is preferred → fallback → unavailable.
 
-API keys for evaluation providers are the overflow and reliability channel in the system's evaluation architecture. The primary evaluation channel is browser automation via Playwright, which uses the reader's existing subscriptions at no additional cost. Evaluation API keys serve three specific use cases:
-
-1. **Overflow:** When browser automation is throttled, rate-limited, or temporarily unavailable.
-2. **Reliability:** For enterprise users who want SLA-backed access, guaranteed uptime, and usage tracking.
-3. **Autonomous operations:** For tasks pre-authorized to run unattended that need evaluation access without a human present to handle browser session issues.
+Commercial AI access in Ora is via these vendor APIs and OpenRouter. Local MLX models cover the no-cost baseline; API keys add stronger commercial models when the user wants them. Setup is optional — Ora runs fully on local models alone.
 
 The framework is designed for non-technical users who have never created an API account. The local AI runs this framework through the orchestrator, opening browser pages and storing credentials without requiring the user to interact with a terminal or understand technical infrastructure.
 
@@ -61,7 +57,7 @@ This framework's declaration of the project-level milestones it can deliver. Use
 ### Milestone 1: Configured API Provider Access
 
 - **Endpoint produced:** One or more commercial AI API keys (Anthropic, OpenAI, Google) stored in the system credential store under `ora-[provider]`; corresponding endpoint entries added to `[workspace]/config/endpoints.json` with `credential_key`, model, and verification timestamp; evaluation fallback chain documented in `[workspace]/config/api-providers.md`.
-- **Verification criterion:** (a) each configured provider has a key stored in the system credential store (no plaintext file, no log value); (b) each configured provider has a verification result recorded — either a successful minimal API call (200 response with generated text) or an explicit stored-but-unverified status with reason (auth error, quota error, or network error); (c) `endpoints.json` contains one active entry per configured provider with `credential_key` matching the credential-store key name; (d) `api-providers.md` documents the four-layer fallback chain (browser automation → API primary → API secondary → local-only) with primary/secondary selection recorded; (e) no key value appears in any log, session file, or persisted artifact.
+- **Verification criterion:** (a) each configured provider has a key stored in the system credential store (no plaintext file, no log value); (b) each configured provider has a verification result recorded — either a successful minimal API call (200 response with generated text) or an explicit stored-but-unverified status with reason (auth error, quota error, or network error); (c) `endpoints.json` contains one active entry per configured provider with `credential_key` matching the credential-store key name; (d) `api-providers.md` documents the fallback chain (API primary → API secondary → local-only) with primary/secondary selection recorded; (e) no key value appears in any log, session file, or persisted artifact.
 - **Layers covered:** 1, 2, 3, 4, 5, 6, 7
 - **Required prior milestones:** None
 - **Gear:** 4
@@ -79,8 +75,8 @@ This framework's declaration of the project-level milestones it can deliver. Use
    - 2: Keys entered but verification failed for all providers.
    - 1: No keys obtained.
 
-2. **User Comprehension:** The user understands what an API key is, why it costs money, how it differs from browser automation, and what it will be used for before entering any financial information.
-   - 5: User confirmed understanding at each explanation checkpoint. Distinction between browser automation and API access clear. No confusion expressed.
+2. **User Comprehension:** The user understands what an API key is, why it costs money, and what it will be used for before entering any financial information.
+   - 5: User confirmed understanding at each explanation checkpoint. Cost / per-token billing model clear. No confusion expressed.
    - 4: User confirmed understanding. One clarifying question asked and answered.
    - 3: User proceeded with setup. Minor confusion resolved during the process.
    - 2: User expressed confusion that was not fully resolved.
@@ -94,7 +90,7 @@ This framework's declaration of the project-level milestones it can deliver. Use
    - 1: Key visible in logs, terminal output, or plaintext file.
 
 4. **Fallback Configuration:** The evaluation fallback chain is configured and documented so the system knows which channel to try first.
-   - 5: Four-layer fallback chain configured (browser automation → API primary → API secondary → local-only). Documented in api-providers.md. Endpoint registry updated.
+   - 5: Fallback chain configured (API primary → API secondary → local-only). Documented in api-providers.md. Endpoint registry updated.
    - 4: Fallback chain configured and documented. Endpoint registry updated.
    - 3: At least one API provider configured. Fallback chain is partial.
    - 2: Provider configured but fallback chain not documented or endpoint registry not updated.
@@ -106,7 +102,7 @@ This framework's declaration of the project-level milestones it can deliver. Use
 
 **The One-Chance Key Trap:** API keys are displayed exactly once when created. If the user navigates away, closes the tab, or fails to copy the key, it is gone. A new key must be generated. The framework must warn the user about this at least twice — once before opening the signup page and once immediately before the key generation step.
 
-**The Sticker Shock Trap:** The user encounters a credit card requirement during signup and panics, thinking they will be charged a large amount. The framework must explain the actual cost (roughly $1–50/month for typical usage, often much less when API is the overflow channel behind browser automation) before the user reaches the payment page. Specific per-model pricing should be provided.
+**The Sticker Shock Trap:** The user encounters a credit card requirement during signup and panics, thinking they will be charged a large amount. The framework must explain the actual cost (roughly $1–50/month for typical usage, often less) before the user reaches the payment page. Specific per-model pricing should be provided.
 
 **The Wrong Page Trap:** Provider websites change their layouts. The framework provides specific URLs, but the signup flow may differ from what the instructions describe. The framework must tell the user what they are looking for (a section called "API Keys" or "Developer Console"), not just which buttons to click.
 
@@ -114,49 +110,46 @@ This framework's declaration of the project-level milestones it can deliver. Use
 
 **The Verification Failure Trap:** A correctly entered key fails verification because the user's account requires payment method confirmation, email verification, or has a usage limit of $0 until billing is activated. The framework must distinguish between "key is invalid" and "key is valid but account is not yet activated" and guide the user accordingly.
 
-**The Unnecessary Expense Trap:** The user sets up API keys without understanding that browser automation (already configured) provides the same evaluation capability at no additional cost. They spend money on API access they don't need. Correction: The framework's explanation (Layer 1) explicitly states that browser automation is the primary channel and API is the overflow/reliability alternative. The framework presents the cost comparison: browser automation uses existing subscriptions (free or already paid for); API access is pay-per-use on top of subscriptions. The user makes an informed decision.
-
 ---
 
 ## LAYER 1: EXPLANATION AND CONTEXT
 
-**Stage Focus:** Explain what an API key is, how it relates to the browser automation the user already has, and what this process will involve, before any action is taken.
+**Stage Focus:** Explain what an API key is, what it will be used for, and what it costs, before any action is taken.
 
 ### Processing Instructions
 
 Present the following explanation conversationally, not as a wall of text. Pause after each section for the user to acknowledge or ask questions.
 
-**Section 1 — What you already have:**
+**Section 1 — What an API key is:**
 
-"Your system already accesses commercial AI through browser automation — this uses your existing [free/paid] subscriptions to Claude, ChatGPT, and Gemini. That's your primary evaluation channel and it works well for interactive use.
+"An API key is a credential that lets your system call a commercial AI provider's servers directly. Once configured, your local AI can dispatch analysis tasks to Claude, GPT, Gemini, or other commercial models through their official APIs.
 
-An API key is a different kind of access — it connects your system directly to the provider's servers without going through the browser interface. Think of browser automation as walking into a store, and API access as having a direct supply line to the warehouse."
+Ora runs fully on local models alone — API keys are optional. They give you access to stronger commercial models (Claude Opus, GPT-5, etc.) for analyses where local model capability isn't enough."
 
 **Section 2 — When you need API keys:**
 
-"Most users don't need API keys right away. Browser automation handles most evaluation needs. API keys become useful in three specific situations:
+"Set up API keys if you want any of:
 
-1. **Overflow** — If a service starts throttling your browser automation (some services limit automated access), the API provides reliable backup access.
-2. **Enterprise reliability** — If you need guaranteed uptime, usage tracking, and SLA-backed access for professional work, the API provides that.
-3. **Autonomous overnight runs** — If you want your system to run evaluations unattended (while you sleep), the API is more reliable than browser automation for long unattended sessions.
+1. **Stronger reasoning** — Frontier commercial models for analytical work where local model capability is insufficient.
+2. **Specific provider preference** — You want to use Claude / GPT / Gemini directly, with usage tracking on the vendor's dashboard.
+3. **Autonomous overnight runs** — Pre-authorized API access for unattended pipelines.
+4. **OpenRouter coverage** — A single OpenRouter key gives you a wide catalog of commercial and free models through one provider.
 
-If none of these apply to you right now, you can skip this setup and return to it later."
+If none of these apply right now, you can skip this setup and return to it later. Ora will keep working on local models alone."
 
 **Section 3 — What it costs:**
 
-"API access is pay-per-use. There are two distinct cost regimes depending on what kind of provider you're setting up:
+"API access is pay-per-use. Two cost regimes:
 
-**Evaluation providers (Anthropic, OpenAI text, Google)** — billed per token of text. Typical usage when API is your overflow channel (not primary):
+**Evaluation providers (Anthropic, OpenAI text, Google, OpenRouter)** — billed per token of text. Typical usage:
 
-- Light overflow use: $1–5 per month
+- Light use: $1–5 per month
 - Moderate use (dozens of evaluations): $10–30 per month
 - Heavy use or autonomous runs: $30–50 per month
 
-The cheapest options (Google Gemini Flash, OpenAI GPT-4o-mini) cost roughly six hundredths of a cent per evaluation. Even the most capable models (Claude Sonnet, GPT-4o) cost about one to two cents per evaluation.
+The cheapest options (Google Gemini Flash, OpenAI GPT-4o-mini) cost roughly six hundredths of a cent per evaluation. Even the most capable models (Claude Opus, GPT-5) cost about one to two cents per evaluation. OpenRouter also exposes free variants of several capable models (Llama 3.3 70B, DeepSeek, NVIDIA Nemotron) — these have rate limits but no per-token charge.
 
-**Image-generation providers (OpenAI DALL-E, Stability AI, Replicate)** — billed per image, not per token. Per-image pricing varies widely by provider, model, and resolution — roughly a few cents per standard-resolution image at the cheap end and tens of cents at the expensive end. There is no usage tier inside the visual pane that previews or estimates per-call costs before generation; charges land where they land. You can monitor spending on each provider's billing dashboard. If you want a hard ceiling, set a monthly spending cap inside the provider's billing settings — Ora itself does not enforce one.
-
-For comparison, browser automation uses your existing subscriptions — if you're already paying for Claude Pro or ChatGPT Plus, that cost doesn't change. API access is an additional, separate expense. Image generation has no browser-automation alternative; if you want to use the visual pane's AI generators, an API key is the only path.
+**Image-generation providers (OpenAI gpt-image-1, Stability AI, Replicate)** — billed per image, not per token. Per-image pricing varies widely by provider, model, and resolution — roughly a few cents per standard-resolution image at the cheap end and tens of cents at the expensive end. There is no usage tier inside the visual pane that previews or estimates per-call costs before generation; charges land where they land. You can monitor spending on each provider's billing dashboard. If you want a hard ceiling, set a monthly spending cap inside the provider's billing settings — Ora itself does not enforce one.
 
 You will need to provide a credit card during signup."
 
@@ -166,7 +159,7 @@ You will need to provide a credit card during signup."
 
 The critical thing to know: the key is shown exactly once when you create it. If you close the page without copying it, it's gone and you'll need to generate a new one. I'll remind you again when we get to that step."
 
-AFTER presenting all sections, ask: "Would you like to set up API keys now, or is browser automation sufficient for your current needs?"
+AFTER presenting all sections, ask: "Would you like to set up API keys now, or are you happy with local models for the time being?"
 
 IF the user wants to proceed, THEN ask: "Which providers would you like to set up?"
 
@@ -192,7 +185,7 @@ Present the options:
 
 Record the user's selection. Process each selected provider through Layers 2–4 sequentially.
 
-IF the user decides to skip, THEN: "No problem. Your system will continue using browser automation for evaluation. You can set up API keys anytime by telling your AI: 'Read and execute frameworks/api-key-setup.md'"
+IF the user decides to skip, THEN: "No problem. Your system will continue using local models for evaluation. You can set up API keys anytime by telling your AI: 'Read and execute frameworks/api-key-setup.md'"
 
 ---
 
@@ -364,14 +357,13 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
 ### Processing Instructions
 
-1. **Determine the fallback chain order.** The four-layer evaluation fallback chain is:
+1. **Determine the fallback chain order.** The evaluation fallback chain is:
 
-   - **Layer 1 — Browser automation** (primary, no additional cost): Uses existing subscriptions through Playwright. Always attempted first during interactive use.
-   - **Layer 2 — API primary** (overflow): The user's preferred API provider. Used when browser automation is unavailable.
-   - **Layer 3 — API secondary** (backup): Second API provider, if configured.
-   - **Layer 4 — Local-only mode** (degraded): No external evaluation. Quality warnings applied to un-reviewed output.
+   - **Layer 1 — API primary**: The user's preferred API provider for commercial evaluation.
+   - **Layer 2 — API secondary** (backup): Second API provider, if configured.
+   - **Layer 3 — Local-only mode** (degraded): No external evaluation. Quality warnings applied to un-reviewed output.
 
-   IF the user configured multiple API providers, THEN ask: "Which API provider would you like as your primary overflow? The others will be used as backups if the primary is unavailable."
+   IF the user configured multiple API providers, THEN ask: "Which API provider would you like as your primary? The others will be used as backups if the primary is unavailable."
 
    IF the user has no preference, THEN recommend based on capability and cost:
    - API Primary: Anthropic Claude (strongest analytical capability for evaluation)
@@ -437,10 +429,10 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
    ## Role in the System
 
-   API keys are the overflow/reliability channel. Browser automation
-   (Playwright) is the primary evaluation channel during interactive use.
-   API access activates when browser automation is unavailable, for
-   enterprise reliability needs, or for pre-authorized autonomous operations.
+   API keys are the commercial-AI evaluation channel. Configured keys
+   feed routing-config.json's premium / mid / fast buckets alongside
+   local MLX models. Set up only the providers you want to use; Ora
+   runs fully on local models alone.
 
    ## Configured Providers
 
@@ -453,35 +445,27 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
    ## Evaluation Fallback Chain
 
-   1. Browser automation (primary — uses existing subscriptions)
-   2. [API Primary provider and model] (overflow)
-   3. [API Secondary provider and model] (backup)
-   4. Local-only mode (no external evaluation — quality warnings applied)
+   1. [API Primary provider and model]
+   2. [API Secondary provider and model] (backup)
+   3. Local-only mode (no external evaluation — quality warnings applied)
 
    ## Operational Context Rules
 
-   - Interactive work: all channels available (browser, API, local)
+   - Interactive work: local + API channels available.
    - Autonomous overnight: local only by default. API available if
      explicitly pre-authorized in the task specification.
    - Agent operations: local only by default.
-   - Browser automation: prohibited during unattended work (sessions
-     may expire and require human interaction to re-authenticate).
 
    ## Updating Keys
 
    To update or replace a key, tell your AI:
    "Read and execute frameworks/api-key-setup.md"
    and select the provider you want to update.
-
-   ## Adding Browser Automation Connections
-
-   To add or reconnect browser automation:
-   "Read and execute frameworks/browser-eval-setup.md"
    </content>
    </tool_call>
    ```
 
-   IF one or more **image-generation** providers were configured during this session, THEN ALSO write the sibling configuration file `[workspace]/config/Reference — API Image Providers.md` documenting the image-generation fallback chain. The shape of this file is fixed by the sibling-document spec at `[workspace]/config/Reference — API Image Providers.md` (template included with Ora) — it lists configured image providers, their default models, the preferred → fallback ordering, and the "no browser-automation tier" note per §11.13. The framework writes the per-session status (configured / verified / unverified-with-reason) into the existing template; it does not author a new template each run.
+   IF one or more **image-generation** providers were configured during this session, THEN ALSO write the sibling configuration file `[workspace]/config/Reference — API Image Providers.md` documenting the image-generation fallback chain. The shape of this file is fixed by the sibling-document spec at `[workspace]/config/Reference — API Image Providers.md` (template included with Ora) — it lists configured image providers, their default models, and the preferred → fallback ordering. The framework writes the per-session status (configured / verified / unverified-with-reason) into the existing template; it does not author a new template each run.
 
 4. **Present the summary:**
 
@@ -490,12 +474,11 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
    [List each configured API provider with verification status]
 
    Your evaluation fallback chain:
-   1. Browser automation (primary — your [connected services] subscriptions)
-   2. [API primary] (overflow)
-   3. [API secondary] (backup, if configured)
-   4. Local-only mode (last resort)
+   1. [API primary]
+   2. [API secondary] (backup, if configured)
+   3. Local-only mode (last resort)
 
-   During interactive use, your system tries browser automation first. If that's unavailable, it falls back to the API. For autonomous overnight runs, only local and pre-authorized API channels are used — browser automation is excluded because sessions can expire and require your interaction.
+   For autonomous overnight runs, only local and pre-authorized API channels are used.
 
    You don't need to do anything else — your boot.md specification knows how to use these keys through the orchestrator. The keys are stored securely and will be available whenever your system needs them."
 
@@ -566,7 +549,7 @@ Unresolved deficiencies: [list of criteria remaining below 3, with specific gap 
 ### Error Correction Protocol
 
 1. **Verify factual consistency** across all output sections. Confirm provider names, pricing figures, and URLs are consistent between Layer 1 explanations and Layer 5 summary. Flag and correct any contradictions.
-2. **Verify terminology consistency.** Confirm that "overflow channel," "reliability channel," "browser automation primary," "API fallback," and the four-layer fallback chain labels (browser automation → API primary → API secondary → local-only) are used with their defined meanings throughout.
+2. **Verify terminology consistency.** Confirm that "API primary," "API secondary," "local-only fallback," and the three-layer fallback chain labels (API primary → API secondary → local-only) are used with their defined meanings throughout.
 3. **Verify structural completeness.** Confirm all required output components per OUTPUT CONTRACT are present:
    - API key(s) stored in the system credential store (macOS Keychain, Windows Credential Manager, or Linux SecretService via the `keyring` library).
    - Verification result for each stored key (confirmed working or failed with explanation).
@@ -581,7 +564,7 @@ Unresolved deficiencies: [list of criteria remaining below 3, with specific gap 
 Final user-facing summary per Layer 5 Step 4 format. Configuration artifacts written to their destinations:
 
 - Credential store entries via the `credential_store` tool (one per provider).
-- `api-providers.md` written to the user's configuration directory with the four-layer fallback chain documented.
+- `api-providers.md` written to the user's configuration directory with the three-layer fallback chain documented.
 - Endpoint registry entries updated with the configured providers.
 
 No plaintext key values appear in session logs or user-visible output after storage. The session log records that keys were stored, not the key values themselves.
@@ -590,7 +573,7 @@ No plaintext key values appear in session logs or user-visible output after stor
 
 Before finalizing output, explicitly state:
 
-- Any provider the user declined to configure (with reason if stated — e.g., sticker shock, time constraint, preference for browser automation only).
+- Any provider the user declined to configure (with reason if stated — e.g., sticker shock, time constraint, preference for local-only operation).
 - Any verification that failed or was skipped (with reason — e.g., billing not yet activated, endpoint not reachable, key entered but verification deferred).
 - Any fallback chain position left unfilled (e.g., only one API provider configured; secondary fallback position remains empty).
 - Any assumptions made when input was ambiguous (e.g., defaulting to general-purpose overflow when use case was not stated).
@@ -603,7 +586,7 @@ IF the Self-Evaluation layer flagged any UNRESOLVED DEFICIENCY, THEN restate eac
 
 - The specific criterion that was not met (1 Key Acquisition Success / 2 User Comprehension / 3 Security / 4 Fallback Configuration).
 - What additional input, iteration, or human judgment would resolve it.
-- Whether the deficiency affects downstream system operation — specifically whether the evaluation pipeline has a working fallback chain or whether it will fall back to local-only mode when browser automation is unavailable.
+- Whether the deficiency affects downstream system operation — specifically whether the evaluation pipeline has a working API-backed fallback chain or whether it will run local-only.
 
 For operational runtime failures encountered during framework execution (key paste failures, verification failures after retries, user abandonment partway through), see the OPERATIONAL RECOVERY section below. That section covers failures that occur *during* framework execution; this Recovery Declaration covers unresolved deficiencies detected *at the end* of framework execution by the Self-Evaluation layer.
 
@@ -622,7 +605,7 @@ WHEN the user cannot successfully paste a key:
 WHEN verification fails for all providers after retries:
 - Store the keys anyway (they may work once billing is activated).
 - Write the configuration file with "Stored but unverified" status.
-- Explain: "Your keys are stored and your system is configured to use them. If the verification issue was about billing activation, they should start working once your account is fully set up. Your system will automatically attempt to use them and report any errors. Remember: your browser automation connections are still your primary evaluation channel — API keys are the backup."
+- Explain: "Your keys are stored and your system is configured to use them. If the verification issue was about billing activation, they should start working once your account is fully set up. Your system will automatically attempt to use them and report any errors. If verification keeps failing, your local models continue to handle evaluation in the meantime."
 
 ### User Abandonment
 
@@ -630,14 +613,14 @@ WHEN the user wants to stop partway through:
 - Store any keys already obtained.
 - Write the configuration file with whatever providers were completed.
 - Update the endpoint registry with completed providers.
-- Explain: "I've saved what we set up so far. Your browser automation connections remain your primary evaluation channel. You can add more API providers anytime by telling me to run this framework again."
+- Explain: "I've saved what we set up so far. Your local models continue to handle evaluation. You can add more API providers anytime by telling me to run this framework again."
 
 ---
 
 ## EXECUTION COMMANDS
 
 1. Confirm you have fully processed this framework.
-2. Begin with Layer 1 (Explanation and Context). Do not skip the explanation even if the user seems technical — the cost comparison with browser automation, the overflow/reliability positioning, and the one-chance key warning are essential.
+2. Begin with Layer 1 (Explanation and Context). Do not skip the explanation even if the user seems technical — the cost regime, the optional-add-on positioning, and the one-chance key warning are essential.
 3. Process Layers 2–4 for each provider the user selects.
 4. Complete Layer 5 (Configuration and Summary) after all providers are processed.
 5. Run Layer 6 (Self-Evaluation) scoring each of the 4 Evaluation Criteria against the output with cited evidence and confidence assessment. Apply modifications for any below-threshold scores.
@@ -654,6 +637,8 @@ WHEN the user wants to stop partway through:
 v1.0 (2026/03/23): Initial version. API keys positioned as the primary evaluation channel.
 
 v1.1 (2026/03/24): Repositioned API keys as the overflow/reliability channel behind browser automation via Playwright. Added Layer 1 context explaining the relationship between browser automation and API access. Added four-layer evaluation fallback chain (browser → API primary → API secondary → local-only). Added operational context rules for autonomous work. Added endpoint registry integration. Added the Unnecessary Expense Trap to Named Failure Modes. Updated evaluation criteria to include fallback chain completeness and browser automation context in user comprehension.
+
+v1.3 (2026/05/16): Subscription / browser-automation path fully deprecated and removed from Ora. This framework now positions API keys as the commercial-AI access channel (the previous "overflow / reliability" framing is gone). Layer 1 rewritten — Sections 1, 2, 3 reframe API access as an optional add-on to local models. Four-layer fallback chain collapsed to three layers (API primary → API secondary → local-only). Unnecessary Expense Trap removed. References to Playwright, browser sessions, and existing subscriptions stripped throughout. api-providers.md template updated to match.
 
 v1.2 (2026/04/23): Added Layer 6 (Self-Evaluation) in penultimate position and Layer 7 (Error Correction and Output Formatting) in final position per Process Formalization Framework v2.0 Anatomy. Layer 6 scores each of the 4 Evaluation Criteria 1–5 with cited evidence, calibration warning, and remediation protocol for below-threshold scores. Layer 7 adds Error Correction Protocol (factual consistency, terminology, structural completeness, variable fidelity), Output Formatting, Missing Information Declaration, and Recovery Declaration. Renamed the existing RECOVERY section to OPERATIONAL RECOVERY to distinguish runtime-failure recovery (during execution) from the PFF Recovery Declaration (for unresolved deficiencies at end-of-execution). EXECUTION COMMANDS updated with steps 5 and 6 covering the new layers.
 

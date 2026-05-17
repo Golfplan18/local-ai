@@ -1,6 +1,6 @@
 ### PHASE 1, LAYER 1: PYTHON ENVIRONMENT
 
-**Stage Focus:** Ensure Python 3 and pip are installed and functional, and verify that Playwright can actually launch a browser — not just that it is installed.
+**Stage Focus:** Ensure Python 3 and pip are installed and functional, and that all required packages are importable.
 
 ### Processing Instructions
 
@@ -25,7 +25,6 @@
        anthropic \
        openai \
        google-generativeai \
-       playwright \
        flask
    ```
 
@@ -36,70 +35,10 @@
    - Attempt to install the remaining packages (do not abort the entire install for one failure).
    - Record the failure in the installation report.
 
-4. Install Playwright browser binaries:
-
-   ```
-   python3 -m playwright install chromium
-   ```
-
-   This downloads a standalone Chromium browser (~150 MB) used for browser automation. It does not affect the user's existing browser installation.
-
-   IF installation fails, THEN:
-   - Report the specific error.
-   - Note that browser automation will not be available until this is resolved.
-   - Continue with remaining Phase 1 layers (the system can still function with API keys if browser automation fails).
-
-5. Verify Playwright browser binaries are present:
-
-   ```
-   python3 -m playwright install chromium --dry-run
-   ```
-
-   IF the dry-run reports missing binaries, THEN install them:
-
-   ```
-   python3 -m playwright install chromium
-   ```
-
-   Note: On Linux, Playwright requires system dependencies that pip does not install. If the above fails on Linux, run:
-
-   ```
-   python3 -m playwright install-deps chromium
-   python3 -m playwright install chromium
-   ```
-
-   On macOS, no system dependencies are required beyond what Xcode command line tools provides.
-
-   On Windows, Playwright should install without additional dependencies. If installation fails, verify that the user has write permissions to `%USERPROFILE%\AppData\Local\ms-playwright`.
-
-6. Verify Playwright can actually launch a browser (not just that it is installed):
+4. Verify key packages imported successfully:
 
    ```python
-   python3 -c "
-   from playwright.sync_api import sync_playwright
-   with sync_playwright() as p:
-       browser = p.chromium.launch(headless=True)
-       page = browser.new_page()
-       page.goto('about:blank')
-       browser.close()
-       print('Playwright browser launch: OK')
-   "
-   ```
-
-   This test confirms the browser binary is present, executable, and capable of launching. A pip install that succeeded but produced a broken binary will fail here with a clear error.
-
-   IF this test fails, THEN:
-
-   - On Linux: Run `python3 -m playwright install-deps chromium` and retry.
-   - On macOS: Check for missing Xcode command line tools: `xcode-select -p`. If absent, install: `xcode-select --install`.
-   - On Windows: Check antivirus software is not blocking browser launch. Verify write permissions to the AppData directory.
-   - Record the failure in the installation report.
-   - Note: The system can still function without browser automation if API keys are provided later. However, Tier 0 readers require browser automation — do not continue to Layer 5 (Commercial AI Connections) if this test fails on a Tier 0 machine.
-
-7. Verify key packages imported successfully:
-
-   ```python
-   python3 -c "import chromadb; import keyring; from playwright.sync_api import sync_playwright; try: from ddgs import DDGS
+   python3 -c "import chromadb; import keyring; try: from ddgs import DDGS
    except ImportError: from duckduckgo_search import DDGS; print('All packages verified.')"
    ```
 
@@ -113,8 +52,7 @@
 - `anthropic`: Anthropic API client for Claude evaluations. Used at v4-B if Claude selected for API overflow.
 - `openai`: OpenAI API client for GPT evaluations. Used at v4-B if GPT selected for API overflow.
 - `google-generativeai`: Google API client for Gemini evaluations. Used at v4-B if Gemini selected for API overflow.
-- `playwright`: Browser automation for commercial AI access. Used at all tiers as the primary channel for cloud AI interaction. Uses existing subscriptions at no additional cost.
-- `flask`: HTTP server framework for the universal chat server installed in Layer 7.
+- `flask`: HTTP server framework for the universal chat server installed in Layer 6.
 
 ### Output Format for This Layer
 
@@ -124,9 +62,6 @@ Python version: [version]
 pip version: [version]
 Packages installed: [list]
 Packages failed: [list, or "none"]
-Playwright pip install: [installed / failed]
-Playwright browser binaries: [installed / failed — (reason)]
-Playwright launch test: [PASS / FAIL — (reason)]
 Verification: [Pass / Fail with details]
 ```
 

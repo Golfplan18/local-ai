@@ -60,13 +60,12 @@ THEN for each issue, state:
 
 ```
 PHASE 1 — UNIVERSAL BASE (every reader)
-  Layer 1: Python Environment (+ Playwright launch verification)
+  Layer 1: Python Environment
   Layer 2: Directory Structure (system folder, vault, ~/Documents/conversations/, ChromaDB init)
   Layer 3: Framework Library (Git clone)
   Layer 4: Orchestrator Installation (boot.py — terminal interface)
-  Layer 5: Commercial AI Connections (Playwright)
-  Layer 6: API Key Framework Installation (staged, not executed)
-  Layer 7: Universal Chat Server (browser interface with agentic loop)
+  Layer 5: API Key Framework Installation (staged, not executed)
+  Layer 6: Universal Chat Server (browser interface with agentic loop)
 
   Hardware Evaluation (inform, not gate)
 

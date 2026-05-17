@@ -50,11 +50,9 @@ To switch models, tell your AI: "Switch to DeepSeek" or "Use the 20B model"
 
 ## Commercial AI Access
 
-Your system has browser sessions for Claude, ChatGPT, and Gemini.
-These are used for browser_evaluate tool calls (adversarial evaluation, second opinions).
-
-To reconnect after a session expires:
-Tell your AI: "Read and execute frameworks/browser-eval-setup.md"
+Commercial AI access is via direct API providers or OpenRouter. Set up
+keys in the Settings panel's External APIs tab, or run
+`/framework api-key-setup` from the chat.
 
 ## If Something Goes Wrong
 

@@ -1,4 +1,4 @@
-### PHASE 1, LAYER 7: UNIVERSAL CHAT SERVER
+### PHASE 1, LAYER 6: UNIVERSAL CHAT SERVER
 
 **Stage Focus:** Install a browser-accessible chat interface with the agentic loop fully integrated, so every reader — including Tier 0 — can interact with the system through a browser rather than a terminal, with tool calls executing automatically.
 

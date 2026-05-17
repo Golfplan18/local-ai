@@ -15,7 +15,7 @@ Produce structured, cited research reports addressing open-ended knowledge gaps.
 
 ## PURPOSE
 
-The Deep Research Protocol orchestrates multi-step research that addresses open-ended knowledge gaps and produces a structured, cited report. It decomposes the input query into sub-queries, consults the vault first, fans out Level 1 subagents in parallel to fill residual gaps from external sources (web, browser-driven commercial AIs, API-driven commercial AIs), iterates on under-covered sub-queries using confidence-triggered re-retrieval, and synthesizes findings into a markdown report with source-class citations. It is the research substrate for the Terrain Mapping Framework (TMF) and any other Level 2+ caller that requires authoritative coverage of a topic area.
+The Deep Research Protocol orchestrates multi-step research that addresses open-ended knowledge gaps and produces a structured, cited report. It decomposes the input query into sub-queries, consults the vault first, fans out Level 1 subagents in parallel to fill residual gaps from external sources (web, commercial AI APIs), iterates on under-covered sub-queries using confidence-triggered re-retrieval, and synthesizes findings into a markdown report with source-class citations. It is the research substrate for the Terrain Mapping Framework (TMF) and any other Level 2+ caller that requires authoritative coverage of a topic area.
 
 ## INPUT CONTRACT
 
@@ -298,7 +298,7 @@ Continue to Layer 4.
 
 1. For each sub-query present in `gap_map`:
    a. Construct a subagent prompt containing: the specific sub-query text; the vault evidence already found for that sub-query (as context); the specific gap dimensions to address; the permitted source classes (filtered by `sources_allowed`); instruction to apply the Search-o1 Reason-in-Documents pattern (extract and condense rather than paste full pages); instruction to tag every claim with its source class; an explicit constraint forbidding fabricated citations ("every URL you cite must be one your tool call actually retrieved").
-   b. Dispatch the subagent at Level 1 with appropriate tool access (`web_fetch`, `browser_evaluate`, `api_evaluate` per `sources_allowed`).
+   b. Dispatch the subagent at Level 1 with appropriate tool access (`web_fetch` per `sources_allowed`; commercial-AI invocations dispatched through the standard model-routing slot system).
 2. Spawn subagents in parallel up to `subagent_cap` concurrent. Queue additional sub-queries if `gap_map` has more entries than `subagent_cap` allows concurrent.
 3. On subagent return:
    a. Validate the returned report: every claim has a source-class tag, every external citation has a URL, the report condenses rather than pastes raw content.

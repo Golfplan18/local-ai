@@ -4,10 +4,10 @@ Generated: 2026-04-16
 
 ## Role in the System
 
-API keys are the overflow/reliability channel. Browser automation
-is the primary evaluation channel during interactive use.
-API access activates when browser automation is unavailable, for
-enterprise reliability needs, or for pre-authorized autonomous operations.
+API keys are the commercial evaluation channel. Direct vendor APIs
+(Anthropic, OpenAI, Google) and OpenRouter both fit here; configured
+keys feed routing-config.json's `premium` / `mid` / `fast` buckets
+alongside local MLX models.
 
 ## Setup Rule
 
@@ -51,28 +51,21 @@ delete than to discover and add.
 ## Evaluation Fallback Chain
 
 1. Local models (primary — zero cost, hardware-bound)
-2. Browser automation (uses existing subscriptions)
-3. API premium-tier: Claude Opus 4.6, Gemini 2.5 Pro (strongest)
-4. API mid-tier: Claude Sonnet 4.6, GPT-4o, Gemini 1.5 Pro (overflow)
-5. API fast-tier: Claude Haiku 4.5, GPT-4o Mini, Gemini 2.5 Flash (backup)
+2. API premium-tier: Claude Opus 4.6, Gemini 2.5 Pro (strongest)
+3. API mid-tier: Claude Sonnet 4.6, GPT-4o, Gemini 1.5 Pro (overflow)
+4. API fast-tier: Claude Haiku 4.5, GPT-4o Mini, Gemini 2.5 Flash (backup)
+5. Free OpenRouter models (when configured in the `free` bucket)
 6. Local-only mode (no external evaluation — quality warnings applied)
 
 ## Operational Context Rules
 
-- Interactive work: all channels available (local, browser, API)
+- Interactive work: local + API channels available.
 - Autonomous overnight: local only by default. API available if
   explicitly pre-authorized in the task specification.
 - Agent operations: local + fast API tier by default.
-- Browser automation: prohibited during unattended work (sessions
-  may expire and require human interaction to re-authenticate).
 
 ## Updating Keys
 
 To update or replace a key, tell your AI:
 "Read and execute Framework — API Key Acquisition.md"
 and select the provider you want to update.
-
-## Adding Browser Automation Connections
-
-To add or reconnect browser automation:
-"Read and execute Framework — Browser Evaluation Setup.md"

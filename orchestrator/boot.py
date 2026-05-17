@@ -7408,10 +7408,9 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     Reliability ceiling: this layer protects against transient model
     misbehaviour (refusal, clarification-loop, brief stub, tool-call leak).
-    It does **not** protect against subscription rate limits, service
-    outages, or systemic UI changes on claude.ai / chatgpt.com. To raise
-    the ceiling further requires cross-service fallback (claude → gemini),
-    circuit breakers, and result caching.
+    It does **not** protect against API rate limits or upstream provider
+    outages. To raise the ceiling further requires cross-provider fallback
+    (claude → gemini), circuit breakers, and result caching.
 
     execution_context: ``interactive`` | ``autonomous`` | ``agent``.
     Commercial model overrides apply only when operational context
