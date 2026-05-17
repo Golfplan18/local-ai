@@ -41,7 +41,8 @@
         "sequence",
         "flowchart",
         "state",
-        "c4"
+        "c4",
+        "annotated_image"
       ]
     },
     "mode_context": {
@@ -96,19 +97,55 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["target_id", "kind"],
+        "required": ["kind"],
         "properties": {
           "target_id": {
             "type": "string",
             "minLength": 1,
-            "description": "SVG element id to attach the annotation to (semantic IDs emitted by renderers)."
+            "description": "SVG element id to attach the annotation to (semantic IDs emitted by renderers). Used when the backdrop is a renderer-emitted diagram. Either target_id OR (x, y) must be supplied."
           },
           "kind": {
             "type": "string",
-            "enum": ["callout", "highlight", "arrow", "badge"]
+            "enum": ["callout", "highlight", "arrow", "badge", "box", "text"]
           },
           "text": { "type": "string" },
-          "color": { "type": "string" }
+          "color": { "type": "string" },
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Normalized horizontal position (0–1) relative to the backdrop image's drawn bounds. Used with the annotated_image envelope when the backdrop is a user-uploaded photo."
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Normalized vertical position (0–1)."
+          },
+          "width": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Normalized width for box/highlight shapes."
+          },
+          "height": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Normalized height for box/highlight shapes."
+          },
+          "to_x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Arrow endpoint x (normalized)."
+          },
+          "to_y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Arrow endpoint y (normalized)."
+          }
         }
       }
     },
@@ -160,6 +197,7 @@
     { "allOf": [ { "properties": { "type": { "const": "sequence" } } }, { "properties": { "spec": { "$ref": "specs/sequence.json" } } } ] },
     { "allOf": [ { "properties": { "type": { "const": "flowchart" } } }, { "properties": { "spec": { "$ref": "specs/flowchart.json" } } } ] },
     { "allOf": [ { "properties": { "type": { "const": "state" } } }, { "properties": { "spec": { "$ref": "specs/state.json" } } } ] },
-    { "allOf": [ { "properties": { "type": { "const": "c4" } } }, { "properties": { "spec": { "$ref": "specs/c4.json" } } } ] }
+    { "allOf": [ { "properties": { "type": { "const": "c4" } } }, { "properties": { "spec": { "$ref": "specs/c4.json" } } } ] },
+    { "allOf": [ { "properties": { "type": { "const": "annotated_image" } } }, { "properties": { "spec": { "$ref": "specs/annotated_image.json" } } } ] }
   ]
 }

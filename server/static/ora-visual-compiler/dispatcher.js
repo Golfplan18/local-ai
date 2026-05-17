@@ -56,6 +56,14 @@ window.OraVisualCompiler._dispatcher = (function () {
 
     // SPATIAL family — WP-1.2d (Structurizr DSL)
     c4:                  stubRenderer,
+
+    // IMAGE-OVERLAY family — coordinate-anchored annotations on a
+    // user-uploaded image already mounted on backgroundLayer. Renderer is
+    // intentionally the stub: this envelope type is consumed exclusively
+    // via canvas_action:"annotate" → _doAnnotate (visual-panel.js), which
+    // bypasses the dispatcher and renders Konva primitives directly onto
+    // annotationLayer at image-relative pixel coords.
+    annotated_image:     stubRenderer,
   };
 
   /**

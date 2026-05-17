@@ -58,9 +58,14 @@ window.OraVisualCompiler = window.OraVisualCompiler || {};
 
 (function (C) {
 
-  // The 23 files that must be loaded into Ajv so $refs resolve. Paths are
-  // relative to the schemaRoot and MUST match the paths used inside $ref
-  // values in envelope.json (per the README.md "JavaScript" recipe).
+  // The schema files that must be loaded into Ajv so $refs resolve. Paths
+  // are relative to the schemaRoot and MUST match the paths used inside
+  // $ref values in envelope.json (per the README.md "JavaScript" recipe).
+  // Adding a new envelope type means adding its spec here as well as in
+  // envelope.json's `type` enum and oneOf — an unloaded $ref makes Ajv
+  // silently degrade to permissive validation (every envelope reads valid),
+  // which the test rig catches as a wave of `.invalid.json` fixtures
+  // unexpectedly passing.
   const _SCHEMA_FILES = [
     'envelope.json',
     'semantic_description.json',
@@ -87,6 +92,7 @@ window.OraVisualCompiler = window.OraVisualCompiler || {};
     'specs/flowchart.json',
     'specs/state.json',
     'specs/c4.json',
+    'specs/annotated_image.json',
   ];
 
   const DEFAULT_SCHEMA_ROOT = '/static/visual-schemas/';

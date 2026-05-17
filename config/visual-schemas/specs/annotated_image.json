@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ora.local/schemas/specs/annotated_image.json",
+  "title": "Annotated Image Spec",
+  "description": "Spec for the annotated_image envelope type. Used when the visual artifact is a user-uploaded image (drag-drop, paste, or file upload) overlaid with AI-emitted annotations at normalized image-relative coordinates. The actual annotation entries live on the envelope's top-level `annotations` array (with x/y instead of target_id). The spec block carries only the backdrop-source metadata.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["image_source"],
+  "properties": {
+    "image_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["user_upload"],
+          "description": "Where the backdrop image comes from. 'user_upload' references the image the user attached this turn — already present on the visual panel's backgroundLayer."
+        },
+        "natural_width": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional. Natural pixel width of the source image. The renderer reads bounds from the live Konva.Image node — this field is informational only."
+        },
+        "natural_height": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional. Natural pixel height."
+        }
+      }
+    }
+  }
+}

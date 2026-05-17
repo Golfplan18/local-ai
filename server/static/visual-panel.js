@@ -695,9 +695,20 @@
     var layer = this.annotationLayer;
     if (!layer) return;
 
+    // Two dispatch paths per the dual annotation contract (envelope.json
+    // §annotations): if the annotation carries `target_id`, anchor it to
+    // an SVG element on backgroundLayer (the renderer-emitted diagram
+    // case). If it carries (`x`, `y`) normalized 0–1 coordinates, anchor
+    // it to the user-uploaded image on backgroundLayer (the
+    // annotated_image envelope case).
     for (var i = 0; i < annots.length; i++) {
       var a = annots[i];
       if (!a || typeof a !== 'object') continue;
+      var coordBased = (typeof a.x === 'number' && typeof a.y === 'number');
+      if (coordBased) {
+        this._renderImageAnnotation(a, i, warnings);
+        continue;
+      }
       if (a.kind === 'callout') {
         this._renderCallout(a, warnings);
       } else if (a.kind === 'highlight') {
@@ -720,6 +731,139 @@
     }
     layer.draw();
     this._annotationWarnings = warnings;
+  };
+
+  /**
+   * Coordinate-based annotation rendering for the annotated_image envelope.
+   * The annotation references a normalized (0–1) position relative to the
+   * user-uploaded image on backgroundLayer (set by _installBackgroundImage).
+   *
+   * Supported kinds: callout (dot + offset label), box (outlined rect with
+   * label above), arrow (line + label at midpoint), highlight (filled
+   * ellipse + label below), text (label only).
+   *
+   * No-ops with a warning when no backdrop image is present — coordinate
+   * annotations require a backdrop to anchor against.
+   */
+  VisualPanel.prototype._renderImageAnnotation = function (a, idx, warnings) {
+    if (typeof Konva === 'undefined' || !this.annotationLayer) return;
+    var bg = this._backgroundImageNode;
+    if (!bg) {
+      warnings.push({
+        code: 'W_ANNOTATION_NO_BACKDROP',
+        severity: 'warning',
+        message: 'Coordinate annotation (idx ' + idx + ') requires a user-uploaded image on backgroundLayer; none present.',
+        path: 'annotations[' + idx + ']',
+      });
+      return;
+    }
+    // Read the live Konva.Image bounds (already in stage-space pixel coords).
+    var bx, by, bw, bh;
+    try {
+      bx = bg.x(); by = bg.y();
+      bw = bg.width(); bh = bg.height();
+    } catch (e) {
+      warnings.push({
+        code: 'W_ANNOTATION_BACKDROP_BOUNDS_UNAVAILABLE',
+        severity: 'warning',
+        message: 'Could not read backdrop image bounds: ' + (e && e.message || e),
+        path: 'annotations[' + idx + ']',
+      });
+      return;
+    }
+    var clamp = function (v) { return Math.max(0, Math.min(1, v)); };
+    var px = bx + clamp(a.x) * bw;
+    var py = by + clamp(a.y) * bh;
+    var pw = (typeof a.width  === 'number') ? clamp(a.width)  * bw : 0;
+    var ph = (typeof a.height === 'number') ? clamp(a.height) * bh : 0;
+    var ptx = (typeof a.to_x === 'number') ? bx + clamp(a.to_x) * bw : null;
+    var pty = (typeof a.to_y === 'number') ? by + clamp(a.to_y) * bh : null;
+
+    var color = a.color || '#FFCC00';
+    var text = (a.text || '').toString();
+    var kind = a.kind || 'callout';
+    var group = new Konva.Group({ name: 'vp-image-ann-' + idx });
+
+    if (kind === 'callout') {
+      // Small dot + label-bubble offset to the upper-right.
+      group.add(new Konva.Circle({
+        x: px, y: py, radius: 6,
+        fill: color, stroke: '#000', strokeWidth: 1.5,
+      }));
+      if (text) {
+        var approxW = Math.max(40, text.length * 7 + 12);
+        var lblX = px + 10, lblY = py - 26;
+        if (lblY < by) lblY = py + 10;
+        if (lblX + approxW > bx + bw) lblX = px - approxW - 10;
+        group.add(new Konva.Rect({
+          x: lblX, y: lblY, width: approxW, height: 20,
+          fill: '#FFF4A3', stroke: '#333', strokeWidth: 1,
+          cornerRadius: 4,
+        }));
+        group.add(new Konva.Text({
+          x: lblX + 6, y: lblY + 4, text: text,
+          fontSize: 11, fill: '#000',
+        }));
+      }
+    } else if (kind === 'box') {
+      group.add(new Konva.Rect({
+        x: px, y: py, width: pw || 40, height: ph || 40,
+        stroke: color, strokeWidth: 2.5, dash: [],
+      }));
+      if (text) {
+        group.add(new Konva.Text({
+          x: px, y: Math.max(by, py - 16), text: text,
+          fontSize: 12, fill: color,
+          stroke: '#fff', strokeWidth: 2, fillAfterStrokeEnabled: true,
+        }));
+      }
+    } else if (kind === 'arrow') {
+      var endX = (ptx != null) ? ptx : px + 40;
+      var endY = (pty != null) ? pty : py + 40;
+      group.add(new Konva.Arrow({
+        points: [px, py, endX, endY],
+        pointerLength: 10, pointerWidth: 10,
+        fill: color, stroke: color, strokeWidth: 2.5,
+      }));
+      if (text) {
+        group.add(new Konva.Text({
+          x: (px + endX) / 2 + 6, y: (py + endY) / 2 - 8,
+          text: text, fontSize: 12, fill: color,
+          stroke: '#fff', strokeWidth: 2, fillAfterStrokeEnabled: true,
+        }));
+      }
+    } else if (kind === 'highlight') {
+      group.add(new Konva.Ellipse({
+        x: px, y: py,
+        radiusX: Math.max(20, pw / 2 || 20),
+        radiusY: Math.max(20, ph / 2 || 20),
+        fill: color, opacity: 0.28,
+        stroke: color, strokeWidth: 2, dash: [6, 4],
+      }));
+      if (text) {
+        var rY = Math.max(20, ph / 2 || 20);
+        group.add(new Konva.Text({
+          x: px - 60, y: py + rY + 4, text: text,
+          fontSize: 12, fill: color, width: 120, align: 'center',
+          stroke: '#fff', strokeWidth: 2, fillAfterStrokeEnabled: true,
+        }));
+      }
+    } else if (kind === 'text') {
+      group.add(new Konva.Text({
+        x: px, y: py, text: text,
+        fontSize: 14, fill: '#000',
+        stroke: '#fff', strokeWidth: 3, fillAfterStrokeEnabled: true,
+      }));
+    } else {
+      warnings.push({
+        code: 'W_ANNOTATION_KIND_DEFERRED',
+        severity: 'warning',
+        message: 'Coordinate annotation kind "' + kind + '" not implemented.',
+        path: 'annotations[' + idx + '].kind',
+      });
+      return;
+    }
+    this.annotationLayer.add(group);
   };
 
   /**
