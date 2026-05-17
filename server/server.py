@@ -2206,6 +2206,48 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                               image_attached=image_attached)
     tier = step1["triage_tier"]
 
+    # Manual mode-pick override. When the caller explicitly named a mode
+    # via `manual_mode_selection` AND that mode exists in the registry,
+    # the pick supersedes Stage 2's dispatch. Rationale:
+    #
+    #   * The script/refresh-image-modes.py and `/chat/multipart` from
+    #     the V3 UI both send manual_mode_selection when the user has
+    #     made an explicit pick; respecting that pick is the obvious
+    #     semantic (Phase 6's popup will eventually surface a confirmation
+    #     dialog before dispatch — until then, the explicit field IS the
+    #     confirmation).
+    #   * Stage 2 signal-vocab dispatch is best-effort inference; when a
+    #     prompt's signals overlap (e.g. "annotate this CLD" matches both
+    #     spatial-reasoning's "annotate this CLD" expert signal AND
+    #     systems-dynamics-structural's CLD signals), the user's pick is
+    #     the reliable disambiguator.
+    #   * Bypass-to-direct-response is preserved — when Stage 1 detects a
+    #     pure chitchat/lookup prompt the override is suppressed, so
+    #     "what's 2+2 in spatial-reasoning mode" still bypasses cleanly.
+    #
+    # Validation: mode file must exist at `~/ora/modes/<slug>.md`. Unknown
+    # picks fall through to Stage 2's dispatch with a server log entry.
+    override_applied = False
+    if (manual_mode_selection
+        and manual_mode_selection != step1.get("mode")
+        and not (step1.get("pre_routing") or {}).get("bypass_to_direct_response")
+    ):
+        mode_file = os.path.join(WORKSPACE, "modes", f"{manual_mode_selection}.md")
+        if os.path.isfile(mode_file):
+            prior_mode = step1.get("mode")
+            step1["mode"] = manual_mode_selection
+            pr = step1.setdefault("pre_routing", {})
+            pr["dispatched_mode_id"] = manual_mode_selection
+            pr["manual_override_applied"] = True
+            pr["manual_override_prior_dispatch"] = prior_mode
+            print(f"[manual-mode-override] '{prior_mode}' → '{manual_mode_selection}' "
+                  f"(Stage 2 dispatch superseded by explicit user pick)", flush=True)
+            override_applied = True
+        else:
+            print(f"[manual-mode-override] '{manual_mode_selection}' not a valid mode "
+                  f"(no {mode_file}); falling through to Stage 2 dispatch "
+                  f"'{step1.get('mode')}'", flush=True)
+
     # V3 Input Handling Phase 1 — alignment-prefilter comparison. Computed
     # but not gated yet; the UI consumes the data once Phase 6 wires the
     # popup. Storing on ``step1`` so the clarification-resume path
