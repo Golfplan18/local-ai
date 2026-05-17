@@ -1145,6 +1145,50 @@ class ConfigPanel {
         <div class="cfg-slot-label">RAG Planner</div>
         ${this._renderCellBuckets(context, 'utility.rag_planner', (cells.rag_planner || {}).buckets || fallback)}
       </div>
+      <div class="cfg-subcell">
+        <div class="cfg-slot-label">Image Extracts</div>
+        ${this._renderImageExtractsCell(context)}
+      </div>
+    </div>`;
+  }
+
+  // Image-extracts is a capability slot (vision-language model: image →
+  // structured JSON describing the image's content), not a bucket-based
+  // utility. Its config lives at slots.image_extracts in routing-config
+  // and is read directly by route_for_image_input. We surface it here
+  // under utility — alongside Cleanup and RAG Planner — so operators can
+  // see what's configured. The chain shown is the same for both the
+  // interactive and agent pipeline columns: image-extraction is a
+  // global capability rather than per-pipeline.
+  _renderImageExtractsCell(context) {
+    const slot = (this._data.slots || {}).image_extracts || {};
+    const chain = [slot.preferred, ...(slot.fallback || [])].filter(Boolean);
+    if (!chain.length) {
+      return `<div class="cfg-imgex-empty">
+        <em>Not configured.</em>
+        Pick a vision-capable model in the OpenRouter picker below
+        (toggle "Vision-capable only") to populate this slot.
+      </div>`;
+    }
+    const rows = chain.map((entry, i) => {
+      // OpenRouter entries have shape "openrouter:<vendor>/<model>" —
+      // show just the model id for readability.
+      const display = entry.startsWith('openrouter:')
+        ? entry.slice('openrouter:'.length)
+        : entry;
+      const tag = i === 0 ? 'preferred' : `fallback ${i}`;
+      return `<div class="cfg-imgex-row">
+        <span class="cfg-imgex-tag">${tag}</span>
+        <span class="cfg-imgex-name">${display}</span>
+      </div>`;
+    }).join('');
+    return `<div class="cfg-imgex">
+      ${rows}
+      <div class="cfg-imgex-hint">
+        Read by <code>route_for_image_input</code> when an analyst model
+        can't see images. To edit, modify <code>slots.image_extracts</code>
+        in routing-config.
+      </div>
     </div>`;
   }
 

@@ -430,6 +430,70 @@
   border-radius: 3px;
   vertical-align: middle;
 }
+
+/* Image-Extracts cell — surfaced under Utility on the Models page.
+   Read-only display of slots.image_extracts (preferred + fallback
+   chain). Editing happens via the picker below (manually for now —
+   bucket-based edit flow would require restructuring image_extracts
+   into the routing-config endpoints[] array; deferred). */
+.cfg-imgex {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  background: var(--bg-app, #282828);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.cfg-imgex-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: rgb(220, 220, 220);
+}
+.cfg-imgex-tag {
+  flex-shrink: 0;
+  width: 64px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(140, 140, 140);
+}
+.cfg-imgex-name {
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cfg-imgex-hint {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border, #333);
+  font-size: 10px;
+  color: rgb(160, 160, 160);
+  line-height: 1.4;
+}
+.cfg-imgex-hint code {
+  background: var(--bg-panel, #1e1e1e);
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 10px;
+}
+.cfg-imgex-empty {
+  padding: 8px 10px;
+  background: var(--bg-app, #282828);
+  border-radius: 4px;
+  font-size: 11px;
+  color: rgb(180, 180, 180);
+  line-height: 1.4;
+}
+.cfg-imgex-empty em {
+  color: rgb(220, 220, 220);
+  font-style: normal;
+  font-weight: 600;
+  margin-right: 4px;
+}
 .cfg-picker-empty {
   font-size: 11px;
   color: var(--text-muted, #888);
