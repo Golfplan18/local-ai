@@ -1,0 +1,10 @@
+{
+  "id": "ora",
+  "name": "Ora",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Input surface and embedded views for Ora — requires Ora installed separately.",
+  "author": "Ora",
+  "authorUrl": "https://github.com/ora-commons/ora",
+  "isDesktopOnly": true
+}

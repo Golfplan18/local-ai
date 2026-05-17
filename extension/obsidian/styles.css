@@ -1,0 +1,62 @@
+.ora-input-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  height: 100%;
+}
+
+.ora-input-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ora-input-header h3 {
+  margin: 0;
+}
+
+.ora-input-status {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.ora-input-textarea {
+  width: 100%;
+  flex: 1;
+  min-height: 120px;
+  resize: vertical;
+  padding: 8px;
+  font-family: inherit;
+  font-size: inherit;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.ora-input-toggles {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.ora-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.ora-input-submit-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ora-diagnostics {
+  padding: 8px 0;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
