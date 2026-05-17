@@ -300,23 +300,22 @@
 
 /* Picker source lists below each section */
 .cfg-picker {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* All picker sections stack vertically so each gets full panel width.
+     Previously this was a 2-col grid with Subscription left + Direct API
+     right; the cramped right column made Direct API's per-vendor lists
+     unreadable. Each section now flows full-width with its own internal
+     subgrid where appropriate (Direct API uses multicolumn for its three
+     vendor groups; see .cfg-direct-api-groups below). */
+  display: flex;
+  flex-direction: column;
   gap: 1px;
   background: var(--border, #333);
   padding: 1px 0 0;
-}
-.cfg-bucket-section .cfg-picker:has(.cfg-picker-section:only-child) {
-  grid-template-columns: 1fr;
 }
 .cfg-picker-section {
   background: var(--bg-panel, #1e1e1e);
   padding: 10px 14px;
   min-width: 0;
-}
-.cfg-picker-section:nth-child(n+3) {
-  /* When OpenRouter is the 3rd section, span both columns. */
-  grid-column: 1 / -1;
 }
 .cfg-picker-section-title {
   font-size: 10px;
@@ -365,11 +364,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 8px;
+  padding: 6px 10px;
   border-radius: 3px;
   font-size: 13px;
   cursor: pointer;
-  color: var(--text-normal, #e0e0e0);
+  /* Explicit rgb so the color doesn't depend on token resolution.
+     Matches --text-normal in the dark theme (rgb 220,220,220). */
+  color: rgb(220, 220, 220);
 }
 .cfg-picker-row:hover {
   background: var(--bg-app, #282828);
@@ -380,13 +381,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Explicit color on the span too so any ancestor inheritance can't
+     dim it. */
+  color: rgb(220, 220, 220);
 }
 .cfg-picker-row-price {
   font-size: 12px;
-  color: var(--text-normal, #ddd);
-  opacity: 0.82;
+  /* Slightly de-emphasised vs the name but still clearly readable. */
+  color: rgb(180, 180, 180);
   font-variant-numeric: tabular-nums;
-  margin-left: 10px;
+  margin-left: 12px;
   white-space: nowrap;
 }
 .cfg-picker-empty {
@@ -415,14 +419,20 @@
   padding: 6px;
 }
 .cfg-direct-api-groups {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  /* Multicolumn flow so each vendor group flows down a column then
+     wraps. Three columns at full panel width gives each group ~33%
+     instead of the previous cramped sub-column inside a half-width
+     section. */
+  column-count: 3;
+  column-gap: 8px;
 }
 .cfg-direct-api-group {
   background: var(--bg-app, #282828);
   border-radius: 4px;
   padding: 6px 8px;
+  /* Don't split a vendor group across the column gap. */
+  break-inside: avoid;
+  margin-bottom: 8px;
 }
 .cfg-direct-api-group-header {
   font-size: 11px;
