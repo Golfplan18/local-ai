@@ -12,8 +12,6 @@
    ├── frameworks/     ← framework library from the book repository
    │   ├── user/       ← user-created frameworks accumulate here
    │   └── framework-registry.md ← index of all frameworks (populated with book-shipped entries)
-   ├── agents/         ← agent identity files (created empty)
-   │   └── agent-registry.md     ← manifest of all agents (created with empty template)
    ├── config/         ← system configuration files
    │   └── browser-sessions/  ← Playwright session state
    ├── chromadb/       ← vector database (two collections: knowledge, conversations)
@@ -40,28 +38,8 @@
    Where would you like your vault? Press Enter for the default, or type a path."
 
 4. Create the vault folder at the user's chosen location. Do NOT create subfolders inside it — the vault is flat.
-5. Create the agent registry file at `[workspace]/agents/agent-registry.md` with the empty template:
-
-   ```markdown
-   # Agent Registry
-
-   ## Format
-
-   | Field | Description |
-   |---|---|
-   | **Name** | Agent identifier |
-   | **Type** | functional / incarnated |
-   | **Created** | Date |
-   | **Last Modified** | Date |
-   | **Description** | One sentence describing the agent's purpose |
-
-   ## Registered Agents
-
-   [Entries added as agents are created through the Agent Identity Framework]
-   ```
-
-6. Create the framework registry file at `[workspace]/frameworks/framework-registry.md` populated with initial entries for all book-shipped frameworks. Each entry follows the registry entry format produced by the PFF (name, purpose, problem class, input summary, output summary, proven applications, known limitations, file location, provenance, confidence, version).
-7. Write endpoints.json with the three paths and an empty endpoint registry:
+5. Create the framework registry file at `[workspace]/frameworks/framework-registry.md` populated with initial entries for all book-shipped frameworks. Each entry follows the registry entry format produced by the PFF (name, purpose, problem class, input summary, output summary, proven applications, known limitations, file location, provenance, confidence, version).
+6. Write endpoints.json with the three paths and an empty endpoint registry:
 
    ```json
    {
@@ -78,7 +56,7 @@
    }
    ```
 
-8. Initialize ChromaDB at `[workspace]/chromadb/` with two empty collections:
+7. Initialize ChromaDB at `[workspace]/chromadb/` with two empty collections:
    - `knowledge` — will index the vault
    - `conversations` — will index processed conversation chunks
 
@@ -89,21 +67,20 @@
    client.get_or_create_collection("conversations")
    ```
 
-9. IF any directory already exists (from a prior run), THEN skip it without error.
-10. Create a `.gitkeep` file in each empty directory so Git tracks them.
+8. IF any directory already exists (from a prior run), THEN skip it without error.
+9. Create a `.gitkeep` file in each empty directory so Git tracks them.
 
 ### Output Format for This Layer
 
 ```
 DIRECTORY STRUCTURE CREATED
 System folder: [workspace path]
-  Directories: modes/, frameworks/, frameworks/user/, agents/, config/, config/browser-sessions/,
+  Directories: modes/, frameworks/, frameworks/user/, config/, config/browser-sessions/,
                chromadb/, models/, server/, docs/
 Conversations folder: ~/Documents/conversations/
   Subdirectory: raw/
 Vault: [user-chosen path]
   Structure: flat (no subfolders)
-Agent registry: [workspace]/agents/agent-registry.md (empty template)
 Framework registry: [workspace]/frameworks/framework-registry.md (populated with book-shipped entries)
 ChromaDB: initialized with collections [knowledge, conversations]
 Endpoints: [workspace]/config/endpoints.json written with three paths

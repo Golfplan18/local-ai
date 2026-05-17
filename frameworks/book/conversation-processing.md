@@ -342,7 +342,7 @@ conversation_title: [if available]
 turn_range: [e.g., "3-4" for merged turns, "7" for single turn]
 topics: [topic tag 1, topic tag 2]
 chunk_id: [source_file stem]-[turn_range]-[timestamp date]
-agent_id: [string — the identifier of the agent involved in this conversation. Default: "user" for personal system conversations. For named agents, use the agent's identifier from the agent registry (e.g., "malcolm", "researcher"). For raw commercial AI imports without system involvement, use "external".]
+agent_id: [string — the identifier of the persona or voice involved in this conversation. Default: "user" for personal system conversations. For named MindSpec personas, use the persona's identifier (e.g., "malcolm", "mark"). For raw commercial AI imports without system involvement, use "external".]
 ---
 
 ## Context

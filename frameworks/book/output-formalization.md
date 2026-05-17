@@ -260,7 +260,7 @@ O-Design produces a new bespoke output framework through structured elicitation 
    - An expressive artifact in a specific medium and genre (OFF appropriate)
    - A process that produces information (route to PFF)
    - A workflow with multiple sources and outputs (route to CFF)
-   - An agent specification (route to MindSpec or Agent Identity)
+   - A character, persona, or agent specification (route to MindSpec Interview)
    - A one-off rendering task with no framework needed (handle inline if simple, otherwise route to OFF)
 
 2. If routing is to OFF, identify the input modality:

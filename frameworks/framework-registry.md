@@ -227,20 +227,6 @@ Each framework has one entry with these fields:
 - **Version:** 1.0
 - **Delivers:** Configured API provider access — keys stored in credential store, endpoints registered in endpoints.json, fallback chain documented in api-providers.md
 
-### Agent Identity and Programming
-
-- **Purpose:** Create and program specialized agent identities using the MindSpec pattern, producing a compiled agent boot file and registry entry
-- **Problem Class:** Agent creation and identity specification
-- **Input Summary:** Agent purpose description; tier selection (functional vs. incarnated); mission parameters
-- **Output Summary:** MindSpec canonical file set; compiled agent boot file; agent registry entry
-- **Proven Applications:** Framework produced via F-Design from PFF v2.0
-- **Known Limitations:** Incarnated agent voice calibration requires user-provided reference materials for best results
-- **File Location:** frameworks/book/agent-identity.md
-- **Provenance:** human-created
-- **Confidence:** high
-- **Version:** 1.0
-- **Delivers:** New persistent AI agent identity as MindSpec canonical files plus compiled boot file plus registry entry (I-Create); modified agent's MindSpec files and recompiled boot file (I-Modify); full mission brief programming an existing agent to prosecute a mission autonomously (M-Program); compressed task specification assigning bounded work to an existing agent (M-Task)
-
 ### Phase A — Prompt Cleanup
 
 - **Purpose:** Mechanical preprocessing of raw user input: transcription correction, syntax normalization, reference resolution, semantic extraction, ambiguity resolution, and conversion to Operational Notation

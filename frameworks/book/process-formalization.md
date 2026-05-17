@@ -399,7 +399,7 @@ Exempt frameworks must declare the exemption explicitly in their Execution Tier 
 
 **Multi-milestone requirement.** Frameworks with more than ~5 processing layers per mode SHOULD declare multiple intermediate milestones for that mode, where each milestone groups a coherent set of layers that produces a stable deliverable downstream milestones consume. A framework (or mode) that runs 8+ layers under a single milestone receives no drift checkpoints between input and final output; declaring intermediate milestones is the structural mechanism for drift prevention. Single-milestone designs are appropriate only for short paths (≤5 layers) or paths with no natural intermediate deliverable.
 
-**Multi-mode frameworks.** Frameworks with multiple modes (e.g., I-Create / I-Modify / M-Program / M-Task in agent-identity, or F-Design / F-Convert / F-Render / F-Audit in this framework) declare the milestones for each mode separately, with Mode bound inline to each milestone. M0 routing layers, when present, fire before mode selection and feed the mode classification to downstream milestones via Conditional layers.
+**Multi-mode frameworks.** Frameworks with multiple modes (e.g., M-Operational / M-Supervised in MOM, or F-Design / F-Convert / F-Render / F-Audit in this framework) declare the milestones for each mode separately, with Mode bound inline to each milestone. M0 routing layers, when present, fire before mode selection and feed the mode classification to downstream milestones via Conditional layers.
 
 **During F-Design:** The designer elicits milestones delivered as part of Phase 1 Question 1 of the Framework Design Process. Each declared milestone becomes an entry in this section with all properties inline.
 
@@ -443,7 +443,7 @@ This framework delivers three sequential milestones. Each milestone is a coheren
 
 (Single-mode framework: no Mode property declared; no M0 routing milestone; no Conditional layers; flat M1, M2, M3 numbering.)
 
-For a multi-mode example with M0 routing and Conditional layers, see the agent-identity framework's Milestones Delivered section.
+For a multi-mode example with M0 routing and Conditional layers, see the Mission/Objectives/Milestones framework's Milestones Delivered section.
 
 ### 2.4 Evaluation Criteria
 

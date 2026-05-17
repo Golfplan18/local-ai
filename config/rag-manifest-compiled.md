@@ -36,43 +36,102 @@ Count: 0
 ## Modes
 
 | Mode | File | Default Gear | Trigger Summary |
-| Competing Hypotheses | competing-hypotheses.md | Gear 4 | Multiple explanations exist for the same evidence, "which explanation fits best, |
-| Constraint Mapping | constraint-mapping.md | Gear 3 | Multiple viable options exist, "which should I choose," tradeoff analysis, C&S o |
-| Cui Bono | cui-bono.md | Gear 4 | Policy analysis, institutional behavior analysis, "who benefits," numerical targ |
-| Decision Under Uncertainty | decision-under-uncertainty.md | Gear 3 | A choice must be made between alternatives with uncertain outcomes. "Should we a |
-| Deep Clarification | deep-clarification.md | Gear 3 | "Why does X work that way," "explain the mechanics of," "what's really going on  |
-| Dialectical Analysis | dialectical-analysis.md | Gear 4 | A question is structured around genuine opposition between positions that each h |
-| Paradigm Suspension | paradigm-suspension.md | Gear 4 | The user questions a mainstream position ("what if X is wrong"), evidence contra |
-| Passion Exploration | passion-exploration.md | Gear 2 | No deliverable stated, curiosity-driven inquiry, "I'm interested in," "help me t |
-| Project Mode | project-mode.md | Gear 3 | The user names a specific output ("build," "write," "create," "produce," "draft, |
-| Relationship Mapping | relationship-mapping.md | Gear 3 | "How do these connect," systems analysis, causal modeling, dependency graphs, "w |
-| Root Cause Analysis | root-cause-analysis.md | Gear 3 | Something has gone wrong and the cause is unclear. A problem keeps recurring des |
-| Scenario Planning | scenario-planning.md | Gear 4 | A decision depends on future conditions that are genuinely uncertain, strategic  |
-| Steelman Construction | steelman-construction.md | Gear 3 | A position is about to be critiqued or dismissed, the user asks "what's the best |
-| Strategic Interaction | strategic-interaction.md | Gear 4 | "Game theory analysis," the situation involves two or more actors making choices |
-| Structured Output | structured-output.md | Gear 2 | The user requests a specific document format — "write this as a report," "form |
-| Synthesis | synthesis.md | Gear 4 | Cross-domain connection, "how does X relate to Y," integrative analysis, the use |
-| Systems Dynamics | systems-dynamics.md | Gear 4 | The problem involves feedback loops, unintended consequences, or counterintuitiv |
-| Terrain Mapping | terrain-mapping.md | Gear 3 | The user asks "what is," "how does X work," "where do I start," "what do I need  |
+| Argument Audit | argument-audit.md | Gear 4 |  |
+| Balanced Critique | balanced-critique.md | Gear 4 |  |
+| Bayesian Hypothesis Network | bayesian-hypothesis-network.md | Gear 4 |  |
+| Benefits Analysis | benefits-analysis.md | Gear 4 |  |
+| Boundary Critique | boundary-critique.md | Gear 4 |  |
+| Causal Dag | causal-dag.md | Gear 4 |  |
+| Coherence Audit | coherence-audit.md | Gear 4 |  |
+| Competing Hypotheses | competing-hypotheses.md | Gear 4 |  |
+| Compositional Dynamics | compositional-dynamics.md | Gear 4 |  |
+| Conceptual Engineering | conceptual-engineering.md | Gear 4 |  |
+| Consequences And Sequel | consequences-and-sequel.md | Gear 4 |  |
+| Constraint Mapping | constraint-mapping.md | Gear 4 |  |
+| Cui Bono | cui-bono.md | Gear 4 |  |
+| Decision Architecture | decision-architecture.md | Gear 4 |  |
+| Decision Clarity | decision-clarity.md | Gear 4 |  |
+| Decision Under Uncertainty | decision-under-uncertainty.md | Gear 4 |  |
+| Deep Clarification | deep-clarification.md | Gear 4 |  |
+| Dialectical Analysis | dialectical-analysis.md | Gear 4 |  |
+| Differential Diagnosis | differential-diagnosis.md | Gear 4 |  |
+| Domain Induction | domain-induction.md | Gear 4 |  |
+| Fragility Antifragility Audit | fragility-antifragility-audit.md | Gear 4 |  |
+| Frame Audit | frame-audit.md | Gear 4 |  |
+| Frame Comparison | frame-comparison.md | Gear 4 |  |
+| Information Density | information-density.md | Gear 4 |  |
+| Interest Mapping | interest-mapping.md | Gear 4 |  |
+| Ma Reading | ma-reading.md | Gear 4 |  |
+| Mechanism Understanding | mechanism-understanding.md | Gear 4 |  |
+| Multi Criteria Decision | multi-criteria-decision.md | Gear 4 |  |
+| Paradigm Suspension | paradigm-suspension.md | Gear 4 |  |
+| Passion Exploration | passion-exploration.md | Gear 2 |  |
+| Place Reading Genius Loci | place-reading-genius-loci.md | Gear 4 |  |
+| Pre Mortem Action | pre-mortem-action.md | Gear 4 |  |
+| Pre Mortem Fragility | pre-mortem-fragility.md | Gear 4 |  |
+| Principled Negotiation | principled-negotiation.md | Gear 4 |  |
+| Probabilistic Forecasting | probabilistic-forecasting.md | Gear 4 |  |
+| Process Mapping | process-mapping.md | Gear 4 |  |
+| Process Tracing | process-tracing.md | Gear 4 |  |
+| Project Mode | project-mode.md | Gear 4 |  |
+| Propaganda Audit | propaganda-audit.md | Gear 4 |  |
+| Quick Orientation | quick-orientation.md | Gear 4 |  |
+| Red Team Advocate | red-team-advocate.md | Gear 4 |  |
+| Red Team Assessment | red-team-assessment.md | Gear 4 |  |
+| Relationship Mapping | relationship-mapping.md | Gear 4 |  |
+| Root Cause Analysis | root-cause-analysis.md | Gear 4 |  |
+| Scenario Planning | scenario-planning.md | Gear 4 |  |
+| Simple | simple.md | Gear 1 |  |
+| Spatial Reasoning | spatial-reasoning.md | Gear 4 |  |
+| Stakeholder Mapping | stakeholder-mapping.md | Gear 4 |  |
+| Steelman Construction | steelman-construction.md | Gear 4 |  |
+| Strategic Interaction | strategic-interaction.md | Gear 4 |  |
+| Structured Output | structured-output.md | Gear 2 |  |
+| Synthesis | synthesis.md | Gear 4 |  |
+| Systems Dynamics Causal | systems-dynamics-causal.md | Gear 4 |  |
+| Systems Dynamics Structural | systems-dynamics-structural.md | Gear 4 |  |
+| Terrain Mapping | terrain-mapping.md | Gear 4 |  |
+| Third Side | third-side.md | Gear 4 |  |
+| Wicked Future | wicked-future.md | Gear 4 |  |
+| Wicked Problems | wicked-problems.md | Gear 4 |  |
+| Worldview Cartography | worldview-cartography.md | Gear 4 |  |
 
 ## Frameworks
 
 | File | Path | Description |
-| agent-identity.md | /Users/oracle/ora/frameworks/book/agent-identity.md | *A Combined Framework for Creating AI Agent Identities and Programming Agent Missions* |
-| api-key-setup.md | /Users/oracle/ora/frameworks/book/api-key-setup.md | This framework sets up API keys for commercial AI services as the overflow/reliability channel. |
-| browser-evaluation-setup.md | /Users/oracle/ora/frameworks/book/browser-evaluation-setup.md | *Guided Setup for Commercial AI Browser Automation Connections* |
-| conversation-processing.md | /Users/oracle/ora/frameworks/book/conversation-processing.md | _Updated March 31, 2026 — dual-mode architecture: inline processing for ongoing conversations (primary), batch process |
+| api-key-setup.md | /Users/oracle/ora/frameworks/book/api-key-setup.md | API Key Acquisition |
+| argument-audit-analysis.md | /Users/oracle/ora/frameworks/book/argument-audit-analysis.md | *A Framework for Producing an Integrated Argument Audit That Combines Frame-Audit (Lakoff/Goffman/Entman Frame-Surfacing |
+| bayesian-hypothesis-network-analysis.md | /Users/oracle/ora/frameworks/book/bayesian-hypothesis-network-analysis.md | *A Framework for Producing a Probabilistic Posterior over Competing Hypotheses with Explicit Priors, Evidential Likeliho |
+| conversation-processing.md | /Users/oracle/ora/frameworks/book/conversation-processing.md | Conversation Processing |
+| corpus-formalization.md | /Users/oracle/ora/frameworks/book/corpus-formalization.md | Corpus Formalization (CFF) |
+| decision-architecture-analysis.md | /Users/oracle/ora/frameworks/book/decision-architecture-analysis.md | *A Framework for Producing a Decision Architecture Document for a High-Stakes Decision Where the Decision-Maker Is the U |
+| decision-clarity-analysis.md | /Users/oracle/ora/frameworks/book/decision-clarity-analysis.md | *A Framework for Producing a Decision Clarity Document for a Decision-Maker Facing a Tangled Problem with Stakeholder Va |
+| deep-research-protocol.md | /Users/oracle/ora/frameworks/book/deep-research-protocol.md | Deep Research Protocol |
+| document-processing.md | /Users/oracle/ora/frameworks/book/document-processing.md | Document Processing |
+| domain-induction-analysis.md | /Users/oracle/ora/frameworks/book/domain-induction-analysis.md | *A Framework for Producing a Domain Induction Document with Three Integrated Parts: (a) What Is Here in the Domain; (b)  |
+| engram-cleaning.md | /Users/oracle/ora/frameworks/book/engram-cleaning.md | Engram Cleaning |
 | f-analysis-breadth.md | /Users/oracle/ora/frameworks/book/f-analysis-breadth.md | *Loaded into: Breadth model context window at Step 3 (Parallel Independent Analysis).* |
 | f-analysis-depth.md | /Users/oracle/ora/frameworks/book/f-analysis-depth.md | *Loaded into: Depth model context window at Step 3 (Parallel Independent Analysis).* |
-| f-consolidate.md | /Users/oracle/ora/frameworks/book/f-consolidate.md | *Loaded into: Breadth model context window at Step 7 (Consolidation).* |
-| f-evaluate.md | /Users/oracle/ora/frameworks/book/f-evaluate.md | *Two variants: one loaded into the Breadth model when it evaluates the Depth analysis, one loaded into the Depth model w |
-| f-revise.md | /Users/oracle/ora/frameworks/book/f-revise.md | *Loaded into: Each model's context window at Step 5. Both models receive the same specification with their own prior out |
-| f-verify.md | /Users/oracle/ora/frameworks/book/f-verify.md | *Loaded into: Depth model context window at Step 8 (Final Verification of Consolidated Output).* |
+| f-consolidate.md | /Users/oracle/ora/frameworks/book/f-consolidate.md | *Universal scaffolding for step 7. Step 7 produces the **consolidated corpus** — semantically extracted, cross-stream  |
+| f-evaluate.md | /Users/oracle/ora/frameworks/book/f-evaluate.md | *Universal scaffolding. Two variants (Breadth-evaluates-Depth, Depth-evaluates-Breadth) share one output contract. Mode- |
+| f-format.md | /Users/oracle/ora/frameworks/book/f-format.md | *Universal scaffolding for step 8. Step 8 takes the step-7 consolidated corpus and places it into the mode's prescribed  |
+| f-revise.md | /Users/oracle/ora/frameworks/book/f-revise.md | *Universal scaffolding. Mode-specific reviser guidance — how to address each criterion's failure in prose and in the e |
+| f-verify.md | /Users/oracle/ora/frameworks/book/f-verify.md | *Universal scaffolding. The eight universal checks below are the floor for every mode. Mode-specific checks layer on top |
+| knowledge-artifact-coach.md | /Users/oracle/ora/frameworks/book/knowledge-artifact-coach.md | Knowledge Artifact Coach |
+| mindspec-interview.md | /Users/oracle/ora/frameworks/book/mindspec-interview.md | MindSpec Interview |
+| mission-objectives-milestones.md | /Users/oracle/ora/frameworks/book/mission-objectives-milestones.md | Mission, Objectives, and Milestones (MOM) |
+| news-supersession.md | /Users/oracle/ora/frameworks/book/news-supersession.md | News Supersession |
+| output-formalization.md | /Users/oracle/ora/frameworks/book/output-formalization.md | Output Formalization (OFF) |
+| periodic-maintenance.md | /Users/oracle/ora/frameworks/book/periodic-maintenance.md | Periodic Maintenance |
 | phase-a-prompt-cleanup.md | /Users/oracle/ora/frameworks/book/phase-a-prompt-cleanup.md | *Loaded into: Breadth model context window at Step 1 (Prompt Cleanup).* |
-| process-formalization.md | /Users/oracle/ora/frameworks/book/process-formalization.md | *A Meta-Framework for Formalizing Domain Expertise into Executable AI Specifications* |
-| process-inference.md | /Users/oracle/ora/frameworks/book/process-inference.md | *A Framework for Discovering Unknown Processes from Defined Endpoints* |
-| mind-framework.md | /Users/oracle/ora/frameworks/book/mind-framework.md | This framework guides the creation or modification of mind.md — the values framework that defines how the AI communica |
-| spec-code-reconciliation.md | /Users/oracle/ora/frameworks/book/spec-code-reconciliation.md | *A framework for backward-reconciling installer specifications with the actual installed system, then producing a natura |
+| problem-evolution.md | /Users/oracle/ora/frameworks/book/problem-evolution.md | Problem Evolution (PEF) |
+| process-formalization.md | /Users/oracle/ora/frameworks/book/process-formalization.md | Process Formalization (PFF) |
+| process-inference.md | /Users/oracle/ora/frameworks/book/process-inference.md | Process Inference (PIF) |
+| supplemental-rag-protocol.md | /Users/oracle/ora/frameworks/book/supplemental-rag-protocol.md | *Universal standing instruction. Injected into every analytical pipeline step. Authorises the model to request additiona |
+| terrain-mapping.md | /Users/oracle/ora/frameworks/book/terrain-mapping.md | Terrain Mapping (TMF) |
+| video-editing-suggestions.md | /Users/oracle/ora/frameworks/book/video-editing-suggestions.md | Video Editing Suggestions |
+| wicked-future-analysis.md | /Users/oracle/ora/frameworks/book/wicked-future-analysis.md | *A Framework for Producing an Integrated Forward Analysis with Probability-Weighted Scenarios, Adversarial-Future Stress |
+| worldview-cartography-analysis.md | /Users/oracle/ora/frameworks/book/worldview-cartography-analysis.md | *A Framework for Producing a Cartography of Competing Worldviews — Each Worldview's Foundational Commitments Surfaced, |
 | README.md | /Users/oracle/ora/frameworks/personal/README.md | Personal frameworks. Not synced to the public repository. |
 
-# Estimated tokens: ~     974
+# Estimated tokens: ~    1370

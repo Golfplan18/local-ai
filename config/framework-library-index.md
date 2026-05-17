@@ -4,21 +4,37 @@
 
 | File | Path | Description |
 |---|---|---|
-| agent-identity.md | /Users/oracle/ora/frameworks/book/agent-identity.md | *A Combined Framework for Creating AI Agent Identities and Programming Agent Missions* |
-| api-key-setup.md | /Users/oracle/ora/frameworks/book/api-key-setup.md | This framework sets up API keys for commercial AI services as the overflow/reliability channel. |
-| browser-evaluation-setup.md | /Users/oracle/ora/frameworks/book/browser-evaluation-setup.md | *Guided Setup for Commercial AI Browser Automation Connections* |
-| conversation-processing.md | /Users/oracle/ora/frameworks/book/conversation-processing.md | _Updated March 31, 2026 — dual-mode architecture: inline processing for ongoing conversations (primary), batch process |
-| document-processing.md | /Users/oracle/ora/frameworks/book/document-processing.md | _Created April 14, 2026 — canonical pipeline specification for converting any document input into vault-ready notes wi |
+| api-key-setup.md | /Users/oracle/ora/frameworks/book/api-key-setup.md | API Key Acquisition |
+| argument-audit-analysis.md | /Users/oracle/ora/frameworks/book/argument-audit-analysis.md | *A Framework for Producing an Integrated Argument Audit That Combines Frame-Audit (Lakoff/Goffman/Entman Frame-Surfacing |
+| bayesian-hypothesis-network-analysis.md | /Users/oracle/ora/frameworks/book/bayesian-hypothesis-network-analysis.md | *A Framework for Producing a Probabilistic Posterior over Competing Hypotheses with Explicit Priors, Evidential Likeliho |
+| conversation-processing.md | /Users/oracle/ora/frameworks/book/conversation-processing.md | Conversation Processing |
+| corpus-formalization.md | /Users/oracle/ora/frameworks/book/corpus-formalization.md | Corpus Formalization (CFF) |
+| decision-architecture-analysis.md | /Users/oracle/ora/frameworks/book/decision-architecture-analysis.md | *A Framework for Producing a Decision Architecture Document for a High-Stakes Decision Where the Decision-Maker Is the U |
+| decision-clarity-analysis.md | /Users/oracle/ora/frameworks/book/decision-clarity-analysis.md | *A Framework for Producing a Decision Clarity Document for a Decision-Maker Facing a Tangled Problem with Stakeholder Va |
+| deep-research-protocol.md | /Users/oracle/ora/frameworks/book/deep-research-protocol.md | Deep Research Protocol |
+| document-processing.md | /Users/oracle/ora/frameworks/book/document-processing.md | Document Processing |
+| domain-induction-analysis.md | /Users/oracle/ora/frameworks/book/domain-induction-analysis.md | *A Framework for Producing a Domain Induction Document with Three Integrated Parts: (a) What Is Here in the Domain; (b)  |
+| engram-cleaning.md | /Users/oracle/ora/frameworks/book/engram-cleaning.md | Engram Cleaning |
 | f-analysis-breadth.md | /Users/oracle/ora/frameworks/book/f-analysis-breadth.md | *Loaded into: Breadth model context window at Step 3 (Parallel Independent Analysis).* |
 | f-analysis-depth.md | /Users/oracle/ora/frameworks/book/f-analysis-depth.md | *Loaded into: Depth model context window at Step 3 (Parallel Independent Analysis).* |
-| f-consolidate.md | /Users/oracle/ora/frameworks/book/f-consolidate.md | *Loaded into: Breadth model context window at Step 7 (Consolidation).* |
-| f-evaluate.md | /Users/oracle/ora/frameworks/book/f-evaluate.md | *Two variants: one loaded into the Breadth model when it evaluates the Depth analysis, one loaded into the Depth model w |
-| f-revise.md | /Users/oracle/ora/frameworks/book/f-revise.md | *Loaded into: Each model's context window at Step 5. Both models receive the same specification with their own prior out |
-| f-verify.md | /Users/oracle/ora/frameworks/book/f-verify.md | *Loaded into: Depth model context window at Step 8 (Final Verification of Consolidated Output).* |
-| periodic-maintenance.md | /Users/oracle/ora/frameworks/book/periodic-maintenance.md | Four scheduled tasks — only work that genuinely requires full-vault scans or has no runtime trigger. Per the Runtime P |
+| f-consolidate.md | /Users/oracle/ora/frameworks/book/f-consolidate.md | *Universal scaffolding for step 7. Step 7 produces the **consolidated corpus** — semantically extracted, cross-stream  |
+| f-evaluate.md | /Users/oracle/ora/frameworks/book/f-evaluate.md | *Universal scaffolding. Two variants (Breadth-evaluates-Depth, Depth-evaluates-Breadth) share one output contract. Mode- |
+| f-format.md | /Users/oracle/ora/frameworks/book/f-format.md | *Universal scaffolding for step 8. Step 8 takes the step-7 consolidated corpus and places it into the mode's prescribed  |
+| f-revise.md | /Users/oracle/ora/frameworks/book/f-revise.md | *Universal scaffolding. Mode-specific reviser guidance — how to address each criterion's failure in prose and in the e |
+| f-verify.md | /Users/oracle/ora/frameworks/book/f-verify.md | *Universal scaffolding. The eight universal checks below are the floor for every mode. Mode-specific checks layer on top |
+| knowledge-artifact-coach.md | /Users/oracle/ora/frameworks/book/knowledge-artifact-coach.md | Knowledge Artifact Coach |
+| mindspec-interview.md | /Users/oracle/ora/frameworks/book/mindspec-interview.md | MindSpec Interview |
+| mission-objectives-milestones.md | /Users/oracle/ora/frameworks/book/mission-objectives-milestones.md | Mission, Objectives, and Milestones (MOM) |
+| news-supersession.md | /Users/oracle/ora/frameworks/book/news-supersession.md | News Supersession |
+| output-formalization.md | /Users/oracle/ora/frameworks/book/output-formalization.md | Output Formalization (OFF) |
+| periodic-maintenance.md | /Users/oracle/ora/frameworks/book/periodic-maintenance.md | Periodic Maintenance |
 | phase-a-prompt-cleanup.md | /Users/oracle/ora/frameworks/book/phase-a-prompt-cleanup.md | *Loaded into: Breadth model context window at Step 1 (Prompt Cleanup).* |
-| process-formalization.md | /Users/oracle/ora/frameworks/book/process-formalization.md | *A Meta-Framework for Formalizing Domain Expertise into Executable AI Specifications* |
-| process-inference.md | /Users/oracle/ora/frameworks/book/process-inference.md | *A Framework for Discovering Unknown Processes from Defined Endpoints* |
-| mind-framework.md | /Users/oracle/ora/frameworks/book/mind-framework.md | This framework guides the creation or modification of mind.md — the values framework that defines how the AI communica |
-| spec-code-reconciliation.md | /Users/oracle/ora/frameworks/book/spec-code-reconciliation.md | *A framework for backward-reconciling installer specifications with the actual installed system, then producing a natura |
+| problem-evolution.md | /Users/oracle/ora/frameworks/book/problem-evolution.md | Problem Evolution (PEF) |
+| process-formalization.md | /Users/oracle/ora/frameworks/book/process-formalization.md | Process Formalization (PFF) |
+| process-inference.md | /Users/oracle/ora/frameworks/book/process-inference.md | Process Inference (PIF) |
+| supplemental-rag-protocol.md | /Users/oracle/ora/frameworks/book/supplemental-rag-protocol.md | *Universal standing instruction. Injected into every analytical pipeline step. Authorises the model to request additiona |
+| terrain-mapping.md | /Users/oracle/ora/frameworks/book/terrain-mapping.md | Terrain Mapping (TMF) |
+| video-editing-suggestions.md | /Users/oracle/ora/frameworks/book/video-editing-suggestions.md | Video Editing Suggestions |
+| wicked-future-analysis.md | /Users/oracle/ora/frameworks/book/wicked-future-analysis.md | *A Framework for Producing an Integrated Forward Analysis with Probability-Weighted Scenarios, Adversarial-Future Stress |
+| worldview-cartography-analysis.md | /Users/oracle/ora/frameworks/book/worldview-cartography-analysis.md | *A Framework for Producing a Cartography of Competing Worldviews — Each Worldview's Foundational Commitments Surfaced, |
 | README.md | /Users/oracle/ora/frameworks/personal/README.md | Personal frameworks. Not synced to the public repository. |

@@ -125,7 +125,7 @@ Required reading in order:
 
 Supporting documents:
 - `Registry — Framework Registry.md` — for registering generated bespoke corpus frameworks
-- `MindSpec_v0.4_Specification.md` — for understanding the user/agent identity that shapes elicitation tone
+- `Framework — MindSpec Interview.md` — for understanding the user/character/agent identity that shapes elicitation tone
 - `Reference — Meta-Layer Architecture.md` — specifies how corpus-mediated workflows integrate with the meta-layer oversight apparatus (E7–E12 corpus events, W4 corpus state watcher, section-level locked-fields)
 - `Framework — Oversight Configuration.md` — the user-facing entry point for eliciting section-level oversight rules per corpus template; CFF C-Design hands off to OS-Setup when a corpus is created for a project under oversight
 
@@ -261,7 +261,7 @@ C-Design executes for new corpus template creation. The user describes a workflo
    - A recurring workflow that aggregates information from sources and produces outputs (CFF appropriate)
    - A specific process that produces information (route to PFF)
    - A specific output artifact (route to OFF)
-   - An agent specification (route to MindSpec or Agent Identity)
+   - A character, persona, or agent specification (route to MindSpec Interview)
    - A one-off task (no formalization needed; produce direct response)
 
 2. If the request is ambiguous (e.g., describes a workflow but emphasizes a single process or single output), ask one clarifying question to determine routing.
