@@ -24,7 +24,7 @@ Vault tier — eleven types. Weights:
       working, matrix, supervision      → None  (not retrieved)
 
 External tier (live web fetches; never written to vault by default):
-    whitelisted   → 0.7   (matches Registry — Trusted Web Sources)
+    whitelisted   → 0.7   (matches Reference — Trusted Web Sources)
     corroborated  → 0.3   (≥2 unaffiliated occurrences in result set)
     single        → 0.15  (one non-farm source)
     excluded      → 0.0   (link farm / blacklisted; filtered before ranking)
