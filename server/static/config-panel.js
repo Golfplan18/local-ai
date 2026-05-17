@@ -942,6 +942,16 @@ class ConfigPanel {
         ${this._expanded[`${context}_utility`]
           ? this._renderExpandedUtility(context, utility)
           : this._renderCellBuckets(context, 'utility', utility.buckets || [])}
+        <!-- Image Extracts is a capability slot (slots.image_extracts in
+             routing-config), routed independently of the utility-bucket
+             cascade. Render it OUTSIDE the expand/collapse toggle so it's
+             always visible — operators need to see what vision-language
+             model handles image inputs regardless of whether the other
+             utility cells are in collapsed or expanded view. -->
+        <div class="cfg-subcell cfg-subcell--always">
+          <div class="cfg-slot-label">Image Extracts</div>
+          ${this._renderImageExtractsCell(context)}
+        </div>
       </div>
 
       <div class="cfg-section">
@@ -1136,6 +1146,9 @@ class ConfigPanel {
   _renderExpandedUtility(context, utility) {
     const cells = utility.cells || {};
     const fallback = utility.buckets || [];
+    // Image Extracts is rendered separately by _renderPipeline so it's
+    // visible whether this section is expanded or collapsed — its
+    // routing is independent of the utility bucket cascade.
     return `<div class="cfg-expanded-cells">
       <div class="cfg-subcell">
         <div class="cfg-slot-label">Cleanup</div>
@@ -1144,10 +1157,6 @@ class ConfigPanel {
       <div class="cfg-subcell">
         <div class="cfg-slot-label">RAG Planner</div>
         ${this._renderCellBuckets(context, 'utility.rag_planner', (cells.rag_planner || {}).buckets || fallback)}
-      </div>
-      <div class="cfg-subcell">
-        <div class="cfg-slot-label">Image Extracts</div>
-        ${this._renderImageExtractsCell(context)}
       </div>
     </div>`;
   }
