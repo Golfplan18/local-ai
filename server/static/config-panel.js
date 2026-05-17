@@ -463,9 +463,8 @@ class ConfigPanel {
     (this._data.endpoints || []).forEach(ep => endpoints[ep.id] = ep);
     const ep = endpoints[modelId];
     if (ep) {
-      const sourceLabel = ep.type === 'local'   ? 'Local'
-                       : ep.type === 'browser' ? 'Subscription'
-                       : ep.type === 'api'     ? 'Direct API'
+      const sourceLabel = ep.type === 'local' ? 'Local'
+                       : ep.type === 'api'   ? 'Direct API'
                        : ep.type || '';
       const deprecated = ep.status === 'deprecated';
       return {
@@ -564,7 +563,7 @@ class ConfigPanel {
 
   _renderPickerSources(scope) {
     // scope: 'local' shows just the Local source list;
-    //        'commercial' shows Subscription / Direct API / OpenRouter.
+    //        'commercial' shows Direct API + OpenRouter.
     // Deprecated endpoints are filtered out — they remain on disk so
     // existing slot references continue to render, but they don't
     // clutter the picker.

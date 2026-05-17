@@ -298,29 +298,21 @@
   color: #d77;
 }
 
-/* Picker source lists below each section */
+/* Picker source lists below each section.
+   Sections (Local; or Direct API + OpenRouter on the commercial side)
+   stack full-width — Direct API's internal 3-vendor grid needs the
+   horizontal room. */
 .cfg-picker {
   display: grid;
-  /* Subscription column carries ~12 short labels ("ChatGPT (GPT-5.4
-     Thinking)" etc.); a fixed 240px is enough. Direct API needs the
-     rest of the width because it nests three vendor groups inside its
-     section. */
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 1fr;
   gap: 1px;
   background: var(--border, #333);
   padding: 1px 0 0;
-}
-.cfg-bucket-section .cfg-picker:has(.cfg-picker-section:only-child) {
-  grid-template-columns: 1fr;
 }
 .cfg-picker-section {
   background: var(--bg-panel, #1e1e1e);
   padding: 10px 14px;
   min-width: 0;
-}
-.cfg-picker-section:nth-child(n+3) {
-  /* When OpenRouter is the 3rd section, span both columns. */
-  grid-column: 1 / -1;
 }
 .cfg-picker-section-title {
   font-size: 10px;
