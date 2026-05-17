@@ -377,6 +377,64 @@ def _purge_stealth(
     except Exception as e:
         errors.append(f"manifest: {e}")
 
+    # --- Layer 9: Oversight logs (events / actions / human-queue) -----------
+    # Defence-in-depth (2026-05-17). Stealth conversations are supposed
+    # to skip these writes via ``oversight_events.emit``'s stealth-context
+    # gate plus the matching guards in ``oversight_actions._append_human_queue``
+    # and ``_append_actions_log``. The thread-local that drives those
+    # guards is now set at the very top of ``server.py::_pipeline_stream``
+    # (above all four short-circuits), but the prior shape of that
+    # function set it only after the runtime/resolution/elicitation/
+    # framework-slash short-circuits had returned — so a stealth turn
+    # that hit any of those four paths leaked the prompt text into
+    # events.jsonl via the ``FrameworkStarted`` (and similar) payloads
+    # that carry ``user_input``. This layer is the post-hoc scrub that
+    # guarantees zero residue even when a future code path forgets to
+    # set the thread-local, by stripping any record matching the purged
+    # conversation_id. Records are stamped with ``conversation_id`` by
+    # ``oversight_events.emit`` and the two write helpers in
+    # ``oversight_actions`` when the per-thread context is set.
+    OVERSIGHT_DIR = Path(os.path.expanduser("~/ora/data/oversight"))
+    deleted["oversight_log_entries"] = {
+        "events.jsonl": 0,
+        "actions.jsonl": 0,
+        "human-queue.jsonl": 0,
+    }
+    try:
+        import json as _json_ov
+        for log_name in ("events.jsonl", "actions.jsonl", "human-queue.jsonl"):
+            log_path = OVERSIGHT_DIR / log_name
+            if not log_path.exists():
+                continue
+            kept_lines: list[str] = []
+            removed = 0
+            try:
+                with open(log_path) as f:
+                    for line in f:
+                        line = line.rstrip("\n")
+                        if not line.strip():
+                            continue
+                        try:
+                            rec = _json_ov.loads(line)
+                        except Exception:
+                            kept_lines.append(line)
+                            continue
+                        if rec.get("conversation_id") == conversation_id:
+                            removed += 1
+                            continue
+                        kept_lines.append(line)
+                if removed:
+                    tmp = log_path.with_suffix(log_path.suffix + ".tmp")
+                    with open(tmp, "w") as f:
+                        for line in kept_lines:
+                            f.write(line + "\n")
+                    tmp.replace(log_path)
+                    deleted["oversight_log_entries"][log_name] = removed
+            except OSError as e:
+                errors.append(f"oversight_log {log_name}: {e}")
+    except Exception as e:
+        errors.append(f"oversight_logs: {e}")
+
     # --- Layer 7: Conversation indexing-failure log -------------------------
     # Defence-in-depth (2026-05-15, fix #12). server.py::_save_conversation
     # writes ChromaDB indexing failures to

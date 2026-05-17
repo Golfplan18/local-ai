@@ -2017,6 +2017,57 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     the pipeline continues regardless. The UI consumes the comparison data
     once Phase 3-6 land.
     """
+    # --- Stealth context + forensic trace setup (TURN HEAD) ---
+    # Must run before any short-circuit so the stealth thread-local is set
+    # and the trace dir opened (or suppressed) for every code path the
+    # turn can take. The four short-circuits below (runtime command /
+    # resolution chain / framework elicitation / framework slash-command)
+    # all emit oversight events downstream (milestone_executor in
+    # particular) whose payloads carry ``user_input``. Without the
+    # thread-local set here, those events land in
+    # ~/ora/data/oversight/events.jsonl with stealth prompt text — a
+    # privacy leak that survives ``conversation_closeout._purge_stealth``
+    # only via Layer 7's defence-in-depth scrub. Order matters: this is
+    # the *only* layer that prevents the write in the first place.
+    try:
+        from orchestrator.conversation_memory import get_conversation_tag as _gct
+        _conv_tag = _gct(panel_id) or ""
+    except Exception:
+        _conv_tag = ""
+    trace_dir = None
+    try:
+        from boot import PIPELINE_TRACE_AVAILABLE as _pta
+        if _pta:
+            from orchestrator import pipeline_trace as _pt
+            trace_dir = _pt.start_trace(
+                conversation_id=panel_id,
+                raw_input=user_input,
+                ambiguity_mode="assume",
+                stealth=(_conv_tag == "stealth"),
+            )
+    except Exception as _trace_exc:
+        print(f"[server trace] start_trace skipped: {_trace_exc}", flush=True)
+
+    # Set the thread-local stealth context so oversight events emitted
+    # during this turn skip on-disk persistence (events.jsonl / actions.jsonl
+    # / human-queue.jsonl). In-process handlers still fire so runtime
+    # behaviour (fan-out, PROCEED/REVISE/ESCALATE) is unchanged.
+    #
+    # Also stamp the conversation_id thread-local so every event emitted
+    # during the turn carries a conversation_id — that is the key
+    # _purge_stealth Layer 9 uses to scrub records from the three
+    # oversight logs if the primary skip-the-write defence above is ever
+    # bypassed.
+    try:
+        from orchestrator.oversight_events import (
+            set_stealth_context as _set_stealth,
+            set_conversation_id_context as _set_cid,
+        )
+        _set_stealth(_conv_tag == "stealth")
+        _set_cid(panel_id)
+    except Exception:
+        pass
+
     # --- Runtime slash-command short-circuit ---
     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
     # meta-layer runtime operations that don't need a model endpoint or
@@ -2123,44 +2174,6 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             return
         yield _sse("response", text=text)
         return
-
-    # --- Pipeline forensic trace — open the per-turn directory NOW so every
-    # downstream step lands in the same place. The production server path
-    # previously did not call ``start_trace`` at all, so production turns
-    # generated zero trace files. Stealth/private conversations get the
-    # ``stealth=True`` short-circuit so no trace dir is ever created for
-    # them (defence in depth: _purge_stealth Layer 6 wipes any residue if
-    # the flag is ever bypassed by a bug). ---
-    try:
-        from orchestrator.conversation_memory import get_conversation_tag as _gct
-        _conv_tag = _gct(panel_id) or ""
-    except Exception:
-        _conv_tag = ""
-    trace_dir = None
-    try:
-        from boot import PIPELINE_TRACE_AVAILABLE as _pta
-        if _pta:
-            from orchestrator import pipeline_trace as _pt
-            trace_dir = _pt.start_trace(
-                conversation_id=panel_id,
-                raw_input=user_input,
-                ambiguity_mode="assume",
-                stealth=(_conv_tag == "stealth"),
-            )
-    except Exception as _trace_exc:
-        print(f"[server trace] start_trace skipped: {_trace_exc}", flush=True)
-
-    # Set the thread-local stealth context so oversight events emitted
-    # during this turn skip on-disk persistence (events.jsonl / actions.jsonl
-    # / human-queue.jsonl). In-process handlers still fire so runtime
-    # behaviour (fan-out, PROCEED/REVISE/ESCALATE) is unchanged.
-    try:
-        from orchestrator.oversight_events import (
-            set_stealth_context as _set_stealth,
-        )
-        _set_stealth(_conv_tag == "stealth")
-    except Exception:
-        pass
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
     yield _sse("pipeline_stage", stage="step1_cleanup", label="Cleaning prompt…")

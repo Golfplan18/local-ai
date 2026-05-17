@@ -70,6 +70,17 @@ def emit(event) -> dict:
     # Always include a wall-clock timestamp
     event.setdefault("timestamp", _now_iso())
 
+    # Conversation-id context: thread-local set by the server's
+    # _pipeline_stream so every event emitted during a turn carries the
+    # conversation_id that triggered it. This is what makes
+    # ``conversation_closeout._purge_stealth`` Layer 9's post-hoc scrub
+    # over events.jsonl / actions.jsonl / human-queue.jsonl actually
+    # findable — without this stamp the records have no key tying them
+    # back to the stealth conversation that emitted them.
+    cid = _get_conversation_id_context()
+    if cid and "conversation_id" not in event:
+        event["conversation_id"] = cid
+
     # Stealth context: thread-local flag set by the server's _pipeline_stream
     # for stealth-tagged conversation turns. When set, skip the durable log
     # write so events derived from stealth conversations leave no on-disk
@@ -115,6 +126,35 @@ def clear_stealth_context() -> None:
 
 def _is_stealth_context() -> bool:
     return bool(getattr(_stealth_ctx, "stealth", False))
+
+
+def set_conversation_id_context(conversation_id: str | None) -> None:
+    """Mark the current thread as serving the given conversation_id.
+
+    Called by ``server.py::_pipeline_stream`` at the top of each turn
+    alongside ``set_stealth_context``. Subsequent ``emit()`` calls (and
+    on-disk writes in ``oversight_actions``) stamp the record with
+    ``conversation_id`` if it isn't already present, so post-hoc purge
+    layers (``conversation_closeout._purge_stealth`` Layer 9) can find
+    records emitted on behalf of a stealth conversation if the primary
+    skip-the-write defence is ever bypassed by a bug.
+
+    Independent of ``set_stealth_context`` — the stamp is added for
+    every turn, not just stealth turns — so audit data interpretation
+    gains a stable join key without coupling to the stealth flag.
+    """
+    _stealth_ctx.conversation_id = (conversation_id or "") or None
+
+
+def clear_conversation_id_context() -> None:
+    """Convenience: explicitly clear the conversation_id stamp for the
+    current thread.
+    """
+    _stealth_ctx.conversation_id = None
+
+
+def _get_conversation_id_context() -> str | None:
+    return getattr(_stealth_ctx, "conversation_id", None) or None
 
 
 def read_event_log(since_offset: int = 0, max_events: int = 1000) -> tuple[list[dict], int]:

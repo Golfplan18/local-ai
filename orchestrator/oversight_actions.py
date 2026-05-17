@@ -307,7 +307,10 @@ def _append_human_queue(entry: dict):
     # in-process handlers; only the on-disk human-queue.jsonl write is
     # suppressed so stealth conversations leave no residue.
     try:
-        from oversight_events import _is_stealth_context as _isc
+        from oversight_events import (
+            _is_stealth_context as _isc,
+            _get_conversation_id_context as _gcid,
+        )
         if _isc():
             print(
                 f"[oversight] human-queue write skipped (stealth context); "
@@ -315,6 +318,10 @@ def _append_human_queue(entry: dict):
                 flush=True,
             )
             return
+        cid = _gcid()
+        if cid and "conversation_id" not in entry:
+            entry = dict(entry)
+            entry["conversation_id"] = cid
     except Exception:
         pass
     os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
@@ -359,7 +366,10 @@ def _append_actions_log(record: dict):
     # stealth-tagged conversation. In-process callers still observe the
     # action.
     try:
-        from oversight_events import _is_stealth_context as _isc
+        from oversight_events import (
+            _is_stealth_context as _isc,
+            _get_conversation_id_context as _gcid,
+        )
         if _isc():
             print(
                 f"[oversight] actions-log write skipped (stealth context); "
@@ -367,6 +377,10 @@ def _append_actions_log(record: dict):
                 flush=True,
             )
             return
+        cid = _gcid()
+        if cid and "conversation_id" not in record:
+            record = dict(record)
+            record["conversation_id"] = cid
     except Exception:
         pass
     os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
