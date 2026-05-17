@@ -258,7 +258,7 @@
       "training_family": "claude",
       "selected_model": "claude-opus-4-6",
       "tier": "premium",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -278,7 +278,7 @@
       "training_family": "gpt",
       "selected_model": "gpt-5.4",
       "tier": "premium",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -298,7 +298,7 @@
       "training_family": "gemini",
       "selected_model": "gemini-3.1-pro",
       "tier": "premium",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -624,7 +624,7 @@
       "training_family": "mixed",
       "selected_model": "perplexity-pro",
       "tier": "premium",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -644,7 +644,7 @@
       "training_family": "mistral",
       "selected_model": "mistral-large",
       "tier": "premium",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -664,7 +664,7 @@
       "training_family": "gpt",
       "selected_model": "copilot-creative",
       "tier": "mid",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -684,7 +684,7 @@
       "training_family": "deepseek",
       "selected_model": "deepseek-r1",
       "tier": "free",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -704,7 +704,7 @@
       "training_family": "grok",
       "selected_model": "grok-3",
       "tier": "premium",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -724,7 +724,7 @@
       "training_family": "mixed",
       "selected_model": "poe-assistant",
       "tier": "free",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -744,7 +744,7 @@
       "training_family": "llama",
       "selected_model": "huggingchat-llama-3.3-70b",
       "tier": "free",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -764,7 +764,7 @@
       "training_family": "llama",
       "selected_model": "meta-ai-llama",
       "tier": "free",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -784,7 +784,7 @@
       "training_family": "cohere",
       "selected_model": "command-a",
       "tier": "free",
-      "status": "active",
+      "status": "deprecated",
       "enabled": true,
       "capabilities": {
         "tool_access": false,
@@ -1756,7 +1756,7 @@
     ],
     "mid": [
       "qwen/qwen3.5-122b-a10b",
-      ""
+      "nvidia/nemotron-3-super-120b-a12b:free"
     ],
     "fast": [
       "qwen/qwen3.6-35b-a3b",
@@ -1764,7 +1764,7 @@
     ],
     "free": [
       "openrouter/free",
-      ""
+      "meta-llama/llama-3.3-70b-instruct:free"
     ]
   },
   "pipelines": {

@@ -576,11 +576,8 @@ class ConfigPanel {
       sections.push(this._renderPickerSection('Local',
         local.map(ep => ({ id: ep.id, label: ep.display_name || ep.id }))));
     } else {
-      const browser = endpoints.filter(ep => ep.type === 'browser');
-      const api     = endpoints.filter(ep => ep.type === 'api'
-                                          && (ep.service || '') !== 'openrouter');
-      if (browser.length) sections.push(this._renderPickerSection('Subscription',
-        browser.map(ep => ({ id: ep.id, label: ep.display_name || ep.id }))));
+      const api = endpoints.filter(ep => ep.type === 'api'
+                                      && (ep.service || '') !== 'openrouter');
       if (api.length) sections.push(this._renderDirectApiSection(api));
       sections.push(this._renderOpenRouterPickerSection());
     }
