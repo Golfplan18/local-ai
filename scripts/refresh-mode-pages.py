@@ -383,20 +383,30 @@ def submit_chat(port: int, slug: str, prompt: str) -> tuple[str, float]:
     return panel_id, submit_time
 
 
-def find_canonical_conversation(panel_id: str, submit_time: float) -> Optional[Path]:
+def find_canonical_conversation(prompt: str, submit_time: float) -> Optional[Path]:
     """
-    Find the canonical conversation .md file matching a panel_id.
+    Find the canonical conversation .md file matching a submitted prompt.
 
     Ora writes conversations to ~/Documents/conversations/YYYY-MM-DD_HH-MM_<slug>.md
-    with the panel_id referenced inside the Context block:
-        "Local AI session on YYYY-MM-DD, panel '<panel_id>', model ..."
+    with the user prompt verbatim in the `**User:**` block of the Exchange
+    section. The filename is content-derived; the Context block (which used
+    to carry `panel '<id>'`) is now an AI-generated summary that doesn't
+    contain a stable panel reference. So we match by the user-prompt body.
 
-    The filename is content-derived (not panel-derived), so we glob the
-    top-level conversations directory for files modified after the
-    submission time, then read each one's content to match by panel_id.
+    Match strategy: take a distinctive substring of the submitted prompt
+    (chars 0-200) and search for it inside each candidate file's
+    `**User:**` block. The submitted prompt should appear verbatim there.
     """
-    needle = f"panel '{panel_id}'"
+    # Use the first 200 chars (or full prompt if shorter) as the match
+    # needle. Most prime prompts have distinctive openings; 200 chars is
+    # plenty to disambiguate. We strip whitespace to handle minor
+    # formatting drift between submit and file write.
+    needle = " ".join(prompt.strip().split())[:200]
+    if len(needle) < 30:
+        # Too short to disambiguate reliably; give up.
+        return None
     try:
+        candidates = []
         for f in CANONICAL_CONV_DIR.glob("*.md"):
             # Only look at top-level conversations/, skip raw/, processed/, etc.
             if f.parent != CANONICAL_CONV_DIR:
@@ -407,10 +417,20 @@ def find_canonical_conversation(panel_id: str, submit_time: float) -> Optional[P
                 if f.stat().st_mtime < submit_time - 5:
                     continue
                 text = f.read_text(encoding="utf-8")
-                if needle in text:
-                    return f
+                # Extract the **User:** block (between **User:** and **Assistant:**).
+                if "**User:**" not in text or "**Assistant:**" not in text:
+                    continue
+                user_block = text.split("**User:**", 1)[1].split("**Assistant:**", 1)[0]
+                # Normalize whitespace in the user block for the substring match.
+                user_block_norm = " ".join(user_block.split())
+                if needle in user_block_norm:
+                    candidates.append((f.stat().st_mtime, f))
             except Exception:
                 continue
+        # Return the earliest match — in the rare case multiple files match
+        # (e.g., the script re-tried a mode), the first one is what we want.
+        candidates.sort()
+        return candidates[0][1] if candidates else None
     except Exception:
         pass
     return None
@@ -447,7 +467,7 @@ def extract_assistant_body(full_md: str) -> Optional[str]:
     return body if body else None
 
 
-def poll_completion(panel_id: str, submit_time: float, timeout_sec: int = TIMEOUT_SEC) -> Optional[str]:
+def poll_completion(prompt: str, submit_time: float, timeout_sec: int = TIMEOUT_SEC) -> Optional[str]:
     """
     Poll the canonical conversations directory every POLL_INTERVAL_SEC
     seconds until the matching conversation file lands (or timeout).
@@ -456,7 +476,7 @@ def poll_completion(panel_id: str, submit_time: float, timeout_sec: int = TIMEOU
     """
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
-        path = find_canonical_conversation(panel_id, submit_time)
+        path = find_canonical_conversation(prompt, submit_time)
         if path is not None:
             try:
                 text = path.read_text(encoding="utf-8")
@@ -466,7 +486,7 @@ def poll_completion(panel_id: str, submit_time: float, timeout_sec: int = TIMEOU
                 if body and len(body) > 100:
                     return body
             except Exception as exc:
-                log(f"[WARN] canonical conversation read failed for {panel_id}: {exc}")
+                log(f"[WARN] canonical conversation read failed: {exc}")
         time.sleep(POLL_INTERVAL_SEC)
     return None
 
@@ -644,7 +664,7 @@ def main() -> int:
             log(f"[start] {key} → {paper_path.name}")
             panel_id, submit_time = submit_chat(port, slug, prime)
             log(f"[submitted] {key} panel_id={panel_id}")
-            output = poll_completion(panel_id, submit_time, TIMEOUT_SEC)
+            output = poll_completion(prime, submit_time, TIMEOUT_SEC)
             if output is None:
                 log(f"[TIMEOUT] {key} after {TIMEOUT_SEC}s")
                 state.setdefault("failed", []).append({"key": key, "reason": "timeout"})

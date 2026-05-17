@@ -171,7 +171,8 @@ def build_request_from_article(slug: str, frontmatter: dict,
         first_sentence = re.split(r'(?<=[.!?])\s+', lede.replace("\n", " "), maxsplit=1)[0]
         if first_sentence and first_sentence != headline:
             seeds.append(first_sentence)
-    seeds.append("editorial illustration palette, documentary illustration style")
+    # Style vocabulary is composed by construct_news_prompt from the locked
+    # §6 spec — do not append style hints to the seeds.
 
     return {
         "article_slug": slug,

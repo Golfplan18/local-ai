@@ -178,9 +178,25 @@ PHOTOGRAPHIC_VOCAB = [
     "photojournalism", "documentary photography", "wire-service style",
     "natural light", "candid", "newsworthy moment",
 ]
+# Per Image Style Spec §6.3 — locked vocabulary for the Illustrated register
+# (Editorial Board + analytical pen names; default for news articles).
 ILLUSTRATED_VOCAB = [
-    "editorial illustration", "graphic novel aesthetic",
-    "muted palette", "expressive linework",
+    "scene-based composition", "multiple figures",
+    "atmosphere over allegory", "parallel hatching",
+    "stipple-dominant", "mid density",
+    "19th-century American press illustration",
+    "Atlantic Monthly essay header",
+    "Harper's Weekly social tableau",
+    "diegetic signage only",
+]
+
+# Per §6.6 — keeps the Hector cartoon vocabulary from leaking into news
+# illustrations even if a seed slips through.
+ILLUSTRATED_REGISTER_NEGATIVE = [
+    "polemic", "allegorical figure", "label-as-argument",
+    "butt-face caricature", "anus-eye motif", "ass-as-head",
+    "Peanut Gallery figures", "spectacled gopher character",
+    "Hector recurring symbol vocabulary",
 ]
 DIAGRAMMATIC_VOCAB = [
     "clean lines", "labeled components", "informational graphic",
@@ -266,18 +282,52 @@ def construct_hector_prompt(recipe: HectorCartoonRecipe,
 
 
 def construct_news_prompt(request: NewsImageRequest) -> str:
-    """Build the news image prompt per News Image Generator Layer 3 step 3."""
+    """Build the news image prompt per News Image Generator Layer 3 step 3.
+
+    Composes the locked vocabulary from Image Style Spec §6:
+      §6.2 universal positive (with per-register accent color from §3.2)
+      + §6.3 per-register positive
+      + the article's headline / lede as subject seeds
+      + §6.4 universal negative + §6.5 forbidden caricature + §6.6
+        per-register negative additions.
+
+    The cartoon path (construct_hector_prompt) handles its own vocab
+    composition; this function is the news-and-explainer counterpart.
+    """
+    register = request.visual_register
     register_vocab = {
         "photographic": PHOTOGRAPHIC_VOCAB,
         "illustrated": ILLUSTRATED_VOCAB,
         "diagrammatic": DIAGRAMMATIC_VOCAB,
-    }.get(request.visual_register, [])
+    }.get(register, [])
 
-    parts: list[str] = []
+    # §6.2 universal positive. The accent-color token is substituted per
+    # register (§3.2): sepia for Illustrated, muted olive for
+    # Diagrammatic; Photographic skips the accent token because the
+    # photograph's own color carries the accent.
+    universal_positive = [
+        "hand-drawn", "ink on cream paper", "transparent background",
+        "linework dominant", "no solid fill", "varied pen technique",
+    ]
+    accent_color = {
+        "illustrated": "sepia",
+        "diagrammatic": "muted olive",
+    }.get(register)
+    if accent_color:
+        universal_positive.append(f"single accent stroke in {accent_color}")
+
+    parts: list[str] = [", ".join(universal_positive)]
     if register_vocab:
         parts.append(", ".join(register_vocab))
     parts.append(", ".join(request.prompt_seeds))
-    parts.append("negative prompt: text in image, embedded labels, watermark")
+
+    negatives = list(UNIVERSAL_NEGATIVE_VOCAB) + list(FORBIDDEN_CARICATURE_NEGATIVE)
+    register_negative = {
+        "illustrated": ILLUSTRATED_REGISTER_NEGATIVE,
+    }.get(register, [])
+    negatives.extend(register_negative)
+    parts.append("negative prompt: " + ", ".join(negatives))
+
     return " | ".join(parts)
 
 
