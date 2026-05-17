@@ -6,8 +6,8 @@
     "enabled": true,
     "preferred_extractor_bucket": "premium",
     "fallback_extractor_bucket": "fast",
-    "description": "When image input arrives and the downstream model is not vision_capable, route the image through a vision-capable extractor. The 'slot' field (preferred) names a slot in the 'slots' block \u2014 typically 'image_generates' \u2014 whose preferred + fallback chain is reused. Image-generation models accept image conditioning by construction, so the same model that generates images can also extract spatial structure from them. This avoids carving out a separate vision_extractors bucket. The preferred_extractor_bucket / fallback_extractor_bucket fields are the legacy bucket-based fallback, used when no slot is configured OR when the slot's chain has no vision-input-capable entry (e.g. entirely pure-text-to-image generators like local-diffusers / stability). Final fallback to manual-trace UX (WP-4.4) when nothing resolves.",
-    "slot": "image_generates"
+    "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image \u2192 text), NOT image-generation models. Earlier this pointed at 'image_generates' on the assumption that image-gen models also read images well \u2014 they do accept image input for conditioning, but they're tuned to produce images, not JSON descriptions, and asking them to emit structured text hangs the request. The dedicated 'image_extracts' slot exists for this purpose: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. The preferred_extractor_bucket / fallback_extractor_bucket fields are the legacy bucket-based fallback used when no slot is configured or when the slot's chain has no vision-input-capable entry. Final fallback to manual-trace UX (WP-4.4) when nothing resolves.",
+    "slot": "image_extracts"
   },
   "web_supplement": {
     "enabled": true,
@@ -72,6 +72,15 @@
     "image_critique": {
       "preferred": null,
       "fallback": []
+    },
+    "image_extracts": {
+      "preferred": "openrouter:openai/gpt-5",
+      "fallback": [
+        "openrouter:anthropic/claude-opus-4-7",
+        "openrouter:google/gemini-3-pro",
+        "openrouter:openai/gpt-4o"
+      ],
+      "_note": "Vision-LANGUAGE extraction slot. Used by route_for_image_input when a downstream analyst model isn't vision_capable — the slot's chain of multimodal LLMs (text+image → text) reads the user's image and emits a structured JSON description that gets injected into the analyst's text prompt. DO NOT put image-GENERATION models here (gpt-image-2, etc.) — those are tuned for text+image → image output and don't reliably emit JSON descriptions, which causes the request to hang. All entries here must be multimodal LLMs whose output is text and whose input includes image. Validate against catalog by_input_modality.image when adding entries."
     },
     "video_generates": {
       "preferred": "replicate",

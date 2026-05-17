@@ -413,6 +413,23 @@
   margin-left: 12px;
   white-space: nowrap;
 }
+/* Small badge next to model names that accept image input.
+   "img" rather than an emoji so it matches the existing UI's
+   text-heavy aesthetic; tab-uppercase so it reads as a tag. */
+.cfg-picker-row-vision {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(140, 200, 255);
+  background: rgba(95, 168, 255, 0.12);
+  border: 1px solid rgba(95, 168, 255, 0.30);
+  border-radius: 3px;
+  vertical-align: middle;
+}
 .cfg-picker-empty {
   font-size: 11px;
   color: var(--text-muted, #888);

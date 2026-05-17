@@ -694,8 +694,14 @@ class ConfigPanel {
       const rows = open
         ? vendors[v].map(m => {
             const price = this._formatPrice(m);
+            // Per-model image-capability badge — visible at-a-glance so
+            // operators can tell which OpenRouter models accept image
+            // input without flipping the vision-only filter.
+            const visionBadge = acceptsImage(m)
+              ? '<span class="cfg-picker-row-vision" title="Accepts image input">img</span>'
+              : '';
             return `<div class="cfg-picker-row" data-role="pick-model" data-model-id="${m.id}">
-              <span class="cfg-picker-row-name">${m.display_name}</span>
+              <span class="cfg-picker-row-name">${m.display_name}${visionBadge}</span>
               <span class="cfg-picker-row-price">${price}</span>
             </div>`;
           }).join('')
