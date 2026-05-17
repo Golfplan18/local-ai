@@ -410,6 +410,7 @@
    text-heavy aesthetic; tab-uppercase so it reads as a tag. */
 .cfg-picker-row-vision {
   display: inline-block;
+  flex-shrink: 0;
   margin-left: 6px;
   padding: 0 5px;
   font-size: 9px;

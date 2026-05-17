@@ -69,6 +69,10 @@ class ConfigPanel {
     // Buckets tab — slot-fill picker state. When a slot is "armed",
     // clicking a model in any source list below fills that slot.
     this._armedSlot = null;                // { tier, slotIdx } or null
+    // Image Extracts uses a separate arm-state because its backing is
+    // slots.image_extracts.{interactive,agent}, not a bucket. Exactly one
+    // of _armedSlot / _armedImgex is non-null at any time.
+    this._armedImgex = null;               // { pipeline: 'interactive'|'agent' } or null
     this._openrouterCatalog = null;        // loaded for the Buckets view
     this._openrouterVendorOpen = {};       // accordion open/closed per vendor
     // Vision-capable filter for the OpenRouter picker. When on, only
@@ -339,12 +343,20 @@ class ConfigPanel {
   }
 
   _renderBucketsView() {
-    const armedHint = this._armedSlot
-      ? `<span class="cfg-armed-hint">Pick a model below to fill <b>${
+    let armedHint;
+    if (this._armedImgex) {
+      const pipeLabel = this._armedImgex.pipeline === 'interactive'
+        ? 'My Pipeline' : 'Automated';
+      armedHint = `<span class="cfg-armed-hint">Pick a vision-capable model below to fill <b>Image Extracts → ${pipeLabel}</b>
+            <button class="cfg-armed-cancel" data-role="armed-cancel">Cancel</button></span>`;
+    } else if (this._armedSlot) {
+      armedHint = `<span class="cfg-armed-hint">Pick a model below to fill <b>${
             tierLabel(this._armedSlot.tier)} → ${
             this._slotLabels()[this._armedSlot.slotIdx]}</b>
-            <button class="cfg-armed-cancel" data-role="armed-cancel">Cancel</button></span>`
-      : `<span class="cfg-armed-hint cfg-armed-hint--idle">Click a slot above, then a model below.</span>`;
+            <button class="cfg-armed-cancel" data-role="armed-cancel">Cancel</button></span>`;
+    } else {
+      armedHint = `<span class="cfg-armed-hint cfg-armed-hint--idle">Click a slot above, then a model below.</span>`;
+    }
 
     this._root.innerHTML = `
       <div class="cfg-header">
@@ -367,14 +379,7 @@ class ConfigPanel {
           </div>
           <div class="cfg-buckets cfg-buckets--row">
             ${this._renderBucketSlots(TIERS_LOCAL)}
-            <div class="cfg-bucket-placeholder">
-              <div class="cfg-bucket-placeholder-title">About local tiers</div>
-              <div class="cfg-bucket-placeholder-body">
-                <b>Large</b> — flagship 70B-class models (≈40 GB).<br>
-                <b>Medium</b> — mid-range 20-30B (≈14 GB).<br>
-                <b>Small</b> — classifier-class 4-9B (≤6 GB).
-              </div>
-            </div>
+            ${this._renderImageExtractsBucketCard()}
           </div>
           ${this._renderPickerSources('local')}
         </div>
@@ -405,6 +410,53 @@ class ConfigPanel {
   _slotLabels() {
     const diversityOn = (this._data.diversity || {}).enabled;
     return diversityOn ? ['Primary', 'Adversarial'] : ['Primary', 'Fallback'];
+  }
+
+  // Image Extracts card — lives in the Buckets-tab right column (where the
+  // "About local tiers" placeholder used to live). Backing: slots.image_extracts
+  // = { interactive, agent }. Each pipeline picks its own multimodal-LLM
+  // model; the OPPOSITE pipeline's pick is the automatic cross-pipeline
+  // backup when the primary is unavailable. Two-deep, deterministic.
+  _renderImageExtractsBucketCard() {
+    const slot = (this._data.slots || {}).image_extracts || {};
+    const renderSlot = (pipeline, label) => {
+      const modelId = slot[pipeline] || '';
+      const isArmed = this._armedImgex && this._armedImgex.pipeline === pipeline;
+      const meta = this._modelMeta(modelId);
+      const armedCls  = isArmed ? 'cfg-bucket-slot--armed' : '';
+      const filledCls = modelId ? 'cfg-bucket-slot--filled' : 'cfg-bucket-slot--empty';
+      const body = modelId
+        ? `<div class="cfg-bucket-slot-model">
+             <span class="cfg-bucket-slot-name">${this._stripOpenrouterPrefix(modelId)}</span>
+             ${meta.source_badge}
+           </div>
+           <span class="cfg-bucket-slot-clear" data-role="imgex-slot-clear"
+                 data-pipeline="${pipeline}" title="Clear">×</span>`
+        : `<span class="cfg-bucket-slot-empty-hint">empty</span>`;
+      return `<div class="cfg-bucket-slot ${armedCls} ${filledCls}"
+                   data-role="imgex-slot" data-pipeline="${pipeline}">
+        <div class="cfg-bucket-slot-label">${label}</div>
+        <div class="cfg-bucket-slot-body">${body}</div>
+      </div>`;
+    };
+    return `<div class="cfg-bucket-placeholder cfg-imgex-card">
+      <div class="cfg-bucket-placeholder-title">Image Extracts</div>
+      <div class="cfg-imgex-slots">
+        ${renderSlot('interactive', 'My Pipeline')}
+        ${renderSlot('agent', 'Automated')}
+      </div>
+      <div class="cfg-bucket-placeholder-body cfg-imgex-hint">
+        Vision-language model used when an analyst can't see images.
+        Each pipeline picks its own; the other is the automatic backup.
+      </div>
+    </div>`;
+  }
+
+  _stripOpenrouterPrefix(modelId) {
+    if (!modelId) return '';
+    return modelId.startsWith('openrouter:')
+      ? modelId.slice('openrouter:'.length)
+      : modelId;
   }
 
   _renderBucketSlots(tierList) {
@@ -690,14 +742,17 @@ class ConfigPanel {
       const rows = open
         ? vendors[v].map(m => {
             const price = this._formatPrice(m);
-            // Per-model image-capability badge — visible at-a-glance so
-            // operators can tell which OpenRouter models accept image
-            // input without flipping the vision-only filter.
+            // Per-model image-capability badge. Lives as a sibling of
+            // the name span (not nested) so a long display_name doesn't
+            // truncate the badge under the name's overflow:hidden ellipsis.
+            // Sits between name and price; flex-shrink:0 in CSS keeps it
+            // visible regardless of name length.
             const visionBadge = acceptsImage(m)
               ? '<span class="cfg-picker-row-vision" title="Accepts image input">img</span>'
               : '';
             return `<div class="cfg-picker-row" data-role="pick-model" data-model-id="${m.id}">
-              <span class="cfg-picker-row-name">${m.display_name}${visionBadge}</span>
+              <span class="cfg-picker-row-name">${m.display_name}</span>
+              ${visionBadge}
               <span class="cfg-picker-row-price">${price}</span>
             </div>`;
           }).join('')
@@ -779,27 +834,53 @@ class ConfigPanel {
 
   _bindBucketsEvents() {
     const root = this._root;
-    // Cancel armed slot
+    // Cancel armed slot (covers both bucket-slot and Image-Extracts arming)
     root.querySelectorAll('[data-role="armed-cancel"]').forEach(el => {
-      el.addEventListener('click', () => { this._armedSlot = null; this._render(); });
+      el.addEventListener('click', () => {
+        this._armedSlot = null;
+        this._armedImgex = null;
+        this._render();
+      });
     });
-    // Arm a slot
+    // Arm a bucket slot
     root.querySelectorAll('[data-role="slot"]').forEach(el => {
       el.addEventListener('click', (e) => {
         if (e.target && e.target.matches('[data-role="slot-clear"]')) return;
         const tier = el.dataset.tier;
         const slotIdx = parseInt(el.dataset.slotIdx, 10);
-        // Toggle armed state if clicking the already-armed slot
+        // Toggle armed state if clicking the already-armed slot.
+        // Arming a bucket slot clears any Image-Extracts arming so the
+        // two states are mutually exclusive.
         const armed = this._armedSlot;
         if (armed && armed.tier === tier && armed.slotIdx === slotIdx) {
           this._armedSlot = null;
         } else {
           this._armedSlot = { tier, slotIdx };
+          this._armedImgex = null;
         }
         this._render();
       });
     });
-    // Clear a slot
+    // Arm an Image-Extracts slot
+    root.querySelectorAll('[data-role="imgex-slot"]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target && e.target.matches('[data-role="imgex-slot-clear"]')) return;
+        const pipeline = el.dataset.pipeline;
+        const armed = this._armedImgex;
+        if (armed && armed.pipeline === pipeline) {
+          this._armedImgex = null;
+        } else {
+          this._armedImgex = { pipeline };
+          this._armedSlot = null;
+          // Auto-engage the vision-capable picker filter so non-vision
+          // models stay out of the way while picking. The user can
+          // toggle it back off if they need a wider list.
+          this._pickerImageCapableOnly = true;
+        }
+        this._render();
+      });
+    });
+    // Clear a bucket slot
     root.querySelectorAll('[data-role="slot-clear"]').forEach(el => {
       el.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -808,9 +889,25 @@ class ConfigPanel {
         await this._setSlot(tier, slotIdx, '');
       });
     });
-    // Pick a model into the armed slot
+    // Clear an Image-Extracts slot
+    root.querySelectorAll('[data-role="imgex-slot-clear"]').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const pipeline = el.dataset.pipeline;
+        await this._setImgexSlot(pipeline, '');
+      });
+    });
+    // Pick a model into the armed slot — either a bucket slot or an
+    // Image-Extracts slot. Image-Extracts has priority because the user
+    // can only arm one at a time, but check both for defensive symmetry.
     root.querySelectorAll('[data-role="pick-model"]').forEach(el => {
       el.addEventListener('click', async () => {
+        if (this._armedImgex) {
+          const { pipeline } = this._armedImgex;
+          this._armedImgex = null;
+          await this._setImgexSlot(pipeline, el.dataset.modelId);
+          return;
+        }
         if (!this._armedSlot) return;
         const { tier, slotIdx } = this._armedSlot;
         // Disarm first so the re-render triggered by _setSlot picks up
@@ -865,6 +962,29 @@ class ConfigPanel {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ buckets: this._data.buckets || {} }),
+      });
+      await r.json();
+    } catch (e) { /* autosave best-effort */ }
+  }
+
+  // Image-Extracts persistence — writes to slots.image_extracts.<pipeline>.
+  // The /config/routing endpoint merges `slots` into the existing config and
+  // reloads the router, so route_for_image_input picks up the change on the
+  // next call without a server restart.
+  async _setImgexSlot(pipeline, modelId) {
+    const slots = this._data.slots || (this._data.slots = {});
+    const slot = slots.image_extracts || (slots.image_extracts = {});
+    slot[pipeline] = modelId || '';
+    await this._saveSlots();
+    this._render();
+  }
+
+  async _saveSlots() {
+    try {
+      const r = await fetch('/config/routing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slots: this._data.slots || {} }),
       });
       await r.json();
     } catch (e) { /* autosave best-effort */ }
