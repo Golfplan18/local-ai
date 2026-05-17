@@ -505,6 +505,24 @@ class ConfigPanel {
   // speech per character — OpenRouter encodes those as huge per-token
   // numbers, which is technically right but counterintuitive. We
   // re-label by modality so the UI shows units the user actually pays in.
+  // Format a single dollar amount with a decimal precision that fits
+  // its magnitude. Goals: cents-level prices show 2 decimals
+  // ($0.36, $0.40); sub-cent prices keep enough digits to stay
+  // non-zero ($0.0095, $0.0001); whole-dollar prices show 2 decimals
+  // for visual alignment ($1.50, not $1.5).
+  _formatDollars(v) {
+    if (v == null || isNaN(v)) return '';
+    const n = Number(v);
+    if (n === 0) return '$0';
+    const abs = Math.abs(n);
+    let decimals;
+    if (abs >= 0.1)        decimals = 2;
+    else if (abs >= 0.01)  decimals = 3;
+    else if (abs >= 0.001) decimals = 4;
+    else                   decimals = 5;
+    return '$' + n.toFixed(decimals);
+  }
+
   _formatPrice(m) {
     if (!m || !m.pricing_per_million) return '';
     const p = m.pricing_per_million;
@@ -514,24 +532,27 @@ class ConfigPanel {
       // Convert $/M tokens → $/minute (1 "token" ≈ 1 second for most
       // upstreams; some use 1/hour. We pick the more user-relatable
       // unit and prefix with ~ so callers know it's a rough conversion.)
-      return `~$${(p.prompt / 1000 * 60 / 1000).toFixed(4)}/min audio`;
+      return `~${this._formatDollars(p.prompt / 1000 * 60 / 1000)} /min audio`;
     }
     if (mod === 'speech') {
       // 1M chars is a common TTS billing unit upstream.
-      return `$${p.prompt}/M chars`;
+      return `${this._formatDollars(p.prompt)} /M chars`;
     }
     if (mod === 'image') {
       // OpenRouter often reports $0/0 for image gens because billing
       // is per-image not per-token. Surface that fact instead of "$0".
       if (!p.prompt && !p.completion) return 'priced per image';
-      return `$${p.prompt}/$${p.completion}/M`;
+      return `${this._formatDollars(p.prompt)} / ${this._formatDollars(p.completion)} /M`;
     }
     if (mod === 'video') {
       if (!p.prompt && !p.completion) return 'priced per second';
-      return `$${p.prompt}/$${p.completion}/M`;
+      return `${this._formatDollars(p.prompt)} / ${this._formatDollars(p.completion)} /M`;
     }
-    if (p.completion != null) return `$${p.prompt}/$${p.completion}/M`;
-    return `$${p.prompt}/M`;
+    // Text-output models: ``$0.36 / $0.40 /M`` (prompt / completion / per M)
+    if (p.completion != null) {
+      return `${this._formatDollars(p.prompt)} / ${this._formatDollars(p.completion)} /M`;
+    }
+    return `${this._formatDollars(p.prompt)} /M`;
   }
 
   _renderPickerSources(scope) {
