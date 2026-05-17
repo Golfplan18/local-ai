@@ -6653,6 +6653,20 @@ _PROVIDER_TRANSPORT_ERROR_MARKERS = (
     "request timed out",
     "connection refused",
     "connection reset",
+    # Dispatch-wrapper substitutions emitted by ``call_api_endpoint`` /
+    # ``call_local_endpoint`` when a provider call raises. Shape:
+    # ``"[Error calling <Service> API: <e>]"``. All providers share this
+    # signature; OpenRouter was historically missing, which let
+    # non-rate-limit OpenRouter failures (billing / 404 / 5xx wrapped by
+    # the SDK) escape the verifier classifier — re-revision fired against
+    # what was actually a transport-error message rather than verifier
+    # feedback.
+    "error calling claude api",
+    "error calling openai api",
+    "error calling gemini api",
+    "error calling openrouter api",
+    "error calling local model",
+    "error calling mlx model",
 )
 
 
@@ -6911,13 +6925,10 @@ _UNHEALTHY_PATTERNS = (
     "[revision error",
     "[re-revision error",
     # Bracket-prefixed dispatch-layer error strings from boot.py's
-    # call_api_endpoint / call_local_endpoint — they wrap exceptions as
-    # "[Error calling Claude API: <e>]" etc.
-    "[error calling claude api",
-    "[error calling openai api",
-    "[error calling gemini api",
-    "[error calling local model",
-    "[error calling mlx model",
+    # call_api_endpoint / call_local_endpoint. The
+    # "[Error calling <Service> API: <e>]" forms live in
+    # _PROVIDER_TRANSPORT_ERROR_MARKERS (shared with the verifier-broken
+    # classifier); the rest are analytical-step-specific.
     "[mlx model not found",
     "[error] unsupported api service",
     "[error] unsupported engine",
