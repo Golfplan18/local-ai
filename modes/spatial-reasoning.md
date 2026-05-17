@@ -233,7 +233,31 @@ The deliverable is a **diagram-gap annotation deliverable** — a Tversky-corres
 
 6. **Fog-clearing questions.** Numbered list of open questions targeting the user's pre-conscious structure. Each: `[N]. [Open question phrased to accept "no" as an answer].` Leading questions get reshaped at this layer.
 
-7. **Annotated visual output.** One labelled envelope or annotation block. `canvas_action: annotate` (never `replace` / `update`); `target_id` values resolve to entity ids in the user's submitted `spatial_representation`; `annotation kind`: `callout` / `highlight` only; callout text ≤60 characters; one envelope per response.
+7. **Annotated visual output.** One labelled envelope or annotation block. `canvas_action: annotate` (never `replace` / `update`); one envelope per response.
+
+   - **Path A (structured input):** when the user submitted a structured `spatial_representation` with resolvable entity ids (Excalidraw JSON, Obsidian Canvas), emit `type: <existing diagram type>` and reference entities by `target_id` in each annotation. `annotation kind`: `callout` / `highlight`. Callout text ≤60 characters.
+
+   - **Path B (photo or unstructured visual input):** when the user attached a photograph, whiteboard snapshot, or other raster image with no addressable entity ids, emit `type: annotated_image` and reference positions by normalized image-relative coordinates. The backdrop is the user's uploaded image (already on the visual panel's `backgroundLayer`). Each annotation carries `kind: callout | box | highlight | arrow | text`, plus normalized `x: 0–1` and `y: 0–1` (top-left origin) for its anchor point. Box and highlight may additionally carry `width: 0–1` and `height: 0–1`; arrow carries `to_x: 0–1` and `to_y: 0–1` for the endpoint. Callout text ≤60 characters. Coordinates are anchored to the image's drawn bounds, so 0.5/0.5 is the centre of the image regardless of pixel resolution.
+
+     Envelope skeleton:
+
+     ```json
+     {
+       "schema_version": "0.2",
+       "id": "spatial-reasoning-annotations",
+       "type": "annotated_image",
+       "mode_context": "spatial-reasoning",
+       "relation_to_prose": "integrated",
+       "canvas_action": "annotate",
+       "spec": { "image_source": { "kind": "user_upload" } },
+       "annotations": [
+         { "kind": "callout",  "x": 0.42, "y": 0.31, "text": "missing edge: training → champions" },
+         { "kind": "box",      "x": 0.65, "y": 0.55, "width": 0.18, "height": 0.12, "text": "under-specified cluster" },
+         { "kind": "arrow",    "x": 0.22, "y": 0.40, "to_x": 0.50, "to_y": 0.40, "text": "proposed connection" }
+       ],
+       "semantic_description": { /* per the envelope contract */ }
+     }
+     ```
 
 8. **Transition prompt.** One paragraph (when applicable). `If the diagram has crystallised into a specific analytical question, the appropriate sideways-route is: [relationship-mapping for general-specificity continuation / specific analytical mode that matches the new question]. If gap-detection is still active, stay here.`
 
