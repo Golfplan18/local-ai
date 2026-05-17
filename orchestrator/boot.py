@@ -4410,7 +4410,8 @@ def _summarize_history_truncation(history: list | None,
 def run_step1_cleanup(raw_prompt: str, conversation_context: str,
                       config: dict, ambiguity_mode: str = "assume",
                       trace_dir: str | None = None,
-                      history_truncation_stats: dict | None = None) -> dict:
+                      history_truncation_stats: dict | None = None,
+                      image_attached: bool = False) -> dict:
     """Step 1: Two-pass prompt processing.
 
     Pass 1 (Phase A): Prompt cleanup only — no mode selection.
@@ -4498,6 +4499,18 @@ AMBIGUITY_MODE: {ambiguity_mode}
         user_msg = (
             f"[Recent conversation context]\n{conversation_context}\n\n"
             f"[Current prompt]\n{raw_prompt}"
+        )
+
+    # When an image attachment rides along with this turn, tell Phase A so it
+    # doesn't infer "no image present" and propagate a "use text only" directive
+    # into the cleaned prompt. Phase A still cleans text only — the image
+    # itself is consumed downstream by the analyst stage and the WP-4.2 vision
+    # routing gate — but Phase A needs to know an image exists to avoid
+    # writing directives that suppress it.
+    if image_attached:
+        user_msg = (
+            "[Note: one image attachment is present alongside this prompt. "
+            "Do not write directives that exclude image input.]\n\n" + user_msg
         )
 
     endpoint = get_slot_endpoint(config, "step1_cleanup")
@@ -4612,9 +4625,18 @@ AMBIGUITY_MODE: {ambiguity_mode}
     # clarification. The expanded form is for downstream model dispatch
     # (step 3+); pre-routing is signal classification and must see the
     # user's actual words.
+    # Pre-routing context carries image-attachment presence so Stage 3's
+    # _has_artifact_content check (which already inspects ctx["attachments"])
+    # treats the image as satisfying visual-input gaps — preventing the
+    # "Could you share the space / chart?" clarification fire when an image
+    # IS already attached. None → empty when no image, dict when present.
+    pre_routing_context = (
+        {"attachments": [{"type": "image/upload"}]} if image_attached else None
+    )
+
     routing = run_pre_routing_pipeline(
         prompt=raw_prompt,
-        context=None,
+        context=pre_routing_context,
     )
 
     # --- Dual-dispatch audit ---
@@ -4627,7 +4649,8 @@ AMBIGUITY_MODE: {ambiguity_mode}
     dispatch_audit = None
     try:
         expanded_routing = run_pre_routing_pipeline(
-            prompt=step1_result["operational_notation"], context=None,
+            prompt=step1_result["operational_notation"],
+            context=pre_routing_context,
         )
         raw_mode = routing.get("dispatched_mode_id")
         expanded_mode = expanded_routing.get("dispatched_mode_id")
@@ -7284,7 +7307,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "Evaluate per the universal seven-section contract."
         )},
     ]
-    breadth_evaluation = _run_model_with_tools(eval_messages, breadth_endpoint)
+    breadth_evaluation = _run_model_with_tools(eval_messages, breadth_endpoint, images=images)
     _trace_step_g3("step4-eval", {
         "system_prompt": eval_system,
         "raw_response": breadth_evaluation,
@@ -7307,7 +7330,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "REMAINING UNCERTAINTIES / REVISED DRAFT / CHANGELOG in order."
         )},
     ]
-    revised_analysis = _run_model_with_tools(revise_messages, depth_endpoint)
+    revised_analysis = _run_model_with_tools(revise_messages, depth_endpoint, images=images)
     _trace_step_g3("step5-revised", {
         "system_prompt": revise_system,
         "raw_response": revised_analysis,
@@ -7335,7 +7358,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             )},
         ]
         try:
-            verified = _run_model_with_tools(verify_messages, breadth_endpoint)
+            verified = _run_model_with_tools(verify_messages, breadth_endpoint, images=images)
         except Exception as e:
             verified = f"VERIFIER_EXCEPTION: {e}"
         # Three-way verdict classification (see _verifier_broken docstring
@@ -7379,7 +7402,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                 "mirror contract."
             )},
         ]
-        revised_analysis = _run_model_with_tools(re_revise_messages, depth_endpoint)
+        revised_analysis = _run_model_with_tools(re_revise_messages, depth_endpoint, images=images)
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
 
     if PIPELINE_TRACE_AVAILABLE and trace_dir:
@@ -7605,17 +7628,21 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        # B (image passthrough): evaluators receive `images` so they can
+        # check image-grounded claims rather than reviewing the analyst's
+        # textual representation alone. Restores full adversarial integrity
+        # on image-attached prompts.
         eval_a_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": eval_a_user_message}],
-            breadth_endpoint, "evaluator", 150, None, None, context_pkg,
+            breadth_endpoint, "evaluator", 150, None, images, context_pkg,
         )
         eval_b_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": eval_b_user_message}],
-            depth_endpoint, "evaluator", 150, None, None, context_pkg,
+            depth_endpoint, "evaluator", 150, None, images, context_pkg,
         )
         try:
             breadth_eval_of_depth, eval_a_ok, eval_a_reason = eval_a_future.result()
@@ -7662,17 +7689,20 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        # B (image passthrough): revisers receive `images` so they can apply
+        # image-aware corrections (e.g. "your description of the upper-right
+        # quadrant is wrong, what's actually there is X").
         depth_revise_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": depth_revise_user_message}],
-            depth_endpoint, "reviser", 200, None, None, context_pkg,
+            depth_endpoint, "reviser", 200, None, images, context_pkg,
         )
         breadth_revise_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": breadth_revise_user_message}],
-            breadth_endpoint, "reviser", 200, None, None, context_pkg,
+            breadth_endpoint, "reviser", 200, None, images, context_pkg,
         )
         try:
             revised_depth, depth_rev_ok, depth_rev_reason = depth_revise_future.result()
@@ -7786,17 +7816,20 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             "VERIFIED / VERIFIED WITH CORRECTIONS / VERIFICATION FAILED."
         )
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            # B (image passthrough): verifiers receive `images` so V2/V4/V8
+            # image-fidelity checks can compare claims against the actual
+            # image rather than just the analyst's textual description.
             verify_depth_future = executor.submit(
                 _run_model_with_tools,
                 [{"role": "system", "content": verify_system},
                  {"role": "user", "content": verify_depth_user_message}],
-                breadth_endpoint
+                breadth_endpoint, images=images,
             )
             verify_breadth_future = executor.submit(
                 _run_model_with_tools,
                 [{"role": "system", "content": verify_system},
                  {"role": "user", "content": verify_breadth_user_message}],
-                depth_endpoint
+                depth_endpoint, images=images,
             )
             try:
                 depth_verdict = verify_depth_future.result()
@@ -7955,7 +7988,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     ]
     consolidated, consol_ok, consol_reason = _call_with_supplement(
         consolidate_messages, breadth_endpoint, "consolidator",
-        min_chars=300, retry_hint=None, images=None,
+        min_chars=300, retry_hint=None, images=images,
         context_pkg=context_pkg,
     )
     _record("step7-consolidated", consol_ok, consol_reason)
@@ -8153,7 +8186,11 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
                 system=system_msg,
                 messages=conv
             )
-            return resp.content[0].text
+            # Coerce None → "" so downstream string ops in
+            # _run_model_with_tools never raise TypeError on a missing
+            # content block. The pipeline already handles empty strings
+            # gracefully via min-length retry; None would crash.
+            return (resp.content[0].text if resp.content else "") or ""
         except Exception as e:
             return f"[Error calling Claude API: {e}]"
 
@@ -8173,7 +8210,14 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
                 messages=api_messages,
                 max_tokens=4096
             )
-            return resp.choices[0].message.content
+            # Coerce None → "" — message.content is None when the model
+            # emits an empty response, refusal, or tool-call-only message.
+            # _run_model_with_tools called strip_tool_calls() on the raw
+            # return; without this coercion a None content raises
+            # "expected string or bytes-like object" and the wrapping
+            # verifier marks the cycle BROKEN. Empty string lets the
+            # min-length-retry path handle it gracefully.
+            return resp.choices[0].message.content or ""
         except Exception as e:
             return f"[Error calling OpenAI API: {e}]"
 
@@ -8204,7 +8248,9 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
                 contents=contents,
                 config=config,
             )
-            return resp.text
+            # Coerce None → "" — resp.text is None when finish_reason is
+            # SAFETY, RECITATION, or similar refusal states.
+            return resp.text or ""
         except Exception as e:
             return f"[Error calling Gemini API: {e}]"
 
@@ -8245,7 +8291,13 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
                     "X-Title": "Ora",
                 },
             )
-            return resp.choices[0].message.content
+            # Coerce None → "" — OpenRouter inherits OpenAI SDK behavior
+            # where message.content is None on empty/refusal/tool-only
+            # responses. The verifier-BROKEN signature in image-mode runs
+            # traced back to this exact case: gpt-5.1-codex-mini returned
+            # message.content=None on verifier cycle 3, _run_model_with_tools
+            # called strip_tool_calls(None), TypeError fired.
+            return resp.choices[0].message.content or ""
         except Exception as e:
             return f"[Error calling OpenRouter API: {e}]"
 
