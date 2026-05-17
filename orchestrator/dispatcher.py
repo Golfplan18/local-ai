@@ -22,7 +22,6 @@ try:
     from file_ops import file_read, file_write, _validate_path
     from knowledge_search import knowledge_search
     from credential_store import credential_store
-    from api_evaluate import api_evaluate
     from bash_execute import (execute_command, classify_command,
                               stop_process, cleanup_all)
     from file_edit import edit_file
@@ -97,13 +96,6 @@ def _wrap_credential_store(params):
         params.get("service", ""),
         params.get("username", ""),
         params.get("value"),
-    )
-
-def _wrap_api_evaluate(params):
-    return api_evaluate(
-        task_summary=params.get("task_summary", ""),
-        artifact=params.get("artifact", ""),
-        evaluation_focus=params.get("evaluation_focus", ""),
     )
 
 def _wrap_stop_process(params):
@@ -234,7 +226,6 @@ TOOL_REGISTRY = {
     "list_directory":   {"handler": _wrap_list_directory,   "permission": "auto",    "category": "read"},
     "knowledge_search": {"handler": _wrap_knowledge_search, "permission": "auto",    "category": "read"},
     "credential_store": {"handler": _wrap_credential_store, "permission": "approve", "category": "write"},
-    "api_evaluate":     {"handler": _wrap_api_evaluate,     "permission": "approve", "category": "execute"},
     "stop_process":     {"handler": _wrap_stop_process,     "permission": "approve", "category": "execute"},
     "spawn_subagent":   {"handler": _wrap_spawn_subagent,   "permission": "approve", "category": "execute"},
     "schedule_task":         {"handler": _wrap_schedule_task,         "permission": "approve", "category": "write"},

@@ -93,11 +93,6 @@ ChromaDB. Two collections: `knowledge` (vault) and `conversations` (~/conversati
 ```xml
 <tool_call><n>file_write</n><parameters>{"path": "p", "content": "c"}</parameters></tool_call>
 ```
-### api_evaluate
-G5 overflow/reliability. `task_summary` (REQUIRED), `artifact` (REQUIRED), `evaluation_focus` (opt).
-```xml
-<tool_call><n>api_evaluate</n><parameters>{"task_summary": "s", "artifact": "a"}</parameters></tool_call>
-```
 ### code_execute
 Sandboxed Python. `code` (REQUIRED), `timeout` (opt, 30). No network.
 ```xml
@@ -193,7 +188,7 @@ ChromaDB RAG at session start (two collections: knowledge from vault, conversati
 
 ## § AUTONOMOUS
 Task queue: `config/task-queue.md`. Guard rails: working/draft only, staging at `output/autonomous/`, G2 max (G3 if pre-authorized), G4 interactive-only, iteration limits, human-curated backlog. No destructive retries.
-**Operational context:** Interactive: local + api. Autonomous/Agent: local only by default. 🚫 NEVER api_evaluate without per-task pre-authorization.
+**Operational context:** Interactive: local + api. Autonomous/Agent: local only by default.
 
 ## § RECOVERY
 Tools: report, alternative, stop after two. Knowledge: fall back with label. Model failure: restart → single-model (G2 ceiling) → block destructive + autonomous. Quality: correct, re-examine, sycophancy check. Autonomous: stage failures, next task.

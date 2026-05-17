@@ -48,7 +48,6 @@ try:
     from file_ops import file_read, file_write
     from knowledge_search import knowledge_search
     from credential_store import credential_store
-    from api_evaluate import api_evaluate
     from dispatcher import dispatch as dispatcher_dispatch, reset_consecutive, cleanup_all
 except ImportError as e:
     print(f"[WARNING] Tool import failed: {e}")
