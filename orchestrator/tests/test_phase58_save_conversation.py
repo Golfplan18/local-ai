@@ -378,5 +378,135 @@ class TestSaveConversationLockstep(unittest.TestCase):
         self.assertEqual(metas[1]["references_turns"], [1])
 
 
+class TestOutputDestinationOverride(unittest.TestCase):
+    """Obsidian Plugin Design (2026-05-17) — ``output_destination`` on /chat
+    routes the processed chunk to a caller-supplied folder; the raw audit
+    log is always anchored to ``CONVERSATIONS_RAW``; invalid values fall
+    back to ``CONVERSATIONS_DIR`` with a warning rather than failing the
+    save.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.raw_dir     = os.path.join(self.tmpdir, "raw")
+        self.default_dir = os.path.join(self.tmpdir, "default")
+        self.override_dir = os.path.join(self.tmpdir, "override")
+        self.chroma_dir  = os.path.join(self.tmpdir, "chromadb")
+        os.makedirs(self.raw_dir)
+        os.makedirs(self.default_dir)
+        os.makedirs(self.override_dir)
+
+        self._originals = {
+            "CONVERSATIONS_RAW": server.CONVERSATIONS_RAW,
+            "CONVERSATIONS_DIR": server.CONVERSATIONS_DIR,
+        }
+        server.CONVERSATIONS_RAW = self.raw_dir
+        server.CONVERSATIONS_DIR = self.default_dir
+
+        self._original_load = server.load_config
+        server.load_config = lambda: {"chromadb_path": self.chroma_dir}
+        self._original_endpoint = server.get_endpoint
+        server.get_endpoint = lambda cfg: {"name": "test-model"}
+        self._original_meta = server._generate_chunk_metadata
+        server._generate_chunk_metadata = (
+            lambda u, a, d, p, m, n: ("Stub context header.", ["topic-x"])
+        )
+        self._original_embed = server._nomic_embed
+        server._nomic_embed = lambda text: None
+        self._original_sess = server._session_data
+        server._session_data = {}
+
+    def tearDown(self):
+        for name, value in self._originals.items():
+            setattr(server, name, value)
+        server.load_config = self._original_load
+        server.get_endpoint = self._original_endpoint
+        server._generate_chunk_metadata = self._original_meta
+        server._nomic_embed = self._original_embed
+        server._session_data = self._original_sess
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _chunks_in(self, directory):
+        if not os.path.isdir(directory):
+            return []
+        return [f for f in os.listdir(directory) if f.endswith(".md")]
+
+    def test_empty_destination_uses_default(self):
+        server._save_conversation(
+            "Hello", "Hi", "conv-empty", True, tag="", output_destination=""
+        )
+        self.assertEqual(len(self._chunks_in(self.default_dir)), 1)
+        self.assertEqual(len(self._chunks_in(self.override_dir)), 0)
+
+    def test_valid_destination_routes_chunk_there(self):
+        server._save_conversation(
+            "Hello", "Hi", "conv-valid", True, tag="",
+            output_destination=self.override_dir,
+        )
+        self.assertEqual(len(self._chunks_in(self.override_dir)), 1)
+        self.assertEqual(len(self._chunks_in(self.default_dir)), 0)
+
+    def test_raw_log_stays_at_default_when_override_set(self):
+        server._save_conversation(
+            "Hello", "Hi", "conv-raw", True, tag="",
+            output_destination=self.override_dir,
+        )
+        # Raw log lives under CONVERSATIONS_RAW regardless of override.
+        raw_files = [
+            f for f in os.listdir(self.raw_dir)
+            if os.path.isfile(os.path.join(self.raw_dir, f))
+        ]
+        self.assertEqual(len(raw_files), 1)
+
+    def test_nonexistent_destination_is_created(self):
+        # A path the caller supplies that doesn't yet exist gets created —
+        # that's how the plugin's first-activation auto-creation works.
+        target = os.path.join(self.tmpdir, "freshly-created")
+        self.assertFalse(os.path.exists(target))
+        server._save_conversation(
+            "Hello", "Hi", "conv-fresh", True, tag="",
+            output_destination=target,
+        )
+        self.assertEqual(len(self._chunks_in(target)), 1)
+
+    def test_relative_path_falls_back_to_default(self):
+        # We only honor absolute paths — relative paths are ambiguous
+        # (relative to what?) and could route to surprising places.
+        server._save_conversation(
+            "Hello", "Hi", "conv-rel", True, tag="",
+            output_destination="not/an/absolute/path",
+        )
+        self.assertEqual(len(self._chunks_in(self.default_dir)), 1)
+        self.assertEqual(len(self._chunks_in(self.override_dir)), 0)
+
+    def test_destination_pointing_at_a_file_falls_back(self):
+        # User typo: hands us a regular file instead of a folder.
+        file_target = os.path.join(self.tmpdir, "not-a-folder.txt")
+        with open(file_target, "w") as f:
+            f.write("hello")
+        server._save_conversation(
+            "Hello", "Hi", "conv-file", True, tag="",
+            output_destination=file_target,
+        )
+        self.assertEqual(len(self._chunks_in(self.default_dir)), 1)
+
+    def test_tilde_expansion_works(self):
+        # ``~`` should expand to the user's home; if the expanded path is
+        # invalid for any other reason we still fall back, but tilde alone
+        # should not be the disqualifier.
+        # Use the override dir's parent dir reformulated to confirm
+        # expanduser is invoked: we substitute ``$HOME`` synthetically.
+        home = os.path.expanduser("~")
+        if not self.override_dir.startswith(home):
+            self.skipTest("override path is not under $HOME on this system")
+        with_tilde = "~" + self.override_dir[len(home):]
+        server._save_conversation(
+            "Hello", "Hi", "conv-tilde", True, tag="",
+            output_destination=with_tilde,
+        )
+        self.assertEqual(len(self._chunks_in(self.override_dir)), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2177,9 +2177,20 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     except Exception:
         _hist_trunc = None
 
+    # Image attachments arrive on either channel:
+    #   * /chat path                — base64 attachments decoded into `images`
+    #   * /chat/multipart path      — disk-saved image referenced via
+    #                                 extra_context["image_path"]
+    # Both must surface into Phase A / pre-routing so Stage 3 satisfies
+    # visual-input contracts and Phase A skips its "no image" directive.
+    image_attached = bool(images) or bool(
+        extra_context and extra_context.get("image_path")
+    )
+
     step1 = run_step1_cleanup(user_input, conv_context, config,
                               trace_dir=trace_dir,
-                              history_truncation_stats=_hist_trunc)
+                              history_truncation_stats=_hist_trunc,
+                              image_attached=image_attached)
     tier = step1["triage_tier"]
 
     # V3 Input Handling Phase 1 — alignment-prefilter comparison. Computed
@@ -3093,7 +3104,46 @@ def _surface_orphan_as_errored_chunk(payload: dict) -> None:
         print(f"[WARNING] orphan mark_errored failed: {e}")
 
 
-def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""):
+def _resolve_chunk_destination(output_destination: str) -> str:
+    """Resolve a caller-supplied chunk output folder, falling back to the
+    default ``CONVERSATIONS_DIR`` on any problem.
+
+    Returns the absolute path the chunk should be written to. The raw audit
+    log and pending/processed submission folders are unaffected — those
+    always live under ``CONVERSATIONS_RAW``.
+
+    Fallback rules (per Obsidian Plugin Design §"Implementation"):
+      * empty / missing                → default
+      * not an absolute path after expanduser → default + warning
+      * path exists but is not a directory   → default + warning
+      * path doesn't exist and can't be created → default + warning
+      * path exists but isn't writable        → default + warning
+    """
+    if not output_destination:
+        return CONVERSATIONS_DIR
+    candidate = os.path.expanduser(output_destination.strip())
+    if not candidate:
+        return CONVERSATIONS_DIR
+    try:
+        if not os.path.isabs(candidate):
+            print(f"[WARNING] output_destination not absolute, ignoring: {output_destination!r}")
+            return CONVERSATIONS_DIR
+        if os.path.exists(candidate):
+            if not os.path.isdir(candidate):
+                print(f"[WARNING] output_destination exists but is not a directory: {candidate}")
+                return CONVERSATIONS_DIR
+        else:
+            os.makedirs(candidate, exist_ok=True)
+        if not os.access(candidate, os.W_OK):
+            print(f"[WARNING] output_destination not writable: {candidate}")
+            return CONVERSATIONS_DIR
+        return candidate
+    except Exception as e:
+        print(f"[WARNING] output_destination resolution failed ({output_destination!r}): {e}")
+        return CONVERSATIONS_DIR
+
+
+def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag="", output_destination=""):
     """
     Three steps, all inline, immediately after every response:
 
@@ -3114,9 +3164,17 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
     joining against conversation.json. The conversation.json envelope is
     the source of truth (set at creation, immutable per Phase 1.1); chunks
     are the denormalized cache.
+
+    Obsidian Plugin Design (2026-05-17): ``output_destination`` is an
+    optional per-request override for the processed chunk folder. Empty /
+    missing / invalid falls back to ``CONVERSATIONS_DIR`` per
+    ``_resolve_chunk_destination``. The raw audit log stays at
+    ``CONVERSATIONS_RAW`` regardless — that's audit infrastructure, not
+    user-facing output.
     """
+    chunk_dir = _resolve_chunk_destination(output_destination)
     os.makedirs(CONVERSATIONS_RAW, exist_ok=True)
-    os.makedirs(CONVERSATIONS_DIR, exist_ok=True)
+    os.makedirs(chunk_dir, exist_ok=True)
 
     now      = datetime.now()
     ts_iso   = now.isoformat(timespec='seconds')
@@ -3195,7 +3253,7 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
 
     topic_slug = _topic_slug(user_input, ai_response)
     chunk_name = f"{date_str}_{time_str}_{topic_slug}.md"
-    chunk_path = os.path.join(CONVERSATIONS_DIR, chunk_name)
+    chunk_path = os.path.join(chunk_dir, chunk_name)
     chunk_id   = f"session-{session_id}-pair-{pair_num:03d}"
 
     # Phase 5.8: chunk YAML follows Schema §12 conversation chunk template.
@@ -3428,7 +3486,8 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
 
 
 def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
-                      manual_mode_selection="", framework_selected="", submission_id=""):
+                      manual_mode_selection="", framework_selected="", submission_id="",
+                      output_destination=""):
     """Shared pipeline helper — runs the pipeline synchronously, persists the
     chunk file, and returns a plain JSON reply.
 
@@ -3581,7 +3640,8 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                 try:
                     chunk_id = _save_conversation(
                         clean_input, final_response, panel_id,
-                        is_new_session, tag)
+                        is_new_session, tag,
+                        output_destination=output_destination)
                 except Exception as e:
                     failure_summary = f"_save_conversation failed: {e}"
                     print(f"[ERROR] _save_conversation: {e}")
@@ -3706,6 +3766,10 @@ def chat():
     # apply the framework-suppresses-prefilter rule.
     manual_mode_selection = (data.get("manual_mode_selection") or "").strip()
     framework_selected    = (data.get("framework_selected") or "").strip()
+    # Obsidian Plugin Design (2026-05-17) — optional per-request override
+    # for the processed chunk's output folder. Validation + fallback live
+    # in ``_resolve_chunk_destination``; the endpoint just propagates.
+    output_destination    = (data.get("output_destination") or "").strip()
     if not user_input:
         return json.dumps({"error":"empty message"}), 400
 
@@ -3724,6 +3788,7 @@ def chat():
         "history":               history,
         "manual_mode_selection": manual_mode_selection,
         "framework_selected":    framework_selected,
+        "output_destination":    output_destination,
         "attachments":           data.get("attachments", []),
     })
 
@@ -3737,7 +3802,8 @@ def chat():
                              tag=tag,
                              manual_mode_selection=manual_mode_selection,
                              framework_selected=framework_selected,
-                             submission_id=submission_id)
+                             submission_id=submission_id,
+                             output_destination=output_destination)
 
 
 # ── WP-3.3: Merged visual + text input (multipart) ───────────────────────────
@@ -3838,6 +3904,8 @@ def chat_multipart():
     # V3 Phase 1 — same alignment-prefilter inputs as /chat. See chat() above.
     manual_mode_selection = (form.get("manual_mode_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
+    # Obsidian Plugin Design (2026-05-17) — same override field as /chat.
+    output_destination    = (form.get("output_destination") or "").strip()
 
     if not user_input:
         return json.dumps({"error": "empty message"}), 400
@@ -3883,6 +3951,7 @@ def chat_multipart():
         "history_raw":           history_raw_str,
         "manual_mode_selection": manual_mode_selection,
         "framework_selected":    framework_selected,
+        "output_destination":    output_destination,
         "spatial_raw":           spatial_raw,
         "annotations_raw":       annotations_raw,
         "image_path":            image_path,
@@ -4005,6 +4074,7 @@ def chat_multipart():
         manual_mode_selection=manual_mode_selection,
         framework_selected=framework_selected,
         submission_id=submission_id,
+        output_destination=output_destination,
     )
 
 
@@ -7937,6 +8007,130 @@ def _save_routing_config(cfg):
         json.dump(cfg, f, indent=2)
         f.write("\n")
 
+
+# ── Bucket → endpoints auto-sync ────────────────────────────────────────────
+#
+# When the V3 Settings → Models panel adds a model to a bucket, it POSTs the
+# updated buckets[] but does not synthesize a matching entry in endpoints[].
+# Without that entry, the router silently skips the new model and cascades
+# past it (the model never resolves). _sync_endpoints_from_buckets closes
+# that gap by walking bucket members and synthesizing endpoint records from
+# config/openrouter-catalog.json for any OpenRouter-shaped ID that's
+# missing. Existing endpoints are untouched (no edits to user-curated
+# entries); local-* IDs are skipped (different registration path).
+
+_OPENROUTER_VENDOR_TO_TRAINING_FAMILY = {
+    "openai": "gpt",
+    "anthropic": "claude",
+    "google": "gemini",
+    "x-ai": "grok",
+    "meta-llama": "llama",
+    "meta": "llama",
+    "nousresearch": "hermes",
+    "deepseek": "deepseek",
+    "qwen": "qwen",
+    "alibaba": "qwen",
+    "mistralai": "mistral",
+    "mistral": "mistral",
+    "cohere": "cohere",
+    "microsoft": "phi",
+    "moonshotai": "kimi",
+    "xiaomi": "mimo",
+    "01-ai": "yi",
+    "nvidia": "nemotron",
+}
+
+
+def _training_family_from_vendor(vendor: str) -> str:
+    v = (vendor or "").lower().strip()
+    return _OPENROUTER_VENDOR_TO_TRAINING_FAMILY.get(v, v or "unknown")
+
+
+def _synthesize_openrouter_endpoint(model_id: str, tier: str,
+                                    catalog_models: dict) -> dict | None:
+    rec = catalog_models.get(model_id)
+    if not rec:
+        return None
+    vendor = rec.get("vendor", "")
+    return {
+        "id": model_id,
+        "type": "api",
+        "service": "openrouter",
+        "model_id": model_id,
+        "display_name": rec.get("display_name") or model_id,
+        "provider": "openrouter",
+        "training_family": _training_family_from_vendor(vendor),
+        "tier": tier or "mid",
+        "status": "active",
+        "enabled": True,
+        "credential_key": "ora/openrouter-api-key",
+        "capabilities": {
+            "tool_access": False,
+            "file_system_access": False,
+            "web_access": False,
+            "retrieval_approach": "pre-assembled",
+        },
+        "vision_capable": bool(rec.get("accepts_image")),
+        "model": model_id,
+        "_auto_synthesized": True,
+    }
+
+
+def _sync_endpoints_from_buckets(cfg: dict) -> dict:
+    """Ensure every model ID referenced from a bucket has an endpoints[]
+    entry. Synthesises from config/openrouter-catalog.json for OpenRouter
+    IDs (vendor/model). Existing entries are not edited. Local-MLX IDs
+    and IDs missing from the catalog are skipped (logged server-side).
+    Returns cfg (modified in place).
+    """
+    existing_ids = {e.get("id") for e in cfg.get("endpoints", [])
+                    if e.get("id")}
+
+    referenced = {}
+    for bucket_name, members in (cfg.get("buckets") or {}).items():
+        for m in members or []:
+            if not m or m in existing_ids:
+                continue
+            referenced.setdefault(m, bucket_name)
+
+    if not referenced:
+        return cfg
+
+    try:
+        with open(OPENROUTER_CATALOG) as f:
+            cat = json.load(f) or {}
+        catalog_models = {m["id"]: m for m in cat.get("models", [])
+                          if m.get("id")}
+    except Exception as e:
+        print(f"[routing-config] catalog read failed; cannot synthesize "
+              f"endpoints: {e}")
+        catalog_models = {}
+
+    added, skipped = [], []
+    for model_id, tier in referenced.items():
+        if model_id.startswith("local-"):
+            continue
+        if "/" not in model_id:
+            skipped.append((model_id, "not OpenRouter-shaped"))
+            continue
+        ep = _synthesize_openrouter_endpoint(model_id, tier, catalog_models)
+        if ep is None:
+            skipped.append((model_id, "not in OpenRouter catalog"))
+            continue
+        cfg.setdefault("endpoints", []).append(ep)
+        existing_ids.add(model_id)
+        added.append((model_id, ep["tier"], ep["vision_capable"]))
+
+    if added:
+        print(f"[routing-config] auto-synthesized {len(added)} endpoint(s) "
+              f"from bucket members: {added}")
+    if skipped:
+        print(f"[routing-config] skipped {len(skipped)} bucket member(s) "
+              f"(no catalog entry): {skipped}")
+
+    return cfg
+
+
 def _get_router():
     """Get or create Router instance."""
     try:
@@ -7987,6 +8181,7 @@ def routing_config_post():
         if key in data:
             cfg[key] = data[key]
 
+    _sync_endpoints_from_buckets(cfg)
     _save_routing_config(cfg)
     reloaded = _reload_pipeline_router_after_config_change()
     return json.dumps({"ok": True, "router_reloaded": reloaded})
@@ -8009,6 +8204,7 @@ def routing_buckets_post():
     data = request.get_json(force=True)
     cfg = _load_routing_config()
     cfg["buckets"] = data.get("buckets", cfg.get("buckets", {}))
+    _sync_endpoints_from_buckets(cfg)
     _save_routing_config(cfg)
     reloaded = _reload_pipeline_router_after_config_change()
     return json.dumps({"ok": True, "router_reloaded": reloaded})
