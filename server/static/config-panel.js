@@ -667,7 +667,7 @@ class ConfigPanel {
       (vendors[m.vendor] = vendors[m.vendor] || []).push(m);
     });
     const vendorNames = Object.keys(vendors).sort();
-    const vendorBlocks = vendorNames.map(v => {
+    const renderVendor = v => {
       const open = !!this._openrouterVendorOpen[v];
       const arrow = open ? '▾' : '▸';
       const rows = open
@@ -687,7 +687,29 @@ class ConfigPanel {
         </div>
         ${rows ? `<div class="cfg-or-vendor-rows">${rows}</div>` : ''}
       </div>`;
-    }).join('');
+    };
+
+    // Split the alphabetically-sorted vendor list into three explicit
+    // columns (containers). Expanding a vendor with many models
+    // (e.g. Qwen, 47 entries) then only pushes content DOWN within
+    // its own column — it can't reflow across columns the way CSS
+    // multicolumn does, which previously caused the expanded vendor
+    // to split across columns and force horizontal scroll.
+    const total = vendorNames.length;
+    const cuts = [
+      Math.ceil(total / 3),
+      Math.ceil(total * 2 / 3),
+    ];
+    const slices = [
+      vendorNames.slice(0, cuts[0]),
+      vendorNames.slice(cuts[0], cuts[1]),
+      vendorNames.slice(cuts[1]),
+    ];
+    const columnHtml = slices
+      .map(slice => `<div class="cfg-or-vendor-column">${
+        slice.map(renderVendor).join('')
+      }</div>`)
+      .join('');
 
     return `<div class="cfg-picker-section">
       <div class="cfg-picker-section-title">
@@ -695,7 +717,7 @@ class ConfigPanel {
         <span class="cfg-picker-count">${textIds.size} text models · ${vendorNames.length} vendors · refreshed ${fetchedAt}</span>
         <button class="cfg-or-refresh-btn" data-role="or-refresh">Refresh catalog</button>
       </div>
-      <div class="cfg-or-vendors">${vendorBlocks}</div>
+      <div class="cfg-or-vendors">${columnHtml}</div>
     </div>`;
   }
 

@@ -301,7 +301,11 @@
 /* Picker source lists below each section */
 .cfg-picker {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Subscription column carries ~12 short labels ("ChatGPT (GPT-5.4
+     Thinking)" etc.); a fixed 240px is enough. Direct API needs the
+     rest of the width because it nests three vendor groups inside its
+     section. */
+  grid-template-columns: 240px 1fr;
   gap: 1px;
   background: var(--border, #333);
   padding: 1px 0 0;
@@ -408,16 +412,26 @@
   font-style: normal;
 }
 .cfg-or-vendors {
-  /* CSS multicolumn (not grid) so vendor blocks read alphabetically
-     DOWN each column rather than across rows. The browser balances
-     column heights automatically as vendor blocks expand/collapse. */
-  column-count: 3;
-  column-gap: 4px;
+  /* Three explicit column containers (.cfg-or-vendor-column),
+     populated in JS by slicing the alphabetically-sorted vendor list
+     into thirds. Stable expansion: opening a vendor pushes content
+     DOWN within its own column instead of triggering a multi-column
+     re-flow (which previously split a tall expanded vendor across
+     columns and caused horizontal scroll). */
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
   max-height: 460px;
   overflow-y: auto;
   border: 1px solid var(--border, #333);
   border-radius: 4px;
   padding: 6px;
+}
+.cfg-or-vendor-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 .cfg-direct-api-groups {
   display: grid;
@@ -450,10 +464,6 @@
   flex-direction: column;
   background: var(--bg-app, #282828);
   border-radius: 4px;
-  /* Keep each vendor block intact within a single column — without
-     this, a tall expanded vendor would split across the column gap. */
-  break-inside: avoid;
-  margin-bottom: 4px;
 }
 .cfg-or-vendor-header {
   display: flex;
