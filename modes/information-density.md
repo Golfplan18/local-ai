@@ -274,6 +274,8 @@ The deliverable is a **prescriptive critique of an information graphic** — a s
 
 9. **Confidence per recommendation.** Bulleted list of confidence assessments (`high-confidence / medium-confidence / low-confidence`) with grounding per recommendation.
 
+10. **Annotated visual overlay (when image attached).** When the user attached a photograph or raster image, optionally emit one `annotated_image` envelope to overlay annotations on the user's uploaded image at normalized image-relative coordinates. `canvas_action: annotate`; one envelope per response. Each annotation entry carries `kind` (callout / box / arrow / highlight / text), normalized `x: 0–1`, `y: 0–1` (top-left origin), and optional `width: 0–1`, `height: 0–1`, `to_x: 0–1`, `to_y: 0–1`. Use this overlay to mark data-ink violation regions, perceptual-task ranking failures, typography-as-encoding instances, and identified chartjunk marks. Schema and full envelope skeleton in `modes/spatial-reasoning.md §7 Path B`.
+
 **Per-section conventions:**
 
 - Use H2 headings for sections 1 through 9.

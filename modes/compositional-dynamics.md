@@ -240,6 +240,8 @@ The deliverable is a **reading-with-vocabulary** — a structured perceptual rea
 
 8. **Confidence per finding.** Bulleted list of confidence markers per major claim.
 
+9. **Annotated visual overlay (when image attached).** When the user attached a photograph or raster image, optionally emit one `annotated_image` envelope to overlay annotations on the user's uploaded image at normalized image-relative coordinates. `canvas_action: annotate`; one envelope per response. Each annotation entry carries `kind` (callout / box / arrow / highlight / text), normalized `x: 0–1`, `y: 0–1` (top-left origin), and optional `width: 0–1`, `height: 0–1`, `to_x: 0–1`, `to_y: 0–1`. Use this overlay to mark force vectors, named tensions, ambiguity loci, and figure-ground boundary segments where the parse is contested. Schema and full envelope skeleton in `modes/spatial-reasoning.md §7 Path B`.
+
 **Per-section conventions:**
 
 - Use H2 headings for sections 1 through 8.

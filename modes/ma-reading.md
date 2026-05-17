@@ -229,6 +229,8 @@ The deliverable is a **ma reading-with-vocabulary** — a contemplative-descript
 
 5. **Confidence and counter-readings.** Bulleted list. Per major claim: `**Reading:** [the primary reading]. Confidence: [contemplative-defeasible — basis]. Counter-reading: [the alternative the same evidence supports]. Falsifiability condition: [what would invalidate the primary reading].`
 
+6. **Annotated visual overlay (when image attached).** When the user attached a photograph or raster image, optionally emit one `annotated_image` envelope to overlay annotations on the user's uploaded image at normalized image-relative coordinates. `canvas_action: annotate`; one envelope per response. Each annotation entry carries `kind` (callout / box / arrow / highlight / text), normalized `x: 0–1`, `y: 0–1` (top-left origin), and optional `width: 0–1`, `height: 0–1`, `to_x: 0–1`, `to_y: 0–1`. Use this overlay to mark held-open void regions doing operative compositional work, ma boundaries and threshold transitions, and yūgen / wabi-sabi / mu loci where the tradition vocabulary lands on specific image regions. Schema and full envelope skeleton in `modes/spatial-reasoning.md §7 Path B`.
+
 **Per-section conventions:**
 
 - Use H2 headings for sections 1 through 5.
