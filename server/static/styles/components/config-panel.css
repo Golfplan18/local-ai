@@ -401,9 +401,11 @@
   font-style: normal;
 }
 .cfg-or-vendors {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+  /* CSS multicolumn (not grid) so vendor blocks read alphabetically
+     DOWN each column rather than across rows. The browser balances
+     column heights automatically as vendor blocks expand/collapse. */
+  column-count: 3;
+  column-gap: 4px;
   max-height: 460px;
   overflow-y: auto;
   border: 1px solid var(--border, #333);
@@ -441,6 +443,10 @@
   flex-direction: column;
   background: var(--bg-app, #282828);
   border-radius: 4px;
+  /* Keep each vendor block intact within a single column — without
+     this, a tall expanded vendor would split across the column gap. */
+  break-inside: avoid;
+  margin-bottom: 4px;
 }
 .cfg-or-vendor-header {
   display: flex;
