@@ -15,33 +15,6 @@
   ],
   "commercial_models": [
     {
-      "id": "claude-browser",
-      "display_name": "Claude (browser)",
-      "provider": "anthropic",
-      "transport": "browser_automation",
-      "ram_gb": 0,
-      "tier": "flagship",
-      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"]
-    },
-    {
-      "id": "chatgpt-browser",
-      "display_name": "ChatGPT (browser)",
-      "provider": "openai",
-      "transport": "browser_automation",
-      "ram_gb": 0,
-      "tier": "flagship",
-      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"]
-    },
-    {
-      "id": "gemini-browser",
-      "display_name": "Gemini (browser)",
-      "provider": "google",
-      "transport": "browser_automation",
-      "ram_gb": 0,
-      "tier": "flagship",
-      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"]
-    },
-    {
       "id": "gemini-api",
       "display_name": "Gemini 2.5 Flash (API)",
       "provider": "google",

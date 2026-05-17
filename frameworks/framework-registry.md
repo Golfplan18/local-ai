@@ -213,20 +213,6 @@ Each framework has one entry with these fields:
 - **Version:** 1.0
 - **Delivers:** Processed conversation chunks with ChromaDB indexing (batch mode). Inline mode is pipeline-stage-exempt — invoked automatically by the orchestrator on every session turn, not PEF-selectable.
 
-### Browser Evaluation Setup
-
-- **Purpose:** Connect Playwright browser automation to commercial AI services and register endpoints for use by the orchestrator
-- **Problem Class:** Integration setup
-- **Input Summary:** Existing commercial AI accounts (Claude, ChatGPT, Gemini)
-- **Output Summary:** Saved browser sessions; registered endpoints in endpoints.json
-- **Proven Applications:** All tiers with existing subscriptions
-- **Known Limitations:** Sessions expire; re-run when login cookies expire
-- **File Location:** frameworks/book/browser-evaluation-setup.md
-- **Provenance:** human-created
-- **Confidence:** medium
-- **Version:** 1.0
-- **Delivers:** Authenticated Playwright browser session registered for a commercial AI service (Claude, ChatGPT, Gemini, or custom URL) as an active endpoint in endpoints.json
-
 ### API Key Acquisition
 
 - **Purpose:** Acquire and securely store API keys for commercial AI services, then register endpoints in endpoints.json

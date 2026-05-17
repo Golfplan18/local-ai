@@ -47,9 +47,7 @@ try:
     from web_search import web_search
     from file_ops import file_read, file_write
     from knowledge_search import knowledge_search
-    from browser_open import browser_open
     from credential_store import credential_store
-    from browser_evaluate import browser_evaluate
     from api_evaluate import api_evaluate
     from dispatcher import dispatch as dispatcher_dispatch, reset_consecutive, cleanup_all
 except ImportError as e:
@@ -339,17 +337,15 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive") -> 
 
     ``context`` selects the operational profile from routing-config.json:
 
-      - ``interactive`` (default) — local + browser + api transports
-        eligible. Used by chat / on-demand analysis where browser
-        responses are acceptable.
+      - ``interactive`` (default) — local + api transports eligible.
+        Used by chat / on-demand analysis.
       - ``autonomous`` — local transports only. Used by unattended
-        pipelines (article generation, scheduled runs) where browser
-        endpoints would either need a Playwright session or stall.
+        pipelines (article generation, scheduled runs).
       - ``agent`` — agent-mode resolution (local-mid + free buckets).
 
     Most callers leave this at the default. The article-generation
     pipeline passes ``autonomous`` so model_dispatch resolves to a
-    local model rather than the browser-fronted premium endpoint.
+    local model rather than the premium API endpoint.
     """
     router = _get_router()
     if router:
@@ -6554,18 +6550,15 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
     return _INLINE_DISPATCH_DIRECTIVE + step_prompt
 
 
-# Provider-transport, browser-session, and provider-overload errors that
-# arrive as 200-OK content strings (not raised exceptions). These appear in
-# both `_VERIFIER_BROKEN_MARKERS` and `_UNHEALTHY_PATTERNS` because they
+# Provider-transport and provider-overload errors that arrive as 200-OK
+# content strings (not raised exceptions). These appear in both
+# `_VERIFIER_BROKEN_MARKERS` and `_UNHEALTHY_PATTERNS` because they
 # need to flag in two ways: (a) for the verifier, treat as BROKEN so
 # re-revision doesn't fire (verifier-side failure, the analysis isn't
 # what's wrong); (b) for any analytical step, treat as UNHEALTHY so the
 # regenerate-on-unhealthy retry fires. Factored out so the two lists stay
 # in sync.
 _PROVIDER_TRANSPORT_ERROR_MARKERS = (
-    "playwright session error",
-    "browsertype.launch_persistent_context",
-    "target page, context or browser has been closed",
     "anthropic.apistatuserror",
     "anthropic.ratelimiterror",
     "anthropic.apiconnectionerror",
@@ -6585,8 +6578,6 @@ _PROVIDER_TRANSPORT_ERROR_MARKERS = (
     "request timed out",
     "connection refused",
     "connection reset",
-    "navigation timeout",
-    "execution context was destroyed",
 )
 
 
@@ -6845,15 +6836,14 @@ _UNHEALTHY_PATTERNS = (
     "[revision error",
     "[re-revision error",
     # Bracket-prefixed dispatch-layer error strings from boot.py's
-    # call_api_endpoint / call_local_endpoint / call_browser_endpoint —
-    # they wrap exceptions as "[Error calling Claude API: <e>]" etc.
+    # call_api_endpoint / call_local_endpoint — they wrap exceptions as
+    # "[Error calling Claude API: <e>]" etc.
     "[error calling claude api",
     "[error calling openai api",
     "[error calling gemini api",
     "[error calling local model",
     "[error calling mlx model",
     "[mlx model not found",
-    "[error] browser_evaluate tool not available",
     "[error] unsupported api service",
     "[error] unsupported engine",
     "[error] unknown endpoint type",
@@ -8048,8 +8038,6 @@ def call_model(messages: list, endpoint: dict, images: list = None) -> str:
         return call_api_endpoint(messages, endpoint, images=images)
     elif etype == "local":
         return call_local_endpoint(messages, endpoint, images=images)
-    elif etype == "browser":
-        return call_browser_endpoint(messages, endpoint, images=images)
     else:
         return f"[Error] Unknown endpoint type: {etype}"
 
@@ -8286,52 +8274,6 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
             return f"[Error calling MLX model '{model}': {e}]"
     
     return f"[Error] Unsupported engine: {engine}"
-
-
-def call_browser_endpoint(messages: list, endpoint: dict, images: list = None) -> str:
-    """Dispatch a chat-completion to a browser-driven service (claude.ai etc.).
-
-    Browser chat UIs have a single input box — no separate "system" slot —
-    so we must serialise system + user into one prompt. Previously this
-    function took only the last user message and discarded the system
-    message entirely. That meant every Gear-4 step prompt that referenced
-    its scaffolding ("follow the universal seven-section contract",
-    "apply the V1-V8 verifier checks") sent the *reference* but never
-    the *referenced material* — the system prompt's f-evaluate.md /
-    f-revise.md / f-verify.md / f-consolidate.md content, the mode-
-    specific cascade subsections, the RAG context, and the inline-dispatch
-    directive all vanished.
-
-    Fix: concatenate the system message and the last user message with a
-    visible separator, so the browser-side model sees the full instruction
-    payload it was supposed to receive. Multi-turn ``history`` messages
-    are dropped here — Gear-4 step calls are always single-shot
-    (system + one user message), so this is safe; downstream code that
-    sends multi-turn through this path would surface the gap quickly.
-    """
-    system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
-    last_user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-
-    if system_msg and last_user:
-        combined = (
-            f"{system_msg}\n\n"
-            f"---\n\n"
-            f"# USER REQUEST\n\n"
-            f"{last_user}"
-        )
-    elif system_msg:
-        combined = system_msg
-    else:
-        combined = last_user
-
-    if images:
-        # Browser endpoints are text-only — note attached images
-        img_note = ", ".join(img["name"] for img in images)
-        combined = f"[User attached {len(images)} image(s): {img_note}]\n\n{combined}"
-    service = endpoint.get("service", "claude")
-    if TOOLS_AVAILABLE:
-        return browser_evaluate(service, combined)
-    return "[Error] browser_evaluate tool not available"
 
 
 def parse_tool_calls(text: str) -> list[dict]:

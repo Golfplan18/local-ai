@@ -37,7 +37,6 @@ class TestDispatchErrorStringsAreUnhealthy(unittest.TestCase):
         "[Error calling local model: timeout after 120s] " + "x" * 250,
         "[Error calling MLX model 'qwen3.5-27b': out of memory] " + "x" * 250,
         "[MLX model not found: 'missing-model' — check the model path] " + "x" * 250,
-        "[Error] browser_evaluate tool not available " + "x" * 250,
         "[Error] Unsupported API service: bing " + "x" * 250,
         "[Error] Unsupported engine: vllm " + "x" * 250,
         "[Error] Unknown endpoint type: experimental " + "x" * 250,

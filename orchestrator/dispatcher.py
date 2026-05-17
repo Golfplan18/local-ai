@@ -21,9 +21,7 @@ try:
     from web_search import web_search
     from file_ops import file_read, file_write, _validate_path
     from knowledge_search import knowledge_search
-    from browser_open import browser_open
     from credential_store import credential_store
-    from browser_evaluate import browser_evaluate
     from api_evaluate import api_evaluate
     from bash_execute import (execute_command, classify_command,
                               stop_process, cleanup_all)
@@ -93,24 +91,12 @@ def _wrap_knowledge_search(params):
         params.get("n_results", 5),
     )
 
-def _wrap_browser_open(params):
-    return browser_open(params.get("url", ""))
-
 def _wrap_credential_store(params):
     return credential_store(
         params.get("action", "retrieve"),
         params.get("service", ""),
         params.get("username", ""),
         params.get("value"),
-    )
-
-def _wrap_browser_evaluate(params):
-    return browser_evaluate(
-        params.get("service", "claude"),
-        prompt=params.get("prompt", ""),
-        task_summary=params.get("task_summary", ""),
-        artifact=params.get("artifact", ""),
-        evaluation_focus=params.get("evaluation_focus", ""),
     )
 
 def _wrap_api_evaluate(params):
@@ -247,9 +233,7 @@ TOOL_REGISTRY = {
     "search_files":     {"handler": _wrap_search_files,     "permission": "auto",    "category": "read"},
     "list_directory":   {"handler": _wrap_list_directory,   "permission": "auto",    "category": "read"},
     "knowledge_search": {"handler": _wrap_knowledge_search, "permission": "auto",    "category": "read"},
-    "browser_open":     {"handler": _wrap_browser_open,     "permission": "approve", "category": "execute"},
     "credential_store": {"handler": _wrap_credential_store, "permission": "approve", "category": "write"},
-    "browser_evaluate": {"handler": _wrap_browser_evaluate, "permission": "approve", "category": "execute"},
     "api_evaluate":     {"handler": _wrap_api_evaluate,     "permission": "approve", "category": "execute"},
     "stop_process":     {"handler": _wrap_stop_process,     "permission": "approve", "category": "execute"},
     "spawn_subagent":   {"handler": _wrap_spawn_subagent,   "permission": "approve", "category": "execute"},
