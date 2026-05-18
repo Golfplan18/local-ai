@@ -1,0 +1,95 @@
+{
+  "_note": "Vendor-tier patterns for auto-populate-buckets.py. These regexes (case-insensitive, matched against OpenRouter model ids) classify models into the premium / mid / fast tier that mirror AI-company product lines (flagship / mid-tier / fast-cheap). Edit when a vendor releases a new generation or naming pattern. The script falls back to cost-bin classification when no pattern matches.",
+  "_authored": "2026-05-17",
+
+  "premium_tier_patterns": [
+    "(?i)\\bopus\\b",
+    "(?i)gpt-5(?!.*(?:mini|nano|chat|codex))",
+    "(?i)gpt-5\\.[0-9]+(?!.*(?:mini|nano|chat|codex))",
+    "(?i)gpt-5-pro\\b",
+    "(?i)\\bo1\\b(?!-mini)",
+    "(?i)\\bo1-pro\\b",
+    "(?i)\\bo3\\b(?!-mini)",
+    "(?i)claude-sonnet-4-7\\b",
+    "(?i)claude-opus",
+    "(?i)claude-4-5-sonnet",
+    "(?i)gemini-3-pro",
+    "(?i)gemini-3-1-pro",
+    "(?i)gemini-pro-latest",
+    "(?i)\\bgrok-4(?:-[0-9]+)?\\b",
+    "(?i)deepseek-r1(?!.*distill)",
+    "(?i)qwen3\\.[6-9]-plus",
+    "(?i)\\bmagistral-medium",
+    "(?i)\\blarge-2"
+  ],
+
+  "mid_tier_patterns": [
+    "(?i)claude-sonnet(?!.*4-7)",
+    "(?i)claude-haiku-3-5\\b",
+    "(?i)gpt-4-1(?!-mini)(?!-nano)",
+    "(?i)gpt-4o(?!-mini)",
+    "(?i)gpt-5-chat-latest",
+    "(?i)gpt-5\\.[0-9]+-chat-latest",
+    "(?i)gpt-5\\.[0-9]+-codex(?!-mini)",
+    "(?i)gemini-flash-latest(?!.*lite)",
+    "(?i)gemini-2-[05]-flash(?!.*lite)",
+    "(?i)gemini-3-flash-preview(?!.*lite)",
+    "(?i)gemini-3-1-flash(?!.*lite)",
+    "(?i)qwen3?\\.\\d+-(?:32b|72b|122b)",
+    "(?i)mixtral-8x22b",
+    "(?i)llama-3\\.3-70b",
+    "(?i)hermes-4-70b",
+    "(?i)kimi-(?:dev|k2)",
+    "(?i)mimo-v2-pro"
+  ],
+
+  "fast_tier_patterns": [
+    "(?i)claude-haiku(?!.*3-5)",
+    "(?i)gpt-4-1-mini",
+    "(?i)gpt-4-1-nano",
+    "(?i)gpt-4o-mini",
+    "(?i)gpt-5\\.?[0-9]*-mini",
+    "(?i)gpt-5\\.?[0-9]*-nano",
+    "(?i)gpt-5\\.?[0-9]*-codex-mini",
+    "(?i)flash-lite",
+    "(?i)gemini-flash-lite",
+    "(?i)gemini-2-0-flash-lite",
+    "(?i)gemini-3-1-flash-lite",
+    "(?i)qwen3?\\.\\d+-(?:4b|7b|9b|14b|27b)",
+    "(?i)phi-[34]",
+    "(?i)gemma-[23]",
+    "(?i)\\bllama-3-8b",
+    "(?i)\\bministral",
+    "(?i)magistral-small"
+  ],
+
+  "preferred_vendor_order": [
+    "anthropic",
+    "openai",
+    "google",
+    "x-ai",
+    "deepseek",
+    "qwen",
+    "alibaba",
+    "moonshotai",
+    "meta-llama",
+    "meta",
+    "mistralai",
+    "nousresearch"
+  ],
+
+  "param_floor_25b": {
+    "_note": "Models matching these regexes are treated as below the 25B floor regardless of catalog metadata. The -mini and -nano suffixes are caught here even when the underlying model might exceed 25B in some accountings.",
+    "patterns": [
+      "(?i)-mini\\b",
+      "(?i)-nano\\b",
+      "(?i)\\b(?:1b|2b|3b|4b|7b|8b|9b|10b|12b|14b|15b|20b|24b)\\b"
+    ]
+  },
+
+  "denylist": {
+    "_note": "Models we never auto-select as defaults even if their tier patterns match. Reserved for known-bad picks (deprecated, broken, or otherwise unsuitable).",
+    "model_ids": [],
+    "vendor_ids": []
+  }
+}
