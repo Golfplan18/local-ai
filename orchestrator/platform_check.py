@@ -1,7 +1,12 @@
 """Platform detection and engine resolution.
 
 On Apple Silicon → MLX. Everything else → Ollama.
-Resolves engine: "auto" in endpoints.json at startup.
+Resolves engine: "auto" in routing-config.json at startup.
+
+Reads routing-config.json since install Chunk 12 step 6 (2026-05-19).
+Prior behaviour read endpoints.json (v1); the v1 file is deleted in
+step 7. Endpoint shape: identify by ``id`` (v2) with fallback to
+``name`` (legacy v1).
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ import platform
 import subprocess
 
 WORKSPACE = os.path.expanduser("~/ora/")
-ENDPOINTS_JSON = os.path.join(WORKSPACE, "config/endpoints.json")
+ROUTING_CONFIG_JSON = os.path.join(WORKSPACE, "config/routing-config.json")
 
 
 def detect_platform() -> dict:
@@ -60,18 +65,18 @@ def startup_check() -> list[str]:
     plat = detect_platform()
     recommended = plat["recommended_engine"]
 
-    if not os.path.exists(ENDPOINTS_JSON):
+    if not os.path.exists(ROUTING_CONFIG_JSON):
         msgs.append(
-            f"[platform] No endpoints.json found. Copy the template and configure "
-            f"your models. Recommended engine: {recommended}"
+            f"[platform] No routing-config.json found. Copy the template and "
+            f"configure your models. Recommended engine: {recommended}"
         )
         return msgs
 
     try:
-        with open(ENDPOINTS_JSON) as f:
+        with open(ROUTING_CONFIG_JSON) as f:
             config = json.load(f)
     except Exception as e:
-        msgs.append(f"[platform] Could not read endpoints.json: {e}")
+        msgs.append(f"[platform] Could not read routing-config.json: {e}")
         return msgs
 
     # Resolve any engine: "auto" entries
@@ -81,15 +86,16 @@ def startup_check() -> list[str]:
             ep["engine"] = recommended
             if recommended == "ollama" and "url" not in ep:
                 ep["url"] = "http://localhost:11434"
-            msgs.append(f"[platform] {ep.get('name', '?')}: engine auto → {recommended}")
+            ep_label = ep.get("id") or ep.get("display_name") or ep.get("name", "?")
+            msgs.append(f"[platform] {ep_label}: engine auto → {recommended}")
             modified = True
 
     if modified:
         try:
-            with open(ENDPOINTS_JSON, "w") as f:
+            with open(ROUTING_CONFIG_JSON, "w") as f:
                 json.dump(config, f, indent=2)
         except Exception as e:
-            msgs.append(f"[platform] Could not save endpoints.json: {e}")
+            msgs.append(f"[platform] Could not save routing-config.json: {e}")
 
     if not msgs:
         msgs.append(f"[platform] {plat['os']} {plat['arch']} — engine: {recommended} — OK")
