@@ -559,9 +559,16 @@ def assemble_consultation_package(
     for result in intent_results:
         all_chunks.extend(result.get("chunks", []))
 
+    # rag_engine.score_external_chunks annotates each chunk with a
+    # `classification` field whose values come from
+    # web_corroboration.classify_web_source: ``whitelisted`` (in the
+    # trusted-source registry — F-Consult's "approved tier"),
+    # ``corroborated`` (open-web but multiple sources agree), or
+    # ``single`` (open-web, one source). Whitelisted maps to approved;
+    # everything else is open-tier for trace-metadata purposes.
     chunks_approved = sum(
         1 for c in all_chunks
-        if (c.get("source_tier") or c.get("tier") or "").lower() == "approved"
+        if (c.get("classification") or "").lower() == "whitelisted"
     )
     chunks_open = len(all_chunks) - chunks_approved
 
