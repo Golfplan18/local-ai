@@ -267,6 +267,69 @@ class TestVisionSubstitute(unittest.TestCase):
         self.assertIsNone(vid)
 
 
+class TestVisionOnlyToggle(unittest.TestCase):
+    """vision_only filter restricts every slot to vision-capable models."""
+
+    def test_paid_slot_filters_to_vision_only(self):
+        catalog = _fixture_catalog()
+        # Without toggle: cheap text-only models lead
+        no_filter, _ = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=3,
+            floor_pct=80, cost_ceiling=None, loosening=False,
+            vision_only=False,
+        )
+        # With toggle: only vision-capable in large bucket
+        with_filter, _ = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=3,
+            floor_pct=80, cost_ceiling=None, loosening=False,
+            vision_only=True,
+        )
+        # Picks differ: filtered list excludes text-only models
+        for m in with_filter:
+            self.assertTrue(m.get("vision_capable"), f"{m['id']} should be vision-capable")
+
+    def test_free_slot_filters_to_vision_only(self):
+        # Free models in fixture are all text-only; vision-only should
+        # return zero picks
+        catalog = _fixture_catalog()
+        no_filter = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2, vision_only=False)
+        with_filter = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2, vision_only=True)
+        self.assertGreater(len(no_filter), 0)
+        self.assertEqual(len(with_filter), 0)
+
+    def test_populate_configuration_respects_cli_override(self):
+        catalog = _fixture_catalog()
+        presets = _fixture_presets()
+        config = auto_populate.populate_configuration("optimum", catalog, presets, vision_only=True)
+        self.assertTrue(config["_auto_populate_metadata"]["vision_only"])
+        # Verify every populated cell's primary is vision-capable
+        by_id = {m["id"]: m for m in catalog}
+        cells = config["cells"]
+        for slot in cells["analysis"]["gear4"].values():
+            if slot is not None:
+                self.assertTrue(by_id[slot["primary"]].get("vision_capable"))
+        for slot in cells["post_analysis"].values():
+            if slot is not None:
+                self.assertTrue(by_id[slot["primary"]].get("vision_capable"))
+
+    def test_populate_configuration_respects_preset_default(self):
+        catalog = _fixture_catalog()
+        presets = _fixture_presets()
+        # Add vision_only=True to the optimum preset
+        presets["presets"]["optimum"]["vision_only"] = True
+        # CLI override absent → preset default applies
+        config = auto_populate.populate_configuration("optimum", catalog, presets, vision_only=None)
+        self.assertTrue(config["_auto_populate_metadata"]["vision_only"])
+
+    def test_cli_override_beats_preset_default(self):
+        catalog = _fixture_catalog()
+        presets = _fixture_presets()
+        presets["presets"]["optimum"]["vision_only"] = True  # preset says yes
+        config = auto_populate.populate_configuration("optimum", catalog, presets, vision_only=False)
+        # CLI override (False) wins
+        self.assertFalse(config["_auto_populate_metadata"]["vision_only"])
+
+
 class TestPopulateConfiguration(unittest.TestCase):
     def test_optimum_end_to_end(self):
         catalog = _fixture_catalog()

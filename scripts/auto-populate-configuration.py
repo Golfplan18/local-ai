@@ -162,6 +162,7 @@ def pick_for_paid_slot(
     cost_ceiling: float | None,
     loosening: bool,
     excluded_ids: set | None = None,
+    vision_only: bool = False,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N models for a paid slot.
 
@@ -170,6 +171,8 @@ def pick_for_paid_slot(
     excluded_ids = excluded_ids or set()
     candidates = filter_paid(catalog)
     candidates = filter_by_size_bucket(candidates, size_bucket)
+    if vision_only:
+        candidates = filter_vision(candidates)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
 
     candidates = pareto_filter(candidates)
@@ -209,6 +212,7 @@ def pick_for_free_slot(
     size_bucket: str | None,
     top_n: int,
     excluded_ids: set | None = None,
+    vision_only: bool = False,
 ) -> list[dict]:
     """Pick top-N free models. No cost math; sort by intelligence descending.
 
@@ -222,6 +226,8 @@ def pick_for_free_slot(
         bucketed = filter_by_size_bucket(candidates, size_bucket)
         if bucketed:
             candidates = bucketed
+    if vision_only:
+        candidates = filter_vision(candidates)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
     candidates = pareto_filter(candidates)
     return sort_by_intelligence_descending(candidates)[:top_n]
@@ -273,8 +279,17 @@ def populate_configuration(
     preset_name: str,
     catalog: list[dict],
     presets_config: dict,
+    vision_only: bool | None = None,
 ) -> dict:
-    """Compute the full configuration dict for a given preset."""
+    """Compute the full configuration dict for a given preset.
+
+    ``vision_only``: when True, every slot picks only from vision-capable
+    models. When False, text-only primaries are admissible (the
+    vision_substitute field still carries a vision model for the image
+    extraction fallback). When None, falls through to the preset's
+    declared default (``vision_only`` field on the preset; defaults to
+    False if absent).
+    """
     presets = presets_config["presets"]
     slot_specs = presets_config["slot_specs"]
     vision_spec = presets_config.get("vision_substitute", {})
@@ -283,7 +298,12 @@ def populate_configuration(
         raise ValueError(f"Unknown preset: {preset_name}. Known: {list(presets)}")
     preset = presets[preset_name]
 
-    # Vision substitute (single id per configuration)
+    # vision_only resolution: CLI override > preset default > False
+    effective_vision_only = vision_only if vision_only is not None else preset.get("vision_only", False)
+
+    # Vision substitute (single id per configuration). Always vision-capable
+    # regardless of the toggle — it's the fallback for image input even when
+    # primary picks are vision-capable.
     vision_substitute = pick_vision_substitute(
         catalog,
         size_bucket=vision_spec.get("size_bucket", "large"),
@@ -304,6 +324,7 @@ def populate_configuration(
                     size_bucket=slot_spec["size_bucket"],
                     top_n=slot_spec["top_n"],
                     excluded_ids=excluded_so_far if diversity else None,
+                    vision_only=effective_vision_only,
                 )
                 notes = []
             else:
@@ -315,6 +336,7 @@ def populate_configuration(
                     cost_ceiling=preset.get("cost_ceiling_per_m"),
                     loosening=preset.get("loosening", False),
                     excluded_ids=excluded_so_far if diversity else None,
+                    vision_only=effective_vision_only,
                 )
             section[cell_name] = picks_to_cell(picks, vision_substitute)
             if notes:
@@ -340,6 +362,7 @@ def populate_configuration(
         "cells": cells,
         "_auto_populate_metadata": {
             "preset": preset_name,
+            "vision_only": effective_vision_only,
             "vision_substitute": vision_substitute,
             "loosening_log": loosening_log,
             "catalog_models_considered": len(catalog),
@@ -352,7 +375,26 @@ def main():
     parser.add_argument("preset", help="Preset name: premium | optimum | budget | free")
     parser.add_argument("config_name", help="Configuration name (e.g. user-pipeline)")
     parser.add_argument("--dry-run", action="store_true", help="Print the populated configuration without writing.")
+    parser.add_argument(
+        "--vision-only", action="store_true",
+        help="Restrict every slot to vision-capable models. Overrides the preset's vision_only field.",
+    )
+    parser.add_argument(
+        "--no-vision-only", action="store_true",
+        help="Allow text-only models in any slot. Overrides the preset's vision_only field.",
+    )
     args = parser.parse_args()
+
+    # CLI flag resolution: explicit --vision-only / --no-vision-only override
+    # the preset's declared default; otherwise None defers to the preset.
+    if args.vision_only and args.no_vision_only:
+        print("[auto-populate] Cannot pass both --vision-only and --no-vision-only.", file=sys.stderr)
+        sys.exit(1)
+    vision_override: bool | None = None
+    if args.vision_only:
+        vision_override = True
+    elif args.no_vision_only:
+        vision_override = False
 
     if not CATALOG_PATH.exists():
         print(f"[auto-populate] {CATALOG_PATH} not found. Run scripts/refresh-catalog.py first.", file=sys.stderr)
@@ -371,7 +413,7 @@ def main():
         print("[auto-populate] catalog is empty.", file=sys.stderr)
         sys.exit(1)
 
-    config = populate_configuration(args.preset, catalog, presets_config)
+    config = populate_configuration(args.preset, catalog, presets_config, vision_only=vision_override)
     config["name"] = args.config_name
 
     if args.dry_run:
