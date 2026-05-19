@@ -191,7 +191,7 @@ def test_5_full_pipeline_with_models(transcript):
     print("=" * 70)
 
     try:
-        config_path = os.path.expanduser("~/ora/config/endpoints.json")
+        config_path = os.path.expanduser("~/ora/config/routing-config.json")
         with open(config_path) as f:
             config = json.load(f)
 
@@ -247,7 +247,7 @@ def test_6_full_runtime_pipeline():
     print("=" * 70)
 
     try:
-        config_path = os.path.expanduser("~/ora/config/endpoints.json")
+        config_path = os.path.expanduser("~/ora/config/routing-config.json")
         with open(config_path) as f:
             config = json.load(f)
 

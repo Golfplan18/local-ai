@@ -26,11 +26,11 @@ def spawn_subagent(system_prompt: str, user_prompt: str,
         The model's response text, or an error message.
     """
     try:
-        from boot import load_endpoints, get_slot_endpoint, get_active_endpoint, call_model
+        from boot import load_routing_config, get_slot_endpoint, get_active_endpoint, call_model
     except ImportError as e:
         return f"[subagent] Import error: {e}"
 
-    config = load_endpoints()
+    config = load_routing_config()
 
     # Select endpoint: specified slot, or smallest available
     endpoint = None

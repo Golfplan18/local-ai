@@ -6,7 +6,7 @@ directly. This keeps Ora's internal model invocation an implementation
 detail and gives project tools a stable, well-documented seam.
 
 The function uses Ora's existing routing (endpoint slots from
-``~/ora/config/endpoints.json``), so the publisher's model preferences
+``~/ora/config/routing-config.json``), so the publisher's model preferences
 control which model authors articles, runs analysis, etc. Projects
 declare their preferred slot in the call (default: ``breadth``, which
 is typically a high-context generative model like Hermes-4-70B).
@@ -25,7 +25,7 @@ class ModelDispatchError(Exception):
     """Raised when invoke_chat cannot complete a model call.
 
     The .reason attribute carries a stable code:
-      - "no_endpoints_config" — endpoints.json could not be loaded
+      - "no_endpoints_config" — routing-config.json could not be loaded
       - "no_slot_endpoint"    — no endpoint registered against the slot
       - "model_error"         — the model call returned an error string
       - "import_error"        — Ora's boot module isn't importable
@@ -78,7 +78,7 @@ def invoke_chat(
       exception.
     """
     try:
-        from orchestrator.boot import call_model, load_endpoints, get_slot_endpoint
+        from orchestrator.boot import call_model, load_routing_config, get_slot_endpoint
     except ImportError as e:  # pragma: no cover — paranoid guard
         raise ModelDispatchError(
             "import_error",
@@ -87,7 +87,7 @@ def invoke_chat(
         ) from e
 
     try:
-        config = load_endpoints()
+        config = load_routing_config()
     except Exception as e:
         raise ModelDispatchError(
             "no_endpoints_config",
@@ -99,7 +99,7 @@ def invoke_chat(
         raise ModelDispatchError(
             "no_slot_endpoint",
             f"No endpoint is registered for slot {slot!r} (context={context!r}) "
-            f"in ~/ora/config/endpoints.json. Configure one or pass a "
+            f"in ~/ora/config/routing-config.json. Configure one or pass a "
             f"different slot. Common slots: breadth, depth, sidebar.",
             slot=slot,
         )
@@ -144,11 +144,11 @@ def get_slot_info(slot: str = "breadth", *, context: str = "interactive") -> dic
     ``autonomous`` to mirror an unattended-pipeline resolution.
     """
     try:
-        from orchestrator.boot import load_endpoints, get_slot_endpoint
+        from orchestrator.boot import load_routing_config, get_slot_endpoint
     except ImportError:
         return {}
     try:
-        config = load_endpoints()
+        config = load_routing_config()
     except Exception:
         return {}
     endpoint = get_slot_endpoint(config, slot, context=context) or {}

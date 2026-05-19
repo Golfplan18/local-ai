@@ -83,7 +83,7 @@ class TestCompactContextObservability(unittest.TestCase):
         events = []
         with mock.patch.object(compaction, "_log_compaction",
                                 side_effect=lambda e, **kw: events.append((e, kw))):
-            with mock.patch("boot.load_endpoints", return_value={}):
+            with mock.patch("boot.load_routing_config", return_value={}):
                 with mock.patch("boot.get_slot_endpoint", return_value=None):
                     with mock.patch("boot.get_active_endpoint",
                                      return_value={"name": "test-ep"}):
@@ -105,7 +105,7 @@ class TestCompactContextObservability(unittest.TestCase):
         def good_summary(messages, endpoint):
             return "Summary: discussed X, decided Y, open question Z. " * 5
 
-        with mock.patch("boot.load_endpoints", return_value={}):
+        with mock.patch("boot.load_routing_config", return_value={}):
             with mock.patch("boot.get_slot_endpoint", return_value=None):
                 with mock.patch("boot.get_active_endpoint",
                                  return_value={"name": "test-ep"}):

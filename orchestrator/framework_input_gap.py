@@ -88,8 +88,8 @@ def analyze_framework_inputs(
 
     if config is None:
         # Lazy-load to avoid circular imports during boot.
-        from boot import load_endpoints  # type: ignore
-        config = load_endpoints()
+        from boot import load_routing_config  # type: ignore
+        config = load_routing_config()
 
     endpoint = get_slot_endpoint(config, "classification")
     if endpoint is None:

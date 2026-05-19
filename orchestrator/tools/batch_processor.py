@@ -659,8 +659,8 @@ if __name__ == "__main__":
     sys.path.insert(0, os.path.expanduser("~/ora"))
     sys.path.insert(0, os.path.expanduser("~/ora/orchestrator"))
     sys.path.insert(0, os.path.expanduser("~/ora/orchestrator/tools"))
-    from boot import call_model, load_endpoints
-    config = load_endpoints()
+    from boot import call_model, load_routing_config
+    config = load_routing_config()
 
     # Detect manifest vs directory invocation
     is_manifest = input_arg.endswith(".yaml") or input_arg.endswith(".yml")

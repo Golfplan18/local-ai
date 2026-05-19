@@ -21,12 +21,12 @@ class TestInvokeChat(unittest.TestCase):
     """invoke_chat with mocked boot internals so tests don't hit a real model."""
 
     def _mock_boot(self, *, endpoint=None, response="OK"):
-        """Patch boot.load_endpoints, boot.get_slot_endpoint, boot.call_model.
+        """Patch boot.load_routing_config, boot.get_slot_endpoint, boot.call_model.
 
         Returns the call_model mock so tests can inspect the messages
         argument that was constructed.
         """
-        load_endpoints_mock = mock.Mock(return_value={"endpoints": []})
+        load_routing_config_mock = mock.Mock(return_value={"endpoints": []})
         get_slot_mock = mock.Mock(return_value=endpoint or {
             "name": "test-endpoint", "type": "api", "service": "claude",
             "model": "claude-test",
@@ -36,7 +36,7 @@ class TestInvokeChat(unittest.TestCase):
         # invoke_chat imports. The function does the import inside its body
         # so test setup runs after the patch.
         boot_stub = mock.MagicMock()
-        boot_stub.load_endpoints = load_endpoints_mock
+        boot_stub.load_routing_config = load_routing_config_mock
         boot_stub.get_slot_endpoint = get_slot_mock
         boot_stub.call_model = call_model_mock
         sys.modules["orchestrator.boot"] = boot_stub
@@ -86,7 +86,7 @@ class TestInvokeChat(unittest.TestCase):
             "name": "x", "type": "api", "service": "claude", "model": "m",
         })
         boot_stub = mock.MagicMock()
-        boot_stub.load_endpoints = load_mock
+        boot_stub.load_routing_config = load_mock
         boot_stub.get_slot_endpoint = slot_mock
         boot_stub.call_model = mock.Mock(return_value="ok")
         sys.modules["orchestrator.boot"] = boot_stub
@@ -99,7 +99,7 @@ class TestInvokeChat(unittest.TestCase):
     def test_no_endpoint_for_slot_raises(self):
         # get_slot_endpoint returns None.
         boot_stub = mock.MagicMock()
-        boot_stub.load_endpoints = mock.Mock(return_value={})
+        boot_stub.load_routing_config = mock.Mock(return_value={})
         boot_stub.get_slot_endpoint = mock.Mock(return_value=None)
         boot_stub.call_model = mock.Mock()
         sys.modules["orchestrator.boot"] = boot_stub
@@ -111,7 +111,7 @@ class TestInvokeChat(unittest.TestCase):
 
     def test_endpoints_config_failure_raises(self):
         boot_stub = mock.MagicMock()
-        boot_stub.load_endpoints = mock.Mock(side_effect=OSError("disk gone"))
+        boot_stub.load_routing_config = mock.Mock(side_effect=OSError("disk gone"))
         boot_stub.get_slot_endpoint = mock.Mock()
         boot_stub.call_model = mock.Mock()
         sys.modules["orchestrator.boot"] = boot_stub
@@ -150,7 +150,7 @@ class TestGetSlotInfo(unittest.TestCase):
 
     def test_returns_endpoint_summary(self):
         boot_stub = mock.MagicMock()
-        boot_stub.load_endpoints = mock.Mock(return_value={})
+        boot_stub.load_routing_config = mock.Mock(return_value={})
         boot_stub.get_slot_endpoint = mock.Mock(return_value={
             "name": "local-mlx-hermes-4-70b",
             "model_name": "Hermes-4-70B (4-bit)",
@@ -171,14 +171,14 @@ class TestGetSlotInfo(unittest.TestCase):
 
     def test_no_endpoint_returns_empty_dict(self):
         boot_stub = mock.MagicMock()
-        boot_stub.load_endpoints = mock.Mock(return_value={})
+        boot_stub.load_routing_config = mock.Mock(return_value={})
         boot_stub.get_slot_endpoint = mock.Mock(return_value=None)
         sys.modules["orchestrator.boot"] = boot_stub
         self.assertEqual(get_slot_info("ghost"), {})
 
     def test_load_failure_returns_empty_dict(self):
         boot_stub = mock.MagicMock()
-        boot_stub.load_endpoints = mock.Mock(side_effect=OSError())
+        boot_stub.load_routing_config = mock.Mock(side_effect=OSError())
         boot_stub.get_slot_endpoint = mock.Mock()
         sys.modules["orchestrator.boot"] = boot_stub
         self.assertEqual(get_slot_info(), {})

@@ -49,10 +49,10 @@ def main():
 
     import pipeline_trace
     from boot import (
-        load_endpoints, load_mode, run_gear3, run_gear4,
+        load_routing_config, load_mode, run_gear3, run_gear4,
     )
 
-    config = load_endpoints()
+    config = load_routing_config()
     mode_text = load_mode(mode_name)
     if not mode_text:
         print(f"[error] mode file empty or missing: {mode_name}", file=sys.stderr)

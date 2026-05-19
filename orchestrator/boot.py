@@ -17,7 +17,6 @@ from datetime import datetime
 # Paths
 WORKSPACE = os.path.expanduser("~/ora/")
 BOOT_MD = os.path.join(WORKSPACE, "boot/boot.md")
-ENDPOINTS_JSON = os.path.join(WORKSPACE, "config/endpoints.json")
 ROUTING_CONFIG_JSON = os.path.join(WORKSPACE, "config/routing-config.json")
 TOOLS_DIR = os.path.join(WORKSPACE, "orchestrator/tools/")
 FRAMEWORKS_DIR = os.path.join(WORKSPACE, "frameworks/book/")
@@ -284,28 +283,19 @@ def load_routing_config() -> dict:
     Returns the parsed dict. On read failure returns a minimal stub so
     downstream code can degrade gracefully rather than crash.
 
-    Reads routing-config.json (v2) since install Chunk 12 step 5
-    (2026-05-19). Prior behaviour read endpoints.json (v1); the v1 file's
-    slot_assignments / gear4_overrides / default_endpoint /
-    operational_context were copied into routing-config.json in step 4 so
-    every downstream caller now sees the same data from the canonical
-    config. The v1 file is deleted in step 7.
-
-    ``load_endpoints`` is preserved below as a backward-compat alias for
-    the existing import statements; new callers should prefer
-    ``load_routing_config``. The alias is removed in step 7.
+    History: the v1 file config/endpoints.json was retired in install
+    Chunk 12 (2026-05-19). Its slot_assignments / gear4_overrides /
+    default_endpoint / operational_context fields were copied verbatim
+    into routing-config.json in step 4. This function (renamed from
+    load_endpoints in step 5) is the single config loader for boot.py
+    and its downstream callers; the backward-compat alias was removed
+    in step 7.
     """
     try:
         with open(ROUTING_CONFIG_JSON, "r") as f:
             return json.load(f)
     except Exception:
         return {"endpoints": [], "default_endpoint": None}
-
-
-# Backward-compat alias retained for the 10+ ``from boot import
-# load_endpoints`` import statements across the orchestrator. Both names
-# now read routing-config.json. Removed in install Chunk 12 step 7.
-load_endpoints = load_routing_config
 
 
 # --- V2 Router Integration ---
@@ -6408,7 +6398,7 @@ def run_pipeline(user_input: str, history: list = None,
     bug. Default False to preserve diagnostic coverage for normal
     conversations.
     """
-    config = load_endpoints()
+    config = load_routing_config()
 
     # --- Pipeline forensic trace — open the per-turn directory now so
     # every downstream step lands in the same place. Failure here is
@@ -8967,7 +8957,7 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
             raw = mlx_generate(model_obj, tokenizer, prompt=prompt, max_tokens=gen_tokens, verbose=False)
             return _extract_final_response(raw)
         except FileNotFoundError:
-            return f"[MLX model not found: '{model}' — check the model path in endpoints.json]"
+            return f"[MLX model not found: '{model}' — check the model_path on the local endpoint in routing-config.json]"
         except Exception as e:
             return f"[Error calling MLX model '{model}': {e}]"
     
@@ -9181,7 +9171,7 @@ def run_agentic_loop(user_input: str, history: list = None,
         return run_pipeline(user_input, history, output_target)
 
     # Legacy direct mode — bypass pipeline
-    config = load_endpoints()
+    config = load_routing_config()
     endpoint = get_active_endpoint(config)
 
     messages = history or []
@@ -9243,7 +9233,7 @@ def main():
     except ImportError:
         pass
 
-    config = load_endpoints()
+    config = load_routing_config()
     endpoint = get_active_endpoint(config)
     if endpoint:
         print(f"Active endpoint: {endpoint.get('name', 'unknown')}")

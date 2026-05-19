@@ -586,10 +586,10 @@ class ConsultationPackageWithVaultContext(unittest.TestCase):
                 vault_rag_context="",  # empty
             )
         self.assertEqual(out["consultation_trace"]["conflicts_count"], 0)
-        self.assertEqual(
-            out["consultation_trace"]["conflict_detection"]["status"],
-            "skipped",
-        )
+        cd = out["consultation_trace"]["conflict_detection"]
+        self.assertEqual(cd["status"], "skipped")
+        # Observability fix #1 — distinct reason code per gate.
+        self.assertEqual(cd["reason"], "no_vault_context")
 
     def test_conflict_detection_disabled_via_flag(self):
         intent_response = "INTENTS:\n- query: q\n  justification: j"
@@ -604,11 +604,43 @@ class ConsultationPackageWithVaultContext(unittest.TestCase):
                 conflict_detection_enabled=False,
             )
         self.assertEqual(out["consultation_trace"]["conflicts_count"], 0)
-        # Conflict detection branch never executed.
-        self.assertEqual(
-            out["consultation_trace"]["conflict_detection"]["status"],
-            "skipped",
+        cd = out["consultation_trace"]["conflict_detection"]
+        self.assertEqual(cd["status"], "skipped")
+        # Observability fix #1 — distinct reason for the disabled-flag path.
+        self.assertEqual(cd["reason"], "disabled_by_config")
+
+    def test_conflict_detection_skips_when_no_web_chunks(self):
+        # Zero intents → zero chunks → distinct skip reason "no_web_chunks".
+        out = web_consultation.assemble_consultation_package(
+            user_prompt="x",
+            call_model=_make_call_model("INTENTS:\n(none)", "FLAGS:\n(none)"),
+            fast_endpoint=_make_fast_endpoint(),
+            vault_rag_context="some vault content",  # non-empty
         )
+        cd = out["consultation_trace"]["conflict_detection"]
+        self.assertEqual(cd["status"], "skipped")
+        # Observability fix #1 — distinct reason for empty-chunks path.
+        self.assertEqual(cd["reason"], "no_web_chunks")
+
+    def test_consultation_trace_carries_intent_diagnostics(self):
+        # Observability fix #2/#3 — trace surfaces intent_raw_preview,
+        # intent_raw_chars, intent_call_elapsed_seconds so 0-intent
+        # outcomes can be debugged without per-call instrumentation.
+        intent_response = "INTENTS:\n(none)"  # parser sees no claims
+        out = web_consultation.assemble_consultation_package(
+            user_prompt="x",
+            call_model=_make_call_model(intent_response, "FLAGS:\n(none)"),
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        ct = out["consultation_trace"]
+        # Trace records what the model actually returned, so we can tell
+        # "(none)" (model decision) from a malformed parse failure.
+        self.assertEqual(ct["intent_raw_chars"], len(intent_response))
+        self.assertIn("INTENTS:", ct["intent_raw_preview"])
+        self.assertIn("(none)", ct["intent_raw_preview"])
+        # And the per-call latency is recorded for the observability budget.
+        self.assertIsInstance(ct["intent_call_elapsed_seconds"], float)
+        self.assertGreaterEqual(ct["intent_call_elapsed_seconds"], 0.0)
 
 
 if __name__ == "__main__":

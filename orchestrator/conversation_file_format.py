@@ -160,7 +160,7 @@ class ChunkYAML(BaseModel):
     )
     model_used: str = Field(
         description=(
-            "The model identifier from ``config/endpoints.json`` that "
+            "The model identifier from ``config/routing-config.json`` that "
             "produced the assistant response."
         )
     )

@@ -16,7 +16,7 @@ import requests
 WORKSPACE         = os.path.expanduser("~/ora/")
 CONVERSATIONS_DIR = os.path.expanduser("~/Documents/conversations/")
 CONVERSATIONS_RAW = os.path.expanduser("~/Documents/conversations/raw/")
-ENDPOINTS    = os.path.join(WORKSPACE, "config/endpoints.json")
+ROUTING_CONFIG = os.path.join(WORKSPACE, "config/routing-config.json")
 MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
 INTERFACE_JSON = os.path.join(WORKSPACE, "config/interface.json")
 LAYOUTS_DIR  = os.path.join(WORKSPACE, "config/layouts/")
@@ -32,12 +32,12 @@ sys.path.insert(0, WORKSPACE.rstrip("/"))
 
 # Import all shared functions from orchestrator
 from boot import (
-    load_boot_md, load_endpoints as load_config, get_active_endpoint as get_endpoint,
+    load_boot_md, load_routing_config as load_config, get_active_endpoint as get_endpoint,
     get_slot_endpoint, call_model, parse_tool_calls, strip_tool_calls, execute_tool,
     run_step1_cleanup, run_step2_context_assembly, build_system_prompt_for_gear,
     run_gear3, run_gear4, _run_model_with_tools, run_pipeline, parse_user_command,
     route_output, TOOLS_AVAILABLE, compare_intent_with_mode,
-    list_pickable_frameworks,
+    list_pickable_frameworks, vision_capable_for_endpoint,
 )
 from dispatcher import (
     dispatch as dispatcher_dispatch, set_permission_mode,
@@ -7178,7 +7178,7 @@ def capability_image_critique():
             # as it claims vision capability; else fall back to the picked
             # one above so we never silently drop the request.
             override_ep = _find_endpoint_by_id(provider_override)
-            if override_ep and override_ep.get("vision_capable", False):
+            if override_ep and vision_capable_for_endpoint(override_ep):
                 endpoint = override_ep
         raw = call_model(messages, endpoint, images=images)
     except Exception as exc:
@@ -7227,12 +7227,12 @@ def _pick_critique_vision_endpoint():
                 # Treat missing status as active (older configs); missing
                 # vision_capable is False by default below.
                 continue
-            if ep.get("vision_capable", False):
+            if vision_capable_for_endpoint(ep):
                 return ep
     # Second pass: scan flat endpoint list for any vision-capable active.
     for ep in endpoints:
         if (ep.get("enabled", False)
-                and ep.get("vision_capable", False)
+                and vision_capable_for_endpoint(ep)
                 and ep.get("status") in ("active", None)):
             return ep
     return None
@@ -8040,12 +8040,12 @@ def config_post():
         }), 400
 
     try:
-        with open(ENDPOINTS) as f:
+        with open(ROUTING_CONFIG) as f:
             cfg = json.load(f)
         cfg["slot_assignments"] = slot_assignments
         if gear4_overrides is not None:
             cfg["gear4_overrides"] = gear4_overrides
-        with open(ENDPOINTS, "w") as f:
+        with open(ROUTING_CONFIG, "w") as f:
             json.dump(cfg, f, indent=2)
         result = {"ok": True, "slot_assignments": slot_assignments}
         if gear4_overrides is not None:

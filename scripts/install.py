@@ -233,14 +233,14 @@ def step_openrouter_setup(state: dict, dry_run: bool) -> bool:
             save_state(state)
         return True
 
-    # Check if it's in the legacy endpoints.json (still gitignored)
-    endpoints_path = REPO_ROOT / "config" / "endpoints.json"
-    if endpoints_path.exists():
+    # Check if an OpenRouter endpoint is already configured in routing-config.json.
+    routing_config_path = REPO_ROOT / "config" / "routing-config.json"
+    if routing_config_path.exists():
         try:
-            with open(endpoints_path) as f:
-                ep = json.load(f)
-            if any("openrouter" in str(e).lower() for e in ep.get("endpoints", [])):
-                log("  ✓ OpenRouter endpoint configured in config/endpoints.json")
+            with open(routing_config_path) as f:
+                rc = json.load(f)
+            if any("openrouter" in str(e).lower() for e in rc.get("endpoints", [])):
+                log("  ✓ OpenRouter endpoint configured in config/routing-config.json")
                 if not dry_run:
                     state["steps_completed"].append("openrouter")
                     save_state(state)

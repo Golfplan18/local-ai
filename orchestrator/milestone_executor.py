@@ -187,7 +187,7 @@ def execute_framework(
     that specify per-step configuration.
     """
     # Lazy import of boot.py to avoid circular issues during testing
-    from boot import load_endpoints
+    from boot import load_routing_config
 
     # Lazy import of oversight events — keeps the executor usable
     # standalone when no oversight infrastructure is loaded.
@@ -198,7 +198,7 @@ def execute_framework(
             return None
 
     if config is None:
-        config = load_endpoints()
+        config = load_routing_config()
 
     fw = parse_framework_file(framework_path)
 

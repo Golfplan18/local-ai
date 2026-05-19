@@ -695,6 +695,7 @@ def assemble_consultation_package(
         user_prompt=user_prompt or "(empty)",
         conversation_context=conversation_context or "(none)",
     )
+    t_intent_start = time.time()
     try:
         intent_raw = call_model(
             [{"role": "system", "content": _INTENT_SYSTEM_PROMPT},
@@ -704,9 +705,25 @@ def assemble_consultation_package(
     except Exception as exc:
         signals.append(f"web_consultation_intent_call_error: {exc}")
         return _empty_package("errored", f"intent_call_error: {exc}")
+    intent_elapsed = time.time() - t_intent_start
 
     intents = _parse_intents(intent_raw or "")
     signals.append(f"web_consultation_intents_identified: {len(intents)}")
+    # Observability fix #3 — flag slow intent calls. The intent extractor
+    # runs on the step1_cleanup slot (fast cloud model). Anything over 10s
+    # is unusual (cold-start, rate-limit backoff, network stall). Flag so
+    # the trace surfaces the latency without needing per-call timestamps.
+    if intent_elapsed > 10:
+        signals.append(
+            f"web_consultation_intent_slow: {intent_elapsed:.1f}s "
+            f"(expected <5s for fast cloud model; check endpoint cold-start "
+            f"/ rate-limit / network stall)"
+        )
+    # Observability fix #2 — preserve raw model response (first 500 chars)
+    # so trace consumers can distinguish "model said (none)" from "model
+    # returned malformed output that didn't match the parser regex".
+    intent_raw_preview = (intent_raw or "")[:500]
+    intent_raw_chars = len(intent_raw or "")
 
     # --- Prompt-sanity check (parallel; one fast-model call) -----------
     # Kicked off alongside the per-intent queries below so we don't add
@@ -868,17 +885,32 @@ def assemble_consultation_package(
     # that the formatter surfaces as a [CONFLICT: ...] marker line.
     # The detector is instructed NOT to flag substantive disputed
     # vault content as "wrong" — those pass through untouched.
-    conflict_trace: dict = {
-        "status": "skipped",
-        "reason": "disabled_or_no_inputs",
-        "conflicts": [],
-    }
+    #
+    # Observability fix #1 — distinct skip reasons per gate. Previously
+    # all skips collapsed to "disabled_or_no_inputs" which made it
+    # impossible to tell which gate fired. Now: disabled_by_config /
+    # no_web_chunks / no_vault_context are emitted separately so the
+    # trace tells operators exactly why the detector skipped.
     conflicts_count = 0
-    if (
-        conflict_detection_enabled
-        and all_chunks
-        and (vault_rag_context or "").strip()
-    ):
+    if not conflict_detection_enabled:
+        conflict_trace = {
+            "status": "skipped",
+            "reason": "disabled_by_config",
+            "conflicts": [],
+        }
+    elif not all_chunks:
+        conflict_trace = {
+            "status": "skipped",
+            "reason": "no_web_chunks",
+            "conflicts": [],
+        }
+    elif not (vault_rag_context or "").strip():
+        conflict_trace = {
+            "status": "skipped",
+            "reason": "no_vault_context",
+            "conflicts": [],
+        }
+    else:
         try:
             detect_result = _detect_conflicts_against_vault(
                 all_chunks, vault_rag_context,
@@ -935,6 +967,12 @@ def assemble_consultation_package(
             "chunks_open": chunks_open,
             "conflicts_count": conflicts_count,
             "conflict_detection": conflict_trace,
+            # Observability fix #2/#3 — preserve the intent-call diagnostic
+            # data so trace consumers can debug 0-intent outcomes and slow
+            # cloud-model calls without needing per-call instrumentation.
+            "intent_call_elapsed_seconds": intent_elapsed,
+            "intent_raw_chars": intent_raw_chars,
+            "intent_raw_preview": intent_raw_preview,
             "elapsed_seconds": time.time() - t_start,
             "endpoint_used": endpoint_name,
             "signals": signals,

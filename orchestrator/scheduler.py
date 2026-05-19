@@ -36,12 +36,12 @@ def _save_registry(registry: dict):
 def _run_task(task: dict, registry: dict):
     """Execute a single scheduled task."""
     try:
-        from boot import load_boot_md, load_endpoints, get_slot_endpoint, call_model
+        from boot import load_boot_md, load_routing_config, get_slot_endpoint, call_model
     except ImportError as e:
         print(f"[scheduler] Import error: {e}")
         return
 
-    config = load_endpoints()
+    config = load_routing_config()
     slot = task.get("model_slot", "small")
     endpoint = get_slot_endpoint(config, slot)
     if not endpoint:

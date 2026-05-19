@@ -136,8 +136,8 @@ def compact_context(messages: list, call_model_fn, context_limit: int = 8192) ->
     ]
 
     try:
-        from boot import load_endpoints, get_slot_endpoint, get_active_endpoint
-        config = load_endpoints()
+        from boot import load_routing_config, get_slot_endpoint, get_active_endpoint
+        config = load_routing_config()
         endpoint = None
         endpoint_source = "unresolved"
         for slot in _COMPACTION_SLOT_ORDER:
