@@ -35,7 +35,7 @@ The canonical specification for the parity framework is `~/Documents/vault/Frame
 The mechanism is documented in `~/Documents/vault/Reference — Ora Project Plugin Convention.md`. Briefly:
 
 - A project lives anywhere on disk in a directory containing an `ora-project.json` manifest.
-- The manifest declares `tools` (project-specific Python helpers), `slash_commands` (chat-facing), `frameworks`, `peds`, `workflow_specs`, `chromadb_collections`.
+- The manifest declares `tools` (project-specific Python helpers), `slash_commands` (chat-facing), `frameworks`, `peds`, `workflow_specs`, `chromadb_collections`, and `capability_slots` (project-defined visual-capability slots merged into `capability_registry.py` at registry load; see Plugin Convention v1.1 §12).
 - Projects register with Ora by writing a pointer file at `~/ora/data/projects/<nexus>.json` — manually, programmatically, or via the `/project-register <path>` slash command.
 - Ora invokes project tools via `~/ora/orchestrator/project_registry.py::invoke_project_tool(nexus, name, args=...)` — subprocess with JSON-on-stdout contract, with `ORA_HOME` / `ORA_VAULT` / `ORA_PROJECT_NEXUS` / `ORA_PROJECT_ROOT` set in the env.
 - Frameworks reference tools by abstract name (`news-related-find`, `news-index`), never by file path. The dispatcher resolves at runtime against the registered project's manifest.
