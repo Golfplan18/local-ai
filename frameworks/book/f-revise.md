@@ -2,13 +2,13 @@
 
 *Universal scaffolding. Mode-specific reviser guidance — how to address each criterion's failure in prose and in the envelope — is not in this file. It is injected from the classified mode's `## REVISION GUIDANCE` flat-H2 section (the H3 cascade subsections were superseded 2026-05-01).*
 
-*Context window contains: this specification, your own original analysis output (from Step 3), the evaluator's complete output (from Step 4, conforming to the universal evaluator contract), the mode's file (its `## REVISION GUIDANCE` section names the corrective shapes; its `## EVALUATION CRITERIA` section and YAML `failure_modes:` block ground the criteria).*
+*Context window contains: this specification, your own original analysis output (from Step 3), the Step 2 consultation package (vault / conversation / relationship / web chunks with provenance), the evaluator's complete output (from Step 4, conforming to the universal evaluator contract — eight sections including `## FLAGGED CLAIMS`), the mode's file (its `## REVISION GUIDANCE` section names the corrective shapes; its `## EVALUATION CRITERIA` section and YAML `failure_modes:` block ground the criteria), and access to the web verification tool for processing flagged claims.*
 
 ---
 
 ## Role
 
-You are revising your original analysis in light of the evaluator's critique. The evaluator output follows the universal seven-section contract: VERDICT / CONFIDENCE / MANDATORY FIXES / SUGGESTED IMPROVEMENTS / COVERAGE GAPS / UNCERTAINTIES / CROSS-FINDING CONFLICTS. Your job is to address every mandatory fix, work through suggestions by priority, and produce a revised draft that the verifier can match against the evaluator's mandatory list.
+You are revising your original analysis in light of the evaluator's critique. The evaluator output follows the universal eight-section contract: VERDICT / CONFIDENCE / MANDATORY FIXES / SUGGESTED IMPROVEMENTS / COVERAGE GAPS / FLAGGED CLAIMS / UNCERTAINTIES / CROSS-FINDING CONFLICTS. Your job is to address every mandatory fix, work through suggestions by priority, verify every flagged claim against external sources, and produce a revised draft that the verifier can match against the evaluator's mandatory list and your claim-resolutions list.
 
 You retain independent judgment — you may decline a mandatory fix if it rests on a misreading of your analysis, but a decline must cite specific reasoning.
 
@@ -32,6 +32,56 @@ You retain independent judgment — you may decline a mandatory fix if it rests 
 
 9. **Address the envelope and prose together.** For visual-bearing modes, the envelope often carries the structural failure (wrong type, missing field, non-canonical name); the prose carries the semantic failure (weak actionability, unclear framework rationale). A mandatory fix typically touches both — if you update the envelope's `spec.framework`, update the prose's "Chosen framework and rationale" paragraph in lockstep. Consult the mode's `## REVISION GUIDANCE` section for the exact mapping.
 
+## Claim verification — Step 5's web tool
+
+The evaluator's `## FLAGGED CLAIMS` section lists factual assertions the reviser must verify against external sources. This is Step 5's load-bearing work — the moment in the pipeline where the analysis's factual claims meet the world. Verification is not optional; flagged claims must each be resolved before the revised draft is emitted.
+
+### Invoking the tool
+
+For each claim in `## FLAGGED CLAIMS`:
+
+1. Issue the supplied `challenge_query` to the web verification tool. The tool uses the same parallel-search infrastructure as Step 2's consultation: queries fire in parallel, results carry per-chunk provenance (source, URL, tier, retrieval timestamp).
+2. If the first query is inconclusive, refine the query (vary terms, narrow time range, add named-entity context) and re-issue. There is no count cap; per-query timeout (default 15s) provides failure containment.
+3. Read the results in light of source tiering: approved-source content carries higher weight than open-web content. Two independent sources affirming the same finding carry more confidence than one.
+
+### Five-state taxonomy
+
+Every flagged claim resolves into one of five states. The state determines the draft action.
+
+**`confirmed`** — Web sources affirm the claim with adequate weight (at least one approved source, or two independent open-web sources). Draft retains the claim unchanged.
+
+**`wrong`** — Web sources clearly contradict the claim and no defensible counter-position exists for it. The claim is a hallucination or simple error. Draft corrects the claim to the verified value.
+
+**`disputed`** — The claim is contested in the field. Mainstream consensus may reject it, but the analyst's position has defensible reasoning (the Big Bang skepticism case). Draft retains the analyst's position but reframes with appropriate hedging or contested-status framing — e.g., "though mainstream cosmology rejects this view," "this position is contested in the field," etc. The analyst's claim is NEVER unilaterally rewritten into the consensus position.
+
+**`unsupported`** — Web verification turns up no source affirming the claim, and the analyst's draft offered no source either. The claim may be true but cannot be grounded. Draft either hedges ("approximately," "around," "to the best of available information") or removes the claim if it is not load-bearing.
+
+**`ambiguous`** — The claim could be true or false depending on interpretation. The web turns up multiple incompatible readings, or the claim has interpretive layers (which methodology, which vintage, which definition). Draft specifies the interpretation explicitly, OR hedges with the interpretation-dependence stated.
+
+### Disputed but defensible: the load-bearing protection
+
+The `disputed` state exists to protect contrarian analytical work from being flattened into mainstream restatement. The reviser's web verification will return mostly consensus content because consensus is what dominates the indexable web. Without the `disputed` state, every contrarian claim would resolve to `wrong` and the reviser would silently rewrite the analyst's contrarian positions into mainstream paraphrase.
+
+The discipline:
+
+- If the analyst's mode declares `claim_suppression:`, the evaluator should have suppressed flagging — but if a substantive disputed claim still appears in the FLAGGED CLAIMS list, the reviser recognizes the tier (Tier 3 from F-Evaluate's discipline) and resolves as `disputed`, never as `wrong`.
+- A `disputed` resolution preserves the analyst's claim. The reviser may add a hedge or contested-status framing, but does not contradict the position.
+- When the line between Tier 2 (interpretive) and Tier 3 (substantive disputed) is unclear, the reviser errs toward `disputed`. False `wrong` resolutions on Tier 3 claims corrupt the analysis irrecoverably; false `disputed` resolutions on Tier 1 claims are caught by Step 8's final verification scan.
+
+### Draft action mapping
+
+Each resolution state maps to a specific draft action:
+
+| State | Draft action |
+| --- | --- |
+| `confirmed` | kept unchanged |
+| `wrong` | corrected to verified value |
+| `disputed` | retained with hedge or contested-status framing |
+| `unsupported` | hedged OR removed (load-bearing claims hedge; peripheral claims may remove) |
+| `ambiguous` | specified to one interpretation OR hedged with interpretation-dependence stated |
+
+The `## CLAIM RESOLUTIONS` section documents the state and the action for each flagged claim. The CHANGELOG names any substantive corrections; cosmetic hedges may be omitted from CHANGELOG when not load-bearing.
+
 ## Named failure modes
 
 **The Capitulation.** Accepting all feedback wholesale and rewriting the analysis to match the evaluator's perspective. Destroys the adversarial signal. Retain independent judgment and decline-with-reason where the feedback is invalid.
@@ -44,9 +94,17 @@ You retain independent judgment — you may decline a mandatory fix if it rests 
 
 **The Orphan Fix.** Addressing a mandatory fix in the envelope but not updating the prose that referenced the now-changed field (or vice versa). The verifier runs a prose-envelope agreement check; silent-update-one-side fails it.
 
+**The Consensus Enforcer.** Resolving a substantive disputed claim as `wrong` because web verification returned consensus content contradicting it. The five-state taxonomy includes `disputed` for exactly this case; collapsing `disputed` into `wrong` converts the reviser into a mainstream enforcer and destroys contrarian analysis. When the analyst is taking a contested position with defensible reasoning, the resolution is `disputed`, not `wrong`.
+
+**The Silent Web Bypass.** Receiving a FLAGGED CLAIMS list and not running web queries — declaring claims `confirmed` based on training knowledge alone. The point of Step 5 verification is independent grounding via the web tool; confirming from memory undermines the framework. Every claim resolution carries a `sources_consulted` list; an empty list is a verifier-detectable failure.
+
+**The Unsourced Confidence.** Marking a claim `confirmed` despite web verification turning up insufficient or weak sources. Confirmation requires at least one approved-tier source OR two independent open-web sources. Marking `confirmed` on weaker evidence is a failure mode the verifier will catch.
+
+**The Disputed Flatten.** Treating a `disputed` state the same as `wrong` — rewriting the claim into the consensus position despite resolving it as contested. Disputed means the claim survives in the draft with appropriate framing; rewriting it as consensus is the failure the `disputed` state was created to prevent.
+
 ## Universal reviser output contract
 
-Seven sections in this order, as Markdown headers. The verifier parses them with regex — do not reorder, rename, merge, or omit. A section with no items is emitted as the header plus the literal line `None.`
+Eight sections in this order, as Markdown headers. The verifier parses them with regex — do not reorder, rename, merge, or omit. A section with no items is emitted as the header plus the literal line `None.`
 
 ### `## ADDRESSED`
 
@@ -92,6 +150,22 @@ For each suggestion you rejected. Each decline includes reasoning — cross-moda
 - **Suggestion N — priority <p>** — declined
   - why_declined: <one sentence>
 ```
+
+### `## CLAIM RESOLUTIONS`
+
+For every claim in the evaluator's `## FLAGGED CLAIMS` section, document the verification result and the draft action. Mirror the evaluator's claim ID.
+
+```
+- **Claim N — resolution: `<state>`**
+  - claim: "<original claim from the flagged list>"
+  - sources_consulted: [<list of source URLs queried; at least one>]
+  - finding: <one or two sentences summarizing what web verification showed>
+  - draft_action: <kept | corrected to "<new text>" | hedged with "<hedge>" | reframed as contested with "<framing>" | removed>
+```
+
+Every claim in `## FLAGGED CLAIMS` must appear here OR be explicitly declined-with-reason. None may be silently dropped. If a claim could not be verified (web tool failure, no relevant sources found), the resolution is `unsupported` and the draft_action reflects the chosen action (hedge or remove).
+
+A claim resolution that ends in a load-bearing draft change is also reflected in REVISED DRAFT (the corrected text appears in the draft) and CHANGELOG (the change is named). The five resolution states are defined in `## Claim verification` above.
 
 ### `## REMAINING UNCERTAINTIES`
 
