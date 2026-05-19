@@ -37,7 +37,11 @@ import os
 import re
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    as_completed,
+    TimeoutError as FuturesTimeoutError,
+)
 from typing import Any, Callable, Optional
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -432,8 +436,25 @@ def assemble_consultation_package(
 
     # The executor handles both intent queries and the sanity check
     # together — both are bounded fast-model + http calls.
+    #
+    # Overall budget: per_query_timeout_seconds * 2. Queries fire in
+    # parallel, so even N intents should all complete in roughly
+    # per_query_timeout_seconds; the 2x buffer covers scheduling
+    # overhead and slow connections. as_completed's timeout argument is
+    # the *overall* bound on the loop — any future not done by then is
+    # cancelled and recorded as failed, preventing one hung
+    # web_search_structured call (the DDG library has no native
+    # timeout) from blocking the whole consultation.
+    overall_budget_seconds = per_query_timeout_seconds * 2
     max_workers = max(1, len(intents)) + (1 if prompt_sanity_enabled else 0)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    sanity_flags: list[dict] = []
+    # Manually managed executor so the budget-exceeded path can
+    # shutdown(wait=False) and return without waiting for hung futures
+    # to drain. See claim_verification.assemble_claim_verification_
+    # evidence for the same pattern.
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    budget_exceeded = False
+    try:
         # Submit the sanity check.
         if prompt_sanity_enabled:
             sanity_user = _SANITY_USER_TEMPLATE.format(
@@ -459,34 +480,56 @@ def assemble_consultation_package(
             for intent in intents
         }
 
-        # Collect intent results as they complete, with per-future timeout.
-        for fut in as_completed(intent_futures, timeout=None):
-            intent = intent_futures[fut]
-            try:
-                result = fut.result(timeout=per_query_timeout_seconds)
-                if result.get("error"):
+        # Collect intent results as they complete. The overall_budget
+        # bounds the entire loop; any future not done by then is
+        # cancelled and recorded as a timeout failure.
+        try:
+            for fut in as_completed(intent_futures,
+                                     timeout=overall_budget_seconds):
+                intent = intent_futures[fut]
+                try:
+                    result = fut.result(timeout=per_query_timeout_seconds)
+                    if result.get("error"):
+                        intents_failed.append({
+                            "intent": intent,
+                            "error": result["error"],
+                        })
+                        signals.append(
+                            f"web_consultation_intent_failed: "
+                            f"{intent['query'][:40]!r} — {result['error']}"
+                        )
+                    else:
+                        intent_results.append(result)
+                except Exception as exc:
                     intents_failed.append({
                         "intent": intent,
-                        "error": result["error"],
+                        "error": f"future_timeout_or_error: {exc}",
                     })
                     signals.append(
-                        f"web_consultation_intent_failed: "
-                        f"{intent['query'][:40]!r} — {result['error']}"
+                        f"web_consultation_intent_future_failed: "
+                        f"{intent['query'][:40]!r} — {exc}"
                     )
-                else:
-                    intent_results.append(result)
-            except Exception as exc:
-                intents_failed.append({
-                    "intent": intent,
-                    "error": f"future_timeout_or_error: {exc}",
-                })
-                signals.append(
-                    f"web_consultation_intent_future_failed: "
-                    f"{intent['query'][:40]!r} — {exc}"
-                )
+        except FuturesTimeoutError:
+            # Overall budget exhausted. Cancel + record any pending futures.
+            budget_exceeded = True
+            for fut, intent in intent_futures.items():
+                if not fut.done():
+                    fut.cancel()
+                    intents_failed.append({
+                        "intent": intent,
+                        "error": (
+                            f"overall_budget_exceeded: "
+                            f"{overall_budget_seconds}s"
+                        ),
+                    })
+                    signals.append(
+                        f"web_consultation_intent_budget_exceeded: "
+                        f"{intent['query'][:40]!r}"
+                    )
 
-        # Collect sanity-check result.
-        sanity_flags: list[dict] = []
+        # Collect sanity-check result. Bounded by per_query_timeout — if
+        # the sanity model hangs we degrade to no flags rather than
+        # blocking the package return.
         if sanity_future is not None:
             try:
                 sanity_raw = sanity_future.result(timeout=per_query_timeout_seconds)
@@ -499,8 +542,17 @@ def assemble_consultation_package(
                     signals.append(
                         f"web_consultation_sanity_flags: {len(sanity_flags)}"
                     )
+            except FuturesTimeoutError:
+                sanity_future.cancel()
+                signals.append(
+                    f"web_consultation_sanity_future_timed_out: "
+                    f"{per_query_timeout_seconds}s"
+                )
             except Exception as exc:
                 signals.append(f"web_consultation_sanity_future_failed: {exc}")
+    finally:
+        # On the budget-exceeded path, don't wait for hung futures.
+        executor.shutdown(wait=not budget_exceeded)
 
     # --- Aggregate scored chunks across intents ------------------------
     all_chunks: list[dict] = []

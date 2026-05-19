@@ -28,7 +28,11 @@ import os
 import re
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    as_completed,
+    TimeoutError as FuturesTimeoutError,
+)
 from typing import Any, Callable, Optional
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -291,12 +295,27 @@ def assemble_claim_verification_evidence(
         trusted_registry = web_corroboration.TrustedSourcesRegistry()
 
     # --- Parallel claim-query execution --------------------------------
+    # Overall budget: per_query_timeout_seconds * 2. Queries fire in
+    # parallel so all should finish in roughly per_query_timeout_seconds;
+    # the 2x buffer covers scheduling + slow connections. The timeout
+    # on as_completed is the load-bearing bound — web_search_structured
+    # has no native timeout, so a hung DDG request would otherwise hold
+    # the iterator forever.
     per_claim_evidence: list[dict] = []
     claims_failed = 0
     chunks_total = 0
     max_workers = max(1, len(flagged_claims))
+    overall_budget_seconds = per_query_timeout_seconds * 2
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    # Manually managed executor (not a `with` block) so the
+    # budget-exceeded path can call shutdown(wait=False) and return
+    # without waiting for hung futures to drain. The hung threads
+    # continue in the background until DDG times out at the HTTP layer
+    # (typically within seconds-to-minutes), but the pipeline isn't
+    # blocked on them.
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    budget_exceeded = False
+    try:
         future_to_claim = {
             executor.submit(
                 _execute_claim_query,
@@ -307,28 +326,58 @@ def assemble_claim_verification_evidence(
             for claim in flagged_claims
         }
 
-        for fut in as_completed(future_to_claim, timeout=None):
-            claim = future_to_claim[fut]
-            try:
-                result = fut.result(timeout=per_query_timeout_seconds)
-            except Exception as exc:
-                result = {
-                    "claim": claim,
-                    "query": claim["challenge_query"],
-                    "results": [],
-                    "chunks": [],
-                    "elapsed_seconds": per_query_timeout_seconds,
-                    "error": f"future_timeout_or_error: {exc}",
-                }
-            per_claim_evidence.append(result)
-            if result.get("error"):
-                claims_failed += 1
-                signals.append(
-                    f"claim_verification_failed: claim_num="
-                    f"{claim.get('claim_num')}, error={result['error']}"
-                )
-            else:
-                chunks_total += len(result.get("chunks", []))
+        try:
+            for fut in as_completed(future_to_claim,
+                                     timeout=overall_budget_seconds):
+                claim = future_to_claim[fut]
+                try:
+                    result = fut.result(timeout=per_query_timeout_seconds)
+                except Exception as exc:
+                    result = {
+                        "claim": claim,
+                        "query": claim["challenge_query"],
+                        "results": [],
+                        "chunks": [],
+                        "elapsed_seconds": per_query_timeout_seconds,
+                        "error": f"future_timeout_or_error: {exc}",
+                    }
+                per_claim_evidence.append(result)
+                if result.get("error"):
+                    claims_failed += 1
+                    signals.append(
+                        f"claim_verification_failed: claim_num="
+                        f"{claim.get('claim_num')}, error={result['error']}"
+                    )
+                else:
+                    chunks_total += len(result.get("chunks", []))
+        except FuturesTimeoutError:
+            # Overall budget exhausted. Cancel + record any pending
+            # futures as timeout failures.
+            budget_exceeded = True
+            for fut, claim in future_to_claim.items():
+                if not fut.done():
+                    fut.cancel()
+                    per_claim_evidence.append({
+                        "claim": claim,
+                        "query": claim["challenge_query"],
+                        "results": [],
+                        "chunks": [],
+                        "elapsed_seconds": overall_budget_seconds,
+                        "error": (
+                            f"overall_budget_exceeded: "
+                            f"{overall_budget_seconds}s"
+                        ),
+                    })
+                    claims_failed += 1
+                    signals.append(
+                        f"claim_verification_budget_exceeded: claim_num="
+                        f"{claim.get('claim_num')}"
+                    )
+    finally:
+        # On the budget-exceeded path, don't wait for hung futures to
+        # drain — that defeats the budget. Hung threads continue in
+        # the background until their network call eventually times out.
+        executor.shutdown(wait=not budget_exceeded)
 
     # Sort per-claim evidence by claim_num so the prompt block reads in
     # the same order the evaluator emitted.

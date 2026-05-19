@@ -259,6 +259,40 @@ class AssembleEvidence(unittest.TestCase):
         self.assertEqual(out["trace"]["claims_succeeded"], 1)
         self.assertIn("_no results returned_", out["evidence_text"])
 
+    def test_overall_budget_exceeded_marks_pending_as_failed(self):
+        # Simulate a hung DDG call: web_search_structured sleeps longer
+        # than the overall budget (per_query_timeout_seconds * 2). The
+        # as_completed loop's timeout argument fires; the pending future
+        # gets cancelled and recorded as a budget-exceeded failure
+        # rather than hanging the iterator forever.
+        import time
+        claim = {
+            "claim_num": 1, "claim_type": "x", "risk_level": "high",
+            "claim": "a", "why_flagged": "", "challenge_query": "q",
+        }
+
+        def hung_search(query, max_results=6):
+            time.sleep(2.0)  # well beyond the 0.1s * 2 = 0.2s budget
+            return []
+
+        with mock.patch.object(claim_verification, "web_search_structured",
+                                side_effect=hung_search):
+            out = claim_verification.assemble_claim_verification_evidence(
+                [claim],
+                per_query_timeout_seconds=0.1,
+            )
+        # Budget fired; the claim is recorded as failed with the
+        # overall_budget_exceeded marker.
+        self.assertEqual(out["trace"]["claims_failed"], 1)
+        self.assertEqual(out["trace"]["claims_succeeded"], 0)
+        self.assertEqual(len(out["per_claim_evidence"]), 1)
+        self.assertIn("overall_budget_exceeded",
+                       out["per_claim_evidence"][0].get("error", ""))
+        # And the function returned in roughly the budget time, not
+        # the full hung-search duration. Allow generous headroom for
+        # CI jitter.
+        self.assertLess(out["trace"]["elapsed_seconds"], 1.0)
+
 
 # ---------------------------------------------------------------------------
 # _format_evidence_block
