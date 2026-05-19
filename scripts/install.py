@@ -359,8 +359,29 @@ def step_smoke_test(state: dict, dry_run: bool) -> bool:
 # ─── Main ────────────────────────────────────────────────────────────────
 
 
+def _delegate_to_local_models(extra_argv: list[str]) -> int:
+    """Re-entry point for `install.py models …`: defers to scripts/local_models.py.
+
+    Lets users swap / add / remove local models any time post-install
+    without re-running the full install pipeline.
+    """
+    script = REPO_ROOT / "scripts" / "local_models.py"
+    if not script.exists():
+        print(f"[install] {script} missing", file=sys.stderr)
+        return 1
+    return subprocess.call([sys.executable, str(script), *extra_argv])
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Ora install script (Solo profile).")
+    # Subcommand support — primary path is the full install; secondary
+    # path is `install.py models` which re-enters the local-model
+    # selection flow standalone.
+    if len(sys.argv) >= 2 and sys.argv[1] == "models":
+        sys.exit(_delegate_to_local_models(sys.argv[2:]))
+
+    parser = argparse.ArgumentParser(
+        description="Ora install script (Solo profile). Subcommand: 'models' re-enters local-model selection.",
+    )
     parser.add_argument("--profile", choices=list(DEPLOYMENT_PROFILES.keys()), help="Skip the interactive profile prompt.")
     parser.add_argument("--dry-run", action="store_true", help="Preview actions without making changes.")
     parser.add_argument("--reset", action="store_true", help="Clear install state and exit.")
