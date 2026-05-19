@@ -72,19 +72,19 @@
     },
     "image_generates_cartoon": {
       "name": "image_generates_cartoon",
-      "summary": "Generate a Hector Rentier editorial cartoon. Slot-separated from `image_generates` (which serves news photos and general illustration) so the Civitai Hector LoRA is only ever invoked through the cartoon path. Per MSI Image Style Specification §5.8.1 (v1.9, 2026-05-12): preferred provider is `openai-gpt-image-1` for image quality; `civitai-hector-lora-v1` is the always-spec-compliant fallback that catches OpenAI moderation refusals and outages.",
+      "summary": "Generate an editorial cartoon. Slot-separated from `image_generates` (general image generation for news photos and illustration) so a style-locked LoRA fallback is only ever invoked on the cartoon path. Cascade pattern: a general-purpose image model preferred for artistic richness, with a style-locked LoRA fallback that catches moderation refusals and outages from the preferred model.",
       "required_inputs": [
         {
           "name": "prompt",
           "type": "text",
-          "description": "Hector cartoon prompt composed by `msi_image_render.construct_hector_prompt`. Includes §6.3 editorial-cartoon vocab + §6.5 forbidden-caricature negatives + Layer 3 composition spec. The LoRA dispatcher auto-prepends its activation token `hectorcartoon` when this slot's fallback fires."
+          "description": "Editorial-cartoon prompt, composed by the calling project's cartoon-rendering tool. When the LoRA fallback fires, the LoRA's own dispatcher auto-prepends its configured activation token."
         }
       ],
       "optional_inputs": [
         {
           "name": "style",
           "type": "text",
-          "description": "Style hint appended to the prompt; rarely used because the Hector framework's prompt composer already encodes the engraved-woodcut aesthetic.",
+          "description": "Style hint appended to the prompt; rarely used when the calling project's prompt composer already encodes a fixed aesthetic.",
           "default": null
         },
         {
