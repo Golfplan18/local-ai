@@ -12,7 +12,7 @@ Context window contains: this specification, the analyst's mode file (its `## EV
 
 ## Universal evaluator output contract
 
-Every evaluator output, regardless of mode or variant, must produce these seven sections in this order, as Markdown headers. The reviser parses these with regex — do not reorder, rename, merge, or omit them. A section with no findings is emitted as the header plus the literal line `None.`
+Every evaluator output, regardless of mode or variant, must produce these eight sections in this order, as Markdown headers. The reviser parses these with regex — do not reorder, rename, merge, or omit them. A section with no findings is emitted as the header plus the literal line `None.`
 
 ### `## VERDICT`
 
@@ -86,6 +86,33 @@ Format each gap as:
 - <contract clause / heading>: missing — <one sentence on what should have been produced>
 ```
 
+### `## FLAGGED CLAIMS`
+
+Scope: factual assertions in the draft that should be verified against external sources at Step 5. These are not findings about the analyst's reasoning — they are claims-to-be-checked, surfaced as data for the reviser. The evaluator does not run web queries itself; it identifies claims and the reviser does the verification.
+
+The narrow definition matters: only narrow checkable-reference facts get flagged. Substantive disputed positions, interpretive claims, contested theories, and the analyst's analytical conclusions are NOT flagged — those are the substance of the analysis itself. See `## Flagged-claims discipline` below for the three-tier definition.
+
+Every flagged claim carries these fields as a bulleted sub-list:
+
+- `claim` — the quoted passage where the factual assertion appears.
+- `claim_type` — one of: `dated-event` | `quantitative-figure` | `named-entity` | `quoted-attribution` | `cause-effect` | `technical-spec` | `general-reference`.
+- `why_flagged` — one sentence: is this load-bearing for the analysis? is it hallucination-prone? does it conflict with the consultation package's vault content? does it lack source attribution in the analyst's draft?
+- `challenge_query` — a search-engine-ready query the reviser can use as a starting point (one line).
+- `risk_level` — `high` | `moderate` | `low`. High: load-bearing claims whose error would invalidate the analysis. Moderate: supporting claims whose error would weaken but not invalidate. Low: peripheral claims worth a quick check.
+
+Format each flagged claim as:
+
+```
+- **Claim N — `<claim_type>` — risk: <level>**
+  - claim: "<quoted passage>"
+  - why_flagged: <one sentence>
+  - challenge_query: <one line>
+```
+
+Claims flagged in Step 2's consultation package as conflicting with vault content (`consultation_conflict: true`) automatically appear here with `why_flagged` naming the contradicting vault chunk. The evaluator does not need to re-discover the conflict; the consultation package surfaces it.
+
+When the analyst's mode declares a YAML `claim_suppression:` block, claims matching the suppression patterns are not flagged. Suppression is documented in the evaluator's CONFIDENCE rationale so the reviser knows what was left alone deliberately.
+
 ### `## UNCERTAINTIES`
 
 Scope: places where you the evaluator cannot tell whether a criterion holds. Each item names the criterion, the reason for uncertainty, and — if applicable — what additional information would resolve it.
@@ -109,6 +136,23 @@ Format each conflict as:
 ```
 
 If no conflicts exist, the section reads: `None.`
+
+## Flagged-claims discipline
+
+The fact-verification framework rests on a narrow definition of what counts as a "fact to be verified." Wider definitions are dangerous because they sweep substantive disputed content into the verification net, where the reviser's web tools — biased toward consensus sources — will reflexively contradict the user's contrarian positions. The narrow definition protects the analyst's analytical voice from being flattened into mainstream restatement.
+
+Three tiers of claim, only the first of which gets flagged:
+
+### Tier 1 — Checkable-reference facts (FLAG)
+Black-or-white binary truths anyone with internet access would settle the same way: dates, places, named entities, established historical events, standard reference data, technical specifications, direct attribution of quotes. The unemployment rate for Q2 2025. The capital of Ethiopia. The release year of Python 3.0. The full text of a quoted passage. Errors here are unintentional and would be corrected if the analyst could check. These flag.
+
+### Tier 2 — Interpretive-but-anchored claims (DO NOT FLAG; surface under SUGGESTED IMPROVEMENTS instead)
+Claims that look factual but have an interpretive wrapper — which methodology, which vintage, which definition. "The economy grew 2% last quarter" depends on which series, seasonal adjustment, pre/post-revision. The evaluator does NOT flag these for verification because consensus-source verification would not resolve them — the question is interpretive choice, not fact. Instead, surface them under SUGGESTED IMPROVEMENTS as places the analyst should specify its anchoring assumption.
+
+### Tier 3 — Substantive disputed claims (DO NOT FLAG; this is the analysis itself)
+Contested theories, contrarian positions, claims that mainstream consensus rejects but for which the analyst has reasoning. A paper arguing the Big Bang is wrong; an analysis claiming an intervention is more effective than its defenders concede; any analytical conclusion that involves taking a position. These are NOT facts to be verified — they are the analysis itself. Flagging them would convert the evaluator into a consensus enforcer, which would destroy the value of contrarian work and contradict the analyst's licence to take positions.
+
+The line between Tier 2 and Tier 3 is sometimes thin. When uncertain, the evaluator errs toward NOT flagging. False negatives (an actual error slips through) are recoverable at Step 5 and Step 8. False positives (substantive content flagged as error) corrupt the analysis and are not recoverable.
 
 ## Discipline rules (apply to every finding)
 
@@ -148,6 +192,7 @@ This file is universal. Anything mode-specific — what distinguishes a good eva
 
 - `## EVALUATION CRITERIA` — what to evaluate against, with the mode's CQ-series and its operative vocabulary
 - YAML `failure_modes:` block — the canonical failure-mode names and detection signals
+- YAML `claim_suppression:` block — claim patterns this mode does NOT flag for verification (used by interpretive-heavy modes — philosophical, theoretical, contrarian — to keep substantive content out of the verification net). Pattern syntax is mode-author's choice (string match, regex, or tag name).
 - `## REVISION GUIDANCE` — how revisions should address each criterion (used by the reviser; useful here for understanding what corrective shape the suggestions should take)
 
 The orchestrator (boot.py) extracts the mode's `## EVALUATION CRITERIA` section (via `_extract_section`) and appends it to your system prompt; the YAML `failure_modes:` block travels alongside as part of the mode file. If `## EVALUATION CRITERIA` is missing, flag the absence in UNCERTAINTIES and evaluate from the mode's overall structure directly.
