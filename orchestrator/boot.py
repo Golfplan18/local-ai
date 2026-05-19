@@ -5656,6 +5656,59 @@ def _extract_section(text: str, heading: str) -> str:
     return m.group(1).strip() if m else ""
 
 
+def _images_for_endpoint(images, endpoint):
+    """Return images only when the endpoint is vision-capable (Chunk 6 gate).
+
+    Used at non-analyst call sites (evaluator, reviser, verifier,
+    consolidator) where the slot's model may be text-only even though
+    the analyst was vision-capable. Passing raw images to a text-only
+    OpenRouter model returns 404; other providers silently drop the
+    image. Either failure mode is invisible to the trace, so the slot
+    fails opaquely. The analyst stage already runs the image extraction
+    fallback (image → spatial_representation text) upstream and the
+    extracted text rides in ``context_pkg``; the downstream non-analyst
+    steps don't need the raw image bytes when their model can't read
+    them.
+    """
+    if not endpoint:
+        return None
+    return images if endpoint.get("vision_capable", False) else None
+
+
+def _strip_annotated_image_clauses(format_guidance: str) -> str:
+    """Suppress annotated_image / Path B emission clauses for text-only formatters.
+
+    Used by ``build_system_prompt_for_gear`` when the formatter endpoint is
+    not vision-capable. Five modes carry annotated_image emission guidance —
+    spatial-reasoning, place-reading-genius-loci, information-density,
+    compositional-dynamics, ma-reading — instructing the model to emit
+    envelopes with normalized image-relative coordinates. A text-only model
+    can't produce accurate coordinates because it never saw the image; the
+    result is hallucinated annotations.
+
+    Strategy: append an explicit override at the end of the mode's
+    OUTPUT FORMAT GUIDANCE rather than regex-stripping the prior content.
+    The model's instruction-following resolves the conflict — later
+    instructions take precedence — and we avoid brittle regex that risks
+    fragmenting the surrounding list structure. Also makes the gating
+    visible in the trace.
+    """
+    if not format_guidance:
+        return format_guidance
+    override = (
+        "\n\n---\n\n"
+        "**Text-only formatter override (install Chunk 6 capability gate).** "
+        "The model running this formatter step is not vision-capable and "
+        "cannot see any attached image. Do NOT emit `annotated_image` "
+        "envelopes or any other artifact that requires image-relative "
+        "coordinates — any guidance above describing annotated overlays, "
+        "Path B emission, or normalized image coords is suppressed for "
+        "this run. Emit findings as prose only; reference visible regions "
+        "descriptively rather than by coordinate."
+    )
+    return format_guidance + override
+
+
 def _extract_boot_behavioral_preamble(boot_md: str) -> str:
     """Return the behavioral subset of boot.md for pipeline step prompts.
 
@@ -5758,6 +5811,7 @@ def build_system_prompt_for_gear(
     context_package: dict,
     slot: str = "breadth",
     step: str = "analyst",
+    endpoint_vision_capable: bool = True,
 ) -> str:
     """Build the system prompt for a pipeline model call from the context package.
 
@@ -5772,6 +5826,13 @@ def build_system_prompt_for_gear(
             ``analyst`` preserves pre-Phase-5 behaviour. The dispatch extracts
             one ``##`` mode-file section per step and injects it; sections
             belonging to other steps are suppressed.
+        endpoint_vision_capable: capability flag for the model that will
+            receive this prompt (install Chunk 6). When False AND
+            ``step == 'formatter'``, the mode's ``annotated_image`` /
+            Path B emission clauses are stripped from OUTPUT FORMAT
+            GUIDANCE and replaced with a prose-only note. Default True
+            preserves the pre-Chunk-6 behaviour (every step gets the
+            full guidance).
 
     Raises ``ValueError`` for unknown ``step`` values.
     """
@@ -5866,6 +5927,13 @@ def build_system_prompt_for_gear(
         # in f-format.md. During the Phase 2b migration transition the
         # section may be empty — the formatter defaults to flowing prose.
         if format_guidance:
+            # Install Chunk 6 capability gate: strip annotated_image /
+            # Path B emission clauses when the formatter endpoint can't
+            # see the image. A text-only formatter told to emit
+            # annotated_image envelopes with normalized image coords
+            # produces hallucinated annotations.
+            if not endpoint_vision_capable:
+                format_guidance = _strip_annotated_image_clauses(format_guidance)
             parts.append(
                 f"\n## MODE — {mode_name} — Output format guidance\n\n"
                 f"{format_guidance}"
@@ -6571,7 +6639,8 @@ def _strip_framework_documentation(text: str) -> str:
 
 
 def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
-                          framework_name: str | None) -> str:
+                          framework_name: str | None,
+                          endpoint_vision_capable: bool = True) -> str:
     """Phase 6 — compose a per-step system prompt for the pipeline.
 
     Combines the mode-specific per-step output of
@@ -6602,7 +6671,8 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
     ``_strip_framework_documentation``.
     """
     step_prompt = build_system_prompt_for_gear(
-        context_pkg, slot=slot, step=step
+        context_pkg, slot=slot, step=step,
+        endpoint_vision_capable=endpoint_vision_capable,
     )
     if framework_name:
         framework_text = _strip_framework_documentation(
@@ -7333,7 +7403,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "Evaluate per the universal seven-section contract."
         )},
     ]
-    breadth_evaluation = _run_model_with_tools(eval_messages, breadth_endpoint, images=images)
+    breadth_evaluation = _run_model_with_tools(
+        eval_messages, breadth_endpoint,
+        images=_images_for_endpoint(images, breadth_endpoint),
+    )
     _trace_step_g3("step4-eval", {
         "system_prompt": eval_system,
         "raw_response": breadth_evaluation,
@@ -7356,7 +7429,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "REMAINING UNCERTAINTIES / REVISED DRAFT / CHANGELOG in order."
         )},
     ]
-    revised_analysis = _run_model_with_tools(revise_messages, depth_endpoint, images=images)
+    revised_analysis = _run_model_with_tools(
+        revise_messages, depth_endpoint,
+        images=_images_for_endpoint(images, depth_endpoint),
+    )
     _trace_step_g3("step5-revised", {
         "system_prompt": revise_system,
         "raw_response": revised_analysis,
@@ -7384,7 +7460,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             )},
         ]
         try:
-            verified = _run_model_with_tools(verify_messages, breadth_endpoint, images=images)
+            verified = _run_model_with_tools(
+                verify_messages, breadth_endpoint,
+                images=_images_for_endpoint(images, breadth_endpoint),
+            )
         except Exception as e:
             verified = f"VERIFIER_EXCEPTION: {e}"
         # Three-way verdict classification (see _verifier_broken docstring
@@ -7428,7 +7507,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                 "mirror contract."
             )},
         ]
-        revised_analysis = _run_model_with_tools(re_revise_messages, depth_endpoint, images=images)
+        revised_analysis = _run_model_with_tools(
+            re_revise_messages, depth_endpoint,
+            images=_images_for_endpoint(images, depth_endpoint),
+        )
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
 
     if PIPELINE_TRACE_AVAILABLE and trace_dir:
@@ -7663,13 +7745,15 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": eval_a_user_message}],
-            breadth_endpoint, "evaluator", 150, None, images, context_pkg,
+            breadth_endpoint, "evaluator", 150, None,
+            _images_for_endpoint(images, breadth_endpoint), context_pkg,
         )
         eval_b_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": eval_b_user_message}],
-            depth_endpoint, "evaluator", 150, None, images, context_pkg,
+            depth_endpoint, "evaluator", 150, None,
+            _images_for_endpoint(images, depth_endpoint), context_pkg,
         )
         try:
             breadth_eval_of_depth, eval_a_ok, eval_a_reason = eval_a_future.result()
@@ -7723,13 +7807,15 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": depth_revise_user_message}],
-            depth_endpoint, "reviser", 200, None, images, context_pkg,
+            depth_endpoint, "reviser", 200, None,
+            _images_for_endpoint(images, depth_endpoint), context_pkg,
         )
         breadth_revise_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": breadth_revise_user_message}],
-            breadth_endpoint, "reviser", 200, None, images, context_pkg,
+            breadth_endpoint, "reviser", 200, None,
+            _images_for_endpoint(images, breadth_endpoint), context_pkg,
         )
         try:
             revised_depth, depth_rev_ok, depth_rev_reason = depth_revise_future.result()
@@ -7850,13 +7936,15 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 _run_model_with_tools,
                 [{"role": "system", "content": verify_system},
                  {"role": "user", "content": verify_depth_user_message}],
-                breadth_endpoint, images=images,
+                breadth_endpoint,
+                images=_images_for_endpoint(images, breadth_endpoint),
             )
             verify_breadth_future = executor.submit(
                 _run_model_with_tools,
                 [{"role": "system", "content": verify_system},
                  {"role": "user", "content": verify_breadth_user_message}],
-                depth_endpoint, images=images,
+                depth_endpoint,
+                images=_images_for_endpoint(images, depth_endpoint),
             )
             try:
                 depth_verdict = verify_depth_future.result()
@@ -8015,7 +8103,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     ]
     consolidated, consol_ok, consol_reason = _call_with_supplement(
         consolidate_messages, breadth_endpoint, "consolidator",
-        min_chars=300, retry_hint=None, images=images,
+        min_chars=300, retry_hint=None,
+        images=_images_for_endpoint(images, breadth_endpoint),
         context_pkg=context_pkg,
     )
     _record("step7-consolidated", consol_ok, consol_reason)
@@ -8059,9 +8148,15 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # scaffolding in f-format.md; per-mode placement spec in
     # `## OUTPUT FORMAT GUIDANCE` (empty during Phase 2b migration —
     # formatter defaults to flowing prose).
+    # Install Chunk 6: capability gate. The formatter step uses
+    # depth_endpoint; if that endpoint is text-only, suppress the mode's
+    # annotated_image / Path B emission guidance so it doesn't hallucinate
+    # image-relative coordinates it can't see.
+    formatter_vision_capable = bool(depth_endpoint.get("vision_capable", False)) if depth_endpoint else True
     format_system = _assemble_step_prompt(
         context_pkg, slot="depth", step="formatter",
         framework_name="f-format.md",
+        endpoint_vision_capable=formatter_vision_capable,
     )
     format_user_message = (
         f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
