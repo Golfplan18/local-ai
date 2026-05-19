@@ -293,16 +293,25 @@ def enrich_with_aa(catalog: list[dict], aa_data: dict) -> int:
     if not isinstance(rows, list):
         return 0
 
-    # Build both lookups for matching: by slug and by name.
+    def _norm(s: str) -> str:
+        # Critical for matching: OR slugs use dots ("kimi-k2.6", "qwen3.6-plus",
+        # "gpt-5.1"); AA slugs use hyphens ("kimi-k2-6", "qwen-3-6-plus",
+        # "gpt-5-1"). Without normalization, exact match always misses and the
+        # substring fallback attaches the OLDER model's rating to the NEWER
+        # variant (e.g., kimi-k2.6 mis-rated to old kimi-k2's int=26.3 instead
+        # of the real K2.6 int=53.9).
+        return (s or "").strip().lower().replace(".", "-")
+
+    # Build both lookups for matching: by slug and by name (both normalized).
     aa_by_slug = {}
     aa_by_name = {}
     for row in rows:
         if not isinstance(row, dict):
             continue
-        slug = (row.get("slug") or "").strip().lower()
+        slug = _norm(row.get("slug") or "")
         if slug:
             aa_by_slug[slug] = row
-        name = (row.get("name") or "").strip().lower()
+        name = _norm(row.get("name") or "")
         if name:
             aa_by_name[name] = row
 
@@ -328,30 +337,40 @@ def enrich_with_aa(catalog: list[dict], aa_data: dict) -> int:
             )
         return intelligence, blended
 
+    # Pre-sort substring candidates longest-first so specific matches
+    # beat generic ones (kimi-k2-6 wins over kimi-k2 when looking up
+    # OR's kimi-k2.6).
+    aa_slugs_by_length = sorted(aa_by_slug.keys(), key=len, reverse=True)
+    aa_names_by_length = sorted(aa_by_name.keys(), key=len, reverse=True)
+
     enriched = 0
     for entry in catalog:
         or_slug = entry.get("openrouter_slug") or entry.get("id") or ""
-        # OR slugs look like "provider/model-name"; AA slugs are just
-        # "model-name". Strip the provider prefix for matching.
-        slug_tail = or_slug.split("/", 1)[-1].lower()
-        display_lower = (entry.get("display_name") or "").lower()
+        slug_tail = _norm(or_slug.split("/", 1)[-1])
+        display_norm = _norm(entry.get("display_name") or "")
 
+        # 1. Exact slug match (after normalization). This is the path
+        #    that should fire for the vast majority of catalog entries
+        #    now that dots/hyphens are normalized.
         match = aa_by_slug.get(slug_tail)
+
+        # 2. Slug substring match, longest-first.
         if match is None:
-            # Try slug substring match (AA "kimi-k2-thinking" inside
-            # OR slug "moonshotai/kimi-k2-thinking")
-            for aa_slug, row in aa_by_slug.items():
+            for aa_slug in aa_slugs_by_length:
                 if aa_slug in slug_tail or slug_tail in aa_slug:
-                    match = row
+                    match = aa_by_slug[aa_slug]
                     break
+
+        # 3. Name exact match (normalized).
         if match is None:
-            # Name substring fallback
-            match = aa_by_name.get(display_lower)
-            if match is None:
-                for name, row in aa_by_name.items():
-                    if name in display_lower or display_lower in name:
-                        match = row
-                        break
+            match = aa_by_name.get(display_norm)
+
+        # 4. Name substring match, longest-first.
+        if match is None:
+            for name in aa_names_by_length:
+                if name in display_norm or display_norm in name:
+                    match = aa_by_name[name]
+                    break
 
         if match:
             intelligence, blended = _extract(match)
