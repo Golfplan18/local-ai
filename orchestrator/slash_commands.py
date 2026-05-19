@@ -1185,16 +1185,14 @@ def _cmd_render_figure(args: list[str]) -> str:
         else:
             return f"[/render-figure: unknown or malformed arg `{a}`]"
 
+    _ensure_msi_tools_on_path()
+    # Lazy import — keeps the slash command module light when not used
+    from data_viz_render import (
+        FigureRequest, render_figure,
+    )
     try:
-        # Lazy import — keeps the slash command module light when not used
-        from data_viz_render import (
-            FigureRequest, render_figure,
-        )
         from integrations.fred_api import SeriesQuery
     except ImportError:
-        from orchestrator.data_viz_render import (
-            FigureRequest, render_figure,
-        )
         from orchestrator.integrations.fred_api import SeriesQuery
 
     request = FigureRequest(
@@ -1284,17 +1282,12 @@ def _cmd_render_article_figures(args: list[str]) -> str:
             f"~/sites/mainstreetindependent/src/content/columns/.]"
         )
 
+    _ensure_msi_tools_on_path()
     # Lazy-load the module
-    try:
-        from article_data_viz import (
-            parse_article_file, render_figures_for_article,
-            analyze_article_for_data_viz,
-        )
-    except ImportError:
-        from orchestrator.article_data_viz import (
-            parse_article_file, render_figures_for_article,
-            analyze_article_for_data_viz,
-        )
+    from article_data_viz import (
+        parse_article_file, render_figures_for_article,
+        analyze_article_for_data_viz,
+    )
     try:
         from boot import call_model, load_endpoints, get_slot_endpoint
     except ImportError:
