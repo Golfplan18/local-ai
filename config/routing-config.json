@@ -35,13 +35,6 @@
       ],
       "_note": "General-purpose image generation slot. Serves news photos, illustration filler, and the eventual data-viz illustration fallback. Preferred = openai-gpt-image-1 (artistic richness, moderation-lottery on boundary-pushing prompts); Fallback 1 = Gemini 2.5 Flash Image (catches OpenAI safety_violations refusals); Fallback 2 = local-diffusers (SD 1.5 last-resort if both cloud providers fail). The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Editorial cartoons go through a separate slot (`image_generates_cartoon`) so style-locked LoRA fallbacks are only invoked on the cartoon path. DALL-E references removed 2026-05-12 per OpenAI's same-day shutdown announcement."
     },
-    "image_generates_cartoon": {
-      "preferred": "openai-gpt-image-1",
-      "fallback": [
-        "civitai-hector-lora-v1"
-      ],
-      "_note": "Editorial-cartoon image generation slot (introduced 2026-05-12), separated from `image_generates` so a style-locked LoRA fallback is only ever reached on the cartoon path. Preferred = a general-purpose image model for artistic richness; Fallback = a publisher-trained style-locked LoRA (e.g., a Civitai LoRA on a Flux base) that enforces project-specific composition constraints by construction. Cascade triggers: registry.invoke() falls through on prompt_rejected (preferred model's moderation refusal), quota_exceeded, or model_unavailable. The cascade does NOT catch a successful-but-spec-violating render from the preferred model \u2014 that requires a post-render verifier, which is the calling project's responsibility."
-    },
     "image_edits": {
       "preferred": "local-diffusers",
       "fallback": [

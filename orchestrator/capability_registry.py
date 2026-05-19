@@ -526,84 +526,46 @@ class CapabilityRegistry:
 # Convenience loader
 # ---------------------------------------------------------------------------
 
-# Hardwired slot-inheritance relationships per Image Spec §5.8.1 v2.0
-# (publisher direction 2026-05-13: "manage one chain in the UI; cartoon
-# inherits + appends the LoRA").
-#
-# Why hardwired rather than file-declared: the Visual settings UI auto-
-# saves routing-config.json on every edit, but doesn't understand the
-# ``inherits`` / ``append_fallback`` schema — UI writes serialize each
-# slot as standalone {preferred, fallback}, clobbering any inheritance
-# directives. Encoding the well-known cartoon relationship in code means
-# the UI can edit ``image_generates`` freely and the cartoon chain
-# follows automatically — there's nothing in the JSON for the UI to
-# overwrite. File-declared inheritance still works for slots not in this
-# mapping (the resolver below applies both layers in order).
-#
-# Format: child_slot → (parent_slot, [appended_fallbacks], [excluded_inherited])
-#
-# The exclude_inherited list (per Image Spec §5.8.1 v2.2 publisher
-# direction 2026-05-13) names providers the parent slot may legitimately
-# carry but that don't belong in the child's cartoon chain. Concrete
-# case: local-diffusers (Stable Diffusion 1.5) is a sensible last-resort
-# floor for news photos (image_generates) — but it actively damages the
-# cartoon path because (a) SD 1.5's CLIP tokenizer truncates anything
-# over 77 tokens and Hector's prompts run 800+, (b) SD 1.5's aesthetic
-# vocabulary doesn't include Nast cross-hatch, and (c) when SD 1.5
-# "succeeds" it stops the cascade before the LoRA (which is trained on
-# the exact Hector register and never refuses) gets reached. Excluding
-# it from the cartoon path is the publisher's structural fix for "the
-# LoRA never gets called" surfaced repeatedly across the 2026-05-13
-# moderation-lottery test runs.
-_HARDWIRED_SLOT_INHERITANCE: dict[str, tuple[str, list[str], list[str]]] = {
-    "image_generates_cartoon": (
-        "image_generates",
-        ["civitai-hector-lora-v1"],
-        ["local-diffusers"],
-    ),
-}
-
-
 def resolve_slot_inheritance(routing_config: dict) -> dict:
     """Materialize ``inherits`` / ``append_fallback`` / ``prepend_fallback``
-    directives in routing-config.json so every slot ends up with a fully
-    explicit ``preferred`` + ``fallback`` list.
+    / ``exclude_inherited`` directives in routing-config.json so every slot
+    ends up with a fully explicit ``preferred`` + ``fallback`` list.
 
-    Two inheritance sources, applied in order:
+    Directives may be declared in either the publisher's
+    ``routing-config.json::slots`` or in a project's manifest under
+    ``capability_slots[].routing`` (the project's directives are merged
+    into the in-memory routing config by
+    :func:`merge_project_capability_slots` before this resolver runs).
 
-    (1) **Hardwired relationships** (``_HARDWIRED_SLOT_INHERITANCE``).
-        Well-known parent/child pairs encoded in code so the relationship
-        survives UI-driven config rewrites. The current entry is
-        ``image_generates_cartoon`` inheriting from ``image_generates``
-        and appending ``civitai-hector-lora-v1`` per Image Spec §5.8.1 v2.0.
+    Per-slot directives::
 
-    (2) **File-declared inheritance**. Per-slot directives in routing-
-        config.json::
+      "some_slot": {
+        "inherits": "parent_slot",
+        "append_fallback": ["extra-provider"]
+      }
 
-          "some_slot": {
-            "inherits": "parent_slot",
-            "append_fallback": ["extra-provider"]
-          }
+    becomes, after resolution::
 
-    becomes, after resolution:
-
-      "image_generates_cartoon": {
-        "preferred": "<whatever image_generates.preferred is>",
-        "fallback": [...image_generates.fallback..., "civitai-hector-lora-v1"]
+      "some_slot": {
+        "preferred": "<whatever parent_slot.preferred is>",
+        "fallback": [...parent_slot.fallback..., "extra-provider"]
       }
 
     Rules:
-      * ``inherits`` names the parent slot to copy ``preferred`` + ``fallback`` from.
+      * ``inherits`` names the parent slot to copy ``preferred`` +
+        ``fallback`` from.
       * ``preferred`` declared on the child wins over the parent's.
       * ``fallback`` declared on the child replaces the parent's wholesale
-        (so a child can opt out of the parent's chain entirely). Note:
-        for hardwired entries, the parent's chain is always used as the
-        base — the hardwired child's existing fallback list is REPLACED
-        rather than merged, since the UI's serialized standalone shape
-        carries stale data when the parent's chain has been edited.
+        (so a child can opt out of the parent's chain entirely).
+      * ``exclude_inherited`` filters the parent's chain — any provider
+        whose id is in this list is dropped before prepend/append apply,
+        and if the parent's preferred is in the list, the child's
+        effective preferred falls through to whatever the prepend/append
+        layers supply.
       * ``prepend_fallback`` / ``append_fallback`` are *additive* to the
         effective (post-inheritance) ``fallback`` list, in order
-        prepend → inherited → append.
+        prepend → inherited → append. Neither is filtered by
+        ``exclude_inherited`` — the child explicitly added them.
       * Inheritance is single-level (no transitive resolution); cycles
         and missing parents are silent no-ops so a malformed config can't
         brick the whole registry.
@@ -617,29 +579,6 @@ def resolve_slot_inheritance(routing_config: dict) -> dict:
     if not isinstance(slots, dict):
         return routing_config
 
-    # Layer 1: hardwired relationships. Inject the directives if the
-    # slot exists; the merge logic below then materializes them.
-    for child_name, (parent_name, append, exclude) in _HARDWIRED_SLOT_INHERITANCE.items():
-        child_cfg = slots.get(child_name)
-        if not isinstance(child_cfg, dict):
-            # If the child slot doesn't exist at all, create it so the
-            # cartoon chain is reachable even on a freshly-built config.
-            child_cfg = {}
-            slots[child_name] = child_cfg
-        # Hardwire ALWAYS wins for the slots in the map, overriding any
-        # standalone {preferred, fallback} the UI may have written.
-        child_cfg["inherits"] = parent_name
-        child_cfg["append_fallback"] = list(append)
-        if exclude:
-            child_cfg["exclude_inherited"] = list(exclude)
-        # Wipe the standalone fields so the merge below treats parent's
-        # chain as the source of truth (the UI's serialized standalone
-        # values are stale for hardwired children).
-        child_cfg.pop("preferred", None)
-        child_cfg.pop("fallback", None)
-
-    # Layer 2: per-slot materialization (handles both layer-1 injections
-    # and any organically-declared inheritance).
     for child_name, child_cfg in list(slots.items()):
         if not isinstance(child_cfg, dict):
             continue

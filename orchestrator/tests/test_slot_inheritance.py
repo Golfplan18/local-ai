@@ -41,12 +41,12 @@ class ResolveSlotInheritanceTests(unittest.TestCase):
     """resolve_slot_inheritance() — materialization rules per spec §5.8.1 v2.0."""
 
     def test_basic_inheritance_with_append(self):
-        """Cartoon inherits parent's preferred + fallback; append goes at end.
+        """Child inherits parent's preferred + fallback; append goes at end.
 
-        Note: image_generates_cartoon is in _HARDWIRED_SLOT_INHERITANCE,
-        which excludes local-diffusers from the cartoon path per v2.2.
-        Fixtures here use providers NOT in the exclusion list so the
-        basic inheritance behavior is tested cleanly."""
+        Uses cartoon-shaped names as a recognizable example of the
+        inherits + append pattern that MSI's manifest declares post-§12-
+        migration (the cartoon-specific behavior is no longer hardwired
+        in core; the test fixture supplies the directives directly)."""
         cfg = {"slots": {
             "image_generates": {
                 "preferred": "openai-gpt-image-1",
@@ -69,12 +69,10 @@ class ResolveSlotInheritanceTests(unittest.TestCase):
         self.assertNotIn("append_fallback", cartoon)
         self.assertNotIn("exclude_inherited", cartoon)
 
-    def test_publisher_added_openrouter_providers_flow_through(self):
-        """If publisher adds OpenRouter providers to image_generates,
-        the cartoon slot inherits them in order. local-diffusers (per
-        v2.2 exclusion) is dropped from the cartoon chain — kept here
-        in the fixture to exercise the exclusion alongside the inherit
-        ordering."""
+    def test_exclude_inherited_drops_provider_from_chain(self):
+        """A child can declare exclude_inherited to drop a parent provider
+        from the inherited chain — relevant when the parent's chain holds
+        a sensible-for-the-parent provider that doesn't fit the child."""
         cfg = {"slots": {
             "image_generates": {
                 "preferred": "openrouter:openai/gpt-image-1",
@@ -86,25 +84,22 @@ class ResolveSlotInheritanceTests(unittest.TestCase):
             },
             "image_generates_cartoon": {
                 "inherits": "image_generates",
+                "exclude_inherited": ["local-diffusers"],
                 "append_fallback": ["civitai-hector-lora-v1"],
             },
         }}
         resolve_slot_inheritance(cfg)
         cartoon = cfg["slots"]["image_generates_cartoon"]
         self.assertEqual(cartoon["preferred"], "openrouter:openai/gpt-image-1")
-        # local-diffusers is excluded per the hardwired v2.2 exclusion
         self.assertEqual(cartoon["fallback"], [
             "gemini-2.5-flash-image",
             "openrouter:google/gemini-2.5-flash-image",
             "civitai-hector-lora-v1",
         ])
+        self.assertNotIn("local-diffusers", cartoon["fallback"])
 
-    def test_child_preferred_override_wins_for_non_hardwired(self):
-        """For slots NOT in the hardwired inheritance map, a child's
-        explicit ``preferred`` overrides the parent's. (The cartoon slot
-        is hardwired and intentionally ignores child-level preferred to
-        keep UI-driven config rewrites from clobbering inheritance — see
-        the hardwired-inheritance-wipes-stale-child-preferred test.)"""
+    def test_child_preferred_override_wins(self):
+        """A child's explicit ``preferred`` overrides the parent's."""
         cfg = {"slots": {
             "custom_parent": {"preferred": "p1", "fallback": ["f1"]},
             "custom_child": {
@@ -118,67 +113,41 @@ class ResolveSlotInheritanceTests(unittest.TestCase):
         self.assertEqual(child["preferred"], "p2")
         self.assertEqual(child["fallback"], ["f1", "x"])
 
-    def test_local_diffusers_excluded_from_cartoon_chain(self):
-        """v2.2 (2026-05-13): the hardwired inheritance for the cartoon
-        slot excludes local-diffusers from the inherited fallback chain.
-        SD 1.5 is a sensible last-resort for news photos but actively
-        damages the cartoon path — its CLIP tokenizer truncates Hector's
-        prompts at 77 tokens and its aesthetic vocabulary doesn't carry
-        the Nast cross-hatch. Excluding it means the cascade walks past
-        a failed cloud chain straight to the Hector LoRA (which IS
-        trained on Hector's register), instead of stopping at a broken
-        SD 1.5 render and never reaching the LoRA."""
-        cfg = {"slots": {
-            "image_generates": {
-                "preferred": "openrouter:openai/gpt-5.4-image-2",
-                "fallback": [
-                    "openrouter:openai/gpt-5-image",
-                    "openrouter:google/gemini-3-pro-image-preview",
-                    "local-diffusers",
-                ],
-            },
-        }}
-        resolve_slot_inheritance(cfg)
-        cartoon = cfg["slots"]["image_generates_cartoon"]
-        # local-diffusers should NOT appear anywhere in the cartoon chain
-        self.assertNotIn("local-diffusers", [cartoon["preferred"], *cartoon["fallback"]])
-        # LoRA must still be at the end as the safety-net floor
-        self.assertEqual(cartoon["fallback"][-1], "civitai-hector-lora-v1")
-        # The other inherited providers should be present in order
-        self.assertEqual(cartoon["fallback"], [
-            "openrouter:openai/gpt-5-image",
-            "openrouter:google/gemini-3-pro-image-preview",
-            "civitai-hector-lora-v1",
-        ])
-
-    def test_local_diffusers_remains_in_news_chain(self):
-        """The exclusion applies only to the cartoon path. local-diffusers
-        stays in image_generates so news photos still have a local
-        fallback when both cloud providers fail."""
+    def test_exclusion_does_not_affect_parent_chain(self):
+        """exclude_inherited applies to the child's inherited view of the
+        parent, not to the parent itself. Provider stays in the parent
+        slot's own fallback chain."""
         cfg = {"slots": {
             "image_generates": {
                 "preferred": "gemini-2.5-flash-image",
                 "fallback": ["local-diffusers"],
             },
+            "image_generates_cartoon": {
+                "inherits": "image_generates",
+                "exclude_inherited": ["local-diffusers"],
+                "append_fallback": ["civitai-hector-lora-v1"],
+            },
         }}
         resolve_slot_inheritance(cfg)
-        # News path unchanged
         self.assertEqual(cfg["slots"]["image_generates"]["fallback"],
                          ["local-diffusers"])
-        # Cartoon path excludes local-diffusers
         self.assertNotIn("local-diffusers",
                          cfg["slots"]["image_generates_cartoon"]["fallback"])
 
     def test_excluded_preferred_falls_through_to_inherited_fallback(self):
-        """If the parent's preferred is in the exclusion list, the child's
-        effective preferred falls through to the first inherited (or
-        appended) provider. Guards against the pathological case where
-        the publisher sets local-diffusers as preferred for image_generates
-        and expects the cartoon path to still function."""
+        """If the parent's preferred is in the child's exclusion list,
+        the child's effective preferred falls through (becomes None when
+        nothing else fills it). Guards against the pathological case where
+        the publisher sets an excluded provider as the parent's preferred."""
         cfg = {"slots": {
             "image_generates": {
                 "preferred": "local-diffusers",
                 "fallback": ["gemini-2.5-flash-image"],
+            },
+            "image_generates_cartoon": {
+                "inherits": "image_generates",
+                "exclude_inherited": ["local-diffusers"],
+                "append_fallback": ["civitai-hector-lora-v1"],
             },
         }}
         resolve_slot_inheritance(cfg)
@@ -188,39 +157,6 @@ class ResolveSlotInheritanceTests(unittest.TestCase):
         # Fallback chain still gets gemini + LoRA
         self.assertEqual(cartoon["fallback"],
                          ["gemini-2.5-flash-image", "civitai-hector-lora-v1"])
-
-    def test_hardwired_inheritance_wipes_stale_child_preferred(self):
-        """When the UI writes a standalone {preferred, fallback} block
-        for image_generates_cartoon (the v1.9 shape, which the Visual
-        settings panel keeps reverting to), the hardwired inheritance
-        layer wipes those stale values so the parent's preferred wins.
-        This is the load-bearing fix for the UI-clobbers-inheritance
-        problem surfaced 2026-05-13."""
-        cfg = {"slots": {
-            "image_generates": {
-                "preferred": "openrouter:google/gemini-3.1-flash-image-preview",
-                "fallback": ["gemini-2.5-flash-image", "local-diffusers"],
-            },
-            # The shape the UI auto-saves — hardcoded preferred + bare
-            # fallback, no inheritance directives. The hardwired layer
-            # has to override this.
-            "image_generates_cartoon": {
-                "preferred": "openai-gpt-image-1",       # stale
-                "fallback": ["civitai-hector-lora-v1"],  # stale
-            },
-        }}
-        resolve_slot_inheritance(cfg)
-        cartoon = cfg["slots"]["image_generates_cartoon"]
-        self.assertEqual(
-            cartoon["preferred"],
-            "openrouter:google/gemini-3.1-flash-image-preview",
-            "hardwired inheritance should pull preferred from image_generates",
-        )
-        self.assertEqual(cartoon["fallback"], [
-            "gemini-2.5-flash-image",
-            # local-diffusers excluded per v2.2 exclusion list
-            "civitai-hector-lora-v1",  # always appended by hardwired layer
-        ])
 
     def test_prepend_fallback_lands_before_inherited(self):
         cfg = {"slots": {

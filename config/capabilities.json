@@ -70,54 +70,6 @@
         }
       ]
     },
-    "image_generates_cartoon": {
-      "name": "image_generates_cartoon",
-      "summary": "Generate an editorial cartoon. Slot-separated from `image_generates` (general image generation for news photos and illustration) so a style-locked LoRA fallback is only ever invoked on the cartoon path. Cascade pattern: a general-purpose image model preferred for artistic richness, with a style-locked LoRA fallback that catches moderation refusals and outages from the preferred model.",
-      "required_inputs": [
-        {
-          "name": "prompt",
-          "type": "text",
-          "description": "Editorial-cartoon prompt, composed by the calling project's cartoon-rendering tool. When the LoRA fallback fires, the LoRA's own dispatcher auto-prepends its configured activation token."
-        }
-      ],
-      "optional_inputs": [
-        {
-          "name": "style",
-          "type": "text",
-          "description": "Style hint appended to the prompt; rarely used when the calling project's prompt composer already encodes a fixed aesthetic.",
-          "default": null
-        },
-        {
-          "name": "aspect_ratio",
-          "type": "enum",
-          "description": "Output aspect ratio.",
-          "default": "1:1",
-          "enum_values": ["1:1", "16:9", "9:16", "4:3", "3:4"]
-        }
-      ],
-      "output": {
-        "type": "image-bytes",
-        "description": "Cartoon image bytes; downstream pipeline vectorizes via mkbitmap + potrace and composites banner/signature overlays."
-      },
-      "execution_pattern": "sync",
-      "common_errors": [
-        {
-          "code": "model_unavailable",
-          "description": "No provider configured for this slot.",
-          "fix_path": "Verify openai-gpt-image-1 and civitai-hector-lora-v1 are registered; check API keys."
-        },
-        {
-          "code": "prompt_rejected",
-          "description": "Provider's content policy blocked the prompt.",
-          "fix_path": "Rephrase, switch provider, or cancel."
-        },
-        {
-          "code": "quota_exceeded",
-          "description": "Provider rate limit hit.",
-          "fix_path": "Wait or switch provider."
-        }
-      ]
-    },
     "image_edits": {
       "name": "image_edits",
       "summary": "Modify a region of an existing image (inpaint).",
