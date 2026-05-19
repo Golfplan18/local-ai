@@ -1,0 +1,66 @@
+{
+  "_schema_version": 1,
+  "_note": "Configuration presets consumed by scripts/auto-populate-configuration.py. Each preset declares the parameters of the Pareto + floor + cost-sort algorithm. Floor values are percentages of the top intelligence score within a bucket. Cost ceilings are $/M blended tokens. The 'mode' field switches the algorithm path: 'paid_intelligence' (Premium/Optimum/Budget) operates over paid models; 'free_intelligence' operates over the free models list with no cost math.",
+  "presets": {
+    "premium": {
+      "description": "Highest-ranking models available; cost ignored. Best-of-bucket per slot.",
+      "mode": "paid_intelligence",
+      "floor_pct": null,
+      "cost_ceiling_per_m": null,
+      "loosening": false
+    },
+    "optimum": {
+      "description": "Cheapest within the top 80% intelligence band. Most users land here.",
+      "mode": "paid_intelligence",
+      "floor_pct": 80,
+      "cost_ceiling_per_m": null,
+      "loosening": false
+    },
+    "budget": {
+      "description": "Cheapest within a looser 50% intelligence floor AND a cost ceiling. If fewer than top-N pass both bounds, the algorithm loosens floor first, then ceiling, until top-N pass. Loosening events are reported in the output metadata.",
+      "mode": "paid_intelligence",
+      "floor_pct": 50,
+      "cost_ceiling_per_m": 5.0,
+      "loosening": true
+    },
+    "free": {
+      "description": "Free-tier models only. Pareto-pruned, intelligence-descending. Free Models Router included as the first option when available.",
+      "mode": "free_intelligence",
+      "floor_pct": null,
+      "cost_ceiling_per_m": null,
+      "loosening": false
+    }
+  },
+  "slot_specs": {
+    "utility": {
+      "size_bucket": "small",
+      "cells": ["step1_cleanup", "classification", "rag_planner"],
+      "top_n": 2,
+      "diversity_excluded": false
+    },
+    "analysis.gear4": {
+      "size_bucket": "large",
+      "cells": ["depth", "breadth"],
+      "top_n": 3,
+      "diversity_excluded": true,
+      "_note": "When diversity is enforced for the workhorse pair, breadth picks exclude depth's primary so the second slot reaches for a different model family."
+    },
+    "analysis.gear3": {
+      "size_bucket": "large",
+      "cells": ["depth"],
+      "top_n": 3,
+      "diversity_excluded": false,
+      "_note": "gear3.breadth stays null — sequential mode uses depth only."
+    },
+    "post_analysis": {
+      "size_bucket": "large",
+      "cells": ["consolidation", "verification", "formatter"],
+      "top_n": 3,
+      "diversity_excluded": false
+    }
+  },
+  "vision_substitute": {
+    "size_bucket": "large",
+    "_note": "Vision substitute picks come from the large bucket filtered to vision_capable=True. Threaded into every cell's vision_substitute field."
+  }
+}
