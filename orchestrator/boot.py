@@ -6037,12 +6037,39 @@ def build_system_prompt_for_gear(
     if context_package.get("relationship_rag"):
         parts.append(f"\n## RELATIONSHIP CONTEXT\n\n{context_package['relationship_rag']}")
     if context_package.get("web_rag"):
-        # Step 2.5 anticipatory web supplement. Each chunk carries a
+        # Step 2 F-Consult web consultation. Each chunk carries a
         # `[classification: ... | weight: ... | source: <url>]` provenance
-        # marker so the model can weigh web content appropriately against
-        # vault content (web is lower-provenance by design — see
-        # Reference — Ora YAML Schema §15 EXTERNAL_WEIGHTS).
-        parts.append(f"\n## WEB CONTEXT (supplemental, lower provenance)\n\n{context_package['web_rag']}")
+        # marker (approved vs open-web tier, weight derived from tier).
+        # The model should weigh web content per the provenance markers —
+        # approved-tier sources higher, open-web lower, with duplication
+        # across vault/web/training as cross-confirmation signal.
+        parts.append(f"\n## WEB CONTEXT (Step 2 F-Consult consultation)\n\n{context_package['web_rag']}")
+
+    # Step 2 F-Consult prompt-sanity advisories. The fast model's light
+    # factual-sanity check may flag surface-level errors in the user's
+    # prompt (typos on dates, named-entity slips, mis-attributed quotes).
+    # Flags are advisory, not authoritative — if a flag is correct, the
+    # analyst should adjust its interpretation and surface the correction
+    # to the user; if a flag is wrong, ignore it. The check does NOT flag
+    # substantive disputed positions or contrarian content — only narrow
+    # checkable-reference facts. See Specification — F-Consult.md §5.
+    sanity_flags = context_package.get("prompt_sanity_flags") or []
+    if sanity_flags:
+        flag_lines = []
+        for i, flag in enumerate(sanity_flags, 1):
+            flag_lines.append(
+                f"{i}. **Claim:** {flag.get('claim', '(none)')}  \n"
+                f"   **Suspected error:** {flag.get('suspected_error', '(none)')}  \n"
+                f"   **Reasoning:** {flag.get('reasoning', '(none)')}"
+            )
+        parts.append(
+            "\n## PROMPT SANITY ADVISORIES (advisory, not authoritative)\n\n"
+            "The light factual-sanity check flagged the following surface-level "
+            "concerns in the user's prompt. These are advisory — verify and "
+            "address only if accurate; ignore if not.\n\n"
+            + "\n\n".join(flag_lines)
+        )
+
     if context_package.get("rag_utilization"):
         parts.append(f"\n{context_package['rag_utilization']}")
 
