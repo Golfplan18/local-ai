@@ -1905,11 +1905,38 @@
   "diversity": {
     "enabled": true
   },
+  "slot_assignments": {
+    "sidebar": "local-mlx-qwen3.5-27b-opus",
+    "step1_cleanup": "local-mlx-qwen3.5-27b-opus",
+    "classification": "local-mlx-qwen3.5-4b",
+    "breadth": "local-mlx-hermes-4-70b",
+    "depth": "local-mlx-kimi-dev-72b",
+    "evaluator": "local-mlx-kimi-dev-72b",
+    "consolidator": "local-mlx-hermes-4-70b",
+    "rag_planner": "local-mlx-qwen3.5-27b-opus"
+  },
+  "gear4_overrides": {
+    "depth": {
+      "enabled": false,
+      "endpoint": "gemini-api"
+    },
+    "breadth": {
+      "enabled": true,
+      "endpoint": "gemini-api"
+    }
+  },
+  "default_endpoint": "local-mlx-hermes-4-70b",
+  "operational_context": {
+    "interactive": ["local", "api"],
+    "autonomous": ["local"],
+    "agent":      ["local"]
+  },
   "_pipelines_retired": "Pipelines block removed in install Chunk 2d (2026-05-18). Replaced by config/configurations/<name>.json files. Router auto-derives config_name from context (interactive \u2192 user-pipeline; agent/autonomous \u2192 background-default) via DEFAULT_CONFIG_FOR_CONTEXT.",
   "_schema_notes": {
     "vision_capable_source_of_truth": "config/models.json is canonical. routing-config.json::endpoints[].vision_capable is a duplicate kept for backward compatibility; Router.vision_capable_for_endpoint() reads models.json first. Field removal from endpoints[] is queued as a follow-on task to install Chunk 12 — blocked on expanding models.json to per-variant entries since most routing-config endpoint ids (e.g. anthropic-api-opus-3) are not present in models.json today.",
     "vision_extraction_bucket_fallback_retired": "vision_extraction.preferred_extractor_bucket and .fallback_extractor_bucket were retired in install Chunk 12 (2026-05-19). route_for_image_input is slot-only — when the configured slot's chain produces no vision-input-capable entry, context_pkg['no_vision_available'] = True and WP-4.4 takes over.",
     "pipelines_block_retired": "See _pipelines_retired marker. Removed in install Chunk 2d (2026-05-18). All slot resolution flows through config/configurations/<name>.json via Router auto-derivation from context.",
-    "canonical_identifier_form": "TARGET: <provider>:<model_id> for cloud, bare id for local. CURRENT: mixed (some endpoints already use the prefix form, others use bare slugs). Migration to canonical form scheduled for Chunk 12."
+    "canonical_identifier_form": "TARGET: <provider>:<model_id> for cloud, bare id for local. CURRENT: mixed (some endpoints already use the prefix form, others use bare slugs). Migration to canonical form scheduled for Chunk 12.",
+    "v1_compat_fields_carried": "slot_assignments, gear4_overrides, default_endpoint, operational_context were added 2026-05-19 (install Chunk 12 step 4) so that load_endpoints() and its 10+ downstream callers in boot.py, compaction.py, scheduler.py, model_dispatch.py, milestone_executor.py, framework_input_gap.py, batch_processor.py, subagent.py can read this file in place of the legacy endpoints.json. The fields are seeded verbatim from endpoints.json. Step 5 repoints load_endpoints() at routing-config.json; step 7 deletes endpoints.json."
   }
 }
