@@ -1,6 +1,6 @@
 {
   "_schema_version": 1,
-  "_note": "Closed-proprietary model family classification rules. Used by scripts/refresh-catalog.py to assign a size_bucket and family_tier to cloud models whose parameter counts aren't published. Patterns are case-insensitive substrings matched against the OpenRouter slug or model_id. First matching rule wins per provider; if no rule matches, the model is left unclassified (size_bucket=null) and the auto-populate engine treats it as unknown-size (admissible only in expert mode).",
+  "_note": "Family classification rules for models whose parameter count isn't extractable from the slug. Two classes of provider need this: (a) closed proprietary that never publish params (Anthropic Haiku/Sonnet/Opus, OpenAI GPT family, Google Gemini Flash/Pro), and (b) commercial-style open-weights vendors who ship named tiers without an Nb suffix in the slug (DeepSeek V4 Pro, Qwen Plus/Max, Kimi K2/K2.6, GLM 5, Xiaomi Mimo, Hermes 4). Open-weights with explicit Nb in the slug (llama-70b, qwen3-32b, mistral-7b, gemma-9b) skip this layer entirely — refresh-catalog.py's infer_parameters_b_from_slug handles them. Patterns are case-insensitive substrings matched against the OpenRouter slug; first matching rule per provider wins. Unmatched models stay size_bucket=null (admissible only in expert mode).",
   "providers": {
     "anthropic": [
       {"pattern": "claude-haiku",  "family_tier": "fast",     "size_bucket": "small"},
@@ -32,6 +32,67 @@
       {"pattern": "gemini-pro",    "family_tier": "flagship", "size_bucket": "large"},
       {"pattern": "pro",           "family_tier": "flagship", "size_bucket": "large"},
       {"pattern": "ultra",         "family_tier": "flagship", "size_bucket": "large"}
+    ],
+    "deepseek": [
+      {"pattern": "v4-pro",        "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "v4-flash",      "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "v4-coder",      "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "v4",            "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "r1-distill",    "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "r1",            "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "v3.2",          "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "v3",            "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "chat",          "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "coder",         "family_tier": "mid",      "size_bucket": "midsize"}
+    ],
+    "qwen": [
+      {"pattern": "3.6-max",       "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "3.6-plus",      "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "qwen3.6-max",   "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "qwen3.6-plus",  "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "qwen-max",      "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "qwen-plus",     "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "qwen-turbo",    "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "qwq",           "family_tier": "flagship", "size_bucket": "large"}
+    ],
+    "moonshotai": [
+      {"pattern": "k2.6",          "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "k2-thinking",   "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "k2-instruct",   "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "k2",            "family_tier": "flagship", "size_bucket": "large"}
+    ],
+    "z-ai": [
+      {"pattern": "glm-5.1",       "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "glm-5-air",     "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "glm-5",         "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "glm-4.6",       "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "glm-4-plus",    "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "glm-4-air",     "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "glm-4-flash",   "family_tier": "fast",     "size_bucket": "small"}
+    ],
+    "xiaomi": [
+      {"pattern": "mimo-v2.5-pro", "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "mimo-v2-pro",   "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "mimo",          "family_tier": "mid",      "size_bucket": "midsize"}
+    ],
+    "nousresearch": [
+      {"pattern": "hermes-4",      "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "hermes-3",      "family_tier": "mid",      "size_bucket": "midsize"}
+    ],
+    "x-ai": [
+      {"pattern": "grok-4",        "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "grok-3-fast",   "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "grok-3-mini",   "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "grok-3",        "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "grok",          "family_tier": "flagship", "size_bucket": "large"}
+    ],
+    "inflection": [
+      {"pattern": "pi",            "family_tier": "mid",      "size_bucket": "midsize"}
+    ],
+    "cohere": [
+      {"pattern": "command-r-plus","family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "command-r",     "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "command-a",     "family_tier": "flagship", "size_bucket": "large"}
     ]
   },
   "size_bucket_definitions": {

@@ -39,6 +39,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -135,7 +136,7 @@ def classify_family(model_id: str, provider: str, family_rules: dict) -> tuple[s
 
 
 def size_bucket_from_parameters(params_b: float | int | None) -> str | None:
-    """Classify by parameter count when published (open-weights models).
+    """Classify by parameter count when known.
 
     < 12B  → small
     12-50B → midsize
@@ -149,6 +150,40 @@ def size_bucket_from_parameters(params_b: float | int | None) -> str | None:
     if params_b < 50:
         return "midsize"
     return "large"
+
+
+# Open-weights models typically carry their size in the slug
+# (meta-llama/llama-3.3-70b-instruct, qwen/qwen3-32b, mistralai/mistral-7b).
+# This regex matches a digit-then-b token bounded by hyphens / slashes /
+# colons / underscores / start-or-end-of-string. It deliberately ignores
+# in-word matches (so "v3b" version markers and "8x7b" MoE expressions
+# don't false-fire — the latter would match "7b" alone which we accept
+# as a known imprecision; Mixtral-class MoE landing in "small" is wrong
+# but Mixtral models are scarce in current catalogs).
+_SIZE_IN_SLUG = re.compile(
+    r'(?:^|[-/:_])(\d{1,3}(?:\.\d+)?)b(?:[-/:_.]|$)',
+    re.IGNORECASE,
+)
+
+
+def infer_parameters_b_from_slug(slug: str) -> float | None:
+    """Extract parameter count (in billions) from a model slug.
+
+    Matches patterns like ``70b`` ``27b`` ``7b`` ``8.1b`` when bounded
+    by slug delimiters. Returns None when no recognizable size pattern
+    appears (closed proprietary or named-tier products like
+    ``deepseek-v4-pro``, ``qwen-plus``, ``kimi-k2.6`` — those go through
+    family-classification instead).
+    """
+    if not slug:
+        return None
+    m = _SIZE_IN_SLUG.search(slug)
+    if not m:
+        return None
+    try:
+        return float(m.group(1))
+    except (TypeError, ValueError):
+        return None
 
 
 def blend_cost(input_per_m: float | None, output_per_m: float | None) -> float | None:
@@ -187,9 +222,15 @@ def normalize_openrouter_entry(entry: dict, family_rules: dict) -> dict:
     output_mods = arch.get("output_modalities") or []
     vision_capable = "image" in input_mods
 
-    # Parameter count: rarely populated in OpenRouter, but check anyway.
+    # Parameter count: rarely populated in OpenRouter directly, but the
+    # slug usually carries it for open-weights models (llama-3.3-70b,
+    # qwen3-32b, mistral-7b, gemma-2-9b, etc.). Fall through to family
+    # rules for closed proprietary (Haiku/Sonnet/Opus, GPT family,
+    # Gemini Flash/Pro) and named-tier products (DeepSeek V4 Pro,
+    # Qwen Plus/Max, Kimi K2.6, GLM, Mimo).
     params_b = entry.get("parameters_b")
-    # Family-tier classification: try parameter-count first, then family rules.
+    if params_b is None:
+        params_b = infer_parameters_b_from_slug(model_id)
     size_bucket = size_bucket_from_parameters(params_b)
     family_tier: str | None = None
     if size_bucket is None:

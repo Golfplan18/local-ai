@@ -43,6 +43,51 @@ class TestBlendCost(unittest.TestCase):
         self.assertIsNone(refresh_catalog.blend_cost(3.0, None))
 
 
+class TestInferParametersFromSlug(unittest.TestCase):
+    """Slug-based parameter inference for open-weights models that carry
+    size in their OpenRouter slug (llama-70b, qwen3-32b, mistral-7b, etc.)."""
+
+    def test_meta_llama_70b(self):
+        self.assertEqual(refresh_catalog.infer_parameters_b_from_slug("meta-llama/llama-3.3-70b-instruct"), 70.0)
+
+    def test_qwen_32b(self):
+        self.assertEqual(refresh_catalog.infer_parameters_b_from_slug("qwen/qwen3-32b"), 32.0)
+
+    def test_mistral_7b(self):
+        self.assertEqual(refresh_catalog.infer_parameters_b_from_slug("mistralai/mistral-7b-instruct-v0.3"), 7.0)
+
+    def test_gemma_9b(self):
+        self.assertEqual(refresh_catalog.infer_parameters_b_from_slug("google/gemma-2-9b-it"), 9.0)
+
+    def test_decimal_size(self):
+        self.assertEqual(refresh_catalog.infer_parameters_b_from_slug("nousresearch/hermes-3-llama-3.1-8.1b"), 8.1)
+
+    def test_405b(self):
+        self.assertEqual(refresh_catalog.infer_parameters_b_from_slug("meta-llama/llama-3.1-405b-instruct"), 405.0)
+
+    def test_closed_proprietary_returns_none(self):
+        # No Nb pattern → family-classification takes over
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug("anthropic/claude-opus-4-7"))
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug("openai/gpt-5"))
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug("google/gemini-3-pro"))
+
+    def test_named_tier_returns_none(self):
+        # Named tiers without Nb suffix → family-classification takes over
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug("deepseek/deepseek-v4-pro"))
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug("qwen/qwen3.6-plus"))
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug("moonshotai/kimi-k2.6"))
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug("z-ai/glm-5"))
+
+    def test_empty_returns_none(self):
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug(""))
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug(None))
+
+    def test_version_numbers_dont_match(self):
+        # "v3" is a version, not "3b"; we shouldn't false-fire on v3-style markers
+        # Pattern requires Nb followed by a delimiter or end; "v3-" doesn't end in b
+        self.assertIsNone(refresh_catalog.infer_parameters_b_from_slug("provider/model-v3-instruct"))
+
+
 class TestSizeBucketFromParameters(unittest.TestCase):
     """Open-weights models classified by published parameter count."""
 
@@ -219,60 +264,128 @@ class TestNormalizeOpenRouterEntry(unittest.TestCase):
         self.assertEqual(normalized["parameters_b"], 70)
         self.assertEqual(normalized["size_bucket"], "large")
 
+    def test_open_weights_inferred_from_slug(self):
+        # parameters_b not set in OR response; inferred from slug
+        entry = {
+            "id": "qwen/qwen3-32b",
+            "name": "Qwen 3 32B",
+            "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]},
+            "pricing": {"prompt": "0.000001", "completion": "0.000003"},
+        }
+        normalized = refresh_catalog.normalize_openrouter_entry(entry, self.rules)
+        self.assertEqual(normalized["parameters_b"], 32.0)
+        self.assertEqual(normalized["size_bucket"], "midsize")
+
+    def test_named_tier_falls_through_to_family_rules(self):
+        # No Nb in slug → falls through to family-classification.json
+        entry = {
+            "id": "deepseek/deepseek-v4-pro",
+            "name": "DeepSeek V4 Pro",
+            "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]},
+            "pricing": {"prompt": "0.0000005", "completion": "0.0000015"},
+        }
+        normalized = refresh_catalog.normalize_openrouter_entry(entry, self.rules)
+        self.assertIsNone(normalized["parameters_b"])  # not extracted from slug
+        # Family rule for deepseek v4-pro → large
+        self.assertEqual(normalized["size_bucket"], "large")
+        self.assertEqual(normalized["family_tier"], "flagship")
+
 
 class TestEnrichWithAA(unittest.TestCase):
-    """Artificial Analysis enrichment by display-name match."""
+    """Artificial Analysis enrichment using AA's actual nested schema:
 
-    def test_exact_name_match(self):
+        evaluations.artificial_analysis_intelligence_index
+        pricing.price_1m_blended_3_to_1
+    """
+
+    def test_slug_match_paid(self):
+        # AA's slug "gpt-5" matches OR's "openai/gpt-5" by slug-tail
         catalog = [{
-            "id": "openai/gpt-5", "display_name": "OpenAI: GPT-5",
+            "id": "openai/gpt-5", "openrouter_slug": "openai/gpt-5",
+            "display_name": "OpenAI: GPT-5",
             "aa_intelligence_index": None, "aa_blended_per_m": None,
         }]
         aa_data = {
-            "data": [
-                {"name": "openai: gpt-5", "intelligence_index": 78, "blended_cost_usd_per_million_tokens": 7.5},
-            ],
+            "data": [{
+                "name": "GPT-5", "slug": "gpt-5",
+                "evaluations": {"artificial_analysis_intelligence_index": 78.0},
+                "pricing": {"price_1m_blended_3_to_1": 7.5},
+            }],
         }
         enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
         self.assertEqual(enriched, 1)
-        self.assertEqual(catalog[0]["aa_intelligence_index"], 78)
+        self.assertEqual(catalog[0]["aa_intelligence_index"], 78.0)
         self.assertEqual(catalog[0]["aa_blended_per_m"], 7.5)
 
-    def test_substring_match(self):
+    def test_slug_substring_match(self):
+        # AA "kimi-k2-thinking" inside OR "moonshotai/kimi-k2-thinking"
+        catalog = [{
+            "id": "moonshotai/kimi-k2-thinking",
+            "openrouter_slug": "moonshotai/kimi-k2-thinking",
+            "display_name": "Moonshot: Kimi K2 Thinking",
+            "aa_intelligence_index": None, "aa_blended_per_m": None,
+        }]
+        aa_data = {
+            "data": [{
+                "name": "Kimi K2 Thinking", "slug": "kimi-k2-thinking",
+                "evaluations": {"artificial_analysis_intelligence_index": 50.0},
+                "pricing": {"price_1m_blended_3_to_1": 2.0},
+            }],
+        }
+        enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
+        self.assertEqual(enriched, 1)
+        self.assertEqual(catalog[0]["aa_intelligence_index"], 50.0)
+
+    def test_name_fallback_when_slug_misses(self):
+        # No slug match; falls through to name-substring
         catalog = [{
             "id": "anthropic/claude-opus-4-7",
+            "openrouter_slug": "anthropic/claude-opus-4-7",
             "display_name": "Anthropic: Claude Opus 4.7",
             "aa_intelligence_index": None, "aa_blended_per_m": None,
         }]
         aa_data = {
-            "data": [
-                {"name": "Claude Opus 4.7", "intelligence_index": 84, "blended_cost_usd_per_million_tokens": 22.0},
-            ],
+            "data": [{
+                "name": "Claude Opus 4.7", "slug": "some-totally-different-slug",
+                "evaluations": {"artificial_analysis_intelligence_index": 84.0},
+                "pricing": {"price_1m_blended_3_to_1": 22.0},
+            }],
         }
         enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
         self.assertEqual(enriched, 1)
-        self.assertEqual(catalog[0]["aa_intelligence_index"], 84)
+        self.assertEqual(catalog[0]["aa_intelligence_index"], 84.0)
 
     def test_no_match_leaves_entry_unchanged(self):
+        # Picked vocabulary that doesn't collide via substring matching
         catalog = [{
-            "id": "obscure/model", "display_name": "Obscure",
+            "id": "obscurevendor/xyzzy", "openrouter_slug": "obscurevendor/xyzzy",
+            "display_name": "Obscure Xyzzy",
             "aa_intelligence_index": None, "aa_blended_per_m": None,
         }]
-        aa_data = {"data": [{"name": "Different Model", "intelligence_index": 50}]}
+        aa_data = {"data": [{
+            "name": "Frobnicator Plus", "slug": "frobnicator-plus",
+            "evaluations": {"artificial_analysis_intelligence_index": 50.0},
+            "pricing": {"price_1m_blended_3_to_1": 1.0},
+        }]}
         enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
         self.assertEqual(enriched, 0)
         self.assertIsNone(catalog[0]["aa_intelligence_index"])
 
-    def test_alternative_field_names(self):
-        # Defensive against AA's schema evolution: tries multiple field names
+    def test_defensive_fallback_field_names(self):
+        # If AA renames a field in the future, fallback paths still catch it
         catalog = [{
-            "id": "x/y", "display_name": "X: Y",
+            "id": "x/y", "openrouter_slug": "x/y", "display_name": "X: Y",
             "aa_intelligence_index": None, "aa_blended_per_m": None,
         }]
-        aa_data = {"models": [{"model_name": "X: Y", "intelligence": 60, "blended_cost": 1.0}]}
+        aa_data = {"models": [{
+            "name": "X: Y", "slug": "y",
+            "evaluations": {"intelligence_index": 60.0},  # legacy fallback path
+            "pricing": {"blended_per_m": 1.0},            # legacy fallback path
+        }]}
         enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
         self.assertEqual(enriched, 1)
-        self.assertEqual(catalog[0]["aa_intelligence_index"], 60)
+        self.assertEqual(catalog[0]["aa_intelligence_index"], 60.0)
+        self.assertEqual(catalog[0]["aa_blended_per_m"], 1.0)
 
 
 class TestDetectChanges(unittest.TestCase):
