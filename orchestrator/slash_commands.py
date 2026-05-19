@@ -72,6 +72,24 @@ ORA_DIR = os.path.expanduser("~/ora/")
 DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
 DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
 
+
+def _ensure_msi_tools_on_path() -> None:
+    """Stopgap for the three MSI image-render commands defined in this
+    file (/hector-render, /news-image-render,
+    /render-missing-article-images). The render modules they import
+    (msi_image_render, article_image_sweeper) now live under MSI's
+    ora-project/tools/ per the Project Plugin Convention; this helper
+    makes them importable until the commands themselves move into MSI's
+    ora-project slash_commands registry as part of MSI plugin hygiene
+    cleanup step 3, at which point this helper and all three handlers
+    are removed from core Ora.
+    """
+    import sys
+    msi_tools = os.path.expanduser(
+        "~/sites/mainstreetindependent/ora-project/tools")
+    if msi_tools not in sys.path:
+        sys.path.insert(0, msi_tools)
+
 KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
                   "/deny", "/cleaning", "/news",
                   "/hector-render", "/news-image-render",
@@ -884,6 +902,7 @@ def _cmd_hector_render(args: list[str]) -> str:
     except OSError as exc:
         return f"[Could not read recipe: {exc}]"
 
+    _ensure_msi_tools_on_path()
     from msi_image_render import render_hector_cartoon
     result = render_hector_cartoon(recipe_data)
 
@@ -975,6 +994,7 @@ def _cmd_news_image_render(args: list[str]) -> str:
     except OSError as exc:
         return f"[Could not read request: {exc}]"
 
+    _ensure_msi_tools_on_path()
     from msi_image_render import render_news_image
     result = render_news_image(request_data)
 
@@ -1051,6 +1071,7 @@ def _cmd_render_missing_article_images(args: list[str]) -> str:
     dry_run = "--dry-run" in args
     include_drafts = "--include-drafts" in args
 
+    _ensure_msi_tools_on_path()
     from article_image_sweeper import sweep_once
     result = sweep_once(dry_run=dry_run, include_drafts=include_drafts)
 
