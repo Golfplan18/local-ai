@@ -141,14 +141,21 @@ class WebContextInjection(unittest.TestCase):
             self.assertIn("## WEB CONTEXT", prompt,
                           f"web context missing at step={step}")
 
-    def test_web_context_block_carries_lower_provenance_caveat(self):
-        # The header explicitly tells the model this is lower-provenance
-        # than vault content — preserves the analytical weighting story
-        # without requiring per-mode prompt edits.
+    def test_web_context_block_identifies_f_consult_consultation(self):
+        # F-Consult cutover (2026-05-19): the header now identifies the
+        # web stream as a Step 2 consultation rather than a "lower
+        # provenance" caveat, because per-chunk markers (tier + weight)
+        # carry the provenance information directly. The model weighs
+        # chunks via the markers; the header just names the source step.
         pkg = _minimal_context_pkg(web_rag="[classification: whitelisted | weight: 0.7 | source: x] body")
         prompt = boot.build_system_prompt_for_gear(pkg, slot="depth",
                                                     step="analyst")
-        self.assertIn("supplemental, lower provenance", prompt)
+        self.assertIn("## WEB CONTEXT", prompt)
+        self.assertIn("F-Consult", prompt)
+        # Per-chunk provenance still flows through to the prompt
+        # verbatim so the model can weigh tier + weight.
+        self.assertIn("classification: whitelisted", prompt)
+        self.assertIn("weight: 0.7", prompt)
 
 
 if __name__ == "__main__":

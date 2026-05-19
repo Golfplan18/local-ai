@@ -104,6 +104,22 @@ try:
 except ImportError:
     pass
 
+# Claim-verification pre-flight (Pattern B). Parses the evaluator's
+# FLAGGED CLAIMS section and runs each challenge_query in parallel; the
+# evidence text is injected into reviser + verifier USER messages so
+# both can ground their decisions in the same data. See
+# Specification — F-Revise.md §Claim verification and
+# Specification — F-Verify.md V9 for the consumer contracts.
+CLAIM_VERIFICATION_AVAILABLE = False
+try:
+    from claim_verification import (
+        parse_flagged_claims,
+        assemble_claim_verification_evidence,
+    )
+    CLAIM_VERIFICATION_AVAILABLE = True
+except ImportError:
+    pass
+
 # Pipeline forensic trace — per-turn structured record of every step's
 # inputs and outputs. Writes to ``~/ora/data/pipeline-traces/<conv>/<ts>/``.
 # Every helper is defensive (try/except wrapped); trace failure never
@@ -7429,6 +7445,67 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     return (text2 if ok2 else text2 or text), ok2, f"retry: {reason2}"
 
 
+def _run_claim_verification_preflight(
+    evaluator_output: str,
+    label: str = "",
+) -> tuple[str, dict]:
+    """Parse FLAGGED CLAIMS from evaluator output and assemble per-claim
+    web-verification evidence in parallel.
+
+    Returns ``(evidence_text, trace)``.
+
+      - ``evidence_text`` is a formatted ``## FLAGGED CLAIM EVIDENCE``
+        body suitable for direct injection into a reviser or verifier
+        USER message. Empty string when no claims were flagged or the
+        module is unavailable.
+
+      - ``trace`` is the operational metadata from
+        ``assemble_claim_verification_evidence``, or a minimal dict with
+        ``status`` and ``reason`` when the pre-flight skipped or errored.
+
+    ``label`` is a free-form string folded into the trace for cross-step
+    disambiguation (e.g. ``"depth-evaluation"`` vs
+    ``"breadth-evaluation"`` in Gear 4) so downstream pipeline-trace
+    dumps stay legible when two pre-flights ran per turn.
+
+    Fail-soft: any unexpected error returns an empty evidence_text and
+    an ``errored`` trace — never raises.
+    """
+    if not CLAIM_VERIFICATION_AVAILABLE:
+        return "", {
+            "status": "skipped",
+            "reason": "module_unavailable",
+            "label": label,
+        }
+    try:
+        claims = parse_flagged_claims(evaluator_output or "")
+    except Exception as exc:
+        return "", {
+            "status": "errored",
+            "reason": f"parse_failed: {str(exc)[:200]}",
+            "label": label,
+        }
+    if not claims:
+        return "", {
+            "status": "skipped",
+            "reason": "no_flagged_claims",
+            "claims_total": 0,
+            "label": label,
+        }
+    try:
+        result = assemble_claim_verification_evidence(claims)
+    except Exception as exc:
+        return "", {
+            "status": "errored",
+            "reason": f"assemble_failed: {str(exc)[:200]}",
+            "claims_total": len(claims),
+            "label": label,
+        }
+    trace = dict(result.get("trace", {}))
+    trace["label"] = label
+    return result.get("evidence_text", ""), trace
+
+
 def run_gear3(context_pkg: dict, config: dict, history: list = None, images: list = None,
               config_name: str | None = None) -> str:
     """Gear 3: Sequential adversarial review via Phase-5 cascade dispatch.
@@ -7530,21 +7607,53 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         "endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
     }, markdown=f"# Step 4 — Breadth evaluates Depth (Gear 3)\n\n{breadth_evaluation}\n")
 
-    # --- Step 5: Depth Reviser (mirror 7-section contract) ---
+    # --- Step 4.5: Claim verification pre-flight (Pattern B) ---
+    # Parse the evaluator's FLAGGED CLAIMS section and run each
+    # challenge_query in parallel via DuckDuckGo. The resulting evidence
+    # text is injected into both the reviser's (Step 5) and verifier's
+    # (Step 6) user messages so they ground their decisions in the same
+    # web evidence. See claim_verification.py.
+    claim_evidence_text, claim_evidence_trace = _run_claim_verification_preflight(
+        breadth_evaluation, label="gear3-eval",
+    )
+    _trace_step_g3("step4.5-claim-verification", {
+        "evidence_text": claim_evidence_text,
+        "trace": claim_evidence_trace,
+    }, markdown=(
+        "# Step 4.5 — Claim verification pre-flight (Gear 3)\n\n"
+        f"**Status:** `{claim_evidence_trace.get('status')}`  \n"
+        f"**Reason:** `{claim_evidence_trace.get('reason') or '_n/a_'}`  \n"
+        f"**Claims total:** {claim_evidence_trace.get('claims_total', 0)} "
+        f"(succeeded: {claim_evidence_trace.get('claims_succeeded', 0)}, "
+        f"failed: {claim_evidence_trace.get('claims_failed', 0)})\n\n"
+        f"## Evidence text\n\n"
+        + (f"{claim_evidence_text}\n" if claim_evidence_text else "_(none)_\n")
+    ))
+
+    # --- Step 5: Depth Reviser (mirror 8-section contract) ---
     revise_system = _assemble_step_prompt(
         context_pkg, slot="depth", step="reviser",
         framework_name="f-revise.md",
     )
+    revise_user = (
+        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+        f"## YOUR ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
+        f"## EVALUATOR'S CRITIQUE\n\n{breadth_evaluation}\n\n"
+    )
+    if claim_evidence_text:
+        revise_user += (
+            f"## FLAGGED CLAIM EVIDENCE (pre-flight web verification)\n\n"
+            f"{claim_evidence_text}\n\n"
+        )
+    revise_user += (
+        "Revise per the universal reviser output contract. Emit "
+        "ADDRESSED / NOT ADDRESSED / INCORPORATED / DECLINED / "
+        "CLAIM RESOLUTIONS / REMAINING UNCERTAINTIES / REVISED DRAFT / "
+        "CHANGELOG in order."
+    )
     revise_messages = [
         {"role": "system", "content": revise_system},
-        {"role": "user", "content": (
-            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-            f"## YOUR ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
-            f"## EVALUATOR'S CRITIQUE\n\n{breadth_evaluation}\n\n"
-            "Revise per the universal reviser output contract. Emit "
-            "ADDRESSED / NOT ADDRESSED / INCORPORATED / DECLINED / "
-            "REMAINING UNCERTAINTIES / REVISED DRAFT / CHANGELOG in order."
-        )},
+        {"role": "user", "content": revise_user},
     ]
     revised_analysis = _run_model_with_tools(
         revise_messages, depth_endpoint,
@@ -7564,17 +7673,26 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
 
     MAX_VERIFY_CYCLES = 2
     for cycle in range(MAX_VERIFY_CYCLES + 1):
+        verify_user = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            f"## ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
+            f"## EVALUATOR'S MANDATORY FIXES\n\n{breadth_evaluation}\n\n"
+            f"## REVISED ANALYSIS (reviser output)\n\n{revised_analysis}\n\n"
+        )
+        if claim_evidence_text:
+            verify_user += (
+                f"## FLAGGED CLAIM EVIDENCE (same pre-flight evidence the "
+                f"reviser saw — use for V9 CLAIM RESOLUTIONS audit)\n\n"
+                f"{claim_evidence_text}\n\n"
+            )
+        verify_user += (
+            "Run the universal V1-V9 checklist plus mode-specific "
+            "verifier checks. Conclude with VERIFIED / VERIFIED WITH "
+            "CORRECTIONS / VERIFICATION FAILED."
+        )
         verify_messages = [
             {"role": "system", "content": verify_system},
-            {"role": "user", "content": (
-                f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                f"## ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
-                f"## EVALUATOR'S MANDATORY FIXES\n\n{breadth_evaluation}\n\n"
-                f"## REVISED ANALYSIS (reviser output)\n\n{revised_analysis}\n\n"
-                "Run the universal V1-V8 checklist plus mode-specific "
-                "verifier checks. Conclude with VERIFIED / VERIFIED WITH "
-                "CORRECTIONS / VERIFICATION FAILED."
-            )},
+            {"role": "user", "content": verify_user},
         ]
         try:
             verified = _run_model_with_tools(
@@ -7898,6 +8016,22 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     if not eval_b_ok:
         depth_eval_of_breadth = "[no evaluator feedback this cycle — eval stream degraded]"
 
+    # --- Step 4.5: Claim verification pre-flight (Gear 4 — per-stream) ---
+    # Two pre-flights run, one per evaluation, because each reviser sees
+    # only the other stream's evaluator output and must verify the claims
+    # in that critique. The same per-stream evidence flows through to the
+    # corresponding verifier at Step 6 for V9 audit.
+    depth_claim_evidence_text, depth_claim_evidence_trace = (
+        _run_claim_verification_preflight(
+            breadth_eval_of_depth, label="gear4-eval-of-depth",
+        )
+    )
+    breadth_claim_evidence_text, breadth_claim_evidence_trace = (
+        _run_claim_verification_preflight(
+            depth_eval_of_breadth, label="gear4-eval-of-breadth",
+        )
+    )
+
     # --- Step 5: Parallel revisers (mirror contract) ---
     revise_system = _assemble_step_prompt(
         context_pkg, slot="depth", step="reviser",
@@ -7907,14 +8041,25 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
         f"## YOUR ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
         f"## EVALUATOR'S CRITIQUE\n\n{breadth_eval_of_depth}\n\n"
-        "Revise per the universal reviser output contract."
     )
+    if depth_claim_evidence_text:
+        depth_revise_user_message += (
+            f"## FLAGGED CLAIM EVIDENCE (pre-flight web verification)\n\n"
+            f"{depth_claim_evidence_text}\n\n"
+        )
+    depth_revise_user_message += "Revise per the universal reviser output contract."
+
     breadth_revise_user_message = (
         f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
         f"## YOUR ORIGINAL ANALYSIS\n\n{breadth_analysis}\n\n"
         f"## EVALUATOR'S CRITIQUE\n\n{depth_eval_of_breadth}\n\n"
-        "Revise per the universal reviser output contract."
     )
+    if breadth_claim_evidence_text:
+        breadth_revise_user_message += (
+            f"## FLAGGED CLAIM EVIDENCE (pre-flight web verification)\n\n"
+            f"{breadth_claim_evidence_text}\n\n"
+        )
+    breadth_revise_user_message += "Revise per the universal reviser output contract."
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         # B (image passthrough): revisers receive `images` so they can apply
@@ -8034,15 +8179,32 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             f"## REVISED DEPTH ANALYSIS\n\n{revised_depth}\n\n"
             f"## EVALUATOR'S MANDATORY FIXES\n\n"
             f"{breadth_eval_of_depth}\n\n"
-            "Run V1-V8 + mode-specific verifier checks. Conclude "
+        )
+        if depth_claim_evidence_text:
+            verify_depth_user_message += (
+                f"## FLAGGED CLAIM EVIDENCE (same pre-flight evidence the "
+                f"depth reviser saw — use for V9 CLAIM RESOLUTIONS audit)\n\n"
+                f"{depth_claim_evidence_text}\n\n"
+            )
+        verify_depth_user_message += (
+            "Run V1-V9 + mode-specific verifier checks. Conclude "
             "VERIFIED / VERIFIED WITH CORRECTIONS / VERIFICATION FAILED."
         )
+
         verify_breadth_user_message = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
             f"## REVISED BREADTH ANALYSIS\n\n{revised_breadth}\n\n"
             f"## EVALUATOR'S MANDATORY FIXES\n\n"
             f"{depth_eval_of_breadth}\n\n"
-            "Run V1-V8 + mode-specific verifier checks. Conclude "
+        )
+        if breadth_claim_evidence_text:
+            verify_breadth_user_message += (
+                f"## FLAGGED CLAIM EVIDENCE (same pre-flight evidence the "
+                f"breadth reviser saw — use for V9 CLAIM RESOLUTIONS audit)\n\n"
+                f"{breadth_claim_evidence_text}\n\n"
+            )
+        verify_breadth_user_message += (
+            "Run V1-V9 + mode-specific verifier checks. Conclude "
             "VERIFIED / VERIFIED WITH CORRECTIONS / VERIFICATION FAILED."
         )
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
