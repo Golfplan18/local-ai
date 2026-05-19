@@ -211,5 +211,41 @@ class TestConfigurationCacheClearsOnReload(unittest.TestCase):
         self.assertEqual(router._configurations, {})
 
 
+class TestVisionCapableLookup(unittest.TestCase):
+    """vision_capable_for_endpoint prefers models.json (Chunk 2e)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.router = Router()
+
+    def test_local_model_text_only(self):
+        # All local MLX models are text-only per models.json.
+        self.assertFalse(self.router.vision_capable_for_endpoint("local-mlx-hermes-4-70b"))
+        self.assertFalse(self.router.vision_capable_for_endpoint("local-mlx-kimi-dev-72b"))
+        self.assertFalse(self.router.vision_capable_for_endpoint("local-mlx-qwen3.5-4b"))
+
+    def test_unknown_endpoint_defaults_false(self):
+        self.assertFalse(self.router.vision_capable_for_endpoint("definitely-not-an-endpoint"))
+
+    def test_lookup_cached(self):
+        router = Router()
+        # Warm
+        router.vision_capable_for_endpoint("local-mlx-hermes-4-70b")
+        cache1 = router._vision_lookup_cache
+        # Second call returns cached
+        router.vision_capable_for_endpoint("local-mlx-kimi-dev-72b")
+        cache2 = router._vision_lookup_cache
+        self.assertIs(cache1, cache2)
+
+    def test_cache_cleared_on_reload(self):
+        router = Router()
+        # Warm
+        router.vision_capable_for_endpoint("local-mlx-hermes-4-70b")
+        self.assertIsNotNone(router._vision_lookup_cache)
+        # Reload clears via _build_lookup_tables
+        router.reload()
+        self.assertIsNone(router._vision_lookup_cache)
+
+
 if __name__ == "__main__":
     unittest.main()

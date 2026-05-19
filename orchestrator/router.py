@@ -146,6 +146,9 @@ class Router:
         # Named-configuration cache (Chunk 2b). Cleared on reload so file
         # edits to config/configurations/*.json take effect on next call.
         self._configurations: dict = {}
+        # models.json vision_capable lookup cache (Chunk 2e). Cleared on
+        # reload so edits to models.json also take effect immediately.
+        self._vision_lookup_cache = None
 
     def reload(self) -> bool:
         """Re-read the routing-config file and rebuild lookup tables.
@@ -575,6 +578,57 @@ class Router:
     #       → cells.post_analysis.formatter
     #   primary  (gear 2 single-pass)
     #       → cells.analysis.gear3.depth  (mirrors the legacy fallback)
+
+    # ── Chunk 2e: models.json as source of truth for vision_capable ──────
+    #
+    # vision_capable lives in two places today: routing-config.json::
+    # endpoints[].vision_capable and models.json::{local_models,
+    # commercial_models}[].vision_capable. They drift. Chunk 12 will
+    # remove the field from routing-config.json::endpoints[]. Until then,
+    # this helper centralizes the lookup with models.json preferred —
+    # callers that go through it get the source-of-truth answer; callers
+    # that read endpoint["vision_capable"] directly still work, they just
+    # see the duplicated copy.
+
+    def vision_capable_for_endpoint(self, endpoint_id: str) -> bool:
+        """Return whether the endpoint can read images natively.
+
+        Prefers models.json's value (source of truth per Chunk 2e).
+        Falls back to routing-config.json::endpoints[].vision_capable
+        when the model id isn't in models.json (e.g. browser endpoints).
+        Defaults to False when neither has the field.
+        """
+        models_map = self._models_json_vision_lookup()
+        if endpoint_id in models_map:
+            return models_map[endpoint_id]
+        ep = self._endpoints.get(endpoint_id, {})
+        return bool(ep.get("vision_capable", False))
+
+    def _models_json_vision_lookup(self) -> dict:
+        """Cached id → vision_capable map sourced from config/models.json.
+
+        Built lazily on first call; cleared by reload() via
+        _build_lookup_tables.
+        """
+        cached = getattr(self, "_vision_lookup_cache", None)
+        if cached is not None:
+            return cached
+
+        cache: dict = {}
+        models_path = CONFIG_DIR / "models.json"
+        try:
+            with open(models_path) as f:
+                data = json.load(f)
+            for key in ("local_models", "commercial_models"):
+                for m in data.get(key, []) or []:
+                    mid = m.get("id")
+                    if mid:
+                        cache[mid] = bool(m.get("vision_capable", False))
+        except Exception as exc:
+            print(f"[Router] models.json vision-capable lookup failed: {exc}")
+
+        self._vision_lookup_cache = cache
+        return cache
 
     def _resolve_config_name(self, config_name: str | None, context: str) -> str | None:
         """Derive the effective configuration name.
