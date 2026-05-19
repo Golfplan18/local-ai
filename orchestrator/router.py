@@ -30,6 +30,15 @@ from pathlib import Path
 
 CONFIG_DIR = Path(__file__).parent.parent / "config"
 ROUTING_CONFIG_PATH = CONFIG_DIR / "routing-config.json"
+CONFIGURATIONS_DIR = CONFIG_DIR / "configurations"
+
+# Default configuration name when one is not explicitly provided.
+# Maps from the legacy ``context`` parameter for backward compatibility.
+DEFAULT_CONFIG_FOR_CONTEXT = {
+    "interactive": "user-pipeline",
+    "agent": "background-default",
+    "autonomous": "background-default",
+}
 
 # Slots required at each gear level
 GEAR_SLOTS = {
@@ -134,6 +143,9 @@ class Router:
         self._machines = {m["id"]: m for m in self.config.get("machines", [])}
         self._buckets = self.config.get("buckets", {})
         self._diversity = (self.config.get("diversity") or {}).get("enabled", False)
+        # Named-configuration cache (Chunk 2b). Cleared on reload so file
+        # edits to config/configurations/*.json take effect on next call.
+        self._configurations: dict = {}
 
     def reload(self) -> bool:
         """Re-read the routing-config file and rebuild lookup tables.
@@ -167,20 +179,33 @@ class Router:
 
     def resolve_endpoint(self, slot: str, gear: int, context: str,
                          excluded_ids: set | None = None,
-                         same_machine_block: str | None = None) -> dict | None:
+                         same_machine_block: str | None = None,
+                         config_name: str | None = None) -> dict | None:
         """Resolve a single slot to a v2 endpoint dict.
 
         Args:
             slot: The pipeline slot to fill (depth, breadth, sidebar, etc.)
             gear: Current gear level being attempted
-            context: "interactive" or "agent"
+            context: "interactive" or "agent" (legacy path)
             excluded_ids: Endpoint IDs already assigned (for diversity)
             same_machine_block: Machine ID to block local endpoints from (MLX constraint)
+            config_name: When provided, resolve from config/configurations/<name>.json
+                instead of routing-config.json::pipelines[context]. Chunk 2b
+                introduces this path; legacy callers passing only ``context``
+                continue to use the pipelines block until Chunk 2d's cutover.
 
         Returns:
             v2 endpoint dict, or None if no eligible endpoint found.
         """
         excluded_ids = excluded_ids or set()
+
+        if config_name is not None:
+            return self._resolve_from_configuration(
+                slot, gear, config_name,
+                excluded_ids=excluded_ids,
+                same_machine_block=same_machine_block,
+            )
+
         bucket_order = self._get_bucket_order(slot, gear, context)
 
         if not bucket_order:
@@ -211,7 +236,8 @@ class Router:
 
         return None
 
-    def resolve_gear(self, gear: int, context: str) -> dict | None:
+    def resolve_gear(self, gear: int, context: str,
+                     config_name: str | None = None) -> dict | None:
         """Resolve all slots for a gear level.
 
         Returns dict of {slot: v2_endpoint} or None if any required slot can't be filled.
@@ -219,6 +245,10 @@ class Router:
         For multi-slot gears (3 and 4), the second slot prefers a different model
         than the first for adversarial diversity. Falls back to the same model if
         no alternative is available.
+
+        ``config_name`` (Chunk 2b) routes the resolution through a named
+        configuration in config/configurations/ rather than the legacy
+        pipelines[context] block.
         """
         slots = GEAR_SLOTS.get(gear, [])
         assignments = {}
@@ -241,6 +271,7 @@ class Router:
                     slot, gear, context,
                     excluded_ids={depth_id},
                     same_machine_block=same_machine_block,
+                    config_name=config_name,
                 )
 
                 # When diversity is enforced, do NOT fall back to the same model.
@@ -249,11 +280,13 @@ class Router:
                     ep = self.resolve_endpoint(
                         slot, gear, context,
                         same_machine_block=same_machine_block,
+                        config_name=config_name,
                     )
             else:
                 ep = self.resolve_endpoint(
                     slot, gear, context,
                     same_machine_block=same_machine_block,
+                    config_name=config_name,
                 )
 
             if ep is None:
@@ -263,7 +296,8 @@ class Router:
 
         return assignments
 
-    def execute(self, requested_gear: int, context: str = "interactive") -> RoutingResult:
+    def execute(self, requested_gear: int, context: str = "interactive",
+                config_name: str | None = None) -> RoutingResult:
         """Full routing with gear downgrade cascade.
 
         Tries the requested gear first. If any slot can't be filled, drops
@@ -272,7 +306,11 @@ class Router:
 
         Args:
             requested_gear: The gear level requested by the mode file (1-4).
-            context: "interactive" or "agent".
+            context: "interactive" or "agent" (legacy).
+            config_name: When provided, routes through the named configuration
+                in config/configurations/<name>.json. Chunk 2b adds this; the
+                ``context`` path remains for backward compatibility through
+                Chunk 2d's cutover.
 
         Returns:
             RoutingResult with assignments, effective gear, warnings, etc.
@@ -283,7 +321,7 @@ class Router:
         )
 
         for gear in range(requested_gear, 0, -1):
-            assignments = self.resolve_gear(gear, context)
+            assignments = self.resolve_gear(gear, context, config_name=config_name)
 
             if assignments is not None:
                 result.gear = gear
@@ -320,12 +358,19 @@ class Router:
         result.halt_reason = f"No endpoints available for any gear level (context={context})"
         return result
 
-    def resolve_utility_slot(self, slot: str, context: str = "interactive") -> dict | None:
+    def resolve_utility_slot(self, slot: str, context: str = "interactive",
+                             config_name: str | None = None) -> dict | None:
         """Resolve a utility slot (step1_cleanup, rag_planner) directly.
 
         These slots don't participate in the gear system — they always use
         the utility bucket order regardless of gear.
+
+        ``config_name`` (Chunk 2b) routes through a named configuration.
         """
+        if config_name is not None:
+            # Utility slots resolve at gear 1 for cell-path purposes.
+            return self._resolve_from_configuration(slot, 1, config_name)
+
         pipeline = self.config.get("pipelines", {}).get(context, {})
         utility = pipeline.get("utility", {})
 
@@ -348,11 +393,20 @@ class Router:
 
         return None
 
-    def resolve_post_analysis_slot(self, slot: str, context: str = "interactive") -> dict | None:
+    def resolve_post_analysis_slot(self, slot: str, context: str = "interactive",
+                                   config_name: str | None = None) -> dict | None:
         """Resolve a post-analysis slot (consolidation, verification).
 
         Uses the post_analysis bucket order, or cell-specific config if expanded.
+
+        ``config_name`` (Chunk 2b) routes through a named configuration.
         """
+        if config_name is not None:
+            # Post-analysis slots resolve at gear 4 for cell-path purposes
+            # (the gear value here is just for routing; post_analysis cells
+            # aren't gear-scoped).
+            return self._resolve_from_configuration(slot, 4, config_name)
+
         pipeline = self.config.get("pipelines", {}).get(context, {})
         post = pipeline.get("post_analysis", {})
 
@@ -375,20 +429,23 @@ class Router:
         return None
 
     def resolve_full_pipeline(self, requested_gear: int,
-                              context: str = "interactive") -> dict:
+                              context: str = "interactive",
+                              config_name: str | None = None) -> dict:
         """Resolve the entire pipeline: utility + analysis + post-analysis.
 
         Returns a dict with all resolved slots and metadata.
+
+        ``config_name`` (Chunk 2b) routes through a named configuration.
         """
         result = {}
 
         # Utility slots
         for slot in ["step1_cleanup", "rag_planner", "classification"]:
-            ep = self.resolve_utility_slot(slot, context)
+            ep = self.resolve_utility_slot(slot, context, config_name=config_name)
             result[slot] = self._to_v1_endpoint(ep) if ep else None
 
         # Analysis slots (with gear downgrade)
-        analysis = self.execute(requested_gear, context)
+        analysis = self.execute(requested_gear, context, config_name=config_name)
         result["_analysis"] = analysis
 
         if analysis.gear >= 3:
@@ -401,7 +458,7 @@ class Router:
 
         # Post-analysis slots
         for slot in ["consolidation", "verification"]:
-            ep = self.resolve_post_analysis_slot(slot, context)
+            ep = self.resolve_post_analysis_slot(slot, context, config_name=config_name)
             result[slot] = self._to_v1_endpoint(ep) if ep else None
 
         return result
@@ -484,6 +541,146 @@ class Router:
         return status
 
     # --- Private helpers ---
+
+    # ── Chunk 2b: named-configuration resolution path ────────────────────
+    #
+    # When a caller passes ``config_name``, slot resolution reads from a
+    # named configuration file in config/configurations/ (each cell holds
+    # primary + fallback[] + vision_substitute) instead of walking the
+    # legacy pipelines[context] → buckets[bucket_name] → endpoints[] chain.
+    # The two paths coexist through Chunk 2d, after which the bucket walk
+    # is retired.
+    #
+    # Slot-to-cell-path mapping (must stay in sync with get_slot_endpoint
+    # in boot.py — the slot-name vocabulary is the contract):
+    #
+    #   sidebar / step1_cleanup / rag_planner / classification
+    #       → cells.utility.<slot>
+    #   depth / breadth
+    #       → cells.analysis.gear{N}.<slot>
+    #   consolidator / consolidation
+    #       → cells.post_analysis.consolidation
+    #   evaluator / verification
+    #       → cells.post_analysis.verification
+    #   formatter
+    #       → cells.post_analysis.formatter
+    #   primary  (gear 2 single-pass)
+    #       → cells.analysis.gear3.depth  (mirrors the legacy fallback)
+
+    def _load_configuration(self, name: str) -> dict | None:
+        """Load (and cache) a named configuration from config/configurations/.
+
+        Returns the parsed dict or None if the file is missing or invalid.
+        The cache is keyed on name; :meth:`reload` clears it so file edits
+        take effect on the next call.
+        """
+        cached = self._configurations.get(name)
+        if cached is not None:
+            return cached
+
+        path = CONFIGURATIONS_DIR / f"{name}.json"
+        if not path.exists():
+            print(f"[Router] configuration not found: {path}")
+            return None
+
+        try:
+            with open(path) as f:
+                cfg = json.load(f)
+        except Exception as exc:
+            print(f"[Router] failed to load configuration {name}: {exc}")
+            return None
+
+        self._configurations[name] = cfg
+        return cfg
+
+    def _slot_to_cell_path(self, slot: str, gear: int) -> list | None:
+        """Map a slot name (plus optional gear) to a cell path inside
+        a configuration's ``cells`` dict.
+
+        Returns the list of keys to walk, or None if the slot has no
+        cell mapping (caller treats this as "no endpoint available").
+        """
+        if slot in ("sidebar", "step1_cleanup", "rag_planner", "classification"):
+            return ["utility", slot]
+        if slot in ("depth", "breadth"):
+            # Gear 1/2 don't have depth/breadth cells in a configuration;
+            # the gear downgrade cascade in execute() handles those cases
+            # by trying gear 3 first.
+            effective_gear = gear if gear >= 3 else 3
+            return ["analysis", f"gear{effective_gear}", slot]
+        if slot in ("consolidator", "consolidation"):
+            return ["post_analysis", "consolidation"]
+        if slot in ("evaluator", "verification"):
+            return ["post_analysis", "verification"]
+        if slot == "formatter":
+            return ["post_analysis", "formatter"]
+        if slot == "primary":
+            # Gear 2 single-pass historically falls through to a workhorse
+            # bucket; mirror that by reading the gear3.depth cell.
+            return ["analysis", "gear3", "depth"]
+        return None
+
+    def _resolve_from_configuration(
+        self,
+        slot: str,
+        gear: int,
+        config_name: str,
+        excluded_ids: set | None = None,
+        same_machine_block: str | None = None,
+    ) -> dict | None:
+        """Resolve a slot to a v2 endpoint dict using a named configuration.
+
+        Walks the cell's primary + fallback[] in order, applying the same
+        per-endpoint filters as the legacy bucket-walk path
+        (enabled, status==active, excluded_ids, same_machine_block).
+        """
+        cfg = self._load_configuration(config_name)
+        if cfg is None:
+            return None
+
+        cell_path = self._slot_to_cell_path(slot, gear)
+        if cell_path is None:
+            return None
+
+        cur: object = cfg.get("cells", {})
+        for key in cell_path:
+            if not isinstance(cur, dict):
+                return None
+            cur = cur.get(key)
+            if cur is None:
+                return None
+
+        if not isinstance(cur, dict):
+            return None
+
+        primary_id = cur.get("primary")
+        fallback_ids = cur.get("fallback") or []
+        candidates: list = []
+        if primary_id:
+            candidates.append(primary_id)
+        candidates.extend(fallback_ids)
+
+        excluded_ids = excluded_ids or set()
+        for ep_id in candidates:
+            if not ep_id:
+                continue
+            ep = self._endpoints.get(ep_id)
+            if not ep:
+                continue
+            if not ep.get("enabled", False):
+                continue
+            if ep.get("status") != "active":
+                continue
+            if ep_id in excluded_ids:
+                continue
+            if same_machine_block and ep.get("type") == "local":
+                if ep.get("machine") == same_machine_block:
+                    continue
+            return ep
+
+        return None
+
+    # ── legacy bucket-walk path ──────────────────────────────────────────
 
     def _get_bucket_order(self, slot: str, gear: int, context: str) -> list:
         """Get the ordered bucket list for a given slot/gear/context."""
