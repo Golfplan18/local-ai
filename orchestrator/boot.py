@@ -72,9 +72,9 @@ try:
 except ImportError:
     pass
 
-# Step 2.5 web-supplement loop (anticipatory web RAG). Optional: when
-# unavailable, run_step2_context_assembly emits a 'web_supplement_skipped'
-# signal and the pipeline proceeds with vault-only RAG.
+# Step 2.5 web-supplement loop (LEGACY — pre-F-Consult; superseded
+# 2026-05-19 by web_consultation below). Kept importable so the legacy
+# test suite continues to exercise the module until it is migrated.
 WEB_SUPPLEMENT_AVAILABLE = False
 try:
     from web_supplement import (
@@ -84,6 +84,23 @@ try:
         DEFAULT_SLOT as _WEB_SUPP_DEFAULT_SLOT,
     )
     WEB_SUPPLEMENT_AVAILABLE = True
+except ImportError:
+    pass
+
+# Step 2 F-Consult web consultation stream (parallel CAG; supersedes the
+# legacy web_supplement module as of 2026-05-19). When unavailable,
+# run_step2_context_assembly emits a 'web_consultation_skipped' signal
+# and the pipeline proceeds with vault-only RAG.
+WEB_CONSULTATION_AVAILABLE = False
+try:
+    from web_consultation import (
+        assemble_consultation_package,
+        DEFAULT_PER_QUERY_TIMEOUT_SECONDS as _WEB_CONSULT_DEFAULT_TIMEOUT,
+        DEFAULT_MAX_RESULTS_PER_QUERY as _WEB_CONSULT_DEFAULT_MAX_RESULTS,
+        DEFAULT_SLOT as _WEB_CONSULT_DEFAULT_SLOT,
+        DEFAULT_PROMPT_SANITY_ENABLED as _WEB_CONSULT_DEFAULT_SANITY,
+    )
+    WEB_CONSULTATION_AVAILABLE = True
 except ImportError:
     pass
 
@@ -5166,12 +5183,17 @@ _GEAR_SLOTS_USED = {
 
 
 def _load_web_supplement_config() -> dict:
-    """Read the ``web_supplement`` section from routing-config.json.
+    """Read the LEGACY ``web_supplement`` section from routing-config.json.
 
-    Defaults: ``enabled=True``, ``max_gaps=3``, ``max_attempts_per_gap=2``.
-    Missing file or missing section → defaults (treat as enabled). The
-    caller is responsible for layering its own ``enabled=False`` short-
-    circuit before doing anything expensive.
+    Deprecated 2026-05-19 (superseded by ``web_consultation``). The
+    function-level default for ``enabled`` is kept at True to match the
+    legacy test-suite contract (test_web_supplement_integration.py
+    asserts defaults when the section is missing). The live
+    routing-config.json now ships with ``web_supplement.enabled: false``
+    explicitly, so the production pipeline does not invoke the legacy
+    loop. Retained so the existing test_web_supplement.py suite can
+    still exercise the old module before its migration. New code should
+    call ``_load_web_consultation_config`` instead.
     """
     defaults = {
         "enabled": True,
@@ -5183,6 +5205,47 @@ def _load_web_supplement_config() -> dict:
             rc = json.load(f)
         section = rc.get("web_supplement") or {}
         return {**defaults, **section}
+    except Exception:
+        return defaults
+
+
+def _load_web_consultation_config() -> dict:
+    """Read the ``web_consultation`` section from routing-config.json.
+
+    Defaults: ``enabled=True``, ``per_query_timeout_seconds=15``,
+    ``max_results_per_query=6``, ``prompt_sanity.enabled=True``.
+    Missing file or missing section → defaults (treat as enabled). The
+    caller is responsible for layering its own ``enabled=False`` short-
+    circuit before doing anything expensive.
+
+    See ``Specification — F-Consult.md`` for the consultation contract.
+    """
+    defaults = {
+        "enabled": True,
+        "per_query_timeout_seconds": (
+            _WEB_CONSULT_DEFAULT_TIMEOUT if WEB_CONSULTATION_AVAILABLE else 15
+        ),
+        "max_results_per_query": (
+            _WEB_CONSULT_DEFAULT_MAX_RESULTS if WEB_CONSULTATION_AVAILABLE else 6
+        ),
+        "prompt_sanity": {
+            "enabled": (
+                _WEB_CONSULT_DEFAULT_SANITY if WEB_CONSULTATION_AVAILABLE else True
+            ),
+        },
+    }
+    try:
+        with open(ROUTING_CONFIG_JSON, "r") as f:
+            rc = json.load(f)
+        section = rc.get("web_consultation") or {}
+        # Shallow merge for top-level keys, deep merge for prompt_sanity.
+        merged = {**defaults, **section}
+        if "prompt_sanity" in section:
+            merged["prompt_sanity"] = {
+                **defaults["prompt_sanity"],
+                **(section.get("prompt_sanity") or {}),
+            }
+        return merged
     except Exception:
         return defaults
 
@@ -5361,66 +5424,72 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     trace_dir, "rag-engine-init-or-relationship", cleaned_prompt, e
                 )
 
-    # --- Step 2.5 — Web Supplement Loop (anticipatory) ---
+    # --- Step 2 — F-Consult Web Consultation (parallel CAG) ---
     # Runs ONLY when:
-    #   - the web_supplement module imported cleanly,
-    #   - routing-config.json has `web_supplement.enabled: true` (the
-    #     default — section absent is treated as enabled),
+    #   - the web_consultation module imported cleanly,
+    #   - routing-config.json has `web_consultation.enabled: true`
+    #     (the default — section absent is treated as enabled),
     #   - the dispatched gear is >= 2 (Gear 1 / bypass paths skip).
-    # The fast model (step1_cleanup slot) decides whether web is needed
-    # and, if so, iterates decide→search→evaluate per gap. Output is a
-    # pre-formatted "## WEB CONTEXT" body retrieved BEFORE the analyst
-    # runs — the existing mid-analysis Supplemental RAG Protocol stays as
-    # the rare-case fallback for gaps this pass didn't anticipate.
+    # The fast model (step1_cleanup slot) identifies search intents with
+    # justifications (anti-nitpicking enforced at the model layer); all
+    # intent queries fire in parallel via ThreadPoolExecutor with a
+    # per-query timeout. Output is a pre-formatted "## WEB CONTEXT" body
+    # retrieved BEFORE the analyst runs, plus optional prompt-sanity
+    # advisory flags. See Specification — F-Consult.md for the contract.
     web_rag = ""
-    web_supplement_trace: dict = {"status": "skipped", "reason": "not_attempted"}
-    if WEB_SUPPLEMENT_AVAILABLE and gear >= 2:
-        ws_cfg = _load_web_supplement_config()
-        if not ws_cfg.get("enabled", True):
-            web_supplement_trace = {"status": "skipped",
-                                     "reason": "disabled_in_routing_config"}
+    prompt_sanity_flags: list = []
+    consultation_trace: dict = {"status": "skipped", "reason": "not_attempted"}
+    if WEB_CONSULTATION_AVAILABLE and gear >= 2:
+        wc_cfg = _load_web_consultation_config()
+        if not wc_cfg.get("enabled", True):
+            consultation_trace = {"status": "skipped",
+                                  "reason": "disabled_in_routing_config"}
         else:
-            fast_ep = get_slot_endpoint(config, _WEB_SUPP_DEFAULT_SLOT)
+            fast_ep = get_slot_endpoint(config, _WEB_CONSULT_DEFAULT_SLOT)
             if fast_ep is None:
-                web_supplement_trace = {"status": "skipped",
-                                         "reason": "no_fast_endpoint"}
+                consultation_trace = {"status": "skipped",
+                                      "reason": "no_fast_endpoint"}
             else:
                 try:
-                    ws_result = assemble_web_supplemental_context(
+                    wc_result = assemble_consultation_package(
                         user_prompt=raw_prompt or cleaned_nl or cleaned_prompt,
                         call_model=call_model,
                         fast_endpoint=fast_ep,
                         conversation_context=(
                             conv_rag[:2000] if conv_rag else ""
                         ),
-                        max_gaps=ws_cfg.get(
-                            "max_gaps", _WEB_SUPP_DEFAULT_MAX_GAPS,
+                        per_query_timeout_seconds=wc_cfg.get(
+                            "per_query_timeout_seconds",
+                            _WEB_CONSULT_DEFAULT_TIMEOUT,
                         ),
-                        max_attempts_per_gap=ws_cfg.get(
-                            "max_attempts_per_gap",
-                            _WEB_SUPP_DEFAULT_MAX_ATTEMPTS,
+                        max_results_per_query=wc_cfg.get(
+                            "max_results_per_query",
+                            _WEB_CONSULT_DEFAULT_MAX_RESULTS,
+                        ),
+                        prompt_sanity_enabled=(
+                            (wc_cfg.get("prompt_sanity") or {}).get(
+                                "enabled", _WEB_CONSULT_DEFAULT_SANITY,
+                            )
                         ),
                     )
-                    web_rag = ws_result.get("text") or ""
-                    web_supplement_trace = {
+                    web_rag = wc_result.get("web_rag") or ""
+                    prompt_sanity_flags = wc_result.get(
+                        "prompt_sanity_flags", []
+                    ) or []
+                    consultation_trace = wc_result.get("consultation_trace") or {
                         "status": "ran",
-                        "text_chars": len(web_rag),
-                        "decision": ws_result.get("decision"),
-                        "gaps_processed": ws_result.get("gaps_processed", []),
-                        "signals": ws_result.get("signals", []),
-                        "elapsed_seconds": ws_result.get("elapsed_seconds"),
-                        "endpoint_used": ws_result.get("endpoint_used"),
+                        "reason": "consultation_trace_missing_in_result",
                     }
                 except Exception as exc:
-                    # Fail-soft: any unexpected error in the supplement
-                    # loop must not block the pipeline.
+                    # Fail-soft: any unexpected error in the consultation
+                    # must not block the pipeline.
                     print(
-                        f"[web-supplement] unexpected error: {exc}. "
+                        f"[web-consultation] unexpected error: {exc}. "
                         f"Continuing with vault-only RAG.",
                         file=sys.stderr, flush=True,
                     )
-                    web_supplement_trace = {"status": "errored",
-                                             "reason": str(exc)[:300]}
+                    consultation_trace = {"status": "errored",
+                                          "reason": str(exc)[:300]}
 
     # Phase 9 — Decision I/J output format expansion. New fields surface
     # pre-routing-pipeline state populated by run_step1_cleanup → routing.
@@ -5553,13 +5622,23 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             + f"```\n{concept_rag or '_(empty)_'}\n```\n\n"
             f"## Relationship RAG ({len(relationship_rag)} chars)\n\n"
             f"```\n{relationship_rag or '_(empty)_'}\n```\n\n"
-            f"## Web supplement (Step 2.5)\n\n"
-            f"**Status:** `{web_supplement_trace.get('status')}` "
-            f"({web_supplement_trace.get('reason') or web_supplement_trace.get('text_chars', 0)} "
-            f"{'chars' if web_supplement_trace.get('status') == 'ran' else ''})\n\n"
+            f"## Web consultation (Step 2 — F-Consult)\n\n"
+            f"**Status:** `{consultation_trace.get('status')}` "
+            f"(reason: {consultation_trace.get('reason') or '_n/a_'}, "
+            f"intents: {consultation_trace.get('intents_executed', 0)}/"
+            f"{consultation_trace.get('intents_identified', 0)}, "
+            f"chunks: {consultation_trace.get('chunks_total', 0)} "
+            f"[approved: {consultation_trace.get('chunks_approved', 0)}, "
+            f"open: {consultation_trace.get('chunks_open', 0)}], "
+            f"sanity_flags: {len(prompt_sanity_flags)})\n\n"
             + (
                 f"```\n{web_rag}\n```\n\n"
                 if web_rag else ""
+            )
+            + (
+                f"**Prompt-sanity flags:**\n\n```json\n"
+                f"{json.dumps(prompt_sanity_flags, indent=2)}\n```\n\n"
+                if prompt_sanity_flags else ""
             )
             + f"## Budget signals\n\n"
             + (
@@ -5571,22 +5650,28 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             f"```\n{rag_utilization or '_(none)_'}\n```\n"
         ))
 
-        # Full per-gap web-supplement detail as its own trace file so
-        # step2-context stays readable (the per-gap attempts list can grow).
-        if web_supplement_trace.get("status") in ("ran", "errored"):
-            pipeline_trace.write_step(trace_dir, "step2-web-supplement",
-                                       web_supplement_trace, markdown=(
-                "# Step 2.5 — Web Supplement\n\n"
-                f"**Status:** `{web_supplement_trace.get('status')}`\n"
-                f"**Elapsed:** {web_supplement_trace.get('elapsed_seconds', 0):.2f}s\n"
-                f"**Endpoint:** {web_supplement_trace.get('endpoint_used') or '_(none)_'}\n\n"
-                f"## Decision\n\n```\n"
-                f"{json.dumps(web_supplement_trace.get('decision'), indent=2)}\n```\n\n"
-                f"## Gaps processed\n\n```\n"
-                f"{json.dumps(web_supplement_trace.get('gaps_processed', []), indent=2)}\n```\n\n"
+        # Full per-intent consultation detail as its own trace file so
+        # step2-context stays readable.
+        if consultation_trace.get("status") in ("ran", "errored"):
+            pipeline_trace.write_step(trace_dir, "step2-web-consultation",
+                                       consultation_trace, markdown=(
+                "# Step 2 — Web Consultation (F-Consult)\n\n"
+                f"**Status:** `{consultation_trace.get('status')}`\n"
+                f"**Reason:** `{consultation_trace.get('reason') or '_n/a_'}`\n"
+                f"**Elapsed:** {consultation_trace.get('elapsed_seconds', 0):.2f}s\n"
+                f"**Endpoint:** {consultation_trace.get('endpoint_used') or '_(none)_'}\n\n"
+                f"**Intents identified:** {consultation_trace.get('intents_identified', 0)}  \n"
+                f"**Intents executed:** {consultation_trace.get('intents_executed', 0)}  \n"
+                f"**Chunks total:** {consultation_trace.get('chunks_total', 0)} "
+                f"(approved: {consultation_trace.get('chunks_approved', 0)}, "
+                f"open: {consultation_trace.get('chunks_open', 0)})\n\n"
+                f"## Intents failed\n\n```json\n"
+                f"{json.dumps(consultation_trace.get('intents_failed', []), indent=2)}\n```\n\n"
+                f"## Prompt-sanity flags\n\n```json\n"
+                f"{json.dumps(prompt_sanity_flags, indent=2)}\n```\n\n"
                 f"## Signals\n\n"
                 + "\n".join(
-                    f"- {s}" for s in web_supplement_trace.get("signals", [])
+                    f"- {s}" for s in consultation_trace.get("signals", [])
                 )
                 + "\n"
             ))
@@ -5613,14 +5698,19 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         "conversation_rag": conv_rag,
         "concept_rag": concept_rag,
         "relationship_rag": relationship_rag,
-        # Step 2.5 — anticipatory web-supplement context (empty string when
-        # the loop didn't run, didn't decide it was needed, or didn't
-        # resolve any gaps). Injected by build_system_prompt_for_gear as
-        # the ## WEB CONTEXT block when non-empty.
+        # Step 2 F-Consult web-consultation context (empty string when
+        # the consultation didn't run or no intents were emitted).
+        # Injected by build_system_prompt_for_gear as the ## WEB CONTEXT
+        # block when non-empty.
         "web_rag": web_rag,
-        # Per-turn trace of the web-supplement decision + gap loop, kept
-        # on the package so server-side observability can surface it.
-        "web_supplement_trace": web_supplement_trace,
+        # Advisory flags from the prompt-sanity check (empty list when
+        # sanity check was disabled or found nothing). Downstream prompt
+        # assembly may surface these to the analyst as a soft warning.
+        "prompt_sanity_flags": prompt_sanity_flags,
+        # Per-turn trace of the F-Consult consultation pass: which
+        # intents ran, which failed, chunks retained by tier, latency,
+        # signals. Kept on the package for server-side observability.
+        "consultation_trace": consultation_trace,
         "triage_tier": step1_result["triage_tier"],
         "rag_signals": rag_signals,
         "rag_utilization": rag_utilization,

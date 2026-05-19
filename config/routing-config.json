@@ -10,10 +10,19 @@
     "slot": "image_extracts"
   },
   "web_supplement": {
-    "enabled": true,
+    "enabled": false,
     "max_gaps": 3,
     "max_attempts_per_gap": 2,
-    "description": "Step 2.5 anticipatory web-supplement loop. When enabled, the fast model in the step1_cleanup slot (typically Haiku) decides whether the prompt needs external information beyond the vault and conversation history. If yes, it produces up to max_gaps specific gaps each with a DDG query, runs up to max_attempts_per_gap search-and-evaluate cycles per gap (first attempt is site:-filtered to high-provenance trusted domains from Reference \u2014 Trusted Web Sources, subsequent attempts drop the filter for general DDG), and assembles the retained chunks into a ## WEB CONTEXT block in the analyst system prompt. Set enabled to false to disable entirely; the pipeline then runs vault-only RAG as before, with the existing mid-analysis Supplemental RAG Protocol still available as a fallback inside the analyst loop."
+    "description": "DEPRECATED 2026-05-19. Superseded by web_consultation (below) per F-Consult. Disabled by default; section retained so the legacy test_web_supplement.py / test_web_supplement_integration.py suites continue to exercise the old gap-driven sequential flow until they are migrated to the new module. New code should use web_consultation."
+  },
+  "web_consultation": {
+    "enabled": true,
+    "per_query_timeout_seconds": 15,
+    "max_results_per_query": 6,
+    "prompt_sanity": {
+      "enabled": true
+    },
+    "description": "Step 2 F-Consult web consultation stream. When enabled, the fast model in the step1_cleanup slot identifies search intents from the user prompt (each intent must articulate a one-line justification \u2014 anti-nitpicking enforced at the model layer, not via a count cap); all intent queries then fire in parallel via ThreadPoolExecutor with per_query_timeout_seconds bounding each one. Retrieved chunks are tier-classified (approved vs open-web) via tools.web_corroboration.TrustedSourcesRegistry against Reference \u2014 Trusted Web Sources, then scored and provenanced for downstream weighting. prompt_sanity.enabled toggles a parallel light factual-sanity check that flags surface-level errors in the user prompt (typos on dates, mis-attributed quotes, named-entity slips); flags are advisory, never blocking. The four consultation streams (vault concept, conversation, relationship, web) run in parallel \u2014 there is no token debt across pipeline steps because each step receives a fresh window. See Specification \u2014 F-Consult.md for the design."
   },
   "slots": {
     "image_generates": {
