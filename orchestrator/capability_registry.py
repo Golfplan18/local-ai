@@ -696,9 +696,80 @@ def resolve_slot_inheritance(routing_config: dict) -> dict:
     return routing_config
 
 
+def merge_project_capability_slots(
+    capabilities: dict,
+    routing_config: dict | None,
+    projects: list,
+) -> None:
+    """Merge project-declared `capability_slots` into the core capability
+    catalog and the in-memory routing config (Plugin Convention §12).
+
+    Mutates ``capabilities['slots']`` and ``routing_config['slots']`` in
+    place. ``projects`` is an iterable of :class:`project_registry.Project`
+    instances (typed loosely to avoid a hard import dependency at call sites).
+
+    Collision rules (§"Collision rules"):
+      * **Project shadows core** — a project declares a slot name that
+        also exists in core ``capabilities.json``. Allowed: project's
+        contract + routing replaces core's. Info-level diagnostic.
+      * **Project shadows project** — two registered projects declare the
+        same slot name. Hard error at load: the slot is dropped from all
+        of them, with a clear diagnostic naming each project. Operator
+        decides which project to unregister.
+
+    Publisher override (§"Publisher override"): when a project's `routing`
+    block is present, it is merged into ``routing_config['slots']`` only
+    if no entry already exists there. The publisher's
+    ``routing-config.json`` was loaded before this merge runs, so its
+    entries are already present — and therefore win. A diagnostic is
+    emitted when a project's routing is overridden by the publisher.
+    """
+    slots_catalog = capabilities.setdefault("slots", {})
+    routing_slots = None
+    if routing_config is not None:
+        routing_slots = routing_config.setdefault("slots", {})
+
+    # Pass 1: detect project-shadows-project collisions across all projects.
+    seen_by_project: dict[str, list[str]] = {}
+    for project in projects:
+        for slot_name in getattr(project, "capability_slots", {}):
+            seen_by_project.setdefault(slot_name, []).append(project.nexus)
+    collided: set[str] = {name for name, nexuses in seen_by_project.items() if len(nexuses) > 1}
+    for slot_name in sorted(collided):
+        print(
+            f"[capability_registry] Slot '{slot_name}' is declared by multiple "
+            f"projects ({seen_by_project[slot_name]}); dropping from all of them. "
+            f"Unregister one of the projects to resolve the collision."
+        )
+
+    # Pass 2: merge non-collided slots from each project, in nexus order
+    # (matches list_projects's sorted order so diagnostics are deterministic).
+    for project in projects:
+        for slot_name, slot in getattr(project, "capability_slots", {}).items():
+            if slot_name in collided:
+                continue
+            if slot_name in slots_catalog:
+                print(
+                    f"[capability_registry] Project '{project.nexus}' shadows "
+                    f"core slot '{slot_name}' (project's contract + routing wins)"
+                )
+            slots_catalog[slot_name] = dict(slot.contract)
+            if routing_slots is None or not slot.routing:
+                continue
+            if slot_name in routing_slots:
+                print(
+                    f"[capability_registry] Project '{project.nexus}' routing for "
+                    f"slot '{slot_name}' overridden by publisher's "
+                    f"routing-config.json::slots entry"
+                )
+                continue
+            routing_slots[slot_name] = dict(slot.routing)
+
+
 def load_registry(
     config_path: str | Path | None = None,
     routing_config_path: str | Path | None = None,
+    pointer_dir: str | None = None,
 ) -> CapabilityRegistry:
     """Load a CapabilityRegistry from the standard config locations.
 
@@ -707,11 +778,24 @@ def load_registry(
     falls back to first-registered-provider order in
     ``resolve_provider``.
 
+    Project-declared ``capability_slots`` (Plugin Convention §12) are
+    merged into the core catalog and the in-memory routing config via
+    :func:`merge_project_capability_slots` before inheritance resolution
+    runs. The merge is silent when no projects are registered or none of
+    them declare slots — so this path is a no-op for forks that don't use
+    the project plugin mechanism.
+
     Slot-inheritance directives (``inherits`` / ``prepend_fallback`` /
     ``append_fallback``) are resolved at load time via
     :func:`resolve_slot_inheritance` so the registry only sees fully
     materialized ``preferred`` + ``fallback`` lists.
     """
+    # 1. Load core capabilities.json into a dict we can mutate.
+    cap_path = Path(config_path) if config_path else CAPABILITIES_JSON
+    with open(cap_path) as f:
+        capabilities = json.load(f)
+
+    # 2. Load publisher routing-config.json (publisher's preferences).
     routing_config = None
     if routing_config_path is not None or ROUTING_CONFIG_JSON.exists():
         rc_path = Path(routing_config_path) if routing_config_path else ROUTING_CONFIG_JSON
@@ -720,9 +804,32 @@ def load_registry(
                 routing_config = json.load(f)
         except Exception:
             routing_config = None
+
+    # 3. Merge project-declared capability_slots (Plugin Convention §12).
+    #    Defensive: if project_registry isn't importable for any reason,
+    #    skip silently so the registry still loads.
+    try:
+        from orchestrator.project_registry import list_projects as _list_projects
+        projects = (
+            _list_projects(pointer_dir=pointer_dir)
+            if pointer_dir is not None
+            else _list_projects()
+        )
+    except Exception:
+        projects = []
+    if projects and any(getattr(p, "capability_slots", None) for p in projects):
+        if routing_config is None:
+            routing_config = {"slots": {}}
+        merge_project_capability_slots(capabilities, routing_config, projects)
+
+    # 4. Resolve inheritance directives over the merged routing config.
     if routing_config is not None:
         resolve_slot_inheritance(routing_config)
-    registry = CapabilityRegistry(config_path=config_path, routing_config=routing_config)
+
+    # 5. Construct the registry from the merged data.
+    registry = CapabilityRegistry(
+        config_dict=capabilities, routing_config=routing_config,
+    )
 
     # Local-first default: auto-register the offline diffusers provider
     # so every route gets it without per-route imports. Defensive — if

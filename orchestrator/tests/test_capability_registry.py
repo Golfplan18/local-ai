@@ -396,5 +396,254 @@ class CheckCapabilitySyncTests(unittest.TestCase):
             self.assertIn("capabilities.json", combined)
 
 
+# ---------------------------------------------------------------------------
+# Plugin Convention §12 — project-defined capability slot merging
+# ---------------------------------------------------------------------------
+
+
+class ProjectCapabilitySlotMergeTests(unittest.TestCase):
+    """Tests for `merge_project_capability_slots` (Plugin Convention v1.1 §12)."""
+
+    def setUp(self):
+        import io
+        from contextlib import redirect_stdout
+        self._stdout_buf = io.StringIO()
+        self._stdout_ctx = redirect_stdout(self._stdout_buf)
+        self._stdout_ctx.__enter__()
+
+    def tearDown(self):
+        self._stdout_ctx.__exit__(None, None, None)
+
+    @property
+    def diagnostics(self) -> str:
+        return self._stdout_buf.getvalue()
+
+    @staticmethod
+    def _project(nexus: str, slots: dict | None = None):
+        """Build a minimal Project-like object for the merge function."""
+        from project_registry import Project, ProjectCapabilitySlot
+        cap_slots = {}
+        for name, payload in (slots or {}).items():
+            cap_slots[name] = ProjectCapabilitySlot(
+                name=name,
+                contract=payload.get("contract", {}),
+                routing=payload.get("routing", {}),
+            )
+        return Project(
+            nexus=nexus, name=nexus, root=Path("/tmp/fake-" + nexus),
+            capability_slots=cap_slots,
+        )
+
+    @staticmethod
+    def _capabilities() -> dict:
+        return {"slots": {"image_generates": {"summary": "core image gen"}}}
+
+    @staticmethod
+    def _routing(slots: dict | None = None) -> dict:
+        return {"slots": dict(slots or {})}
+
+    def test_empty_projects_list_no_op(self):
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        routing = self._routing()
+        merge_project_capability_slots(caps, routing, [])
+        self.assertEqual(caps["slots"], {"image_generates": {"summary": "core image gen"}})
+        self.assertEqual(routing["slots"], {})
+
+    def test_project_without_capability_slots_no_op(self):
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        routing = self._routing()
+        merge_project_capability_slots(caps, routing, [self._project("p1")])
+        self.assertEqual(caps["slots"], {"image_generates": {"summary": "core image gen"}})
+        self.assertEqual(routing["slots"], {})
+
+    def test_merge_new_slot_into_catalog_and_routing(self):
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        routing = self._routing()
+        project = self._project("msi", {
+            "image_generates_cartoon": {
+                "contract": {"summary": "editorial cartoon"},
+                "routing": {"inherits": "image_generates",
+                            "append_fallback": ["civitai-hector-lora-v1"]},
+            }
+        })
+        merge_project_capability_slots(caps, routing, [project])
+        self.assertIn("image_generates_cartoon", caps["slots"])
+        self.assertEqual(caps["slots"]["image_generates_cartoon"]["summary"], "editorial cartoon")
+        self.assertEqual(routing["slots"]["image_generates_cartoon"]["inherits"], "image_generates")
+        self.assertEqual(
+            routing["slots"]["image_generates_cartoon"]["append_fallback"],
+            ["civitai-hector-lora-v1"],
+        )
+
+    def test_project_shadows_core_replaces_with_diagnostic(self):
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        routing = self._routing()
+        project = self._project("forked", {
+            "image_generates": {"contract": {"summary": "forked override"}}
+        })
+        merge_project_capability_slots(caps, routing, [project])
+        self.assertEqual(caps["slots"]["image_generates"]["summary"], "forked override")
+        self.assertIn("shadows core slot 'image_generates'", self.diagnostics)
+        self.assertIn("'forked'", self.diagnostics)
+
+    def test_project_shadows_project_drops_slot_from_all(self):
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        routing = self._routing()
+        p1 = self._project("alpha", {
+            "image_generates_cartoon": {"contract": {"summary": "alpha"}}
+        })
+        p2 = self._project("beta", {
+            "image_generates_cartoon": {"contract": {"summary": "beta"}}
+        })
+        merge_project_capability_slots(caps, routing, [p1, p2])
+        self.assertNotIn("image_generates_cartoon", caps["slots"])
+        self.assertNotIn("image_generates_cartoon", routing["slots"])
+        self.assertIn("declared by multiple projects", self.diagnostics)
+        self.assertIn("alpha", self.diagnostics)
+        self.assertIn("beta", self.diagnostics)
+
+    def test_publisher_routing_wins_over_project_routing(self):
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        # Publisher has an explicit routing entry for the slot already.
+        routing = self._routing({
+            "image_generates_cartoon": {
+                "preferred": "publisher-preferred-model",
+                "fallback": ["publisher-fallback-model"],
+            }
+        })
+        project = self._project("msi", {
+            "image_generates_cartoon": {
+                "contract": {"summary": "cartoon"},
+                "routing": {"inherits": "image_generates",
+                            "append_fallback": ["civitai-hector-lora-v1"]},
+            }
+        })
+        merge_project_capability_slots(caps, routing, [project])
+        # Contract was still merged (publisher override is routing-only).
+        self.assertIn("image_generates_cartoon", caps["slots"])
+        # Publisher's routing entry is preserved verbatim.
+        self.assertEqual(
+            routing["slots"]["image_generates_cartoon"]["preferred"],
+            "publisher-preferred-model",
+        )
+        self.assertNotIn(
+            "inherits",
+            routing["slots"]["image_generates_cartoon"],
+            "project routing must not leak into publisher's entry",
+        )
+        self.assertIn("overridden by publisher", self.diagnostics)
+
+    def test_project_routing_used_when_publisher_silent(self):
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        routing = self._routing()
+        project = self._project("msi", {
+            "image_generates_cartoon": {
+                "contract": {"summary": "cartoon"},
+                "routing": {"inherits": "image_generates"},
+            }
+        })
+        merge_project_capability_slots(caps, routing, [project])
+        self.assertEqual(
+            routing["slots"]["image_generates_cartoon"]["inherits"], "image_generates"
+        )
+        self.assertNotIn("overridden by publisher", self.diagnostics)
+
+    def test_project_routing_absent_only_contract_merged(self):
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        routing = self._routing()
+        project = self._project("msi", {
+            "image_generates_cartoon": {"contract": {"summary": "cartoon"}}
+        })
+        merge_project_capability_slots(caps, routing, [project])
+        self.assertIn("image_generates_cartoon", caps["slots"])
+        self.assertNotIn("image_generates_cartoon", routing["slots"])
+
+    def test_merge_with_no_routing_config(self):
+        """merge tolerates routing_config=None when project declares no routing."""
+        from capability_registry import merge_project_capability_slots
+        caps = self._capabilities()
+        project = self._project("msi", {
+            "image_generates_cartoon": {"contract": {"summary": "cartoon"}}
+        })
+        merge_project_capability_slots(caps, None, [project])
+        self.assertIn("image_generates_cartoon", caps["slots"])
+
+    def test_full_load_registry_with_synthetic_project(self):
+        """End-to-end: write a pointer + manifest with capability_slots,
+        then call load_registry and verify the merged catalog + resolved chain."""
+        from capability_registry import load_registry
+        from project_registry import (
+            POINTER_DIR, MANIFEST_FILENAME, register_project,
+            unregister_project,
+        )
+        # Use a temp pointer dir to avoid clobbering the real one.
+        tmpdir = Path(tempfile.mkdtemp(prefix="cap_slot_e2e_"))
+        try:
+            project_root = tmpdir / "proj"
+            project_root.mkdir()
+            # Use a slot name that's NOT in _HARDWIRED_SLOT_INHERITANCE so
+            # this test isolates the merge path from the legacy hardwired
+            # layer (which is itself retired in commit 3 of the §12 rollout).
+            manifest = {
+                "nexus": "merge-test",
+                "name": "Merge Test",
+                "capability_slots": [
+                    {
+                        "name": "image_generates_e2e_synth",
+                        "contract": {
+                            "summary": "End-to-end merge test slot",
+                            "required_inputs": [{"name": "prompt", "type": "text"}],
+                            "output": {"type": "image-bytes"},
+                            "execution_pattern": "sync",
+                        },
+                        "routing": {"inherits": "image_generates"},
+                    }
+                ],
+            }
+            (project_root / MANIFEST_FILENAME).write_text(json.dumps(manifest))
+            pointer_dir = tmpdir / "pointers"
+            pointer_dir.mkdir()
+            register_project(str(project_root), pointer_dir=str(pointer_dir))
+
+            try:
+                caps_path = tmpdir / "capabilities.json"
+                caps_path.write_text(json.dumps({
+                    "slots": {
+                        "image_generates": {"summary": "core image gen"}
+                    }
+                }))
+                routing_path = tmpdir / "routing-config.json"
+                routing_path.write_text(json.dumps({
+                    "slots": {
+                        "image_generates": {
+                            "preferred": "openai-image",
+                            "fallback": ["gemini-image"],
+                        }
+                    }
+                }))
+                registry = load_registry(
+                    config_path=str(caps_path),
+                    routing_config_path=str(routing_path),
+                    pointer_dir=str(pointer_dir),
+                )
+                self.assertIn("image_generates_e2e_synth", registry.list_slots())
+                resolved = registry._routing_config["slots"]["image_generates_e2e_synth"]
+                self.assertEqual(resolved["preferred"], "openai-image")
+                self.assertEqual(resolved["fallback"], ["gemini-image"])
+            finally:
+                unregister_project("merge-test", pointer_dir=str(pointer_dir))
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()
