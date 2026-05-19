@@ -1,0 +1,11 @@
+{
+  "_schema_version": 1,
+  "_note": "Per-framework default configuration assignments. Lives in JSON (not framework YAML frontmatter) so framework specs stay focused on their content; the routing concern is separate and runtime-managed. When a framework is invoked without an explicit --config override, the executor looks up its default here. When no entry exists, the Router auto-derives the configuration from the execution context (interactive → user-pipeline; agent/autonomous → background-default). Override at invocation: /framework <name> --config <ConfigName> ...",
+  "_format": "Each entry under 'frameworks' is keyed by the framework's name (matches Framework.name as parsed from the spec file). Value is either a string (the configuration name) or an object with at minimum a 'default_configuration' field; the object form leaves room for future fields like 'per_mode_configuration' for multi-mode frameworks where different modes warrant different configurations.",
+  "frameworks": {
+    "_example_pef": {
+      "_comment": "Example only — the underscore prefix is ignored by the loader. Copy this shape when adding a real entry.",
+      "default_configuration": "user-pipeline"
+    }
+  }
+}

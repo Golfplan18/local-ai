@@ -350,22 +350,54 @@ class TestParseFrameworkCommand(unittest.TestCase):
 
     def test_empty_query_now_allowed(self):
         from milestone_executor import parse_framework_command, framework_command_has_query
-        name, query = parse_framework_command("/framework cff")
+        name, query, config_name = parse_framework_command("/framework cff")
         self.assertEqual(name, "cff.md")
         self.assertEqual(query, "")
+        self.assertIsNone(config_name)
         self.assertFalse(framework_command_has_query("/framework cff"))
 
     def test_non_empty_query(self):
         from milestone_executor import parse_framework_command, framework_command_has_query
-        name, query = parse_framework_command("/framework cff design a template for X")
+        name, query, config_name = parse_framework_command("/framework cff design a template for X")
         self.assertEqual(name, "cff.md")
         self.assertEqual(query, "design a template for X")
+        self.assertIsNone(config_name)
         self.assertTrue(framework_command_has_query("/framework cff design a template for X"))
 
     def test_missing_framework_name_still_errors(self):
         from milestone_executor import parse_framework_command
         with self.assertRaises(ValueError):
             parse_framework_command("/framework ")
+
+    def test_config_flag_extracted_after_framework_name(self):
+        # install Chunk 3: --config <name> flag is position-agnostic in body
+        from milestone_executor import parse_framework_command
+        name, query, config_name = parse_framework_command(
+            "/framework cff --config premium design a template for X"
+        )
+        self.assertEqual(name, "cff.md")
+        self.assertEqual(config_name, "premium")
+        self.assertEqual(query, "design a template for X")
+
+    def test_config_flag_extracted_at_end(self):
+        from milestone_executor import parse_framework_command
+        name, query, config_name = parse_framework_command(
+            "/framework cff design a template for X --config budget"
+        )
+        self.assertEqual(name, "cff.md")
+        self.assertEqual(config_name, "budget")
+        self.assertEqual(query, "design a template for X")
+
+    def test_config_flag_without_value_falls_through(self):
+        # --config with no value just stays as part of the query
+        from milestone_executor import parse_framework_command
+        name, query, config_name = parse_framework_command(
+            "/framework cff trailing --config"
+        )
+        self.assertEqual(name, "cff.md")
+        # No value to consume; --config stays in the query as a literal token
+        self.assertIn("--config", query)
+        self.assertIsNone(config_name)
 
 
 if __name__ == "__main__":

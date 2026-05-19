@@ -411,6 +411,18 @@ def _build_subprocess_env(project: Project, extra_env: Optional[dict] = None) ->
       - ORA_VAULT          — path to the canonical vault (Ora-global)
       - ORA_PROJECT_NEXUS  — the nexus of the calling project
       - ORA_PROJECT_ROOT   — absolute path to the project root
+
+    Optional env vars project tools MAY consume when set by the caller
+    (install Chunk 3 — per-process configuration plumbing):
+      - ORA_CONFIG_NAME    — named configuration from config/configurations/
+                              the tool should invoke models with. When the
+                              tool delegates to model_dispatch.invoke_chat,
+                              it should pass config_name=os.environ.get(
+                              "ORA_CONFIG_NAME") so the slot resolution
+                              honors the configuration that drove the
+                              invocation. Falls through to the Router's
+                              context-derived default when unset.
+
     Extra env from the caller takes precedence over these defaults.
     """
     env = os.environ.copy()

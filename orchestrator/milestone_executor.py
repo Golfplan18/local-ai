@@ -93,12 +93,71 @@ class MilestoneExecutionError(Exception):
 
 # ---------- Public API ----------
 
+# ─── Framework → configuration routing (Chunk 3) ─────────────────────────
+#
+# config/framework-routing.json maps framework names to default named
+# configurations from config/configurations/. When a framework is invoked
+# without an explicit config_name, this layer supplies the framework's
+# preferred configuration. When the lookup misses or the file is missing,
+# the Router auto-derives from execution_context (see DEFAULT_CONFIG_FOR
+# _CONTEXT in router.py).
+#
+# The mapping lives in JSON (not framework YAML frontmatter) per the user's
+# standing preference: YAML stays minimal — navigation + RAG triggers only.
+
+_FRAMEWORK_ROUTING_CACHE: Optional[dict] = None
+
+
+def _load_framework_routing() -> dict:
+    """Load (and cache) config/framework-routing.json. Returns {} on missing
+    file or parse failure — callers treat that as "no per-framework default."
+    """
+    global _FRAMEWORK_ROUTING_CACHE
+    if _FRAMEWORK_ROUTING_CACHE is not None:
+        return _FRAMEWORK_ROUTING_CACHE
+    from pathlib import Path
+    import json as _json
+    path = Path(__file__).resolve().parent.parent / "config" / "framework-routing.json"
+    if not path.exists():
+        _FRAMEWORK_ROUTING_CACHE = {}
+        return _FRAMEWORK_ROUTING_CACHE
+    try:
+        with open(path) as f:
+            _FRAMEWORK_ROUTING_CACHE = _json.load(f) or {}
+    except Exception as exc:  # pragma: no cover
+        print(f"[milestone_executor] framework-routing.json load failed: {exc}")
+        _FRAMEWORK_ROUTING_CACHE = {}
+    return _FRAMEWORK_ROUTING_CACHE
+
+
+def reset_framework_routing_cache() -> None:
+    """Clear the framework-routing cache. Called by tests; also useful when
+    the routing file is edited at runtime."""
+    global _FRAMEWORK_ROUTING_CACHE
+    _FRAMEWORK_ROUTING_CACHE = None
+
+
+def _lookup_framework_default_configuration(framework_name: str) -> Optional[str]:
+    """Return the configuration name declared as default for a framework,
+    or None when no entry exists."""
+    routing = _load_framework_routing()
+    mappings = routing.get("frameworks", {}) or {}
+    entry = mappings.get(framework_name)
+    if isinstance(entry, dict):
+        return entry.get("default_configuration")
+    if isinstance(entry, str):
+        # Shorthand: framework_name → configuration_name string
+        return entry
+    return None
+
+
 def execute_framework(
     framework_path: str,
     user_input: str,
     config: Optional[dict] = None,
     execution_id: Optional[str] = None,
     project_nexus: Optional[str] = None,
+    config_name: Optional[str] = None,
 ) -> FrameworkExecutionResult:
     """Execute a framework on the given user input.
 
@@ -117,6 +176,15 @@ def execute_framework(
     are emitted with the project context for the meta-layer's Layer B
     routing (see Reference — Meta-Layer Architecture). When None, events
     fire with project_nexus=None and the oversight router filters them out.
+
+    config_name (install Chunk 3): optional named configuration from
+    config/configurations/<name>.json. When None, the framework's default
+    configuration is looked up via config/framework-routing.json; if no
+    mapping exists, falls through to the Router's auto-derivation from
+    execution_context (interactive → user-pipeline). When provided, the
+    name takes precedence — used by ``/framework <name> --config X ...``
+    invocations and by multi-step orchestration chains (when those land)
+    that specify per-step configuration.
     """
     # Lazy import of boot.py to avoid circular issues during testing
     from boot import load_endpoints
@@ -133,6 +201,11 @@ def execute_framework(
         config = load_endpoints()
 
     fw = parse_framework_file(framework_path)
+
+    # Resolve effective config_name: explicit arg > framework-routing.json
+    # default > None (Router auto-derives from execution_context).
+    if config_name is None:
+        config_name = _lookup_framework_default_configuration(fw.name)
 
     if fw.is_multi_mode:
         selected_mode, mode_reasoning, effective_input = select_mode(
@@ -177,7 +250,7 @@ def execute_framework(
 
     try:
         for milestone in milestones:
-            result = _run_milestone(fw, milestone, scratch, effective_input, config)
+            result = _run_milestone(fw, milestone, scratch, effective_input, config, config_name=config_name)
             results.append(result)
 
             # ---- Oversight hook: MilestoneComplete ----
@@ -294,6 +367,7 @@ def _run_milestone(
     scratch: ScratchSession,
     user_input: str,
     config: dict,
+    config_name: Optional[str] = None,
 ) -> MilestoneResult:
     """Execute a single milestone with retry. Returns a MilestoneResult.
 
@@ -304,7 +378,7 @@ def _run_milestone(
     last_exception: Optional[Exception] = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            deliverable = _run_through_gear_pipeline(handoff, milestone, config)
+            deliverable = _run_through_gear_pipeline(handoff, milestone, config, config_name=config_name)
             scratch.write_milestone(milestone.id, deliverable)
 
             drift_status, drift_reasoning = _run_drift_check(
@@ -437,7 +511,8 @@ def _indent(text: str, prefix: str) -> str:
 # ---------- Gear pipeline invocation ----------
 
 def _run_through_gear_pipeline(
-    handoff_packet: str, milestone: Milestone, config: dict
+    handoff_packet: str, milestone: Milestone, config: dict,
+    config_name: Optional[str] = None,
 ) -> str:
     """Send the handoff packet through the existing gear pipeline.
 
@@ -448,20 +523,24 @@ def _run_through_gear_pipeline(
     is structured framework-generated content, not raw human input. The mode
     is set to 'synthesis' as a sensible default (gear-4 capable, synthesis-
     shaped) but the framework's layer instructions in the handoff dominate.
+
+    ``config_name`` (install Chunk 3) routes the gear pipeline through a
+    named configuration. None defers to the Router's context-derived default.
     """
     from boot import run_gear3, run_gear4, build_system_prompt_for_gear
 
     context_pkg = _build_context_pkg(handoff_packet, milestone)
 
     if milestone.gear >= 4:
-        return run_gear4(context_pkg, config)
+        return run_gear4(context_pkg, config, config_name=config_name)
     elif milestone.gear == 3:
-        return run_gear3(context_pkg, config)
+        return run_gear3(context_pkg, config, config_name=config_name)
     else:
         # Gear 1-2: single-pass via existing helper
         from boot import _run_model_with_tools, get_active_endpoint, get_slot_endpoint
         endpoint = (
-            get_slot_endpoint(config, "classification") if milestone.gear == 1
+            get_slot_endpoint(config, "classification", config_name=config_name)
+            if milestone.gear == 1
             else get_active_endpoint(config)
         )
         if endpoint is None:
@@ -756,8 +835,9 @@ def is_framework_command(user_input: str) -> bool:
     return user_input.strip().startswith(FRAMEWORK_COMMAND_PREFIX)
 
 
-def parse_framework_command(user_input: str) -> tuple[str, str]:
-    """Parse '/framework <name> [<query>]' into (framework_filename, query).
+def parse_framework_command(user_input: str) -> tuple[str, str, Optional[str]]:
+    """Parse '/framework <name> [--config <ConfigName>] [<query>]' into
+    (framework_filename, query, config_name).
 
     framework_filename gets .md appended if not already present.
     Raises ValueError if the framework name is missing.
@@ -766,6 +846,13 @@ def parse_framework_command(user_input: str) -> tuple[str, str]:
     handle it: ``run_framework_command`` treats empty as an error (it expects
     a one-shot invocation), while ``framework_elicitation.start_elicitation``
     treats empty as the trigger for an interactive multi-turn session.
+
+    Optional ``--config <ConfigName>`` flag (install Chunk 3) routes this
+    invocation through the named configuration from config/configurations/.
+    Position-agnostic — accepted anywhere in the body after the framework
+    name. When absent, returns config_name=None and the executor falls
+    through to the framework's declared default in framework-routing.json,
+    then to the Router's context-derived default.
 
     Multi-mode dispatch: the executor inspects the query for a mode token
     (either as the first word or anywhere in the body). To force a specific
@@ -783,7 +870,22 @@ def parse_framework_command(user_input: str) -> tuple[str, str]:
     if not framework_name.endswith(".md"):
         framework_name += ".md"
     framework_query = parts[1] if len(parts) > 1 else ""
-    return framework_name, framework_query
+
+    # Strip optional --config <ConfigName> from the query body.
+    config_name: Optional[str] = None
+    tokens = framework_query.split()
+    cleaned_tokens: list = []
+    i = 0
+    while i < len(tokens):
+        if tokens[i] == "--config" and i + 1 < len(tokens):
+            config_name = tokens[i + 1]
+            i += 2
+        else:
+            cleaned_tokens.append(tokens[i])
+            i += 1
+    framework_query = " ".join(cleaned_tokens)
+
+    return framework_name, framework_query, config_name
 
 
 def framework_command_has_query(user_input: str) -> bool:
@@ -794,7 +896,7 @@ def framework_command_has_query(user_input: str) -> bool:
     (``framework_elicitation.start_elicitation``).
     """
     try:
-        _, query = parse_framework_command(user_input)
+        _, query, _ = parse_framework_command(user_input)
     except ValueError:
         return False
     return bool(query.strip())
@@ -846,7 +948,7 @@ def run_framework_command(user_input: str, config: dict) -> str:
     receives a renderable response.
     """
     try:
-        framework_name, framework_query = parse_framework_command(user_input)
+        framework_name, framework_query, config_name = parse_framework_command(user_input)
     except ValueError as exc:
         return f"[Framework command error: {exc}]"
 
@@ -860,7 +962,7 @@ def run_framework_command(user_input: str, config: dict) -> str:
         )
 
     try:
-        result = execute_framework(framework_name, framework_query, config)
+        result = execute_framework(framework_name, framework_query, config, config_name=config_name)
     except FileNotFoundError as exc:
         return f"[Framework file not found: {exc}]"
     except FrameworkParseError as exc:

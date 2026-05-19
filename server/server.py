@@ -2164,7 +2164,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             return
         # Empty-query form → start an interactive elicitation session.
         try:
-            framework_name, _ = parse_framework_command(user_input)
+            framework_name, _, _ = parse_framework_command(user_input)
         except ValueError as exc:
             yield _sse("error", text=f"Framework command error: {exc}")
             return

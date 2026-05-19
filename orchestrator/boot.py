@@ -6282,7 +6282,7 @@ def run_pipeline(user_input: str, history: list = None,
         if framework_command_has_query(user_input):
             return run_framework_command(user_input, config)
         try:
-            framework_name, _ = parse_framework_command(user_input)
+            framework_name, _, _ = parse_framework_command(user_input)
         except ValueError as exc:
             return f"[Framework command error: {exc}]"
         return framework_elicitation.start_elicitation(
