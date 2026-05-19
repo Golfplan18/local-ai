@@ -25,7 +25,11 @@ ORCHESTRATOR = HERE.parent
 REPO_ROOT = ORCHESTRATOR.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
-from boot import build_system_prompt_for_gear, _extract_section  # noqa: E402
+from boot import (  # noqa: E402
+    build_system_prompt_for_gear,
+    _extract_section,
+    _extract_boot_behavioral_preamble,
+)
 
 
 def _load_mode(name: str) -> str:
@@ -126,16 +130,27 @@ class UnknownStepRaises(unittest.TestCase):
 
 
 class BootMdAlwaysFirst(unittest.TestCase):
-    """boot.md is the universal system prompt; it must lead every step."""
+    """The behavioral subset of boot.md leads every pipeline-step prompt.
 
-    def test_boot_md_leads_every_step(self):
+    Pipeline steps receive a trimmed subset of boot.md (constitution +
+    anti-sycophancy + hat assignments + universal anti-confabulation) via
+    `_extract_boot_behavioral_preamble`, not the full file. The architectural
+    sections (mode registry, models, tools, pipeline, etc.) are stripped
+    because a dispatched pipeline step doesn't need them. The behavioral
+    preamble must still lead every step's prompt.
+    """
+
+    def test_boot_behavioral_preamble_leads_every_step(self):
         from boot import load_boot_md
         boot_md = load_boot_md()
+        preamble = _extract_boot_behavioral_preamble(boot_md)
+        self.assertTrue(preamble, "behavioral preamble unexpectedly empty")
         for step in ("analyst", "evaluator", "reviser", "verifier", "consolidator"):
             prompt = build_system_prompt_for_gear(_ctx("root-cause-analysis"), step=step)
             self.assertTrue(
-                prompt.startswith(boot_md),
-                f"step={step!r}: prompt does not start with boot.md",
+                prompt.startswith(preamble),
+                f"step={step!r}: prompt does not start with the boot.md "
+                f"behavioral preamble",
             )
 
 
@@ -148,6 +163,7 @@ class AllModeFilesProduceNonEmptyPromptsAcrossSteps(unittest.TestCase):
         import os
         from boot import load_boot_md
         boot_md = load_boot_md()
+        preamble = _extract_boot_behavioral_preamble(boot_md)
         modes_dir = REPO_ROOT / "modes"
         mode_files = sorted(f for f in os.listdir(modes_dir) if f.endswith(".md"))
         self.assertGreater(len(mode_files), 0, "no mode files found")
@@ -157,8 +173,9 @@ class AllModeFilesProduceNonEmptyPromptsAcrossSteps(unittest.TestCase):
             for step in ("analyst", "evaluator", "reviser", "verifier", "consolidator"):
                 slot = "depth" if step == "analyst" else "breadth"
                 prompt = build_system_prompt_for_gear(_ctx(name), slot=slot, step=step)
-                # Strip boot.md to inspect what mode content the dispatch added.
-                tail = prompt[len(boot_md):] if prompt.startswith(boot_md) else prompt
+                # Strip the behavioral preamble to inspect what mode content
+                # the dispatch added.
+                tail = prompt[len(preamble):] if prompt.startswith(preamble) else prompt
                 if len(tail.strip()) < 50:
                     failures.append(f"{name}/{step}: prompt tail only {len(tail.strip())} chars")
         self.assertFalse(

@@ -11,7 +11,7 @@ Covers ``parse_framework_picker_metadata`` and ``list_pickable_frameworks``:
 - The picker list is sorted by ``(category, display_name)`` so the UI can
   render groups without re-sorting.
 - Display Name and Display Description respect the design-doc length caps
-  (60 / 500 chars) for the 19 shipped pickable frameworks.
+  (60 / 500 chars) for the 17 shipped pickable frameworks.
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ PIPELINE_INTERNAL_IDS = {
     "f-evaluate", "f-revise", "f-verify", "phase-a-prompt-cleanup",
 }
 
-EXPECTED_PICKABLE_COUNT = 18
+EXPECTED_PICKABLE_COUNT = 17
 
 
 class TestParseFrameworkPickerMetadata(unittest.TestCase):
