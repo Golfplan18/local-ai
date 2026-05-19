@@ -412,9 +412,11 @@ def extract_spatial_from_image(
         server's ``_save_multipart_image`` and carried on
         ``context_pkg['image_path']``.
     extractor_endpoint : dict
-        The endpoint dict returned by ``boot._pick_vision_extractor``.
-        Must be vision-capable. Optional key
-        ``extraction_prompt_override`` replaces the default prompt.
+        The endpoint dict returned by
+        ``boot._pick_vision_extractor_from_slot`` /
+        ``boot._pick_vision_extractor_from_image_extracts``. Must be
+        vision-capable. Optional key ``extraction_prompt_override``
+        replaces the default prompt.
     confidence_threshold : float
         Mean confidence below which the result is still returned but
         tagged with ``W_LOW_CONFIDENCE_EXTRACTION``. Default 0.5.

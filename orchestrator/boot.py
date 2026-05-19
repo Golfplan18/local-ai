@@ -531,37 +531,15 @@ def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive"
 # would run on ``context_pkg['vision_extractor_selected']`` so WP-4.3 can
 # wire the call without re-running bucket selection.
 #
-# Fallback precedence when no vision-capable model exists anywhere:
-#   preferred_extractor_bucket → fallback_extractor_bucket → no_vision_available
-# WP-4.4 (UX) surfaces ``no_vision_available=True`` to the user.
+# Resolution precedence: vision_extraction.slot (image_extracts is canonical;
+# image_generates / image_edits / … also work) → no_vision_available. WP-4.4
+# (UX) surfaces ``no_vision_available=True`` to the user. The legacy
+# preferred_extractor_bucket / fallback_extractor_bucket fields were retired
+# in install Chunk 12 (2026-05-19) — route_for_image_input is slot-only.
 
 def _endpoint_lookup_by_id(routing_config: dict) -> dict:
     """Build {id: endpoint-dict} for quick vision_capable lookups."""
     return {ep.get("id"): ep for ep in routing_config.get("endpoints", []) if ep.get("id")}
-
-
-def _pick_vision_extractor(routing_config: dict, bucket_name: str) -> dict | None:
-    """Return the first enabled + active + vision_capable endpoint in ``bucket_name``.
-
-    Defensive read: endpoints missing the ``vision_capable`` field are treated
-    as text-only (``False``) so unknown models can never silently slip through.
-    """
-    if not bucket_name:
-        return None
-    lookup = _endpoint_lookup_by_id(routing_config)
-    ids = routing_config.get("buckets", {}).get(bucket_name, [])
-    for ep_id in ids:
-        ep = lookup.get(ep_id)
-        if not ep:
-            continue
-        if not ep.get("enabled", False):
-            continue
-        if ep.get("status") != "active":
-            continue
-        if not vision_capable_for_endpoint(ep):
-            continue
-        return ep
-    return None
 
 
 # Slot-entry prefixes that produce vision-input-capable endpoints when used as
@@ -705,13 +683,13 @@ def route_for_image_input(context_pkg: dict,
     If ``context_pkg`` carries an ``image_path``:
       * If ``requested_model['vision_capable']`` is truthy, pass the image
         directly (no-op — the image path already rides along on context_pkg).
-      * Else, pick an extractor from
-        ``routing_config['vision_extraction']['preferred_extractor_bucket']``;
-        if none available, try ``fallback_extractor_bucket``; else set
-        ``context_pkg['no_vision_available'] = True`` and log.
-        Record the selected extractor on
+      * Else, pick an extractor from the slot named by
+        ``routing_config['vision_extraction']['slot']`` (typically
+        ``image_extracts``). When the slot's chain produces no
+        vision-input-capable entry, set ``context_pkg['no_vision_available']
+        = True`` and log. Record the selected extractor on
         ``context_pkg['vision_extractor_selected']`` (dict with ``id``,
-        ``bucket``, ``display_name``). WP-4.3 will call it.
+        ``source``, ``display_name``). WP-4.3 will call it.
       * ``context_pkg['vision_extraction_result']`` is left absent; WP-4.3
         populates it after it runs the extraction prompt.
 
@@ -777,17 +755,17 @@ def route_for_image_input(context_pkg: dict,
     # Branch 2: downstream is text-only (or unresolved). Select extractor.
     #
     # New (preferred) path: ``vision_extraction.slot`` names a slot in the
-    # ``slots`` block (typically ``image_generates``) whose preferred /
-    # fallback chain is reused as the extractor chain. Image-generation
+    # ``slots`` block (typically ``image_extracts``, but ``image_generates`` /
+    # ``image_edits`` / etc. also work for projects that want to reuse those
+    # chains) whose preferred / fallback entries are walked. Image-generation
     # models accept image conditioning by construction so they double as
     # vision-input-capable extractors — this avoids carving out a separate
     # ``vision_extractors`` bucket that has to be kept in sync manually.
     #
-    # Legacy path: ``preferred_extractor_bucket`` /
-    # ``fallback_extractor_bucket`` continue to work as fallbacks when no
-    # slot is configured OR when slot resolution finds no eligible entry
-    # (e.g. the slot's chain is entirely text→image generators that can't
-    # read images).
+    # The legacy preferred_extractor_bucket / fallback_extractor_bucket
+    # bucket-fallback path was retired in install Chunk 12 (2026-05-19).
+    # When no slot resolves, ``context_pkg['no_vision_available'] = True``
+    # and WP-4.4 takes over.
     extractor: dict | None = None
     used_source = ""
 
@@ -813,17 +791,6 @@ def route_for_image_input(context_pkg: dict,
             if slot_ep is not None:
                 extractor = slot_ep
                 used_source = f"slot:{slot_name}"
-
-    # Legacy bucket fallback: either no slot configured, or the slot's
-    # chain produced no vision-input-capable entry.
-    if extractor is None:
-        preferred = vision_cfg.get("preferred_extractor_bucket", "")
-        fallback = vision_cfg.get("fallback_extractor_bucket", "")
-        extractor = _pick_vision_extractor(routing_config, preferred)
-        used_source = f"bucket:{preferred}" if extractor else ""
-        if not extractor and fallback and fallback != preferred:
-            extractor = _pick_vision_extractor(routing_config, fallback)
-            used_source = f"bucket:{fallback}" if extractor else ""
 
     if extractor:
         context_pkg["vision_extractor_selected"] = {
@@ -881,7 +848,7 @@ def route_for_image_input(context_pkg: dict,
     context_pkg["vision_direct_pass"] = False
     print(
         "[visual-routing] WARNING: image input received but no vision-capable "
-        f"model found in buckets '{preferred}' or '{fallback}'. "
+        f"model found in slot '{slot_name or '(unset)'}'. "
         "Falling back to text-only path — WP-4.4 will surface a manual-trace "
         "prompt to the user."
     )

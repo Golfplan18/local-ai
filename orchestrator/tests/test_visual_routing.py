@@ -68,6 +68,15 @@ def _mock_routing_config(
     * ``local-mlx-test`` (local-premium) — vision_capable: False
     * ``api-vision`` (premium)           — vision_capable: True
     * ``api-text`` (fast)                — vision_capable: False
+
+    Vision extraction is wired via the slot path (the legacy bucket-fallback
+    fields were retired in install Chunk 12, 2026-05-19).
+    ``slots.image_extracts.{interactive, agent}`` both point at ``api-vision``
+    so route_for_image_input picks it regardless of execution_context. When
+    ``include_api_vision`` is False the slot still references the id, but
+    ``_endpoint_from_slot_entry`` returns None and route_for_image_input
+    falls through to ``no_vision_available = True`` — preserving the prior
+    no-vision-anywhere coverage.
     """
     endpoints = []
     buckets: dict[str, list[str]] = {
@@ -112,9 +121,14 @@ def _mock_routing_config(
         "_schema_version": 2,
         "vision_extraction": {
             "enabled": True,
-            "preferred_extractor_bucket": preferred_bucket,
-            "fallback_extractor_bucket": fallback_bucket,
+            "slot": "image_extracts",
             "description": "test fixture",
+        },
+        "slots": {
+            "image_extracts": {
+                "interactive": "api-vision",
+                "agent":       "api-vision",
+            },
         },
         "endpoints": endpoints,
         "buckets": buckets,
@@ -178,20 +192,19 @@ class RouteForImageInputSelectionTests(unittest.TestCase):
     # Case B: downstream = text-only, image present → API vision selected.
     # ------------------------------------------------------------------
     def test_case_b_text_only_downstream_selects_preferred_extractor(self) -> None:
-        """Text-only downstream + image → extractor from preferred bucket."""
+        """Text-only downstream + image → extractor from image_extracts slot."""
         ctx = {"image_path": "/abs/path/to/image.png"}
         downstream = {"id": "local-mlx-test", "vision_capable": False}
         rc = _mock_routing_config()
         eff, out_ctx = self.gate(ctx, downstream, routing_config=rc)
         # Downstream is not swapped — extractor runs FIRST, then downstream.
         self.assertIs(eff, downstream)
-        # Extractor was picked from the preferred bucket. ``source`` carries
-        # the origin tag — ``bucket:premium`` for bucket-resolved, or
-        # ``slot:<slot_name>`` for slot-resolved.
+        # Extractor was picked from the configured slot. ``source`` carries
+        # the origin tag ``slot:image_extracts:<execution_context>``.
         sel = out_ctx.get("vision_extractor_selected")
         self.assertIsNotNone(sel, "extractor should have been selected")
         self.assertEqual(sel["id"], "api-vision")
-        self.assertEqual(sel["source"], "bucket:premium")
+        self.assertEqual(sel["source"], "slot:image_extracts:interactive")
         self.assertFalse(out_ctx.get("vision_direct_pass"))
         # WP-4.3 — extraction was attempted; our mock returns None.
         # The key is present so downstream code can tell extraction ran.
@@ -201,23 +214,8 @@ class RouteForImageInputSelectionTests(unittest.TestCase):
                         "extractor call should have fired")
         self.assertFalse(out_ctx.get("no_vision_available", False))
 
-    def test_case_b_fallback_bucket_when_preferred_is_empty(self) -> None:
-        """Preferred has no vision model → fallback bucket is tried."""
-        ctx = {"image_path": "/abs/path/to/image.png"}
-        downstream = {"id": "local-mlx-test", "vision_capable": False}
-        # Zero the preferred bucket by omitting the vision API model from it.
-        rc = _mock_routing_config()
-        rc["buckets"]["premium"] = []  # wipe preferred
-        # Put the vision model into the fallback bucket instead.
-        rc["buckets"]["fast"].append("api-vision")
-        eff, out_ctx = self.gate(ctx, downstream, routing_config=rc)
-        sel = out_ctx.get("vision_extractor_selected")
-        self.assertIsNotNone(sel)
-        self.assertEqual(sel["id"], "api-vision")
-        self.assertEqual(sel["source"], "bucket:fast")
-
     # ------------------------------------------------------------------
-    # Case C: no vision-capable model in any bucket → no_vision_available.
+    # Case C: no vision-capable model in the slot → no_vision_available.
     # ------------------------------------------------------------------
     def test_case_c_no_vision_model_anywhere_sets_fallback_flag(self) -> None:
         """When neither bucket has a vision-capable endpoint, flag it."""
@@ -272,11 +270,13 @@ class RouteForImageInputSelectionTests(unittest.TestCase):
         self.assertFalse(out_ctx.get("vision_direct_pass"))
 
     def test_case_e_extractor_with_missing_field_is_not_picked(self) -> None:
-        """An endpoint in the preferred bucket without vision_capable is skipped."""
+        """A slot entry without vision_capable is skipped."""
         ctx = {"image_path": "/abs/path/to/image.png"}
         downstream = {"id": "local-mlx-test", "vision_capable": False}
         rc = _mock_routing_config(include_api_vision=False)
-        # Add a new endpoint in premium with no vision_capable field at all.
+        # Add a new endpoint with no vision_capable field at all, and wire
+        # the slot to it. ``_endpoint_from_slot_entry`` should refuse to
+        # treat a missing field as truthy.
         rc["endpoints"].append({
             "id": "mystery-premium",
             "type": "api",
@@ -285,6 +285,10 @@ class RouteForImageInputSelectionTests(unittest.TestCase):
             # No vision_capable key present.
         })
         rc["buckets"]["premium"].append("mystery-premium")
+        rc["slots"]["image_extracts"] = {
+            "interactive": "mystery-premium",
+            "agent":       "mystery-premium",
+        }
         eff, out_ctx = self.gate(ctx, downstream, routing_config=rc)
         # Mystery model must NOT be picked — it has no vision_capable field.
         self.assertIsNone(out_ctx.get("vision_extractor_selected"))
@@ -387,7 +391,7 @@ class RouteForImageInputConfigLoadTests(unittest.TestCase):
         # bucket-resolved otherwise.
         self.assertIn("id", sel)
         self.assertIn("source", sel)
-        self.assertTrue(sel["source"].startswith(("slot:", "bucket:")))
+        self.assertTrue(sel["source"].startswith("slot:"))
 
     def test_load_failure_is_failopen(self) -> None:
         """If routing-config can't be loaded, the gate is a safe no-op."""
@@ -413,8 +417,11 @@ class RoutingConfigSchemaTests(unittest.TestCase):
         self.assertIn("vision_extraction", cfg)
         ve = cfg["vision_extraction"]
         self.assertIn("enabled", ve)
-        self.assertIn("preferred_extractor_bucket", ve)
-        self.assertIn("fallback_extractor_bucket", ve)
+        # Slot path is canonical after install Chunk 12 (2026-05-19).
+        self.assertIn("slot", ve)
+        # Legacy bucket-fallback fields are retired.
+        self.assertNotIn("preferred_extractor_bucket", ve)
+        self.assertNotIn("fallback_extractor_bucket", ve)
 
     def test_all_endpoints_have_vision_capable_field(self) -> None:
         cfg_path = WORKSPACE / "config" / "routing-config.json"
@@ -693,8 +700,6 @@ class SlotBasedVisionExtractionEndToEnd(unittest.TestCase):
             "vision_extraction": {
                 "enabled": True,
                 **({"slot": "image_generates"} if slot_set else {}),
-                "preferred_extractor_bucket": "premium",
-                "fallback_extractor_bucket": "fast",
             },
             "buckets": {
                 "premium": ["bucket-fallback-ep"],
@@ -718,26 +723,28 @@ class SlotBasedVisionExtractionEndToEnd(unittest.TestCase):
         self.assertEqual(sel["source"], "slot:image_generates")
         self.assertEqual(sel["id"], "openrouter:openai/gpt-5.4-image-2")
 
-    def test_slot_unresolvable_falls_back_to_bucket(self):
+    def test_slot_unresolvable_sets_no_vision_available(self):
         # image_generates chain is entirely text-to-image generators →
-        # slot path can't produce an extractor; bucket fallback fires.
+        # slot path can't produce an extractor. The legacy bucket-fallback
+        # was retired in install Chunk 12 (2026-05-19); the gate now sets
+        # no_vision_available=True instead.
         ctx = {"image_path": "/abs/img.png"}
         downstream = {"id": "text-only", "vision_capable": False}
         rc = self._rc(slot_set=True, image_gen_preferred="local-diffusers")
         eff, out = self.gate(ctx, downstream, routing_config=rc)
-        sel = out["vision_extractor_selected"]
-        self.assertEqual(sel["source"], "bucket:premium")
-        self.assertEqual(sel["id"], "bucket-fallback-ep")
+        self.assertIsNone(out.get("vision_extractor_selected"))
+        self.assertTrue(out.get("no_vision_available"))
 
-    def test_no_slot_configured_uses_bucket_path(self):
-        # Back-compat: when vision_extraction.slot is absent, the legacy
-        # bucket path runs unchanged.
+    def test_no_slot_configured_sets_no_vision_available(self):
+        # When vision_extraction.slot is absent there is nothing to walk.
+        # Post-Chunk-12 the gate sets no_vision_available=True rather than
+        # falling back to a bucket walk (which no longer exists).
         ctx = {"image_path": "/abs/img.png"}
         downstream = {"id": "text-only", "vision_capable": False}
         rc = self._rc(slot_set=False, image_gen_preferred=None)
         eff, out = self.gate(ctx, downstream, routing_config=rc)
-        sel = out["vision_extractor_selected"]
-        self.assertEqual(sel["source"], "bucket:premium")
+        self.assertIsNone(out.get("vision_extractor_selected"))
+        self.assertTrue(out.get("no_vision_available"))
 
 
 class PickVisionExtractorFromImageExtractsSlot(unittest.TestCase):
@@ -841,8 +848,6 @@ class RouteForImageInputThreadsExecutionContext(unittest.TestCase):
             "vision_extraction": {
                 "enabled": True,
                 "slot": "image_extracts",
-                "preferred_extractor_bucket": "premium",
-                "fallback_extractor_bucket": "fast",
             },
             "slots": {
                 "image_extracts": {

@@ -4,9 +4,7 @@
   "_migrated_from": "/Users/oracle/ora/config/endpoints.json",
   "vision_extraction": {
     "enabled": true,
-    "preferred_extractor_bucket": "premium",
-    "fallback_extractor_bucket": "fast",
-    "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image \u2192 text), NOT image-generation models. Earlier this pointed at 'image_generates' on the assumption that image-gen models also read images well \u2014 they do accept image input for conditioning, but they're tuned to produce images, not JSON descriptions, and asking them to emit structured text hangs the request. The dedicated 'image_extracts' slot exists for this purpose: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. The preferred_extractor_bucket / fallback_extractor_bucket fields are the legacy bucket-based fallback used when no slot is configured or when the slot's chain has no vision-input-capable entry. Final fallback to manual-trace UX (WP-4.4) when nothing resolves.",
+    "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image \u2192 text), NOT image-generation models. The dedicated 'image_extracts' slot is the canonical home: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. When the slot's chain produces no vision-input-capable entry, route_for_image_input sets context_pkg['no_vision_available'] = True and the manual-trace UX (WP-4.4) takes over. The earlier preferred_extractor_bucket / fallback_extractor_bucket bucket-fallback path was retired in install Chunk 12 (2026-05-19).",
     "slot": "image_extracts"
   },
   "web_supplement": {
@@ -1909,8 +1907,8 @@
   },
   "_pipelines_retired": "Pipelines block removed in install Chunk 2d (2026-05-18). Replaced by config/configurations/<name>.json files. Router auto-derives config_name from context (interactive \u2192 user-pipeline; agent/autonomous \u2192 background-default) via DEFAULT_CONFIG_FOR_CONTEXT.",
   "_schema_notes": {
-    "vision_capable_source_of_truth": "config/models.json is canonical. routing-config.json::endpoints[].vision_capable is a duplicate kept for backward compatibility; Router.vision_capable_for_endpoint() reads models.json first. Field removal from endpoints[] is scheduled for Chunk 12.",
-    "vision_extraction_legacy_fields": "vision_extraction.preferred_extractor_bucket and .fallback_extractor_bucket are LEGACY (slot path supersedes bucket path). boot.py route_for_image_input still consults them as a final fallback; removal scheduled for Chunk 12 alongside the route_for_image_input refactor to slot-only resolution.",
+    "vision_capable_source_of_truth": "config/models.json is canonical. routing-config.json::endpoints[].vision_capable is a duplicate kept for backward compatibility; Router.vision_capable_for_endpoint() reads models.json first. Field removal from endpoints[] is queued as a follow-on task to install Chunk 12 — blocked on expanding models.json to per-variant entries since most routing-config endpoint ids (e.g. anthropic-api-opus-3) are not present in models.json today.",
+    "vision_extraction_bucket_fallback_retired": "vision_extraction.preferred_extractor_bucket and .fallback_extractor_bucket were retired in install Chunk 12 (2026-05-19). route_for_image_input is slot-only — when the configured slot's chain produces no vision-input-capable entry, context_pkg['no_vision_available'] = True and WP-4.4 takes over.",
     "pipelines_block_retired": "See _pipelines_retired marker. Removed in install Chunk 2d (2026-05-18). All slot resolution flows through config/configurations/<name>.json via Router auto-derivation from context.",
     "canonical_identifier_form": "TARGET: <provider>:<model_id> for cloud, bare id for local. CURRENT: mixed (some endpoints already use the prefix form, others use bare slugs). Migration to canonical form scheduled for Chunk 12."
   }

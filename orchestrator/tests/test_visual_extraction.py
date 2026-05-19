@@ -384,8 +384,13 @@ class RouteAndBuildSystemPromptIntegrationTests(unittest.TestCase):
             "_schema_version": 2,
             "vision_extraction": {
                 "enabled": True,
-                "preferred_extractor_bucket": "premium",
-                "fallback_extractor_bucket": "fast",
+                "slot": "image_extracts",
+            },
+            "slots": {
+                "image_extracts": {
+                    "interactive": "api-vision",
+                    "agent": "api-vision",
+                },
             },
             "endpoints": [
                 {
@@ -539,10 +544,10 @@ class RouteAndBuildSystemPromptIntegrationTests(unittest.TestCase):
 
         ctx = {"image_path": "/abs/img.png"}
         downstream = {"id": "local-text", "vision_capable": False}
-        # Empty buckets → no vision model anywhere.
+        # Empty slot → no vision model resolvable. (The legacy bucket
+        # fallback was retired in install Chunk 12, 2026-05-19.)
         rc = self._mock_routing_config()
-        rc["buckets"]["premium"] = []
-        rc["buckets"]["fast"] = []
+        rc["slots"]["image_extracts"] = {}
 
         with mock.patch.object(visual_extraction, "extract_spatial_from_image",
                                return_value=None) as mocked:
