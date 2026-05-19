@@ -319,5 +319,212 @@ class FormatEvidenceBlock(unittest.TestCase):
         self.assertIn("_no results returned_", out)
 
 
+# ---------------------------------------------------------------------------
+# extract_revised_draft_section
+# ---------------------------------------------------------------------------
+
+
+class ExtractRevisedDraftSection(unittest.TestCase):
+    def test_empty_input(self):
+        self.assertEqual(
+            claim_verification.extract_revised_draft_section(""), "",
+        )
+
+    def test_missing_section(self):
+        text = "## ADDRESSED\nfoo\n\n## CHANGELOG\nbar"
+        self.assertEqual(
+            claim_verification.extract_revised_draft_section(text), "",
+        )
+
+    def test_extracts_body_stops_at_changelog(self):
+        text = (
+            "## ADDRESSED\nfoo\n\n"
+            "## REVISED DRAFT\n\n"
+            "This is the revised analysis.\n"
+            "It has multiple lines.\n\n"
+            "## Some sub-H2 inside the draft\nstill part of the draft\n\n"
+            "## CHANGELOG\nchangelog content\n"
+        )
+        body = claim_verification.extract_revised_draft_section(text)
+        self.assertIn("This is the revised analysis", body)
+        self.assertIn("Some sub-H2 inside the draft", body)
+        self.assertIn("still part of the draft", body)
+        self.assertNotIn("changelog content", body)
+
+    def test_extracts_to_eof_when_no_changelog(self):
+        text = (
+            "## REVISED DRAFT\n\n"
+            "draft body without changelog"
+        )
+        body = claim_verification.extract_revised_draft_section(text)
+        self.assertIn("draft body without changelog", body)
+
+
+# ---------------------------------------------------------------------------
+# _parse_extracted_claims (V8 unflagged-claim scan parser)
+# ---------------------------------------------------------------------------
+
+
+class ParseExtractedClaims(unittest.TestCase):
+    def test_empty(self):
+        self.assertEqual(claim_verification._parse_extracted_claims(""), [])
+
+    def test_none_marker(self):
+        self.assertEqual(
+            claim_verification._parse_extracted_claims("EXTRACTED:\n(none)"),
+            [],
+        )
+
+    def test_single_extraction(self):
+        text = (
+            "EXTRACTED:\n"
+            '- claim: "the company has 500 employees"\n'
+            "  claim_type: quantitative-figure\n"
+            "  risk_level: moderate\n"
+            "  challenge_query: ACME Corp employee count 2025"
+        )
+        out = claim_verification._parse_extracted_claims(text)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["claim_type"], "quantitative-figure")
+        self.assertEqual(out[0]["risk_level"], "moderate")
+        self.assertIn("500 employees", out[0]["claim"])
+
+    def test_multiple_extractions(self):
+        text = (
+            "EXTRACTED:\n"
+            '- claim: "claim 1"\n'
+            "  claim_type: dated-event\n"
+            "  risk_level: high\n"
+            "  challenge_query: q1\n"
+            '- claim: "claim 2"\n'
+            "  claim_type: named-entity\n"
+            "  risk_level: low\n"
+            "  challenge_query: q2"
+        )
+        out = claim_verification._parse_extracted_claims(text)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(
+            [c["risk_level"] for c in out], ["high", "low"],
+        )
+
+
+# ---------------------------------------------------------------------------
+# extract_and_verify_unflagged_claims (V8 scan end-to-end)
+# ---------------------------------------------------------------------------
+
+
+def _make_fast_endpoint():
+    return {"name": "test-fast", "type": "api"}
+
+
+class ExtractAndVerifyUnflagged(unittest.TestCase):
+    def test_no_fast_endpoint_skips(self):
+        out = claim_verification.extract_and_verify_unflagged_claims(
+            revised_draft="some draft",
+            flagged_claims=[],
+            call_model=lambda m, e: "",
+            fast_endpoint=None,
+        )
+        self.assertEqual(out["trace"]["status"], "skipped")
+        self.assertEqual(out["trace"]["reason"], "no_fast_endpoint")
+        self.assertEqual(out["evidence_text"], "")
+
+    def test_empty_draft_skips(self):
+        out = claim_verification.extract_and_verify_unflagged_claims(
+            revised_draft="",
+            flagged_claims=[],
+            call_model=lambda m, e: "EXTRACTED:\n(none)",
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        self.assertEqual(out["trace"]["status"], "skipped")
+        self.assertEqual(out["trace"]["reason"], "empty_revised_draft")
+
+    def test_extractor_returns_none(self):
+        out = claim_verification.extract_and_verify_unflagged_claims(
+            revised_draft="some draft text",
+            flagged_claims=[],
+            call_model=lambda m, e: "EXTRACTED:\n(none)",
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        self.assertEqual(out["trace"]["status"], "ran")
+        self.assertEqual(out["trace"]["extracted_count"], 0)
+        self.assertEqual(out["evidence_text"], "")
+
+    def test_extractor_call_error(self):
+        def failing_call(messages, endpoint):
+            raise RuntimeError("extractor down")
+        out = claim_verification.extract_and_verify_unflagged_claims(
+            revised_draft="some draft text",
+            flagged_claims=[],
+            call_model=failing_call,
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        self.assertEqual(out["trace"]["status"], "errored")
+        self.assertIn("extractor down", out["trace"]["reason"])
+
+    def test_full_path_renders_unflagged_label(self):
+        extractor_response = (
+            "EXTRACTED:\n"
+            '- claim: "unflagged claim text"\n'
+            "  claim_type: dated-event\n"
+            "  risk_level: high\n"
+            "  challenge_query: when did X happen"
+        )
+        results = [_ddg_result("https://example.com/x", "title", "snippet body")]
+        with mock.patch.object(claim_verification, "web_search_structured",
+                                return_value=results):
+            out = claim_verification.extract_and_verify_unflagged_claims(
+                revised_draft="The analysis says X happened recently.",
+                flagged_claims=[
+                    {"claim_num": 1, "claim_type": "named-entity",
+                     "claim": "previously-flagged"},
+                ],
+                call_model=lambda m, e: extractor_response,
+                fast_endpoint=_make_fast_endpoint(),
+            )
+        self.assertEqual(out["trace"]["status"], "ran")
+        self.assertEqual(out["trace"]["extracted_count"], 1)
+        self.assertGreater(out["trace"]["chunks_total"], 0)
+        # Evidence text uses the "Unflagged Claim" label, not "Claim".
+        self.assertIn("### Unflagged Claim 1", out["evidence_text"])
+        self.assertNotIn("### Claim 1", out["evidence_text"])
+
+
+# ---------------------------------------------------------------------------
+# _format_evidence_block label_prefix parameter
+# ---------------------------------------------------------------------------
+
+
+class FormatEvidenceBlockLabelPrefix(unittest.TestCase):
+    def test_default_label_is_claim(self):
+        per_claim = [{
+            "claim": {
+                "claim_num": 1, "claim_type": "x", "risk_level": "low",
+                "claim": "a",
+            },
+            "query": "q",
+            "chunks": [],
+            "error": None,
+        }]
+        out = claim_verification._format_evidence_block(per_claim)
+        self.assertIn("### Claim 1", out)
+        self.assertNotIn("### Unflagged", out)
+
+    def test_custom_label_prefix(self):
+        per_claim = [{
+            "claim": {
+                "claim_num": 1, "claim_type": "x", "risk_level": "low",
+                "claim": "a",
+            },
+            "query": "q",
+            "chunks": [],
+            "error": None,
+        }]
+        out = claim_verification._format_evidence_block(
+            per_claim, label_prefix="Unflagged Claim",
+        )
+        self.assertIn("### Unflagged Claim 1", out)
+
+
 if __name__ == "__main__":
     unittest.main()

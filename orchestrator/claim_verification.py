@@ -29,7 +29,7 @@ import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
@@ -365,18 +365,24 @@ def assemble_claim_verification_evidence(
 # Prompt-block formatter
 # ---------------------------------------------------------------------------
 
-def _format_evidence_block(per_claim_evidence: list[dict]) -> str:
-    """Render the per-claim evidence as a ``## FLAGGED CLAIM EVIDENCE``
-    body suitable for direct injection into a model system prompt.
+def _format_evidence_block(
+    per_claim_evidence: list[dict],
+    label_prefix: str = "Claim",
+) -> str:
+    """Render the per-claim evidence as a prompt-ready body.
 
     For each claim, emit:
-      ### Claim N — `<claim_type>` — risk: <level>
+      ### <label_prefix> N — `<claim_type>` — risk: <level>
       **Claim:** "<text>"
       **Challenge query:** "<query>"
       **Evidence:**
         - [<tier> | weight: <n> | source: <url>] <document body>
         - ...
       <or: "**Evidence:** _no results returned_" / "_error: <msg>_">
+
+    The ``label_prefix`` distinguishes evidence blocks when the verifier
+    sees both the original flagged-claim evidence (default "Claim") and
+    the V8 unflagged-claim evidence (caller passes "Unflagged Claim").
 
     Returns empty string when per_claim_evidence is empty.
     """
@@ -393,7 +399,7 @@ def _format_evidence_block(per_claim_evidence: list[dict]) -> str:
         query = entry.get("query", "")
 
         header = (
-            f"### Claim {claim_num} — `{claim_type}` — risk: {risk}\n"
+            f"### {label_prefix} {claim_num} — `{claim_type}` — risk: {risk}\n"
             f"**Claim:** \"{claim_text}\"  \n"
             f"**Challenge query:** \"{query}\""
         )
@@ -432,9 +438,302 @@ def _format_evidence_block(per_claim_evidence: list[dict]) -> str:
     return "\n\n".join(blocks)
 
 
+# ---------------------------------------------------------------------------
+# V8 unflagged-claim scan — F-Verify §V8 §3 (Unflagged-claim scan)
+# ---------------------------------------------------------------------------
+
+_EXTRACT_UNFLAGGED_SYSTEM_PROMPT = """\
+You are scanning a revised analysis for high-risk factual claims that the \
+evaluator did NOT flag for verification. The verifier (Step 8) will use \
+your extracted claims to issue last-gate verification queries.
+
+A claim qualifies for extraction if ALL of these hold:
+- It is a SPECIFIC factual assertion (dates, numbers, percentages, \
+named entities, direct quotations, technical specifications, established \
+historical events).
+- It is NOT already in the LIST OF ALREADY-FLAGGED CLAIMS shown below.
+- It is NOT a substantive disputed position, contrarian theory, or the \
+analyst's analytical conclusion — those pass through untouched (they ARE \
+the analysis, not facts to be verified).
+- It is NOT an interpretive claim that depends on methodological choice.
+
+Output format. No prose outside the format.
+
+When you find one or more unflagged claims:
+
+EXTRACTED:
+- claim: "<quoted assertion from the revised draft>"
+  claim_type: <dated-event | quantitative-figure | named-entity | quoted-attribution | cause-effect | technical-spec | general-reference>
+  risk_level: <high|moderate|low>
+  challenge_query: <search-engine-style query, 3-7 keywords>
+
+When you find no unflagged high-risk claims:
+
+EXTRACTED:
+(none)"""
+
+
+_EXTRACT_UNFLAGGED_USER_TEMPLATE = """\
+REVISED ANALYSIS:
+{revised_draft}
+
+LIST OF ALREADY-FLAGGED CLAIMS (do not re-extract these):
+{already_flagged_summary}"""
+
+
+_EXTRACTED_BLOCK_RE = re.compile(
+    r"^\s*-\s+claim:\s*(?P<claim>.+?)\s*\n"
+    r"\s+claim_type:\s*(?P<type>[a-z\-]+)\s*\n"
+    r"\s+risk_level:\s*(?P<risk>high|moderate|low)\s*\n"
+    r"\s+challenge_query:\s*(?P<query>.+?)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _parse_extracted_claims(text: str) -> list[dict]:
+    """Parse extracted unflagged claims from the fast-model output.
+
+    Returns a list of {claim_type, risk_level, claim, challenge_query}
+    dicts. The claim_num is assigned by the caller — extractor output
+    has no numbering, the caller decides the sequence.
+
+    Returns an empty list when "(none)" is the body or no claims parse.
+    """
+    if not text:
+        return []
+    out: list[dict] = []
+    for m in _EXTRACTED_BLOCK_RE.finditer(text):
+        out.append({
+            "claim":           m.group("claim").strip().strip('"\''),
+            "claim_type":      m.group("type").lower(),
+            "risk_level":      m.group("risk").lower(),
+            "challenge_query": m.group("query").strip().strip('"\''),
+        })
+    return out
+
+
+def _summarize_flagged_claims_for_extractor(
+    flagged_claims: list[dict],
+) -> str:
+    """Render the already-flagged-claims list compactly for the extractor
+    prompt. The extractor sees claim text + claim_type so it can detect
+    overlap; the per-claim search results are not needed.
+    """
+    if not flagged_claims:
+        return "(no claims were flagged at evaluation)"
+    lines = []
+    for c in flagged_claims:
+        lines.append(
+            f"- [{c.get('claim_type', 'unknown')}] "
+            f"\"{c.get('claim', '')}\""
+        )
+    return "\n".join(lines)
+
+
+def extract_and_verify_unflagged_claims(
+    revised_draft: str,
+    flagged_claims: list[dict],
+    *,
+    call_model: Callable[[list, dict], str],
+    fast_endpoint: Optional[dict],
+    trusted_registry: Optional[web_corroboration.TrustedSourcesRegistry] = None,
+    per_query_timeout_seconds: int = DEFAULT_PER_QUERY_TIMEOUT_SECONDS,
+    max_results_per_query: int = DEFAULT_MAX_RESULTS_PER_QUERY,
+) -> dict:
+    """V8 unflagged-claim scan (F-Verify §V8.3).
+
+    A fast-model call extracts high-risk factual claims from the revised
+    draft that were NOT in the evaluator's FLAGGED CLAIMS list, then the
+    same parallel-search infrastructure used for flagged claims runs the
+    extractor's challenge_queries.
+
+    Args:
+        revised_draft: the reviser's `## REVISED DRAFT` body (extracted
+            from the reviser's full output by the caller).
+        flagged_claims: the parsed FLAGGED CLAIMS list from the
+            evaluator. Passed to the extractor so it can avoid
+            re-extracting already-verified claims.
+        call_model: callable for the extractor model call.
+        fast_endpoint: endpoint dict for the extractor (typically
+            step1_cleanup slot). When None, the scan returns empty.
+
+    Returns same shape as ``assemble_claim_verification_evidence``:
+        {
+          "evidence_text": str,            # ## UNFLAGGED CLAIM EVIDENCE
+          "per_claim_evidence": list[dict],
+          "trace": dict,                   # includes "extracted_count"
+        }
+
+    Failure modes:
+      - fast_endpoint is None → status=skipped, reason=no_fast_endpoint.
+      - Empty revised_draft → status=skipped, reason=empty_revised_draft.
+      - Extractor model call raises → status=errored.
+      - Extractor returns "(none)" → status=ran, extracted_count=0,
+        evidence_text="".
+    """
+    t_start = time.time()
+    signals: list[str] = []
+
+    if not fast_endpoint:
+        return _empty_unflagged_result(
+            "skipped", "no_fast_endpoint", t_start, signals,
+        )
+
+    if not revised_draft or not revised_draft.strip():
+        return _empty_unflagged_result(
+            "skipped", "empty_revised_draft", t_start, signals,
+        )
+
+    # --- Extractor call -------------------------------------------------
+    user = _EXTRACT_UNFLAGGED_USER_TEMPLATE.format(
+        revised_draft=revised_draft,
+        already_flagged_summary=_summarize_flagged_claims_for_extractor(
+            flagged_claims
+        ),
+    )
+    try:
+        raw = call_model(
+            [{"role": "system", "content": _EXTRACT_UNFLAGGED_SYSTEM_PROMPT},
+             {"role": "user",   "content": user}],
+            fast_endpoint,
+        )
+    except Exception as exc:
+        signals.append(f"unflagged_scan_extractor_call_error: {exc}")
+        return _empty_unflagged_result(
+            "errored", f"extractor_call_error: {str(exc)[:200]}",
+            t_start, signals,
+        )
+
+    extracted = _parse_extracted_claims(raw or "")
+    signals.append(
+        f"unflagged_scan_extracted: {len(extracted)} claims"
+    )
+
+    if not extracted:
+        return {
+            "evidence_text": "",
+            "per_claim_evidence": [],
+            "trace": {
+                "status": "ran",
+                "reason": None,
+                "extracted_count": 0,
+                "claims_total": 0,
+                "claims_succeeded": 0,
+                "claims_failed": 0,
+                "chunks_total": 0,
+                "elapsed_seconds": time.time() - t_start,
+                "signals": signals,
+            },
+        }
+
+    # Synthesize claim_num for each extracted claim (1-indexed) and a
+    # standardized why_flagged so the per-claim evidence renders cleanly.
+    numbered: list[dict] = []
+    for i, c in enumerate(extracted, 1):
+        numbered.append({
+            "claim_num":       i,
+            "claim_type":      c["claim_type"],
+            "risk_level":      c["risk_level"],
+            "claim":           c["claim"],
+            "why_flagged":     "unflagged at evaluation; verifier pre-flight extracted",
+            "challenge_query": c["challenge_query"],
+        })
+
+    # Run the same parallel verification path as flagged claims.
+    evidence = assemble_claim_verification_evidence(
+        numbered,
+        trusted_registry=trusted_registry,
+        per_query_timeout_seconds=per_query_timeout_seconds,
+        max_results_per_query=max_results_per_query,
+    )
+
+    # Re-render the evidence block with "Unflagged Claim N" labels so
+    # the verifier can distinguish from the FLAGGED CLAIM EVIDENCE block.
+    evidence_text = _format_evidence_block(
+        evidence["per_claim_evidence"],
+        label_prefix="Unflagged Claim",
+    )
+
+    # Stitch traces — keep the inner trace's per-claim numbers and add
+    # the extractor's extracted_count.
+    inner_trace = evidence.get("trace", {})
+    return {
+        "evidence_text": evidence_text,
+        "per_claim_evidence": evidence["per_claim_evidence"],
+        "trace": {
+            "status": inner_trace.get("status", "ran"),
+            "reason": inner_trace.get("reason"),
+            "extracted_count": len(extracted),
+            "claims_total": inner_trace.get("claims_total", 0),
+            "claims_succeeded": inner_trace.get("claims_succeeded", 0),
+            "claims_failed": inner_trace.get("claims_failed", 0),
+            "chunks_total": inner_trace.get("chunks_total", 0),
+            "elapsed_seconds": time.time() - t_start,
+            "signals": signals + (inner_trace.get("signals") or []),
+        },
+    }
+
+
+def _empty_unflagged_result(
+    status: str, reason: str,
+    t_start: float, signals: list[str],
+) -> dict:
+    return {
+        "evidence_text": "",
+        "per_claim_evidence": [],
+        "trace": {
+            "status": status,
+            "reason": reason,
+            "extracted_count": 0,
+            "claims_total": 0,
+            "claims_succeeded": 0,
+            "claims_failed": 0,
+            "chunks_total": 0,
+            "elapsed_seconds": time.time() - t_start,
+            "signals": signals,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Revised-draft extractor — pulls the ## REVISED DRAFT section body
+# ---------------------------------------------------------------------------
+
+_REVISED_DRAFT_HEADER_RE = re.compile(
+    r"^##\s+REVISED\s+DRAFT\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+_CHANGELOG_HEADER_RE = re.compile(
+    r"^##\s+CHANGELOG\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def extract_revised_draft_section(reviser_output: str) -> str:
+    """Extract the body of the ``## REVISED DRAFT`` section from reviser
+    output.
+
+    The revised draft can contain its own H2 headings (it's the full
+    rewritten analysis), so this stops at ``## CHANGELOG`` specifically
+    rather than the next H2. Returns the stripped body, or empty string
+    when the section is missing.
+    """
+    if not reviser_output:
+        return ""
+    m = _REVISED_DRAFT_HEADER_RE.search(reviser_output)
+    if not m:
+        return ""
+    body_start = m.end()
+    cl = _CHANGELOG_HEADER_RE.search(reviser_output[body_start:])
+    body_end = body_start + cl.start() if cl else len(reviser_output)
+    return reviser_output[body_start:body_end].strip()
+
+
 __all__ = [
     "parse_flagged_claims",
     "assemble_claim_verification_evidence",
+    "extract_and_verify_unflagged_claims",
+    "extract_revised_draft_section",
     "DEFAULT_PER_QUERY_TIMEOUT_SECONDS",
     "DEFAULT_MAX_RESULTS_PER_QUERY",
 ]

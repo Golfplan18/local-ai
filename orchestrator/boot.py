@@ -107,14 +107,20 @@ except ImportError:
 # Claim-verification pre-flight (Pattern B). Parses the evaluator's
 # FLAGGED CLAIMS section and runs each challenge_query in parallel; the
 # evidence text is injected into reviser + verifier USER messages so
-# both can ground their decisions in the same data. See
-# Specification — F-Revise.md §Claim verification and
-# Specification — F-Verify.md V9 for the consumer contracts.
+# both can ground their decisions in the same data. Also includes the
+# V8 unflagged-claim scan that runs after the reviser produces its
+# revised draft: a fast-model call extracts high-risk claims the
+# evaluator missed, and the same parallel-search infrastructure runs
+# verification queries on them. See Specification — F-Revise.md
+# §Claim verification and Specification — F-Verify.md V8/V9 for the
+# consumer contracts.
 CLAIM_VERIFICATION_AVAILABLE = False
 try:
     from claim_verification import (
         parse_flagged_claims,
         assemble_claim_verification_evidence,
+        extract_and_verify_unflagged_claims,
+        extract_revised_draft_section,
     )
     CLAIM_VERIFICATION_AVAILABLE = True
 except ImportError:
@@ -7448,31 +7454,35 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
 def _run_claim_verification_preflight(
     evaluator_output: str,
     label: str = "",
-) -> tuple[str, dict]:
+) -> tuple[str, list[dict], dict]:
     """Parse FLAGGED CLAIMS from evaluator output and assemble per-claim
     web-verification evidence in parallel.
 
-    Returns ``(evidence_text, trace)``.
+    Returns ``(evidence_text, flagged_claims, trace)``.
 
       - ``evidence_text`` is a formatted ``## FLAGGED CLAIM EVIDENCE``
         body suitable for direct injection into a reviser or verifier
         USER message. Empty string when no claims were flagged or the
         module is unavailable.
 
+      - ``flagged_claims`` is the parsed list of claim dicts; the
+        downstream V8 unflagged-claim scan consumes this so the
+        extractor knows which claims are already in scope.
+
       - ``trace`` is the operational metadata from
         ``assemble_claim_verification_evidence``, or a minimal dict with
         ``status`` and ``reason`` when the pre-flight skipped or errored.
 
     ``label`` is a free-form string folded into the trace for cross-step
-    disambiguation (e.g. ``"depth-evaluation"`` vs
-    ``"breadth-evaluation"`` in Gear 4) so downstream pipeline-trace
-    dumps stay legible when two pre-flights ran per turn.
+    disambiguation (e.g. ``"gear4-eval-of-depth"`` vs
+    ``"gear4-eval-of-breadth"``) so downstream pipeline-trace dumps stay
+    legible when two pre-flights ran per turn.
 
-    Fail-soft: any unexpected error returns an empty evidence_text and
-    an ``errored`` trace — never raises.
+    Fail-soft: any unexpected error returns an empty evidence_text,
+    empty claims list, and an ``errored`` trace — never raises.
     """
     if not CLAIM_VERIFICATION_AVAILABLE:
-        return "", {
+        return "", [], {
             "status": "skipped",
             "reason": "module_unavailable",
             "label": label,
@@ -7480,13 +7490,13 @@ def _run_claim_verification_preflight(
     try:
         claims = parse_flagged_claims(evaluator_output or "")
     except Exception as exc:
-        return "", {
+        return "", [], {
             "status": "errored",
             "reason": f"parse_failed: {str(exc)[:200]}",
             "label": label,
         }
     if not claims:
-        return "", {
+        return "", [], {
             "status": "skipped",
             "reason": "no_flagged_claims",
             "claims_total": 0,
@@ -7495,12 +7505,83 @@ def _run_claim_verification_preflight(
     try:
         result = assemble_claim_verification_evidence(claims)
     except Exception as exc:
-        return "", {
+        return "", claims, {
             "status": "errored",
             "reason": f"assemble_failed: {str(exc)[:200]}",
             "claims_total": len(claims),
             "label": label,
         }
+    trace = dict(result.get("trace", {}))
+    trace["label"] = label
+    return result.get("evidence_text", ""), claims, trace
+
+
+def _run_unflagged_claim_scan(
+    reviser_output: str,
+    flagged_claims: list[dict],
+    config: dict,
+    label: str = "",
+) -> tuple[str, dict]:
+    """V8 unflagged-claim scan (F-Verify §V8.3).
+
+    Extracts high-risk factual claims from the reviser's ``## REVISED
+    DRAFT`` section that were NOT in the evaluator's FLAGGED CLAIMS
+    list, then runs verification queries on them in parallel. The
+    evidence is injected into the verifier's USER message as a
+    ``## UNFLAGGED CLAIM EVIDENCE`` block (distinct from the FLAGGED
+    CLAIM EVIDENCE block the verifier already sees).
+
+    Returns ``(evidence_text, trace)``.
+
+    Fail-soft: any unexpected error returns empty evidence_text + an
+    errored trace; never raises.
+    """
+    if not CLAIM_VERIFICATION_AVAILABLE:
+        return "", {
+            "status": "skipped",
+            "reason": "module_unavailable",
+            "label": label,
+        }
+
+    # Extract the REVISED DRAFT body — the extractor scans this, not the
+    # reviser's full output with ADDRESSED / CLAIM RESOLUTIONS / etc.
+    try:
+        revised_draft = extract_revised_draft_section(reviser_output or "")
+    except Exception as exc:
+        return "", {
+            "status": "errored",
+            "reason": f"draft_extract_failed: {str(exc)[:200]}",
+            "label": label,
+        }
+    if not revised_draft:
+        return "", {
+            "status": "skipped",
+            "reason": "revised_draft_section_missing",
+            "label": label,
+        }
+
+    # Resolve the fast endpoint (same slot as F-Consult).
+    fast_ep = get_slot_endpoint(config, _WEB_CONSULT_DEFAULT_SLOT)
+    if fast_ep is None:
+        return "", {
+            "status": "skipped",
+            "reason": "no_fast_endpoint",
+            "label": label,
+        }
+
+    try:
+        result = extract_and_verify_unflagged_claims(
+            revised_draft, flagged_claims,
+            call_model=call_model,
+            fast_endpoint=fast_ep,
+        )
+    except Exception as exc:
+        return "", {
+            "status": "errored",
+            "reason": f"scan_failed: {str(exc)[:200]}",
+            "label": label,
+        }
+
     trace = dict(result.get("trace", {}))
     trace["label"] = label
     return result.get("evidence_text", ""), trace
@@ -7613,8 +7694,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     # text is injected into both the reviser's (Step 5) and verifier's
     # (Step 6) user messages so they ground their decisions in the same
     # web evidence. See claim_verification.py.
-    claim_evidence_text, claim_evidence_trace = _run_claim_verification_preflight(
-        breadth_evaluation, label="gear3-eval",
+    claim_evidence_text, flagged_claims_g3, claim_evidence_trace = (
+        _run_claim_verification_preflight(
+            breadth_evaluation, label="gear3-eval",
+        )
     )
     _trace_step_g3("step4.5-claim-verification", {
         "evidence_text": claim_evidence_text,
@@ -7665,7 +7748,33 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
     }, markdown=f"# Step 5 — Reviser (Gear 3)\n\n{revised_analysis}\n")
 
-    # --- Step 6: Breadth Verifier (universal V1-V8 + mode checks) ---
+    # --- Step 5.5: V8 unflagged-claim scan (Pattern B) ---
+    # F-Verify §V8.3: scan the revised draft for high-risk claims the
+    # evaluator did NOT flag, then run verification queries on them in
+    # parallel. The evidence is injected into the verifier's user message
+    # as a distinct ## UNFLAGGED CLAIM EVIDENCE block.
+    unflagged_evidence_text, unflagged_evidence_trace = (
+        _run_unflagged_claim_scan(
+            revised_analysis, flagged_claims_g3, config,
+            label="gear3",
+        )
+    )
+    _trace_step_g3("step5.5-unflagged-scan", {
+        "evidence_text": unflagged_evidence_text,
+        "trace": unflagged_evidence_trace,
+    }, markdown=(
+        "# Step 5.5 — V8 unflagged-claim scan (Gear 3)\n\n"
+        f"**Status:** `{unflagged_evidence_trace.get('status')}`  \n"
+        f"**Reason:** `{unflagged_evidence_trace.get('reason') or '_n/a_'}`  \n"
+        f"**Extracted:** {unflagged_evidence_trace.get('extracted_count', 0)} "
+        f"unflagged high-risk claims  \n"
+        f"**Verified:** {unflagged_evidence_trace.get('claims_succeeded', 0)} "
+        f"(failed: {unflagged_evidence_trace.get('claims_failed', 0)})\n\n"
+        f"## Evidence text\n\n"
+        + (f"{unflagged_evidence_text}\n" if unflagged_evidence_text else "_(none)_\n")
+    ))
+
+    # --- Step 6: Breadth Verifier (universal V1-V9 + mode checks) ---
     verify_system = _assemble_step_prompt(
         context_pkg, slot="depth", step="verifier",
         framework_name="f-verify.md",
@@ -7684,6 +7793,12 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                 f"## FLAGGED CLAIM EVIDENCE (same pre-flight evidence the "
                 f"reviser saw — use for V9 CLAIM RESOLUTIONS audit)\n\n"
                 f"{claim_evidence_text}\n\n"
+            )
+        if unflagged_evidence_text:
+            verify_user += (
+                f"## UNFLAGGED CLAIM EVIDENCE (V8 unflagged-claim scan — "
+                f"claims the evaluator did not flag; verify before approving)\n\n"
+                f"{unflagged_evidence_text}\n\n"
             )
         verify_user += (
             "Run the universal V1-V9 checklist plus mode-specific "
@@ -8021,15 +8136,13 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # only the other stream's evaluator output and must verify the claims
     # in that critique. The same per-stream evidence flows through to the
     # corresponding verifier at Step 6 for V9 audit.
-    depth_claim_evidence_text, depth_claim_evidence_trace = (
-        _run_claim_verification_preflight(
-            breadth_eval_of_depth, label="gear4-eval-of-depth",
-        )
+    (depth_claim_evidence_text, depth_flagged_claims,
+     depth_claim_evidence_trace) = _run_claim_verification_preflight(
+        breadth_eval_of_depth, label="gear4-eval-of-depth",
     )
-    breadth_claim_evidence_text, breadth_claim_evidence_trace = (
-        _run_claim_verification_preflight(
-            depth_eval_of_breadth, label="gear4-eval-of-breadth",
-        )
+    (breadth_claim_evidence_text, breadth_flagged_claims,
+     breadth_claim_evidence_trace) = _run_claim_verification_preflight(
+        depth_eval_of_breadth, label="gear4-eval-of-breadth",
     )
 
     # --- Step 5: Parallel revisers (mirror contract) ---
@@ -8164,6 +8277,40 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         f"{revised_breadth}\n"
     ))
 
+    # --- Step 5.5: V8 unflagged-claim scan (per-stream, Gear 4) ---
+    # Two scans run, one per stream. The depth verifier gets evidence on
+    # claims the breadth evaluator missed in depth's draft; the breadth
+    # verifier gets evidence on claims the depth evaluator missed in
+    # breadth's draft. See F-Verify §V8.3.
+    depth_unflagged_text, depth_unflagged_trace = _run_unflagged_claim_scan(
+        revised_depth, depth_flagged_claims, config, label="gear4-depth",
+    )
+    breadth_unflagged_text, breadth_unflagged_trace = _run_unflagged_claim_scan(
+        revised_breadth, breadth_flagged_claims, config, label="gear4-breadth",
+    )
+    _trace_step("step5.5-unflagged-scan-depth", {
+        "evidence_text": depth_unflagged_text,
+        "trace": depth_unflagged_trace,
+    }, markdown=(
+        "# Step 5.5 — V8 unflagged-claim scan (Gear 4 — depth stream)\n\n"
+        f"**Status:** `{depth_unflagged_trace.get('status')}`  \n"
+        f"**Extracted:** {depth_unflagged_trace.get('extracted_count', 0)} claims  \n"
+        f"**Verified:** {depth_unflagged_trace.get('claims_succeeded', 0)} "
+        f"(failed: {depth_unflagged_trace.get('claims_failed', 0)})\n\n"
+        + (f"{depth_unflagged_text}\n" if depth_unflagged_text else "_(none)_\n")
+    ))
+    _trace_step("step5.5-unflagged-scan-breadth", {
+        "evidence_text": breadth_unflagged_text,
+        "trace": breadth_unflagged_trace,
+    }, markdown=(
+        "# Step 5.5 — V8 unflagged-claim scan (Gear 4 — breadth stream)\n\n"
+        f"**Status:** `{breadth_unflagged_trace.get('status')}`  \n"
+        f"**Extracted:** {breadth_unflagged_trace.get('extracted_count', 0)} claims  \n"
+        f"**Verified:** {breadth_unflagged_trace.get('claims_succeeded', 0)} "
+        f"(failed: {breadth_unflagged_trace.get('claims_failed', 0)})\n\n"
+        + (f"{breadth_unflagged_text}\n" if breadth_unflagged_text else "_(none)_\n")
+    ))
+
     # --- Step 6: Cross-verification with up to 2 correction cycles ---
     verify_system = _assemble_step_prompt(
         context_pkg, slot="depth", step="verifier",
@@ -8186,6 +8333,12 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 f"depth reviser saw — use for V9 CLAIM RESOLUTIONS audit)\n\n"
                 f"{depth_claim_evidence_text}\n\n"
             )
+        if depth_unflagged_text:
+            verify_depth_user_message += (
+                f"## UNFLAGGED CLAIM EVIDENCE (V8 unflagged-claim scan — "
+                f"claims the evaluator did not flag; verify before approving)\n\n"
+                f"{depth_unflagged_text}\n\n"
+            )
         verify_depth_user_message += (
             "Run V1-V9 + mode-specific verifier checks. Conclude "
             "VERIFIED / VERIFIED WITH CORRECTIONS / VERIFICATION FAILED."
@@ -8202,6 +8355,12 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 f"## FLAGGED CLAIM EVIDENCE (same pre-flight evidence the "
                 f"breadth reviser saw — use for V9 CLAIM RESOLUTIONS audit)\n\n"
                 f"{breadth_claim_evidence_text}\n\n"
+            )
+        if breadth_unflagged_text:
+            verify_breadth_user_message += (
+                f"## UNFLAGGED CLAIM EVIDENCE (V8 unflagged-claim scan — "
+                f"claims the evaluator did not flag; verify before approving)\n\n"
+                f"{breadth_unflagged_text}\n\n"
             )
         verify_breadth_user_message += (
             "Run V1-V9 + mode-specific verifier checks. Conclude "
