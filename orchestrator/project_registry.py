@@ -38,6 +38,31 @@ KNOWN_INTERFACES = frozenset({TOOL_INTERFACE_ARGV_STDOUT, TOOL_INTERFACE_STDIN_S
 # `project_nexus` convention used by PEDs and the oversight router).
 _NEXUS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
+# Capability slot name (Plugin Convention §12): lowercase letters, digits,
+# underscores; matches the core slot-name convention in `capabilities.json`
+# (e.g., `image_generates_cartoon`).
+_SLOT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+# Allowed keys in a project `capability_slots[].routing` block.
+# `preferred` and `fallback` are deliberately excluded — those are publisher
+# decisions and live in `~/ora/config/routing-config.json::slots`, never in
+# project manifests. See `Reference — Ora Project Plugin Convention.md` §12.
+_PROJECT_ROUTING_KEYS = frozenset({
+    "inherits", "prepend_fallback", "append_fallback",
+    "exclude_inherited", "fallback_on",
+})
+
+# Mirrors `capability_registry._ACCEPTED_INPUT_TYPES` and
+# `capabilities.json::_execution_patterns`. Kept here so the parser can
+# validate at registration time without importing `capability_registry`
+# (which would create a circular dependency at load time). Update when
+# the registry's accepted sets change.
+_KNOWN_INPUT_TYPES = frozenset({
+    "text", "image-ref", "image-bytes", "mask", "direction-list",
+    "count", "float", "enum", "images-list",
+})
+_KNOWN_EXECUTION_PATTERNS = frozenset({"sync", "async"})
+
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -106,6 +131,25 @@ class ProjectSlashCommand:
 
 
 @dataclass
+class ProjectCapabilitySlot:
+    """A visual-capability slot declared by a project (Plugin Convention §12).
+
+    ``contract`` carries the same shape as a ``capabilities.json::slots[name]``
+    entry — ``required_inputs``, ``optional_inputs``, ``output``,
+    ``execution_pattern``, ``common_errors``, ``summary``.
+
+    ``routing`` declares structurally-project-specific directives only:
+    ``inherits``, ``prepend_fallback``, ``append_fallback``,
+    ``exclude_inherited``, ``fallback_on``. ``preferred`` and ``fallback``
+    are publisher decisions and belong in ``~/ora/config/routing-config.json``;
+    declaring them here raises a manifest error.
+    """
+    name: str
+    contract: dict
+    routing: dict = field(default_factory=dict)
+
+
+@dataclass
 class Project:
     """A registered project — the in-memory representation of an ora-project.json."""
     nexus: str
@@ -119,6 +163,7 @@ class Project:
     peds: list[str] = field(default_factory=list)
     workflow_specs: list[str] = field(default_factory=list)
     chromadb_collections: list[str] = field(default_factory=list)
+    capability_slots: dict[str, ProjectCapabilitySlot] = field(default_factory=dict)
 
     def resolve_path(self, relative: str) -> Path:
         """Resolve a path relative to the project root. Absolute paths pass through."""
@@ -221,6 +266,110 @@ def _parse_slash_commands(raw: Any, manifest_path: Path) -> dict[str, ProjectSla
     return cmds
 
 
+def _parse_one_capability_slot(
+    entry: Any, idx: int, manifest_path: Path,
+) -> ProjectCapabilitySlot:
+    """Validate one ``capability_slots`` entry against Plugin Convention §12.
+
+    Raises ManifestError on any problem so the caller can skip just this
+    entry without affecting the rest of the manifest.
+    """
+    ctx = f"capability_slots[{idx}]"
+    if not isinstance(entry, dict):
+        raise ManifestError(f"{ctx} must be an object")
+    name = entry.get("name")
+    if not isinstance(name, str) or not name:
+        raise ManifestError(f"{ctx} requires 'name' (non-empty string)")
+    if not _SLOT_NAME_RE.match(name):
+        raise ManifestError(
+            f"{ctx} 'name' must match {_SLOT_NAME_RE.pattern} "
+            f"(lowercase, underscore-separated); got {name!r}"
+        )
+    ctx = f"{ctx} ({name!r})"
+
+    contract = entry.get("contract")
+    if not isinstance(contract, dict):
+        raise ManifestError(f"{ctx}: 'contract' is required and must be a JSON object")
+
+    for input_field in ("required_inputs", "optional_inputs"):
+        items = contract.get(input_field)
+        if items is None:
+            continue
+        if not isinstance(items, list):
+            raise ManifestError(f"{ctx}: contract.{input_field!r} must be an array")
+        for j, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise ManifestError(
+                    f"{ctx}: contract.{input_field}[{j}] must be an object"
+                )
+            t = item.get("type")
+            if t is not None and t not in _KNOWN_INPUT_TYPES:
+                raise ManifestError(
+                    f"{ctx}: contract.{input_field}[{j}].type {t!r} is not in "
+                    f"the registry's accepted input types "
+                    f"({sorted(_KNOWN_INPUT_TYPES)})"
+                )
+
+    pattern = contract.get("execution_pattern")
+    if pattern is not None and pattern not in _KNOWN_EXECUTION_PATTERNS:
+        raise ManifestError(
+            f"{ctx}: contract.execution_pattern {pattern!r} not in "
+            f"{sorted(_KNOWN_EXECUTION_PATTERNS)}"
+        )
+
+    routing = entry.get("routing", {}) or {}
+    if not isinstance(routing, dict):
+        raise ManifestError(f"{ctx}: 'routing' must be a JSON object")
+
+    if "preferred" in routing or "fallback" in routing:
+        raise ManifestError(
+            f"{ctx}: 'preferred' and 'fallback' are publisher decisions and "
+            f"belong in ~/ora/config/routing-config.json::slots, not in the "
+            f"project manifest. Declare only structural directives: "
+            f"{sorted(_PROJECT_ROUTING_KEYS)}"
+        )
+
+    extra = set(routing.keys()) - _PROJECT_ROUTING_KEYS
+    if extra:
+        raise ManifestError(
+            f"{ctx}: unknown keys in routing block: {sorted(extra)}. "
+            f"Allowed: {sorted(_PROJECT_ROUTING_KEYS)}"
+        )
+
+    return ProjectCapabilitySlot(name=name, contract=contract, routing=dict(routing))
+
+
+def _parse_capability_slots(
+    raw: Any, manifest_path: Path,
+) -> dict[str, ProjectCapabilitySlot]:
+    """Parse the ``capability_slots`` block (Plugin Convention §12).
+
+    Top-level wrong type raises ManifestError (consistent with the other
+    parsers). Individual malformed entries are skipped with a printed
+    diagnostic, per §12's graceful-degradation rule ("a malformed
+    capability_slots entry causes only that slot to be skipped").
+    """
+    if raw is None:
+        return {}
+    if not isinstance(raw, list):
+        raise ManifestError(f"{manifest_path}: 'capability_slots' must be an array")
+    slots: dict[str, ProjectCapabilitySlot] = {}
+    for i, entry in enumerate(raw):
+        try:
+            slot = _parse_one_capability_slot(entry, i, manifest_path)
+        except ManifestError as e:
+            print(f"[project_registry] Skipping capability_slot in {manifest_path}: {e}")
+            continue
+        if slot.name in slots:
+            print(
+                f"[project_registry] Skipping duplicate capability_slot "
+                f"{slot.name!r} in {manifest_path}"
+            )
+            continue
+        slots[slot.name] = slot
+    return slots
+
+
 def _parse_str_list(raw: Any, field_name: str, manifest_path: Path) -> list[str]:
     if raw is None:
         return []
@@ -261,6 +410,9 @@ def _parse_project_from_manifest(manifest_path: Path, root: Path) -> Project:
         workflow_specs=_parse_str_list(data.get("workflow_specs"), "workflow_specs", manifest_path),
         chromadb_collections=_parse_str_list(
             data.get("chromadb_collections"), "chromadb_collections", manifest_path,
+        ),
+        capability_slots=_parse_capability_slots(
+            data.get("capability_slots"), manifest_path,
         ),
     )
 
@@ -599,6 +751,7 @@ __all__ = [
     "ToolInvocationError",
     "ProjectTool",
     "ProjectSlashCommand",
+    "ProjectCapabilitySlot",
     "Project",
     "load_project_at",
     "list_projects",

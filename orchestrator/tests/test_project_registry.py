@@ -210,6 +210,257 @@ class TestManifestParsing(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Capability-slot parsing tests (Plugin Convention §12)
+# ---------------------------------------------------------------------------
+
+
+class TestCapabilitySlotParsing(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="proj_reg_slot_test_")
+        self.root = Path(self.tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _write_manifest(self, data):
+        (self.root / pr.MANIFEST_FILENAME).write_text(json.dumps(data), encoding="utf-8")
+
+    def _load_quietly(self):
+        """Load the project, capturing parser diagnostics to keep test output clean."""
+        import io
+        from contextlib import redirect_stdout
+        with redirect_stdout(io.StringIO()):
+            return pr.load_project_at(self.root)
+
+    def test_no_capability_slots_field(self):
+        self._write_manifest({"nexus": "test", "name": "Test"})
+        p = pr.load_project_at(self.root)
+        self.assertEqual(p.capability_slots, {})
+
+    def test_minimal_capability_slot(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {
+                    "name": "image_generates_cartoon",
+                    "contract": {
+                        "summary": "Generate an editorial cartoon.",
+                        "required_inputs": [{"name": "prompt", "type": "text"}],
+                        "output": {"type": "image-bytes"},
+                        "execution_pattern": "sync",
+                    },
+                }
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        self.assertIn("image_generates_cartoon", p.capability_slots)
+        slot = p.capability_slots["image_generates_cartoon"]
+        self.assertIsInstance(slot, pr.ProjectCapabilitySlot)
+        self.assertEqual(slot.routing, {})
+
+    def test_full_capability_slot_with_routing(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {
+                    "name": "image_generates_cartoon",
+                    "contract": {
+                        "summary": "Generate an editorial cartoon.",
+                        "required_inputs": [{"name": "prompt", "type": "text"}],
+                        "optional_inputs": [
+                            {"name": "aspect_ratio", "type": "enum", "default": "1:1"}
+                        ],
+                        "output": {"type": "image-bytes"},
+                        "execution_pattern": "sync",
+                        "common_errors": [{"code": "model_unavailable"}],
+                    },
+                    "routing": {
+                        "inherits": "image_generates",
+                        "exclude_inherited": ["local-diffusers"],
+                        "append_fallback": ["civitai-hector-lora-v1"],
+                    },
+                }
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        slot = p.capability_slots["image_generates_cartoon"]
+        self.assertEqual(slot.routing["inherits"], "image_generates")
+        self.assertEqual(slot.routing["exclude_inherited"], ["local-diffusers"])
+        self.assertEqual(slot.routing["append_fallback"], ["civitai-hector-lora-v1"])
+
+    def test_capability_slots_top_level_not_array_raises(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": "not-an-array",
+        })
+        with self.assertRaises(pr.ManifestError) as ctx:
+            pr.load_project_at(self.root)
+        self.assertIn("must be an array", str(ctx.exception))
+
+    def test_slot_missing_name_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [{"contract": {}}],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_slot_invalid_name_uppercase_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {"name": "Image_Generates", "contract": {}},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_slot_invalid_name_hyphen_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {"name": "image-generates", "contract": {}},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_slot_missing_contract_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [{"name": "image_generates_cartoon"}],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_slot_preferred_in_routing_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {
+                    "name": "image_generates_cartoon",
+                    "contract": {"summary": "x"},
+                    "routing": {"preferred": "some-provider"},
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_slot_fallback_in_routing_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {
+                    "name": "image_generates_cartoon",
+                    "contract": {"summary": "x"},
+                    "routing": {"fallback": ["x", "y"]},
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_slot_unknown_routing_key_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {
+                    "name": "image_generates_cartoon",
+                    "contract": {"summary": "x"},
+                    "routing": {"prefer_local": True},
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_slot_invalid_input_type_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {
+                    "name": "image_generates_cartoon",
+                    "contract": {
+                        "required_inputs": [{"name": "x", "type": "blob-bizarre"}],
+                    },
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_slot_invalid_execution_pattern_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {
+                    "name": "image_generates_cartoon",
+                    "contract": {
+                        "summary": "x",
+                        "execution_pattern": "interpretive-dance",
+                    },
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+
+    def test_one_malformed_slot_others_load(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {"name": "image_generates_cartoon", "contract": {"summary": "good"}},
+                {"name": "broken", "contract": {}, "routing": {"preferred": "x"}},
+                {"name": "video_generates_intro", "contract": {"summary": "also good"}},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(
+            set(p.capability_slots.keys()),
+            {"image_generates_cartoon", "video_generates_intro"},
+        )
+
+    def test_duplicate_slot_name_keeps_first(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {"name": "image_generates_cartoon", "contract": {"summary": "first"}},
+                {"name": "image_generates_cartoon", "contract": {"summary": "second"}},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(len(p.capability_slots), 1)
+        self.assertEqual(
+            p.capability_slots["image_generates_cartoon"].contract["summary"], "first"
+        )
+
+    def test_slot_routing_optional(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "capability_slots": [
+                {"name": "image_generates_cartoon", "contract": {"summary": "x"}},
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        slot = p.capability_slots["image_generates_cartoon"]
+        self.assertEqual(slot.routing, {})
+
+    def test_malformed_slot_does_not_block_other_manifest_fields(self):
+        """A malformed capability_slot must not affect tools/slash_commands/etc."""
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "tools": [{"name": "real-tool", "command": ["python3", "x.py"]}],
+            "capability_slots": [
+                {"name": "broken", "contract": {}, "routing": {"preferred": "x"}},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.capability_slots, {})
+        self.assertIn("real-tool", p.tools)
+
+
+# ---------------------------------------------------------------------------
 # Pointer-file lifecycle tests
 # ---------------------------------------------------------------------------
 
