@@ -1,0 +1,111 @@
+{
+  "name": "user-pipeline",
+  "description": "Default configuration for user-initiated chat. Migrated from routing-config.json::pipelines.interactive on the Chunk 2 cutover. Replace with an auto-populated configuration when Chunk 5 (auto-populate engine) lands.",
+  "preset_lineage": "migrated",
+  "cells": {
+    "utility": {
+      "step1_cleanup": {
+        "primary": "qwen/qwen3.6-35b-a3b",
+        "fallback": [
+          "local-mlx-qwen3.5-27b-opus",
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "openrouter:openai/gpt-5"
+      },
+      "classification": {
+        "primary": "local-mlx-qwen3.5-4b",
+        "fallback": [
+          "local-mlx-qwen3.5-9b-optiq",
+          "local-mlx-qwen3.5-27b-opus",
+          "qwen/qwen3.6-35b-a3b"
+        ],
+        "vision_substitute": "openrouter:openai/gpt-5"
+      },
+      "rag_planner": {
+        "primary": "qwen/qwen3.6-35b-a3b",
+        "fallback": [
+          "local-mlx-qwen3.5-27b-opus",
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "openrouter:openai/gpt-5"
+      }
+    },
+    "analysis": {
+      "gear4": {
+        "depth": {
+          "primary": "qwen/qwen3.6-plus",
+          "fallback": [
+            "moonshotai/kimi-k2.6",
+            "local-mlx-kimi-dev-72b",
+            "local-mlx-hermes-4-70b",
+            "qwen/qwen3.5-122b-a10b",
+            "nvidia/nemotron-3-super-120b-a12b:free"
+          ],
+          "vision_substitute": "openrouter:openai/gpt-5"
+        },
+        "breadth": {
+          "primary": "qwen/qwen3.6-plus",
+          "fallback": [
+            "moonshotai/kimi-k2.6",
+            "local-mlx-kimi-dev-72b",
+            "local-mlx-hermes-4-70b",
+            "qwen/qwen3.5-122b-a10b",
+            "nvidia/nemotron-3-super-120b-a12b:free"
+          ],
+          "vision_substitute": "openrouter:openai/gpt-5"
+        }
+      },
+      "gear3": {
+        "depth": {
+          "primary": "local-mlx-kimi-dev-72b",
+          "fallback": [
+            "local-mlx-hermes-4-70b",
+            "qwen/qwen3.6-plus",
+            "moonshotai/kimi-k2.6",
+            "qwen/qwen3.5-122b-a10b",
+            "nvidia/nemotron-3-super-120b-a12b:free"
+          ],
+          "vision_substitute": "openrouter:openai/gpt-5"
+        },
+        "breadth": null
+      }
+    },
+    "post_analysis": {
+      "consolidation": {
+        "primary": "qwen/qwen3.6-plus",
+        "fallback": [
+          "moonshotai/kimi-k2.6",
+          "local-mlx-kimi-dev-72b",
+          "local-mlx-hermes-4-70b",
+          "qwen/qwen3.5-122b-a10b",
+          "nvidia/nemotron-3-super-120b-a12b:free"
+        ],
+        "vision_substitute": "openrouter:openai/gpt-5"
+      },
+      "verification": {
+        "primary": "qwen/qwen3.6-plus",
+        "fallback": [
+          "moonshotai/kimi-k2.6",
+          "local-mlx-kimi-dev-72b",
+          "local-mlx-hermes-4-70b",
+          "qwen/qwen3.5-122b-a10b",
+          "nvidia/nemotron-3-super-120b-a12b:free"
+        ],
+        "vision_substitute": "openrouter:openai/gpt-5"
+      },
+      "formatter": {
+        "primary": "qwen/qwen3.6-plus",
+        "fallback": [
+          "moonshotai/kimi-k2.6",
+          "local-mlx-kimi-dev-72b",
+          "local-mlx-hermes-4-70b",
+          "qwen/qwen3.5-122b-a10b",
+          "nvidia/nemotron-3-super-120b-a12b:free"
+        ],
+        "vision_substitute": "openrouter:openai/gpt-5"
+      }
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "name": "background-default",
+  "description": "Default configuration for automated processes (frameworks, scheduled tasks, project tools) when they don't specify their own. Migrated from routing-config.json::pipelines.agent on the Chunk 2 cutover.",
+  "preset_lineage": "migrated",
+  "cells": {
+    "utility": {
+      "step1_cleanup": {
+        "primary": "local-mlx-qwen3.5-27b-opus",
+        "fallback": [
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+      },
+      "classification": {
+        "primary": "local-mlx-qwen3.5-4b",
+        "fallback": [
+          "local-mlx-qwen3.5-9b-optiq",
+          "local-mlx-qwen3.5-27b-opus",
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+      },
+      "rag_planner": {
+        "primary": "local-mlx-qwen3.5-27b-opus",
+        "fallback": [
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+      }
+    },
+    "analysis": {
+      "gear4": {
+        "depth": {
+          "primary": "local-mlx-kimi-dev-72b",
+          "fallback": [
+            "local-mlx-hermes-4-70b",
+            "qwen/qwen3.6-35b-a3b",
+            "local-mlx-qwen3.5-27b-opus",
+            "openrouter/free",
+            "meta-llama/llama-3.3-70b-instruct:free"
+          ],
+          "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+        },
+        "breadth": {
+          "primary": "local-mlx-kimi-dev-72b",
+          "fallback": [
+            "local-mlx-hermes-4-70b",
+            "qwen/qwen3.6-35b-a3b",
+            "local-mlx-qwen3.5-27b-opus",
+            "openrouter/free",
+            "meta-llama/llama-3.3-70b-instruct:free"
+          ],
+          "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+        }
+      },
+      "gear3": {
+        "depth": null,
+        "breadth": null
+      }
+    },
+    "post_analysis": {
+      "consolidation": {
+        "primary": "local-mlx-kimi-dev-72b",
+        "fallback": [
+          "local-mlx-hermes-4-70b",
+          "qwen/qwen3.6-35b-a3b",
+          "local-mlx-qwen3.5-27b-opus",
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+      },
+      "verification": {
+        "primary": "local-mlx-kimi-dev-72b",
+        "fallback": [
+          "local-mlx-hermes-4-70b",
+          "qwen/qwen3.6-35b-a3b",
+          "local-mlx-qwen3.5-27b-opus",
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+      },
+      "formatter": {
+        "primary": "local-mlx-kimi-dev-72b",
+        "fallback": [
+          "local-mlx-hermes-4-70b",
+          "qwen/qwen3.6-35b-a3b",
+          "local-mlx-qwen3.5-27b-opus",
+          "openrouter/free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+      }
+    }
+  }
+}
