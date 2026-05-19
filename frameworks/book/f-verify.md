@@ -1,12 +1,12 @@
 # F-VERIFY — Step 8 Final Verification Specification
 
-*Universal scaffolding. The eight universal checks below are the floor for every mode. Mode-specific checks layer on top — extracted from the classified mode's `## VERIFICATION CRITERIA` flat-H2 section (the H3 cascade subsections were superseded 2026-05-01).*
+*Universal scaffolding. The nine universal checks below are the floor for every mode. Mode-specific checks layer on top — extracted from the classified mode's `## VERIFICATION CRITERIA` flat-H2 section (the H3 cascade subsections were superseded 2026-05-01).*
 
 *Loaded into: Depth model context window at Step 8 (Final Verification of Consolidated Output). For Gear 3 single-stream modes, the verifier runs against the revised analysis directly; for Gear 4 parallel-stream modes, the verifier runs against the consolidated output.*
 
 *Note (2026-05-14): the Step 7/8 architecture split moved the user-facing form-placement step to a dedicated formatter (`f-format.md`) at step 8; this f-verify scaffolding remains the verification-floor specification, invoked where the orchestrator routes final-verification work.*
 
-*Context window contains: this specification, the source analyses (revised Depth + revised Breadth for Gear 4; the revised analysis for Gear 3), the consolidated output if applicable, the evaluator's mandatory-fixes list from Step 4, the reviser's ADDRESSED + NOT ADDRESSED blocks from Step 5, the mode file (its `## VERIFICATION CRITERIA` section names the mode-specific checks; its YAML `output_contract` / `failure_modes` blocks supply emission-contract and named-failure information).*
+*Context window contains: this specification, the source analyses (revised Depth + revised Breadth for Gear 4; the revised analysis for Gear 3), the consolidated output if applicable, the Step 2 consultation package, the evaluator's mandatory-fixes list AND the FLAGGED CLAIMS list from Step 4, the reviser's ADDRESSED + NOT ADDRESSED + CLAIM RESOLUTIONS blocks from Step 5, the mode file (its `## VERIFICATION CRITERIA` section names the mode-specific checks; its YAML `output_contract` / `failure_modes` blocks supply emission-contract and named-failure information), and access to the web verification tool for last-gate fact checking.*
 
 ---
 
@@ -23,7 +23,7 @@ Verification is not a re-evaluation. You do not re-open the analysis. You do not
 
 ## Universal verifier checklist
 
-Every mode runs these eight checks. They are the floor — modes can add checks on top via their `## VERIFICATION CRITERIA` flat-H2 section, but none of these can be skipped.
+Every mode runs these nine checks. They are the floor — modes can add checks on top via their `## VERIFICATION CRITERIA` flat-H2 section, but none of these can be skipped.
 
 ### V1 — Mandatory-fix coverage
 
@@ -69,19 +69,43 @@ You do not introduce new claims, alternatives, or evidence during verification. 
 
 ### V8 — Factual accuracy
 
-Scan every substantive claim in the revised/consolidated output for factual defensibility. You cannot issue live web queries, so V8 is scoped to what the verifier can actually check from the context window and general knowledge:
+V8 is the last-gate factual scan over the revised/consolidated output. You have access to the web verification tool. Use it for verification work — confirming claims the analysis already made — but NOT for introducing new substantive content the analysis did not raise. The line: web queries are allowed to check what the draft says; they are not allowed to expand the analysis with new material. V7 (No verification injection) still binds.
 
-1. **Internal consistency.** Claims must not contradict the source analyses, the conversation history, or each other. A fact asserted in one section that is contradicted by a fact in another section is a FAIL.
-2. **Source attribution.** Any named source, citation, or quote must be traceable back to the source analyses or the conversation history. Fabricated citations — a plausible-sounding reference that neither source analysis introduced — are a FAIL. If the analyst introduced a citation that the source analyses did not, flag it as unsupported.
-3. **High-risk claim types.** The following claim types are hallucination-prone and must be scrutinized:
-   - Specific numbers, percentages, dates, or statistics.
-   - Named people, organizations, papers, laws, or events.
-   - Direct quotations.
-   - Technical specifications (version numbers, API signatures, standards).
-   For each such claim in the revised/consolidated output, confirm it is either (a) supplied by the source analyses or context, (b) standard textbook knowledge in the relevant domain, or (c) explicitly hedged ("approximately", "around", "I'm uncertain but…"). Unhedged high-risk claims with no provenance are a FAIL.
-4. **Obvious factual errors.** Apply general knowledge to catch claims that contradict well-established facts in the domain. If the analyst asserts that Python was released in 2015, or that the French Revolution happened in the 18th century BCE, that is a FAIL — even if the source analyses did not catch it.
+Sub-checks:
 
-V8 is a check, not a rewrite. When a fact fails V8, your response is to flag it in `## Corrections Applied` (if the correction is a simple hedge or citation removal), or to escalate to `VERIFICATION FAILED` if the unsupported claim is load-bearing for the output. Do not fabricate replacement facts during verification — that is V7 territory.
+1. **Internal consistency.** Claims must not contradict the source analyses, the consultation package, the conversation history, or each other. A fact asserted in one section that is contradicted by a fact in another section is a FAIL.
+
+2. **Source attribution.** Any named source, citation, or direct quote must be traceable to a source the reviser consulted (per its `sources_consulted` list in CLAIM RESOLUTIONS), the original Step 2 consultation package, or source attribution the analyst supplied at draft time. Fabricated citations — references that none of these introduced — are a FAIL.
+
+3. **Unflagged-claim scan.** Scan the revised draft for high-risk claims that did not appear in the evaluator's `## FLAGGED CLAIMS` list. High-risk types: specific dates, numbers, named entities, direct quotations, technical specifications. For each unflagged high-risk claim found, issue a verification query. If verification confirms (approved-source agreement or standard-textbook consensus), no action. If verification contradicts:
+   - Simple correction (a typo on a date, an off-by-one figure, a misattributed quote): apply in `## Corrections Applied`, cite the source.
+   - Load-bearing correction (the unflagged claim is central to the analysis): escalate to `VERIFICATION FAILED` so Step 5 can re-revise with the claim properly flagged.
+
+4. **Obvious factual errors.** Apply general knowledge to catch claims that contradict well-established facts. If the analyst asserts Python was released in 2015, or that the French Revolution happened in the 18th century BCE, that is a FAIL regardless of whether earlier steps caught it.
+
+When V8 finds a correctable error, apply the correction in `## Corrections Applied` with the source citation. When V8 finds a load-bearing failure, escalate to `VERIFICATION FAILED`. Do not fabricate replacement facts; use verified values from the web tool or general knowledge only.
+
+### V9 — CLAIM RESOLUTIONS audit
+
+The reviser's `## CLAIM RESOLUTIONS` section documents how each flagged claim was verified at Step 5. V9 audits this section for completeness and reasonableness. V9 is `n/a` when no claims were flagged at Step 4.
+
+1. **Coverage.** Every claim in the evaluator's `## FLAGGED CLAIMS` appears in the reviser's `## CLAIM RESOLUTIONS`. Silent-drop is a FAIL.
+
+2. **Sources cited.** For each resolution, the `sources_consulted` list is non-empty. A claim marked `confirmed` with an empty sources list is a FAIL (Silent Web Bypass — see F-Revise §Named failure modes).
+
+3. **State-action consistency.** The `draft_action` matches the resolution state per the five-state mapping (F-Revise §Claim verification):
+   - `confirmed` → kept
+   - `wrong` → corrected to verified value
+   - `disputed` → retained with hedge or contested-status framing
+   - `unsupported` → hedged OR removed
+   - `ambiguous` → specified to one interpretation OR hedged with interpretation-dependence
+   Mismatches are a FAIL.
+
+4. **Disputed protection.** For each `disputed` resolution, read the revised draft passage and compare to the original analyst's draft. If the contested claim was silently rewritten into mainstream restatement, that is the Disputed Flatten failure — FAIL. The analyst's position survives the verification process; only its framing acquires hedging or contested-status language.
+
+5. **Resolution evidence.** For each resolution, the `finding` field is consistent with the cited sources. A `confirmed` resolution citing sources that contradict the claim is a FAIL (Unsourced Confidence). A `wrong` resolution that the verifier suspects may be a contested-Tier-3 claim improperly flattened is a FAIL (Consensus Enforcer); spot-check by re-issuing the reviser's `challenge_query` and inspecting the results, with attention to whether the analyst's position has defensible non-consensus reasoning.
+
+V9 is a check, not a re-verification. You may spot-check one or two resolutions by re-issuing the reviser's `challenge_query`, but the primary work is auditing the reviser's documentation. When V9 finds a correctable failure (e.g., a state-action mismatch with an obvious fix), note it in `## Corrections Applied` with the corrected resolution. When V9 finds a load-bearing failure (a substantive disputed claim flattened, or a high-risk claim `confirmed` without supporting sources), escalate to `VERIFICATION FAILED`.
 
 ## Processing instructions
 
@@ -117,6 +141,7 @@ V8 is a check, not a rewrite. When a fact fails V8, your response is to flag it 
 - **V6 — Continuity prompt accuracy:** <pass|fail|n/a>
 - **V7 — No verification injection:** <pass|fail>
 - **V8 — Factual accuracy:** <pass|fail> — <citation of any flagged claim and why>
+- **V9 — CLAIM RESOLUTIONS audit:** <pass|fail|n/a> — <citation; n/a when no claims were flagged>
 
 ### Mode-Specific Checks
 [Each check from the mode's `## VERIFICATION CRITERIA` section:
@@ -157,7 +182,7 @@ the contract.
 
 This file is universal. Mode-specific verifier checks — e.g. RCA "confirm the declared framework hasn't silently changed between draft and revision" — are authored once per mode, inside the mode file, in flat-H2 sections (the H3 cascade subsections were superseded 2026-05-01):
 
-- `## VERIFICATION CRITERIA` — the mode-specific checks layered on top of the universal V1–V8 floor
+- `## VERIFICATION CRITERIA` — the mode-specific checks layered on top of the universal V1–V9 floor
 - YAML `failure_modes:` block — canonical named failures whose presence triggers a verification finding
 - YAML `output_contract:` block — emission-contract structural shape the verifier checks against (V5)
 
