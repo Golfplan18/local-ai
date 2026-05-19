@@ -331,7 +331,8 @@ def get_active_endpoint(config: dict) -> dict | None:
     return active[0]
 
 
-def get_slot_endpoint(config: dict, slot: str, context: str = "interactive") -> dict | None:
+def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
+                      config_name: str | None = None) -> dict | None:
     """Return the endpoint for a named slot. Uses v2 router if available.
 
     ``context`` selects the operational profile from routing-config.json:
@@ -345,23 +346,27 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive") -> 
     Most callers leave this at the default. The article-generation
     pipeline passes ``autonomous`` so model_dispatch resolves to a
     local model rather than the premium API endpoint.
+
+    ``config_name`` (install Chunk 2c) selects a named configuration from
+    config/configurations/ instead of the legacy pipelines[context] block.
+    When None, the existing context-based path applies.
     """
     router = _get_router()
     if router:
         # Map v1 slot names to v2 resolution
         if slot in ("sidebar", "step1_cleanup", "rag_planner", "classification"):
-            ep = router.resolve_utility_slot(slot, context)
+            ep = router.resolve_utility_slot(slot, context, config_name=config_name)
         elif slot in ("consolidator", "consolidation"):
-            ep = router.resolve_post_analysis_slot("consolidation", context)
+            ep = router.resolve_post_analysis_slot("consolidation", context, config_name=config_name)
         elif slot in ("evaluator", "verification"):
-            ep = router.resolve_post_analysis_slot("verification", context)
+            ep = router.resolve_post_analysis_slot("verification", context, config_name=config_name)
         elif slot in ("depth", "breadth"):
             # For direct slot lookups outside gear execution, resolve at Gear 3
             # (Gear 4 resolution happens through resolve_gear4_endpoints)
-            result = router.resolve_gear(3, context)
+            result = router.resolve_gear(3, context, config_name=config_name)
             ep = result.get(slot) if result else None
         else:
-            ep = router.resolve_utility_slot("step1_cleanup", context)
+            ep = router.resolve_utility_slot("step1_cleanup", context, config_name=config_name)
 
         if ep:
             return router._to_v1_endpoint(ep)
@@ -378,17 +383,21 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive") -> 
     return get_active_endpoint(config)
 
 
-def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive") -> tuple:
+def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive",
+                            config_name: str | None = None) -> tuple:
     """Resolve Gear 4 endpoints with bucket-based routing.
 
     Returns (depth_endpoint, breadth_endpoint, parallel_safe: bool).
     Uses v2 router if available, otherwise falls back to v1 logic.
+
+    ``config_name`` (install Chunk 2c) selects a named configuration from
+    config/configurations/ instead of the legacy pipelines[context] block.
     """
     router = _get_router()
     context = execution_context if execution_context in ("interactive", "agent") else "agent"
 
     if router:
-        result = router.execute(requested_gear=4, context=context)
+        result = router.execute(requested_gear=4, context=context, config_name=config_name)
 
         if result.gear == 4:
             depth_ep = result.assignments.get("depth")
@@ -404,8 +413,8 @@ def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive"
             return None, None, False
 
     # V1 fallback
-    depth_ep = get_slot_endpoint(config, "depth")
-    breadth_ep = get_slot_endpoint(config, "breadth")
+    depth_ep = get_slot_endpoint(config, "depth", config_name=config_name)
+    breadth_ep = get_slot_endpoint(config, "breadth", config_name=config_name)
 
     op_context = config.get("operational_context", {})
     allowed_types = set(op_context.get(execution_context, ["local"]))
@@ -6126,7 +6135,8 @@ def run_pipeline(user_input: str, history: list = None,
                  execution_context: str = "interactive",
                  conversation_id: str | None = None,
                  ambiguity_mode: str = "assume",
-                 stealth: bool = False) -> str:
+                 stealth: bool = False,
+                 config_name: str | None = None) -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
     For Gear 1-2: Single model with context package.
@@ -6287,7 +6297,7 @@ def run_pipeline(user_input: str, history: list = None,
 
     elif gear == 3:
         # Gear 3: Sequential review — Depth analyzes, Breadth reviews, Depth revises
-        response = run_gear3(context_pkg, config, history)
+        response = run_gear3(context_pkg, config, history, config_name=config_name)
 
     elif gear >= 4:
         # Gear 4+: Parallel independent analysis
@@ -6297,7 +6307,8 @@ def run_pipeline(user_input: str, history: list = None,
             if depth_model:
                 release_kv_cache(depth_model)
         response = run_gear4(context_pkg, config, history,
-                             execution_context=execution_context)
+                             execution_context=execution_context,
+                             config_name=config_name)
 
     else:
         response = _run_model_with_tools(
@@ -7231,7 +7242,8 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     return (text2 if ok2 else text2 or text), ok2, f"retry: {reason2}"
 
 
-def run_gear3(context_pkg: dict, config: dict, history: list = None, images: list = None) -> str:
+def run_gear3(context_pkg: dict, config: dict, history: list = None, images: list = None,
+              config_name: str | None = None) -> str:
     """Gear 3: Sequential adversarial review via Phase-5 cascade dispatch.
 
     Step 3 — Depth analyses (mode DEPTH MODEL INSTRUCTIONS via step='analyst').
@@ -7243,9 +7255,12 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     Output: verifier's final output (VERIFIED / VERIFIED WITH CORRECTIONS
     contains the accepted revised analysis; VERIFICATION FAILED surfaces
     the unresolved deficiencies after cycles are exhausted).
+
+    ``config_name`` (install Chunk 2c) selects a named configuration from
+    config/configurations/ instead of the legacy pipelines[context] block.
     """
-    depth_endpoint = get_slot_endpoint(config, "depth")
-    breadth_endpoint = get_slot_endpoint(config, "breadth")
+    depth_endpoint = get_slot_endpoint(config, "depth", config_name=config_name)
+    breadth_endpoint = get_slot_endpoint(config, "breadth", config_name=config_name)
 
     if depth_endpoint is None and breadth_endpoint is None:
         return "[No AI endpoints configured.]"
@@ -7450,7 +7465,8 @@ def _strip_consolidator_preamble(text: str) -> str:
 
 
 def run_gear4(context_pkg: dict, config: dict, history: list = None,
-              images: list = None, execution_context: str = "interactive") -> str:
+              images: list = None, execution_context: str = "interactive",
+              config_name: str | None = None) -> str:
     """Gear 4: Parallel adversarial cascade with per-step reliability layer.
 
     Pipeline (code-step → user-facing role):
@@ -7507,14 +7523,14 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     import concurrent.futures
 
     depth_endpoint, breadth_endpoint, parallel_safe = resolve_gear4_endpoints(
-        config, execution_context
+        config, execution_context, config_name=config_name
     )
 
     if depth_endpoint is None or breadth_endpoint is None:
-        return run_gear3(context_pkg, config, history, images=images)
+        return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
 
     if not parallel_safe:
-        return run_gear3(context_pkg, config, history, images=images)
+        return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
     trace_dir = context_pkg.get("trace_dir")
@@ -7592,7 +7608,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 trace_dir, step_health, gear=4,
                 contingencies_fired=contingencies_fired,
             )
-        return run_gear3(context_pkg, config, history, images=images)
+        return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
 
     # --- Step 3 trace (Depth + Breadth analyst outputs) ---
     _trace_step("step3-depth", {

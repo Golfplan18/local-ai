@@ -1826,7 +1826,7 @@ def _persist_vision_retry_queue(conversation_id: str, entries: list[dict]) -> No
         print(f"[vision-retry-queue] persist failed for {conversation_id}: {e}")
 
 
-def _run_pipeline_from_step2(step1, config, history, user_input, clarification_text="", images=None, execution_context="interactive", extra_context=None, trace_dir=None):
+def _run_pipeline_from_step2(step1, config, history, user_input, clarification_text="", images=None, execution_context="interactive", extra_context=None, trace_dir=None, config_name=None):
     """Resume pipeline from Step 2 onward, optionally enriched with clarification answers.
 
     ``extra_context`` (WP-3.3): an optional dict of extra keys to merge into the
@@ -1839,6 +1839,10 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
     to ``run_step2_context_assembly`` (which records the context package)
     and rides on ``context_pkg`` so ``run_gear3`` / ``run_gear4`` land
     their step-3..8 traces in the same per-turn directory.
+
+    ``config_name`` (install Chunk 2c): selects a named configuration from
+    config/configurations/ for the analysis stages. None falls through to
+    the legacy execution_context path.
     """
     # If clarification was provided, enrich the cleaned prompt and — if the
     # pause was at Stage 2 or Stage 3 of the pre-routing pipeline — re-run
@@ -1962,7 +1966,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
         response = _run_model_with_tools(messages, ep, images=images)
 
     elif gear == 3:
-        response = run_gear3(context_pkg, config, history, images=images)
+        response = run_gear3(context_pkg, config, history, images=images, config_name=config_name)
 
     elif gear >= 4:
         # KV cache release check for sequential fallback
@@ -1971,7 +1975,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
             if depth_model:
                 release_kv_cache(depth_model)
         response = run_gear4(context_pkg, config, history, images=images,
-                             execution_context=execution_context)
+                             execution_context=execution_context,
+                             config_name=config_name)
 
     else:
         response = _run_model_with_tools(
@@ -2002,7 +2007,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
 
 
 def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_context=None,
-                       manual_mode_selection="", framework_selected=""):
+                       manual_mode_selection="", framework_selected="", config_name=None):
     """Generator: run the full pipeline with SSE stage events.
 
     Yields SSE events for each pipeline stage so the browser can display progress.
@@ -2400,7 +2405,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     yield _sse("pipeline_stage", stage="step2_context", label="Assembling context…")
     yield from _run_pipeline_from_step2(step1, config, history, user_input,
                                         images=images, extra_context=extra_context,
-                                        trace_dir=trace_dir)
+                                        trace_dir=trace_dir, config_name=config_name)
 
 
 def _tool_status_label(tool_name, params):
@@ -2503,7 +2508,7 @@ def _direct_stream(user_input, history, images=None):
 
 
 def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main", images=None, extra_context=None,
-                          manual_mode_selection="", framework_selected=""):
+                          manual_mode_selection="", framework_selected="", config_name=None):
     """Route to pipeline or direct stream based on mode.
 
     ``extra_context`` (WP-3.3): optional merged-input dict (spatial_representation,
@@ -2519,7 +2524,8 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
         yield from _pipeline_stream(user_input, history, panel_id=panel_id,
                                     images=images, extra_context=extra_context,
                                     manual_mode_selection=manual_mode_selection,
-                                    framework_selected=framework_selected)
+                                    framework_selected=framework_selected,
+                                    config_name=config_name)
     else:
         yield from _direct_stream(user_input, history, images=images)
 
@@ -3542,7 +3548,7 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
 
 def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
                       manual_mode_selection="", framework_selected="", submission_id="",
-                      output_destination=""):
+                      output_destination="", config_name=None):
     """Shared pipeline helper — runs the pipeline synchronously, persists the
     chunk file, and returns a plain JSON reply.
 
@@ -3624,7 +3630,8 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                         panel_id=panel_id, images=images,
                         extra_context=extra_context,
                         manual_mode_selection=manual_mode_selection,
-                        framework_selected=framework_selected):
+                        framework_selected=framework_selected,
+                        config_name=config_name):
                     try:
                         d = json.loads(chunk[6:])
                     except Exception:
@@ -3825,6 +3832,10 @@ def chat():
     # for the processed chunk's output folder. Validation + fallback live
     # in ``_resolve_chunk_destination``; the endpoint just propagates.
     output_destination    = (data.get("output_destination") or "").strip()
+    # Install Chunk 2c — optional per-request named configuration
+    # (e.g. "user-pipeline", "background-default", or a custom-saved name).
+    # When omitted, the legacy execution_context path applies.
+    config_name           = (data.get("config_name") or "").strip() or None
     if not user_input:
         return json.dumps({"error":"empty message"}), 400
 
@@ -3858,7 +3869,8 @@ def chat():
                              manual_mode_selection=manual_mode_selection,
                              framework_selected=framework_selected,
                              submission_id=submission_id,
-                             output_destination=output_destination)
+                             output_destination=output_destination,
+                             config_name=config_name)
 
 
 # ── WP-3.3: Merged visual + text input (multipart) ───────────────────────────
@@ -3961,6 +3973,9 @@ def chat_multipart():
     framework_selected    = (form.get("framework_selected") or "").strip()
     # Obsidian Plugin Design (2026-05-17) — same override field as /chat.
     output_destination    = (form.get("output_destination") or "").strip()
+    # Install Chunk 2c — same config_name field as /chat for per-request
+    # named-configuration selection.
+    config_name           = (form.get("config_name") or "").strip() or None
 
     if not user_input:
         return json.dumps({"error": "empty message"}), 400
@@ -4130,6 +4145,7 @@ def chat_multipart():
         framework_selected=framework_selected,
         submission_id=submission_id,
         output_destination=output_destination,
+        config_name=config_name,
     )
 
 

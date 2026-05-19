@@ -186,26 +186,31 @@ class Router:
         Args:
             slot: The pipeline slot to fill (depth, breadth, sidebar, etc.)
             gear: Current gear level being attempted
-            context: "interactive" or "agent" (legacy path)
+            context: "interactive" or "agent" — when ``config_name`` is None,
+                this is mapped to a default configuration via
+                DEFAULT_CONFIG_FOR_CONTEXT (Chunk 2d cutover).
             excluded_ids: Endpoint IDs already assigned (for diversity)
             same_machine_block: Machine ID to block local endpoints from (MLX constraint)
-            config_name: When provided, resolve from config/configurations/<name>.json
-                instead of routing-config.json::pipelines[context]. Chunk 2b
-                introduces this path; legacy callers passing only ``context``
-                continue to use the pipelines block until Chunk 2d's cutover.
+            config_name: Named configuration in config/configurations/.
+                When None, the effective configuration is derived from
+                ``context``.
 
         Returns:
             v2 endpoint dict, or None if no eligible endpoint found.
         """
         excluded_ids = excluded_ids or set()
+        effective_config = self._resolve_config_name(config_name, context)
 
-        if config_name is not None:
+        if effective_config is not None:
             return self._resolve_from_configuration(
-                slot, gear, config_name,
+                slot, gear, effective_config,
                 excluded_ids=excluded_ids,
                 same_machine_block=same_machine_block,
             )
 
+        # ── Legacy bucket-walk path (retained as fallback when no
+        # configuration is resolved — e.g. unknown context with no
+        # explicit config_name). Chunk 12 removes this entirely.
         bucket_order = self._get_bucket_order(slot, gear, context)
 
         if not bucket_order:
@@ -365,11 +370,13 @@ class Router:
         These slots don't participate in the gear system — they always use
         the utility bucket order regardless of gear.
 
-        ``config_name`` (Chunk 2b) routes through a named configuration.
+        ``config_name`` (Chunk 2b/2d) routes through a named configuration;
+        when None, derived from ``context``.
         """
-        if config_name is not None:
+        effective_config = self._resolve_config_name(config_name, context)
+        if effective_config is not None:
             # Utility slots resolve at gear 1 for cell-path purposes.
-            return self._resolve_from_configuration(slot, 1, config_name)
+            return self._resolve_from_configuration(slot, 1, effective_config)
 
         pipeline = self.config.get("pipelines", {}).get(context, {})
         utility = pipeline.get("utility", {})
@@ -399,13 +406,15 @@ class Router:
 
         Uses the post_analysis bucket order, or cell-specific config if expanded.
 
-        ``config_name`` (Chunk 2b) routes through a named configuration.
+        ``config_name`` (Chunk 2b/2d) routes through a named configuration;
+        when None, derived from ``context``.
         """
-        if config_name is not None:
+        effective_config = self._resolve_config_name(config_name, context)
+        if effective_config is not None:
             # Post-analysis slots resolve at gear 4 for cell-path purposes
             # (the gear value here is just for routing; post_analysis cells
             # aren't gear-scoped).
-            return self._resolve_from_configuration(slot, 4, config_name)
+            return self._resolve_from_configuration(slot, 4, effective_config)
 
         pipeline = self.config.get("pipelines", {}).get(context, {})
         post = pipeline.get("post_analysis", {})
@@ -566,6 +575,19 @@ class Router:
     #       → cells.post_analysis.formatter
     #   primary  (gear 2 single-pass)
     #       → cells.analysis.gear3.depth  (mirrors the legacy fallback)
+
+    def _resolve_config_name(self, config_name: str | None, context: str) -> str | None:
+        """Derive the effective configuration name.
+
+        When the caller passes an explicit ``config_name``, honor it. Otherwise
+        map the legacy ``context`` vocabulary through DEFAULT_CONFIG_FOR_CONTEXT.
+        Returns None when no mapping exists — that signals the caller to fall
+        back to the legacy bucket-walk path (vestigial after Chunk 2d but kept
+        in place until Chunk 12).
+        """
+        if config_name is not None:
+            return config_name
+        return DEFAULT_CONFIG_FOR_CONTEXT.get(context)
 
     def _load_configuration(self, name: str) -> dict | None:
         """Load (and cache) a named configuration from config/configurations/.

@@ -1883,125 +1883,6 @@
       "meta-llama/llama-3.3-70b-instruct:free"
     ]
   },
-  "pipelines": {
-    "interactive": {
-      "utility": {
-        "buckets": [
-          "fast",
-          "local-mid",
-          "free"
-        ],
-        "expanded": false,
-        "cells": {
-          "step1_cleanup": null,
-          "rag_planner": null,
-          "classification": {
-            "buckets": [
-              "local-fast",
-              "local-mid",
-              "fast"
-            ]
-          }
-        }
-      },
-      "analysis": {
-        "expanded": false,
-        "gear4": {
-          "depth": {
-            "buckets": [
-              "premium",
-              "local-premium",
-              "mid"
-            ]
-          },
-          "breadth": {
-            "buckets": [
-              "premium",
-              "local-premium",
-              "mid"
-            ]
-          }
-        },
-        "gear3": {
-          "depth": {
-            "buckets": [
-              "local-premium",
-              "premium",
-              "mid"
-            ]
-          },
-          "breadth": null
-        }
-      },
-      "post_analysis": {
-        "buckets": [
-          "premium",
-          "local-premium",
-          "mid"
-        ],
-        "expanded": false,
-        "cells": {
-          "consolidation": null,
-          "verification": null
-        }
-      }
-    },
-    "agent": {
-      "utility": {
-        "buckets": [
-          "local-mid",
-          "free"
-        ],
-        "expanded": false,
-        "cells": {
-          "step1_cleanup": null,
-          "rag_planner": null,
-          "classification": {
-            "buckets": [
-              "local-fast",
-              "local-mid",
-              "free"
-            ]
-          }
-        }
-      },
-      "analysis": {
-        "expanded": false,
-        "gear4": {
-          "depth": {
-            "buckets": [
-              "local-premium",
-              "fast",
-              "free"
-            ]
-          },
-          "breadth": {
-            "buckets": [
-              "local-premium",
-              "fast",
-              "free"
-            ]
-          }
-        },
-        "gear3": {
-          "depth": null,
-          "breadth": null
-        }
-      },
-      "post_analysis": {
-        "buckets": [
-          "local-premium",
-          "fast",
-          "free"
-        ],
-        "expanded": false,
-        "cells": {
-          "consolidation": null,
-          "verification": null
-        }
-      }
-    }
-  },
   "reservation": {
     "enabled": true,
     "timeout_minutes": 30
@@ -2020,5 +1901,6 @@
   },
   "diversity": {
     "enabled": true
-  }
+  },
+  "_pipelines_retired": "Pipelines block removed in install Chunk 2d (2026-05-18). Replaced by config/configurations/<name>.json files. Router auto-derives config_name from context (interactive \u2192 user-pipeline; agent/autonomous \u2192 background-default) via DEFAULT_CONFIG_FOR_CONTEXT."
 }
