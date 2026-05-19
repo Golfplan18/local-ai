@@ -1,0 +1,43 @@
+{
+  "_schema_version": 1,
+  "_note": "Closed-proprietary model family classification rules. Used by scripts/refresh-catalog.py to assign a size_bucket and family_tier to cloud models whose parameter counts aren't published. Patterns are case-insensitive substrings matched against the OpenRouter slug or model_id. First matching rule wins per provider; if no rule matches, the model is left unclassified (size_bucket=null) and the auto-populate engine treats it as unknown-size (admissible only in expert mode).",
+  "providers": {
+    "anthropic": [
+      {"pattern": "claude-haiku",  "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "haiku",         "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "claude-sonnet", "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "sonnet",        "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "claude-opus",   "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "opus",          "family_tier": "flagship", "size_bucket": "large"}
+    ],
+    "openai": [
+      {"pattern": "nano",          "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "mini",          "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "o1-mini",       "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "gpt-3.5",       "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "gpt-4o-mini",   "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "gpt-5-mini",    "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "gpt-4o",        "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "gpt-4-turbo",   "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "gpt-5-standard","family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "gpt-4",         "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "gpt-5",         "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "o1",            "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "o3",            "family_tier": "flagship", "size_bucket": "large"}
+    ],
+    "google": [
+      {"pattern": "flash-lite",    "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "flash-8b",      "family_tier": "fast",     "size_bucket": "small"},
+      {"pattern": "flash",         "family_tier": "mid",      "size_bucket": "midsize"},
+      {"pattern": "gemini-pro",    "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "pro",           "family_tier": "flagship", "size_bucket": "large"},
+      {"pattern": "ultra",         "family_tier": "flagship", "size_bucket": "large"}
+    ]
+  },
+  "size_bucket_definitions": {
+    "small":   {"parameters_b_range": "< 12B",     "description": "Utility-tier models. Default for cleanup, classification, RAG planner."},
+    "midsize": {"parameters_b_range": "12B - 50B", "description": "Power-user override slot. No auto-population from this bucket."},
+    "large":   {"parameters_b_range": ">= 50B",    "description": "Workhorse-tier models. Default for depth/breadth/consolidation/verification."},
+    "free":    {"parameters_b_range": "any",        "description": "Parallel free-models list. Cost-tier 0. Never mixed into paid ranking."}
+  }
+}
