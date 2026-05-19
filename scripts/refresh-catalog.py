@@ -224,52 +224,100 @@ def normalize_openrouter_entry(entry: dict, family_rules: dict) -> dict:
 def enrich_with_aa(catalog: list[dict], aa_data: dict) -> int:
     """Add AA intelligence_index + blended_cost to matching catalog entries.
 
-    Returns the count of entries enriched.
+    Returns the count of entries enriched (with non-null values, not
+    just name matches).
+
+    AA's actual schema (verified 2026-05-19):
+        {"status": 200, "data": [{
+            "id": "<uuid>", "name": "<display>", "slug": "<slug>",
+            "evaluations": {
+                "artificial_analysis_intelligence_index": 78.0,
+                "artificial_analysis_coding_index": ...,
+                ...
+            },
+            "pricing": {
+                "price_1m_blended_3_to_1": 7.5,
+                "price_1m_input_tokens": 5.0,
+                "price_1m_output_tokens": 15.0,
+            },
+            ...
+        }, ...]}
+
+    Matching: AA's slug ("kimi-k2-thinking") aligns closely with the
+    tail of OpenRouter slugs ("moonshotai/kimi-k2-thinking"). We try
+    direct slug match first (after stripping the OR provider prefix),
+    then fall back to name-substring overlap.
     """
-    # AA's response shape (per their docs): {"data": [{"name": "...",
-    # "intelligence_index": 78, "blended_cost_usd_per_million_tokens": 7.5,
-    # ...}, ...]}. The exact field names may evolve — this code is
-    # defensive about both common shapes.
     rows = aa_data.get("data") or aa_data.get("models") or []
     if not isinstance(rows, list):
         return 0
 
-    # Build a name → AA row lookup. AA uses display-style names
-    # ("Claude Opus 4.7") rather than OpenRouter slugs — best-effort
-    # match on substring overlap with display_name.
+    # Build both lookups for matching: by slug and by name.
+    aa_by_slug = {}
     aa_by_name = {}
     for row in rows:
         if not isinstance(row, dict):
             continue
-        name = (row.get("name") or row.get("model_name") or "").strip()
+        slug = (row.get("slug") or "").strip().lower()
+        if slug:
+            aa_by_slug[slug] = row
+        name = (row.get("name") or "").strip().lower()
         if name:
-            aa_by_name[name.lower()] = row
+            aa_by_name[name] = row
+
+    def _extract(row: dict) -> tuple[float | None, float | None]:
+        """Pull intelligence + blended cost from the nested schema."""
+        evals = row.get("evaluations") or {}
+        pricing = row.get("pricing") or {}
+        # Primary fields (AA's canonical names as of 2026-05-19)
+        intelligence = evals.get("artificial_analysis_intelligence_index")
+        blended = pricing.get("price_1m_blended_3_to_1")
+        # Defensive fallbacks in case AA renames a field in the future
+        if intelligence is None:
+            intelligence = (
+                evals.get("intelligence_index")
+                or evals.get("artificial_analysis_index")
+                or row.get("intelligence_index")
+            )
+        if blended is None:
+            blended = (
+                pricing.get("blended_cost_usd_per_million_tokens")
+                or pricing.get("blended_per_m")
+                or row.get("blended_cost")
+            )
+        return intelligence, blended
 
     enriched = 0
     for entry in catalog:
+        or_slug = entry.get("openrouter_slug") or entry.get("id") or ""
+        # OR slugs look like "provider/model-name"; AA slugs are just
+        # "model-name". Strip the provider prefix for matching.
+        slug_tail = or_slug.split("/", 1)[-1].lower()
         display_lower = (entry.get("display_name") or "").lower()
-        match = None
-        # Try exact display-name match first.
-        match = aa_by_name.get(display_lower)
+
+        match = aa_by_slug.get(slug_tail)
         if match is None:
-            # Try substring match on display_name (e.g. "Claude Opus 4.7"
-            # in OR catalog matches "Claude Opus 4.7 (200k)" in AA).
-            for name, row in aa_by_name.items():
-                if name in display_lower or display_lower in name:
+            # Try slug substring match (AA "kimi-k2-thinking" inside
+            # OR slug "moonshotai/kimi-k2-thinking")
+            for aa_slug, row in aa_by_slug.items():
+                if aa_slug in slug_tail or slug_tail in aa_slug:
                     match = row
                     break
+        if match is None:
+            # Name substring fallback
+            match = aa_by_name.get(display_lower)
+            if match is None:
+                for name, row in aa_by_name.items():
+                    if name in display_lower or display_lower in name:
+                        match = row
+                        break
+
         if match:
-            entry["aa_intelligence_index"] = (
-                match.get("intelligence_index")
-                or match.get("intelligence")
-                or match.get("quality_index")
-            )
-            entry["aa_blended_per_m"] = (
-                match.get("blended_cost_usd_per_million_tokens")
-                or match.get("blended_cost")
-                or match.get("price_per_million_blended")
-            )
-            enriched += 1
+            intelligence, blended = _extract(match)
+            if intelligence is not None or blended is not None:
+                entry["aa_intelligence_index"] = intelligence
+                entry["aa_blended_per_m"] = blended
+                enriched += 1
 
     return enriched
 
