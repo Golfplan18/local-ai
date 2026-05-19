@@ -345,6 +345,34 @@ def reload_router() -> bool:
         return False
 
 
+def vision_capable_for_endpoint(endpoint: dict | None) -> bool:
+    """Return whether ``endpoint`` can read images natively.
+
+    Source of truth: the endpoint dict's ``vision_capable`` field when
+    present. When absent (post-Chunk-12 — the field is being moved out of
+    ``routing-config.json::endpoints[]`` to ``models.json`` as the canonical
+    home), this helper consults Router, which reads ``models.json`` with a
+    fallback to the routing-config copy.
+
+    Returns False when no source has the field — the safe default for
+    unknown endpoints. Callers must pass an endpoint dict, not an id, so
+    inline-synthesized endpoints (which carry the field directly without an
+    entry in either config file) still resolve correctly.
+    """
+    if not endpoint:
+        return False
+    if "vision_capable" in endpoint:
+        return bool(endpoint["vision_capable"])
+    router = _get_router()
+    ep_id = endpoint.get("id") if isinstance(endpoint, dict) else None
+    if router and ep_id:
+        try:
+            return router.vision_capable_for_endpoint(ep_id)
+        except Exception:
+            pass
+    return False
+
+
 def get_active_endpoint(config: dict) -> dict | None:
     """Returns a general-purpose endpoint. Uses v2 router if available."""
     router = _get_router()
@@ -530,7 +558,7 @@ def _pick_vision_extractor(routing_config: dict, bucket_name: str) -> dict | Non
             continue
         if ep.get("status") != "active":
             continue
-        if not ep.get("vision_capable", False):
+        if not vision_capable_for_endpoint(ep):
             continue
         return ep
     return None
@@ -598,7 +626,7 @@ def _endpoint_from_slot_entry(entry: str, routing_config: dict) -> dict | None:
         return None
     if ep.get("status") != "active":
         return None
-    if not ep.get("vision_capable", False):
+    if not vision_capable_for_endpoint(ep):
         return None
     return ep
 
@@ -741,7 +769,7 @@ def route_for_image_input(context_pkg: dict,
         return requested_model, context_pkg
 
     # Branch 1: downstream model is already vision-capable — direct pass.
-    if requested_model and requested_model.get("vision_capable", False):
+    if requested_model and vision_capable_for_endpoint(requested_model):
         context_pkg["vision_extractor_selected"] = None
         context_pkg["vision_direct_pass"] = True
         return requested_model, context_pkg
@@ -5480,6 +5508,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                         conversation_context=(
                             conv_rag[:2000] if conv_rag else ""
                         ),
+                        # Vault knowledge (concept_rag) is the source of
+                        # truth the conflict detector compares web chunks
+                        # against. Empty when no vault content was retrieved
+                        # at this step — detector skips silently.
+                        vault_rag_context=concept_rag or "",
                         per_query_timeout_seconds=wc_cfg.get(
                             "per_query_timeout_seconds",
                             _WEB_CONSULT_DEFAULT_TIMEOUT,
@@ -5491,6 +5524,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                         prompt_sanity_enabled=(
                             (wc_cfg.get("prompt_sanity") or {}).get(
                                 "enabled", _WEB_CONSULT_DEFAULT_SANITY,
+                            )
+                        ),
+                        conflict_detection_enabled=(
+                            (wc_cfg.get("conflict_detection") or {}).get(
+                                "enabled", True,
                             )
                         ),
                     )
@@ -5784,7 +5822,7 @@ def _images_for_endpoint(images, endpoint):
     """
     if not endpoint:
         return None
-    return images if endpoint.get("vision_capable", False) else None
+    return images if vision_capable_for_endpoint(endpoint) else None
 
 
 def _strip_annotated_image_clauses(format_guidance: str) -> str:
@@ -8590,7 +8628,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # depth_endpoint; if that endpoint is text-only, suppress the mode's
     # annotated_image / Path B emission guidance so it doesn't hallucinate
     # image-relative coordinates it can't see.
-    formatter_vision_capable = bool(depth_endpoint.get("vision_capable", False)) if depth_endpoint else True
+    formatter_vision_capable = vision_capable_for_endpoint(depth_endpoint) if depth_endpoint else True
     format_system = _assemble_step_prompt(
         context_pkg, slot="depth", step="formatter",
         framework_name="f-format.md",

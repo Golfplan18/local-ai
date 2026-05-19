@@ -65,6 +65,9 @@ DEFAULT_MAX_RESULTS_PER_QUERY = 6
 DEFAULT_MAX_CHARS = 12_000
 DEFAULT_SLOT = "step1_cleanup"   # fast slot for intent identification + sanity check
 DEFAULT_PROMPT_SANITY_ENABLED = True
+DEFAULT_CONFLICT_DETECTION_ENABLED = True
+DEFAULT_CONFLICT_DETECTION_MAX_CHARS = 10_000  # input budget for the detector
+DEFAULT_CONFLICT_DETECTION_MAX_VAULT_CHARS = 6_000  # cap on vault content sent in
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +167,53 @@ USER PROMPT:
 {user_prompt}"""
 
 
+_CONFLICT_DETECTOR_SYSTEM_PROMPT = """\
+You are checking whether web search results contradict the user's vault \
+knowledge on FACTUAL claims. The vault is the user's personal knowledge \
+store; web results are independent search hits. Your job is to find places \
+where the two disagree on a specific verifiable fact, NOT to enforce \
+mainstream consensus on the user's interpretive or contrarian positions.
+
+A conflict qualifies for flagging if ALL of these hold:
+- The disagreement is on a SPECIFIC verifiable fact (date, number, named \
+entity, established historical event, technical specification, attribution \
+of a quote).
+- Both the vault and the web make an unambiguous claim about it.
+- They contradict each other.
+
+A conflict does NOT qualify if:
+- The vault carries a substantive disputed position, contrarian theory, \
+or contested interpretation. Those are the user's analytical content, NOT \
+"facts" subject to mainstream consensus enforcement. PASS THESE THROUGH \
+UNTOUCHED.
+- The web result merely adds context the vault doesn't cover.
+- The vault and web express the same fact in different words.
+- The disagreement is about which methodology / definition / vintage to \
+use (interpretive, not factual).
+
+Output format. No prose outside the format.
+
+When you find one or more genuine factual conflicts:
+
+CONFLICTS:
+- web_chunk_index: <0-based index of the web chunk>
+  vault_reference: <quote or short reference to the vault content that conflicts>
+  contradiction: <one short sentence — what the two say differently>
+
+When you find no conflicts (the normal case):
+
+CONFLICTS:
+(none)"""
+
+
+_CONFLICT_DETECTOR_USER_TEMPLATE = """\
+VAULT KNOWLEDGE:
+{vault_rag_context}
+
+WEB SEARCH RESULTS:
+{web_chunks_text}"""
+
+
 # ---------------------------------------------------------------------------
 # Parsers
 # ---------------------------------------------------------------------------
@@ -177,6 +227,13 @@ _SANITY_FLAG_RE = re.compile(
     r"^\s*-\s+claim:\s*(?P<claim>.+?)\s*\n"
     r"\s+suspected_error:\s*(?P<err>.+?)\s*\n"
     r"\s+reasoning:\s*(?P<reason>.+?)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+_CONFLICT_BLOCK_RE = re.compile(
+    r"^\s*-\s+web_chunk_index:\s*(?P<idx>\d+)\s*\n"
+    r"\s+vault_reference:\s*(?P<vref>.+?)\s*\n"
+    r"\s+contradiction:\s*(?P<contra>.+?)\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -213,6 +270,28 @@ def _parse_sanity_flags(text: str) -> list[dict]:
             "reasoning": m.group("reason").strip(),
         })
     return flags
+
+
+def _parse_conflict_blocks(text: str) -> list[dict]:
+    """Parse conflict blocks from the conflict-detector model output.
+
+    Returns a list of {web_chunk_index (int), vault_reference, contradiction}
+    dicts. Returns [] when "(none)" or the section is missing/malformed.
+    """
+    if not text or "(none)" in text.lower():
+        return []
+    out: list[dict] = []
+    for m in _CONFLICT_BLOCK_RE.finditer(text):
+        try:
+            idx = int(m.group("idx"))
+        except (ValueError, TypeError):
+            continue
+        out.append({
+            "web_chunk_index": idx,
+            "vault_reference": m.group("vref").strip().strip('"\''),
+            "contradiction":   m.group("contra").strip().strip('"\''),
+        })
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -296,6 +375,214 @@ def _result_to_document(result: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Custom WEB CONTEXT formatter — surfaces intent_justification and
+# consultation_conflict flags alongside the standard
+# classification/weight/source marker. Used in place of
+# rag_engine.format_context_with_provenance for web chunks so the
+# analyst can see WHY each search was issued and whether any chunk
+# contradicts vault knowledge.
+# ---------------------------------------------------------------------------
+
+
+def _format_web_consultation_body(
+    chunks: list[dict],
+    max_chars: int = DEFAULT_MAX_CHARS,
+) -> str:
+    """Render web chunks for analyst-prompt injection.
+
+    Each chunk emits:
+      [classification: <class> | weight: <w> | source: <url>]
+      [intent: <intent_justification>]               (when present)
+      [CONFLICT: <vault_reference> — <contradiction>] (when present)
+      <document body>
+
+    Stops appending once ``max_chars`` is exceeded — matches
+    rag_engine.format_context_with_provenance's character-budget
+    behavior so the assembled package fits inside the analytical-floor
+    budget.
+    """
+    if not chunks:
+        return ""
+    parts: list[str] = []
+    total = 0
+    for chunk in chunks:
+        classification = chunk.get("classification") or "open"
+        try:
+            weight = float(chunk.get("weight") or 0.0)
+        except (TypeError, ValueError):
+            weight = 0.0
+        url = chunk.get("url") or chunk.get("source") or "(no url)"
+        document = chunk.get("document") or "(no content)"
+        intent = (chunk.get("intent_justification") or "").strip()
+        conflict_flag = bool(chunk.get("consultation_conflict"))
+        conflicts_with = (chunk.get("conflicts_with") or "").strip()
+
+        marker_lines = [
+            f"[classification: {classification} | weight: {weight:.2f} | source: {url}]"
+        ]
+        if intent:
+            marker_lines.append(f"[intent: {intent}]")
+        if conflict_flag and conflicts_with:
+            marker_lines.append(f"[CONFLICT: {conflicts_with}]")
+
+        block = "\n".join(marker_lines) + "\n" + document.strip() + "\n\n"
+        if total + len(block) > max_chars and parts:
+            break
+        parts.append(block)
+        total += len(block)
+    return "".join(parts).rstrip()
+
+
+# ---------------------------------------------------------------------------
+# Vault-vs-web conflict detection (F-Consult spec §4)
+# ---------------------------------------------------------------------------
+
+
+def _detect_conflicts_against_vault(
+    web_chunks: list[dict],
+    vault_rag_context: str,
+    *,
+    call_model: Callable[[list, dict], str],
+    fast_endpoint: dict,
+    max_input_chars: int = DEFAULT_CONFLICT_DETECTION_MAX_CHARS,
+    max_vault_chars: int = DEFAULT_CONFLICT_DETECTION_MAX_VAULT_CHARS,
+) -> dict:
+    """Detect contradictions between web chunks and vault content.
+
+    One fast-model call compares the web chunks to the vault knowledge
+    package and identifies specific factual disagreements. Discipline
+    in the prompt: only flag SPECIFIC verifiable factual contradictions;
+    do NOT flag substantive disputed positions or contrarian content
+    in the vault as "wrong" — those pass through untouched (this is
+    the Big Bang case from F-Revise's §disputed-but-defensible).
+
+    Returns:
+        {
+          "annotated_chunks": list[dict],  # web_chunks with
+                                            # consultation_conflict and
+                                            # conflicts_with added where
+                                            # the detector found a conflict
+          "conflicts_count": int,
+          "trace": dict (status, reason, conflicts, signals),
+        }
+
+    Failure modes — fail-soft:
+      - Empty web_chunks → status=skipped, reason=no_web_chunks.
+      - Empty vault_rag_context → status=skipped, reason=no_vault_context.
+      - call_model raises → status=errored, annotated_chunks unchanged.
+      - Parse failure → status=ran with conflicts_count=0.
+    """
+    t_start = time.time()
+    signals: list[str] = []
+    annotated = list(web_chunks)
+
+    if not web_chunks:
+        return {
+            "annotated_chunks": annotated,
+            "conflicts_count": 0,
+            "trace": {
+                "status": "skipped",
+                "reason": "no_web_chunks",
+                "conflicts": [],
+                "elapsed_seconds": time.time() - t_start,
+                "signals": signals,
+            },
+        }
+    if not (vault_rag_context or "").strip():
+        return {
+            "annotated_chunks": annotated,
+            "conflicts_count": 0,
+            "trace": {
+                "status": "skipped",
+                "reason": "no_vault_context",
+                "conflicts": [],
+                "elapsed_seconds": time.time() - t_start,
+                "signals": signals,
+            },
+        }
+    if fast_endpoint is None:
+        return {
+            "annotated_chunks": annotated,
+            "conflicts_count": 0,
+            "trace": {
+                "status": "skipped",
+                "reason": "no_fast_endpoint",
+                "conflicts": [],
+                "elapsed_seconds": time.time() - t_start,
+                "signals": signals,
+            },
+        }
+
+    # Build the detector input: a truncated vault context + numbered
+    # web chunks with their document bodies. The numbering aligns with
+    # the detector's web_chunk_index output.
+    vault_trim = vault_rag_context[:max_vault_chars]
+    web_lines: list[str] = []
+    char_budget = max_input_chars - len(vault_trim)
+    for i, chunk in enumerate(web_chunks):
+        url = chunk.get("url") or "(no url)"
+        document = (chunk.get("document") or "").strip()
+        block = f"[{i}] (source: {url})\n{document}\n"
+        if char_budget - len(block) < 0 and web_lines:
+            break
+        web_lines.append(block)
+        char_budget -= len(block)
+    web_chunks_text = "\n".join(web_lines)
+
+    user_msg = _CONFLICT_DETECTOR_USER_TEMPLATE.format(
+        vault_rag_context=vault_trim,
+        web_chunks_text=web_chunks_text,
+    )
+
+    try:
+        raw = call_model(
+            [{"role": "system", "content": _CONFLICT_DETECTOR_SYSTEM_PROMPT},
+             {"role": "user",   "content": user_msg}],
+            fast_endpoint,
+        )
+    except Exception as exc:
+        signals.append(f"conflict_detector_call_error: {exc}")
+        return {
+            "annotated_chunks": annotated,
+            "conflicts_count": 0,
+            "trace": {
+                "status": "errored",
+                "reason": f"detector_call_error: {str(exc)[:200]}",
+                "conflicts": [],
+                "elapsed_seconds": time.time() - t_start,
+                "signals": signals,
+            },
+        }
+
+    conflicts = _parse_conflict_blocks(raw or "")
+    signals.append(f"conflict_detector_found: {len(conflicts)} conflicts")
+
+    # Annotate the affected web chunks.
+    for c in conflicts:
+        idx = c["web_chunk_index"]
+        if 0 <= idx < len(annotated):
+            annotated[idx] = {
+                **annotated[idx],
+                "consultation_conflict": True,
+                "conflicts_with": (
+                    f"{c['vault_reference']} — {c['contradiction']}"
+                ),
+            }
+
+    return {
+        "annotated_chunks": annotated,
+        "conflicts_count": len(conflicts),
+        "trace": {
+            "status": "ran",
+            "reason": None,
+            "conflicts": conflicts,
+            "elapsed_seconds": time.time() - t_start,
+            "signals": signals,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -305,11 +592,13 @@ def assemble_consultation_package(
     call_model: Callable[[list, dict], str],
     fast_endpoint: Optional[dict],
     conversation_context: str = "",
+    vault_rag_context: str = "",
     trusted_registry: Optional[web_corroboration.TrustedSourcesRegistry] = None,
     per_query_timeout_seconds: int = DEFAULT_PER_QUERY_TIMEOUT_SECONDS,
     max_results_per_query: int = DEFAULT_MAX_RESULTS_PER_QUERY,
     max_chars: int = DEFAULT_MAX_CHARS,
     prompt_sanity_enabled: bool = DEFAULT_PROMPT_SANITY_ENABLED,
+    conflict_detection_enabled: bool = DEFAULT_CONFLICT_DETECTION_ENABLED,
 ) -> dict:
     """Run F-Consult's web consultation stream.
 
@@ -572,9 +861,53 @@ def assemble_consultation_package(
     )
     chunks_open = len(all_chunks) - chunks_approved
 
-    # --- Format the web_rag text body ----------------------------------
+    # --- Vault-vs-web conflict detection (F-Consult spec §4) ----------
+    # When vault context + web chunks are both present, one fast-model
+    # call checks for specific factual contradictions. Conflicting web
+    # chunks get consultation_conflict + conflicts_with annotations
+    # that the formatter surfaces as a [CONFLICT: ...] marker line.
+    # The detector is instructed NOT to flag substantive disputed
+    # vault content as "wrong" — those pass through untouched.
+    conflict_trace: dict = {
+        "status": "skipped",
+        "reason": "disabled_or_no_inputs",
+        "conflicts": [],
+    }
+    conflicts_count = 0
+    if (
+        conflict_detection_enabled
+        and all_chunks
+        and (vault_rag_context or "").strip()
+    ):
+        try:
+            detect_result = _detect_conflicts_against_vault(
+                all_chunks, vault_rag_context,
+                call_model=call_model,
+                fast_endpoint=fast_endpoint,
+            )
+            all_chunks = detect_result["annotated_chunks"]
+            conflicts_count = detect_result["conflicts_count"]
+            conflict_trace = detect_result["trace"]
+            signals.append(
+                f"web_consultation_conflict_detection: "
+                f"{conflicts_count} conflicts flagged"
+            )
+        except Exception as exc:
+            # Fail-soft: detector errors do not block the consultation.
+            conflict_trace = {
+                "status": "errored",
+                "reason": f"detector_wrapper_error: {str(exc)[:200]}",
+                "conflicts": [],
+            }
+            signals.append(f"web_consultation_conflict_wrapper_error: {exc}")
+
+    # --- Format the web_rag text body via the web-specific formatter --
+    # Custom formatter (not rag_engine.format_context_with_provenance)
+    # so intent_justification + consultation_conflict markers surface
+    # to the analyst alongside the standard classification/weight/source
+    # line. See F-Consult spec §4 for the per-chunk provenance contract.
     if all_chunks:
-        web_rag_text = format_context_with_provenance(
+        web_rag_text = _format_web_consultation_body(
             all_chunks, max_chars=max_chars,
         )
     else:
@@ -584,7 +917,8 @@ def assemble_consultation_package(
         f"web_consultation_summary: intents={len(intents)}, "
         f"executed={len(intent_results)}, failed={len(intents_failed)}, "
         f"chunks={len(all_chunks)}, approved={chunks_approved}, "
-        f"open={chunks_open}, sanity_flags={len(sanity_flags)}"
+        f"open={chunks_open}, conflicts={conflicts_count}, "
+        f"sanity_flags={len(sanity_flags)}"
     )
 
     return {
@@ -599,6 +933,8 @@ def assemble_consultation_package(
             "chunks_total": len(all_chunks),
             "chunks_approved": chunks_approved,
             "chunks_open": chunks_open,
+            "conflicts_count": conflicts_count,
+            "conflict_detection": conflict_trace,
             "elapsed_seconds": time.time() - t_start,
             "endpoint_used": endpoint_name,
             "signals": signals,

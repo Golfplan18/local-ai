@@ -305,5 +305,311 @@ class AssembleConsultationPackage(unittest.TestCase):
         self.assertIn("moon landing", out["prompt_sanity_flags"][0]["claim"])
 
 
+# ---------------------------------------------------------------------------
+# _parse_conflict_blocks
+# ---------------------------------------------------------------------------
+
+
+class ParseConflictBlocks(unittest.TestCase):
+    def test_empty(self):
+        self.assertEqual(web_consultation._parse_conflict_blocks(""), [])
+
+    def test_none_marker(self):
+        self.assertEqual(
+            web_consultation._parse_conflict_blocks("CONFLICTS:\n(none)"),
+            [],
+        )
+
+    def test_single_conflict(self):
+        text = (
+            "CONFLICTS:\n"
+            "- web_chunk_index: 2\n"
+            '  vault_reference: "Engram says X happened in 1990"\n'
+            "  contradiction: Web result places it in 1991"
+        )
+        out = web_consultation._parse_conflict_blocks(text)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["web_chunk_index"], 2)
+        self.assertIn("1990", out[0]["vault_reference"])
+        self.assertIn("1991", out[0]["contradiction"])
+
+    def test_multiple_conflicts(self):
+        text = (
+            "CONFLICTS:\n"
+            "- web_chunk_index: 0\n"
+            "  vault_reference: ref0\n"
+            "  contradiction: c0\n"
+            "- web_chunk_index: 7\n"
+            "  vault_reference: ref7\n"
+            "  contradiction: c7"
+        )
+        out = web_consultation._parse_conflict_blocks(text)
+        self.assertEqual(len(out), 2)
+        self.assertEqual([c["web_chunk_index"] for c in out], [0, 7])
+
+
+# ---------------------------------------------------------------------------
+# _format_web_consultation_body (intent_justification + conflict surfacing)
+# ---------------------------------------------------------------------------
+
+
+class FormatWebConsultationBody(unittest.TestCase):
+    def test_empty_chunks_returns_empty(self):
+        self.assertEqual(web_consultation._format_web_consultation_body([]), "")
+
+    def test_renders_classification_weight_source(self):
+        chunks = [{
+            "classification": "whitelisted",
+            "weight": 0.95,
+            "url": "https://en.wikipedia.org/wiki/X",
+            "document": "Body content here.",
+        }]
+        out = web_consultation._format_web_consultation_body(chunks)
+        self.assertIn("[classification: whitelisted | weight: 0.95 | source: https://en.wikipedia.org/wiki/X]", out)
+        self.assertIn("Body content here.", out)
+
+    def test_intent_justification_appears_when_present(self):
+        chunks = [{
+            "classification": "corroborated",
+            "weight": 0.4,
+            "url": "https://x/y",
+            "document": "Body",
+            "intent_justification": "anchors the unemployment-rate claim",
+        }]
+        out = web_consultation._format_web_consultation_body(chunks)
+        self.assertIn("[intent: anchors the unemployment-rate claim]", out)
+
+    def test_intent_justification_omitted_when_absent(self):
+        chunks = [{
+            "classification": "single",
+            "weight": 0.15,
+            "url": "https://x/y",
+            "document": "Body",
+        }]
+        out = web_consultation._format_web_consultation_body(chunks)
+        self.assertNotIn("[intent:", out)
+
+    def test_conflict_marker_appears_when_flagged(self):
+        chunks = [{
+            "classification": "corroborated",
+            "weight": 0.3,
+            "url": "https://x/y",
+            "document": "Body",
+            "consultation_conflict": True,
+            "conflicts_with": "Engram (Q2 2020) — vault says 13.0%, web says 13.3%",
+        }]
+        out = web_consultation._format_web_consultation_body(chunks)
+        self.assertIn("[CONFLICT: Engram (Q2 2020) — vault says 13.0%, web says 13.3%]", out)
+
+    def test_conflict_marker_omitted_when_not_flagged(self):
+        chunks = [{
+            "classification": "corroborated",
+            "weight": 0.3,
+            "url": "https://x/y",
+            "document": "Body",
+            "consultation_conflict": False,
+        }]
+        out = web_consultation._format_web_consultation_body(chunks)
+        self.assertNotIn("[CONFLICT:", out)
+
+    def test_max_chars_truncates(self):
+        chunks = [
+            {"classification": "single", "weight": 0.15,
+             "url": "https://x/1", "document": "A" * 5000},
+            {"classification": "single", "weight": 0.15,
+             "url": "https://x/2", "document": "B" * 5000},
+            {"classification": "single", "weight": 0.15,
+             "url": "https://x/3", "document": "C" * 5000},
+        ]
+        out = web_consultation._format_web_consultation_body(chunks, max_chars=6000)
+        # First chunk always renders; later chunks stop when budget exceeded.
+        self.assertIn("https://x/1", out)
+        # The third chunk should not appear given the budget.
+        self.assertNotIn("https://x/3", out)
+
+
+# ---------------------------------------------------------------------------
+# _detect_conflicts_against_vault
+# ---------------------------------------------------------------------------
+
+
+class DetectConflictsAgainstVault(unittest.TestCase):
+    def test_no_web_chunks_skips(self):
+        out = web_consultation._detect_conflicts_against_vault(
+            [], "vault content here",
+            call_model=lambda m, e: "CONFLICTS:\n(none)",
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        self.assertEqual(out["trace"]["status"], "skipped")
+        self.assertEqual(out["trace"]["reason"], "no_web_chunks")
+        self.assertEqual(out["conflicts_count"], 0)
+
+    def test_no_vault_skips(self):
+        out = web_consultation._detect_conflicts_against_vault(
+            [{"url": "x", "document": "y"}], "",
+            call_model=lambda m, e: "CONFLICTS:\n(none)",
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        self.assertEqual(out["trace"]["status"], "skipped")
+        self.assertEqual(out["trace"]["reason"], "no_vault_context")
+
+    def test_no_endpoint_skips(self):
+        out = web_consultation._detect_conflicts_against_vault(
+            [{"url": "x", "document": "y"}], "vault content",
+            call_model=lambda m, e: "CONFLICTS:\n(none)",
+            fast_endpoint=None,
+        )
+        self.assertEqual(out["trace"]["status"], "skipped")
+        self.assertEqual(out["trace"]["reason"], "no_fast_endpoint")
+
+    def test_detector_error_fail_soft(self):
+        def failing(messages, endpoint):
+            raise RuntimeError("model down")
+        out = web_consultation._detect_conflicts_against_vault(
+            [{"url": "x", "document": "y"}], "vault content",
+            call_model=failing,
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        self.assertEqual(out["trace"]["status"], "errored")
+        self.assertIn("model down", out["trace"]["reason"])
+        # Chunks unchanged.
+        self.assertNotIn("consultation_conflict", out["annotated_chunks"][0])
+
+    def test_none_response_no_annotations(self):
+        out = web_consultation._detect_conflicts_against_vault(
+            [{"url": "x", "document": "y"}], "vault content",
+            call_model=lambda m, e: "CONFLICTS:\n(none)",
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        self.assertEqual(out["trace"]["status"], "ran")
+        self.assertEqual(out["conflicts_count"], 0)
+        # Chunks unchanged.
+        self.assertNotIn("consultation_conflict", out["annotated_chunks"][0])
+
+    def test_detected_conflict_annotates_chunk(self):
+        response = (
+            "CONFLICTS:\n"
+            "- web_chunk_index: 1\n"
+            "  vault_reference: vault says 1990\n"
+            "  contradiction: web places it in 1991"
+        )
+        chunks = [
+            {"url": "https://a", "document": "doc a"},
+            {"url": "https://b", "document": "doc b says 1991"},
+            {"url": "https://c", "document": "doc c"},
+        ]
+        out = web_consultation._detect_conflicts_against_vault(
+            chunks, "vault content with 1990",
+            call_model=lambda m, e: response,
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        self.assertEqual(out["conflicts_count"], 1)
+        # Only index 1 annotated.
+        self.assertNotIn("consultation_conflict", out["annotated_chunks"][0])
+        self.assertTrue(out["annotated_chunks"][1].get("consultation_conflict"))
+        self.assertIn("1990", out["annotated_chunks"][1]["conflicts_with"])
+        self.assertIn("1991", out["annotated_chunks"][1]["conflicts_with"])
+        self.assertNotIn("consultation_conflict", out["annotated_chunks"][2])
+
+    def test_invalid_chunk_index_silently_skipped(self):
+        # Detector returns an out-of-range index — code skips it without
+        # crashing.
+        response = (
+            "CONFLICTS:\n"
+            "- web_chunk_index: 99\n"
+            "  vault_reference: ref\n"
+            "  contradiction: c"
+        )
+        chunks = [{"url": "https://a", "document": "doc"}]
+        out = web_consultation._detect_conflicts_against_vault(
+            chunks, "vault",
+            call_model=lambda m, e: response,
+            fast_endpoint=_make_fast_endpoint(),
+        )
+        # parsed 1 conflict, but no chunk was actually annotated
+        self.assertEqual(out["conflicts_count"], 1)
+        self.assertNotIn("consultation_conflict", out["annotated_chunks"][0])
+
+
+# ---------------------------------------------------------------------------
+# assemble_consultation_package — vault_rag_context wiring
+# ---------------------------------------------------------------------------
+
+
+class ConsultationPackageWithVaultContext(unittest.TestCase):
+    def test_conflict_detection_runs_when_vault_present(self):
+        # Intent → 1 web chunk → conflict detector flags it.
+        intent_response = (
+            "INTENTS:\n"
+            "- query: q\n"
+            "  justification: j"
+        )
+        conflict_response = (
+            "CONFLICTS:\n"
+            "- web_chunk_index: 0\n"
+            "  vault_reference: vault says X\n"
+            "  contradiction: web says Y"
+        )
+        sanity_response = "FLAGS:\n(none)"
+
+        def call_model(messages, endpoint):
+            sys = messages[0]["content"]
+            if "conflict" in sys.lower() and "factual" in sys.lower():
+                return conflict_response
+            if "sanity" in sys.lower() or "factual-sanity" in sys.lower():
+                return sanity_response
+            return intent_response
+
+        results = [_ddg_result("https://x", "T", "snippet")]
+        with mock.patch.object(web_consultation, "web_search_structured",
+                                return_value=results):
+            out = web_consultation.assemble_consultation_package(
+                user_prompt="discuss X",
+                call_model=call_model,
+                fast_endpoint=_make_fast_endpoint(),
+                vault_rag_context="some vault content",
+            )
+        self.assertEqual(out["consultation_trace"]["conflicts_count"], 1)
+        # web_rag carries the [CONFLICT: ...] marker because the chunk
+        # was annotated.
+        self.assertIn("[CONFLICT:", out["web_rag"])
+
+    def test_conflict_detection_skips_when_vault_empty(self):
+        intent_response = "INTENTS:\n- query: q\n  justification: j"
+        results = [_ddg_result("https://x", "T", "snippet")]
+        with mock.patch.object(web_consultation, "web_search_structured",
+                                return_value=results):
+            out = web_consultation.assemble_consultation_package(
+                user_prompt="x",
+                call_model=_make_call_model(intent_response, "FLAGS:\n(none)"),
+                fast_endpoint=_make_fast_endpoint(),
+                vault_rag_context="",  # empty
+            )
+        self.assertEqual(out["consultation_trace"]["conflicts_count"], 0)
+        self.assertEqual(
+            out["consultation_trace"]["conflict_detection"]["status"],
+            "skipped",
+        )
+
+    def test_conflict_detection_disabled_via_flag(self):
+        intent_response = "INTENTS:\n- query: q\n  justification: j"
+        results = [_ddg_result("https://x", "T", "snippet")]
+        with mock.patch.object(web_consultation, "web_search_structured",
+                                return_value=results):
+            out = web_consultation.assemble_consultation_package(
+                user_prompt="x",
+                call_model=_make_call_model(intent_response, "FLAGS:\n(none)"),
+                fast_endpoint=_make_fast_endpoint(),
+                vault_rag_context="vault content",
+                conflict_detection_enabled=False,
+            )
+        self.assertEqual(out["consultation_trace"]["conflicts_count"], 0)
+        # Conflict detection branch never executed.
+        self.assertEqual(
+            out["consultation_trace"]["conflict_detection"]["status"],
+            "skipped",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
