@@ -39,7 +39,6 @@ Everything specific to you that should never be public:
 |---|---|
 | `mind.md` | Your system's personality and behavioral rules |
 | `config/endpoints.json` | Your API keys and service credentials |
-| `config/browser-sessions/` | Your logged-in browser cookies |
 | `chromadb/` | Your knowledge base |
 | `knowledge/` | Your mental models and indexed documents |
 | `frameworks/personal/` | Frameworks you created for yourself |
@@ -126,7 +125,6 @@ If the merge has conflicts, resolve them — your customizations take priority. 
 Your public fork should never contain:
 
 - API keys or credentials (`config/endpoints.json` — use the template)
-- Browser session cookies (`config/browser-sessions/`)
 - Your `mind.md` (unless you want to — it contains personal values)
 - Downloaded model files (too large for git; each user downloads their own)
 - Your ChromaDB data (personal knowledge)

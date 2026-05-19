@@ -1,17 +1,16 @@
 """
 resilience.py — Orchestrator Resilience and Degradation (Phase 14)
 
-Three components:
+Two components:
   14.1 — KV cache release between sequential model calls (Gear 4 on constrained hardware)
   14.2 — Graceful gear degradation logic with signaling
-  14.3 — API fallback configuration for Playwright access
 
 Degradation is always signaled, never silent. Uses Budget Signals 1-4.
 
 Usage:
     from orchestrator.tools.resilience import (
         check_hardware_constraints, get_degradation_path,
-        should_release_kv_cache, get_fallback_endpoint
+        should_release_kv_cache,
     )
 """
 
@@ -266,94 +265,6 @@ def format_degradation_signal(state: DegradationState) -> str:
 
     return "\n".join(parts)
 
-
-# ---------------------------------------------------------------------------
-# 14.3 — API Fallback Configuration
-# ---------------------------------------------------------------------------
-
-def get_fallback_endpoint(config: dict, primary_endpoint: dict) -> dict | None:
-    """
-    Get a fallback endpoint for a given primary endpoint.
-
-    If the primary is a browser (Playwright) endpoint, find an API endpoint
-    for the same service. If the primary is an API endpoint, find a browser
-    endpoint (less common, but supported).
-
-    Returns None if no fallback is available.
-    """
-    primary_type = primary_endpoint.get("type", "")
-    primary_service = primary_endpoint.get("service", "")
-
-    # Determine what type of fallback to look for
-    if primary_type == "browser":
-        fallback_type = "api"
-    elif primary_type == "api":
-        fallback_type = "browser"
-    else:
-        return None  # Local endpoints don't need fallback
-
-    endpoints = config.get("endpoints", [])
-    for ep in endpoints:
-        if (ep.get("type") == fallback_type and
-            ep.get("service") == primary_service and
-            ep.get("status") == "active" and
-            ep.get("name") != primary_endpoint.get("name")):
-            return ep
-
-    return None
-
-
-def try_with_fallback(messages: list, primary_endpoint: dict, config: dict,
-                      call_fn, images: list = None) -> tuple[str, dict]:
-    """
-    Try calling the primary endpoint; if it fails, fall back to the
-    alternate access method for the same service.
-
-    Returns:
-        (response_text, endpoint_used)
-    """
-    try:
-        response = call_fn(messages, primary_endpoint, images=images)
-        if response and not response.startswith("[Error]"):
-            return response, primary_endpoint
-    except Exception:
-        pass
-
-    # Primary failed — try fallback
-    fallback = get_fallback_endpoint(config, primary_endpoint)
-    if fallback:
-        try:
-            response = call_fn(messages, fallback, images=images)
-            if response and not response.startswith("[Error]"):
-                # Log the fallback
-                _log_fallback(primary_endpoint, fallback)
-                return response, fallback
-        except Exception:
-            pass
-
-    return "[Error] Both primary and fallback endpoints failed", primary_endpoint
-
-
-def _log_fallback(primary: dict, fallback: dict):
-    """Log a fallback event."""
-    log_dir = os.path.expanduser("~/ora/logs/")
-    os.makedirs(log_dir, exist_ok=True)
-
-    from datetime import datetime
-    entry = {
-        "timestamp": datetime.now().isoformat(),
-        "event": "endpoint_fallback",
-        "primary": primary.get("name", ""),
-        "primary_type": primary.get("type", ""),
-        "fallback": fallback.get("name", ""),
-        "fallback_type": fallback.get("type", ""),
-        "service": primary.get("service", ""),
-    }
-
-    import json
-    log_file = os.path.join(log_dir, f"fallback-{datetime.now().strftime('%Y-%m-%d')}.jsonl")
-    with open(log_file, "a") as f:
-        f.write(json.dumps(entry) + "\n")
 
 
 if __name__ == "__main__":
