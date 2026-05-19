@@ -278,12 +278,34 @@ def load_boot_md() -> str:
     return boot_content
 
 
-def load_endpoints() -> dict:
+def load_routing_config() -> dict:
+    """Load config/routing-config.json — the v2 capability + endpoint config.
+
+    Returns the parsed dict. On read failure returns a minimal stub so
+    downstream code can degrade gracefully rather than crash.
+
+    Reads routing-config.json (v2) since install Chunk 12 step 5
+    (2026-05-19). Prior behaviour read endpoints.json (v1); the v1 file's
+    slot_assignments / gear4_overrides / default_endpoint /
+    operational_context were copied into routing-config.json in step 4 so
+    every downstream caller now sees the same data from the canonical
+    config. The v1 file is deleted in step 7.
+
+    ``load_endpoints`` is preserved below as a backward-compat alias for
+    the existing import statements; new callers should prefer
+    ``load_routing_config``. The alias is removed in step 7.
+    """
     try:
-        with open(ENDPOINTS_JSON, "r") as f:
+        with open(ROUTING_CONFIG_JSON, "r") as f:
             return json.load(f)
     except Exception:
         return {"endpoints": [], "default_endpoint": None}
+
+
+# Backward-compat alias retained for the 10+ ``from boot import
+# load_endpoints`` import statements across the orchestrator. Both names
+# now read routing-config.json. Removed in install Chunk 12 step 7.
+load_endpoints = load_routing_config
 
 
 # --- V2 Router Integration ---
@@ -374,18 +396,25 @@ def vision_capable_for_endpoint(endpoint: dict | None) -> bool:
 
 
 def get_active_endpoint(config: dict) -> dict | None:
-    """Returns a general-purpose endpoint. Uses v2 router if available."""
+    """Returns a general-purpose endpoint. Uses v2 router if available.
+
+    The Router-failure fallback path below identifies endpoints by their
+    canonical id, which is ``id`` on v2 routing-config.json endpoints and
+    ``name`` on legacy v1 endpoints.json endpoints (the latter file is
+    being retired by install Chunk 12 step 7). Both forms are tried so
+    this fallback works regardless of which file populated ``config``.
+    """
     router = _get_router()
     if router:
         ep = router.resolve_utility_slot("step1_cleanup", "interactive")
         if ep:
             return router._to_v1_endpoint(ep)
-    # V1 fallback
+    # Router-failure fallback: walk the raw config.
     slot = config.get("slot_assignments", {}).get("breadth")
     endpoints = config.get("endpoints", [])
     if slot:
         for e in endpoints:
-            if e.get("name") == slot:
+            if (e.get("id") or e.get("name")) == slot:
                 return e
     default = config.get("default_endpoint")
     active = [e for e in endpoints if e.get("status") == "active"]
@@ -393,7 +422,7 @@ def get_active_endpoint(config: dict) -> dict | None:
         return None
     if default:
         for e in active:
-            if e.get("name") == default:
+            if (e.get("id") or e.get("name")) == default:
                 return e
     return active[0]
 
@@ -438,14 +467,15 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
         if ep:
             return router._to_v1_endpoint(ep)
 
-    # V1 fallback
+    # Router-failure fallback: walk the raw config. As in
+    # get_active_endpoint, identify by id (v2) or name (legacy v1).
     slot_assignments = config.get("slot_assignments", {})
     model_id = slot_assignments.get(slot)
     if not model_id:
         return get_active_endpoint(config)
     endpoints = config.get("endpoints", [])
     for e in endpoints:
-        if e.get("name") == model_id:
+        if (e.get("id") or e.get("name")) == model_id:
             return e
     return get_active_endpoint(config)
 
