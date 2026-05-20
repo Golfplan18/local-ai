@@ -362,7 +362,7 @@ A note is auto-approved if ALL of the following are true:
 6. **Limits/boundary section present** — for causal_claim, analogy, and process_principle subtypes
 7. **Self-containedness verified** — each bullet parseable in isolation (heuristic: no bullet starts with "This", "It", "They" without prior referent in the same bullet)
 8. **Minimum length** — body contains at least 2 proposition bullets (for atomic/molecular)
-9. **No duplicate title** — title does not match any existing note title within similarity threshold (>0.90 cosine). Scope of the duplicate check depends on the run's source provenance: general runs check against the full `knowledge` collection; MSI runs check against the `knowledge` collection scoped by `source_voice` (a duplicate is only a duplicate within the same voice; cross-voice duplication is acceptable and expected, since the same concept may legitimately appear in multiple voices' editorial substrates with different perspectives).
+9. **No duplicate title** — title does not match any existing note title within similarity threshold (>0.90 cosine) in the configured ChromaDB collection (`${config.chromadb_collection}`). Project-bound runs may further scope the duplicate check by additional properties (e.g., voice, dossier) — see the `provenance-overlay-rules` extension point for project-specific scope contracts.
 
 ### Auto-Reject Criteria (any one triggers rejection)
 
