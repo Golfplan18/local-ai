@@ -8198,6 +8198,144 @@ def config_get():
     })
 
 
+# ── Model registry: read access + on-demand refresh ─────────────────────────
+#
+# The V3 settings → models pane reads the curated capability registry
+# (intelligence scores, latency, TPS, vision flags) via these endpoints
+# instead of going to OpenRouter / LiteLLM / Chatbot Arena / AA directly.
+# Refresh runs `sync_model_registry.py sync --no-probe`: 4 HTTP fetches,
+# ~15-30 seconds wall-time, zero tokens. The probe layer (which DOES
+# burn tokens) is excluded from the on-pane refresh — it stays a
+# maintainer action.
+#
+# A 5-minute TTL guard short-circuits re-syncs when the registry was
+# recently refreshed (multiple pane opens in quick succession shouldn't
+# re-pull the whole catalog each time). The TTL is per-instance —
+# resets on server restart.
+
+_REGISTRY_REFRESH_TTL_SECONDS = 300  # 5 min
+_registry_refresh_state = {
+    "last_refresh_at": 0.0,
+    "last_result": None,
+    "in_progress": False,
+}
+_registry_refresh_lock = threading.Lock()
+
+
+@app.route("/api/model-registry", methods=["GET"])
+def model_registry_get():
+    """Return the entire curated registry as JSON.
+
+    Reads ``config/model-registry.json``. When the file is missing,
+    returns an empty registry shape ({models: {}}) with status=200 —
+    the UI handles "no models known yet" gracefully and prompts a
+    sync.
+    """
+    try:
+        from orchestrator import model_registry as mr
+        registry = mr.load_registry()
+        stats = mr.stats()
+    except Exception as exc:
+        return _json_response({
+            "error": f"registry-read-failed: {exc}",
+            "models": {},
+            "stats": {"loaded": False},
+        }, status=500)
+    return _json_response({
+        "models": registry.get("models") or {},
+        "generated_at": registry.get("generated_at"),
+        "last_probe_at": registry.get("last_probe_at"),
+        "stats": stats,
+    })
+
+
+@app.route("/api/model-registry/refresh", methods=["POST"])
+def model_registry_refresh():
+    """Trigger a registry sync (no-probe) and reload the in-process cache.
+
+    Fires ``scripts/sync_model_registry.py sync --no-probe``: 4 HTTP
+    fetches (OpenRouter + LiteLLM + Chatbot Arena + AA's public /models
+    page), no tokens, ~15-30s wall-time. The empirical-probe layer is
+    explicitly NOT triggered here — it stays a maintainer action because
+    it costs API tokens and can take 5-10 minutes.
+
+    TTL guard: if the registry was refreshed within
+    ``_REGISTRY_REFRESH_TTL_SECONDS`` seconds, returns the cached result
+    immediately instead of re-syncing. Multiple pane opens in quick
+    succession therefore cost zero HTTP fetches.
+
+    Concurrency: one sync at a time. Concurrent requests during an
+    in-flight sync return ``{"in_progress": true}`` immediately rather
+    than queueing.
+    """
+    now = time.time()
+    with _registry_refresh_lock:
+        age = now - _registry_refresh_state["last_refresh_at"]
+        if _registry_refresh_state["in_progress"]:
+            return _json_response({
+                "status": "in_progress",
+                "message": "A registry refresh is already running.",
+            })
+        if age < _REGISTRY_REFRESH_TTL_SECONDS and _registry_refresh_state["last_result"]:
+            return _json_response({
+                "status": "cached",
+                "ttl_remaining_seconds": int(_REGISTRY_REFRESH_TTL_SECONDS - age),
+                "last_refresh_at": _registry_refresh_state["last_refresh_at"],
+                "last_result": _registry_refresh_state["last_result"],
+            })
+        _registry_refresh_state["in_progress"] = True
+
+    try:
+        import subprocess
+        script = os.path.join(WORKSPACE, "scripts", "sync_model_registry.py")
+        if not os.path.exists(script):
+            raise RuntimeError(f"sync script not found at {script}")
+        # subprocess.run is intentionally synchronous; the UI shows a
+        # spinner during the ~15-30s wall time. A future enhancement
+        # could run this async + poll, but the simpler synchronous
+        # path is fine for our latency budget.
+        result = subprocess.run(
+            [sys.executable, script, "sync", "--no-probe"],
+            cwd=WORKSPACE, capture_output=True, text=True, timeout=120,
+        )
+        ok = (result.returncode == 0)
+        summary = {
+            "ok": ok,
+            "returncode": result.returncode,
+            "stdout_tail": (result.stdout or "").strip().split("\n")[-8:],
+            "stderr_tail": (result.stderr or "").strip().split("\n")[-4:] if not ok else [],
+        }
+        # Force the in-process reader to re-read the new file
+        try:
+            from orchestrator import model_registry as mr
+            mr.reload()
+            summary["stats"] = mr.stats()
+        except Exception as exc:
+            summary["reload_warning"] = str(exc)
+        with _registry_refresh_lock:
+            _registry_refresh_state["last_refresh_at"] = time.time()
+            _registry_refresh_state["last_result"] = summary
+            _registry_refresh_state["in_progress"] = False
+        return _json_response({
+            "status": "ok" if ok else "sync_failed",
+            **summary,
+        })
+    except subprocess.TimeoutExpired:
+        with _registry_refresh_lock:
+            _registry_refresh_state["in_progress"] = False
+        return _json_response({
+            "status": "timeout",
+            "message": "Registry sync exceeded the 120s timeout.",
+        }, status=504)
+    except Exception as exc:
+        with _registry_refresh_lock:
+            _registry_refresh_state["in_progress"] = False
+        return _json_response({
+            "status": "error",
+            "message": str(exc),
+        }, status=500)
+
+
 # Legacy ConfigPanel-side endpoint with partially-dead semantics.
 #
 # Two halves of this POST behave differently in the live system:

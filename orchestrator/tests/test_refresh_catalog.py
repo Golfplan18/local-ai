@@ -291,101 +291,67 @@ class TestNormalizeOpenRouterEntry(unittest.TestCase):
         self.assertEqual(normalized["family_tier"], "flagship")
 
 
-class TestEnrichWithAA(unittest.TestCase):
-    """Artificial Analysis enrichment using AA's actual nested schema:
+class TestEnrichFromModelRegistry(unittest.TestCase):
+    """Catalog enrichment from the curated model registry (replaces the
+    prior direct AA API fetch; the registry itself is now sourced from
+    OpenRouter + LiteLLM + Chatbot Arena + AA's public /models page).
 
-        evaluations.artificial_analysis_intelligence_index
-        pricing.price_1m_blended_3_to_1
+    The registry is keyed by OpenRouter id — direct lookup, no fuzzy
+    matching needed at the catalog layer.
     """
 
-    def test_slug_match_paid(self):
-        # AA's slug "gpt-5" matches OR's "openai/gpt-5" by slug-tail
+    def test_intelligence_copied_when_registry_has_entry(self):
         catalog = [{
             "id": "openai/gpt-5", "openrouter_slug": "openai/gpt-5",
             "display_name": "OpenAI: GPT-5",
-            "aa_intelligence_index": None, "aa_blended_per_m": None,
+            "aa_intelligence_index": None,
         }]
-        aa_data = {
-            "data": [{
-                "name": "GPT-5", "slug": "gpt-5",
-                "evaluations": {"artificial_analysis_intelligence_index": 78.0},
-                "pricing": {"price_1m_blended_3_to_1": 7.5},
-            }],
-        }
-        enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
+        registry = {"models": {
+            "openai/gpt-5": {"aa_intelligence_index": 78.0},
+        }}
+        enriched = refresh_catalog.enrich_from_model_registry(catalog, registry)
         self.assertEqual(enriched, 1)
         self.assertEqual(catalog[0]["aa_intelligence_index"], 78.0)
-        self.assertEqual(catalog[0]["aa_blended_per_m"], 7.5)
 
-    def test_slug_substring_match(self):
-        # AA "kimi-k2-thinking" inside OR "moonshotai/kimi-k2-thinking"
-        catalog = [{
-            "id": "moonshotai/kimi-k2-thinking",
-            "openrouter_slug": "moonshotai/kimi-k2-thinking",
-            "display_name": "Moonshot: Kimi K2 Thinking",
-            "aa_intelligence_index": None, "aa_blended_per_m": None,
-        }]
-        aa_data = {
-            "data": [{
-                "name": "Kimi K2 Thinking", "slug": "kimi-k2-thinking",
-                "evaluations": {"artificial_analysis_intelligence_index": 50.0},
-                "pricing": {"price_1m_blended_3_to_1": 2.0},
-            }],
-        }
-        enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
-        self.assertEqual(enriched, 1)
-        self.assertEqual(catalog[0]["aa_intelligence_index"], 50.0)
-
-    def test_name_fallback_when_slug_misses(self):
-        # No slug match; falls through to name-substring
-        catalog = [{
-            "id": "anthropic/claude-opus-4-7",
-            "openrouter_slug": "anthropic/claude-opus-4-7",
-            "display_name": "Anthropic: Claude Opus 4.7",
-            "aa_intelligence_index": None, "aa_blended_per_m": None,
-        }]
-        aa_data = {
-            "data": [{
-                "name": "Claude Opus 4.7", "slug": "some-totally-different-slug",
-                "evaluations": {"artificial_analysis_intelligence_index": 84.0},
-                "pricing": {"price_1m_blended_3_to_1": 22.0},
-            }],
-        }
-        enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
-        self.assertEqual(enriched, 1)
-        self.assertEqual(catalog[0]["aa_intelligence_index"], 84.0)
-
-    def test_no_match_leaves_entry_unchanged(self):
-        # Picked vocabulary that doesn't collide via substring matching
+    def test_no_registry_entry_leaves_field_null(self):
         catalog = [{
             "id": "obscurevendor/xyzzy", "openrouter_slug": "obscurevendor/xyzzy",
-            "display_name": "Obscure Xyzzy",
-            "aa_intelligence_index": None, "aa_blended_per_m": None,
+            "aa_intelligence_index": None,
         }]
-        aa_data = {"data": [{
-            "name": "Frobnicator Plus", "slug": "frobnicator-plus",
-            "evaluations": {"artificial_analysis_intelligence_index": 50.0},
-            "pricing": {"price_1m_blended_3_to_1": 1.0},
-        }]}
-        enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
+        registry = {"models": {"unrelated/model": {"aa_intelligence_index": 50.0}}}
+        enriched = refresh_catalog.enrich_from_model_registry(catalog, registry)
         self.assertEqual(enriched, 0)
         self.assertIsNone(catalog[0]["aa_intelligence_index"])
 
-    def test_defensive_fallback_field_names(self):
-        # If AA renames a field in the future, fallback paths still catch it
+    def test_null_intelligence_does_not_count_as_enriched(self):
+        # Registry has the entry but no AA score — count stays at 0
         catalog = [{
-            "id": "x/y", "openrouter_slug": "x/y", "display_name": "X: Y",
-            "aa_intelligence_index": None, "aa_blended_per_m": None,
+            "id": "sao10k/some-rp-tune", "openrouter_slug": "sao10k/some-rp-tune",
+            "aa_intelligence_index": None,
         }]
-        aa_data = {"models": [{
-            "name": "X: Y", "slug": "y",
-            "evaluations": {"intelligence_index": 60.0},  # legacy fallback path
-            "pricing": {"blended_per_m": 1.0},            # legacy fallback path
-        }]}
-        enriched = refresh_catalog.enrich_with_aa(catalog, aa_data)
-        self.assertEqual(enriched, 1)
-        self.assertEqual(catalog[0]["aa_intelligence_index"], 60.0)
-        self.assertEqual(catalog[0]["aa_blended_per_m"], 1.0)
+        registry = {"models": {
+            "sao10k/some-rp-tune": {"aa_intelligence_index": None},
+        }}
+        enriched = refresh_catalog.enrich_from_model_registry(catalog, registry)
+        self.assertEqual(enriched, 0)
+        self.assertIsNone(catalog[0]["aa_intelligence_index"])
+
+    def test_empty_or_missing_registry_yields_zero(self):
+        catalog = [{"id": "x/y", "openrouter_slug": "x/y",
+                    "aa_intelligence_index": None}]
+        # Empty models dict
+        self.assertEqual(refresh_catalog.enrich_from_model_registry(catalog, {}), 0)
+        self.assertEqual(refresh_catalog.enrich_from_model_registry(catalog, {"models": {}}), 0)
+        # None registry
+        self.assertEqual(refresh_catalog.enrich_from_model_registry(catalog, None), 0)
+
+    def test_catalog_entry_without_id_skipped(self):
+        # Defensive: missing openrouter_slug AND id → skip, don't crash
+        catalog = [{"display_name": "Mystery model",
+                    "aa_intelligence_index": None}]
+        registry = {"models": {"x/y": {"aa_intelligence_index": 50.0}}}
+        enriched = refresh_catalog.enrich_from_model_registry(catalog, registry)
+        self.assertEqual(enriched, 0)
 
 
 class TestDetectChanges(unittest.TestCase):

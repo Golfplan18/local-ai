@@ -1,27 +1,33 @@
 #!/usr/bin/env python3
 """Refresh the unified model catalog (install Chunk 4).
 
-Fetches OpenRouter and (optionally) Artificial Analysis catalogs, merges
-them into a single ``config/model-catalog.json`` that the auto-populate
-engine (Chunk 5) consumes. Standardizes cost to $/M blended tokens using
-a 3:1 input:output ratio (matching AA's published methodology). Assigns
+Fetches OpenRouter, enriches with intelligence_index pulled from the
+curated model registry (``config/model-registry.json``), and writes
+``config/model-catalog.json`` for the auto-populate engine (Chunk 5)
+to consume. Standardizes cost to $/M blended tokens using a 3:1
+input:output ratio (matching AA's published methodology). Assigns
 each cloud model a ``family_tier`` and ``size_bucket`` via
-``config/family-classification.json`` for closed-proprietary models whose
-parameter counts aren't published.
+``config/family-classification.json`` for closed-proprietary models
+whose parameter counts aren't published.
 
 This is a new tool independent of ``scripts/refresh-openrouter.py`` —
 that tool continues to maintain ``config/openrouter-catalog.json`` for
 existing readers (server.py, the bucket selector, etc.). The new
 ``model-catalog.json`` is consumed only by the new auto-populate engine.
 
+Intelligence enrichment (2026-05-20): direct Artificial Analysis (AA)
+API access was retired. The ``aa_intelligence_index`` field on each
+catalog entry is now populated from ``config/model-registry.json``,
+which is itself populated by ``scripts/sync_model_registry.py`` from
+free public sources (OpenRouter + LiteLLM + Chatbot Arena + AA's
+public website + empirical probe). No API key required anywhere.
+When the registry is missing (fresh clone, no sync run yet),
+``aa_intelligence_index`` stays null and auto-populate falls back to
+cost-sort — same as today's no-AA-key state.
+
 API keys (read from env):
     OPENROUTER_API_KEY   — optional. The /models endpoint is public, but
                             authenticated requests get higher rate limits.
-    AA_API_KEY           — optional. When set, enriches the catalog with
-                            Artificial Analysis intelligence index +
-                            blended cost. When absent, AA enrichment is
-                            skipped with a warning; the catalog still
-                            ships with OpenRouter pricing only.
 
 Outputs:
     config/model-catalog.json            — unified catalog (canonical)
@@ -54,9 +60,9 @@ DATA_DIR = REPO_ROOT / "data"
 CATALOG_PATH = CONFIG_DIR / "model-catalog.json"
 FAMILY_CLASS_PATH = CONFIG_DIR / "family-classification.json"
 CHANGES_PATH = DATA_DIR / "model-catalog-changes.jsonl"
+MODEL_REGISTRY_PATH = CONFIG_DIR / "model-registry.json"
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/models"
-AA_URL = "https://artificialanalysis.ai/api/v2/data/llms/models"
 
 # Blended cost ratio: AA convention is 3 parts input : 1 part output for
 # chat-typical use. Using output-only cost systematically over-penalizes
@@ -83,39 +89,32 @@ def fetch_openrouter() -> dict | None:
         return None
 
 
-def fetch_artificial_analysis() -> dict | None:
-    """Fetch the AA model list. Returns the parsed JSON or None on error
-    (also returned when no AA_API_KEY is set in the environment)."""
-    api_key = os.environ.get("AA_API_KEY", "").strip()
-    if not api_key:
+def load_model_registry() -> dict | None:
+    """Load the curated model registry. Returns the parsed dict or None
+    when the file is missing / unreadable.
+
+    Replaces the prior fetch_artificial_analysis() — intelligence data
+    now comes from the curated registry (populated by sync_model_registry.py
+    from free public sources: OpenRouter + LiteLLM + Chatbot Arena + AA's
+    public /models page + empirical probe). No API key needed anywhere.
+
+    When the registry is missing (fresh clone, no sync run yet), this
+    returns None and refresh-catalog proceeds without intelligence
+    enrichment — same fallback as the prior no-AA-key path.
+    """
+    if not MODEL_REGISTRY_PATH.exists():
         print(
-            "\n"
-            "[refresh-catalog] ⚠ AA_API_KEY not set; skipping Artificial Analysis\n"
-            "                   intelligence-index enrichment.\n"
-            "\n"
-            "  Catalog will ship with OpenRouter pricing only — no\n"
-            "  intelligence_index field on entries. Downstream consequence:\n"
-            "  auto-populate-configuration.py has no capability signal to rank\n"
-            "  against, falls through to pure cost-sort, and picks the CHEAPEST\n"
-            "  model per slot regardless of how capable it actually is.\n"
-            "\n"
-            "  To fix: sign up at https://artificialanalysis.ai/ (free tier\n"
-            "  available), grab an API key, then re-run with it set:\n"
-            "    export AA_API_KEY=aa_xxxxxxxxxxxxxxxxxxxx\n"
-            "    python3 scripts/refresh-catalog.py\n"
-            "    python3 scripts/auto-populate-configuration.py optimum user-pipeline\n",
+            f"[refresh-catalog] ⚠ {MODEL_REGISTRY_PATH.name} not found; "
+            f"intelligence enrichment will be skipped.\n"
+            f"  Run `python3 scripts/sync_model_registry.py sync` first to populate it.",
             file=sys.stderr,
         )
         return None
-    req = urllib.request.Request(
-        AA_URL,
-        headers={"x-api-key": api_key, "Accept": "application/json"},
-    )
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
-        print(f"[refresh-catalog] Artificial Analysis fetch failed: {exc}", file=sys.stderr)
+        with open(MODEL_REGISTRY_PATH) as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"[refresh-catalog] model-registry.json read failed: {exc}", file=sys.stderr)
         return None
 
 
@@ -275,123 +274,39 @@ def normalize_openrouter_entry(entry: dict, family_rules: dict) -> dict:
     }
 
 
-def enrich_with_aa(catalog: list[dict], aa_data: dict) -> int:
-    """Add AA intelligence_index + blended_cost to matching catalog entries.
+def enrich_from_model_registry(catalog: list[dict], registry: dict) -> int:
+    """Copy ``aa_intelligence_index`` from the curated registry onto
+    matching catalog entries. Direct OpenRouter-id lookup — no fuzzy
+    matching needed because the registry is keyed by OpenRouter id.
 
-    Returns the count of entries enriched (with non-null values, not
-    just name matches).
+    Returns the count of entries enriched (non-null aa_intelligence_index
+    applied). Catalog entries whose model isn't in the registry stay
+    with ``aa_intelligence_index = None``; auto-populate falls through
+    to cost-sort for those.
 
-    AA's actual schema (verified 2026-05-19):
-        {"status": 200, "data": [{
-            "id": "<uuid>", "name": "<display>", "slug": "<slug>",
-            "evaluations": {
-                "artificial_analysis_intelligence_index": 78.0,
-                "artificial_analysis_coding_index": ...,
-                ...
-            },
-            "pricing": {
-                "price_1m_blended_3_to_1": 7.5,
-                "price_1m_input_tokens": 5.0,
-                "price_1m_output_tokens": 15.0,
-            },
-            ...
-        }, ...]}
-
-    Matching: AA's slug ("kimi-k2-thinking") aligns closely with the
-    tail of OpenRouter slugs ("moonshotai/kimi-k2-thinking"). We try
-    direct slug match first (after stripping the OR provider prefix),
-    then fall back to name-substring overlap.
+    Schema contract (2026-05-20): the registry's
+    ``models[<or_id>].aa_intelligence_index`` field carries the same
+    0-100 scale auto-populate's algorithm was designed for. The
+    upstream value comes from Artificial Analysis's public /models
+    page (scraped, no API key) — sync_model_registry.py does the
+    extraction. When the registry is missing or empty, this function
+    returns 0 and the catalog ships unenriched.
     """
-    rows = aa_data.get("data") or aa_data.get("models") or []
-    if not isinstance(rows, list):
+    models = (registry or {}).get("models") or {}
+    if not models:
         return 0
-
-    def _norm(s: str) -> str:
-        # Critical for matching: OR slugs use dots ("kimi-k2.6", "qwen3.6-plus",
-        # "gpt-5.1"); AA slugs use hyphens ("kimi-k2-6", "qwen-3-6-plus",
-        # "gpt-5-1"). Without normalization, exact match always misses and the
-        # substring fallback attaches the OLDER model's rating to the NEWER
-        # variant (e.g., kimi-k2.6 mis-rated to old kimi-k2's int=26.3 instead
-        # of the real K2.6 int=53.9).
-        return (s or "").strip().lower().replace(".", "-")
-
-    # Build both lookups for matching: by slug and by name (both normalized).
-    aa_by_slug = {}
-    aa_by_name = {}
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        slug = _norm(row.get("slug") or "")
-        if slug:
-            aa_by_slug[slug] = row
-        name = _norm(row.get("name") or "")
-        if name:
-            aa_by_name[name] = row
-
-    def _extract(row: dict) -> tuple[float | None, float | None]:
-        """Pull intelligence + blended cost from the nested schema."""
-        evals = row.get("evaluations") or {}
-        pricing = row.get("pricing") or {}
-        # Primary fields (AA's canonical names as of 2026-05-19)
-        intelligence = evals.get("artificial_analysis_intelligence_index")
-        blended = pricing.get("price_1m_blended_3_to_1")
-        # Defensive fallbacks in case AA renames a field in the future
-        if intelligence is None:
-            intelligence = (
-                evals.get("intelligence_index")
-                or evals.get("artificial_analysis_index")
-                or row.get("intelligence_index")
-            )
-        if blended is None:
-            blended = (
-                pricing.get("blended_cost_usd_per_million_tokens")
-                or pricing.get("blended_per_m")
-                or row.get("blended_cost")
-            )
-        return intelligence, blended
-
-    # Pre-sort substring candidates longest-first so specific matches
-    # beat generic ones (kimi-k2-6 wins over kimi-k2 when looking up
-    # OR's kimi-k2.6).
-    aa_slugs_by_length = sorted(aa_by_slug.keys(), key=len, reverse=True)
-    aa_names_by_length = sorted(aa_by_name.keys(), key=len, reverse=True)
-
     enriched = 0
     for entry in catalog:
-        or_slug = entry.get("openrouter_slug") or entry.get("id") or ""
-        slug_tail = _norm(or_slug.split("/", 1)[-1])
-        display_norm = _norm(entry.get("display_name") or "")
-
-        # 1. Exact slug match (after normalization). This is the path
-        #    that should fire for the vast majority of catalog entries
-        #    now that dots/hyphens are normalized.
-        match = aa_by_slug.get(slug_tail)
-
-        # 2. Slug substring match, longest-first.
-        if match is None:
-            for aa_slug in aa_slugs_by_length:
-                if aa_slug in slug_tail or slug_tail in aa_slug:
-                    match = aa_by_slug[aa_slug]
-                    break
-
-        # 3. Name exact match (normalized).
-        if match is None:
-            match = aa_by_name.get(display_norm)
-
-        # 4. Name substring match, longest-first.
-        if match is None:
-            for name in aa_names_by_length:
-                if name in display_norm or display_norm in name:
-                    match = aa_by_name[name]
-                    break
-
-        if match:
-            intelligence, blended = _extract(match)
-            if intelligence is not None or blended is not None:
-                entry["aa_intelligence_index"] = intelligence
-                entry["aa_blended_per_m"] = blended
-                enriched += 1
-
+        or_id = entry.get("openrouter_slug") or entry.get("id")
+        if not or_id:
+            continue
+        reg = models.get(or_id)
+        if reg is None:
+            continue
+        intelligence = reg.get("aa_intelligence_index")
+        if intelligence is not None:
+            entry["aa_intelligence_index"] = intelligence
+            enriched += 1
     return enriched
 
 
@@ -475,12 +390,13 @@ def main():
     # 3. Normalize OpenRouter entries
     catalog = [normalize_openrouter_entry(m, family_rules) for m in or_models]
 
-    # 4. Enrich with Artificial Analysis (optional)
-    aa_data = fetch_artificial_analysis()
+    # 4. Enrich with intelligence_index from the curated model registry
+    #    (replaces the prior direct AA API fetch; no API key needed)
+    registry = load_model_registry()
     aa_enriched_count = 0
-    if aa_data is not None:
-        aa_enriched_count = enrich_with_aa(catalog, aa_data)
-        print(f"[refresh-catalog] Artificial Analysis: {aa_enriched_count} models enriched")
+    if registry is not None:
+        aa_enriched_count = enrich_from_model_registry(catalog, registry)
+        print(f"[refresh-catalog] model-registry enrichment: {aa_enriched_count} models scored")
 
     # 5. Diff against previous catalog for free→paid detection
     old_catalog = load_existing_catalog()
@@ -500,10 +416,10 @@ def main():
                 "url": OPENROUTER_URL,
                 "model_count": len(or_models),
             },
-            "artificial_analysis": {
-                "url": AA_URL,
+            "model_registry": {
+                "path": str(MODEL_REGISTRY_PATH.relative_to(REPO_ROOT)),
                 "enriched_count": aa_enriched_count,
-                "skipped": aa_data is None,
+                "skipped": registry is None,
             },
         },
         "models": catalog,
