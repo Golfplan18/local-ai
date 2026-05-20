@@ -641,12 +641,12 @@ For overnight batch processing:
 
 ## CALIBRATION PROTOCOL
 
-Two calibration profiles are defined: the **General Historical-Archive profile** (the original baseline, designed for the chat-archive batch population) and the **AI-Research Deliverable profile** (added 2026-05-08 to support batches of commissioned deep-research dossiers, beginning with the MSI 33-dossier corpus). Run-time configuration selects the active profile.
+Two calibration profiles are defined: the **General Historical-Archive profile** (the original baseline, designed for the chat-archive batch population) and the **AI-Research Deliverable profile** (for batches of commissioned deep-research dossiers). Run-time configuration selects the active profile.
 
 ### Profile selection
 
 - Default → General Historical-Archive profile.
-- When `source_provenance: msi-editorial-research` is declared in the run-time configuration → AI-Research Deliverable profile is selected automatically.
+- When the project's framework-configurations profile sets `calibration_profile` to `ai-research-deliverable` → AI-Research Deliverable profile is selected automatically.
 - Other AI-research-style batches (commissioned dossiers, vetted external research deliverables) → AI-Research Deliverable profile is appropriate when the input population matches the profile's characteristics; opt-in via `calibration_profile: ai-research-deliverable` in the run-time configuration.
 
 ### General Historical-Archive Profile
@@ -676,7 +676,7 @@ Before full processing, run calibration on a 50-document sample covering the ful
 
 ### AI-Research Deliverable Profile
 
-For batches of commissioned deep-research dossiers (e.g., the MSI editorial-research corpus). These input populations differ from the historical-archive baseline:
+For batches of commissioned deep-research dossiers. These input populations differ from the historical-archive baseline:
 
 - Source material is professionally written and structurally curated (often three-part deep-research deliverables with topical subsections)
 - Auto-approve rates trend higher because structural conformance is high in the source
@@ -707,14 +707,11 @@ For batches of commissioned deep-research dossiers (e.g., the MSI editorial-rese
 6. Re-run on the same sample
 7. Verify metrics are within target range
 
-The MSI 33-dossier corpus calibration sample (2026-05-08): Stewart Letterkenski Character Dossier (character-background); Joanna Rivera Blackwell Theological Substrate (long-form three-part with author-corpus subsection); Ashley Wagner Cultural-Text and Formation Substrate (long-form three-part); Mark Paulson Climate-Policy Overlay (lane-overlay); Thomas Reynolds Gerrymandering-Solution Memorandum (short-document, HCP-off); Hector Rentier Quote Corpus (quote-and-citation indexed format — distinct from prose dossier shapes).
+A representative calibration sample covers the structural variation present in the batch — typically character-background, long-form three-part, long-form with author-corpus subsection, lane-overlay, memorandum (short-document, HCP-off), and quote-and-citation indexed formats.
 
 ### Auto-Reject Log Location
 
-Auto-rejected notes are logged with rejection reason for calibration-tuning history. Log location depends on the run's source provenance:
-
-- Default → `~/ora/data/auto-reject-log.jsonl` (general-purpose log; rotation policy per `~/ora/data/` retention rules)
-- MSI runs → `~/ora/data/msi-research-rejects.jsonl` (separate log for the MSI editorial-research corpus; permanent calibration record for tuning Pass C thresholds against future MSI runs)
+Auto-rejected notes are logged to the configured path (`${config.auto_reject_log_path}`) with rejection reason, for calibration-tuning history. Project-bound runs typically route this to a project-scoped log file (a permanent calibration record for tuning Pass C thresholds against future runs of the same shape).
 
 ---
 
