@@ -8733,17 +8733,35 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     return formatted
 
 
+DEFAULT_MACHINE_ID = "studio-128"
+
+
 def call_model(messages: list, endpoint: dict, images: list = None) -> str:
     """Route to appropriate endpoint type.
 
+    Local endpoints acquire the per-machine MLX mutex before invocation
+    (mlx_mutex.acquire) to prevent the SIGSEGV that MLX exhibits when
+    two threads load or invoke models on the same machine concurrently.
+    API endpoints are tracked through a non-blocking in-flight counter
+    for observability; they don't block on contention.
+
     images: optional list of {"name": str, "mime": str, "base64": str}
     """
+    try:
+        import mlx_mutex
+    except ImportError:
+        from orchestrator import mlx_mutex
+
     etype = endpoint.get("type", "")
 
     if etype == "api":
-        return call_api_endpoint(messages, endpoint, images=images)
+        endpoint_id = endpoint.get("id") or endpoint.get("name") or "unknown-api"
+        with mlx_mutex.track_api_call(endpoint_id):
+            return call_api_endpoint(messages, endpoint, images=images)
     elif etype == "local":
-        return call_local_endpoint(messages, endpoint, images=images)
+        machine_id = endpoint.get("machine") or DEFAULT_MACHINE_ID
+        with mlx_mutex.acquire(machine_id):
+            return call_local_endpoint(messages, endpoint, images=images)
     else:
         return f"[Error] Unknown endpoint type: {etype}"
 
