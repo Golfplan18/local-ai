@@ -11,9 +11,18 @@
 
 (() => {
   const STORAGE_KEY = 'ora-active-theme';
+  const URL_CACHE_KEY = 'ora-active-theme-css-url';
   const STYLE_ID    = 'ora-loaded-theme';
 
   const getActive = () => localStorage.getItem(STORAGE_KEY) || 'default';
+  const getActiveCachedUrl = () => localStorage.getItem(URL_CACHE_KEY) || null;
+
+  // In-memory cache of the last /api/v3-themes/list response, indexed
+  // by theme id. Populated on init() and refreshed whenever
+  // listInstalled() is called. Used by applyTheme to find the right
+  // theme.css URL when the caller doesn't pass one explicitly (e.g.,
+  // theme restore on page load).
+  let themesIndex = {};
 
   // Ensure the user-customizations stylesheet stays after the loaded theme
   // so user overrides win over both base CSS and active theme variables.
@@ -22,19 +31,36 @@
     if (userStyle) document.head.appendChild(userStyle);
   };
 
-  const applyTheme = async (themeId) => {
+  // Resolve the theme.css URL for a given id. Priority:
+  //  1. Explicit themeCssUrl argument (from a list response entry).
+  //  2. In-memory index from the last list fetch.
+  //  3. localStorage cache from the previous active-theme apply.
+  //  4. Legacy fallback: /static/themes/<id>/theme.css (core themes).
+  // Project themes per Plugin Convention §13 serve from
+  // /themes/project/<nexus>/theme.css; that URL must come through (1)
+  // or (2) — the legacy fallback only resolves to core themes.
+  const resolveThemeCssUrl = (themeId, themeCssUrl) => {
+    if (themeCssUrl) return themeCssUrl;
+    const indexed = themesIndex[themeId];
+    if (indexed && indexed.theme_css_url) return indexed.theme_css_url;
+    return `/static/themes/${themeId}/theme.css`;
+  };
+
+  const applyTheme = async (themeId, themeCssUrl) => {
     const existing = document.getElementById(STYLE_ID);
     if (existing) existing.remove();
 
     if (!themeId || themeId === 'default') {
       localStorage.setItem(STORAGE_KEY, 'default');
+      localStorage.removeItem(URL_CACHE_KEY);
       reorderUserCustomizations();
       document.dispatchEvent(new CustomEvent('ora-theme-changed', { detail: { themeId: 'default' } }));
       return { ok: true, id: 'default' };
     }
 
     try {
-      const cssResp = await fetch(`/static/themes/${themeId}/theme.css`);
+      const url = resolveThemeCssUrl(themeId, themeCssUrl);
+      const cssResp = await fetch(url);
       if (!cssResp.ok) throw new Error(`HTTP ${cssResp.status} loading '${themeId}'`);
       const css = await cssResp.text();
 
@@ -51,6 +77,10 @@
       }
 
       localStorage.setItem(STORAGE_KEY, themeId);
+      // Cache the resolved URL so page-load restore works without a
+      // list-API roundtrip. Required for project themes whose URL
+      // doesn't match the legacy /static/themes/<id>/ pattern.
+      localStorage.setItem(URL_CACHE_KEY, resolveThemeCssUrl(themeId, themeCssUrl));
       reorderUserCustomizations();
       document.dispatchEvent(new CustomEvent('ora-theme-changed', { detail: { themeId } }));
       return { ok: true, id: themeId };
@@ -63,7 +93,14 @@
   const listInstalled = async () => {
     const resp = await fetch('/api/v3-themes/list');
     if (!resp.ok) throw new Error('Failed to list themes');
-    return await resp.json();
+    const data = await resp.json();
+    // Refresh the in-memory index so subsequent applyTheme calls have
+    // the right theme_css_url available without re-fetching.
+    themesIndex = {};
+    for (const entry of (data && data.themes) || []) {
+      if (entry && entry.id) themesIndex[entry.id] = entry;
+    }
+    return data;
   };
 
   // installFromGitHub accepts an optional `fallback` manifest (used by the
@@ -113,10 +150,18 @@
     }
   };
 
-  // Restore active theme on load (if not default — default is always present)
+  // Restore active theme on load (if not default — default is always present).
+  // Uses the URL-cache to avoid an API roundtrip when the URL is already
+  // known from the previous apply. Falls through to the legacy
+  // /static/themes/<id>/theme.css path for core themes that haven't
+  // been applied via the cache-aware path yet (backward compat for
+  // existing local-storage entries written by older versions).
   const init = () => {
     const id = getActive();
-    if (id && id !== 'default') applyTheme(id);
+    if (id && id !== 'default') {
+      const cachedUrl = getActiveCachedUrl();
+      applyTheme(id, cachedUrl);
+    }
   };
   init();
 

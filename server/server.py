@@ -5588,6 +5588,105 @@ def _v3_read_index():
     except Exception:
         return {"themes": []}
 
+
+def _v3_list_project_themes():
+    """Walk every registered project and return its declared themes
+    (Plugin Convention §13) as a flat list of entries shaped to match
+    the V3 themes-index entry schema with the synthesized fields:
+
+      * ``origin`` = "project:<nexus>" (project-shipped theme)
+      * ``bundled`` = False (project themes are not core-bundled)
+      * ``project_nexus`` = <nexus> (used by /themes/project/<nexus>/...)
+
+    Defensive: if project_registry isn't importable for any reason, the
+    server still boots and just serves core themes — same fallback the
+    capability_registry merge uses.
+    """
+    try:
+        from orchestrator import project_registry as _pr
+        projects = _pr.list_projects()
+    except Exception:
+        return []
+    out = []
+    for p in projects:
+        for theme_id, theme in (getattr(p, "themes", {}) or {}).items():
+            out.append({
+                "id": theme_id,
+                "name": theme.name,
+                "directory": theme.directory,
+                "bundled": False,
+                "origin": f"project:{p.nexus}",
+                "project_nexus": p.nexus,
+            })
+    return out
+
+
+def _v3_aggregate_themes():
+    """Merge core themes (from ``server/static/themes/index.json``) with
+    project-declared themes per Plugin Convention §13.
+
+    Collision rules per §13:
+      * **Project shadows project.** Hard error — both projects lose the
+        theme. Diagnostic printed; the theme is dropped from the merged
+        list entirely.
+      * **Project shadows core.** Allowed. Project's entry wins;
+        diagnostic printed.
+      * **User-installed shadows project.** Allowed (publisher override).
+        The core/user-installed entry wins because it's already in the
+        core index.
+
+    Reserved: `default` from any project is dropped at parse time
+    (project_registry rejects it), so no special handling here.
+    """
+    core_index = _v3_read_index()
+    core_entries = list(core_index.get("themes", []))
+    core_ids = {e.get("id") for e in core_entries if e.get("id")}
+
+    project_entries = _v3_list_project_themes()
+
+    # Pass 1: detect project-shadows-project collisions
+    seen_by: dict[str, list[str]] = {}
+    for e in project_entries:
+        tid = e["id"]
+        seen_by.setdefault(tid, []).append(e["project_nexus"])
+    collided = {tid for tid, ns in seen_by.items() if len(ns) > 1}
+    for tid in sorted(collided):
+        print(
+            f"[server] Theme id {tid!r} declared by multiple projects "
+            f"({seen_by[tid]}); dropping from all of them. "
+            f"Unregister one project to resolve the collision."
+        )
+
+    # Pass 2: filter out collided + user-installed-shadows + emit
+    # diagnostics for project-shadows-core.
+    merged = list(core_entries)
+    for e in project_entries:
+        if e["id"] in collided:
+            continue
+        if e["id"] in core_ids:
+            # User-installed at server/static/themes/<id>/ wins over the
+            # project (publisher override). Skip the project entry.
+            print(
+                f"[server] Project {e['project_nexus']!r} declares theme "
+                f"{e['id']!r}, but a core/user-installed theme with the "
+                f"same id exists; the core entry wins."
+            )
+            continue
+        merged.append(e)
+
+    return merged
+
+
+def _v3_theme_css_url_for(entry):
+    """Return the URL the UI should fetch theme.css from, based on the
+    entry's origin. Core / user-installed themes serve from the existing
+    /static/themes/<id>/theme.css path (Flask static handler). Project
+    themes serve from the new /themes/project/<nexus>/theme.css route.
+    """
+    if entry.get("origin", "").startswith("project:"):
+        return f"/themes/project/{entry['project_nexus']}/theme.css"
+    return f"/static/themes/{entry['id']}/theme.css"
+
 def _v3_write_index(data):
     os.makedirs(V3_THEMES_DIR, exist_ok=True)
     with open(V3_THEMES_INDEX, "w") as f:
@@ -5621,21 +5720,110 @@ def _v3_install(theme_id, name, manifest, css):
 
 @app.route("/api/v3-themes/list")
 def v3_themes_list_api():
-    index = _v3_read_index()
+    """Aggregate core + project-declared themes per Plugin Convention §13.
+
+    Each returned entry carries the existing index-entry fields plus:
+      * ``manifest`` (parsed manifest.json contents, or {} on failure)
+      * ``theme_css_url`` (the URL the UI should fetch theme.css from —
+        differs for core vs project themes; UI shouldn't hard-code paths)
+      * ``origin`` (synthesized for project themes: "project:<nexus>"; the
+        existing ``bundled`` flag is preserved for core entries)
+    """
     out = []
-    for entry in index.get("themes", []):
+    for entry in _v3_aggregate_themes():
         theme_id = entry.get("id")
         if not theme_id:
             continue
-        manifest_path = os.path.join(V3_THEMES_DIR, theme_id, "manifest.json")
         manifest = {}
-        try:
-            with open(manifest_path) as f:
-                manifest = json.load(f)
-        except Exception:
-            pass
-        out.append({**entry, "manifest": manifest})
+        # Project themes resolve their manifest.json from the project's
+        # directory; core / user-installed themes from server/static/themes/.
+        if entry.get("origin", "").startswith("project:"):
+            try:
+                from orchestrator import project_registry as _pr
+                project = _pr.get_project(entry["project_nexus"])
+                if project is not None:
+                    manifest_path = (project.root / entry["directory"]
+                                     / "manifest.json")
+                    with open(manifest_path) as f:
+                        manifest = json.load(f)
+            except Exception:
+                pass
+        else:
+            manifest_path = os.path.join(
+                V3_THEMES_DIR, theme_id, "manifest.json",
+            )
+            try:
+                with open(manifest_path) as f:
+                    manifest = json.load(f)
+            except Exception:
+                pass
+        out.append({
+            **entry,
+            "manifest": manifest,
+            "theme_css_url": _v3_theme_css_url_for(entry),
+        })
     return json.dumps({"themes": out})
+
+
+@app.route("/themes/project/<nexus>/<path:filename>")
+def v3_themes_project_asset(nexus, filename):
+    """Serve a project theme asset (theme.css / manifest.json / etc.).
+
+    Resolves through project_registry.get_project(nexus) to find the
+    project's ora-project root, then through the project's declared
+    ``themes[<id>].directory`` to find the asset directory. The
+    ``nexus`` URL segment identifies the project; the project may
+    declare multiple themes — for v1, we accept any filename relative
+    to the FIRST theme directory declared by that project. If the
+    project declares multiple themes, the request must include the
+    theme id implicitly via the directory match.
+
+    Implementation note: most projects declare at most one theme, so
+    the v1 heuristic of "use the directory of the theme whose assets
+    contain the requested filename" is sufficient. Projects that ship
+    multiple themes can disambiguate by giving each theme a uniquely-
+    named asset OR by structuring requests through theme-specific
+    subpaths under the directory.
+
+    Path-safety: forbid traversal — no ``..`` segments, no absolute
+    paths — so a crafted URL can't escape the project's theme dir.
+    """
+    if ".." in filename.split("/") or filename.startswith("/"):
+        return Response("Forbidden", status=403)
+    try:
+        from orchestrator import project_registry as _pr
+        project = _pr.get_project(nexus)
+    except Exception:
+        return Response("Project registry unavailable", status=503)
+    if project is None:
+        return Response(f"No project registered: {nexus!r}", status=404)
+    themes = getattr(project, "themes", {}) or {}
+    if not themes:
+        return Response(
+            f"Project {nexus!r} declares no themes", status=404,
+        )
+
+    # Search each declared theme's directory for the filename; serve the
+    # first match. Sufficient for projects with one theme (the common
+    # case) AND projects with multiple themes when asset filenames are
+    # unique across themes (theme.css / manifest.json typically are).
+    for theme in themes.values():
+        asset_dir = (project.root / theme.directory).resolve()
+        target = (asset_dir / filename).resolve()
+        # Path-safety: target must be under asset_dir after resolve()
+        try:
+            target.relative_to(asset_dir)
+        except ValueError:
+            continue
+        if target.is_file():
+            return send_from_directory(
+                str(asset_dir), filename,
+            )
+    return Response(
+        f"Asset not found in any theme declared by {nexus!r}: "
+        f"{filename}",
+        status=404,
+    )
 
 @app.route("/api/v3-themes/install", methods=["POST"])
 def v3_themes_install_api():
