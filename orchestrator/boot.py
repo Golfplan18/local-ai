@@ -6920,6 +6920,12 @@ _VERIFIER_BROKEN_MARKERS = (
     "verifier_exception:",
     "[verification error",
     "[verifier call error",
+    # ``_call_with_retry``'s retry branch emits ``[<step> retry error: ...]``
+    # when the second attempt itself raises. Without this entry, a
+    # retry-side transport failure escaped BROKEN classification and the
+    # cycle attempted re-revision against what was actually transport noise.
+    # Added 2026-05-20 alongside the Chunk A verifier-retry wrapping.
+    "[verifier retry error",
     # Auth / quota / rate-limit (the shared transport list below covers the
     # OpenAI/Anthropic-specific idioms; these are the generic forms).
     "session expired",
@@ -7224,7 +7230,17 @@ def _step_output_health(text: str, step_name: str, min_chars: int = 200) -> tupl
         if pat in lower:
             return False, f"refusal/clarification pattern: {pat!r}"
     if step_name == "verifier":
-        if "VERIFIED" not in cleaned and "VERIFICATION FAILED" not in cleaned:
+        # Accept both the legacy free-form verdict line (``VERIFIED`` /
+        # ``VERIFIED WITH CORRECTIONS`` / ``VERIFICATION FAILED``) and the
+        # newer structured form (``VERDICT: PASS`` / ``VERDICT: FAIL`` /
+        # ``VERDICT: BROKEN``) via the shared line-anchored extractor.
+        # Substring matches inside prose (e.g. "the analysis is not
+        # VERIFIED in any meaningful sense") no longer mask a missing
+        # verdict — the verdict must sit on its own line. A model that
+        # self-declares ``VERDICT: BROKEN`` is doing its job and counts
+        # as healthy here; ``_verifier_broken`` separately routes that
+        # output to the cycle-unblock path downstream.
+        if _extract_structured_verdict(cleaned) is None:
             return False, "missing verifier verdict token"
     return True, "ok"
 
@@ -7307,11 +7323,165 @@ def _fetch_supplement(query_terms: str, mode_text: str | None = None,
     return ""
 
 
+def _resolve_fallback_endpoint(slot: str, gear: int,
+                               current_endpoint: dict | None,
+                               context: str = "interactive",
+                               config_name: str | None = None,
+                               ) -> dict | None:
+    """Resolve the next endpoint in the slot's fallback chain.
+
+    Asks the router for the next-best endpoint, excluding the one
+    currently in use. Returns a v1-shape endpoint dict, or ``None`` when
+    the router is unavailable / the current endpoint has no usable id /
+    the slot has no remaining fallback. Backwards-compatible with the
+    pre-Chunk-B path: when this returns ``None`` the caller reuses the
+    original endpoint, preserving the legacy retry-same-model behaviour.
+
+    Chunk B (2026-05-20). Builds on the router's existing ``excluded_ids``
+    parameter — the same mechanism that enforces adversarial-diversity
+    routing in ``resolve_gear`` — used here to advance the chain by one
+    step rather than to enforce a different model in parallel.
+    """
+    router = _get_router()
+    if router is None or not current_endpoint:
+        return None
+    # v1 endpoint's ``name`` field carries the v2 ``id`` per
+    # ``router._to_v1_endpoint``. Without a usable id we can't tell the
+    # router what to exclude, so degrade to no-fallback.
+    current_id = current_endpoint.get("name")
+    if not current_id:
+        return None
+    try:
+        next_ep = router.resolve_endpoint(
+            slot, gear, context,
+            excluded_ids={current_id},
+            config_name=config_name,
+        )
+    except Exception:
+        # Router-side failure should never poison the retry path —
+        # caller falls back to the original endpoint.
+        return None
+    if next_ep is None:
+        return None
+    return router._to_v1_endpoint(next_ep)
+
+
+def _reviser_output_structural_check(revised_text: str) -> tuple[bool, str]:
+    """Deterministic shape check on a Step-5 revised output.
+
+    Chunk D (2026-05-20). Used as the structural backstop in the Step-6
+    verifier loop: when the verifier itself goes BROKEN, the loop calls
+    this on the revised output and gates the cycle-unblock on the result.
+
+      - BROKEN verifier + structurally-sound revised output → unblock
+        as today (verifier-side error; the output is well-shaped enough
+        to ship without a verifier blessing).
+      - BROKEN verifier + structurally-bad revised output → treat the
+        cycle as FAIL and re-revise. A persistent verifier flake on
+        garbage reviser output is the silent-failure shape Chunk D
+        was built to catch.
+
+    The check is intentionally permissive — anything that looks like a
+    reasonable reviser attempt passes. Specifically:
+
+      - Total length >= 200 chars (filters empty stubs / short error
+        strings).
+      - Carries a ``## REVISED DRAFT`` section header somewhere.
+      - The REVISED DRAFT body is >= 50 chars (real content, not
+        a "None." placeholder).
+
+    Returns ``(passed: bool, reason: str)``. The reason names the first
+    failing check or ``"ok"`` on full pass — useful for trace audits.
+    """
+    if not revised_text:
+        return False, "empty"
+    if len(revised_text) < 200:
+        return False, f"too short ({len(revised_text)} < 200 chars)"
+    idx = revised_text.find("## REVISED DRAFT")
+    if idx < 0:
+        return False, "missing ## REVISED DRAFT section"
+    rest = revised_text[idx + len("## REVISED DRAFT"):]
+    # The next contract section is ``## CHANGELOG`` per the F-Revise
+    # canonical order. Slice to it (or to end-of-text) to extract the
+    # draft body. F-Revise allows H2 sub-headings inside the body, so
+    # we cannot stop at any ``##``.
+    changelog_idx = rest.find("## CHANGELOG")
+    draft_body = rest[:changelog_idx] if changelog_idx > -1 else rest
+    if len(draft_body.strip()) < 50:
+        return False, "REVISED DRAFT body < 50 chars"
+    return True, "ok"
+
+
+def _wrap_analyst_as_degraded_reviser_envelope(
+    analyst_text: str, stream_label: str = "reviser"
+) -> str:
+    """Produce a contract-preserving fallback when a reviser stream
+    degrades after retry-with-fallback.
+
+    Chunk C (2026-05-20). Before this, the Step-5 contingency
+    substituted the raw analyst output verbatim. The analyst output
+    has no F-Revise contract sections (``## ADDRESSED`` / ``## NOT
+    ADDRESSED`` / ``## CLAIM RESOLUTIONS`` / etc.), so downstream
+    consumers couldn't parse it as a reviser output: the verifier's
+    V1 mandatory-fix coverage check had nothing to match against,
+    and (Gear 4) the consolidator received content in a different
+    shape than the other healthy stream.
+
+    The wrapped envelope emits the 8 F-Revise sections with explicit
+    ``None.`` content for the bookkeeping sections, surfaces the
+    analyst output in ``## REVISED DRAFT``, and names the degradation
+    in ``## REMAINING UNCERTAINTIES`` + ``## CHANGELOG``. The verifier
+    will register a substantive verdict (typically VERIFICATION FAILED
+    if the evaluator declared any MANDATORY FIXES — that's accurate;
+    the fixes really weren't addressed) rather than choking on missing
+    sections. Re-revision then gets the same analyst text wrapped, the
+    verifier's findings, and another chance via the cycle loop.
+
+    The retry-with-fallback chain in Chunks A + B should make this
+    fallback rare; smoke tests show zero firings under normal flake
+    conditions. This helper is the defense-in-depth path for the
+    residual case where all chain entries are unavailable.
+    """
+    return (
+        "## ADDRESSED\n"
+        "None.\n\n"
+        "## NOT ADDRESSED\n"
+        "None.\n\n"
+        "## INCORPORATED\n"
+        "None.\n\n"
+        "## DECLINED\n"
+        "None.\n\n"
+        "## CLAIM RESOLUTIONS\n"
+        "None.\n\n"
+        "## REMAINING UNCERTAINTIES\n"
+        f"- Reviser stream ({stream_label}) unavailable after "
+        "retry-with-fallback. Mandatory fixes from the evaluator (if "
+        "any) remain unaddressed; flagged claims (if any) were not "
+        "verified through the reviser's web-tool workflow. The "
+        "downstream verifier should register this as VERIFICATION "
+        "FAILED on the V1 (mandatory-fix coverage) and V9 (claim "
+        "resolutions) checks where applicable.\n\n"
+        "## REVISED DRAFT\n"
+        f"{analyst_text}\n\n"
+        "## CHANGELOG\n"
+        f"Reviser stream ({stream_label}) degraded after "
+        "retry-with-fallback. Original analyst output (Step 3) "
+        "substituted unchanged. Evaluator critique was not applied; "
+        "flagged claims were not verified through the reviser. The "
+        "downstream verifier sees the analyst output verbatim and "
+        "should evaluate it directly.\n"
+    )
+
+
 def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
                           min_chars: int = 200,
                           retry_hint: str | None = None,
                           images: list = None,
-                          context_pkg: dict | None = None
+                          context_pkg: dict | None = None,
+                          *,
+                          slot: str | None = None,
+                          gear: int | None = None,
+                          config_name: str | None = None,
                           ) -> tuple[str, bool, str]:
     """Wrap ``_call_with_retry`` with the Supplemental RAG Protocol loop.
 
@@ -7335,7 +7505,9 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
     if step_name not in _SUPPLEMENT_ENABLED_STEPS:
         return _call_with_retry(messages, endpoint, step_name,
                                 min_chars=min_chars,
-                                retry_hint=retry_hint, images=images)
+                                retry_hint=retry_hint, images=images,
+                                slot=slot, gear=gear,
+                                config_name=config_name)
 
     trace_dir = context_pkg.get("trace_dir") if context_pkg else None
     mode_text = context_pkg.get("mode_text") if context_pkg else None
@@ -7353,6 +7525,7 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
         text, ok, reason = _call_with_retry(
             current, endpoint, step_name,
             min_chars=min_chars, retry_hint=retry_hint, images=images,
+            slot=slot, gear=gear, config_name=config_name,
         )
         last_text, last_ok, last_reason = text, ok, reason
 
@@ -7393,6 +7566,7 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
             final_text, final_ok, final_reason = _call_with_retry(
                 current, endpoint, step_name,
                 min_chars=min_chars, retry_hint=retry_hint, images=images,
+                slot=slot, gear=gear, config_name=config_name,
             )
             return final_text, final_ok, final_reason
 
@@ -7433,13 +7607,25 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
 
 def _call_with_retry(messages: list, endpoint: dict, step_name: str,
                      min_chars: int = 200, retry_hint: str | None = None,
-                     images: list = None) -> tuple[str, bool, str]:
+                     images: list = None,
+                     *,
+                     slot: str | None = None,
+                     gear: int | None = None,
+                     config_name: str | None = None,
+                     ) -> tuple[str, bool, str]:
     """Run a model call with one retry on unhealthy output.
 
     First attempt: call the model, validate. If healthy, return early.
     Unhealthy: append a regenerate hint to the user message and retry once.
     Returns (text_after_strip, healthy, diagnostic). The caller decides
     whether to degrade further when ``healthy`` is False.
+
+    Chunk B (2026-05-20): when ``slot``, ``gear``, and (optionally)
+    ``config_name`` are provided, the retry attempt advances the slot's
+    fallback chain via ``_resolve_fallback_endpoint`` rather than
+    re-hitting the same model that just produced unhealthy output.
+    Backwards-compatible: when any of these is None, retry reuses
+    ``endpoint`` — the pre-Chunk-B behaviour.
     """
     try:
         text = _run_model_with_tools(list(messages), endpoint, images=images)
@@ -7467,8 +7653,21 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     else:
         retry_msgs.append({"role": "user", "content": hint})
 
+    # Chunk B: advance the slot's fallback chain on retry when slot+gear
+    # are provided. When the helper returns ``None`` (no fallback, router
+    # unavailable, etc.), we silently reuse the original endpoint —
+    # identical to the pre-Chunk-B path. The trace's existing retry-error
+    # markers ([<step> retry error: ...]) still apply.
+    target_endpoint = endpoint
+    if slot is not None and gear is not None:
+        fallback = _resolve_fallback_endpoint(
+            slot, gear, endpoint, config_name=config_name,
+        )
+        if fallback is not None:
+            target_endpoint = fallback
+
     try:
-        text2 = _run_model_with_tools(retry_msgs, endpoint, images=images)
+        text2 = _run_model_with_tools(retry_msgs, target_endpoint, images=images)
     except Exception as e:
         text2 = f"[{step_name} retry error: {e}]"
     text2 = _strip_dispatch_noise(text2)
@@ -7680,15 +7879,31 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         {"role": "system", "content": depth_system},
         {"role": "user", "content": cleaned_prompt},
     ]
-    depth_analysis = _run_model_with_tools(
-        depth_messages, depth_endpoint, images=images
+    # Chunk B' (2026-05-20): wrap in the retry-once / supplement layer that
+    # the rest of the pipeline uses. Before this, a single Gear-3 analyst
+    # flake (empty response, transport error) flowed straight through to
+    # the evaluator with no second chance — mirrors the verifier silent-
+    # failure class Chunk A closed for Gear 3. slot/gear plumb through to
+    # Chunk B's fallback-chain advancement on retry.
+    depth_analysis, depth_ok, depth_reason = _call_with_supplement(
+        depth_messages, depth_endpoint, "analyst",
+        min_chars=200, retry_hint=None, images=images,
+        context_pkg=context_pkg,
+        slot="depth", gear=3, config_name=config_name,
     )
+    step_health["step3-depth"] = (depth_ok, depth_reason)
     _trace_step_g3("step3-depth", {
         "system_prompt": depth_system,
         "user_message": cleaned_prompt,
         "raw_response": depth_analysis,
+        "ok": depth_ok,
+        "reason": depth_reason,
         "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
-    }, markdown=f"# Step 3 — Depth analyst (Gear 3)\n\n{depth_analysis}\n")
+    }, markdown=(
+        "# Step 3 — Depth analyst (Gear 3)\n\n"
+        f"**Health:** {'ok' if depth_ok else 'DEGRADED'} — {depth_reason}\n\n"
+        f"{depth_analysis}\n"
+    ))
 
     # --- Step 4: Breadth Evaluator (universal 7-section contract) ---
     eval_system = _assemble_step_prompt(
@@ -7703,15 +7918,41 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "Evaluate per the universal seven-section contract."
         )},
     ]
-    breadth_evaluation = _run_model_with_tools(
-        eval_messages, breadth_endpoint,
+    # Chunk B': retry-once + slot fallback advancement on the evaluator.
+    breadth_evaluation, eval_ok, eval_reason = _call_with_supplement(
+        eval_messages, breadth_endpoint, "evaluator",
+        min_chars=150, retry_hint=None,
         images=_images_for_endpoint(images, breadth_endpoint),
+        context_pkg=context_pkg,
+        slot="breadth", gear=3, config_name=config_name,
     )
+    step_health["step4-eval"] = (eval_ok, eval_reason)
+    # Preserve the raw response for the trace BEFORE the empty-eval
+    # contingency rewrite, so audits can distinguish what the model
+    # actually returned from the [no evaluator feedback...] placeholder.
+    raw_eval_response = breadth_evaluation
+    # Contingency mirroring Gear 4: degraded eval becomes an explicit
+    # "no feedback" note so the reviser doesn't try to integrate broken
+    # critique into its revision.
+    if not eval_ok:
+        breadth_evaluation = "[no evaluator feedback this cycle — eval stream degraded]"
+        contingencies_fired.append("step4-evaluator-degraded-no-feedback")
     _trace_step_g3("step4-eval", {
         "system_prompt": eval_system,
+        "raw_response_pre_contingency": raw_eval_response,
         "raw_response": breadth_evaluation,
+        "ok": eval_ok,
+        "reason": eval_reason,
         "endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
-    }, markdown=f"# Step 4 — Breadth evaluates Depth (Gear 3)\n\n{breadth_evaluation}\n")
+    }, markdown=(
+        "# Step 4 — Breadth evaluates Depth (Gear 3)\n\n"
+        f"**Health:** {'ok' if eval_ok else 'DEGRADED'} — {eval_reason}\n\n"
+        + (
+            f"**Raw response before contingency** ({len(raw_eval_response or '')} chars):\n\n```\n{raw_eval_response}\n```\n\n"
+            if not eval_ok else ""
+        )
+        + f"{breadth_evaluation}\n"
+    ))
 
     # --- Step 4.5: Claim verification pre-flight (Pattern B) ---
     # Parse the evaluator's FLAGGED CLAIMS section and run each
@@ -7763,15 +8004,44 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         {"role": "system", "content": revise_system},
         {"role": "user", "content": revise_user},
     ]
-    revised_analysis = _run_model_with_tools(
-        revise_messages, depth_endpoint,
+    # Chunk B': retry-once + slot fallback advancement on the reviser.
+    revised_analysis, rev_ok, rev_reason = _call_with_supplement(
+        revise_messages, depth_endpoint, "reviser",
+        min_chars=200, retry_hint=None,
         images=_images_for_endpoint(images, depth_endpoint),
+        context_pkg=context_pkg,
+        slot="depth", gear=3, config_name=config_name,
     )
+    step_health["step5-revised"] = (rev_ok, rev_reason)
+    raw_revise_response = revised_analysis
+    # Contingency mirroring Gear 4: if reviser is degraded, fall back to
+    # the original analyst output so the verifier sees real content
+    # rather than a stub. Only swap when the analyst itself produced a
+    # healthy first output — otherwise both are degraded and we leave
+    # the reviser text in place so the trace shows the failure shape.
+    # Chunk C wraps in a synthetic F-Revise envelope so the verifier
+    # can parse the substitute through the standard section regex.
+    if not rev_ok and depth_ok:
+        revised_analysis = _wrap_analyst_as_degraded_reviser_envelope(
+            depth_analysis, stream_label="reviser",
+        )
+        contingencies_fired.append("step5-reviser-degraded-using-analyst-output")
     _trace_step_g3("step5-revised", {
         "system_prompt": revise_system,
+        "raw_response_pre_contingency": raw_revise_response,
         "raw_response": revised_analysis,
+        "ok": rev_ok,
+        "reason": rev_reason,
         "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
-    }, markdown=f"# Step 5 — Reviser (Gear 3)\n\n{revised_analysis}\n")
+    }, markdown=(
+        "# Step 5 — Reviser (Gear 3)\n\n"
+        f"**Health:** {'ok' if rev_ok else 'DEGRADED'} — {rev_reason}\n\n"
+        + (
+            f"**Raw response before contingency** ({len(raw_revise_response or '')} chars):\n\n```\n{raw_revise_response}\n```\n\n"
+            if not rev_ok else ""
+        )
+        + f"{revised_analysis}\n"
+    ))
 
     # --- Step 5.5: V8 unflagged-claim scan (Pattern B) ---
     # F-Verify §V8.3: scan the revised draft for high-risk claims the
@@ -7834,19 +8104,41 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             {"role": "system", "content": verify_system},
             {"role": "user", "content": verify_user},
         ]
+        # Wrap the verifier call in the same retry-once layer the rest of
+        # the pipeline uses (analyst / evaluator / reviser / consolidator /
+        # formatter). Without retry, a single OpenRouter transient flake
+        # (empty response, malformed streaming chunk) classified the
+        # verifier as BROKEN and unblocked the cycle without re-revision.
+        # Retry recovers the common transient case; persistent failures
+        # still produce an output that ``_verifier_broken`` flags via
+        # ``[verifier call error`` or ``[Error calling`` markers.
         try:
-            verified = _run_model_with_tools(
-                verify_messages, breadth_endpoint,
+            verified, verify_retry_ok, verify_retry_reason = _call_with_retry(
+                verify_messages, breadth_endpoint, "verifier",
+                min_chars=20, retry_hint=None,
                 images=_images_for_endpoint(images, breadth_endpoint),
+                slot="breadth", gear=3, config_name=config_name,
             )
         except Exception as e:
             verified = f"VERIFIER_EXCEPTION: {e}"
+            verify_retry_ok, verify_retry_reason = False, str(e)
         # Three-way verdict classification (see _verifier_broken docstring
         # for the BROKEN-vs-FAIL distinction that addresses silent
         # failure #9).
         broken = _verifier_broken(verified)
         passed = _verifier_passed(verified)
-        unblocks = passed or broken
+        # Chunk D (2026-05-20): when the verifier is broken, gate the
+        # cycle-unblock on a deterministic structural check of the
+        # revised output. BROKEN + structurally-sound → unblock as
+        # today. BROKEN + structurally-bad → treat as FAIL so the
+        # cycle re-revises rather than approving garbage.
+        broken_structural_ok: bool | None = None
+        broken_structural_reason: str | None = None
+        if broken:
+            broken_structural_ok, broken_structural_reason = (
+                _reviser_output_structural_check(revised_analysis)
+            )
+        unblocks = passed or (broken and bool(broken_structural_ok))
         verdict_label = "BROKEN" if broken else ("PASS" if passed else "FAIL")
 
         _trace_step_g3(f"step6-verifier-cycle-{cycle + 1}", {
@@ -7857,6 +8149,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "passed_parser_verdict": passed,
             "broken_parser_verdict": broken,
             "unblocks_cycle": unblocks,
+            "verify_retry_ok": verify_retry_ok,
+            "verify_retry_reason": verify_retry_reason,
+            "broken_structural_check_ok": broken_structural_ok,
+            "broken_structural_check_reason": broken_structural_reason,
         }, markdown=(
             f"# Step 6 — Verifier (Gear 3, cycle {cycle + 1}/{MAX_VERIFY_CYCLES + 1})\n\n"
             f"**Verdict:** {verdict_label}\n\n{verified}\n"
@@ -7865,6 +8161,14 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             contingencies_fired.append(
                 f"step6-cycle{cycle + 1}-verifier-BROKEN-not-verified"
             )
+            if broken_structural_ok:
+                contingencies_fired.append(
+                    f"step6-cycle{cycle + 1}-verifier-BROKEN-structural-pass-unblocks"
+                )
+            else:
+                contingencies_fired.append(
+                    f"step6-cycle{cycle + 1}-verifier-BROKEN-structural-fail-re-revising"
+                )
 
         if unblocks or cycle == MAX_VERIFY_CYCLES:
             break
@@ -7872,6 +8176,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         # Verifier rejected — reviser addresses the verifier's findings.
         # Skip re-revision when the verifier was BROKEN (verifier-side
         # error — re-revising the analysis can't help).
+        # Chunk F (2026-05-20): wrap in `_call_with_retry` with slot/gear
+        # plumbed through so a flake on the re-revision attempt gets
+        # one retry against the slot's fallback chain rather than
+        # stranding the cycle on a transport error.
         re_revise_messages = [
             {"role": "system", "content": revise_system},
             {"role": "user", "content": (
@@ -7882,9 +8190,11 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                 "mirror contract."
             )},
         ]
-        revised_analysis = _run_model_with_tools(
-            re_revise_messages, depth_endpoint,
+        revised_analysis, _re_rev_ok, _re_rev_reason = _call_with_retry(
+            re_revise_messages, depth_endpoint, "reviser",
+            min_chars=200, retry_hint=None,
             images=_images_for_endpoint(images, depth_endpoint),
+            slot="depth", gear=3, config_name=config_name,
         )
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
 
@@ -8027,12 +8337,14 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             [{"role": "system", "content": depth_system},
              {"role": "user", "content": cleaned_prompt}],
             depth_endpoint, "analyst", 200, None, images, context_pkg,
+            slot="depth", gear=4, config_name=config_name,
         )
         breadth_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": breadth_system},
              {"role": "user", "content": cleaned_prompt}],
             breadth_endpoint, "analyst", 200, None, images, context_pkg,
+            slot="breadth", gear=4, config_name=config_name,
         )
         try:
             depth_analysis, depth_ok, depth_reason = depth_future.result()
@@ -8127,6 +8439,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
              {"role": "user", "content": eval_a_user_message}],
             breadth_endpoint, "evaluator", 150, None,
             _images_for_endpoint(images, breadth_endpoint), context_pkg,
+            slot="breadth", gear=4, config_name=config_name,
         )
         eval_b_future = executor.submit(
             _call_with_supplement,
@@ -8134,6 +8447,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
              {"role": "user", "content": eval_b_user_message}],
             depth_endpoint, "evaluator", 150, None,
             _images_for_endpoint(images, depth_endpoint), context_pkg,
+            slot="depth", gear=4, config_name=config_name,
         )
         try:
             breadth_eval_of_depth, eval_a_ok, eval_a_reason = eval_a_future.result()
@@ -8156,10 +8470,15 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     # Contingency: degraded eval becomes an explicit "no feedback" note so the
     # reviser doesn't try to integrate broken critique into its revision.
+    # Chunk E (2026-05-20): log to contingencies_fired so the trace's
+    # silent-failure surface is complete — previously this substitution
+    # only landed in step-health and was invisible to contingency audits.
     if not eval_a_ok:
         breadth_eval_of_depth = "[no evaluator feedback this cycle — eval stream degraded]"
+        contingencies_fired.append("step4-eval-of-depth-degraded-no-feedback")
     if not eval_b_ok:
         depth_eval_of_breadth = "[no evaluator feedback this cycle — eval stream degraded]"
+        contingencies_fired.append("step4-eval-of-breadth-degraded-no-feedback")
 
     # --- Step 4.5: Claim verification pre-flight (Gear 4 — per-stream) ---
     # Two pre-flights run, one per evaluation, because each reviser sees
@@ -8251,6 +8570,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
              {"role": "user", "content": depth_revise_user_message}],
             depth_endpoint, "reviser", 200, None,
             _images_for_endpoint(images, depth_endpoint), context_pkg,
+            slot="depth", gear=4, config_name=config_name,
         )
         breadth_revise_future = executor.submit(
             _call_with_supplement,
@@ -8258,6 +8578,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
              {"role": "user", "content": breadth_revise_user_message}],
             breadth_endpoint, "reviser", 200, None,
             _images_for_endpoint(images, breadth_endpoint), context_pkg,
+            slot="breadth", gear=4, config_name=config_name,
         )
         try:
             revised_depth, depth_rev_ok, depth_rev_reason = depth_revise_future.result()
@@ -8272,12 +8593,19 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     # Contingency: if revised output is degraded, fall back to the original
     # analyst output for that stream — better to give the consolidator real
-    # content than a "I don't see the prompt" stub.
+    # content than a "I don't see the prompt" stub. Chunk C wraps the
+    # analyst text in a synthetic F-Revise envelope so the verifier and
+    # consolidator can parse it through their existing section regex
+    # without choking on the missing contract shape.
     if not depth_rev_ok and depth_ok:
-        revised_depth = depth_analysis
+        revised_depth = _wrap_analyst_as_degraded_reviser_envelope(
+            depth_analysis, stream_label="depth",
+        )
         contingencies_fired.append("step5-depth-reviser-degraded-using-analyst-output")
     if not breadth_rev_ok and breadth_ok:
-        revised_breadth = breadth_analysis
+        revised_breadth = _wrap_analyst_as_degraded_reviser_envelope(
+            breadth_analysis, stream_label="breadth",
+        )
         contingencies_fired.append("step5-breadth-reviser-degraded-using-analyst-output")
 
     # --- Step 4 + Step 5 traces ---
@@ -8437,33 +8765,57 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             # B (image passthrough): verifiers receive `images` so V2/V4/V8
             # image-fidelity checks can compare claims against the actual
             # image rather than just the analyst's textual description.
+            # Wrap each verifier call in the same retry-once layer the
+            # rest of the pipeline uses. Without retry, a single
+            # OpenRouter transient flake (empty response, malformed
+            # streaming chunk) classified the verifier as BROKEN and
+            # unblocked the cycle without re-revision. Retry recovers
+            # the common transient case; persistent failures still
+            # produce an output ``_verifier_broken`` flags downstream.
             verify_depth_future = executor.submit(
-                _run_model_with_tools,
+                _call_with_retry,
                 [{"role": "system", "content": verify_system},
                  {"role": "user", "content": verify_depth_user_message}],
-                breadth_endpoint,
-                images=_images_for_endpoint(images, breadth_endpoint),
+                breadth_endpoint, "verifier", 20, None,
+                _images_for_endpoint(images, breadth_endpoint),
+                slot="breadth", gear=4, config_name=config_name,
             )
             verify_breadth_future = executor.submit(
-                _run_model_with_tools,
+                _call_with_retry,
                 [{"role": "system", "content": verify_system},
                  {"role": "user", "content": verify_breadth_user_message}],
-                depth_endpoint,
-                images=_images_for_endpoint(images, depth_endpoint),
+                depth_endpoint, "verifier", 20, None,
+                _images_for_endpoint(images, depth_endpoint),
+                slot="depth", gear=4, config_name=config_name,
             )
             try:
-                depth_verdict = verify_depth_future.result()
+                depth_verdict, depth_verify_ok, depth_verify_reason = (
+                    verify_depth_future.result()
+                )
+                depth_verify_error = (
+                    None if depth_verify_ok else depth_verify_reason
+                )
             except Exception as e:
                 # Per failure #9: substitute an explicit VERIFIER_EXCEPTION
                 # marker rather than a fake "VERIFIED" string. The pipeline
                 # still proceeds (we don't block on a broken verifier), but
-                # the trace records the real failure shape.
+                # the trace records the real failure shape. ``_call_with_retry``
+                # catches model exceptions internally, so reaching this branch
+                # means the retry wrapper itself blew up — rare, but worth
+                # surfacing distinctly.
                 depth_verdict = f"VERIFIER_EXCEPTION: {e}"
+                depth_verify_ok, depth_verify_reason = False, str(e)
                 depth_verify_error = str(e)
             try:
-                breadth_verdict = verify_breadth_future.result()
+                breadth_verdict, breadth_verify_ok, breadth_verify_reason = (
+                    verify_breadth_future.result()
+                )
+                breadth_verify_error = (
+                    None if breadth_verify_ok else breadth_verify_reason
+                )
             except Exception as e:
                 breadth_verdict = f"VERIFIER_EXCEPTION: {e}"
+                breadth_verify_ok, breadth_verify_reason = False, str(e)
                 breadth_verify_error = str(e)
 
         # Three-way verdict classification per cycle: PASS / FAIL / BROKEN.
@@ -8475,8 +8827,25 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         breadth_broken = _verifier_broken(breadth_verdict)
         depth_passed = _verifier_passed(depth_verdict)
         breadth_passed = _verifier_passed(breadth_verdict)
-        depth_unblocks = depth_passed or depth_broken
-        breadth_unblocks = breadth_passed or breadth_broken
+        # Chunk D (2026-05-20): structural backstop on per-stream BROKEN.
+        # BROKEN + structurally-sound revised output → unblock (verifier
+        # error; output well-shaped enough to ship). BROKEN +
+        # structurally-bad revised output → don't unblock; re-revise
+        # rather than approve garbage.
+        depth_structural_ok: bool | None = None
+        depth_structural_reason: str | None = None
+        breadth_structural_ok: bool | None = None
+        breadth_structural_reason: str | None = None
+        if depth_broken:
+            depth_structural_ok, depth_structural_reason = (
+                _reviser_output_structural_check(revised_depth)
+            )
+        if breadth_broken:
+            breadth_structural_ok, breadth_structural_reason = (
+                _reviser_output_structural_check(revised_breadth)
+            )
+        depth_unblocks = depth_passed or (depth_broken and bool(depth_structural_ok))
+        breadth_unblocks = breadth_passed or (breadth_broken and bool(breadth_structural_ok))
 
         def _verdict_label(passed: bool, broken: bool) -> str:
             if broken:
@@ -8496,12 +8865,20 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             "depth_broken_parser_verdict": depth_broken,
             "depth_unblocks_cycle": depth_unblocks,
             "depth_verify_exception": depth_verify_error,
+            "depth_verify_retry_ok": depth_verify_ok,
+            "depth_verify_retry_reason": depth_verify_reason,
             "breadth_verdict_raw": breadth_verdict,
             "breadth_verdict_resolved": _verdict_label(breadth_passed, breadth_broken),
             "breadth_passed_parser_verdict": breadth_passed,
             "breadth_broken_parser_verdict": breadth_broken,
             "breadth_unblocks_cycle": breadth_unblocks,
             "breadth_verify_exception": breadth_verify_error,
+            "breadth_verify_retry_ok": breadth_verify_ok,
+            "breadth_verify_retry_reason": breadth_verify_reason,
+            "depth_broken_structural_check_ok": depth_structural_ok,
+            "depth_broken_structural_check_reason": depth_structural_reason,
+            "breadth_broken_structural_check_ok": breadth_structural_ok,
+            "breadth_broken_structural_check_reason": breadth_structural_reason,
             "both_unblocked": depth_unblocks and breadth_unblocks,
             "both_passed": depth_passed and breadth_passed,
         }, markdown=(
@@ -8519,14 +8896,33 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         # verification happened) from FAIL (verifier returned a real
         # negative verdict). Trend data on contingencies_fired tells the
         # team how often verification is actually being performed.
+        # Chunk D adds per-stream structural-check labels so audits can
+        # see whether BROKEN unblocked because the revised output was
+        # well-shaped or because re-revision was forced.
         if depth_broken:
             contingencies_fired.append(
                 f"step6-cycle{cycle + 1}-depth-verifier-BROKEN-not-verified"
             )
+            if depth_structural_ok:
+                contingencies_fired.append(
+                    f"step6-cycle{cycle + 1}-depth-verifier-BROKEN-structural-pass-unblocks"
+                )
+            else:
+                contingencies_fired.append(
+                    f"step6-cycle{cycle + 1}-depth-verifier-BROKEN-structural-fail-re-revising"
+                )
         if breadth_broken:
             contingencies_fired.append(
                 f"step6-cycle{cycle + 1}-breadth-verifier-BROKEN-not-verified"
             )
+            if breadth_structural_ok:
+                contingencies_fired.append(
+                    f"step6-cycle{cycle + 1}-breadth-verifier-BROKEN-structural-pass-unblocks"
+                )
+            else:
+                contingencies_fired.append(
+                    f"step6-cycle{cycle + 1}-breadth-verifier-BROKEN-structural-fail-re-revising"
+                )
 
         # Loop exit: both streams unblocked (PASS or BROKEN), or cycle cap.
         # Re-revision only fires when a stream truly FAILED (broken doesn't
@@ -8540,11 +8936,20 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         # the analysis cannot help — the issue lives on the verifier
         # side. Skip re-revision for BROKEN streams; the existing
         # revised content carries forward to consolidation as-is.
+        # Chunk F (2026-05-20): wrap each re-revision in `_call_with_retry`
+        # with slot/gear/config_name plumbed through. Without retry, a
+        # transient flake on the re-revision attempt left the cycle
+        # stranded on a transport error string ("[Re-revision error: ...]")
+        # that the next verifier cycle had no chance of fixing.
+        # Chunk D: re-revise when the stream did not unblock. That's
+        # FAIL (real negative verdict) OR BROKEN-with-structurally-bad
+        # revised output. BROKEN-with-structurally-sound revised output
+        # already unblocked above, so this loop skips it.
         futures = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            if not depth_passed and not depth_broken:
+            if not depth_unblocks:
                 futures["depth"] = executor.submit(
-                    _run_model_with_tools,
+                    _call_with_retry,
                     [{"role": "system", "content": revise_system},
                      {"role": "user", "content": (
                          f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
@@ -8552,11 +8957,12 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                          f"## VERIFIER'S FINDINGS\n\n{depth_verdict}\n\n"
                          "Address the verifier's findings and revise again."
                      )}],
-                    depth_endpoint
+                    depth_endpoint, "reviser", 200, None, None,
+                    slot="depth", gear=4, config_name=config_name,
                 )
-            if not breadth_passed and not breadth_broken:
+            if not breadth_unblocks:
                 futures["breadth"] = executor.submit(
-                    _run_model_with_tools,
+                    _call_with_retry,
                     [{"role": "system", "content": revise_system},
                      {"role": "user", "content": (
                          f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
@@ -8564,16 +8970,17 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                          f"## VERIFIER'S FINDINGS\n\n{breadth_verdict}\n\n"
                          "Address the verifier's findings and revise again."
                      )}],
-                    breadth_endpoint
+                    breadth_endpoint, "reviser", 200, None, None,
+                    slot="breadth", gear=4, config_name=config_name,
                 )
             if "depth" in futures:
                 try:
-                    revised_depth = futures["depth"].result()
+                    revised_depth, _, _ = futures["depth"].result()
                 except Exception as e:
                     revised_depth = f"[Re-revision error: {e}]"
             if "breadth" in futures:
                 try:
-                    revised_breadth = futures["breadth"].result()
+                    revised_breadth, _, _ = futures["breadth"].result()
                 except Exception as e:
                     revised_breadth = f"[Re-revision error: {e}]"
 
@@ -8611,6 +9018,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         min_chars=300, retry_hint=None,
         images=_images_for_endpoint(images, breadth_endpoint),
         context_pkg=context_pkg,
+        slot="breadth", gear=4, config_name=config_name,
     )
     _record("step7-consolidated", consol_ok, consol_reason)
 
@@ -8683,6 +9091,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     formatted, format_ok, format_reason = _call_with_retry(
         format_messages, depth_endpoint, "formatter",
         min_chars=300, retry_hint=None, images=None,
+        slot="depth", gear=4, config_name=config_name,
     )
     _record("step8-formatted", format_ok, format_reason)
 
