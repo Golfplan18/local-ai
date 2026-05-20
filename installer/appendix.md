@@ -33,7 +33,7 @@ Before finalizing, explicitly state:
 - Any verification test that was skipped and why.
 - Any known limitation of the installed configuration (e.g., "Your model is Tier 1 — it will handle basic questions well but may struggle with complex analysis or reliable tool calling").
 - Any companion file that was not found and where a default was applied (especially chat templates).
-- Whether Playwright launch test passed or failed, and its impact on Tier 0 functionality.
+- Whether the universal smoke test (one chat round-trip via OpenRouter free configuration) passed or failed, and its impact on basic functionality.
 
 A response that acknowledges limitations is always preferable to a response that implies the setup is more capable than it is.
 
@@ -44,7 +44,7 @@ A response that acknowledges limitations is always preferable to a response that
 IF any of the following unresolved issues remain:
 - Model could not be loaded (Phase 2, Layer 5 invariant check failed)
 - Chat template mismatch producing garbled output
-- Playwright launch test failed on a Tier 0 machine (no fallback AI access)
+- Universal smoke test failed (no fallback AI access — OpenRouter unreachable or key invalid)
 - Chat server tool execution test failed
 - End-to-end test failed
 
@@ -124,13 +124,13 @@ If not, I'll create one at [default path for detected OS].
 Once I know your model preference, I'll proceed through these steps:
 
 PHASE 1 (every reader):
-1. Install Python, Playwright, and required packages — with browser verification
-2. Create the workspace directory structure
-3. Install the framework library from the book repository
-4. Install the orchestrator (boot.py) with tool implementations
-5. Connect to commercial AI services via browser automation
-6. Stage the API key framework for later use
-7. Install the universal chat server at localhost:5000
+1. Install Python and required packages (no browser automation — install Chunk 1 retired the Playwright-based subscription-account dispatcher; API routing is now the only path).
+2. Create the workspace directory structure.
+3. Install the framework library from the book repository.
+4. Install the orchestrator (boot.py) with tool implementations.
+5. Configure API access (OpenRouter required; Artificial Analysis strongly recommended for the auto-populate engine; Anthropic / OpenAI / Google direct optional).
+6. Stage the API key framework for later use.
+7. Install the universal chat server at localhost:5000.
 
 PHASE 2 (hardware permitting — 8GB+ RAM):
 8.  Evaluate your hardware in detail
@@ -145,7 +145,8 @@ PHASE 2 (hardware permitting — 8GB+ RAM):
 17. Install the Interface Customization Framework (all tiers — layout presets, themes, layout generator)
 
 After Phase 1, you'll have a working AI interface at localhost:5000
-with commercial AI access and full tool support.
+with cloud-API access (OpenRouter and optionally direct provider APIs)
+and full tool support.
 After Phase 2, the same interface will use your local model by default.
 
 I'll explain each step before doing it and ask for your approval
@@ -155,3 +156,5 @@ on key decisions. You can stop at any time.
 ---
 
 *This framework installs a universal browser chat interface for every reader in Phase 1, closing the Unmanned Chat Trap from earlier versions. Every reader, regardless of tier, interacts with AI through Python from their first session. Phase 2 adds local model capability without replacing the Phase 1 server — the local model registers as a new endpoint in the same chat server. The model is never directly accessible without the orchestrator in the loop.*
+
+*Note (install Chunk 1, 2026-05-18): the original Phase 1 design routed model calls through Playwright-driven browser automation against the user's logged-in subscription accounts (claude.ai, ChatGPT, Gemini). That dispatcher was retired in favor of direct API routing through OpenRouter (and optionally direct provider APIs) — the reliability and cost-management properties of APIs proved decisive over the "use what you already pay for" advantage of browser sessions. The localhost:5000 interface and the orchestrator's Python-in-the-loop contract are unchanged; only the path from orchestrator-to-model is different.*

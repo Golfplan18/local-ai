@@ -13,12 +13,13 @@
    │   ├── user/       ← user-created frameworks accumulate here
    │   └── framework-registry.md ← index of all frameworks (populated with book-shipped entries)
    ├── config/         ← system configuration files
-   │   └── browser-sessions/  ← Playwright session state
    ├── chromadb/       ← vector database (two collections: knowledge, conversations)
    ├── models/         ← downloaded model files (Phase 2)
    ├── server/         ← chat interface server files
    └── docs/           ← hardware report and README
    ```
+
+   Note (install Chunk 1, 2026-05-18): the `config/browser-sessions/` directory that previously held Playwright session state was retired alongside the deprecated subscription-account dispatcher. Subscription-based model dispatching was replaced by API-only routing through OpenRouter. Playwright may be re-incorporated as a generic tool when a real use case appears, but it is no longer part of the default install.
 
 2. Create the conversations folder at `~/Documents/conversations/` (default location, all platforms — `%USERPROFILE%\Documents\conversations\` on Windows):
 
@@ -39,22 +40,31 @@
 
 4. Create the vault folder at the user's chosen location. Do NOT create subfolders inside it — the vault is flat.
 5. Create the framework registry file at `[workspace]/frameworks/framework-registry.md` populated with initial entries for all book-shipped frameworks. Each entry follows the registry entry format produced by the PFF (name, purpose, problem class, input summary, output summary, proven applications, known limitations, file location, provenance, confidence, version).
-6. Write endpoints.json with the three paths and an empty endpoint registry:
+6. Write `config/routing-config.json` with the three paths, an empty endpoint registry, and the v2 schema's required blocks. (Note: install Chunk 12 retired `endpoints.json` and consolidated everything into `routing-config.json` — see `_schema_notes.v1_compat_fields_carried` in the file for the migration history.)
 
    ```json
    {
-     "vault_path": "[user-chosen path]",
-     "conversations_path": "~/Documents/conversations/",
-     "chromadb_path": "[workspace]/chromadb/",
+     "_schema_version": 2,
+     "paths": {
+       "vault": "[user-chosen path]",
+       "conversations": "~/Documents/conversations/",
+       "chromadb": "[workspace]/chromadb/"
+     },
      "endpoints": [],
      "default_endpoint": null,
+     "slot_assignments": {},
+     "gear4_overrides": {},
      "operational_context": {
-       "interactive": ["local", "browser", "api"],
+       "interactive": ["local", "api"],
        "autonomous": ["local"],
        "agent": ["local"]
-     }
+     },
+     "slots": {},
+     "buckets": {}
    }
    ```
+
+   Note: the `"browser"` transport that previously appeared in `operational_context.interactive` was retired with the subscription-account dispatcher (install Chunk 1). Live transports are now `local` (MLX, Ollama) and `api` (OpenRouter, direct Anthropic/OpenAI/Google).
 
 7. Initialize ChromaDB at `[workspace]/chromadb/` with two empty collections:
    - `knowledge` — will index the vault
@@ -75,7 +85,7 @@
 ```
 DIRECTORY STRUCTURE CREATED
 System folder: [workspace path]
-  Directories: modes/, frameworks/, frameworks/user/, config/, config/browser-sessions/,
+  Directories: modes/, frameworks/, frameworks/user/, config/,
                chromadb/, models/, server/, docs/
 Conversations folder: ~/Documents/conversations/
   Subdirectory: raw/
@@ -83,7 +93,8 @@ Vault: [user-chosen path]
   Structure: flat (no subfolders)
 Framework registry: [workspace]/frameworks/framework-registry.md (populated with book-shipped entries)
 ChromaDB: initialized with collections [knowledge, conversations]
-Endpoints: [workspace]/config/endpoints.json written with three paths
+Routing config: [workspace]/config/routing-config.json written with paths, empty endpoint registry,
+                and v2 schema scaffolding
 ```
 
 ---

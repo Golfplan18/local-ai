@@ -25,13 +25,15 @@ Every reader executes Phase 1 regardless of hardware capability.
 | Order | File | Layer | What It Does |
 |-------|------|-------|-------------|
 | 1 | `phase1/layer1-python-environment.md` | Python Environment | Python 3, pip, core packages |
-| 2 | `phase1/layer2-directory-structure.md` | Directory Structure | Workspace directories, config files, endpoints.json |
+| 2 | `phase1/layer2-directory-structure.md` | Directory Structure | Workspace directories, config files, routing-config.json (v2; endpoints.json was retired in install Chunk 12) |
 | 3 | `phase1/layer3-framework-library.md` | Framework Library | Clone framework files from git repository |
 | 4 | `phase1/layer4-orchestrator-installation.md` | Orchestrator Installation | boot.py, boot.md, mind.md, tool implementations |
 | 5 | `phase1/layer5-api-key-framework.md` | API Key Framework | Install API key acquisition framework |
 | 6 | `phase1/layer6-universal-chat-server.md` | Universal Chat Server | Browser interface at localhost:5000 with agentic loop |
 
-**After Phase 1:** Reader has a working browser-based AI at localhost:5000 with tool execution. Commercial AI access is set up via API keys when the reader runs the API Key Acquisition Framework.
+**After Phase 1:** Reader has a working browser-based AI at localhost:5000 with tool execution. Cloud-API access (OpenRouter required; Anthropic / OpenAI / Google direct optional) is set up via API keys when the reader runs the API Key Acquisition Framework.
+
+**Deployment profiles (install Chunk 7):** the install script (`scripts/install.py`) prompts for a deployment profile at Step 2. **Solo** is the desktop single-user profile and is the only profile enabled today; **Hybrid** (MLX worker + small API worker pool) and **Organization** (pure API, scales to 20+ concurrent processes) are scaffolded but gated on the concurrency-architecture work landing. Server installs use a dedicated `scripts/install-server.sh` (API-only, single-process) as an interim path until the Organization profile lands.
 
 ## Hardware Evaluation Gate
 

@@ -42,7 +42,7 @@
    ## Software Infrastructure
    - Python: [version]
    - pip packages: [list with versions]
-   - Playwright: [installed] (Chromium [version]) — Launch test: [PASS / FAIL]
+   - Universal smoke test (one chat round-trip via OpenRouter free configuration): [PASS / FAIL]
    - Orchestrator: [workspace]/orchestrator/boot.py
    - Chat server: [workspace]/server/server.py — Server test: [PASS / FAIL]
    - Framework library: [workspace]/frameworks/book/ ([count] frameworks)
@@ -51,11 +51,12 @@
    - Credential storage: keyring ([platform-specific backend])
 
    ## AI Connections
-   - Commercial AI (browser automation): [list of connected services]
    - Local model: [model name and details]
-   - API keys: [not configured — available via frameworks/api-key-setup.md]
-   - Endpoint registry: [workspace]/config/endpoints.json ([count] endpoints)
+   - API keys: [OpenRouter configured / Anthropic configured / etc., or "not configured — set OPENROUTER_API_KEY"]
+   - Routing config: [workspace]/config/routing-config.json ([count] endpoints, [count] slot assignments)
    - Default endpoint: [name]
+
+   Note (install Chunk 1, 2026-05-18): browser-automation as a model-dispatch path was retired with the subscription-account dispatcher. AI connections now flow through API endpoints only (OpenRouter, direct Anthropic/OpenAI/Google). The Playwright launch test that used to run at this layer has been replaced by the universal smoke test above — a single chat round-trip against the Free configuration confirming end-to-end routing works.
 
    ## What This Means
    [2-3 sentences in plain language explaining what the user's hardware

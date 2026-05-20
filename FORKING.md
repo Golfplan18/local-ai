@@ -38,7 +38,8 @@ Everything specific to you that should never be public:
 | Item | What It Is |
 |---|---|
 | `mind.md` | Your system's personality and behavioral rules |
-| `config/endpoints.json` | Your API keys and service credentials |
+| `config/routing-config.json` | Your endpoint registry, slot assignments, and provider preferences (the v1 `config/endpoints.json` was retired in install Chunk 12, 2026-05-19) |
+| `~/.config/ora-server.env` (server) or env vars (Mac) | Your API keys |
 | `chromadb/` | Your knowledge base |
 | `knowledge/` | Your mental models and indexed documents |
 | `frameworks/personal/` | Frameworks you created for yourself |
@@ -124,7 +125,7 @@ If the merge has conflicts, resolve them — your customizations take priority. 
 
 Your public fork should never contain:
 
-- API keys or credentials (`config/endpoints.json` — use the template)
+- API keys or credentials (kept out of the repo entirely — they live in env vars or `~/.config/ora-server.env`, never in `config/routing-config.json`)
 - Your `mind.md` (unless you want to — it contains personal values)
 - Downloaded model files (too large for git; each user downloads their own)
 - Your ChromaDB data (personal knowledge)
