@@ -110,6 +110,30 @@ class ParseFlaggedClaims(unittest.TestCase):
         self.assertEqual(len(claims), 1)
         self.assertEqual(claims[0]["claim_num"], 1)
 
+    def test_multi_word_claim_type_accepted(self):
+        # Regression: the parser used to require `[a-z\-]+` for claim_type
+        # so headers like `named-entity / quantitative` (legitimately
+        # emitted by evaluator models that compose types) silently dropped.
+        # This was caught by the cosmology smoke test where Claim 1 had
+        # type "named-entity / quantitative" and never reached the
+        # pre-flight. The parser must accept multi-word / composite types.
+        text = (
+            "## FLAGGED CLAIMS\n\n"
+            "- **Claim 1 — `named-entity / quantitative` — risk: low**\n"
+            '  - claim: "Peculiar velocity of Local Group"\n'
+            "  - why_flagged: Premise for the Observer branch\n"
+            "  - challenge_query: Local Group peculiar velocity\n\n"
+            "- **Claim 2 — `technical-spec` — risk: low**\n"
+            '  - claim: "Detector inefficiency"\n'
+            "  - why_flagged: Hardware\n"
+            "  - challenge_query: charge transfer inefficiency\n\n"
+            "## UNCERTAINTIES\nNone.\n"
+        )
+        claims = claim_verification.parse_flagged_claims(text)
+        self.assertEqual(len(claims), 2)
+        self.assertEqual(claims[0]["claim_type"], "named-entity / quantitative")
+        self.assertEqual(claims[1]["claim_type"], "technical-spec")
+
     def test_surface_variation_em_dash_vs_hyphen(self):
         # Em-dash and hyphen both accepted as separators in claim header.
         text_em = (

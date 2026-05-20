@@ -76,7 +76,13 @@ _FLAGGED_CLAIMS_HEADER_RE = re.compile(
 # (claim, why_flagged, challenge_query) to survive surface variation.
 _CLAIM_HEADER_RE = re.compile(
     r"^\s*-\s+\*\*\s*Claim\s+(?P<num>\d+)\s*[—\-]\s*"
-    r"`?(?P<type>[a-z\-]+)`?\s*[—\-]\s*"
+    # claim_type: anything except backticks/em-dash, non-greedy.
+    # Older regex required `[a-z\-]+` (single hyphenated word), which
+    # silently dropped headers like `named-entity / quantitative` —
+    # the eval model legitimately emits multi-word/combined types and
+    # the parser must accept them (F-Evaluate spec lists single types
+    # but evaluators in the wild compose them).
+    r"`?(?P<type>[^`—]+?)`?\s*[—\-]\s*"
     r"risk\s*:\s*(?P<risk>high|moderate|low)\s*\*\*\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
@@ -532,7 +538,9 @@ LIST OF ALREADY-FLAGGED CLAIMS (do not re-extract these):
 
 _EXTRACTED_BLOCK_RE = re.compile(
     r"^\s*-\s+claim:\s*(?P<claim>.+?)\s*\n"
-    r"\s+claim_type:\s*(?P<type>[a-z\-]+)\s*\n"
+    # Same tolerance fix as _CLAIM_HEADER_RE — accept multi-word /
+    # composite claim_type values the model legitimately emits.
+    r"\s+claim_type:\s*(?P<type>.+?)\s*\n"
     r"\s+risk_level:\s*(?P<risk>high|moderate|low)\s*\n"
     r"\s+challenge_query:\s*(?P<query>.+?)\s*$",
     re.IGNORECASE | re.MULTILINE,

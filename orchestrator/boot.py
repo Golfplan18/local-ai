@@ -8169,6 +8169,43 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
      breadth_claim_evidence_trace) = _run_claim_verification_preflight(
         depth_eval_of_breadth, label="gear4-eval-of-breadth",
     )
+    # Persist per-stream pre-flight traces. Gear 3 already has
+    # step4.5-claim-verification.md via _trace_step_g3; Gear 4 needs
+    # its own two files so the per-stream evidence + trace are
+    # inspectable when something goes wrong (silent failure caught
+    # via smoke audit 2026-05-20).
+    _trace_step("step4.5-claim-verification-depth", {
+        "evidence_text": depth_claim_evidence_text,
+        "trace": depth_claim_evidence_trace,
+        "flagged_claims_parsed": depth_flagged_claims,
+    }, markdown=(
+        "# Step 4.5 — Claim verification pre-flight (Gear 4 — depth stream)\n\n"
+        f"**Status:** `{depth_claim_evidence_trace.get('status')}`  \n"
+        f"**Reason:** `{depth_claim_evidence_trace.get('reason') or '_n/a_'}`  \n"
+        f"**Claims parsed:** {len(depth_flagged_claims)}  \n"
+        f"**Claims total:** {depth_claim_evidence_trace.get('claims_total', 0)} "
+        f"(succeeded: {depth_claim_evidence_trace.get('claims_succeeded', 0)}, "
+        f"failed: {depth_claim_evidence_trace.get('claims_failed', 0)})\n\n"
+        f"## Evidence text\n\n"
+        + (f"{depth_claim_evidence_text}\n"
+           if depth_claim_evidence_text else "_(none)_\n")
+    ))
+    _trace_step("step4.5-claim-verification-breadth", {
+        "evidence_text": breadth_claim_evidence_text,
+        "trace": breadth_claim_evidence_trace,
+        "flagged_claims_parsed": breadth_flagged_claims,
+    }, markdown=(
+        "# Step 4.5 — Claim verification pre-flight (Gear 4 — breadth stream)\n\n"
+        f"**Status:** `{breadth_claim_evidence_trace.get('status')}`  \n"
+        f"**Reason:** `{breadth_claim_evidence_trace.get('reason') or '_n/a_'}`  \n"
+        f"**Claims parsed:** {len(breadth_flagged_claims)}  \n"
+        f"**Claims total:** {breadth_claim_evidence_trace.get('claims_total', 0)} "
+        f"(succeeded: {breadth_claim_evidence_trace.get('claims_succeeded', 0)}, "
+        f"failed: {breadth_claim_evidence_trace.get('claims_failed', 0)})\n\n"
+        f"## Evidence text\n\n"
+        + (f"{breadth_claim_evidence_text}\n"
+           if breadth_claim_evidence_text else "_(none)_\n")
+    ))
 
     # --- Step 5: Parallel revisers (mirror contract) ---
     revise_system = _assemble_step_prompt(
