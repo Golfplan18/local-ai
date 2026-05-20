@@ -28,6 +28,12 @@ This is the **minimal viable** server install — it gets MSI's publication cycl
 - An OpenRouter API key (`sk-or-...`); optionally an Anthropic API key.
 - A clean directory at `~/ora/` (the install clones into the cwd if you run from the parent dir — see below).
 
+### Optional: Artificial Analysis API key
+
+This server installer uses **hard-coded slot picks** (set in `scripts/install_server_config.py`'s `SERVER_SLOT_ASSIGNMENTS`), so it does **not** require an Artificial Analysis API key — slot assignments are baked in rather than auto-populated.
+
+The Mac-side `scripts/install.py` does run the auto-populate engine and **does** need an `AA_API_KEY` to get sensible picks. Without it, the auto-populate algorithm falls through to pure cost-sort and picks the cheapest model per slot regardless of capability. If you ever switch this server install to auto-populate (e.g. when the full Chunk 7 Organization profile lands), you'll need to sign up at <https://artificialanalysis.ai/> and set `AA_API_KEY` in `~/.config/ora-server.env`.
+
 ## Install
 
 ```bash

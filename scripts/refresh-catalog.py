@@ -89,8 +89,21 @@ def fetch_artificial_analysis() -> dict | None:
     api_key = os.environ.get("AA_API_KEY", "").strip()
     if not api_key:
         print(
-            "[refresh-catalog] AA_API_KEY not set; skipping Artificial Analysis "
-            "enrichment. Catalog will ship with OpenRouter pricing only.",
+            "\n"
+            "[refresh-catalog] ⚠ AA_API_KEY not set; skipping Artificial Analysis\n"
+            "                   intelligence-index enrichment.\n"
+            "\n"
+            "  Catalog will ship with OpenRouter pricing only — no\n"
+            "  intelligence_index field on entries. Downstream consequence:\n"
+            "  auto-populate-configuration.py has no capability signal to rank\n"
+            "  against, falls through to pure cost-sort, and picks the CHEAPEST\n"
+            "  model per slot regardless of how capable it actually is.\n"
+            "\n"
+            "  To fix: sign up at https://artificialanalysis.ai/ (free tier\n"
+            "  available), grab an API key, then re-run with it set:\n"
+            "    export AA_API_KEY=aa_xxxxxxxxxxxxxxxxxxxx\n"
+            "    python3 scripts/refresh-catalog.py\n"
+            "    python3 scripts/auto-populate-configuration.py optimum user-pipeline\n",
             file=sys.stderr,
         )
         return None

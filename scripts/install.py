@@ -261,7 +261,55 @@ def step_openrouter_setup(state: dict, dry_run: bool) -> bool:
 
 
 def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
-    log("Step 4/6: Catalog refresh (OpenRouter + optional Artificial Analysis)")
+    log("Step 4/6: Catalog refresh (OpenRouter + Artificial Analysis)")
+    log("")
+
+    # Artificial Analysis intelligence-index check.
+    #
+    # AA enriches the model catalog with intelligence rankings. The
+    # auto-populate engine (Step 5) walks the catalog with a Pareto +
+    # percentage-floor + cost-sort algorithm. With no intelligence_index
+    # field on catalog entries, every model scores the same on
+    # "capability" and the algorithm falls through to pure cost sort —
+    # meaning auto-populate will pick the cheapest model per slot
+    # regardless of how capable it actually is. That is almost certainly
+    # not what you want for production pipelines.
+    aa_key = os.environ.get("AA_API_KEY", "").strip()
+    if aa_key:
+        log("  ✓ AA_API_KEY found in environment")
+    else:
+        log("  ⚠ AA_API_KEY is NOT set in your environment.")
+        log("")
+        log("    Artificial Analysis (https://artificialanalysis.ai/) provides")
+        log("    the intelligence-index rankings that Ora's auto-populate engine")
+        log("    uses to rank models within their size bucket. Without it:")
+        log("")
+        log("      - Catalog entries carry no intelligence_index field.")
+        log("      - The Pareto + floor + cost-sort algorithm has no capability")
+        log("        signal — every model scores the same on quality.")
+        log("      - Auto-populate (Step 5) falls through to pure cost-sort and")
+        log("        picks the CHEAPEST model per slot regardless of how capable")
+        log("        it actually is.")
+        log("")
+        log("    To fix: sign up at https://artificialanalysis.ai/ (free tier")
+        log("    available), grab an API key, and set it in your environment:")
+        log("")
+        log("      export AA_API_KEY=aa_xxxxxxxxxxxxxxxxxxxx")
+        log("")
+        log("    Then re-run install.py — or, if you skip now, run")
+        log("    'python3 scripts/refresh-catalog.py' once you have the key,")
+        log("    followed by 'python3 scripts/auto-populate-configuration.py")
+        log("    optimum user-pipeline' to refresh the slot picks.")
+        log("")
+        if not dry_run:
+            try:
+                input("  Press Enter to continue without AA enrichment (Ctrl-C to abort): ")
+            except (KeyboardInterrupt, EOFError):
+                log("")
+                log("  Aborted at AA-key check. Re-run after setting AA_API_KEY.")
+                return False
+            log("")
+
     if dry_run:
         log("  [dry-run] would run scripts/refresh-catalog.py")
         return True
