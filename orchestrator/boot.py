@@ -7854,15 +7854,30 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             {"role": "user", "content": cleaned_prompt},
         ]
         contingencies_fired.append("gear3-single-model-analyst-only-fallback")
-        single_result = _run_model_with_tools(messages, endpoint, images=images)
+        # Chunk G (2026-05-20): wrap in the retry-once layer so a
+        # transient flake on the sole configured endpoint gets a
+        # second attempt. Fallback-chain advancement is a no-op here
+        # (only one endpoint exists), but the retry alone recovers
+        # the common transient-flake case. Mirrors the silent-failure
+        # discipline applied to the dual-endpoint path in Chunk B'.
+        single_result, single_ok, single_reason = _call_with_retry(
+            messages, endpoint, "analyst",
+            min_chars=200, retry_hint=None, images=images,
+            slot=slot, gear=3, config_name=config_name,
+        )
+        step_health["step3-single-analyst-fallback"] = (single_ok, single_reason)
         _trace_step_g3("step3-single-analyst-fallback", {
             "system_prompt": system,
             "user_message": cleaned_prompt,
             "raw_response": single_result,
+            "ok": single_ok,
+            "reason": single_reason,
             "fallback_reason": "only_one_endpoint_configured",
             "slot": slot,
         }, markdown=(
-            f"# Gear 3 — single-model fallback ({slot})\n\n{single_result}\n"
+            f"# Gear 3 — single-model fallback ({slot})\n\n"
+            f"**Health:** {'ok' if single_ok else 'DEGRADED'} — {single_reason}\n\n"
+            f"{single_result}\n"
         ))
         if PIPELINE_TRACE_AVAILABLE and trace_dir:
             pipeline_trace.write_step_health(
