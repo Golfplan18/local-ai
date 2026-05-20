@@ -206,6 +206,83 @@ class TestCallWithRetryUsesFallback(unittest.TestCase):
 
         self.assertEqual(endpoint_seen, ["only-model", "only-model"])
 
+    def test_endpoint_swap_drops_regenerate_hint(self):
+        # Chunk I (2026-05-20): when the retry attempt swaps to a
+        # different endpoint, the "REGENERATE: the prior attempt was
+        # unhealthy..." hint should NOT be appended. A different model
+        # has no prior attempt to regenerate from — sending the task
+        # fresh is cleaner. Same-endpoint retry still gets the hint.
+        primary = _ep("qwen/qwen3.6-plus", "qwen/qwen3.6-plus")
+        fallback = _ep("moonshotai/kimi-k2.6", "moonshotai/kimi-k2.6")
+
+        retry_user_content_seen = []
+
+        def fake_call(messages, endpoint, images=None):
+            user_msg = next(
+                (m["content"] for m in messages if m["role"] == "user"),
+                "",
+            )
+            retry_user_content_seen.append((endpoint.get("name"), user_msg))
+            return "" if endpoint.get("name") == "qwen/qwen3.6-plus" else "All checks pass.\nVERIFIED"
+
+        with patch("boot._resolve_fallback_endpoint", return_value=fallback), \
+             patch("boot._run_model_with_tools", side_effect=fake_call):
+            _call_with_retry(
+                self._messages(), primary, "verifier",
+                min_chars=20, retry_hint=None, images=None,
+                slot="depth", gear=4, config_name="user-pipeline",
+            )
+
+        # First attempt — original task, no hint.
+        first_name, first_msg = retry_user_content_seen[0]
+        self.assertEqual(first_name, "qwen/qwen3.6-plus")
+        self.assertNotIn("REGENERATE", first_msg)
+        # Retry attempt — swapped endpoint, hint must be suppressed.
+        retry_name, retry_msg = retry_user_content_seen[1]
+        self.assertEqual(retry_name, "moonshotai/kimi-k2.6")
+        self.assertNotIn(
+            "REGENERATE", retry_msg,
+            "endpoint-swap retry should not carry the regenerate hint",
+        )
+        self.assertEqual(
+            retry_msg, "task",
+            "endpoint-swap retry should send the original task verbatim",
+        )
+
+    def test_same_endpoint_retry_keeps_regenerate_hint(self):
+        # Mirror test: when retry hits the same endpoint (no fallback
+        # available), the regenerate hint must still land — otherwise
+        # the second attempt has no signal that the prior attempt
+        # failed for a specific reason.
+        primary = _ep("qwen/qwen3.6-plus", "qwen/qwen3.6-plus")
+
+        retry_user_content_seen = []
+
+        def fake_call(messages, endpoint, images=None):
+            user_msg = next(
+                (m["content"] for m in messages if m["role"] == "user"),
+                "",
+            )
+            retry_user_content_seen.append(user_msg)
+            return ""
+
+        # No fallback available → same endpoint on retry.
+        with patch("boot._resolve_fallback_endpoint", return_value=None), \
+             patch("boot._run_model_with_tools", side_effect=fake_call):
+            _call_with_retry(
+                self._messages(), primary, "verifier",
+                min_chars=20, retry_hint=None, images=None,
+                slot="depth", gear=4, config_name="user-pipeline",
+            )
+
+        # First attempt — clean task.
+        self.assertNotIn("REGENERATE", retry_user_content_seen[0])
+        # Retry attempt — hint appended.
+        self.assertIn(
+            "REGENERATE", retry_user_content_seen[1],
+            "same-endpoint retry should still carry the regenerate hint",
+        )
+
     def test_healthy_first_attempt_skips_fallback_resolution(self):
         # When the first attempt is healthy, the retry never fires, so
         # the fallback helper should not even be consulted. Saves a

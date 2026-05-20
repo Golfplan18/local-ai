@@ -446,6 +446,16 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
             ep = router.resolve_post_analysis_slot("consolidation", context, config_name=config_name)
         elif slot in ("evaluator", "verification"):
             ep = router.resolve_post_analysis_slot("verification", context, config_name=config_name)
+        elif slot in ("formatter", "formatting"):
+            # Chunk H (2026-05-20): formatter is a post_analysis slot in
+            # named configurations (user-pipeline.json declares
+            # ``post_analysis.formatter`` with its own primary/fallback
+            # chain). Before this branch existed, ``get_slot_endpoint``
+            # silently fell through to ``step1_cleanup`` — wrong slot
+            # entirely. The router's ``_slot_to_cell_path`` already
+            # handles ``formatter`` → ``["post_analysis", "formatter"]``;
+            # this just wires the v1 caller through.
+            ep = router.resolve_post_analysis_slot("formatter", context, config_name=config_name)
         elif slot in ("depth", "breadth"):
             # For direct slot lookups outside gear execution, resolve at Gear 3
             # (Gear 4 resolution happens through resolve_gear4_endpoints)
@@ -7636,35 +7646,42 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     if ok:
         return text, True, reason
 
-    # One retry with explicit regenerate instruction
-    hint = retry_hint or (
-        "REGENERATE: the prior attempt was unhealthy (reason: "
-        f"{reason}). Re-do the step from scratch. Respond inline in this "
-        "chat — do not ask for clarification, do not create files, and do "
-        "not return less than a substantive answer."
-    )
-    retry_msgs = list(messages)
-    # Append hint to the last user message (or add a fresh one)
-    if retry_msgs and retry_msgs[-1].get("role") == "user":
-        retry_msgs[-1] = {
-            **retry_msgs[-1],
-            "content": retry_msgs[-1]["content"] + "\n\n---\n\n" + hint,
-        }
-    else:
-        retry_msgs.append({"role": "user", "content": hint})
-
     # Chunk B: advance the slot's fallback chain on retry when slot+gear
     # are provided. When the helper returns ``None`` (no fallback, router
     # unavailable, etc.), we silently reuse the original endpoint —
-    # identical to the pre-Chunk-B path. The trace's existing retry-error
-    # markers ([<step> retry error: ...]) still apply.
+    # identical to the pre-Chunk-B path. Resolved BEFORE the hint so we
+    # can suppress the regenerate framing when the endpoint swapped.
     target_endpoint = endpoint
+    endpoint_swapped = False
     if slot is not None and gear is not None:
         fallback = _resolve_fallback_endpoint(
             slot, gear, endpoint, config_name=config_name,
         )
         if fallback is not None:
             target_endpoint = fallback
+            endpoint_swapped = True
+
+    retry_msgs = list(messages)
+    # Chunk I (2026-05-20): only append the regenerate hint when the
+    # retry is hitting the same model. A different model has no "prior
+    # attempt" to regenerate from — sending it the same task fresh is
+    # cleaner. The retry caller still supplies an explicit retry_hint
+    # for cases where directive guidance is wanted regardless of swap.
+    if not endpoint_swapped or retry_hint is not None:
+        hint = retry_hint or (
+            "REGENERATE: the prior attempt was unhealthy (reason: "
+            f"{reason}). Re-do the step from scratch. Respond inline in this "
+            "chat — do not ask for clarification, do not create files, and do "
+            "not return less than a substantive answer."
+        )
+        # Append hint to the last user message (or add a fresh one)
+        if retry_msgs and retry_msgs[-1].get("role") == "user":
+            retry_msgs[-1] = {
+                **retry_msgs[-1],
+                "content": retry_msgs[-1]["content"] + "\n\n---\n\n" + hint,
+            }
+        else:
+            retry_msgs.append({"role": "user", "content": hint})
 
     try:
         text2 = _run_model_with_tools(retry_msgs, target_endpoint, images=images)
@@ -7839,6 +7856,20 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     contingencies_fired: list[str] = []
     step_health: dict[str, tuple[bool, str]] = {}
 
+    def _record(name: str, ok: bool, reason: str):
+        """Gear 3's mirror of run_gear4's _record helper (Chunk J 2026-05-20).
+
+        Centralises step_health bookkeeping + the per-step stdout
+        observability line. Before this, Gear 3 assigned step_health
+        entries directly and skipped the print — a small consistency
+        papercut with run_gear4.
+        """
+        step_health[name] = (ok, reason)
+        try:
+            print(f"[gear3-step] {name}: {'ok' if ok else 'DEGRADED'} ({reason})", flush=True)
+        except Exception:
+            pass
+
     def _trace_step_g3(step_name: str, payload: dict, markdown: str | None = None):
         if PIPELINE_TRACE_AVAILABLE and trace_dir:
             pipeline_trace.write_step(trace_dir, step_name, payload, markdown)
@@ -7865,7 +7896,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             min_chars=200, retry_hint=None, images=images,
             slot=slot, gear=3, config_name=config_name,
         )
-        step_health["step3-single-analyst-fallback"] = (single_ok, single_reason)
+        _record("step3-single-analyst-fallback", single_ok, single_reason)
         _trace_step_g3("step3-single-analyst-fallback", {
             "system_prompt": system,
             "user_message": cleaned_prompt,
@@ -7906,7 +7937,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         context_pkg=context_pkg,
         slot="depth", gear=3, config_name=config_name,
     )
-    step_health["step3-depth"] = (depth_ok, depth_reason)
+    _record("step3-depth", depth_ok, depth_reason)
     _trace_step_g3("step3-depth", {
         "system_prompt": depth_system,
         "user_message": cleaned_prompt,
@@ -7941,7 +7972,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         context_pkg=context_pkg,
         slot="breadth", gear=3, config_name=config_name,
     )
-    step_health["step4-eval"] = (eval_ok, eval_reason)
+    _record("step4-eval", eval_ok, eval_reason)
     # Preserve the raw response for the trace BEFORE the empty-eval
     # contingency rewrite, so audits can distinguish what the model
     # actually returned from the [no evaluator feedback...] placeholder.
@@ -8027,7 +8058,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         context_pkg=context_pkg,
         slot="depth", gear=3, config_name=config_name,
     )
-    step_health["step5-revised"] = (rev_ok, rev_reason)
+    _record("step5-revised", rev_ok, rev_reason)
     raw_revise_response = revised_analysis
     # Contingency mirroring Gear 4: if reviser is degraded, fall back to
     # the original analyst output so the verifier sees real content
@@ -9028,12 +9059,24 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         {"role": "system", "content": consolidate_system},
         {"role": "user", "content": consolidate_user_message},
     ]
+    # Chunk H (2026-05-20): dispatch the consolidator against the
+    # post_analysis.consolidation slot the named configuration declares,
+    # rather than reusing the Gear 4 breadth endpoint. The two slots
+    # commonly resolve to the same model today, but the config-side
+    # distinction (cheap consolidator + expensive analysts) becomes
+    # load-bearing the moment a publisher takes advantage of it. Fall
+    # back to breadth_endpoint when the named-config path doesn't
+    # resolve a consolidation endpoint (legacy bucket configs).
+    consolidator_endpoint = (
+        get_slot_endpoint(config, "consolidation", config_name=config_name)
+        or breadth_endpoint
+    )
     consolidated, consol_ok, consol_reason = _call_with_supplement(
-        consolidate_messages, breadth_endpoint, "consolidator",
+        consolidate_messages, consolidator_endpoint, "consolidator",
         min_chars=300, retry_hint=None,
-        images=_images_for_endpoint(images, breadth_endpoint),
+        images=_images_for_endpoint(images, consolidator_endpoint),
         context_pkg=context_pkg,
-        slot="breadth", gear=4, config_name=config_name,
+        slot="consolidation", gear=4, config_name=config_name,
     )
     _record("step7-consolidated", consol_ok, consol_reason)
 
@@ -9055,7 +9098,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "raw_response": consolidated,
         "ok": consol_ok,
         "reason": consol_reason,
-        "endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
+        "endpoint": consolidator_endpoint.get("name") if isinstance(consolidator_endpoint, dict) else str(consolidator_endpoint),
     }, markdown=(
         "# Step 7 — Consolidated corpus\n\n"
         f"**Health:** {'ok' if consol_ok else 'DEGRADED'} — {consol_reason}\n\n"
@@ -9076,11 +9119,21 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # scaffolding in f-format.md; per-mode placement spec in
     # `## OUTPUT FORMAT GUIDANCE` (empty during Phase 2b migration —
     # formatter defaults to flowing prose).
-    # Install Chunk 6: capability gate. The formatter step uses
-    # depth_endpoint; if that endpoint is text-only, suppress the mode's
-    # annotated_image / Path B emission guidance so it doesn't hallucinate
-    # image-relative coordinates it can't see.
-    formatter_vision_capable = vision_capable_for_endpoint(depth_endpoint) if depth_endpoint else True
+    # Chunk H (2026-05-20): dispatch the formatter against the
+    # post_analysis.formatter slot the named configuration declares,
+    # rather than reusing the Gear 4 depth endpoint. Fall back to
+    # depth_endpoint when the named-config path doesn't resolve a
+    # formatter endpoint (legacy bucket configs). The capability gate
+    # below reads from whichever endpoint resolved.
+    formatter_endpoint = (
+        get_slot_endpoint(config, "formatter", config_name=config_name)
+        or depth_endpoint
+    )
+    # Install Chunk 6: capability gate. The formatter step uses the
+    # resolved formatter endpoint; if that endpoint is text-only,
+    # suppress the mode's annotated_image / Path B emission guidance
+    # so it doesn't hallucinate image-relative coordinates it can't see.
+    formatter_vision_capable = vision_capable_for_endpoint(formatter_endpoint) if formatter_endpoint else True
     format_system = _assemble_step_prompt(
         context_pkg, slot="depth", step="formatter",
         framework_name="f-format.md",
@@ -9104,9 +9157,9 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         {"role": "user", "content": format_user_message},
     ]
     formatted, format_ok, format_reason = _call_with_retry(
-        format_messages, depth_endpoint, "formatter",
+        format_messages, formatter_endpoint, "formatter",
         min_chars=300, retry_hint=None, images=None,
-        slot="depth", gear=4, config_name=config_name,
+        slot="formatter", gear=4, config_name=config_name,
     )
     _record("step8-formatted", format_ok, format_reason)
 
@@ -9128,7 +9181,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "raw_response": formatted,
         "ok": format_ok,
         "reason": format_reason,
-        "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+        "endpoint": formatter_endpoint.get("name") if isinstance(formatter_endpoint, dict) else str(formatter_endpoint),
     }, markdown=(
         "# Step 8 — Formatted deliverable\n\n"
         f"**Health:** {'ok' if format_ok else 'DEGRADED'} — {format_reason}\n\n"
