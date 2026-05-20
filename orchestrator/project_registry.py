@@ -63,6 +63,13 @@ _KNOWN_INPUT_TYPES = frozenset({
 })
 _KNOWN_EXECUTION_PATTERNS = frozenset({"sync", "async"})
 
+# Theme id (Plugin Convention §13): same shape as the V3 server's
+# `_v3_slugify` output. Lowercase, digits, hyphens, underscores; must
+# start with a letter or digit. `default` is reserved for the
+# Ora-shipped baseline and rejected at registration.
+_THEME_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+_RESERVED_THEME_IDS = frozenset({"default"})
+
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -150,6 +157,24 @@ class ProjectCapabilitySlot:
 
 
 @dataclass
+class ProjectTheme:
+    """A chat-UI theme declared by a project (Plugin Convention §13).
+
+    The project ships theme assets (``theme.css`` + ``manifest.json``) at
+    ``<project_root>/<directory>/``. The V3 server's ``_v3_read_index``
+    layers project themes on top of the core themes index at server
+    startup; ``/api/v3-themes/list`` surfaces them with the synthesized
+    annotation ``origin = "project:<nexus>"``. Theme assets are served
+    at request time from the project's directory via a dedicated route
+    (``/themes/project/<nexus>/<filename>``) — no copy or symlink dance
+    at startup; the project's directory is the source of truth.
+    """
+    id: str
+    name: str
+    directory: str
+
+
+@dataclass
 class Project:
     """A registered project — the in-memory representation of an ora-project.json."""
     nexus: str
@@ -164,6 +189,7 @@ class Project:
     workflow_specs: list[str] = field(default_factory=list)
     chromadb_collections: list[str] = field(default_factory=list)
     capability_slots: dict[str, ProjectCapabilitySlot] = field(default_factory=dict)
+    themes: dict[str, ProjectTheme] = field(default_factory=dict)
 
     def resolve_path(self, relative: str) -> Path:
         """Resolve a path relative to the project root. Absolute paths pass through."""
@@ -370,6 +396,92 @@ def _parse_capability_slots(
     return slots
 
 
+def _parse_one_theme(
+    entry: Any, idx: int, manifest_path: Path, project_root: Path,
+) -> ProjectTheme:
+    """Validate one ``themes`` entry against Plugin Convention §13.
+
+    Raises ManifestError on any problem so the caller can skip just this
+    entry without affecting the rest of the manifest. Asset-existence is
+    checked here (the entry is only valid if its directory exists and
+    contains both ``theme.css`` and ``manifest.json``).
+    """
+    ctx = f"themes[{idx}]"
+    if not isinstance(entry, dict):
+        raise ManifestError(f"{ctx} must be an object")
+    tid = entry.get("id")
+    if not isinstance(tid, str) or not tid:
+        raise ManifestError(f"{ctx} requires 'id' (non-empty string)")
+    if not _THEME_ID_RE.match(tid):
+        raise ManifestError(
+            f"{ctx} 'id' must match {_THEME_ID_RE.pattern}; got {tid!r}"
+        )
+    if tid in _RESERVED_THEME_IDS:
+        raise ManifestError(
+            f"{ctx} 'id' {tid!r} is reserved for the Ora-shipped baseline "
+            f"and cannot be declared by a project"
+        )
+    ctx = f"{ctx} ({tid!r})"
+
+    tname = entry.get("name")
+    if not isinstance(tname, str) or not tname:
+        raise ManifestError(f"{ctx}: 'name' is required and must be a non-empty string")
+
+    directory = entry.get("directory")
+    if not isinstance(directory, str) or not directory:
+        raise ManifestError(f"{ctx}: 'directory' is required and must be a non-empty string")
+    if Path(directory).is_absolute():
+        raise ManifestError(
+            f"{ctx}: 'directory' must be relative to the project root; got absolute path {directory!r}"
+        )
+
+    # Asset-existence check: the directory must exist and contain both
+    # theme.css and manifest.json. Resolved against project_root.
+    asset_dir = (project_root / directory).resolve()
+    if not asset_dir.is_dir():
+        raise ManifestError(
+            f"{ctx}: 'directory' {directory!r} does not resolve to an existing directory "
+            f"under the project root (looked at {asset_dir})"
+        )
+    for required in ("theme.css", "manifest.json"):
+        if not (asset_dir / required).is_file():
+            raise ManifestError(
+                f"{ctx}: theme assets incomplete — missing {required} in {asset_dir}"
+            )
+
+    return ProjectTheme(id=tid, name=tname, directory=directory)
+
+
+def _parse_themes(
+    raw: Any, manifest_path: Path, project_root: Path,
+) -> dict[str, ProjectTheme]:
+    """Parse the ``themes`` block (Plugin Convention §13).
+
+    Top-level wrong type raises ManifestError. Individual malformed
+    entries are skipped with a printed diagnostic per §13's
+    graceful-degradation rule.
+    """
+    if raw is None:
+        return {}
+    if not isinstance(raw, list):
+        raise ManifestError(f"{manifest_path}: 'themes' must be an array")
+    themes: dict[str, ProjectTheme] = {}
+    for i, entry in enumerate(raw):
+        try:
+            theme = _parse_one_theme(entry, i, manifest_path, project_root)
+        except ManifestError as e:
+            print(f"[project_registry] Skipping theme in {manifest_path}: {e}")
+            continue
+        if theme.id in themes:
+            print(
+                f"[project_registry] Skipping duplicate theme id "
+                f"{theme.id!r} in {manifest_path}"
+            )
+            continue
+        themes[theme.id] = theme
+    return themes
+
+
 def _parse_str_list(raw: Any, field_name: str, manifest_path: Path) -> list[str]:
     if raw is None:
         return []
@@ -414,6 +526,7 @@ def _parse_project_from_manifest(manifest_path: Path, root: Path) -> Project:
         capability_slots=_parse_capability_slots(
             data.get("capability_slots"), manifest_path,
         ),
+        themes=_parse_themes(data.get("themes"), manifest_path, root.resolve()),
     )
 
 

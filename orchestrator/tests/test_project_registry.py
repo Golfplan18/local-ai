@@ -726,5 +726,240 @@ class TestSlashCommandInvocation(unittest.TestCase):
         self.assertIsNone(p)
 
 
+class TestThemeParsing(unittest.TestCase):
+    """Tests for Plugin Convention §13 — project-defined themes."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="proj_reg_theme_test_")
+        self.root = Path(self.tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _write_manifest(self, data):
+        (self.root / pr.MANIFEST_FILENAME).write_text(json.dumps(data), encoding="utf-8")
+
+    def _write_theme_assets(self, directory, *, include_css=True, include_manifest=True):
+        """Create a theme assets directory under self.root with the
+        files §13's validation requires (theme.css + manifest.json).
+        Either file can be omitted to test asset-incomplete behavior.
+        """
+        asset_dir = self.root / directory
+        asset_dir.mkdir(parents=True, exist_ok=True)
+        if include_css:
+            (asset_dir / "theme.css").write_text("/* test theme */", encoding="utf-8")
+        if include_manifest:
+            (asset_dir / "manifest.json").write_text(
+                json.dumps({"name": "Test Theme", "version": "1.0.0"}),
+                encoding="utf-8",
+            )
+        return asset_dir
+
+    def _load_quietly(self):
+        import io
+        from contextlib import redirect_stdout
+        with redirect_stdout(io.StringIO()):
+            return pr.load_project_at(self.root)
+
+    # --- Happy paths ----------------------------------------------------
+
+    def test_no_themes_field(self):
+        self._write_manifest({"nexus": "test", "name": "Test"})
+        p = pr.load_project_at(self.root)
+        self.assertEqual(p.themes, {})
+
+    def test_minimal_theme(self):
+        self._write_theme_assets("themes/main-street-independent")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {
+                    "id": "main-street-independent",
+                    "name": "Main Street Independent",
+                    "directory": "themes/main-street-independent",
+                }
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        self.assertIn("main-street-independent", p.themes)
+        theme = p.themes["main-street-independent"]
+        self.assertIsInstance(theme, pr.ProjectTheme)
+        self.assertEqual(theme.name, "Main Street Independent")
+        self.assertEqual(theme.directory, "themes/main-street-independent")
+
+    def test_multiple_themes(self):
+        self._write_theme_assets("themes/alpha")
+        self._write_theme_assets("themes/beta")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "alpha", "name": "Alpha", "directory": "themes/alpha"},
+                {"id": "beta", "name": "Beta", "directory": "themes/beta"},
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        self.assertEqual(set(p.themes.keys()), {"alpha", "beta"})
+
+    # --- Top-level validation -------------------------------------------
+
+    def test_themes_top_level_not_array_raises(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": "not-an-array",
+        })
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
+    # --- Per-entry validation (graceful skip) ---------------------------
+
+    def test_entry_not_object_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": ["not-an-object"],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_missing_id_skipped(self):
+        self._write_theme_assets("themes/anon")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [{"name": "Anon", "directory": "themes/anon"}],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_invalid_id_regex_skipped(self):
+        self._write_theme_assets("themes/anon")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "Has-Capitals", "name": "Anon", "directory": "themes/anon"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_reserved_default_id_skipped(self):
+        self._write_theme_assets("themes/default")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "default", "name": "Default Override Attempt",
+                 "directory": "themes/default"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_missing_name_skipped(self):
+        self._write_theme_assets("themes/alpha")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [{"id": "alpha", "directory": "themes/alpha"}],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_missing_directory_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [{"id": "alpha", "name": "Alpha"}],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_absolute_directory_rejected(self):
+        # Even if the absolute path exists, the manifest must use a
+        # project-root-relative directory.
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "alpha", "name": "Alpha", "directory": "/absolute/path"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_missing_asset_directory_skipped(self):
+        # directory looks valid but doesn't exist on disk
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "alpha", "name": "Alpha", "directory": "themes/nonexistent"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_missing_theme_css_skipped(self):
+        self._write_theme_assets("themes/alpha", include_css=False)
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "alpha", "name": "Alpha", "directory": "themes/alpha"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    def test_missing_manifest_json_skipped(self):
+        self._write_theme_assets("themes/alpha", include_manifest=False)
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "alpha", "name": "Alpha", "directory": "themes/alpha"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+
+    # --- Duplicate handling ---------------------------------------------
+
+    def test_duplicate_id_keeps_first(self):
+        self._write_theme_assets("themes/alpha")
+        self._write_theme_assets("themes/alpha-too")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "alpha", "name": "First", "directory": "themes/alpha"},
+                {"id": "alpha", "name": "Second", "directory": "themes/alpha-too"},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(set(p.themes.keys()), {"alpha"})
+        self.assertEqual(p.themes["alpha"].name, "First")
+
+    # --- Graceful degradation -------------------------------------------
+
+    def test_malformed_one_skipped_others_kept(self):
+        self._write_theme_assets("themes/good")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "themes": [
+                {"id": "good", "name": "Good", "directory": "themes/good"},
+                {"id": "bad", "name": "Bad", "directory": "themes/nonexistent"},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(set(p.themes.keys()), {"good"})
+
+    def test_theme_parse_error_doesnt_break_other_manifest_fields(self):
+        # Tools and themes are independent; a bad theme entry should not
+        # prevent tools from loading.
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "tools": [
+                {"name": "my-tool", "command": ["python3", "tools/x.py"]}
+            ],
+            "themes": [
+                {"id": "bad", "name": "Bad", "directory": "themes/nonexistent"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.themes, {})
+        self.assertIn("my-tool", p.tools)
+
+
 if __name__ == "__main__":
     unittest.main()
