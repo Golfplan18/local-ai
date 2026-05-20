@@ -364,7 +364,17 @@ class Router:
                     for slot, ep in assignments.items()
                 }
 
-                # Check parallel safety for Gear 4
+                # Gear-4 parallel-safety UI hint. Since the 2026-05-19
+                # concurrency overhaul this no longer gates control flow
+                # — run_gear4 always submits both analysts in parallel and
+                # the per-machine MLX mutex (mlx_mutex.acquire inside
+                # call_model) serializes them on same-machine all-local
+                # setups. The flag is kept so the chat UI can surface
+                # "Gear 4 (sequential, ~2x runtime)" when both endpoints
+                # land on the same local machine. The prior
+                # ORA_FORCE_GEAR4_PARALLEL env-var escape hatch became
+                # redundant — the new default is "always run Gear 4 in
+                # parallel; mutex handles serialization when needed".
                 if gear == 4:
                     depth = assignments.get("depth", {})
                     breadth = assignments.get("breadth", {})
@@ -372,13 +382,6 @@ class Router:
                                   breadth.get("type") == "local")
                     same_machine = (depth.get("machine") == breadth.get("machine"))
                     result.parallel_safe = not (both_local and same_machine)
-                    # Verification escape hatch: ORA_FORCE_GEAR4_PARALLEL=1
-                    # bypasses the same-machine MLX block. Use only when
-                    # you've confirmed the two local models fit in RAM
-                    # simultaneously (e.g. M4 Max 128GB with the 70/72B pair).
-                    import os as _os
-                    if _os.environ.get("ORA_FORCE_GEAR4_PARALLEL") == "1":
-                        result.parallel_safe = True
 
                 # Generate warnings
                 result.warnings = self._generate_warnings(assignments, gear, context)

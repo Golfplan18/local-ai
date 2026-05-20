@@ -7986,8 +7986,13 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     if depth_endpoint is None or breadth_endpoint is None:
         return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
 
-    if not parallel_safe:
-        return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
+    # parallel_safe is now a UI hint, not a control-flow gate. When False
+    # (both analysts resolve to local endpoints on the same machine), the
+    # ThreadPoolExecutor below still submits both calls — the per-machine
+    # MLX mutex inside call_model serializes them naturally. Mode fidelity
+    # is preserved at roughly 2x wall-clock vs. true parallel. The prior
+    # silent fall-back to Gear 3 (which dropped half the mode's adversarial
+    # structure) is retired as of the 2026-05-19 concurrency overhaul.
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
     trace_dir = context_pkg.get("trace_dir")
