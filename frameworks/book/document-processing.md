@@ -98,7 +98,7 @@ project-specific tagging).
 - **`calibration_profile`** (string, default: `historical-archive`) — Which calibration profile to use (see CALIBRATION PROTOCOL below).
 - **`auto_reject_log_path`** (string, default: `${ORA_HOME}/data/processing-manifest.jsonl`) — Where auto-rejected notes get logged. Project-specific runs often route this to a project-scoped log file.
 - **`working_dir_pattern`** (string, default: `vault/temp/processing-run-${date}/${dossier_stem}/`) — Template for the per-run working directory (intermediate markdown, signal maps, candidate-note staging).
-- **`hcp_manifest_dir_pattern`** (string or null, default: null) — When set, structural-context manifests land at the configured pattern (e.g., `Sources/MSI Research/_manifests/`); otherwise they land alongside the source document.
+- **`hcp_manifest_dir_pattern`** (string, default: `${ORA_HOME}/data/extraction-manifests/${dossier_stem}-manifest.yaml`) — Pattern for the structural-context manifest path. The `${ORA_HOME}` and `${dossier_stem}` markers are framework-runtime template variables resolved at processing time (not §14 config substitutions). Project-specific runs typically point this at a vault-discoverable, version-controlled location alongside the source dossiers themselves.
 - **`search_paths`** (list of strings, default: `[]`) — Additional vault search paths for bare-filename reference resolution. The framework walks these in declaration order before the vault root.
 
 The following extension points may be filled by a project overlay
@@ -442,34 +442,36 @@ For each long-form source processed, the framework writes a per-document structu
 
 ```yaml
 <<<STRUCTURAL_MANIFEST>>>
-source_file: "Reference — MSI Mary Magdalena Voice Library.md"
+source_file: "[source-document-filename]"
 source_format: md
-total_sections: 12
-extraction_date: 2026-05-08
-source_voice: msi-pen-name-mary-magdalena
+total_sections: [count]
+extraction_date: [YYYY-MM-DD]
+# Optional project-bound provenance properties — included when the run-time
+# configuration declares them (see CONFIGURATION INTERFACE > voice/dossier
+# property keys).
 
 structural_index:
-  level_1_thesis: "Mary Magdalena's voice substrate is the Gnostic-apocryphal Mary corpus, drawn on for the Seal movement of four-movement columns..."
+  level_1_thesis: "[document-level thesis statement]"
   level_2_parts:
-    - title: "Part 1 — Gnostic-apocryphal Mary corpus"
-      argument: "..."
+    - title: "Part 1 — [section title]"
+      argument: "[section-level argument]"
       sections:
-        - title: "§1.1 Gospel of Mary"
-          claim: "..."
-        - title: "§1.2 Pistis Sophia"
-          claim: "..."
+        - title: "§1.1 [subsection title]"
+          claim: "[subsection-level claim]"
+        - title: "§1.2 [subsection title]"
+          claim: "[subsection-level claim]"
 
 extraction_map:
-  - section: "Part 1 / §1.1 Gospel of Mary"
-    notes_extracted: 4
+  - section: "Part 1 / §1.1 [subsection title]"
+    notes_extracted: [count]
     note_ids:
-      - "Mary Magdalena teaches the disciples after the Resurrection per the Gospel of Mary"
-      - "Peter's challenge to Mary's authority surfaces the canonical-vs-Gnostic gender tension"
+      - "[atomic-note declarative-claim title]"
+      - "[atomic-note declarative-claim title]"
       - "..."
 <<<MANIFEST_END>>>
 ```
 
-**Manifest location.** For MSI runs, manifests write to `Sources/MSI Research/_manifests/[dossier-stem]-manifest.yaml` (vault-discoverable, version-controlled, alongside the dossiers themselves). For general (non-MSI) long-form runs, manifests write to `~/ora/data/extraction-manifests/[dossier-stem]-manifest.yaml`.
+**Manifest location.** Manifests write to the configured location pattern (`${config.hcp_manifest_dir_pattern}`). The `${dossier_stem}` template variable inside that pattern resolves to the source document's filename stem at processing time. Project-bound runs typically point this at a vault-discoverable, version-controlled location alongside the source dossiers themselves.
 
 ---
 
