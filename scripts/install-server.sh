@@ -150,6 +150,11 @@ DEPS=(
   anthropic
   openai
   google-generativeai
+  keyring        # silences "Tool import failed: No module named 'keyring'"
+                 # from boot.py's tool loader; in normal server operation
+                 # API keys come from env (~/.config/ora-server.env), so
+                 # the keyring fallback path in boot.py is unreachable —
+                 # this dep just lets the tool registry import cleanly.
 )
 run "python3 -m pip install --quiet ${DEPS[*]}"
 log "  ✓ Installed ${#DEPS[@]} packages"
