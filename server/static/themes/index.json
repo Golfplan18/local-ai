@@ -17,12 +17,6 @@
       "name": "Dracula for Obsidian",
       "directory": "dracula-for-obsidian",
       "bundled": false
-    },
-    {
-      "id": "main-street-independent",
-      "name": "Main Street Independent",
-      "directory": "main-street-independent",
-      "bundled": true
     }
   ]
 }
