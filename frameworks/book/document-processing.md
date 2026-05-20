@@ -125,7 +125,7 @@ The following extension points may be filled by a project overlay
 **Type assignments per output category** (per Reference — Ora YAML Schema rev 5):
 - Source-document chunks (Path 1): `type: resource` (P2, weight 0.8)
 - Extracted atomic notes (Path 1, external sources): `type: engram` + `source-derived` provenance-modifier tag (P1 with tag, weight 0.9 per Schema §6.5)
-- Extracted atomic notes (Path 1, MSI source provenance): `type: engram` + `source-derived` tag + MSI provenance properties (`source_voice`, `source_dossier`, `source_dossier_section`) + `nexus: [main-street-independent]`. MSI editorial-research engrams live in the standard `Engrams/` corpus per the user's 2026-05-09 rework; column-generation frameworks retrieve voice-scoped subsets via `source_voice` filtering against the `knowledge` collection (no dedicated collection).
+- Extracted atomic notes (Path 1, project-bound runs with voice/dossier/nexus configuration): `type: engram` + `source-derived` tag + provenance properties (`${config.voice_property_name}` carrying the voice slug, `${config.dossier_property_name}` carrying the source dossier filename, `source_dossier_section` carrying the HCP structural-index location) + `nexus: [${config.nexus_value}]`. Project-scoped engrams live in the configured ChromaDB collection (`${config.chromadb_collection}`) alongside general engrams; downstream retrieval scopes by the configured voice/dossier properties (see the `provenance-overlay-rules` extension point below for project-specific retrieval contracts).
 - Conversation turn-pair chunks (Path 2): `type: chat` (P3, weight 0.6)
 
 **Quality guarantees:**
@@ -294,14 +294,14 @@ For each signal in the signal map:
 5. **Assign relationships** using the 13-type taxonomy: supports, contradicts, qualifies, extends, supersedes, analogous-to, derived-from, enables, requires, produces, precedes, parent, child
 6. **Emit** each note in the machine-readable pipeline format (<<<NOTE_START>>> blocks)
 
-**MSI provenance tagging** (when run-time configuration declares MSI source provenance per the INPUT CONTRACT). For each generated note, additionally:
+**Project-bound provenance tagging** (when the run-time configuration binds a project nexus + a `framework_configurations` profile with voice/dossier/nexus values declared per the INPUT CONTRACT and CONFIGURATION INTERFACE — i.e., when `${config.nexus_value}` is set). For each generated note, additionally:
 
 7. Keep the default `type: engram` and append the `source-derived` provenance-modifier tag (per Schema §6.5; lowers effective weight to 0.9 — AI/external-author claims sit below user-authored).
-8. Set `source_voice` from the per-document configuration's voice slug (e.g., `msi-pen-name-mary-magdalena`)
-9. Set `source_dossier` to the source filename (e.g., `Reference — MSI Mary Magdalena Voice Library.md`)
-10. Set `source_dossier_section` from the HCP structural index — the section heading or topic-path the signal originated in (e.g., `Part 1 — Bible-fluency substrate / Economic justice and the prophets`)
-11. Set `nexus: [main-street-independent]`
-12. Emit the note per the MSI Research extracted atomic note template in Reference — Ora YAML Schema §12
+8. Set `${config.voice_property_name}` from the per-document configuration's voice slug
+9. Set `${config.dossier_property_name}` to the source dossier filename
+10. Set `source_dossier_section` from the HCP structural index — the section heading or topic-path the signal originated in
+11. Set `nexus: [${config.nexus_value}]`
+12. Emit the note per the extracted atomic note template in Reference — Ora YAML Schema §12
 
 **Body schema enforcement:**
 
