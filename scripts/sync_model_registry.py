@@ -263,26 +263,91 @@ def build_org_to_vendor_map(openrouter_ids: list[str]) -> dict[str, str]:
     return mapping
 
 
+# Used by version-disambiguation in map_arena_to_openrouter to prefer
+# the most-recent dated variant when multiple OpenRouter IDs match the
+# same Arena entry. Tokenization itself strips these — this regex is
+# only for the tiebreak ranking.
 _DATE_TAG = re.compile(r"\b\d{6,8}\b")
-_VERSION_TAG = re.compile(r"\b(?:v\d+|\d+\.\d+(?:\.\d+)?|\d+)\b")
+
+
+# Date / version-suffix patterns to strip BEFORE tokenization.
+# Order matters: longest patterns first.
+_PRE_TOKEN_STRIP = (
+    # Parenthesized suffix groups (Arena: "Claude Opus 4 (20250514)")
+    re.compile(r"\([^)]*\)"),
+    # YYYY-MM-DD and YYYYMMDD date forms
+    re.compile(r"\b\d{4}[-_]\d{2}[-_]\d{2}\b"),
+    re.compile(r"\b\d{8}\b"),
+    # MM-DD / MMDD tail dates (e.g., "Grok-4-0709", "Grok-3-Preview-02-24")
+    re.compile(r"[-_]\d{2}[-_]\d{2}\b"),
+    re.compile(r"[-_]\d{4}\b(?!\d)"),  # trailing 4-digit date (e.g., "-0709")
+    # YYYY-MM forms
+    re.compile(r"\b\d{4}[-_]\d{2}\b"),
+    re.compile(r"\b\d{6}\b"),
+    # Year-only tokens (be careful — only kill 4-digit years 2020-2030)
+    re.compile(r"\b20[23]\d\b"),
+)
+
+# Brand-name synonyms to normalize. Pre-tokenization substitution.
+_BRAND_NORMALIZE = (
+    (re.compile(r"\bchatgpt\b", re.I), "gpt"),
+    # Bedrock / vertex provider prefixes (e.g., "us.anthropic.")
+    (re.compile(r"\b(?:us|eu|ap)\.anthropic\b", re.I), "anthropic"),
+)
+
 _NOISE_TOKENS = {
     "instruct", "chat", "preview", "exp", "experimental", "stable",
     "latest", "base", "thinking", "reasoner", "model", "ai", "version",
-    "release",
+    "release", "tuned", "v1", "v2", "v3", "v4", "v5",
 }
 
 
 def tokenize_model_name(name: str) -> set[str]:
-    """Lowercase, split on non-alphanumeric, drop noise + dates, keep
-    semantic tokens for Jaccard scoring."""
+    """Lowercase, normalize brand synonyms, strip dates / parenthetical
+    suffixes, then split into semantic tokens for Jaccard scoring.
+
+    Chunk L (2026-05-20): rewrote to close the algorithmic gaps the
+    coverage audit surfaced — gpt-4o was unmatched because Arena lists
+    "ChatGPT-4o-latest (2025-03-26)" and the prior tokenizer kept
+    'chatgpt' + 'latest' + '2025' + '03' + '26' as separate tokens,
+    bloating the union and crashing the Jaccard score.
+
+    Additionally, compound version tokens like "qwen2.5" are split into
+    family + version components so they match OpenRouter's hyphen-form
+    "qwen-2.5". The number-then-letters/letters-then-numbers boundary
+    triggers a split (preserving the numeric token).
+    """
     if not name:
         return set()
     raw = name.lower()
-    raw = _DATE_TAG.sub(" ", raw)
+    # Normalize brand synonyms first (e.g., ChatGPT → gpt)
+    for pat, repl in _BRAND_NORMALIZE:
+        raw = pat.sub(repl, raw)
+    # Strip parenthesized / dated suffixes before token-splitting
+    for pat in _PRE_TOKEN_STRIP:
+        raw = pat.sub(" ", raw)
+    # Split on non-alphanumeric (but keep dots, for "2.5"-style versions)
     tokens = re.split(r"[^a-z0-9.]+", raw)
     out: set[str] = set()
     for t in tokens:
-        if not t or t in _NOISE_TOKENS:
+        if not t:
+            continue
+        # Drop all-digit tokens — leftover date / size fragments
+        # ("2024", "13", "0125", etc.). Numeric size markers like
+        # "72b" and version markers like "2.5" survive because they
+        # contain non-digits.
+        if t.isdigit():
+            continue
+        if t in _NOISE_TOKENS:
+            continue
+        # Split compound family+version tokens like "qwen2.5" into
+        # "qwen" + "2.5" so they match hyphen-form IDs.
+        m = re.match(r"^([a-z]+)(\d[\d.]*)$", t)
+        if m:
+            family, ver = m.group(1), m.group(2)
+            if family not in _NOISE_TOKENS:
+                out.add(family)
+            out.add(ver)
             continue
         out.add(t)
     return out
@@ -341,22 +406,63 @@ def map_arena_to_openrouter(
 def build_arena_overlay(
     arena_rows: list[dict], openrouter_ids: list[str]
 ) -> dict[str, dict]:
-    """Return {openrouter_id: arena_overlay_dict}."""
-    or_ids_by_vendor: dict[str, list[str]] = {}
+    """Return {openrouter_id: arena_overlay_dict}.
+
+    Chunk L (2026-05-20): rewrote to walk OR-ids and find each one's
+    best Arena match, rather than walking Arena-rows and overwriting.
+    The old Arena→OR direction collapsed multiple Arena variants of a
+    family (e.g., the four GPT-4o dated variants) onto a single
+    OpenRouter id, leaving the other family members null. The new
+    direction lets ``openai/gpt-4o``, ``openai/gpt-4o-2024-05-13``,
+    ``openai/gpt-4o-2024-08-06``, etc. each independently get scored
+    against the Arena entries that match them best.
+    """
+    org_to_vendor = build_org_to_vendor_map(openrouter_ids)
+
+    # Group Arena rows by mapped OpenRouter vendor for cheap lookup.
+    arena_by_vendor: dict[str, list[dict]] = {}
+    for row in arena_rows:
+        org = row.get("Organization") or ""
+        if not org:
+            continue
+        norm = _normalize_org(org)
+        vendor = org_to_vendor.get(norm)
+        if vendor is None:
+            # Last-ditch fuzzy: any vendor key starting with the norm,
+            # or norm starting with the vendor key.
+            for k, v in org_to_vendor.items():
+                if k and norm and (k.startswith(norm) or norm.startswith(k)):
+                    vendor = v
+                    break
+        if vendor is None:
+            continue
+        arena_by_vendor.setdefault(vendor, []).append(row)
+
+    overlay: dict[str, dict] = {}
     for oid in openrouter_ids:
         if "/" not in oid:
             continue
         vendor, _ = oid.split("/", 1)
-        or_ids_by_vendor.setdefault(vendor, []).append(oid)
-    org_to_vendor = build_org_to_vendor_map(openrouter_ids)
-
-    overlay: dict[str, dict] = {}
-    for row in arena_rows:
-        mapped = map_arena_to_openrouter(row, or_ids_by_vendor, org_to_vendor)
-        if mapped is None:
+        candidates = arena_by_vendor.get(vendor, [])
+        if not candidates:
             continue
-        score = row.get("Arena Score")
-        rank = row.get("Rank* (UB)")
+        or_tokens = tokenize_model_name(oid.split("/", 1)[-1])
+        if not or_tokens:
+            continue
+        best_row: dict | None = None
+        best_score = 0.0
+        for row in candidates:
+            arena_tokens = tokenize_model_name(row.get("Model") or "")
+            if not arena_tokens:
+                continue
+            score = jaccard(arena_tokens, or_tokens)
+            if score > best_score:
+                best_score = score
+                best_row = row
+        if best_row is None or best_score < 0.5:
+            continue
+        score = best_row.get("Arena Score")
+        rank = best_row.get("Rank* (UB)")
         try:
             score_val: float | None = float(score) if score else None
         except ValueError:
@@ -365,18 +471,13 @@ def build_arena_overlay(
             rank_val: int | None = int(rank) if rank else None
         except ValueError:
             rank_val = None
-        # If multiple Arena rows map to the same OpenRouter id (versioned
-        # variants vs canonical), keep the higher ELO.
-        cur = overlay.get(mapped)
-        if cur and cur.get("intelligence_score") and score_val is not None:
-            if cur["intelligence_score"] >= score_val:
-                continue
-        overlay[mapped] = {
-            "arena_model_name": row.get("Model"),
-            "arena_organization": row.get("Organization"),
+        overlay[oid] = {
+            "arena_model_name": best_row.get("Model"),
+            "arena_organization": best_row.get("Organization"),
             "intelligence_score": score_val,
             "intelligence_rank": rank_val,
-            "votes": int(row["Votes"]) if (row.get("Votes") or "").isdigit() else None,
+            "votes": int(best_row["Votes"]) if (best_row.get("Votes") or "").isdigit() else None,
+            "match_score": round(best_score, 3),
             "fetched_at": _now_iso(),
         }
     return overlay
@@ -391,10 +492,18 @@ def merge_sources(
     openrouter_models: list[dict],
     litellm: dict,
     arena_overlay: dict[str, dict],
+    existing_registry: dict | None = None,
 ) -> dict:
-    """Return the full registry dict ready for writing."""
+    """Return the full registry dict ready for writing.
+
+    When ``existing_registry`` is provided, empirical-probe results
+    from prior runs are preserved (the probe is the most authoritative
+    source for vision_capable; throwing it away on every sync would
+    waste API tokens and force re-probing every refresh).
+    """
     models: dict[str, dict] = {}
     ll_index = build_litellm_token_index(litellm)
+    prior_models = (existing_registry or {}).get("models") or {}
     for ormodel in openrouter_models:
         or_view = openrouter_view(ormodel)
         model_id = or_view["id"]
@@ -404,6 +513,30 @@ def merge_sources(
         ll_view = litellm_view(ll_entry)
         arena = arena_overlay.get(model_id)
         vision = _resolve_vision_capable(or_view, ll_view)
+
+        # Preserve prior empirical probe verdict if present — it's the
+        # most authoritative source and shouldn't be discarded on
+        # every re-sync.
+        prior = prior_models.get(model_id) or {}
+        prior_probe = (prior.get("_provenance") or {}).get("empirical_probe")
+        prior_verified_by = prior.get("vision_verified_by")
+        if prior_probe and prior_verified_by == "empirical_probe":
+            probed_value = prior_probe.get("vision_capable")
+            if probed_value is not None:
+                vision = {"value": probed_value, "source": "empirical_probe"}
+
+        provenance = {
+            "openrouter": {
+                "input_modalities": or_view["input_modalities"],
+                "vision_claimed": or_view["vision_claimed"],
+                "fetched_at": or_view["fetched_at"],
+            },
+            "litellm": ll_view,
+            "arena": arena,
+        }
+        if prior_probe:
+            provenance["empirical_probe"] = prior_probe
+
         models[model_id] = {
             "id": model_id,
             "display_name": or_view["display_name"],
@@ -420,15 +553,7 @@ def merge_sources(
             "intelligence_rank": arena["intelligence_rank"] if arena else None,
             "intelligence_votes": arena["votes"] if arena else None,
             "last_synced_at": _now_iso(),
-            "_provenance": {
-                "openrouter": {
-                    "input_modalities": or_view["input_modalities"],
-                    "vision_claimed": or_view["vision_claimed"],
-                    "fetched_at": or_view["fetched_at"],
-                },
-                "litellm": ll_view,
-                "arena": arena,
-            },
+            "_provenance": provenance,
         }
     return {
         "$schema_version": REGISTRY_SCHEMA_VERSION,
@@ -646,7 +771,22 @@ def cmd_sync(args) -> int:
     arena_overlay = build_arena_overlay(arena_rows, or_ids)
     print(f"[sync]   Arena → OpenRouter matches: {len(arena_overlay)}", flush=True)
 
-    registry = merge_sources(or_models, litellm, arena_overlay)
+    # Read existing registry to preserve empirical-probe verdicts.
+    existing = None
+    if REGISTRY_PATH.exists():
+        try:
+            with open(REGISTRY_PATH) as f:
+                existing = json.load(f)
+            preserved = sum(
+                1 for m in (existing.get("models") or {}).values()
+                if (m.get("_provenance") or {}).get("empirical_probe")
+            )
+            if preserved:
+                print(f"[sync]   preserving {preserved} prior empirical-probe verdicts", flush=True)
+        except (OSError, json.JSONDecodeError):
+            existing = None
+
+    registry = merge_sources(or_models, litellm, arena_overlay, existing_registry=existing)
     REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w") as f:
         json.dump(registry, f, indent=2, sort_keys=False)
