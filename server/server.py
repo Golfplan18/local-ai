@@ -9310,6 +9310,25 @@ if __name__ == "__main__":
     print(f"Local AI Chat Server starting on http://localhost:{port}")
     print(f"Active endpoint: {endpoint.get('name') if endpoint else 'NONE — add an endpoint first'}")
     print(f"Tools: {'available' if TOOLS_AVAILABLE else 'UNAVAILABLE'} ({len(TOOL_REGISTRY)} registered)")
+    # Surface the curated model-registry status so operators can see at
+    # a glance whether capability data is fresh. Added 2026-05-20 alongside
+    # the registry sync pipeline. No auto-refresh on startup — refreshing
+    # is a maintainer action (cron / manual `python3 scripts/sync_model_registry.py sync`).
+    try:
+        from orchestrator import model_registry
+        st = model_registry.stats()
+        if st["loaded"]:
+            print(
+                f"Model registry: {st['model_count']} models "
+                f"(vision: {st['vision_capable_true']} true / "
+                f"{st['vision_capable_false']} false / {st['vision_capable_null']} unknown; "
+                f"intelligence-scored: {st['intelligence_score_count']}) "
+                f"generated_at={st.get('generated_at') or '?'}"
+            )
+        else:
+            print("Model registry: NOT LOADED — capability flags fall back to routing-config (run `python3 scripts/sync_model_registry.py sync` to populate)")
+    except Exception as e:
+        print(f"Model registry: status check failed: {e}")
     if mcp_count:
         print(f"MCP tools: {mcp_count}")
     if args.scheduler:

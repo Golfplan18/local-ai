@@ -16,8 +16,15 @@ Steps the script performs in order:
   3. OpenRouter API key setup
        Messaging: "free models work without a credit card; add payment
        later if you want paid models"
-  4. Catalog refresh — fetches OpenRouter (and optionally AA when AA_API_KEY
-     is set), writes config/model-catalog.json
+  4. Catalog refresh — fetches OpenRouter operational fields and writes
+     config/model-catalog.json (legacy snapshot, still consumed by
+     auto-populate-configuration).
+  4a. Model-registry sync — fetches OpenRouter + LiteLLM + Chatbot Arena
+      and runs the empirical vision-capability probe, writing
+      config/model-registry.json. This replaces the prior Artificial
+      Analysis (AA) dependency: intelligence rankings come from Chatbot
+      Arena's free public dataset, and vision capability is empirically
+      verified rather than trusted from any single provider's metadata.
   5. Auto-populate user-pipeline configuration from the Optimum preset
   6. Smoke test: one chat round-trip via the Free configuration's primary
   7. Print install-complete summary; tail of ~/ora/install.log lands a
@@ -142,7 +149,7 @@ def reset_install(dry_run: bool) -> None:
 
 
 def step_preflight(state: dict, dry_run: bool) -> bool:
-    log("Step 1/6: Pre-flight checks")
+    log("Step 1/7: Pre-flight checks")
     ok = True
 
     # Python version
@@ -193,7 +200,7 @@ def step_preflight(state: dict, dry_run: bool) -> bool:
 
 
 def step_select_profile(state: dict, profile: str | None, dry_run: bool) -> bool:
-    log("Step 2/6: Deployment profile selection")
+    log("Step 2/7: Deployment profile selection")
     if profile is None:
         if sys.stdin.isatty():
             print()
@@ -227,7 +234,7 @@ def step_select_profile(state: dict, profile: str | None, dry_run: bool) -> bool
 
 
 def step_openrouter_setup(state: dict, dry_run: bool) -> bool:
-    log("Step 3/6: OpenRouter API key setup")
+    log("Step 3/7: OpenRouter API key setup")
     log("")
     log("  OpenRouter is a unified API for cloud-based AI models.")
     log("  Sign up takes 2 minutes at https://openrouter.ai")
@@ -271,7 +278,7 @@ def step_openrouter_setup(state: dict, dry_run: bool) -> bool:
 
 
 def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
-    log("Step 4/6: Catalog refresh (OpenRouter + Artificial Analysis)")
+    log("Step 4/7: Catalog refresh (OpenRouter operational fields)")
     log("")
 
     # Artificial Analysis intelligence-index check.
@@ -284,41 +291,10 @@ def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
     # meaning auto-populate will pick the cheapest model per slot
     # regardless of how capable it actually is. That is almost certainly
     # not what you want for production pipelines.
-    aa_key = os.environ.get("AA_API_KEY", "").strip()
-    if aa_key:
-        log("  ✓ AA_API_KEY found in environment")
-    else:
-        log("  ⚠ AA_API_KEY is NOT set in your environment.")
-        log("")
-        log("    Artificial Analysis (https://artificialanalysis.ai/) provides")
-        log("    the intelligence-index rankings that Ora's auto-populate engine")
-        log("    uses to rank models within their size bucket. Without it:")
-        log("")
-        log("      - Catalog entries carry no intelligence_index field.")
-        log("      - The Pareto + floor + cost-sort algorithm has no capability")
-        log("        signal — every model scores the same on quality.")
-        log("      - Auto-populate (Step 5) falls through to pure cost-sort and")
-        log("        picks the CHEAPEST model per slot regardless of how capable")
-        log("        it actually is.")
-        log("")
-        log("    To fix: sign up at https://artificialanalysis.ai/ (free tier")
-        log("    available), grab an API key, and set it in your environment:")
-        log("")
-        log("      export AA_API_KEY=aa_xxxxxxxxxxxxxxxxxxxx")
-        log("")
-        log("    Then re-run install.py — or, if you skip now, run")
-        log("    'python3 scripts/refresh-catalog.py' once you have the key,")
-        log("    followed by 'python3 scripts/auto-populate-configuration.py")
-        log("    optimum user-pipeline' to refresh the slot picks.")
-        log("")
-        if not dry_run:
-            try:
-                input("  Press Enter to continue without AA enrichment (Ctrl-C to abort): ")
-            except (KeyboardInterrupt, EOFError):
-                log("")
-                log("  Aborted at AA-key check. Re-run after setting AA_API_KEY.")
-                return False
-            log("")
+    # Chunk 2025-05-20: AA (Artificial Analysis) API dependency removed.
+    # Intelligence rankings now come from Chatbot Arena's public dataset
+    # (free, no auth) via scripts/sync_model_registry.py, called below.
+    # Legacy AA_API_KEY env var is ignored even if set.
 
     if dry_run:
         log("  [dry-run] would run scripts/refresh-catalog.py")
@@ -349,8 +325,65 @@ def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
         return False
 
 
+def step_model_registry_sync(state: dict, dry_run: bool) -> bool:
+    """Populate config/model-registry.json from OpenRouter + LiteLLM +
+    Chatbot Arena, then run the empirical vision-capability probe.
+
+    The registry is the runtime source of truth for model capabilities
+    (vision_capable, intelligence_score, context_length). Boot.py reads
+    it via orchestrator/model_registry.py and overlays its values onto
+    the routing-config endpoints at startup.
+
+    No API key required (Chatbot Arena is a free public CSV; OpenRouter
+    /api/v1/models is unauthenticated for listing; LiteLLM is a raw
+    JSON on GitHub). The empirical probe requires the OpenRouter key
+    that was already collected in Step 3 — it sends two tiny image
+    probes per vision-claiming model, ~$0.04 total per install.
+
+    Replaces the prior AA enrichment step.
+    """
+    log("Step 5/7: Sync curated model registry (OpenRouter + LiteLLM + Chatbot Arena + empirical probe)")
+    if dry_run:
+        log("  [dry-run] would run scripts/sync_model_registry.py sync")
+        return True
+    script = REPO_ROOT / "scripts" / "sync_model_registry.py"
+    if not script.exists():
+        log(f"  ⚠ {script} missing — skipping registry sync (boot.py will fall back to routing-config capabilities)")
+        return True  # non-fatal: the system still works without the registry
+    try:
+        # Use --no-probe to keep install non-flaky; the probe can run
+        # post-install via a manual `python3 scripts/sync_model_registry.py probe`
+        # or via the periodic refresh cycle when implemented.
+        # For installs that have an OpenRouter key set, the user can
+        # opt into the probe via the ORA_INSTALL_PROBE=1 env var.
+        cmd = [sys.executable, str(script), "sync"]
+        if not os.environ.get("ORA_INSTALL_PROBE", "").strip():
+            cmd.append("--no-probe")
+        result = subprocess.run(
+            cmd, cwd=str(REPO_ROOT),
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode == 0:
+            log("  ✓ Model registry synced")
+            for line in result.stdout.strip().split("\n")[-6:]:  # last 6 lines = summary
+                if line.strip():
+                    log(f"    {line}")
+            state["steps_completed"].append("registry_sync")
+            save_state(state)
+            return True
+        log(f"  ⚠ Registry sync failed (exit {result.returncode}) — proceeding with capability fallback")
+        log(f"    stderr: {result.stderr.strip()[:300]}")
+        return True  # non-fatal: boot.py falls back to routing-config flags
+    except subprocess.TimeoutExpired:
+        log("  ⚠ Registry sync timed out after 300s — proceeding with capability fallback")
+        return True
+    except Exception as e:
+        log(f"  ⚠ Registry sync errored ({e}) — proceeding with capability fallback")
+        return True
+
+
 def step_autopopulate(state: dict, dry_run: bool) -> bool:
-    log("Step 5/6: Auto-populate user-pipeline configuration (Optimum preset)")
+    log("Step 6/7: Auto-populate user-pipeline configuration (Optimum preset)")
     if dry_run:
         log("  [dry-run] would run scripts/auto-populate-configuration.py optimum user-pipeline")
         return True
@@ -381,7 +414,7 @@ def step_autopopulate(state: dict, dry_run: bool) -> bool:
 
 
 def step_smoke_test(state: dict, dry_run: bool) -> bool:
-    log("Step 6/6: Smoke test (Free configuration round-trip)")
+    log("Step 7/7: Smoke test (Free configuration round-trip)")
     if dry_run:
         log("  [dry-run] would auto-populate Free + send one test prompt + verify response")
         return True
@@ -462,12 +495,13 @@ def main():
 
     completed = set(state.get("steps_completed", []))
     pipeline = [
-        ("preflight",    step_preflight,    (state, args.dry_run)),
-        ("profile",      step_select_profile, (state, args.profile, args.dry_run)),
-        ("openrouter",   step_openrouter_setup, (state, args.dry_run)),
-        ("catalog",      step_catalog_refresh, (state, args.dry_run)),
-        ("autopopulate", step_autopopulate, (state, args.dry_run)),
-        ("smoke_test",   step_smoke_test,   (state, args.dry_run)),
+        ("preflight",      step_preflight,    (state, args.dry_run)),
+        ("profile",        step_select_profile, (state, args.profile, args.dry_run)),
+        ("openrouter",     step_openrouter_setup, (state, args.dry_run)),
+        ("catalog",        step_catalog_refresh, (state, args.dry_run)),
+        ("registry_sync",  step_model_registry_sync, (state, args.dry_run)),
+        ("autopopulate",   step_autopopulate, (state, args.dry_run)),
+        ("smoke_test",     step_smoke_test,   (state, args.dry_run)),
     ]
 
     for step_name, fn, fn_args in pipeline:

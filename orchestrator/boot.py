@@ -283,6 +283,17 @@ def load_routing_config() -> dict:
     Returns the parsed dict. On read failure returns a minimal stub so
     downstream code can degrade gracefully rather than crash.
 
+    After loading, overlays the curated model registry's per-endpoint
+    capability values (vision_capable, intelligence_score) on top of
+    the routing-config's endpoint entries. The registry is authoritative
+    for these fields — populated by ``scripts/sync_model_registry.py``
+    from OpenRouter / LiteLLM / Chatbot Arena / empirical probe. When
+    the registry is missing or malformed, the overlay is a no-op and
+    the routing-config values stand. Added 2026-05-20 — closes the
+    silent-failure class where wrong vision_capable flags in
+    routing-config (e.g., the kimi-k2.6 case) propagated into pipeline
+    routing decisions.
+
     History: the v1 file config/endpoints.json was retired in install
     Chunk 12 (2026-05-19). Its slot_assignments / gear4_overrides /
     default_endpoint / operational_context fields were copied verbatim
@@ -293,9 +304,18 @@ def load_routing_config() -> dict:
     """
     try:
         with open(ROUTING_CONFIG_JSON, "r") as f:
-            return json.load(f)
+            rc = json.load(f)
     except Exception:
-        return {"endpoints": [], "default_endpoint": None}
+        rc = {"endpoints": [], "default_endpoint": None}
+    # Overlay curated registry values onto each endpoint dict.
+    try:
+        from orchestrator import model_registry
+        rc = model_registry.overlay_routing_config(rc)
+    except Exception as e:
+        # Registry overlay must never break routing-config loading.
+        # Log and proceed with the unoverlaid config.
+        print(f"[model-registry] overlay failed (proceeding without): {e}", flush=True)
+    return rc
 
 
 # --- V2 Router Integration ---
@@ -7646,6 +7666,23 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     if ok:
         return text, True, reason
 
+    # Diagnostic: when the first attempt fails, dump its endpoint + failure
+    # reason + a short signature of the response to the server log. Lets
+    # ``grep [retry-diag] /tmp/ora_server.log`` reveal systematic failure
+    # patterns (e.g., one model consistently producing unhealthy first
+    # attempts) without instrumenting every call site. Added 2026-05-20
+    # during the post-Chunk-J root-cause audit.
+    try:
+        ep_name = endpoint.get("name") if isinstance(endpoint, dict) else str(endpoint)
+        sig = (text[:160].replace("\n", " ⏎ ") + ("…" if len(text) > 160 else "")) if text else "<empty>"
+        print(
+            f"[retry-diag] {step_name} first-attempt unhealthy "
+            f"endpoint={ep_name!r} reason={reason!r} sig={sig!r}",
+            flush=True,
+        )
+    except Exception:
+        pass
+
     # Chunk B: advance the slot's fallback chain on retry when slot+gear
     # are provided. When the helper returns ``None`` (no fallback, router
     # unavailable, etc.), we silently reuse the original endpoint —
@@ -7689,6 +7726,19 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
         text2 = f"[{step_name} retry error: {e}]"
     text2 = _strip_dispatch_noise(text2)
     ok2, reason2 = _step_output_health(text2, step_name, min_chars=min_chars)
+    # Diagnostic: record the retry outcome + which endpoint it hit so
+    # ``[retry-diag]`` log entries form an attempt-by-attempt trace.
+    try:
+        target_name = target_endpoint.get("name") if isinstance(target_endpoint, dict) else str(target_endpoint)
+        sig2 = (text2[:160].replace("\n", " ⏎ ") + ("…" if len(text2) > 160 else "")) if text2 else "<empty>"
+        print(
+            f"[retry-diag] {step_name} retry-attempt "
+            f"target={target_name!r} swapped={endpoint_swapped} "
+            f"ok={ok2} reason={reason2!r} sig={sig2!r}",
+            flush=True,
+        )
+    except Exception:
+        pass
     return (text2 if ok2 else text2 or text), ok2, f"retry: {reason2}"
 
 
@@ -9256,8 +9306,25 @@ def call_model(messages: list, endpoint: dict, images: list = None) -> str:
     else:
         return f"[Error] Unknown endpoint type: {etype}"
 
-    if isinstance(response, str) and response.lstrip().startswith("[Error"):
-        endpoint_health.record_failure(endpoint_id)
+    # Chunk K (2026-05-20): empty content also counts as a failure for
+    # circuit-breaker purposes. Some models (kimi-k2.6 was the proof
+    # case) return ``content=None`` / empty string on real production
+    # prompts — no exception, no error string, just nothing. The prior
+    # logic treated empty as success, so the circuit breaker never
+    # tripped and the router kept dispatching to the broken model.
+    # Three empties in 60s now trips the breaker; the router's chain
+    # walk advances away during the cooldown. The empirical-probe
+    # registry layer catches catastrophic failures up-front; this
+    # auto-cooldown catches the contextual / partial failures the
+    # probe can't reproduce.
+    if isinstance(response, str):
+        stripped = response.lstrip()
+        if stripped.startswith("[Error"):
+            endpoint_health.record_failure(endpoint_id)
+        elif not stripped:
+            endpoint_health.record_failure(endpoint_id)
+        else:
+            endpoint_health.record_success(endpoint_id)
     else:
         endpoint_health.record_success(endpoint_id)
     return response
@@ -9434,7 +9501,26 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
             # traced back to this exact case: gpt-5.1-codex-mini returned
             # message.content=None on verifier cycle 3, _run_model_with_tools
             # called strip_tool_calls(None), TypeError fired.
-            return resp.choices[0].message.content or ""
+            content = resp.choices[0].message.content
+            if not content:
+                # Diagnostic — surface what the model actually returned when
+                # content is empty, so root-cause audits can distinguish
+                # refusal / tool-call-only / finish-reason quirks from
+                # genuine empty completions. Logs once per such response.
+                try:
+                    msg = resp.choices[0].message
+                    fr = getattr(resp.choices[0], "finish_reason", None)
+                    has_tool_calls = bool(getattr(msg, "tool_calls", None))
+                    refusal = getattr(msg, "refusal", None)
+                    print(
+                        f"[openrouter-empty-content] model={model!r} "
+                        f"finish_reason={fr!r} has_tool_calls={has_tool_calls} "
+                        f"refusal={refusal!r} content_is_none={content is None}",
+                        flush=True,
+                    )
+                except Exception as diag_err:
+                    print(f"[openrouter-empty-content] diag failed: {diag_err}", flush=True)
+            return content or ""
         except Exception as e:
             return f"[Error calling OpenRouter API: {e}]"
 
