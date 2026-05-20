@@ -53,9 +53,13 @@ PREMIUM_BUCKET_CHAIN = [
     "nvidia/nemotron-3-super-120b-a12b:free",    # backup 2
     "minimax/minimax-m2.5:free",                 # backup 3
     "openrouter/free",                            # managed free-pool auto-router
-    "qwen/qwen3.6-plus",                          # paid safety net
-    "moonshotai/kimi-k2.6",                       # paid safety net 2
 ]
+# NOTE: No paid safety net on the writing-slot chain. If every free
+# option exhausts simultaneously, the call fails (task marked failed,
+# backfill loop continues) — but no token charges. This is a deliberate
+# cost-protection choice after a runaway-process incident. Daily
+# ora-audit-models.py cron monitors that every model above is still in
+# the OpenRouter catalog and still actually free.
 
 # Endpoint entries to synthesize into routing-config.json::endpoints[] if
 # missing (some of the free models above are in the catalog but not yet in
@@ -68,16 +72,21 @@ NEW_FREE_ENDPOINTS = [
 ]
 
 SERVER_SLOT_ASSIGNMENTS = {
+    # Utility slots — NOTE these are still on a paid (cheap) model. Audit
+    # script flags them; running a long backfill on these costs a few
+    # cents per article in aggregate. Consider replacing with a free
+    # alternative if backfill scale makes that material.
     "sidebar":        "qwen/qwen3.6-35b-a3b",
     "step1_cleanup":  "qwen/qwen3.6-35b-a3b",
     "classification": "qwen/qwen3.6-35b-a3b",
     "rag_planner":    "qwen/qwen3.6-35b-a3b",
+    # Writing slots — free-only via PREMIUM_BUCKET_CHAIN fallback walk.
     "breadth":        PREMIUM_BUCKET_CHAIN[0],
     "depth":          PREMIUM_BUCKET_CHAIN[0],
     "evaluator":      PREMIUM_BUCKET_CHAIN[0],
-    "consolidator":   "qwen/qwen3.6-plus",
+    "consolidator":   PREMIUM_BUCKET_CHAIN[0],
 }
-SERVER_DEFAULT_ENDPOINT = "qwen/qwen3.6-plus"
+SERVER_DEFAULT_ENDPOINT = PREMIUM_BUCKET_CHAIN[0]
 SERVER_GEAR4_OVERRIDES = {
     "depth":   {"enabled": True, "endpoint": PREMIUM_BUCKET_CHAIN[0]},
     "breadth": {"enabled": True, "endpoint": PREMIUM_BUCKET_CHAIN[0]},
