@@ -71,16 +71,27 @@ NEW_FREE_ENDPOINTS = [
     ("minimax/minimax-m2.5:free",            "MiniMax: M2.5 (free)",                 "minimax"),
 ]
 
+FAST_BUCKET_CHAIN = [
+    "nvidia/nemotron-3-nano-30b-a3b:free",       # primary — 30B MoE @ 3B active
+    "arcee-ai/trinity-large-thinking:free",      # backup
+    "openrouter/free",                            # managed free-pool auto-router
+]
+
+# Endpoint synth list extended for utility bucket.
+NEW_FREE_ENDPOINTS = [
+    ("arcee-ai/trinity-large-thinking:free", "Arcee: Trinity Large Thinking (free)", "arcee"),
+    ("deepseek/deepseek-v4-flash:free",      "DeepSeek: V4 Flash (free)",            "deepseek"),
+    ("minimax/minimax-m2.5:free",            "MiniMax: M2.5 (free)",                 "minimax"),
+    ("nvidia/nemotron-3-nano-30b-a3b:free",  "NVIDIA: Nemotron 3 Nano 30B A3B (free)", "nvidia"),
+]
+
 SERVER_SLOT_ASSIGNMENTS = {
-    # Utility slots — NOTE these are still on a paid (cheap) model. Audit
-    # script flags them; running a long backfill on these costs a few
-    # cents per article in aggregate. Consider replacing with a free
-    # alternative if backfill scale makes that material.
-    "sidebar":        "qwen/qwen3.6-35b-a3b",
-    "step1_cleanup":  "qwen/qwen3.6-35b-a3b",
-    "classification": "qwen/qwen3.6-35b-a3b",
-    "rag_planner":    "qwen/qwen3.6-35b-a3b",
-    # Writing slots — free-only via PREMIUM_BUCKET_CHAIN fallback walk.
+    # Utility slots — free via FAST_BUCKET_CHAIN.
+    "sidebar":        FAST_BUCKET_CHAIN[0],
+    "step1_cleanup":  FAST_BUCKET_CHAIN[0],
+    "classification": FAST_BUCKET_CHAIN[0],
+    "rag_planner":    FAST_BUCKET_CHAIN[0],
+    # Writing slots — free via PREMIUM_BUCKET_CHAIN.
     "breadth":        PREMIUM_BUCKET_CHAIN[0],
     "depth":          PREMIUM_BUCKET_CHAIN[0],
     "evaluator":      PREMIUM_BUCKET_CHAIN[0],
@@ -152,6 +163,7 @@ def main() -> int:
         set(SERVER_SLOT_ASSIGNMENTS.values())
         | {SERVER_DEFAULT_ENDPOINT}
         | set(PREMIUM_BUCKET_CHAIN)
+        | set(FAST_BUCKET_CHAIN)
     )
     missing = needed_ids - endpoint_ids
     if missing:
@@ -172,10 +184,12 @@ def main() -> int:
     cfg["default_endpoint"] = SERVER_DEFAULT_ENDPOINT
     cfg["gear4_overrides"]  = SERVER_GEAR4_OVERRIDES
 
-    # Reorder the `premium` bucket so the bucket-walk fallback delivers the
-    # trinity-first free-model chain (writing slots resolve into this bucket
-    # for their fallback behavior — see PREMIUM_BUCKET_CHAIN definition).
+    # Reorder both buckets so the bucket-walk fallback delivers only free
+    # models. Writing slots walk the premium bucket; utility slots walk
+    # the fast bucket. NO paid models in either — silent rollover to paid
+    # is the failure mode we're protecting against.
     cfg.setdefault("buckets", {})["premium"] = list(PREMIUM_BUCKET_CHAIN)
+    cfg["buckets"]["fast"] = list(FAST_BUCKET_CHAIN)
 
     # operational_context — keep "api" available everywhere on the server;
     # remove "local" so any code that still walks transports doesn't try
