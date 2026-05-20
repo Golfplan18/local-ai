@@ -70,6 +70,13 @@ _KNOWN_EXECUTION_PATTERNS = frozenset({"sync", "async"})
 _THEME_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 _RESERVED_THEME_IDS = frozenset({"default"})
 
+# Framework configuration profile name + extension-point id (Plugin
+# Convention §14): lowercase letters/digits/hyphens/underscores,
+# starting with a letter. Profile-name uniqueness is scoped per
+# framework — the same name may appear under different frameworks.
+_FRAMEWORK_PROFILE_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
+_EXTENSION_POINT_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
+
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -175,6 +182,51 @@ class ProjectTheme:
 
 
 @dataclass
+class ProjectFrameworkOverlay:
+    """One overlay binding inside a ProjectFrameworkConfiguration entry
+    (Plugin Convention §14). Each entry binds a markdown fragment to a
+    named extension point declared in the framework spec.
+
+    ``extension_point`` matches an ``<!-- ora-project-extension: <id> -->``
+    comment marker in the framework spec body. ``file`` is the
+    project-root-relative path to the overlay markdown file whose
+    contents the framework runtime splices at the marker location.
+    """
+    extension_point: str
+    file: str
+
+
+@dataclass
+class ProjectFrameworkConfiguration:
+    """A configuration profile a project supplies for a framework spec
+    (Plugin Convention §14).
+
+    Unlike capability slots (§12 — static merge at registry load) and
+    themes (§13 — static merge at server startup), framework
+    configurations resolve dynamically at framework invocation time
+    because the binding depends on which project is invoking. This
+    dataclass is purely the manifest-time representation; the runtime
+    consumer lives wherever framework prompts are assembled (typically
+    ``milestone_executor.py`` or its prompt-composition helpers).
+
+    ``framework`` — name of the framework spec being configured.
+    ``profile_name`` — slug identifying this profile within the
+        framework's namespace. The runtime activates a profile by name.
+    ``config`` — key/value mapping the framework's
+        ``## CONFIGURATION INTERFACE`` section reads. Per-key type
+        validation happens at framework-invocation time, not at
+        registration, so a project may declare a profile for a framework
+        that doesn't exist yet without breaking manifest registration.
+    ``overlays`` — list of ``ProjectFrameworkOverlay`` entries binding
+        markdown fragments to extension points in the framework spec.
+    """
+    framework: str
+    profile_name: str
+    config: dict = field(default_factory=dict)
+    overlays: list = field(default_factory=list)
+
+
+@dataclass
 class Project:
     """A registered project — the in-memory representation of an ora-project.json."""
     nexus: str
@@ -190,6 +242,12 @@ class Project:
     chromadb_collections: list[str] = field(default_factory=list)
     capability_slots: dict[str, ProjectCapabilitySlot] = field(default_factory=dict)
     themes: dict[str, ProjectTheme] = field(default_factory=dict)
+    # Framework configurations are keyed by (framework, profile_name) —
+    # a single project may declare multiple profiles per framework AND
+    # profiles for multiple frameworks. Storing as a list preserves the
+    # natural compound identity without nesting dicts; lookups go through
+    # ``find_framework_configuration(framework, profile_name)``.
+    framework_configurations: list = field(default_factory=list)
 
     def resolve_path(self, relative: str) -> Path:
         """Resolve a path relative to the project root. Absolute paths pass through."""
@@ -197,6 +255,17 @@ class Project:
         if p.is_absolute():
             return p
         return (self.root / p).resolve()
+
+    def find_framework_configuration(
+        self, framework: str, profile_name: str,
+    ) -> "Optional[ProjectFrameworkConfiguration]":
+        """Look up a framework configuration profile by name. Returns
+        None when no profile with that (framework, profile_name) pair
+        is declared by this project."""
+        for fc in self.framework_configurations:
+            if fc.framework == framework and fc.profile_name == profile_name:
+                return fc
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -482,6 +551,139 @@ def _parse_themes(
     return themes
 
 
+def _parse_one_framework_configuration(
+    entry: Any, idx: int, manifest_path: Path, project_root: Path,
+) -> ProjectFrameworkConfiguration:
+    """Validate one ``framework_configurations`` entry against Plugin
+    Convention §14.
+
+    Raises ManifestError on any problem so the caller can skip just this
+    entry without affecting the rest of the manifest. Per-key type
+    validation of the ``config`` block is deferred to framework-
+    invocation time (the framework spec declares the schema in its
+    ``## CONFIGURATION INTERFACE`` section); this parser only enforces
+    structural well-formedness.
+
+    Overlay file existence is checked at registration time so a manifest
+    pointing at a missing overlay file fails loudly here rather than
+    silently at framework invocation.
+    """
+    ctx = f"framework_configurations[{idx}]"
+    if not isinstance(entry, dict):
+        raise ManifestError(f"{ctx} must be an object")
+
+    framework = entry.get("framework")
+    if not isinstance(framework, str) or not framework:
+        raise ManifestError(
+            f"{ctx} requires 'framework' (non-empty string identifying the "
+            f"framework spec being configured)"
+        )
+
+    profile_name = entry.get("profile_name")
+    if not isinstance(profile_name, str) or not profile_name:
+        raise ManifestError(
+            f"{ctx} requires 'profile_name' (non-empty string)"
+        )
+    if not _FRAMEWORK_PROFILE_RE.match(profile_name):
+        raise ManifestError(
+            f"{ctx} 'profile_name' must match {_FRAMEWORK_PROFILE_RE.pattern}; "
+            f"got {profile_name!r}"
+        )
+    ctx = f"{ctx} ({framework!r}/{profile_name!r})"
+
+    config = entry.get("config", {}) or {}
+    if not isinstance(config, dict):
+        raise ManifestError(f"{ctx}: 'config' must be a JSON object")
+
+    overlays_raw = entry.get("overlays", []) or []
+    if not isinstance(overlays_raw, list):
+        raise ManifestError(f"{ctx}: 'overlays' must be an array")
+
+    overlays: list = []
+    for j, ov in enumerate(overlays_raw):
+        ov_ctx = f"{ctx}: overlays[{j}]"
+        if not isinstance(ov, dict):
+            raise ManifestError(f"{ov_ctx} must be an object")
+        ep = ov.get("extension_point")
+        if not isinstance(ep, str) or not ep:
+            raise ManifestError(
+                f"{ov_ctx} requires 'extension_point' (non-empty string)"
+            )
+        if not _EXTENSION_POINT_RE.match(ep):
+            raise ManifestError(
+                f"{ov_ctx} 'extension_point' must match "
+                f"{_EXTENSION_POINT_RE.pattern}; got {ep!r}"
+            )
+        fpath = ov.get("file")
+        if not isinstance(fpath, str) or not fpath:
+            raise ManifestError(
+                f"{ov_ctx} requires 'file' (non-empty string, project-root-"
+                f"relative path)"
+            )
+        if Path(fpath).is_absolute():
+            raise ManifestError(
+                f"{ov_ctx}: 'file' must be relative to the project root; got "
+                f"absolute path {fpath!r}"
+            )
+        resolved = (project_root / fpath).resolve()
+        if not resolved.is_file():
+            raise ManifestError(
+                f"{ov_ctx}: overlay file {fpath!r} does not exist at "
+                f"{resolved} (registration-time check)"
+            )
+        overlays.append(ProjectFrameworkOverlay(extension_point=ep, file=fpath))
+
+    return ProjectFrameworkConfiguration(
+        framework=framework,
+        profile_name=profile_name,
+        config=dict(config),
+        overlays=overlays,
+    )
+
+
+def _parse_framework_configurations(
+    raw: Any, manifest_path: Path, project_root: Path,
+) -> list:
+    """Parse the ``framework_configurations`` block (Plugin Convention §14).
+
+    Top-level wrong type raises ManifestError (consistent with other
+    parsers). Individual malformed entries are skipped with a printed
+    diagnostic per §14's graceful-degradation rule. Project-shadows-
+    project collisions ((framework, profile_name) declared twice in the
+    same manifest) keep the first entry; the second is dropped with a
+    diagnostic.
+    """
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise ManifestError(
+            f"{manifest_path}: 'framework_configurations' must be an array"
+        )
+    seen: set = set()
+    out: list = []
+    for i, entry in enumerate(raw):
+        try:
+            fc = _parse_one_framework_configuration(
+                entry, i, manifest_path, project_root,
+            )
+        except ManifestError as e:
+            print(
+                f"[project_registry] Skipping framework_configuration in "
+                f"{manifest_path}: {e}"
+            )
+            continue
+        key = (fc.framework, fc.profile_name)
+        if key in seen:
+            print(
+                f"[project_registry] Skipping duplicate framework_configuration "
+                f"({fc.framework!r}, {fc.profile_name!r}) in {manifest_path}"
+            )
+            continue
+        seen.add(key)
+        out.append(fc)
+    return out
+
+
 def _parse_str_list(raw: Any, field_name: str, manifest_path: Path) -> list[str]:
     if raw is None:
         return []
@@ -527,6 +729,9 @@ def _parse_project_from_manifest(manifest_path: Path, root: Path) -> Project:
             data.get("capability_slots"), manifest_path,
         ),
         themes=_parse_themes(data.get("themes"), manifest_path, root.resolve()),
+        framework_configurations=_parse_framework_configurations(
+            data.get("framework_configurations"), manifest_path, root.resolve(),
+        ),
     )
 
 

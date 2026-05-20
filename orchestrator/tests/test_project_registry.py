@@ -961,5 +961,317 @@ class TestThemeParsing(unittest.TestCase):
         self.assertIn("my-tool", p.tools)
 
 
+class TestFrameworkConfigurationParsing(unittest.TestCase):
+    """Tests for Plugin Convention §14 — project-defined framework
+    configurations."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="proj_reg_fc_test_")
+        self.root = Path(self.tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _write_manifest(self, data):
+        (self.root / pr.MANIFEST_FILENAME).write_text(
+            json.dumps(data), encoding="utf-8"
+        )
+
+    def _write_overlay_file(self, relative_path, content="# overlay"):
+        full = self.root / relative_path
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_text(content, encoding="utf-8")
+
+    def _load_quietly(self):
+        import io
+        from contextlib import redirect_stdout
+        with redirect_stdout(io.StringIO()):
+            return pr.load_project_at(self.root)
+
+    # --- Happy paths ----------------------------------------------------
+
+    def test_no_framework_configurations_field(self):
+        self._write_manifest({"nexus": "test", "name": "Test"})
+        p = pr.load_project_at(self.root)
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_minimal_framework_configuration(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {
+                    "framework": "document-processing",
+                    "profile_name": "msi-editorial-research",
+                }
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        self.assertEqual(len(p.framework_configurations), 1)
+        fc = p.framework_configurations[0]
+        self.assertIsInstance(fc, pr.ProjectFrameworkConfiguration)
+        self.assertEqual(fc.framework, "document-processing")
+        self.assertEqual(fc.profile_name, "msi-editorial-research")
+        self.assertEqual(fc.config, {})
+        self.assertEqual(fc.overlays, [])
+
+    def test_full_framework_configuration_with_config_and_overlays(self):
+        self._write_overlay_file(
+            "framework-overlays/document-processing/post-output.md",
+            "## Project-Specific Output\n\nFoo.\n",
+        )
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {
+                    "framework": "document-processing",
+                    "profile_name": "msi-editorial-research",
+                    "config": {
+                        "chromadb_collection": "msi-research",
+                        "output_type_override": {
+                            "from": "incubator", "to": "msi-research",
+                        },
+                        "voice_property_name": "source_voice",
+                    },
+                    "overlays": [
+                        {
+                            "extension_point": "post-output-contract",
+                            "file": "framework-overlays/document-processing/post-output.md",
+                        }
+                    ],
+                }
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        fc = p.framework_configurations[0]
+        self.assertEqual(fc.config["chromadb_collection"], "msi-research")
+        self.assertEqual(fc.config["voice_property_name"], "source_voice")
+        self.assertEqual(len(fc.overlays), 1)
+        ov = fc.overlays[0]
+        self.assertIsInstance(ov, pr.ProjectFrameworkOverlay)
+        self.assertEqual(ov.extension_point, "post-output-contract")
+
+    def test_find_framework_configuration_helper(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {"framework": "fw-a", "profile_name": "p1"},
+                {"framework": "fw-a", "profile_name": "p2"},
+                {"framework": "fw-b", "profile_name": "p1"},
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        self.assertEqual(len(p.framework_configurations), 3)
+        # Same profile name OK across different frameworks
+        fc1 = p.find_framework_configuration("fw-a", "p1")
+        fc2 = p.find_framework_configuration("fw-b", "p1")
+        self.assertIsNotNone(fc1)
+        self.assertIsNotNone(fc2)
+        self.assertEqual(fc1.framework, "fw-a")
+        self.assertEqual(fc2.framework, "fw-b")
+        # Non-existent → None
+        self.assertIsNone(p.find_framework_configuration("fw-a", "nope"))
+        self.assertIsNone(p.find_framework_configuration("nope", "p1"))
+
+    # --- Top-level validation -------------------------------------------
+
+    def test_top_level_not_array_raises(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": "not-an-array",
+        })
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
+    # --- Per-entry validation (graceful skip) ---------------------------
+
+    def test_entry_not_object_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": ["not-an-object"],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_missing_framework_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [{"profile_name": "anon"}],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_missing_profile_name_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [{"framework": "fw"}],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_invalid_profile_name_regex_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {"framework": "fw", "profile_name": "Has-Capitals"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_config_not_object_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {"framework": "fw", "profile_name": "p1", "config": "string"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_overlays_not_array_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {"framework": "fw", "profile_name": "p1", "overlays": "x"}
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_overlay_missing_extension_point_skipped(self):
+        self._write_overlay_file("overlays/x.md")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {
+                    "framework": "fw", "profile_name": "p1",
+                    "overlays": [{"file": "overlays/x.md"}],
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_overlay_invalid_extension_point_regex_skipped(self):
+        self._write_overlay_file("overlays/x.md")
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {
+                    "framework": "fw", "profile_name": "p1",
+                    "overlays": [
+                        {"extension_point": "Has Spaces", "file": "overlays/x.md"}
+                    ],
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_overlay_missing_file_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {
+                    "framework": "fw", "profile_name": "p1",
+                    "overlays": [{"extension_point": "ep1"}],
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_overlay_absolute_file_path_skipped(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {
+                    "framework": "fw", "profile_name": "p1",
+                    "overlays": [
+                        {"extension_point": "ep1", "file": "/absolute/path.md"}
+                    ],
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    def test_overlay_nonexistent_file_skipped(self):
+        # file path is valid + relative, but doesn't exist on disk
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {
+                    "framework": "fw", "profile_name": "p1",
+                    "overlays": [
+                        {"extension_point": "ep1", "file": "overlays/missing.md"}
+                    ],
+                }
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+
+    # --- Duplicate handling ---------------------------------------------
+
+    def test_duplicate_framework_profile_pair_keeps_first(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {"framework": "fw", "profile_name": "p1",
+                 "config": {"x": "first"}},
+                {"framework": "fw", "profile_name": "p1",
+                 "config": {"x": "second"}},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(len(p.framework_configurations), 1)
+        self.assertEqual(
+            p.framework_configurations[0].config["x"], "first",
+        )
+
+    def test_same_profile_name_different_framework_both_kept(self):
+        # Profile name uniqueness is scoped per framework — both should land.
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {"framework": "fw-a", "profile_name": "shared"},
+                {"framework": "fw-b", "profile_name": "shared"},
+            ],
+        })
+        p = pr.load_project_at(self.root)
+        self.assertEqual(len(p.framework_configurations), 2)
+
+    # --- Graceful degradation -------------------------------------------
+
+    def test_one_bad_entry_doesnt_block_others(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "framework_configurations": [
+                {"framework": "good", "profile_name": "p1"},
+                {"framework": "bad"},  # missing profile_name
+                {"framework": "also-good", "profile_name": "p1"},
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(len(p.framework_configurations), 2)
+        frameworks = [fc.framework for fc in p.framework_configurations]
+        self.assertEqual(set(frameworks), {"good", "also-good"})
+
+    def test_fc_parse_error_doesnt_break_other_manifest_fields(self):
+        self._write_manifest({
+            "nexus": "test", "name": "Test",
+            "tools": [
+                {"name": "my-tool", "command": ["python3", "tools/x.py"]}
+            ],
+            "framework_configurations": [
+                {"framework": "fw"}  # missing profile_name
+            ],
+        })
+        p = self._load_quietly()
+        self.assertEqual(p.framework_configurations, [])
+        self.assertIn("my-tool", p.tools)
+
+
 if __name__ == "__main__":
     unittest.main()
