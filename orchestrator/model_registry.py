@@ -95,6 +95,37 @@ def intelligence_score(model_id: str) -> float | None:
     return entry.get("intelligence_score")
 
 
+def aa_intelligence_index(model_id: str) -> float | None:
+    """Return Artificial Analysis's intelligence_index (0-100 scale)
+    for a model, or None when AA doesn't list it. Used as a fallback
+    ranking metric when Chatbot Arena ELO is unavailable — see the
+    coverage audit notes in scripts/sync_model_registry.py."""
+    entry = lookup(model_id)
+    if entry is None:
+        return None
+    return entry.get("aa_intelligence_index")
+
+
+def latency_ttft_seconds(model_id: str) -> float | None:
+    """Return Artificial Analysis's median time-to-first-token (seconds)
+    for a model, or None when not measured. Useful for selecting
+    interactive-feel models — lower is better."""
+    entry = lookup(model_id)
+    if entry is None:
+        return None
+    return entry.get("latency_ttft_seconds")
+
+
+def output_tokens_per_second(model_id: str) -> float | None:
+    """Return AA's median output throughput (tokens/sec) for a model,
+    or None when not measured. Higher is better; useful for ranking
+    when generating long outputs."""
+    entry = lookup(model_id)
+    if entry is None:
+        return None
+    return entry.get("output_tokens_per_second")
+
+
 def overlay_routing_config(rc: dict) -> dict:
     """Mutate-and-return a routing-config dict, overlaying registry
     values onto each endpoint's capability fields.
@@ -137,6 +168,16 @@ def overlay_routing_config(rc: dict) -> dict:
         if intel is not None:
             ep["intelligence_score"] = intel
             ep["intelligence_rank"] = reg.get("intelligence_rank")
+        # AA intelligence + latency + throughput fields — surface for
+        # model-selection UI even when Chatbot Arena ELO isn't present.
+        if reg.get("aa_intelligence_index") is not None:
+            ep["aa_intelligence_index"] = reg["aa_intelligence_index"]
+        if reg.get("latency_ttft_seconds") is not None:
+            ep["latency_ttft_seconds"] = reg["latency_ttft_seconds"]
+        if reg.get("latency_total_seconds") is not None:
+            ep["latency_total_seconds"] = reg["latency_total_seconds"]
+        if reg.get("output_tokens_per_second") is not None:
+            ep["output_tokens_per_second"] = reg["output_tokens_per_second"]
         overlaid += 1
     rc["_registry_overlaid_count"] = overlaid
     return rc

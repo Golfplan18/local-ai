@@ -65,6 +65,11 @@ ARENA_CSV_URL = (
     "https://huggingface.co/datasets/mathewhe/chatbot-arena-elo/"
     "resolve/main/elo.csv"
 )
+AA_MODELS_URL = "https://artificialanalysis.ai/models"
+AA_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+)
 
 REGISTRY_SCHEMA_VERSION = 1
 ARENA_DIGITS = ("3", "7")
@@ -98,6 +103,83 @@ def fetch_arena_rows() -> list[dict]:
     raw = _fetch(ARENA_CSV_URL)
     rows = list(csv.DictReader(io.StringIO(raw.decode("utf-8"))))
     return rows
+
+
+def _fetch_aa_html() -> bytes:
+    req = urllib.request.Request(AA_MODELS_URL, headers={"User-Agent": AA_USER_AGENT})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return resp.read()
+
+
+def fetch_aa_models() -> list[dict]:
+    """Scrape the artificialanalysis.ai /models page and extract its
+    embedded model array.
+
+    AA renders the page server-side with Next.js. The data we want is
+    in the RSC payload: a series of ``self.__next_f.push([1, "..."])``
+    calls whose concatenated escaped-string content carries a
+    ``"defaultData":[ ... ]`` array of model entries with
+    intelligence_index, modalities, pricing, latency fields, etc.
+
+    No API key required — the page is publicly served. Cost per fetch:
+    one HTTP GET (~8 MB) per sync. With the install-default once-per-day
+    cadence (or model-selection-screen-triggered), per-instance load is
+    trivial even at very large install counts.
+
+    Schema is informally documented — if AA changes their RSC payload
+    or moves the data into a separate API call, this function fails and
+    AA enrichment goes silent. The registry's other sources (OpenRouter,
+    LiteLLM, Chatbot Arena) remain unaffected.
+    """
+    raw_html = _fetch_aa_html().decode("utf-8", errors="ignore")
+    chunks = re.findall(r'self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)', raw_html)
+    combined = ""
+    for c in chunks:
+        try:
+            combined += c.encode().decode("unicode_escape")
+        except UnicodeDecodeError:
+            continue
+    start = combined.find('"defaultData":[')
+    if start < 0:
+        return []
+    arr_start = start + len('"defaultData":')
+    close = _find_matching_bracket(combined, arr_start)
+    if close < 0:
+        return []
+    try:
+        return json.loads(combined[arr_start: close + 1])
+    except json.JSONDecodeError:
+        return []
+
+
+def _find_matching_bracket(s: str, open_idx: int) -> int:
+    """Return the index of the ``]`` that closes the array opened at
+    ``open_idx``, honoring nested arrays and JSON strings."""
+    depth = 0
+    i = open_idx
+    in_str = False
+    esc = False
+    n = len(s)
+    while i < n:
+        c = s[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif c == "\\":
+                esc = True
+            elif c == '"':
+                in_str = False
+        else:
+            if c == '"':
+                in_str = True
+            elif c == "[":
+                depth += 1
+            elif c == "]":
+                depth -= 1
+                if depth == 0:
+                    return i
+        i += 1
+    return -1
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -403,6 +485,117 @@ def map_arena_to_openrouter(
     return best_id if best_score >= 0.5 else None
 
 
+# AA model_creators.slug → OpenRouter vendor prefix. Most match
+# directly; the few that don't are normalized via _ORG_TO_VENDOR_HINTS.
+_AA_CREATOR_SLUG_REMAP = {
+    "meta": "meta-llama",
+    "alibaba": "qwen",
+}
+
+
+def _aa_canonical_or_id(m: dict) -> str | None:
+    """Synthesize the most-likely OpenRouter id for an AA entry.
+    ``<creator_slug>/<model_slug>``, with the small vendor remap."""
+    creators = m.get("model_creators") or {}
+    csl = creators.get("slug") if isinstance(creators, dict) else None
+    msl = m.get("slug")
+    if not (csl and msl):
+        return None
+    vendor = _AA_CREATOR_SLUG_REMAP.get(csl, csl)
+    return f"{vendor}/{msl}"
+
+
+def _project_aa_view(m: dict) -> dict:
+    """Project an AA model dict into the registry's per-source view."""
+    e2e = m.get("end_to_end_response_time_metrics") or {}
+    ttft = m.get("time_to_first_answer_token_metrics") or {}
+    tsd = m.get("timescaleData") or {}
+    return {
+        "aa_name": m.get("name"),
+        "aa_slug": m.get("slug"),
+        "aa_model_family_slug": m.get("model_family_slug"),
+        "aa_intelligence_index": _maybe_float(m.get("intelligence_index")),
+        "aa_coding_index": _maybe_float(m.get("coding_index")),
+        "aa_agentic_index": _maybe_float(m.get("agentic_index")),
+        "aa_math_index": _maybe_float(m.get("math_index")),
+        "aa_input_modality_image": m.get("input_modality_image"),
+        "aa_is_open_weights": m.get("is_open_weights"),
+        "aa_reasoning_model": m.get("reasoning_model"),
+        "aa_release_date": m.get("release_date"),
+        "aa_knowledge_cutoff_date": m.get("knowledge_cutoff_date"),
+        "latency_total_seconds": _maybe_float(e2e.get("total_time")),
+        "latency_ttft_seconds": _maybe_float(ttft.get("total_time")),
+        "output_tokens_per_second": _maybe_float(tsd.get("median_output_speed")),
+        "fetched_at": _now_iso(),
+    }
+
+
+def build_aa_overlay(
+    aa_models: list[dict], openrouter_ids: list[str]
+) -> dict[str, dict]:
+    """Return {openrouter_id: aa_view_dict}.
+
+    Two-pass matching:
+      1. Direct canonical id match — AA's ``<creator_slug>/<model_slug>``
+         (after the small vendor remap) often matches an OpenRouter id
+         verbatim (``openai/gpt-4o-2024-08-06`` etc.). High-precision,
+         zero-Jaccard pass.
+      2. Within-vendor Jaccard fallback — for OR ids that didn't match
+         on canonical id, score against AA candidates with the same
+         vendor; pick best above 0.5 threshold.
+    """
+    # Pass 1 index — every AA model's canonical id
+    aa_by_canonical: dict[str, dict] = {}
+    aa_by_vendor: dict[str, list[dict]] = {}
+    for m in aa_models:
+        if m.get("deleted"):
+            continue
+        cid = _aa_canonical_or_id(m)
+        if cid:
+            aa_by_canonical[cid] = m
+            vendor, _ = cid.split("/", 1)
+            aa_by_vendor.setdefault(vendor, []).append(m)
+
+    overlay: dict[str, dict] = {}
+    direct_hits = 0
+    fuzzy_hits = 0
+    for oid in openrouter_ids:
+        # Pass 1: direct canonical match
+        if oid in aa_by_canonical:
+            overlay[oid] = _project_aa_view(aa_by_canonical[oid])
+            overlay[oid]["match_type"] = "canonical"
+            direct_hits += 1
+            continue
+        # Pass 2: within-vendor Jaccard fallback
+        if "/" not in oid:
+            continue
+        vendor, _ = oid.split("/", 1)
+        candidates = aa_by_vendor.get(vendor, [])
+        if not candidates:
+            continue
+        or_tokens = tokenize_model_name(oid.split("/", 1)[-1])
+        if not or_tokens:
+            continue
+        best: dict | None = None
+        best_score = 0.0
+        for m in candidates:
+            aa_name = m.get("slug") or m.get("name") or ""
+            aa_tokens = tokenize_model_name(aa_name)
+            if not aa_tokens:
+                continue
+            score = jaccard(or_tokens, aa_tokens)
+            if score > best_score:
+                best_score = score
+                best = m
+        if best is not None and best_score >= 0.5:
+            overlay[oid] = _project_aa_view(best)
+            overlay[oid]["match_type"] = "jaccard"
+            overlay[oid]["match_score"] = round(best_score, 3)
+            fuzzy_hits += 1
+    print(f"[sync]   AA → OpenRouter: {direct_hits} direct + {fuzzy_hits} fuzzy = {len(overlay)} total", flush=True)
+    return overlay
+
+
 def build_arena_overlay(
     arena_rows: list[dict], openrouter_ids: list[str]
 ) -> dict[str, dict]:
@@ -492,6 +685,7 @@ def merge_sources(
     openrouter_models: list[dict],
     litellm: dict,
     arena_overlay: dict[str, dict],
+    aa_overlay: dict[str, dict] | None = None,
     existing_registry: dict | None = None,
 ) -> dict:
     """Return the full registry dict ready for writing.
@@ -501,6 +695,7 @@ def merge_sources(
     source for vision_capable; throwing it away on every sync would
     waste API tokens and force re-probing every refresh).
     """
+    aa_overlay = aa_overlay or {}
     models: dict[str, dict] = {}
     ll_index = build_litellm_token_index(litellm)
     prior_models = (existing_registry or {}).get("models") or {}
@@ -512,6 +707,7 @@ def merge_sources(
         ll_entry = litellm_lookup(model_id, litellm, ll_index)
         ll_view = litellm_view(ll_entry)
         arena = arena_overlay.get(model_id)
+        aa = aa_overlay.get(model_id)
         vision = _resolve_vision_capable(or_view, ll_view)
 
         # Preserve prior empirical probe verdict if present — it's the
@@ -533,6 +729,7 @@ def merge_sources(
             },
             "litellm": ll_view,
             "arena": arena,
+            "artificialanalysis": aa,
         }
         if prior_probe:
             provenance["empirical_probe"] = prior_probe
@@ -549,18 +746,72 @@ def merge_sources(
             "pricing": or_view["pricing"],
             "knowledge_cutoff": or_view.get("knowledge_cutoff"),
             "hugging_face_id": or_view.get("hugging_face_id"),
+            # Chatbot Arena intelligence
             "intelligence_score": arena["intelligence_score"] if arena else None,
             "intelligence_rank": arena["intelligence_rank"] if arena else None,
             "intelligence_votes": arena["votes"] if arena else None,
+            # Artificial Analysis enrichment (intelligence + latency + tps)
+            "aa_intelligence_index": aa["aa_intelligence_index"] if aa else None,
+            "aa_coding_index": aa["aa_coding_index"] if aa else None,
+            "aa_agentic_index": aa["aa_agentic_index"] if aa else None,
+            "aa_math_index": aa["aa_math_index"] if aa else None,
+            "latency_total_seconds": aa["latency_total_seconds"] if aa else None,
+            "latency_ttft_seconds": aa["latency_ttft_seconds"] if aa else None,
+            "output_tokens_per_second": aa["output_tokens_per_second"] if aa else None,
+            "is_open_weights": aa["aa_is_open_weights"] if aa else None,
+            "reasoning_model": aa["aa_reasoning_model"] if aa else None,
+            "release_date": aa["aa_release_date"] if aa else None,
             "last_synced_at": _now_iso(),
             "_provenance": provenance,
         }
+    # Post-process: ``:free`` suffix variants inherit from their paid base
+    # (same underlying model, billing-tier-only differentiation).
+    inherited = _apply_free_suffix_inheritance(models)
+    if inherited:
+        print(f"[sync]   :free suffix inheritance applied to {inherited} model fields", flush=True)
     return {
         "$schema_version": REGISTRY_SCHEMA_VERSION,
         "generated_at": _now_iso(),
         "model_count": len(models),
         "models": models,
     }
+
+
+# Fields safe to inherit from <base> onto <base>:free. NOT pricing
+# (that's the whole point of the :free tier) and NOT routing-specific
+# operational fields. The semantic + capability + intelligence +
+# performance fields are the same underlying model.
+_FREE_INHERITABLE_FIELDS = (
+    "vision_capable",  # but NOT vision_verified_by (its provenance differs)
+    "intelligence_score", "intelligence_rank", "intelligence_votes",
+    "aa_intelligence_index", "aa_coding_index", "aa_agentic_index",
+    "aa_math_index", "latency_total_seconds", "latency_ttft_seconds",
+    "output_tokens_per_second",
+    "supports_function_calling", "supports_tool_choice",
+    "is_open_weights", "reasoning_model", "release_date",
+    "knowledge_cutoff",
+)
+
+
+def _apply_free_suffix_inheritance(models: dict) -> int:
+    """For every ``<base>:free`` id in the registry, inherit non-pricing
+    fields from ``<base>`` when the paid variant exists and the :free
+    field is null. Same underlying model — billing-tier differentiation
+    only. Returns the count of fields inherited (for the log line)."""
+    count = 0
+    for mid, m in models.items():
+        if not mid.endswith(":free"):
+            continue
+        base_id = mid[: -len(":free")]
+        base = models.get(base_id)
+        if base is None:
+            continue
+        for field in _FREE_INHERITABLE_FIELDS:
+            if m.get(field) is None and base.get(field) is not None:
+                m[field] = base[field]
+                count += 1
+        m["_inherited_from_base"] = base_id
+    return count
 
 
 def _resolve_vision_capable(or_view: dict, ll_view: dict) -> dict:
@@ -766,10 +1017,20 @@ def cmd_sync(args) -> int:
     print("[sync] fetching Chatbot Arena ELO CSV …", flush=True)
     arena_rows = fetch_arena_rows()
     print(f"[sync]   {len(arena_rows)} rows", flush=True)
+    print("[sync] fetching Artificial Analysis (public /models page) …", flush=True)
+    try:
+        aa_models = fetch_aa_models()
+        print(f"[sync]   {len(aa_models)} AA models", flush=True)
+    except Exception as e:
+        # AA scrape failures are non-fatal — registry still works
+        # with the other sources. Log and proceed with empty overlay.
+        print(f"[sync]   AA fetch failed (proceeding without): {e}", flush=True)
+        aa_models = []
 
     or_ids = [m.get("id") for m in or_models if m.get("id")]
     arena_overlay = build_arena_overlay(arena_rows, or_ids)
     print(f"[sync]   Arena → OpenRouter matches: {len(arena_overlay)}", flush=True)
+    aa_overlay = build_aa_overlay(aa_models, or_ids) if aa_models else {}
 
     # Read existing registry to preserve empirical-probe verdicts.
     existing = None
@@ -786,7 +1047,11 @@ def cmd_sync(args) -> int:
         except (OSError, json.JSONDecodeError):
             existing = None
 
-    registry = merge_sources(or_models, litellm, arena_overlay, existing_registry=existing)
+    registry = merge_sources(
+        or_models, litellm, arena_overlay,
+        aa_overlay=aa_overlay,
+        existing_registry=existing,
+    )
     REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w") as f:
         json.dump(registry, f, indent=2, sort_keys=False)
@@ -796,13 +1061,32 @@ def cmd_sync(args) -> int:
     vc_true = sum(1 for m in registry["models"].values() if m["vision_capable"] is True)
     vc_false = sum(1 for m in registry["models"].values() if m["vision_capable"] is False)
     vc_null = sum(1 for m in registry["models"].values() if m["vision_capable"] is None)
-    intel = sum(1 for m in registry["models"].values() if m["intelligence_score"] is not None)
+    arena_count = sum(1 for m in registry["models"].values() if m.get("intelligence_score") is not None)
+    aa_count = sum(1 for m in registry["models"].values() if m.get("aa_intelligence_index") is not None)
+    any_intel = sum(
+        1 for m in registry["models"].values()
+        if m.get("intelligence_score") is not None or m.get("aa_intelligence_index") is not None
+    )
+    latency_count = sum(1 for m in registry["models"].values() if m.get("latency_total_seconds") is not None)
+    tps_count = sum(1 for m in registry["models"].values() if m.get("output_tokens_per_second") is not None)
+    total = registry["model_count"]
     print(
         f"[sync] vision_capable: true={vc_true} false={vc_false} null={vc_null} "
         f"(null = need probe)",
         flush=True,
     )
-    print(f"[sync] intelligence_score populated: {intel}/{registry['model_count']}", flush=True)
+    print(
+        f"[sync] intelligence coverage: "
+        f"Arena ELO {arena_count}/{total} ({100*arena_count/total:.0f}%), "
+        f"AA intelligence_index {aa_count}/{total} ({100*aa_count/total:.0f}%), "
+        f"either {any_intel}/{total} ({100*any_intel/total:.0f}%)",
+        flush=True,
+    )
+    print(
+        f"[sync] latency/performance: ttft+e2e {latency_count}/{total} ({100*latency_count/total:.0f}%), "
+        f"tokens/sec {tps_count}/{total} ({100*tps_count/total:.0f}%)",
+        flush=True,
+    )
 
     unverified = _count_unverified_positive(registry)
     if not args.no_probe and unverified > 0:
