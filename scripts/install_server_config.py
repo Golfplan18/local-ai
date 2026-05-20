@@ -37,24 +37,86 @@ BACKUP = WORKSPACE / "config" / "routing-config.json.pre-server-install"
 # (OPENROUTER_API_KEY); direct anthropic-api / openai-api endpoints would
 # require additional per-provider keys for no operational benefit.
 #
-# MSI's article generator picks its own model via the MSI_AUTHOR_MODEL env
-# var (Sonnet forward, Haiku backfill) — independent of these slot picks,
-# which drive only the gear pipeline (cleanup, classification, eval, etc.).
+# Writing slots (breadth / depth / evaluator) carry a free-model fallback
+# chain driven by the `premium` bucket ordering: when the primary free
+# model rate-limits, the bucket walk falls through to the next free model;
+# paid models sit at the bottom of the chain as a safety net so the chain
+# can never exhaust. Throughput-first ordering (fastest free model first).
+#
+# MSI's article generator on the server uses `invoke_chat()` against the
+# slot routing below; the older `claude_invoke.py` path (Mac-only, shells
+# out to Claude Code) is bypassed on the server because Claude Code isn't
+# installed there. See cloud-Ora plan phase (c-finalize / e).
+PREMIUM_BUCKET_CHAIN = [
+    "arcee-ai/trinity-large-thinking:free",      # primary — ~100 tok/s
+    "deepseek/deepseek-v4-flash:free",           # backup 1 — ~35 tok/s
+    "nvidia/nemotron-3-super-120b-a12b:free",    # backup 2
+    "minimax/minimax-m2.5:free",                 # backup 3
+    "openrouter/free",                            # managed free-pool auto-router
+    "qwen/qwen3.6-plus",                          # paid safety net
+    "moonshotai/kimi-k2.6",                       # paid safety net 2
+]
+
+# Endpoint entries to synthesize into routing-config.json::endpoints[] if
+# missing (some of the free models above are in the catalog but not yet in
+# the endpoints[] list of a fresh routing-config). Mirrors the shape of
+# existing OpenRouter-routed endpoint entries.
+NEW_FREE_ENDPOINTS = [
+    ("arcee-ai/trinity-large-thinking:free", "Arcee: Trinity Large Thinking (free)", "arcee"),
+    ("deepseek/deepseek-v4-flash:free",      "DeepSeek: V4 Flash (free)",            "deepseek"),
+    ("minimax/minimax-m2.5:free",            "MiniMax: M2.5 (free)",                 "minimax"),
+]
+
 SERVER_SLOT_ASSIGNMENTS = {
     "sidebar":        "qwen/qwen3.6-35b-a3b",
     "step1_cleanup":  "qwen/qwen3.6-35b-a3b",
     "classification": "qwen/qwen3.6-35b-a3b",
     "rag_planner":    "qwen/qwen3.6-35b-a3b",
-    "breadth":        "qwen/qwen3.6-plus",
-    "depth":          "qwen/qwen3.6-plus",
-    "evaluator":      "qwen/qwen3.6-plus",
+    "breadth":        PREMIUM_BUCKET_CHAIN[0],
+    "depth":          PREMIUM_BUCKET_CHAIN[0],
+    "evaluator":      PREMIUM_BUCKET_CHAIN[0],
     "consolidator":   "qwen/qwen3.6-plus",
 }
 SERVER_DEFAULT_ENDPOINT = "qwen/qwen3.6-plus"
 SERVER_GEAR4_OVERRIDES = {
-    "depth":   {"enabled": True, "endpoint": "qwen/qwen3.6-plus"},
-    "breadth": {"enabled": True, "endpoint": "qwen/qwen3.6-plus"},
+    "depth":   {"enabled": True, "endpoint": PREMIUM_BUCKET_CHAIN[0]},
+    "breadth": {"enabled": True, "endpoint": PREMIUM_BUCKET_CHAIN[0]},
 }
+
+
+def _synthesize_missing_endpoints(cfg: dict) -> int:
+    """Add minimal endpoint entries for NEW_FREE_ENDPOINTS members that are
+    not already in cfg['endpoints'][]. Returns the count added. Idempotent.
+    """
+    existing_ids = {e.get("id") for e in cfg.get("endpoints", [])}
+    added = 0
+    for model_id, display, family in NEW_FREE_ENDPOINTS:
+        if model_id in existing_ids:
+            continue
+        cfg.setdefault("endpoints", []).append({
+            "id": model_id,
+            "type": "api",
+            "service": "openrouter",
+            "model_id": model_id,
+            "display_name": display,
+            "provider": "openrouter",
+            "training_family": family,
+            "tier": "premium",
+            "status": "active",
+            "enabled": True,
+            "credential_key": "ora/openrouter-api-key",
+            "capabilities": {
+                "tool_access": False,
+                "file_system_access": False,
+                "web_access": False,
+                "retrieval_approach": "pre-assembled",
+            },
+            "vision_capable": False,
+            "model": model_id,
+            "_auto_synthesized": True,
+        })
+        added += 1
+    return added
 
 
 def log(msg: str) -> None:
@@ -69,8 +131,19 @@ def main() -> int:
     with open(ROUTING_CONFIG) as f:
         cfg = json.load(f)
 
+    # Synthesize any missing free-model endpoints before the validation pass
+    # so a clean install doesn't fail on the trinity chain not yet existing
+    # in endpoints[].
+    added = _synthesize_missing_endpoints(cfg)
+    if added:
+        log(f"  ✓ Synthesized {added} missing free-model endpoint entries")
+
     endpoint_ids = {e.get("id") for e in cfg.get("endpoints", []) if e.get("id")}
-    needed_ids = set(SERVER_SLOT_ASSIGNMENTS.values()) | {SERVER_DEFAULT_ENDPOINT}
+    needed_ids = (
+        set(SERVER_SLOT_ASSIGNMENTS.values())
+        | {SERVER_DEFAULT_ENDPOINT}
+        | set(PREMIUM_BUCKET_CHAIN)
+    )
     missing = needed_ids - endpoint_ids
     if missing:
         log(f"✗ routing-config.json::endpoints[] is missing: {sorted(missing)}")
@@ -89,6 +162,11 @@ def main() -> int:
     cfg["slot_assignments"] = SERVER_SLOT_ASSIGNMENTS
     cfg["default_endpoint"] = SERVER_DEFAULT_ENDPOINT
     cfg["gear4_overrides"]  = SERVER_GEAR4_OVERRIDES
+
+    # Reorder the `premium` bucket so the bucket-walk fallback delivers the
+    # trinity-first free-model chain (writing slots resolve into this bucket
+    # for their fallback behavior — see PREMIUM_BUCKET_CHAIN definition).
+    cfg.setdefault("buckets", {})["premium"] = list(PREMIUM_BUCKET_CHAIN)
 
     # operational_context — keep "api" available everywhere on the server;
     # remove "local" so any code that still walks transports doesn't try
