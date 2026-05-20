@@ -104,6 +104,24 @@ def try_acquire(machine_id: str) -> Iterator[bool]:
             lock.release()
 
 
+def is_machine_busy(machine_id: str) -> bool:
+    """Non-blocking poll: is this machine's MLX mutex currently held?
+
+    Used by the router's failover-chain walk to decide whether to
+    advance to the next entry on local-endpoint contention. There is a
+    short TOCTOU window between this poll and the eventual
+    ``call_model`` blocking acquire — if the mutex becomes free in
+    between, call_model proceeds immediately; if it becomes busy in
+    between, call_model blocks for one model-call's duration. Either
+    way the behaviour is sound and the worst case is bounded.
+    """
+    lock = _get_or_create_mutex(machine_id)
+    if lock.acquire(blocking=False):
+        lock.release()
+        return False
+    return True
+
+
 def waiting_count(machine_id: str) -> int:
     """Number of pipelines waiting at this machine's MLX mutex.
 
@@ -149,6 +167,7 @@ def reset_for_tests() -> None:
 __all__ = [
     "acquire",
     "try_acquire",
+    "is_machine_busy",
     "waiting_count",
     "track_api_call",
     "in_flight_count",

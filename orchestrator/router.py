@@ -32,6 +32,8 @@ CONFIG_DIR = Path(__file__).parent.parent / "config"
 ROUTING_CONFIG_PATH = CONFIG_DIR / "routing-config.json"
 CONFIGURATIONS_DIR = CONFIG_DIR / "configurations"
 
+DEFAULT_MACHINE_ID = "studio-128"
+
 # Default configuration name when one is not explicitly provided.
 # Maps from the legacy ``context`` parameter for backward compatibility.
 DEFAULT_CONFIG_FOR_CONTEXT = {
@@ -183,7 +185,8 @@ class Router:
     def resolve_endpoint(self, slot: str, gear: int, context: str,
                          excluded_ids: set | None = None,
                          same_machine_block: str | None = None,
-                         config_name: str | None = None) -> dict | None:
+                         config_name: str | None = None,
+                         mutex_check: bool = True) -> dict | None:
         """Resolve a single slot to a v2 endpoint dict.
 
         Args:
@@ -197,6 +200,14 @@ class Router:
             config_name: Named configuration in config/configurations/.
                 When None, the effective configuration is derived from
                 ``context``.
+            mutex_check: When True (the default), local endpoints with a
+                currently-held per-machine MLX mutex are skipped over and
+                the next entry in the chain is tried. When every entry is
+                either ineligible or a busy local, the first busy local
+                encountered is returned so the caller's ``call_model``
+                queues at the mutex (the spec's "no API fallback so we
+                wait" path). Pass False for unit tests that need a
+                deterministic resolution unaffected by global mutex state.
 
         Returns:
             v2 endpoint dict, or None if no eligible endpoint found.
@@ -209,6 +220,7 @@ class Router:
                 slot, gear, effective_config,
                 excluded_ids=excluded_ids,
                 same_machine_block=same_machine_block,
+                mutex_check=mutex_check,
             )
 
         # ── Legacy bucket-walk path (retained as fallback when no
@@ -219,9 +231,10 @@ class Router:
         if not bucket_order:
             return None
 
+        first_busy_local: dict | None = None
         for bucket_name in bucket_order:
             if bucket_name == "STOP":
-                return None
+                break
 
             model_ids = self._buckets.get(bucket_name, [])
             for ep_id in model_ids:
@@ -240,9 +253,20 @@ class Router:
                     if ep.get("machine") == same_machine_block:
                         continue
 
+                if mutex_check and ep.get("type") == "local":
+                    machine_id = ep.get("machine") or DEFAULT_MACHINE_ID
+                    try:
+                        import mlx_mutex
+                    except ImportError:
+                        from orchestrator import mlx_mutex
+                    if mlx_mutex.is_machine_busy(machine_id):
+                        if first_busy_local is None:
+                            first_busy_local = ep
+                        continue
+
                 return ep
 
-        return None
+        return first_busy_local
 
     def resolve_gear(self, gear: int, context: str,
                      config_name: str | None = None) -> dict | None:
@@ -703,12 +727,17 @@ class Router:
         config_name: str,
         excluded_ids: set | None = None,
         same_machine_block: str | None = None,
+        mutex_check: bool = True,
     ) -> dict | None:
         """Resolve a slot to a v2 endpoint dict using a named configuration.
 
         Walks the cell's primary + fallback[] in order, applying the same
         per-endpoint filters as the legacy bucket-walk path
         (enabled, status==active, excluded_ids, same_machine_block).
+
+        ``mutex_check``: when True, local endpoints with a busy per-machine
+        MLX mutex are skipped in favour of the next chain entry; the first
+        busy local is returned only if every other entry is ineligible.
         """
         cfg = self._load_configuration(config_name)
         if cfg is None:
@@ -737,6 +766,7 @@ class Router:
         candidates.extend(fallback_ids)
 
         excluded_ids = excluded_ids or set()
+        first_busy_local: dict | None = None
         for ep_id in candidates:
             if not ep_id:
                 continue
@@ -752,9 +782,21 @@ class Router:
             if same_machine_block and ep.get("type") == "local":
                 if ep.get("machine") == same_machine_block:
                     continue
+
+            if mutex_check and ep.get("type") == "local":
+                machine_id = ep.get("machine") or DEFAULT_MACHINE_ID
+                try:
+                    import mlx_mutex
+                except ImportError:
+                    from orchestrator import mlx_mutex
+                if mlx_mutex.is_machine_busy(machine_id):
+                    if first_busy_local is None:
+                        first_busy_local = ep
+                    continue
+
             return ep
 
-        return None
+        return first_busy_local
 
     # ── legacy bucket-walk path ──────────────────────────────────────────
 
