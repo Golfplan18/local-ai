@@ -49,9 +49,13 @@ BACKUP = WORKSPACE / "config" / "routing-config.json.pre-server-install"
 # installed there. See cloud-Ora plan phase (c-finalize / e).
 PREMIUM_BUCKET_CHAIN = [
     "arcee-ai/trinity-large-thinking:free",      # primary — ~100 tok/s
-    "deepseek/deepseek-v4-flash:free",           # backup 1 — ~35 tok/s
-    "nvidia/nemotron-3-super-120b-a12b:free",    # backup 2
-    "minimax/minimax-m2.5:free",                 # backup 3
+    "openai/gpt-oss-120b:free",                  # 120B reasoning, 131k ctx
+    "nvidia/nemotron-3-super-120b-a12b:free",    # 120B MoE, 1M ctx
+    "deepseek/deepseek-v4-flash:free",           # fast, 1M ctx
+    "qwen/qwen3-next-80b-a3b-instruct:free",     # 80B MoE, 262k ctx
+    "meta-llama/llama-3.3-70b-instruct:free",    # Meta workhorse, 131k ctx
+    "minimax/minimax-m2.5:free",                 # 204k ctx
+    "google/gemma-4-31b-it:free",                # Google 31B, 262k ctx
     "openrouter/free",                            # managed free-pool auto-router
 ]
 # NOTE: No paid safety net on the writing-slot chain. If every free
@@ -73,16 +77,26 @@ NEW_FREE_ENDPOINTS = [
 
 FAST_BUCKET_CHAIN = [
     "nvidia/nemotron-3-nano-30b-a3b:free",       # primary — 30B MoE @ 3B active
-    "arcee-ai/trinity-large-thinking:free",      # backup
+    "openai/gpt-oss-20b:free",                   # 20B reasoning, 131k ctx
+    "nvidia/nemotron-nano-9b-v2:free",           # smaller fast variant, 128k ctx
+    "meta-llama/llama-3.2-3b-instruct:free",     # very fast 3B last-resort
     "openrouter/free",                            # managed free-pool auto-router
 ]
 
-# Endpoint synth list extended for utility bucket.
+# Endpoint synth list — all `:free` chain members that the catalog
+# may not yet have endpoint entries for on a fresh install.
 NEW_FREE_ENDPOINTS = [
-    ("arcee-ai/trinity-large-thinking:free", "Arcee: Trinity Large Thinking (free)", "arcee"),
-    ("deepseek/deepseek-v4-flash:free",      "DeepSeek: V4 Flash (free)",            "deepseek"),
-    ("minimax/minimax-m2.5:free",            "MiniMax: M2.5 (free)",                 "minimax"),
-    ("nvidia/nemotron-3-nano-30b-a3b:free",  "NVIDIA: Nemotron 3 Nano 30B A3B (free)", "nvidia"),
+    ("arcee-ai/trinity-large-thinking:free",        "Arcee: Trinity Large Thinking (free)",     "arcee"),
+    ("deepseek/deepseek-v4-flash:free",             "DeepSeek: V4 Flash (free)",                "deepseek"),
+    ("minimax/minimax-m2.5:free",                   "MiniMax: M2.5 (free)",                     "minimax"),
+    ("nvidia/nemotron-3-nano-30b-a3b:free",         "NVIDIA: Nemotron 3 Nano 30B A3B (free)",   "nvidia"),
+    ("openai/gpt-oss-120b:free",                    "OpenAI: GPT-OSS 120B (free)",              "openai"),
+    ("qwen/qwen3-next-80b-a3b-instruct:free",       "Qwen: 3 Next 80B A3B Instruct (free)",     "qwen"),
+    ("meta-llama/llama-3.3-70b-instruct:free",      "Meta: Llama 3.3 70B Instruct (free)",      "meta"),
+    ("google/gemma-4-31b-it:free",                  "Google: Gemma 4 31B IT (free)",            "google"),
+    ("openai/gpt-oss-20b:free",                     "OpenAI: GPT-OSS 20B (free)",               "openai"),
+    ("nvidia/nemotron-nano-9b-v2:free",             "NVIDIA: Nemotron Nano 9B v2 (free)",       "nvidia"),
+    ("meta-llama/llama-3.2-3b-instruct:free",       "Meta: Llama 3.2 3B Instruct (free)",       "meta"),
 ]
 
 SERVER_SLOT_ASSIGNMENTS = {
