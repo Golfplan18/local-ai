@@ -70,16 +70,21 @@ DEPLOYMENT_PROFILES = {
         "description": "Privacy-focused single user. Local MLX models, optional OpenRouter fallback. Per-machine MLX mutex serializes local calls.",
         "supported_now": True,
         "local_models": True,
+        # 0 = unbounded API concurrency (Solo expects no API endpoints; if
+        # one is added, no cap is the right fallback so calls don't deadlock)
+        "api_pool_size": 0,
     },
     "hybrid": {
         "description": "Single user, local MLX primary + OpenRouter API fallback. Local calls serialize at the per-machine mutex; cloud calls run in parallel. The router's chain walk advances past a busy local to API automatically.",
         "supported_now": True,
         "local_models": True,
+        "api_pool_size": 8,
     },
     "organization": {
         "description": "Pure-API deployment. No local MLX. Designed for 20+ concurrent users sharing one OpenRouter account.",
         "supported_now": True,
         "local_models": False,
+        "api_pool_size": 32,
     },
 }
 

@@ -32,6 +32,31 @@ _machine_mutex: dict[str, threading.Lock] = {}
 _machine_waiting: dict[str, int] = {}
 _api_in_flight: dict[str, int] = {}
 
+# Sized API concurrency cap (Phase 2a). When configured to a positive
+# integer, ``track_api_call`` acquires from this semaphore before the
+# call and releases after — capping the number of concurrent outbound
+# API calls per Ora process. Defaults to None (unbounded) so single-user
+# installs see no behaviour change.
+#
+# Configured via ``configure_api_pool(size)``, typically from
+# install-state.json::profile at server startup. Per the concurrency
+# spec section 6: Solo 0 (interpreted here as unbounded — Solo has no
+# API endpoints, but if a user adds one we shouldn't deadlock), Hybrid
+# 8, Organization 32. Bounded so over-release surfaces as ValueError
+# rather than silently corrupting the count.
+_api_pool_semaphore: threading.BoundedSemaphore | None = None
+_api_pool_size: int | None = None
+
+# Per-profile API pool cap. Mirrors scripts/install.py::DEPLOYMENT_PROFILES
+# — duplicated here so server.py can read the size without importing from
+# scripts/ (which isn't on the Python path in production runs). Keep these
+# two in sync; the test suite checks parity.
+PROFILE_API_POOL_SIZES = {
+    "solo": 0,
+    "hybrid": 8,
+    "organization": 32,
+}
+
 
 def _get_or_create_mutex(machine_id: str) -> threading.Lock:
     with _registry_lock:
@@ -132,22 +157,107 @@ def waiting_count(machine_id: str) -> int:
         return _machine_waiting.get(machine_id, 0)
 
 
+def configure_api_pool(size: int | None) -> None:
+    """Configure the maximum number of concurrent outbound API calls.
+
+    Pass an integer ``> 0`` to cap concurrency at that many in-flight
+    calls — additional callers will block at ``track_api_call`` until
+    a slot frees. Pass ``None`` or ``0`` to remove the cap entirely
+    (the default; suitable for single-user installs).
+
+    Typically called once at Ora startup from server.py based on the
+    install profile (Hybrid: 8, Organization: 32, Solo: unbounded).
+    Reconfiguring at runtime is allowed — the new semaphore takes
+    effect for subsequent calls; in-flight callers under the old
+    semaphore complete normally.
+    """
+    global _api_pool_semaphore, _api_pool_size
+    with _registry_lock:
+        if size is None or size <= 0:
+            _api_pool_semaphore = None
+            _api_pool_size = None
+        else:
+            _api_pool_semaphore = threading.BoundedSemaphore(size)
+            _api_pool_size = size
+
+
+def api_pool_size() -> int | None:
+    """Return the current API pool cap, or None when unbounded."""
+    with _registry_lock:
+        return _api_pool_size
+
+
+def configure_api_pool_from_install_state(
+    state_path: str | None = None,
+    env: dict[str, str] | None = None,
+) -> int | None:
+    """Configure the API pool from install-state.json + env override.
+
+    Precedence:
+      1. ``ORA_API_POOL_SIZE`` env var (positive integer) — overrides
+         everything. Useful for testing or one-off tuning.
+      2. ``install-state.json::profile`` mapped through
+         ``PROFILE_API_POOL_SIZES``.
+      3. Unbounded (no cap) if neither source is usable.
+
+    Safe to call when install-state.json is missing or malformed —
+    falls back to unbounded silently. Returns the configured size
+    (or None for unbounded).
+    """
+    import json
+    import os
+
+    env = env if env is not None else dict(os.environ)
+    state_path = state_path or os.path.expanduser("~/ora/install-state.json")
+
+    env_cap = env.get("ORA_API_POOL_SIZE", "").strip()
+    if env_cap.isdigit() and int(env_cap) > 0:
+        size = int(env_cap)
+        configure_api_pool(size)
+        return size
+
+    try:
+        with open(state_path) as f:
+            state = json.load(f)
+        profile = state.get("profile")
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        configure_api_pool(None)
+        return None
+
+    size = PROFILE_API_POOL_SIZES.get(profile, 0)
+    if size > 0:
+        configure_api_pool(size)
+        return size
+    configure_api_pool(None)
+    return None
+
+
 @contextmanager
 def track_api_call(endpoint_id: str) -> Iterator[None]:
-    """Track an in-flight API call for observability.
+    """Track an in-flight API call, with optional sized cap.
 
-    No locking, no blocking — pure counter. The router will eventually
-    use this to display in-flight calls per endpoint in the UI.
+    When ``configure_api_pool`` has set a positive cap, this acquires
+    a slot from the semaphore (blocking until one frees) before the
+    call and releases on exit. The per-endpoint in-flight counter is
+    always maintained for observability — the cap is a separate
+    global concern.
     """
-    with _registry_lock:
-        _api_in_flight[endpoint_id] = _api_in_flight.get(endpoint_id, 0) + 1
+    sem = _api_pool_semaphore
+    if sem is not None:
+        sem.acquire()
     try:
-        yield
-    finally:
         with _registry_lock:
-            _api_in_flight[endpoint_id] = max(
-                0, _api_in_flight.get(endpoint_id, 0) - 1
-            )
+            _api_in_flight[endpoint_id] = _api_in_flight.get(endpoint_id, 0) + 1
+        try:
+            yield
+        finally:
+            with _registry_lock:
+                _api_in_flight[endpoint_id] = max(
+                    0, _api_in_flight.get(endpoint_id, 0) - 1
+                )
+    finally:
+        if sem is not None:
+            sem.release()
 
 
 def in_flight_count(endpoint_id: str) -> int:
@@ -158,10 +268,13 @@ def in_flight_count(endpoint_id: str) -> int:
 
 def reset_for_tests() -> None:
     """Test-only: clear all module state."""
+    global _api_pool_semaphore, _api_pool_size
     with _registry_lock:
         _machine_mutex.clear()
         _machine_waiting.clear()
         _api_in_flight.clear()
+        _api_pool_semaphore = None
+        _api_pool_size = None
 
 
 __all__ = [
@@ -171,5 +284,9 @@ __all__ = [
     "waiting_count",
     "track_api_call",
     "in_flight_count",
+    "configure_api_pool",
+    "configure_api_pool_from_install_state",
+    "api_pool_size",
+    "PROFILE_API_POOL_SIZES",
     "reset_for_tests",
 ]

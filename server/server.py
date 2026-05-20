@@ -9179,6 +9179,19 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
+    # Phase 2a: size the API in-flight cap from the install profile.
+    # Hybrid → 8, Organization → 32, Solo → unbounded. ORA_API_POOL_SIZE
+    # overrides for testing. Missing install-state.json → unbounded.
+    try:
+        import mlx_mutex
+        _api_cap = mlx_mutex.configure_api_pool_from_install_state()
+        if _api_cap is None:
+            print("[server] API pool: unbounded")
+        else:
+            print(f"[server] API pool cap: {_api_cap} concurrent outbound calls")
+    except Exception as _exc:
+        print(f"[server] API pool config skipped: {_exc}")
+
     # Embedding health check — verify Ollama daemon and the
     # embedding model are reachable. Cross-platform (Win/Linux/Mac).
     # Loud failure here beats silent fallback to a different embedder
