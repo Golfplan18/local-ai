@@ -402,7 +402,7 @@ class CheckCapabilitySyncTests(unittest.TestCase):
 
 
 class ProjectCapabilitySlotMergeTests(unittest.TestCase):
-    """Tests for `merge_project_capability_slots` (Plugin Convention v1.1 §12)."""
+    """Tests for `merge_project_capability_slots` (Plugin Convention §12)."""
 
     def setUp(self):
         import io
