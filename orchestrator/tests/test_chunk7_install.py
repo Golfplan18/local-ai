@@ -30,11 +30,28 @@ class TestDeploymentProfiles(unittest.TestCase):
     def test_solo_supported(self):
         self.assertTrue(install.DEPLOYMENT_PROFILES["solo"]["supported_now"])
 
-    def test_hybrid_scaffolded_not_supported_yet(self):
-        self.assertFalse(install.DEPLOYMENT_PROFILES["hybrid"]["supported_now"])
+    def test_hybrid_supported_post_concurrency(self):
+        """Hybrid landed when the per-machine mutex layer landed (2026-05-19)."""
+        self.assertTrue(install.DEPLOYMENT_PROFILES["hybrid"]["supported_now"])
 
-    def test_organization_scaffolded_not_supported_yet(self):
-        self.assertFalse(install.DEPLOYMENT_PROFILES["organization"]["supported_now"])
+    def test_organization_supported_post_concurrency(self):
+        """Organization landed when the per-machine mutex layer landed (2026-05-19)."""
+        self.assertTrue(install.DEPLOYMENT_PROFILES["organization"]["supported_now"])
+
+    def test_local_models_flag_present_per_profile(self):
+        self.assertTrue(install.DEPLOYMENT_PROFILES["solo"]["local_models"])
+        self.assertTrue(install.DEPLOYMENT_PROFILES["hybrid"]["local_models"])
+        self.assertFalse(install.DEPLOYMENT_PROFILES["organization"]["local_models"])
+
+    def test_each_profile_has_description(self):
+        for name, info in install.DEPLOYMENT_PROFILES.items():
+            self.assertTrue(info.get("description"),
+                            f"profile {name!r} missing description")
+            self.assertNotIn(
+                "blocked",
+                info["description"].lower(),
+                f"profile {name!r} description still references the retired 'blocked' state",
+            )
 
 
 class TestStateMachine(unittest.TestCase):
@@ -104,13 +121,13 @@ class TestProfileStep(unittest.TestCase):
         state = {"steps_completed": []}
         self.assertTrue(install.step_select_profile(state, "solo", dry_run=True))
 
-    def test_hybrid_blocked_with_message(self):
+    def test_hybrid_profile_accepted_post_concurrency(self):
         state = {"steps_completed": []}
-        self.assertFalse(install.step_select_profile(state, "hybrid", dry_run=True))
+        self.assertTrue(install.step_select_profile(state, "hybrid", dry_run=True))
 
-    def test_organization_blocked_with_message(self):
+    def test_organization_profile_accepted_post_concurrency(self):
         state = {"steps_completed": []}
-        self.assertFalse(install.step_select_profile(state, "organization", dry_run=True))
+        self.assertTrue(install.step_select_profile(state, "organization", dry_run=True))
 
     def test_unknown_profile_rejected(self):
         state = {"steps_completed": []}

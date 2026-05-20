@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Ora install script (install Chunk 7 — Solo-profile-only scaffold).
+"""Ora install script (install Chunk 7 — Solo + Hybrid + Organization).
 
-This is the first shippable install path. It provisions an Ora install in
-Solo profile (privacy-focused single-user; existing global-lock concurrency
-which fits the MLX SIGSEGV constraint). Hybrid and Organization profiles
-are scaffolded with placeholders pending the concurrency-architecture side
-thread.
+The three deployment profiles all install through the same pipeline; the
+profile choice steers the auto-populate preset, the local-model step
+(present for Solo + Hybrid, absent for Organization), and the runtime
+configuration the router uses to walk slot chains. MLX SIGSEGV safety is
+provided by the per-machine mutex inside ``call_model``
+(``orchestrator.mlx_mutex``) — see vault Working — Framework — Concurrency
+Architecture.md.archived-2026-05-18 for the design.
 
 Steps the script performs in order:
 
@@ -39,7 +41,7 @@ What this script does NOT do yet:
 
 Usage:
     python3 scripts/install.py                # interactive install
-    python3 scripts/install.py --profile solo # non-interactive Solo install
+    python3 scripts/install.py --profile solo # non-interactive (also: hybrid, organization)
     python3 scripts/install.py --dry-run      # preview, no changes
     python3 scripts/install.py --reset        # clear install state
     python3 scripts/install.py --resume       # continue from last completed step
@@ -65,16 +67,19 @@ COMPLETION_MARKER = "INSTALL_COMPLETE: 0 warnings, 0 errors"
 
 DEPLOYMENT_PROFILES = {
     "solo": {
-        "description": "Privacy-focused single-user. Local MLX models + optional OpenRouter for paid models. Existing global-lock concurrency. No worker pool. Default.",
+        "description": "Privacy-focused single user. Local MLX models, optional OpenRouter fallback. Per-machine MLX mutex serializes local calls.",
         "supported_now": True,
+        "local_models": True,
     },
     "hybrid": {
-        "description": "Single user + small API worker pool. Local MLX serializes; cloud calls parallelize. Requires worker-pool runtime (blocked on concurrency side thread).",
-        "supported_now": False,
+        "description": "Single user, local MLX primary + OpenRouter API fallback. Local calls serialize at the per-machine mutex; cloud calls run in parallel. The router's chain walk advances past a busy local to API automatically.",
+        "supported_now": True,
+        "local_models": True,
     },
     "organization": {
-        "description": "Multi-user, pure-API, 20+ concurrent processes. No local MLX. Requires full worker pool (blocked on concurrency side thread).",
-        "supported_now": False,
+        "description": "Pure-API deployment. No local MLX. Designed for 20+ concurrent users sharing one OpenRouter account.",
+        "supported_now": True,
+        "local_models": False,
     },
 }
 
@@ -428,7 +433,7 @@ def main():
         sys.exit(_delegate_to_local_models(sys.argv[2:]))
 
     parser = argparse.ArgumentParser(
-        description="Ora install script (Solo profile). Subcommand: 'models' re-enters local-model selection.",
+        description="Ora install script (Solo / Hybrid / Organization). Subcommand: 'models' re-enters local-model selection.",
     )
     parser.add_argument("--profile", choices=list(DEPLOYMENT_PROFILES.keys()), help="Skip the interactive profile prompt.")
     parser.add_argument("--dry-run", action="store_true", help="Preview actions without making changes.")
@@ -445,7 +450,7 @@ def main():
         state["started_at"] = datetime.now(timezone.utc).isoformat()
         save_state(state, dry_run=args.dry_run)
 
-    log(f"Ora install — Solo profile (install Chunk 7 scaffold) — {'DRY RUN' if args.dry_run else 'LIVE'}")
+    log(f"Ora install — Chunk 7 (Solo/Hybrid/Organization) — {'DRY RUN' if args.dry_run else 'LIVE'}")
     log(f"Repo root: {REPO_ROOT}")
     if args.resume and state.get("steps_completed"):
         log(f"Resuming after: {', '.join(state['steps_completed'])}")
