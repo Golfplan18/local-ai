@@ -22,6 +22,9 @@ for the full design.
 
 from __future__ import annotations
 
+import datetime
+import json
+import os
 import threading
 from contextlib import contextmanager
 from typing import Iterator
@@ -266,9 +269,93 @@ def in_flight_count(endpoint_id: str) -> int:
         return _api_in_flight.get(endpoint_id, 0)
 
 
+_DEFAULT_HEARTBEAT_PATH = os.path.expanduser(
+    "~/ora/data/oversight/mlx-worker-heartbeat.json"
+)
+
+
+def write_heartbeat(
+    machine_id: str = "studio-128",
+    path: str | None = None,
+) -> str:
+    """Write a single heartbeat record. Returns the path written.
+
+    Records ``beat_at`` (UTC ISO timestamp), the machine id, and the
+    current per-machine waiting count — the same fields oversight_health
+    reads to flag staleness. Creates the parent directory on first call.
+    Safe to call from any thread.
+    """
+    target = path or _DEFAULT_HEARTBEAT_PATH
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    payload = {
+        "beat_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "machine_id": machine_id,
+        "queue_depth": waiting_count(machine_id),
+    }
+    tmp = f"{target}.tmp"
+    with open(tmp, "w") as f:
+        json.dump(payload, f)
+    os.replace(tmp, target)
+    return target
+
+
+_heartbeat_thread: threading.Thread | None = None
+_heartbeat_stop: threading.Event | None = None
+
+
+def start_heartbeat(
+    interval_seconds: float = 30.0,
+    machine_id: str = "studio-128",
+    path: str | None = None,
+) -> threading.Thread:
+    """Spawn a daemon thread that writes mlx-worker heartbeats periodically.
+
+    Surfaces "this Ora process's MLX-aware code path is responsive" to
+    oversight_health (which reads the heartbeat file every check). The
+    thread is a daemon — exits when the process exits. Idempotent: a
+    second call replaces the running thread without leaking.
+
+    Returns the spawned thread (you generally don't need to hold a
+    reference; the module tracks it internally so ``stop_heartbeat``
+    can find it).
+    """
+    global _heartbeat_thread, _heartbeat_stop
+
+    if _heartbeat_thread is not None and _heartbeat_thread.is_alive():
+        stop_heartbeat()
+
+    stop = threading.Event()
+
+    def _loop():
+        while not stop.is_set():
+            try:
+                write_heartbeat(machine_id=machine_id, path=path)
+            except OSError:
+                pass
+            stop.wait(interval_seconds)
+
+    t = threading.Thread(target=_loop, name="mlx-heartbeat", daemon=True)
+    _heartbeat_stop = stop
+    _heartbeat_thread = t
+    t.start()
+    return t
+
+
+def stop_heartbeat() -> None:
+    """Signal the heartbeat thread to exit. Used in tests + shutdown."""
+    global _heartbeat_thread, _heartbeat_stop
+    if _heartbeat_stop is not None:
+        _heartbeat_stop.set()
+    if _heartbeat_thread is not None:
+        _heartbeat_thread.join(timeout=2)
+    _heartbeat_thread = None
+    _heartbeat_stop = None
+
+
 def reset_for_tests() -> None:
     """Test-only: clear all module state."""
     global _api_pool_semaphore, _api_pool_size
+    stop_heartbeat()
     with _registry_lock:
         _machine_mutex.clear()
         _machine_waiting.clear()
@@ -288,5 +375,8 @@ __all__ = [
     "configure_api_pool_from_install_state",
     "api_pool_size",
     "PROFILE_API_POOL_SIZES",
+    "write_heartbeat",
+    "start_heartbeat",
+    "stop_heartbeat",
     "reset_for_tests",
 ]

@@ -30,6 +30,11 @@ HEARTBEAT_INTERVALS = {
     "corpus_watcher": 60,
     "workflow_spec_sweeper": 300,
     "revisit_sweeper": 3600,
+    # Phase 2c: the local MLX worker heartbeat. "Alive" means Ora's
+    # MLX-aware code path is responsive; staleness surfaces as a chat
+    # warning the same way watcher staleness does. Emitted by
+    # mlx_mutex.start_heartbeat at server startup.
+    "mlx_worker": 30,
 }
 
 STALE_MULTIPLIER = 2  # heartbeat older than 2× interval is stale

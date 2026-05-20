@@ -9192,6 +9192,17 @@ if __name__ == "__main__":
     except Exception as _exc:
         print(f"[server] API pool config skipped: {_exc}")
 
+    # Phase 2c: emit mlx-worker heartbeat every 30s for oversight_health.
+    # Surfaces "this Ora process's MLX path is alive" — when the heartbeat
+    # goes stale (no beat for 60s), the chat handler injects a warning
+    # into responses via oversight_health.check_health.
+    try:
+        import mlx_mutex
+        mlx_mutex.start_heartbeat(interval_seconds=30.0)
+        print("[server] MLX heartbeat: started (30s interval)")
+    except Exception as _exc:
+        print(f"[server] MLX heartbeat skipped: {_exc}")
+
     # Embedding health check — verify Ollama daemon and the
     # embedding model are reachable. Cross-platform (Win/Linux/Mac).
     # Loud failure here beats silent fallback to a different embedder
