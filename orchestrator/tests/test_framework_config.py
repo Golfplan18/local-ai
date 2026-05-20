@@ -320,5 +320,238 @@ class TestComposeFrameworkSpec(unittest.TestCase):
         self.assertIn("Index into fc-test-collection.", out)
 
 
+# ---------------------------------------------------------------------------
+# splice_extension_overlays + compose end-to-end with overlays (chunk 3)
+# ---------------------------------------------------------------------------
+
+class TestSpliceExtensionOverlays(unittest.TestCase):
+    def test_single_marker_with_overlay(self):
+        spec = (
+            "Header.\n\n"
+            "<!-- ora-project-extension: foo -->\n\n"
+            "Footer.\n"
+        )
+        out = fc.splice_extension_overlays(spec, {"foo": "## Foo Overlay\n\nBody."})
+        self.assertIn("## Foo Overlay", out)
+        self.assertIn("Body.", out)
+        self.assertNotIn("ora-project-extension", out)
+
+    def test_marker_without_overlay_dropped(self):
+        spec = (
+            "Header.\n\n"
+            "<!-- ora-project-extension: missing -->\n\n"
+            "Footer.\n"
+        )
+        out = fc.splice_extension_overlays(spec, {})
+        self.assertNotIn("ora-project-extension", out)
+        self.assertIn("Header.", out)
+        self.assertIn("Footer.", out)
+
+    def test_multiple_markers_independent_resolution(self):
+        spec = (
+            "<!-- ora-project-extension: a -->\n"
+            "middle\n"
+            "<!-- ora-project-extension: b -->\n"
+            "end\n"
+        )
+        out = fc.splice_extension_overlays(
+            spec,
+            {"a": "AAA", "b": "BBB"},
+        )
+        self.assertIn("AAA", out)
+        self.assertIn("BBB", out)
+        # Both markers consumed
+        self.assertNotIn("ora-project-extension", out)
+
+    def test_overlay_for_missing_marker_silently_ignored(self):
+        # Projects may declare overlays for extension points the current
+        # framework spec doesn't expose — that's a forward-compat scenario,
+        # not an error.
+        spec = "<!-- ora-project-extension: present -->\n"
+        out = fc.splice_extension_overlays(
+            spec,
+            {"present": "P", "absent": "should-not-appear"},
+        )
+        self.assertIn("P", out)
+        self.assertNotIn("absent", out)
+        self.assertNotIn("should-not-appear", out)
+
+    def test_no_markers_passes_through(self):
+        spec = "Plain text with no markers.\n"
+        out = fc.splice_extension_overlays(spec, {"foo": "ignored"})
+        self.assertEqual(out, spec)
+
+    def test_idempotent(self):
+        spec = "<!-- ora-project-extension: foo -->\n"
+        out1 = fc.splice_extension_overlays(spec, {"foo": "F"})
+        out2 = fc.splice_extension_overlays(out1, {"foo": "DIFFERENT"})
+        # Re-running on already-spliced text is a no-op — the marker
+        # was consumed in the first pass.
+        self.assertEqual(out1, out2)
+
+    def test_overlay_trailing_whitespace_trimmed(self):
+        # Overlay text gets .rstrip()'d so a file with trailing newlines
+        # doesn't produce a double-blank-line.
+        spec = "<!-- ora-project-extension: a -->"
+        out = fc.splice_extension_overlays(spec, {"a": "X\n\n\n\n"})
+        # Should not have 4 consecutive newlines after the splice
+        self.assertNotIn("\n\n\n\n", out)
+
+
+class TestComposeWithOverlays(unittest.TestCase):
+    """End-to-end compose_framework_spec with overlay files supplied
+    via the project's framework_configurations.overlays array."""
+
+    def setUp(self):
+        # Synthetic project + overlay file
+        self.proj_dir = Path(tempfile.mkdtemp(prefix="fc_overlay_proj_"))
+        overlay_dir = self.proj_dir / "framework-overlays" / "synth-fw"
+        overlay_dir.mkdir(parents=True)
+        (overlay_dir / "post-output.md").write_text(
+            "## Project Output Extensions\n\nProject-specific stuff.",
+            encoding="utf-8",
+        )
+        (self.proj_dir / "ora-project.json").write_text(json.dumps({
+            "nexus": "overlay-test-proj",
+            "name": "Overlay Test",
+            "framework_configurations": [
+                {
+                    "framework": "synth-fw",
+                    "profile_name": "test-profile",
+                    "config": {"required": "X"},
+                    "overlays": [
+                        {
+                            "extension_point": "post-output-contract",
+                            "file": "framework-overlays/synth-fw/post-output.md",
+                        }
+                    ],
+                }
+            ],
+        }), encoding="utf-8")
+
+        # Pointer file
+        self.pointer_dir = Path(tempfile.mkdtemp(prefix="fc_overlay_ptr_"))
+        (self.pointer_dir / "overlay-test-proj.json").write_text(json.dumps({
+            "nexus": "overlay-test-proj",
+            "root": str(self.proj_dir),
+        }), encoding="utf-8")
+
+        # Synthetic framework with the extension marker
+        self.frameworks_dir = Path(tempfile.mkdtemp(prefix="fc_overlay_fw_"))
+        (self.frameworks_dir / "synth-fw.md").write_text(
+            "## CONFIGURATION INTERFACE\n\n"
+            "- **`required`** (string) — must supply\n\n"
+            "## OUTPUT CONTRACT\n\n"
+            "Generic output: ${config.required}.\n\n"
+            "<!-- ora-project-extension: post-output-contract -->\n\n"
+            "## NEXT SECTION\n\n"
+            "More content.\n",
+            encoding="utf-8",
+        )
+
+        self._orig_dir = fc.FRAMEWORKS_DIR
+        fc.FRAMEWORKS_DIR = self.frameworks_dir
+
+        self._orig_get_project = pr.get_project
+        pointer_dir_str = str(self.pointer_dir)
+
+        def _patched_get_project(nexus, pointer_dir=None):
+            return self._orig_get_project(nexus, pointer_dir=pointer_dir_str)
+
+        pr.get_project = _patched_get_project
+
+    def tearDown(self):
+        fc.FRAMEWORKS_DIR = self._orig_dir
+        pr.get_project = self._orig_get_project
+        shutil.rmtree(self.proj_dir, ignore_errors=True)
+        shutil.rmtree(self.pointer_dir, ignore_errors=True)
+        shutil.rmtree(self.frameworks_dir, ignore_errors=True)
+
+    def test_compose_splices_overlay_at_marker(self):
+        out = fc.compose_framework_spec(
+            "synth-fw",
+            project_nexus="overlay-test-proj",
+            profile_name="test-profile",
+        )
+        # Config was substituted
+        self.assertIn("Generic output: X.", out)
+        # Overlay was spliced
+        self.assertIn("## Project Output Extensions", out)
+        # Marker was consumed
+        self.assertNotIn("ora-project-extension", out)
+
+    def test_compose_drops_marker_without_project_context(self):
+        # With no project context, the marker is dropped (project-neutral)
+        # but the spec still needs `required` from somewhere. Add it as
+        # a default to the spec so we can compose project-neutral.
+        (self.frameworks_dir / "synth-fw.md").write_text(
+            "## CONFIGURATION INTERFACE\n\n"
+            "- **`required`** (string, default: `def`) — has a default\n\n"
+            "## OUTPUT CONTRACT\n\n"
+            "Generic output: ${config.required}.\n\n"
+            "<!-- ora-project-extension: post-output-contract -->\n\n"
+            "## NEXT SECTION\n",
+            encoding="utf-8",
+        )
+        out = fc.compose_framework_spec("synth-fw")
+        self.assertIn("Generic output: def.", out)
+        self.assertNotIn("ora-project-extension", out)
+        self.assertNotIn("Project Output Extensions", out)
+
+    def test_compose_silent_when_overlay_file_disappears(self):
+        # Delete the overlay file AFTER manifest registration —
+        # simulates a file getting moved between registration and
+        # invocation. The framework should still compose; overlay just
+        # missing from output. Diagnostic captured to stay quiet in tests.
+        os.unlink(self.proj_dir / "framework-overlays" / "synth-fw" / "post-output.md")
+
+        # Re-create the registered manifest to skip the registration-time
+        # existence check (which would now fail). For this test we just
+        # exercise the invocation-time gracefulness — so we bypass the
+        # parser entirely by injecting a synthetic Project.
+
+        class _StubFC:
+            framework = "synth-fw"
+            profile_name = "test-profile"
+            config = {"required": "X"}
+
+            class _Overlay:
+                extension_point = "post-output-contract"
+                file = "framework-overlays/synth-fw/post-output.md"
+
+            overlays = [_Overlay()]
+
+        class _StubProject:
+            root = self.proj_dir
+            nexus = "overlay-test-proj"
+            framework_configurations = [_StubFC()]
+
+            def find_framework_configuration(self, fw, prof):
+                if fw == "synth-fw" and prof == "test-profile":
+                    return _StubFC()
+                return None
+
+            def resolve_path(self, rel):
+                return self.root / rel
+
+        # Patch get_project to return our stub
+        orig_get_project = pr.get_project
+        pr.get_project = lambda nexus, pointer_dir=None: _StubProject()
+        try:
+            with redirect_stdout(io.StringIO()) as captured:
+                out = fc.compose_framework_spec(
+                    "synth-fw",
+                    project_nexus="overlay-test-proj",
+                    profile_name="test-profile",
+                )
+            self.assertIn("Skipping overlay", captured.getvalue())
+            # Spec still composes; overlay text just missing
+            self.assertIn("Generic output: X.", out)
+            self.assertNotIn("ora-project-extension", out)
+            self.assertNotIn("Project Output Extensions", out)
+        finally:
+            pr.get_project = orig_get_project
+
+
 if __name__ == "__main__":
     unittest.main()

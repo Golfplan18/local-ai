@@ -200,6 +200,13 @@ NO_DEFAULT = _NoDefault()
 
 _CONFIG_REF_RE = re.compile(r"\$\{config\.([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
+# Matches `<!-- ora-project-extension: <id> -->` markers anywhere in
+# the spec body. Whitespace tolerant; id matches the same regex used
+# in the manifest parser. Captured: 1 = extension-point id.
+_EXTENSION_POINT_MARKER_RE = re.compile(
+    r"<!--\s*ora-project-extension:\s*([a-z][a-z0-9_-]*)\s*-->"
+)
+
 
 def substitute_config_refs(
     spec_text: str,
@@ -246,6 +253,80 @@ def substitute_config_refs(
 
 
 # ---------------------------------------------------------------------------
+# Extension-point overlays (chunk 3)
+# ---------------------------------------------------------------------------
+
+def splice_extension_overlays(
+    spec_text: str,
+    overlays_by_extension_point: dict,
+) -> str:
+    """Replace each ``<!-- ora-project-extension: <id> -->`` marker in
+    ``spec_text`` with the matching overlay text (when supplied), or
+    drop the marker (when no overlay is supplied for that id).
+
+    ``overlays_by_extension_point`` maps extension-point id → overlay
+    text. Extension-point ids supplied here that don't appear in the
+    spec are silently ignored — projects may declare overlays for
+    extension points that exist in a future version of the framework
+    spec without that being an error today.
+
+    Marker semantics:
+      * Marker present + overlay supplied → marker replaced by overlay
+        text, surrounded by blank lines so the splice reads cleanly in
+        markdown
+      * Marker present + no overlay supplied → marker removed (becomes
+        empty string); the surrounding markdown reads the same as if
+        the marker had never been there
+      * Overlay supplied + no matching marker in spec → silently
+        ignored (no error — see above)
+
+    This pass is idempotent: re-running it on already-spliced text is
+    a no-op because the markers are gone.
+    """
+    def _replace(match: re.Match) -> str:
+        ep_id = match.group(1)
+        overlay = overlays_by_extension_point.get(ep_id)
+        if overlay is None:
+            return ""  # marker removed; no overlay supplied for this point
+        # Surround with blank lines so the spliced text reads as a
+        # standalone block rather than running into the surrounding prose.
+        return f"\n\n{overlay.rstrip()}\n\n"
+
+    return _EXTENSION_POINT_MARKER_RE.sub(_replace, spec_text)
+
+
+def _load_overlay_files(
+    project,
+    framework_name: str,
+    profile_name: str,
+) -> dict:
+    """Read every overlay file declared by the project's profile and
+    return ``{extension_point_id: overlay_text}``.
+
+    Defensive: if a declared overlay file disappears between manifest
+    registration (where existence was checked) and framework
+    invocation, surface a clean diagnostic and skip that overlay. The
+    framework continues to run; the marker for that extension point
+    just gets dropped silently like any unsupplied overlay.
+    """
+    bare = framework_name[:-3] if framework_name.endswith(".md") else framework_name
+    fc_entry = project.find_framework_configuration(bare, profile_name)
+    if fc_entry is None:
+        return {}
+    out: dict = {}
+    for overlay in fc_entry.overlays:
+        path = project.resolve_path(overlay.file)
+        try:
+            out[overlay.extension_point] = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            print(
+                f"[framework_config] Skipping overlay for extension point "
+                f"{overlay.extension_point!r}: cannot read {path} ({exc})"
+            )
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Top-level composition
 # ---------------------------------------------------------------------------
 
@@ -287,13 +368,18 @@ def compose_framework_spec(
     block supplies values; references not in the project's block fall
     back to declared defaults.
 
-    Extension-point overlay splicing is NOT performed here — that's
-    chunk 3's concern. This chunk only handles config-value substitution.
+    After config substitution, this function also splices project-
+    supplied extension-point overlays at their ``<!-- ora-project-
+    extension: <id> -->`` markers in the spec body. Unsupplied markers
+    are dropped; supplied overlays for ids without markers in the
+    current spec are silently ignored. With no project context, all
+    markers are dropped (the spec reads project-neutral).
     """
     spec_text = _load_spec_file(framework_name)
     declared = parse_config_interface(spec_text)
 
     supplied: dict = {}
+    overlays: dict = {}
     if project_nexus is not None:
         # Defensive import — keep this module independent of
         # project_registry at load time so import cycles don't bite.
@@ -324,8 +410,10 @@ def compose_framework_spec(
                     f"({bare!r}, {profile_name!r}).",
                 )
             supplied = dict(fc.config)
+            overlays = _load_overlay_files(project, framework_name, profile_name)
 
-    return substitute_config_refs(spec_text, supplied, declared)
+    substituted = substitute_config_refs(spec_text, supplied, declared)
+    return splice_extension_overlays(substituted, overlays)
 
 
 __all__ = [
@@ -334,5 +422,6 @@ __all__ = [
     "FRAMEWORKS_DIR",
     "parse_config_interface",
     "substitute_config_refs",
+    "splice_extension_overlays",
     "compose_framework_spec",
 ]
