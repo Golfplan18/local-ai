@@ -67,7 +67,7 @@ Path 2 delegates to the existing conversation processing pipeline (frameworks/bo
 
 ### Search-Path Resolution (Optional)
 
-When configured with the `${config.search_paths}` list (see CONFIGURATION INTERFACE below), the framework's INPUT CONTRACT resolves bare filename references by walking the configured search paths in declaration order. The first matching file is loaded. The default behavior (empty search-paths list) preserves direct-path resolution.
+When the project's framework-configurations profile sets `search_paths` to a non-empty list (see CONFIGURATION INTERFACE below), the framework's INPUT CONTRACT resolves bare filename references by walking the configured search paths in declaration order. The first matching file is loaded. The default behavior (empty search-paths list) preserves direct-path resolution.
 
 **Configuration source:** the `search_paths` key in the bound project's `framework_configurations` profile (Plugin Convention §14). Example shape:
 
@@ -97,7 +97,7 @@ project-specific tagging).
 - **`nexus_value`** (string or null, default: null) — When set, every generated note carries `nexus: [<value>]` in its frontmatter, linking the note to the project's conceptual layer.
 - **`calibration_profile`** (string, default: `historical-archive`) — Which calibration profile to use (see CALIBRATION PROTOCOL below).
 - **`auto_reject_log_path`** (string, default: `${ORA_HOME}/data/auto-reject-log.jsonl`) — Where auto-rejected notes get logged. The `${ORA_HOME}` marker is a framework-runtime template variable resolved at processing time (not a §14 config substitution). Project-specific runs often route this to a project-scoped log file (a permanent calibration record).
-- **`working_dir_pattern`** (string, default: `vault/temp/processing-run-${date}/${dossier_stem}/`) — Template for the per-run working directory (intermediate markdown, signal maps, candidate-note staging).
+- **`working_dir_pattern`** (string, default: `vault/temp/processing-run-${date}/${dossier_stem}/`) — Template for the per-run working directory (intermediate markdown, signal maps, candidate-note staging). The `${date}` and `${dossier_stem}` markers are framework-runtime template variables resolved at processing time (not §14 config substitutions).
 - **`hcp_manifest_dir_pattern`** (string, default: `${ORA_HOME}/data/extraction-manifests/${dossier_stem}-manifest.yaml`) — Pattern for the structural-context manifest path. The `${ORA_HOME}` and `${dossier_stem}` markers are framework-runtime template variables resolved at processing time (not §14 config substitutions). Project-specific runs typically point this at a vault-discoverable, version-controlled location alongside the source dossiers themselves.
 - **`search_paths`** (list of strings, default: `[]`) — Additional vault search paths for bare-filename reference resolution. The framework walks these in declaration order before the vault root.
 
