@@ -46,7 +46,7 @@ www.archives.gov/*
 www.loc.gov/*
 ```
 
-FRED (Federal Reserve Bank of St. Louis) and BLS (Bureau of Labor Statistics) are the MSI primaries; BEA (Bureau of Economic Analysis) covers GDP, trade, and national accounts. IRS for tax forms and published guidance; Census for demographics; CDC and NIH for public health and biomedical; NIST for standards; NOAA for weather and climate; NASA for space and Earth science; USGS for geology and hydrology; EPA for environmental rulemaking and data. Federal Register for federal rulemaking; Cornell LII for federal law text; the National Archives and Library of Congress for historical records.
+FRED (Federal Reserve Bank of St. Louis) and BLS (Bureau of Labor Statistics) for economic indicators and labor statistics; BEA (Bureau of Economic Analysis) covers GDP, trade, and national accounts. IRS for tax forms and published guidance; Census for demographics; CDC and NIH for public health and biomedical; NIST for standards; NOAA for weather and climate; NASA for space and Earth science; USGS for geology and hydrology; EPA for environmental rulemaking and data. Federal Register for federal rulemaking; Cornell LII for federal law text; the National Archives and Library of Congress for historical records.
 
 ### International / multilateral
 
@@ -71,7 +71,7 @@ www.pbs.org/newshour/*
 www.propublica.org/*
 ```
 
-Associated Press is the syndication source-of-truth for breaking news; NPR / BBC / PBS for accessible public-interest reporting; ProPublica for investigative work. Reuters dropped 2026-05-16 — moved to paywall. MSI output is primary for domains MSI covers; this set is the fallback.
+Associated Press is the syndication source-of-truth for breaking news; NPR / BBC / PBS for accessible public-interest reporting; ProPublica for investigative work. Reuters dropped 2026-05-16 — moved to paywall.
 
 ### Open-access academic
 
