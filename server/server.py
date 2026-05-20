@@ -1493,14 +1493,6 @@ def preview_invalidate(conversation_id):
 # /api/render/<id>/state since 2026-04-30.
 
 
-# Pipeline serialization lock. The MLX runtime on Apple Silicon segfaults
-# (SIGSEGV) when several pipelines race to load or invoke models
-# concurrently. Production Ora is single-user and never legitimately
-# overlaps pipelines, so a single global lock is the minimum sufficient
-# fix. Held for the lifetime of the SSE generator.
-_pipeline_lock = threading.Lock()
-
-
 # Pending clarification state: {panel_id: {step1, config, history, user_input}}
 _pending_clarification = {}
 
@@ -3573,8 +3565,9 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
 
     Side-effects (spatial state persistence, end-of-session pipeline)
     that don't gate the reply continue to fire in daemon threads as
-    before. The save itself runs synchronously inside ``_pipeline_lock``
-    so the chunk_id is known before we reply.
+    before. The save runs synchronously so the chunk_id is known
+    before we reply; the prior pipeline-wide lock is gone (mlx_mutex
+    inside call_model handles the MLX SIGSEGV constraint).
 
     WP-3.3: ``extra_context`` is merged into the pipeline's context_pkg
     by ``_run_pipeline_from_step2`` — threads spatial_representation +
@@ -3614,157 +3607,159 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
     ep             = None
 
     try:
-        # Serialize pipeline execution. MLX concurrent model loads crash
-        # the process (observed SIGSEGV during live-fire 2026-04-18);
-        # single-user software so a global lock is the right guard.
-        with _pipeline_lock:
-            cfg = load_config()
-            ep  = get_endpoint(cfg)
+        # MLX per-machine serialization lives inside call_model
+        # (mlx_mutex.acquire on the local branch) since the 2026-05-19
+        # concurrency overhaul. The save and oversight health check
+        # below run without holding any lock — a second user submitting
+        # while the first is mid-run no longer waits at the gate for
+        # the entire pipeline.
+        cfg = load_config()
+        ep  = get_endpoint(cfg)
 
-            # Iterate the (still-streaming) pipeline generator synchronously;
-            # we don't yield to the browser, we just collect the final
-            # response and the most-recent stage/mode/gear for bridge state.
+        # Iterate the (still-streaming) pipeline generator synchronously;
+        # we don't yield to the browser, we just collect the final
+        # response and the most-recent stage/mode/gear for bridge state.
+        try:
+            for chunk in agentic_loop_stream(
+                    clean_input, history, use_pipeline=use_pipeline,
+                    panel_id=panel_id, images=images,
+                    extra_context=extra_context,
+                    manual_mode_selection=manual_mode_selection,
+                    framework_selected=framework_selected,
+                    config_name=config_name):
+                try:
+                    d = json.loads(chunk[6:])
+                except Exception:
+                    continue
+                t = d.get("type")
+                if t == "response":
+                    final_response = d.get("text", "")
+                elif t == "pipeline_stage":
+                    last_stage = d.get("stage")
+                    if d.get("mode"):
+                        active_mode = d["mode"]
+                    if d.get("gear"):
+                        active_gear = d["gear"]
+                elif t == "error":
+                    failure_summary = d.get("text") or d.get("error") or "pipeline error"
+        except Exception as e:
+            # Any uncaught pipeline exception becomes the failure summary.
+            # The submission log persists as a pending file; on next
+            # boot it surfaces as an errored chunk via orphan recovery.
+            failure_summary = f"pipeline crashed: {e}"
+            print(f"[ERROR] _invoke_pipeline pipeline crash: {e}")
+
+        if final_response is not None:
+            # Meta-layer oversight health check — if any watcher is
+            # stale, prepend a system note so the user sees the warning
+            # in the conversation. Per Reference — Meta-Layer Architecture
+            # §10 O1; surfacing path settled 2026-05-04.
             try:
-                for chunk in agentic_loop_stream(
-                        clean_input, history, use_pipeline=use_pipeline,
-                        panel_id=panel_id, images=images,
-                        extra_context=extra_context,
-                        manual_mode_selection=manual_mode_selection,
-                        framework_selected=framework_selected,
-                        config_name=config_name):
-                    try:
-                        d = json.loads(chunk[6:])
-                    except Exception:
-                        continue
-                    t = d.get("type")
-                    if t == "response":
-                        final_response = d.get("text", "")
-                    elif t == "pipeline_stage":
-                        last_stage = d.get("stage")
-                        if d.get("mode"):
-                            active_mode = d["mode"]
-                        if d.get("gear"):
-                            active_gear = d["gear"]
-                    elif t == "error":
-                        failure_summary = d.get("text") or d.get("error") or "pipeline error"
+                from oversight_health import check_health, format_warnings_as_chat_note
+                _oversight_warnings = check_health()
+                if _oversight_warnings:
+                    _oversight_note = format_warnings_as_chat_note(_oversight_warnings)
+                    if _oversight_note:
+                        final_response = _oversight_note + final_response
+            except Exception as _oh_exc:
+                # Health check must never break the chat path
+                print(f"[server] oversight health check failed (non-fatal): {_oh_exc}")
+
+            # Handle file output routing (e.g. /save, /saveboth)
+            if output_target != "screen":
+                routed = route_output(final_response, output_target)
+                if output_target.startswith("file:"):
+                    # When routed to file, the on-screen response is the
+                    # file pointer text, so the chunk reflects what the
+                    # user effectively saw.
+                    final_response = routed
+
+            # Sidebar window: record exchange in rolling window
+            if is_sidebar and SIDEBAR_WINDOW_AVAILABLE and sidebar_win is not None:
+                sidebar_win.add_exchange(clean_input, final_response)
+
+            is_new_session = len(history) == 0
+
+            # Initialize session data early so the runtime pipeline thread can read it
+            if is_new_session or panel_id not in _session_data:
+                _session_data[panel_id] = {
+                    "raw_path": "",  # populated by _save_conversation
+                    "session_id": uuid.uuid4().hex[:6],
+                    "pair_count": 0,
+                    "model": (ep.get("name", "unknown") if ep else "unknown"),
+                    "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+
+            # V3 Backlog 2A Chunk 2 — synchronous save inside the lock
+            # so the chunk_id is known before we reply. The submission
+            # log finalizer + orphan-marker clear run inline; spatial
+            # state and end-of-session pipeline still fire async.
+            try:
+                chunk_id = _save_conversation(
+                    clean_input, final_response, panel_id,
+                    is_new_session, tag,
+                    output_destination=output_destination)
             except Exception as e:
-                # Any uncaught pipeline exception becomes the failure summary.
-                # The submission log persists as a pending file; on next
-                # boot it surfaces as an errored chunk via orphan recovery.
-                failure_summary = f"pipeline crashed: {e}"
-                print(f"[ERROR] _invoke_pipeline pipeline crash: {e}")
+                failure_summary = f"_save_conversation failed: {e}"
+                print(f"[ERROR] _save_conversation: {e}")
 
-            if final_response is not None:
-                # Meta-layer oversight health check — if any watcher is
-                # stale, prepend a system note so the user sees the warning
-                # in the conversation. Per Reference — Meta-Layer Architecture
-                # §10 O1; surfacing path settled 2026-05-04.
+            # Clear orphan-recovery markers if this conversation was
+            # previously interrupted. A successful save means we caught
+            # up; the Errored row should clear.
+            if chunk_id:
                 try:
-                    from oversight_health import check_health, format_warnings_as_chat_note
-                    _oversight_warnings = check_health()
-                    if _oversight_warnings:
-                        _oversight_note = format_warnings_as_chat_note(_oversight_warnings)
-                        if _oversight_note:
-                            final_response = _oversight_note + final_response
-                except Exception as _oh_exc:
-                    # Health check must never break the chat path
-                    print(f"[server] oversight health check failed (non-fatal): {_oh_exc}")
-
-                # Handle file output routing (e.g. /save, /saveboth)
-                if output_target != "screen":
-                    routed = route_output(final_response, output_target)
-                    if output_target.startswith("file:"):
-                        # When routed to file, the on-screen response is the
-                        # file pointer text, so the chunk reflects what the
-                        # user effectively saw.
-                        final_response = routed
-
-                # Sidebar window: record exchange in rolling window
-                if is_sidebar and SIDEBAR_WINDOW_AVAILABLE and sidebar_win is not None:
-                    sidebar_win.add_exchange(clean_input, final_response)
-
-                is_new_session = len(history) == 0
-
-                # Initialize session data early so the runtime pipeline thread can read it
-                if is_new_session or panel_id not in _session_data:
-                    _session_data[panel_id] = {
-                        "raw_path": "",  # populated by _save_conversation
-                        "session_id": uuid.uuid4().hex[:6],
-                        "pair_count": 0,
-                        "model": (ep.get("name", "unknown") if ep else "unknown"),
-                        "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    }
-
-                # V3 Backlog 2A Chunk 2 — synchronous save inside the lock
-                # so the chunk_id is known before we reply. The submission
-                # log finalizer + orphan-marker clear run inline; spatial
-                # state and end-of-session pipeline still fire async.
-                try:
-                    chunk_id = _save_conversation(
-                        clean_input, final_response, panel_id,
-                        is_new_session, tag,
-                        output_destination=output_destination)
-                except Exception as e:
-                    failure_summary = f"_save_conversation failed: {e}"
-                    print(f"[ERROR] _save_conversation: {e}")
-
-                # Clear orphan-recovery markers if this conversation was
-                # previously interrupted. A successful save means we caught
-                # up; the Errored row should clear.
-                if chunk_id:
-                    try:
-                        from conversation_memory import (
-                            load_conversation_json,
-                            clear_conversation_error,
-                            _conversation_path,
-                            _DEFAULT_SESSIONS_ROOT,
+                    from conversation_memory import (
+                        load_conversation_json,
+                        clear_conversation_error,
+                        _conversation_path,
+                        _DEFAULT_SESSIONS_ROOT,
+                    )
+                    data = load_conversation_json(panel_id)
+                    if data and (data.get("interrupted_input")
+                                  or data.get("interrupted_at")):
+                        data.pop("interrupted_input", None)
+                        data.pop("interrupted_at", None)
+                        data.pop("interrupted_submission_id", None)
+                        env_path = _conversation_path(panel_id,
+                                                      _DEFAULT_SESSIONS_ROOT)
+                        env_path.write_text(
+                            json.dumps(data, indent=2,
+                                        ensure_ascii=False),
+                            encoding="utf-8",
                         )
-                        data = load_conversation_json(panel_id)
-                        if data and (data.get("interrupted_input")
-                                      or data.get("interrupted_at")):
-                            data.pop("interrupted_input", None)
-                            data.pop("interrupted_at", None)
-                            data.pop("interrupted_submission_id", None)
-                            env_path = _conversation_path(panel_id,
-                                                          _DEFAULT_SESSIONS_ROOT)
-                            env_path.write_text(
-                                json.dumps(data, indent=2,
-                                            ensure_ascii=False),
-                                encoding="utf-8",
-                            )
-                            clear_conversation_error(panel_id)
-                    except Exception as e:
-                        print(f"[WARNING] orphan-marker clear failed: {e}")
+                        clear_conversation_error(panel_id)
+                except Exception as e:
+                    print(f"[WARNING] orphan-marker clear failed: {e}")
 
-                # WP-5.3 — append this turn to conversation.json so the next
-                # turn can retrieve prior spatial state. Async (best-effort).
+            # WP-5.3 — append this turn to conversation.json so the next
+            # turn can retrieve prior spatial state. Async (best-effort).
+            threading.Thread(
+                target=_persist_turn_spatial_state,
+                args=(panel_id, clean_input, final_response, extra_context, tag),
+                daemon=True,
+            ).start()
+
+            if is_main:
+                recent = list(history[-4:]) + [
+                    {"role": "user",      "content": clean_input},
+                    {"role": "assistant", "content": final_response},
+                ]
+                _bridge_state[panel_id] = {
+                    "current_topic":   clean_input,
+                    "recent_messages": recent[-5:],
+                    "active_mode":     active_mode,
+                    "active_gear":     active_gear,
+                    "pipeline_stage":  last_stage,
+                    "updated_at":      time.time(),
+                }
+
+            # Runtime pipeline: fire async end-of-session processing
+            if RUNTIME_PIPELINE_AVAILABLE and not is_sidebar:
                 threading.Thread(
-                    target=_persist_turn_spatial_state,
-                    args=(panel_id, clean_input, final_response, extra_context, tag),
+                    target=_run_end_of_session_pipeline,
+                    args=(clean_input, final_response, panel_id, cfg, history),
                     daemon=True,
                 ).start()
-
-                if is_main:
-                    recent = list(history[-4:]) + [
-                        {"role": "user",      "content": clean_input},
-                        {"role": "assistant", "content": final_response},
-                    ]
-                    _bridge_state[panel_id] = {
-                        "current_topic":   clean_input,
-                        "recent_messages": recent[-5:],
-                        "active_mode":     active_mode,
-                        "active_gear":     active_gear,
-                        "pipeline_stage":  last_stage,
-                        "updated_at":      time.time(),
-                    }
-
-                # Runtime pipeline: fire async end-of-session processing
-                if RUNTIME_PIPELINE_AVAILABLE and not is_sidebar:
-                    threading.Thread(
-                        target=_run_end_of_session_pipeline,
-                        args=(clean_input, final_response, panel_id, cfg, history),
-                        daemon=True,
-                    ).start()
     finally:
         _pending_conversations.discard(panel_id)
 
