@@ -732,10 +732,9 @@ The document processing framework is invoked by the orchestrator for:
 
 ### With RAG Engine (Phase 8)
 
-- Extracted notes → indexed into the standard ChromaDB `knowledge` collection. MSI editorial-research engrams (when `source_provenance: msi-editorial-research` is declared at run-time) live in the same collection but are scoped at retrieval time by `source_voice` filtering per the MSI column-generation frameworks' INPUT CONTRACT.
+- Extracted notes → indexed into the configured ChromaDB collection (`${config.chromadb_collection}`). Project-bound engrams (when the run-time configuration declares voice/dossier properties) live in the same collection and are scoped at retrieval time by the configured voice/dossier filters per the consuming framework's INPUT CONTRACT.
 - Note metadata (subtype, tags, relationships) → available for RAG priority stack assembly
 - Glossary notes → available for dependency resolution during context assembly
-- MSI Research notes → consumed by MSI column-generation frameworks via voice-scoped retrieval (column-generation framework's INPUT CONTRACT queries the MSI collection filtered by `source_voice` matching the writing voice currently producing the column)
 
 ### With Conversation Processing Pipeline
 
