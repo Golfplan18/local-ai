@@ -61,52 +61,50 @@ Path 2 delegates to the existing conversation processing pipeline (frameworks/bo
 - Files placed in a processing queue directory
 - Direct API call from the orchestrator with a file path
 - Batch processing manifest pointing to a directory of files
-- Run-time configuration block declaring source provenance and per-document parameters (e.g., `source_provenance: msi-editorial-research` triggers `type: engram` output with the `source-derived` provenance-modifier tag, MSI provenance properties (`source_voice`, `source_dossier`, `source_dossier_section`), and `nexus: [main-street-independent]` — see "MSI Source Provenance Configuration" subsection below)
+- Run-time configuration block declaring source provenance and per-document parameters. When an invocation binds a project nexus + framework-configuration profile (Plugin Convention §14), the framework reads the values declared in the `## CONFIGURATION INTERFACE` section below — `${config.chromadb_collection}`, `${config.output_type_override}`, voice-tagging properties, working-dir locations, etc. — and adjusts its behavior accordingly. With no project binding, the framework runs with the documented defaults (general-purpose knowledge extraction; no project-specific tagging).
 
 **Pre-processing:** All inputs pass through the format conversion utility (`orchestrator/tools/format_convert.py`) before any analysis. The converter normalizes all formats to clean markdown with heading structure preserved. All subsequent pipeline stages operate on markdown, never on raw binary formats.
 
 ### Search-Path Resolution (Optional)
 
-When configured with a search-path list, the framework's INPUT CONTRACT resolves bare filename references (`Reference — MSI [Name] X.md`) by walking the configured search paths in declaration order. The first matching file is loaded. The default behavior (no search-path list configured) preserves direct-path resolution.
+When configured with the `${config.search_paths}` list (see CONFIGURATION INTERFACE below), the framework's INPUT CONTRACT resolves bare filename references by walking the configured search paths in declaration order. The first matching file is loaded. The default behavior (empty search-paths list) preserves direct-path resolution.
 
-**Configuration format** (passed to the framework at invocation time):
+**Configuration source:** the `search_paths` key in the bound project's `framework_configurations` profile (Plugin Convention §14). Example shape:
 
 ```yaml
 search_paths:
   - /Users/oracle/Documents/vault
-  - /Users/oracle/Documents/vault/Sources/MSI Research
+  - /Users/oracle/Documents/vault/Sources/<Project Research Dir>
 ```
 
-Search-path resolution is opt-in per run. It supports the MSI publication's dossier-relocation pattern: dossiers physically live in `Sources/MSI Research/` while the consuming Mind files, Tracker, methodology, Editorial Router, and Registry continue to reference them by bare canonical filename. The search-path list lets the framework locate them without forcing every consuming reference to update its path. The first-matching-wins resolution preserves backward compatibility for any reference still pointing at vault root.
+Search-path resolution is opt-in per run. It supports the pattern where source dossiers physically live in a project-scoped subdirectory while the consuming references (Mind files, Trackers, methodology docs, Editorial Routers, Registries) continue to reference them by bare canonical filename. The search-path list lets the framework locate them without forcing every consuming reference to update its path. The first-matching-wins resolution preserves backward compatibility for any reference still pointing at vault root.
 
-### MSI Source Provenance Configuration
+## CONFIGURATION INTERFACE
 
-When the run-time configuration declares MSI source provenance, the framework adjusts its output behavior:
+When this framework is invoked with a project nexus + a
+`framework_configurations` profile bound (Plugin Convention §14), it
+reads the following configuration keys from the project's profile.
+With no project binding, each key falls back to its documented default,
+and the framework runs project-neutral (general-purpose knowledge
+extraction into the standard `knowledge` collection with no
+project-specific tagging).
 
-```yaml
-source_provenance: msi-editorial-research
-chromadb_collection: msi-research
-documents:
-  - path: "Reference — MSI Mary Magdalena Voice Library.md"
-    input_type: long_form_source
-    hcp_enabled: true
-    source_voice: msi-pen-name-mary-magdalena
-  - path: "Reference — MSI Thomas Reynolds Gerrymandering-Solution Memorandum.md"
-    input_type: short_document
-    hcp_enabled: false
-    source_voice: msi-pen-name-thomas-reynolds
-  # ... per-document configuration for the full batch
-```
+- **`chromadb_collection`** (string, default: `knowledge`) — Target ChromaDB collection for extracted atomic notes. Project-specific runs typically route to a project-scoped collection (e.g., a publication's research collection) rather than the general knowledge collection.
+- **`output_type_override`** (object `{from, to}` or null, default: null) — When set, atomic notes that would otherwise carry `type: <from>` are emitted with `type: <to>`. Used by project-specific runs to redirect note types into project-scoped buckets.
+- **`voice_property_name`** (string or null, default: null) — When set, every generated note carries a frontmatter property of this name whose value comes from the per-document configuration's voice slug. Used by publishing projects that organize notes by editorial voice.
+- **`voice_property_namespace`** (string or null, default: null) — Prefix the voice slug carries (e.g., `<publication>-pen-name`). Documentation hint for project authors; the framework doesn't enforce it.
+- **`dossier_property_name`** (string or null, default: null) — When set, every generated note carries a frontmatter property of this name whose value is the source dossier filename.
+- **`nexus_value`** (string or null, default: null) — When set, every generated note carries `nexus: [<value>]` in its frontmatter, linking the note to the project's conceptual layer.
+- **`calibration_profile`** (string, default: `historical-archive`) — Which calibration profile to use (see CALIBRATION PROTOCOL below).
+- **`auto_reject_log_path`** (string, default: `${ORA_HOME}/data/processing-manifest.jsonl`) — Where auto-rejected notes get logged. Project-specific runs often route this to a project-scoped log file.
+- **`working_dir_pattern`** (string, default: `vault/temp/processing-run-${date}/${dossier_stem}/`) — Template for the per-run working directory (intermediate markdown, signal maps, candidate-note staging).
+- **`hcp_manifest_dir_pattern`** (string or null, default: null) — When set, structural-context manifests land at the configured pattern (e.g., `Sources/MSI Research/_manifests/`); otherwise they land alongside the source document.
+- **`search_paths`** (list of strings, default: `[]`) — Additional vault search paths for bare-filename reference resolution. The framework walks these in declaration order before the vault root.
 
-The configuration drives:
-- Output type override (`incubator` → `msi-research`) — applied at Pass B note generation
-- ChromaDB collection routing — extracted notes index into the named collection (typically `msi-research`) rather than the general knowledge collection
-- Per-document `source_voice` tagging — applied at Pass B note generation per the per-document configuration
-- Per-document `source_dossier` and `source_dossier_section` tagging — automatically populated from the source filename and the HCP structural index
-- Calibration profile selection — uses the AI-Research Deliverable profile (see CALIBRATION PROTOCOL below) rather than the historical-archive baseline
-- Auto-reject log location — `~/ora/data/msi-research-rejects.jsonl` rather than the general processing-manifest log
-- Structural-context manifest location — `Sources/MSI Research/_manifests/[dossier-stem]-manifest.yaml` (see HCP INTEGRATION below)
-- Working files (intermediate format-converted markdown, signal maps, candidate-note staging) — `vault/temp/msi-research-run-YYYY-MM-DD/[dossier-stem]/` (ephemeral; safe to erase post-run)
+The following extension points may be filled by a project overlay
+(via `framework_configurations[].overlays` per §14):
+
+- **`provenance-overlay-rules`** — Spliced after the OUTPUT CONTRACT section. Used by projects whose provenance-tagging rules go beyond what the parametric keys above express (e.g., per-voice duplicate-check scope semantics, project-specific frontmatter schemas).
 
 ---
 
@@ -135,6 +133,8 @@ The configuration drives:
 - Every note has a valid subtype assignment (for atomics) verified against body schema
 - All proposition-format notes (atomic, molecular) enforce the three grammar rules
 - No note enters the auto-approve queue without passing the self-containedness check
+
+<!-- ora-project-extension: provenance-overlay-rules -->
 
 ---
 
