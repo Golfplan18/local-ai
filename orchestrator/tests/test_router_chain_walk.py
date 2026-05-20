@@ -16,6 +16,7 @@ ORCH_DIR = Path(__file__).resolve().parent.parent
 if str(ORCH_DIR) not in sys.path:
     sys.path.insert(0, str(ORCH_DIR))
 
+import endpoint_health
 import mlx_mutex
 from router import Router
 
@@ -61,6 +62,7 @@ class TestChainWalkConfiguration(unittest.TestCase):
 
     def setUp(self):
         mlx_mutex.reset_for_tests()
+        endpoint_health.reset_for_tests()
 
     def _router_with_chain(self, primary_id, fallback_ids, endpoints):
         cfg = {
@@ -210,6 +212,7 @@ class TestChainWalkLegacyBucketPath(unittest.TestCase):
 
     def setUp(self):
         mlx_mutex.reset_for_tests()
+        endpoint_health.reset_for_tests()
 
     def _bucket_router(self, endpoints, buckets, pipelines):
         cfg = _make_config(endpoints)

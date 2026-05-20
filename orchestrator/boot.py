@@ -9174,25 +9174,40 @@ def call_model(messages: list, endpoint: dict, images: list = None) -> str:
     API endpoints are tracked through a non-blocking in-flight counter
     for observability; they don't block on contention.
 
+    Outcomes are reported to ``endpoint_health`` so the router's chain
+    walk can skip a repeatedly-failing endpoint for a cooldown period
+    (Phase 2b circuit breaker). The error-string convention from the
+    individual call_api / call_local functions (``"[Error ..."``) is
+    what we read here — those are the transport/auth/quota failures
+    we want to count.
+
     images: optional list of {"name": str, "mime": str, "base64": str}
     """
     try:
         import mlx_mutex
+        import endpoint_health
     except ImportError:
         from orchestrator import mlx_mutex
+        from orchestrator import endpoint_health
 
     etype = endpoint.get("type", "")
+    endpoint_id = endpoint.get("id") or endpoint.get("name") or f"unknown-{etype}"
 
     if etype == "api":
-        endpoint_id = endpoint.get("id") or endpoint.get("name") or "unknown-api"
         with mlx_mutex.track_api_call(endpoint_id):
-            return call_api_endpoint(messages, endpoint, images=images)
+            response = call_api_endpoint(messages, endpoint, images=images)
     elif etype == "local":
         machine_id = endpoint.get("machine") or DEFAULT_MACHINE_ID
         with mlx_mutex.acquire(machine_id):
-            return call_local_endpoint(messages, endpoint, images=images)
+            response = call_local_endpoint(messages, endpoint, images=images)
     else:
         return f"[Error] Unknown endpoint type: {etype}"
+
+    if isinstance(response, str) and response.lstrip().startswith("[Error"):
+        endpoint_health.record_failure(endpoint_id)
+    else:
+        endpoint_health.record_success(endpoint_id)
+    return response
 
 
 def _inject_images_into_messages(messages: list, images: list, api_format: str = "claude") -> list:

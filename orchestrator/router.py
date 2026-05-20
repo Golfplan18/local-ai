@@ -264,6 +264,17 @@ class Router:
                             first_busy_local = ep
                         continue
 
+                # Phase 2b circuit breaker: skip endpoints currently in
+                # cooldown after repeated failures. After cooldown elapses
+                # the next caller is allowed through as a probe — see
+                # endpoint_health.is_in_cooldown for the half-open detail.
+                try:
+                    import endpoint_health
+                except ImportError:
+                    from orchestrator import endpoint_health
+                if endpoint_health.is_in_cooldown(ep_id):
+                    continue
+
                 return ep
 
         return first_busy_local
@@ -796,6 +807,14 @@ class Router:
                     if first_busy_local is None:
                         first_busy_local = ep
                     continue
+
+            # Phase 2b circuit breaker — skip endpoints in cooldown.
+            try:
+                import endpoint_health
+            except ImportError:
+                from orchestrator import endpoint_health
+            if endpoint_health.is_in_cooldown(ep_id):
+                continue
 
             return ep
 
