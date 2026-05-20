@@ -8202,11 +8202,62 @@ def config_get():
         "gear4_overrides":  config.get("gear4_overrides", {}),
     })
 
+
+# Legacy ConfigPanel-side endpoint with partially-dead semantics.
+#
+# Two halves of this POST behave differently in the live system:
+#
+#   * ``gear4_overrides`` writes ARE honored — ``boot.py::resolve_gear4_
+#     endpoints`` reads ``config.gear4_overrides`` directly, so changes
+#     made here take effect on the next pipeline run.
+#
+#   * ``slot_assignments`` writes are effectively dead-letter for normal
+#     operation. Router (the v2 resolver, alive whenever ``routing-config
+#     .json`` parses) resolves slots from the ``slots`` block —
+#     ``{primary, fallback[], vision_substitute}`` cell-shape, walked by
+#     ``Router.resolve_endpoint``. ``slot_assignments`` (flat ``{slot:
+#     model_id}`` shape) is only consulted by the Router-failure fallback
+#     path in ``boot.py::get_active_endpoint`` / ``get_slot_endpoint``,
+#     which fires only when Router init throws. So UI writes to
+#     ``slot_assignments`` persist to disk, but the live pipeline ignores
+#     them.
+#
+# The proper fix is to teach this endpoint to write into the active
+# named configuration (``config/configurations/<name>.json``) so updates
+# flow through Router's ``slots`` block. That requires schema translation
+# (flat → cell-shape with sensible primary/fallback defaults) and a
+# decision about which configuration is "active" — both of which belong
+# in install Chunk 10's UI rewrite of the Models tab, where the Save
+# Configuration button is the natural place to hook the new writer.
+#
+# Until Chunk 10 lands, this endpoint stays as-is so the classic
+# ConfigPanel keeps working in degraded form. The validation pass below
+# at least surfaces an obviously-wrong slot_assignments payload (unknown
+# slot names) so the user doesn't silently write garbage into the file.
+
+_KNOWN_SLOTS = frozenset({
+    "sidebar", "step1_cleanup", "classification", "breadth", "depth",
+    "evaluator", "consolidator", "rag_planner",
+})
+
+
 @app.route("/config", methods=["POST"])
 def config_post():
     data             = request.get_json(force=True)
     slot_assignments = data.get("slot_assignments", {})
     gear4_overrides  = data.get("gear4_overrides")  # None if not sent
+
+    # Surface obviously-wrong slot names before the dead-write lands them
+    # on disk. The validation is name-only — model_id correctness is the
+    # user's problem (could be any registered endpoint id).
+    unknown_slots = sorted(set(slot_assignments.keys()) - _KNOWN_SLOTS)
+    if unknown_slots:
+        return json.dumps({
+            "error": (
+                f"Unknown slot name(s): {unknown_slots}. "
+                f"Expected one of: {sorted(_KNOWN_SLOTS)}."
+            )
+        }), 400
 
     models_cfg  = load_models()
     all_models  = {m["id"]: m for m in
@@ -8235,9 +8286,32 @@ def config_post():
             cfg["gear4_overrides"] = gear4_overrides
         with open(ROUTING_CONFIG, "w") as f:
             json.dump(cfg, f, indent=2)
+        # Visible warning: slot_assignments writes are dead-letter under
+        # Router-alive operation. Surface it server-side so operators see
+        # it in the log even if the UI doesn't render it.
+        if slot_assignments:
+            print(
+                f"[/config POST] slot_assignments written to routing-config.json "
+                f"({len(slot_assignments)} slot(s)) — note these are only read "
+                f"by the Router-failure fallback path. Live slot resolution "
+                f"uses the 'slots' block. Until install Chunk 10's UI rewrite "
+                f"hooks the named-configuration writer, edit "
+                f"config/configurations/<name>.json directly for changes to "
+                f"take effect on the running pipeline.",
+                file=sys.stderr,
+            )
         result = {"ok": True, "slot_assignments": slot_assignments}
         if gear4_overrides is not None:
             result["gear4_overrides"] = gear4_overrides
+        # Surface the dead-write caveat in the response too, so the UI can
+        # render an informational banner if it wants.
+        if slot_assignments:
+            result["_warning"] = (
+                "slot_assignments writes persist to disk but are only honored "
+                "by the Router-failure fallback path. Live slot resolution "
+                "uses routing-config.json::slots. Full fix is queued for "
+                "install Chunk 10."
+            )
         return json.dumps(result)
     except Exception as e:
         return json.dumps({"error": str(e)}), 500
