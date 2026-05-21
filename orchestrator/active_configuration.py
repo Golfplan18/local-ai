@@ -568,6 +568,12 @@ def _summarize(name: str, config: dict) -> dict:
         if key in saved_toggles:
             toggles_resolved[key] = bool(saved_toggles[key])
 
+    post = cells.get("post_analysis") or {}
+    consolidation = (post.get("consolidation") or {}).get("primary")
+    verification = (post.get("verification") or {}).get("primary")
+    formatter = (post.get("formatter") or {}).get("primary")
+    visual = big1_cell.get("vision_substitute")  # any cell has it; sample big1
+
     return {
         "name": name,
         "preset_lineage": config.get("preset_lineage"),
@@ -578,6 +584,11 @@ def _summarize(name: str, config: dict) -> dict:
         "big1_fallback": list(big1_cell.get("fallback") or []),
         "big2_fallback": big2_fallback,
         "small_fallback": list(small_cell.get("fallback") or []),
+        # Expand-view fields (post-analysis cells + visual substitute):
+        "consolidator": consolidation,
+        "verifier": verification,
+        "formatter": formatter,
+        "visual": visual,
         "toggles": toggles_resolved,
     }
 
@@ -609,7 +620,41 @@ SLOT_LABEL_TO_PATHS = {
         ["utility", "classification"],
         ["utility", "rag_planner"],
     ],
+    # Expand-view slots: individual overrides that break the
+    # "post-analysis inherits big 1" default. Picking any of these
+    # writes to a single cell; the next big-1 pick will overwrite
+    # them (user re-picks here if they want the override to stick).
+    "consolidator": [["post_analysis", "consolidation"]],
+    "verifier":     [["post_analysis", "verification"]],
+    "formatter":    [["post_analysis", "formatter"]],
 }
+
+
+# Visual substitute is special — it's a field on EVERY cell, not a
+# cell of its own. set_visual_substitute writes the picked model to
+# every cell's vision_substitute field so text-only primaries route
+# their image-bearing inputs through one consistent fallback.
+def set_visual_substitute(name: str, model_id: str) -> dict:
+    """Assign a model to every cell's vision_substitute field."""
+    if not isinstance(model_id, str) or not model_id.strip():
+        raise ValueError("model_id must be a non-empty string")
+    model_id = model_id.strip()
+    with _lock:
+        config = _load_config(name)
+        cells = config.setdefault("cells", {})
+        _walk_and_set_vision_substitute(cells, model_id)
+        _save_config(name, config)
+    return config
+
+
+def _walk_and_set_vision_substitute(node, model_id):
+    if not isinstance(node, dict):
+        return
+    if "primary" in node:
+        node["vision_substitute"] = model_id
+        return
+    for v in node.values():
+        _walk_and_set_vision_substitute(v, model_id)
 
 
 def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
@@ -662,6 +707,7 @@ __all__ = [
     "create_blank_configuration",
     "delete_configuration",
     "set_slot_primary",
+    "set_visual_substitute",
     "DEFAULT_ACTIVE_NAME",
     "PRESET_ORDER",
     "SLOT_LABEL_TO_PATHS",

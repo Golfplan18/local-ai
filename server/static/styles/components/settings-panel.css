@@ -1207,3 +1207,15 @@
   font-style: italic;
   padding: 4px;
 }
+
+/* Expand-view rows on a card (▸ More) — separated from the primary
+ * big1/big2/small rows by a thin divider so the user can see the
+ * default-vs-override boundary at a glance. */
+.ora-models-card-expand {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--ora-border, rgba(248, 248, 242, 0.10));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

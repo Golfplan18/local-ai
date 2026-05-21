@@ -89,6 +89,8 @@
     if (_fallbackPopoutFor) {
       _fallbackPopoutFor = null;
       _renderPopout();
+      _renderPresets();
+      _renderCustom();
     } else if (_activeSlotPick) {
       _activeSlotPick = null;
       _renderHeader();
@@ -309,7 +311,12 @@
       var moreBtn = card.querySelector('[data-action="more"]');
       if (moreBtn) {
         moreBtn.addEventListener('click', function () {
-          _fallbackPopoutFor = configName;
+          // Toggle: click ▸ More opens; click ▾ Less closes.
+          _fallbackPopoutFor = (_fallbackPopoutFor === configName) ? null : configName;
+          // Re-render cards so the More/Less label flips and the
+          // bottom expand-rows show/hide on this card.
+          _renderPresets();
+          _renderCustom();
           _renderPopout();
         });
       }
@@ -382,15 +389,37 @@
         ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name})
         : '')
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name})
+      +     _expandSlotsHTML(summary, {omitCost: omitCost})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
-      +     '<button type="button" class="ora-models-card-btn" data-action="more">▸ More</button>'
+      +     '<button type="button" class="ora-models-card-btn" data-action="more">'
+      +       _moreLabelFor(summary.name) + '</button>'
       +     '<button type="button" class="ora-models-card-btn" data-action="customize">Customize</button>'
       +   '</div>'
       +   '<div class="ora-models-card-footer">'
       +     chips
       +   '</div>'
       + '</div>';
+  }
+
+  // Renders the 4 extra rows below big 1 / big 2 / small when the
+  // card is in the expanded state (▸ More clicked). Visual fallback +
+  // consolidator + verifier + formatter — each its own slot-pickable
+  // row that breaks the default "post-analysis inherits big 1" rule.
+  function _expandSlotsHTML(summary, opts) {
+    if (_fallbackPopoutFor !== summary.name) return '';
+    var c = {configName: summary.name, omitCost: !!(opts && opts.omitCost)};
+    return ''
+      + '<div class="ora-models-card-expand">'
+      +   _slotRowHTML('visual', summary.visual, c)
+      +   _slotRowHTML('consolidator', summary.consolidator, c)
+      +   _slotRowHTML('verifier', summary.verifier, c)
+      +   _slotRowHTML('formatter', summary.formatter, c)
+      + '</div>';
+  }
+
+  function _moreLabelFor(configName) {
+    return _fallbackPopoutFor === configName ? '▾ Less' : '▸ More';
   }
 
   function _slotRowHTML(label, modelId, opts) {
@@ -641,7 +670,12 @@
       var moreBtn = card.querySelector('[data-action="more"]');
       if (moreBtn) {
         moreBtn.addEventListener('click', function () {
-          _fallbackPopoutFor = configName;
+          // Toggle: click ▸ More opens; click ▾ Less closes.
+          _fallbackPopoutFor = (_fallbackPopoutFor === configName) ? null : configName;
+          // Re-render cards so the More/Less label flips and the
+          // bottom expand-rows show/hide on this card.
+          _renderPresets();
+          _renderCustom();
           _renderPopout();
         });
       }
@@ -673,9 +707,11 @@
         ? _slotRowHTML('big 2', summary.big2, {configName: summary.name})
         : '')
       +     _slotRowHTML('small', summary.small, {configName: summary.name})
+      +     _expandSlotsHTML(summary, {})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
-      +     '<button type="button" class="ora-models-card-btn" data-action="more">▸ More</button>'
+      +     '<button type="button" class="ora-models-card-btn" data-action="more">'
+      +       _moreLabelFor(summary.name) + '</button>'
       +     '<button type="button" class="ora-models-card-btn" data-action="customize">'
       +       'Customize</button>'
       +     '<button type="button" class="ora-models-card-btn ora-models-card-btn-danger"'
@@ -1129,6 +1165,8 @@
       .addEventListener('click', function () {
         _fallbackPopoutFor = null;
         _renderPopout();
+        _renderPresets();
+        _renderCustom();
       });
   }
 
