@@ -56,6 +56,13 @@
     search: '',
   };
 
+  // Vendor expansion state. Vendors are collapsed by default — the
+  // inventory shows just vendor names + model counts so the user gets
+  // a directory overview. Clicking a vendor header expands its model
+  // list; clicking again collapses. Set of vendor names currently
+  // expanded.
+  var _expandedVendors = new Set();
+
   // ── public API ───────────────────────────────────────────────────────────
 
   function init(host) {
@@ -90,6 +97,7 @@
       vision: false, free: false, open_weights: false, pick: false,
       intelligence_pct: 0, search: '',
     };
+    _expandedVendors = new Set();
   }
 
   // ── data load ───────────────────────────────────────────────────────────
@@ -154,24 +162,18 @@
     header.innerHTML = ''
       + '<div class="ora-models-header-strip">'
       +   '<div class="ora-models-active">'
-      +     '<span class="ora-models-active-label">Active configuration:</span> '
+      +     '<span class="ora-models-active-label">Active:</span> '
       +     '<strong class="ora-models-active-name">' + _esc(name) + '</strong>'
       +     (missing
         ? ' <span class="ora-models-warn">(missing — pick another)</span>'
         : '')
       +   '</div>'
-      +   '<div class="ora-models-toggles">'
-      +     _toggleHTML('adversarial_diversity', adv,
-                       'Adversarial Diversity',
-                       'Two workhorse models run in parallel and cross-check '
-                       + 'each other. Doubles cost; catches blind spots a '
-                       + 'single model would miss.')
-      +     _toggleHTML('vision_only', vis,
-                       'Vision-capable only',
-                       'Restrict picks to models that can see images directly. '
-                       + 'Off lets text-only models in, with a per-slot visual '
-                       + 'fallback that converts images to text descriptions.')
-      +   '</div>'
+      +   _toggleHTML('adversarial_diversity', adv,
+                     'Adversarial Diversity',
+                     'two workhorses cross-check — doubles cost, catches blind spots')
+      +   _toggleHTML('vision_only', vis,
+                     'Vision-capable only',
+                     'restrict picks to models that see images directly')
       + '</div>';
 
     // Wire change handlers
@@ -183,6 +185,9 @@
   }
 
   function _toggleHTML(name, checked, label, helpText) {
+    // Compact inline layout: knob · bold-label · muted-help — all on
+    // one row so two toggles + active-config name fit on a single
+    // horizontal line at typical settings-modal widths.
     return ''
       + '<label class="ora-models-toggle">'
       +   '<input type="checkbox" data-toggle="' + name + '"' + (checked ? ' checked' : '') + '>'
@@ -687,14 +692,25 @@
   }
 
   function _vendorBlockHTML(group) {
+    // Vendors are collapsed by default — the user wants a vendor
+    // directory overview, not 358 expanded rows. Searching, filtering,
+    // or a non-default intelligence-slider position auto-expands so
+    // the user sees the filter results without manual clicking.
+    var autoExpand = !!_filters.search || _filters.intelligence_pct > 0
+                     || _filters.vision || _filters.free
+                     || _filters.open_weights || _filters.pick;
+    var isExpanded = _expandedVendors.has(group.vendor) || autoExpand;
+    var caret = isExpanded ? '▾' : '▸';
     return ''
-      + '<div class="ora-models-vendor-block">'
-      +   '<h4 class="ora-models-vendor-name">' + _esc(group.vendor)
+      + '<div class="ora-models-vendor-block' + (isExpanded ? ' ora-models-vendor-expanded' : '') + '">'
+      +   '<h4 class="ora-models-vendor-name" data-vendor="' + _esc(group.vendor) + '">'
+      +     '<span class="ora-models-vendor-caret">' + caret + '</span>'
+      +     ' ' + _esc(group.vendor)
       +     ' <span class="ora-models-vendor-count">(' + group.models.length + ')</span>'
       +   '</h4>'
-      +   '<ul class="ora-models-model-list">'
-      +     group.models.map(_modelRowHTML).join('')
-      +   '</ul>'
+      +   (isExpanded
+        ? '<ul class="ora-models-model-list">' + group.models.map(_modelRowHTML).join('') + '</ul>'
+        : '')
       + '</div>';
   }
 
@@ -806,6 +822,22 @@
         _renderInventory();
       });
     }
+    // Click a vendor header to toggle its expansion. Auto-expanded
+    // vendors (from active filters) can still be manually collapsed,
+    // but they auto-expand again on the next render — that's fine,
+    // active filters mean "I want to see what matches" and collapsing
+    // hides that signal.
+    Array.from(section.querySelectorAll('.ora-models-vendor-name')).forEach(function (el) {
+      el.addEventListener('click', function () {
+        var v = el.dataset.vendor;
+        if (_expandedVendors.has(v)) {
+          _expandedVendors.delete(v);
+        } else {
+          _expandedVendors.add(v);
+        }
+        _renderInventory();
+      });
+    });
   }
 
   // ── placeholder sections (filled by subsequent commits) ─────────────────
