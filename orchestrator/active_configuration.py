@@ -170,6 +170,93 @@ def _infer_defaults(config: dict) -> dict:
     }
 
 
+# ── Preset baking — populate missing presets from the catalog ────────────
+
+
+def bake_missing_presets(force: bool = False) -> list:
+    """Run the auto-populate engine for any preset that doesn't have a
+    configuration file on disk.
+
+    Returns the list of preset names that were baked (empty when
+    everything was already present). When ``force=True``, re-bakes
+    every preset regardless of file existence — useful after a
+    registry refresh when the catalog has changed and the user wants
+    fresh picks.
+
+    Reads ``config/model-catalog.json`` (the refresh-catalog output).
+    Failures bake a preset to ``None`` in the return — the UI's
+    placeholder card handles missing presets, so a partial bake
+    doesn't break anything.
+
+    This helper is wired into the GET /api/configurations endpoint so
+    a fresh install populates all four presets on first pane open;
+    subsequent opens are a no-op (everything exists).
+    """
+    presets_path = ORA_HOME / "config" / "configuration-presets.json"
+    catalog_path = ORA_HOME / "config" / "model-catalog.json"
+    if not presets_path.exists() or not catalog_path.exists():
+        return []
+
+    # Dynamic import — the script's hyphen-in-filename means we can't
+    # do a normal `import auto_populate_configuration`.
+    import importlib.util
+    script_path = ORA_HOME / "scripts" / "auto-populate-configuration.py"
+    if not script_path.exists():
+        return []
+    spec = importlib.util.spec_from_file_location(
+        "_ora_auto_populate", str(script_path))
+    ap_module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(ap_module)
+    except Exception:
+        return []
+
+    with open(catalog_path) as f:
+        catalog_data = json.load(f)
+    catalog = catalog_data.get("models", []) or []
+    if not catalog:
+        return []
+    with open(presets_path) as f:
+        presets_config = json.load(f)
+
+    baked: list = []
+    CONFIGURATIONS_DIR.mkdir(parents=True, exist_ok=True)
+    for preset_name in PRESET_ORDER:
+        # Skip if a config file already claims this preset, unless
+        # force-rebake is requested.
+        target_path = CONFIGURATIONS_DIR / f"{preset_name}.json"
+        already = target_path.exists() or _existing_for_lineage(preset_name)
+        if already and not force:
+            continue
+        try:
+            config = ap_module.populate_configuration(
+                preset_name, catalog, presets_config)
+            config["name"] = preset_name
+            _save_config(preset_name, config)
+            baked.append(preset_name)
+        except Exception:
+            # Per-preset failures are isolated — keep going so a single
+            # bad preset doesn't block the others. The pane will show
+            # the failed one as a placeholder card.
+            continue
+    return baked
+
+
+def _existing_for_lineage(lineage: str) -> bool:
+    """True when any file in CONFIGURATIONS_DIR carries this preset_lineage."""
+    if not CONFIGURATIONS_DIR.exists():
+        return False
+    for path in CONFIGURATIONS_DIR.glob("*.json"):
+        try:
+            with open(path) as f:
+                d = json.load(f)
+            if isinstance(d, dict) and d.get("preset_lineage") == lineage:
+                return True
+        except (OSError, json.JSONDecodeError):
+            continue
+    return False
+
+
 # ── Configuration creation / deletion / rename ───────────────────────────
 
 

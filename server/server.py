@@ -8255,9 +8255,16 @@ def configurations_list():
     the 4 preset slots (free / budget / optimum / premium), the user's
     saved customs, the active configuration name, and the active
     toggle state. Backs the presets row + custom-previous grid + header.
+
+    First-load preset baking: when any of the four presets is missing
+    a configuration file (fresh install state), the auto-populate
+    engine runs against the catalog and writes the missing files
+    before the listing returns. Idempotent — already-baked presets
+    are skipped, so subsequent calls cost nothing.
     """
     try:
         from orchestrator import active_configuration as ac
+        ac.bake_missing_presets()
         return _json_response(ac.list_configurations())
     except Exception as exc:
         return _json_response({
