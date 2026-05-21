@@ -8416,21 +8416,21 @@ def configurations_active_toggles():
         ac.bake_missing_presets(force=True)
         global_toggles = ac.get_preset_toggles()
 
-        # If the active config is a custom (not a preset), also
-        # update its per-config toggle storage so its card reflects
-        # the new state. Presets share the global state via the bake;
-        # their per-file toggles block is overwritten by bake_missing
-        # _presets so we don't need to write again.
+        # If the active config is anything OTHER than a canonical
+        # preset file (free/budget/optimum/premium), also write its
+        # per-config toggle state so the in-card display stays in
+        # sync. We discriminate by FILE NAME, not preset_lineage —
+        # legacy configs (like user-pipeline-auto) may claim
+        # lineage=optimum but have their own filename, so the bake
+        # to optimum.json wouldn't reach them.
         name = ac.get_active_name()
         per_config_updated = False
-        try:
-            config = ac._load_config(name)
-            lineage = config.get("preset_lineage") if isinstance(config, dict) else None
-            if lineage not in ac.PRESET_ORDER:
+        if name not in ac.PRESET_ORDER:
+            try:
                 ac.set_toggles(name, body)
                 per_config_updated = True
-        except FileNotFoundError:
-            pass  # active points to nothing — just skip the per-config write
+            except FileNotFoundError:
+                pass  # active points to nothing — skip silently
 
         return _json_response({
             "name": name,
