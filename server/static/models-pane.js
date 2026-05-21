@@ -514,15 +514,15 @@
     var customs = (_configs && _configs.customs) || [];
     var activeName = (_configs && _configs.active_name) || '';
 
-    // Single grid: saved customs + "+ New configuration" as the
-    // trailing card. The earlier "Custom-New" workspace column was
-    // redundant with "+ New" — both opened the create-blank flow —
-    // so it was retired. Editing an existing custom happens in-place
-    // on its card via the slot-pick gesture.
-    var cards = customs.map(function (c) {
-      return _customCardHTML(c, c.name === activeName);
+    // Single grid: "+ New configuration" pinned to the leftmost
+    // column, then saved customs follow. The earlier "Custom-New"
+    // workspace column was retired in step 6g — + New owns that
+    // role now. Editing an existing custom happens in-place on its
+    // card via the slot-pick gesture (step 8).
+    var cards = [_newConfigCardHTML()];
+    customs.forEach(function (c) {
+      cards.push(_customCardHTML(c, c.name === activeName));
     });
-    cards.push(_newConfigCardHTML());
 
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
