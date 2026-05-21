@@ -701,3 +701,101 @@
   font-style: italic;
   margin: 0;
 }
+
+/* ── Custom row layout ──────────────────────────────────────────── */
+
+.ora-models-custom-row {
+  /* Custom-New takes col 1; Previous grid spans cols 2-4. */
+  grid-template-columns: 1fr 3fr;
+}
+
+.ora-models-previous-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ora-models-card-custom-new {
+  /* Custom-New uses the dashed border style by default to feel like
+   * a workspace, not a saved card. */
+  border-style: dashed;
+}
+
+.ora-models-card-custom-new.ora-models-card-active {
+  border-style: solid;
+  border-color: var(--accent-active, #4a8e3c);
+}
+
+.ora-models-card-incomplete {
+  border-color: var(--accent-danger, #c0392b);
+}
+
+.ora-models-incomplete-flag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-danger, #c0392b);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ora-models-card-empty-state {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.ora-models-card-empty-state:hover {
+  background: var(--bg-elevated, rgba(255,255,255,0.03));
+}
+
+.ora-models-card-custom {
+  min-height: 160px;
+}
+
+.ora-models-card-btn-danger {
+  color: var(--accent-danger, #c0392b);
+  border-color: var(--accent-danger, #c0392b);
+  opacity: 0.65;
+  padding: 3px 7px;
+  min-width: 24px;
+}
+
+.ora-models-card-btn-danger:hover {
+  opacity: 1;
+}
+
+/* The "+ New configuration" card */
+.ora-models-card-new-slot {
+  border-style: dashed;
+  border-color: var(--border-subtle, rgba(255,255,255,0.10));
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  padding: 0;
+}
+
+.ora-models-new-config-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  font-size: 13px;
+  width: 100%;
+  height: 100%;
+}
+
+.ora-models-new-config-btn:hover {
+  color: var(--text-normal);
+}
+
+.ora-models-new-plus {
+  font-size: 28px;
+  line-height: 1;
+}

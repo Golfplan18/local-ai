@@ -170,6 +170,129 @@ def _infer_defaults(config: dict) -> dict:
     }
 
 
+# ── Configuration creation / deletion / rename ───────────────────────────
+
+
+def duplicate_configuration(source_name: str, new_name: str | None = None) -> str:
+    """Copy an existing configuration into a new file.
+
+    Returns the name actually used. When ``new_name`` is None, picks
+    the next available ``Configuration NN`` (NN auto-incrementing).
+    The copy inherits everything from the source including toggles
+    and slot picks; its ``preset_lineage`` is set to ``custom`` and
+    ``description`` carries a "copied from <source>" note.
+
+    Raises ``FileNotFoundError`` when the source doesn't exist;
+    ``ValueError`` when ``new_name`` is provided but already taken.
+    """
+    source_path = _config_path(source_name)
+    if not source_path.exists():
+        raise FileNotFoundError(
+            f"source configuration {source_name!r} not found at {source_path}")
+    if new_name is None or not new_name.strip():
+        new_name = _next_auto_name()
+    new_name = new_name.strip()
+    if _config_path(new_name).exists():
+        raise ValueError(f"configuration {new_name!r} already exists; "
+                         f"pick a different name or delete the existing one")
+    with _lock:
+        with open(source_path) as f:
+            source = json.load(f)
+        copy = dict(source)
+        copy["name"] = new_name
+        copy["preset_lineage"] = "custom"
+        copy["description"] = (
+            f"Copied from {source_name!r} via the Models pane Customize "
+            f"action. Original lineage: {source.get('preset_lineage') or 'n/a'}.")
+        # Strip the auto-populate metadata — the copy is no longer the
+        # output of an auto-populate run and the timestamps would
+        # mislead about when picks were last refreshed.
+        copy.pop("_auto_populate_metadata", None)
+        _save_config(new_name, copy)
+    return new_name
+
+
+def create_blank_configuration(new_name: str | None = None) -> str:
+    """Create an empty custom configuration with no slot picks.
+
+    The result is red-bordered in the UI (incomplete) until the user
+    fills in at least one small + two large picks. Returns the name
+    actually used.
+    """
+    if new_name is None or not new_name.strip():
+        new_name = _next_auto_name()
+    new_name = new_name.strip()
+    if _config_path(new_name).exists():
+        raise ValueError(f"configuration {new_name!r} already exists")
+    with _lock:
+        config = {
+            "name": new_name,
+            "description": "Custom configuration created from the Models pane.",
+            "preset_lineage": "custom",
+            "cells": {
+                "utility": {
+                    "step1_cleanup": {"primary": None, "fallback": []},
+                    "classification": {"primary": None, "fallback": []},
+                    "rag_planner": {"primary": None, "fallback": []},
+                },
+                "analysis": {
+                    "gear4": {
+                        "depth": {"primary": None, "fallback": []},
+                        "breadth": None,
+                    },
+                    "gear3": {
+                        "depth": {"primary": None, "fallback": []},
+                        "breadth": None,
+                    },
+                },
+                "post_analysis": {
+                    "consolidation": {"primary": None, "fallback": []},
+                    "verification": {"primary": None, "fallback": []},
+                    "formatter": {"primary": None, "fallback": []},
+                },
+            },
+        }
+        _save_config(new_name, config)
+    return new_name
+
+
+def delete_configuration(name: str) -> None:
+    """Delete a custom configuration.
+
+    Safety checks (raise ValueError on violation):
+      - Cannot delete the currently-active configuration. The user
+        must pick a different one first.
+      - Cannot delete system configurations (background-default,
+        user-pipeline — the migrated defaults that anchor dispatch).
+    """
+    if name in {"background-default", "user-pipeline"}:
+        raise ValueError(
+            f"{name!r} is a system configuration and cannot be deleted")
+    if name == get_active_name():
+        raise ValueError(
+            f"{name!r} is currently active; activate a different "
+            "configuration before deleting this one")
+    path = _config_path(name)
+    if not path.exists():
+        raise FileNotFoundError(f"no configuration named {name!r}")
+    with _lock:
+        path.unlink()
+
+
+def _next_auto_name() -> str:
+    """Pick the next available 'Configuration NN' name (zero-padded
+    to 2 digits)."""
+    existing = set()
+    if CONFIGURATIONS_DIR.exists():
+        for path in CONFIGURATIONS_DIR.glob("Configuration *.json"):
+            existing.add(path.stem)
+    for n in range(1, 1000):
+        candidate = f"Configuration {n:02d}"
+        if candidate not in existing:
+            return candidate
+    raise RuntimeError("ran out of auto-incremented Configuration NN names")
+
+
 # ── Configuration listing for the Models pane ────────────────────────────
 
 # Canonical preset order. Matches the user-locked left-to-right order in
@@ -308,6 +431,9 @@ __all__ = [
     "get_toggles",
     "set_toggles",
     "list_configurations",
+    "duplicate_configuration",
+    "create_blank_configuration",
+    "delete_configuration",
     "DEFAULT_ACTIVE_NAME",
     "PRESET_ORDER",
 ]

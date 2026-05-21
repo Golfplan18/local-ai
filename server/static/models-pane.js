@@ -92,6 +92,7 @@
                              active_name: '', active_toggles: {}};
       _renderHeader();
       _renderPresets();
+      _renderCustom();
       _renderRemainingSkeleton();
     }).catch(function (err) {
       _showHeaderError(err);
@@ -106,6 +107,7 @@
       _configs = configs || _configs;
       _renderHeader();
       _renderPresets();
+      _renderCustom();
     });
   }
 
@@ -343,10 +345,210 @@
   }
 
   function _customizeFrom(name) {
-    // Step 5 wires the Custom-New copy. For now, surface the intent
-    // so reviewers can confirm the button works end-to-end.
-    console.info('[models-pane] Customize clicked for ' + name
-                 + ' (custom-new copy wires in step 5)');
+    // Prompt for a name; default to auto-incremented Configuration NN.
+    var suggested = prompt(
+      'Name for the new configuration?\n\nLeave blank to use the next '
+      + 'auto-numbered name (Configuration 01, 02, …).',
+      ''
+    );
+    if (suggested === null) return;  // user cancelled
+    fetch('/api/configurations/duplicate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({source: name, new_name: suggested || null}),
+    }).then(_json).then(function (resp) {
+      if (resp && resp.error) {
+        alert('Could not duplicate: ' + resp.error);
+        return;
+      }
+      _loadAll();
+    }).catch(function (err) {
+      alert('Could not duplicate: ' + (err && err.message));
+    });
+  }
+
+  function _createNew() {
+    fetch('/api/configurations/new', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({}),
+    }).then(_json).then(function (resp) {
+      if (resp && resp.error) {
+        alert('Could not create: ' + resp.error);
+        return;
+      }
+      _loadAll();
+    }).catch(function (err) {
+      alert('Could not create: ' + (err && err.message));
+    });
+  }
+
+  function _deleteCustom(name) {
+    if (!confirm('Delete configuration "' + name + '"?\n\nThis is permanent.')) {
+      return;
+    }
+    fetch('/api/configurations/' + encodeURIComponent(name), {
+      method: 'DELETE',
+    }).then(_json).then(function (resp) {
+      if (resp && resp.error) {
+        alert('Could not delete: ' + resp.error);
+        return;
+      }
+      _loadAll();
+    }).catch(function (err) {
+      alert('Could not delete: ' + (err && err.message));
+    });
+  }
+
+  // ── custom row (Custom-New + Previous grid) ─────────────────────────────
+
+  function _renderCustom() {
+    if (!_hostEl) return;
+    var section = _hostEl.querySelector('[data-section="custom"]');
+    if (!section) return;
+    var customs = (_configs && _configs.customs) || [];
+    var activeName = (_configs && _configs.active_name) || '';
+
+    // Custom-New = the active configuration if it's a custom, else
+    // an empty draft scaffold. The active custom shows here AND in
+    // the Previous grid (with its green border in both spots) so the
+    // user can see "this is what's running" front-and-center while
+    // also having the full saved set visible to the right.
+    var activeCustom = customs.find(function (c) { return c.name === activeName; });
+    var newCardHTML = activeCustom
+      ? _customNewActiveHTML(activeCustom)
+      : _customNewEmptyHTML();
+
+    // Previous grid: 3 columns × however many rows of customs. Each
+    // card is a smaller version of the preset card with click-to-
+    // activate + Customize + delete affordances. A trailing "+ New"
+    // card at the end opens the create-blank flow.
+    var previousCards = customs.map(function (c) {
+      return _customCardHTML(c, c.name === activeName);
+    });
+    previousCards.push(_newConfigCardHTML());
+
+    section.innerHTML = ''
+      + '<header class="ora-models-section-header">'
+      +   '<h3>Custom configurations</h3>'
+      +   '<span class="ora-models-section-hint">'
+      +     'Custom-New on the left is your active custom; the grid on the right '
+      +     'holds your saved configurations. Click any card to activate.'
+      +   '</span>'
+      + '</header>'
+      + '<div class="ora-models-row ora-models-custom-row">'
+      +   '<div class="ora-models-custom-new">' + newCardHTML + '</div>'
+      +   '<div class="ora-models-custom-previous">'
+      +     '<div class="ora-models-previous-grid">'
+      +       previousCards.join('')
+      +     '</div>'
+      +   '</div>'
+      + '</div>';
+
+    // Wire interactions for previous-grid cards
+    var grid = section.querySelector('.ora-models-previous-grid');
+    Array.from(grid.querySelectorAll('.ora-models-card-custom')).forEach(function (card) {
+      var configName = card.dataset.configName;
+      card.addEventListener('click', function (evt) {
+        if (evt.target.closest('button')) return;
+        _activateConfig(configName);
+      });
+      var customizeBtn = card.querySelector('[data-action="customize"]');
+      if (customizeBtn) {
+        customizeBtn.addEventListener('click', function () { _customizeFrom(configName); });
+      }
+      var deleteBtn = card.querySelector('[data-action="delete"]');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', function () { _deleteCustom(configName); });
+      }
+    });
+    var newBtn = grid.querySelector('[data-action="new"]');
+    if (newBtn) {
+      newBtn.addEventListener('click', _createNew);
+    }
+  }
+
+  function _customNewEmptyHTML() {
+    return ''
+      + '<div class="ora-models-card ora-models-card-custom-new ora-models-card-empty-state">'
+      +   '<header class="ora-models-card-header">'
+      +     '<span class="ora-models-card-title">Custom new</span>'
+      +     '<span class="ora-models-incomplete-flag">empty</span>'
+      +   '</header>'
+      +   '<div class="ora-models-card-body">'
+      +     '<p class="ora-models-empty-msg">'
+      +       'No custom configuration active. Click ▾ + New on the right '
+      +       'to start a blank one, or Customize on any preset / saved '
+      +       'card to fork it.'
+      +     '</p>'
+      +   '</div>'
+      + '</div>';
+  }
+
+  function _customNewActiveHTML(summary) {
+    // Mirror the preset-card body shape so the user can see what's
+    // active in the same form as anywhere else. The red/green border
+    // reflects completion: red until all 3 minimum slots are picked,
+    // green once they are.
+    var complete = !!(summary.big1 && summary.small);
+    return ''
+      + '<div class="ora-models-card ora-models-card-custom-new'
+      +   (complete ? ' ora-models-card-active' : ' ora-models-card-incomplete') + '"'
+      +   ' data-config-name="' + _esc(summary.name) + '">'
+      +   '<header class="ora-models-card-header">'
+      +     '<span class="ora-models-card-title">' + _esc(summary.name) + '</span>'
+      +     (complete
+        ? '<span class="ora-models-card-active-flag">active</span>'
+        : '<span class="ora-models-incomplete-flag">incomplete</span>')
+      +   '</header>'
+      +   '<div class="ora-models-card-body">'
+      +     _slotRowHTML('big 1', summary.big1)
+      +     _slotRowHTML('big 2', summary.big2)
+      +     _slotRowHTML('small', summary.small)
+      +   '</div>'
+      +   '<div class="ora-models-card-actions">'
+      +     '<button type="button" class="ora-models-card-btn" data-action="more">▸ More</button>'
+      +   '</div>'
+      +   '<div class="ora-models-card-footer">'
+      +     _toggleChips(summary.toggles)
+      +   '</div>'
+      + '</div>';
+  }
+
+  function _customCardHTML(summary, isActive) {
+    return ''
+      + '<div class="ora-models-card ora-models-card-custom'
+      +   (isActive ? ' ora-models-card-active' : '') + '"'
+      +   ' data-config-name="' + _esc(summary.name) + '">'
+      +   '<header class="ora-models-card-header">'
+      +     '<span class="ora-models-card-title">' + _esc(summary.name) + '</span>'
+      +     (isActive ? '<span class="ora-models-card-active-flag">active</span>' : '')
+      +   '</header>'
+      +   '<div class="ora-models-card-body">'
+      +     _slotRowHTML('big 1', summary.big1)
+      +     _slotRowHTML('big 2', summary.big2)
+      +     _slotRowHTML('small', summary.small)
+      +   '</div>'
+      +   '<div class="ora-models-card-actions">'
+      +     '<button type="button" class="ora-models-card-btn" data-action="customize">'
+      +       'Customize</button>'
+      +     '<button type="button" class="ora-models-card-btn ora-models-card-btn-danger"'
+      +       ' data-action="delete" title="Delete">×</button>'
+      +   '</div>'
+      +   '<div class="ora-models-card-footer">'
+      +     _toggleChips(summary.toggles)
+      +   '</div>'
+      + '</div>';
+  }
+
+  function _newConfigCardHTML() {
+    return ''
+      + '<div class="ora-models-card ora-models-card-new-slot">'
+      +   '<button type="button" class="ora-models-new-config-btn" data-action="new">'
+      +     '<span class="ora-models-new-plus">+</span>'
+      +     '<span>New configuration</span>'
+      +   '</button>'
+      + '</div>';
   }
 
   // ── placeholder sections (filled by subsequent commits) ─────────────────
@@ -354,8 +556,6 @@
   function _renderRemainingSkeleton() {
     if (!_hostEl) return;
     var sections = [
-      ['custom',
-       'Custom-New + Previous grid (commit step 5).'],
       ['inventory',
        'Vendor-organized model inventory with filter chips and intelligence slider (commit step 6).'],
       ['hardware',

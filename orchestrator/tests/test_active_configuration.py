@@ -269,5 +269,93 @@ class TestListConfigurations(_Fixture):
         self.assertTrue(t["vision_only"])
 
 
+class TestDuplicateAndCreate(_Fixture):
+    """duplicate_configuration / create_blank_configuration / auto-naming."""
+
+    def test_duplicate_with_explicit_new_name(self):
+        self._write_config("source", {
+            "name": "source",
+            "preset_lineage": "optimum",
+            "cells": {"analysis": {"gear4": {"depth": {"primary": "p"}}}},
+            "_auto_populate_metadata": {"loosening_log": {}},
+        })
+        created = self.module.duplicate_configuration("source", "my-copy")
+        self.assertEqual(created, "my-copy")
+        with open(self.config_dir / "my-copy.json") as f:
+            data = json.load(f)
+        self.assertEqual(data["name"], "my-copy")
+        self.assertEqual(data["preset_lineage"], "custom")
+        self.assertNotIn("_auto_populate_metadata", data)  # stripped
+        # Cells preserved
+        self.assertEqual(data["cells"]["analysis"]["gear4"]["depth"]["primary"], "p")
+
+    def test_duplicate_auto_names(self):
+        self._write_config("source", {"cells": {}})
+        n1 = self.module.duplicate_configuration("source")
+        n2 = self.module.duplicate_configuration("source")
+        self.assertEqual(n1, "Configuration 01")
+        self.assertEqual(n2, "Configuration 02")
+
+    def test_duplicate_skips_taken_auto_numbers(self):
+        self._write_config("source", {"cells": {}})
+        self._write_config("Configuration 01", {"cells": {}})
+        self._write_config("Configuration 02", {"cells": {}})
+        n = self.module.duplicate_configuration("source")
+        self.assertEqual(n, "Configuration 03")
+
+    def test_duplicate_rejects_existing_name(self):
+        self._write_config("source", {"cells": {}})
+        self._write_config("taken", {"cells": {}})
+        with self.assertRaises(ValueError):
+            self.module.duplicate_configuration("source", "taken")
+
+    def test_duplicate_rejects_missing_source(self):
+        with self.assertRaises(FileNotFoundError):
+            self.module.duplicate_configuration("ghost")
+
+    def test_create_blank_has_full_slot_skeleton(self):
+        name = self.module.create_blank_configuration("scratch")
+        self.assertEqual(name, "scratch")
+        with open(self.config_dir / "scratch.json") as f:
+            data = json.load(f)
+        # All five workhorse / utility / post-analysis cells exist with
+        # primary=None — UI shows red border until 3 are filled.
+        self.assertIsNone(data["cells"]["utility"]["step1_cleanup"]["primary"])
+        self.assertIsNone(data["cells"]["analysis"]["gear4"]["depth"]["primary"])
+        self.assertIsNone(data["cells"]["analysis"]["gear4"]["breadth"])
+        self.assertIsNone(data["cells"]["post_analysis"]["consolidation"]["primary"])
+
+    def test_create_blank_auto_names_when_missing(self):
+        name = self.module.create_blank_configuration()
+        self.assertEqual(name, "Configuration 01")
+
+
+class TestDelete(_Fixture):
+
+    def test_delete_removes_file(self):
+        self._write_config("scratch", {"cells": {}})
+        self.module.delete_configuration("scratch")
+        self.assertFalse((self.config_dir / "scratch.json").exists())
+
+    def test_delete_refuses_active_config(self):
+        self._write_config("active-one", {"cells": {}})
+        self.module.set_active_name("active-one")
+        with self.assertRaises(ValueError) as cm:
+            self.module.delete_configuration("active-one")
+        self.assertIn("currently active", str(cm.exception))
+
+    def test_delete_refuses_system_configs(self):
+        self._write_config("background-default", {"cells": {}})
+        self._write_config("user-pipeline", {"cells": {}})
+        with self.assertRaises(ValueError):
+            self.module.delete_configuration("background-default")
+        with self.assertRaises(ValueError):
+            self.module.delete_configuration("user-pipeline")
+
+    def test_delete_missing_raises_filenotfound(self):
+        with self.assertRaises(FileNotFoundError):
+            self.module.delete_configuration("ghost")
+
+
 if __name__ == "__main__":
     unittest.main()

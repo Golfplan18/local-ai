@@ -8267,6 +8267,68 @@ def configurations_list():
         }, status=500)
 
 
+@app.route("/api/configurations/duplicate", methods=["POST"])
+def configurations_duplicate():
+    """Copy an existing configuration into a new file and activate it.
+
+    Body: ``{"source": "<source-name>", "new_name": "<optional>"}``
+    When ``new_name`` is omitted, the helper picks the next available
+    ``Configuration NN``. The new copy carries preset_lineage=custom.
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        source = body.get("source")
+        new_name = body.get("new_name")
+        if not source or not isinstance(source, str):
+            return _json_response({"error": "source name required"}, status=400)
+        from orchestrator import active_configuration as ac
+        created = ac.duplicate_configuration(source, new_name)
+        ac.set_active_name(created)
+        return _json_response({"name": created, "active": True})
+    except (ValueError, FileNotFoundError) as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    except Exception as exc:
+        return _json_response({"error": f"duplicate-failed: {exc}"}, status=500)
+
+
+@app.route("/api/configurations/new", methods=["POST"])
+def configurations_new():
+    """Create a new blank custom configuration and activate it.
+
+    Body: ``{"new_name": "<optional>"}``. Auto-named when omitted.
+    The blank config has all slots set to null — the UI shows it red-
+    bordered until the user fills the 3 minimums.
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        new_name = body.get("new_name")
+        from orchestrator import active_configuration as ac
+        created = ac.create_blank_configuration(new_name)
+        ac.set_active_name(created)
+        return _json_response({"name": created, "active": True})
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    except Exception as exc:
+        return _json_response({"error": f"new-config-failed: {exc}"}, status=500)
+
+
+@app.route("/api/configurations/<name>", methods=["DELETE"])
+def configurations_delete(name):
+    """Delete a custom configuration.
+
+    Refuses to delete the active configuration or system
+    configurations (background-default, user-pipeline).
+    """
+    try:
+        from orchestrator import active_configuration as ac
+        ac.delete_configuration(name)
+        return _json_response({"deleted": name})
+    except (ValueError, FileNotFoundError) as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    except Exception as exc:
+        return _json_response({"error": f"delete-failed: {exc}"}, status=500)
+
+
 @app.route("/api/configurations/active", methods=["GET"])
 def configurations_active_get():
     """Return the active configuration name + its toggle state.
