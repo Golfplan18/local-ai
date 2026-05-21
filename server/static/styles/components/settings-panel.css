@@ -1051,3 +1051,29 @@
   font-size: 11px;
   cursor: pointer;
 }
+
+/* ── Slot pick gesture ───────────────────────────────────────────── */
+
+.ora-models-slot-row-clickable {
+  cursor: pointer;
+}
+
+.ora-models-slot-row-clickable:hover {
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.ora-models-slot-row-picking {
+  background: rgba(80, 200, 120, 0.18);
+  outline: 1px solid var(--ora-accent-success, #50c878);
+  border-radius: 3px;
+}
+
+.ora-models-pick-banner {
+  background: rgba(80, 200, 120, 0.12);
+  border-left: 3px solid var(--ora-accent-success, #50c878);
+  color: var(--ora-fg, #f8f8f2);
+  font-size: 12px;
+  padding: 6px 10px;
+  margin: 4px 8px;
+  border-radius: 3px;
+}

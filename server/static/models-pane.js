@@ -72,13 +72,30 @@
   // expanded.
   var _expandedVendors = new Set();
 
+  // Slot-pick state. When the user clicks a slot value in any card,
+  // _activeSlotPick is set to {configName, slotLabel}. The next
+  // inventory row click assigns that model to the slot and clears
+  // the state. Escape or clicking the slot again cancels.
+  var _activeSlotPick = null;
+
   // ── public API ───────────────────────────────────────────────────────────
+
+  function _onKeydown(evt) {
+    if (evt.key === 'Escape' && _activeSlotPick) {
+      _activeSlotPick = null;
+      _renderHeader();
+      _renderPresets();
+      _renderCustom();
+      _renderInventory();
+    }
+  }
 
   function init(host) {
     if (!host) return;
     destroy();
     _hostEl = host;
     _hostEl.classList.add('ora-models-pane-host');
+    document.addEventListener('keydown', _onKeydown);
     _hostEl.innerHTML = ''
       + '<div class="ora-models-pane">'
       +   '<section class="ora-models-header" data-section="header">'
@@ -94,6 +111,7 @@
   }
 
   function destroy() {
+    document.removeEventListener('keydown', _onKeydown);
     if (_hostEl) {
       _hostEl.classList.remove('ora-models-pane-host');
       _hostEl.innerHTML = '';
@@ -107,6 +125,7 @@
       intelligence_pct: 0, search: '', sort_by: 'alpha_desc',
     };
     _expandedVendors = new Set();
+    _activeSlotPick = null;
   }
 
   // ── data load ───────────────────────────────────────────────────────────
@@ -261,12 +280,13 @@
 
     // Wire activate + customize per card
     Array.from(section.querySelectorAll('.ora-models-card')).forEach(function (card) {
-      var presetName = card.dataset.preset;
       var configName = card.dataset.configName;
       if (!configName) return;
       card.addEventListener('click', function (evt) {
-        // Ignore clicks on buttons inside the card
+        // Ignore clicks on buttons or slot rows inside the card —
+        // slot rows have their own data-pick-slot handler wired below.
         if (evt.target.closest('button')) return;
+        if (evt.target.closest('[data-pick-slot]')) return;
         _activateConfig(configName);
       });
       var customizeBtn = card.querySelector('[data-action="customize"]');
@@ -284,6 +304,32 @@
                        + ' (popout wires in step 10)');
         });
       }
+    });
+    _wireSlotPickHandlers(section);
+  }
+
+  // Slot pick: clicking a slot row sets _activeSlotPick. The next
+  // inventory row click commits the pick. Clicking the same slot
+  // again (or pressing Escape) cancels.
+  function _wireSlotPickHandlers(section) {
+    Array.from(section.querySelectorAll('[data-pick-slot]')).forEach(function (row) {
+      row.addEventListener('click', function (evt) {
+        if (evt.target.closest('button')) return;
+        evt.stopPropagation();
+        var slotLabel = row.dataset.pickSlot;
+        var configName = row.dataset.pickConfig;
+        if (_activeSlotPick
+            && _activeSlotPick.configName === configName
+            && _activeSlotPick.slotLabel === slotLabel) {
+          _activeSlotPick = null;
+        } else {
+          _activeSlotPick = {configName: configName, slotLabel: slotLabel};
+        }
+        _renderHeader();
+        _renderPresets();
+        _renderCustom();
+        _renderInventory();
+      });
     });
   }
 
@@ -321,9 +367,9 @@
       +     (isActive ? '<span class="ora-models-card-active-flag">active</span>' : '')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
-      +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost})
-      +     _slotRowHTML('big 2', summary.big2, {omitCost: omitCost})
-      +     _slotRowHTML('small', summary.small, {omitCost: omitCost})
+      +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost, configName: summary.name})
+      +     _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name})
+      +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
       +     '<button type="button" class="ora-models-card-btn" data-action="more">▸ More</button>'
@@ -337,19 +383,32 @@
 
   function _slotRowHTML(label, modelId, opts) {
     opts = opts || {};
+    var configName = opts.configName || '';
+    var isActiveSlot = _activeSlotPick
+      && _activeSlotPick.configName === configName
+      && _activeSlotPick.slotLabel === label;
+    var clickable = !!configName;  // only rows with a knowable config can be picked
+    var classes = 'ora-models-slot-row';
+    if (isActiveSlot) classes += ' ora-models-slot-row-picking';
+    if (clickable) classes += ' ora-models-slot-row-clickable';
+
     if (!modelId) {
-      return '<div class="ora-models-slot-row ora-models-slot-empty">'
+      return '<div class="' + classes + ' ora-models-slot-empty"'
+        + (clickable ? ' data-pick-slot="' + _esc(label) + '"' +
+                       ' data-pick-config="' + _esc(configName) + '"' : '')
+        + '>'
         + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
         + '<span class="ora-models-slot-value">—</span>'
         + '</div>';
     }
     var isPick = _picksSet && _picksSet.has(modelId);
-    // Look up registry metadata so the slot row carries the same
-    // compact summary the inventory uses (int + $/M + t/s).
     var registry = (_registry && _registry.models) || {};
     var model = registry[modelId];
     var meta = model ? _compactMetaHTML(model, opts) : '';
-    return '<div class="ora-models-slot-row">'
+    return '<div class="' + classes + '"'
+      + (clickable ? ' data-pick-slot="' + _esc(label) + '"' +
+                     ' data-pick-config="' + _esc(configName) + '"' : '')
+      + '>'
       + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
       + '<span class="ora-models-slot-value" title="' + _esc(modelId) + '">'
       +   _esc(_shortenModelId(modelId))
@@ -488,6 +547,25 @@
     });
   }
 
+  function _commitSlotPick(modelId) {
+    if (!_activeSlotPick || !modelId) return;
+    var pick = _activeSlotPick;
+    _activeSlotPick = null;
+    fetch('/api/configurations/' + encodeURIComponent(pick.configName) + '/slot', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({slot: pick.slotLabel, model_id: modelId}),
+    }).then(_json).then(function (resp) {
+      if (resp && resp.error) {
+        alert('Could not assign model: ' + resp.error);
+        return;
+      }
+      _loadAll();
+    }).catch(function (err) {
+      alert('Could not assign model: ' + (err && err.message));
+    });
+  }
+
   function _deleteCustom(name) {
     if (!confirm('Delete configuration "' + name + '"?\n\nThis is permanent.')) {
       return;
@@ -541,6 +619,7 @@
       var configName = card.dataset.configName;
       card.addEventListener('click', function (evt) {
         if (evt.target.closest('button')) return;
+        if (evt.target.closest('[data-pick-slot]')) return;
         _activateConfig(configName);
       });
       var customizeBtn = card.querySelector('[data-action="customize"]');
@@ -556,6 +635,7 @@
     if (newBtn) {
       newBtn.addEventListener('click', _createNew);
     }
+    _wireSlotPickHandlers(section);
   }
 
   function _customCardHTML(summary, isActive) {
@@ -568,9 +648,9 @@
       +     (isActive ? '<span class="ora-models-card-active-flag">active</span>' : '')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
-      +     _slotRowHTML('big 1', summary.big1)
-      +     _slotRowHTML('big 2', summary.big2)
-      +     _slotRowHTML('small', summary.small)
+      +     _slotRowHTML('big 1', summary.big1, {configName: summary.name})
+      +     _slotRowHTML('big 2', summary.big2, {configName: summary.name})
+      +     _slotRowHTML('small', summary.small, {configName: summary.name})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
       +     '<button type="button" class="ora-models-card-btn" data-action="customize">'
@@ -651,6 +731,15 @@
       return sum + g.models.length;
     }, 0);
 
+    var pickBanner = '';
+    if (_activeSlotPick) {
+      pickBanner = ''
+        + '<div class="ora-models-pick-banner">'
+        +   'Picking <strong>' + _esc(_activeSlotPick.slotLabel)
+        +   '</strong> for <strong>' + _esc(_activeSlotPick.configName)
+        +   '</strong> — click a model below, or press Esc to cancel.'
+        + '</div>';
+    }
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
       +   '<h3>Model inventory</h3>'
@@ -661,6 +750,7 @@
       +     ' · vendors alphabetical by column · local pinned to top of column 1'
       +   '</span>'
       + '</header>'
+      + pickBanner
       + '<div class="ora-models-inventory-controls">'
       +   _filterChipsHTML()
       +   _sortSelectHTML()
@@ -836,7 +926,8 @@
     // Meta is the same compact summary used in card slot rows.
     var displayName = model.display_name || model.id;
     return ''
-      + '<li class="ora-models-model-row" title="' + _esc(model.id) + '">'
+      + '<li class="ora-models-model-row" title="' + _esc(model.id) + '"'
+      +   ' data-model-id="' + _esc(model.id) + '">'
       +   '<span class="ora-models-model-name">' + _esc(displayName) + '</span>'
       +   _modelChipsHTML(model)
       +   '<span class="ora-models-model-meta">' + _compactMetaHTML(model) + '</span>'
@@ -935,6 +1026,14 @@
         _renderInventory();
       });
     }
+    // Inventory row clicks commit a slot pick when one is active.
+    Array.from(section.querySelectorAll('.ora-models-model-row')).forEach(function (row) {
+      row.addEventListener('click', function () {
+        if (!_activeSlotPick) return;
+        var modelId = row.dataset.modelId;
+        _commitSlotPick(modelId);
+      });
+    });
     // Click a vendor header to toggle its expansion. Auto-expanded
     // vendors (from active filters) can still be manually collapsed,
     // but they auto-expand again on the next render — that's fine,

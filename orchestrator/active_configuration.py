@@ -578,6 +578,69 @@ def _empty_toggles() -> dict:
     return {"adversarial_diversity": False, "vision_only": False}
 
 
+# ── Slot pick — assign a model to a configuration's visible slot ─────────
+
+# Card-level slot label → list of cells.* paths the pick writes to.
+# The "small + 2 big" abstraction the Models pane shows hides the full
+# slot graph; one pick fans out to multiple internal cells so the
+# expand view (step 11) doesn't have to be open for the basic picker
+# to do the obvious thing.
+SLOT_LABEL_TO_PATHS = {
+    "big 1": [
+        ["analysis", "gear4", "depth"],
+        ["analysis", "gear3", "depth"],
+        ["post_analysis", "consolidation"],
+        ["post_analysis", "verification"],
+        ["post_analysis", "formatter"],
+    ],
+    "big 2": [
+        ["analysis", "gear4", "breadth"],
+    ],
+    "small": [
+        ["utility", "step1_cleanup"],
+        ["utility", "classification"],
+        ["utility", "rag_planner"],
+    ],
+}
+
+
+def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
+    """Assign a model to a visible slot on a configuration.
+
+    ``slot_label`` is one of "big 1" / "big 2" / "small". The helper
+    fans the pick out to every internal cell path that label maps to
+    (see SLOT_LABEL_TO_PATHS) so post-analysis slots that "inherit
+    big 1" track the change without the user opening the expand view.
+
+    Returns the updated configuration dict.
+    """
+    if slot_label not in SLOT_LABEL_TO_PATHS:
+        raise ValueError(f"unknown slot label: {slot_label!r}")
+    if not isinstance(model_id, str) or not model_id.strip():
+        raise ValueError("model_id must be a non-empty string")
+    model_id = model_id.strip()
+
+    with _lock:
+        config = _load_config(name)
+        cells = config.setdefault("cells", {})
+        for path in SLOT_LABEL_TO_PATHS[slot_label]:
+            node = cells
+            for key in path[:-1]:
+                if not isinstance(node.get(key), dict):
+                    node[key] = {}
+                node = node[key]
+            existing = node.get(path[-1])
+            if isinstance(existing, dict):
+                existing["primary"] = model_id
+            else:
+                node[path[-1]] = {
+                    "primary": model_id,
+                    "fallback": [],
+                }
+        _save_config(name, config)
+    return config
+
+
 __all__ = [
     "get_active_name",
     "set_active_name",
@@ -590,6 +653,8 @@ __all__ = [
     "duplicate_configuration",
     "create_blank_configuration",
     "delete_configuration",
+    "set_slot_primary",
     "DEFAULT_ACTIVE_NAME",
     "PRESET_ORDER",
+    "SLOT_LABEL_TO_PATHS",
 ]

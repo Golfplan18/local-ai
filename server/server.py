@@ -8319,6 +8319,29 @@ def configurations_new():
         return _json_response({"error": f"new-config-failed: {exc}"}, status=500)
 
 
+@app.route("/api/configurations/<name>/slot", methods=["POST"])
+def configurations_set_slot(name):
+    """Update a single visible slot on a configuration.
+
+    Body: ``{"slot": "big 1" | "big 2" | "small", "model_id": "..."}``.
+    Per the "small + 2 big" abstraction, the pick fans out to the
+    matching internal cells (e.g. picking "big 1" writes to
+    analysis.gear4.depth + analysis.gear3.depth + the three
+    post_analysis cells that inherit big 1's model by default).
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        slot = body.get("slot")
+        model_id = body.get("model_id")
+        from orchestrator import active_configuration as ac
+        ac.set_slot_primary(name, slot, model_id)
+        return _json_response({"name": name, "slot": slot, "model_id": model_id})
+    except (ValueError, FileNotFoundError) as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    except Exception as exc:
+        return _json_response({"error": f"slot-set-failed: {exc}"}, status=500)
+
+
 @app.route("/api/configurations/<name>", methods=["DELETE"])
 def configurations_delete(name):
     """Delete a custom configuration.
