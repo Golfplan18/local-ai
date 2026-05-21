@@ -8249,6 +8249,36 @@ def model_registry_get():
     })
 
 
+@app.route("/api/model-registry/picks", methods=["GET"])
+def model_registry_picks():
+    """Return the PICK set — models the system endorses as winners.
+
+    A model earns the PICK badge when it appears as a primary or
+    fallback in any of the auto-populated preset configurations under
+    ``config/configurations/``. The UI shows a green ``PICK`` chip on
+    each such row in the Models pane inventory so users can see at a
+    glance which models the recommendation engine considers worth
+    picking — across any of the four presets.
+
+    On fresh installs (before the registry refresh has baked all four
+    preset files), the PICK set is smaller than its eventual ~40-60
+    models. The refresh trigger (Chunk 10 step 14) handles backfill.
+
+    Always returns 200 — empty payload when no configurations exist.
+    """
+    try:
+        from orchestrator import model_registry as mr
+        result = mr.compute_picks()
+    except Exception as exc:
+        return _json_response({
+            "error": f"picks-compute-failed: {exc}",
+            "picks": [],
+            "by_model": {},
+            "configurations_scanned": [],
+        }, status=500)
+    return _json_response(result)
+
+
 @app.route("/api/model-registry/refresh", methods=["POST"])
 def model_registry_refresh():
     """Trigger a registry sync (no-probe) and reload the in-process cache.

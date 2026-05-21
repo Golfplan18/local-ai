@@ -218,5 +218,170 @@ class TestStats(_RegistryFixture):
         self.assertEqual(s["intelligence_score_count"], 1)
 
 
+class TestComputePicks(unittest.TestCase):
+    """compute_picks walks ``config/configurations/*.json`` and unions
+    every model id that appears as a primary or fallback in any slot.
+    ``vision_substitute`` is deliberately excluded."""
+
+    def setUp(self):
+        import model_registry
+        self.module = model_registry
+        self.tmpdir = tempfile.mkdtemp()
+        self.config_dir = Path(self.tmpdir) / "configurations"
+        self.config_dir.mkdir()
+
+    def _write_config(self, name, payload):
+        with open(self.config_dir / name, "w") as f:
+            json.dump(payload, f)
+
+    def _typical_config(self, preset_lineage, primaries,
+                        fallbacks=None, vision_substitute=None):
+        """Build a configuration dict shaped like the real auto-populate
+        output. ``primaries`` and ``fallbacks`` are keyed by slot path
+        ('utility.step1_cleanup', 'analysis.gear4.depth', etc.). The
+        helper renders the nested shape so each test reads cleanly."""
+        fallbacks = fallbacks or {}
+        cells = {
+            "utility": {},
+            "analysis": {"gear4": {}, "gear3": {"breadth": None}},
+            "post_analysis": {},
+        }
+        def _set(path, primary):
+            parts = path.split(".")
+            node = cells
+            for p in parts[:-1]:
+                node = node[p]
+            slot = {
+                "primary": primary,
+                "fallback": fallbacks.get(path, []),
+            }
+            if vision_substitute:
+                slot["vision_substitute"] = vision_substitute
+            node[parts[-1]] = slot
+        for path, primary in primaries.items():
+            _set(path, primary)
+        return {
+            "name": "test",
+            "preset_lineage": preset_lineage,
+            "cells": cells,
+        }
+
+    def test_empty_directory_returns_empty_picks(self):
+        result = self.module.compute_picks(self.config_dir)
+        self.assertEqual(result["picks"], [])
+        self.assertEqual(result["by_model"], {})
+        self.assertEqual(result["configurations_scanned"], [])
+
+    def test_missing_directory_returns_empty(self):
+        missing = Path(self.tmpdir) / "does-not-exist"
+        result = self.module.compute_picks(missing)
+        self.assertEqual(result["picks"], [])
+
+    def test_picks_union_across_files(self):
+        self._write_config("optimum.json", self._typical_config(
+            preset_lineage="optimum",
+            primaries={
+                "utility.step1_cleanup": "openai/gpt-5-nano",
+                "analysis.gear4.depth": "qwen/qwen3.6-plus",
+                "analysis.gear4.breadth": "moonshotai/kimi-k2.6",
+                "post_analysis.consolidation": "qwen/qwen3.6-plus",
+            },
+            fallbacks={
+                "analysis.gear4.depth": [
+                    "moonshotai/kimi-k2.6",
+                    "google/gemini-3.1-pro",
+                ],
+            },
+        ))
+        self._write_config("premium.json", self._typical_config(
+            preset_lineage="premium",
+            primaries={
+                "analysis.gear4.depth": "anthropic/claude-opus-4.7",
+                "analysis.gear4.breadth": "anthropic/claude-sonnet-4.6",
+            },
+        ))
+        result = self.module.compute_picks(self.config_dir)
+        self.assertEqual(set(result["picks"]), {
+            "openai/gpt-5-nano",
+            "qwen/qwen3.6-plus",
+            "moonshotai/kimi-k2.6",
+            "google/gemini-3.1-pro",
+            "anthropic/claude-opus-4.7",
+            "anthropic/claude-sonnet-4.6",
+        })
+        self.assertEqual(result["picks"], sorted(result["picks"]))
+
+    def test_per_model_endorsements_aggregate(self):
+        self._write_config("optimum.json", self._typical_config(
+            preset_lineage="optimum",
+            primaries={"analysis.gear4.depth": "qwen/qwen3.6-plus"},
+        ))
+        self._write_config("budget.json", self._typical_config(
+            preset_lineage="budget",
+            primaries={"analysis.gear4.depth": "qwen/qwen3.6-plus"},
+        ))
+        result = self.module.compute_picks(self.config_dir)
+        entry = result["by_model"]["qwen/qwen3.6-plus"]
+        self.assertEqual(set(entry["preset_lineages"]), {"optimum", "budget"})
+        self.assertEqual(set(entry["configurations"]), {"optimum.json", "budget.json"})
+
+    def test_vision_substitute_is_NOT_in_picks(self):
+        """vision_substitute is a text-to-vision fallback for image
+        input, not a primary recommendation. Including it would dilute
+        the PICK badge."""
+        self._write_config("free.json", self._typical_config(
+            preset_lineage="free",
+            primaries={"analysis.gear4.depth": "meta-llama/llama-3.3-70b:free"},
+            vision_substitute="openrouter:openai/gpt-5",
+        ))
+        result = self.module.compute_picks(self.config_dir)
+        self.assertIn("meta-llama/llama-3.3-70b:free", result["picks"])
+        self.assertNotIn("openrouter:openai/gpt-5", result["picks"])
+
+    def test_malformed_file_skipped(self):
+        (self.config_dir / "broken.json").write_text("{ not json")
+        self._write_config("good.json", self._typical_config(
+            preset_lineage="optimum",
+            primaries={"analysis.gear4.depth": "qwen/qwen3.6-plus"},
+        ))
+        result = self.module.compute_picks(self.config_dir)
+        self.assertEqual(set(result["picks"]), {"qwen/qwen3.6-plus"})
+        self.assertIn("good.json", result["configurations_scanned"])
+        self.assertNotIn("broken.json", result["configurations_scanned"])
+
+    def test_fallback_chain_contributes_to_picks(self):
+        """A model can earn PICK from being in a fallback list, not
+        just from being primary anywhere."""
+        self._write_config("optimum.json", self._typical_config(
+            preset_lineage="optimum",
+            primaries={"analysis.gear4.depth": "qwen/qwen3.6-plus"},
+            fallbacks={"analysis.gear4.depth": [
+                "moonshotai/kimi-k2.6",
+                "local-mlx-kimi-dev-72b",
+            ]},
+        ))
+        result = self.module.compute_picks(self.config_dir)
+        self.assertIn("qwen/qwen3.6-plus", result["picks"])
+        self.assertIn("moonshotai/kimi-k2.6", result["picks"])
+        self.assertIn("local-mlx-kimi-dev-72b", result["picks"])
+
+    def test_empty_or_null_primary_is_skipped(self):
+        """Empty-string primary or null primary shouldn't pollute the
+        PICK set with empty entries."""
+        cells = {
+            "utility": {
+                "step1_cleanup": {"primary": "", "fallback": []},
+                "classification": {"primary": None, "fallback": ["foo/bar"]},
+            },
+        }
+        self._write_config("weird.json", {
+            "name": "weird",
+            "preset_lineage": "optimum",
+            "cells": cells,
+        })
+        result = self.module.compute_picks(self.config_dir)
+        self.assertEqual(set(result["picks"]), {"foo/bar"})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -183,6 +183,111 @@ def overlay_routing_config(rc: dict) -> dict:
     return rc
 
 
+def compute_picks(configurations_dir: Path | None = None) -> dict:
+    """Return the set of model ids that earn the PICK badge.
+
+    A model earns PICK if it appears as a ``primary`` or in any
+    ``fallback`` list inside any configuration file under
+    ``config/configurations/``. The intent is that the four preset
+    configurations (premium / optimum / budget / free) live on disk;
+    the PICK set is the union of every preset's primary + fallback
+    picks across every slot.
+
+    ``vision_substitute`` ids are NOT included — vision substitute is a
+    text-to-vision fallback for the image-input path, not a primary
+    recommendation, and surfacing it as PICK would dilute the badge.
+
+    When fewer than four preset files exist (fresh install, before the
+    refresh trigger has baked them), the PICK set is necessarily
+    smaller. The UI shows the PICK badge on whatever's currently
+    derivable; the registry refresh trigger (Chunk 10 step 14) is what
+    populates the four preset files so the badge reaches its expected
+    ~40-60 distinct models (~12-17% of a 358-model registry).
+
+    Returns a dict with:
+      ``picks``: sorted list of model ids (stable for diffing)
+      ``by_model``: per-model endorsement detail (preset_lineages +
+                    configurations seen in)
+      ``configurations_scanned``: filenames considered
+      ``configurations_dir``: absolute path that was scanned
+    """
+    if configurations_dir is None:
+        configurations_dir = ORA_HOME / "config" / "configurations"
+
+    by_model: dict[str, dict] = {}
+    scanned: list[str] = []
+
+    if not configurations_dir.exists():
+        return {
+            "picks": [],
+            "by_model": {},
+            "configurations_scanned": [],
+            "configurations_dir": str(configurations_dir),
+        }
+
+    for path in sorted(configurations_dir.glob("*.json")):
+        try:
+            with open(path) as f:
+                config = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            # Malformed file — skip silently. The endpoint reports
+            # the list of files actually scanned so callers can spot
+            # the gap if they need to.
+            continue
+        if not isinstance(config, dict):
+            continue
+        scanned.append(path.name)
+        lineage = config.get("preset_lineage")
+        for model_id in _walk_config_for_picks(config.get("cells") or {}):
+            entry = by_model.setdefault(model_id, {
+                "preset_lineages": [],
+                "configurations": [],
+            })
+            if lineage and lineage not in entry["preset_lineages"]:
+                entry["preset_lineages"].append(lineage)
+            if path.name not in entry["configurations"]:
+                entry["configurations"].append(path.name)
+
+    return {
+        "picks": sorted(by_model.keys()),
+        "by_model": by_model,
+        "configurations_scanned": scanned,
+        "configurations_dir": str(configurations_dir),
+    }
+
+
+def _walk_config_for_picks(cells) -> set:
+    """Walk a configuration's nested cells structure and collect every
+    model id that appears as a ``primary`` or in a ``fallback`` list.
+
+    The cells dict has variable depth (utility cells are flat;
+    analysis splits into gear3/gear4; post_analysis is flat again).
+    We recurse on dicts until we find a slot dict — recognised by the
+    presence of a ``primary`` key — and harvest from there.
+    """
+    found: set = set()
+
+    def visit(node):
+        if not isinstance(node, dict):
+            return
+        if "primary" in node:
+            # Slot dict — harvest primary + fallback. vision_substitute
+            # deliberately excluded (see compute_picks docstring).
+            primary = node.get("primary")
+            if primary:
+                found.add(primary)
+            for f in (node.get("fallback") or []):
+                if f:
+                    found.add(f)
+            return
+        # Nested category dict — recurse.
+        for v in node.values():
+            visit(v)
+
+    visit(cells)
+    return found
+
+
 def stats() -> dict:
     """Return a small dict summarising the loaded registry — useful
     for the server's health / status surface."""
@@ -222,5 +327,6 @@ __all__ = [
     "vision_capable",
     "intelligence_score",
     "overlay_routing_config",
+    "compute_picks",
     "stats",
 ]
