@@ -132,11 +132,30 @@ def filter_by_size_bucket(candidates: list[dict], size_bucket: str) -> list[dict
 
 
 def filter_paid(candidates: list[dict]) -> list[dict]:
-    return [m for m in candidates if not m.get("is_free", False)]
+    """Paid = NOT free by either signal (catalog flag OR :free suffix).
+
+    Symmetric with filter_free — together they partition the catalog
+    cleanly so a paid preset (Premium/Optimum/Budget) can't accidentally
+    pick a :free variant just because its is_free flag was unset."""
+    return [
+        m for m in candidates
+        if not (m.get("is_free", False) or m.get("id", "").endswith(":free"))
+    ]
 
 
 def filter_free(candidates: list[dict]) -> list[dict]:
-    return [m for m in candidates if m.get("is_free", False)]
+    """Free = the catalog marked it free, OR the id ends in ":free".
+
+    The :free-suffix recognition matters because most free-tier
+    entries on OpenRouter are `:free` variants of paid base models
+    (e.g. `meta-llama/llama-3.3-70b-instruct:free`). The catalog's
+    is_free flag is set inconsistently across vendors, so the suffix
+    check picks up models the flag misses — and the suffix is itself
+    OpenRouter's authoritative signal."""
+    return [
+        m for m in candidates
+        if m.get("is_free", False) or m.get("id", "").endswith(":free")
+    ]
 
 
 def filter_vision(candidates: list[dict]) -> list[dict]:

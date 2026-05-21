@@ -354,6 +354,7 @@
 
     var isActive = (summary.name === activeName);
     var chips = _toggleChips(summary.toggles);
+    var adversarial = !!(summary.toggles && summary.toggles.adversarial_diversity);
     // Free preset's slots always cost $0 — drop the cost component
     // from the slot meta so the line stays tight.
     var omitCost = (presetName === 'free');
@@ -368,7 +369,9 @@
       +   '</header>'
       +   '<div class="ora-models-card-body">'
       +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost, configName: summary.name})
-      +     _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name})
+      +     (adversarial
+        ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name})
+        : '')
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
@@ -639,6 +642,7 @@
   }
 
   function _customCardHTML(summary, isActive) {
+    var adversarial = !!(summary.toggles && summary.toggles.adversarial_diversity);
     return ''
       + '<div class="ora-models-card ora-models-card-custom'
       +   (isActive ? ' ora-models-card-active' : '') + '"'
@@ -649,7 +653,9 @@
       +   '</header>'
       +   '<div class="ora-models-card-body">'
       +     _slotRowHTML('big 1', summary.big1, {configName: summary.name})
-      +     _slotRowHTML('big 2', summary.big2, {configName: summary.name})
+      +     (adversarial
+        ? _slotRowHTML('big 2', summary.big2, {configName: summary.name})
+        : '')
       +     _slotRowHTML('small', summary.small, {configName: summary.name})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
