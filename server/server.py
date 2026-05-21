@@ -8169,7 +8169,13 @@ def load_models():
 def models_endpoint():
     config     = load_config()
     models_cfg = load_models()
-    ep_by_name = {e["name"]: e for e in config.get("endpoints", [])}
+    # Endpoints carry `id` after the Chunk 12 schema cleanup; older
+    # callers wrote `name`. Accept either.
+    ep_by_name = {
+        (e.get("id") or e.get("name")): e
+        for e in config.get("endpoints", [])
+        if e.get("id") or e.get("name")
+    }
 
     system_ram = get_system_ram_gb()
     overhead   = models_cfg.get("overhead_reservation_gb", 8)

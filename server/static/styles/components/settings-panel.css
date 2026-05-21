@@ -1245,3 +1245,94 @@
   letter-spacing: 0.04em;
   vertical-align: middle;
 }
+
+/* ── Local hardware section ──────────────────────────────────────── */
+
+.ora-models-hw-body {
+  padding: 6px 8px 8px;
+}
+
+.ora-models-hw-totals {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.08));
+  margin-bottom: 6px;
+}
+
+.ora-models-hw-totals > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ora-models-hw-label {
+  font-size: 9px;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ora-models-hw-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ora-fg, #f8f8f2);
+  font-family: var(--ora-font-mono, ui-monospace, monospace);
+}
+
+.ora-models-hw-headroom-low {
+  color: var(--ora-accent-danger, #ff5555);
+}
+
+.ora-models-hw-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ora-models-hw-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 3px 6px;
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+.ora-models-hw-row:hover {
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.04));
+}
+
+.ora-models-hw-name {
+  flex: 1;
+  color: var(--ora-fg, #f8f8f2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ora-models-hw-size {
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.7));
+  font-family: var(--ora-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  width: 60px;
+  text-align: right;
+}
+
+.ora-models-hw-fit {
+  font-size: 10px;
+  font-weight: 600;
+  width: 70px;
+}
+
+.ora-models-hw-fit-ok {
+  color: var(--ora-accent-success, #50c878);
+}
+
+.ora-models-hw-fit-no {
+  color: var(--ora-accent-danger, #ff5555);
+}

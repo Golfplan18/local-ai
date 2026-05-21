@@ -82,6 +82,11 @@
   // _fallbackPopoutFor = <configName>. Close button or Escape clears.
   var _fallbackPopoutFor = null;
 
+  // Hardware data from /models — system_ram_gb / overhead_gb /
+  // available_budget_gb / local_models[]. Used by the bottom
+  // hardware analysis section.
+  var _hardware = null;
+
   // ── public API ───────────────────────────────────────────────────────────
 
   function _onKeydown(evt) {
@@ -138,6 +143,7 @@
     _expandedVendors = new Set();
     _activeSlotPick = null;
     _fallbackPopoutFor = null;
+    _hardware = null;
   }
 
   // ── data load ───────────────────────────────────────────────────────────
@@ -147,17 +153,20 @@
       fetch('/api/model-registry').then(_json),
       fetch('/api/model-registry/picks').then(_json),
       fetch('/api/configurations').then(_json),
+      fetch('/models').then(_json).catch(function () { return null; }),
     ]).then(function (resp) {
       _registry = resp[0] || {};
       var picksPayload = resp[1] || {};
       _picksSet = new Set(picksPayload.picks || []);
       _configs = resp[2] || {presets: {}, customs: [],
                              active_name: '', active_toggles: {}};
+      _hardware = resp[3] || null;
       _renderHeader();
       _renderPresets();
       _renderCustom();
       _renderInventory();
       _renderPopout();
+      _renderHardware();
       _renderRemainingSkeleton();
     }).catch(function (err) {
       _showHeaderError(err);
@@ -1209,21 +1218,68 @@
       + '</div>';
   }
 
-  // ── placeholder sections (filled by subsequent commits) ─────────────────
+  // ── Local hardware section ──────────────────────────────────────────────
 
-  function _renderRemainingSkeleton() {
+  function _renderHardware() {
     if (!_hostEl) return;
-    var sections = [
-      ['hardware',
-       'Local model hardware analysis (commit step 13).'],
-    ];
-    sections.forEach(function (s) {
-      var el = _hostEl.querySelector('[data-section="' + s[0] + '"]');
-      if (el) {
-        el.innerHTML = '<p class="ora-models-placeholder">' + _esc(s[1]) + '</p>';
-      }
+    var section = _hostEl.querySelector('[data-section="hardware"]');
+    if (!section) return;
+    var h = _hardware;
+    if (!h) {
+      section.innerHTML = '<p class="ora-models-placeholder">'
+        + 'Local model data unavailable (/models endpoint failed).</p>';
+      return;
+    }
+    var locals = h.local_models || [];
+    var totalRam = locals.reduce(function (sum, m) {
+      return sum + (m.ram_gb || 0);
+    }, 0);
+    var headroom = (h.available_budget_gb || 0) - totalRam;
+
+    var rows = locals.map(function (m) {
+      var size = m.ram_gb != null ? m.ram_gb + ' GB' : '?';
+      var fits = (m.ram_gb || 0) <= (h.available_budget_gb || Infinity);
+      return ''
+        + '<li class="ora-models-hw-row">'
+        +   '<span class="ora-models-hw-name">' + _esc(m.display_name || m.id) + '</span>'
+        +   '<span class="ora-models-hw-size">' + _esc(size) + '</span>'
+        +   '<span class="ora-models-hw-fit'
+        +     (fits ? ' ora-models-hw-fit-ok' : ' ora-models-hw-fit-no') + '">'
+        +     (fits ? '✓ fits' : '✗ too large')
+        +   '</span>'
+        + '</li>';
     });
+
+    section.innerHTML = ''
+      + '<header class="ora-models-section-header">'
+      +   '<h3>Local model hardware</h3>'
+      +   '<span class="ora-models-section-hint">'
+      +     'Local models run on your hardware; capability and speed are bounded '
+      +     'by available RAM.'
+      +   '</span>'
+      + '</header>'
+      + '<div class="ora-models-hw-body">'
+      +   '<div class="ora-models-hw-totals">'
+      +     '<div><span class="ora-models-hw-label">System RAM</span>'
+      +       '<span class="ora-models-hw-value">' + _esc(String(h.system_ram_gb || '?')) + ' GB</span></div>'
+      +     '<div><span class="ora-models-hw-label">Overhead</span>'
+      +       '<span class="ora-models-hw-value">' + _esc(String(h.overhead_gb || '?')) + ' GB</span></div>'
+      +     '<div><span class="ora-models-hw-label">Available</span>'
+      +       '<span class="ora-models-hw-value">' + _esc(String(h.available_budget_gb || '?')) + ' GB</span></div>'
+      +     '<div><span class="ora-models-hw-label">Installed total</span>'
+      +       '<span class="ora-models-hw-value">' + _esc(totalRam.toFixed(0)) + ' GB</span></div>'
+      +     '<div><span class="ora-models-hw-label">Headroom</span>'
+      +       '<span class="ora-models-hw-value' + (headroom < 0 ? ' ora-models-hw-headroom-low' : '') + '">'
+      +         _esc(headroom.toFixed(0)) + ' GB</span></div>'
+      +   '</div>'
+      +   (locals.length
+        ? '<ul class="ora-models-hw-list">' + rows.join('') + '</ul>'
+        : '<p class="ora-models-placeholder">No local models installed.</p>')
+      + '</div>';
   }
+
+  // (No more sections needing placeholder skeleton — step 13 was the last.)
+  function _renderRemainingSkeleton() {}
 
   // ── utilities ───────────────────────────────────────────────────────────
 
