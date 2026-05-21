@@ -200,6 +200,14 @@
   function _setToggle(name, value) {
     var payload = {};
     payload[name] = value;
+    // Vision-capable toggle auto-syncs the inventory's Vision filter
+    // chip: if you say "I only want vision-capable models" globally,
+    // the inventory should hide text-only models too without a
+    // separate click. Reverse on toggle-off: turn off the chip so
+    // the inventory returns to showing everything.
+    if (name === 'vision_only') {
+      _filters.vision = !!value;
+    }
     fetch('/api/configurations/active/toggles', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -210,6 +218,7 @@
         // Refresh both header + presets — the active preset card may
         // change its toggle-chip footer when the active toggles flip.
         _refreshActive();
+        _renderInventory();  // pick up the auto-synced filter
       }
     }).catch(function (err) {
       // Toggle didn't persist — revert the checkbox state by reloading
@@ -290,6 +299,9 @@
 
     var isActive = (summary.name === activeName);
     var chips = _toggleChips(summary.toggles);
+    // Free preset's slots always cost $0 — drop the cost component
+    // from the slot meta so the line stays tight.
+    var omitCost = (presetName === 'free');
     return ''
       + '<div class="ora-models-card ora-models-card-preset'
       +   (isActive ? ' ora-models-card-active' : '') + '"'
@@ -300,9 +312,9 @@
       +     (isActive ? '<span class="ora-models-card-active-flag">active</span>' : '')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
-      +     _slotRowHTML('big 1', summary.big1)
-      +     _slotRowHTML('big 2', summary.big2)
-      +     _slotRowHTML('small', summary.small)
+      +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost})
+      +     _slotRowHTML('big 2', summary.big2, {omitCost: omitCost})
+      +     _slotRowHTML('small', summary.small, {omitCost: omitCost})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
       +     '<button type="button" class="ora-models-card-btn" data-action="more">▸ More</button>'
@@ -314,7 +326,8 @@
       + '</div>';
   }
 
-  function _slotRowHTML(label, modelId) {
+  function _slotRowHTML(label, modelId, opts) {
+    opts = opts || {};
     if (!modelId) {
       return '<div class="ora-models-slot-row ora-models-slot-empty">'
         + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
@@ -326,7 +339,7 @@
     // compact summary the inventory uses (int + $/M + t/s).
     var registry = (_registry && _registry.models) || {};
     var model = registry[modelId];
-    var meta = model ? _compactMetaHTML(model) : '';
+    var meta = model ? _compactMetaHTML(model, opts) : '';
     return '<div class="ora-models-slot-row">'
       + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
       + '<span class="ora-models-slot-value" title="' + _esc(modelId) + '">'
@@ -342,15 +355,19 @@
   // data is null/absent. One intelligence number, scale-normalized
   // so AA and Arena ELO are presented on the same 0-100-ish range
   // (user feedback: don't mix scale labels in the display).
-  function _compactMetaHTML(model) {
+  // opts.omitCost: True for Free-preset cards where cost is always $0.
+  function _compactMetaHTML(model, opts) {
+    opts = opts || {};
     var parts = [];
     var intel = _normalizedIntelligence(model);
     if (intel != null) {
       parts.push('int ' + intel.toFixed(intel < 10 ? 1 : 0));
     }
-    var blended = _blendedCostPerM(model);
-    if (blended != null) {
-      parts.push('$' + blended.toFixed(2) + '/M');
+    if (!opts.omitCost) {
+      var blended = _blendedCostPerM(model);
+      if (blended != null) {
+        parts.push('$' + blended.toFixed(2) + '/M');
+      }
     }
     if (model.output_tokens_per_second != null) {
       parts.push(model.output_tokens_per_second.toFixed(0) + ' t/s');
@@ -488,42 +505,30 @@
     var customs = (_configs && _configs.customs) || [];
     var activeName = (_configs && _configs.active_name) || '';
 
-    // Custom-New is a pure workspace for starting a new configuration.
-    // It NEVER carries the active green flag — that lives only on
-    // saved cards (presets or customs in the Previous grid). The rule
-    // is "exactly one green box, ever, around a saved configuration."
-    // Mirroring the active custom into Custom-New violated that rule.
-    var newCardHTML = _customNewEmptyHTML();
-
-    // Previous grid: 3 columns × however many rows of customs. Each
-    // card is a smaller version of the preset card with click-to-
-    // activate + Customize + delete affordances. A trailing "+ New"
-    // card at the end opens the create-blank flow.
-    var previousCards = customs.map(function (c) {
+    // Single grid: saved customs + "+ New configuration" as the
+    // trailing card. The earlier "Custom-New" workspace column was
+    // redundant with "+ New" — both opened the create-blank flow —
+    // so it was retired. Editing an existing custom happens in-place
+    // on its card via the slot-pick gesture.
+    var cards = customs.map(function (c) {
       return _customCardHTML(c, c.name === activeName);
     });
-    previousCards.push(_newConfigCardHTML());
+    cards.push(_newConfigCardHTML());
 
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
       +   '<h3>Custom configurations</h3>'
       +   '<span class="ora-models-section-hint">'
-      +     'Custom-New on the left is your active custom; the grid on the right '
-      +     'holds your saved configurations. Click any card to activate.'
+      +     'Click any card to activate. Customize copies a card into a new entry. '
+      +     '+ New starts a blank configuration.'
       +   '</span>'
       + '</header>'
       + '<div class="ora-models-row ora-models-custom-row">'
-      +   '<div class="ora-models-custom-new">' + newCardHTML + '</div>'
-      +   '<div class="ora-models-custom-previous">'
-      +     '<div class="ora-models-previous-grid">'
-      +       previousCards.join('')
-      +     '</div>'
-      +   '</div>'
+      +   cards.join('')
       + '</div>';
 
-    // Wire interactions for previous-grid cards
-    var grid = section.querySelector('.ora-models-previous-grid');
-    Array.from(grid.querySelectorAll('.ora-models-card-custom')).forEach(function (card) {
+    // Wire interactions for the grid cards.
+    Array.from(section.querySelectorAll('.ora-models-card-custom')).forEach(function (card) {
       var configName = card.dataset.configName;
       card.addEventListener('click', function (evt) {
         if (evt.target.closest('button')) return;
@@ -538,27 +543,10 @@
         deleteBtn.addEventListener('click', function () { _deleteCustom(configName); });
       }
     });
-    var newBtn = grid.querySelector('[data-action="new"]');
+    var newBtn = section.querySelector('[data-action="new"]');
     if (newBtn) {
       newBtn.addEventListener('click', _createNew);
     }
-  }
-
-  function _customNewEmptyHTML() {
-    return ''
-      + '<div class="ora-models-card ora-models-card-custom-new ora-models-card-empty-state">'
-      +   '<header class="ora-models-card-header">'
-      +     '<span class="ora-models-card-title">Custom new</span>'
-      +     '<span class="ora-models-incomplete-flag">empty</span>'
-      +   '</header>'
-      +   '<div class="ora-models-card-body">'
-      +     '<p class="ora-models-empty-msg">'
-      +       'No custom configuration active. Click ▾ + New on the right '
-      +       'to start a blank one, or Customize on any preset / saved '
-      +       'card to fork it.'
-      +     '</p>'
-      +   '</div>'
-      + '</div>';
   }
 
   function _customCardHTML(summary, isActive) {
@@ -621,15 +609,29 @@
       return s.model.id;
     }));
 
-    var filtered = allModels.filter(function (m) {
-      return _matchesFilters(m, rankedKeptIds);
+    // Group ALL models by vendor first (so each vendor knows its
+    // total). Filter within each vendor's list afterwards so the
+    // vendor header can report "matching of total". Vendors with zero
+    // matches still appear so the user sees the full directory; the
+    // count text just tells them nothing inside matches the filters.
+    var allByVendor = _groupByVendor(allModels);
+    var groupsForDisplay = Object.keys(allByVendor).sort().map(function (vendor) {
+      var vendorAll = allByVendor[vendor];
+      var vendorMatches = vendorAll.filter(function (m) {
+        return _matchesFilters(m, rankedKeptIds);
+      });
+      return {
+        vendor: vendor,
+        total: vendorAll.length,
+        models: vendorMatches,
+      };
     });
+    var columns = _distributeVendorsToColumns(groupsForDisplay);
 
-    var grouped = _groupByVendor(filtered);
-    var columns = _distributeVendorsToColumns(grouped);
-
-    var visibleCount = filtered.length;
     var totalCount = allModels.length;
+    var visibleCount = groupsForDisplay.reduce(function (sum, g) {
+      return sum + g.models.length;
+    }, 0);
 
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
@@ -715,23 +717,20 @@
     return groups;
   }
 
-  function _distributeVendorsToColumns(grouped) {
-    // 4 equal columns. Local is always pinned to the top of column 1.
-    // Remaining vendors are sorted alphabetically and split across
-    // columns in alphabetical-by-column order (column 1 carries the
-    // first chunk of names, column 2 the next chunk, etc.) so the
-    // user's read-down-then-right pattern works.
+  function _distributeVendorsToColumns(groups) {
+    // 4 equal columns. Local pinned to the top of column 1; remaining
+    // vendors split alphabetical-by-column so the user reads down-
+    // then-right. Each group is already {vendor, total, models}.
     var columns = [[], [], [], []];
-    if (grouped.Local && grouped.Local.length) {
-      columns[0].push({vendor: 'Local', models: grouped.Local});
+    var localGroup = groups.find(function (g) { return g.vendor === 'Local'; });
+    if (localGroup && localGroup.total > 0) {
+      columns[0].push(localGroup);
     }
-    var otherVendors = Object.keys(grouped)
-      .filter(function (v) { return v !== 'Local'; })
-      .sort();
-    var perCol = Math.ceil(otherVendors.length / 4);
-    otherVendors.forEach(function (vendor, i) {
+    var otherGroups = groups.filter(function (g) { return g.vendor !== 'Local'; });
+    var perCol = Math.ceil(otherGroups.length / 4);
+    otherGroups.forEach(function (group, i) {
       var colIdx = Math.min(3, Math.floor(i / perCol));
-      columns[colIdx].push({vendor: vendor, models: grouped[vendor]});
+      columns[colIdx].push(group);
     });
     return columns;
   }
@@ -746,21 +745,27 @@
   }
 
   function _vendorBlockHTML(group) {
-    // Vendors are collapsed by default — the user wants a vendor
-    // directory overview, not 358 expanded rows. Searching, filtering,
-    // or a non-default intelligence-slider position auto-expands so
-    // the user sees the filter results without manual clicking.
-    var autoExpand = !!_filters.search || _filters.intelligence_pct > 0
-                     || _filters.vision || _filters.free
-                     || _filters.open_weights || _filters.pick;
-    var isExpanded = _expandedVendors.has(group.vendor) || autoExpand;
+    // Vendors stay COLLAPSED regardless of active filters — the user
+    // explicitly rejected auto-expand because it caused sideways
+    // scroll across vendor columns. Instead, the count in the vendor
+    // header updates to show how many models match the active
+    // filters: "moonshotai (3 of 14)" when 3 of moonshotai's 14
+    // models pass the filters. User clicks to expand and sees the
+    // matching rows. Manually-expanded vendors stay expanded across
+    // filter changes (their visible rows just shrink to matches).
+    var isExpanded = _expandedVendors.has(group.vendor);
     var caret = isExpanded ? '▾' : '▸';
+    var total = group.total;
+    var matching = group.models.length;
+    var countText = (matching < total)
+      ? '(' + matching + ' of ' + total + ')'
+      : '(' + total + ')';
     return ''
       + '<div class="ora-models-vendor-block' + (isExpanded ? ' ora-models-vendor-expanded' : '') + '">'
       +   '<h4 class="ora-models-vendor-name" data-vendor="' + _esc(group.vendor) + '">'
       +     '<span class="ora-models-vendor-caret">' + caret + '</span>'
       +     ' ' + _esc(group.vendor)
-      +     ' <span class="ora-models-vendor-count">(' + group.models.length + ')</span>'
+      +     ' <span class="ora-models-vendor-count">' + countText + '</span>'
       +   '</h4>'
       +   (isExpanded
         ? '<ul class="ora-models-model-list">' + group.models.map(_modelRowHTML).join('') + '</ul>'

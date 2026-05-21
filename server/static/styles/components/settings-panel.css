@@ -22,11 +22,15 @@
 }
 
 .ora-settings-modal {
-  /* Widened from 720px → 1080px → 1320px. The 1320 width lands when the
-     Models tab gained a third Visual Capabilities column alongside the
-     dual pipeline + bucket panel. The other tabs stay readable because
-     their fields stretch with the container. */
-  width: min(1320px, 96vw);
+  /* Widened from 720px → 1080px → 1320px → 1700px. The 1700 width
+     landed with the Chunk-10 Models pane rebuild — the inventory
+     grid wants 4 vendor columns plus filter controls plus a sort
+     dropdown, and the preset row wants 4 cards on a single row at
+     typical desktop widths. min-height locks the panel at 86vh so
+     compressing the upper sections grows the inventory area instead
+     of shrinking the modal itself. */
+  width: min(1700px, 98vw);
+  min-height: 86vh;
   max-height: 86vh;
   background: var(--ora-bg, #1e1f29);
   color: var(--ora-fg, #f8f8f2);
@@ -542,9 +546,13 @@
 
 /* ── Row layouts (4 equal columns) ──────────────────────────────── */
 
+/* 4 cards per row when each can be ≥340px wide; below that, wraps
+ * naturally (3 cards, then 2×2). At the 1700px max modal width minus
+ * padding (~1620px content area) we comfortably fit 4 × 340 = 1360
+ * with the rest going to gaps. */
 .ora-models-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   gap: 8px;
   padding: 6px 8px;
 }
@@ -611,14 +619,17 @@
   flex: 1;
 }
 
-/* Each slot is one row: label │ model [chip] · meta — all inline. */
+/* Each slot is one row: label │ model [chip] · meta — all inline.
+ * align-items: center (not baseline) so the PICK chip (tiny 8px text)
+ * doesn't drag the row's baseline down and visually shrink the row. */
 .ora-models-slot-row {
   display: flex;
   flex-direction: row;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   font-size: 11px;
   line-height: 1.35;
+  min-height: 18px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -638,7 +649,7 @@
   font-family: var(--ora-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 11px;
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 5px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -933,7 +944,9 @@
 }
 
 /* Single-line inventory rows: name + chips + meta all inline.
- * Meta right-aligned via margin-left:auto on .ora-models-model-meta. */
+ * Meta right-aligned via margin-left:auto on .ora-models-model-meta.
+ * align-items: center (not baseline) so the PICK chip's tiny 8px text
+ * doesn't drag the row baseline down. */
 .ora-models-model-row {
   padding: 2px 6px;
   border-radius: 3px;
@@ -941,8 +954,9 @@
   transition: background 0.10s ease;
   display: flex;
   flex-direction: row;
-  align-items: baseline;
+  align-items: center;
   gap: 5px;
+  min-height: 22px;
   white-space: nowrap;
   overflow: hidden;
 }
