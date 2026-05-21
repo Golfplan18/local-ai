@@ -729,18 +729,9 @@
 
 /* ── Custom row layout ──────────────────────────────────────────── */
 
-.ora-models-custom-row {
-  /* Custom-New takes col 1; Previous grid spans cols 2-4. */
-  grid-template-columns: 1fr 3fr;
-}
-
-.ora-models-previous-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  max-height: 400px;
-  overflow-y: auto;
-}
+/* Custom row inherits .ora-models-row's responsive grid (4 cards
+ * at typical widths, wraps below). The dead Custom-New + Previous
+ * override was retired with step 6g when Custom-New went away. */
 
 .ora-models-card-custom-new {
   /* Custom-New uses the dashed border style by default to feel like

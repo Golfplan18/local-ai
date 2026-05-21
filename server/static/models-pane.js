@@ -620,9 +620,16 @@
 
     // Group ALL models by vendor first (so each vendor knows its
     // total). Filter within each vendor's list afterwards so the
-    // vendor header can report "matching of total". Vendors with zero
-    // matches still appear so the user sees the full directory; the
-    // count text just tells them nothing inside matches the filters.
+    // vendor header can report "matching of total". Vendors with
+    // zero matches are HIDDEN when any filter is active — they
+    // become noise (the user knows they exist, just doesn't want to
+    // see them right now). When no filters are active, every vendor
+    // shows even at zero (which never happens for unfiltered counts
+    // anyway).
+    var anyFilterActive = _filters.vision || _filters.free
+                          || _filters.open_weights || _filters.pick
+                          || _filters.intelligence_pct > 0
+                          || !!_filters.search;
     var allByVendor = _groupByVendor(allModels);
     var groupsForDisplay = Object.keys(allByVendor).sort().map(function (vendor) {
       var vendorAll = allByVendor[vendor];
@@ -634,6 +641,8 @@
         total: vendorAll.length,
         models: vendorMatches,
       };
+    }).filter(function (g) {
+      return !anyFilterActive || g.models.length > 0;
     });
     var columns = _distributeVendorsToColumns(groupsForDisplay);
 

@@ -8393,18 +8393,14 @@ def configurations_active_set():
 
 @app.route("/api/configurations/active/toggles", methods=["POST"])
 def configurations_active_toggles():
-    """Update one or both toggles on the active configuration.
+    """Update Adversarial Diversity / Vision-capable toggles.
 
-    Toggle scoping rule:
-      * When the active configuration is a PRESET (its
-        preset_lineage matches one of the four preset names), the
-        toggles are GLOBAL — the new state is persisted to the
-        preset-toggles pointer file AND all four presets are re-baked
-        from the catalog with the new state. The user's mental model
-        is "these toggles apply to my presets," and propagating that
-        across all four matches the framing.
-      * When the active configuration is a CUSTOM, the toggles are
-        per-config — written into that custom's toggles block only.
+    The toggles ALWAYS update the global preset state and re-bake
+    all four presets — the user's mental model is "these toggles
+    apply to my presets" regardless of what's currently active. When
+    the active configuration is a custom, the active custom ALSO
+    gets its per-config toggle state updated so the in-card display
+    stays in sync.
 
     Body: ``{"adversarial_diversity": bool, "vision_only": bool}``;
     either key may be omitted to leave that toggle unchanged.
@@ -8412,34 +8408,36 @@ def configurations_active_toggles():
     try:
         body = request.get_json(silent=True) or {}
         from orchestrator import active_configuration as ac
+
+        # Always update global preset state + rebake all four
+        # presets so the toggle's effect is visible on the preset
+        # cards regardless of which configuration is active.
+        ac.set_preset_toggles(body)
+        ac.bake_missing_presets(force=True)
+        global_toggles = ac.get_preset_toggles()
+
+        # If the active config is a custom (not a preset), also
+        # update its per-config toggle storage so its card reflects
+        # the new state. Presets share the global state via the bake;
+        # their per-file toggles block is overwritten by bake_missing
+        # _presets so we don't need to write again.
         name = ac.get_active_name()
+        per_config_updated = False
         try:
             config = ac._load_config(name)
+            lineage = config.get("preset_lineage") if isinstance(config, dict) else None
+            if lineage not in ac.PRESET_ORDER:
+                ac.set_toggles(name, body)
+                per_config_updated = True
         except FileNotFoundError:
-            return _json_response({"error": f"active config {name!r} not found"},
-                                  status=400)
-        lineage = config.get("preset_lineage") if isinstance(config, dict) else None
-        if lineage in ac.PRESET_ORDER:
-            # Global preset toggle path: persist + force-rebake all 4
-            # presets so the toggle effect is visible immediately on
-            # every preset card.
-            ac.set_preset_toggles(body)
-            ac.bake_missing_presets(force=True)
-            toggles = ac.get_preset_toggles()
-            return _json_response({
-                "name": name,
-                "toggles": toggles,
-                "scope": "global_presets",
-                "rebaked": list(ac.PRESET_ORDER),
-            })
-        else:
-            # Per-custom toggle path: update only this config.
-            toggles = ac.set_toggles(name, body)
-            return _json_response({
-                "name": name,
-                "toggles": toggles,
-                "scope": "per_config",
-            })
+            pass  # active points to nothing — just skip the per-config write
+
+        return _json_response({
+            "name": name,
+            "toggles": global_toggles,
+            "rebaked": list(ac.PRESET_ORDER),
+            "per_config_updated": per_config_updated,
+        })
     except Exception as exc:
         return _json_response({"error": f"toggle-set-failed: {exc}"},
                               status=500)
