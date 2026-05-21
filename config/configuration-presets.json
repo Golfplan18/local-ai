@@ -7,7 +7,8 @@
       "mode": "paid_intelligence",
       "floor_pct": null,
       "cost_ceiling_per_m": null,
-      "loosening": false
+      "loosening": false,
+      "sort_by": "intelligence_desc"
     },
     "optimum": {
       "description": "Cheapest within the top 80% intelligence band. Most users land here.",

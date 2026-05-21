@@ -163,8 +163,14 @@ def pick_for_paid_slot(
     loosening: bool,
     excluded_ids: set | None = None,
     vision_only: bool = False,
+    sort_by: str = "cost_asc",
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N models for a paid slot.
+
+    ``sort_by`` controls the final selection order after filtering:
+      "cost_asc"          — cheapest first (default; used by Optimum/Budget)
+      "intelligence_desc" — smartest first (used by Premium: "best
+                            models available independent of cost")
 
     Returns (picks, loosening_notes).
     """
@@ -181,10 +187,14 @@ def pick_for_paid_slot(
     current_floor = floor_pct
     current_ceiling = cost_ceiling
 
+    sort_fn = (sort_by_intelligence_descending
+               if sort_by == "intelligence_desc"
+               else sort_by_cost_ascending)
+
     for attempt in range(10):  # bound the loosening loop
         floored = apply_floor(candidates, current_floor)
         ceilinged = apply_cost_ceiling(floored, current_ceiling)
-        picks = sort_by_cost_ascending(ceilinged)[:top_n]
+        picks = sort_fn(ceilinged)[:top_n]
 
         if len(picks) >= top_n or not loosening:
             return picks, loosening_notes
@@ -337,6 +347,7 @@ def populate_configuration(
                     loosening=preset.get("loosening", False),
                     excluded_ids=excluded_so_far if diversity else None,
                     vision_only=effective_vision_only,
+                    sort_by=preset.get("sort_by", "cost_asc"),
                 )
             section[cell_name] = picks_to_cell(picks, vision_substitute)
             if notes:
