@@ -322,13 +322,71 @@
         + '</div>';
     }
     var isPick = _picksSet && _picksSet.has(modelId);
+    // Look up registry metadata so the slot row carries the same
+    // compact summary the inventory uses (int + $/M + t/s).
+    var registry = (_registry && _registry.models) || {};
+    var model = registry[modelId];
+    var meta = model ? _compactMetaHTML(model) : '';
     return '<div class="ora-models-slot-row">'
       + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
       + '<span class="ora-models-slot-value" title="' + _esc(modelId) + '">'
       +   _esc(_shortenModelId(modelId))
       +   (isPick ? '<span class="ora-models-pick-chip">PICK</span>' : '')
+      +   (meta ? '<span class="ora-models-slot-meta">' + meta + '</span>' : '')
       + '</span>'
       + '</div>';
+  }
+
+  // Compact meta line used in BOTH card slot rows and inventory rows.
+  // Format: int X · $Y/M · Z t/s — parts dropped when underlying
+  // data is null/absent. One intelligence number, scale-normalized
+  // so AA and Arena ELO are presented on the same 0-100-ish range
+  // (user feedback: don't mix scale labels in the display).
+  function _compactMetaHTML(model) {
+    var parts = [];
+    var intel = _normalizedIntelligence(model);
+    if (intel != null) {
+      parts.push('int ' + intel.toFixed(intel < 10 ? 1 : 0));
+    }
+    var blended = _blendedCostPerM(model);
+    if (blended != null) {
+      parts.push('$' + blended.toFixed(2) + '/M');
+    }
+    if (model.output_tokens_per_second != null) {
+      parts.push(model.output_tokens_per_second.toFixed(0) + ' t/s');
+    }
+    return parts.join(' · ');
+  }
+
+  // Single intelligence number for display + sort. Prefers AA index
+  // (already on a 0-100 scale). Falls back to Arena ELO normalized
+  // via (elo - 800) / 7 so 800 ELO → 0, 1500 ELO → 100 — roughly
+  // co-scaled with AA. The normalization isn't perfect across the
+  // population but it's better than mixing two scale labels in the
+  // UI. Used by both the meta display and the intelligence-slider
+  // percentile filter.
+  function _normalizedIntelligence(model) {
+    if (model.aa_intelligence_index != null) {
+      return model.aa_intelligence_index;
+    }
+    if (model.intelligence_score != null) {
+      return Math.max(0, Math.min(100, (model.intelligence_score - 800) / 7));
+    }
+    return null;
+  }
+
+  function _blendedCostPerM(model) {
+    // AA blended convention: 3:1 input:output. So:
+    //   blended_per_token = 0.75 * input + 0.25 * output
+    //   blended_per_M     = blended_per_token * 1_000_000
+    var pricing = model.pricing || {};
+    var inp = pricing.input_per_token;
+    var out = pricing.output_per_token;
+    if (inp == null && out == null) return null;
+    // Free-tier rows have both at 0 — show $0.00/M (rather than null).
+    var i = inp != null ? inp : 0;
+    var o = out != null ? out : 0;
+    return (0.75 * i + 0.25 * o) * 1e6;
   }
 
   function _toggleChips(toggles) {
@@ -596,15 +654,11 @@
   }
 
   function _combinedScore(model) {
-    // AA Index is 0-100; Arena ELO is typically 800-1500. Normalise
-    // both to 0-1 so the slider works against either-or coverage.
-    if (model.aa_intelligence_index != null) {
-      return Math.max(0, Math.min(1, model.aa_intelligence_index / 100));
-    }
-    if (model.intelligence_score != null) {
-      return Math.max(0, Math.min(1, (model.intelligence_score - 800) / 700));
-    }
-    return null;
+    // Use the same normalization the meta display uses (see
+    // _normalizedIntelligence) so the slider's filter and the row's
+    // visible "int X" number agree.
+    var intel = _normalizedIntelligence(model);
+    return intel != null ? intel / 100 : null;
   }
 
   function _matchesFilters(model, rankedKeptIds) {
@@ -715,40 +769,15 @@
   }
 
   function _modelRowHTML(model) {
+    // Single-line inventory row: name + chips + meta, all inline.
+    // Meta is the same compact summary used in card slot rows.
     var displayName = model.display_name || model.id;
-    var chips = _modelChipsHTML(model);
     return ''
       + '<li class="ora-models-model-row" title="' + _esc(model.id) + '">'
-      +   '<div class="ora-models-model-name">' + _esc(displayName) + '</div>'
-      +   '<div class="ora-models-model-meta">'
-      +     _modelMetaHTML(model)
-      +   '</div>'
-      +   (chips ? '<div class="ora-models-model-chips">' + chips + '</div>' : '')
+      +   '<span class="ora-models-model-name">' + _esc(displayName) + '</span>'
+      +   _modelChipsHTML(model)
+      +   '<span class="ora-models-model-meta">' + _compactMetaHTML(model) + '</span>'
       + '</li>';
-  }
-
-  function _modelMetaHTML(model) {
-    var parts = [];
-    if (model.aa_intelligence_index != null) {
-      parts.push('AA ' + model.aa_intelligence_index.toFixed(1));
-    } else if (model.intelligence_score != null) {
-      parts.push('Arena ' + model.intelligence_score.toFixed(0));
-    }
-    var pricing = model.pricing || {};
-    if (pricing.input_per_token != null || pricing.output_per_token != null) {
-      var ip = pricing.input_per_token != null
-        ? '$' + (pricing.input_per_token * 1e6).toFixed(2) : '?';
-      var op = pricing.output_per_token != null
-        ? '$' + (pricing.output_per_token * 1e6).toFixed(2) : '?';
-      parts.push(ip + '/' + op + '/M');
-    }
-    if (model.output_tokens_per_second != null) {
-      parts.push(model.output_tokens_per_second.toFixed(0) + ' t/s');
-    }
-    if (model.latency_ttft_seconds != null) {
-      parts.push(model.latency_ttft_seconds.toFixed(1) + 's TTFT');
-    }
-    return parts.join(' · ');
   }
 
   function _modelChipsHTML(model) {

@@ -515,26 +515,28 @@
   color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
 }
 
-/* ── Section header ──────────────────────────────────────────────── */
+/* ── Section header (compact) ────────────────────────────────────── */
 
 .ora-models-section-header {
   display: flex;
   flex-direction: row;
   align-items: baseline;
-  gap: 12px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 3px 8px;
   border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
 }
 
 .ora-models-section-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ora-fg, #f8f8f2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .ora-models-section-hint {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
 }
 
@@ -543,8 +545,8 @@
 .ora-models-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  padding: 10px 8px;
+  gap: 8px;
+  padding: 6px 8px;
 }
 
 /* ── Cards (preset + custom + previous all share the base) ──────── */
@@ -554,12 +556,12 @@
   flex-direction: column;
   background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.04));
   border: 2px solid transparent;
-  border-radius: 6px;
-  padding: 10px;
-  gap: 8px;
+  border-radius: 5px;
+  padding: 6px 8px;
+  gap: 4px;
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease;
-  min-height: 200px;
+  min-height: 0;
 }
 
 .ora-models-card:hover {
@@ -590,13 +592,13 @@
 
 .ora-models-card-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--ora-fg, #f8f8f2);
 }
 
 .ora-models-card-active-flag {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 700;
   color: var(--ora-accent-success, #50c878);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -605,31 +607,51 @@
 .ora-models-card-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
   flex: 1;
 }
 
+/* Each slot is one row: label │ model [chip] · meta — all inline. */
 .ora-models-slot-row {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  font-size: 12px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ora-models-slot-label {
   color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  width: 32px;
+  flex-shrink: 0;
 }
 
 .ora-models-slot-value {
   color: var(--ora-fg, #f8f8f2);
   font-family: var(--ora-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.ora-models-slot-meta {
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  font-family: var(--ora-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .ora-models-slot-empty .ora-models-slot-value {
@@ -640,29 +662,29 @@
 .ora-models-pick-chip {
   background: var(--ora-accent-success, #50c878);
   color: #fff;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 0 4px;
+  border-radius: 2px;
   letter-spacing: 0.04em;
+  vertical-align: middle;
 }
 
 .ora-models-card-actions {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  gap: 6px;
-  padding-top: 4px;
-  border-top: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+  gap: 4px;
+  padding-top: 2px;
 }
 
 .ora-models-card-btn {
   background: transparent;
   color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 11px;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
   cursor: pointer;
   transition: color 0.12s ease, border-color 0.12s ease;
 }
@@ -673,12 +695,12 @@
 }
 
 .ora-models-card-footer {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
 }
 
 .ora-models-toggle-chip {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   font-style: italic;
 }
@@ -742,7 +764,7 @@
 }
 
 .ora-models-card-custom {
-  min-height: 160px;
+  min-height: 0;
 }
 
 .ora-models-card-btn-danger {
@@ -764,7 +786,7 @@
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  min-height: 160px;
+  min-height: 0;
   padding: 0;
 }
 
@@ -908,14 +930,21 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
 }
 
+/* Single-line inventory rows: name + chips + meta all inline.
+ * Meta right-aligned via margin-left:auto on .ora-models-model-meta. */
 .ora-models-model-row {
-  padding: 4px 6px;
+  padding: 2px 6px;
   border-radius: 3px;
   cursor: pointer;
   transition: background 0.10s ease;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .ora-models-model-row:hover {
@@ -923,24 +952,23 @@
 }
 
 .ora-models-model-name {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ora-fg, #f8f8f2);
-  line-height: 1.3;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .ora-models-model-meta {
   font-size: 10px;
   color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   font-family: var(--ora-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  line-height: 1.3;
-  margin-top: 1px;
-}
-
-.ora-models-model-chips {
-  display: flex;
-  gap: 3px;
-  margin-top: 2px;
-  flex-wrap: wrap;
+  line-height: 1.35;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ora-models-chip {
