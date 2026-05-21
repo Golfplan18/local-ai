@@ -153,5 +153,121 @@ class TestToggles(_Fixture):
             self.module.get_toggles("ghost")
 
 
+class TestListConfigurations(_Fixture):
+    """list_configurations() buckets preset + custom configs and
+    summarizes each one to the three slot picks the pane card renders."""
+
+    def _ap_config(self, name, lineage, big1, big2, small):
+        """Build a config the way auto-populate writes them."""
+        return {
+            "name": name,
+            "preset_lineage": lineage,
+            "cells": {
+                "utility": {
+                    "step1_cleanup": {"primary": small, "fallback": []},
+                },
+                "analysis": {
+                    "gear4": {
+                        "depth": {"primary": big1, "fallback": []},
+                        "breadth": ({"primary": big2, "fallback": []}
+                                    if big2 else None),
+                    },
+                    "gear3": {"breadth": None},
+                },
+                "post_analysis": {},
+            },
+        }
+
+    def test_empty_dir_returns_null_presets(self):
+        # Re-create empty config dir
+        import shutil
+        shutil.rmtree(self.config_dir)
+        self.config_dir.mkdir()
+        result = self.module.list_configurations()
+        self.assertEqual(set(result["presets"].keys()),
+                         {"free", "budget", "optimum", "premium"})
+        for v in result["presets"].values():
+            self.assertIsNone(v)
+        self.assertEqual(result["customs"], [])
+
+    def test_canonical_named_preset_files_picked_up(self):
+        self._write_config("free", self._ap_config(
+            "free", "free", "llama-70b", "nemotron", "llama-3b"))
+        self._write_config("optimum", self._ap_config(
+            "optimum", "optimum", "qwen-plus", "kimi-k2", "nano-paid"))
+        result = self.module.list_configurations()
+        self.assertEqual(result["presets"]["free"]["big1"], "llama-70b")
+        self.assertEqual(result["presets"]["free"]["big2"], "nemotron")
+        self.assertEqual(result["presets"]["free"]["small"], "llama-3b")
+        self.assertEqual(result["presets"]["optimum"]["big1"], "qwen-plus")
+        self.assertIsNone(result["presets"]["budget"])
+        self.assertIsNone(result["presets"]["premium"])
+
+    def test_preset_lineage_match_when_no_canonical_file(self):
+        """When free.json isn't present but some-other-name.json carries
+        preset_lineage=free, that file fills the slot."""
+        self._write_config("my-free-bake", self._ap_config(
+            "my-free-bake", "free", "llama-70b", "nemotron", "llama-3b"))
+        result = self.module.list_configurations()
+        self.assertEqual(result["presets"]["free"]["name"], "my-free-bake")
+
+    def test_canonical_named_wins_over_lineage_tag(self):
+        """If both free.json AND something-else.json claim preset_lineage=free,
+        the canonical-named file wins."""
+        self._write_config("free", self._ap_config(
+            "free", "free", "llama-70b", "nemo", "llama-3b"))
+        self._write_config("rogue", self._ap_config(
+            "rogue", "free", "wrong-big1", "wrong-big2", "wrong-small"))
+        result = self.module.list_configurations()
+        self.assertEqual(result["presets"]["free"]["name"], "free")
+        # The rogue file falls into customs since its lineage slot is taken
+        custom_names = [c["name"] for c in result["customs"]]
+        self.assertIn("rogue", custom_names)
+
+    def test_background_default_excluded_from_customs(self):
+        self._write_config("background-default", self._ap_config(
+            "background-default", None, "x", "y", "z"))
+        result = self.module.list_configurations()
+        custom_names = [c["name"] for c in result["customs"]]
+        self.assertNotIn("background-default", custom_names)
+
+    def test_customs_include_user_named_configs(self):
+        self._write_config("daily-driver", self._ap_config(
+            "daily-driver", None, "qwen-plus", "kimi-k2", "nano"))
+        self._write_config("msi-backfill", self._ap_config(
+            "msi-backfill", None, "nano-free", "nemo-free", "nano-free"))
+        result = self.module.list_configurations()
+        custom_names = sorted(c["name"] for c in result["customs"])
+        self.assertEqual(custom_names, ["daily-driver", "msi-backfill"])
+
+    def test_big2_null_when_breadth_slot_is_null(self):
+        """A configuration with adversarial off has breadth: null;
+        the summary's big2 should be null too."""
+        self._write_config("free", self._ap_config(
+            "free", "free", "llama-70b", None, "llama-3b"))
+        result = self.module.list_configurations()
+        self.assertIsNone(result["presets"]["free"]["big2"])
+        # Toggles default to adversarial=False when breadth is null
+        self.assertFalse(result["presets"]["free"]["toggles"]["adversarial_diversity"])
+
+    def test_active_name_and_toggles_included(self):
+        self._write_config("free", self._ap_config(
+            "free", "free", "llama-70b", "nemo", "llama-3b"))
+        self.module.set_active_name("free")
+        result = self.module.list_configurations()
+        self.assertEqual(result["active_name"], "free")
+        self.assertIn("adversarial_diversity", result["active_toggles"])
+
+    def test_summary_includes_saved_toggles_when_present(self):
+        config = self._ap_config(
+            "free", "free", "llama-70b", "nemo", "llama-3b")
+        config["toggles"] = {"adversarial_diversity": False, "vision_only": True}
+        self._write_config("free", config)
+        result = self.module.list_configurations()
+        t = result["presets"]["free"]["toggles"]
+        self.assertFalse(t["adversarial_diversity"])
+        self.assertTrue(t["vision_only"])
+
+
 if __name__ == "__main__":
     unittest.main()

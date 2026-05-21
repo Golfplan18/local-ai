@@ -8249,6 +8249,24 @@ def model_registry_get():
     })
 
 
+@app.route("/api/configurations", methods=["GET"])
+def configurations_list():
+    """Return everything the Models pane needs to render in one shot:
+    the 4 preset slots (free / budget / optimum / premium), the user's
+    saved customs, the active configuration name, and the active
+    toggle state. Backs the presets row + custom-previous grid + header.
+    """
+    try:
+        from orchestrator import active_configuration as ac
+        return _json_response(ac.list_configurations())
+    except Exception as exc:
+        return _json_response({
+            "error": f"configurations-list-failed: {exc}",
+            "presets": {p: None for p in ["free", "budget", "optimum", "premium"]},
+            "customs": [],
+        }, status=500)
+
+
 @app.route("/api/configurations/active", methods=["GET"])
 def configurations_active_get():
     """Return the active configuration name + its toggle state.

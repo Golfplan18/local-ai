@@ -170,10 +170,144 @@ def _infer_defaults(config: dict) -> dict:
     }
 
 
+# ── Configuration listing for the Models pane ────────────────────────────
+
+# Canonical preset order. Matches the user-locked left-to-right order in
+# the Models pane (Free on the left so the default-first-run choice
+# anchors the upper-left corner; Premium on the right as the upgrade).
+PRESET_ORDER = ["free", "budget", "optimum", "premium"]
+
+# Configurations excluded from the Custom-Previous grid because they
+# serve a system role rather than a user-saved customization.
+SYSTEM_CONFIGS = {"background-default"}
+
+
+def list_configurations() -> dict:
+    """Return everything the Models pane needs to render in one shot.
+
+    Shape:
+      {
+        "presets": {
+          "free":    <summary> | null,
+          "budget":  <summary> | null,
+          "optimum": <summary> | null,
+          "premium": <summary> | null,
+        },
+        "customs": [<summary>, ...],
+        "active_name": "<name>",
+        "active_toggles": {<resolved toggles>},
+      }
+
+    A preset slot is the configuration whose ``preset_lineage`` matches
+    the preset name; we prefer the canonical-named file (``free.json``,
+    ``optimum.json``, etc.) and fall back to any file carrying that
+    lineage tag. ``null`` when no file claims that lineage.
+
+    Customs are any configuration files NOT matched as a preset and
+    not in SYSTEM_CONFIGS (background-default is the automation-side
+    fallback, not a user-facing card).
+
+    Each summary carries the three slot picks the pane shows on the
+    card: ``big1`` (gear4 depth primary), ``big2`` (gear4 breadth
+    primary, may be null), ``small`` (utility step1_cleanup primary).
+    """
+    if not CONFIGURATIONS_DIR.exists():
+        return {
+            "presets": {p: None for p in PRESET_ORDER},
+            "customs": [],
+            "active_name": get_active_name(),
+            "active_toggles": _empty_toggles(),
+        }
+
+    # Load every configuration once. Skip malformed; the UI shows a
+    # diagnostic in the section that wanted it.
+    loaded = {}
+    for path in sorted(CONFIGURATIONS_DIR.glob("*.json")):
+        try:
+            with open(path) as f:
+                config = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(config, dict):
+            loaded[path.stem] = config
+
+    # Bucket presets vs customs.
+    presets: dict = {p: None for p in PRESET_ORDER}
+    used_files: set = set()
+    for preset_name in PRESET_ORDER:
+        # 1. Canonical-named file wins (e.g., free.json declaring preset_lineage=free)
+        if preset_name in loaded:
+            presets[preset_name] = _summarize(preset_name, loaded[preset_name])
+            used_files.add(preset_name)
+            continue
+        # 2. Otherwise pick any file claiming this preset_lineage.
+        for fname, config in loaded.items():
+            if fname in used_files:
+                continue
+            if config.get("preset_lineage") == preset_name:
+                presets[preset_name] = _summarize(fname, config)
+                used_files.add(fname)
+                break
+
+    customs = []
+    for fname, config in loaded.items():
+        if fname in used_files or fname in SYSTEM_CONFIGS:
+            continue
+        customs.append(_summarize(fname, config))
+
+    active_name = get_active_name()
+    try:
+        active_toggles = get_toggles(active_name)
+    except FileNotFoundError:
+        active_toggles = _empty_toggles()
+
+    return {
+        "presets": presets,
+        "customs": customs,
+        "active_name": active_name,
+        "active_toggles": active_toggles,
+    }
+
+
+def _summarize(name: str, config: dict) -> dict:
+    """Boil a configuration down to the fields the pane card renders."""
+    cells = config.get("cells") or {}
+    utility = cells.get("utility") or {}
+    analysis = cells.get("analysis") or {}
+    gear4 = analysis.get("gear4") or {}
+
+    small_cell = utility.get("step1_cleanup") or {}
+    big1_cell = gear4.get("depth") or {}
+    big2_cell = gear4.get("breadth")
+    big2_primary = (big2_cell or {}).get("primary") if isinstance(big2_cell, dict) else None
+
+    toggles_resolved = _infer_defaults(config)
+    saved_toggles = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
+    for key in ("adversarial_diversity", "vision_only"):
+        if key in saved_toggles:
+            toggles_resolved[key] = bool(saved_toggles[key])
+
+    return {
+        "name": name,
+        "preset_lineage": config.get("preset_lineage"),
+        "description": config.get("description") or "",
+        "big1": big1_cell.get("primary"),
+        "big2": big2_primary,
+        "small": small_cell.get("primary"),
+        "toggles": toggles_resolved,
+    }
+
+
+def _empty_toggles() -> dict:
+    return {"adversarial_diversity": False, "vision_only": False}
+
+
 __all__ = [
     "get_active_name",
     "set_active_name",
     "get_toggles",
     "set_toggles",
+    "list_configurations",
     "DEFAULT_ACTIVE_NAME",
+    "PRESET_ORDER",
 ]
