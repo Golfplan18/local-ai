@@ -546,7 +546,11 @@ def list_configurations() -> dict:
 
 
 def _summarize(name: str, config: dict) -> dict:
-    """Boil a configuration down to the fields the pane card renders."""
+    """Boil a configuration down to the fields the pane card renders.
+
+    Includes per-slot fallback chains so the right-side fallback
+    popout can render without a second fetch per card.
+    """
     cells = config.get("cells") or {}
     utility = cells.get("utility") or {}
     analysis = cells.get("analysis") or {}
@@ -556,6 +560,7 @@ def _summarize(name: str, config: dict) -> dict:
     big1_cell = gear4.get("depth") or {}
     big2_cell = gear4.get("breadth")
     big2_primary = (big2_cell or {}).get("primary") if isinstance(big2_cell, dict) else None
+    big2_fallback = list((big2_cell or {}).get("fallback") or []) if isinstance(big2_cell, dict) else []
 
     toggles_resolved = _infer_defaults(config)
     saved_toggles = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
@@ -570,6 +575,9 @@ def _summarize(name: str, config: dict) -> dict:
         "big1": big1_cell.get("primary"),
         "big2": big2_primary,
         "small": small_cell.get("primary"),
+        "big1_fallback": list(big1_cell.get("fallback") or []),
+        "big2_fallback": big2_fallback,
+        "small_fallback": list(small_cell.get("fallback") or []),
         "toggles": toggles_resolved,
     }
 

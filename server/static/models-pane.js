@@ -78,10 +78,18 @@
   // the state. Escape or clicking the slot again cancels.
   var _activeSlotPick = null;
 
+  // Right-side fallback popout state. ▸ More click on any card sets
+  // _fallbackPopoutFor = <configName>. Close button or Escape clears.
+  var _fallbackPopoutFor = null;
+
   // ── public API ───────────────────────────────────────────────────────────
 
   function _onKeydown(evt) {
-    if (evt.key === 'Escape' && _activeSlotPick) {
+    if (evt.key !== 'Escape') return;
+    if (_fallbackPopoutFor) {
+      _fallbackPopoutFor = null;
+      _renderPopout();
+    } else if (_activeSlotPick) {
       _activeSlotPick = null;
       _renderHeader();
       _renderPresets();
@@ -105,6 +113,7 @@
       +   '<section class="ora-models-custom" data-section="custom"></section>'
       +   '<section class="ora-models-inventory" data-section="inventory"></section>'
       +   '<section class="ora-models-hardware" data-section="hardware"></section>'
+      +   '<aside class="ora-models-fallback-popout" data-section="popout" hidden></aside>'
       + '</div>';
 
     _loadAll();
@@ -126,6 +135,7 @@
     };
     _expandedVendors = new Set();
     _activeSlotPick = null;
+    _fallbackPopoutFor = null;
   }
 
   // ── data load ───────────────────────────────────────────────────────────
@@ -145,6 +155,7 @@
       _renderPresets();
       _renderCustom();
       _renderInventory();
+      _renderPopout();
       _renderRemainingSkeleton();
     }).catch(function (err) {
       _showHeaderError(err);
@@ -298,10 +309,8 @@
       var moreBtn = card.querySelector('[data-action="more"]');
       if (moreBtn) {
         moreBtn.addEventListener('click', function () {
-          // Step 10 wires the fallback popout. For now, a console hint
-          // so reviewers can confirm the button is reachable.
-          console.info('[models-pane] More clicked for ' + configName
-                       + ' (popout wires in step 10)');
+          _fallbackPopoutFor = configName;
+          _renderPopout();
         });
       }
     });
@@ -629,6 +638,13 @@
       if (customizeBtn) {
         customizeBtn.addEventListener('click', function () { _customizeFrom(configName); });
       }
+      var moreBtn = card.querySelector('[data-action="more"]');
+      if (moreBtn) {
+        moreBtn.addEventListener('click', function () {
+          _fallbackPopoutFor = configName;
+          _renderPopout();
+        });
+      }
       var deleteBtn = card.querySelector('[data-action="delete"]');
       if (deleteBtn) {
         deleteBtn.addEventListener('click', function () { _deleteCustom(configName); });
@@ -659,6 +675,7 @@
       +     _slotRowHTML('small', summary.small, {configName: summary.name})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
+      +     '<button type="button" class="ora-models-card-btn" data-action="more">▸ More</button>'
       +     '<button type="button" class="ora-models-card-btn" data-action="customize">'
       +       'Customize</button>'
       +     '<button type="button" class="ora-models-card-btn ora-models-card-btn-danger"'
@@ -1056,6 +1073,97 @@
         _renderInventory();
       });
     });
+  }
+
+  // ── Right-side fallback popout ──────────────────────────────────────────
+
+  function _renderPopout() {
+    if (!_hostEl) return;
+    var popout = _hostEl.querySelector('[data-section="popout"]');
+    if (!popout) return;
+    if (!_fallbackPopoutFor) {
+      popout.hidden = true;
+      popout.innerHTML = '';
+      return;
+    }
+    // Look up the config summary (presets + customs).
+    var presets = (_configs && _configs.presets) || {};
+    var customs = (_configs && _configs.customs) || [];
+    var summary = null;
+    Object.keys(presets).forEach(function (k) {
+      if (presets[k] && presets[k].name === _fallbackPopoutFor) summary = presets[k];
+    });
+    if (!summary) {
+      summary = customs.find(function (c) { return c.name === _fallbackPopoutFor; });
+    }
+    if (!summary) {
+      _fallbackPopoutFor = null;
+      popout.hidden = true;
+      popout.innerHTML = '';
+      return;
+    }
+
+    var adversarial = !!(summary.toggles && summary.toggles.adversarial_diversity);
+    var sections = [
+      _popoutSlotHTML('big 1', summary.big1, summary.big1_fallback),
+      adversarial ? _popoutSlotHTML('big 2', summary.big2, summary.big2_fallback) : '',
+      _popoutSlotHTML('small', summary.small, summary.small_fallback),
+    ];
+
+    popout.hidden = false;
+    popout.innerHTML = ''
+      + '<header class="ora-models-popout-header">'
+      +   '<span class="ora-models-popout-title">Fallback chains · '
+      +     '<strong>' + _esc(summary.name) + '</strong></span>'
+      +   '<button type="button" class="ora-models-popout-close" aria-label="Close">×</button>'
+      + '</header>'
+      + '<div class="ora-models-popout-body">'
+      +   '<p class="ora-models-popout-hint">'
+      +     'Tried in order until one responds. Free chains run deeper because '
+      +     'rate-limit churn cycles through them fast.'
+      +   '</p>'
+      +   sections.join('')
+      + '</div>';
+
+    popout.querySelector('.ora-models-popout-close')
+      .addEventListener('click', function () {
+        _fallbackPopoutFor = null;
+        _renderPopout();
+      });
+  }
+
+  function _popoutSlotHTML(label, primary, fallbackList) {
+    fallbackList = fallbackList || [];
+    var registry = (_registry && _registry.models) || {};
+    var rows = [];
+    if (primary) {
+      rows.push(_popoutRowHTML(primary, registry[primary], 'primary'));
+    }
+    fallbackList.forEach(function (fb, i) {
+      rows.push(_popoutRowHTML(fb, registry[fb], 'fallback ' + (i + 1)));
+    });
+    if (!rows.length) {
+      rows.push('<div class="ora-models-popout-empty">No entries — slot is empty.</div>');
+    }
+    return ''
+      + '<div class="ora-models-popout-slot">'
+      +   '<h4 class="ora-models-popout-slot-label">' + _esc(label) + '</h4>'
+      +   rows.join('')
+      + '</div>';
+  }
+
+  function _popoutRowHTML(modelId, model, rank) {
+    var displayName = (model && model.display_name) || modelId;
+    var chips = model ? _modelChipsHTML(model) : '';
+    var meta = model ? _compactMetaHTML(model) : '';
+    return ''
+      + '<div class="ora-models-popout-row">'
+      +   '<span class="ora-models-popout-rank">' + _esc(rank) + '</span>'
+      +   '<span class="ora-models-popout-name" title="' + _esc(modelId) + '">'
+      +     _esc(displayName) + '</span>'
+      +   chips
+      +   '<span class="ora-models-popout-meta">' + meta + '</span>'
+      + '</div>';
   }
 
   // ── placeholder sections (filled by subsequent commits) ─────────────────

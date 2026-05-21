@@ -1077,3 +1077,133 @@
   margin: 4px 8px;
   border-radius: 3px;
 }
+
+/* ── Right-side fallback popout ──────────────────────────────────── */
+
+.ora-models-pane {
+  position: relative;
+}
+
+.ora-models-fallback-popout {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  background: var(--ora-bg, #1e1f29);
+  border-left: 2px solid var(--ora-accent-success, #50c878);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ora-models-fallback-popout[hidden] {
+  display: none;
+}
+
+.ora-models-popout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.04));
+}
+
+.ora-models-popout-title {
+  font-size: 12px;
+  color: var(--ora-fg, #f8f8f2);
+}
+
+.ora-models-popout-close {
+  background: transparent;
+  border: none;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.ora-models-popout-close:hover {
+  color: var(--ora-fg, #f8f8f2);
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.ora-models-popout-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px 12px;
+}
+
+.ora-models-popout-hint {
+  font-size: 10px;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  margin: 0 0 10px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.ora-models-popout-slot {
+  margin-bottom: 12px;
+}
+
+.ora-models-popout-slot-label {
+  margin: 0 0 4px;
+  font-size: 9px;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ora-models-popout-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  border-radius: 3px;
+}
+
+.ora-models-popout-row:hover {
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.ora-models-popout-rank {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.5));
+  flex-shrink: 0;
+  width: 56px;
+}
+
+.ora-models-popout-name {
+  color: var(--ora-fg, #f8f8f2);
+  font-size: 11px;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ora-models-popout-meta {
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  font-family: var(--ora-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ora-models-popout-empty {
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.5));
+  font-size: 11px;
+  font-style: italic;
+  padding: 4px;
+}
