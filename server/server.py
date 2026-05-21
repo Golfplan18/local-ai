@@ -8249,6 +8249,77 @@ def model_registry_get():
     })
 
 
+@app.route("/api/configurations/active", methods=["GET"])
+def configurations_active_get():
+    """Return the active configuration name + its toggle state.
+
+    Backs the Models pane's header strip. The active configuration is
+    the one Router.run_pipeline() falls back to when no per-request
+    config_name is specified. Toggles live ON the configuration file;
+    defaults are inferred from cells when the toggle block is missing.
+    """
+    try:
+        from orchestrator import active_configuration as ac
+        name = ac.get_active_name()
+        try:
+            toggles = ac.get_toggles(name)
+        except FileNotFoundError:
+            # Pointer references a configuration that no longer exists.
+            # Report it so the UI can surface a "configuration missing"
+            # state and let the user pick a valid one.
+            return _json_response({
+                "name": name,
+                "missing": True,
+                "toggles": {"adversarial_diversity": False, "vision_only": False},
+            })
+    except Exception as exc:
+        return _json_response({"error": f"active-config-read-failed: {exc}"},
+                              status=500)
+    return _json_response({
+        "name": name,
+        "missing": False,
+        "toggles": toggles,
+    })
+
+
+@app.route("/api/configurations/active", methods=["POST"])
+def configurations_active_set():
+    """Set the active configuration. Body: ``{"name": "<config-name>"}``.
+
+    Validates the name resolves to an existing configuration file
+    before writing the pointer — prevents pointing dispatch at a
+    nonexistent config.
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        name = body.get("name")
+        from orchestrator import active_configuration as ac
+        ac.set_active_name(name)
+        toggles = ac.get_toggles(name)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    except Exception as exc:
+        return _json_response({"error": f"active-config-set-failed: {exc}"},
+                              status=500)
+    return _json_response({"name": name, "toggles": toggles, "missing": False})
+
+
+@app.route("/api/configurations/active/toggles", methods=["POST"])
+def configurations_active_toggles():
+    """Update one or both toggles on the active configuration. Body:
+    ``{"adversarial_diversity": bool, "vision_only": bool}`` — either
+    key may be omitted to leave that toggle unchanged."""
+    try:
+        body = request.get_json(silent=True) or {}
+        from orchestrator import active_configuration as ac
+        name = ac.get_active_name()
+        toggles = ac.set_toggles(name, body)
+    except Exception as exc:
+        return _json_response({"error": f"toggle-set-failed: {exc}"},
+                              status=500)
+    return _json_response({"name": name, "toggles": toggles})
+
+
 @app.route("/api/model-registry/picks", methods=["GET"])
 def model_registry_picks():
     """Return the PICK set — models the system endorses as winners.

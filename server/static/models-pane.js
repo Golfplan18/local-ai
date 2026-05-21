@@ -16,9 +16,9 @@
  *   5. Local hardware     — RAM accounting + installed local models (legacy
  *                            ConfigPanel section embedded verbatim)
  *
- * Built across multiple commits — this file lands as a skeleton that
- * confirms the mount and pulls the registry + picks data. Subsequent
- * commits in the same Chunk-10 sequence fill each section.
+ * Built across multiple commits — see install Chunk 10 plan.
+ * Subsequent commits fill the presets / custom / inventory / hardware
+ * sections in turn.
  *
  * Public surface:
  *   OraModelsPane.init(hostEl)  — mount into a container element
@@ -34,6 +34,7 @@
   var _hostEl = null;
   var _registry = null;          // /api/model-registry payload
   var _picksSet = null;          // Set of model ids from /api/model-registry/picks
+  var _active = null;            // {name, toggles, missing} from /api/configurations/active
 
   // ── public API ───────────────────────────────────────────────────────────
 
@@ -53,26 +54,7 @@
       +   '<section class="ora-models-hardware" data-section="hardware"></section>'
       + '</div>';
 
-    // Fetch the registry + picks together. The screen can't render
-    // anything substantive without both, so we wait for both before
-    // calling out of the loading state.
-    Promise.all([
-      fetch('/api/model-registry').then(function (r) { return r.json(); }),
-      fetch('/api/model-registry/picks').then(function (r) { return r.json(); }),
-    ]).then(function (resp) {
-      _registry = resp[0] || {};
-      var picksPayload = resp[1] || {};
-      _picksSet = new Set(picksPayload.picks || []);
-      _renderSkeletonReport();
-    }).catch(function (err) {
-      var header = _hostEl && _hostEl.querySelector('[data-section="header"]');
-      if (header) {
-        header.innerHTML = '<p class="ora-models-error">'
-          + 'Could not load model registry: '
-          + ((err && err.message) || 'unknown error')
-          + '</p>';
-      }
-    });
+    _loadAll();
   }
 
   function destroy() {
@@ -83,34 +65,148 @@
     }
     _registry = null;
     _picksSet = null;
+    _active = null;
   }
 
-  // ── private rendering ────────────────────────────────────────────────────
+  // ── data load ───────────────────────────────────────────────────────────
 
-  // Placeholder header rendering until subsequent commits in the same
-  // chunk install the real layout. Confirms the data fetch worked and
-  // gives the user (and reviewers) something concrete to verify the
-  // mount against in the browser.
-  function _renderSkeletonReport() {
+  function _loadAll() {
+    Promise.all([
+      fetch('/api/model-registry').then(_json),
+      fetch('/api/model-registry/picks').then(_json),
+      fetch('/api/configurations/active').then(_json),
+    ]).then(function (resp) {
+      _registry = resp[0] || {};
+      var picksPayload = resp[1] || {};
+      _picksSet = new Set(picksPayload.picks || []);
+      _active = resp[2] || {name: '', toggles: {}, missing: true};
+      _renderHeader();
+      _renderRemainingSkeleton();
+    }).catch(function (err) {
+      _showHeaderError(err);
+    });
+  }
+
+  function _json(r) { return r.json(); }
+
+  function _showHeaderError(err) {
+    var header = _hostEl && _hostEl.querySelector('[data-section="header"]');
+    if (header) {
+      header.innerHTML = '<p class="ora-models-error">'
+        + 'Could not load model configuration: '
+        + ((err && err.message) || 'unknown error')
+        + '</p>';
+    }
+  }
+
+  // ── header strip ────────────────────────────────────────────────────────
+
+  function _renderHeader() {
     if (!_hostEl) return;
-    var stats = (_registry && _registry.stats) || {};
-    var picksCount = _picksSet ? _picksSet.size : 0;
     var header = _hostEl.querySelector('[data-section="header"]');
     if (!header) return;
+    var name = (_active && _active.name) || '(none)';
+    var missing = _active && _active.missing;
+    var t = (_active && _active.toggles) || {};
+    var adv = !!t.adversarial_diversity;
+    var vis = !!t.vision_only;
+
     header.innerHTML = ''
-      + '<div class="ora-models-skeleton">'
-      +   '<h3>Model Configuration</h3>'
-      +   '<p>'
-      +     '<strong>' + (stats.model_count || 0) + '</strong> models in registry · '
-      +     '<strong>' + picksCount + '</strong> PICK winners'
-      +   '</p>'
-      +   '<p class="ora-models-note">'
-      +     'This pane is under construction (install Chunk 10). '
-      +     'Subsequent commits add: preset cards, custom configurations, '
-      +     'inventory grid with filters + intelligence slider, fallback '
-      +     'chain popout, and the local hardware section at the bottom.'
-      +   '</p>'
+      + '<div class="ora-models-header-strip">'
+      +   '<div class="ora-models-active">'
+      +     '<span class="ora-models-active-label">Active configuration:</span> '
+      +     '<strong class="ora-models-active-name">' + _esc(name) + '</strong>'
+      +     (missing
+        ? ' <span class="ora-models-warn">(missing — pick another)</span>'
+        : '')
+      +   '</div>'
+      +   '<div class="ora-models-toggles">'
+      +     _toggleHTML('adversarial_diversity', adv,
+                       'Adversarial Diversity',
+                       'Two workhorse models run in parallel and cross-check '
+                       + 'each other. Doubles cost; catches blind spots a '
+                       + 'single model would miss.')
+      +     _toggleHTML('vision_only', vis,
+                       'Vision-capable only',
+                       'Restrict picks to models that can see images directly. '
+                       + 'Off lets text-only models in, with a per-slot visual '
+                       + 'fallback that converts images to text descriptions.')
+      +   '</div>'
       + '</div>';
+
+    // Wire change handlers
+    Array.from(header.querySelectorAll('.ora-models-toggle input')).forEach(function (el) {
+      el.addEventListener('change', function () {
+        _setToggle(el.dataset.toggle, el.checked);
+      });
+    });
+  }
+
+  function _toggleHTML(name, checked, label, helpText) {
+    return ''
+      + '<label class="ora-models-toggle">'
+      +   '<input type="checkbox" data-toggle="' + name + '"' + (checked ? ' checked' : '') + '>'
+      +   '<span class="ora-models-toggle-knob"></span>'
+      +   '<span class="ora-models-toggle-label">' + _esc(label) + '</span>'
+      +   '<span class="ora-models-toggle-help">' + _esc(helpText) + '</span>'
+      + '</label>';
+  }
+
+  function _setToggle(name, value) {
+    var payload = {};
+    payload[name] = value;
+    fetch('/api/configurations/active/toggles', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    }).then(_json).then(function (resp) {
+      if (resp && resp.toggles) {
+        _active.toggles = resp.toggles;
+        // Re-render the header to reflect the canonical server-side
+        // state (in case the server adjusted anything). Cheap.
+        _renderHeader();
+      }
+    }).catch(function (err) {
+      // Toggle didn't persist — revert the checkbox state by reloading
+      // header from current cached state. The user sees their click
+      // "bounce back," which signals failure without a modal.
+      _renderHeader();
+      console.warn('[models-pane] toggle save failed:', err);
+    });
+  }
+
+  // ── placeholder sections (filled by subsequent commits) ─────────────────
+
+  function _renderRemainingSkeleton() {
+    if (!_hostEl) return;
+    var sections = [
+      ['presets',
+       'Presets row — Free / Budget / Optimum / Premium cards (commit step 4).'],
+      ['custom',
+       'Custom-New + Previous grid (commit step 5).'],
+      ['inventory',
+       'Vendor-organized model inventory with filter chips and intelligence slider (commit step 6).'],
+      ['hardware',
+       'Local model hardware analysis (commit step 13).'],
+    ];
+    sections.forEach(function (s) {
+      var el = _hostEl.querySelector('[data-section="' + s[0] + '"]');
+      if (el) {
+        el.innerHTML = '<p class="ora-models-placeholder">' + _esc(s[1]) + '</p>';
+      }
+    });
+  }
+
+  // ── utilities ───────────────────────────────────────────────────────────
+
+  function _esc(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   // ── expose ───────────────────────────────────────────────────────────────

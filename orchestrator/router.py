@@ -671,14 +671,32 @@ class Router:
     def _resolve_config_name(self, config_name: str | None, context: str) -> str | None:
         """Derive the effective configuration name.
 
-        When the caller passes an explicit ``config_name``, honor it. Otherwise
-        map the legacy ``context`` vocabulary through DEFAULT_CONFIG_FOR_CONTEXT.
-        Returns None when no mapping exists — that signals the caller to fall
-        back to the legacy bucket-walk path (vestigial after Chunk 2d but kept
-        in place until Chunk 12).
+        When the caller passes an explicit ``config_name``, honor it.
+        Otherwise:
+          - ``interactive`` context consults the user-chosen active
+            configuration pointer (``~/ora/data/active-configuration.json``)
+            so the Models pane's active-card selection drives dispatch.
+            Falls back to the legacy "user-pipeline" default when the
+            pointer is missing.
+          - ``agent`` / ``autonomous`` keep the legacy mapping
+            (``background-default``) — automated processes aren't
+            user-steered through the active pointer.
+
+        Returns None when no mapping exists — that signals the caller
+        to fall back to the legacy bucket-walk path (vestigial after
+        Chunk 2d but kept in place until Chunk 12).
         """
         if config_name is not None:
             return config_name
+        if context == "interactive":
+            try:
+                from orchestrator import active_configuration as ac
+                return ac.get_active_name()
+            except Exception:
+                # Defensive: if the pointer module fails for any
+                # reason, fall through to the legacy default so chat
+                # never breaks because of an active-pointer bug.
+                pass
         return DEFAULT_CONFIG_FOR_CONTEXT.get(context)
 
     def _load_configuration(self, name: str) -> dict | None:
