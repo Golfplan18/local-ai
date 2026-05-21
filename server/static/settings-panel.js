@@ -34,9 +34,14 @@
   // is the one live instance for the open settings modal (see _renderModelsTab).
   var _modelsConfigPanel = null;
 
+  // Tabs declared in display order. The Buckets tab was retired with
+  // install Chunk 10 step 2 — the bucket abstraction has been dissolved
+  // by the configuration architecture (Premium / Optimum / Budget /
+  // Free + named customs replace bucket-based slot assignment). The
+  // Models tab now hosts the new OraModelsPane (server/static/models-pane.js);
+  // Visual stays on the classic ConfigPanel until Chunk 11 rebuilds it.
   var TABS = [
     { id: 'models',         label: 'Models' },
-    { id: 'buckets',        label: 'Buckets' },
     { id: 'visual',         label: 'Visual' },
     { id: 'transcription',  label: 'Transcription' },
     { id: 'speech',         label: 'Speech' },
@@ -144,13 +149,11 @@
 
   function _renderTabContent() {
     _tabContentEl.innerHTML = '';
-    // Models / Buckets / Visual tabs all use the classic ConfigPanel
-    // (config-panel.js) with different 'view' configs. They own their
-    // own data load (/config/routing) and render lifecycle, so they
-    // render independently of the per-tab _settings load.
-    if (_activeTab === 'models')  { _renderConfigTab('pipelines', 'settings-models'); return; }
-    if (_activeTab === 'buckets') { _renderConfigTab('buckets',   'settings-buckets'); return; }
-    if (_activeTab === 'visual')  { _renderConfigTab('visual',    'settings-visual');  return; }
+    // The Models tab hosts the new OraModelsPane (install Chunk 10).
+    // Visual stays on the classic ConfigPanel until Chunk 11 rebuilds
+    // it; Buckets was retired (see the TABS comment above).
+    if (_activeTab === 'models')  { _renderModelsPane();                         return; }
+    if (_activeTab === 'visual')  { _renderConfigTab('visual', 'settings-visual'); return; }
     if (!_settings) {
       _tabContentEl.textContent = 'Loading…';
       return;
@@ -180,12 +183,37 @@
   }
 
   // ── Models tab ───────────────────────────────────────────────────────────
-  // Hosts the classic ConfigPanel (server/static/config-panel.js) inside the
-  // V3 settings modal so the Models tab shows the EXACT arrangement the
-  // classic interface had: dual pipeline display (Interactive + Agent), six
-  // model buckets, machine RAM accounting, and live system status. The
-  // ConfigPanel class owns its own load/save/render lifecycle; we just
-  // mount it into the tab body once and let it manage state from there.
+  // The Models tab hosts OraModelsPane (server/static/models-pane.js),
+  // a configuration-driven picker that replaces the classic ConfigPanel
+  // embed (install Chunk 10). The pane fetches /api/model-registry and
+  // /api/model-registry/picks on mount and renders preset cards, a
+  // custom-new + previous grid, the vendor-organized inventory, and a
+  // local-hardware section.
+  //
+  // The classic ConfigPanel is still loaded (server/static/config-panel.js
+  // remains in index-v3.html's script list) — it powers the Visual tab
+  // until Chunk 11 rebuilds that one too.
+
+  function _renderModelsPane() {
+    if (typeof OraModelsPane === 'undefined') {
+      _tabContentEl.textContent =
+        'models-pane.js is not loaded. Reload the page or check the network tab.';
+      return;
+    }
+    _tabContentEl.innerHTML = '';
+    var host = document.createElement('div');
+    host.className = 'ora-settings-models-host';
+    _tabContentEl.appendChild(host);
+    try {
+      OraModelsPane.init(host);
+    } catch (err) {
+      host.textContent = 'Could not load model configuration: '
+        + ((err && err.message) || 'unknown error');
+    }
+  }
+
+  // The classic ConfigPanel mount used by the Visual tab (until Chunk 11
+  // rebuilds it). Pre-Chunk-10 the Models + Buckets tabs also used this.
 
   function _renderConfigTab(view, id) {
     if (typeof ConfigPanel === 'undefined') {
