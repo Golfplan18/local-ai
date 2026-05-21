@@ -445,15 +445,20 @@
     var isPick = _picksSet && _picksSet.has(modelId);
     var registry = (_registry && _registry.models) || {};
     var model = registry[modelId];
+    var isDeprecated = !model;  // referenced model isn't in the registry
+    if (isDeprecated) classes += ' ora-models-slot-row-deprecated';
     var meta = model ? _compactMetaHTML(model, opts) : '';
     return '<div class="' + classes + '"'
       + (clickable ? ' data-pick-slot="' + _esc(label) + '"' +
                      ' data-pick-config="' + _esc(configName) + '"' : '')
+      + (isDeprecated ? ' title="This model is no longer in the registry. '
+                       + 'Pick a replacement."' : '')
       + '>'
       + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
       + '<span class="ora-models-slot-value" title="' + _esc(modelId) + '">'
       +   _esc(_shortenModelId(modelId))
       +   (isPick ? '<span class="ora-models-pick-chip">PICK</span>' : '')
+      +   (isDeprecated ? '<span class="ora-models-deprecated-chip">DEPRECATED</span>' : '')
       +   (meta ? '<span class="ora-models-slot-meta">' + meta + '</span>' : '')
       + '</span>'
       + '</div>';

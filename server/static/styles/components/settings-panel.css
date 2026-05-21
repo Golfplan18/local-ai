@@ -1219,3 +1219,29 @@
   flex-direction: column;
   gap: 2px;
 }
+
+/* Deprecated model — slot references a model id no longer in the
+ * registry (catalog refreshed, vendor pulled it, etc.). Yellow box
+ * + greyed text + DEPRECATED chip so the user notices and picks a
+ * replacement. */
+.ora-models-slot-row-deprecated {
+  background: rgba(241, 196, 15, 0.10);
+  outline: 1px solid var(--ora-accent-warning, #f1c40f);
+  border-radius: 3px;
+}
+
+.ora-models-slot-row-deprecated .ora-models-slot-value {
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.55));
+  font-style: italic;
+}
+
+.ora-models-deprecated-chip {
+  background: var(--ora-accent-warning, #f1c40f);
+  color: #1e1f29;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 2px;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
