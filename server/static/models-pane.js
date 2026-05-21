@@ -609,6 +609,20 @@
   }
 
   function _activateConfig(name) {
+    // First-time Free pick gets a one-time acknowledgment modal that
+    // explains the rate-limit / queueing / inconsistency tradeoffs.
+    // Acknowledgment persists in localStorage.
+    if (name === 'free' && !_freeAcknowledged()) {
+      _showFreeThrottlingModal(function () {
+        _markFreeAcknowledged();
+        _doActivate(name);
+      });
+      return;
+    }
+    _doActivate(name);
+  }
+
+  function _doActivate(name) {
     fetch('/api/configurations/active', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -621,6 +635,59 @@
       _refreshActive();
     }).catch(function (err) {
       console.warn('[models-pane] activate failed:', err);
+    });
+  }
+
+  var FREE_ACK_KEY = 'ora_free_throttling_ack_v1';
+
+  function _freeAcknowledged() {
+    try { return localStorage.getItem(FREE_ACK_KEY) === '1'; }
+    catch (_) { return false; }
+  }
+  function _markFreeAcknowledged() {
+    try { localStorage.setItem(FREE_ACK_KEY, '1'); } catch (_) {}
+  }
+
+  function _showFreeThrottlingModal(onConfirm) {
+    // Build a one-shot modal overlaid on the pane.
+    var backdrop = document.createElement('div');
+    backdrop.className = 'ora-models-free-modal-backdrop';
+    backdrop.innerHTML = ''
+      + '<div class="ora-models-free-modal" role="dialog" aria-labelledby="ora-free-modal-title">'
+      +   '<h3 id="ora-free-modal-title">Before you pick Free</h3>'
+      +   '<p>Free models work, but the tradeoffs are real:</p>'
+      +   '<ul>'
+      +     '<li><strong>Rate limits.</strong> Free providers cap requests-per-minute '
+      +       'and per-day. Ora\'s deep fallback chain walks across providers to '
+      +       'work around this, but during busy hours your request may queue.</li>'
+      +     '<li><strong>Inconsistent results.</strong> Because the chain may '
+      +       'fall through several models per request, two runs of the same '
+      +       'prompt can come back from different models — output style and '
+      +       'depth will vary.</li>'
+      +     '<li><strong>Models change.</strong> Free providers add and pull '
+      +       'models without notice. Ora auto-refreshes the registry, but '
+      +       'your saved picks may go deprecated.</li>'
+      +     '<li><strong>Quick fix if Free isn\'t enough:</strong> add a small '
+      +       'amount of OpenRouter credit or set up direct provider keys '
+      +       '(External APIs tab). Even a cheap-tier paid configuration like '
+      +       'Budget gets you consistent results.</li>'
+      +   '</ul>'
+      +   '<div class="ora-models-free-modal-actions">'
+      +     '<button type="button" class="ora-models-card-btn" data-action="cancel">Cancel</button>'
+      +     '<button type="button" class="ora-models-card-btn ora-models-card-btn-primary" data-action="ack">I understand — use Free</button>'
+      +   '</div>'
+      + '</div>';
+
+    document.body.appendChild(backdrop);
+
+    function close() { backdrop.remove(); }
+    backdrop.querySelector('[data-action="cancel"]').addEventListener('click', close);
+    backdrop.querySelector('[data-action="ack"]').addEventListener('click', function () {
+      close();
+      if (typeof onConfirm === 'function') onConfirm();
+    });
+    backdrop.addEventListener('click', function (evt) {
+      if (evt.target === backdrop) close();
     });
   }
 

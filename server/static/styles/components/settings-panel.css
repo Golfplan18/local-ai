@@ -1380,3 +1380,70 @@
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+/* ── First-time Free throttling acknowledgment modal ────────────── */
+
+.ora-models-free-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;  /* above the settings modal */
+}
+
+.ora-models-free-modal {
+  background: var(--ora-bg, #1e1f29);
+  color: var(--ora-fg, #f8f8f2);
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.18));
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  max-width: 540px;
+  padding: 18px 22px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ora-models-free-modal h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: var(--ora-fg, #f8f8f2);
+}
+
+.ora-models-free-modal p {
+  margin: 0 0 8px;
+  color: var(--ora-fg-soft, rgba(248, 248, 242, 0.85));
+}
+
+.ora-models-free-modal ul {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: var(--ora-fg-soft, rgba(248, 248, 242, 0.85));
+}
+
+.ora-models-free-modal li {
+  margin-bottom: 8px;
+}
+
+.ora-models-free-modal strong {
+  color: var(--ora-fg, #f8f8f2);
+}
+
+.ora-models-free-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ora-models-card-btn-primary {
+  background: var(--ora-accent-success, #50c878);
+  color: #1e1f29;
+  border-color: var(--ora-accent-success, #50c878);
+  font-weight: 600;
+}
+
+.ora-models-card-btn-primary:hover {
+  filter: brightness(1.08);
+}
