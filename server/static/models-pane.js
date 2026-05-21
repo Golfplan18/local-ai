@@ -425,15 +425,12 @@
     var customs = (_configs && _configs.customs) || [];
     var activeName = (_configs && _configs.active_name) || '';
 
-    // Custom-New = the active configuration if it's a custom, else
-    // an empty draft scaffold. The active custom shows here AND in
-    // the Previous grid (with its green border in both spots) so the
-    // user can see "this is what's running" front-and-center while
-    // also having the full saved set visible to the right.
-    var activeCustom = customs.find(function (c) { return c.name === activeName; });
-    var newCardHTML = activeCustom
-      ? _customNewActiveHTML(activeCustom)
-      : _customNewEmptyHTML();
+    // Custom-New is a pure workspace for starting a new configuration.
+    // It NEVER carries the active green flag — that lives only on
+    // saved cards (presets or customs in the Previous grid). The rule
+    // is "exactly one green box, ever, around a saved configuration."
+    // Mirroring the active custom into Custom-New violated that rule.
+    var newCardHTML = _customNewEmptyHTML();
 
     // Previous grid: 3 columns × however many rows of customs. Each
     // card is a smaller version of the preset card with click-to-
@@ -497,36 +494,6 @@
       +       'to start a blank one, or Customize on any preset / saved '
       +       'card to fork it.'
       +     '</p>'
-      +   '</div>'
-      + '</div>';
-  }
-
-  function _customNewActiveHTML(summary) {
-    // Mirror the preset-card body shape so the user can see what's
-    // active in the same form as anywhere else. The red/green border
-    // reflects completion: red until all 3 minimum slots are picked,
-    // green once they are.
-    var complete = !!(summary.big1 && summary.small);
-    return ''
-      + '<div class="ora-models-card ora-models-card-custom-new'
-      +   (complete ? ' ora-models-card-active' : ' ora-models-card-incomplete') + '"'
-      +   ' data-config-name="' + _esc(summary.name) + '">'
-      +   '<header class="ora-models-card-header">'
-      +     '<span class="ora-models-card-title">' + _esc(summary.name) + '</span>'
-      +     (complete
-        ? '<span class="ora-models-card-active-flag">active</span>'
-        : '<span class="ora-models-incomplete-flag">incomplete</span>')
-      +   '</header>'
-      +   '<div class="ora-models-card-body">'
-      +     _slotRowHTML('big 1', summary.big1)
-      +     _slotRowHTML('big 2', summary.big2)
-      +     _slotRowHTML('small', summary.small)
-      +   '</div>'
-      +   '<div class="ora-models-card-actions">'
-      +     '<button type="button" class="ora-models-card-btn" data-action="more">▸ More</button>'
-      +   '</div>'
-      +   '<div class="ora-models-card-footer">'
-      +     _toggleChips(summary.toggles)
       +   '</div>'
       + '</div>';
   }
