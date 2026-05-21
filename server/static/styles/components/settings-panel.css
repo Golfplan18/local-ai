@@ -1336,3 +1336,47 @@
 .ora-models-hw-fit-no {
   color: var(--ora-accent-danger, #ff5555);
 }
+
+/* Refresh button in the header strip */
+.ora-models-refresh-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ora-models-refresh-label {
+  font-size: 10px;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+}
+
+.ora-models-refresh-btn {
+  background: transparent;
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.15));
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.7));
+  font-size: 13px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ora-models-refresh-btn:hover:not(:disabled) {
+  color: var(--ora-fg, #f8f8f2);
+  border-color: var(--ora-border, rgba(248, 248, 242, 0.25));
+}
+
+.ora-models-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.ora-models-refresh-btn-spinning {
+  animation: ora-refresh-spin 1.2s linear infinite;
+}
+
+@keyframes ora-refresh-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

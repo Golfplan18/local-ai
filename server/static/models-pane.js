@@ -168,6 +168,7 @@
       _renderPopout();
       _renderHardware();
       _renderRemainingSkeleton();
+      _maybeAutoRefresh();
     }).catch(function (err) {
       _showHeaderError(err);
     });
@@ -208,6 +209,10 @@
     var t = (_configs && _configs.active_toggles) || {};
     var adv = !!t.adversarial_diversity;
     var vis = !!t.vision_only;
+    var refreshedAt = _registry && _registry.generated_at;
+    var refreshLabel = refreshedAt
+      ? 'Refreshed ' + refreshedAt.substring(0, 10)
+      : 'Never refreshed';
 
     header.innerHTML = ''
       + '<div class="ora-models-header-strip">'
@@ -224,6 +229,10 @@
       +   _toggleHTML('vision_only', vis,
                      'Vision-capable only',
                      'restrict picks to models that see images directly')
+      +   '<div class="ora-models-refresh-wrap" title="Re-fetch the model registry from OpenRouter + AA + LiteLLM (~15-30s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
+      +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
+      +     '<button type="button" class="ora-models-refresh-btn" data-action="refresh">↻</button>'
+      +   '</div>'
       + '</div>';
 
     // Wire change handlers
@@ -232,6 +241,58 @@
         _setToggle(el.dataset.toggle, el.checked);
       });
     });
+    var refreshBtn = header.querySelector('[data-action="refresh"]');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function () {
+        _refreshRegistry(true);
+      });
+    }
+  }
+
+  // Refresh the registry. ``manual=true`` forces it even if the
+  // registry's generated_at is recent; otherwise the server's TTL
+  // guard skips the actual sync. Either way, we re-fetch
+  // /api/model-registry after the call returns so the pane shows
+  // whatever's current.
+  function _refreshRegistry(manual) {
+    var btn = _hostEl && _hostEl.querySelector('[data-action="refresh"]');
+    if (btn) {
+      btn.classList.add('ora-models-refresh-btn-spinning');
+      btn.disabled = true;
+    }
+    fetch('/api/model-registry/refresh', {method: 'POST'})
+      .then(_json)
+      .then(function () {
+        return _loadAll();  // re-fetch everything, re-render
+      })
+      .catch(function (err) {
+        console.warn('[models-pane] refresh failed:', err);
+        if (manual) alert('Refresh failed: ' + (err && err.message));
+      })
+      .then(function () {
+        if (btn) {
+          btn.classList.remove('ora-models-refresh-btn-spinning');
+          btn.disabled = false;
+        }
+      });
+  }
+
+  // Auto-refresh check fired on init: if the registry's generated_at
+  // is more than 24h ago, kick off a refresh. The server-side TTL
+  // guard collapses concurrent refresh requests to one, so this is
+  // safe even if multiple settings opens stack up.
+  function _maybeAutoRefresh() {
+    if (!_registry) return;
+    var gen = _registry.generated_at;
+    if (!gen) {
+      // Never refreshed — fire one
+      _refreshRegistry(false);
+      return;
+    }
+    var genMs = Date.parse(gen);
+    if (isNaN(genMs)) return;
+    var ageHours = (Date.now() - genMs) / (1000 * 60 * 60);
+    if (ageHours > 24) _refreshRegistry(false);
   }
 
   function _toggleHTML(name, checked, label, helpText) {
