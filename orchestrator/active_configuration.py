@@ -28,6 +28,7 @@ from pathlib import Path
 ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
 DATA_DIR = ORA_HOME / "data"
 ACTIVE_POINTER_PATH = DATA_DIR / "active-configuration.json"
+PRESET_TOGGLES_PATH = DATA_DIR / "preset-toggles.json"
 CONFIGURATIONS_DIR = ORA_HOME / "config" / "configurations"
 
 # When the pointer file is missing entirely (fresh install), fall back
@@ -173,24 +174,67 @@ def _infer_defaults(config: dict) -> dict:
 # ── Preset baking — populate missing presets from the catalog ────────────
 
 
+def get_preset_toggles() -> dict:
+    """Return the global preset toggle state.
+
+    Toggles are GLOBAL to the four presets (Adversarial Diversity,
+    Vision-capable only): turning Vision on at the top of the Models
+    pane while a preset is active updates this global state and
+    re-bakes all four presets with vision_only=True.
+
+    Custom configurations keep their own per-config toggle state via
+    get_toggles/set_toggles.
+
+    Defaults when no pointer file exists: both toggles off.
+    """
+    if not PRESET_TOGGLES_PATH.exists():
+        return {"adversarial_diversity": False, "vision_only": False}
+    try:
+        with open(PRESET_TOGGLES_PATH) as f:
+            data = json.load(f)
+        return {
+            "adversarial_diversity": bool(data.get("adversarial_diversity", False)),
+            "vision_only": bool(data.get("vision_only", False)),
+        }
+    except (OSError, json.JSONDecodeError):
+        return {"adversarial_diversity": False, "vision_only": False}
+
+
+def set_preset_toggles(toggles: dict) -> dict:
+    """Persist the global preset toggle state. Partial update OK —
+    either key may be omitted to leave that toggle unchanged."""
+    if not isinstance(toggles, dict):
+        raise ValueError("toggles payload must be an object")
+    with _lock:
+        current = get_preset_toggles()
+        for key in ("adversarial_diversity", "vision_only"):
+            if key in toggles:
+                current[key] = bool(toggles[key])
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = PRESET_TOGGLES_PATH.with_suffix(".json.tmp")
+        with open(tmp, "w") as f:
+            json.dump(current, f, indent=2)
+            f.write("\n")
+        os.replace(tmp, PRESET_TOGGLES_PATH)
+    return current
+
+
 def bake_missing_presets(force: bool = False) -> list:
     """Run the auto-populate engine for any preset that doesn't have a
     configuration file on disk.
 
+    Reads the global preset toggle state (vision_only,
+    adversarial_diversity) and applies it:
+      * vision_only → passed to populate_configuration so the picker
+        filters to vision-capable models only.
+      * adversarial_diversity=False → post-bake, copy gear4.depth's
+        primary + fallback into gear4.breadth so "the top model fills
+        all slots" rather than enforcing diversity.
+
     Returns the list of preset names that were baked (empty when
     everything was already present). When ``force=True``, re-bakes
-    every preset regardless of file existence — useful after a
-    registry refresh when the catalog has changed and the user wants
-    fresh picks.
-
-    Reads ``config/model-catalog.json`` (the refresh-catalog output).
-    Failures bake a preset to ``None`` in the return — the UI's
-    placeholder card handles missing presets, so a partial bake
-    doesn't break anything.
-
-    This helper is wired into the GET /api/configurations endpoint so
-    a fresh install populates all four presets on first pane open;
-    subsequent opens are a no-op (everything exists).
+    every preset regardless of file existence — used by
+    set_preset_toggles to refresh picks after a toggle flip.
     """
     presets_path = ORA_HOME / "config" / "configuration-presets.json"
     catalog_path = ORA_HOME / "config" / "model-catalog.json"
@@ -219,6 +263,10 @@ def bake_missing_presets(force: bool = False) -> list:
     with open(presets_path) as f:
         presets_config = json.load(f)
 
+    global_toggles = get_preset_toggles()
+    vision_only = global_toggles["vision_only"]
+    adversarial = global_toggles["adversarial_diversity"]
+
     baked: list = []
     CONFIGURATIONS_DIR.mkdir(parents=True, exist_ok=True)
     for preset_name in PRESET_ORDER:
@@ -230,8 +278,26 @@ def bake_missing_presets(force: bool = False) -> list:
             continue
         try:
             config = ap_module.populate_configuration(
-                preset_name, catalog, presets_config)
+                preset_name, catalog, presets_config,
+                vision_only=vision_only)
             config["name"] = preset_name
+            # Adversarial OFF: top model fills both gear4 slots.
+            # When Adversarial is on (or not specified), keep the
+            # diversity-enforced pair the picker produced.
+            if not adversarial:
+                cells = config.get("cells") or {}
+                gear4 = (cells.get("analysis") or {}).get("gear4") or {}
+                depth = gear4.get("depth")
+                if isinstance(depth, dict):
+                    gear4["breadth"] = {
+                        "primary": depth.get("primary"),
+                        "fallback": list(depth.get("fallback") or []),
+                        "vision_substitute": depth.get("vision_substitute"),
+                    }
+            # Stash the global toggle state on the config too so the
+            # UI's per-config toggle reader picks it up immediately
+            # without needing to consult the global file separately.
+            config["toggles"] = dict(global_toggles)
             _save_config(preset_name, config)
             baked.append(preset_name)
         except Exception:
@@ -517,6 +583,9 @@ __all__ = [
     "set_active_name",
     "get_toggles",
     "set_toggles",
+    "get_preset_toggles",
+    "set_preset_toggles",
+    "bake_missing_presets",
     "list_configurations",
     "duplicate_configuration",
     "create_blank_configuration",

@@ -54,7 +54,16 @@
     pick: false,
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
+    sort_by: 'alpha_desc',  // alphabetical descending — newest releases bubble up by version-string convention
   };
+
+  var SORT_OPTIONS = [
+    {id: 'alpha_desc',         label: 'Alphabetical'},
+    {id: 'intelligence_desc',  label: 'Intelligence'},
+    {id: 'latency_asc',        label: 'Latency'},
+    {id: 'speed_desc',         label: 'Tokens/sec'},
+    {id: 'cost_asc',           label: 'Cost'},
+  ];
 
   // Vendor expansion state. Vendors are collapsed by default — the
   // inventory shows just vendor names + model counts so the user gets
@@ -95,7 +104,7 @@
     _configs = null;
     _filters = {
       vision: false, free: false, open_weights: false, pick: false,
-      intelligence_pct: 0, search: '',
+      intelligence_pct: 0, search: '', sort_by: 'alpha_desc',
     };
     _expandedVendors = new Set();
   }
@@ -645,6 +654,7 @@
       + '</header>'
       + '<div class="ora-models-inventory-controls">'
       +   _filterChipsHTML()
+      +   _sortSelectHTML()
       +   _sliderHTML()
       +   _searchInputHTML()
       + '</div>'
@@ -702,19 +712,58 @@
       if (!groups[v]) groups[v] = [];
       groups[v].push(m);
     });
-    // Sort each vendor's models alphabetical-descending (per the
-    // user-locked decision — most recent releases tend to bubble up
-    // because their version numbers come last alphabetically).
+    // Sort each vendor's models per the active Sort dropdown choice.
     Object.keys(groups).forEach(function (v) {
-      groups[v].sort(function (a, b) {
-        var ai = (a.id || '').toLowerCase();
-        var bi = (b.id || '').toLowerCase();
-        if (ai > bi) return -1;
-        if (ai < bi) return 1;
-        return 0;
-      });
+      groups[v] = _sortModels(groups[v], _filters.sort_by);
     });
     return groups;
+  }
+
+  function _sortModels(models, by) {
+    var arr = models.slice();
+    switch (by) {
+      case 'intelligence_desc':
+        return arr.sort(function (a, b) {
+          var ai = _normalizedIntelligence(a);
+          var bi = _normalizedIntelligence(b);
+          if (ai == null) ai = -1;
+          if (bi == null) bi = -1;
+          return bi - ai;
+        });
+      case 'cost_asc':
+        return arr.sort(function (a, b) {
+          var ac = _blendedCostPerM(a);
+          var bc = _blendedCostPerM(b);
+          if (ac == null) ac = Infinity;
+          if (bc == null) bc = Infinity;
+          return ac - bc;
+        });
+      case 'latency_asc':
+        return arr.sort(function (a, b) {
+          var al = a.latency_ttft_seconds;
+          var bl = b.latency_ttft_seconds;
+          if (al == null) al = Infinity;
+          if (bl == null) bl = Infinity;
+          return al - bl;
+        });
+      case 'speed_desc':
+        return arr.sort(function (a, b) {
+          var as = a.output_tokens_per_second;
+          var bs = b.output_tokens_per_second;
+          if (as == null) as = -1;
+          if (bs == null) bs = -1;
+          return bs - as;
+        });
+      case 'alpha_desc':
+      default:
+        return arr.sort(function (a, b) {
+          var ai = (a.id || '').toLowerCase();
+          var bi = (b.id || '').toLowerCase();
+          if (ai > bi) return -1;
+          if (ai < bi) return 1;
+          return 0;
+        });
+    }
   }
 
   function _distributeVendorsToColumns(groups) {
@@ -820,6 +869,20 @@
       + '</div>';
   }
 
+  function _sortSelectHTML() {
+    var options = SORT_OPTIONS.map(function (opt) {
+      var sel = opt.id === _filters.sort_by ? ' selected' : '';
+      return '<option value="' + opt.id + '"' + sel + '>' + _esc(opt.label) + '</option>';
+    }).join('');
+    return ''
+      + '<label class="ora-models-sort-wrap" title="Sort within each vendor">'
+      +   '<span class="ora-models-sort-label">Sort</span>'
+      +   '<select class="ora-models-sort-select" data-filter="sort_by">'
+      +     options
+      +   '</select>'
+      + '</label>';
+  }
+
   function _sliderHTML() {
     return ''
       + '<div class="ora-models-slider-wrap" title="Intelligence floor — slide right to keep only top-ranked models">'
@@ -853,6 +916,13 @@
     if (searchEl) {
       searchEl.addEventListener('input', function () {
         _filters.search = searchEl.value || '';
+        _renderInventory();
+      });
+    }
+    var sortEl = section.querySelector('.ora-models-sort-select');
+    if (sortEl) {
+      sortEl.addEventListener('change', function () {
+        _filters.sort_by = sortEl.value;
         _renderInventory();
       });
     }

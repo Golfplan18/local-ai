@@ -1031,3 +1031,27 @@
   width: 10px;
   display: inline-block;
 }
+
+/* ── Sort dropdown ───────────────────────────────────────────────── */
+
+.ora-models-sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ora-models-sort-label {
+  font-size: 10px;
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  text-transform: uppercase;
+}
+
+.ora-models-sort-select {
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.06));
+  color: var(--ora-fg, #f8f8f2);
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12));
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
