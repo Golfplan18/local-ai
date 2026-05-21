@@ -407,13 +407,13 @@
 }
 
 .ora-models-pane section {
-  background: var(--bg-elevated, transparent);
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.04));
   border-radius: 6px;
 }
 
 .ora-models-loading,
 .ora-models-placeholder {
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   font-size: 13px;
   font-style: italic;
   margin: 0;
@@ -421,7 +421,7 @@
 }
 
 .ora-models-error {
-  color: var(--accent-danger, #c0392b);
+  color: var(--ora-accent-danger, #ff5555);
   font-size: 13px;
   margin: 0;
   padding: 12px 8px;
@@ -434,7 +434,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 12px 8px 8px;
-  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12)));
 }
 
 .ora-models-active {
@@ -442,16 +442,16 @@
 }
 
 .ora-models-active-label {
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
 }
 
 .ora-models-active-name {
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
   font-weight: 600;
 }
 
 .ora-models-warn {
-  color: var(--accent-warning, #d4a017);
+  color: var(--ora-accent-warning, #f1c40f);
   font-size: 12px;
   margin-left: 6px;
 }
@@ -485,7 +485,7 @@
   width: 36px;
   height: 20px;
   border-radius: 12px;
-  background: var(--bg-input, rgba(255,255,255,0.10));
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.06)));
   position: relative;
   transition: background 0.15s ease;
 }
@@ -498,12 +498,12 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--text-muted, #888);
+  background: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .ora-models-toggle input[type="checkbox"]:checked + .ora-models-toggle-knob {
-  background: var(--accent-active, #4a8e3c);
+  background: var(--ora-accent-success, #50c878);
 }
 
 .ora-models-toggle input[type="checkbox"]:checked + .ora-models-toggle-knob::before {
@@ -514,12 +514,12 @@
 .ora-models-toggle-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
 }
 
 .ora-models-toggle-help {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   line-height: 1.4;
 }
 
@@ -531,19 +531,19 @@
   align-items: baseline;
   gap: 12px;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12)));
 }
 
 .ora-models-section-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
 }
 
 .ora-models-section-hint {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
 }
 
 /* ── Row layouts (4 equal columns) ──────────────────────────────── */
@@ -560,7 +560,7 @@
 .ora-models-card {
   display: flex;
   flex-direction: column;
-  background: var(--bg-elevated, rgba(255,255,255,0.03));
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.04)));
   border: 2px solid transparent;
   border-radius: 6px;
   padding: 10px;
@@ -571,22 +571,22 @@
 }
 
 .ora-models-card:hover {
-  background: var(--bg-elevated-hover, rgba(255,255,255,0.05));
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06)));
 }
 
 .ora-models-card-active {
-  border-color: var(--accent-active, #4a8e3c);
+  border-color: var(--ora-accent-success, #50c878);
 }
 
 .ora-models-card-empty {
   cursor: default;
   border-style: dashed;
-  border-color: var(--border-subtle, rgba(255,255,255,0.10));
+  border-color: var(--ora-border, rgba(248, 248, 242, 0.12)));
   opacity: 0.65;
 }
 
 .ora-models-card-empty:hover {
-  background: var(--bg-elevated, rgba(255,255,255,0.03));
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.04)));
 }
 
 .ora-models-card-header {
@@ -599,13 +599,13 @@
 .ora-models-card-title {
   font-weight: 600;
   font-size: 14px;
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
 }
 
 .ora-models-card-active-flag {
   font-size: 10px;
   font-weight: 600;
-  color: var(--accent-active, #4a8e3c);
+  color: var(--ora-accent-success, #50c878);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -625,15 +625,15 @@
 }
 
 .ora-models-slot-label {
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .ora-models-slot-value {
-  color: var(--text-normal);
-  font-family: var(--font-mono, monospace);
+  color: var(--ora-fg, #f8f8f2);
+  font-family: var(--ora-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -641,12 +641,12 @@
 }
 
 .ora-models-slot-empty .ora-models-slot-value {
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   font-style: italic;
 }
 
 .ora-models-pick-chip {
-  background: var(--accent-active, #4a8e3c);
+  background: var(--ora-accent-success, #50c878);
   color: #fff;
   font-size: 9px;
   font-weight: 700;
@@ -661,13 +661,13 @@
   justify-content: space-between;
   gap: 6px;
   padding-top: 4px;
-  border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-top: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12)));
 }
 
 .ora-models-card-btn {
   background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border-subtle, rgba(255,255,255,0.10));
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12)));
   border-radius: 4px;
   padding: 3px 8px;
   font-size: 11px;
@@ -676,18 +676,18 @@
 }
 
 .ora-models-card-btn:hover {
-  color: var(--text-normal);
-  border-color: var(--border-strong, rgba(255,255,255,0.20));
+  color: var(--ora-fg, #f8f8f2);
+  border-color: var(--ora-border, rgba(248, 248, 242, 0.25)));
 }
 
 .ora-models-card-footer {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
 }
 
 .ora-models-toggle-chip {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   font-style: italic;
 }
 
@@ -697,7 +697,7 @@
 
 .ora-models-empty-msg {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   font-style: italic;
   margin: 0;
 }
@@ -725,17 +725,17 @@
 
 .ora-models-card-custom-new.ora-models-card-active {
   border-style: solid;
-  border-color: var(--accent-active, #4a8e3c);
+  border-color: var(--ora-accent-success, #50c878);
 }
 
 .ora-models-card-incomplete {
-  border-color: var(--accent-danger, #c0392b);
+  border-color: var(--ora-accent-danger, #ff5555);
 }
 
 .ora-models-incomplete-flag {
   font-size: 10px;
   font-weight: 600;
-  color: var(--accent-danger, #c0392b);
+  color: var(--ora-accent-danger, #ff5555);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -746,7 +746,7 @@
 }
 
 .ora-models-card-empty-state:hover {
-  background: var(--bg-elevated, rgba(255,255,255,0.03));
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.04)));
 }
 
 .ora-models-card-custom {
@@ -754,8 +754,8 @@
 }
 
 .ora-models-card-btn-danger {
-  color: var(--accent-danger, #c0392b);
-  border-color: var(--accent-danger, #c0392b);
+  color: var(--ora-accent-danger, #ff5555);
+  border-color: var(--ora-accent-danger, #ff5555);
   opacity: 0.65;
   padding: 3px 7px;
   min-width: 24px;
@@ -768,7 +768,7 @@
 /* The "+ New configuration" card */
 .ora-models-card-new-slot {
   border-style: dashed;
-  border-color: var(--border-subtle, rgba(255,255,255,0.10));
+  border-color: var(--ora-border, rgba(248, 248, 242, 0.12)));
   cursor: pointer;
   align-items: center;
   justify-content: center;
@@ -779,7 +779,7 @@
 .ora-models-new-config-btn {
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -792,7 +792,7 @@
 }
 
 .ora-models-new-config-btn:hover {
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
 }
 
 .ora-models-new-plus {
@@ -808,7 +808,7 @@
   align-items: center;
   gap: 16px;
   padding: 8px;
-  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12)));
   flex-wrap: wrap;
 }
 
@@ -823,24 +823,24 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  border: 1px solid var(--border-subtle, rgba(255,255,255,0.15));
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12)));
   border-radius: 12px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   cursor: pointer;
   user-select: none;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
 .ora-models-filter-chip:hover {
-  color: var(--text-normal);
-  border-color: var(--border-strong, rgba(255,255,255,0.30));
+  color: var(--ora-fg, #f8f8f2);
+  border-color: var(--ora-border, rgba(248, 248, 242, 0.25)));
 }
 
 .ora-models-filter-chip-on {
-  background: var(--accent-active, #4a8e3c);
+  background: var(--ora-accent-success, #50c878);
   color: #fff;
-  border-color: var(--accent-active, #4a8e3c);
+  border-color: var(--ora-accent-success, #50c878);
 }
 
 .ora-models-filter-chip input[type="checkbox"] {
@@ -855,7 +855,7 @@
 
 .ora-models-slider-label {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   text-transform: uppercase;
 }
 
@@ -864,12 +864,12 @@
 }
 
 .ora-models-search {
-  background: var(--bg-input, rgba(255,255,255,0.06));
-  border: 1px solid var(--border-subtle, rgba(255,255,255,0.10));
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.06)));
+  border: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12)));
   border-radius: 4px;
   padding: 4px 8px;
   font-size: 12px;
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
   min-width: 180px;
   flex: 1 1 200px;
   max-width: 300px;
@@ -897,15 +897,15 @@
   margin: 0;
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 4px 0 2px;
-  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-bottom: 1px solid var(--ora-border, rgba(248, 248, 242, 0.12)));
 }
 
 .ora-models-vendor-count {
-  color: var(--text-muted);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   font-weight: 400;
   text-transform: none;
 }
@@ -927,19 +927,19 @@
 }
 
 .ora-models-model-row:hover {
-  background: var(--bg-elevated-hover, rgba(255,255,255,0.05));
+  background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06)));
 }
 
 .ora-models-model-name {
   font-size: 12px;
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
   line-height: 1.3;
 }
 
 .ora-models-model-meta {
   font-size: 10px;
-  color: var(--text-muted);
-  font-family: var(--font-mono, monospace);
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
+  font-family: var(--ora-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   line-height: 1.3;
   margin-top: 1px;
 }
@@ -956,8 +956,8 @@
   font-weight: 600;
   padding: 1px 4px;
   border-radius: 3px;
-  background: var(--bg-elevated, rgba(255,255,255,0.08));
-  color: var(--text-muted);
+  background: var(--ora-bg-elevated, rgba(255, 255, 255, 0.04)));
+  color: var(--ora-fg-muted, rgba(248, 248, 242, 0.6));
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -973,6 +973,6 @@
 }
 
 .ora-models-inventory-count {
-  color: var(--text-normal);
+  color: var(--ora-fg, #f8f8f2);
   font-weight: 600;
 }
