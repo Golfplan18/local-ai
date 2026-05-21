@@ -45,6 +45,17 @@
     premium: 'Premium',
   };
 
+  // Inventory filter + sort state. Persists across renders within a
+  // single mount; reset to defaults on every fresh init().
+  var _filters = {
+    vision: false,
+    free: false,
+    open_weights: false,
+    pick: false,
+    intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
+    search: '',
+  };
+
   // ── public API ───────────────────────────────────────────────────────────
 
   function init(host) {
@@ -75,6 +86,10 @@
     _registry = null;
     _picksSet = null;
     _configs = null;
+    _filters = {
+      vision: false, free: false, open_weights: false, pick: false,
+      intelligence_pct: 0, search: '',
+    };
   }
 
   // ── data load ───────────────────────────────────────────────────────────
@@ -93,6 +108,7 @@
       _renderHeader();
       _renderPresets();
       _renderCustom();
+      _renderInventory();
       _renderRemainingSkeleton();
     }).catch(function (err) {
       _showHeaderError(err);
@@ -551,13 +567,285 @@
       + '</div>';
   }
 
+  // ── inventory grid ──────────────────────────────────────────────────────
+
+  function _renderInventory() {
+    if (!_hostEl) return;
+    var section = _hostEl.querySelector('[data-section="inventory"]');
+    if (!section) return;
+    var models = (_registry && _registry.models) || {};
+    var allModels = Object.values(models);
+
+    // Compute the intelligence cutoff once (used by both the filter
+    // and shown in the header). Combined score normalises Arena ELO
+    // (typical 800-1500) and AA Index (0-100) into a single 0-1
+    // ranking so the slider works regardless of which source covers
+    // a given model.
+    var scoredModels = allModels.map(function (m) {
+      return {model: m, score: _combinedScore(m)};
+    });
+    var ranked = scoredModels.filter(function (s) { return s.score != null; })
+                             .sort(function (a, b) { return b.score - a.score; });
+    var keepRanked = Math.ceil(ranked.length * (1 - _filters.intelligence_pct / 100));
+    var rankedKeptIds = new Set(ranked.slice(0, keepRanked).map(function (s) {
+      return s.model.id;
+    }));
+
+    var filtered = allModels.filter(function (m) {
+      return _matchesFilters(m, rankedKeptIds);
+    });
+
+    var grouped = _groupByVendor(filtered);
+    var columns = _distributeVendorsToColumns(grouped);
+
+    var visibleCount = filtered.length;
+    var totalCount = allModels.length;
+
+    section.innerHTML = ''
+      + '<header class="ora-models-section-header">'
+      +   '<h3>Model inventory</h3>'
+      +   '<span class="ora-models-section-hint">'
+      +     '<span class="ora-models-inventory-count">'
+      +       _esc(String(visibleCount)) + ' of ' + _esc(String(totalCount)) + ' models'
+      +     '</span>'
+      +     ' · vendors alphabetical by column · local pinned to top of column 1'
+      +   '</span>'
+      + '</header>'
+      + '<div class="ora-models-inventory-controls">'
+      +   _filterChipsHTML()
+      +   _sliderHTML()
+      +   _searchInputHTML()
+      + '</div>'
+      + '<div class="ora-models-row ora-models-inventory-row">'
+      +   columns.map(_columnHTML).join('')
+      + '</div>';
+
+    _wireInventoryControls(section);
+  }
+
+  function _combinedScore(model) {
+    // AA Index is 0-100; Arena ELO is typically 800-1500. Normalise
+    // both to 0-1 so the slider works against either-or coverage.
+    if (model.aa_intelligence_index != null) {
+      return Math.max(0, Math.min(1, model.aa_intelligence_index / 100));
+    }
+    if (model.intelligence_score != null) {
+      return Math.max(0, Math.min(1, (model.intelligence_score - 800) / 700));
+    }
+    return null;
+  }
+
+  function _matchesFilters(model, rankedKeptIds) {
+    if (_filters.vision && model.vision_capable !== true) return false;
+    if (_filters.free) {
+      var isFree = (model.id || '').endsWith(':free')
+        || model.is_free === true;
+      if (!isFree) return false;
+    }
+    if (_filters.open_weights && model.is_open_weights !== true) return false;
+    if (_filters.pick && !(_picksSet && _picksSet.has(model.id))) return false;
+    // Intelligence filter: when slider is at 0 (default), show all
+    // including unranked. When > 0, drop everything not in the top X%.
+    if (_filters.intelligence_pct > 0) {
+      if (!rankedKeptIds.has(model.id)) return false;
+    }
+    if (_filters.search) {
+      var s = _filters.search.toLowerCase();
+      var name = (model.display_name || '').toLowerCase();
+      var id = (model.id || '').toLowerCase();
+      if (name.indexOf(s) === -1 && id.indexOf(s) === -1) return false;
+    }
+    return true;
+  }
+
+  function _vendorOf(model) {
+    var id = model.id || '';
+    if (id.indexOf('/') === -1) {
+      // Local-MLX style ids (no slash) — bucket as Local.
+      return 'Local';
+    }
+    return id.substring(0, id.indexOf('/'));
+  }
+
+  function _groupByVendor(models) {
+    var groups = {};
+    models.forEach(function (m) {
+      var v = _vendorOf(m);
+      if (!groups[v]) groups[v] = [];
+      groups[v].push(m);
+    });
+    // Sort each vendor's models alphabetical-descending (per the
+    // user-locked decision — most recent releases tend to bubble up
+    // because their version numbers come last alphabetically).
+    Object.keys(groups).forEach(function (v) {
+      groups[v].sort(function (a, b) {
+        var ai = (a.id || '').toLowerCase();
+        var bi = (b.id || '').toLowerCase();
+        if (ai > bi) return -1;
+        if (ai < bi) return 1;
+        return 0;
+      });
+    });
+    return groups;
+  }
+
+  function _distributeVendorsToColumns(grouped) {
+    // 4 equal columns. Local is always pinned to the top of column 1.
+    // Remaining vendors are sorted alphabetically and split across
+    // columns in alphabetical-by-column order (column 1 carries the
+    // first chunk of names, column 2 the next chunk, etc.) so the
+    // user's read-down-then-right pattern works.
+    var columns = [[], [], [], []];
+    if (grouped.Local && grouped.Local.length) {
+      columns[0].push({vendor: 'Local', models: grouped.Local});
+    }
+    var otherVendors = Object.keys(grouped)
+      .filter(function (v) { return v !== 'Local'; })
+      .sort();
+    var perCol = Math.ceil(otherVendors.length / 4);
+    otherVendors.forEach(function (vendor, i) {
+      var colIdx = Math.min(3, Math.floor(i / perCol));
+      columns[colIdx].push({vendor: vendor, models: grouped[vendor]});
+    });
+    return columns;
+  }
+
+  function _columnHTML(column) {
+    if (!column.length) {
+      return '<div class="ora-models-inventory-column"></div>';
+    }
+    return '<div class="ora-models-inventory-column">'
+      + column.map(_vendorBlockHTML).join('')
+      + '</div>';
+  }
+
+  function _vendorBlockHTML(group) {
+    return ''
+      + '<div class="ora-models-vendor-block">'
+      +   '<h4 class="ora-models-vendor-name">' + _esc(group.vendor)
+      +     ' <span class="ora-models-vendor-count">(' + group.models.length + ')</span>'
+      +   '</h4>'
+      +   '<ul class="ora-models-model-list">'
+      +     group.models.map(_modelRowHTML).join('')
+      +   '</ul>'
+      + '</div>';
+  }
+
+  function _modelRowHTML(model) {
+    var displayName = model.display_name || model.id;
+    var chips = _modelChipsHTML(model);
+    return ''
+      + '<li class="ora-models-model-row" title="' + _esc(model.id) + '">'
+      +   '<div class="ora-models-model-name">' + _esc(displayName) + '</div>'
+      +   '<div class="ora-models-model-meta">'
+      +     _modelMetaHTML(model)
+      +   '</div>'
+      +   (chips ? '<div class="ora-models-model-chips">' + chips + '</div>' : '')
+      + '</li>';
+  }
+
+  function _modelMetaHTML(model) {
+    var parts = [];
+    if (model.aa_intelligence_index != null) {
+      parts.push('AA ' + model.aa_intelligence_index.toFixed(1));
+    } else if (model.intelligence_score != null) {
+      parts.push('Arena ' + model.intelligence_score.toFixed(0));
+    }
+    var pricing = model.pricing || {};
+    if (pricing.input_per_token != null || pricing.output_per_token != null) {
+      var ip = pricing.input_per_token != null
+        ? '$' + (pricing.input_per_token * 1e6).toFixed(2) : '?';
+      var op = pricing.output_per_token != null
+        ? '$' + (pricing.output_per_token * 1e6).toFixed(2) : '?';
+      parts.push(ip + '/' + op + '/M');
+    }
+    if (model.output_tokens_per_second != null) {
+      parts.push(model.output_tokens_per_second.toFixed(0) + ' t/s');
+    }
+    if (model.latency_ttft_seconds != null) {
+      parts.push(model.latency_ttft_seconds.toFixed(1) + 's TTFT');
+    }
+    return parts.join(' · ');
+  }
+
+  function _modelChipsHTML(model) {
+    var chips = [];
+    if (_picksSet && _picksSet.has(model.id)) {
+      chips.push('<span class="ora-models-pick-chip">PICK</span>');
+    }
+    if (model.vision_capable === true) {
+      chips.push('<span class="ora-models-chip ora-models-chip-vision">vision</span>');
+    }
+    if (model.is_open_weights === true) {
+      chips.push('<span class="ora-models-chip">open</span>');
+    }
+    if ((model.id || '').endsWith(':free')) {
+      chips.push('<span class="ora-models-chip ora-models-chip-free">:free</span>');
+    }
+    return chips.join('');
+  }
+
+  function _filterChipsHTML() {
+    var chips = [
+      {key: 'vision', label: 'Vision'},
+      {key: 'free', label: 'Free'},
+      {key: 'open_weights', label: 'Open-weights'},
+      {key: 'pick', label: 'PICK'},
+    ];
+    return '<div class="ora-models-filter-chips">'
+      + chips.map(function (c) {
+          var on = _filters[c.key];
+          return '<label class="ora-models-filter-chip' + (on ? ' ora-models-filter-chip-on' : '') + '">'
+            + '<input type="checkbox" data-filter="' + c.key + '"' + (on ? ' checked' : '') + '>'
+            + _esc(c.label)
+            + '</label>';
+        }).join('')
+      + '</div>';
+  }
+
+  function _sliderHTML() {
+    return ''
+      + '<div class="ora-models-slider-wrap" title="Intelligence floor — slide right to keep only top-ranked models">'
+      +   '<span class="ora-models-slider-label">Intel</span>'
+      +   '<input type="range" min="0" max="95" step="5" value="'
+      +     String(_filters.intelligence_pct) + '" class="ora-models-slider" data-filter="intelligence_pct">'
+      + '</div>';
+  }
+
+  function _searchInputHTML() {
+    return ''
+      + '<input type="search" class="ora-models-search" placeholder="filter…"'
+      + ' value="' + _esc(_filters.search) + '" data-filter="search">';
+  }
+
+  function _wireInventoryControls(section) {
+    Array.from(section.querySelectorAll('.ora-models-filter-chip input')).forEach(function (el) {
+      el.addEventListener('change', function () {
+        _filters[el.dataset.filter] = el.checked;
+        _renderInventory();
+      });
+    });
+    var slider = section.querySelector('.ora-models-slider');
+    if (slider) {
+      slider.addEventListener('input', function () {
+        _filters.intelligence_pct = parseInt(slider.value, 10) || 0;
+        _renderInventory();
+      });
+    }
+    var searchEl = section.querySelector('.ora-models-search');
+    if (searchEl) {
+      searchEl.addEventListener('input', function () {
+        _filters.search = searchEl.value || '';
+        _renderInventory();
+      });
+    }
+  }
+
   // ── placeholder sections (filled by subsequent commits) ─────────────────
 
   function _renderRemainingSkeleton() {
     if (!_hostEl) return;
     var sections = [
-      ['inventory',
-       'Vendor-organized model inventory with filter chips and intelligence slider (commit step 6).'],
       ['hardware',
        'Local model hardware analysis (commit step 13).'],
     ];
