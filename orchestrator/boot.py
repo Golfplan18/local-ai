@@ -7254,7 +7254,7 @@ _UNHEALTHY_PATTERNS = (
 ) + _PROVIDER_TRANSPORT_ERROR_MARKERS
 
 
-def _step_output_health(text: str, step_name: str, min_chars: int = 200) -> tuple[bool, str]:
+def _step_output_health(text: str, step_name: str, min_chars: int = 30) -> tuple[bool, str]:
     """Inspect a step's output and return (healthy, reason).
 
     Health checks:
@@ -7522,7 +7522,7 @@ def _wrap_analyst_as_degraded_reviser_envelope(
 
 
 def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
-                          min_chars: int = 200,
+                          min_chars: int = 30,
                           retry_hint: str | None = None,
                           images: list = None,
                           context_pkg: dict | None = None,
@@ -7654,7 +7654,7 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
 
 
 def _call_with_retry(messages: list, endpoint: dict, step_name: str,
-                     min_chars: int = 200, retry_hint: str | None = None,
+                     min_chars: int = 30, retry_hint: str | None = None,
                      images: list = None,
                      *,
                      slot: str | None = None,
@@ -8458,14 +8458,14 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _call_with_supplement,
             [{"role": "system", "content": depth_system},
              {"role": "user", "content": cleaned_prompt}],
-            depth_endpoint, "analyst", 200, None, images, context_pkg,
+            depth_endpoint, "analyst", 30, None, images, context_pkg,
             slot="depth", gear=4, config_name=config_name,
         )
         breadth_future = executor.submit(
             _call_with_supplement,
             [{"role": "system", "content": breadth_system},
              {"role": "user", "content": cleaned_prompt}],
-            breadth_endpoint, "analyst", 200, None, images, context_pkg,
+            breadth_endpoint, "analyst", 30, None, images, context_pkg,
             slot="breadth", gear=4, config_name=config_name,
         )
         try:
@@ -8559,7 +8559,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": eval_a_user_message}],
-            breadth_endpoint, "evaluator", 150, None,
+            breadth_endpoint, "evaluator", 30, None,
             _images_for_endpoint(images, breadth_endpoint), context_pkg,
             slot="breadth", gear=4, config_name=config_name,
         )
@@ -8567,7 +8567,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": eval_b_user_message}],
-            depth_endpoint, "evaluator", 150, None,
+            depth_endpoint, "evaluator", 30, None,
             _images_for_endpoint(images, depth_endpoint), context_pkg,
             slot="depth", gear=4, config_name=config_name,
         )
@@ -8690,7 +8690,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": depth_revise_user_message}],
-            depth_endpoint, "reviser", 200, None,
+            depth_endpoint, "reviser", 30, None,
             _images_for_endpoint(images, depth_endpoint), context_pkg,
             slot="depth", gear=4, config_name=config_name,
         )
@@ -8698,7 +8698,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": breadth_revise_user_message}],
-            breadth_endpoint, "reviser", 200, None,
+            breadth_endpoint, "reviser", 30, None,
             _images_for_endpoint(images, breadth_endpoint), context_pkg,
             slot="breadth", gear=4, config_name=config_name,
         )
@@ -9079,7 +9079,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                          f"## VERIFIER'S FINDINGS\n\n{depth_verdict}\n\n"
                          "Address the verifier's findings and revise again."
                      )}],
-                    depth_endpoint, "reviser", 200, None, None,
+                    depth_endpoint, "reviser", 30, None, None,
                     slot="depth", gear=4, config_name=config_name,
                 )
             if not breadth_unblocks:
@@ -9092,7 +9092,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                          f"## VERIFIER'S FINDINGS\n\n{breadth_verdict}\n\n"
                          "Address the verifier's findings and revise again."
                      )}],
-                    breadth_endpoint, "reviser", 200, None, None,
+                    breadth_endpoint, "reviser", 30, None, None,
                     slot="breadth", gear=4, config_name=config_name,
                 )
             if "depth" in futures:
