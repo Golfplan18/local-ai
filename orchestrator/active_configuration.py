@@ -369,8 +369,12 @@ def create_blank_configuration(new_name: str | None = None) -> str:
     """Create an empty custom configuration with no slot picks.
 
     The result is red-bordered in the UI (incomplete) until the user
-    fills in at least one small + two large picks. Returns the name
-    actually used.
+    fills in the four baseline slots — see ``_is_baseline_complete``.
+    The ``_incomplete: True`` marker on the config persists until the
+    user satisfies that check via slot edits; legacy customs lack the
+    marker and are NOT flagged as incomplete (the marker is the only
+    incomplete signal — missing slots alone are not enough).
+    Returns the name actually used.
     """
     if new_name is None or not new_name.strip():
         new_name = _next_auto_name()
@@ -382,6 +386,7 @@ def create_blank_configuration(new_name: str | None = None) -> str:
             "name": new_name,
             "description": "Custom configuration created from the Models pane.",
             "preset_lineage": "custom",
+            "_incomplete": True,
             "cells": {
                 "utility": {
                     "step1_cleanup": {"primary": None, "fallback": []},
@@ -407,6 +412,32 @@ def create_blank_configuration(new_name: str | None = None) -> str:
         }
         _save_config(new_name, config)
     return new_name
+
+
+def _is_baseline_complete(config: dict) -> bool:
+    """A configuration is baseline-complete when the four card-visible
+    slots are filled: big 1 (gear4.depth.primary), small
+    (utility.step1_cleanup.primary), image generation
+    (image_generation.image_generation.primary), AND big 2
+    (gear4.breadth.primary) when Adversarial Diversity is on (when
+    off the data side mirrors big 1 into big 2 automatically, so big 2
+    is implicitly complete).
+    """
+    cells = (config or {}).get("cells") or {}
+    big1 = (((cells.get("analysis") or {}).get("gear4") or {}).get("depth") or {}).get("primary")
+    big2 = (((cells.get("analysis") or {}).get("gear4") or {}).get("breadth") or {}).get("primary") \
+        if isinstance(((cells.get("analysis") or {}).get("gear4") or {}).get("breadth"), dict) else None
+    small = ((cells.get("utility") or {}).get("step1_cleanup") or {}).get("primary")
+    img = ((cells.get("image_generation") or {}).get("image_generation") or {}).get("primary")
+    saved_toggles = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
+    inferred = _infer_defaults(config)
+    adversarial = bool(saved_toggles.get("adversarial_diversity",
+                                         inferred.get("adversarial_diversity", False)))
+    if not big1 or not small or not img:
+        return False
+    if adversarial and not big2:
+        return False
+    return True
 
 
 def delete_configuration(name: str) -> None:
@@ -601,6 +632,11 @@ def _summarize(name: str, config: dict) -> dict:
         "image_generation": image_generation_primary,
         "image_generation_fallback": image_generation_fallback,
         "toggles": toggles_resolved,
+        # The incomplete flag is set by create_blank_configuration and
+        # cleared by set_slot_primary once the four baselines fill. It's
+        # the ONLY signal the UI uses for the red-bordered incomplete
+        # state — missing slots on legacy customs do not flag.
+        "incomplete": bool(config.get("_incomplete")),
     }
 
 
@@ -701,6 +737,14 @@ def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
                     "primary": model_id,
                     "fallback": [],
                 }
+        # Clear the _incomplete marker once the four baseline slots are
+        # all filled. This is one-way: once cleared, future slot edits
+        # (e.g. user blanks a slot to test something) do NOT re-flag the
+        # configuration as incomplete — the marker is the "started from
+        # scratch, not yet finished" signal, not a live completeness
+        # check.
+        if config.get("_incomplete") and _is_baseline_complete(config):
+            config.pop("_incomplete", None)
         _save_config(name, config)
     return config
 

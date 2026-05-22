@@ -64,4 +64,11 @@
      paper without competing with the diagrammatic-primary olive. */
   --color-active:     #3F7D4D;
   --color-active-rgb: 63, 125, 77;
+
+  /* Warning red — dedicated incomplete / danger signal. Distinct
+     from --color-red (which is brick, an editorial-cartoon accent)
+     and from --color-orange (burnt orange, a cartoonist signature)
+     so warnings don't compete with brand-register tones. */
+  --color-warning:     #B22222;
+  --color-warning-rgb: 178, 34, 34;
 }

@@ -861,25 +861,15 @@
     _wireSlotPickHandlers(section);
   }
 
-  // Baseline-slot completeness check. A custom is "complete" when the
-  // four baseline slots the card shows are all picked: big 1 / small /
-  // image generation always required; big 2 required only when
-  // Adversarial Diversity is on (when off the data side mirrors big 1
-  // into big 2 automatically). Used to mark new-from-scratch configs
-  // with the red incomplete border until the user fills them in.
-  function _isCustomIncomplete(summary) {
-    if (!summary) return false;
-    var adversarial = !!(summary.toggles && summary.toggles.adversarial_diversity);
-    if (!summary.big1) return true;
-    if (!summary.small) return true;
-    if (!summary.image_generation) return true;
-    if (adversarial && !summary.big2) return true;
-    return false;
-  }
-
   function _customCardHTML(summary, isActive) {
     var adversarial = !!(summary.toggles && summary.toggles.adversarial_diversity);
-    var incomplete = _isCustomIncomplete(summary);
+    // Read the incomplete flag straight from the summary — set by the
+    // backend when create_blank_configuration runs (via + New) and
+    // cleared the moment the four baselines all fill. Legacy customs
+    // that happen to be missing image_generation are NOT flagged,
+    // because the flag tracks "started from scratch, not yet finished"
+    // intent, not a live completeness check.
+    var incomplete = !!summary.incomplete;
     return ''
       + '<div class="ora-models-card ora-models-card-custom'
       +   (isActive ? ' ora-models-card-active' : '')

@@ -762,7 +762,7 @@
 }
 
 .ora-models-card-incomplete {
-  border-color: var(--color-red, #C77958);
+  border-color: var(--color-warning, #B22222);
   /* Bump width so the red enclosure stands out against the new 1px
      default border. Matches the active card's 2px treatment. */
   border-width: 2px;
@@ -772,7 +772,7 @@
 .ora-models-incomplete-flag {
   font-size: 10px;
   font-weight: 600;
-  color: var(--color-red, #C77958);
+  color: var(--color-warning, #B22222);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
