@@ -556,12 +556,58 @@
 /* 4 cards per row when each can be ≥340px wide; below that, wraps
  * naturally (3 cards, then 2×2). At the 1700px max modal width minus
  * padding (~1620px content area) we comfortably fit 4 × 340 = 1360
- * with the rest going to gaps. */
+ * with the rest going to gaps.
+ *
+ * Flex (not grid) because the row also has to host the fallback popout
+ * as a sibling of the active card — see the bifold-wallet block below.
+ */
 .ora-models-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 6px 8px;
+}
+.ora-models-row > .ora-models-card {
+  flex: 1 1 340px;
+  min-width: 280px;
+}
+
+/* Bifold-wallet popout: when ▸ More is clicked on a card, the popout
+ * element is moved (by JS, see _attachPopoutToActiveCard) to sit as a
+ * flex sibling immediately after the active card. The row gets the
+ * `--popout-open` modifier and the inactive cards shrink to slim
+ * summaries so the active-card + popout pair can take the rest. */
+.ora-models-row--popout-open > .ora-models-card:not(.ora-models-card-popout-open) {
+  flex: 0 1 110px;
+  min-width: 0;
+}
+.ora-models-row--popout-open > .ora-models-card:not(.ora-models-card-popout-open) .ora-models-card-body,
+.ora-models-row--popout-open > .ora-models-card:not(.ora-models-card-popout-open) .ora-models-card-actions {
+  display: none;
+}
+.ora-models-row--popout-open > .ora-models-card-popout-open {
+  flex: 2 1 0;
+  min-width: 280px;
+  /* Visually anchor the popout to the active card's right edge: lose the
+     right-side rounding so the two pieces read as one hinged surface. */
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.ora-models-row--popout-open > .ora-models-fallback-popout {
+  position: static;
+  flex: 2 1 0;
+  width: auto;
+  min-width: 280px;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  box-shadow: none;
+  border-left: 2px solid var(--color-green, #87905B);
+  border-top: 1px solid var(--background-modifier-border, #3A3022);
+  border-right: 1px solid var(--background-modifier-border, #3A3022);
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 0 5px 5px 0;
+  z-index: 0;
 }
 
 /* ── Cards (preset + custom + previous all share the base) ──────── */

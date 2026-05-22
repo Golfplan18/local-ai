@@ -1399,6 +1399,7 @@
     if (!_fallbackPopoutFor) {
       popout.hidden = true;
       popout.innerHTML = '';
+      _detachPopoutFromRow(popout);
       return;
     }
     // Look up the config summary (presets + customs).
@@ -1415,6 +1416,7 @@
       _fallbackPopoutFor = null;
       popout.hidden = true;
       popout.innerHTML = '';
+      _detachPopoutFromRow(popout);
       return;
     }
 
@@ -1453,6 +1455,57 @@
         _renderPresets();
         _renderCustom();
       });
+
+    _attachPopoutToActiveCard(popout);
+  }
+
+  // Bifold-wallet positioning: when a popout is open, move the popout
+  // element out of the pane root and into the preset/custom row, right
+  // after the active card. The row reflows via CSS (slim siblings, wide
+  // active + popout pair). Closing detaches it back to the pane root.
+  function _attachPopoutToActiveCard(popout) {
+    if (!_hostEl || !_fallbackPopoutFor) return;
+    var activeCard = _hostEl.querySelector(
+      '.ora-models-card[data-config-name="' + _cssEscape(_fallbackPopoutFor) + '"]'
+    );
+    if (!activeCard) return;
+    var row = activeCard.parentElement;
+    if (!row) return;
+
+    // Clear any stale popout-open state on other rows / cards
+    Array.from(_hostEl.querySelectorAll('.ora-models-row--popout-open'))
+      .forEach(function (r) {
+        if (r !== row) r.classList.remove('ora-models-row--popout-open');
+      });
+    Array.from(_hostEl.querySelectorAll('.ora-models-card-popout-open'))
+      .forEach(function (c) {
+        if (c !== activeCard) c.classList.remove('ora-models-card-popout-open');
+      });
+
+    row.classList.add('ora-models-row--popout-open');
+    activeCard.classList.add('ora-models-card-popout-open');
+    if (popout.parentElement !== row || activeCard.nextElementSibling !== popout) {
+      activeCard.insertAdjacentElement('afterend', popout);
+    }
+  }
+
+  function _detachPopoutFromRow(popout) {
+    if (!_hostEl) return;
+    Array.from(_hostEl.querySelectorAll('.ora-models-row--popout-open'))
+      .forEach(function (r) { r.classList.remove('ora-models-row--popout-open'); });
+    Array.from(_hostEl.querySelectorAll('.ora-models-card-popout-open'))
+      .forEach(function (c) { c.classList.remove('ora-models-card-popout-open'); });
+    // Re-park popout under the pane root so a future open doesn't have to
+    // hunt for it across the DOM.
+    var pane = _hostEl.querySelector('.ora-models-pane');
+    if (pane && popout.parentElement !== pane) {
+      pane.appendChild(popout);
+    }
+  }
+
+  function _cssEscape(s) {
+    if (typeof CSS !== 'undefined' && CSS.escape) return CSS.escape(s);
+    return String(s).replace(/(["\\'\\]])/g, '\\\\$1');
   }
 
   function _popoutSlotHTML(label, primary, fallbackList) {
