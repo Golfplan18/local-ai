@@ -56,6 +56,7 @@
     search: '',
     sort_by: 'alpha_desc',  // alphabetical descending — newest releases bubble up by version-string convention
     category: 'chat',       // inventory category: chat | image_generation | image_editing | text_to_video. Slot-pick mode overrides to the slot's category.
+    grouping: 'vendor',     // 'vendor' (default — vendor blocks, collapsible) or 'flat' (no grouping, one sorted list)
   };
 
   var CATEGORY_OPTIONS = [
@@ -147,7 +148,7 @@
     _filters = {
       vision: false, free: false, pick: false,
       intelligence_pct: 0, search: '', sort_by: 'alpha_desc',
-      category: 'chat',
+      category: 'chat', grouping: 'vendor',
     };
     _expandedVendors = new Set();
     _activeSlotPick = null;
@@ -1175,12 +1176,29 @@
     }).filter(function (g) {
       return !anyFilterActive || g.models.length > 0;
     });
-    var columns = _distributeVendorsToColumns(groupsForDisplay);
-
     var totalCount = allModels.length;
     var visibleCount = groupsForDisplay.reduce(function (sum, g) {
       return sum + g.models.length;
     }, 0);
+
+    // Build the rendered inventory body. Two layouts:
+    //   vendor  — collapsible vendor blocks distributed across 4 columns
+    //   flat    — all matching models in one sorted list, no vendor
+    //             headers; rows distributed column-major across 4 columns
+    //             so the cheapest (or smartest) bubbles up to the top
+    //             of column 1.
+    var inventoryBody;
+    if (_filters.grouping === 'flat') {
+      var flatModels = [];
+      groupsForDisplay.forEach(function (g) {
+        flatModels = flatModels.concat(g.models);
+      });
+      flatModels = _sortModels(flatModels, _filters.sort_by);
+      inventoryBody = _flatColumnsHTML(flatModels);
+    } else {
+      var columns = _distributeVendorsToColumns(groupsForDisplay);
+      inventoryBody = columns.map(_columnHTML).join('');
+    }
 
     var pickBanner = '';
     if (_activeSlotPick) {
@@ -1207,11 +1225,12 @@
       +   _categorySelectHTML()
       +   _filterChipsHTML()
       +   _sortSelectHTML()
+      +   _groupingControlsHTML()
       +   _sliderHTML()
       +   _searchInputHTML()
       + '</div>'
       + '<div class="ora-models-row ora-models-inventory-row">'
-      +   columns.map(_columnHTML).join('')
+      +   inventoryBody
       + '</div>';
 
     _wireInventoryControls(section);
@@ -1299,8 +1318,13 @@
         return arr.sort(function (a, b) {
           var ac = _blendedCostPerM(a);
           var bc = _blendedCostPerM(b);
-          if (ac == null) ac = Infinity;
-          if (bc == null) bc = Infinity;
+          // Negative blended cost is a sentinel for "no real pricing"
+          // emitted by OpenRouter's auto-routing meta-models (Auto
+          // Router, Pareto Code Router, etc.). Push them to the
+          // bottom alongside genuine no-price rows so the user sees
+          // priced models first when sorting by cost ascending.
+          if (ac == null || ac < 0) ac = Infinity;
+          if (bc == null || bc < 0) bc = Infinity;
           return ac - bc;
         });
       case 'latency_asc':
@@ -1448,6 +1472,79 @@
       + '</div>';
   }
 
+  // Vendor list for the currently-displayed category — used by the
+  // Expand-all action to know which vendor names to add to the
+  // expanded set. Walks the registry once; cheap relative to a render.
+  function _collectAllVendorsForCurrentCategory() {
+    var models = (_registry && _registry.models) || {};
+    var SLOT_TO_CATEGORY = {'image gen': 'image_generation'};
+    var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
+    var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel])
+      || _filters.category || 'chat';
+    var vendors = new Set();
+    Object.keys(models).forEach(function (id) {
+      var m = models[id];
+      var cat = (m && m.category) || 'chat';
+      if (cat !== wantCategory) return;
+      vendors.add(_vendorOf(m));
+    });
+    return Array.from(vendors);
+  }
+
+  // Grouping controls: toggle between vendor-grouped and flat list,
+  // plus expand-all / collapse-all buttons that affect vendor-mode only.
+  function _groupingControlsHTML() {
+    var grouping = _filters.grouping || 'vendor';
+    var isFlat = grouping === 'flat';
+    var groupBtn = '<button type="button" class="ora-models-grouping-btn'
+      + (isFlat ? '' : ' ora-models-grouping-btn-active') + '"'
+      + ' data-grouping="vendor" title="Group inventory by vendor">'
+      + 'Group by vendor</button>';
+    var flatBtn = '<button type="button" class="ora-models-grouping-btn'
+      + (isFlat ? ' ora-models-grouping-btn-active' : '') + '"'
+      + ' data-grouping="flat" title="Show every model in a single sorted list">'
+      + 'Flat list</button>';
+    var expandBtn = '<button type="button" class="ora-models-grouping-btn"'
+      + (isFlat ? ' disabled' : '')
+      + ' data-grouping-action="expand-all"'
+      + ' title="Expand every vendor block">'
+      + 'Expand all</button>';
+    var collapseBtn = '<button type="button" class="ora-models-grouping-btn"'
+      + (isFlat ? ' disabled' : '')
+      + ' data-grouping-action="collapse-all"'
+      + ' title="Collapse every vendor block">'
+      + 'Collapse all</button>';
+    return ''
+      + '<div class="ora-models-grouping-wrap">'
+      +   groupBtn + flatBtn + expandBtn + collapseBtn
+      + '</div>';
+  }
+
+  // Flat-list layout: distribute matching models column-major across 4
+  // columns. The user sorted by Cost (or whatever) sees the top of
+  // column 1 first; column 2 picks up where 1 left off.
+  function _flatColumnsHTML(models) {
+    if (!models.length) {
+      return '<div class="ora-models-inventory-column">'
+        + '<p class="ora-models-empty-msg">No models match the current filters.</p>'
+        + '</div>';
+    }
+    var perCol = Math.ceil(models.length / 4);
+    var cols = [[], [], [], []];
+    models.forEach(function (m, i) {
+      var idx = Math.min(3, Math.floor(i / perCol));
+      cols[idx].push(m);
+    });
+    return cols.map(function (col) {
+      if (!col.length) return '<div class="ora-models-inventory-column"></div>';
+      return '<div class="ora-models-inventory-column">'
+        + '<ul class="ora-models-model-list ora-models-model-list-flat">'
+        +   col.map(_modelRowHTML).join('')
+        + '</ul>'
+        + '</div>';
+    }).join('');
+  }
+
   function _categorySelectHTML() {
     // Active slot-pick locks the category to match the slot — show the
     // dropdown disabled so the user sees why their click can't change it.
@@ -1530,6 +1627,31 @@
         _renderInventory();
       });
     });
+    // Grouping toggle (vendor vs flat). Expand-all / Collapse-all
+    // affect _expandedVendors directly and only matter in vendor mode.
+    Array.from(section.querySelectorAll('[data-grouping]')).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _filters.grouping = btn.dataset.grouping;
+        _renderInventory();
+      });
+    });
+    var expandAll = section.querySelector('[data-grouping-action="expand-all"]');
+    if (expandAll) {
+      expandAll.addEventListener('click', function () {
+        if (expandAll.disabled) return;
+        var allVendors = _collectAllVendorsForCurrentCategory();
+        _expandedVendors = new Set(allVendors);
+        _renderInventory();
+      });
+    }
+    var collapseAll = section.querySelector('[data-grouping-action="collapse-all"]');
+    if (collapseAll) {
+      collapseAll.addEventListener('click', function () {
+        if (collapseAll.disabled) return;
+        _expandedVendors = new Set();
+        _renderInventory();
+      });
+    }
     // Inventory row clicks commit a slot pick when one is active.
     Array.from(section.querySelectorAll('.ora-models-model-row')).forEach(function (row) {
       row.addEventListener('click', function () {

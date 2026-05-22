@@ -1169,6 +1169,42 @@
   cursor: pointer;
 }
 
+/* ── Grouping + expand/collapse buttons ──────────────────────────── */
+
+.ora-models-grouping-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ora-models-grouping-btn {
+  background: var(--background-secondary, #1F1A0F);
+  color: var(--text-muted, #A89F8A);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  text-transform: none;
+}
+
+.ora-models-grouping-btn:hover:not(:disabled) {
+  background: var(--interactive-hover, #2A2218);
+  color: var(--text-normal, #E8E0CC);
+}
+
+.ora-models-grouping-btn-active {
+  background: var(--background-modifier-active, #3A3022);
+  color: var(--text-normal, #E8E0CC);
+  border-color: var(--color-active, #5FA86E);
+}
+
+.ora-models-grouping-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ── Slot pick gesture ───────────────────────────────────────────── */
 
 .ora-models-slot-row-clickable {
