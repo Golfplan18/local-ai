@@ -1228,6 +1228,12 @@ def merge_sources(
             if probed_value is not None:
                 vision = {"value": probed_value, "source": "empirical_probe"}
 
+        # Preserve other probe verdicts that aren't rederivable from the
+        # raw catalog fetches — reachability and vendor audit cost real
+        # API round-trips and shouldn't be wiped on a routine re-sync.
+        prior_reach = (prior.get("_provenance") or {}).get("reachability")
+        prior_vendor_audit = (prior.get("_provenance") or {}).get("vendor_audit")
+
         provenance = {
             "openrouter": {
                 "input_modalities": or_view["input_modalities"],
@@ -1240,6 +1246,10 @@ def merge_sources(
         }
         if prior_probe:
             provenance["empirical_probe"] = prior_probe
+        if prior_reach:
+            provenance["reachability"] = prior_reach
+        if prior_vendor_audit:
+            provenance["vendor_audit"] = prior_vendor_audit
 
         models[model_id] = {
             "id": model_id,
@@ -1269,6 +1279,16 @@ def merge_sources(
             "last_synced_at": _now_iso(),
             "_provenance": provenance,
         }
+        # Mirror reach + vendor verdicts at the top level so the UI can
+        # read them without diving into _provenance. Carried forward from
+        # the prior registry so a re-sync doesn't wipe live probe data.
+        if prior_reach:
+            models[model_id]["reachable"] = prior_reach.get("reachable")
+            models[model_id]["reachable_rate_limited"] = bool(prior_reach.get("rate_limited"))
+            models[model_id]["reachable_probed_at"] = prior_reach.get("probed_at")
+        if prior_vendor_audit:
+            models[model_id]["vendor_listed"] = prior_vendor_audit.get("vendor_listed")
+            models[model_id]["vendor_audited_at"] = prior_vendor_audit.get("audited_at")
     # Post-process: ``:free`` suffix variants inherit from their paid base
     # (same underlying model, billing-tier-only differentiation).
     inherited = _apply_free_suffix_inheritance(models)
