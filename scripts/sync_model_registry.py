@@ -504,8 +504,15 @@ _BRAND_NORMALIZE = (
 )
 
 _NOISE_TOKENS = {
-    "instruct", "chat", "preview", "exp", "experimental", "stable",
-    "latest", "base", "thinking", "reasoner", "model", "ai", "version",
+    # "chat" and "latest" were previously listed here but caused the
+    # matcher to collapse meaningful OpenAI ids — gpt-5-chat lost its
+    # distinguishing token and got Jaccard-fit to gpt-5-5 (xhigh),
+    # inheriting the latter's score. Removed 2026-05-22 along with
+    # the normalized-canonical pass to keep "-chat" / "-latest" /
+    # "-image" / "-pro" suffixes meaningful enough to break ties on
+    # their own.
+    "instruct", "preview", "exp", "experimental", "stable",
+    "base", "thinking", "reasoner", "model", "ai", "version",
     "release", "tuned", "v1", "v2", "v3", "v4", "v5",
 }
 
@@ -679,14 +686,22 @@ def build_aa_overlay(
 ) -> dict[str, dict]:
     """Return {openrouter_id: aa_view_dict}.
 
-    Two-pass matching:
+    Three-pass matching:
       1. Direct canonical id match — AA's ``<creator_slug>/<model_slug>``
          (after the small vendor remap) often matches an OpenRouter id
-         verbatim (``openai/gpt-4o-2024-08-06`` etc.). High-precision,
+         verbatim (``openai/gpt-4o-2024-08-06`` etc.). Highest-precision,
          zero-Jaccard pass.
-      2. Within-vendor Jaccard fallback — for OR ids that didn't match
-         on canonical id, score against AA candidates with the same
-         vendor; pick best above 0.5 threshold.
+      2. Normalized canonical match — replace "." with "-" in OR id and
+         try again. Picks up ``openai/gpt-5.5`` ↔ AA ``openai/gpt-5-5``
+         which the verbatim pass misses on punctuation alone. (Added
+         2026-05-22 to stop these cases from falling through to fuzzy.)
+      3. Within-vendor Jaccard fallback — for OR ids that didn't match
+         the first two passes, score against AA candidates with the
+         same vendor; pick best above 0.65 threshold (raised from 0.5
+         2026-05-22 to drop spurious cross-family matches). On ties at
+         the top, prefer the AA candidate with the highest
+         intelligence_index — collapses AA's xhigh/high/medium/low
+         reasoning-effort variants to the strongest one per OR id.
     """
     # Pass 1 index — every AA model's canonical id
     aa_by_canonical: dict[str, dict] = {}
@@ -699,9 +714,14 @@ def build_aa_overlay(
             aa_by_canonical[cid] = m
             vendor, _ = cid.split("/", 1)
             aa_by_vendor.setdefault(vendor, []).append(m)
+    # Pass 2 index — normalized canonical (dot → hyphen, lowercased)
+    aa_by_norm_canonical: dict[str, dict] = {
+        cid.replace(".", "-").lower(): m for cid, m in aa_by_canonical.items()
+    }
 
     overlay: dict[str, dict] = {}
     direct_hits = 0
+    norm_hits = 0
     fuzzy_hits = 0
     for oid in openrouter_ids:
         # Pass 1: direct canonical match
@@ -709,6 +729,14 @@ def build_aa_overlay(
             overlay[oid] = _project_aa_view(aa_by_canonical[oid])
             overlay[oid]["match_type"] = "canonical"
             direct_hits += 1
+            continue
+        # Pass 2: normalized canonical (dot → hyphen). Handles
+        # openai/gpt-5.5 ↔ openai/gpt-5-5 etc. without going to fuzzy.
+        norm = oid.replace(".", "-").lower()
+        if norm in aa_by_norm_canonical:
+            overlay[oid] = _project_aa_view(aa_by_norm_canonical[norm])
+            overlay[oid]["match_type"] = "canonical-normalized"
+            norm_hits += 1
             continue
         # Pass 2: within-vendor Jaccard fallback
         if "/" not in oid:
@@ -740,7 +768,15 @@ def build_aa_overlay(
             score = jaccard(or_tokens, aa_tokens)
             if score > best_score:
                 best_score = score
-        if best_score < 0.5:
+        # Threshold raised from 0.5 → 0.7 on 2026-05-22 to drop
+        # spurious cross-family matches (gpt-5-image → gpt-5-5,
+        # gpt-5-chat → gpt-5-5, etc.) that previously inherited the
+        # wrong AA intelligence score. Legitimate matches almost
+        # always score >0.8 via the canonical-normalized pass above,
+        # so the fuzzy fallback only needs to catch the genuinely
+        # close-but-not-canonical cases — those benefit from a
+        # stricter cutoff.
+        if best_score < 0.7:
             continue
         # Round to 3 decimals so near-ties (0.6666 vs 0.6667) tiebreak
         # together rather than splitting hairs on floating-point noise.
@@ -765,7 +801,7 @@ def build_aa_overlay(
         overlay[oid]["match_type"] = "jaccard"
         overlay[oid]["match_score"] = round(best_score, 3)
         fuzzy_hits += 1
-    print(f"[sync]   AA → OpenRouter: {direct_hits} direct + {fuzzy_hits} fuzzy = {len(overlay)} total", flush=True)
+    print(f"[sync]   AA → OpenRouter: {direct_hits} direct + {norm_hits} normalized + {fuzzy_hits} fuzzy = {len(overlay)} total", flush=True)
     return overlay
 
 
