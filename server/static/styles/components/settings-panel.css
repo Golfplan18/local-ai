@@ -411,7 +411,7 @@
 }
 
 .ora-models-pane section {
-  background: var(--background-secondary, #1F1A0F));
+  background: var(--background-secondary, #1F1A0F);
   border-radius: 6px;
 }
 
@@ -482,9 +482,15 @@
   width: 30px;
   height: 16px;
   border-radius: 10px;
-  background: var(--background-secondary, #1F1A0F));
+  /* Off-state: thin border so the knob track shows even when its
+     fill nearly matches the surrounding background — otherwise the
+     dot reads as floating. On-state below removes the border via
+     border-color so the green fill carries the visual weight. */
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  box-sizing: border-box;
+  background: var(--background-secondary, #1F1A0F);
   position: relative;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .ora-models-toggle-knob::before {
@@ -501,6 +507,7 @@
 
 .ora-models-toggle input[type="checkbox"]:checked + .ora-models-toggle-knob {
   background: var(--color-green, #87905B);
+  border-color: var(--color-green, #87905B);
 }
 
 .ora-models-toggle input[type="checkbox"]:checked + .ora-models-toggle-knob::before {
@@ -562,13 +569,15 @@
 .ora-models-card {
   display: flex;
   flex-direction: column;
-  background: var(--background-secondary, #1F1A0F));
-  border: 2px solid transparent;
+  background: var(--background-secondary, #1F1A0F);
+  /* 1px thin line so every card has a visible enclosure; active /
+     incomplete states override border-color (and bump width) below. */
+  border: 1px solid var(--background-modifier-border, #3A3022);
   border-radius: 5px;
   padding: 6px 8px;
   gap: 4px;
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition: border-color 0.12s ease, border-width 0.12s ease, background 0.12s ease;
   min-height: 0;
 }
 
@@ -577,7 +586,10 @@
 }
 
 .ora-models-card-active {
-  border-color: var(--color-green, #87905B);
+  border-color: var(--color-active, #5FA86E);
+  border-width: 2px;
+  /* Pull padding in by 1px so the thicker border doesn't shift layout */
+  padding: 5px 7px;
 }
 
 .ora-models-card-empty {
@@ -588,7 +600,7 @@
 }
 
 .ora-models-card-empty:hover {
-  background: var(--background-secondary, #1F1A0F));
+  background: var(--background-secondary, #1F1A0F);
 }
 
 .ora-models-card-header {
@@ -607,7 +619,7 @@
 .ora-models-card-active-flag {
   font-size: 9px;
   font-weight: 700;
-  color: var(--color-green, #87905B);
+  color: var(--color-active, #5FA86E);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -671,7 +683,7 @@
 }
 
 .ora-models-pick-chip {
-  background: var(--color-green, #87905B);
+  background: var(--color-active, #5FA86E);
   color: #fff;
   font-size: 8px;
   font-weight: 700;
@@ -746,11 +758,15 @@
 
 .ora-models-card-custom-new.ora-models-card-active {
   border-style: solid;
-  border-color: var(--color-green, #87905B);
+  border-color: var(--color-active, #5FA86E);
 }
 
 .ora-models-card-incomplete {
   border-color: var(--color-red, #C77958);
+  /* Bump width so the red enclosure stands out against the new 1px
+     default border. Matches the active card's 2px treatment. */
+  border-width: 2px;
+  padding: 5px 7px;
 }
 
 .ora-models-incomplete-flag {
@@ -767,7 +783,7 @@
 }
 
 .ora-models-card-empty-state:hover {
-  background: var(--background-secondary, #1F1A0F));
+  background: var(--background-secondary, #1F1A0F);
 }
 
 .ora-models-card-custom {
@@ -885,7 +901,7 @@
 }
 
 .ora-models-search {
-  background: var(--background-secondary, #1F1A0F));
+  background: var(--background-secondary, #1F1A0F);
   border: 1px solid var(--background-modifier-border, #3A3022);
   border-radius: 4px;
   padding: 4px 8px;
@@ -986,7 +1002,7 @@
   font-weight: 600;
   padding: 1px 4px;
   border-radius: 3px;
-  background: var(--background-secondary, #1F1A0F));
+  background: var(--background-secondary, #1F1A0F);
   color: var(--text-muted, #A89F8A);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -1043,7 +1059,7 @@
 }
 
 .ora-models-sort-select {
-  background: var(--background-secondary, #1F1A0F));
+  background: var(--background-secondary, #1F1A0F);
   color: var(--text-normal, #E8E0CC);
   border: 1px solid var(--background-modifier-border, #3A3022);
   border-radius: 3px;
@@ -1081,8 +1097,8 @@
   vertical-align: 1px;
 }
 .ora-models-cap-image {
-  background: rgba(var(--color-purple-rgb, 139, 92, 107), 0.22);
-  color: var(--color-purple, #8B5C6B);
+  background: rgba(var(--color-blue-rgb, 90, 84, 112), 0.28);
+  color: var(--color-blue, #5A5470);
 }
 .ora-models-cap-video {
   background: rgba(var(--color-orange-rgb, 201, 125, 85), 0.20);
@@ -1136,7 +1152,7 @@
   justify-content: space-between;
   padding: 8px 12px;
   border-bottom: 1px solid var(--background-modifier-border, #3A3022);
-  background: var(--background-secondary, #1F1A0F));
+  background: var(--background-secondary, #1F1A0F);
 }
 
 .ora-models-popout-title {
@@ -1331,7 +1347,7 @@
 }
 
 .ora-models-hw-row:hover {
-  background: var(--interactive-hover, #2A2218));
+  background: var(--interactive-hover, #2A2218);
 }
 
 .ora-models-hw-name {

@@ -57,4 +57,11 @@
   --color-purple-rgb: 107, 63, 77;
   --color-pink:       #875466;  /* dusky plum-pink */
   --color-pink-rgb:   135, 84, 102;
+
+  /* Active-state green — richer than the olive --color-green so a
+     selected configuration card (and the PICK chip, and other "this
+     is the active thing" signals) read distinctly against the cream
+     paper without competing with the diagrammatic-primary olive. */
+  --color-active:     #3F7D4D;
+  --color-active-rgb: 63, 125, 77;
 }
