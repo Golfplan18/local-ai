@@ -546,9 +546,18 @@
         { id: 'openai',     label: 'OpenAI TTS' },
         { id: 'elevenlabs', label: 'ElevenLabs' },
       ], api.tts_provider || src.tts_provider));
+    _appendField('AA intelligence data source',
+      _selectInput('external_apis.aa_path', [
+        { id: 'scrape', label: 'Scrape — public page, no key needed (default)' },
+        { id: 'api',    label: 'API — resilient at scale, requires key (set below)' },
+      ], api.aa_path || src.aa_path));
     _appendNote(
       'Selecting an external transcription / TTS provider also requires '
-      + 'setting that provider\'s API key below.'
+      + 'setting that provider\'s API key below. The AA source toggle '
+      + 'controls how Ora pulls model intelligence + pricing data: scrape '
+      + 'reads the public page (works without a key but is fragile if AA '
+      + 'changes their site); API is documented and stable but needs an '
+      + 'AA API key in the Artificial Analysis row below.'
     );
 
     // API key rows
