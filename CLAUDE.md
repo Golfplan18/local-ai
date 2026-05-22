@@ -39,7 +39,7 @@ The mechanism is documented in `~/Documents/vault/Reference — Ora Project Plug
 - Projects register with Ora by writing a pointer file at `~/ora/data/projects/<nexus>.json` — manually, programmatically, or via the `/project-register <path>` slash command.
 - Ora invokes project tools via `~/ora/orchestrator/project_registry.py::invoke_project_tool(nexus, name, args=...)` — subprocess with JSON-on-stdout contract, with `ORA_HOME` / `ORA_VAULT` / `ORA_PROJECT_NEXUS` / `ORA_PROJECT_ROOT` set in the env.
 - Frameworks reference tools by abstract name (`news-related-find`, `news-index`), never by file path. The dispatcher resolves at runtime against the registered project's manifest.
-- Project tools that need to call a model use `~/ora/orchestrator/model_dispatch.py::invoke_chat(system_prompt, user_prompt, slot=...)` — the project-facing API to Ora's existing routing. Slots: `breadth` (default; high-context generative), `depth`, `sidebar`, `consolidator`, `evaluator`, `step1_cleanup`, `classification`. Project tools never hardcode specific models; they declare slot preference and the publisher's `endpoints.json` decides.
+- Project tools that need to call a model use `~/ora/orchestrator/model_dispatch.py::invoke_chat(system_prompt, user_prompt, slot=...)` — the project-facing API to Ora's existing routing. Slots: `breadth` (default; high-context generative), `depth`, `sidebar`, `consolidator`, `evaluator`, `step1_cleanup`, `classification`. Project tools never hardcode specific models; they declare slot preference and the publisher's `routing-config.json` decides.
 
 **Reference implementation:** `~/sites/mainstreetindependent/ora-project/` (Main Street Independent). When considering where a new piece of project-specific work should live, mirror what MSI does there.
 
@@ -169,9 +169,9 @@ frameworks/mode-classification-directory.md  — Phase A.5 classification refere
 modes/                                       — Mode files (22 modes incl. spatial-reasoning, benefits-analysis, consequences-and-sequel)
 modules/tools/                               — Thinking tools (Tier 1) and question banks (Tier 2)
 knowledge/mental-models/                     — Tier 3 mental model notes (gitignored, local-only)
-config/endpoints.json                        — Model endpoint URLs
-config/models.json                           — Model registry with vision_capable flag per model
-config/routing-config.json                   — Capability routing + vision_extraction policy
+config/model-registry.json                   — Curated runtime registry (OpenRouter + LiteLLM + Arena + AA); written by scripts/sync_model_registry.py
+config/models.json                           — Legacy model registry; being phased out in favor of model-registry.json
+config/routing-config.json                   — Single source of truth for endpoints, capability routing, slot assignments, gear4 overrides, vision_extraction policy. Subsumed config/endpoints.json (retired in Chunk 12, commit e3bb000f).
 config/interface.json                        — Active layout (default: solo)
 config/panel-types.json                      — Panel type registry (chat, vault, pipeline, clarification, visual, switcher)
 config/layouts/                              — solo.json, studio.json (active); legacy/ holds retired layouts
