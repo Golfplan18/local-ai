@@ -1,37 +1,60 @@
 /* ============================================================
    Ora Light Theme — color values for .theme-light
-   Surface palette inverted from dark (256 - dark value).
-   Heading hues darkened so they read on the light surface.
+   Cream-paper palette. Six per-register accents from the
+   publisher's palette spec (~/Desktop/msi-palette-swatches.html,
+   2026-05-06). The earlier neutral-grey + saturated-blue accents
+   were unauthorized and have been replaced 2026-05-22.
    ============================================================ */
 
 .theme-light {
-  /* Surfaces */
-  --background-primary: rgb(240, 240, 240);
-  --background-secondary: rgb(224, 224, 224);
-  --background-modifier-form-field: rgb(208, 208, 208);
-  --background-modifier-border: rgb(192, 192, 192);
-  --background-modifier-border-focus: rgba(1, 1, 1, 0.35);
+  /* Surfaces — cream paper */
+  --background-primary:                 #F4ECD8;
+  --background-secondary:               #EDE3CC;
+  --background-modifier-form-field:     #E5DAC0;
+  --background-modifier-border:         #D4C8A8;
+  --background-modifier-border-focus:   rgba(26, 26, 26, 0.35);
 
-  /* Buttons / icons */
-  --interactive-normal: rgb(232, 232, 232);
-  --interactive-hover: rgb(216, 216, 216);
-  --icon-color: rgb(192, 192, 192);
-  --icon-color-hover: rgb(96, 96, 96);
+  /* Buttons / icons — closer to text so glyphs read clearly */
+  --interactive-normal: #EDE3CC;
+  --interactive-hover:  #E5DAC0;
+  --icon-color:         #3A3530;
+  --icon-color-hover:   #1A1A1A;
 
-  /* Text */
-  --text-normal: rgb(36, 36, 36);
-  --text-muted: rgb(96, 96, 96);
-  --text-faint: rgb(140, 140, 140);
+  /* Text — primary ink + muted variants */
+  --text-normal: #1A1A1A;
+  --text-muted:  #5A5248;
+  --text-faint:  #888880;
 
-  /* Hyperlinks — saturated blue for contrast on light surface */
-  --link-color: #1565c0;
-  --link-color-hover: #0d47a1;
+  /* Hyperlinks — sepia (the analytical / scholarly signal) */
+  --link-color:       #6D4F33;
+  --link-color-hover: #8A6849;
 
-  /* Headings — Dracula hues, darkened for contrast on light surface */
-  --h1-color: #cc7416;
-  --h2-color: #6b3bd1;
-  --h3-color: #1a8cb3;
-  --h4-color: #1c8c40;
-  --h5-color: #c92020;
-  --h6-color: #c3358e;
+  /* Headings — six MSI register accents (publisher ordering) */
+  --h1-color: #6B3F4D;  /* warm plum    — Hard news */
+  --h2-color: #6B7042;  /* olive        — Diagrammatic primary */
+  --h3-color: #B8923A;  /* ochre        — Diagrammatic secondary */
+  --h4-color: #A85C3F;  /* brick        — Editorial cartoon */
+  --h5-color: #6D4F33;  /* sepia        — Analytical illustration */
+  --h6-color: #A85A2B;  /* burnt orange — Cartoonist signature */
+
+  /* Obsidian-style named-color tokens — mapped to MSI register
+     accents so any component using --color-purple / --color-orange
+     etc. picks up the brand palette automatically. Blue/cyan/pink
+     are desaturated approximations (MSI palette has no blue/cyan/pink). */
+  --color-red:        #A85C3F;  /* brick */
+  --color-red-rgb:    168, 92, 63;
+  --color-orange:     #A85A2B;  /* burnt orange */
+  --color-orange-rgb: 168, 90, 43;
+  --color-yellow:     #B8923A;  /* ochre */
+  --color-yellow-rgb: 184, 146, 58;
+  --color-green:      #6B7042;  /* olive */
+  --color-green-rgb:  107, 112, 66;
+  --color-blue:       #3F3A55;  /* desaturated indigo */
+  --color-blue-rgb:   63, 58, 85;
+  --color-cyan:       #4A6B66;  /* desaturated teal */
+  --color-cyan-rgb:   74, 107, 102;
+  --color-purple:     #6B3F4D;  /* warm plum */
+  --color-purple-rgb: 107, 63, 77;
+  --color-pink:       #875466;  /* dusky plum-pink */
+  --color-pink-rgb:   135, 84, 102;
 }
