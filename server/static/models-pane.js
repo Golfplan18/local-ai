@@ -50,8 +50,7 @@
   // single mount; reset to defaults on every fresh init().
   var _filters = {
     vision: false,
-    free: false,
-    paid_only: false,       // mutually exclusive with `free` — auto-cleared when `free` is checked, and vice versa
+    free_filter: 'any',     // 'any' (default) | 'only' (only free) | 'hide' (drop free) — was previously two mutually-exclusive chips
     pick: false,
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
@@ -147,7 +146,7 @@
     _picksSet = null;
     _configs = null;
     _filters = {
-      vision: false, free: false, paid_only: false, pick: false,
+      vision: false, free_filter: 'any', pick: false,
       intelligence_pct: 0, search: '', sort_by: 'alpha_desc',
       category: 'chat', grouping: 'vendor',
     };
@@ -1159,7 +1158,8 @@
     // see them right now). When no filters are active, every vendor
     // shows even at zero (which never happens for unfiltered counts
     // anyway).
-    var anyFilterActive = _filters.vision || _filters.free
+    var anyFilterActive = _filters.vision
+                          || (_filters.free_filter && _filters.free_filter !== 'any')
                           || _filters.pick
                           || _filters.intelligence_pct > 0
                           || !!_filters.search;
@@ -1254,8 +1254,8 @@
     var isMedia = (model.category && model.category !== 'chat');
     if (!isMedia && _filters.vision && model.vision_capable !== true) return false;
     var isFree = (model.id || '').endsWith(':free') || model.is_free === true;
-    if (!isMedia && _filters.free && !isFree) return false;
-    if (!isMedia && _filters.paid_only && isFree) return false;
+    if (!isMedia && _filters.free_filter === 'only' && !isFree) return false;
+    if (!isMedia && _filters.free_filter === 'hide' && isFree) return false;
     if (_filters.pick && !(_picksSet && _picksSet.has(model.id))) return false;
     // Slot-pick size gate. When picking BIG 1 / BIG 2, restrict to
     // large-bucket models; SMALL / utility to small-bucket. Models
@@ -1488,11 +1488,24 @@
 
   function _filterChipsHTML() {
     var chips = [
-      {key: 'vision',    label: 'Vision'},
-      {key: 'free',      label: 'Free'},
-      {key: 'paid_only', label: 'Hide free'},
-      {key: 'pick',      label: 'PICK'},
+      {key: 'vision', label: 'Vision'},
+      {key: 'pick',   label: 'PICK'},
     ];
+    var freeOptions = [
+      {id: 'any',  label: 'Any cost'},
+      {id: 'only', label: 'Free only'},
+      {id: 'hide', label: 'Hide free'},
+    ];
+    var freeSel = _filters.free_filter || 'any';
+    var freeSelectHTML = ''
+      + '<label class="ora-models-sort-wrap" title="Free-tier filter">'
+      +   '<select class="ora-models-sort-select" data-filter="free_filter">'
+      +     freeOptions.map(function (o) {
+            var sel = o.id === freeSel ? ' selected' : '';
+            return '<option value="' + o.id + '"' + sel + '>' + _esc(o.label) + '</option>';
+          }).join('')
+      +   '</select>'
+      + '</label>';
     return '<div class="ora-models-filter-chips">'
       + chips.map(function (c) {
           var on = _filters[c.key];
@@ -1501,6 +1514,7 @@
             + _esc(c.label)
             + '</label>';
         }).join('')
+      + freeSelectHTML
       + '</div>';
   }
 
@@ -1523,19 +1537,22 @@
     return Array.from(vendors);
   }
 
-  // Grouping controls: toggle between vendor-grouped and flat list,
-  // plus expand-all / collapse-all buttons that affect vendor-mode only.
+  // Grouping controls: single toggle between vendor-grouped (default)
+  // and flat list, plus expand-all / collapse-all buttons that only
+  // matter in vendor mode (disabled in flat).
   function _groupingControlsHTML() {
-    var grouping = _filters.grouping || 'vendor';
-    var isFlat = grouping === 'flat';
-    var groupBtn = '<button type="button" class="ora-models-grouping-btn'
-      + (isFlat ? '' : ' ora-models-grouping-btn-active') + '"'
-      + ' data-grouping="vendor" title="Group inventory by vendor">'
-      + 'Group by vendor</button>';
-    var flatBtn = '<button type="button" class="ora-models-grouping-btn'
+    var isFlat = (_filters.grouping || 'vendor') === 'flat';
+    // The toggle reads as a checkbox-shaped button: pressed/active when
+    // flat mode is on, unpressed when grouped by vendor. The label
+    // names the OFF state's destination ("Flat list") so the user sees
+    // what clicking will do, consistent with the standard toggle idiom.
+    var toggleBtn = '<button type="button" class="ora-models-grouping-btn ora-models-grouping-toggle'
       + (isFlat ? ' ora-models-grouping-btn-active' : '') + '"'
-      + ' data-grouping="flat" title="Show every model in a single sorted list">'
-      + 'Flat list</button>';
+      + ' data-grouping-toggle="1"'
+      + ' aria-pressed="' + (isFlat ? 'true' : 'false') + '"'
+      + ' title="Toggle: vendor groups (default) vs flat sorted list">'
+      + (isFlat ? '✓ Flat list' : 'Flat list')
+      + '</button>';
     var expandBtn = '<button type="button" class="ora-models-grouping-btn"'
       + (isFlat ? ' disabled' : '')
       + ' data-grouping-action="expand-all"'
@@ -1548,7 +1565,7 @@
       + 'Collapse all</button>';
     return ''
       + '<div class="ora-models-grouping-wrap">'
-      +   groupBtn + flatBtn + expandBtn + collapseBtn
+      +   toggleBtn + expandBtn + collapseBtn
       + '</div>';
   }
 
@@ -1632,12 +1649,7 @@
   function _wireInventoryControls(section) {
     Array.from(section.querySelectorAll('.ora-models-filter-chip input')).forEach(function (el) {
       el.addEventListener('change', function () {
-        var key = el.dataset.filter;
-        _filters[key] = el.checked;
-        // Free and "Hide free" (paid_only) are mutually exclusive.
-        // Turning one on clears the other.
-        if (key === 'free' && el.checked) _filters.paid_only = false;
-        if (key === 'paid_only' && el.checked) _filters.free = false;
+        _filters[el.dataset.filter] = el.checked;
         _renderInventory();
       });
     });
@@ -1664,14 +1676,16 @@
         _renderInventory();
       });
     });
-    // Grouping toggle (vendor vs flat). Expand-all / Collapse-all
-    // affect _expandedVendors directly and only matter in vendor mode.
-    Array.from(section.querySelectorAll('[data-grouping]')).forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        _filters.grouping = btn.dataset.grouping;
+    // Grouping toggle (vendor ⇆ flat). Single button flips state on each
+    // click. Expand-all / Collapse-all affect _expandedVendors and only
+    // matter in vendor mode (disabled in flat).
+    var groupingToggle = section.querySelector('[data-grouping-toggle]');
+    if (groupingToggle) {
+      groupingToggle.addEventListener('click', function () {
+        _filters.grouping = (_filters.grouping === 'flat') ? 'vendor' : 'flat';
         _renderInventory();
       });
-    });
+    }
     var expandAll = section.querySelector('[data-grouping-action="expand-all"]');
     if (expandAll) {
       expandAll.addEventListener('click', function () {
