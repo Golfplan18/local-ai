@@ -50,7 +50,6 @@
   var _filters = {
     vision: false,
     free: false,
-    open_weights: false,
     pick: false,
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
@@ -137,7 +136,7 @@
     _picksSet = null;
     _configs = null;
     _filters = {
-      vision: false, free: false, open_weights: false, pick: false,
+      vision: false, free: false, pick: false,
       intelligence_pct: 0, search: '', sort_by: 'alpha_desc',
     };
     _expandedVendors = new Set();
@@ -962,7 +961,7 @@
     // shows even at zero (which never happens for unfiltered counts
     // anyway).
     var anyFilterActive = _filters.vision || _filters.free
-                          || _filters.open_weights || _filters.pick
+                          || _filters.pick
                           || _filters.intelligence_pct > 0
                           || !!_filters.search;
     var allByVendor = _groupByVendor(allModels);
@@ -1034,7 +1033,6 @@
         || model.is_free === true;
       if (!isFree) return false;
     }
-    if (_filters.open_weights && model.is_open_weights !== true) return false;
     if (_filters.pick && !(_picksSet && _picksSet.has(model.id))) return false;
     // Intelligence filter: when slider is at 0 (default), show all
     // including unranked. When > 0, drop everything not in the top X%.
@@ -1214,9 +1212,6 @@
     if (model.vision_capable === true) {
       chips.push('<span class="ora-models-chip ora-models-chip-vision">vision</span>');
     }
-    if (model.is_open_weights === true) {
-      chips.push('<span class="ora-models-chip">open</span>');
-    }
     if ((model.id || '').endsWith(':free')) {
       chips.push('<span class="ora-models-chip ora-models-chip-free">:free</span>');
     }
@@ -1227,7 +1222,6 @@
     var chips = [
       {key: 'vision', label: 'Vision'},
       {key: 'free', label: 'Free'},
-      {key: 'open_weights', label: 'Open-weights'},
       {key: 'pick', label: 'PICK'},
     ];
     return '<div class="ora-models-filter-chips">'
