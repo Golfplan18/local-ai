@@ -1923,6 +1923,9 @@ def _classify_reachability_error(err: Exception) -> tuple[bool, str | None, str,
     return None, False, "network", status
 
 
+_REACH_REQUEST_TIMEOUT_SEC = 30.0
+
+
 def reach_probe_one(client, model_id: str) -> dict:
     """Send a 1-token completion. Returns the reachability record."""
     def attempt():
@@ -1931,6 +1934,7 @@ def reach_probe_one(client, model_id: str) -> dict:
                 model=model_id,
                 messages=[{"role": "user", "content": _REACH_PROMPT}],
                 max_tokens=_REACH_MAX_TOKENS,
+                timeout=_REACH_REQUEST_TIMEOUT_SEC,
                 extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora reach probe"},
             )
             # Any non-error response → reachable. We don't care about content
@@ -2048,6 +2052,13 @@ def _run_reach_probe(registry: dict, args) -> int:
             inconclusive += 1
             tag = f"… {rec.get('error_kind') or 'inconclusive'}"
         print(f"[reach] {i}/{len(targets)} {mid:55s} → {tag}", flush=True)
+        # Checkpoint every 25 models so a Ctrl-C / network hang doesn't
+        # lose all in-progress probe data. The final write below still
+        # runs at the end; this is just a backstop.
+        if i % 25 == 0:
+            registry["last_reach_probe_at"] = _now_iso()
+            with open(REGISTRY_PATH, "w") as f:
+                json.dump(registry, f, indent=2, sort_keys=False)
         time.sleep(0.2)  # gentle on the API
 
     registry["last_reach_probe_at"] = _now_iso()
