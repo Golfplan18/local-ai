@@ -13,12 +13,9 @@
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
       },
       "classification": {
-        "primary": "local-mlx-qwen3.5-4b",
+        "primary": "deepseek/deepseek-v4-flash",
         "fallback": [
-          "local-mlx-qwen3.5-9b-optiq",
-          "local-mlx-qwen3.5-27b-opus",
-          "openrouter/free",
-          "meta-llama/llama-3.3-70b-instruct:free"
+          "minimax/minimax-m2.5"
         ],
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
       },
