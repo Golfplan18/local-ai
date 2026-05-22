@@ -8273,6 +8273,35 @@ def model_registry_get():
             if (m.get("category") or "chat") in wanted
         }
 
+    # Enrich each model with size_bucket + parameters_b + is_free
+    # from the catalog so the Models pane can filter the inventory by
+    # the slot's expected size (BIG → large, SMALL → small) and the
+    # "Paid only" chip can hide :free entries cleanly. The registry
+    # itself doesn't currently carry these — they're computed by the
+    # catalog-refresh pipeline. Cheap join: catalog is ~600 entries.
+    try:
+        from pathlib import Path as _Path
+        import json as _json
+        _catalog_path = _Path(__file__).resolve().parent.parent / "config" / "model-catalog.json"
+        if _catalog_path.exists():
+            _catalog = _json.loads(_catalog_path.read_text())
+            _by_id = {m.get("id"): m for m in (_catalog.get("models") or []) if m.get("id")}
+            enriched = {}
+            for mid, m in filtered.items():
+                cm = _by_id.get(mid) or {}
+                merged = dict(m)
+                if cm.get("size_bucket") is not None:
+                    merged["size_bucket"] = cm["size_bucket"]
+                if cm.get("parameters_b") is not None:
+                    merged["parameters_b"] = cm["parameters_b"]
+                if cm.get("is_free") is not None:
+                    merged["is_free"] = cm["is_free"]
+                enriched[mid] = merged
+            filtered = enriched
+    except Exception as _enrich_err:
+        # Enrichment is best-effort; degrade gracefully without it.
+        print(f"[model-registry] enrichment skipped: {_enrich_err}", flush=True)
+
     return _json_response({
         "models": filtered,
         "generated_at": registry.get("generated_at"),

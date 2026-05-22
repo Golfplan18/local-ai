@@ -51,6 +51,7 @@
   var _filters = {
     vision: false,
     free: false,
+    paid_only: false,       // mutually exclusive with `free` — auto-cleared when `free` is checked, and vice versa
     pick: false,
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
@@ -146,7 +147,7 @@
     _picksSet = null;
     _configs = null;
     _filters = {
-      vision: false, free: false, pick: false,
+      vision: false, free: false, paid_only: false, pick: false,
       intelligence_pct: 0, search: '', sort_by: 'alpha_desc',
       category: 'chat', grouping: 'vendor',
     };
@@ -1245,21 +1246,28 @@
   }
 
   function _matchesFilters(model, rankedKeptIds) {
-    // Chat-only filter chips (Vision, Free) are skipped for media
-    // models — vision_capable=false on every image-gen entry (they
-    // OUTPUT images; they don't read them), and pricing data isn't
-    // wired in yet so :free / is_free can't classify them either.
-    // Applying these chips at face value would empty the inventory
-    // every time the user clicks an image-gen slot. The PICK chip
-    // and intelligence slider DO apply.
+    // Chat-only filter chips (Vision, Free, Hide free) are skipped for
+    // media models — vision_capable=false on every image-gen entry
+    // (they OUTPUT images), and the free/paid distinction doesn't apply
+    // to image_generation today (pricing-based, surfaced as $/1k imgs
+    // on the row meta). The PICK chip and intelligence slider DO apply.
     var isMedia = (model.category && model.category !== 'chat');
     if (!isMedia && _filters.vision && model.vision_capable !== true) return false;
-    if (!isMedia && _filters.free) {
-      var isFree = (model.id || '').endsWith(':free')
-        || model.is_free === true;
-      if (!isFree) return false;
-    }
+    var isFree = (model.id || '').endsWith(':free') || model.is_free === true;
+    if (!isMedia && _filters.free && !isFree) return false;
+    if (!isMedia && _filters.paid_only && isFree) return false;
     if (_filters.pick && !(_picksSet && _picksSet.has(model.id))) return false;
+    // Slot-pick size gate. When picking BIG 1 / BIG 2, restrict to
+    // large-bucket models; SMALL / utility to small-bucket. Models
+    // with no size_bucket are excluded — most of them are "~latest"
+    // mirror aliases (where the route picks whatever the vendor's
+    // current latest is, so size is undefined) and showing them as
+    // candidates for a sized slot misleads the user. The size_bucket
+    // field is enriched by /api/model-registry from model-catalog.json.
+    var sizeFilter = _activeSlotPickSizeBucket();
+    if (sizeFilter) {
+      if (!model.size_bucket || model.size_bucket !== sizeFilter) return false;
+    }
     // Intelligence filter: when slider is at 0 (default), show all
     // including unranked. When > 0, drop everything not in the top X%.
     if (_filters.intelligence_pct > 0) {
@@ -1272,6 +1280,29 @@
       if (name.indexOf(s) === -1 && id.indexOf(s) === -1) return false;
     }
     return true;
+  }
+
+  // Each card-visible slot maps to an expected size bucket. When a slot
+  // is in picking mode, the inventory restricts to that bucket so the
+  // user doesn't see small models as candidates for a big-1 slot or
+  // large models for a small slot. Returns null when no slot pick is
+  // active or when the slot's category swap (image gen) handles the
+  // restriction differently.
+  var SLOT_TO_SIZE_BUCKET = {
+    'big 1':       'large',
+    'big 2':       'large',
+    'small':       'small',
+    'visual':      'large',
+    'utility':     'small',
+    'consolidate': 'large',
+    'verify':      'large',
+    // 'image gen' intentionally absent — category swap handles it,
+    // image-gen models don't carry size_bucket.
+  };
+
+  function _activeSlotPickSizeBucket() {
+    if (!_activeSlotPick) return null;
+    return SLOT_TO_SIZE_BUCKET[_activeSlotPick.slotLabel] || null;
   }
 
   function _vendorOf(model) {
@@ -1457,9 +1488,10 @@
 
   function _filterChipsHTML() {
     var chips = [
-      {key: 'vision', label: 'Vision'},
-      {key: 'free', label: 'Free'},
-      {key: 'pick', label: 'PICK'},
+      {key: 'vision',    label: 'Vision'},
+      {key: 'free',      label: 'Free'},
+      {key: 'paid_only', label: 'Hide free'},
+      {key: 'pick',      label: 'PICK'},
     ];
     return '<div class="ora-models-filter-chips">'
       + chips.map(function (c) {
@@ -1600,7 +1632,12 @@
   function _wireInventoryControls(section) {
     Array.from(section.querySelectorAll('.ora-models-filter-chip input')).forEach(function (el) {
       el.addEventListener('change', function () {
-        _filters[el.dataset.filter] = el.checked;
+        var key = el.dataset.filter;
+        _filters[key] = el.checked;
+        // Free and "Hide free" (paid_only) are mutually exclusive.
+        // Turning one on clears the other.
+        if (key === 'free' && el.checked) _filters.paid_only = false;
+        if (key === 'paid_only' && el.checked) _filters.free = false;
         _renderInventory();
       });
     });
