@@ -722,6 +722,109 @@ def build_aa_overlay(
     return overlay
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# AA media leaderboards (text-to-image, image-editing, text-to-video) →
+# standalone registry entries. These models don't have OpenRouter or
+# LiteLLM presence, so they're added directly to ``registry["models"]``
+# after ``merge_sources`` runs. Keyed by ``aa-img:<uuid>``,
+# ``aa-edit:<uuid>``, ``aa-vid:<uuid>`` to avoid colliding with OpenRouter
+# model ids. The same physical model can appear under multiple keys
+# (e.g. GPT Image 1.5 has separate Elo scores on the text-to-image and
+# image-editing leaderboards — that's two registry entries, scored
+# independently per capability).
+# ──────────────────────────────────────────────────────────────────────────
+
+# Each media row maps to: ID-prefix + category-label
+_MEDIA_CATEGORY_SPEC = {
+    "image_generation": ("aa-img", "Image generation"),
+    "image_editing":    ("aa-edit", "Image editing"),
+    "text_to_video":    ("aa-vid", "Text-to-video"),
+}
+
+
+def _build_media_entry(row: dict, category: str, fetched_at: str) -> tuple[str, dict] | None:
+    """Convert one AA leaderboard row into a registry-shape entry.
+    Returns ``(model_id, entry)`` or ``None`` if the row is malformed.
+    """
+    spec = _MEDIA_CATEGORY_SPEC.get(category)
+    if spec is None:
+        return None
+    prefix, _label = spec
+    uuid = row.get("id")
+    if not uuid:
+        return None
+    model_id = f"{prefix}:{uuid}"
+    creator = (row.get("creator") or {}).get("name") or "Unknown"
+    entry: dict = {
+        "id": model_id,
+        "display_name": row.get("name") or model_id,
+        "provider": "artificial-analysis",
+        "category": category,
+        # Vision/context/etc. don't apply to image-gen output models;
+        # leave them None so the existing UI filters degrade cleanly.
+        "vision_capable": None,
+        "vision_verified_by": None,
+        "context_length": None,
+        "supports_function_calling": None,
+        "supports_tool_choice": None,
+        "pricing": None,
+        "knowledge_cutoff": None,
+        "hugging_face_id": None,
+        # Elo plays the role intelligence_score plays for chat models —
+        # store it in the same field so cross-cutting code (preset
+        # ranking, "sort by intelligence") Just Works for image models.
+        "intelligence_score": row.get("elo"),
+        "intelligence_rank": row.get("rank"),
+        "intelligence_votes": row.get("appearances"),
+        "aa_intelligence_index": None,
+        "aa_coding_index": None,
+        "aa_agentic_index": None,
+        "aa_math_index": None,
+        "latency_total_seconds": None,
+        "latency_ttft_seconds": None,
+        "output_tokens_per_second": None,
+        "is_open_weights": None,
+        "reasoning_model": None,
+        "release_date": None,
+        "last_synced_at": fetched_at,
+        "vendor": creator,
+        "_provenance": {
+            "aa_leaderboard": {
+                "category": category,
+                "url": row.get("url"),
+                "aa_uuid": uuid,
+                "creator_id": (row.get("creator") or {}).get("id"),
+                "fetched_at": fetched_at,
+            }
+        },
+    }
+    return model_id, entry
+
+
+def build_media_entries(
+    text_to_image_rows: list[dict],
+    image_editing_rows: list[dict],
+    text_to_video_rows: list[dict],
+    fetched_at: str,
+) -> dict[str, dict]:
+    """Build the full set of media-leaderboard registry entries.
+    Returns ``{model_id: entry}`` ready to merge into
+    ``registry["models"]``."""
+    out: dict[str, dict] = {}
+    for rows, category in (
+        (text_to_image_rows, "image_generation"),
+        (image_editing_rows, "image_editing"),
+        (text_to_video_rows, "text_to_video"),
+    ):
+        for row in rows or []:
+            built = _build_media_entry(row, category, fetched_at)
+            if built is None:
+                continue
+            mid, entry = built
+            out[mid] = entry
+    return out
+
+
 def build_arena_overlay(
     arena_rows: list[dict], openrouter_ids: list[str]
 ) -> dict[str, dict]:
@@ -1153,6 +1256,28 @@ def cmd_sync(args) -> int:
         print(f"[sync]   AA fetch failed (proceeding without): {e}", flush=True)
         aa_models = []
 
+    # AA media leaderboards (image gen, image editing, text-to-video).
+    # Same fail-soft posture: any one failing leaves the others alone.
+    print("[sync] fetching Artificial Analysis media leaderboards …", flush=True)
+    try:
+        t2i_rows = fetch_aa_text_to_image()
+        print(f"[sync]   {len(t2i_rows)} text-to-image rows", flush=True)
+    except Exception as e:
+        print(f"[sync]   text-to-image fetch failed (proceeding without): {e}", flush=True)
+        t2i_rows = []
+    try:
+        edit_rows = fetch_aa_image_editing()
+        print(f"[sync]   {len(edit_rows)} image-editing rows", flush=True)
+    except Exception as e:
+        print(f"[sync]   image-editing fetch failed (proceeding without): {e}", flush=True)
+        edit_rows = []
+    try:
+        t2v_rows = fetch_aa_text_to_video()
+        print(f"[sync]   {len(t2v_rows)} text-to-video rows", flush=True)
+    except Exception as e:
+        print(f"[sync]   text-to-video fetch failed (proceeding without): {e}", flush=True)
+        t2v_rows = []
+
     or_ids = [m.get("id") for m in or_models if m.get("id")]
     arena_overlay = build_arena_overlay(arena_rows, or_ids)
     print(f"[sync]   Arena → OpenRouter matches: {len(arena_overlay)}", flush=True)
@@ -1178,6 +1303,28 @@ def cmd_sync(args) -> int:
         aa_overlay=aa_overlay,
         existing_registry=existing,
     )
+
+    # Splice the AA media-leaderboard entries into the registry's models
+    # dict. These have no OpenRouter or LiteLLM presence; they stand on
+    # their own. Categorized by ``category`` field; keyed by ``aa-img:`` /
+    # ``aa-edit:`` / ``aa-vid:`` prefix so they can't collide with
+    # OpenRouter ids.
+    media_entries = build_media_entries(
+        t2i_rows, edit_rows, t2v_rows,
+        fetched_at=registry.get("generated_at") or "",
+    )
+    chat_count = registry["model_count"]
+    registry["models"].update(media_entries)
+    registry["model_count"] = len(registry["models"])
+    if media_entries:
+        media_count = len(media_entries)
+        print(
+            f"[sync]   spliced {media_count} media-leaderboard entries "
+            f"({chat_count} chat + {media_count} media = "
+            f"{registry['model_count']} total)",
+            flush=True,
+        )
+
     REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w") as f:
         json.dump(registry, f, indent=2, sort_keys=False)

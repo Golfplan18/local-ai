@@ -8230,12 +8230,22 @@ _registry_refresh_lock = threading.Lock()
 
 @app.route("/api/model-registry", methods=["GET"])
 def model_registry_get():
-    """Return the entire curated registry as JSON.
+    """Return the curated registry as JSON.
 
     Reads ``config/model-registry.json``. When the file is missing,
     returns an empty registry shape ({models: {}}) with status=200 —
     the UI handles "no models known yet" gracefully and prompts a
     sync.
+
+    Query param ``categories`` (comma-separated) filters which model
+    categories to include. Entries with no ``category`` field are
+    treated as ``chat`` (the existing 358-model corpus). Recognized
+    values: ``chat``, ``image_generation``, ``image_editing``,
+    ``text_to_video``, or ``all`` to bypass the filter. Default:
+    ``chat`` — preserves the pre-Chunk-11 contract so the existing
+    Models pane keeps working without changes. The rebuilt Visual
+    surface (and the image-generation row on Models) opts in by
+    passing ``categories=chat,image_generation`` etc.
     """
     try:
         from orchestrator import model_registry as mr
@@ -8247,8 +8257,24 @@ def model_registry_get():
             "models": {},
             "stats": {"loaded": False},
         }, status=500)
+
+    raw = request.args.get("categories", "chat")
+    if raw.strip().lower() in ("all", "*"):
+        wanted = None  # no filter
+    else:
+        wanted = {c.strip() for c in raw.split(",") if c.strip()}
+
+    all_models = registry.get("models") or {}
+    if wanted is None:
+        filtered = all_models
+    else:
+        filtered = {
+            mid: m for mid, m in all_models.items()
+            if (m.get("category") or "chat") in wanted
+        }
+
     return _json_response({
-        "models": registry.get("models") or {},
+        "models": filtered,
         "generated_at": registry.get("generated_at"),
         "last_probe_at": registry.get("last_probe_at"),
         "stats": stats,
