@@ -310,6 +310,67 @@ def enrich_from_model_registry(catalog: list[dict], registry: dict) -> int:
     return enriched
 
 
+def append_media_entries_from_registry(catalog: list[dict], registry: dict) -> int:
+    """Append AA media-leaderboard entries (image generation, image editing,
+    text-to-video) to the catalog.
+
+    These models have no OpenRouter or LiteLLM presence; they're scraped
+    directly from AA's per-capability arena pages by sync_model_registry.
+    The registry stores their Elo number in ``intelligence_score`` (same
+    field chat models use for the AA intelligence index — Elo plays the
+    same role for image-gen ranking that intelligence index plays for chat).
+
+    Conversion:
+      - id stays as the registry id (``aa-img:<uuid>`` etc.)
+      - ``aa_intelligence_index`` ← registry ``intelligence_score`` (Elo)
+      - ``category`` carried forward (image_generation / image_editing /
+        text_to_video) — used by auto-populate's slot filter
+      - ``size_bucket`` stays None (sizing doesn't apply to image models)
+      - ``is_free`` stays False (we don't have free-tier info for image
+        models yet; this gets refined when pricing data lands)
+      - ``openrouter_pricing`` is all-None (no pricing data yet — Pareto
+        cost math degrades cleanly to intelligence-only)
+
+    Returns the count of media entries appended.
+    """
+    models = (registry or {}).get("models") or {}
+    if not models:
+        return 0
+    appended = 0
+    for mid, m in models.items():
+        category = m.get("category")
+        if category not in ("image_generation", "image_editing", "text_to_video"):
+            continue
+        elo = m.get("intelligence_score")
+        catalog.append({
+            "id": mid,
+            "display_name": m.get("display_name") or mid,
+            "provider": m.get("provider") or "artificial-analysis",
+            "vendor": m.get("vendor"),
+            "openrouter_slug": None,
+            "category": category,
+            "vision_capable": False,  # image-gen models output images; they don't ingest
+            "input_modalities": ["text"] if category in ("image_generation", "text_to_video") else ["text", "image"],
+            "output_modalities": ["video"] if category == "text_to_video" else ["image"],
+            "context_window": None,
+            "parameters_b": None,
+            "openrouter_pricing": {
+                "input_per_m": None,
+                "output_per_m": None,
+                "blended_per_m": None,
+            },
+            "aa_intelligence_index": elo,
+            "aa_intelligence_rank": m.get("intelligence_rank"),
+            "aa_intelligence_votes": m.get("intelligence_votes"),
+            "aa_blended_per_m": None,
+            "family_tier": None,
+            "size_bucket": None,
+            "is_free": False,
+        })
+        appended += 1
+    return appended
+
+
 def detect_changes(new_catalog: list[dict], old_catalog: list[dict] | None) -> dict:
     """Compute new / retired / free→paid / paid→free transitions."""
     if old_catalog is None:
@@ -394,9 +455,16 @@ def main():
     #    (replaces the prior direct AA API fetch; no API key needed)
     registry = load_model_registry()
     aa_enriched_count = 0
+    media_appended = 0
     if registry is not None:
         aa_enriched_count = enrich_from_model_registry(catalog, registry)
         print(f"[refresh-catalog] model-registry enrichment: {aa_enriched_count} models scored")
+        # 4b. Append AA media-leaderboard entries (image gen / image edit /
+        #     text-to-video). They have no OpenRouter counterpart so they're
+        #     additive — not merged into existing rows.
+        media_appended = append_media_entries_from_registry(catalog, registry)
+        if media_appended:
+            print(f"[refresh-catalog] media-leaderboard entries appended: {media_appended}")
 
     # 5. Diff against previous catalog for free→paid detection
     old_catalog = load_existing_catalog()

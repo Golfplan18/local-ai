@@ -58,6 +58,13 @@
       "cells": ["consolidation", "verification", "formatter"],
       "top_n": 3,
       "diversity_excluded": false
+    },
+    "image_generation": {
+      "category": "image_generation",
+      "cells": ["image_generation"],
+      "top_n": 3,
+      "diversity_excluded": false,
+      "_note": "Picks from AA's text-to-image arena leaderboard. Ranked by Elo (stored in aa_intelligence_index, same field chat models use for intelligence). All four presets currently produce the same picks because we lack pricing data for image models — Premium/Optimum/Budget/Free distinctions kick in once $/1k images is wired into the catalog."
     }
   },
   "vision_substitute": {

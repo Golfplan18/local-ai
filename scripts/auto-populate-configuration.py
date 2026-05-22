@@ -131,6 +131,13 @@ def filter_by_size_bucket(candidates: list[dict], size_bucket: str) -> list[dict
     return [m for m in candidates if m.get("size_bucket") == size_bucket]
 
 
+def filter_by_category(candidates: list[dict], category: str) -> list[dict]:
+    """Restrict to a specific category. Entries with no ``category``
+    field are treated as ``chat`` (the existing 358-model corpus from
+    OpenRouter)."""
+    return [m for m in candidates if (m.get("category") or "chat") == category]
+
+
 def filter_paid(candidates: list[dict]) -> list[dict]:
     """Paid = NOT free by either signal (catalog flag OR :free suffix).
 
@@ -262,6 +269,36 @@ def pick_for_free_slot(
     return sort_by_intelligence_descending(candidates)[:top_n]
 
 
+def pick_for_media_slot(
+    catalog: list[dict],
+    category: str,
+    top_n: int,
+    excluded_ids: set | None = None,
+) -> list[dict]:
+    """Pick top-N models by Elo (intelligence_score) within a media
+    category (image_generation / image_editing / text_to_video).
+
+    Media slots use a simpler picking path than chat slots because:
+      - Image models don't have size buckets (one bucket per capability).
+      - We don't have pricing data yet, so cost-vs-quality Pareto math
+        collapses to intelligence-only — same answer all four presets
+        produce. Premium / Optimum / Budget / Free distinctions will
+        kick in once $/1k images is wired into the catalog (separate
+        scrape pass against AA's per-model detail pages).
+      - Free vs paid partitioning also waits on pricing data. Until
+        then, every media slot is treated as a single ranked pool
+        per category.
+
+    Returns top-N picks sorted by intelligence_score (Elo) descending.
+    """
+    excluded_ids = excluded_ids or set()
+    candidates = filter_by_category(catalog, category)
+    candidates = [m for m in candidates if m["id"] not in excluded_ids]
+    if not candidates:
+        return []
+    return sort_by_intelligence_descending(candidates)[:top_n]
+
+
 def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: str) -> str | None:
     """Pick a vision-capable model from the configured size bucket.
 
@@ -346,8 +383,23 @@ def populate_configuration(
         section: dict = {}
         diversity = slot_spec.get("diversity_excluded", False)
         excluded_so_far: set = set()
+        # Slots carrying a ``category`` field (e.g. image_generation) route
+        # through the media picker, which sorts by Elo and ignores the
+        # chat-only paid/free machinery. See pick_for_media_slot.
+        slot_category = slot_spec.get("category")
         for cell_name in slot_spec["cells"]:
-            if preset["mode"] == "free_intelligence":
+            notes: list = []
+            if slot_category and slot_category != "chat":
+                picks = pick_for_media_slot(
+                    catalog,
+                    category=slot_category,
+                    top_n=slot_spec["top_n"],
+                    excluded_ids=excluded_so_far if diversity else None,
+                )
+                # Media cells don't carry a vision_substitute (the slot IS
+                # the image-handling slot — no fallback needed).
+                section[cell_name] = picks_to_cell(picks, None)
+            elif preset["mode"] == "free_intelligence":
                 picks = pick_for_free_slot(
                     catalog,
                     size_bucket=slot_spec["size_bucket"],
@@ -355,7 +407,7 @@ def populate_configuration(
                     excluded_ids=excluded_so_far if diversity else None,
                     vision_only=effective_vision_only,
                 )
-                notes = []
+                section[cell_name] = picks_to_cell(picks, vision_substitute)
             else:
                 picks, notes = pick_for_paid_slot(
                     catalog,
@@ -368,7 +420,7 @@ def populate_configuration(
                     vision_only=effective_vision_only,
                     sort_by=preset.get("sort_by", "cost_asc"),
                 )
-            section[cell_name] = picks_to_cell(picks, vision_substitute)
+                section[cell_name] = picks_to_cell(picks, vision_substitute)
             if notes:
                 loosening_log[f"{slot_section}.{cell_name}"] = notes
             if diversity and picks:
@@ -384,6 +436,13 @@ def populate_configuration(
     cells["analysis"]["gear3"]["breadth"] = None
 
     cells["post_analysis"] = _pick("post_analysis", slot_specs["post_analysis"])
+
+    # Media slots (image_generation today; image_editing + text_to_video
+    # will land on the Visual tab in later steps). Guarded by presence
+    # in the preset spec so a configuration without the slot still bakes
+    # cleanly against older preset files.
+    if "image_generation" in slot_specs:
+        cells["image_generation"] = _pick("image_generation", slot_specs["image_generation"])
 
     return {
         "name": "<set by caller>",
