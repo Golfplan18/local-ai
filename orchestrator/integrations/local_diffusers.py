@@ -237,10 +237,17 @@ def _coerce_to_bytes(value: Any, *, field_name: str, slot: str) -> bytes:
 
 
 def _bytes_to_pil(image_bytes: bytes):
-    """Decode bytes → PIL.Image, lazy-importing PIL."""
+    """Decode bytes → PIL.Image, lazy-importing PIL.
+
+    Preserves the source image's mode (RGBA stays RGBA). The earlier
+    .convert("RGB") here was stripping the alpha channel from any
+    transparent PNG that flowed through the local-diffusers fallback —
+    publisher direction 2026-05-22 to eliminate every RGB conversion
+    site so alpha is never silently lost.
+    """
     from PIL import Image  # type: ignore
 
-    return Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    return Image.open(io.BytesIO(image_bytes))
 
 
 def _pil_to_png_bytes(image) -> bytes:

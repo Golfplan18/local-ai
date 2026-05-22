@@ -80,10 +80,12 @@ from capability_registry import CapabilityError, CapabilityRegistry, load_regist
 # we hand to `registry.register_provider`.
 # ---------------------------------------------------------------------------
 
-PROVIDER_IMAGE_GENERATES = "openai-gpt-image-1"
+PROVIDER_IMAGE_GENERATES = "openai-image-direct"
 
-# OpenAI model id as currently published on the images endpoint.
-MODEL_IMAGE_GENERATES = "gpt-image-1"
+# Historical alias retained for any callers that still reference the
+# pre-2026-05-22 provider id (`openai-gpt-image-1`). The dispatcher no
+# longer assumes a model id — see dispatch_image_generates below.
+PROVIDER_IMAGE_GENERATES_LEGACY = "openai-gpt-image-1"
 
 # Aspect-ratio → gpt-image-1 size string. The model accepts square,
 # portrait, landscape, or "auto". The slot contract's five-value enum
@@ -237,6 +239,21 @@ def dispatch_image_generates(inputs: dict) -> bytes:
             slot="image_generates",
         )
 
+    # Model id is required input — provided by the caller (typically the
+    # capability_registry from the slot's chain entry). No hardcoded
+    # fallback: a missing model id is a configuration bug, not something
+    # to paper over with a silent default. Publisher direction 2026-05-22.
+    model_id = inputs.get("model") or inputs.get("model_id")
+    if not isinstance(model_id, str) or not model_id.strip():
+        raise CapabilityError(
+            "missing_required_input",
+            "image_generates requires a non-empty 'model' input. "
+            "The slot chain entry must encode the OpenAI model id; "
+            "no default is assumed.",
+            slot="image_generates",
+        )
+    model_id = model_id.strip()
+
     style_hint = inputs.get("style")  # may be None
     aspect_ratio = inputs.get("aspect_ratio") or "1:1"
 
@@ -258,7 +275,7 @@ def dispatch_image_generates(inputs: dict) -> bytes:
     # makes billing predictable and prevents the dispatcher from drifting
     # if OpenAI changes the auto-tier default.
     request_kwargs: dict[str, Any] = {
-        "model": MODEL_IMAGE_GENERATES,
+        "model": model_id,
         "prompt": composed_prompt,
         "size": size,
         "n": 1,
