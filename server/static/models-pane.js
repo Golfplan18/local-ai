@@ -1517,6 +1517,19 @@
     if ((model.id || '').endsWith(':free')) {
       chips.push('<span class="ora-models-chip ora-models-chip-free">:free</span>');
     }
+    // Reachability chips. Set by the registry's reachability probe (see
+    // sync_model_registry.py::reach_probe_one). The probe records
+    // reachable: true/false/null + rate_limited boolean. We surface three
+    // states: rate-limited (yellow — endpoint exists, throttled), unreachable
+    // (red — 404 / 410 / 400-other), unverified (grey — no probe data yet).
+    if (model.reachable === false) {
+      chips.push('<span class="ora-models-chip ora-models-chip-unreachable" title="Reachability probe failed — this model returned 404 / 410 / 400 (not bad-request). Auto-populate skips it.">UNREACHABLE</span>');
+    } else if (model.reachable === true && model.reachable_rate_limited) {
+      chips.push('<span class="ora-models-chip ora-models-chip-rate-limited" title="Endpoint exists, but the probe hit a rate limit. Common on free-tier models; the fallback chain catches it at runtime.">RATE-LIMITED</span>');
+    } else if (model.reachable !== true) {
+      // null / undefined — never probed, or last probe was inconclusive.
+      chips.push('<span class="ora-models-chip ora-models-chip-unverified" title="No recent reachability probe data. Run scripts/sync_model_registry.py reach to verify.">UNVERIFIED</span>');
+    }
     return chips.join('');
   }
 

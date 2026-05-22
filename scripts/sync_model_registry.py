@@ -44,7 +44,7 @@ import re
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -1753,6 +1753,21 @@ def cmd_sync(args) -> int:
         )
         _run_probe(args, mode="unverified_positive")
 
+    # Reachability probe — separate pass; covers every chat model whose
+    # reachability record is missing or older than --stale-days (default 7).
+    if not getattr(args, "no_reach", False):
+        # Re-read registry: the vision-probe run above may have rewritten it.
+        with open(REGISTRY_PATH) as f:
+            registry = json.load(f)
+        reach_args = argparse.Namespace(
+            revalidate=False,
+            only_unknown=False,
+            stale_days=7,
+            limit=args.limit,
+        )
+        print("[sync] running reachability probe …", flush=True)
+        _run_reach_probe(registry, reach_args)
+
     return 0
 
 
@@ -1848,6 +1863,204 @@ def _run_probe(args, mode: str) -> int:
     return 0
 
 
+# ─── Reachability probe ───────────────────────────────────────────────────
+#
+# Separate from the vision probe. The vision probe sends an image and checks
+# whether the model can read a digit — useful for the kimi-k2.6 false-vision
+# class, but tells us nothing about whether a model responds at all. This
+# probe sends a 1-character prompt with max_tokens=1 and classifies the
+# response by HTTP status:
+#
+#   200            → reachable (model returned a completion)
+#   429            → reachable, but rate-limited at probe time (common on
+#                    free-tier models; the endpoint exists, the bucket was
+#                    just empty). Flagged separately so the UI can surface it.
+#   401 / 403      → auth issue, not the model's fault — inconclusive
+#   404 / 410      → not deployable — model doesn't exist or is sunset
+#   400 (other)    → request rejected by the provider — not deployable
+#   5xx            → provider downtime — inconclusive (sticky null until next run)
+#   network error  → our-side / DNS / timeout — inconclusive
+#
+# 429-aware retry: one 3s backoff before recording the verdict, so half the
+# transient rate-limit hits resolve on second attempt. Per-model cost on
+# OpenRouter is effectively zero (1 input + 1 output token).
+
+_REACH_RETRY_DELAY_SEC = 3.0
+_REACH_PROMPT = "hi"
+# OpenAI's auto-routing meta-models (gpt-chat-latest, ~openai/gpt-*) reject
+# max_tokens below a provider-set minimum (currently 16). Setting the probe
+# to 16 sidesteps the false 400 without materially raising cost — cheapest
+# tiers still bill fractions of a cent per call.
+_REACH_MAX_TOKENS = 16
+
+def _classify_reachability_error(err: Exception) -> tuple[bool, str | None, str, int | None]:
+    """Map an OpenAI SDK exception to (reachable_verdict, rate_limited, error_kind, status_code).
+
+    reachable_verdict: True / False / None (None = inconclusive, retry next run)
+    rate_limited: True only when the status code was 429.
+    error_kind: short token for the UI / logs.
+    status_code: HTTP status if known.
+    """
+    status = getattr(err, "status_code", None)
+    if status is None:
+        # The OpenAI SDK exposes the HTTP status on most error types via
+        # .status_code; fall back to parsing the message for numeric codes.
+        msg = str(err)
+        for code in (429, 404, 410, 403, 401, 400, 500, 502, 503, 504):
+            if f"Error code: {code}" in msg or f" {code} " in msg:
+                status = code
+                break
+    if status == 429:
+        return True, True, "rate_limited", 429
+    if status in (404, 410):
+        return False, False, "not_found", status
+    if status in (401, 403):
+        return None, False, "unauthorized", status
+    if status == 400:
+        return False, False, "bad_request", 400
+    if status and 500 <= status < 600:
+        return None, False, "server_error", status
+    return None, False, "network", status
+
+
+def reach_probe_one(client, model_id: str) -> dict:
+    """Send a 1-token completion. Returns the reachability record."""
+    def attempt():
+        try:
+            resp = client.chat.completions.create(
+                model=model_id,
+                messages=[{"role": "user", "content": _REACH_PROMPT}],
+                max_tokens=_REACH_MAX_TOKENS,
+                extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora reach probe"},
+            )
+            # Any non-error response → reachable. We don't care about content
+            # (reasoning models often return empty content with finish_reason=length
+            # at max_tokens=1; the endpoint still responded).
+            return {
+                "reachable": True,
+                "rate_limited": False,
+                "status_code": 200,
+                "error_kind": None,
+                "error_message": None,
+            }
+        except Exception as e:
+            verdict, rate_limited, kind, status = _classify_reachability_error(e)
+            return {
+                "reachable": verdict,
+                "rate_limited": rate_limited,
+                "status_code": status,
+                "error_kind": kind,
+                "error_message": str(e)[:300],
+            }
+
+    record = attempt()
+    if record.get("rate_limited"):
+        # One retry after a short backoff catches half the transient 429s.
+        time.sleep(_REACH_RETRY_DELAY_SEC)
+        retry = attempt()
+        if retry["reachable"] is True and not retry["rate_limited"]:
+            record = retry
+            record["retried_after_429"] = True
+        else:
+            record["retried_after_429"] = True
+
+    record["probed_at"] = _now_iso()
+    return record
+
+
+def cmd_reach(args) -> int:
+    """Run the reachability probe against every chat model in the registry
+    (or a stale-only subset). Records ``_provenance.reachability`` per model.
+    """
+    if not REGISTRY_PATH.exists():
+        print(f"[reach] registry missing at {REGISTRY_PATH}; run `sync` first", flush=True)
+        return 1
+    with open(REGISTRY_PATH) as f:
+        registry = json.load(f)
+    return _run_reach_probe(registry, args)
+
+
+def _run_reach_probe(registry: dict, args) -> int:
+    client = _load_openrouter_client()
+    models = registry.get("models") or {}
+    targets: list[str] = []
+    stale_after_days = getattr(args, "stale_days", 7) or 7
+    stale_cutoff = datetime.now(timezone.utc) - timedelta(days=stale_after_days)
+    revalidate = bool(getattr(args, "revalidate", False))
+    only_unknown = bool(getattr(args, "only_unknown", False))
+
+    for mid, m in models.items():
+        # Skip media-category models — they aren't called through the same
+        # chat-completions endpoint, so this probe's interpretation doesn't
+        # apply. They'll get their own reachability check if we add one.
+        if (m.get("category") or "chat") != "chat":
+            continue
+        prov = m.get("_provenance") or {}
+        prior = prov.get("reachability") or {}
+        prior_at_raw = prior.get("probed_at")
+        prior_at = None
+        if prior_at_raw:
+            try:
+                prior_at = datetime.fromisoformat(prior_at_raw.replace("Z", "+00:00"))
+            except Exception:
+                prior_at = None
+        is_stale = (prior_at is None) or (prior_at < stale_cutoff)
+        if revalidate:
+            targets.append(mid)
+        elif only_unknown:
+            if prior.get("reachable") is None:
+                targets.append(mid)
+        elif is_stale:
+            targets.append(mid)
+
+    limit = getattr(args, "limit", 0) or 0
+    if limit > 0:
+        targets = targets[:limit]
+
+    if not targets:
+        print("[reach] no models need probing (use --revalidate to force).", flush=True)
+        return 0
+
+    print(f"[reach] probing {len(targets)} chat models …", flush=True)
+    reachable = 0
+    rate_limited = 0
+    unreachable = 0
+    inconclusive = 0
+    for i, mid in enumerate(targets, start=1):
+        rec = reach_probe_one(client, mid)
+        prov = models[mid].setdefault("_provenance", {})
+        prov["reachability"] = rec
+        # Top-level mirror for quick consumer-side checks (frontend, auto-populate).
+        models[mid]["reachable"] = rec.get("reachable")
+        models[mid]["reachable_rate_limited"] = bool(rec.get("rate_limited"))
+        models[mid]["reachable_probed_at"] = rec.get("probed_at")
+
+        if rec["reachable"] is True and rec.get("rate_limited"):
+            rate_limited += 1
+            tag = "⏱ rate-limited"
+        elif rec["reachable"] is True:
+            reachable += 1
+            tag = "✓ reachable"
+        elif rec["reachable"] is False:
+            unreachable += 1
+            tag = f"✗ {rec.get('error_kind') or 'unreachable'}"
+        else:
+            inconclusive += 1
+            tag = f"… {rec.get('error_kind') or 'inconclusive'}"
+        print(f"[reach] {i}/{len(targets)} {mid:55s} → {tag}", flush=True)
+        time.sleep(0.2)  # gentle on the API
+
+    registry["last_reach_probe_at"] = _now_iso()
+    with open(REGISTRY_PATH, "w") as f:
+        json.dump(registry, f, indent=2, sort_keys=False)
+    print(
+        f"[reach] done. reachable={reachable} rate_limited={rate_limited} "
+        f"unreachable={unreachable} inconclusive={inconclusive}",
+        flush=True,
+    )
+    return 0
+
+
 def cmd_audit(args) -> int:
     if not REGISTRY_PATH.exists():
         print(f"[audit] registry missing at {REGISTRY_PATH}", flush=True)
@@ -1905,7 +2118,8 @@ def main() -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp_sync = sub.add_parser("sync", help="Pull all sources, merge, write registry. Probes unverified models by default.")
-    sp_sync.add_argument("--no-probe", action="store_true", help="Skip the empirical probe pass.")
+    sp_sync.add_argument("--no-probe", action="store_true", help="Skip the empirical vision probe pass.")
+    sp_sync.add_argument("--no-reach", action="store_true", help="Skip the reachability probe pass.")
     sp_sync.add_argument("--limit", type=int, default=0, help="(probe) Limit probe to this many models.")
     sp_sync.add_argument(
         "--aa-path", choices=("scrape", "api"), default=None,
@@ -1915,10 +2129,17 @@ def main() -> int:
     )
     sp_sync.set_defaults(func=cmd_sync)
 
-    sp_probe = sub.add_parser("probe", help="Run empirical probes against unverified models.")
+    sp_probe = sub.add_parser("probe", help="Run empirical vision probes against unverified models.")
     sp_probe.add_argument("--revalidate", action="store_true", help="Re-probe models LiteLLM already flagged true.")
     sp_probe.add_argument("--limit", type=int, default=0, help="Limit probe to this many models.")
     sp_probe.set_defaults(func=cmd_probe)
+
+    sp_reach = sub.add_parser("reach", help="Run reachability probes (1-token call, 429-aware) against chat models.")
+    sp_reach.add_argument("--revalidate", action="store_true", help="Re-probe every chat model, ignoring prior verdicts.")
+    sp_reach.add_argument("--only-unknown", action="store_true", help="Probe only models whose reachable verdict is currently null.")
+    sp_reach.add_argument("--stale-days", type=int, default=7, help="Re-probe models whose prior record is older than this (default 7).")
+    sp_reach.add_argument("--limit", type=int, default=0, help="Limit probe to this many models.")
+    sp_reach.set_defaults(func=cmd_reach)
 
     sp_audit = sub.add_parser("audit", help="Print a registry summary.")
     sp_audit.set_defaults(func=cmd_audit)

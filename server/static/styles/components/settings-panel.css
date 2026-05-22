@@ -1119,6 +1119,25 @@
   color: rgba(180, 240, 120, 1);
 }
 
+/* Reachability chips. Set by the reachability probe (sync_model_registry.py
+   reach). Red for unreachable (404 / 410 / non-token 400), yellow for
+   rate-limited (200/429 with throttling flag), grey for unverified
+   (no probe data or inconclusive). Auto-populate skips the red ones. */
+.ora-models-chip-unreachable {
+  background: rgba(196, 60, 60, 0.20);
+  color: rgba(232, 128, 128, 1);
+}
+
+.ora-models-chip-rate-limited {
+  background: rgba(212, 172, 74, 0.20);
+  color: rgba(232, 200, 120, 1);
+}
+
+.ora-models-chip-unverified {
+  background: rgba(150, 150, 150, 0.18);
+  color: rgba(168, 159, 138, 1);
+}
+
 .ora-models-inventory-count {
   color: var(--text-normal, #E8E0CC);
   font-weight: 600;

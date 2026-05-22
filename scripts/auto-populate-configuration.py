@@ -185,6 +185,17 @@ def filter_vision(candidates: list[dict]) -> list[dict]:
     return [m for m in candidates if m.get("vision_capable", False)]
 
 
+def filter_reachable(candidates: list[dict], unreachable_ids: set[str]) -> list[dict]:
+    """Drop models the reachability probe (sync_model_registry.py reach)
+    has confirmed as unreachable (HTTP 404 / 410 / 400 not_token_limit on
+    a 1-prompt completion). Rate-limited and inconclusive verdicts are NOT
+    excluded — those models still have working endpoints; the fallback
+    chain handles transient 429s at runtime."""
+    if not unreachable_ids:
+        return candidates
+    return [m for m in candidates if m.get("id") not in unreachable_ids]
+
+
 def sort_by_cost_ascending(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
     return sorted(candidates, key=cost_fn)
 
@@ -206,6 +217,7 @@ def pick_for_paid_slot(
     excluded_ids: set | None = None,
     vision_only: bool = False,
     sort_by: str = "cost_asc",
+    unreachable_ids: set[str] | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N models for a paid slot.
 
@@ -219,6 +231,7 @@ def pick_for_paid_slot(
     excluded_ids = excluded_ids or set()
     candidates = filter_paid(catalog)
     candidates = filter_by_size_bucket(candidates, size_bucket)
+    candidates = filter_reachable(candidates, unreachable_ids or set())
     if vision_only:
         candidates = filter_vision(candidates)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
@@ -265,6 +278,7 @@ def pick_for_free_slot(
     top_n: int,
     excluded_ids: set | None = None,
     vision_only: bool = False,
+    unreachable_ids: set[str] | None = None,
 ) -> list[dict]:
     """Pick top-N free models. No cost math; sort by intelligence descending.
 
@@ -273,6 +287,7 @@ def pick_for_free_slot(
     """
     excluded_ids = excluded_ids or set()
     candidates = filter_free(catalog)
+    candidates = filter_reachable(candidates, unreachable_ids or set())
     if size_bucket:
         # Soft filter — fall back to all free if bucket-conformance is empty
         bucketed = filter_by_size_bucket(candidates, size_bucket)
@@ -394,6 +409,7 @@ def populate_configuration(
     catalog: list[dict],
     presets_config: dict,
     vision_only: bool | None = None,
+    unreachable_ids: set[str] | None = None,
 ) -> dict:
     """Compute the full configuration dict for a given preset.
 
@@ -403,6 +419,12 @@ def populate_configuration(
     extraction fallback). When None, falls through to the preset's
     declared default (``vision_only`` field on the preset; defaults to
     False if absent).
+
+    ``unreachable_ids``: set of model ids the reachability probe has
+    confirmed as unreachable (HTTP 404 / 410 / non-token 400). These are
+    filtered out of every paid / free pick. Rate-limited and inconclusive
+    verdicts are NOT excluded — those endpoints still work, the fallback
+    chain absorbs transient 429s at runtime.
     """
     presets = presets_config["presets"]
     slot_specs = presets_config["slot_specs"]
@@ -458,6 +480,7 @@ def populate_configuration(
                     top_n=slot_spec["top_n"],
                     excluded_ids=excluded_so_far if diversity else None,
                     vision_only=effective_vision_only,
+                    unreachable_ids=unreachable_ids,
                 )
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
             else:
@@ -471,6 +494,7 @@ def populate_configuration(
                     excluded_ids=excluded_so_far if diversity else None,
                     vision_only=effective_vision_only,
                     sort_by=preset.get("sort_by", "cost_asc"),
+                    unreachable_ids=unreachable_ids,
                 )
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
             if notes:
@@ -554,7 +578,29 @@ def main():
         print("[auto-populate] catalog is empty.", file=sys.stderr)
         sys.exit(1)
 
-    config = populate_configuration(args.preset, catalog, presets_config, vision_only=vision_override)
+    # Cross-reference the registry's reachability probe data to skip
+    # confirmed-unreachable models. Registry lives next to the catalog;
+    # missing or unread → empty set (no exclusions), so the script still
+    # runs cleanly on a fresh install before any probe has happened.
+    unreachable_ids: set[str] = set()
+    registry_path = CONFIG_DIR / "model-registry.json"
+    if registry_path.exists():
+        try:
+            with open(registry_path) as f:
+                registry = json.load(f)
+            for mid, m in (registry.get("models") or {}).items():
+                if m.get("reachable") is False:
+                    unreachable_ids.add(mid)
+            if unreachable_ids:
+                print(f"[auto-populate] skipping {len(unreachable_ids)} models flagged unreachable by the reachability probe.")
+        except Exception as exc:
+            print(f"[auto-populate] registry read failed (proceeding without reachability filter): {exc}", file=sys.stderr)
+
+    config = populate_configuration(
+        args.preset, catalog, presets_config,
+        vision_only=vision_override,
+        unreachable_ids=unreachable_ids,
+    )
     config["name"] = args.config_name
 
     if args.dry_run:
