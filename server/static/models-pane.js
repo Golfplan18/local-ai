@@ -55,7 +55,15 @@
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
     sort_by: 'alpha_desc',  // alphabetical descending — newest releases bubble up by version-string convention
+    category: 'chat',       // inventory category: chat | image_generation | image_editing | text_to_video. Slot-pick mode overrides to the slot's category.
   };
+
+  var CATEGORY_OPTIONS = [
+    {id: 'chat',             label: 'Chat'},
+    {id: 'image_generation', label: 'Image gen'},
+    {id: 'image_editing',    label: 'Image edit'},
+    {id: 'text_to_video',    label: 'Video'},
+  ];
 
   var SORT_OPTIONS = [
     {id: 'alpha_desc',         label: 'Alphabetical'},
@@ -139,6 +147,7 @@
     _filters = {
       vision: false, free: false, pick: false,
       intelligence_pct: 0, search: '', sort_by: 'alpha_desc',
+      category: 'chat',
     };
     _expandedVendors = new Set();
     _activeSlotPick = null;
@@ -1106,18 +1115,20 @@
     var section = _hostEl.querySelector('[data-section="inventory"]');
     if (!section) return;
     var models = (_registry && _registry.models) || {};
-    // Inventory category is dictated by the active slot pick. When
-    // the user clicks the image-gen slot, the inventory swaps to
-    // image_generation models. Otherwise (any chat slot, or no
-    // active pick), the inventory shows chat models. Slot label
-    // ↔ category map kept short — image gen is the only media slot
-    // surfaced on the Models pane today; the others (editing,
-    // image-to-prompt, critique, video) live on the Visual tab.
+    // Inventory category resolution: a slot pick on the active card
+    // forces the matching category (so picking IMAGE GEN swaps the
+    // inventory to image models). With no slot picking in progress,
+    // the user's category dropdown drives — defaults to Chat. The
+    // Models pane only edits image_generation today, but Image edit
+    // and Video are surfaced in the dropdown so the user can browse
+    // them and see what's available even before the Visual tab lands.
     var SLOT_TO_CATEGORY = {
       'image gen': 'image_generation',
     };
     var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
-    var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel]) || 'chat';
+    var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel])
+      || _filters.category
+      || 'chat';
     var allModels = Object.values(models).filter(function (m) {
       var c = (m && m.category) || 'chat';
       return c === wantCategory;
@@ -1193,6 +1204,7 @@
       + '</header>'
       + pickBanner
       + '<div class="ora-models-inventory-controls">'
+      +   _categorySelectHTML()
       +   _filterChipsHTML()
       +   _sortSelectHTML()
       +   _sliderHTML()
@@ -1436,6 +1448,29 @@
       + '</div>';
   }
 
+  function _categorySelectHTML() {
+    // Active slot-pick locks the category to match the slot — show the
+    // dropdown disabled so the user sees why their click can't change it.
+    var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
+    var SLOT_TO_CATEGORY = {'image gen': 'image_generation'};
+    var locked = !!(slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel]);
+    var effectiveCategory = locked
+      ? SLOT_TO_CATEGORY[slotPickLabel]
+      : (_filters.category || 'chat');
+    var options = CATEGORY_OPTIONS.map(function (opt) {
+      var sel = opt.id === effectiveCategory ? ' selected' : '';
+      return '<option value="' + opt.id + '"' + sel + '>' + _esc(opt.label) + '</option>';
+    }).join('');
+    return ''
+      + '<label class="ora-models-sort-wrap" title="Browse inventory by category">'
+      +   '<span class="ora-models-sort-label">Category</span>'
+      +   '<select class="ora-models-sort-select" data-filter="category"'
+      +     (locked ? ' disabled' : '') + '>'
+      +     options
+      +   '</select>'
+      + '</label>';
+  }
+
   function _sortSelectHTML() {
     var options = SORT_OPTIONS.map(function (opt) {
       var sel = opt.id === _filters.sort_by ? ' selected' : '';
@@ -1486,13 +1521,15 @@
         _renderInventory();
       });
     }
-    var sortEl = section.querySelector('.ora-models-sort-select');
-    if (sortEl) {
-      sortEl.addEventListener('change', function () {
-        _filters.sort_by = sortEl.value;
+    // Dispatch every select (sort + category) on its data-filter key.
+    Array.from(section.querySelectorAll('.ora-models-sort-select')).forEach(function (el) {
+      el.addEventListener('change', function () {
+        var key = el.dataset.filter;
+        if (!key) return;
+        _filters[key] = el.value;
         _renderInventory();
       });
-    }
+    });
     // Inventory row clicks commit a slot pick when one is active.
     Array.from(section.querySelectorAll('.ora-models-model-row')).forEach(function (row) {
       row.addEventListener('click', function () {
