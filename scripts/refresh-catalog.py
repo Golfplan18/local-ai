@@ -326,10 +326,12 @@ def append_media_entries_from_registry(catalog: list[dict], registry: dict) -> i
       - ``category`` carried forward (image_generation / image_editing /
         text_to_video) — used by auto-populate's slot filter
       - ``size_bucket`` stays None (sizing doesn't apply to image models)
-      - ``is_free`` stays False (we don't have free-tier info for image
-        models yet; this gets refined when pricing data lands)
-      - ``openrouter_pricing`` is all-None (no pricing data yet — Pareto
-        cost math degrades cleanly to intelligence-only)
+      - ``image_pricing`` (new 2026-05-22) — when AA published a per-1k
+        images price, propagate it. Lets auto-populate differentiate
+        Premium / Optimum / Budget / Free picks for image-gen slots.
+      - ``is_free`` set from ``image_pricing == 0`` when known.
+      - ``openrouter_pricing`` stays all-None (chat-side pricing
+        doesn't apply to image models).
 
     Returns the count of media entries appended.
     """
@@ -342,6 +344,14 @@ def append_media_entries_from_registry(catalog: list[dict], registry: dict) -> i
         if category not in ("image_generation", "image_editing", "text_to_video"):
             continue
         elo = m.get("intelligence_score")
+        # Media pricing — registry stores AA's pricePer1kImages under
+        # ``pricing.per_1k_images`` (None when AA shows "Coming soon"
+        # / "No API available" / null). Promote to a catalog-level
+        # ``image_pricing`` field so auto-populate sees it without
+        # peering into the nested dict.
+        pricing = m.get("pricing") or {}
+        per_1k_images = pricing.get("per_1k_images") if isinstance(pricing, dict) else None
+        is_free = (per_1k_images == 0) if per_1k_images is not None else False
         catalog.append({
             "id": mid,
             "display_name": m.get("display_name") or mid,
@@ -359,13 +369,18 @@ def append_media_entries_from_registry(catalog: list[dict], registry: dict) -> i
                 "output_per_m": None,
                 "blended_per_m": None,
             },
+            "image_pricing": {
+                "per_1k_images": per_1k_images,
+            },
             "aa_intelligence_index": elo,
             "aa_intelligence_rank": m.get("intelligence_rank"),
             "aa_intelligence_votes": m.get("intelligence_votes"),
             "aa_blended_per_m": None,
             "family_tier": None,
             "size_bucket": None,
-            "is_free": False,
+            "is_free": is_free,
+            "is_open_weights": m.get("is_open_weights", False),
+            "release_date": m.get("release_date"),
         })
         appended += 1
     return appended

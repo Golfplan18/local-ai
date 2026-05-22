@@ -603,6 +603,29 @@
   function _compactMetaHTML(model, opts) {
     opts = opts || {};
     var parts = [];
+    var isMedia = (model.category && model.category !== 'chat');
+    if (isMedia) {
+      // Image / video models: AA reports Elo from head-to-head arena
+      // voting (typical range 1100-1400) and pricing in $/1k images
+      // or $/1k clips. Show both with the units AA publishes — "Elo"
+      // and "/1k imgs" — so the user can cross-reference the
+      // leaderboard directly. Latency / tokens-per-sec don't apply.
+      // Registry stores Elo in ``intelligence_score`` (Arena's field);
+      // ``aa_intelligence_index`` stays null for media. Pricing lives
+      // in ``pricing.per_1k_images``.
+      var elo = (model.aa_intelligence_index != null)
+        ? model.aa_intelligence_index : model.intelligence_score;
+      if (elo != null) parts.push('Elo ' + elo.toFixed(0));
+      if (!opts.omitCost) {
+        var pricing = model.pricing || {};
+        var per1k = pricing.per_1k_images;
+        if (per1k != null) {
+          var unit = (model.category === 'text_to_video') ? '/1k clips' : '/1k imgs';
+          parts.push('$' + per1k.toFixed(0) + unit);
+        }
+      }
+      return parts.join(' · ');
+    }
     var intel = _normalizedIntelligence(model);
     if (intel != null) {
       parts.push('int ' + intel.toFixed(intel < 10 ? 1 : 0));

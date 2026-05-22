@@ -1019,6 +1019,13 @@ def _build_media_entry(row: dict, category: str, fetched_at: str) -> tuple[str, 
         return None
     model_id = f"{prefix}:{uuid}"
     creator = (row.get("creator") or {}).get("name") or "Unknown"
+    # AA leaderboard row carries pricing in "pricePer1kImages" (USD
+    # per 1,000 generations) — matches the leaderboard's API Pricing
+    # column verbatim. ``openWeightsUrl`` is non-null when the model
+    # has an open-weights release (Black Forest Labs / HiDream /
+    # etc.). ``released`` is an ISO date string for release_date.
+    price_per_1k = row.get("pricePer1kImages")
+    open_weights_url = row.get("openWeightsUrl")
     entry: dict = {
         "id": model_id,
         "display_name": row.get("name") or model_id,
@@ -1031,7 +1038,12 @@ def _build_media_entry(row: dict, category: str, fetched_at: str) -> tuple[str, 
         "context_length": None,
         "supports_function_calling": None,
         "supports_tool_choice": None,
-        "pricing": None,
+        # Structured pricing — sibling shape to chat's
+        # ``pricing.input_per_token`` / ``output_per_token`` but with
+        # a different unit. None when AA shows "Coming soon" / "No API
+        # available" / null. Auto-populate's cost math knows to read
+        # this field for category != "chat" entries.
+        "pricing": {"per_1k_images": price_per_1k} if price_per_1k is not None else None,
         "hugging_face_id": None,
         # Elo plays the role intelligence_score plays for chat models —
         # store it in the same field so cross-cutting code (preset
@@ -1047,7 +1059,10 @@ def _build_media_entry(row: dict, category: str, fetched_at: str) -> tuple[str, 
         "latency_ttft_seconds": None,
         "output_tokens_per_second": None,
         "reasoning_model": None,
-        "release_date": None,
+        # AA's "released" field is an ISO date string; carry it
+        # through so the UI can show "Apr 2026" etc.
+        "release_date": row.get("released"),
+        "is_open_weights": bool(open_weights_url),
         "last_synced_at": fetched_at,
         "vendor": creator,
         "_provenance": {
@@ -1056,6 +1071,7 @@ def _build_media_entry(row: dict, category: str, fetched_at: str) -> tuple[str, 
                 "url": row.get("url"),
                 "aa_uuid": uuid,
                 "creator_id": (row.get("creator") or {}).get("id"),
+                "open_weights_url": open_weights_url,
                 "fetched_at": fetched_at,
             }
         },
