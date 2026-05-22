@@ -166,6 +166,12 @@
       _configs = resp[2] || {presets: {}, customs: [],
                              active_name: '', active_toggles: {}};
       _hardware = resp[3] || null;
+      // Sync the inventory's Vision filter chip to the active
+      // Vision-capable toggle. Without this, page reload while the
+      // toggle is on leaves the chip off — the toggle/chip sync code
+      // in _setToggle only fires on user click, not initial load.
+      var activeToggles = _configs.active_toggles || {};
+      if (activeToggles.vision_only) _filters.vision = true;
       _renderHeader();
       _renderPresets();
       _renderCustom();
@@ -456,7 +462,9 @@
       +   ' data-config-name="' + _esc(summary.name) + '">'
       +   '<header class="ora-models-card-header">'
       +     '<span class="ora-models-card-title">' + _esc(label) + '</span>'
-      +     (isActive ? '<span class="ora-models-card-active-flag">active</span>' : '')
+      +     chips
+      +     (isActive ? '<span class="ora-models-card-active-flag">active</span>'
+                      : '<span class="ora-models-card-active-flag" aria-hidden="true"></span>')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
       +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost, configName: summary.name})
@@ -472,9 +480,6 @@
       +     '<button type="button" class="ora-models-card-btn" data-action="more">'
       +       _moreLabelFor(summary.name) + '</button>'
       +     '<button type="button" class="ora-models-card-btn" data-action="customize">Customize</button>'
-      +   '</div>'
-      +   '<div class="ora-models-card-footer">'
-      +     chips
       +   '</div>'
       + '</div>';
   }
@@ -623,9 +628,13 @@
     var bits = [];
     if (toggles.adversarial_diversity) bits.push('Adversarial');
     if (toggles.vision_only) bits.push('Vision-only');
-    return bits.length
-      ? '<span class="ora-models-toggle-chip">' + bits.join(' · ') + '</span>'
-      : '<span class="ora-models-toggle-chip ora-models-toggle-chip-quiet">—</span>';
+    // Empty span (no "—" placeholder) when neither toggle is on, so
+    // the header's center column collapses and the title / active
+    // flag space without competing with a visible dash.
+    if (!bits.length) return '<span class="ora-models-card-header-chips"></span>';
+    return '<span class="ora-models-card-header-chips ora-models-toggle-chip">'
+      + bits.join(' · ')
+      + '</span>';
   }
 
   function _shortenModelId(id) {
@@ -877,7 +886,9 @@
       +   ' data-config-name="' + _esc(summary.name) + '">'
       +   '<header class="ora-models-card-header">'
       +     '<span class="ora-models-card-title">' + _esc(summary.name) + '</span>'
-      +     (isActive ? '<span class="ora-models-card-active-flag">active</span>' : '')
+      +     _toggleChips(summary.toggles)
+      +     (isActive ? '<span class="ora-models-card-active-flag">active</span>'
+                      : '<span class="ora-models-card-active-flag" aria-hidden="true"></span>')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
       +     _slotRowHTML('big 1', summary.big1, {configName: summary.name})
@@ -896,9 +907,6 @@
       +       'Customize</button>'
       +     '<button type="button" class="ora-models-card-btn ora-models-card-btn-danger"'
       +       ' data-action="delete" title="Delete">×</button>'
-      +   '</div>'
-      +   '<div class="ora-models-card-footer">'
-      +     _toggleChips(summary.toggles)
       +   '</div>'
       + '</div>';
   }
@@ -1168,10 +1176,27 @@
       + '</div>';
   }
 
+  // Strip the leading "Vendor: " prefix from a display name. The
+  // inventory groups by vendor already, so the prefix is redundant
+  // and makes rows wider than they need to be. e.g.
+  // "OpenAI: GPT-5.5" → "GPT-5.5", "Google: Gemini 3.5 Flash" →
+  // "Gemini 3.5 Flash". Image-model names like "GPT Image 2 (high)"
+  // have no colon and pass through unchanged. Tilde-prefixed
+  // mirror-vendors (e.g. "~OpenAI: Foo") also strip cleanly.
+  function _stripVendorPrefix(name) {
+    if (typeof name !== 'string') return name;
+    var idx = name.indexOf(': ');
+    if (idx <= 0) return name;
+    // Don't strip if the right side is empty
+    var right = name.slice(idx + 2).trim();
+    if (!right) return name;
+    return right;
+  }
+
   function _modelRowHTML(model) {
     // Single-line inventory row: name + chips + meta, all inline.
     // Meta is the same compact summary used in card slot rows.
-    var displayName = model.display_name || model.id;
+    var displayName = _stripVendorPrefix(model.display_name || model.id);
     return ''
       + '<li class="ora-models-model-row" title="' + _esc(model.id) + '"'
       +   ' data-model-id="' + _esc(model.id) + '">'

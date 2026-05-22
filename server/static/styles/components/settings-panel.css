@@ -604,11 +604,20 @@
 }
 
 .ora-models-card-header {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  /* Three-column grid so the toggle chips (when present) sit
+     visually centered between the title (left) and the ACTIVE flag
+     (right), regardless of which of the side cells is occupied.
+     The 1fr·auto·1fr template lets the middle cell shrink to its
+     content while the side cells expand to push it to center. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  gap: 6px;
 }
+
+.ora-models-card-title { justify-self: start; }
+.ora-models-card-header-chips { justify-self: center; }
+.ora-models-card-active-flag { justify-self: end; }
 
 .ora-models-card-title {
   font-weight: 600;
