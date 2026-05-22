@@ -804,6 +804,19 @@ class Router:
                 continue
             ep = self._endpoints.get(ep_id)
             if not ep:
+                # Configured id has no matching endpoint in routing-config.
+                # Continue the cascade (this is the publisher's chain — try
+                # the next fallback) but log so audits surface drift between
+                # the Models pane catalog and the routing-config registry.
+                try:
+                    print(
+                        f"[router] config {config_name!r} slot={slot!r} "
+                        f"references unknown endpoint id {ep_id!r} — "
+                        f"continuing cascade to next fallback",
+                        flush=True,
+                    )
+                except Exception:
+                    pass
                 continue
             if not ep.get("enabled", False):
                 continue

@@ -427,14 +427,16 @@ def get_active_endpoint(config: dict) -> dict | None:
             if (e.get("id") or e.get("name")) == slot:
                 return e
     default = config.get("default_endpoint")
-    active = [e for e in endpoints if e.get("status") == "active"]
-    if not active:
-        return None
     if default:
+        active = [e for e in endpoints if e.get("status") == "active"]
         for e in active:
             if (e.get("id") or e.get("name")) == default:
                 return e
-    return active[0]
+    # No explicit default and the v1 fallbacks didn't match. Refuse
+    # rather than silently picking active[0] — that path shipped raw
+    # endpoint-error strings to users when configurations drifted
+    # against the registry (smoke test 2026-05-22).
+    return None
 
 
 def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
@@ -487,17 +489,29 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
         if ep:
             return router._to_v1_endpoint(ep)
 
-    # Router-failure fallback: walk the raw config. As in
-    # get_active_endpoint, identify by id (v2) or name (legacy v1).
-    slot_assignments = config.get("slot_assignments", {})
-    model_id = slot_assignments.get(slot)
-    if not model_id:
-        return get_active_endpoint(config)
-    endpoints = config.get("endpoints", [])
-    for e in endpoints:
-        if (e.get("id") or e.get("name")) == model_id:
-            return e
-    return get_active_endpoint(config)
+    # Cascade exhausted. Do NOT silently fall back to "first active
+    # endpoint in the catalog" — that masked configuration drift
+    # (the smoke test on 2026-05-22 produced an MLX-not-found error
+    # shipped to the user because the resolver silently substituted
+    # a local endpoint when the premium config's OpenRouter ids
+    # weren't registered). Caller (run_gear3 / run_gear4) surfaces a
+    # useful refusal message naming the configured chain that failed.
+    #
+    # The routing-config-level `slot_assignments` legacy fallback only
+    # fires when no `config_name` was provided — otherwise we'd be
+    # silently overriding the publisher's explicit chain with the
+    # static slot_assignments map (every slot → local-mlx-…). Honoring
+    # the override on named-config calls reintroduces exactly the
+    # silent-substitution bug Edit B was meant to close.
+    if config_name is None:
+        slot_assignments = config.get("slot_assignments", {})
+        model_id = slot_assignments.get(slot)
+        if model_id:
+            endpoints = config.get("endpoints", [])
+            for e in endpoints:
+                if (e.get("id") or e.get("name")) == model_id:
+                    return e
+    return None
 
 
 def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive",
@@ -7899,7 +7913,15 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     breadth_endpoint = get_slot_endpoint(config, "breadth", config_name=config_name)
 
     if depth_endpoint is None and breadth_endpoint is None:
-        return "[No AI endpoints configured.]"
+        return (
+            f"[Configuration {config_name or '(default)'!r} couldn't resolve "
+            "depth or breadth endpoints. The configured model ids may not be "
+            "registered in config/routing-config.json. The server log "
+            "(`[router]` lines) names the ids that were tried. Fix by syncing "
+            "the registry from the model catalog "
+            "(scripts/sync_endpoints_from_catalog.py) or by editing the "
+            "configuration in the Models pane.]"
+        )
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
     trace_dir = context_pkg.get("trace_dir")
@@ -9368,6 +9390,44 @@ def _inject_images_into_messages(messages: list, images: list, api_format: str =
 
 
 def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> str:
+    """Dispatch an API call with direct-vendor preference + OpenRouter fallback.
+
+    The endpoint's ``service`` field selects the dispatch path. When a
+    direct-vendor call (claude / openai / gemini) returns an ``[Error ...``
+    string AND the endpoint carries an ``openrouter_fallback_model_id``
+    field, retry once through OpenRouter under the canonical id. Lets the
+    registry generator wire direct endpoints optimistically (saving the
+    OpenRouter markup when the direct API accepts the model name) without
+    sacrificing safety when the direct model name doesn't match the
+    vendor's actual API.
+    """
+    result = _call_api_endpoint_inner(messages, endpoint, images=images)
+    if not isinstance(result, str) or not result.lstrip().startswith("[Error"):
+        return result
+    fallback_model_id = endpoint.get("openrouter_fallback_model_id")
+    service = endpoint.get("service", "")
+    if not fallback_model_id or service == "openrouter":
+        return result
+    fallback_endpoint = {
+        **endpoint,
+        "service": "openrouter",
+        "model": fallback_model_id,
+        "model_id": fallback_model_id,
+    }
+    try:
+        print(
+            f"[direct-vendor-fallback] "
+            f"{endpoint.get('id') or endpoint.get('name')!r} "
+            f"direct={service!r} failed; retrying via OpenRouter as "
+            f"{fallback_model_id!r}",
+            flush=True,
+        )
+    except Exception:
+        pass
+    return _call_api_endpoint_inner(messages, fallback_endpoint, images=images)
+
+
+def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None) -> str:
     service = endpoint.get("service", "")
     model = endpoint.get("model", "")
 
