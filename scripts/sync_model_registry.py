@@ -309,6 +309,185 @@ def _find_matching_bracket(s: str, open_idx: int) -> int:
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# AA API path (parallel to the scrape path above)
+# ──────────────────────────────────────────────────────────────────────────
+#
+# AA's official REST API at https://artificialanalysis.ai/api/v2/ returns
+# the same intelligence + leaderboard data the scrape extracts from the
+# public pages. Trade-offs:
+#
+#   + Resilient to AA UI redesigns — the API is versioned.
+#   + Documented schema; rate-limited to 1,000 requests/day on the free
+#     tier (a sync uses 4 — one per endpoint — so essentially unbounded).
+#   + Won't trip AA's automated-traffic detection at scale.
+#   - Requires a key. Generate one at https://artificialanalysis.ai/ →
+#     account → API keys; store via Settings → External APIs (which
+#     writes to keyring under ``ora/aa-api-key``).
+#   - A few fields the public page exposes aren't in the API response:
+#     ``is_open_weights``, ``reasoning_model``, ``knowledge_cutoff_date``,
+#     ``agentic_index``, ``model_family_slug``, ``input_modality_image``,
+#     and the scrape's ``end_to_end_response_time_metrics`` total time.
+#     None have a downstream consumer at the time the API path landed
+#     (the Open-weights filter chip in the Models pane was removed in a
+#     parallel cleanup; ``knowledge_cutoff_date`` is also under audit).
+#
+# Functions below return the SAME shape ``fetch_aa_models()`` and
+# ``fetch_aa_text_to_image()`` etc. return, so ``_project_aa_view``,
+# ``build_aa_overlay``, and ``_build_media_entry`` need zero changes —
+# the path choice is invisible to them.
+
+AA_API_BASE_URL = "https://artificialanalysis.ai/api/v2/"
+AA_API_LLMS_PATH = "data/llms/models"
+AA_API_T2I_PATH = "data/media/text-to-image"
+AA_API_EDIT_PATH = "data/media/image-editing"
+AA_API_T2V_PATH = "data/media/text-to-video"
+
+
+def _aa_api_get(path: str, api_key: str, timeout: int = 30) -> dict:
+    """GET an AA API endpoint and parse the JSON envelope.
+
+    AA wraps responses as ``{"status": 200, "data": [...]}``. Returns the
+    full parsed envelope so callers can inspect status. Raises on HTTP /
+    network error so callers can decide their own fallback policy.
+    """
+    url = AA_API_BASE_URL + path.lstrip("/")
+    req = urllib.request.Request(
+        url,
+        headers={"x-api-key": api_key, "Accept": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read())
+
+
+def _aa_chat_api_to_scrape_shape(rec: dict) -> dict:
+    """Normalize one record from ``/api/v2/data/llms/models`` into the
+    shape ``fetch_aa_models()`` returns from scraping the public page.
+
+    The shape ``_project_aa_view`` reads is the contract:
+      - top-level: ``name``, ``slug``, ``release_date``,
+        ``intelligence_index``, ``coding_index``, ``math_index``, and
+        the optional ``model_family_slug`` / ``agentic_index`` /
+        ``input_modality_image`` / ``is_open_weights`` /
+        ``reasoning_model`` / ``knowledge_cutoff_date`` fields
+      - nested: ``end_to_end_response_time_metrics.total_time``,
+        ``time_to_first_answer_token_metrics.total_time``,
+        ``timescaleData.median_output_speed``
+      - canonical-id key: ``model_creators.slug`` paired with ``slug``
+
+    Fields the API doesn't expose are set to None (no downstream
+    consumer at the time the API path landed).
+    """
+    ev = rec.get("evaluations") or {}
+    creator = rec.get("model_creator") or {}
+    ttft = rec.get("median_time_to_first_token_seconds")
+    tps = rec.get("median_output_tokens_per_second")
+    return {
+        # passthrough
+        "id": rec.get("id"),
+        "name": rec.get("name"),
+        "slug": rec.get("slug"),
+        "release_date": rec.get("release_date"),
+        "pricing": rec.get("pricing"),
+        # flattened scoring (scrape has these at top level; API nests
+        # them under ``evaluations``)
+        "intelligence_index": ev.get("artificial_analysis_intelligence_index"),
+        "coding_index": ev.get("artificial_analysis_coding_index"),
+        "math_index": ev.get("artificial_analysis_math_index"),
+        # singular → plural rename so ``_aa_canonical_or_id`` reads the
+        # creator slug from the place it expects
+        "model_creators": (
+            {
+                "id": creator.get("id"),
+                "name": creator.get("name"),
+                "slug": creator.get("slug"),
+            }
+            if creator
+            else None
+        ),
+        # nested-form synthesis so ``_project_aa_view`` picks them up
+        # via the same dict path the scrape returns
+        "time_to_first_answer_token_metrics": (
+            {"total_time": ttft} if ttft is not None else None
+        ),
+        "timescaleData": (
+            {"median_output_speed": tps} if tps is not None else None
+        ),
+        # not exposed by the API — see header docstring for the audit
+        "model_family_slug": None,
+        "agentic_index": None,
+        "input_modality_image": None,
+        "is_open_weights": None,
+        "reasoning_model": None,
+        "knowledge_cutoff_date": None,
+        "end_to_end_response_time_metrics": None,
+        "deleted": False,
+    }
+
+
+def fetch_aa_models_via_api(api_key: str) -> list[dict]:
+    """API counterpart to ``fetch_aa_models()``. Returns the same
+    shape so ``_project_aa_view``, ``_aa_canonical_or_id``, and
+    ``build_aa_overlay`` are path-agnostic.
+
+    Raises on HTTP / network error; ``cmd_sync`` decides whether to
+    fall back to the scrape path.
+    """
+    envelope = _aa_api_get(AA_API_LLMS_PATH, api_key)
+    records = envelope.get("data") or []
+    return [_aa_chat_api_to_scrape_shape(r) for r in records]
+
+
+def _aa_media_api_to_scrape_shape(rec: dict) -> dict:
+    """Normalize one media-leaderboard record from the API into the row
+    shape ``_extract_aa_leaderboard_rows`` produces and
+    ``_build_media_entry`` reads.
+
+    The deltas are minimal:
+      - API: ``model_creator`` (singular) → scrape: ``creator``
+      - API: no ``url`` field. Scrape carries
+        ``/image/model-families/...``; ``_build_media_entry`` writes it
+        into the provenance bag but no other consumer uses it.
+    """
+    creator = rec.get("model_creator") or {}
+    return {
+        "id": rec.get("id"),
+        "name": rec.get("name"),
+        "url": None,
+        "rank": rec.get("rank"),
+        "elo": rec.get("elo"),
+        "appearances": rec.get("appearances"),
+        "creator": (
+            {"id": creator.get("id"), "name": creator.get("name")}
+            if creator
+            else None
+        ),
+    }
+
+
+def _fetch_aa_media_via_api(path: str, api_key: str) -> list[dict]:
+    envelope = _aa_api_get(path, api_key)
+    records = envelope.get("data") or []
+    rows = [_aa_media_api_to_scrape_shape(r) for r in records]
+    rows.sort(key=lambda r: r.get("rank") if r.get("rank") is not None else 99999)
+    return rows
+
+
+def fetch_aa_text_to_image_via_api(api_key: str) -> list[dict]:
+    """API counterpart to ``fetch_aa_text_to_image()``. Same shape."""
+    return _fetch_aa_media_via_api(AA_API_T2I_PATH, api_key)
+
+
+def fetch_aa_image_editing_via_api(api_key: str) -> list[dict]:
+    """API counterpart to ``fetch_aa_image_editing()``. Same shape."""
+    return _fetch_aa_media_via_api(AA_API_EDIT_PATH, api_key)
+
+
+def fetch_aa_text_to_video_via_api(api_key: str) -> list[dict]:
+    """API counterpart to ``fetch_aa_text_to_video()``. Same shape."""
+    return _fetch_aa_media_via_api(AA_API_T2V_PATH, api_key)
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # Source view extractors
 # ──────────────────────────────────────────────────────────────────────────
 
