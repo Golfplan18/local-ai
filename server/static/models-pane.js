@@ -1293,6 +1293,15 @@
     if (sizeFilter) {
       if (!model.size_bucket || model.size_bucket !== sizeFilter) return false;
     }
+    // Slot-pick capability gate. The VISUAL slot is the vision
+    // substitute — the model that handles image input when the
+    // analyst chain can't see it directly. It must be vision-capable
+    // regardless of whether the Vision filter chip is on. Other
+    // slots have no per-slot capability requirement today.
+    if (_activeSlotPick && _activeSlotPick.slotLabel === 'visual'
+        && model.vision_capable !== true) {
+      return false;
+    }
     // Intelligence filter: when slider is at 0 (default), show all
     // including unranked. When > 0, drop everything not in the top X%.
     if (_filters.intelligence_pct > 0) {
