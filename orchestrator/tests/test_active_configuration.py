@@ -337,12 +337,22 @@ class TestDelete(_Fixture):
         self.module.delete_configuration("scratch")
         self.assertFalse((self.config_dir / "scratch.json").exists())
 
-    def test_delete_refuses_active_config(self):
+    def test_delete_active_config_reverts_to_free(self):
+        # Active config gets deleted; pointer auto-reverts to "free".
+        self._write_config("free", {"cells": {}})
         self._write_config("active-one", {"cells": {}})
         self.module.set_active_name("active-one")
-        with self.assertRaises(ValueError) as cm:
-            self.module.delete_configuration("active-one")
-        self.assertIn("currently active", str(cm.exception))
+        self.module.delete_configuration("active-one")
+        self.assertFalse((self.config_dir / "active-one.json").exists())
+        self.assertEqual(self.module.get_active_name(), "free")
+
+    def test_delete_inactive_config_keeps_active_pointer(self):
+        # Deleting an inactive config doesn't disturb the active pointer.
+        self._write_config("active-one", {"cells": {}})
+        self._write_config("other", {"cells": {}})
+        self.module.set_active_name("active-one")
+        self.module.delete_configuration("other")
+        self.assertEqual(self.module.get_active_name(), "active-one")
 
     def test_delete_refuses_system_configs(self):
         self._write_config("background-default", {"cells": {}})
@@ -351,6 +361,14 @@ class TestDelete(_Fixture):
             self.module.delete_configuration("background-default")
         with self.assertRaises(ValueError):
             self.module.delete_configuration("user-pipeline")
+
+    def test_delete_refuses_named_presets(self):
+        # The four named presets (free/budget/optimum/premium) are
+        # also system-managed and cannot be deleted.
+        for preset in ("free", "budget", "optimum", "premium"):
+            self._write_config(preset, {"cells": {}})
+            with self.assertRaises(ValueError):
+                self.module.delete_configuration(preset)
 
     def test_delete_missing_raises_filenotfound(self):
         with self.assertRaises(FileNotFoundError):

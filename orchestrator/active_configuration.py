@@ -444,23 +444,38 @@ def delete_configuration(name: str) -> None:
     """Delete a custom configuration.
 
     Safety checks (raise ValueError on violation):
-      - Cannot delete the currently-active configuration. The user
-        must pick a different one first.
       - Cannot delete system configurations (background-default,
-        user-pipeline — the migrated defaults that anchor dispatch).
+        user-pipeline — the migrated defaults that anchor dispatch)
+        or the four named presets (free / budget / optimum / premium).
+
+    The previous "cannot delete the currently-active" guard has been
+    relaxed: deleting the active configuration auto-reverts the
+    active pointer to ``free`` (the default-first-run preset). The
+    caller is responsible for re-fetching the active state after a
+    delete so the UI's "ACTIVE" flag tracks the new pointer.
     """
     if name in {"background-default", "user-pipeline"}:
         raise ValueError(
             f"{name!r} is a system configuration and cannot be deleted")
-    if name == get_active_name():
+    if name in PRESET_ORDER:
         raise ValueError(
-            f"{name!r} is currently active; activate a different "
-            "configuration before deleting this one")
+            f"{name!r} is a system preset and cannot be deleted")
     path = _config_path(name)
     if not path.exists():
         raise FileNotFoundError(f"no configuration named {name!r}")
+    was_active = (name == get_active_name())
     with _lock:
         path.unlink()
+    if was_active:
+        # Revert to the Free preset. set_active_name validates that
+        # the target exists, and Free is always baked by
+        # bake_missing_presets on Models-pane open.
+        try:
+            set_active_name("free")
+        except Exception:
+            # Free configuration somehow missing — leave the pointer
+            # in its now-stale state rather than crash the delete.
+            pass
 
 
 def _next_auto_name() -> str:

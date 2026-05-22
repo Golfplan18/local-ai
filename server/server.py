@@ -8382,8 +8382,10 @@ def configurations_set_slot(name):
 def configurations_delete(name):
     """Delete a custom configuration.
 
-    Refuses to delete the active configuration or system
-    configurations (background-default, user-pipeline).
+    Deleting the currently-active configuration is allowed; the
+    backend auto-reverts the active pointer to ``free``. Refuses to
+    delete system configurations (background-default, user-pipeline)
+    or the four named presets (free / budget / optimum / premium).
     """
     try:
         from orchestrator import active_configuration as ac
