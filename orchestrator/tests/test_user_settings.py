@@ -125,6 +125,21 @@ class UserSettingsModuleTests(unittest.TestCase):
                 "export": {"background_render_threshold_seconds": 99999},
             })
 
+    def test_aa_path_defaults_to_scrape(self):
+        self.assertEqual(
+            self._mod.load_settings()["external_apis"]["aa_path"], "scrape"
+        )
+
+    def test_aa_path_accepts_scrape_or_api(self):
+        self._mod.save_settings({"external_apis": {"aa_path": "api"}})
+        self.assertEqual(self._mod.get_setting("external_apis.aa_path"), "api")
+        self._mod.save_settings({"external_apis": {"aa_path": "scrape"}})
+        self.assertEqual(self._mod.get_setting("external_apis.aa_path"), "scrape")
+
+    def test_invalid_aa_path_rejected(self):
+        with self.assertRaises(self._mod.SettingsError):
+            self._mod.save_settings({"external_apis": {"aa_path": "bogus"}})
+
     def test_reset_clears_overrides(self):
         self._mod.save_settings({"capture": {"frame_rate": 24}})
         self.assertEqual(self._mod.load_settings()["capture"]["frame_rate"], 24)
@@ -147,6 +162,15 @@ class UserSettingsModuleTests(unittest.TestCase):
         self.assertEqual(
             self._fake_keyring.store[("ora", "anthropic-api-key")],
             "secret123",
+        )
+
+    def test_artificial_analysis_provider_registered(self):
+        # Key writes to ora/aa-api-key under the keyring service.
+        self._mod.set_api_key("artificial_analysis", "aa_secret_value")
+        self.assertTrue(self._mod.api_key_present("artificial_analysis"))
+        self.assertEqual(
+            self._fake_keyring.store[("ora", "aa-api-key")],
+            "aa_secret_value",
         )
 
     def test_delete_api_key_removes_from_keyring(self):

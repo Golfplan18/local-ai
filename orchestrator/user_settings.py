@@ -66,6 +66,12 @@ DEFAULTS: dict = {
     "external_apis": {
         "transcription_provider": "whisper_local",   # whisper_local | assemblyai | deepgram
         "tts_provider": "openai",                    # openai | elevenlabs
+        # Source for Artificial Analysis intelligence + pricing data.
+        # "scrape" pulls from the public /models page (no key needed);
+        # "api" uses the official REST API (requires a key — set it under
+        # the Artificial Analysis row in External APIs). Env var
+        # ORA_AA_PATH and the sync script's --aa-path flag override.
+        "aa_path": "scrape",                         # scrape | api
     },
     "interface": {
         # Universal hover tooltips on every interactive element. When
@@ -88,6 +94,7 @@ PROVIDER_KEYRING_USERNAME = {
     "replicate": "replicate-api-key",
     "civitai": "civitai-api-key",
     "tensorart": "tensorart-api-key",
+    "artificial_analysis": "aa-api-key",
     # OpenAI TTS uses the same key as OpenAI.
 }
 
@@ -103,6 +110,7 @@ PROVIDER_LABELS = {
     "replicate": "Replicate (image / video generation)",
     "civitai": "Civitai (image generation)",
     "tensorart": "Tensor.Art (image generation)",
+    "artificial_analysis": "Artificial Analysis (model intelligence + pricing)",
 }
 
 _KEYRING_SERVICE = "ora"
@@ -248,6 +256,10 @@ def _validate_updates(updates: dict) -> None:
     ):
         raise SettingsError(
             "external_apis.tts_provider must be one of openai / elevenlabs"
+        )
+    if "aa_path" in ap and ap["aa_path"] not in ("scrape", "api"):
+        raise SettingsError(
+            f"external_apis.aa_path must be 'scrape' or 'api' (got {ap['aa_path']!r})"
         )
 
 
