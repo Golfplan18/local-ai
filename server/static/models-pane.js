@@ -1418,11 +1418,17 @@
       return;
     }
 
-    var adversarial = !!(summary.toggles && summary.toggles.adversarial_diversity);
+    // Three sections, fixed shape regardless of adversarial toggle:
+    //   large — 4 rows (gear4.depth: 1 primary + 3 fallbacks)
+    //   small — 2 rows (utility: 1 primary + 1 fallback)
+    //   image — 2 rows (image_generation: 1 primary + 1 fallback)
+    // big2 (gear4.breadth) is intentionally not surfaced here — the spec
+    // is one large chain, and the diversity-vs-fallback distinction lives
+    // on the card body (BIG 1 / BIG 2 rows) rather than the popout.
     var sections = [
-      _popoutSlotHTML('big 1', summary.big1, summary.big1_fallback),
-      adversarial ? _popoutSlotHTML('big 2', summary.big2, summary.big2_fallback) : '',
+      _popoutSlotHTML('large', summary.big1, summary.big1_fallback),
       _popoutSlotHTML('small', summary.small, summary.small_fallback),
+      _popoutSlotHTML('image', summary.image_generation, summary.image_generation_fallback),
     ];
 
     popout.hidden = false;

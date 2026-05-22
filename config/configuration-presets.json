@@ -43,9 +43,9 @@
     "analysis.gear4": {
       "size_bucket": "large",
       "cells": ["depth", "breadth"],
-      "top_n": 3,
+      "top_n": 4,
       "diversity_excluded": true,
-      "_note": "When diversity is enforced for the workhorse pair, breadth picks exclude depth's primary so the second slot reaches for a different model family."
+      "_note": "When diversity is enforced for the workhorse pair, breadth picks exclude depth's primary so the second slot reaches for a different model family. top_n=4 feeds the popout's four-row large section (1 primary + 3 fallbacks per chain)."
     },
     "analysis.gear3": {
       "size_bucket": "large",
@@ -63,9 +63,9 @@
     "image_generation": {
       "category": "image_generation",
       "cells": ["image_generation"],
-      "top_n": 3,
+      "top_n": 2,
       "diversity_excluded": false,
-      "_note": "Picks from AA's text-to-image arena leaderboard. Ranked by Elo (stored in aa_intelligence_index, same field chat models use for intelligence) and per_1k_images cost from image_pricing. Presets: Premium → intelligence_desc, no ceiling. Optimum → Pareto + 80% floor + cost_asc. Budget → Pareto + 50% floor + image_cost_ceiling_per_1k + cost_asc. Free → per_1k_images == 0 if any, else <$10/1k as the cheap-enough-to-treat-as-free proxy."
+      "_note": "Picks from AA's text-to-image arena leaderboard. Ranked by Elo (stored in aa_intelligence_index, same field chat models use for intelligence) and per_1k_images cost from image_pricing. Presets: Premium → intelligence_desc, no ceiling. Optimum → Pareto + 80% floor + cost_asc. Budget → Pareto + 50% floor + image_cost_ceiling_per_1k + cost_asc. Free → per_1k_images == 0 if any, else <$10/1k as the cheap-enough-to-treat-as-free proxy. top_n=2 feeds the popout's two-row image section (1 primary + 1 backup)."
     }
   },
   "vision_substitute": {
