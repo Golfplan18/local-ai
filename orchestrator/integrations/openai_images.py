@@ -263,6 +263,15 @@ def dispatch_image_generates(inputs: dict) -> bytes:
         "size": size,
         "n": 1,
         "quality": "medium",
+        # Without this, gpt-image-1 defaults to opaque output and
+        # interprets the in-prompt phrase "transparent background" as
+        # a visual styling instruction — painting a faux-checkerboard
+        # pattern in opaque RGB pixels (the same checkerboard image
+        # editors use to indicate transparency in their UI). With
+        # background=transparent the API returns proper RGBA with
+        # alpha=0 in the background regions, matching what the prompt
+        # vocab is asking for structurally.
+        "background": "transparent",
     }
 
     client = _get_client()
