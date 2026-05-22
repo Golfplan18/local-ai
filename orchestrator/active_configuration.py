@@ -659,12 +659,44 @@ def _summarize(name: str, config: dict) -> dict:
         "image_generation": image_generation_primary,
         "image_generation_fallback": image_generation_fallback,
         "toggles": toggles_resolved,
-        # The incomplete flag is set by create_blank_configuration and
-        # cleared by set_slot_primary once the four baselines fill. It's
-        # the ONLY signal the UI uses for the red-bordered incomplete
-        # state — missing slots on legacy customs do not flag.
-        "incomplete": bool(config.get("_incomplete")),
+        # `incomplete` is now derived live from the cell tree rather than
+        # read off a one-shot intent marker: any configuration missing
+        # one of its baseline primaries is red-bordered in the UI and
+        # gated against activation. The legacy `_incomplete` marker
+        # behaves as a hint but no longer needs to be cleared by
+        # set_slot_primary — completeness is recomputed every read.
+        "incomplete": not _is_baseline_complete(config),
+        # Flat list of every primary referenced in the config (any cell
+        # at any depth). The UI walks this against the live registry to
+        # decide whether to render the yellow deprecated-model border —
+        # the per-row deprecation chip handles the per-cell display.
+        "all_primaries": _collect_all_primaries(config),
     }
+
+
+def _collect_all_primaries(config: dict) -> list[str]:
+    """Walk every cell in the config and return the de-duplicated set of
+    model ids assigned as a primary. Used by the UI to detect whether
+    any cell references a model that has dropped out of the registry."""
+    seen: set = set()
+    out: list = []
+
+    def visit(node):
+        if isinstance(node, dict):
+            primary = node.get("primary")
+            if isinstance(primary, str) and primary not in seen:
+                seen.add(primary)
+                out.append(primary)
+            for k, v in node.items():
+                if k == "primary":
+                    continue
+                visit(v)
+        elif isinstance(node, list):
+            for item in node:
+                visit(item)
+
+    visit(config.get("cells") or {})
+    return out
 
 
 def _empty_toggles() -> dict:

@@ -8333,19 +8333,21 @@ def configurations_duplicate():
 
 @app.route("/api/configurations/new", methods=["POST"])
 def configurations_new():
-    """Create a new blank custom configuration and activate it.
+    """Create a new blank custom configuration.
 
     Body: ``{"new_name": "<optional>"}``. Auto-named when omitted.
     The blank config has all slots set to null — the UI shows it red-
-    bordered until the user fills the 3 minimums.
+    bordered until the user fills every baseline primary, and refuses
+    activation while red. The active marker does NOT move to the new
+    blank: the user finishes filling it first and then explicitly
+    activates by clicking the card.
     """
     try:
         body = request.get_json(silent=True) or {}
         new_name = body.get("new_name")
         from orchestrator import active_configuration as ac
         created = ac.create_blank_configuration(new_name)
-        ac.set_active_name(created)
-        return _json_response({"name": created, "active": True})
+        return _json_response({"name": created, "active": False})
     except ValueError as exc:
         return _json_response({"error": str(exc)}, status=400)
     except Exception as exc:

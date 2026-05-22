@@ -404,6 +404,19 @@
         // slot rows have their own data-pick-slot handler wired below.
         if (evt.target.closest('button')) return;
         if (evt.target.closest('[data-pick-slot]')) return;
+        // Red (incomplete) or yellow (deprecated-model) cards are
+        // not eligible for activation. The user has to either
+        // finish filling the red one or update the deprecated
+        // entry first. The currently-active config keeps running
+        // even if it goes yellow — the fallback chain catches.
+        if (card.classList.contains('ora-models-card-incomplete')) {
+          _flashCardMessage(card, 'Fill every slot before activating.');
+          return;
+        }
+        if (card.classList.contains('ora-models-card-deprecated')) {
+          _flashCardMessage(card, 'Update the deprecated model before activating.');
+          return;
+        }
         _activateConfig(configName);
       });
       var customizeBtn = card.querySelector('[data-action="customize"]');
@@ -428,11 +441,38 @@
     _wireSlotPickHandlers(section);
   }
 
+  // Briefly show a status message anchored to a card. Used when a click
+  // on a red/yellow card is refused so the user sees why nothing
+  // happened. Auto-clears after ~2.5s.
+  function _flashCardMessage(card, msg) {
+    var existing = card.querySelector('.ora-models-card-flash');
+    if (existing) existing.remove();
+    var el = document.createElement('div');
+    el.className = 'ora-models-card-flash';
+    el.textContent = msg;
+    card.appendChild(el);
+    setTimeout(function () {
+      if (el.parentElement === card) el.remove();
+    }, 2500);
+  }
+
   // Slot pick: clicking a slot row sets _activeSlotPick. The next
   // inventory row click commits the pick. Clicking the same slot
   // again (or pressing Escape) cancels.
   function _wireSlotPickHandlers(section) {
     Array.from(section.querySelectorAll('[data-pick-slot]')).forEach(function (row) {
+      // Skip rows on read-only (non-active) cards — they keep the
+      // data-pick-slot attribute so the card-level activate handler
+      // still ignores their clicks, but no pick gesture is wired.
+      if (row.dataset.pickDisabled === 'true') {
+        row.addEventListener('click', function (evt) {
+          // Eat the click on the row itself so it doesn't bubble up
+          // to the card-level activate handler.
+          if (evt.target.closest('button')) return;
+          evt.stopPropagation();
+        });
+        return;
+      }
       row.addEventListener('click', function (evt) {
         if (evt.target.closest('button')) return;
         evt.stopPropagation();
@@ -478,9 +518,13 @@
     // Free preset's slots always cost $0 — drop the cost component
     // from the slot meta so the line stays tight.
     var omitCost = (presetName === 'free');
+    var incomplete = !!summary.incomplete;
+    var deprecated = _hasDeprecatedModel(summary);
     return ''
       + '<div class="ora-models-card ora-models-card-preset'
-      +   (isActive ? ' ora-models-card-active' : '') + '"'
+      +   (isActive ? ' ora-models-card-active' : '')
+      +   (incomplete ? ' ora-models-card-incomplete' : '')
+      +   (deprecated && !incomplete ? ' ora-models-card-deprecated' : '') + '"'
       +   ' data-preset="' + presetName + '"'
       +   ' data-config-name="' + _esc(summary.name) + '">'
       +   '<header class="ora-models-card-header">'
@@ -490,14 +534,14 @@
                       : '<span class="ora-models-card-active-flag" aria-hidden="true"></span>')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
-      +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost, configName: summary.name})
+      +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost, configName: summary.name, isActive: isActive})
       +     (adversarial
-        ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name})
+        ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name, isActive: isActive})
         : '')
-      +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name})
+      +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name, isActive: isActive})
       +     _slotRowHTML('image gen', summary.image_generation,
-            {omitCost: omitCost, configName: summary.name})
-      +     _expandSlotsHTML(summary, {omitCost: omitCost})
+            {omitCost: omitCost, configName: summary.name, isActive: isActive})
+      +     _expandSlotsHTML(summary, {omitCost: omitCost, isActive: isActive})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
       +     '<button type="button" class="ora-models-card-btn" data-action="more">'
@@ -513,7 +557,11 @@
   // row that breaks the default "post-analysis inherits big 1" rule.
   function _expandSlotsHTML(summary, opts) {
     if (_fallbackPopoutFor !== summary.name) return '';
-    var c = {configName: summary.name, omitCost: !!(opts && opts.omitCost)};
+    var c = {
+      configName: summary.name,
+      omitCost: !!(opts && opts.omitCost),
+      isActive: !!(opts && opts.isActive),
+    };
     // 2026-05-22 reshape: visual + the three single-cell overrides
     // the publisher specified. Order matches the four-row spec from
     // the items 1-7 list ("visual model is right, but the others
@@ -539,10 +587,19 @@
     var isActiveSlot = _activeSlotPick
       && _activeSlotPick.configName === configName
       && _activeSlotPick.slotLabel === label;
-    // ``opts.nonClickable`` is set for rows that are visible but whose
-    // pick gesture isn't wired yet (Chunk 11 step 4 — the Image
-    // Generation row appears before step 5 enables the inventory swap).
-    var clickable = !!configName && !opts.nonClickable;
+    // Slot edits are only allowed on the currently-active configuration.
+    // Presets and inactive customs are read-only — the user has to
+    // Customize first to fork into an editable copy.
+    // ``opts.isActive`` (set by the card builder) drives whether the row
+    // is editable; ``opts.nonClickable`` is the legacy escape hatch for
+    // individual rows whose pick gesture isn't wired yet.
+    // Note: the ``data-pick-slot`` attribute is emitted regardless of
+    // active state so the card-level activate handler can recognise
+    // slot-row clicks and skip the activation path; the click HANDLER
+    // is only attached in _wireSlotPickHandlers when the row's owning
+    // card is active.
+    var clickable = !!configName && !!opts.isActive && !opts.nonClickable;
+    var rowEditable = !!configName && !opts.nonClickable;
     var classes = 'ora-models-slot-row';
     if (isActiveSlot) classes += ' ora-models-slot-row-picking';
     if (clickable) classes += ' ora-models-slot-row-clickable';
@@ -550,8 +607,9 @@
 
     if (!modelId) {
       return '<div class="' + classes + ' ora-models-slot-empty"'
-        + (clickable ? ' data-pick-slot="' + _esc(label) + '"' +
-                       ' data-pick-config="' + _esc(configName) + '"' : '')
+        + (rowEditable ? ' data-pick-slot="' + _esc(label) + '"' +
+                         ' data-pick-config="' + _esc(configName) + '"' : '')
+        + (clickable ? '' : ' data-pick-disabled="true"')
         + '>'
         + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
         + '<span class="ora-models-slot-value">—</span>'
@@ -580,8 +638,9 @@
     else if (model && model.category === 'text_to_video')
       capChip = '<span class="ora-models-cap-chip ora-models-cap-video">VIDEO</span>';
     return '<div class="' + classes + '"'
-      + (clickable ? ' data-pick-slot="' + _esc(label) + '"' +
-                     ' data-pick-config="' + _esc(configName) + '"' : '')
+      + (rowEditable ? ' data-pick-slot="' + _esc(label) + '"' +
+                       ' data-pick-config="' + _esc(configName) + '"' : '')
+      + (clickable ? '' : ' data-pick-disabled="true"')
       + (isDeprecated ? ' title="This model is no longer in the registry. '
                        + 'Pick a replacement."' : '')
       + '>'
@@ -662,6 +721,23 @@
       if (!peaks[cat] || v > peaks[cat]) peaks[cat] = v;
     });
     return peaks;
+  }
+
+  // True if any primary in the configuration references a model that
+  // is no longer in the live registry. Backed by ``summary.all_primaries``
+  // (a flat list of every primary across every cell). Surfaces as the
+  // yellow card border + the per-row deprecated chip already in place;
+  // the yellow card itself signals "fix me when you have time" — the
+  // config keeps running because the fallback chain catches the missing
+  // primary in flight.
+  function _hasDeprecatedModel(summary) {
+    var all = summary && summary.all_primaries;
+    if (!Array.isArray(all) || !all.length) return false;
+    var models = (_registry && _registry.models) || {};
+    for (var i = 0; i < all.length; i++) {
+      if (!models[all[i]]) return true;
+    }
+    return false;
   }
 
   // Raw intelligence per category, used to compute the % peak.
@@ -932,6 +1008,14 @@
       card.addEventListener('click', function (evt) {
         if (evt.target.closest('button')) return;
         if (evt.target.closest('[data-pick-slot]')) return;
+        if (card.classList.contains('ora-models-card-incomplete')) {
+          _flashCardMessage(card, 'Fill every slot before activating.');
+          return;
+        }
+        if (card.classList.contains('ora-models-card-deprecated')) {
+          _flashCardMessage(card, 'Update the deprecated model before activating.');
+          return;
+        }
         _activateConfig(configName);
       });
       var customizeBtn = card.querySelector('[data-action="customize"]');
@@ -971,10 +1055,12 @@
     // because the flag tracks "started from scratch, not yet finished"
     // intent, not a live completeness check.
     var incomplete = !!summary.incomplete;
+    var deprecated = _hasDeprecatedModel(summary);
     return ''
       + '<div class="ora-models-card ora-models-card-custom'
       +   (isActive ? ' ora-models-card-active' : '')
-      +   (incomplete ? ' ora-models-card-incomplete' : '') + '"'
+      +   (incomplete ? ' ora-models-card-incomplete' : '')
+      +   (deprecated && !incomplete ? ' ora-models-card-deprecated' : '') + '"'
       +   ' data-config-name="' + _esc(summary.name) + '">'
       +   '<header class="ora-models-card-header">'
       +     '<span class="ora-models-card-title">' + _esc(summary.name) + '</span>'
@@ -983,14 +1069,14 @@
                       : '<span class="ora-models-card-active-flag" aria-hidden="true"></span>')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
-      +     _slotRowHTML('big 1', summary.big1, {configName: summary.name})
+      +     _slotRowHTML('big 1', summary.big1, {configName: summary.name, isActive: isActive})
       +     (adversarial
-        ? _slotRowHTML('big 2', summary.big2, {configName: summary.name})
+        ? _slotRowHTML('big 2', summary.big2, {configName: summary.name, isActive: isActive})
         : '')
-      +     _slotRowHTML('small', summary.small, {configName: summary.name})
+      +     _slotRowHTML('small', summary.small, {configName: summary.name, isActive: isActive})
       +     _slotRowHTML('image gen', summary.image_generation,
-            {configName: summary.name})
-      +     _expandSlotsHTML(summary, {})
+            {configName: summary.name, isActive: isActive})
+      +     _expandSlotsHTML(summary, {isActive: isActive})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
       +     '<button type="button" class="ora-models-card-btn" data-action="more">'
