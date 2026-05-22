@@ -1494,6 +1494,98 @@ def append_discrepancy(entry: dict) -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# AA path resolution (scrape vs api)
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Resolution order (first match wins):
+#   1. ``--aa-path scrape|api`` CLI flag (if passed)
+#   2. ``ORA_AA_PATH`` env var (scrape|api)
+#   3. user setting ``external_apis.aa_path`` from user-settings.json
+#   4. default "scrape" — friction-free, no key required
+#
+# Hard-fail rule: when the resolved path is "api" but no key is
+# configured, ``cmd_sync`` aborts with a pointer to Settings → External
+# APIs instead of silently falling back. The user picked API; they
+# should know it's not working.
+#
+# Operational-fallback rule: when the resolved path is "api" and the
+# key IS configured but a specific endpoint call errors (network /
+# 4xx / 5xx), that one fetch falls back to the scrape path. The other
+# endpoints still try the API. Each fallback is logged so the user can
+# see what happened on the next sync.
+
+
+def _resolve_aa_path(args) -> str:
+    """Decide which AA path to use this run. Returns "scrape" or "api"."""
+    cli_path = getattr(args, "aa_path", None)
+    if cli_path in ("scrape", "api"):
+        return cli_path
+    env_path = (os.environ.get("ORA_AA_PATH") or "").strip().lower()
+    if env_path in ("scrape", "api"):
+        return env_path
+    # User-settings is the persistent surface the Settings panel writes.
+    # Import lazily so this script still runs in environments where
+    # orchestrator/ isn't on the path (it normally is, via ORA_HOME).
+    try:
+        sys.path.insert(0, str(ORA_HOME))
+        from orchestrator import user_settings  # type: ignore
+        stored = user_settings.get_setting("external_apis.aa_path")
+        if stored in ("scrape", "api"):
+            return stored
+    except Exception:
+        pass
+    return "scrape"
+
+
+def _load_aa_api_key() -> str:
+    """Read the AA API key from env (``AA_API_KEY``) or keyring
+    (``ora/aa-api-key``). Returns "" when unset."""
+    return (
+        os.environ.get("AA_API_KEY", "").strip()
+        or _try_keyring("ora", "aa-api-key")
+        or ""
+    )
+
+
+def _fetch_aa_with_fallback(api_fn, scrape_fn, api_key: str, aa_path: str, label: str):
+    """Dispatch one AA fetch by resolved path. Returns ``(rows, source)``
+    where source ∈ {"api", "api→scrape", "scrape"}.
+
+    When ``aa_path == "api"`` and ``api_fn`` raises, falls back to
+    ``scrape_fn`` for this one endpoint only. When the scrape itself
+    raises (or no api_key on the api path despite the cmd_sync gate),
+    returns ([], source) so the registry still builds from the other
+    sources.
+    """
+    if aa_path == "api" and api_key:
+        try:
+            rows = api_fn(api_key)
+            print(f"[sync]   {label}: {len(rows)} rows via API", flush=True)
+            return rows, "api"
+        except Exception as e:
+            print(
+                f"[sync]   {label}: API fetch failed ({e}); "
+                f"falling back to scrape for this endpoint",
+                flush=True,
+            )
+            try:
+                rows = scrape_fn()
+                print(f"[sync]   {label}: {len(rows)} rows via scrape (fallback)", flush=True)
+                return rows, "api→scrape"
+            except Exception as e2:
+                print(f"[sync]   {label}: scrape fallback also failed ({e2}); proceeding without", flush=True)
+                return [], "api→scrape"
+    # Scrape path (default, or API path without key when cmd_sync allowed it).
+    try:
+        rows = scrape_fn()
+        print(f"[sync]   {label}: {len(rows)} rows via scrape", flush=True)
+        return rows, "scrape"
+    except Exception as e:
+        print(f"[sync]   {label}: scrape failed ({e}); proceeding without", flush=True)
+        return [], "scrape"
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # Subcommands
 # ──────────────────────────────────────────────────────────────────────────
 
@@ -1508,37 +1600,48 @@ def cmd_sync(args) -> int:
     print("[sync] fetching Chatbot Arena ELO CSV …", flush=True)
     arena_rows = fetch_arena_rows()
     print(f"[sync]   {len(arena_rows)} rows", flush=True)
-    print("[sync] fetching Artificial Analysis (public /models page) …", flush=True)
-    try:
-        aa_models = fetch_aa_models()
-        print(f"[sync]   {len(aa_models)} AA models", flush=True)
-    except Exception as e:
-        # AA scrape failures are non-fatal — registry still works
-        # with the other sources. Log and proceed with empty overlay.
-        print(f"[sync]   AA fetch failed (proceeding without): {e}", flush=True)
-        aa_models = []
 
-    # AA media leaderboards (image gen, image editing, text-to-video).
-    # Same fail-soft posture: any one failing leaves the others alone.
-    print("[sync] fetching Artificial Analysis media leaderboards …", flush=True)
-    try:
-        t2i_rows = fetch_aa_text_to_image()
-        print(f"[sync]   {len(t2i_rows)} text-to-image rows", flush=True)
-    except Exception as e:
-        print(f"[sync]   text-to-image fetch failed (proceeding without): {e}", flush=True)
-        t2i_rows = []
-    try:
-        edit_rows = fetch_aa_image_editing()
-        print(f"[sync]   {len(edit_rows)} image-editing rows", flush=True)
-    except Exception as e:
-        print(f"[sync]   image-editing fetch failed (proceeding without): {e}", flush=True)
-        edit_rows = []
-    try:
-        t2v_rows = fetch_aa_text_to_video()
-        print(f"[sync]   {len(t2v_rows)} text-to-video rows", flush=True)
-    except Exception as e:
-        print(f"[sync]   text-to-video fetch failed (proceeding without): {e}", flush=True)
-        t2v_rows = []
+    # Resolve AA path (scrape default, or api when explicitly chosen).
+    aa_path = _resolve_aa_path(args)
+    aa_key = _load_aa_api_key() if aa_path == "api" else ""
+    if aa_path == "api" and not aa_key:
+        print(
+            "[sync] AA path = api, but no key is configured.\n"
+            "       Set your AA API key in Settings → External APIs\n"
+            "       (or via `keyring set ora aa-api-key`), or switch\n"
+            "       the AA source toggle back to Scrape, then re-sync.",
+            flush=True,
+        )
+        return 1
+    print(f"[sync] AA path: {aa_path}{' (key loaded)' if aa_key else ''}", flush=True)
+
+    aa_models, aa_chat_source = _fetch_aa_with_fallback(
+        fetch_aa_models_via_api, fetch_aa_models, aa_key, aa_path, "AA chat models"
+    )
+    t2i_rows, aa_t2i_source = _fetch_aa_with_fallback(
+        fetch_aa_text_to_image_via_api, fetch_aa_text_to_image,
+        aa_key, aa_path, "AA text-to-image",
+    )
+    edit_rows, aa_edit_source = _fetch_aa_with_fallback(
+        fetch_aa_image_editing_via_api, fetch_aa_image_editing,
+        aa_key, aa_path, "AA image-editing",
+    )
+    t2v_rows, aa_t2v_source = _fetch_aa_with_fallback(
+        fetch_aa_text_to_video_via_api, fetch_aa_text_to_video,
+        aa_key, aa_path, "AA text-to-video",
+    )
+
+    # Aggregate AA source label for the registry: "api" if all four
+    # used the API cleanly, "scrape" if all four used the scrape,
+    # "mixed" otherwise (one fell back). The Models pane reads this
+    # to badge the last sync's source.
+    aa_sources = {aa_chat_source, aa_t2i_source, aa_edit_source, aa_t2v_source}
+    if aa_sources == {"api"}:
+        aa_source_summary = "api"
+    elif aa_sources == {"scrape"}:
+        aa_source_summary = "scrape"
+    else:
+        aa_source_summary = "mixed"
 
     or_ids = [m.get("id") for m in or_models if m.get("id")]
     arena_overlay = build_arena_overlay(arena_rows, or_ids)
@@ -1586,6 +1689,11 @@ def cmd_sync(args) -> int:
             f"{registry['model_count']} total)",
             flush=True,
         )
+
+    # Stamp the AA source so the Models pane can badge the last sync's
+    # path ("via Scrape" / "via API" / "Mixed"). "mixed" indicates the
+    # API path was selected but at least one endpoint fell back.
+    registry["aa_source"] = aa_source_summary
 
     REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w") as f:
@@ -1786,6 +1894,12 @@ def main() -> int:
     sp_sync = sub.add_parser("sync", help="Pull all sources, merge, write registry. Probes unverified models by default.")
     sp_sync.add_argument("--no-probe", action="store_true", help="Skip the empirical probe pass.")
     sp_sync.add_argument("--limit", type=int, default=0, help="(probe) Limit probe to this many models.")
+    sp_sync.add_argument(
+        "--aa-path", choices=("scrape", "api"), default=None,
+        help="Override AA data source for this run. Default reads "
+             "ORA_AA_PATH env var, then the stored Settings choice, then 'scrape'. "
+             "API path requires a key in keyring ('ora/aa-api-key') or AA_API_KEY env var.",
+    )
     sp_sync.set_defaults(func=cmd_sync)
 
     sp_probe = sub.add_parser("probe", help="Run empirical probes against unverified models.")
