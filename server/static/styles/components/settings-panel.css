@@ -661,8 +661,13 @@
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  width: 32px;
+  /* Widened 32px → 64px so longer labels ("image gen",
+     "consolidate", "verify") fit in the column without crowding
+     the model-value cell. Was visible in the screenshot earlier:
+     "IMAGE G" running into the model name. */
+  width: 64px;
   flex-shrink: 0;
+  padding-right: 4px;
 }
 
 .ora-models-slot-value {

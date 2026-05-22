@@ -493,7 +493,7 @@
         ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name})
         : '')
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name})
-      +     _slotRowHTML('image generation', summary.image_generation,
+      +     _slotRowHTML('image gen', summary.image_generation,
             {omitCost: omitCost, configName: summary.name, nonClickable: true})
       +     _expandSlotsHTML(summary, {omitCost: omitCost})
       +   '</div>'
@@ -917,7 +917,7 @@
         ? _slotRowHTML('big 2', summary.big2, {configName: summary.name})
         : '')
       +     _slotRowHTML('small', summary.small, {configName: summary.name})
-      +     _slotRowHTML('image generation', summary.image_generation,
+      +     _slotRowHTML('image gen', summary.image_generation,
             {configName: summary.name, nonClickable: true})
       +     _expandSlotsHTML(summary, {})
       +   '</div>'
