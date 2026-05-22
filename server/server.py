@@ -8277,6 +8277,7 @@ def model_registry_get():
         "models": filtered,
         "generated_at": registry.get("generated_at"),
         "last_probe_at": registry.get("last_probe_at"),
+        "aa_source": registry.get("aa_source"),
         "stats": stats,
     })
 

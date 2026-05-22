@@ -1402,6 +1402,17 @@
   color: var(--text-muted, #A89F8A);
 }
 
+.ora-models-aa-source-badge {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted, #A89F8A);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 3px;
+  padding: 1px 5px;
+  cursor: help;
+}
+
 .ora-models-refresh-btn {
   background: transparent;
   border: 1px solid var(--background-modifier-border, #3A3022);

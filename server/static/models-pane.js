@@ -224,6 +224,25 @@
       ? 'Refreshed ' + refreshedAt.substring(0, 10)
       : 'Never refreshed';
 
+    // AA source badge: which path the last sync used for Artificial
+    // Analysis intelligence + pricing data. Set under Settings →
+    // External APIs → "AA intelligence data source". Older registries
+    // (synced before the API path landed) don't carry the field;
+    // default to "scrape" since that was the only path then.
+    var aaSource = (_registry && _registry.aa_source) || (refreshedAt ? 'scrape' : null);
+    var aaBadgeLabel = null;
+    var aaBadgeTitle = null;
+    if (aaSource === 'api') {
+      aaBadgeLabel = 'AA: API';
+      aaBadgeTitle = 'AA data came from the official REST API. Switch in Settings → External APIs.';
+    } else if (aaSource === 'mixed') {
+      aaBadgeLabel = 'AA: Mixed';
+      aaBadgeTitle = 'API was selected but one or more endpoints fell back to the scrape on this run.';
+    } else if (aaSource === 'scrape') {
+      aaBadgeLabel = 'AA: Scrape';
+      aaBadgeTitle = 'AA data came from the public /models page (no API key needed). Switch in Settings → External APIs.';
+    }
+
     header.innerHTML = ''
       + '<div class="ora-models-header-strip">'
       +   '<div class="ora-models-active">'
@@ -241,6 +260,9 @@
                      'restrict picks to models that see images directly')
       +   '<div class="ora-models-refresh-wrap" title="Re-fetch the model registry from OpenRouter + AA + LiteLLM (~15-30s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
       +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
+      +     (aaBadgeLabel
+        ? '<span class="ora-models-aa-source-badge" title="' + _esc(aaBadgeTitle) + '">' + _esc(aaBadgeLabel) + '</span>'
+        : '')
       +     '<button type="button" class="ora-models-refresh-btn" data-action="refresh">↻</button>'
       +   '</div>'
       + '</div>';
