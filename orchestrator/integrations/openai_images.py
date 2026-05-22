@@ -274,21 +274,23 @@ def dispatch_image_generates(inputs: dict) -> bytes:
     # side default is "auto" which usually picks medium, but locking it
     # makes billing predictable and prevents the dispatcher from drifting
     # if OpenAI changes the auto-tier default.
+    # Per OpenAI docs (2026-05-22 publisher research), transparent PNG
+    # output requires THREE things in concert:
+    #   1. background="transparent"
+    #   2. output_format="png" (or "webp"); JPEG is incompatible
+    #   3. a model that supports transparent backgrounds — gpt-image-1.5
+    #      does; gpt-image-2 and gpt-image-2-2026-04-21 do NOT
+    # All three are non-negotiable. If any is missing, OpenAI returns
+    # opaque RGB and no amount of prompt engineering can recover the
+    # alpha channel.
     request_kwargs: dict[str, Any] = {
         "model": model_id,
         "prompt": composed_prompt,
         "size": size,
         "n": 1,
         "quality": "medium",
-        # Without this, gpt-image-1 defaults to opaque output and
-        # interprets the in-prompt phrase "transparent background" as
-        # a visual styling instruction — painting a faux-checkerboard
-        # pattern in opaque RGB pixels (the same checkerboard image
-        # editors use to indicate transparency in their UI). With
-        # background=transparent the API returns proper RGBA with
-        # alpha=0 in the background regions, matching what the prompt
-        # vocab is asking for structurally.
         "background": "transparent",
+        "output_format": "png",
     }
 
     client = _get_client()
@@ -323,31 +325,65 @@ def dispatch_image_generates(inputs: dict) -> bytes:
 # Slot fulfillment registration
 # ---------------------------------------------------------------------------
 
-def register(registry: CapabilityRegistry) -> None:
-    """Bind the gpt-image-1 dispatcher to both image-generation slots.
+# OpenAI image models that the slot config may name. The chain entry
+# format is `openai:<model_id>` — see _make_handler. Adding a new model
+# here makes it routable; the dispatcher itself is model-agnostic.
+#
+# Transparency support per OpenAI docs (2026-05-22):
+#   - gpt-image-1   — supports background=transparent
+#   - gpt-image-1.5 — supports background=transparent  (preferred)
+#   - gpt-image-2   — does NOT support transparent backgrounds
+#   - gpt-image-2-2026-04-21 — does NOT support transparent backgrounds
+#
+# Per publisher direction 2026-05-22, MSI uses gpt-image-1.5 for any
+# image work. gpt-image-1 is explicitly excluded from MSI's slot chains
+# at the routing-config level — the model is registered here as a
+# generic Ora capability but MSI's preferred + fallback chains do not
+# reference it.
+OPENAI_IMAGE_MODELS = (
+    "gpt-image-1",
+    "gpt-image-1.5",
+    "gpt-image-2",
+    "gpt-image-2-2026-04-21",
+)
 
-    Called by ``register_with_default_registry()`` and exposed
-    directly so tests can register against a fresh registry instance
-    without pulling in the standard config files.
 
-    Per the 2026-05-12 slot-separation architecture, gpt-image-1 serves
-    both ``image_generates`` (general — news photos, illustration
-    filler, data-viz illustration fallback) and ``image_generates_cartoon``
-    (Hector cartoons, preferred over the LoRA for image quality with
-    the LoRA as the spec-compliant fallback). The same dispatcher
-    handles both slots — gpt-image-1 doesn't care which slot routed it
-    a prompt; the cascade behavior differs per slot routing-config.
+def _make_handler(model_id: str):
+    """Create a slot handler that injects the model id into inputs.
+
+    Each registered provider is a closure that knows its specific model
+    id; the chain walker treats them as distinct providers.
     """
-    registry.register_provider(
-        "image_generates",
-        PROVIDER_IMAGE_GENERATES,
-        dispatch_image_generates,
-    )
-    registry.register_provider(
-        "image_generates_cartoon",
-        PROVIDER_IMAGE_GENERATES,
-        dispatch_image_generates,
-    )
+    def _handler(inputs: dict) -> bytes:
+        # Don't mutate caller's dict; merge model id into a fresh copy.
+        merged = dict(inputs)
+        merged.setdefault("model", model_id)
+        return dispatch_image_generates(merged)
+    return _handler
+
+
+def register(registry: CapabilityRegistry) -> None:
+    """Register one provider per OpenAI image model on both image-gen slots.
+
+    Provider id format: ``openai:<model_id>``. The capability registry's
+    chain walker picks providers by id, so the slot config can route to
+    a specific model by listing ``openai:gpt-image-1.5`` as preferred (or
+    in fallback).
+
+    Called by ``register_with_default_registry()`` and exposed directly
+    so tests can register against a fresh registry instance.
+    """
+    for model_id in OPENAI_IMAGE_MODELS:
+        pid = f"openai:{model_id}"
+        handler = _make_handler(model_id)
+        for slot in ("image_generates", "image_generates_cartoon"):
+            if registry.has_slot(slot):
+                try:
+                    registry.register_provider(slot, pid, handler)
+                except Exception:
+                    # Idempotent: re-register failures are silent so
+                    # the broader registration pass continues.
+                    pass
 
 
 _default_registered = False
