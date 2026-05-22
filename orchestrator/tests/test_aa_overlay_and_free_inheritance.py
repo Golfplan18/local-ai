@@ -37,7 +37,6 @@ def _aa_entry(name, slug, creator_slug, **extras):
         "input_modality_image": True,
         "reasoning_model": False,
         "release_date": "2025-01-01",
-        "knowledge_cutoff_date": "2024-10-01",
         "end_to_end_response_time_metrics": {"total_time": 5.0},
         "time_to_first_answer_token_metrics": {"total_time": 1.0},
         "timescaleData": {"median_output_speed": 120.0},

@@ -509,7 +509,6 @@ def openrouter_view(model: dict) -> dict:
             "input_per_token": _maybe_float(pricing.get("prompt")),
             "output_per_token": _maybe_float(pricing.get("completion")),
         },
-        "knowledge_cutoff": model.get("knowledge_cutoff"),
         "hugging_face_id": model.get("hugging_face_id"),
         "fetched_at": _now_iso(),
     }
@@ -851,7 +850,6 @@ def _project_aa_view(m: dict) -> dict:
         "aa_input_modality_image": m.get("input_modality_image"),
         "aa_reasoning_model": m.get("reasoning_model"),
         "aa_release_date": m.get("release_date"),
-        "aa_knowledge_cutoff_date": m.get("knowledge_cutoff_date"),
         "latency_total_seconds": _maybe_float(e2e.get("total_time")),
         "latency_ttft_seconds": _maybe_float(ttft.get("total_time")),
         "output_tokens_per_second": _maybe_float(tsd.get("median_output_speed")),
@@ -1029,7 +1027,6 @@ def _build_media_entry(row: dict, category: str, fetched_at: str) -> tuple[str, 
         "supports_function_calling": None,
         "supports_tool_choice": None,
         "pricing": None,
-        "knowledge_cutoff": None,
         "hugging_face_id": None,
         # Elo plays the role intelligence_score plays for chat models —
         # store it in the same field so cross-cutting code (preset
@@ -1233,7 +1230,6 @@ def merge_sources(
             "supports_function_calling": ll_view.get("supports_function_calling"),
             "supports_tool_choice": ll_view.get("supports_tool_choice"),
             "pricing": or_view["pricing"],
-            "knowledge_cutoff": or_view.get("knowledge_cutoff"),
             "hugging_face_id": or_view.get("hugging_face_id"),
             # Chatbot Arena intelligence
             "intelligence_score": arena["intelligence_score"] if arena else None,
@@ -1277,7 +1273,6 @@ _FREE_INHERITABLE_FIELDS = (
     "output_tokens_per_second",
     "supports_function_calling", "supports_tool_choice",
     "reasoning_model", "release_date",
-    "knowledge_cutoff",
 )
 
 
