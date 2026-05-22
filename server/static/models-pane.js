@@ -149,8 +149,13 @@
   // ── data load ───────────────────────────────────────────────────────────
 
   function _loadAll() {
+    // Chunk 11 step 4: fetch ALL categories so slot-row lookups can
+    // resolve image-gen / image-edit / text-to-video model ids in the
+    // registry. The inventory grid filters down to chat-only at render
+    // time (see _renderInventory) until step 5 wires the
+    // click-slot-then-swap-inventory gesture.
     Promise.all([
-      fetch('/api/model-registry').then(_json),
+      fetch('/api/model-registry?categories=all').then(_json),
       fetch('/api/model-registry/picks').then(_json),
       fetch('/api/configurations').then(_json),
       fetch('/models').then(_json).catch(function () { return null; }),
@@ -459,6 +464,8 @@
         ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name})
         : '')
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name})
+      +     _slotRowHTML('image generation', summary.image_generation,
+            {omitCost: omitCost, configName: summary.name, nonClickable: true})
       +     _expandSlotsHTML(summary, {omitCost: omitCost})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
@@ -498,10 +505,14 @@
     var isActiveSlot = _activeSlotPick
       && _activeSlotPick.configName === configName
       && _activeSlotPick.slotLabel === label;
-    var clickable = !!configName;  // only rows with a knowable config can be picked
+    // ``opts.nonClickable`` is set for rows that are visible but whose
+    // pick gesture isn't wired yet (Chunk 11 step 4 — the Image
+    // Generation row appears before step 5 enables the inventory swap).
+    var clickable = !!configName && !opts.nonClickable;
     var classes = 'ora-models-slot-row';
     if (isActiveSlot) classes += ' ora-models-slot-row-picking';
     if (clickable) classes += ' ora-models-slot-row-clickable';
+    if (opts.nonClickable) classes += ' ora-models-slot-row-readonly';
 
     if (!modelId) {
       return '<div class="' + classes + ' ora-models-slot-empty"'
@@ -518,6 +529,22 @@
     var isDeprecated = !model;  // referenced model isn't in the registry
     if (isDeprecated) classes += ' ora-models-slot-row-deprecated';
     var meta = model ? _compactMetaHTML(model, opts) : '';
+    // Display name preference: media models (aa-img/aa-edit/aa-vid keys)
+    // have UUID-style ids that shorten to garbage, so use display_name
+    // when present. Chat-model ids like ``openai/gpt-5.5`` keep their
+    // existing terse rendering.
+    var isMediaId = /^aa-(img|edit|vid):/.test(modelId);
+    var rowValue = (isMediaId && model && model.display_name)
+      ? model.display_name : _shortenModelId(modelId);
+    // Capability chip distinguishing image/video from chat models in
+    // the inventory and on cards.
+    var capChip = '';
+    if (model && model.category === 'image_generation')
+      capChip = '<span class="ora-models-cap-chip ora-models-cap-image">IMAGE</span>';
+    else if (model && model.category === 'image_editing')
+      capChip = '<span class="ora-models-cap-chip ora-models-cap-image">IMAGE EDIT</span>';
+    else if (model && model.category === 'text_to_video')
+      capChip = '<span class="ora-models-cap-chip ora-models-cap-video">VIDEO</span>';
     return '<div class="' + classes + '"'
       + (clickable ? ' data-pick-slot="' + _esc(label) + '"' +
                      ' data-pick-config="' + _esc(configName) + '"' : '')
@@ -526,7 +553,8 @@
       + '>'
       + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
       + '<span class="ora-models-slot-value" title="' + _esc(modelId) + '">'
-      +   _esc(_shortenModelId(modelId))
+      +   _esc(rowValue)
+      +   capChip
       +   (isPick ? '<span class="ora-models-pick-chip">PICK</span>' : '')
       +   (isDeprecated ? '<span class="ora-models-deprecated-chip">DEPRECATED</span>' : '')
       +   (meta ? '<span class="ora-models-slot-meta">' + meta + '</span>' : '')
@@ -849,6 +877,8 @@
         ? _slotRowHTML('big 2', summary.big2, {configName: summary.name})
         : '')
       +     _slotRowHTML('small', summary.small, {configName: summary.name})
+      +     _slotRowHTML('image generation', summary.image_generation,
+            {configName: summary.name, nonClickable: true})
       +     _expandSlotsHTML(summary, {})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
@@ -882,7 +912,15 @@
     var section = _hostEl.querySelector('[data-section="inventory"]');
     if (!section) return;
     var models = (_registry && _registry.models) || {};
-    var allModels = Object.values(models);
+    // Chunk 11 step 4: keep the inventory display chat-only even
+    // though the registry now carries media-category entries (so
+    // slot rows can resolve their ids). Step 5 makes this dynamic —
+    // clicking a media slot will swap the inventory to that
+    // category's models.
+    var allModels = Object.values(models).filter(function (m) {
+      var c = m && m.category;
+      return !c || c === 'chat';
+    });
 
     // Compute the intelligence cutoff once (used by both the filter
     // and shown in the header). Combined score normalises Arena ELO

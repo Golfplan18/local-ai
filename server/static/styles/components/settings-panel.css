@@ -1062,6 +1062,33 @@
   background: var(--ora-bg-hover, rgba(255, 255, 255, 0.06));
 }
 
+/* Rows that are visible but not yet pickable (Chunk 11 step 4 —
+   Image Generation row appears before step 5 enables the gesture). */
+.ora-models-slot-row-readonly {
+  cursor: default;
+  opacity: 0.85;
+}
+
+/* Capability chip on media-model rows (image gen / image edit / video). */
+.ora-models-cap-chip {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  margin-left: 6px;
+  border-radius: 3px;
+  vertical-align: 1px;
+}
+.ora-models-cap-image {
+  background: rgba(149, 117, 205, 0.20);
+  color: var(--ora-purple, #b39ddb);
+}
+.ora-models-cap-video {
+  background: rgba(255, 167, 38, 0.18);
+  color: var(--ora-orange, #ffb74d);
+}
+
 .ora-models-slot-row-picking {
   background: rgba(80, 200, 120, 0.18);
   outline: 1px solid var(--ora-accent-success, #50c878);

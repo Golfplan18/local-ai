@@ -574,6 +574,13 @@ def _summarize(name: str, config: dict) -> dict:
     formatter = (post.get("formatter") or {}).get("primary")
     visual = big1_cell.get("vision_substitute")  # any cell has it; sample big1
 
+    # Media slots (Chunk 11). Currently only image_generation is surfaced
+    # on the Models pane — the others (image editing, image-to-prompt,
+    # critique, video) live on the Visual tab.
+    image_gen = (cells.get("image_generation") or {}).get("image_generation") or {}
+    image_generation_primary = image_gen.get("primary") if isinstance(image_gen, dict) else None
+    image_generation_fallback = list(image_gen.get("fallback") or []) if isinstance(image_gen, dict) else []
+
     return {
         "name": name,
         "preset_lineage": config.get("preset_lineage"),
@@ -589,6 +596,10 @@ def _summarize(name: str, config: dict) -> dict:
         "verifier": verification,
         "formatter": formatter,
         "visual": visual,
+        # Media slot — image_generation; null when the configuration
+        # predates Chunk 11 step 3 (re-bake to fill).
+        "image_generation": image_generation_primary,
+        "image_generation_fallback": image_generation_fallback,
         "toggles": toggles_resolved,
     }
 
