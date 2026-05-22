@@ -494,7 +494,7 @@
         : '')
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name})
       +     _slotRowHTML('image gen', summary.image_generation,
-            {omitCost: omitCost, configName: summary.name, nonClickable: true})
+            {omitCost: omitCost, configName: summary.name})
       +     _expandSlotsHTML(summary, {omitCost: omitCost})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
@@ -924,7 +924,7 @@
         : '')
       +     _slotRowHTML('small', summary.small, {configName: summary.name})
       +     _slotRowHTML('image gen', summary.image_generation,
-            {configName: summary.name, nonClickable: true})
+            {configName: summary.name})
       +     _expandSlotsHTML(summary, {})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
@@ -955,14 +955,21 @@
     var section = _hostEl.querySelector('[data-section="inventory"]');
     if (!section) return;
     var models = (_registry && _registry.models) || {};
-    // Chunk 11 step 4: keep the inventory display chat-only even
-    // though the registry now carries media-category entries (so
-    // slot rows can resolve their ids). Step 5 makes this dynamic —
-    // clicking a media slot will swap the inventory to that
-    // category's models.
+    // Inventory category is dictated by the active slot pick. When
+    // the user clicks the image-gen slot, the inventory swaps to
+    // image_generation models. Otherwise (any chat slot, or no
+    // active pick), the inventory shows chat models. Slot label
+    // ↔ category map kept short — image gen is the only media slot
+    // surfaced on the Models pane today; the others (editing,
+    // image-to-prompt, critique, video) live on the Visual tab.
+    var SLOT_TO_CATEGORY = {
+      'image gen': 'image_generation',
+    };
+    var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
+    var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel]) || 'chat';
     var allModels = Object.values(models).filter(function (m) {
-      var c = m && m.category;
-      return !c || c === 'chat';
+      var c = (m && m.category) || 'chat';
+      return c === wantCategory;
     });
 
     // Compute the intelligence cutoff once (used by both the filter
@@ -1055,8 +1062,16 @@
   }
 
   function _matchesFilters(model, rankedKeptIds) {
-    if (_filters.vision && model.vision_capable !== true) return false;
-    if (_filters.free) {
+    // Chat-only filter chips (Vision, Free) are skipped for media
+    // models — vision_capable=false on every image-gen entry (they
+    // OUTPUT images; they don't read them), and pricing data isn't
+    // wired in yet so :free / is_free can't classify them either.
+    // Applying these chips at face value would empty the inventory
+    // every time the user clicks an image-gen slot. The PICK chip
+    // and intelligence slider DO apply.
+    var isMedia = (model.category && model.category !== 'chat');
+    if (!isMedia && _filters.vision && model.vision_capable !== true) return false;
+    if (!isMedia && _filters.free) {
       var isFree = (model.id || '').endsWith(':free')
         || model.is_free === true;
       if (!isFree) return false;
@@ -1078,6 +1093,12 @@
 
   function _vendorOf(model) {
     var id = model.id || '';
+    // Media entries (aa-img:UUID / aa-edit:UUID / aa-vid:UUID) carry
+    // a normalized ``vendor`` field set from AA's creator name —
+    // their UUID-style ids don't have a slash-prefix vendor segment.
+    // Lowercase so "OpenAI" from media groups with "openai" from
+    // OpenRouter ids when both categories are surfaced.
+    if (model.vendor) return String(model.vendor).toLowerCase();
     if (id.indexOf('/') === -1) {
       // Local-MLX style ids (no slash) — bucket as Local.
       return 'Local';
