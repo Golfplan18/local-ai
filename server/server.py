@@ -8296,6 +8296,17 @@ def model_registry_get():
                     merged["parameters_b"] = cm["parameters_b"]
                 if cm.get("is_free") is not None:
                     merged["is_free"] = cm["is_free"]
+                # Surface vendor_audit verdict + bare id to the frontend
+                # so the inventory can paint VENDOR-PHANTOM chips. Already
+                # mirrored at the top level by sync_model_registry.py's
+                # _run_vendor_audit, but pass through defensively in case
+                # an older registry only has the provenance copy.
+                prov = m.get("_provenance") or {}
+                va = prov.get("vendor_audit") or {}
+                if "vendor_listed" not in merged and "vendor_listed" in va:
+                    merged["vendor_listed"] = va.get("vendor_listed")
+                if "vendor_audited_at" not in merged and "audited_at" in va:
+                    merged["vendor_audited_at"] = va.get("audited_at")
                 enriched[mid] = merged
             filtered = enriched
     except Exception as _enrich_err:

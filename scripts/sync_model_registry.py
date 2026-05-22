@@ -1768,6 +1768,12 @@ def cmd_sync(args) -> int:
         print("[sync] running reachability probe …", flush=True)
         _run_reach_probe(registry, reach_args)
 
+    if not getattr(args, "no_vendor_audit", False):
+        with open(REGISTRY_PATH) as f:
+            registry = json.load(f)
+        print("[sync] running vendor-direct audit …", flush=True)
+        _run_vendor_audit(registry, argparse.Namespace())
+
     return 0
 
 
@@ -2072,6 +2078,263 @@ def _run_reach_probe(registry: dict, args) -> int:
     return 0
 
 
+# ─── Vendor-direct model audit ────────────────────────────────────────────
+#
+# Cross-checks each chat model in the registry against the vendor's own
+# /models endpoint, using the API key stored in the macOS keyring
+# (service "ora", per orchestrator/user_settings.py). Vendors covered:
+#
+#   anthropic  →  GET https://api.anthropic.com/v1/models
+#   openai     →  GET https://api.openai.com/v1/models
+#   gemini     →  GET https://generativelanguage.googleapis.com/v1beta/models
+#
+# Each chat model in the registry has an id like ``openai/gpt-5.5`` or
+# ``anthropic/claude-opus-4.7``. We strip the vendor prefix and check
+# whether the bare id appears in the vendor's authoritative list.
+#
+# Possible verdicts written to ``vendor_listed``:
+#   True   — vendor confirms the model exists in their catalog
+#   False  — vendor's list is loaded and the model is NOT there
+#            (AA may have invented it, or it was deprecated by the vendor)
+#   None   — couldn't check (no API key, no /models endpoint for vendor,
+#            or fetch error). Sticky null until next run resolves.
+
+import urllib.request
+import urllib.error
+
+
+def _vendor_keys() -> dict[str, str]:
+    """Pull the three vendor-direct keys we can audit against."""
+    out: dict[str, str] = {}
+    for prov in ("anthropic", "openai", "gemini"):
+        key = (
+            os.environ.get(f"{prov.upper()}_API_KEY", "")
+            or _try_keyring("ora", f"{prov}-api-key")
+            or ""
+        )
+        if key:
+            out[prov] = key
+    return out
+
+
+def _http_get_json(url: str, headers: dict | None = None, timeout: float = 30.0) -> dict | None:
+    """Minimal JSON GET. Returns parsed body or raises on error."""
+    req = urllib.request.Request(url, headers=headers or {}, method="GET")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def fetch_anthropic_models(api_key: str) -> set[str]:
+    """Fetch Anthropic's /v1/models. Returns set of bare model ids
+    (e.g. ``claude-opus-4-20250514``, ``claude-3-5-sonnet-20241022``)."""
+    ids: set[str] = set()
+    next_after = None
+    for _ in range(20):  # bounded — pagination
+        url = "https://api.anthropic.com/v1/models?limit=1000"
+        if next_after:
+            url += f"&after_id={next_after}"
+        body = _http_get_json(url, headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        })
+        for item in (body.get("data") or []):
+            mid = item.get("id")
+            if mid:
+                ids.add(mid)
+        if body.get("has_more"):
+            next_after = body.get("last_id")
+            continue
+        break
+    return ids
+
+
+def fetch_openai_models(api_key: str) -> set[str]:
+    """Fetch OpenAI's /v1/models. Returns set of bare model ids."""
+    body = _http_get_json("https://api.openai.com/v1/models",
+                          headers={"Authorization": f"Bearer {api_key}"})
+    return {item.get("id") for item in (body.get("data") or []) if item.get("id")}
+
+
+def fetch_gemini_models(api_key: str) -> set[str]:
+    """Fetch Google Gemini's /v1beta/models. Returns set of bare ids
+    (Gemini reports them as ``models/gemini-3.0-pro``; strip the prefix
+    so they match the OR-side ``gemini-3.0-pro`` slugs)."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}&pageSize=1000"
+    body = _http_get_json(url)
+    out: set[str] = set()
+    for item in (body.get("models") or []):
+        name = item.get("name") or ""
+        if name.startswith("models/"):
+            name = name[len("models/"):]
+        if name:
+            out.add(name)
+    # Pagination: handle nextPageToken if present
+    next_token = body.get("nextPageToken")
+    while next_token:
+        url2 = (
+            f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+            f"&pageSize=1000&pageToken={next_token}"
+        )
+        body = _http_get_json(url2)
+        for item in (body.get("models") or []):
+            name = item.get("name") or ""
+            if name.startswith("models/"):
+                name = name[len("models/"):]
+            if name:
+                out.add(name)
+        next_token = body.get("nextPageToken")
+    return out
+
+
+# OR-id-prefix → vendor key in our keychain map. Other OR prefixes
+# (``x-ai``, ``moonshotai``, ``deepseek``, ``qwen``, ``meta-llama``, etc.)
+# have no native /models endpoint we audit against — they stay as
+# vendor_listed=null.
+_OR_PREFIX_TO_VENDOR = {
+    "openai":    "openai",
+    "anthropic": "anthropic",
+    "google":    "gemini",
+}
+
+
+def _bare_id_for_vendor(or_id: str, vendor: str) -> str | None:
+    """Strip the OR provider prefix from an OR id. Returns the bare id
+    that should match what the vendor's /models endpoint reports."""
+    if "/" not in or_id:
+        return None
+    prefix, bare = or_id.split("/", 1)
+    # Strip "~latest" mirror prefix Used by OR for vendor-mirror aliases
+    if prefix.startswith("~"):
+        prefix = prefix[1:]
+    if prefix != vendor and prefix != _OR_PREFIX_TO_VENDOR.get(vendor, vendor):
+        # The OR prefix doesn't match this vendor; skip
+        return None
+    # Drop any ``:free`` / ``:beta`` suffix appended by OR for variant routing
+    if ":" in bare:
+        bare = bare.split(":", 1)[0]
+    return bare
+
+
+def _vendor_audit_one(or_id: str, vendor_lists: dict[str, set[str]]) -> dict | None:
+    """Check a single OR id against the loaded vendor lists. Returns a
+    record (dict) or None if no vendor audit applies to this id."""
+    if "/" not in or_id:
+        return None
+    or_prefix = or_id.split("/", 1)[0].lstrip("~")
+    vendor = _OR_PREFIX_TO_VENDOR.get(or_prefix)
+    if not vendor:
+        return None
+    if vendor not in vendor_lists:
+        # Have a vendor mapping but no key/list for it — inconclusive.
+        return {
+            "vendor": vendor,
+            "vendor_listed": None,
+            "reason": "no_vendor_key_or_list",
+            "audited_at": _now_iso(),
+        }
+    bare = _bare_id_for_vendor(or_id, vendor)
+    if not bare:
+        return None
+    listed = bare in vendor_lists[vendor]
+    if not listed:
+        # Try a less-strict partial-match: maybe the vendor lists a
+        # dated variant (e.g., claude-3-5-sonnet-20241022) when OR
+        # uses the date-stripped form (claude-3-5-sonnet). If any
+        # vendor id starts with the bare id followed by a hyphen and
+        # digits, accept that as a match.
+        prefix_match = any(
+            v == bare or v.startswith(bare + "-")
+            for v in vendor_lists[vendor]
+        )
+        listed = prefix_match
+    return {
+        "vendor": vendor,
+        "vendor_listed": bool(listed),
+        "bare_id": bare,
+        "audited_at": _now_iso(),
+    }
+
+
+def cmd_vendor_audit(args) -> int:
+    """Cross-check chat models against vendor /models endpoints."""
+    if not REGISTRY_PATH.exists():
+        print(f"[vendor-audit] registry missing at {REGISTRY_PATH}; run `sync` first", flush=True)
+        return 1
+    with open(REGISTRY_PATH) as f:
+        registry = json.load(f)
+    return _run_vendor_audit(registry, args)
+
+
+def _run_vendor_audit(registry: dict, args) -> int:
+    keys = _vendor_keys()
+    if not keys:
+        print("[vendor-audit] no vendor API keys present in keyring "
+              "(anthropic/openai/gemini). Set them in Settings → External APIs.",
+              flush=True)
+        return 0
+
+    # Fetch each vendor's list once.
+    vendor_lists: dict[str, set[str]] = {}
+    for vendor, api_key in keys.items():
+        try:
+            if vendor == "anthropic":
+                ids = fetch_anthropic_models(api_key)
+            elif vendor == "openai":
+                ids = fetch_openai_models(api_key)
+            elif vendor == "gemini":
+                ids = fetch_gemini_models(api_key)
+            else:
+                continue
+            vendor_lists[vendor] = ids
+            print(f"[vendor-audit] {vendor}: fetched {len(ids)} model ids",
+                  flush=True)
+        except Exception as exc:
+            print(f"[vendor-audit] {vendor}: fetch failed ({exc}); skipping.",
+                  flush=True)
+
+    if not vendor_lists:
+        print("[vendor-audit] no vendor lists fetched; nothing to audit.",
+              flush=True)
+        return 1
+
+    models = registry.get("models") or {}
+    confirmed = 0
+    phantom = 0
+    inconclusive = 0
+    skipped = 0
+    for mid, m in models.items():
+        if (m.get("category") or "chat") != "chat":
+            skipped += 1
+            continue
+        rec = _vendor_audit_one(mid, vendor_lists)
+        if rec is None:
+            # No audit applies (non-audited vendor like x-ai). Skip silently.
+            continue
+        prov = m.setdefault("_provenance", {})
+        prov["vendor_audit"] = rec
+        m["vendor_listed"] = rec.get("vendor_listed")
+        m["vendor_audited_at"] = rec.get("audited_at")
+        verdict = rec.get("vendor_listed")
+        if verdict is True:
+            confirmed += 1
+        elif verdict is False:
+            phantom += 1
+            print(f"[vendor-audit] ✗ phantom: {mid} (vendor={rec['vendor']}, bare={rec.get('bare_id')})",
+                  flush=True)
+        else:
+            inconclusive += 1
+
+    registry["last_vendor_audit_at"] = _now_iso()
+    with open(REGISTRY_PATH, "w") as f:
+        json.dump(registry, f, indent=2, sort_keys=False)
+    print(
+        f"[vendor-audit] done. confirmed={confirmed} phantom={phantom} "
+        f"inconclusive={inconclusive} non-audited-vendor-skipped (silent)",
+        flush=True,
+    )
+    return 0
+
+
 def cmd_audit(args) -> int:
     if not REGISTRY_PATH.exists():
         print(f"[audit] registry missing at {REGISTRY_PATH}", flush=True)
@@ -2131,6 +2394,7 @@ def main() -> int:
     sp_sync = sub.add_parser("sync", help="Pull all sources, merge, write registry. Probes unverified models by default.")
     sp_sync.add_argument("--no-probe", action="store_true", help="Skip the empirical vision probe pass.")
     sp_sync.add_argument("--no-reach", action="store_true", help="Skip the reachability probe pass.")
+    sp_sync.add_argument("--no-vendor-audit", action="store_true", help="Skip the vendor-direct /models audit.")
     sp_sync.add_argument("--limit", type=int, default=0, help="(probe) Limit probe to this many models.")
     sp_sync.add_argument(
         "--aa-path", choices=("scrape", "api"), default=None,
@@ -2144,6 +2408,9 @@ def main() -> int:
     sp_probe.add_argument("--revalidate", action="store_true", help="Re-probe models LiteLLM already flagged true.")
     sp_probe.add_argument("--limit", type=int, default=0, help="Limit probe to this many models.")
     sp_probe.set_defaults(func=cmd_probe)
+
+    sp_vendor = sub.add_parser("vendor-audit", help="Cross-check chat models against vendor /models endpoints (Anthropic / OpenAI / Gemini).")
+    sp_vendor.set_defaults(func=cmd_vendor_audit)
 
     sp_reach = sub.add_parser("reach", help="Run reachability probes (1-token call, 429-aware) against chat models.")
     sp_reach.add_argument("--revalidate", action="store_true", help="Re-probe every chat model, ignoring prior verdicts.")

@@ -1530,6 +1530,17 @@
       // null / undefined — never probed, or last probe was inconclusive.
       chips.push('<span class="ora-models-chip ora-models-chip-unverified" title="No recent reachability probe data. Run scripts/sync_model_registry.py reach to verify.">UNVERIFIED</span>');
     }
+    // Vendor audit chip. vendor_listed=false means the vendor's own
+    // /v1/models endpoint doesn't include this id. Could be a true
+    // phantom (AA invented it), or a real model that ships only via
+    // OpenRouter / third-parties (e.g. open-source models like
+    // gpt-oss-120b). Surface the signal but don't treat it as a hard
+    // failure — reachable=true + vendor_listed=false is still
+    // deployable. Only audited for openai / anthropic / google ids;
+    // other vendors have no checked endpoint so the chip stays off.
+    if (model.vendor_listed === false) {
+      chips.push('<span class="ora-models-chip ora-models-chip-vendor-phantom" title="Vendor\'s own /v1/models endpoint does not list this id. May be an AA-only phantom, or a real model that only routes via OpenRouter (open-source / third-party). Combine with the UNREACHABLE chip to identify true phantoms.">NOT IN VENDOR LIST</span>');
+    }
     return chips.join('');
   }
 

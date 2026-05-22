@@ -1138,6 +1138,16 @@
   color: rgba(168, 159, 138, 1);
 }
 
+/* Vendor-audit chip. Orange — between yellow (rate-limited, still works) and
+   red (unreachable). Means the vendor's own catalog API doesn't list this id;
+   might be an AA-only phantom, might be a real model that ships only via
+   OpenRouter (open-source variants, third-party hosts). The reachability
+   chip is the authoritative deployability signal — this one is informational. */
+.ora-models-chip-vendor-phantom {
+  background: rgba(212, 110, 60, 0.20);
+  color: rgba(232, 152, 100, 1);
+}
+
 .ora-models-inventory-count {
   color: var(--text-normal, #E8E0CC);
   font-weight: 600;
