@@ -66,6 +66,9 @@ ARENA_CSV_URL = (
     "resolve/main/elo.csv"
 )
 AA_MODELS_URL = "https://artificialanalysis.ai/models"
+AA_TEXT_TO_IMAGE_URL = "https://artificialanalysis.ai/image/leaderboard/text-to-image"
+AA_IMAGE_EDITING_URL = "https://artificialanalysis.ai/image/leaderboard/editing"
+AA_TEXT_TO_VIDEO_URL = "https://artificialanalysis.ai/video/leaderboard/text-to-video"
 AA_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
@@ -105,8 +108,8 @@ def fetch_arena_rows() -> list[dict]:
     return rows
 
 
-def _fetch_aa_html() -> bytes:
-    req = urllib.request.Request(AA_MODELS_URL, headers={"User-Agent": AA_USER_AGENT})
+def _fetch_aa_html(url: str = AA_MODELS_URL) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": AA_USER_AGENT})
     with urllib.request.urlopen(req, timeout=60) as resp:
         return resp.read()
 
@@ -150,6 +153,129 @@ def fetch_aa_models() -> list[dict]:
         return json.loads(combined[arr_start: close + 1])
     except json.JSONDecodeError:
         return []
+
+
+def _aa_combined_payload(url: str) -> str:
+    """Fetch an AA leaderboard page and return its concatenated
+    Next.js RSC payload as a single unicode-unescaped string. Shared
+    by the text-to-image, image-editing, and text-to-video readers
+    below (and could be reused by ``fetch_aa_models`` in a future
+    refactor)."""
+    raw_html = _fetch_aa_html(url).decode("utf-8", errors="ignore")
+    chunks = re.findall(
+        r'self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)', raw_html
+    )
+    combined = ""
+    for c in chunks:
+        try:
+            combined += c.encode().decode("unicode_escape")
+        except UnicodeDecodeError:
+            continue
+    return combined
+
+
+def _extract_aa_leaderboard_rows(combined: str) -> list[dict]:
+    """Walk every ``"values":{...}`` object in the merged payload and
+    return the ones that look like leaderboard rows (have ``elo``,
+    ``appearances``, and ``name``). Deduped by ``id``; sorted by
+    ``rank`` ascending.
+
+    The Elo-style leaderboards (text-to-image, image-editing,
+    text-to-video, image-to-video) all use the same row shape:
+
+        {
+          "id": "<uuid>",
+          "name": "<display name>",
+          "url": "/image/model-families/...",
+          "rank": 0,
+          "elo": 1339.17,
+          "appearances": 10032,
+          "creator": {"id": "...", "name": "OpenAI", ...}
+        }
+
+    If AA changes the shape (key rename, removed elo, etc.), this
+    function silently returns an empty list and the caller's
+    enrichment goes blank — same fail-soft posture as
+    ``fetch_aa_models``.
+    """
+    out: list[dict] = []
+    needle = '"values":{'
+    i = 0
+    n = len(combined)
+    while True:
+        i = combined.find(needle, i)
+        if i < 0:
+            break
+        start = i + len('"values":')  # position of opening "{"
+        # Bracket-match the object, honoring nested objects + JSON strings.
+        depth = 0
+        j = start
+        in_str = False
+        esc = False
+        while j < n:
+            ch = combined[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+            else:
+                if ch == '"':
+                    in_str = True
+                elif ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            obj = json.loads(combined[start:j + 1])
+                            if (isinstance(obj, dict)
+                                    and "elo" in obj
+                                    and "appearances" in obj
+                                    and "name" in obj):
+                                out.append(obj)
+                        except json.JSONDecodeError:
+                            pass
+                        break
+            j += 1
+        i = j + 1
+
+    # Dedupe by id (rows appear multiple times in the streamed payload).
+    seen: set = set()
+    unique: list[dict] = []
+    for r in out:
+        rid = r.get("id")
+        if rid in seen:
+            continue
+        seen.add(rid)
+        unique.append(r)
+
+    unique.sort(key=lambda r: r.get("rank", 99999))
+    return unique
+
+
+def fetch_aa_text_to_image() -> list[dict]:
+    """Scrape AA's text-to-image arena leaderboard. Returns one dict
+    per ranked image-generation model with id / name / creator /
+    elo / rank / appearances / url. Non-fatal on failure (returns []).
+    """
+    return _extract_aa_leaderboard_rows(_aa_combined_payload(AA_TEXT_TO_IMAGE_URL))
+
+
+def fetch_aa_image_editing() -> list[dict]:
+    """Scrape AA's image-editing arena leaderboard. Returns one dict
+    per ranked image-editing model. Same row shape as
+    ``fetch_aa_text_to_image``. Non-fatal on failure (returns [])."""
+    return _extract_aa_leaderboard_rows(_aa_combined_payload(AA_IMAGE_EDITING_URL))
+
+
+def fetch_aa_text_to_video() -> list[dict]:
+    """Scrape AA's text-to-video arena leaderboard. Returns one dict
+    per ranked text-to-video model. Same row shape as
+    ``fetch_aa_text_to_image``. Non-fatal on failure (returns [])."""
+    return _extract_aa_leaderboard_rows(_aa_combined_payload(AA_TEXT_TO_VIDEO_URL))
 
 
 def _find_matching_bracket(s: str, open_idx: int) -> int:
