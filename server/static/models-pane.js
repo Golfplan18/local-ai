@@ -33,6 +33,7 @@
 
   var _hostEl = null;
   var _registry = null;          // /api/model-registry payload
+  var _peakIntelByCategory = null; // {category: peakValue} memo, built lazily
   var _picksSet = null;          // Set of model ids from /api/model-registry/picks
   var _configs = null;           // /api/configurations payload — presets + customs + active
 
@@ -160,6 +161,7 @@
       fetch('/models').then(_json).catch(function () { return null; }),
     ]).then(function (resp) {
       _registry = resp[0] || {};
+      _peakIntelByCategory = null;  // recomputed lazily on first call
       var picksPayload = resp[1] || {};
       _picksSet = new Set(picksPayload.picks || []);
       _configs = resp[2] || {presets: {}, customs: [],
@@ -595,27 +597,20 @@
   }
 
   // Compact meta line used in BOTH card slot rows and inventory rows.
-  // Format: int X · $Y/M · Z t/s — parts dropped when underlying
-  // data is null/absent. One intelligence number, scale-normalized
-  // so AA and Arena ELO are presented on the same 0-100-ish range
-  // (user feedback: don't mix scale labels in the display).
+  // Format: X% peak · $Y/M · Z t/s — parts dropped when underlying
+  // data is null/absent. Intelligence shown as a percentage of the
+  // top-rated model in the same category (chat-max for chat models,
+  // image-arena-Elo-max for image models, etc.) so users get a
+  // relative valuation rather than a raw score on a scale they
+  // don't know the bounds of. Recomputes when the registry reloads.
   // opts.omitCost: True for Free-preset cards where cost is always $0.
   function _compactMetaHTML(model, opts) {
     opts = opts || {};
     var parts = [];
     var isMedia = (model.category && model.category !== 'chat');
+    var pct = _intelligencePeakPercent(model);
+    if (pct != null) parts.push(pct + '% peak');
     if (isMedia) {
-      // Image / video models: AA reports Elo from head-to-head arena
-      // voting (typical range 1100-1400) and pricing in $/1k images
-      // or $/1k clips. Show both with the units AA publishes — "Elo"
-      // and "/1k imgs" — so the user can cross-reference the
-      // leaderboard directly. Latency / tokens-per-sec don't apply.
-      // Registry stores Elo in ``intelligence_score`` (Arena's field);
-      // ``aa_intelligence_index`` stays null for media. Pricing lives
-      // in ``pricing.per_1k_images``.
-      var elo = (model.aa_intelligence_index != null)
-        ? model.aa_intelligence_index : model.intelligence_score;
-      if (elo != null) parts.push('Elo ' + elo.toFixed(0));
       if (!opts.omitCost) {
         var pricing = model.pricing || {};
         var per1k = pricing.per_1k_images;
@@ -625,10 +620,6 @@
         }
       }
       return parts.join(' · ');
-    }
-    var intel = _normalizedIntelligence(model);
-    if (intel != null) {
-      parts.push('int ' + intel.toFixed(intel < 10 ? 1 : 0));
     }
     if (!opts.omitCost) {
       var blended = _blendedCostPerM(model);
@@ -640,6 +631,57 @@
       parts.push(model.output_tokens_per_second.toFixed(0) + ' t/s');
     }
     return parts.join(' · ');
+  }
+
+  // Intelligence as percent of the per-category peak. 100% = the
+  // highest-rated model in this model's category; everything else
+  // scales down. Returns null when the model has no intelligence
+  // score recorded. Lazy memoization across renders; reset on
+  // registry reload.
+  function _intelligencePeakPercent(model) {
+    if (!model || model.category === undefined) {
+      // Defensive: callers pass full registry entries
+    }
+    var category = (model && model.category) || 'chat';
+    var raw = _rawIntelligence(model);
+    if (raw == null) return null;
+    if (!_peakIntelByCategory) _peakIntelByCategory = _computePeakIntelByCategory();
+    var peak = _peakIntelByCategory[category];
+    if (!peak || peak <= 0) return null;
+    return Math.round((raw / peak) * 100);
+  }
+
+  function _computePeakIntelByCategory() {
+    var peaks = {};
+    var models = (_registry && _registry.models) || {};
+    Object.keys(models).forEach(function (id) {
+      var m = models[id];
+      var cat = (m && m.category) || 'chat';
+      var v = _rawIntelligence(m);
+      if (v == null) return;
+      if (!peaks[cat] || v > peaks[cat]) peaks[cat] = v;
+    });
+    return peaks;
+  }
+
+  // Raw intelligence per category, used to compute the % peak.
+  //   Chat models       → AA's 0-100 intelligence index. (Chat models
+  //                       also carry an Arena Elo in intelligence_score,
+  //                       but those two are different scales and can't
+  //                       be mixed in the same peak comparison.)
+  //   Image/video       → AA's head-to-head Arena Elo, stored in
+  //                       intelligence_score. aa_intelligence_index is
+  //                       null for media.
+  // Each category compares within its own units. Cross-category
+  // % peak comparisons are not meaningful and not surfaced anywhere.
+  function _rawIntelligence(model) {
+    if (!model) return null;
+    var category = model.category || 'chat';
+    if (category === 'chat') {
+      return model.aa_intelligence_index != null ? model.aa_intelligence_index : null;
+    }
+    // image_generation, image_editing, text_to_video, etc.
+    return model.intelligence_score != null ? model.intelligence_score : null;
   }
 
   // Single intelligence number for display + sort. Prefers AA index
@@ -1060,6 +1102,7 @@
       +       _esc(String(visibleCount)) + ' of ' + _esc(String(totalCount)) + ' models'
       +     '</span>'
       +     ' · vendors alphabetical by column · local pinned to top of column 1'
+      +     ' · <span class="ora-models-inventory-hint-peak">% peak</span> = intelligence relative to the top-rated model in its category'
       +   '</span>'
       + '</header>'
       + pickBanner
