@@ -18,10 +18,11 @@
       "loosening": false
     },
     "budget": {
-      "description": "Cheapest within a looser 50% intelligence floor AND a cost ceiling. If fewer than top-N pass both bounds, the algorithm loosens floor first, then ceiling, until top-N pass. Loosening events are reported in the output metadata.",
+      "description": "Cheapest within a looser 50% intelligence floor AND a cost ceiling. If fewer than top-N pass both bounds, the algorithm loosens floor first, then ceiling, until top-N pass. Loosening events are reported in the output metadata. Image-gen slots use image_cost_ceiling_per_1k ($/1k images) rather than the per-M-token chat ceiling — the two cost axes don't share a unit.",
       "mode": "paid_intelligence",
       "floor_pct": 50,
       "cost_ceiling_per_m": 5.0,
+      "image_cost_ceiling_per_1k": 80,
       "loosening": true
     },
     "free": {
@@ -64,7 +65,7 @@
       "cells": ["image_generation"],
       "top_n": 3,
       "diversity_excluded": false,
-      "_note": "Picks from AA's text-to-image arena leaderboard. Ranked by Elo (stored in aa_intelligence_index, same field chat models use for intelligence). All four presets currently produce the same picks because we lack pricing data for image models — Premium/Optimum/Budget/Free distinctions kick in once $/1k images is wired into the catalog."
+      "_note": "Picks from AA's text-to-image arena leaderboard. Ranked by Elo (stored in aa_intelligence_index, same field chat models use for intelligence) and per_1k_images cost from image_pricing. Presets: Premium → intelligence_desc, no ceiling. Optimum → Pareto + 80% floor + cost_asc. Budget → Pareto + 50% floor + image_cost_ceiling_per_1k + cost_asc. Free → per_1k_images == 0 if any, else <$10/1k as the cheap-enough-to-treat-as-free proxy."
     }
   },
   "vision_substitute": {

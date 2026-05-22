@@ -74,23 +74,39 @@ def cost_of(model: dict) -> float:
     return float(val) if val is not None else math.inf
 
 
-def pareto_filter(candidates: list[dict]) -> list[dict]:
+def cost_of_media(model: dict) -> float:
+    """Get the image-generation cost ($/1k images). math.inf when missing.
+
+    Image-gen models price per-image rather than per-token; ``image_pricing``
+    is populated by the AA per-model detail-page scrape (see Models pane
+    refresh path). Models without pricing data sort to the bottom on
+    cost-ascending — same admissible-but-not-preferred treatment chat models
+    without ``blended_per_m`` get.
+    """
+    pricing = model.get("image_pricing") or {}
+    val = pricing.get("per_1k_images")
+    return float(val) if val is not None else math.inf
+
+
+def pareto_filter(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
     """Remove strictly dominated models.
 
     A model A is dominated by B if B has higher (or equal) intelligence
     AND lower (or equal) cost, with at least one strict inequality.
-    Returns the Pareto-frontier subset of candidates.
+    Returns the Pareto-frontier subset of candidates. ``cost_fn`` picks
+    the cost axis — ``cost_of`` for chat (tokens) or ``cost_of_media``
+    for image-gen ($/1k images).
     """
     frontier = []
     for cand in candidates:
         c_int = intelligence_of(cand)
-        c_cost = cost_of(cand)
+        c_cost = cost_fn(cand)
         dominated = False
         for other in candidates:
             if other is cand:
                 continue
             o_int = intelligence_of(other)
-            o_cost = cost_of(other)
+            o_cost = cost_fn(other)
             # other dominates cand if other is no worse on both
             # and strictly better on at least one
             if o_int >= c_int and o_cost <= c_cost and (o_int > c_int or o_cost < c_cost):
@@ -116,14 +132,14 @@ def apply_floor(candidates: list[dict], floor_pct: float | None) -> list[dict]:
     return [m for m in candidates if intelligence_of(m) >= threshold]
 
 
-def apply_cost_ceiling(candidates: list[dict], ceiling: float | None) -> list[dict]:
-    """Drop models with blended cost above the ceiling.
+def apply_cost_ceiling(candidates: list[dict], ceiling: float | None, cost_fn=cost_of) -> list[dict]:
+    """Drop models with cost above the ceiling.
 
     ceiling=None disables (Premium / Optimum / Free).
     """
     if ceiling is None:
         return candidates
-    return [m for m in candidates if cost_of(m) <= ceiling]
+    return [m for m in candidates if cost_fn(m) <= ceiling]
 
 
 def filter_by_size_bucket(candidates: list[dict], size_bucket: str) -> list[dict]:
@@ -169,8 +185,8 @@ def filter_vision(candidates: list[dict]) -> list[dict]:
     return [m for m in candidates if m.get("vision_capable", False)]
 
 
-def sort_by_cost_ascending(candidates: list[dict]) -> list[dict]:
-    return sorted(candidates, key=cost_of)
+def sort_by_cost_ascending(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
+    return sorted(candidates, key=cost_fn)
 
 
 def sort_by_intelligence_descending(candidates: list[dict]) -> list[dict]:
@@ -269,34 +285,66 @@ def pick_for_free_slot(
     return sort_by_intelligence_descending(candidates)[:top_n]
 
 
+FREE_MEDIA_PROXY_CEILING = 10.0
+"""Free preset fallback: when no zero-cost image-gen models exist (or fewer
+than top-N do), admit models under this $/1k-images ceiling. Picked to be
+well below the median $35/1k so the Free pool stays recognisably budget."""
+
+
 def pick_for_media_slot(
     catalog: list[dict],
     category: str,
     top_n: int,
+    mode: str = "paid_intelligence",
+    floor_pct: float | None = None,
+    cost_ceiling: float | None = None,
+    sort_by: str = "cost_asc",
     excluded_ids: set | None = None,
 ) -> list[dict]:
-    """Pick top-N models by Elo (intelligence_score) within a media
-    category (image_generation / image_editing / text_to_video).
+    """Pick top-N image-gen models, mirroring ``pick_for_paid_slot`` semantics
+    against per-1k-images cost rather than per-M-tokens cost.
 
-    Media slots use a simpler picking path than chat slots because:
-      - Image models don't have size buckets (one bucket per capability).
-      - We don't have pricing data yet, so cost-vs-quality Pareto math
-        collapses to intelligence-only — same answer all four presets
-        produce. Premium / Optimum / Budget / Free distinctions will
-        kick in once $/1k images is wired into the catalog (separate
-        scrape pass against AA's per-model detail pages).
-      - Free vs paid partitioning also waits on pricing data. Until
-        then, every media slot is treated as a single ranked pool
-        per category.
+    ``mode`` switches the algorithm path:
 
-    Returns top-N picks sorted by intelligence_score (Elo) descending.
+      "paid_intelligence" — Pareto pass on (Elo, $/1k) → floor_pct% of top
+                            Elo (when set) → cost ceiling (when set) →
+                            sort by ``sort_by``. Used by Premium / Optimum /
+                            Budget.
+      "free_intelligence" — Restrict to per_1k_images == 0; if that returns
+                            fewer than top_n, fall back to per_1k_images
+                            <= FREE_MEDIA_PROXY_CEILING ($10/1k) as the
+                            "cheap-enough-to-treat-as-free" pool. Pareto
+                            pass + sort by intelligence descending.
+
+    Models without ``image_pricing.per_1k_images`` get math.inf for cost
+    (same admissible-but-not-preferred treatment chat models without
+    blended_per_m get). They participate in Pareto + intelligence-desc
+    sort but never pass a finite cost ceiling.
     """
     excluded_ids = excluded_ids or set()
     candidates = filter_by_category(catalog, category)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
     if not candidates:
         return []
-    return sort_by_intelligence_descending(candidates)[:top_n]
+
+    if mode == "free_intelligence":
+        zero_cost = [m for m in candidates if cost_of_media(m) == 0]
+        pool = zero_cost
+        if len(pool) < top_n:
+            # Fallback: admit models priced below the free-proxy ceiling
+            # so the Free preset isn't capped at the handful of zero-cost
+            # image models AA exposes today (3 as of the 2026-05 scrape).
+            pool = [m for m in candidates if cost_of_media(m) <= FREE_MEDIA_PROXY_CEILING]
+        pool = pareto_filter(pool, cost_fn=cost_of_media)
+        return sort_by_intelligence_descending(pool)[:top_n]
+
+    # paid_intelligence path
+    candidates = pareto_filter(candidates, cost_fn=cost_of_media)
+    candidates = apply_floor(candidates, floor_pct)
+    candidates = apply_cost_ceiling(candidates, cost_ceiling, cost_fn=cost_of_media)
+    if sort_by == "intelligence_desc":
+        return sort_by_intelligence_descending(candidates)[:top_n]
+    return sort_by_cost_ascending(candidates, cost_fn=cost_of_media)[:top_n]
 
 
 def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: str) -> str | None:
@@ -394,6 +442,10 @@ def populate_configuration(
                     catalog,
                     category=slot_category,
                     top_n=slot_spec["top_n"],
+                    mode=preset["mode"],
+                    floor_pct=preset.get("floor_pct"),
+                    cost_ceiling=preset.get("image_cost_ceiling_per_1k"),
+                    sort_by=preset.get("sort_by", "cost_asc"),
                     excluded_ids=excluded_so_far if diversity else None,
                 )
                 # Media cells don't carry a vision_substitute (the slot IS
