@@ -617,8 +617,15 @@ def _summarize(name: str, config: dict) -> dict:
     post = cells.get("post_analysis") or {}
     consolidation = (post.get("consolidation") or {}).get("primary")
     verification = (post.get("verification") or {}).get("primary")
-    formatter = (post.get("formatter") or {}).get("primary")
     visual = big1_cell.get("vision_substitute")  # any cell has it; sample big1
+    # Utility override (expand-view): single cell, step1_cleanup. Reads
+    # the same cell the SMALL row reports — display value tracks small
+    # until the user picks utility independently, at which point both
+    # rows continue to show the same value (the override is invisible
+    # in the per-cell read; that's intentional given the small→three-
+    # cell fan-out). The pick semantics differ: SMALL writes all three
+    # utility cells; UTILITY writes only step1_cleanup.
+    utility_override = small_cell.get("primary")
 
     # Media slots (Chunk 11). Currently only image_generation is surfaced
     # on the Models pane — the others (image editing, image-to-prompt,
@@ -637,10 +644,15 @@ def _summarize(name: str, config: dict) -> dict:
         "big1_fallback": list(big1_cell.get("fallback") or []),
         "big2_fallback": big2_fallback,
         "small_fallback": list(small_cell.get("fallback") or []),
-        # Expand-view fields (post-analysis cells + visual substitute):
-        "consolidator": consolidation,
-        "verifier": verification,
-        "formatter": formatter,
+        # Expand-view fields (post-analysis cells + visual substitute
+        # + utility step-1 cell). 2026-05-22: labels renamed
+        # (consolidator → consolidate, verifier → verify). Formatter
+        # dropped from the UI per "no format step" — the pipeline step
+        # still runs internally with the inherited big-1 model.
+        # Utility added as the fourth expand-view row.
+        "consolidate": consolidation,
+        "verify": verification,
+        "utility": utility_override,
         "visual": visual,
         # Media slot — image_generation; null when the configuration
         # predates Chunk 11 step 3 (re-bake to fill).
@@ -682,13 +694,25 @@ SLOT_LABEL_TO_PATHS = {
         ["utility", "classification"],
         ["utility", "rag_planner"],
     ],
-    # Expand-view slots: individual overrides that break the
-    # "post-analysis inherits big 1" default. Picking any of these
-    # writes to a single cell; the next big-1 pick will overwrite
+    # Media slot — image generation is its own card-body row and writes
+    # to a single image_generation cell. Picking from the inventory
+    # commits via this path. (Image editing / image-to-prompt /
+    # critique / video live on the Visual tab and don't appear here.)
+    "image gen": [["image_generation", "image_generation"]],
+    # Expand-view slots: individual overrides that break the default
+    # inheritance from a card-body slot. Picking any of these writes
+    # to a single cell; the next big-1 / small pick will overwrite
     # them (user re-picks here if they want the override to stick).
-    "consolidator": [["post_analysis", "consolidation"]],
-    "verifier":     [["post_analysis", "verification"]],
-    "formatter":    [["post_analysis", "formatter"]],
+    # 2026-05-22: labels renamed (consolidator → consolidate,
+    # verifier → verify) to match the publisher's expand-view spec.
+    # ``formatter`` retired from the UI per "no format step" — the
+    # pipeline still runs the formatter step internally, just always
+    # with the inherited big-1 model. ``utility`` added as a single-
+    # cell override for step1_cleanup (mirrors how consolidate /
+    # verify override post-analysis cells).
+    "consolidate": [["post_analysis", "consolidation"]],
+    "verify":      [["post_analysis", "verification"]],
+    "utility":     [["utility", "step1_cleanup"]],
 }
 
 

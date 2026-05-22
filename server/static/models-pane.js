@@ -512,12 +512,18 @@
   function _expandSlotsHTML(summary, opts) {
     if (_fallbackPopoutFor !== summary.name) return '';
     var c = {configName: summary.name, omitCost: !!(opts && opts.omitCost)};
+    // 2026-05-22 reshape: visual + the three single-cell overrides
+    // the publisher specified. Order matches the four-row spec from
+    // the items 1-7 list ("visual model is right, but the others
+    // should be utility, Consolidate, and Verify"). Formatter is
+    // gone from the expand view — the pipeline still runs that step
+    // internally but always uses the inherited big-1 model.
     return ''
       + '<div class="ora-models-card-expand">'
       +   _slotRowHTML('visual', summary.visual, c)
-      +   _slotRowHTML('consolidator', summary.consolidator, c)
-      +   _slotRowHTML('verifier', summary.verifier, c)
-      +   _slotRowHTML('formatter', summary.formatter, c)
+      +   _slotRowHTML('utility', summary.utility, c)
+      +   _slotRowHTML('consolidate', summary.consolidate, c)
+      +   _slotRowHTML('verify', summary.verify, c)
       + '</div>';
   }
 
