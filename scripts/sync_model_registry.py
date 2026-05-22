@@ -520,10 +520,19 @@ def tokenize_model_name(name: str) -> set[str]:
     'chatgpt' + 'latest' + '2025' + '03' + '26' as separate tokens,
     bloating the union and crashing the Jaccard score.
 
-    Additionally, compound version tokens like "qwen2.5" are split into
-    family + version components so they match OpenRouter's hyphen-form
-    "qwen-2.5". The number-then-letters/letters-then-numbers boundary
-    triggers a split (preserving the numeric token).
+    2026-05-22: version-number preservation fix. Earlier the tokenizer
+    dropped all-digit tokens, which collapsed AA's hyphen-form slugs
+    like "gpt-5-1" / "gpt-5-2" / "gpt-5-5" into the single token
+    "{gpt}" — every OpenAI variant tied at Jaccard 0.5 against
+    OpenRouter ids, and the first AA candidate in iteration order
+    silently won. GPT-5.1 / 5.2 / 5.4 etc. all ended up assigned
+    GPT-5.5's intelligence score. Two changes close it:
+
+      (a) Normalize dots to hyphens BEFORE splitting so
+          "gpt-5.1" and "gpt-5-1" tokenize identically.
+      (b) Keep short numeric tokens (1-3 digits) as version
+          components. Only drop 4+ digit tokens that look like
+          years/date codes.
     """
     if not name:
         return set()
@@ -534,28 +543,37 @@ def tokenize_model_name(name: str) -> set[str]:
     # Strip parenthesized / dated suffixes before token-splitting
     for pat in _PRE_TOKEN_STRIP:
         raw = pat.sub(" ", raw)
-    # Split on non-alphanumeric (but keep dots, for "2.5"-style versions)
-    tokens = re.split(r"[^a-z0-9.]+", raw)
+    # Normalize dots to hyphens so "gpt-5.1" and "gpt-5-1" produce
+    # identical token sets — both yield {gpt, 5, 1}.
+    raw = raw.replace(".", "-")
+    # Split on any non-alphanumeric run.
+    tokens = re.split(r"[^a-z0-9]+", raw)
     out: set[str] = set()
     for t in tokens:
         if not t:
             continue
-        # Drop all-digit tokens — leftover date / size fragments
-        # ("2024", "13", "0125", etc.). Numeric size markers like
-        # "72b" and version markers like "2.5" survive because they
-        # contain non-digits.
-        if t.isdigit():
-            continue
         if t in _NOISE_TOKENS:
             continue
+        # Drop all-digit tokens of 4+ chars (years, date codes like
+        # "2024" / "0613" / "20240806"). Short digit-only tokens like
+        # "5" / "13" / "72" survive as version / size components —
+        # losing them was what crashed the GPT-5.1-vs-5.5 disambiguation.
+        if t.isdigit() and len(t) >= 4:
+            continue
         # Split compound family+version tokens like "qwen2.5" into
-        # "qwen" + "2.5" so they match hyphen-form IDs.
-        m = re.match(r"^([a-z]+)(\d[\d.]*)$", t)
+        # "qwen" + "2" + "5" so they match hyphen-form IDs.
+        m = re.match(r"^([a-z]+)(\d[\d-]*)$", t)
         if m:
             family, ver = m.group(1), m.group(2)
             if family not in _NOISE_TOKENS:
                 out.add(family)
-            out.add(ver)
+            # Split the version digits the same way as standalone tokens
+            for part in ver.split("-"):
+                if not part:
+                    continue
+                if part.isdigit() and len(part) >= 4:
+                    continue
+                out.add(part)
             continue
         out.add(t)
     return out
@@ -702,7 +720,17 @@ def build_aa_overlay(
         or_tokens = tokenize_model_name(oid.split("/", 1)[-1])
         if not or_tokens:
             continue
-        best: dict | None = None
+        # Two-stage candidate pick:
+        #  1. Find the maximum Jaccard score across all AA candidates
+        #     in this vendor.
+        #  2. Among candidates tied at that maximum, pick the one with
+        #     the HIGHEST intelligence_index. This collapses AA's
+        #     reasoning-effort variants (xhigh / high / medium / low)
+        #     to one OpenRouter id while picking the strongest
+        #     configuration — so ``openai/gpt-5.5`` gets gpt-5-5
+        #     (xhigh) at 60.24 rather than whichever variant came
+        #     first in iteration order. Models with no intelligence
+        #     score sort to the bottom of the tie.
         best_score = 0.0
         for m in candidates:
             aa_name = m.get("slug") or m.get("name") or ""
@@ -712,12 +740,31 @@ def build_aa_overlay(
             score = jaccard(or_tokens, aa_tokens)
             if score > best_score:
                 best_score = score
-                best = m
-        if best is not None and best_score >= 0.5:
-            overlay[oid] = _project_aa_view(best)
-            overlay[oid]["match_type"] = "jaccard"
-            overlay[oid]["match_score"] = round(best_score, 3)
-            fuzzy_hits += 1
+        if best_score < 0.5:
+            continue
+        # Round to 3 decimals so near-ties (0.6666 vs 0.6667) tiebreak
+        # together rather than splitting hairs on floating-point noise.
+        EPS = 1e-3
+        tied = []
+        for m in candidates:
+            aa_name = m.get("slug") or m.get("name") or ""
+            aa_tokens = tokenize_model_name(aa_name)
+            if not aa_tokens:
+                continue
+            if abs(jaccard(or_tokens, aa_tokens) - best_score) <= EPS:
+                tied.append(m)
+        if not tied:
+            continue
+
+        def _intel_key(mm):
+            v = mm.get("intelligence_index")
+            return float(v) if isinstance(v, (int, float)) else -1.0
+
+        best = max(tied, key=_intel_key)
+        overlay[oid] = _project_aa_view(best)
+        overlay[oid]["match_type"] = "jaccard"
+        overlay[oid]["match_score"] = round(best_score, 3)
+        fuzzy_hits += 1
     print(f"[sync]   AA → OpenRouter: {direct_hits} direct + {fuzzy_hits} fuzzy = {len(overlay)} total", flush=True)
     return overlay
 
