@@ -324,12 +324,14 @@ def _find_matching_bracket(s: str, open_idx: int) -> int:
 #     account → API keys; store via Settings → External APIs (which
 #     writes to keyring under ``ora/aa-api-key``).
 #   - A few fields the public page exposes aren't in the API response:
-#     ``is_open_weights``, ``reasoning_model``, ``knowledge_cutoff_date``,
-#     ``agentic_index``, ``model_family_slug``, ``input_modality_image``,
-#     and the scrape's ``end_to_end_response_time_metrics`` total time.
-#     None have a downstream consumer at the time the API path landed
-#     (the Open-weights filter chip in the Models pane was removed in a
-#     parallel cleanup; ``knowledge_cutoff_date`` is also under audit).
+#     ``reasoning_model``, ``agentic_index``, ``model_family_slug``,
+#     ``input_modality_image``, and the scrape's
+#     ``end_to_end_response_time_metrics`` total time (only
+#     time-to-first-token is exposed). None have a downstream consumer
+#     at the time the API path landed. The previously-listed
+#     ``is_open_weights`` and ``knowledge_cutoff_date`` are also missing
+#     from the API but the producer side has been dropped registry-wide
+#     (commits ca0268ae and d6a5855f) so they're no longer a gap.
 #
 # Functions below return the SAME shape ``fetch_aa_models()`` and
 # ``fetch_aa_text_to_image()`` etc. return, so ``_project_aa_view``,
@@ -367,15 +369,15 @@ def _aa_chat_api_to_scrape_shape(rec: dict) -> dict:
       - top-level: ``name``, ``slug``, ``release_date``,
         ``intelligence_index``, ``coding_index``, ``math_index``, and
         the optional ``model_family_slug`` / ``agentic_index`` /
-        ``input_modality_image`` / ``is_open_weights`` /
-        ``reasoning_model`` / ``knowledge_cutoff_date`` fields
+        ``input_modality_image`` / ``reasoning_model`` fields
       - nested: ``end_to_end_response_time_metrics.total_time``,
         ``time_to_first_answer_token_metrics.total_time``,
         ``timescaleData.median_output_speed``
       - canonical-id key: ``model_creators.slug`` paired with ``slug``
 
-    Fields the API doesn't expose are set to None (no downstream
-    consumer at the time the API path landed).
+    Fields the API doesn't expose are set to None. Downstream reads via
+    ``dict.get`` so the explicit None is documentation, not load-bearing
+    — keeping it records the API ↔ scrape field gap for future readers.
     """
     ev = rec.get("evaluations") or {}
     creator = rec.get("model_creator") or {}
@@ -412,13 +414,16 @@ def _aa_chat_api_to_scrape_shape(rec: dict) -> dict:
         "timescaleData": (
             {"median_output_speed": tps} if tps is not None else None
         ),
-        # not exposed by the API — see header docstring for the audit
+        # Not exposed by the API. ``_project_aa_view`` reads each via
+        # ``dict.get`` so writing None is documentation (records the
+        # API↔scrape field gap) rather than load-bearing. The previously
+        # bridged ``is_open_weights`` and ``knowledge_cutoff_date`` were
+        # dropped registry-wide in commits ca0268ae and d6a5855f; they
+        # don't need a placeholder here anymore.
         "model_family_slug": None,
         "agentic_index": None,
         "input_modality_image": None,
-        "is_open_weights": None,
         "reasoning_model": None,
-        "knowledge_cutoff_date": None,
         "end_to_end_response_time_metrics": None,
         "deleted": False,
     }
