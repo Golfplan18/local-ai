@@ -151,14 +151,14 @@ def get_model_capabilities(config: dict, model_id: str) -> dict:
                 "file_system_access": ep.get("file_system_access", False),
                 "web_access": ep.get("web_access", False),
                 "retrieval_approach": ep.get("retrieval_approach", "pre-assembled"),
-                "context_window": ep.get("context_window", 32768),
+                "context_window": ep.get("context_window", 1_000_000),
             }
     return {
         "tool_access": False,
         "file_system_access": False,
         "web_access": False,
         "retrieval_approach": "pre-assembled",
-        "context_window": 32768,
+        "context_window": 1_000_000,
     }
 
 
@@ -508,7 +508,7 @@ class RAGEngine:
 
         # Get target model's context window
         caps = get_model_capabilities(self.config, target_model)
-        context_window = caps.get("context_window", 32768)
+        context_window = caps.get("context_window", 1_000_000)
 
         if approach == "agentic" and gear >= 2:
             # Agentic path: model navigates files itself

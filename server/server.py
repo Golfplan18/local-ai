@@ -2476,7 +2476,7 @@ def _direct_stream(user_input, history, images=None):
             messages.append({"role": "user", "content": f"{marker}\n{result}"})
 
         # Context compaction check
-        ctx_window = endpoint.get("context_window", 8192)
+        ctx_window = endpoint.get("context_window", 1_000_000)
         messages = compact_context(messages, call_model, ctx_window)
 
     # Agentic loop reached MAX_ITERATIONS while still emitting tool calls

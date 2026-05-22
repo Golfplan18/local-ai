@@ -69,7 +69,7 @@ def _log_compaction(event: str, **fields) -> None:
         pass
 
 
-def compact_context(messages: list, call_model_fn, context_limit: int = 8192) -> list:
+def compact_context(messages: list, call_model_fn, context_limit: int = 1_000_000) -> list:
     """Compact conversation history when approaching the context window limit.
 
     Args:

@@ -100,7 +100,7 @@ def analyze_framework_inputs(
     # Use generous max_tokens for thinking-model headroom; the structured
     # output is small but reasoning models pad with internal reasoning.
     endpoint = dict(endpoint)
-    endpoint["max_tokens"] = 4096
+    endpoint["max_tokens"] = 32000
 
     user_summary = _format_user_inputs(
         prompt=prompt,

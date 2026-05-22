@@ -4468,16 +4468,15 @@ def _diff_raw_vs_operational(raw_prompt: str, operational_notation: str) -> dict
 
 
 def _summarize_history_truncation(history: list | None,
-                                   window: int = 6,
-                                   per_message_char_cap: int = 500) -> dict:
+                                   window: int | None = None,
+                                   per_message_char_cap: int | None = None) -> dict:
     """Compute how much of the original history the conv-context-builder
     actually included vs dropped.
 
-    The conversation context Phase A sees is the last ``window`` non-system
-    messages, each truncated to ``per_message_char_cap`` chars. For
-    long-running threads this silently loses material. The returned dict
-    is suitable for embedding in the step1-phase-a trace so an auditor
-    can see when context was actually cut.
+    Defaults (``window=None``, ``per_message_char_cap=None``) reflect the
+    2026-05-22 aggressive-cap-removal pass: Phase A now receives the full
+    history with no truncation, so the trace's truncation stats should
+    show zero. Caller can still pass explicit values for a one-off audit.
     """
     if not history:
         return {
@@ -4495,11 +4494,12 @@ def _summarize_history_truncation(history: list | None,
     in_window = non_system[-window:] if window else non_system
     msgs_truncated = 0
     chars_lost = 0
-    for m in in_window:
-        body = m.get("content") or ""
-        if len(body) > per_message_char_cap:
-            msgs_truncated += 1
-            chars_lost += len(body) - per_message_char_cap
+    if per_message_char_cap is not None:
+        for m in in_window:
+            body = m.get("content") or ""
+            if len(body) > per_message_char_cap:
+                msgs_truncated += 1
+                chars_lost += len(body) - per_message_char_cap
     outside = max(0, len(non_system) - len(in_window))
     return {
         "history_present": True,
@@ -6502,13 +6502,17 @@ def run_pipeline(user_input: str, history: list = None,
     # captured for the trace so context-loss is visible when it matters.
     conv_context = ""
     if history:
-        recent = [m for m in history[-6:] if m["role"] != "system"]
+        # Pass the full conversation history to Phase A — no window cap,
+        # no per-message truncation. Modern context windows (200K-1M tokens)
+        # easily absorb every prior turn, and the previous 6-message ×
+        # 500-char cap was throwing away signal the cleanup step actually
+        # needed. The truncation summarizer below still computes stats but
+        # they will be zero unless the history is genuinely missing.
+        recent = [m for m in history if m["role"] != "system"]
         conv_context = "\n".join(
-            f"{m['role'].upper()}: {m['content'][:500]}" for m in recent
+            f"{m['role'].upper()}: {m['content']}" for m in recent
         )
-    history_trunc = _summarize_history_truncation(history,
-                                                   window=6,
-                                                   per_message_char_cap=500)
+    history_trunc = _summarize_history_truncation(history)
 
     step1 = run_step1_cleanup(user_input, conv_context, config,
                               ambiguity_mode=ambiguity_mode,
@@ -7340,7 +7344,7 @@ def _parse_supplemental_request(text: str) -> dict | None:
 
 
 def _fetch_supplement(query_terms: str, mode_text: str | None = None,
-                     max_chars: int = 4000) -> str:
+                     max_chars: int | None = None) -> str:
     """Run a vault-RAG query for the requested terms.
 
     Uses ``rag_engine.assemble_ranked_context`` when available so the
@@ -7965,7 +7969,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         # discipline applied to the dual-endpoint path in Chunk B'.
         single_result, single_ok, single_reason = _call_with_retry(
             messages, endpoint, "analyst",
-            min_chars=200, retry_hint=None, images=images,
+            min_chars=30, retry_hint=None, images=images,
             slot=slot, gear=3, config_name=config_name,
         )
         _record("step3-single-analyst-fallback", single_ok, single_reason)
@@ -8005,7 +8009,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     # Chunk B's fallback-chain advancement on retry.
     depth_analysis, depth_ok, depth_reason = _call_with_supplement(
         depth_messages, depth_endpoint, "analyst",
-        min_chars=200, retry_hint=None, images=images,
+        min_chars=30, retry_hint=None, images=images,
         context_pkg=context_pkg,
         slot="depth", gear=3, config_name=config_name,
     )
@@ -8039,7 +8043,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     # Chunk B': retry-once + slot fallback advancement on the evaluator.
     breadth_evaluation, eval_ok, eval_reason = _call_with_supplement(
         eval_messages, breadth_endpoint, "evaluator",
-        min_chars=150, retry_hint=None,
+        min_chars=30, retry_hint=None,
         images=_images_for_endpoint(images, breadth_endpoint),
         context_pkg=context_pkg,
         slot="breadth", gear=3, config_name=config_name,
@@ -8125,7 +8129,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     # Chunk B': retry-once + slot fallback advancement on the reviser.
     revised_analysis, rev_ok, rev_reason = _call_with_supplement(
         revise_messages, depth_endpoint, "reviser",
-        min_chars=200, retry_hint=None,
+        min_chars=30, retry_hint=None,
         images=_images_for_endpoint(images, depth_endpoint),
         context_pkg=context_pkg,
         slot="depth", gear=3, config_name=config_name,
@@ -8233,7 +8237,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         try:
             verified, verify_retry_ok, verify_retry_reason = _call_with_retry(
                 verify_messages, breadth_endpoint, "verifier",
-                min_chars=20, retry_hint=None,
+                min_chars=30, retry_hint=None,
                 images=_images_for_endpoint(images, breadth_endpoint),
                 slot="breadth", gear=3, config_name=config_name,
             )
@@ -8310,7 +8314,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         ]
         revised_analysis, _re_rev_ok, _re_rev_reason = _call_with_retry(
             re_revise_messages, depth_endpoint, "reviser",
-            min_chars=200, retry_hint=None,
+            min_chars=30, retry_hint=None,
             images=_images_for_endpoint(images, depth_endpoint),
             slot="depth", gear=3, config_name=config_name,
         )
@@ -9145,7 +9149,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     )
     consolidated, consol_ok, consol_reason = _call_with_supplement(
         consolidate_messages, consolidator_endpoint, "consolidator",
-        min_chars=300, retry_hint=None,
+        min_chars=30, retry_hint=None,
         images=_images_for_endpoint(images, consolidator_endpoint),
         context_pkg=context_pkg,
         slot="consolidation", gear=4, config_name=config_name,
@@ -9230,7 +9234,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     ]
     formatted, format_ok, format_reason = _call_with_retry(
         format_messages, formatter_endpoint, "formatter",
-        min_chars=300, retry_hint=None, images=None,
+        min_chars=30, retry_hint=None, images=None,
         slot="formatter", gear=4, config_name=config_name,
     )
     _record("step8-formatted", format_ok, format_reason)
@@ -9433,7 +9437,7 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
 # verifier kept FAILing on truncated drafts through all three cycles).
 # 16384 is the safe floor for modern frontier models; per-endpoint
 # `max_tokens` override on the endpoint dict still wins when set.
-_DEFAULT_API_MAX_TOKENS = 16384
+_DEFAULT_API_MAX_TOKENS = 32000
 
 
 def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> str:
@@ -9716,7 +9720,13 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
                     elif m["role"] == "assistant": parts.append(f"<|assistant|>\n{m['content']}")
                 parts.append("<|assistant|>")
                 prompt = "\n".join(parts)
-            gen_tokens = endpoint.get("max_tokens", 4096)
+            # MLX uses max_tokens as a hard stop on generation. We pass an
+            # effectively-infinite value so the model only stops at its
+            # natural EOS — modern instruction-tuned models emit EOS
+            # reliably; runaway generation is not a real failure mode on
+            # the local stack. The previous 4096 cap was truncating
+            # long-form output for no benefit.
+            gen_tokens = endpoint.get("max_tokens", 999_999_999)
             raw = mlx_generate(model_obj, tokenizer, prompt=prompt, max_tokens=gen_tokens, verbose=False)
             return _extract_final_response(raw)
         except FileNotFoundError:
