@@ -35,7 +35,6 @@ def _aa_entry(name, slug, creator_slug, **extras):
         "agentic_index": 55.0,
         "math_index": 40.0,
         "input_modality_image": True,
-        "is_open_weights": False,
         "reasoning_model": False,
         "release_date": "2025-01-01",
         "knowledge_cutoff_date": "2024-10-01",
