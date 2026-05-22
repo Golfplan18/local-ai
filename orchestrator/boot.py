@@ -9427,6 +9427,62 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
     return _call_api_endpoint_inner(messages, fallback_endpoint, images=images)
 
 
+# Default output cap for API model calls. The previous hardcoded 4096 was
+# truncating reviser and consolidator outputs mid-sentence (smoke test
+# 2026-05-22: both depth and breadth revisers cut off at ~11.7k chars,
+# verifier kept FAILing on truncated drafts through all three cycles).
+# 16384 is the safe floor for modern frontier models; per-endpoint
+# `max_tokens` override on the endpoint dict still wins when set.
+_DEFAULT_API_MAX_TOKENS = 16384
+
+
+def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> str:
+    """Run an API call, detect truncation, retry once with doubled cap.
+
+    ``make_call(max_tokens)`` performs one round-trip and returns
+    ``(text, truncated)``. When ``truncated`` is True on the first
+    attempt, retries once with ``max_tokens`` doubled. If still
+    truncated, appends a `[TRUNCATED ...]` marker so downstream
+    consumers (verifier, consolidator) can distinguish emission
+    failure from analytical failure — the symptom that drove the
+    three-cycle verifier loop on the 2026-05-22 smoke test.
+    """
+    initial = int(endpoint.get("max_tokens") or _DEFAULT_API_MAX_TOKENS)
+    retry_cap = initial * 2
+    text = ""
+    for attempt in (initial, retry_cap):
+        try:
+            text, truncated = make_call(attempt)
+        except Exception as e:
+            return f"[Error calling {label} API: {e}]"
+        if not truncated:
+            return text
+        if attempt == retry_cap:
+            try:
+                print(
+                    f"[truncation] {label} hit max_tokens={attempt} after "
+                    f"retry; marking output as truncated",
+                    flush=True,
+                )
+            except Exception:
+                pass
+            return text + (
+                f"\n\n[TRUNCATED at max_tokens={attempt}: the model's "
+                "emission was cut off mid-output. Downstream pipeline "
+                "steps should treat this as an emission failure, not "
+                "an analytical failure.]"
+            )
+        try:
+            print(
+                f"[truncation-retry] {label} hit max_tokens={attempt}; "
+                f"retrying with {retry_cap}",
+                flush=True,
+            )
+        except Exception:
+            pass
+    return text  # unreachable
+
+
 def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None) -> str:
     service = endpoint.get("service", "")
     model = endpoint.get("model", "")
@@ -9439,22 +9495,23 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 import keyring
                 key = keyring.get_password("ora", "anthropic-api-key") or ""
             client = anthropic.Anthropic(api_key=key)
-            # Separate system from messages
             system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
             conv = [m for m in messages if m["role"] != "system"]
             if images:
                 conv = _inject_images_into_messages(conv, images, api_format="claude")
-            resp = client.messages.create(
-                model=model or "claude-opus-4-6",
-                max_tokens=4096,
-                system=system_msg,
-                messages=conv
-            )
-            # Coerce None → "" so downstream string ops in
-            # _run_model_with_tools never raise TypeError on a missing
-            # content block. The pipeline already handles empty strings
-            # gracefully via min-length retry; None would crash.
-            return (resp.content[0].text if resp.content else "") or ""
+
+            def _claude_call(max_tokens):
+                resp = client.messages.create(
+                    model=model or "claude-opus-4-6",
+                    max_tokens=max_tokens,
+                    system=system_msg,
+                    messages=conv,
+                )
+                text = (resp.content[0].text if resp.content else "") or ""
+                truncated = getattr(resp, "stop_reason", None) == "max_tokens"
+                return text, truncated
+
+            return _call_api_with_truncation_retry(_claude_call, "Claude", endpoint)
         except Exception as e:
             return f"[Error calling Claude API: {e}]"
 
@@ -9469,19 +9526,18 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
             api_messages = messages
             if images:
                 api_messages = _inject_images_into_messages(messages, images, api_format="openai")
-            resp = client.chat.completions.create(
-                model=model or "gpt-4o",
-                messages=api_messages,
-                max_tokens=4096
-            )
-            # Coerce None → "" — message.content is None when the model
-            # emits an empty response, refusal, or tool-call-only message.
-            # _run_model_with_tools called strip_tool_calls() on the raw
-            # return; without this coercion a None content raises
-            # "expected string or bytes-like object" and the wrapping
-            # verifier marks the cycle BROKEN. Empty string lets the
-            # min-length-retry path handle it gracefully.
-            return resp.choices[0].message.content or ""
+
+            def _openai_call(max_tokens):
+                resp = client.chat.completions.create(
+                    model=model or "gpt-4o",
+                    messages=api_messages,
+                    max_tokens=max_tokens,
+                )
+                text = resp.choices[0].message.content or ""
+                truncated = getattr(resp.choices[0], "finish_reason", None) == "length"
+                return text, truncated
+
+            return _call_api_with_truncation_retry(_openai_call, "OpenAI", endpoint)
         except Exception as e:
             return f"[Error calling OpenAI API: {e}]"
 
@@ -9495,26 +9551,41 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
             if not key:
                 return "[Error calling Gemini API: No API key found. Store via: keyring set ora gemini-api-key]"
             client = genai.Client(api_key=key)
-            # Extract system instruction
             system_msg = next((m["content"] for m in messages if m["role"] == "system"), None)
-            # Build contents from non-system messages
             contents = []
             for m in messages:
                 if m["role"] == "system":
                     continue
                 role = "user" if m["role"] == "user" else "model"
                 contents.append({"role": role, "parts": [{"text": m["content"]}]})
-            config = {}
-            if system_msg:
-                config["system_instruction"] = system_msg
-            resp = client.models.generate_content(
-                model=model or "models/gemini-2.5-flash",
-                contents=contents,
-                config=config,
-            )
-            # Coerce None → "" — resp.text is None when finish_reason is
-            # SAFETY, RECITATION, or similar refusal states.
-            return resp.text or ""
+
+            def _gemini_call(max_tokens):
+                config = {"max_output_tokens": int(max_tokens)}
+                if system_msg:
+                    config["system_instruction"] = system_msg
+                resp = client.models.generate_content(
+                    model=model or "models/gemini-2.5-flash",
+                    contents=contents,
+                    config=config,
+                )
+                text = resp.text or ""
+                truncated = False
+                try:
+                    for cand in (getattr(resp, "candidates", None) or []):
+                        fr = getattr(cand, "finish_reason", None)
+                        if fr is None:
+                            continue
+                        # Gemini SDK exposes finish_reason as either an enum
+                        # whose name ends with "MAX_TOKENS" or the int value
+                        # 2 (legacy). Cover both.
+                        if "MAX_TOKENS" in str(fr) or fr == 2:
+                            truncated = True
+                            break
+                except Exception:
+                    pass
+                return text, truncated
+
+            return _call_api_with_truncation_retry(_gemini_call, "Gemini", endpoint)
         except Exception as e:
             return f"[Error calling Gemini API: {e}]"
 
@@ -9544,43 +9615,37 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 api_messages = _inject_images_into_messages(
                     messages, images, api_format="openai"
                 )
-            resp = client.chat.completions.create(
-                model=model or "openai/gpt-4o-mini",
-                messages=api_messages,
-                max_tokens=4096,
-                extra_headers={
-                    # OpenRouter recommends these for attribution in
-                    # their leaderboards / billing breakdowns. Not auth-related.
-                    "HTTP-Referer": "https://ora.local",
-                    "X-Title": "Ora",
-                },
-            )
-            # Coerce None → "" — OpenRouter inherits OpenAI SDK behavior
-            # where message.content is None on empty/refusal/tool-only
-            # responses. The verifier-BROKEN signature in image-mode runs
-            # traced back to this exact case: gpt-5.1-codex-mini returned
-            # message.content=None on verifier cycle 3, _run_model_with_tools
-            # called strip_tool_calls(None), TypeError fired.
-            content = resp.choices[0].message.content
-            if not content:
-                # Diagnostic — surface what the model actually returned when
-                # content is empty, so root-cause audits can distinguish
-                # refusal / tool-call-only / finish-reason quirks from
-                # genuine empty completions. Logs once per such response.
-                try:
-                    msg = resp.choices[0].message
-                    fr = getattr(resp.choices[0], "finish_reason", None)
-                    has_tool_calls = bool(getattr(msg, "tool_calls", None))
-                    refusal = getattr(msg, "refusal", None)
-                    print(
-                        f"[openrouter-empty-content] model={model!r} "
-                        f"finish_reason={fr!r} has_tool_calls={has_tool_calls} "
-                        f"refusal={refusal!r} content_is_none={content is None}",
-                        flush=True,
-                    )
-                except Exception as diag_err:
-                    print(f"[openrouter-empty-content] diag failed: {diag_err}", flush=True)
-            return content or ""
+
+            def _openrouter_call(max_tokens):
+                resp = client.chat.completions.create(
+                    model=model or "openai/gpt-4o-mini",
+                    messages=api_messages,
+                    max_tokens=max_tokens,
+                    extra_headers={
+                        "HTTP-Referer": "https://ora.local",
+                        "X-Title": "Ora",
+                    },
+                )
+                content = resp.choices[0].message.content
+                if not content:
+                    try:
+                        msg = resp.choices[0].message
+                        fr = getattr(resp.choices[0], "finish_reason", None)
+                        has_tool_calls = bool(getattr(msg, "tool_calls", None))
+                        refusal = getattr(msg, "refusal", None)
+                        print(
+                            f"[openrouter-empty-content] model={model!r} "
+                            f"finish_reason={fr!r} has_tool_calls={has_tool_calls} "
+                            f"refusal={refusal!r} content_is_none={content is None}",
+                            flush=True,
+                        )
+                    except Exception as diag_err:
+                        print(f"[openrouter-empty-content] diag failed: {diag_err}", flush=True)
+                text = content or ""
+                truncated = getattr(resp.choices[0], "finish_reason", None) == "length"
+                return text, truncated
+
+            return _call_api_with_truncation_retry(_openrouter_call, "OpenRouter", endpoint)
         except Exception as e:
             return f"[Error calling OpenRouter API: {e}]"
 
