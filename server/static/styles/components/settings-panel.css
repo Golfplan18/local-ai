@@ -1415,6 +1415,15 @@
   font-style: italic;
 }
 
+/* When a deprecated row is also being picked, the picking state has to
+   win visually so the user can tell their click registered. The
+   deprecation outline above appears later in this file and would
+   otherwise override the green picking outline; this rule restores it. */
+.ora-models-slot-row-deprecated.ora-models-slot-row-picking {
+  background: rgba(80, 200, 120, 0.18);
+  outline: 2px solid var(--color-green, #87905B);
+}
+
 .ora-models-deprecated-chip {
   background: var(--color-yellow, #D4AC4A);
   color: var(--background-primary, #15110A);
