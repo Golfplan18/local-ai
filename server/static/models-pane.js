@@ -423,10 +423,11 @@
           _flashCardMessage(card, 'Fill every slot before activating.');
           return;
         }
-        if (card.classList.contains('ora-models-card-deprecated')) {
-          _flashCardMessage(card, 'Update the deprecated model before activating.');
-          return;
-        }
+        // Yellow (deprecated) cards DO activate — the user has to be
+        // able to edit them to fix the deprecation. Red still blocks
+        // because incomplete configs can't run at all. Yellow's whole
+        // point is "runs but needs attention"; activating it is how
+        // you replace the deprecated picks.
         _activateConfig(configName);
       });
       var customizeBtn = card.querySelector('[data-action="customize"]');
@@ -529,12 +530,15 @@
     // from the slot meta so the line stays tight.
     var omitCost = (presetName === 'free');
     var incomplete = !!summary.incomplete;
-    var deprecated = _hasDeprecatedModel(summary);
+    var deprecatedList = _deprecatedPrimaries(summary);
+    var deprecated = deprecatedList.length > 0;
+    var depTitle = deprecated ? _deprecatedTooltip(deprecatedList) : '';
     return ''
       + '<div class="ora-models-card ora-models-card-preset'
       +   (isActive ? ' ora-models-card-active' : '')
       +   (incomplete ? ' ora-models-card-incomplete' : '')
       +   (deprecated && !incomplete ? ' ora-models-card-deprecated' : '') + '"'
+      +   (depTitle ? ' title="' + _esc(depTitle) + '"' : '')
       +   ' data-preset="' + presetName + '"'
       +   ' data-config-name="' + _esc(summary.name) + '">'
       +   '<header class="ora-models-card-header">'
@@ -741,13 +745,33 @@
   // config keeps running because the fallback chain catches the missing
   // primary in flight.
   function _hasDeprecatedModel(summary) {
-    var all = summary && summary.all_primaries;
-    if (!Array.isArray(all) || !all.length) return false;
+    return _deprecatedPrimaries(summary).length > 0;
+  }
+
+  // List of every primary id in the config that's no longer in the
+  // registry. Used by the card tooltip to tell the user WHICH cell is
+  // the deprecation source — useful when the bad primary lives in a
+  // cell that doesn't render anywhere on the card (e.g. utility's
+  // classification cell, which fans out from SMALL but has no row
+  // of its own).
+  function _deprecatedPrimaries(summary) {
+    var all = (summary && summary.all_primaries) || [];
+    if (!Array.isArray(all) || !all.length) return [];
     var models = (_registry && _registry.models) || {};
-    for (var i = 0; i < all.length; i++) {
-      if (!models[all[i]]) return true;
-    }
-    return false;
+    return all.filter(function (id) { return !models[id]; });
+  }
+
+  // Tooltip text listing the deprecated primary ids on a yellow card.
+  // The custom tooltip CSS uses `white-space: nowrap` so this has to
+  // fit on one line. One model: name the id directly. Multiple: name
+  // the count and the first id, suffix "(+N more)" — enough for the
+  // user to know which cell to inspect after activating.
+  function _deprecatedTooltip(ids) {
+    var n = ids.length;
+    if (n === 1) return 'Deprecated model: ' + ids[0] + ' — activate to fix';
+    return n + ' deprecated models (' + ids[0]
+      + (n > 1 ? ' + ' + (n - 1) + ' more' : '')
+      + ') — activate to fix';
   }
 
   // Raw intelligence per category, used to compute the % peak.
@@ -1022,10 +1046,8 @@
           _flashCardMessage(card, 'Fill every slot before activating.');
           return;
         }
-        if (card.classList.contains('ora-models-card-deprecated')) {
-          _flashCardMessage(card, 'Update the deprecated model before activating.');
-          return;
-        }
+        // Yellow (deprecated) activates — see _wirePresetCard for the
+        // rationale. Red still blocks.
         _activateConfig(configName);
       });
       var customizeBtn = card.querySelector('[data-action="customize"]');
@@ -1065,12 +1087,15 @@
     // because the flag tracks "started from scratch, not yet finished"
     // intent, not a live completeness check.
     var incomplete = !!summary.incomplete;
-    var deprecated = _hasDeprecatedModel(summary);
+    var deprecatedList = _deprecatedPrimaries(summary);
+    var deprecated = deprecatedList.length > 0;
+    var depTitle = deprecated ? _deprecatedTooltip(deprecatedList) : '';
     return ''
       + '<div class="ora-models-card ora-models-card-custom'
       +   (isActive ? ' ora-models-card-active' : '')
       +   (incomplete ? ' ora-models-card-incomplete' : '')
       +   (deprecated && !incomplete ? ' ora-models-card-deprecated' : '') + '"'
+      +   (depTitle ? ' title="' + _esc(depTitle) + '"' : '')
       +   ' data-config-name="' + _esc(summary.name) + '">'
       +   '<header class="ora-models-card-header">'
       +     '<span class="ora-models-card-title">' + _esc(summary.name) + '</span>'
