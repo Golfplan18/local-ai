@@ -479,10 +479,16 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
             # this just wires the v1 caller through.
             ep = router.resolve_post_analysis_slot("formatter", context, config_name=config_name)
         elif slot in ("depth", "breadth"):
-            # For direct slot lookups outside gear execution, resolve at Gear 3
-            # (Gear 4 resolution happens through resolve_gear4_endpoints)
-            result = router.resolve_gear(3, context, config_name=config_name)
-            ep = result.get(slot) if result else None
+            # Single-slot depth/breadth lookup (project tools via
+            # invoke_chat, ad-hoc resolution outside a gear pipeline).
+            # Try resolve_endpoint directly first so a sequential-mode
+            # config (gear3.breadth=null by design) doesn't fail the
+            # gear-wide resolution and force us into the legacy bucket
+            # walk. Try gear 4 cell first (richer chain — both depth
+            # and breadth populated) then fall back to gear 3.
+            ep = router.resolve_endpoint(slot, 4, context, config_name=config_name)
+            if ep is None:
+                ep = router.resolve_endpoint(slot, 3, context, config_name=config_name)
         else:
             ep = router.resolve_utility_slot("step1_cleanup", context, config_name=config_name)
 

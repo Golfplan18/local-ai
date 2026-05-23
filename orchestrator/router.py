@@ -732,8 +732,16 @@ class Router:
         Returns the list of keys to walk, or None if the slot has no
         cell mapping (caller treats this as "no endpoint available").
         """
-        if slot in ("sidebar", "step1_cleanup", "rag_planner", "classification"):
+        if slot in ("step1_cleanup", "rag_planner", "classification"):
             return ["utility", slot]
+        if slot == "sidebar":
+            # ``sidebar`` is the project-tool entry point for utility-class
+            # calls (small / cheap model). Configurations from auto-populate
+            # carry step1_cleanup / classification / rag_planner cells but
+            # no ``sidebar`` cell — they're functionally interchangeable.
+            # Alias to step1_cleanup so invoke_chat(slot='sidebar') resolves
+            # against the same model SMALL points at on the Models pane.
+            return ["utility", "step1_cleanup"]
         if slot in ("depth", "breadth"):
             # Gear 1/2 don't have depth/breadth cells in a configuration;
             # the gear downgrade cascade in execute() handles those cases

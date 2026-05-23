@@ -844,6 +844,16 @@
   outline-offset: -2px;
 }
 
+/* Active + deprecated: the active green border has to win on the
+   visible card while the yellow outline remains as the secondary
+   "needs attention" cue. Without this rule the deprecated declaration
+   later in the file overrides the active border color and the user
+   can't tell which card is active. */
+.ora-models-card.ora-models-card-active.ora-models-card-deprecated {
+  border-color: var(--color-active, #5FA86E);
+  border-width: 2px;
+}
+
 /* Flash banner that briefly explains why a click on a red/yellow
    card didn't activate it. */
 .ora-models-card-flash {

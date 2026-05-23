@@ -1375,10 +1375,16 @@
     switch (by) {
       case 'intelligence_desc':
         return arr.sort(function (a, b) {
-          var ai = _normalizedIntelligence(a);
-          var bi = _normalizedIntelligence(b);
-          if (ai == null) ai = -1;
-          if (bi == null) bi = -1;
+          // Use the same raw-intelligence helper the % peak chip uses
+          // so the visible chip and the sort order agree. Models with
+          // no AA index (chat) or no Arena Elo (image) get null →
+          // pushed to the bottom rather than sorted as if they were
+          // 90% peak via the Arena-Elo-fallback normalisation that
+          // _normalizedIntelligence applies for the slider.
+          var ai = _rawIntelligence(a);
+          var bi = _rawIntelligence(b);
+          if (ai == null) ai = -Infinity;
+          if (bi == null) bi = -Infinity;
           return bi - ai;
         });
       case 'cost_asc':
