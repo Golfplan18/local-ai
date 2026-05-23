@@ -3665,6 +3665,22 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                 # Health check must never break the chat path
                 print(f"[server] oversight health check failed (non-fatal): {_oh_exc}")
 
+            # Pipeline-execution health check (S3, 2026-05-22) — drain
+            # any in-pipeline warnings recorded thread-locally during
+            # the turn (e.g. Phase A output unparseable) and prepend.
+            try:
+                from pipeline_health import (
+                    collect_and_clear as _ph_collect,
+                    format_warnings_as_chat_note as _ph_format,
+                )
+                _pipeline_warnings = _ph_collect()
+                if _pipeline_warnings:
+                    _ph_note = _ph_format(_pipeline_warnings)
+                    if _ph_note:
+                        final_response = _ph_note + final_response
+            except Exception as _ph_exc:
+                print(f"[server] pipeline health check failed (non-fatal): {_ph_exc}")
+
             # Handle file output routing (e.g. /save, /saveboth)
             if output_target != "screen":
                 routed = route_output(final_response, output_target)

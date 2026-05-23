@@ -4296,6 +4296,28 @@ def parse_step1_output(response: str) -> dict:
         result["cleaned_prompt"] = response
         result["operational_notation"] = response
         result["phase_a_parse_failed"] = True
+        # S3 (2026-05-22): surface to chat. Without this banner the user
+        # has no way to tell that the pipeline ran against the cleaning
+        # model's narrative reply ("Sure, I'd be happy to help — could
+        # you share more about what you're working on?") instead of their
+        # actual prompt. Recorded thread-locally; the chat handler drains
+        # the list after the turn completes.
+        try:
+            try:
+                import pipeline_health
+            except ImportError:
+                from orchestrator import pipeline_health
+            pipeline_health.record(
+                "phase_a_parse_failed",
+                "Prompt cleanup couldn't parse the cleaning model's output. "
+                "The pipeline ran against the model's narrative response, "
+                "not your direct input. The analysis may be partially "
+                "off-topic; retry the prompt if the result reads as if "
+                "Ora answered a different question than you asked.",
+            )
+        except Exception:
+            # Health surface must never break the cleanup path.
+            pass
 
     # Extract corrections log
     corr_match = re.search(
@@ -7923,14 +7945,53 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     breadth_endpoint = get_slot_endpoint(config, "breadth", config_name=config_name)
 
     if depth_endpoint is None and breadth_endpoint is None:
+        # S11 (2026-05-22): when the cascade comes up empty, surface
+        # the per-endpoint circuit-breaker state for each chain entry.
+        # Previously the message said "configured model ids may not be
+        # registered" — true in one case (drift between catalog and
+        # routing-config), misleading in another (every endpoint is
+        # temporarily in cooldown). Build a real diagnostic from the
+        # router's configured chain + endpoint_health's known state.
+        router_obj = _get_router()
+        chain_lines: list[str] = []
+        if router_obj is not None and config_name:
+            try:
+                import endpoint_health as _eh
+            except ImportError:
+                from orchestrator import endpoint_health as _eh
+            for label, slot_name in (("depth", "depth"), ("breadth", "breadth")):
+                chain = router_obj.get_slot_chain(slot_name, 4, config_name)
+                if not chain:
+                    chain_lines.append(f"  {label} chain: (no chain declared in {config_name!r})")
+                    continue
+                chain_lines.append(f"  {label} chain ({len(chain)} entries):")
+                for ep_id in chain:
+                    registered = ep_id in router_obj._endpoints
+                    status_obj = _eh.endpoint_status(ep_id)
+                    cooldown = status_obj.get("cooldown_remaining", 0)
+                    failures = status_obj.get("recent_failures", 0)
+                    if not registered:
+                        chain_lines.append(
+                            f"    - {ep_id}: not registered in routing-config "
+                            "(run scripts/sync_endpoints_from_catalog.py)"
+                        )
+                    elif cooldown > 0:
+                        chain_lines.append(
+                            f"    - {ep_id}: in circuit-breaker cooldown for "
+                            f"{cooldown}s ({failures} recent failures)"
+                        )
+                    else:
+                        chain_lines.append(
+                            f"    - {ep_id}: registered, healthy (resolver couldn't return it — "
+                            "check the diversity filter or mutex state)"
+                        )
+        diag = ("\n\n" + "\n".join(chain_lines)) if chain_lines else ""
         return (
             f"[Configuration {config_name or '(default)'!r} couldn't resolve "
-            "depth or breadth endpoints. The configured model ids may not be "
-            "registered in config/routing-config.json. The server log "
-            "(`[router]` lines) names the ids that were tried. Fix by syncing "
-            "the registry from the model catalog "
-            "(scripts/sync_endpoints_from_catalog.py) or by editing the "
-            "configuration in the Models pane.]"
+            f"depth or breadth endpoints.{diag}\n\n"
+            "Fix paths: register missing ids via "
+            "scripts/sync_endpoints_from_catalog.py; wait out any cooldowns; "
+            "or pick a different configuration in the Models pane.]"
         )
 
     cleaned_prompt = context_pkg["cleaned_prompt"]

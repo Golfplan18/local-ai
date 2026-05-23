@@ -760,6 +760,49 @@ class Router:
             return ["analysis", "gear3", "depth"]
         return None
 
+    def get_slot_chain(
+        self,
+        slot: str,
+        gear: int,
+        config_name: str | None = None,
+    ) -> list[str]:
+        """Return the configured fallback chain for a slot.
+
+        Lists the endpoint ids the resolver would walk in order (primary
+        + every fallback entry) without actually doing the resolution.
+        Empty list when the configuration is unknown, the cell path is
+        missing, or the cell is null.
+
+        Used by the run_gear3 refusal path (S11, 2026-05-22) to name
+        the specific chain the resolver tried and report each entry's
+        circuit-breaker state to the user.
+        """
+        if not config_name:
+            return []
+        cfg = self._load_configuration(config_name)
+        if cfg is None:
+            return []
+        cell_path = self._slot_to_cell_path(slot, gear)
+        if cell_path is None:
+            return []
+        cur: object = cfg.get("cells", {})
+        for key in cell_path:
+            if not isinstance(cur, dict):
+                return []
+            cur = cur.get(key)
+            if cur is None:
+                return []
+        if not isinstance(cur, dict):
+            return []
+        chain: list[str] = []
+        primary_id = cur.get("primary")
+        if primary_id:
+            chain.append(primary_id)
+        for fb in cur.get("fallback") or []:
+            if fb:
+                chain.append(fb)
+        return chain
+
     def _resolve_from_configuration(
         self,
         slot: str,

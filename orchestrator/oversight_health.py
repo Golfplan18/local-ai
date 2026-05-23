@@ -137,30 +137,69 @@ def check_health() -> list[dict]:
         return warnings
 
     warnings.extend(per_watcher)
+
+    # S10 (2026-05-22) — simulated-mode banner. When oversight is active
+    # (PEDs registered, watchers beating) but ORA_OVERSIGHT_LIVE is not
+    # set in env, the router synthesises a "simulated" action for every
+    # event and never produces FAIL / REVISE / ESCALATE. The user has no
+    # way to tell oversight is running as a no-op. Surface it.
+    if os.environ.get("ORA_OVERSIGHT_LIVE") != "1":
+        warnings.append({
+            "watcher": "oversight_router",
+            "status": "simulated_oversight",
+            "age_seconds": None,
+            "threshold_seconds": None,
+            "message": (
+                "Oversight is running in simulated mode — supervision verdicts "
+                "will not intervene. Set ORA_OVERSIGHT_LIVE=1 in the env and "
+                "restart the server to enable live oversight."
+            ),
+        })
+
     return warnings
 
 
 def format_warnings_as_chat_note(warnings: list[dict]) -> str:
     """Format warnings as a system note suitable for prepending to a chat
     response. Returns an empty string when there are no warnings.
+
+    Warnings split into two visual categories:
+      - Degraded (daemon_down, stale): the apparatus is meant to be
+        running but isn't. Surfaced under "Meta-layer oversight: degraded".
+      - Simulated (simulated_oversight): the apparatus is intentionally
+        in a no-op mode. Surfaced under "Meta-layer oversight: simulated"
+        with a different visual treatment so the user can distinguish
+        "broken" from "off by configuration."
     """
     if not warnings:
         return ""
-    lines = [
-        "> ⚠️ **Meta-layer oversight: degraded**",
-    ]
-    for w in warnings:
-        lines.append(f"> - {w['message']}")
-    lines.append(
-        "> "
-    )
-    lines.append(
-        "> The oversight daemon may not be running, or one or more watchers have stalled. "
-        "If this persists, restart with `./start.sh` or check `~/ora/data/oversight/` for stale heartbeat files."
-    )
-    lines.append("")
-    lines.append("---")
-    lines.append("")
+
+    degraded = [w for w in warnings if w.get("status") != "simulated_oversight"]
+    simulated = [w for w in warnings if w.get("status") == "simulated_oversight"]
+
+    lines: list[str] = []
+
+    if degraded:
+        lines.append("> ⚠️ **Meta-layer oversight: degraded**")
+        for w in degraded:
+            lines.append(f"> - {w['message']}")
+        lines.append("> ")
+        lines.append(
+            "> The oversight daemon may not be running, or one or more watchers have stalled. "
+            "If this persists, restart with `./start.sh` or check `~/ora/data/oversight/` for stale heartbeat files."
+        )
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+    if simulated:
+        lines.append("> ℹ️ **Meta-layer oversight: simulated**")
+        for w in simulated:
+            lines.append(f"> - {w['message']}")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
     return "\n".join(lines)
 
 
