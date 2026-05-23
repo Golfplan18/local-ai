@@ -1909,8 +1909,8 @@
     // clickable placeholders so the user can fill them in place — used
     // for the image-gen chain that auto-populate doesn't always seed.
     var sections = [
-      _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name, 2),
-      _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name, 1),
+      _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name, 3),
+      _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name, 2),
       _popoutSlotHTML('image', summary.image_generation, summary.image_generation_fallback, summary.name, 1),
     ];
 

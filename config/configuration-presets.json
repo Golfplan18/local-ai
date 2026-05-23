@@ -37,15 +37,16 @@
     "utility": {
       "size_bucket": "small",
       "cells": ["step1_cleanup", "classification", "rag_planner"],
-      "top_n": 2,
-      "diversity_excluded": false
+      "top_n": 3,
+      "diversity_excluded": false,
+      "_note": "top_n=3 feeds the popout's three-row small section (1 primary + 2 fallbacks)."
     },
     "analysis.gear4": {
       "size_bucket": "large",
       "cells": ["depth", "breadth"],
-      "top_n": 3,
+      "top_n": 4,
       "diversity_excluded": true,
-      "_note": "When diversity is enforced for the workhorse pair, breadth picks exclude depth's primary so the second slot reaches for a different model family. top_n=3 feeds the popout's three-row large section (1 primary + 2 fallbacks per chain) after the 2026-05-22 condensation pass."
+      "_note": "When diversity is enforced for the workhorse pair, breadth picks exclude depth's primary so the second slot reaches for a different model family. top_n=4 feeds the popout's four-row large section (1 primary + 3 fallbacks per chain)."
     },
     "analysis.gear3": {
       "size_bucket": "large",
