@@ -1449,6 +1449,16 @@
   background: var(--interactive-hover, #2A2218);
 }
 
+.ora-models-popout-row-clickable {
+  cursor: pointer;
+}
+
+.ora-models-popout-row-picking {
+  background: rgba(80, 200, 120, 0.18);
+  outline: 2px solid var(--color-green, #87905B);
+  border-radius: 3px;
+}
+
 .ora-models-popout-rank {
   font-size: 8px;
   text-transform: uppercase;

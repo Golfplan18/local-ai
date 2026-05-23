@@ -1024,10 +1024,24 @@
     if (!_activeSlotPick || !modelId) return;
     var pick = _activeSlotPick;
     _activeSlotPick = null;
-    fetch('/api/configurations/' + encodeURIComponent(pick.configName) + '/slot', {
+    // Popout fallback edit → write to the cell's fallback[index]
+    // (single-cell, no fan-out). Primary picks continue to use the
+    // legacy /slot endpoint with SLOT_LABEL_TO_PATHS fan-out.
+    var isFallbackEdit = (pick.popoutSection != null
+                          && pick.fallbackIndex != null
+                          && pick.fallbackIndex >= 0);
+    var url, body;
+    if (isFallbackEdit) {
+      url = '/api/configurations/' + encodeURIComponent(pick.configName) + '/fallback';
+      body = {section: pick.popoutSection, index: pick.fallbackIndex, model_id: modelId};
+    } else {
+      url = '/api/configurations/' + encodeURIComponent(pick.configName) + '/slot';
+      body = {slot: pick.slotLabel, model_id: modelId};
+    }
+    fetch(url, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({slot: pick.slotLabel, model_id: modelId}),
+      body: JSON.stringify(body),
     }).then(_json).then(function (resp) {
       if (resp && resp.error) {
         alert('Could not assign model: ' + resp.error);
@@ -1201,6 +1215,7 @@
     // them and see what's available even before the Visual tab lands.
     var SLOT_TO_CATEGORY = {
       'image gen': 'image_generation',
+      'image': 'image_generation',  // popout fallback section label
     };
     var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
     var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel])
@@ -1381,8 +1396,12 @@
     'utility':     'small',
     'consolidate': 'large',
     'verify':      'large',
-    // 'image gen' intentionally absent — category swap handles it,
-    // image-gen models don't carry size_bucket.
+    // Popout fallback-section labels — same bucket as the primary
+    // they fall back from, so a SMALL fallback chain only sees small
+    // models and a LARGE chain only sees large ones.
+    'large':       'large',
+    // 'image gen' / 'image' intentionally absent — category swap
+    // handles it, image-gen models don't carry size_bucket.
   };
 
   function _activeSlotPickSizeBucket() {
@@ -1638,7 +1657,7 @@
   // expanded set. Walks the registry once; cheap relative to a render.
   function _collectAllVendorsForCurrentCategory() {
     var models = (_registry && _registry.models) || {};
-    var SLOT_TO_CATEGORY = {'image gen': 'image_generation'};
+    var SLOT_TO_CATEGORY = {'image gen': 'image_generation', 'image': 'image_generation'};
     var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
     var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel])
       || _filters.category || 'chat';
@@ -1713,7 +1732,7 @@
     // Active slot-pick locks the category to match the slot — show the
     // dropdown disabled so the user sees why their click can't change it.
     var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
-    var SLOT_TO_CATEGORY = {'image gen': 'image_generation'};
+    var SLOT_TO_CATEGORY = {'image gen': 'image_generation', 'image': 'image_generation'};
     var locked = !!(slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel]);
     var effectiveCategory = locked
       ? SLOT_TO_CATEGORY[slotPickLabel]
@@ -1882,9 +1901,9 @@
     // is one large chain, and the diversity-vs-fallback distinction lives
     // on the card body (BIG 1 / BIG 2 rows) rather than the popout.
     var sections = [
-      _popoutSlotHTML('large', summary.big1, summary.big1_fallback),
-      _popoutSlotHTML('small', summary.small, summary.small_fallback),
-      _popoutSlotHTML('image', summary.image_generation, summary.image_generation_fallback),
+      _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name),
+      _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name),
+      _popoutSlotHTML('image', summary.image_generation, summary.image_generation_fallback, summary.name),
     ];
 
     popout.hidden = false;
@@ -1908,6 +1927,40 @@
         _renderPopout();
         _renderPresets();
         _renderCustom();
+      });
+
+    // Wire fallback-row clicks: each fallback row enters picking mode
+    // for the specific (section, index) position. Inventory click then
+    // writes through /api/configurations/<name>/fallback rather than
+    // the primary /slot path so SLOT_LABEL_TO_PATHS fan-out doesn't
+    // fire (fallback chains live per-cell).
+    Array.from(popout.querySelectorAll('.ora-models-popout-row-clickable'))
+      .forEach(function (row) {
+        row.addEventListener('click', function (evt) {
+          if (evt.target.closest('button')) return;
+          evt.stopPropagation();
+          var section = row.dataset.popoutSection;
+          var index = parseInt(row.dataset.popoutFallbackIndex, 10);
+          var configName = row.dataset.popoutConfig;
+          if (!section || isNaN(index) || !configName) return;
+          // Toggle off when re-clicking the active pick
+          if (_activeSlotPick
+              && _activeSlotPick.popoutSection === section
+              && _activeSlotPick.fallbackIndex === index
+              && _activeSlotPick.configName === configName) {
+            _activeSlotPick = null;
+          } else {
+            _activeSlotPick = {
+              configName: configName,
+              slotLabel: section,            // category dispatch uses this
+              popoutSection: section,        // identifies fallback intent
+              fallbackIndex: index,
+            };
+          }
+          _renderHeader();
+          _renderPopout();
+          _renderInventory();
+        });
       });
 
     _attachPopoutToActiveCard(popout);
@@ -1962,15 +2015,21 @@
     return String(s).replace(/(["\\'\\]])/g, '\\\\$1');
   }
 
-  function _popoutSlotHTML(label, primary, fallbackList) {
+  function _popoutSlotHTML(label, primary, fallbackList, configName) {
     fallbackList = fallbackList || [];
     var registry = (_registry && _registry.models) || {};
     var rows = [];
     if (primary) {
-      rows.push(_popoutRowHTML(primary, registry[primary], 'primary'));
+      // Primary row in the popout is informational (matches the card's
+      // visible primary row). Edits go through the card-body row so the
+      // fan-out semantics (SMALL writes step1_cleanup + classification +
+      // rag_planner; BIG 1 writes its multi-cell set) are preserved.
+      rows.push(_popoutRowHTML(primary, registry[primary], 'primary',
+        {section: label, fallbackIndex: -1, configName: configName}));
     }
     fallbackList.forEach(function (fb, i) {
-      rows.push(_popoutRowHTML(fb, registry[fb], 'fallback ' + (i + 1)));
+      rows.push(_popoutRowHTML(fb, registry[fb], 'fallback ' + (i + 1),
+        {section: label, fallbackIndex: i, configName: configName}));
     });
     if (!rows.length) {
       rows.push('<div class="ora-models-popout-empty">No entries — slot is empty.</div>');
@@ -1982,12 +2041,30 @@
       + '</div>';
   }
 
-  function _popoutRowHTML(modelId, model, rank) {
+  function _popoutRowHTML(modelId, model, rank, opts) {
+    opts = opts || {};
     var displayName = (model && model.display_name) || modelId;
     var chips = model ? _modelChipsHTML(model) : '';
     var meta = model ? _compactMetaHTML(model) : '';
+    // Fallback rows (fallbackIndex >= 0) are click-to-pick. The primary
+    // row stays informational — users edit the primary via the card-body
+    // row, which carries the fan-out semantics.
+    var isFallback = (opts.fallbackIndex != null && opts.fallbackIndex >= 0);
+    var isActivePick = isFallback && _activeSlotPick
+      && _activeSlotPick.popoutSection === opts.section
+      && _activeSlotPick.fallbackIndex === opts.fallbackIndex
+      && _activeSlotPick.configName === opts.configName;
+    var classes = 'ora-models-popout-row';
+    if (isFallback) classes += ' ora-models-popout-row-clickable';
+    if (isActivePick) classes += ' ora-models-popout-row-picking';
+    var dataAttrs = '';
+    if (isFallback && opts.configName) {
+      dataAttrs = ' data-popout-section="' + _esc(opts.section) + '"'
+        + ' data-popout-fallback-index="' + opts.fallbackIndex + '"'
+        + ' data-popout-config="' + _esc(opts.configName) + '"';
+    }
     return ''
-      + '<div class="ora-models-popout-row">'
+      + '<div class="' + classes + '"' + dataAttrs + '>'
       +   '<span class="ora-models-popout-rank">' + _esc(rank) + '</span>'
       +   '<span class="ora-models-popout-name" title="' + _esc(modelId) + '">'
       +     _esc(displayName) + '</span>'

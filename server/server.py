@@ -8435,6 +8435,33 @@ def configurations_set_slot(name):
         return _json_response({"error": f"slot-set-failed: {exc}"}, status=500)
 
 
+@app.route("/api/configurations/<name>/fallback", methods=["POST"])
+def configurations_set_fallback(name):
+    """Replace one position in a popout-section's fallback chain.
+
+    Body: ``{"section": "large" | "small" | "image",
+              "index": <0-based int>, "model_id": "..."}``.
+
+    Single-cell write (no fan-out). Pass an empty model_id to delete
+    the position (compacts the chain).
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        section = body.get("section")
+        index = body.get("index")
+        model_id = body.get("model_id") or ""
+        from orchestrator import active_configuration as ac
+        ac.set_slot_fallback(name, section, index, model_id)
+        return _json_response({
+            "name": name, "section": section,
+            "index": index, "model_id": model_id,
+        })
+    except (ValueError, FileNotFoundError) as exc:
+        return _json_response({"error": str(exc)}, status=400)
+    except Exception as exc:
+        return _json_response({"error": f"fallback-set-failed: {exc}"}, status=500)
+
+
 @app.route("/api/configurations/<name>", methods=["DELETE"])
 def configurations_delete(name):
     """Delete a custom configuration.

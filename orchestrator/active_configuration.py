@@ -820,6 +820,77 @@ def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
     return config
 
 
+# Popout-section label → single cell path. Fallback writes target one
+# cell only (no fan-out): the popout edits the chain that lives behind
+# the specific big/small/image position, not the SMALL or BIG-1 fan-out
+# set the card-body rows trigger.
+POPOUT_LABEL_TO_CELL = {
+    "large": ["analysis", "gear4", "depth"],
+    "small": ["utility", "step1_cleanup"],
+    "image": ["image_generation", "image_generation"],
+}
+
+
+def set_slot_fallback(name: str, popout_label: str, index: int, model_id: str) -> dict:
+    """Replace one fallback position in a popout-section's chain.
+
+    ``popout_label`` is one of "large" / "small" / "image" — the
+    sections the fallback popout renders. ``index`` is the 0-based
+    position inside the cell's ``fallback`` list. ``model_id`` is the
+    replacement. Pass an empty string to remove the position
+    (compacts the list, shifting later entries up).
+
+    Writes a single cell only (no fan-out). The card-body SMALL /
+    BIG 1 rows handle the fan-out path for primary picks; fallback
+    chains live per-cell.
+
+    Returns the updated configuration dict.
+    """
+    if popout_label not in POPOUT_LABEL_TO_CELL:
+        raise ValueError(f"unknown popout label: {popout_label!r}")
+    try:
+        index = int(index)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"index must be an integer, got {index!r}") from exc
+    if index < 0:
+        raise ValueError(f"fallback index must be >= 0, got {index}")
+    if not isinstance(model_id, str):
+        raise ValueError("model_id must be a string")
+    model_id = model_id.strip()  # empty → delete
+
+    path = POPOUT_LABEL_TO_CELL[popout_label]
+    with _lock:
+        config = _load_config(name)
+        cells = config.setdefault("cells", {})
+        node = cells
+        for key in path[:-1]:
+            if not isinstance(node.get(key), dict):
+                node[key] = {}
+            node = node[key]
+        cell = node.get(path[-1])
+        if not isinstance(cell, dict):
+            cell = {"primary": None, "fallback": []}
+            node[path[-1]] = cell
+        fallback = cell.setdefault("fallback", [])
+        if not isinstance(fallback, list):
+            fallback = []
+            cell["fallback"] = fallback
+        if not model_id:
+            # Delete the position (compacts list)
+            if 0 <= index < len(fallback):
+                fallback.pop(index)
+        else:
+            # Replace at index, extending the list if needed
+            while len(fallback) <= index:
+                fallback.append(None)
+            fallback[index] = model_id
+            # Strip trailing Nones (housekeeping)
+            while fallback and fallback[-1] is None:
+                fallback.pop()
+        _save_config(name, config)
+    return config
+
+
 __all__ = [
     "get_active_name",
     "set_active_name",
@@ -833,6 +904,8 @@ __all__ = [
     "create_blank_configuration",
     "delete_configuration",
     "set_slot_primary",
+    "set_slot_fallback",
+    "POPOUT_LABEL_TO_CELL",
     "set_visual_substitute",
     "DEFAULT_ACTIVE_NAME",
     "PRESET_ORDER",
