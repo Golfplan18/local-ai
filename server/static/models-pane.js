@@ -1086,26 +1086,29 @@
     var customs = (_configs && _configs.customs) || [];
     var activeName = (_configs && _configs.active_name) || '';
 
-    // Single grid: "+ New configuration" pinned to the leftmost
-    // column, then saved customs follow. The earlier "Custom-New"
-    // workspace column was retired in step 6g — + New owns that
-    // role now. Editing an existing custom happens in-place on its
-    // card via the slot-pick gesture (step 8).
-    var cards = [_newConfigCardHTML()];
-    customs.forEach(function (c) {
-      cards.push(_customCardHTML(c, c.name === activeName));
+    // "+ New configuration" now lives as a button in the section
+    // header (was previously a tile in the first column of the row,
+    // which caused the row to reflow every time a new config was
+    // added). Cards are fixed-width grid cells; the row caps its
+    // height and scrolls when full.
+    var cards = customs.map(function (c) {
+      return _customCardHTML(c, c.name === activeName);
     });
 
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
       +   '<h3>Custom configurations</h3>'
+      +   '<button type="button" class="ora-models-section-btn"'
+      +     ' data-action="new" title="Create a new blank configuration">'
+      +     '+ New configuration</button>'
       +   '<span class="ora-models-section-hint">'
-      +     'Click any card to activate. Customize copies a card into a new entry. '
-      +     '+ New starts a blank configuration.'
+      +     'Click any card to activate. Customize copies a card into a new entry.'
       +   '</span>'
       + '</header>'
       + '<div class="ora-models-row ora-models-custom-row">'
-      +   cards.join('')
+      +   (cards.length ? cards.join('') : '<p class="ora-models-empty-msg">'
+      +     'No saved configurations yet. Use “+ New configuration” above or '
+      +     '“Customize” on any preset card to start one.</p>')
       + '</div>';
 
     // Wire interactions for the grid cards.
@@ -1196,15 +1199,9 @@
       + '</div>';
   }
 
-  function _newConfigCardHTML() {
-    return ''
-      + '<div class="ora-models-card ora-models-card-new-slot">'
-      +   '<button type="button" class="ora-models-new-config-btn" data-action="new">'
-      +     '<span class="ora-models-new-plus">+</span>'
-      +     '<span>New configuration</span>'
-      +   '</button>'
-      + '</div>';
-  }
+  // _newConfigCardHTML retired: "+ New configuration" moved to the
+  // section header so the custom row stays uniform-grid and doesn't
+  // reflow every time a config is added.
 
   // ── inventory grid ──────────────────────────────────────────────────────
 

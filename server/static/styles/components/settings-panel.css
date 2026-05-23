@@ -802,19 +802,62 @@
 
 /* ── Custom row layout ──────────────────────────────────────────── */
 
-/* Custom row uses a fixed 4-column grid so it visually matches the
- * preset row's 4 cards. + New + up-to-3 saved customs fill columns
- * 1-4; additional customs wrap to subsequent rows. Empty columns at
- * the right stay blank (sized but invisible) so the column rhythm
- * stays consistent with presets. */
-.ora-models-custom-row {
+/* Custom row uses a fixed 4-column grid (overriding the flex default
+ * from .ora-models-row) so cards stay the same visual size as the
+ * preset cards above. + New configuration is now a header button —
+ * the row contains only saved customs.
+ *
+ * When more than 4 customs exist, the row wraps and the SECTION caps
+ * its height + adds a vertical scroll so the rest of the pane stays
+ * in place. The popout-open state escapes the grid back to flex (see
+ * the .ora-models-row--popout-open rules above) so the bifold reflow
+ * still works during edits. */
+.ora-models-custom-row:not(.ora-models-row--popout-open) {
+  display: grid;
   grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  /* Cap to ~2 rows; vertical scroll past that. The exact value tracks
+     the card's natural height so a partial row never peeks at the cut. */
+  max-height: 240px;
+  overflow-y: auto;
 }
 
-.ora-models-card-custom-new {
-  /* Custom-New uses the dashed border style by default to feel like
-   * a workspace, not a saved card. */
-  border-style: dashed;
+.ora-models-custom-row:not(.ora-models-row--popout-open) > .ora-models-card {
+  /* Grid cells stretch by default; override the .ora-models-row flex
+     basis from above. */
+  flex: unset;
+  min-width: 0;
+}
+
+/* "+ New configuration" button in the section header. */
+.ora-models-section-btn {
+  background: var(--background-secondary, #1F1A0F);
+  color: var(--text-normal, #E8E0CC);
+  border: 1px dashed var(--background-modifier-border, #3A3022);
+  border-radius: 3px;
+  padding: 2px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  text-transform: none;
+  font-weight: 500;
+}
+
+.ora-models-section-btn:hover {
+  background: var(--interactive-hover, #2A2218);
+  border-style: solid;
+  border-color: var(--color-active, #5FA86E);
+  color: var(--color-active, #5FA86E);
+}
+
+/* Section-header layout: title left, button next to title, hint
+   pushed to the right and ellipsing on overflow. */
+.ora-models-section-header .ora-models-section-hint {
+  margin-left: auto;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .ora-models-card-custom-new.ora-models-card-active {
