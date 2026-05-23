@@ -1309,11 +1309,49 @@
 
     var pickBanner = '';
     if (_activeSlotPick) {
+      // Surface active filters in the banner so users can see why
+      // candidates they expected to be available aren't showing.
+      // Most common case: Vision chip on hides locals (none of which
+      // are vision-capable).
+      var activeFilters = [];
+      var clearables = [];
+      var sizeFilter = _activeSlotPickSizeBucket();
+      if (sizeFilter) activeFilters.push(sizeFilter + ' size');
+      if (_activeSlotPick.slotLabel === 'visual') {
+        activeFilters.push('vision-capable (required for this slot)');
+      } else if (_filters.vision) {
+        activeFilters.push('vision-capable');
+        clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="vision">turn off Vision filter</button>');
+      }
+      if (_filters.free_filter === 'only') {
+        activeFilters.push('free only');
+        clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="free_filter">reset cost filter</button>');
+      } else if (_filters.free_filter === 'hide') {
+        activeFilters.push('paid only (free hidden)');
+        clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="free_filter">reset cost filter</button>');
+      }
+      if (_filters.pick) {
+        activeFilters.push('PICK only');
+        clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="pick">turn off PICK filter</button>');
+      }
+      if (_filters.intelligence_pct > 0) {
+        activeFilters.push('top ' + (100 - _filters.intelligence_pct) + '% intelligence');
+        clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="intelligence_pct">reset Intel slider</button>');
+      }
+      var filterText = activeFilters.length
+        ? ' · Filtered: ' + activeFilters.join(' + ')
+        : '';
+      var clearLinks = clearables.length
+        ? '<div class="ora-models-pick-banner-clears">' + clearables.join(' · ') + '</div>'
+        : '';
       pickBanner = ''
         + '<div class="ora-models-pick-banner">'
-        +   'Picking <strong>' + _esc(_activeSlotPick.slotLabel)
-        +   '</strong> for <strong>' + _esc(_activeSlotPick.configName)
-        +   '</strong> — click a model below, or press Esc to cancel.'
+        +   '<div>Picking <strong>' + _esc(_activeSlotPick.slotLabel)
+        +     '</strong> for <strong>' + _esc(_activeSlotPick.configName)
+        +     '</strong> — click a model below, or press Esc to cancel.'
+        +     filterText
+        +   '</div>'
+        +   clearLinks
         + '</div>';
     }
     section.innerHTML = ''
@@ -1799,6 +1837,18 @@
     Array.from(section.querySelectorAll('.ora-models-filter-chip input')).forEach(function (el) {
       el.addEventListener('change', function () {
         _filters[el.dataset.filter] = el.checked;
+        _renderInventory();
+      });
+    });
+    // Pick-banner clear-filter buttons. One-click reset for whichever
+    // filter is currently restricting candidates the user expected to
+    // see (typically Vision hiding locals).
+    Array.from(section.querySelectorAll('[data-clear-filter]')).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.dataset.clearFilter;
+        if (key === 'free_filter') _filters.free_filter = 'any';
+        else if (key === 'intelligence_pct') _filters.intelligence_pct = 0;
+        else _filters[key] = false;
         _renderInventory();
       });
     });

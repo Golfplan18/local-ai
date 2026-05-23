@@ -1397,6 +1397,26 @@
   border-radius: 3px;
 }
 
+.ora-models-pick-banner-clears {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-models-pick-banner-clear {
+  background: transparent;
+  border: none;
+  color: var(--color-active, #5FA86E);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.ora-models-pick-banner-clear:hover {
+  color: var(--text-normal, #E8E0CC);
+}
+
 /* ── Right-side fallback popout ──────────────────────────────────── */
 
 .ora-models-pane {
