@@ -392,6 +392,11 @@
     if (!_hostEl) return;
     var section = _hostEl.querySelector('[data-section="presets"]');
     if (!section) return;
+    // Park the popout back at the pane root before wiping the section's
+    // innerHTML — otherwise the bifold-wallet attach has the popout
+    // living INSIDE this section's row and we'd destroy it. _renderPopout
+    // (called later in _loadAll) re-attaches once the rebuilt row exists.
+    _parkPopoutAtPaneRoot();
     var presets = (_configs && _configs.presets) || {};
     var activeName = (_configs && _configs.active_name) || '';
     var cards = PRESET_ORDER.map(function (preset) {
@@ -1076,6 +1081,8 @@
     if (!_hostEl) return;
     var section = _hostEl.querySelector('[data-section="custom"]');
     if (!section) return;
+    // Same parking dance as _renderPresets — see comment there.
+    _parkPopoutAtPaneRoot();
     var customs = (_configs && _configs.customs) || [];
     var activeName = (_configs && _configs.active_name) || '';
 
@@ -1993,6 +2000,21 @@
     activeCard.classList.add('ora-models-card-popout-open');
     if (popout.parentElement !== row || activeCard.nextElementSibling !== popout) {
       activeCard.insertAdjacentElement('afterend', popout);
+    }
+  }
+
+  // Move the popout element back under the pane root without changing
+  // _fallbackPopoutFor or the popout-open row/card classes (those get
+  // re-applied by _attachPopoutToActiveCard on the next render). Used
+  // before any section that might re-wipe innerHTML — protects the
+  // popout from being destroyed mid-flow.
+  function _parkPopoutAtPaneRoot() {
+    if (!_hostEl) return;
+    var popout = _hostEl.querySelector('[data-section="popout"]');
+    if (!popout) return;
+    var pane = _hostEl.querySelector('.ora-models-pane');
+    if (pane && popout.parentElement !== pane) {
+      pane.appendChild(popout);
     }
   }
 
