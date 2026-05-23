@@ -209,13 +209,15 @@
 
   // Refresh just the active-config indicator + toggles without
   // refetching the registry. Cheap; used after a toggle change or an
-  // active-card switch.
+  // active-card switch. Hardware re-render included because the
+  // IN USE BY ACTIVE / IN ACTIVE CONFIG calc walks active_name.
   function _refreshActive() {
     fetch('/api/configurations').then(_json).then(function (configs) {
       _configs = configs || _configs;
       _renderHeader();
       _renderPresets();
       _renderCustom();
+      _renderHardware();
     });
   }
 
