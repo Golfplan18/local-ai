@@ -1900,31 +1900,30 @@
       return;
     }
 
-    // Three sections, fixed shape regardless of adversarial toggle:
-    //   large — 4 rows (gear4.depth: 1 primary + 3 fallbacks)
-    //   small — 2 rows (utility: 1 primary + 1 fallback)
-    //   image — 2 rows (image_generation: 1 primary + 1 fallback)
-    // big2 (gear4.breadth) is intentionally not surfaced here — the spec
-    // is one large chain, and the diversity-vs-fallback distinction lives
-    // on the card body (BIG 1 / BIG 2 rows) rather than the popout.
+    // Three sections, fixed shape regardless of adversarial toggle.
+    // Each section's first row uses the section label (LARGE / SMALL /
+    // IMAGE) as the rank, displaying the primary inline with the label
+    // — no separate h4. Remaining rows are FALLBACK N. Each section is
+    // capped: large gets at most 2 fallbacks (3 rows), small + image
+    // get 1 fallback each (2 rows). Empty fallback positions render as
+    // clickable placeholders so the user can fill them in place — used
+    // for the image-gen chain that auto-populate doesn't always seed.
     var sections = [
-      _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name),
-      _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name),
-      _popoutSlotHTML('image', summary.image_generation, summary.image_generation_fallback, summary.name),
+      _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name, 2),
+      _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name, 1),
+      _popoutSlotHTML('image', summary.image_generation, summary.image_generation_fallback, summary.name, 1),
     ];
 
     popout.hidden = false;
     popout.innerHTML = ''
       + '<header class="ora-models-popout-header">'
       +   '<span class="ora-models-popout-title">Fallback chains · '
-      +     '<strong>' + _esc(summary.name) + '</strong></span>'
+      +     '<strong>' + _esc(summary.name) + '</strong>'
+      +     ' <span class="ora-models-popout-subtitle">— tried in order; free tiers cycle deeper</span>'
+      +   '</span>'
       +   '<button type="button" class="ora-models-popout-close" aria-label="Close">×</button>'
       + '</header>'
       + '<div class="ora-models-popout-body">'
-      +   '<p class="ora-models-popout-hint">'
-      +     'Tried in order until one responds. Free chains run deeper because '
-      +     'rate-limit churn cycles through them fast.'
-      +   '</p>'
       +   sections.join('')
       + '</div>';
 
@@ -2037,48 +2036,42 @@
     return String(s).replace(/(["\\'\\]])/g, '\\\\$1');
   }
 
-  function _popoutSlotHTML(label, primary, fallbackList, configName) {
+  function _popoutSlotHTML(label, primary, fallbackList, configName, maxFallbacks) {
     fallbackList = fallbackList || [];
+    if (typeof maxFallbacks !== 'number') maxFallbacks = fallbackList.length;
     var registry = (_registry && _registry.models) || {};
     var rows = [];
-    if (primary) {
-      // Primary row in the popout is informational (matches the card's
-      // visible primary row). Edits go through the card-body row so the
-      // fan-out semantics (SMALL writes step1_cleanup + classification +
-      // rag_planner; BIG 1 writes its multi-cell set) are preserved.
-      rows.push(_popoutRowHTML(primary, registry[primary], 'primary',
-        {section: label, fallbackIndex: -1, configName: configName}));
-    }
-    fallbackList.forEach(function (fb, i) {
-      rows.push(_popoutRowHTML(fb, registry[fb], 'fallback ' + (i + 1),
+    // First row: the section label IS the rank. Primary inline with label.
+    rows.push(_popoutRowHTML(primary, registry[primary], label.toUpperCase(),
+      {section: label, fallbackIndex: -1, configName: configName, sectionHeader: true}));
+    // Fallback rows, capped at maxFallbacks. Empty positions render as
+    // clickable placeholders so the user can pick into them in place.
+    for (var i = 0; i < maxFallbacks; i++) {
+      var fbId = fallbackList[i] || null;
+      rows.push(_popoutRowHTML(fbId, fbId ? registry[fbId] : null,
+        'fallback ' + (i + 1),
         {section: label, fallbackIndex: i, configName: configName}));
-    });
-    if (!rows.length) {
-      rows.push('<div class="ora-models-popout-empty">No entries — slot is empty.</div>');
     }
-    return ''
-      + '<div class="ora-models-popout-slot">'
-      +   '<h4 class="ora-models-popout-slot-label">' + _esc(label) + '</h4>'
-      +   rows.join('')
-      + '</div>';
+    return rows.join('');
   }
 
   function _popoutRowHTML(modelId, model, rank, opts) {
     opts = opts || {};
-    var displayName = (model && model.display_name) || modelId;
-    var chips = model ? _modelChipsHTML(model) : '';
-    var meta = model ? _compactMetaHTML(model) : '';
-    // Fallback rows (fallbackIndex >= 0) are click-to-pick. The primary
-    // row stays informational — users edit the primary via the card-body
-    // row, which carries the fan-out semantics.
+    var displayName = modelId
+      ? ((model && model.display_name) || modelId)
+      : '— click to pick a fallback —';
+    var chips = (model && modelId) ? _modelChipsHTML(model) : '';
+    var meta = (model && modelId) ? _compactMetaHTML(model) : '';
     var isFallback = (opts.fallbackIndex != null && opts.fallbackIndex >= 0);
     var isActivePick = isFallback && _activeSlotPick
       && _activeSlotPick.popoutSection === opts.section
       && _activeSlotPick.fallbackIndex === opts.fallbackIndex
       && _activeSlotPick.configName === opts.configName;
     var classes = 'ora-models-popout-row';
+    if (opts.sectionHeader) classes += ' ora-models-popout-row-section-header';
     if (isFallback) classes += ' ora-models-popout-row-clickable';
     if (isActivePick) classes += ' ora-models-popout-row-picking';
+    if (!modelId && isFallback) classes += ' ora-models-popout-row-empty-fallback';
     var dataAttrs = '';
     if (isFallback && opts.configName) {
       dataAttrs = ' data-popout-section="' + _esc(opts.section) + '"'
@@ -2088,7 +2081,8 @@
     return ''
       + '<div class="' + classes + '"' + dataAttrs + '>'
       +   '<span class="ora-models-popout-rank">' + _esc(rank) + '</span>'
-      +   '<span class="ora-models-popout-name" title="' + _esc(modelId) + '">'
+      +   '<span class="ora-models-popout-name"'
+      +     (modelId ? ' title="' + _esc(modelId) + '"' : '') + '>'
       +     _esc(displayName) + '</span>'
       +   chips
       +   '<span class="ora-models-popout-meta">' + meta + '</span>'
