@@ -540,6 +540,12 @@
     var deprecatedList = _deprecatedPrimaries(summary);
     var deprecated = deprecatedList.length > 0;
     var depTitle = deprecated ? _deprecatedTooltip(deprecatedList, summary) : '';
+    // A card's slot rows are editable when it's the active config (the
+    // normal edit path) OR when it's incomplete (red — has to be
+    // editable so the user can fill it before activation). Without this,
+    // a newly-created blank config has no editable rows and the user
+    // can never finish it.
+    var editable = isActive || incomplete;
     return ''
       + '<div class="ora-models-card ora-models-card-preset'
       +   (isActive ? ' ora-models-card-active' : '')
@@ -555,14 +561,14 @@
                       : '<span class="ora-models-card-active-flag" aria-hidden="true"></span>')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
-      +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost, configName: summary.name, isActive: isActive})
+      +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost, configName: summary.name, isActive: editable})
       +     (adversarial
-        ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name, isActive: isActive})
+        ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name, isActive: editable})
         : '')
-      +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name, isActive: isActive})
+      +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name, isActive: editable})
       +     _slotRowHTML('image gen', summary.image_generation,
-            {omitCost: omitCost, configName: summary.name, isActive: isActive})
-      +     _expandSlotsHTML(summary, {omitCost: omitCost, isActive: isActive})
+            {omitCost: omitCost, configName: summary.name, isActive: editable})
+      +     _expandSlotsHTML(summary, {omitCost: omitCost, isActive: editable})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
       +     '<button type="button" class="ora-models-card-btn" data-action="more">'
@@ -1165,6 +1171,11 @@
     var deprecatedList = _deprecatedPrimaries(summary);
     var deprecated = deprecatedList.length > 0;
     var depTitle = deprecated ? _deprecatedTooltip(deprecatedList, summary) : '';
+    // Editable on active OR incomplete — see preset card builder. A
+    // blank "+ New configuration" lands here with isActive=false and
+    // incomplete=true; without the second branch it would have no
+    // editable rows and the user couldn't fill it.
+    var editable = isActive || incomplete;
     return ''
       + '<div class="ora-models-card ora-models-card-custom'
       +   (isActive ? ' ora-models-card-active' : '')
@@ -1179,14 +1190,14 @@
                       : '<span class="ora-models-card-active-flag" aria-hidden="true"></span>')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
-      +     _slotRowHTML('big 1', summary.big1, {configName: summary.name, isActive: isActive})
+      +     _slotRowHTML('big 1', summary.big1, {configName: summary.name, isActive: editable})
       +     (adversarial
-        ? _slotRowHTML('big 2', summary.big2, {configName: summary.name, isActive: isActive})
+        ? _slotRowHTML('big 2', summary.big2, {configName: summary.name, isActive: editable})
         : '')
-      +     _slotRowHTML('small', summary.small, {configName: summary.name, isActive: isActive})
+      +     _slotRowHTML('small', summary.small, {configName: summary.name, isActive: editable})
       +     _slotRowHTML('image gen', summary.image_generation,
-            {configName: summary.name, isActive: isActive})
-      +     _expandSlotsHTML(summary, {isActive: isActive})
+            {configName: summary.name, isActive: editable})
+      +     _expandSlotsHTML(summary, {isActive: editable})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
       +     '<button type="button" class="ora-models-card-btn" data-action="more">'
