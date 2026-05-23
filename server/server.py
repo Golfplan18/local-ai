@@ -8327,6 +8327,64 @@ def model_registry_get():
         # Enrichment is best-effort; degrade gracefully without it.
         print(f"[model-registry] enrichment skipped: {_enrich_err}", flush=True)
 
+    # Merge local-MLX endpoints from routing-config.json into the
+    # response so the Models pane inventory can list and pick them.
+    # Local endpoints aren't in the registry (which is OpenRouter / AA
+    # sourced) but the user needs to pick them just like cloud models.
+    # They go into the 'chat' category and group as the "Local" vendor.
+    try:
+        if wanted is None or "chat" in wanted:
+            from pathlib import Path as _Path2
+            import json as _json2
+            _rc_path = _Path2(__file__).resolve().parent.parent / "config" / "routing-config.json"
+            if _rc_path.exists():
+                _rc = _json2.loads(_rc_path.read_text())
+                for ep in (_rc.get("endpoints") or []):
+                    eid = ep.get("id") or ep.get("name")
+                    if not eid or ep.get("type") != "local":
+                        continue
+                    if eid in filtered:
+                        continue
+                    params = ep.get("parameters_b")
+                    # Same size-bucket rule the catalog uses:
+                    # <12B = small, 12-50B = midsize, >50B = large
+                    size_bucket = None
+                    if params is not None:
+                        if params < 12:
+                            size_bucket = "small"
+                        elif params <= 50:
+                            size_bucket = "midsize"
+                        else:
+                            size_bucket = "large"
+                    ram_total = (ep.get("ram_resident_gb") or 0) + (ep.get("ram_overhead_gb") or 0)
+                    filtered[eid] = {
+                        "id": eid,
+                        "display_name": ep.get("display_name") or eid,
+                        "provider": ep.get("provider") or "local",
+                        "vendor": "Local",
+                        "category": "chat",
+                        "vision_capable": ep.get("vision_capable", False),
+                        "vision_verified_by": "endpoint_config",
+                        "context_length": ep.get("context_window"),
+                        "supports_function_calling": (ep.get("capabilities") or {}).get("tool_access"),
+                        "pricing": {"input_per_token": 0, "output_per_token": 0, "blended_per_m": 0},
+                        "is_free": True,
+                        "size_bucket": size_bucket,
+                        "parameters_b": params,
+                        "ram_resident_gb": ep.get("ram_resident_gb"),
+                        "ram_overhead_gb": ep.get("ram_overhead_gb"),
+                        "ram_total_gb": ram_total or None,
+                        # Local models are reachable as long as the
+                        # endpoint is enabled — no probe needed; the
+                        # MLX mutex handles concurrency at runtime.
+                        "reachable": bool(ep.get("enabled", True) and ep.get("status") == "active"),
+                        "reachable_rate_limited": False,
+                        "vendor_listed": None,  # no vendor audit applies
+                        "_local_endpoint": True,
+                    }
+    except Exception as _local_err:
+        print(f"[model-registry] local-endpoint merge skipped: {_local_err}", flush=True)
+
     return _json_response({
         "models": filtered,
         "generated_at": registry.get("generated_at"),

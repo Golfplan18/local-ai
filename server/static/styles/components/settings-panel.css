@@ -1696,6 +1696,25 @@
   color: var(--color-red, #C77958);
 }
 
+/* In-use highlight for hardware rows: signals which installed locals
+   are actually loaded by the active config. Subtle green tint so the
+   user can see at a glance where their RAM is going. */
+.ora-models-hw-row-in-use {
+  background: rgba(80, 200, 120, 0.08);
+}
+
+.ora-models-hw-in-use-chip {
+  font-size: 8px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(80, 200, 120, 0.20);
+  color: rgba(120, 200, 140, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-left: 6px;
+}
+
 /* Refresh button in the header strip */
 .ora-models-refresh-wrap {
   display: inline-flex;
