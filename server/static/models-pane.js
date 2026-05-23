@@ -1245,6 +1245,16 @@
     var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel])
       || _filters.category
       || 'chat';
+    // When a slot pick is active, force the Local vendor block open so
+    // the matching locals are visible without an extra click. Locals
+    // are the headline pick during the smoke-test workflow; hiding
+    // them behind a vendor-block expand step caused real frustration
+    // (the hardware-section RAM list looked pickable, so users clicked
+    // there instead and nothing happened). Scoped to chat picks —
+    // image-gen slot picks don't surface locals anyway.
+    if (_activeSlotPick && wantCategory === 'chat') {
+      _expandedVendors.add('Local');
+    }
     var allModels = Object.values(models).filter(function (m) {
       var c = (m && m.category) || 'chat';
       return c === wantCategory;
@@ -1478,7 +1488,15 @@
     // their UUID-style ids don't have a slash-prefix vendor segment.
     // Lowercase so "OpenAI" from media groups with "openai" from
     // OpenRouter ids when both categories are surfaced.
-    if (model.vendor) return String(model.vendor).toLowerCase();
+    if (model.vendor) {
+      var v = String(model.vendor).toLowerCase();
+      // Local is the one vendor we keep capitalized — the
+      // column-0 pinning, auto-expand-during-pick, and LOCAL chip
+      // logic all key on the exact string 'Local'. No other vendor
+      // collides with 'local' so the dedup intent above still holds.
+      if (v === 'local') return 'Local';
+      return v;
+    }
     if (id.indexOf('/') === -1) {
       // Local-MLX style ids (no slash) — bucket as Local.
       return 'Local';
@@ -1646,6 +1664,13 @@
 
   function _modelChipsHTML(model) {
     var chips = [];
+    // Local first so it sits next to the model name and reads as an
+    // identity badge, not a status flag. These models live on the
+    // M4 Max, cost nothing, and don't depend on a remote vendor —
+    // worth surfacing prominently when the user is picking a slot.
+    if (model.vendor === 'Local' || model._local_endpoint === true) {
+      chips.push('<span class="ora-models-chip ora-models-chip-local" title="Runs on this Mac via MLX. Free, no remote vendor, no rate limits.">LOCAL</span>');
+    }
     if (_picksSet && _picksSet.has(model.id)) {
       chips.push('<span class="ora-models-pick-chip">PICK</span>');
     }
