@@ -1162,11 +1162,6 @@
   letter-spacing: 0.03em;
 }
 
-/* LOCAL chip — runs on this Mac via MLX. Distinctive violet so the
-   eye picks it out at the start of each row. These are the models
-   the user reaches for first during smoke-testing: free, no rate
-   limits, no remote vendor. Sits before PICK / vision so it reads as
-   an identity badge rather than a status flag. */
 .ora-models-chip-local {
   background: rgba(150, 110, 220, 0.22);
   color: rgba(200, 170, 250, 1);
@@ -1691,12 +1686,6 @@
   font-size: 12px;
   border-radius: 3px;
 }
-
-/* Hardware section rows are purely informational (RAM accounting + fit
-   indicator). No hover background — that would make them look pickable
-   when they aren't, and users have already landed there trying to
-   assign a local to a slot when the real pickable list is the inventory
-   above. */
 
 .ora-models-hw-name {
   flex: 1;

@@ -1233,25 +1233,12 @@
     // Inventory category resolution: a slot pick on the active card
     // forces the matching category (so picking IMAGE GEN swaps the
     // inventory to image models). With no slot picking in progress,
-    // the user's category dropdown drives — defaults to Chat. The
-    // Models pane only edits image_generation today, but Image edit
-    // and Video are surfaced in the dropdown so the user can browse
-    // them and see what's available even before the Visual tab lands.
-    var SLOT_TO_CATEGORY = {
-      'image gen': 'image_generation',
-      'image': 'image_generation',  // popout fallback section label
-    };
+    // the user's category dropdown drives — defaults to Chat.
     var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
     var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel])
       || _filters.category
       || 'chat';
-    // When a slot pick is active, force the Local vendor block open so
-    // the matching locals are visible without an extra click. Locals
-    // are the headline pick during the smoke-test workflow; hiding
-    // them behind a vendor-block expand step caused real frustration
-    // (the hardware-section RAM list looked pickable, so users clicked
-    // there instead and nothing happened). Scoped to chat picks —
-    // image-gen slot picks don't surface locals anyway.
+    // Image-gen slot picks don't surface locals; scope to chat picks.
     if (_activeSlotPick && wantCategory === 'chat') {
       _expandedVendors.add('Local');
     }
@@ -1476,6 +1463,14 @@
     // handles it, image-gen models don't carry size_bucket.
   };
 
+  // Slot label → inventory category. When picking these, the
+  // inventory swaps from chat to image models. 'image' is the
+  // popout-fallback section label for the same dispatch.
+  var SLOT_TO_CATEGORY = {
+    'image gen': 'image_generation',
+    'image':     'image_generation',
+  };
+
   function _activeSlotPickSizeBucket() {
     if (!_activeSlotPick) return null;
     return SLOT_TO_SIZE_BUCKET[_activeSlotPick.slotLabel] || null;
@@ -1664,10 +1659,6 @@
 
   function _modelChipsHTML(model) {
     var chips = [];
-    // Local first so it sits next to the model name and reads as an
-    // identity badge, not a status flag. These models live on the
-    // M4 Max, cost nothing, and don't depend on a remote vendor —
-    // worth surfacing prominently when the user is picking a slot.
     if (model.vendor === 'Local' || model._local_endpoint === true) {
       chips.push('<span class="ora-models-chip ora-models-chip-local" title="Runs on this Mac via MLX. Free, no remote vendor, no rate limits.">LOCAL</span>');
     }
@@ -1744,7 +1735,6 @@
   // expanded set. Walks the registry once; cheap relative to a render.
   function _collectAllVendorsForCurrentCategory() {
     var models = (_registry && _registry.models) || {};
-    var SLOT_TO_CATEGORY = {'image gen': 'image_generation', 'image': 'image_generation'};
     var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
     var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel])
       || _filters.category || 'chat';
@@ -1819,7 +1809,6 @@
     // Active slot-pick locks the category to match the slot — show the
     // dropdown disabled so the user sees why their click can't change it.
     var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
-    var SLOT_TO_CATEGORY = {'image gen': 'image_generation', 'image': 'image_generation'};
     var locked = !!(slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel]);
     var effectiveCategory = locked
       ? SLOT_TO_CATEGORY[slotPickLabel]
