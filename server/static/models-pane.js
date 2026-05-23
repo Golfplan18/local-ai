@@ -34,6 +34,7 @@
   var _hostEl = null;
   var _registry = null;          // /api/model-registry payload
   var _peakIntelByCategory = null; // {category: peakValue} memo, built lazily
+  var _lastSyncedActiveConfig = null; // active-config name we last vision-synced
   var _picksSet = null;          // Set of model ids from /api/model-registry/picks
   var _configs = null;           // /api/configurations payload — presets + customs + active
 
@@ -179,11 +180,19 @@
                              active_name: '', active_toggles: {}};
       _hardware = resp[3] || null;
       // Sync the inventory's Vision filter chip to the active
-      // Vision-capable toggle. Without this, page reload while the
-      // toggle is on leaves the chip off — the toggle/chip sync code
-      // in _setToggle only fires on user click, not initial load.
+      // Vision-capable toggle ONLY on the first load of this session
+      // (or after the active config genuinely changes). Re-applying it
+      // on every _loadAll wiped the user's manual "turn off Vision
+      // filter" click after each slot pick — picking a local then
+      // committing would re-hide the local rows immediately because
+      // the next render forced Vision back on. Track the active
+      // config so we only re-sync when it actually changes.
       var activeToggles = _configs.active_toggles || {};
-      if (activeToggles.vision_only) _filters.vision = true;
+      var activeName = _configs.active_name || '';
+      if (_lastSyncedActiveConfig !== activeName) {
+        _filters.vision = !!activeToggles.vision_only;
+        _lastSyncedActiveConfig = activeName;
+      }
       _renderHeader();
       _renderPresets();
       _renderCustom();
