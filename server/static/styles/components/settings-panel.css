@@ -1148,6 +1148,63 @@
   color: rgba(232, 152, 100, 1);
 }
 
+/* ── Maintenance section: reachability-probe trigger ─────────────── */
+
+.ora-models-maintenance {
+  padding: 6px 12px 16px;
+}
+
+.ora-models-maintenance-body {
+  display: grid;
+  gap: 10px;
+}
+
+.ora-models-maintenance-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+  font-size: 11px;
+}
+
+.ora-models-maintenance-explainer {
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+  line-height: 1.5;
+  margin: 0;
+  background: var(--background-secondary, #1F1A0F);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.ora-models-maintenance-explainer em {
+  font-style: italic;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-models-maintenance-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ora-models-card-btn-primary {
+  background: var(--color-active, #5FA86E);
+  color: var(--background-primary, #15110A);
+  border-color: var(--color-active, #5FA86E);
+}
+
+.ora-models-card-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.ora-models-maintenance-status {
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+  font-style: italic;
+}
+
 .ora-models-inventory-count {
   color: var(--text-normal, #E8E0CC);
   font-weight: 600;

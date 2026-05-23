@@ -1773,10 +1773,13 @@ def cmd_sync(args) -> int:
         )
         _run_probe(args, mode="unverified_positive")
 
-    # Reachability probe — separate pass; covers every chat model whose
-    # reachability record is missing or older than --stale-days (default 7).
-    if not getattr(args, "no_reach", False):
-        # Re-read registry: the vision-probe run above may have rewritten it.
+    # Reachability probe — opt-in. Costs ~15 minutes and a few cents of
+    # API tokens against the full 358-chat-model catalog, so it doesn't
+    # run on every sync. The user invokes it via the Models pane button
+    # (or `python scripts/sync_model_registry.py reach`) when they want
+    # to re-verify which models actually respond. Verdicts persist
+    # between runs via the field-preservation logic in `_build_registry`.
+    if getattr(args, "with_reach", False):
         with open(REGISTRY_PATH) as f:
             registry = json.load(f)
         reach_args = argparse.Namespace(
@@ -1788,6 +1791,8 @@ def cmd_sync(args) -> int:
         print("[sync] running reachability probe …", flush=True)
         _run_reach_probe(registry, reach_args)
 
+    # Vendor-direct audit — fast (3 HTTP calls, <5s, free) and runs by
+    # default unless --no-vendor-audit. Cheap to keep current.
     if not getattr(args, "no_vendor_audit", False):
         with open(REGISTRY_PATH) as f:
             registry = json.load(f)
@@ -2413,8 +2418,8 @@ def main() -> int:
 
     sp_sync = sub.add_parser("sync", help="Pull all sources, merge, write registry. Probes unverified models by default.")
     sp_sync.add_argument("--no-probe", action="store_true", help="Skip the empirical vision probe pass.")
-    sp_sync.add_argument("--no-reach", action="store_true", help="Skip the reachability probe pass.")
-    sp_sync.add_argument("--no-vendor-audit", action="store_true", help="Skip the vendor-direct /models audit.")
+    sp_sync.add_argument("--with-reach", action="store_true", help="Run the reachability probe (opt-in; ~15 min, a few cents of tokens).")
+    sp_sync.add_argument("--no-vendor-audit", action="store_true", help="Skip the vendor-direct /models audit (fast, free — kept on by default).")
     sp_sync.add_argument("--limit", type=int, default=0, help="(probe) Limit probe to this many models.")
     sp_sync.add_argument(
         "--aa-path", choices=("scrape", "api"), default=None,

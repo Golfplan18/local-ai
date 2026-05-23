@@ -129,6 +129,7 @@
       +   '<section class="ora-models-custom" data-section="custom"></section>'
       +   '<section class="ora-models-inventory" data-section="inventory"></section>'
       +   '<section class="ora-models-hardware" data-section="hardware"></section>'
+      +   '<section class="ora-models-maintenance" data-section="maintenance"></section>'
       +   '<aside class="ora-models-fallback-popout" data-section="popout" hidden></aside>'
       + '</div>';
 
@@ -189,6 +190,7 @@
       _renderInventory();
       _renderPopout();
       _renderHardware();
+      _renderMaintenance();
       _renderRemainingSkeleton();
       _maybeAutoRefresh();
     }).catch(function (err) {
@@ -1997,6 +1999,180 @@
         ? '<ul class="ora-models-hw-list">' + rows.join('') + '</ul>'
         : '<p class="ora-models-placeholder">No local models installed.</p>')
       + '</div>';
+  }
+
+  // ── Maintenance section (bottom of pane) ─────────────────────────────
+  //
+  // Houses the manual reachability-probe trigger. The probe is opt-in
+  // because it costs ~15 minutes of wall time and a few cents of
+  // OpenRouter tokens. Surfaces the prior probe's date + per-verdict
+  // counts so the user knows the freshness picture before deciding
+  // whether to re-run.
+
+  function _renderMaintenance() {
+    if (!_hostEl) return;
+    var section = _hostEl.querySelector('[data-section="maintenance"]');
+    if (!section) return;
+
+    // Walk the registry once to compute reach + vendor verdict counts.
+    var models = (_registry && _registry.models) || {};
+    var counts = {
+      total: 0, reach_true: 0, reach_rate: 0,
+      reach_false: 0, reach_null: 0,
+      vendor_true: 0, vendor_false: 0, vendor_null: 0,
+      last_probe: null,
+    };
+    Object.values(models).forEach(function (m) {
+      var cat = (m && m.category) || 'chat';
+      if (cat !== 'chat') return;
+      counts.total += 1;
+      if (m.reachable === true) {
+        counts.reach_true += 1;
+        if (m.reachable_rate_limited) counts.reach_rate += 1;
+      } else if (m.reachable === false) {
+        counts.reach_false += 1;
+      } else {
+        counts.reach_null += 1;
+      }
+      if (m.vendor_listed === true) counts.vendor_true += 1;
+      else if (m.vendor_listed === false) counts.vendor_false += 1;
+      else counts.vendor_null += 1;
+      var d = m.reachable_probed_at;
+      if (d && (!counts.last_probe || d > counts.last_probe)) counts.last_probe = d;
+    });
+
+    var lastProbeStr = counts.last_probe
+      ? counts.last_probe.slice(0, 10)
+      : 'never run';
+    section.innerHTML = ''
+      + '<header class="ora-models-section-header">'
+      +   '<h3>Reachability probe</h3>'
+      +   '<span class="ora-models-section-hint">'
+      +     'Last full probe: <strong>' + _esc(lastProbeStr) + '</strong>'
+      +   '</span>'
+      + '</header>'
+      + '<div class="ora-models-maintenance-body">'
+      +   '<div class="ora-models-maintenance-stats">'
+      +     '<div><span class="ora-models-hw-label">Reachable</span>'
+      +       '<span class="ora-models-hw-value">' + counts.reach_true
+      +         (counts.reach_rate ? ' <em>(' + counts.reach_rate + ' rate-limited)</em>' : '')
+      +       '</span></div>'
+      +     '<div><span class="ora-models-hw-label">Unreachable</span>'
+      +       '<span class="ora-models-hw-value">' + counts.reach_false + '</span></div>'
+      +     '<div><span class="ora-models-hw-label">Unverified</span>'
+      +       '<span class="ora-models-hw-value">' + counts.reach_null
+      +         ' of ' + counts.total + '</span></div>'
+      +     '<div><span class="ora-models-hw-label">Vendor-listed</span>'
+      +       '<span class="ora-models-hw-value">' + counts.vendor_true
+      +         ' confirmed · ' + counts.vendor_false + ' phantom · '
+      +         counts.vendor_null + ' not audited</span></div>'
+      +   '</div>'
+      +   '<p class="ora-models-maintenance-explainer">'
+      +     'A reachability probe sends a 16-token "hi" completion to '
+      +     'every chat model in the registry and watches the HTTP status:'
+      +     '<br><br>'
+      +     '<strong>200</strong> → reachable. <strong>429</strong> → reachable but rate-limited '
+      +     '(common on free tiers; the fallback chain handles it at runtime). '
+      +     '<strong>404 / 410 / 400</strong> → unreachable; auto-populate '
+      +     'will skip these. Vendor audit (free) runs alongside and confirms '
+      +     'whether Anthropic / OpenAI / Google list the id in their own '
+      +     'catalog.'
+      +     '<br><br>'
+      +     '<strong>Cost:</strong> roughly $0.05–$0.20 of OpenRouter tokens '
+      +     'against the full ' + counts.total + '-chat-model catalog. '
+      +     '<strong>Time:</strong> ~15 minutes (1–3s per model). Runs in the '
+      +     'background; you can keep using Ora during the probe.'
+      +     '<br><br>'
+      +     'Re-run if your auto-populated picks have started failing, if '
+      +     'OpenRouter announces a model deprecation, or if you want to verify '
+      +     'a freshly-added vendor key.'
+      +   '</p>'
+      +   '<div class="ora-models-maintenance-actions">'
+      +     '<button type="button" class="ora-models-card-btn ora-models-card-btn-primary"'
+      +       ' data-action="reach-probe-start">'
+      +       'Probe ' + counts.total + ' models</button>'
+      +     '<button type="button" class="ora-models-card-btn"'
+      +       ' data-action="reach-probe-only-unknown">'
+      +       'Probe ' + counts.reach_null + ' unverified only</button>'
+      +     '<span class="ora-models-maintenance-status" data-role="reach-status"></span>'
+      +   '</div>'
+      + '</div>';
+
+    section.querySelector('[data-action="reach-probe-start"]')
+      .addEventListener('click', function () { _startReachProbe({revalidate: true}); });
+    section.querySelector('[data-action="reach-probe-only-unknown"]')
+      .addEventListener('click', function () { _startReachProbe({only_unknown: true}); });
+
+    // If a probe is already running (started in a prior pane open),
+    // resume polling now so the user sees status immediately.
+    _pollReachStatusOnce();
+  }
+
+  var _reachPollTimer = null;
+
+  function _startReachProbe(opts) {
+    var btnAll = _hostEl.querySelector('[data-action="reach-probe-start"]');
+    var btnUnk = _hostEl.querySelector('[data-action="reach-probe-only-unknown"]');
+    if (btnAll) btnAll.disabled = true;
+    if (btnUnk) btnUnk.disabled = true;
+    fetch('/api/model-registry/reach/start', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(opts || {}),
+    }).then(_json).then(function () {
+      _pollReachStatus();
+    }).catch(function (err) {
+      _setReachStatus('Failed to start: ' + (err && err.message));
+      if (btnAll) btnAll.disabled = false;
+      if (btnUnk) btnUnk.disabled = false;
+    });
+  }
+
+  function _pollReachStatus() {
+    if (_reachPollTimer) return;
+    _reachPollTimer = setInterval(function () {
+      fetch('/api/model-registry/reach/status').then(_json).then(function (s) {
+        if (s.in_progress) {
+          var idx = s.current_index || 0, total = s.total || 0;
+          _setReachStatus('Probing ' + idx + ' / ' + total
+            + (s.current_model ? ' — ' + s.current_model : ''));
+        } else {
+          clearInterval(_reachPollTimer);
+          _reachPollTimer = null;
+          var summary = s.last_summary || {};
+          if (summary.error) {
+            _setReachStatus('Failed: ' + summary.error);
+          } else if (summary.reachable !== undefined) {
+            _setReachStatus('Done: ' + summary.reachable + ' reachable, '
+              + summary.unreachable + ' unreachable, ' + summary.rate_limited
+              + ' rate-limited, ' + summary.inconclusive + ' inconclusive.');
+            // Refresh registry data + re-render so chips and counts update.
+            _loadAll();
+          }
+          var btnAll = _hostEl.querySelector('[data-action="reach-probe-start"]');
+          var btnUnk = _hostEl.querySelector('[data-action="reach-probe-only-unknown"]');
+          if (btnAll) btnAll.disabled = false;
+          if (btnUnk) btnUnk.disabled = false;
+        }
+      });
+    }, 2000);
+  }
+
+  function _pollReachStatusOnce() {
+    fetch('/api/model-registry/reach/status').then(_json).then(function (s) {
+      if (s.in_progress) {
+        var btnAll = _hostEl.querySelector('[data-action="reach-probe-start"]');
+        var btnUnk = _hostEl.querySelector('[data-action="reach-probe-only-unknown"]');
+        if (btnAll) btnAll.disabled = true;
+        if (btnUnk) btnUnk.disabled = true;
+        _pollReachStatus();
+      }
+    });
+  }
+
+  function _setReachStatus(text) {
+    var el = _hostEl.querySelector('[data-role="reach-status"]');
+    if (el) el.textContent = text || '';
   }
 
   // (No more sections needing placeholder skeleton — step 13 was the last.)

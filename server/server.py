@@ -8227,6 +8227,20 @@ _registry_refresh_state = {
 }
 _registry_refresh_lock = threading.Lock()
 
+# Reach-probe state. Separate from the refresh state because it runs
+# on its own opt-in cadence (the Models pane's "Probe reachability" button).
+# Holds progress so the UI can show a status indicator while a probe runs.
+_reach_probe_state = {
+    "in_progress": False,
+    "started_at": 0.0,
+    "completed_at": 0.0,
+    "current_index": 0,
+    "total": 0,
+    "current_model": "",
+    "last_summary": None,  # filled when the probe finishes
+}
+_reach_probe_lock = threading.Lock()
+
 
 @app.route("/api/model-registry", methods=["GET"])
 def model_registry_get():
@@ -8662,6 +8676,121 @@ def model_registry_refresh():
             "status": "error",
             "message": str(exc),
         }, status=500)
+
+
+@app.route("/api/model-registry/reach/start", methods=["POST"])
+def model_registry_reach_start():
+    """Kick off a reachability probe against every chat model.
+
+    The probe sends a 16-token completion to each chat model and
+    classifies the response by HTTP status (200 / 429 / 404 / 410 /
+    400 / 5xx). Costs a few cents of OpenRouter tokens and takes
+    roughly 15 minutes against the full 358-chat-model catalog.
+
+    Runs in a background thread so the request returns immediately
+    with status='started'. The UI polls ``/api/model-registry/reach/
+    status`` for progress and final results. A second start request
+    while a probe is in flight returns status='in_progress' with no
+    new spawn.
+
+    Body (all optional):
+      ``revalidate``  (bool, default False) — re-probe every chat model
+                      even if a recent verdict exists.
+      ``only_unknown`` (bool, default False) — only probe models whose
+                      last verdict was null/inconclusive.
+      ``stale_days``  (int, default 7) — re-probe models older than this
+                      many days.
+    """
+    body = request.get_json(silent=True) or {}
+    revalidate = bool(body.get("revalidate", False))
+    only_unknown = bool(body.get("only_unknown", False))
+    stale_days = int(body.get("stale_days", 7))
+
+    with _reach_probe_lock:
+        if _reach_probe_state["in_progress"]:
+            return _json_response({
+                "status": "in_progress",
+                "started_at": _reach_probe_state["started_at"],
+                "current_index": _reach_probe_state["current_index"],
+                "total": _reach_probe_state["total"],
+            })
+        _reach_probe_state["in_progress"] = True
+        _reach_probe_state["started_at"] = time.time()
+        _reach_probe_state["completed_at"] = 0.0
+        _reach_probe_state["current_index"] = 0
+        _reach_probe_state["total"] = 0
+        _reach_probe_state["current_model"] = ""
+        _reach_probe_state["last_summary"] = None
+
+    def _run_in_background():
+        try:
+            script = os.path.join(WORKSPACE, "scripts", "sync_model_registry.py")
+            cmd = [sys.executable, script, "reach"]
+            if revalidate:
+                cmd.append("--revalidate")
+            if only_unknown:
+                cmd.append("--only-unknown")
+            cmd += ["--stale-days", str(stale_days)]
+            # Stream stdout so we can update progress in real time.
+            proc = subprocess.Popen(
+                cmd, cwd=WORKSPACE,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                bufsize=1,
+            )
+            reachable = rate_limited = unreachable = inconclusive = 0
+            for line in proc.stdout:
+                line = line.rstrip()
+                # Parse "[reach] N/M model-id → verdict" lines for progress.
+                # See sync_model_registry.py::_run_reach_probe for the format.
+                m = re.match(r"\[reach\] (\d+)/(\d+) (\S+)\s+→\s+(.+)$", line)
+                if m:
+                    idx = int(m.group(1)); total = int(m.group(2))
+                    mid = m.group(3); verdict = m.group(4)
+                    with _reach_probe_lock:
+                        _reach_probe_state["current_index"] = idx
+                        _reach_probe_state["total"] = total
+                        _reach_probe_state["current_model"] = mid
+                    if "rate-limited" in verdict:
+                        rate_limited += 1
+                    elif "reachable" in verdict:
+                        reachable += 1
+                    elif "✗" in verdict:
+                        unreachable += 1
+                    else:
+                        inconclusive += 1
+            proc.wait()
+            # Reload the in-process registry cache so chips update without
+            # a separate refresh.
+            try:
+                from orchestrator import model_registry as mr
+                mr.reload()
+            except Exception:
+                pass
+            with _reach_probe_lock:
+                _reach_probe_state["in_progress"] = False
+                _reach_probe_state["completed_at"] = time.time()
+                _reach_probe_state["last_summary"] = {
+                    "reachable": reachable,
+                    "rate_limited": rate_limited,
+                    "unreachable": unreachable,
+                    "inconclusive": inconclusive,
+                    "returncode": proc.returncode,
+                }
+        except Exception as exc:
+            with _reach_probe_lock:
+                _reach_probe_state["in_progress"] = False
+                _reach_probe_state["completed_at"] = time.time()
+                _reach_probe_state["last_summary"] = {"error": str(exc)}
+
+    threading.Thread(target=_run_in_background, daemon=True).start()
+    return _json_response({"status": "started"})
+
+
+@app.route("/api/model-registry/reach/status", methods=["GET"])
+def model_registry_reach_status():
+    """Return the current reach-probe progress / last result."""
+    with _reach_probe_lock:
+        return _json_response(dict(_reach_probe_state))
 
 
 # Legacy ConfigPanel-side endpoint with partially-dead semantics.
