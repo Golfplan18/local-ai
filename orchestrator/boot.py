@@ -9446,6 +9446,28 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
 _DEFAULT_API_MAX_TOKENS = 32000
 
 
+def _openai_max_tokens_param(model: str) -> str:
+    """Pick the right output-cap parameter name for an OpenAI / OpenAI-
+    compatible call. The GPT-5 family and the reasoning models
+    (o1 / o3 / o4) reject ``max_tokens`` with an
+    ``invalid_request_error`` and require ``max_completion_tokens``.
+    Older models (gpt-4o, gpt-4.1) still accept ``max_tokens``.
+    Smoke test 2026-05-22: every ``openai/gpt-5.5`` call was returning
+    HTTP 400 because we passed the old parameter name across the board.
+    """
+    if not model:
+        return "max_tokens"
+    lower = model.lower()
+    # Strip vendor prefix if present (e.g. "openai/gpt-5.5" → "gpt-5.5")
+    if "/" in lower:
+        lower = lower.rsplit("/", 1)[1]
+    if lower.startswith("gpt-5"):
+        return "max_completion_tokens"
+    if lower.startswith(("o1-", "o3-", "o4-")) or lower in ("o1", "o3", "o4"):
+        return "max_completion_tokens"
+    return "max_tokens"
+
+
 def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> str:
     """Run an API call, detect truncation, retry once with doubled cap.
 
@@ -9511,14 +9533,21 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 conv = _inject_images_into_messages(conv, images, api_format="claude")
 
             def _claude_call(max_tokens):
-                resp = client.messages.create(
+                # Use the streaming context manager. Anthropic's API
+                # rejects non-streaming requests when max_tokens is high
+                # enough that the operation could exceed 10 minutes —
+                # the 32k cap I raised on 2026-05-22 trips this every
+                # time. Streaming bypasses the limit; we still receive
+                # the full assembled Message at the end.
+                with client.messages.stream(
                     model=model or "claude-opus-4-6",
                     max_tokens=max_tokens,
                     system=system_msg,
                     messages=conv,
-                )
-                text = (resp.content[0].text if resp.content else "") or ""
-                truncated = getattr(resp, "stop_reason", None) == "max_tokens"
+                ) as stream:
+                    msg = stream.get_final_message()
+                text = (msg.content[0].text if msg.content else "") or ""
+                truncated = getattr(msg, "stop_reason", None) == "max_tokens"
                 return text, truncated
 
             return _call_api_with_truncation_retry(_claude_call, "Claude", endpoint)
@@ -9538,10 +9567,14 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 api_messages = _inject_images_into_messages(messages, images, api_format="openai")
 
             def _openai_call(max_tokens):
+                model_name = model or "gpt-4o"
+                # gpt-5.x and reasoning models (o1/o3/o4) reject max_tokens
+                # and require max_completion_tokens. Detect by model name.
+                cap_kwarg = {_openai_max_tokens_param(model_name): max_tokens}
                 resp = client.chat.completions.create(
-                    model=model or "gpt-4o",
+                    model=model_name,
                     messages=api_messages,
-                    max_tokens=max_tokens,
+                    **cap_kwarg,
                 )
                 text = resp.choices[0].message.content or ""
                 truncated = getattr(resp.choices[0], "finish_reason", None) == "length"
@@ -9627,14 +9660,20 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 )
 
             def _openrouter_call(max_tokens):
+                model_name = model or "openai/gpt-4o-mini"
+                # OpenRouter passes through to the underlying provider;
+                # GPT-5 family routed through OpenRouter still inherits
+                # the max_completion_tokens requirement when the request
+                # lands at the OpenAI API behind the scenes.
+                cap_kwarg = {_openai_max_tokens_param(model_name): max_tokens}
                 resp = client.chat.completions.create(
-                    model=model or "openai/gpt-4o-mini",
+                    model=model_name,
                     messages=api_messages,
-                    max_tokens=max_tokens,
                     extra_headers={
                         "HTTP-Referer": "https://ora.local",
                         "X-Title": "Ora",
                     },
+                    **cap_kwarg,
                 )
                 content = resp.choices[0].message.content
                 if not content:
