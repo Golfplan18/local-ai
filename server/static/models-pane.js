@@ -534,7 +534,7 @@
     var incomplete = !!summary.incomplete;
     var deprecatedList = _deprecatedPrimaries(summary);
     var deprecated = deprecatedList.length > 0;
-    var depTitle = deprecated ? _deprecatedTooltip(deprecatedList) : '';
+    var depTitle = deprecated ? _deprecatedTooltip(deprecatedList, summary) : '';
     return ''
       + '<div class="ora-models-card ora-models-card-preset'
       +   (isActive ? ' ora-models-card-active' : '')
@@ -763,17 +763,66 @@
     return all.filter(function (id) { return !models[id]; });
   }
 
-  // Tooltip text listing the deprecated primary ids on a yellow card.
-  // The custom tooltip CSS uses `white-space: nowrap` so this has to
-  // fit on one line. One model: name the id directly. Multiple: name
-  // the count and the first id, suffix "(+N more)" — enough for the
-  // user to know which cell to inspect after activating.
-  function _deprecatedTooltip(ids) {
+  // Tooltip text listing the deprecated primary ids on a yellow card,
+  // plus a hint at which card-row to click to fix it. The custom tooltip
+  // CSS uses `white-space: nowrap`, so this has to fit on one line.
+  //
+  // The hint matters because some deprecated cells (utility.classification,
+  // utility.rag_planner, analysis.gear3.depth, post_analysis.*) have no
+  // visible row on the card — they're fan-out targets from the BIG 1 /
+  // SMALL card-body rows. Without the hint, the user replaces the wrong
+  // slot and the yellow doesn't clear.
+  function _deprecatedTooltip(ids, summary) {
     var n = ids.length;
-    if (n === 1) return 'Deprecated model: ' + ids[0] + ' — activate to fix';
-    return n + ' deprecated models (' + ids[0]
-      + (n > 1 ? ' + ' + (n - 1) + ' more' : '')
-      + ') — activate to fix';
+    var fixHint = _fixHintForDeprecated(ids, summary);
+    var head = (n === 1)
+      ? 'Deprecated: ' + ids[0]
+      : n + ' deprecated (' + ids[0] + (n > 1 ? ' + ' + (n - 1) + ' more' : '') + ')';
+    return head + ' — ' + fixHint;
+  }
+
+  // Map deprecated primary ids to a one-line "click row X" hint by
+  // walking the active config's cells (via summary) and matching each
+  // deprecated id to the visible row whose fan-out covers it.
+  function _fixHintForDeprecated(ids, summary) {
+    if (!summary) return 'activate the card and re-pick the affected slot';
+    var SMALL_FANOUT = ['small', 'utility.classification', 'utility.rag_planner', 'utility.step1_cleanup'];
+    var BIG1_FANOUT = ['big 1', 'analysis.gear3.depth', 'post_analysis.consolidation',
+                       'post_analysis.verification', 'post_analysis.formatter'];
+    var hits = {small: false, big1: false, big2: false, image: false, other: false};
+    // We don't have the cell paths surfaced per id in the summary —
+    // so we infer by checking which visible fields the bad id lives in.
+    var fields = {
+      'small': summary.small,
+      'big 1': summary.big1, 'big 2': summary.big2,
+      'image gen': summary.image_generation,
+      'visual': summary.visual, 'utility': summary.utility,
+      'consolidate': summary.consolidate, 'verify': summary.verify,
+    };
+    ids.forEach(function (id) {
+      var matched = false;
+      Object.keys(fields).forEach(function (label) {
+        if (fields[label] === id) {
+          if (label === 'small' || label === 'utility') hits.small = true;
+          else if (label === 'big 1' || label === 'consolidate' || label === 'verify') hits.big1 = true;
+          else if (label === 'big 2') hits.big2 = true;
+          else if (label === 'image gen' || label === 'visual') hits.image = true;
+          matched = true;
+        }
+      });
+      // No visible-row match: the deprecated cell is one of the
+      // hidden fan-out targets (classification / rag_planner /
+      // gear3.depth / post_analysis cells). Map to the row whose
+      // pick re-writes it via SLOT_LABEL_TO_PATHS fan-out.
+      if (!matched) hits.other = true;
+    });
+    var labels = [];
+    if (hits.small) labels.push('SMALL');
+    if (hits.big1) labels.push('BIG 1');
+    if (hits.big2) labels.push('BIG 2');
+    if (hits.image) labels.push('IMAGE GEN');
+    if (hits.other) labels.push('SMALL or BIG 1');
+    return 'click ' + labels.join(' or ') + ' to repick';
   }
 
   // Raw intelligence per category, used to compute the % peak.
@@ -1091,7 +1140,7 @@
     var incomplete = !!summary.incomplete;
     var deprecatedList = _deprecatedPrimaries(summary);
     var deprecated = deprecatedList.length > 0;
-    var depTitle = deprecated ? _deprecatedTooltip(deprecatedList) : '';
+    var depTitle = deprecated ? _deprecatedTooltip(deprecatedList, summary) : '';
     return ''
       + '<div class="ora-models-card ora-models-card-custom'
       +   (isActive ? ' ora-models-card-active' : '')
