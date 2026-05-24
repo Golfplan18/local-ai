@@ -1,0 +1,58 @@
+{
+  "name": "qwen-9b-only",
+  "description": "Single-model demonstration configuration: qwen/qwen3.5-9b in every slot, routed via OpenRouter so both analysts can run in parallel (the local MLX equivalent would serialize on the per-machine mutex). Built 2026-05-23 to test whether Ora's pipeline architecture lifts a 9B model's output to useful structured analysis. The OpenRouter 9B is the full-precision twin of the local OptiQ 4-bit MLX bundle — same base model, same family, slight quality bump from full precision. Target story: this configuration's results demonstrate what a $1K consumer Mac with 16 GB RAM could produce locally (via the OptiQ 4-bit) with the same architecture. No cascade fallback — if the model fails, the step genuinely degrades.",
+  "preset_lineage": "custom",
+  "diversity_override": false,
+  "cells": {
+    "utility": {
+      "step1_cleanup": {
+        "primary": "qwen/qwen3.5-9b",
+        "fallback": []
+      },
+      "classification": {
+        "primary": "qwen/qwen3.5-9b",
+        "fallback": []
+      },
+      "rag_planner": {
+        "primary": "qwen/qwen3.5-9b",
+        "fallback": []
+      }
+    },
+    "analysis": {
+      "gear4": {
+        "depth": {
+          "primary": "qwen/qwen3.5-9b",
+          "fallback": []
+        },
+        "breadth": {
+          "primary": "qwen/qwen3.5-9b",
+          "fallback": []
+        }
+      },
+      "gear3": {
+        "depth": {
+          "primary": "qwen/qwen3.5-9b",
+          "fallback": []
+        },
+        "breadth": {
+          "primary": "qwen/qwen3.5-9b",
+          "fallback": []
+        }
+      }
+    },
+    "post_analysis": {
+      "consolidation": {
+        "primary": "qwen/qwen3.5-9b",
+        "fallback": []
+      },
+      "verification": {
+        "primary": "qwen/qwen3.5-9b",
+        "fallback": []
+      },
+      "formatter": {
+        "primary": "qwen/qwen3.5-9b",
+        "fallback": []
+      }
+    }
+  }
+}

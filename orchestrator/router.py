@@ -292,9 +292,28 @@ class Router:
         ``config_name`` (Chunk 2b) routes the resolution through a named
         configuration in config/configurations/ rather than the legacy
         pipelines[context] block.
+
+        Per-config ``diversity_override: false`` (added 2026-05-23) disables
+        the adversarial-diversity exclusion for the breadth slot. Use case:
+        single-model demo configurations where every slot is intentionally
+        the same endpoint (e.g., qwen-9b-only proves Ora's pipeline lifts
+        a single 9B model). Without the override, gear 4 would downgrade
+        all the way to gear 2 (single-pass) because the breadth resolver
+        excludes the depth id and no fallback survives.
         """
         slots = GEAR_SLOTS.get(gear, [])
         assignments = {}
+
+        # Resolve per-config diversity policy. Defaults to the global
+        # routing-config setting; an explicit per-config override wins.
+        config_diversity = self._diversity
+        if config_name:
+            try:
+                cfg_dict = self._load_configuration(config_name)
+            except Exception:
+                cfg_dict = None
+            if isinstance(cfg_dict, dict) and "diversity_override" in cfg_dict:
+                config_diversity = bool(cfg_dict["diversity_override"])
 
         for slot in slots:
             same_machine_block = None
@@ -305,8 +324,11 @@ class Router:
                 if depth_ep.get("type") == "local":
                     same_machine_block = depth_ep.get("machine")
 
-            # For breadth slot: prefer a different model than depth for diversity
-            if slot == "breadth" and "depth" in assignments:
+            # For breadth slot: prefer a different model than depth for diversity.
+            # Skipped entirely when the config sets diversity_override: false —
+            # in that case breadth resolves the same way depth did, which
+            # lands on the same endpoint as configured.
+            if config_diversity and slot == "breadth" and "depth" in assignments:
                 depth_id = assignments["depth"]["id"]
 
                 # First attempt: exclude the depth model
