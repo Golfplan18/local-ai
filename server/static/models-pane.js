@@ -513,6 +513,13 @@
           _activeSlotPick = null;
         } else {
           _activeSlotPick = {configName: configName, slotLabel: slotLabel};
+          // Fast slot activates the speed sort so the actually-fast
+          // candidates surface first. Doesn't auto-revert — the user
+          // can change the sort manually if they want a different
+          // axis. Inventory remembers the last sort across picks.
+          if (slotLabel === 'fast 1' || slotLabel === 'fast 2') {
+            _filters.sort_by = 'speed_desc';
+          }
         }
         _renderHeader();
         _renderPresets();
@@ -1435,7 +1442,15 @@
     // field is enriched by /api/model-registry from model-catalog.json.
     var sizeFilter = _activeSlotPickSizeBucket();
     if (sizeFilter) {
-      if (!model.size_bucket || model.size_bucket !== sizeFilter) return false;
+      // 'midsize' is permissive: midsize-bucket models pass exactly,
+      // null-bucket models also pass (most cloud fast models have
+      // undisclosed parameters_b → null). large/small are strict
+      // exact-match. See the Fast slot rationale in SLOT_TO_SIZE_BUCKET.
+      if (sizeFilter === 'midsize') {
+        if (model.size_bucket === 'large' || model.size_bucket === 'small') return false;
+      } else {
+        if (!model.size_bucket || model.size_bucket !== sizeFilter) return false;
+      }
     }
     // Slot-pick capability gate. The VISUAL slot is the vision
     // substitute — the model that handles image input when the
@@ -1474,6 +1489,12 @@
     'utility':     'small',
     'consolidate': 'large',
     'verify':      'large',
+    // Fast: speed-tier slot. 'midsize' is the formal bucket, but the
+    // matcher treats it permissively — null-bucket models also admit
+    // (most cloud fast models have undisclosed parameters_b → null
+    // bucket → would otherwise be hidden). See _matchesFilters.
+    'fast 1':      'midsize',
+    'fast 2':      'midsize',
     // Popout fallback-section labels — same bucket as the primary
     // they fall back from, so a SMALL fallback chain only sees small
     // models and a LARGE chain only sees large ones.

@@ -447,27 +447,31 @@ def create_blank_configuration(new_name: str | None = None) -> str:
 
 
 def _is_baseline_complete(config: dict) -> bool:
-    """A configuration is baseline-complete when the four card-visible
-    slots are filled: big 1 (gear4.depth.primary), small
-    (utility.step1_cleanup.primary), image generation
-    (image_generation.image_generation.primary), AND big 2
-    (gear4.breadth.primary) when Adversarial Diversity is on (when
-    off the data side mirrors big 1 into big 2 automatically, so big 2
-    is implicitly complete).
+    """A configuration is baseline-complete when the card-visible
+    primary slots are filled: big 1 (gear4.depth.primary), fast 1
+    (gear3.depth.primary), small (utility.step1_cleanup.primary),
+    image generation (image_generation.image_generation.primary),
+    AND big 2 + fast 2 (gear4.breadth.primary, gear3.breadth.primary)
+    when Adversarial Diversity is on (when off the data side mirrors
+    big 1 / fast 1 into their breadth counterparts automatically, so
+    those are implicitly complete).
     """
     cells = (config or {}).get("cells") or {}
     big1 = (((cells.get("analysis") or {}).get("gear4") or {}).get("depth") or {}).get("primary")
     big2 = (((cells.get("analysis") or {}).get("gear4") or {}).get("breadth") or {}).get("primary") \
         if isinstance(((cells.get("analysis") or {}).get("gear4") or {}).get("breadth"), dict) else None
+    fast1 = (((cells.get("analysis") or {}).get("gear3") or {}).get("depth") or {}).get("primary")
+    fast2 = (((cells.get("analysis") or {}).get("gear3") or {}).get("breadth") or {}).get("primary") \
+        if isinstance(((cells.get("analysis") or {}).get("gear3") or {}).get("breadth"), dict) else None
     small = ((cells.get("utility") or {}).get("step1_cleanup") or {}).get("primary")
     img = ((cells.get("image_generation") or {}).get("image_generation") or {}).get("primary")
     saved_toggles = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
     inferred = _infer_defaults(config)
     adversarial = bool(saved_toggles.get("adversarial_diversity",
                                          inferred.get("adversarial_diversity", False)))
-    if not big1 or not small or not img:
+    if not big1 or not fast1 or not small or not img:
         return False
-    if adversarial and not big2:
+    if adversarial and (not big2 or not fast2):
         return False
     return True
 
