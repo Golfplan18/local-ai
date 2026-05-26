@@ -159,6 +159,26 @@ def filter_exclude_reasoning(candidates: list[dict], reasoning_ids: set[str]) ->
     return [m for m in candidates if m.get("id") not in reasoning_ids]
 
 
+_NON_CHAT_OUTPUT_MODALITIES = {"audio", "video", "music", "speech"}
+
+
+def filter_text_output(candidates: list[dict]) -> list[dict]:
+    """Drop models whose output includes audio, video, music, or speech.
+    Some entries mis-classify as ``chat`` in the catalog because their
+    input includes text — Lyria (text→audio music) is the canonical
+    case: it carries ``output_modalities=['text', 'audio']`` and slips
+    past a naive 'text in modalities' check. Reject any entry that
+    declares a non-chat output modality at all. Catalog entries with
+    no ``output_modalities`` field pass through (admit on incomplete
+    metadata rather than reject a real chat model)."""
+    def is_chat_output(m):
+        mods = m.get("output_modalities")
+        if not mods:
+            return True
+        return not any(mod in _NON_CHAT_OUTPUT_MODALITIES for mod in mods)
+    return [m for m in candidates if is_chat_output(m)]
+
+
 def filter_by_category(candidates: list[dict], category: str) -> list[dict]:
     """Restrict to a specific category. Entries with no ``category``
     field are treated as ``chat`` (the existing 358-model corpus from
@@ -263,6 +283,10 @@ def pick_for_paid_slot(
     # passes size_bucket=None so image-gen / video models would otherwise
     # leak in and dominate intelligence-floor checks via their Elo scores.
     candidates = filter_by_category(catalog, "chat")
+    # Belt-and-suspenders: catalog mis-classifies some audio/music
+    # models (Lyria) as chat because they take text input. Drop anything
+    # whose output isn't text. See filter_text_output.
+    candidates = filter_text_output(candidates)
     candidates = filter_paid(candidates)
     candidates = filter_by_size_bucket(candidates, size_bucket)
     candidates = filter_reachable(candidates, unreachable_ids or set())
@@ -336,8 +360,9 @@ def pick_for_free_slot(
     bucket conformance because free models are scarcer).
     """
     excluded_ids = excluded_ids or set()
-    # Same chat-category guard as pick_for_paid_slot — see comment there.
+    # Same chat-category + text-output guards as pick_for_paid_slot.
     candidates = filter_by_category(catalog, "chat")
+    candidates = filter_text_output(candidates)
     candidates = filter_free(candidates)
     candidates = filter_reachable(candidates, unreachable_ids or set())
     if exclude_reasoning_models and reasoning_model_ids:
@@ -427,7 +452,12 @@ def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: s
     For free preset: highest intelligence vision-capable in bucket
     (cost is 0 for all candidates).
     """
-    candidates = filter_vision(catalog)
+    # Same chat + text-output guards as the chat-slot pickers — vision
+    # substitute is the image-input handler for chat output, so audio /
+    # music mis-classified entries don't belong here either.
+    candidates = filter_by_category(catalog, "chat")
+    candidates = filter_text_output(candidates)
+    candidates = filter_vision(candidates)
     if preset_mode == "free_intelligence":
         candidates = filter_free(candidates)
     else:
