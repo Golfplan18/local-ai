@@ -809,7 +809,10 @@
   function _fixHintForDeprecated(ids, summary) {
     if (!summary) return 'activate the card and re-pick the affected slot';
     var SMALL_FANOUT = ['small', 'utility.classification', 'utility.rag_planner', 'utility.step1_cleanup'];
-    var BIG1_FANOUT = ['big 1', 'analysis.gear3.depth', 'post_analysis.consolidation',
+    // gear3.depth + utility.gear2_rag_lookup moved to Fast 1's fan-out
+    // (2026-05-23); BIG 1 now covers only post_analysis cells beyond
+    // its own gear4.depth.
+    var BIG1_FANOUT = ['big 1', 'post_analysis.consolidation',
                        'post_analysis.verification', 'post_analysis.formatter'];
     var hits = {small: false, big1: false, big2: false, image: false, other: false};
     // We don't have the cell paths surfaced per id in the summary —

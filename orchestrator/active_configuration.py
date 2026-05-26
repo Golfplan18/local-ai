@@ -392,6 +392,7 @@ def create_blank_configuration(new_name: str | None = None) -> str:
                     "step1_cleanup": {"primary": None, "fallback": []},
                     "classification": {"primary": None, "fallback": []},
                     "rag_planner": {"primary": None, "fallback": []},
+                    "gear2_rag_lookup": {"primary": None, "fallback": []},
                 },
                 "analysis": {
                     "gear4": {
@@ -713,13 +714,26 @@ def _empty_toggles() -> dict:
 SLOT_LABEL_TO_PATHS = {
     "big 1": [
         ["analysis", "gear4", "depth"],
-        ["analysis", "gear3", "depth"],
+        # gear3.depth handed off to Fast 1 (2026-05-23) per the four-gear
+        # architecture: Big lives only in Gear 4; Fast owns Gear 3 + the
+        # Gear 2 RAG lookup. See the parallel boot.py dispatch update.
         ["post_analysis", "consolidation"],
         ["post_analysis", "verification"],
         ["post_analysis", "formatter"],
     ],
     "big 2": [
         ["analysis", "gear4", "breadth"],
+    ],
+    # Fast: mid-tier speed-optimized slot. Fast 1 fills both gear3.depth
+    # (sequential adversarial) and utility.gear2_rag_lookup (single-pass
+    # retrieval). Fast 2 fills gear3.breadth when adversarial diversity
+    # is on; mirrors of how Big 1 / Big 2 fan into gear4.
+    "fast 1": [
+        ["analysis", "gear3", "depth"],
+        ["utility", "gear2_rag_lookup"],
+    ],
+    "fast 2": [
+        ["analysis", "gear3", "breadth"],
     ],
     "small": [
         ["utility", "step1_cleanup"],
@@ -778,10 +792,11 @@ def _walk_and_set_vision_substitute(node, model_id):
 def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
     """Assign a model to a visible slot on a configuration.
 
-    ``slot_label`` is one of "big 1" / "big 2" / "small". The helper
-    fans the pick out to every internal cell path that label maps to
-    (see SLOT_LABEL_TO_PATHS) so post-analysis slots that "inherit
-    big 1" track the change without the user opening the expand view.
+    ``slot_label`` is one of "big 1" / "big 2" / "fast 1" / "fast 2" /
+    "small". The helper fans the pick out to every internal cell path
+    that label maps to (see SLOT_LABEL_TO_PATHS) so post-analysis slots
+    that "inherit big 1" — and the gear3 cells that Fast 1 covers —
+    track the change without the user opening the expand view.
 
     Returns the updated configuration dict.
     """
