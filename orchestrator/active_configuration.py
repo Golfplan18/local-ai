@@ -640,6 +640,17 @@ def _summarize(name: str, config: dict) -> dict:
     big2_primary = (big2_cell or {}).get("primary") if isinstance(big2_cell, dict) else None
     big2_fallback = list((big2_cell or {}).get("fallback") or []) if isinstance(big2_cell, dict) else []
 
+    # Fast pair (2026-05-23): gear3.depth + gear3.breadth. Same shape as the
+    # Big pair above. Customs that haven't picked Fast yet read as null,
+    # which the UI treats as an empty slot waiting to be filled.
+    gear3 = analysis.get("gear3") or {}
+    fast1_cell = gear3.get("depth") if isinstance(gear3.get("depth"), dict) else {}
+    fast2_cell = gear3.get("breadth")
+    fast1_primary = (fast1_cell or {}).get("primary")
+    fast1_fallback = list((fast1_cell or {}).get("fallback") or [])
+    fast2_primary = (fast2_cell or {}).get("primary") if isinstance(fast2_cell, dict) else None
+    fast2_fallback = list((fast2_cell or {}).get("fallback") or []) if isinstance(fast2_cell, dict) else []
+
     toggles_resolved = _infer_defaults(config)
     saved_toggles = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
     for key in ("adversarial_diversity", "vision_only"):
@@ -672,9 +683,13 @@ def _summarize(name: str, config: dict) -> dict:
         "description": config.get("description") or "",
         "big1": big1_cell.get("primary"),
         "big2": big2_primary,
+        "fast1": fast1_primary,
+        "fast2": fast2_primary,
         "small": small_cell.get("primary"),
         "big1_fallback": list(big1_cell.get("fallback") or []),
         "big2_fallback": big2_fallback,
+        "fast1_fallback": fast1_fallback,
+        "fast2_fallback": fast2_fallback,
         "small_fallback": list(small_cell.get("fallback") or []),
         # Expand-view fields (post-analysis cells + visual substitute
         # + utility step-1 cell). 2026-05-22: labels renamed

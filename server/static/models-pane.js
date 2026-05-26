@@ -576,6 +576,10 @@
       +     (adversarial
         ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name, isActive: editable})
         : '')
+      +     _slotRowHTML('fast 1', summary.fast1, {omitCost: omitCost, configName: summary.name, isActive: editable})
+      +     (adversarial
+        ? _slotRowHTML('fast 2', summary.fast2, {omitCost: omitCost, configName: summary.name, isActive: editable})
+        : '')
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name, isActive: editable})
       +     _slotRowHTML('image gen', summary.image_generation,
             {omitCost: omitCost, configName: summary.name, isActive: editable})
@@ -814,12 +818,14 @@
     // its own gear4.depth.
     var BIG1_FANOUT = ['big 1', 'post_analysis.consolidation',
                        'post_analysis.verification', 'post_analysis.formatter'];
-    var hits = {small: false, big1: false, big2: false, image: false, other: false};
+    var FAST1_FANOUT = ['fast 1', 'analysis.gear3.depth', 'utility.gear2_rag_lookup'];
+    var hits = {small: false, big1: false, big2: false, fast1: false, fast2: false, image: false, other: false};
     // We don't have the cell paths surfaced per id in the summary —
     // so we infer by checking which visible fields the bad id lives in.
     var fields = {
       'small': summary.small,
       'big 1': summary.big1, 'big 2': summary.big2,
+      'fast 1': summary.fast1, 'fast 2': summary.fast2,
       'image gen': summary.image_generation,
       'visual': summary.visual, 'utility': summary.utility,
       'consolidate': summary.consolidate, 'verify': summary.verify,
@@ -831,13 +837,15 @@
           if (label === 'small' || label === 'utility') hits.small = true;
           else if (label === 'big 1' || label === 'consolidate' || label === 'verify') hits.big1 = true;
           else if (label === 'big 2') hits.big2 = true;
+          else if (label === 'fast 1') hits.fast1 = true;
+          else if (label === 'fast 2') hits.fast2 = true;
           else if (label === 'image gen' || label === 'visual') hits.image = true;
           matched = true;
         }
       });
       // No visible-row match: the deprecated cell is one of the
       // hidden fan-out targets (classification / rag_planner /
-      // gear3.depth / post_analysis cells). Map to the row whose
+      // gear2_rag_lookup / post_analysis cells). Map to the row whose
       // pick re-writes it via SLOT_LABEL_TO_PATHS fan-out.
       if (!matched) hits.other = true;
     });
@@ -845,8 +853,10 @@
     if (hits.small) labels.push('SMALL');
     if (hits.big1) labels.push('BIG 1');
     if (hits.big2) labels.push('BIG 2');
+    if (hits.fast1) labels.push('FAST 1');
+    if (hits.fast2) labels.push('FAST 2');
     if (hits.image) labels.push('IMAGE GEN');
-    if (hits.other) labels.push('SMALL or BIG 1');
+    if (hits.other) labels.push('SMALL or BIG 1 or FAST 1');
     return 'click ' + labels.join(' or ') + ' to repick';
   }
 
@@ -1207,6 +1217,10 @@
       +     _slotRowHTML('big 1', summary.big1, {configName: summary.name, isActive: editable})
       +     (adversarial
         ? _slotRowHTML('big 2', summary.big2, {configName: summary.name, isActive: editable})
+        : '')
+      +     _slotRowHTML('fast 1', summary.fast1, {configName: summary.name, isActive: editable})
+      +     (adversarial
+        ? _slotRowHTML('fast 2', summary.fast2, {configName: summary.name, isActive: editable})
         : '')
       +     _slotRowHTML('small', summary.small, {configName: summary.name, isActive: editable})
       +     _slotRowHTML('image gen', summary.image_generation,
