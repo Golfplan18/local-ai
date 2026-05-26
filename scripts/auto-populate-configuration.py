@@ -247,6 +247,34 @@ def sort_by_tokens_per_sec_descending(candidates: list[dict], tps_map: dict[str,
     )
 
 
+def _vendor_key(model: dict) -> str:
+    """Normalised vendor key for diversity comparisons.
+
+    Prefers the catalog's ``provider`` field when it names a real maker;
+    falls back to the slash-prefix of the id when ``provider`` is generic
+    (``artificial-analysis`` on the 221 AA-only entries). Leading ``~``
+    on AA-direct-vendor variants (``~anthropic`` etc.) is stripped so
+    they match their non-tilde siblings."""
+    provider = (model.get("provider") or "").lower()
+    if provider and provider != "artificial-analysis":
+        return provider.lstrip("~")
+    mid = model.get("id") or ""
+    if "/" in mid:
+        return mid.split("/", 1)[0].lower().lstrip("~")
+    return mid.lower()
+
+
+def _apply_vendor_diversity(candidates: list[dict], excluded_vendors: set | None) -> list[dict]:
+    """Soft vendor-diversity filter. When excluded_vendors is set, drop any
+    candidate whose vendor key is in the excluded set — but if that empties
+    the pool, drop the filter rather than return nothing (the user picked
+    soft fallback: prefer vendor-diverse, accept same-vendor when impossible)."""
+    if not excluded_vendors:
+        return candidates
+    filtered = [m for m in candidates if _vendor_key(m) not in excluded_vendors]
+    return filtered or candidates
+
+
 # ─── Per-slot picker ─────────────────────────────────────────────────────
 
 
@@ -258,6 +286,7 @@ def pick_for_paid_slot(
     cost_ceiling: float | None,
     loosening: bool,
     excluded_ids: set | None = None,
+    excluded_vendors: set | None = None,
     vision_only: bool = False,
     sort_by: str = "cost_asc",
     unreachable_ids: set[str] | None = None,
@@ -295,6 +324,7 @@ def pick_for_paid_slot(
     if vision_only:
         candidates = filter_vision(candidates)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
+    candidates = _apply_vendor_diversity(candidates, excluded_vendors)
 
     # Pareto-filter against (intelligence, cost). Skip for tokens_per_sec_desc
     # selection — Pareto on intel/cost is the wrong frontier when speed is the
@@ -344,6 +374,7 @@ def pick_for_free_slot(
     size_bucket: str | None,
     top_n: int,
     excluded_ids: set | None = None,
+    excluded_vendors: set | None = None,
     vision_only: bool = False,
     unreachable_ids: set[str] | None = None,
     sort_by: str = "intelligence_desc",
@@ -375,6 +406,7 @@ def pick_for_free_slot(
     if vision_only:
         candidates = filter_vision(candidates)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
+    candidates = _apply_vendor_diversity(candidates, excluded_vendors)
     # Same reason as pick_for_paid_slot: skip Pareto when selecting on speed.
     if sort_by != "tokens_per_sec_desc":
         candidates = pareto_filter(candidates)
@@ -398,6 +430,7 @@ def pick_for_media_slot(
     cost_ceiling: float | None = None,
     sort_by: str = "cost_asc",
     excluded_ids: set | None = None,
+    excluded_vendors: set | None = None,
 ) -> list[dict]:
     """Pick top-N image-gen models, mirroring ``pick_for_paid_slot`` semantics
     against per-1k-images cost rather than per-M-tokens cost.
@@ -422,6 +455,7 @@ def pick_for_media_slot(
     excluded_ids = excluded_ids or set()
     candidates = filter_by_category(catalog, category)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
+    candidates = _apply_vendor_diversity(candidates, excluded_vendors)
     if not candidates:
         return []
 
@@ -543,6 +577,7 @@ def populate_configuration(
         section: dict = {}
         diversity = slot_spec.get("diversity_excluded", False)
         excluded_so_far: set = set()
+        excluded_vendors_so_far: set = set()
         # Slots carrying a ``category`` field (e.g. image_generation) route
         # through the media picker, which sorts by Elo and ignores the
         # chat-only paid/free machinery. See pick_for_media_slot.
@@ -566,6 +601,7 @@ def populate_configuration(
                     cost_ceiling=preset.get("image_cost_ceiling_per_1k"),
                     sort_by=preset.get("sort_by", "cost_asc"),
                     excluded_ids=excluded_so_far if diversity else None,
+                    excluded_vendors=excluded_vendors_so_far if diversity else None,
                 )
                 # Media cells don't carry a vision_substitute (the slot IS
                 # the image-handling slot — no fallback needed).
@@ -576,6 +612,7 @@ def populate_configuration(
                     size_bucket=slot_size_bucket,
                     top_n=slot_spec["top_n"],
                     excluded_ids=excluded_so_far if diversity else None,
+                    excluded_vendors=excluded_vendors_so_far if diversity else None,
                     vision_only=effective_vision_only,
                     unreachable_ids=unreachable_ids,
                     sort_by=slot_sort_by,
@@ -593,6 +630,7 @@ def populate_configuration(
                     cost_ceiling=preset.get("cost_ceiling_per_m"),
                     loosening=preset.get("loosening", False),
                     excluded_ids=excluded_so_far if diversity else None,
+                    excluded_vendors=excluded_vendors_so_far if diversity else None,
                     vision_only=effective_vision_only,
                     sort_by=slot_sort_by,
                     unreachable_ids=unreachable_ids,
@@ -605,6 +643,7 @@ def populate_configuration(
                 loosening_log[f"{slot_section}.{cell_name}"] = notes
             if diversity and picks:
                 excluded_so_far.add(picks[0]["id"])
+                excluded_vendors_so_far.add(_vendor_key(picks[0]))
         return section
 
     cells["utility"] = _pick("utility", slot_specs["utility"])

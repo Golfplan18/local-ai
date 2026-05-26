@@ -200,6 +200,101 @@ class TestPickForPaidSlot(unittest.TestCase):
         self.assertNotEqual(picks_second[0]["id"], first_primary)
 
 
+class TestVendorKey(unittest.TestCase):
+    def test_prefers_provider_when_specific(self):
+        self.assertEqual(auto_populate._vendor_key(
+            {"id": "qwen/qwen3.5-something", "provider": "qwen"}), "qwen")
+
+    def test_falls_back_to_id_prefix_when_provider_generic(self):
+        # AA-only direct-vendor entries have provider="artificial-analysis"
+        self.assertEqual(auto_populate._vendor_key(
+            {"id": "anthropic/claude-opus-4-7", "provider": "artificial-analysis"}),
+            "anthropic")
+
+    def test_strips_tilde_prefix(self):
+        # ~anthropic / ~google etc. mark AA-direct-vendor variants;
+        # they should match their non-tilde siblings.
+        self.assertEqual(auto_populate._vendor_key(
+            {"id": "~anthropic/claude-via-aa"}), "anthropic")
+
+    def test_lowercases(self):
+        self.assertEqual(auto_populate._vendor_key(
+            {"id": "Qwen/Foo", "provider": "Qwen"}), "qwen")
+
+
+class TestVendorDiversity(unittest.TestCase):
+    """Vendor-aware diversity — Optimum Fast 1 + Fast 2 used to both end up
+    qwen. Verifies the new excluded_vendors filter and its soft fallback."""
+
+    def _two_vendor_catalog(self):
+        # Two paid large models per vendor; same intelligence/cost shape so
+        # the only thing distinguishing picks is the vendor filter.
+        return [
+            _model("qwen/q-a", intelligence=80, blended=2.0, size="large", provider="qwen"),
+            _model("qwen/q-b", intelligence=70, blended=2.0, size="large", provider="qwen"),
+            _model("openai/o-a", intelligence=75, blended=2.0, size="large", provider="openai"),
+            _model("openai/o-b", intelligence=65, blended=2.0, size="large", provider="openai"),
+        ]
+
+    def test_paid_slot_picks_different_vendor_when_excluded(self):
+        picks, _ = auto_populate.pick_for_paid_slot(
+            self._two_vendor_catalog(), size_bucket="large", top_n=1,
+            floor_pct=None, cost_ceiling=None, loosening=False,
+            excluded_vendors={"qwen"},
+        )
+        self.assertEqual(picks[0]["provider"], "openai")
+
+    def test_paid_slot_soft_fallback_when_no_other_vendor(self):
+        # Only qwen available; vendor filter empties the pool, soft fallback
+        # accepts a qwen pick rather than returning [].
+        qwen_only = [
+            _model("qwen/q-a", intelligence=80, blended=2.0, size="large", provider="qwen"),
+            _model("qwen/q-b", intelligence=70, blended=2.0, size="large", provider="qwen"),
+        ]
+        picks, _ = auto_populate.pick_for_paid_slot(
+            qwen_only, size_bucket="large", top_n=1,
+            floor_pct=None, cost_ceiling=None, loosening=False,
+            excluded_vendors={"qwen"},
+        )
+        self.assertEqual(len(picks), 1)
+        self.assertEqual(picks[0]["provider"], "qwen")
+
+    def test_free_slot_picks_different_vendor_when_excluded(self):
+        catalog = [
+            _model("qwen/free-a", intelligence=80, blended=0.0, size="large",
+                   is_free=True, provider="qwen"),
+            _model("openai/free-a", intelligence=70, blended=0.0, size="large",
+                   is_free=True, provider="openai"),
+        ]
+        picks = auto_populate.pick_for_free_slot(
+            catalog, size_bucket="large", top_n=1,
+            excluded_vendors={"qwen"},
+        )
+        self.assertEqual(picks[0]["provider"], "openai")
+
+    def test_sequential_picks_diverge_by_vendor(self):
+        # Mirrors the pattern used by _pick: first cell picks normally,
+        # second cell receives the first's id + vendor as excluded.
+        catalog = self._two_vendor_catalog()
+        first, _ = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=1,
+            floor_pct=None, cost_ceiling=None, loosening=False,
+            sort_by="intelligence_desc",
+        )
+        # First picks qwen/q-a (intelligence=80, the highest).
+        self.assertEqual(first[0]["provider"], "qwen")
+        second, _ = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=1,
+            floor_pct=None, cost_ceiling=None, loosening=False,
+            sort_by="intelligence_desc",
+            excluded_ids={first[0]["id"]},
+            excluded_vendors={auto_populate._vendor_key(first[0])},
+        )
+        # Without vendor exclusion the next pick would be qwen/q-b
+        # (intelligence=70). Vendor filter forces openai/o-a (intelligence=75).
+        self.assertEqual(second[0]["id"], "openai/o-a")
+
+
 class TestBudgetLoosening(unittest.TestCase):
     def test_loosens_floor_when_too_strict(self):
         catalog = _fixture_catalog()
