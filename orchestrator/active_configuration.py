@@ -228,8 +228,9 @@ def bake_missing_presets(force: bool = False) -> list:
       * vision_only → passed to populate_configuration so the picker
         filters to vision-capable models only.
       * adversarial_diversity=False → post-bake, copy gear4.depth's
-        primary + fallback into gear4.breadth so "the top model fills
-        all slots" rather than enforcing diversity.
+        primary + fallback into gear4.breadth AND mirror gear3.depth
+        into gear3.breadth, so "the top model fills all slots" rather
+        than enforcing diversity across both the Big and Fast pairs.
 
     Returns the list of preset names that were baked (empty when
     everything was already present). When ``force=True``, re-bakes
@@ -267,6 +268,25 @@ def bake_missing_presets(force: bool = False) -> list:
     vision_only = global_toggles["vision_only"]
     adversarial = global_toggles["adversarial_diversity"]
 
+    # Cross-reference the registry for fields the catalog doesn't carry:
+    # output_tokens_per_second (Fast slot sort key) and reasoning_model
+    # (Fast slot exclusion). Mirrors the CLI script's behavior.
+    registry_path = ORA_HOME / "config" / "model-registry.json"
+    tokens_per_sec: dict = {}
+    reasoning_model_ids: set = set()
+    if registry_path.exists():
+        try:
+            with open(registry_path) as f:
+                registry = json.load(f)
+            for mid, m in (registry.get("models") or {}).items():
+                if m.get("reasoning_model") is True:
+                    reasoning_model_ids.add(mid)
+                tps = m.get("output_tokens_per_second")
+                if tps is not None:
+                    tokens_per_sec[mid] = float(tps)
+        except Exception:
+            pass
+
     baked: list = []
     CONFIGURATIONS_DIR.mkdir(parents=True, exist_ok=True)
     for preset_name in PRESET_ORDER:
@@ -279,9 +299,11 @@ def bake_missing_presets(force: bool = False) -> list:
         try:
             config = ap_module.populate_configuration(
                 preset_name, catalog, presets_config,
-                vision_only=vision_only)
+                vision_only=vision_only,
+                tokens_per_sec=tokens_per_sec,
+                reasoning_model_ids=reasoning_model_ids)
             config["name"] = preset_name
-            # Adversarial OFF: top model fills both gear4 slots.
+            # Adversarial OFF: top model fills both Big AND Fast pairs.
             # When Adversarial is on (or not specified), keep the
             # diversity-enforced pair the picker produced.
             if not adversarial:
@@ -293,6 +315,15 @@ def bake_missing_presets(force: bool = False) -> list:
                         "primary": depth.get("primary"),
                         "fallback": list(depth.get("fallback") or []),
                         "vision_substitute": depth.get("vision_substitute"),
+                    }
+                # Mirror for Fast: gear3.breadth ← gear3.depth.
+                gear3 = (cells.get("analysis") or {}).get("gear3") or {}
+                fast_depth = gear3.get("depth")
+                if isinstance(fast_depth, dict):
+                    gear3["breadth"] = {
+                        "primary": fast_depth.get("primary"),
+                        "fallback": list(fast_depth.get("fallback") or []),
+                        "vision_substitute": fast_depth.get("vision_substitute"),
                     }
             # Stash the global toggle state on the config too so the
             # UI's per-config toggle reader picks it up immediately

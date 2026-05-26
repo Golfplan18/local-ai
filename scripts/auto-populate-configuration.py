@@ -142,9 +142,21 @@ def apply_cost_ceiling(candidates: list[dict], ceiling: float | None, cost_fn=co
     return [m for m in candidates if cost_fn(m) <= ceiling]
 
 
-def filter_by_size_bucket(candidates: list[dict], size_bucket: str) -> list[dict]:
-    """Restrict to a specific size_bucket."""
+def filter_by_size_bucket(candidates: list[dict], size_bucket: str | None) -> list[dict]:
+    """Restrict to a specific size_bucket. ``size_bucket=None`` skips
+    the filter — used by the Fast slot, which selects on tokens/sec
+    instead of parameter range."""
+    if size_bucket is None:
+        return candidates
     return [m for m in candidates if m.get("size_bucket") == size_bucket]
+
+
+def filter_exclude_reasoning(candidates: list[dict], reasoning_ids: set[str]) -> list[dict]:
+    """Drop reasoning / thinking models. Their hidden chain-of-thought
+    output defeats the Fast slot's speed purpose."""
+    if not reasoning_ids:
+        return candidates
+    return [m for m in candidates if m.get("id") not in reasoning_ids]
 
 
 def filter_by_category(candidates: list[dict], category: str) -> list[dict]:
@@ -204,12 +216,23 @@ def sort_by_intelligence_descending(candidates: list[dict]) -> list[dict]:
     return sorted(candidates, key=intelligence_of, reverse=True)
 
 
+def sort_by_tokens_per_sec_descending(candidates: list[dict], tps_map: dict[str, float]) -> list[dict]:
+    """Sort by output tokens/sec descending. Models without tps data sink
+    to the bottom. Used by the Fast slot to surface speed-tier models
+    independent of intelligence ranking."""
+    return sorted(
+        candidates,
+        key=lambda m: tps_map.get(m.get("id", ""), -math.inf),
+        reverse=True,
+    )
+
+
 # ─── Per-slot picker ─────────────────────────────────────────────────────
 
 
 def pick_for_paid_slot(
     catalog: list[dict],
-    size_bucket: str,
+    size_bucket: str | None,
     top_n: int,
     floor_pct: float | None,
     cost_ceiling: float | None,
@@ -218,33 +241,53 @@ def pick_for_paid_slot(
     vision_only: bool = False,
     sort_by: str = "cost_asc",
     unreachable_ids: set[str] | None = None,
+    tokens_per_sec: dict[str, float] | None = None,
+    reasoning_model_ids: set[str] | None = None,
+    exclude_reasoning_models: bool = False,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N models for a paid slot.
 
     ``sort_by`` controls the final selection order after filtering:
-      "cost_asc"          — cheapest first (default; used by Optimum/Budget)
-      "intelligence_desc" — smartest first (used by Premium: "best
-                            models available independent of cost")
+      "cost_asc"             — cheapest first (default; used by Optimum/Budget)
+      "intelligence_desc"    — smartest first (used by Premium for Big)
+      "tokens_per_sec_desc"  — fastest first (used by Fast slot)
+
+    ``exclude_reasoning_models``: when True, drop entries flagged
+    ``reasoning_model=True`` in the registry. Fast slot uses this.
 
     Returns (picks, loosening_notes).
     """
     excluded_ids = excluded_ids or set()
-    candidates = filter_paid(catalog)
+    # Restrict to chat models first. Pre-Fast slots got this implicitly via
+    # size_bucket (only chat models carry size_bucket "small"/"large"); Fast
+    # passes size_bucket=None so image-gen / video models would otherwise
+    # leak in and dominate intelligence-floor checks via their Elo scores.
+    candidates = filter_by_category(catalog, "chat")
+    candidates = filter_paid(candidates)
     candidates = filter_by_size_bucket(candidates, size_bucket)
     candidates = filter_reachable(candidates, unreachable_ids or set())
+    if exclude_reasoning_models and reasoning_model_ids:
+        candidates = filter_exclude_reasoning(candidates, reasoning_model_ids)
     if vision_only:
         candidates = filter_vision(candidates)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
 
-    candidates = pareto_filter(candidates)
+    # Pareto-filter against (intelligence, cost). Skip for tokens_per_sec_desc
+    # selection — Pareto on intel/cost is the wrong frontier when speed is the
+    # axis, and leaves slow-but-Pareto-optimal models in the Fast fallback chain.
+    if sort_by != "tokens_per_sec_desc":
+        candidates = pareto_filter(candidates)
 
     loosening_notes: list[str] = []
     current_floor = floor_pct
     current_ceiling = cost_ceiling
 
-    sort_fn = (sort_by_intelligence_descending
-               if sort_by == "intelligence_desc"
-               else sort_by_cost_ascending)
+    if sort_by == "tokens_per_sec_desc":
+        sort_fn = lambda c: sort_by_tokens_per_sec_descending(c, tokens_per_sec or {})
+    elif sort_by == "intelligence_desc":
+        sort_fn = sort_by_intelligence_descending
+    else:
+        sort_fn = sort_by_cost_ascending
 
     for attempt in range(10):  # bound the loosening loop
         floored = apply_floor(candidates, current_floor)
@@ -279,15 +322,26 @@ def pick_for_free_slot(
     excluded_ids: set | None = None,
     vision_only: bool = False,
     unreachable_ids: set[str] | None = None,
+    sort_by: str = "intelligence_desc",
+    tokens_per_sec: dict[str, float] | None = None,
+    reasoning_model_ids: set[str] | None = None,
+    exclude_reasoning_models: bool = False,
 ) -> list[dict]:
-    """Pick top-N free models. No cost math; sort by intelligence descending.
+    """Pick top-N free models. No cost math.
+
+    ``sort_by`` defaults to ``intelligence_desc`` (the historical Free
+    behavior); Fast slot overrides to ``tokens_per_sec_desc``.
 
     size_bucket=None means "any free model" (Free preset doesn't require
     bucket conformance because free models are scarcer).
     """
     excluded_ids = excluded_ids or set()
-    candidates = filter_free(catalog)
+    # Same chat-category guard as pick_for_paid_slot — see comment there.
+    candidates = filter_by_category(catalog, "chat")
+    candidates = filter_free(candidates)
     candidates = filter_reachable(candidates, unreachable_ids or set())
+    if exclude_reasoning_models and reasoning_model_ids:
+        candidates = filter_exclude_reasoning(candidates, reasoning_model_ids)
     if size_bucket:
         # Soft filter — fall back to all free if bucket-conformance is empty
         bucketed = filter_by_size_bucket(candidates, size_bucket)
@@ -296,7 +350,11 @@ def pick_for_free_slot(
     if vision_only:
         candidates = filter_vision(candidates)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
-    candidates = pareto_filter(candidates)
+    # Same reason as pick_for_paid_slot: skip Pareto when selecting on speed.
+    if sort_by != "tokens_per_sec_desc":
+        candidates = pareto_filter(candidates)
+    if sort_by == "tokens_per_sec_desc":
+        return sort_by_tokens_per_sec_descending(candidates, tokens_per_sec or {})[:top_n]
     return sort_by_intelligence_descending(candidates)[:top_n]
 
 
@@ -410,6 +468,8 @@ def populate_configuration(
     presets_config: dict,
     vision_only: bool | None = None,
     unreachable_ids: set[str] | None = None,
+    tokens_per_sec: dict[str, float] | None = None,
+    reasoning_model_ids: set[str] | None = None,
 ) -> dict:
     """Compute the full configuration dict for a given preset.
 
@@ -457,6 +517,13 @@ def populate_configuration(
         # through the media picker, which sorts by Elo and ignores the
         # chat-only paid/free machinery. See pick_for_media_slot.
         slot_category = slot_spec.get("category")
+        # The slot_spec may override the preset's sort_by — Fast does this
+        # to force tokens_per_sec_desc across every preset. Same story for
+        # exclude_reasoning_models. size_bucket is optional; None means
+        # no parameter-bucket filter (Fast uses tps to bubble fast tier).
+        slot_sort_by = slot_spec.get("sort_by") or preset.get("sort_by", "cost_asc")
+        slot_exclude_reasoning = slot_spec.get("exclude_reasoning_models", False)
+        slot_size_bucket = slot_spec.get("size_bucket")
         for cell_name in slot_spec["cells"]:
             notes: list = []
             if slot_category and slot_category != "chat":
@@ -476,25 +543,32 @@ def populate_configuration(
             elif preset["mode"] == "free_intelligence":
                 picks = pick_for_free_slot(
                     catalog,
-                    size_bucket=slot_spec["size_bucket"],
+                    size_bucket=slot_size_bucket,
                     top_n=slot_spec["top_n"],
                     excluded_ids=excluded_so_far if diversity else None,
                     vision_only=effective_vision_only,
                     unreachable_ids=unreachable_ids,
+                    sort_by=slot_sort_by,
+                    tokens_per_sec=tokens_per_sec,
+                    reasoning_model_ids=reasoning_model_ids,
+                    exclude_reasoning_models=slot_exclude_reasoning,
                 )
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
             else:
                 picks, notes = pick_for_paid_slot(
                     catalog,
-                    size_bucket=slot_spec["size_bucket"],
+                    size_bucket=slot_size_bucket,
                     top_n=slot_spec["top_n"],
                     floor_pct=preset.get("floor_pct"),
                     cost_ceiling=preset.get("cost_ceiling_per_m"),
                     loosening=preset.get("loosening", False),
                     excluded_ids=excluded_so_far if diversity else None,
                     vision_only=effective_vision_only,
-                    sort_by=preset.get("sort_by", "cost_asc"),
+                    sort_by=slot_sort_by,
                     unreachable_ids=unreachable_ids,
+                    tokens_per_sec=tokens_per_sec,
+                    reasoning_model_ids=reasoning_model_ids,
+                    exclude_reasoning_models=slot_exclude_reasoning,
                 )
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
             if notes:
@@ -506,10 +580,26 @@ def populate_configuration(
     cells["utility"] = _pick("utility", slot_specs["utility"])
     cells["analysis"] = {
         "gear4": _pick("analysis.gear4", slot_specs["analysis.gear4"]),
-        "gear3": _pick("analysis.gear3", slot_specs["analysis.gear3"]),
     }
-    # gear3.breadth is null (sequential mode) — not auto-populated
-    cells["analysis"]["gear3"]["breadth"] = None
+
+    # Fast slot composition (2026-05-23 architecture). Primary → gear3.depth
+    # + utility.gear2_rag_lookup; secondary → gear3.breadth (when adversarial
+    # diversity is on; post-bake mirrors primary into breadth when off).
+    # When slot_specs.fast is absent, fall back to the legacy analysis.gear3
+    # path so older preset files keep working.
+    if "fast" in slot_specs:
+        import copy as _copy
+        fast_section = _pick("fast", slot_specs["fast"])
+        fast_primary = fast_section.get("primary")
+        fast_secondary = fast_section.get("secondary")
+        cells["analysis"]["gear3"] = {
+            "depth": fast_primary,
+            "breadth": fast_secondary,
+        }
+        cells["utility"]["gear2_rag_lookup"] = _copy.deepcopy(fast_primary)
+    else:
+        cells["analysis"]["gear3"] = _pick("analysis.gear3", slot_specs["analysis.gear3"])
+        cells["analysis"]["gear3"]["breadth"] = None
 
     cells["post_analysis"] = _pick("post_analysis", slot_specs["post_analysis"])
 
@@ -578,11 +668,14 @@ def main():
         print("[auto-populate] catalog is empty.", file=sys.stderr)
         sys.exit(1)
 
-    # Cross-reference the registry's reachability probe data to skip
-    # confirmed-unreachable models. Registry lives next to the catalog;
-    # missing or unread → empty set (no exclusions), so the script still
-    # runs cleanly on a fresh install before any probe has happened.
+    # Cross-reference the registry: reachability probe (skip unreachables),
+    # reasoning_model flag (excluded from Fast slot), and tokens/sec
+    # (Fast slot's primary sort key). Registry lives next to the catalog;
+    # missing or unread → empty defaults, so the script still runs cleanly
+    # on a fresh install before any sync has happened.
     unreachable_ids: set[str] = set()
+    reasoning_model_ids: set[str] = set()
+    tokens_per_sec: dict[str, float] = {}
     registry_path = CONFIG_DIR / "model-registry.json"
     if registry_path.exists():
         try:
@@ -591,15 +684,24 @@ def main():
             for mid, m in (registry.get("models") or {}).items():
                 if m.get("reachable") is False:
                     unreachable_ids.add(mid)
+                if m.get("reasoning_model") is True:
+                    reasoning_model_ids.add(mid)
+                tps = m.get("output_tokens_per_second")
+                if tps is not None:
+                    tokens_per_sec[mid] = float(tps)
             if unreachable_ids:
                 print(f"[auto-populate] skipping {len(unreachable_ids)} models flagged unreachable by the reachability probe.")
+            if reasoning_model_ids:
+                print(f"[auto-populate] {len(reasoning_model_ids)} reasoning models available for exclusion (Fast slot).")
         except Exception as exc:
-            print(f"[auto-populate] registry read failed (proceeding without reachability filter): {exc}", file=sys.stderr)
+            print(f"[auto-populate] registry read failed (proceeding without reachability/reasoning/tps filters): {exc}", file=sys.stderr)
 
     config = populate_configuration(
         args.preset, catalog, presets_config,
         vision_only=vision_override,
         unreachable_ids=unreachable_ids,
+        tokens_per_sec=tokens_per_sec,
+        reasoning_model_ids=reasoning_model_ids,
     )
     config["name"] = args.config_name
 

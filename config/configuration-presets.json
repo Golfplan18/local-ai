@@ -53,7 +53,15 @@
       "cells": ["depth"],
       "top_n": 3,
       "diversity_excluded": false,
-      "_note": "gear3.breadth stays null — sequential mode uses depth only."
+      "_note": "Retained for backward compatibility. The Fast slot owns gear3.depth + gear3.breadth in the new schema (2026-05-23) — populate_configuration skips this block when slot_specs.fast is present."
+    },
+    "fast": {
+      "cells": ["primary", "secondary"],
+      "top_n": 4,
+      "diversity_excluded": true,
+      "sort_by": "tokens_per_sec_desc",
+      "exclude_reasoning_models": true,
+      "_note": "Mid-tier speed-optimized slot. Primary → gear3.depth + utility.gear2_rag_lookup; secondary → gear3.breadth when adversarial diversity is on (mirrored from primary via post-bake when off). No size_bucket gate; sort_by tokens/sec handles selection. Reasoning models excluded — their thinking-overhead defeats the speed purpose. top_n=4 → 1 primary + 3 fallbacks per chain, mirror of analysis.gear4."
     },
     "post_analysis": {
       "size_bucket": "large",
