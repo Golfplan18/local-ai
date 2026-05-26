@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -195,9 +195,48 @@ Going deeper in Red Team (Advocate) means building the strongest case AGAINST th
 
 Widening the lens in advocate stance means scanning attack vectors the named audience would find compelling: optics and narrative angles (how would this look to someone primed to find fault); strategic considerations (what political, reputational, or coalitional damage is plausible); second-order blowback the audience cares about (who or what reacts to the artifact's deployment in ways the audience would weigh); abuse vectors that resonate with the audience's prior concerns. Audience-modelling is load-bearing here: every attack carries a "lands hardest with [audience] because…" annotation. Same no-fabrication discipline as Depth — every attack requires artifact-specific grounding, not hypothetical pressure that doesn't anchor in what the artifact actually says. The breadth pass also surfaces the concessions the advocate must preempt: what the audience will recognise as the artifact's strongest defence, which the brief must address head-on rather than ignore.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the six critical questions: (CQ1) audience-model accuracy; (CQ2) persuasive-force calibration; (CQ3) no-fabrication discipline; (CQ4) framework-vs-artifact discipline; (CQ5) concession honesty; (CQ6) override-flag presence when override invoked. The named failure modes (cynical-overreach, straw-target-trap, audience-misalignment, no-fabrication-violation, sycophantic-inverse-trap, framework-attack-trap, manufacture-on-revise-trap, fabricated-override-trap) are the evaluation checklist. A passing Red Team (Advocate) output has stance declared at top ("Stance: advocate"), audience model named in opening section, every attack tagged with Persuasive Force (Devastating/Strong/Plausible) and Surface (Internal/External) and grounded in the artifact's actual content, suggested phrasing per attack in the audience's idiom, residual uncertainties named, concessions section preempting the strongest counter-moves, and strategic considerations naming political/reputational/coalitional dimensions the audience cares about.
+**What this analysis is.** Red Team (Advocate) builds the strongest case AGAINST a named artifact for an external audience — debate prep, hostile-review prep, dissuasion brief. Attacks rank by *persuasive force* with the named audience (Devastating / Strong / Plausible), not by severity for the user's own fix; suggested phrasing per attack lands in the audience's idiom; concessions preempt the audience's strongest counter-moves. It is distinct from red-team-assessment (the same territory's counterpart — ranks vulnerabilities by severity for the user's own fix-prioritisation; assessment is the safer default when ambiguous), from steelman-construction (direct opposite — strongest case FOR the artifact), and from T7 pre-mortem-fragility (audits structural fragility regardless of adversary presence; advocate models a hostile actor for a specific audience).
+
+**Procedure.**
+
+1. Run the Input Sufficiency Protocol before attacking — identifiable artifact, bounded scope, sufficient specificity, audience identifiable; emit a three-part redirect rather than attacking thin material.
+2. Declare stance at top: `Stance: advocate.`
+3. Model the named external audience — frame, priorities, persuasion pathways; suggested phrasing reads in their idiom, not the analyst's voice.
+4. Restate the artifact in brief with quotes where possible — attacks anchor here.
+5. Build attacks grounded in the artifact's actual content (no-fabrication discipline) — hidden assumptions the audience would reject, understated costs they care about, missing stakeholders they will notice, internal logical gaps, steps that assume away the hard part.
+6. Apply the sycophantic-inverse self-check — would a committed opponent actually argue this in front of the named audience? Drop attacks that fail.
+7. Calibrate persuasive force honestly (Devastating > Strong > Plausible) — deflate cynical overreach; a brief built on inflated claims will fail and erode the user's credibility.
+8. Tag each attack with Surface (Internal — logic flaw; External — empirical / optical / strategic) and a "lands hardest with [audience] because…" annotation.
+9. Generate suggested phrasing per attack in the audience's idiom.
+10. Preempt the strongest counter-moves with concessions — a brief without concessions gets ambushed by the audience's obvious reply.
+11. Surface strategic considerations — political, reputational, coalitional dimensions the audience cares about.
+12. When framework-level critique drifts in, flag it and surface paradigm-suspension as the sideways-route.
+
+**Goal.** Produce an adversarial advocate brief — a structured case AGAINST the artifact, ranked by persuasive force for the named external audience, with suggested phrasing in the audience's idiom and concessions preempting the strongest counter-moves.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — audience-model accuracy.** Does the audience model capture the audience's actual frame, priorities, and persuasion pathways, or is it a generic "critic" construct? Failure mode if unmet: `audience-misalignment`.
+- **CQ2 — persuasive-force calibration.** Is persuasive-force calibration honest, or have weak attacks been promoted to "devastating" to inflate the brief's apparent power? Failure mode if unmet: `cynical-overreach`.
+- **CQ3 — no fabrication.** Does every attack stay grounded in the artifact's actual content — no fabrication, no straw-target distortion? Failure mode if unmet: `straw-target-trap`.
+- **CQ4 — framework-vs-artifact discipline.** Does the brief stay within the artifact's framework, or drift into framework-level critique that belongs to paradigm-suspension? Failure mode if unmet: `framework-attack-trap`.
+- **CQ5 — concession honesty.** Are concessions honestly named (preempting the strongest counter-moves) rather than omitted to make the brief look one-sided? Failure mode if unmet: `cynical-overreach`.
+- **CQ6 — override flag.** If Input Sufficiency override was invoked, is every attack flagged as low-specificity / generic? Failure mode if unmet: `fabricated-override-trap`.
+
+A passing output has stance declared at top ("Stance: advocate"), audience model named in opening section, every attack tagged with Persuasive Force (Devastating/Strong/Plausible) and Surface (Internal/External) and grounded in the artifact's actual content, suggested phrasing per attack in the audience's idiom, residual uncertainties named, concessions section preempting the strongest counter-moves, and strategic considerations naming political/reputational/coalitional dimensions the audience cares about.
+
+**Named failure modes.**
+
+- *cynical-overreach* — weak attacks framed as "devastating" to inflate the brief; persuasive-force calibration dishonest; concessions omitted to make the brief look one-sided.
+- *straw-target-trap* — attack targets a weakened version of the artifact; doesn't apply to artifact as written. Critical failure for advocate stance.
+- *audience-misalignment* — attacks ranked by what would persuade a generic "critic" rather than the named audience; phrasing in analyst voice rather than audience idiom.
+- *no-fabrication-violation* — attack rests on a claim the artifact does not actually make, or on capabilities/intentions the artifact does not actually have.
+- *sycophantic-inverse-trap* — performing hostility rather than analysing; attacks fail the "would a committed opponent actually use this" check.
+- *framework-attack-trap* — brief drifts into critique of the framework the artifact rests on rather than the artifact within it.
+- *manufacture-on-revise-trap* — reviser added attacks without new evidence; sycophantic-inverse drift at revision stage.
+- *fabricated-override-trap* — override invoked but attacks not flagged as low-specificity / generic; user loses signal that the brief was built on thin material.
 
 ## REVISION GUIDANCE
 

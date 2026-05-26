@@ -1,0 +1,49 @@
+{
+  "series_id": "NETEXP",
+  "observations": [
+    {
+      "date": "2021-10-01",
+      "value": -924.289
+    },
+    {
+      "date": "2022-01-01",
+      "value": -1089.677
+    },
+    {
+      "date": "2022-04-01",
+      "value": -1025.567
+    },
+    {
+      "date": "2022-07-01",
+      "value": -892.026
+    },
+    {
+      "date": "2022-10-01",
+      "value": -877.204
+    },
+    {
+      "date": "2023-01-01",
+      "value": -825.687
+    },
+    {
+      "date": "2023-04-01",
+      "value": -806.093
+    },
+    {
+      "date": "2023-07-01",
+      "value": -784.581
+    }
+  ],
+  "metadata": {
+    "id": "NETEXP",
+    "title": "Net Exports of Goods and Services",
+    "units": "Billions of Dollars",
+    "units_short": "Bil. of $",
+    "frequency": "Quarterly",
+    "frequency_short": "Q",
+    "seasonal_adjustment": "Seasonally Adjusted Annual Rate",
+    "last_updated": "2023-10-26 07:55:08-05",
+    "notes": "BEA Account Code: A019RC\n\nA Guide to the National Income and Product Accounts of the United States (NIPA) - (http://www.bea.gov/national/pdf/nipaguid.pdf)"
+  },
+  "retrieved_at": "2026-05-16T03:23:26-0700"
+}

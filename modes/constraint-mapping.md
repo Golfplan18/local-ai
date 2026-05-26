@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -146,25 +146,42 @@ Depth in Constraint Mapping is the testability of success and failure conditions
 
 Breadth in Constraint Mapping is the catalog of alternatives, including any the user has not named. Widen the lens to identify ≥3 alternatives (or 2 in genuinely binary cases), generate hybrid or sequencing strategies, and surface no-lose elements (actions valuable regardless of choice). Breadth markers: alternatives include at least one the user did not initially name; at least one no-lose element is identified; hybrid or sequencing options are considered.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Constraint Mapping is read in the light decision-theoretic tradition — Rumelt strategy-kernel framing where alternatives are strategic options, plus the strategic 2×2 matrix tradition where alternatives plot on orthogonal criteria, with Knightian risk-vs-uncertainty distinctions for the conditions under which constraint mapping (deterministic) is the right mode rather than decision-under-uncertainty (probabilistic). The evaluator's primary axis is whether the deliverable is mapping the terrain or making the choice. CQ4 (choice-collapse) is load-bearing — the mode's contract is to map, not decide. CQ2 (advocacy-asymmetry) is also load-bearing because asymmetric depth across alternatives is the analyst tilting the map. CQ1 (false-dichotomy) and CQ3 (missed-no-lose) act as breadth gates; the unnamed abstraction-trap acts as a specificity gate.
+**What this analysis is.** Constraint Mapping is a light, deterministic decision-terrain mapping — alternatives are enumerated, each carries a parallel four-slot analysis (success conditions / failure conditions / uniquely gained / forfeited) with testable propositions, and no-lose elements are surfaced. It is distinct from decision-under-uncertainty (probability-and-time-weighted depth-thorough sibling), multi-criteria-decision (multi-criteria weighting complexity sibling), decision-architecture (depth-molecular sibling integrating stakeholders + risk), and benefits-analysis (evaluates ONE proposal, not a choice among alternatives). Its contract is mapping the terrain, not making the choice — choice-collapse is the load-bearing failure mode.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Choice abstention (CQ4, load-bearing).** The recommendation slot must be empty unless the user explicitly asked for a final choice. Phrasings like "the best option appears to be," "I would recommend," "the clear winner is" are choice-collapse residue — the analyst has slipped from mapping into deciding. The deliverable presents the terrain; the user makes the choice. When asked for a recommendation, the slot is populated explicitly; when not, the slot carries an explicit empty-with-reason atom rather than silent omission.
+1. State the decision and its constraints once at the head — hard (must-satisfy) and soft (would-prefer-to-satisfy), each labelled.
+2. Enumerate alternatives — at least three (or two in genuinely binary cases with explicit pro/con-form tag and reason). At least one alternative must be analyst-generated to widen the option space beyond what the user brought.
+3. For each alternative render four parallel slots:
+   - success conditions — testable propositions with threshold or observable, never vague abstractions ("completes within 90 days at ≤$50K," not "improves efficiency")
+   - failure conditions — testable propositions naming what would falsify success
+   - uniquely gained — what this alternative provides that others do not
+   - forfeited — what this alternative costs that others retain
+4. Render the four slots at parallel analytical depth across alternatives. Asymmetric depth (one alternative noticeably deeper than others) is the analyst tilting the map; honest asymmetry (an alternative genuinely thinner because less viable) is named explicitly rather than padded.
+5. Surface no-lose elements — actions valuable regardless of which alternative is chosen. Each passes the cross-alternative-applicability check (valuable under A1 *and* A2 *and* A3); single-alternative items are misclassified gains.
+6. Choose a comparison format with reason — strategic 2×2 (orthogonal criteria), four-quadrant per-alternative table (four slots as grid), or pro/con tree (binary). Default-choice without case-fit reason is its own failure.
+7. Identify cross-alternative differentiating factors — the dimensions on which alternatives diverge most sharply.
+8. Leave the recommendation slot empty unless the user explicitly asked for a final choice. Phrasings like "the clear winner is" are choice-collapse residue.
 
-2. **Symmetric analytical depth (CQ2, load-bearing).** Each alternative carries the same four parallel slots (success conditions / failure conditions / uniquely gained / forfeited), and they render at parallel depth. Advocacy-asymmetry — one alternative analysed at noticeably greater depth than others — is the analyst tilting the map toward a preferred option without saying so. The evaluator's check: do the four slots for each alternative carry comparable substance, or does one alternative read like a recommendation in disguise? When asymmetry is honest (an alternative is genuinely thinner because less viable), the deliverable names the reason explicitly rather than padding the thin alternative or silently leaning on the deep one.
+**Goal.** Produce a structured matrix of alternatives with per-alternative four-slot analysis at parallel depth, surfaced no-lose elements, format-justified comparison, and an explicit empty recommendation slot unless the user requested a choice.
 
-3. **Testable conditions, not vague abstractions.** Each success condition and failure condition must be stated as a testable proposition with threshold or observable — "completes within 90 days at ≤$50K" rather than "improves efficiency." Abstraction-trap residue is conditions that could not be falsified by any specific observation. The test: could each condition's satisfaction or violation be settled by data the user could in principle obtain? If not, the condition is reshaped.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Alternative breadth (CQ1).** At minimum three alternatives must survive (or two in genuinely binary cases with an explicit pro/con-form tag and reason). At least one alternative should be analyst-generated rather than user-named — the breadth marker that the analyst widened the option space beyond what the user brought. False-dichotomy is the failure mode; a two-alternative analysis when three viable options exist has narrowed the choice prematurely.
+- **CQ1 — alternative breadth.** Are at least three alternatives mapped, including any the user has not named? Failure mode if unmet: `false-dichotomy`.
+- **CQ2 — symmetric analytical depth.** Are success and failure conditions stated as testable propositions for each alternative, with identical analytical depth across alternatives? Failure mode if unmet: `advocacy-asymmetry`.
+- **CQ3 — no-lose elements surfaced.** Have no-lose elements (actions valuable regardless of which alternative is chosen) been surfaced explicitly? Failure mode if unmet: `missed-no-lose`.
+- **CQ4 — choice abstention (load-bearing).** Does the mode map the choice terrain without making the choice for the user, unless explicitly asked? Failure mode if unmet: `choice-collapse`.
 
-5. **No-lose elements surfaced (CQ3).** No-lose elements are actions valuable regardless of which alternative is chosen — they cut across the choice and let the user act before deciding. At minimum one no-lose element must be named, or the deliverable says explicitly that none exist. Test: does each named no-lose element pass the cross-alternative-applicability check (it's valuable under A1 *and* A2 *and* A3, not just under one)? Single-alternative items mis-tagged as no-lose are misclassified gains.
+A passing output maps ≥3 alternatives (including ≥1 analyst-generated), states each success/failure condition as a testable proposition with threshold or observable, renders the four slots at parallel depth across alternatives, surfaces ≥1 no-lose element passing the cross-applicability check, names the format choice with reason, and leaves the recommendation slot empty unless the user requested a final choice.
 
-6. **Format-choice grounded.** The cross-alternative comparison renders as one of three forms (strategic 2×2 grid when alternatives plot on orthogonal criteria, four-quadrant per-alternative table when the four slots are the grid, or pro/con tree when binary). The deliverable names the chosen format with a reason — why this form fits this case better than the alternatives. Format chosen by default rather than by case-fit is its own failure of methodology.
+**Named failure modes.**
 
-Confidence is per-alternative when relevant — alternatives whose viability rests on weaker information bases carry that confidence marker explicitly. Where streams disagreed on which alternative is dominant or which format fits, the evaluator confirms the disagreements are preserved as parallel atoms rather than silently picked.
+- *false-dichotomy* — only two alternatives mapped when ≥3 are viable, or a binary framing masks the option space.
+- *advocacy-asymmetry* — one alternative receives substantially deeper analysis than others.
+- *abstraction-trap* — success or failure conditions stated as vague abstractions, not testable propositions with thresholds or observables.
+- *choice-collapse* — mode delivers a single recommended alternative when the user asked for the terrain mapped.
 
 ## REVISION GUIDANCE
 

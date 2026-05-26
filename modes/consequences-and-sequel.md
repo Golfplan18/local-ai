@@ -6,7 +6,7 @@ tags:
   - framework/instruction
   - architecture
 date created: 2026-04-17
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -162,9 +162,44 @@ Depth in Consequences and Sequel is the cascade's depth in causal levels — fir
 
 Breadth in Consequences and Sequel is the catalog of branches considered — including branches the proposer would not name. Widen the lens by scanning: which domains the cascade crosses (an action in one domain often produces effects in others); which constituencies experience effects the proposer has not framed as effects; which feedback loops appear (and trigger SD handoff); which unintended consequences emerge from the structure rather than from the action's intent. Breadth markers: at least one cross-domain effect is named, at least one unintended consequence is surfaced, and time horizons span at least three of the four bands.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) third-order reached on at least one branch; (CQ2) mechanism stated per link; (CQ3) time horizons distributed; (CQ4) unintended consequences surfaced; (CQ5) feedback loops flagged for SD handoff rather than emitted as DAG. The named failure modes are the evaluation checklist. A passing Consequences and Sequel output reaches third order on at least one branch, states a mechanism for every link, distributes effects across at least three time horizons, names at least one unintended consequence, and either contains no cycles or has flagged the cycle and proposed handoff.
+**What this analysis is.** Consequences and Sequel applies de Bono's C&S — forward causal-cascade tracing from an action or event through immediate-through-third-order effects, with mechanism-per-link discipline, time-horizon distribution, and explicit distinction between intended and unintended consequences. It is distinct from probabilistic-forecasting (probability-weighted depth-thorough sibling), scenario-planning (narrative-output depth-thorough sibling), pre-mortem-action (stance-adversarial, forward-on-plan), and systems-dynamics-causal (circular feedback is the defining structure). The mode's load-bearing constraint is acyclicity — when a cycle appears, hand off to systems-dynamics rather than force the cycle into a DAG.
+
+**Procedure.**
+
+1. State the action or event being traced forward once at the root.
+2. Enumerate first-order consequences — direct effects of the action; each carries time-horizon tag (immediate / short / medium / long), reinforcing-vs-counteracting tag, and intent tag (intended-by-proposer / unintended).
+3. Extend each first-order effect into second-order — each effect becomes a cause; what does it then produce?
+4. Continue at least one branch into third-order — the third-order discipline distinguishes a real cascade from an enumeration of immediate effects.
+5. State a mechanism per link — every edge from parent to child carries an explicit `mechanism:` phrase. Links without mechanism are association-without-mechanism residue and do not survive.
+6. Distribute effects across time horizons — at least three of the four bands (immediate / short / medium / long); single-horizon analyses miss the cascade's temporal structure.
+7. Distinguish reinforcing (amplifying) from counteracting (dampening) branches — uniform direction is reinforcing-counteracting-collapse.
+8. Surface unintended consequences — effects outside the proposer's stated goal frame.
+9. Name cross-domain crossings — when the cascade traverses domains (technical → economic → social), the crossing itself is an atom with mechanism.
+10. Identify leading indicators per major branch — the near-term signal that would reveal the cascade is unfolding as projected.
+11. When a cycle is detected, suppress the DAG emission and propose handoff to systems-dynamics-causal rather than falsifying the structure.
+
+**Goal.** Produce a directed acyclic cascade map rooted at the action or event, with mechanism-per-edge, time-horizon-per-node, third-order reach on at least one branch, surfaced unintended consequences, and explicit cycle-handoff when feedback is detected.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — third-order reach.** Has the cascade reached at least third order on at least one branch, or has it stopped at first-order effects? Failure mode if unmet: `first-order-stop`.
+- **CQ2 — mechanism per link.** Does every causal link state a mechanism, or are some links assertions of association without explanation? Failure mode if unmet: `association-without-mechanism`.
+- **CQ3 — time-horizon distribution.** Are effects distributed across time horizons (immediate / short / medium / long), or are they all at one horizon? Failure mode if unmet: `single-horizon`.
+- **CQ4 — unintended consequences.** Are unintended consequences — effects outside the proposer's stated goal — surfaced and distinguished from intended effects? Failure mode if unmet: `intended-effects-only`.
+- **CQ5 — feedback handoff.** If any link returns influence to an earlier node, has the analysis flagged the feedback loop and proposed handoff to systems-dynamics-causal/structural rather than masquerading the cycle as a DAG? Failure mode if unmet: `feedback-collapse`.
+
+A passing output reaches third order on at least one branch with mechanism per link, distributes effects across at least three time horizons, names at least one unintended consequence, distinguishes reinforcing from counteracting branches, identifies leading indicators per major branch, and either contains no cycles or has flagged the cycle and proposed SD handoff.
+
+**Named failure modes.**
+
+- *first-order-stop* — cascade names immediate effects only; no second- or third-order branch is traced.
+- *association-without-mechanism* — causal links assert X → Y without naming the mechanism by which X produces Y.
+- *single-horizon* — all effects sit at one time horizon.
+- *intended-effects-only* — cascade traces only the proposer's stated goals; no effect outside the goal frame is named.
+- *feedback-collapse* — cycle present in the cascade but emitted as if linear; no SD handoff proposed.
+- *reinforcing-counteracting-collapse* — all branches are amplifying or all dampening; no distinction drawn.
 
 ## REVISION GUIDANCE
 

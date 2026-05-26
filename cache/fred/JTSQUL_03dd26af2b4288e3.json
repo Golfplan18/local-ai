@@ -1,0 +1,113 @@
+{
+  "series_id": "JTSQUL",
+  "observations": [
+    {
+      "date": "2024-04-01",
+      "value": 3438.0
+    },
+    {
+      "date": "2024-05-01",
+      "value": 3386.0
+    },
+    {
+      "date": "2024-06-01",
+      "value": 3280.0
+    },
+    {
+      "date": "2024-07-01",
+      "value": 3359.0
+    },
+    {
+      "date": "2024-08-01",
+      "value": 3240.0
+    },
+    {
+      "date": "2024-09-01",
+      "value": 3123.0
+    },
+    {
+      "date": "2024-10-01",
+      "value": 3215.0
+    },
+    {
+      "date": "2024-11-01",
+      "value": 3050.0
+    },
+    {
+      "date": "2024-12-01",
+      "value": 3085.0
+    },
+    {
+      "date": "2025-01-01",
+      "value": 3203.0
+    },
+    {
+      "date": "2025-02-01",
+      "value": 3153.0
+    },
+    {
+      "date": "2025-03-01",
+      "value": 3456.0
+    },
+    {
+      "date": "2025-04-01",
+      "value": 3144.0
+    },
+    {
+      "date": "2025-05-01",
+      "value": 3287.0
+    },
+    {
+      "date": "2025-06-01",
+      "value": 3254.0
+    },
+    {
+      "date": "2025-07-01",
+      "value": 3132.0
+    },
+    {
+      "date": "2025-08-01",
+      "value": 3095.0
+    },
+    {
+      "date": "2025-09-01",
+      "value": 2990.0
+    },
+    {
+      "date": "2025-10-01",
+      "value": 2980.0
+    },
+    {
+      "date": "2025-11-01",
+      "value": 3119.0
+    },
+    {
+      "date": "2025-12-01",
+      "value": 3225.0
+    },
+    {
+      "date": "2026-01-01",
+      "value": 3131.0
+    },
+    {
+      "date": "2026-02-01",
+      "value": 3046.0
+    },
+    {
+      "date": "2026-03-01",
+      "value": 3171.0
+    }
+  ],
+  "metadata": {
+    "id": "JTSQUL",
+    "title": "Quits: Total Nonfarm",
+    "units": "Level in Thousands",
+    "units_short": "Level in Thous.",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2026-05-05 09:09:57-05",
+    "notes": ""
+  },
+  "retrieved_at": "2026-05-25T05:17:12-0700"
+}

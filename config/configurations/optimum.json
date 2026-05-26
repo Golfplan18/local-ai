@@ -1,0 +1,126 @@
+{
+  "name": "optimum",
+  "description": "Auto-populated from preset 'optimum' on 2026-05-26T22:37:46.667568+00:00.",
+  "preset_lineage": "optimum",
+  "cells": {
+    "utility": {
+      "step1_cleanup": {
+        "primary": "openai/gpt-5.4-nano",
+        "fallback": [
+          "openai/gpt-5.4-mini"
+        ],
+        "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+      },
+      "classification": {
+        "primary": "openai/gpt-5.4-nano",
+        "fallback": [
+          "openai/gpt-5.4-mini"
+        ],
+        "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+      },
+      "rag_planner": {
+        "primary": "openai/gpt-5.4-nano",
+        "fallback": [
+          "openai/gpt-5.4-mini"
+        ],
+        "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+      },
+      "gear2_rag_lookup": {
+        "primary": "qwen/qwen3.5-plus-20260420",
+        "fallback": [
+          "qwen/qwen3.5-plus-02-15",
+          "anthropic/claude-opus-4.5",
+          "anthropic/claude-sonnet-4.6"
+        ],
+        "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+      }
+    },
+    "analysis": {
+      "gear4": {
+        "depth": {
+          "primary": "qwen/qwen3.6-plus",
+          "fallback": [
+            "google/gemini-3.1-pro-preview-customtools",
+            "google/gemini-3.1-pro-preview",
+            "anthropic/claude-opus-4.7"
+          ],
+          "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+        },
+        "breadth": {
+          "primary": "qwen/qwen3.6-plus",
+          "fallback": [
+            "google/gemini-3.1-pro-preview-customtools",
+            "google/gemini-3.1-pro-preview",
+            "anthropic/claude-opus-4.7"
+          ],
+          "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+        }
+      },
+      "gear3": {
+        "depth": {
+          "primary": "qwen/qwen3.5-plus-20260420",
+          "fallback": [
+            "qwen/qwen3.5-plus-02-15",
+            "anthropic/claude-opus-4.5",
+            "anthropic/claude-sonnet-4.6"
+          ],
+          "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+        },
+        "breadth": {
+          "primary": "qwen/qwen3.5-plus-20260420",
+          "fallback": [
+            "qwen/qwen3.5-plus-02-15",
+            "anthropic/claude-opus-4.5",
+            "anthropic/claude-sonnet-4.6"
+          ],
+          "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+        }
+      }
+    },
+    "post_analysis": {
+      "consolidation": {
+        "primary": "qwen/qwen3.6-plus",
+        "fallback": [
+          "google/gemini-3.1-pro-preview-customtools",
+          "google/gemini-3.1-pro-preview"
+        ],
+        "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+      },
+      "verification": {
+        "primary": "qwen/qwen3.6-plus",
+        "fallback": [
+          "google/gemini-3.1-pro-preview-customtools",
+          "google/gemini-3.1-pro-preview"
+        ],
+        "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+      },
+      "formatter": {
+        "primary": "qwen/qwen3.6-plus",
+        "fallback": [
+          "google/gemini-3.1-pro-preview-customtools",
+          "google/gemini-3.1-pro-preview"
+        ],
+        "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
+      }
+    },
+    "image_generation": {
+      "image_generation": {
+        "primary": "aa-img:0413f436-9aa3-4f92-aa34-9432841c1830",
+        "fallback": [
+          "aa-img:db7a9087-0b50-41f8-ac41-fb48db3aa459"
+        ]
+      }
+    }
+  },
+  "_auto_populate_metadata": {
+    "preset": "optimum",
+    "vision_only": true,
+    "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct",
+    "loosening_log": {},
+    "catalog_models_considered": 579
+  },
+  "toggles": {
+    "adversarial_diversity": false,
+    "vision_only": true
+  }
+}

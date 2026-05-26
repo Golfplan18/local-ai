@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -190,9 +190,47 @@ Depth in Place Reading is the rigor with which six analytical operations are int
 
 Widening the lens means scanning across the six tradition-clusters before narrowing (prospect-refuge / pattern-language / Lynchian / restorative / genius loci / Bachelardian); considering the place at multiple scales (room, building, urban, landscape — affordances at one scale may conflict with affordances at another); considering temporal variation (lighting, seasons, time-of-day, social occupancy patterns); considering inhabitant variation (different stature, ability, age, culture, expertise, expectation); and considering the place's history (designed-for vs. inherited-and-adapted; contested-place readings where multiple communities claim or contest the place). Breadth markers: at least three of the six tradition-clusters are addressed substantively; the place is considered at least at its primary scale and one adjacent scale; at least one inhabitant-variation test is run (would this affordance change for a child / elder / wheelchair user / cultural visitor?).
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the six critical questions: (CQ1) affordances grounded in spatial features not analyst projection; (CQ2) reading survives different inhabitant vantage; (CQ3) prospect-refuge supported by spatial warrant not asserted as label; (CQ4) reading produces testable behavioral predictions not sentiment-only; (CQ5) genius loci treated as gestalt not aggregate; (CQ6) limits acknowledged. The named failure modes are the evaluation checklist. A passing Place Reading output addresses the six tradition-clusters substantively, grounds affordances in concrete spatial features, predicts observable behavior, articulates genius loci as character-of-place gestalt where warranted, names design affordance recommendations keyed to specific spatial features, and offers counter-readings where the place admits multiple legitimate readings.
+**What this analysis is.** Place Reading is the descriptive-evaluative-deep reading of an inhabited or inhabitable space, integrating six tradition-clusters (prospect-refuge per Appleton; pattern-language per Alexander; Lynchian legibility; ART/biophilic per Kaplan & Kellert; genius loci per Norberg-Schulz; Bachelardian topoanalysis) to produce defeasible affordance predictions — testable claims about how the space will be inhabited, what activities it supports or refuses, who will linger where, whether it will be restorative or depleting. It is distinct from ma-reading (contemplative-descriptive-deep aesthetic-experiential reading of held-open void), compositional-dynamics (universal-perceptual gestalt reading without affordance prediction), and information-density (Tufte / Bertin data-encoding analysis). The mode is descriptive of place character but evaluative in producing predictions and design recommendations — it lives between aesthetic reading and root-cause investigation, with stance defeasible throughout.
+
+**Procedure.**
+
+1. Name the place and lock its scale (room / building / garden / neighbourhood / landscape) plus intended inhabitation context and any temporal or cultural conditions that shape the reading.
+2. Map prospect-refuge-hazard balance — specific sightline geometry (prospect), specific enclosure positions (refuge), specific hazards mitigated or unmitigated; warrant each with concrete spatial features, not labels.
+3. Survey active pattern-language patterns — light-on-two-sides, sitting-circle, intimacy-gradient, alcoves, window-place, etc. — checking the (context, problem, solution) triple per pattern; flag presence, absence, or violation.
+4. Assess Lynchian legibility — identify paths, edges, districts, nodes, landmarks by the cognitive-mapping role they play for an actual user (not mechanical pattern-match); render an overall legibility verdict.
+5. Apply ART vocabulary — being-away, extent, compatibility, soft fascination — plus biophilic-pattern presence where applicable, grounded in concrete features.
+6. Articulate genius loci as gestalt (Norberg-Schulz qualitative-total character) with orientation and identification assessed; or mark explicitly as `not-yet-coherent` if the place lacks unified character.
+7. Where applicable, render Bachelardian topoanalysis of intimate-space features (corner, miniature, intimate immensity, nest, shell); mark `not-applicable` where scale or character doesn't invite it.
+8. Produce testable behavioral predictions — where people will linger / pass through / cluster, what activities are supported, restorative-vs-depleting effect, with the observable signal that would confirm or refute each prediction.
+9. Run the inhabitant-variation test — would affordances change for a child / elder / wheelchair user / cultural visitor / inhabitant of different stature, ability, or expertise from the analyst's default?
+10. Generate design affordance recommendations keyed to specific spatial features, with tradeoffs.
+11. Preserve counter-readings where the place legitimately admits multiple readings (contested-place, conflicting affordances across scales, multiple cultural vantages); name falsifiability conditions per major claim.
+
+**Goal.** Produce a place reading-with-affordance-predictions that walks the six tradition-clusters on a named place, grounds every claim in concrete spatial features, predicts testable inhabitation behaviours, articulates genius loci as gestalt where warranted, and surfaces counter-readings and inhabitant-vantage variation where the place admits them.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — affordance grounding.** Are the proposed affordances grounded in concrete spatial features (dimensions, sightlines, light, materials, thresholds, edges, scale), or projected by the analyst's preferences without spatial warrant? Failure mode if unmet: `analyst-projection`.
+- **CQ2 — inhabitant-vantage robustness.** Does the reading survive an inhabitant of different stature, ability, age, or cultural vantage from the analyst's default? Failure mode if unmet: `default-inhabitant-bias`.
+- **CQ3 — prospect-refuge warrant.** Is the prospect-refuge analysis evidentially supported by spatial features (specific sightlines, refuge positions, hazard mitigation), or asserted as a label? Failure mode if unmet: `prospect-refuge-as-label`.
+- **CQ4 — testable predictions.** Does the reading produce predictions of observable behavior (lingering, avoidance, restoration, conversation-clustering, path-choice), or only sentiment statements that cannot be tested against use? Failure mode if unmet: `sentiment-only-reading`.
+- **CQ5 — gestalt vs aggregate.** Has the genius loci / character-of-place reading been treated as a gestalt (qualitative-total phenomenon per Norberg-Schulz) rather than as an aggregate of features? Failure mode if unmet: `aggregate-as-gestalt`.
+- **CQ6 — limits acknowledged.** Has the reading acknowledged the limits — contested-place readings, conflicting affordances at different scales, cultural-context dependence — rather than asserting a unified reading the place does not support? Failure mode if unmet: `unified-reading-overreach`.
+
+A passing output addresses the six tradition-clusters substantively (not as a checkbox), grounds every affordance in concrete spatial features, predicts observable behavior with the test signal named, articulates genius loci as gestalt where warranted (or marks `not-yet-coherent`), produces at least three design affordance recommendations keyed to specific features, surfaces at least one counter-reading or limit-acknowledgment, and runs at least one inhabitant-vantage variation test.
+
+**Named failure modes.**
+
+- *analyst-projection* — affordances asserted without grounding in concrete spatial features; analyst preferences appear as place properties.
+- *default-inhabitant-bias* — reading assumes a default inhabitant (typically able-bodied, adult, of the analyst's culture); does not test whether affordances change for other stature / ability / cultural vantage.
+- *prospect-refuge-as-label* — prospect-refuge labels applied without specific sightlines, refuge positions, hazard mitigation; the framework is invoked rather than applied.
+- *sentiment-only-reading* — sentiment statements (this space feels welcoming / oppressive / serene) without predictions of observable behavior that could be tested.
+- *aggregate-as-gestalt* — genius loci section lists features rather than articulating the qualitative-total character; or asserts character without showing how features compose into it.
+- *unified-reading-overreach* — reading asserts a unified character / set of affordances the place does not support; conflicting affordances, contested readings, cultural-context limits not acknowledged.
+- *pattern-misapplication* — pattern-language patterns invoked without showing the (context, problem, solution) triple matches the space; pattern names used as decoration.
+- *lynchian-element-confusion* — Lynch's five elements misapplied (any boundary treated as edge, any centre as node) without identifying the cognitive-mapping role the element plays for an actual user.
 
 ## REVISION GUIDANCE
 

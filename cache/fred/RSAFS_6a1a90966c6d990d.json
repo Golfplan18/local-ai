@@ -1,0 +1,109 @@
+{
+  "series_id": "RSAFS",
+  "observations": [
+    {
+      "date": "2024-01-01",
+      "value": 680456.0
+    },
+    {
+      "date": "2024-02-01",
+      "value": 685280.0
+    },
+    {
+      "date": "2024-03-01",
+      "value": 687641.0
+    },
+    {
+      "date": "2024-04-01",
+      "value": 687602.0
+    },
+    {
+      "date": "2024-05-01",
+      "value": 692774.0
+    },
+    {
+      "date": "2024-06-01",
+      "value": 692449.0
+    },
+    {
+      "date": "2024-07-01",
+      "value": 698835.0
+    },
+    {
+      "date": "2024-08-01",
+      "value": 697039.0
+    },
+    {
+      "date": "2024-09-01",
+      "value": 703055.0
+    },
+    {
+      "date": "2024-10-01",
+      "value": 708290.0
+    },
+    {
+      "date": "2024-11-01",
+      "value": 712175.0
+    },
+    {
+      "date": "2024-12-01",
+      "value": 717662.0
+    },
+    {
+      "date": "2025-01-01",
+      "value": 711461.0
+    },
+    {
+      "date": "2025-02-01",
+      "value": 711757.0
+    },
+    {
+      "date": "2025-03-01",
+      "value": 722572.0
+    },
+    {
+      "date": "2025-04-01",
+      "value": 721789.0
+    },
+    {
+      "date": "2025-05-01",
+      "value": 716101.0
+    },
+    {
+      "date": "2025-06-01",
+      "value": 723033.0
+    },
+    {
+      "date": "2025-07-01",
+      "value": 727727.0
+    },
+    {
+      "date": "2025-08-01",
+      "value": 731700.0
+    },
+    {
+      "date": "2025-09-01",
+      "value": 732192.0
+    },
+    {
+      "date": "2025-10-01",
+      "value": 731412.0
+    },
+    {
+      "date": "2025-11-01",
+      "value": 735904.0
+    }
+  ],
+  "metadata": {
+    "id": "RSAFS",
+    "title": "Advance Retail Sales: Retail Trade and Food Services",
+    "units": "Millions of Dollars",
+    "units_short": "Mil. of $",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2026-01-14 07:44:48-06",
+    "notes": "The value for the most recent month is an advance estimate that is based on data from a subsample of firms from the larger Monthly Retail Trade Survey. The advance estimate will be superseded in following months by revised estimates derived from the larger Monthly Retail Trade Survey. The associated series from the Monthly Retail Trade Survey is available at https://fred.stlouisfed.org/series/MRTSSM44X72USS\n\n Information about the Advance Monthly Retail Sales Survey can be found on the Census website at https://www.census.gov/retail/marts/about_the_surveys.html"
+  },
+  "retrieved_at": "2026-05-17T00:04:20-0700"
+}

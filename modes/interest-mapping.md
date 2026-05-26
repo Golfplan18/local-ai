@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -141,9 +141,37 @@ Depth in Interest Mapping is the rigor of the position-to-interest descent and t
 
 Widening the lens means surveying the interest categories per party (substantive economic, procedural, relational, identity-and-recognition, security, fairness-perception, future-relationship), considering interests not visible from each party's own stated position (interests they may not have articulated to themselves), and noting cultural or contextual factors that shape which interests are surfaceable in the negotiation. Breadth markers: at least three interest-category candidates are considered per party; the possibility of unstated or unconscious interests is acknowledged.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the three critical questions: (CQ1) position-vs-interest distinction maintained; (CQ2) inferred vs. confirmed flagged; (CQ3) shared and opposed both surfaced. The named failure modes (position-interest-collapse, inference-as-fact, integrative-overreach-or-zero-sum-default, cultural-context-flatness) are the evaluation checklist. A passing Interest Mapping output names parties and positions, descends to inferred interests with hypothesis-flagging, and surfaces both compatible and opposed interest territories.
+**What this analysis is.** Interest Mapping is a light Fisher-Ury reading that walks each party's stated position down to the underlying interest it serves and separates compatible interests (where integrative moves are possible) from genuinely opposed interests (where distributive bargaining or value-difference remains). It is descriptive of the interest landscape, not prescriptive of negotiation strategy — it sits one step before principled-negotiation (its depth-heavier sibling, which adds BATNA, options-for-mutual-gain, and objective-criteria) and is distinct from cui-bono (descriptive interest-power analysis without a negotiation frame) and stakeholder-mapping (landscape view without active negotiation). The mode treats inferred interests as hypotheses to test, not as facts to assert.
+
+**Procedure.**
+
+1. Name parties and stated positions — each party's ask in their own vocabulary or close to it.
+2. Descend from each position to the underlying interest categories it may serve (substantive economic, procedural, relational, identity-and-recognition, security, fairness-perception, future-relationship) — symmetric descent across parties.
+3. Flag each inferred interest as a hypothesis to test, not a confirmed fact; surface flagged-unknowns the user could probe in the negotiation itself.
+4. Survey shared and compatible interests — where both sides could leave better off than under positional bargaining.
+5. Survey genuinely-opposed interests — where the parties' satisfaction is structurally in tension and integrative moves cannot dissolve it.
+6. Generate candidate integrative moves keyed to interest patterns — each with the interest hypotheses the move depends on and what would invalidate it.
+7. Note cultural / organisational / relational context where it shapes which interests are surfaceable.
+8. Assign three distinct confidence kinds — high for stated positions (what parties actually said), lower for inferred interests (hypothesis quality), conditional for candidate moves (depends on testing).
+
+**Goal.** Produce an interest map that descends from stated positions to underlying interests, separates compatible from opposed territory, names candidate integrative moves with their dependencies, and surfaces the unknowns to test in the negotiation.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — position vs interest distinction.** Has the analysis maintained the Fisher-Ury distinction between positions (what each party asks for) and interests (what each party needs), or conflated them? Failure mode if unmet: `position-interest-collapse`.
+- **CQ2 — inferred vs confirmed.** Have inferred interests been distinguished from confirmed interests — flagged as hypotheses to test rather than asserted as known facts? Failure mode if unmet: `inference-as-fact`.
+- **CQ3 — shared and opposed both surfaced.** Has the analysis surfaced both shared/compatible interests (integrative territory) and genuinely opposed interests (distributive territory), rather than presenting the situation as either fully integrative or fully zero-sum? Failure mode if unmet: `integrative-overreach-or-zero-sum-default`.
+
+A passing output names parties and positions, descends to inferred interests symmetrically with explicit hypothesis-flagging, surfaces both compatible and opposed interest territories, names at least one candidate integrative move with its supporting interest-pattern, lists testable flagged-unknowns, and keeps three confidence kinds distinct.
+
+**Named failure modes.**
+
+- *position-interest-collapse* — inferred interests track stated positions too closely; the analyst restated asks in interest-language without descending to underlying need.
+- *inference-as-fact* — inferred interests presented without hypothesis flagging; flagged-unknowns section is empty.
+- *integrative-overreach-or-zero-sum-default* — output presents the negotiation as either fully solvable through integrative moves (no opposed interests acknowledged) or fully zero-sum (no shared interests surfaced).
+- *cultural-context-flatness* — interest inferences applied without considering how cultural, organisational, or relational context shapes which interests are surfaceable in the negotiation.
 
 ## REVISION GUIDANCE
 

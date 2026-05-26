@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -153,9 +153,40 @@ Depth in Pre-Mortem (Action) is the specificity with which the failure narrative
 
 Widening the lens in Pre-Mortem (Action) means scanning the failure-mode landscape: execution failures (the team didn't do what the plan called for), assumption failures (a load-bearing premise was wrong), context-shift failures (the world changed during execution), interaction failures (the plan succeeded narrowly but produced consequences that defeated the larger purpose), and motivational failures (the team disengaged before completion). A breadth-passing analysis surveys all five classes before narrowing to the two-or-three most plausible failure narratives for the prospective-hindsight pass.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) stance integrity (prospective hindsight, not hedged projection); (CQ2) plan-specific vs. generic failures; (CQ3) leading indicators present; (CQ4) pre-commitment mitigations distinguished. The named failure modes (stance-slippage, generic-failure-trope, lagging-indicator-only, post-hoc-conflation, optimism-residue) are the evaluation checklist. A passing Pre-Mortem (Action) output names plan-specific failure mechanisms in past-tense narrative, cites observable leading indicators per failure mode, and offers mitigations the team can lock in *before* commitment.
+**What this analysis is.** Pre-Mortem (Action) is Klein's prospective-hindsight method applied to an action plan, decision, launch, or course-of-action — writing the failure post-mortem before commitment. The mode adopts adversarial-future stance toward the plan, walking through plan-specific failure mechanisms in past-tense narrative ("the plan failed because..."), naming the leading indicators the team could observe pre-failure, and producing pre-commitment mitigations the team can lock in before launch. It is parsed from a system/design counterpart (pre-mortem-fragility in T7 — same Klein lens, different artifact shape) and distinguished from neutral forward forecasting (probabilistic-forecasting, scenario-planning, consequences-and-sequel) by its retrospective grammar and from adversarial-actor red-teaming (T15) by the absence of an opposing agent — the failure comes from the plan's own internal mechanisms, not from someone trying to defeat it.
+
+**Procedure.**
+
+1. Anchor the plan, its decision horizon, and its success criteria — what would constitute the failure being imagined.
+2. Write the imagined failure narrative in past tense — "It is [decision horizon] from now. The plan failed. Here is what happened." The grammar stays retrospective; forward conditional language is stance slippage.
+3. Survey the failure landscape across Klein's five classes — execution (the team didn't do what the plan called for), assumption (a load-bearing premise was wrong), context-shift (the world changed during execution), interaction (narrow success defeated larger purpose), motivational (the team disengaged before completion).
+4. Name each failure mode with plan-specific mechanism — the actual decision point, assumption, or coupling that broke in *this* plan; never a generic project-failure trope.
+5. Trace the causal pathway from breakage point → immediate consequence → cascade → surfaced failure per failure mode.
+6. Identify leading indicators per failure mode — observable signals the team could catch pre-failure, with signal-acquisition cost and lead time.
+7. Generate pre-commitment mitigations — tests, assumption-checks, pilots, decision-gates, kill criteria the team can lock in *before* commitment; never post-hoc remediations.
+8. Surface residual unmitigated risks — risks that survive the pre-commitment mitigations, with materialization conditions and whether the residue warrants rethinking the plan.
+9. Resist optimism residue — the failure inventory's depth should match the plan's complexity; truncated inventories signal analyst's prior on success bleeding through.
+
+**Goal.** Produce a prospective-hindsight failure analysis where each failure mode is plan-specific, each has at least one leading indicator the team could observe pre-failure, and each mitigation is a pre-commitment action — delivered as past-tense post-mortem the team can read before launch.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — stance integrity.** Has the analysis genuinely adopted prospective-hindsight stance (writing as though the failure has already occurred), or slipped into hedged forward-projection? Failure mode if unmet: `stance-slippage`.
+- **CQ2 — plan-specific vs generic.** Are the named failure modes specific to this plan's mechanism, or are they generic project-failure tropes (scope creep, communication breakdown) that would apply to any plan? Failure mode if unmet: `generic-failure-trope`.
+- **CQ3 — leading indicators.** Have failure pathways been traced to leading indicators the team could observe pre-failure, or do the failures only become visible at the post-mortem? Failure mode if unmet: `lagging-indicator-only`.
+- **CQ4 — pre-commitment mitigations.** Have pre-commitment mitigations been distinguished from post-hoc remediations, given that pre-mortem's value is in the pre-commitment window? Failure mode if unmet: `post-hoc-conflation`.
+
+A passing output narrates plan-specific failure mechanisms in past-tense throughout, cites observable leading indicators per failure mode, offers mitigations the team can lock in before commitment, and surveys the failure landscape across Klein's five classes rather than concentrating in one (typically execution).
+
+**Named failure modes.**
+
+- *stance-slippage* — output uses forward conditional language ("this might fail if...") rather than retrospective ("the plan failed because...").
+- *generic-failure-trope* — failure modes named are domain-agnostic clichés (scope creep, communication breakdown, stakeholder misalignment) without plan-specific mechanism.
+- *lagging-indicator-only* — leading-indicators section empty, or all indicators are post-failure observations.
+- *post-hoc-conflation* — mitigations include actions that can only be taken after the failure has begun.
+- *optimism-residue* — failure-mode inventory shorter than the plan's complexity warrants; analyst's prior on success bleeds through.
 
 ## REVISION GUIDANCE
 

@@ -1308,19 +1308,21 @@ def load_educational_name(mode_id: str) -> str | None:
 #     prior-conversation references, factual lookups)
 #   - WEAK_BYPASS: loses to strong analytical signals (greetings, ack)
 STRONG_BYPASS_TRIGGERS = [
-    # factual / lookup — concrete single-fact questions
+    # factual / lookup — answerable from system state or training, no RAG needed
     "what time", "what's the date", "what's the time",
     "what time is it", "what's today", "what day is it",
     "what's today's date", "what year is it", "what's the year",
-    "what is the capital", "what's the capital",
+    # NOTE: capital-of and "remind me" moved to GEAR2_RAG_TRIGGERS — capitals
+    # do change (Myanmar/Burma, Kazakhstan→Astana, Indonesia→Nusantara), and
+    # "remind me of <X>" is ambiguous between conversation-meta and factual
+    # lookup. Both safer with RAG available.
     # prior-conversation / system-meta references
     "what did you just say", "what did i just say",
     "what did you say earlier", "what did i ask",
     "repeat that", "say that again", "say it again",
-    "remind me of", "remind me what",
     "how many tokens", "how many tokens does",
     # prior-conversation references
-    "what did you say", "earlier you said", "remind me what",
+    "what did you say", "earlier you said",
     "show me the previous", "repeat what you", "what was your previous",
     # system commands and service requests
     "/help", "/?", "save this conversation", "convert this pdf",
@@ -1341,6 +1343,98 @@ WEAK_BYPASS_TRIGGERS = [
 
 # Backwards-compat: combined list still used by tests.
 BYPASS_TRIGGERS = STRONG_BYPASS_TRIGGERS + WEAK_BYPASS_TRIGGERS
+
+# ---------------------------------------------------------------------------
+# 2026-05-24 gear-architecture redesign: Gear 2 RAG dispatch
+# Spec: pre-routing-pipeline.md §"Stage 1.5 — Gear 2 RAG Dispatch"
+# ---------------------------------------------------------------------------
+# GEAR2_RAG_TRIGGERS: substring patterns that indicate "information request
+# requiring retrieval but no judgment." Match here + no judgment markers in
+# the prompt → dispatch directly to factual-lookup (Gear 2) without entering
+# Stage 2 mode disambiguation.
+#
+# The list is intentionally narrow. Ambiguous patterns ("what is X") are NOT
+# here — they fall through to Stage 2 where signal vocabulary can disambiguate.
+# Only high-confidence retrieval markers are listed.
+GEAR2_RAG_TRIGGERS = [
+    # Capitals, populations, named-position queries — facts that may have
+    # changed since training (Myanmar/Burma, Kazakhstan→Astana, Indonesia)
+    "what is the capital", "what's the capital",
+    "what is the population", "what's the population",
+    # "Remind me of X" — ambiguous between conversation-meta and factual
+    # lookup. The substring can't tell the difference, so route to Gear 2
+    # which has both retrieval AND access to conversation context.
+    "remind me of", "remind me what",
+    # Current state of named positions or institutions
+    "who is the current", "who's the current",
+    "current president", "current prime minister",
+    "current ceo of", "current chair of",
+    "current head of", "current leader of",
+    "current governor", "current senator",
+    # Time-localized event lookups
+    "who won the", "what was the score",
+    "what happened in 2024", "what happened in 2025", "what happened in 2026",
+    "latest news", "what's the latest",
+    "any news on", "any updates on",
+    "what's new with", "what's new in",
+    # Weather
+    "weather today", "weather tomorrow", "the weather in",
+    "is it raining", "will it rain",
+    "current temperature", "what's the forecast",
+    # Real-time lookups
+    "stock price", "current price of",
+    "exchange rate",
+    "is it open", "are they open", "open right now",
+    "still open", "still in business",
+    # Sports
+    "the score of", "who's winning",
+    # News context
+    "what's happening in", "what's happening with",
+]
+
+# SUBJECTIVE_TRIGGERS: substrings that indicate the prompt is asking for
+# opinion, preference, or aesthetic judgment with no objective criteria.
+# When present, route to subjective-inquiry (Gear 3) instead of general-inquiry.
+SUBJECTIVE_TRIGGERS = [
+    # Aesthetic judgment
+    "more attractive", "more beautiful", "better looking",
+    "prettier", "ugliest", "uglier",
+    # Preference / taste
+    "favorite", "favourite",
+    "best tasting", "most enjoyable", "most fun",
+    "do you prefer", "do you like",
+    "what's your favorite", "what's your favourite",
+    # Personal experience
+    "what's it like to", "what is it like to",
+    "is it worth", "would you recommend",
+    # Subjective comparative
+    "what do you think about", "what do you think of",
+    "what's your take on", "what is your opinion",
+    # Fan / rivalry shape
+    "vs the", "versus the",  # weak — also needs other markers
+]
+
+
+# JUDGMENT_MARKERS: substrings that indicate the prompt requires judgment.
+# When present, the prompt does NOT route to Gear 2 even if it also contains
+# a GEAR2_RAG marker — judgment beats retrieval. Routes to Stage 2 mode
+# disambiguation instead, or falls through to general-inquiry / Gear 3.
+JUDGMENT_MARKERS = [
+    "should", "ought", "best", "better", "worst",
+    "compare", "comparison", "evaluate", "analyze", "analyse",
+    "audit", "review", "decide", "recommend", "recommendation",
+    "assess", "assessment", "critique", "judge",
+    "pre-mortem", "premortem", "pre mortem",
+    "cui bono", "who benefits", "why does", "why did",
+    "pros and cons", "tradeoffs", "trade-offs", "trade offs",
+    "make the case", "steelman", "red team", "red-team",
+    "stress test", "stress-test",
+    "root cause", "root-cause",
+    "frame audit", "frame check",
+    "propaganda",
+    "is X better than", "is x better than",
+    "do you think", "what do you think",
+]
 
 # Negation markers used for ±3-token window detection around analytical signals.
 NEGATION_MARKERS = {"not", "don't", "dont", "no", "without", "skip", "never"}
@@ -2265,6 +2359,58 @@ def _check_strong_bypass(prompt: str) -> dict | None:
     return None
 
 
+def _has_judgment_marker(prompt: str) -> bool:
+    """Return True when the prompt contains any JUDGMENT_MARKERS substring
+    (not under negation). Used to gate Gear 2 dispatch — a prompt that
+    contains both a retrieval trigger AND a judgment marker is judgment-first
+    and routes to Stage 2 / general-inquiry / specific analytical mode.
+    """
+    for marker in JUDGMENT_MARKERS:
+        if _signal_present(prompt, marker) and not _is_negated(prompt, marker):
+            return True
+    return False
+
+
+def _has_subjective_marker(prompt: str) -> bool:
+    """Return True when the prompt contains any SUBJECTIVE_TRIGGERS substring
+    (not under negation). Used to route fallback dispatches to subjective-inquiry
+    rather than general-inquiry when the question is about taste / preference /
+    aesthetic judgment.
+    """
+    for trigger in SUBJECTIVE_TRIGGERS:
+        if _signal_present(prompt, trigger) and not _is_negated(prompt, trigger):
+            return True
+    return False
+
+
+def _check_gear2_rag(prompt: str) -> dict | None:
+    """Check whether the prompt is a Gear 2 retrieval dispatch.
+
+    Returns a dispatch dict when:
+      - The prompt contains at least one GEAR2_RAG_TRIGGERS substring, AND
+      - The prompt contains NO JUDGMENT_MARKERS substring.
+
+    Returns None otherwise. The caller (pre_phase_a_bypass_check and Stage 1)
+    short-circuits to factual-lookup mode (Gear 2) when this fires.
+
+    The Gear 2 path is single-pass with RAG and web tools, no adversarial
+    review. The architecture trusts the supplemental-RAG mechanism inside
+    the model call to flag any factual confabulations rather than building
+    a full evaluator pass for routine lookups.
+    """
+    if _has_judgment_marker(prompt):
+        return None
+    for trigger in GEAR2_RAG_TRIGGERS:
+        stripped = trigger.strip()
+        if _signal_present(prompt, stripped) and not _is_negated(prompt, stripped):
+            return {
+                "gear2_rag_dispatch": True,
+                "dispatched_mode_id": "factual-lookup",
+                "rationale": f"gear2 rag trigger: '{stripped}' (no judgment markers)",
+            }
+    return None
+
+
 def _check_weak_bypass(prompt: str) -> dict | None:
     """Run only the WEAK_BYPASS_TRIGGERS scan over ``prompt``.
 
@@ -2314,6 +2460,17 @@ def pre_phase_a_bypass_check(prompt: str) -> dict | None:
     if strong is not None:
         strong["stage"] = "pre-phase-a"
         return strong
+
+    # 2026-05-24 — Gear 2 RAG dispatch: information requests requiring
+    # retrieval but no judgment. Runs on the raw prompt before Phase A so
+    # that retrieval markers ("who is the current X", "weather today") are
+    # caught before Phase A's normalization can mask them. Returns a
+    # gear2_rag_dispatch dict; the run_pre_routing_pipeline caller short-
+    # circuits to factual-lookup mode (Gear 2) when this fires.
+    gear2_rag = _check_gear2_rag(prompt)
+    if gear2_rag is not None:
+        gear2_rag["stage"] = "pre-phase-a"
+        return gear2_rag
 
     # Weak triggers: only bypass when the prompt is plausibly *just* a
     # greeting / acknowledgement and not "Hi! Steelman this op-ed". We
@@ -2370,6 +2527,13 @@ def stage1_pre_analysis_filter(prompt: str, context: dict | None = None) -> dict
     strong_result = _check_strong_bypass(prompt)
     if strong_result is not None:
         return strong_result
+
+    # 1.5. Gear 2 RAG dispatch — information requests requiring retrieval
+    # but no judgment. Defensive backup to pre_phase_a_bypass_check; in
+    # normal operation the pre-Phase-A check has already caught these.
+    gear2_rag_result = _check_gear2_rag(prompt)
+    if gear2_rag_result is not None:
+        return gear2_rag_result
 
     # 2. Analytical-artifact signal detection — registry strong-weight entries.
     registry = _load_signal_registry()
@@ -4087,7 +4251,7 @@ def run_pre_routing_pipeline(prompt: str,
 
     # --- Stage 1 ---
     s1 = stage1_pre_analysis_filter(full_prompt, context)
-    if s1["bypass_to_direct_response"]:
+    if s1.get("bypass_to_direct_response"):
         return {
             "stage1_output": s1,
             "stage2_output": None,
@@ -4098,6 +4262,25 @@ def run_pre_routing_pipeline(prompt: str,
             "pending_clarification_stage": None,
             "territory": None,
             "confidence": "n/a",
+            "completeness_gaps": [],
+            "dispatch_announcement": None,
+        }
+
+    # Gear 2 RAG dispatch: retrieval-needed information request with no
+    # judgment markers. Skip Stage 2 mode disambiguation entirely and
+    # dispatch directly to factual-lookup (Gear 2). The mode file's
+    # ## DEFAULT GEAR heading provides the gear; the dispatcher honours it.
+    if s1.get("gear2_rag_dispatch"):
+        return {
+            "stage1_output": s1,
+            "stage2_output": None,
+            "stage3_output": None,
+            "dispatched_mode_id": s1["dispatched_mode_id"],
+            "bypass_to_direct_response": False,
+            "pending_clarification": None,
+            "pending_clarification_stage": None,
+            "territory": "T0-default-judgment",
+            "confidence": "high",
             "completeness_gaps": [],
             "dispatch_announcement": None,
         }
@@ -4115,21 +4298,28 @@ def run_pre_routing_pipeline(prompt: str,
         # else fall through and use defaults below
 
     if not s2["dispatched_mode_id"]:
-        # Default-on-ambiguity per Style Guide §5.6 if user supplied an
-        # answer but it wasn't strong enough to dispatch — pick a Tier-2
-        # default by surfacing the question (caller decides whether to
-        # re-prompt or default).
+        # 2026-05-24 — Default-fallback dispatch to T0 catch-all modes
+        # rather than asking the generic clarification. When Stage 2 found
+        # no specific analytical mode AND no disambiguation conflict, the
+        # prompt is judgment-requiring but doesn't fit any specific mode.
+        # Route to subjective-inquiry when subjective markers are present;
+        # otherwise route to general-inquiry. The universal f-* scaffolding
+        # carries the discipline; the mode-specific layer is light.
         if not s2["disambiguation_questions_asked"]:
+            fallback_mode = (
+                "subjective-inquiry" if _has_subjective_marker(full_prompt)
+                else "general-inquiry"
+            )
             return {
                 "stage1_output": s1,
                 "stage2_output": s2,
                 "stage3_output": None,
-                "dispatched_mode_id": None,
+                "dispatched_mode_id": fallback_mode,
                 "bypass_to_direct_response": False,
-                "pending_clarification": _GENERIC_INTENT_QUESTION,
-                "pending_clarification_stage": "stage2",
-                "territory": None,
-                "confidence": "low",
+                "pending_clarification": None,
+                "pending_clarification_stage": None,
+                "territory": "T0-default-judgment",
+                "confidence": "fallback",
                 "completeness_gaps": [],
                 "dispatch_announcement": None,
             }
@@ -4235,11 +4425,19 @@ def get_mode_registry_summary() -> str:
 
 
 def extract_default_gear(mode_text: str) -> int:
-    """Extract the default gear from a mode file."""
+    """Extract the default gear from a mode file.
+
+    Fallback default changed 2026-05-24 from Gear 2 → Gear 3 as part of the
+    gear-architecture redesign. Gear 2 is now specifically single-pass-with-RAG
+    for factual lookups (factual-lookup mode); a mode missing its DEFAULT GEAR
+    heading should fall into the universal adversarial pipeline (Gear 3), not
+    the retrieval-only path. Modes that genuinely want single-pass behavior
+    must declare it explicitly.
+    """
     match = re.search(r'## DEFAULT GEAR\s*\n\s*\n?\s*Gear\s*(\d)', mode_text)
     if match:
         return int(match.group(1))
-    return 2  # Default to Gear 2 if not specified
+    return 3  # Default to Gear 3 (universal pipeline) if not specified
 
 
 def parse_step1_output(response: str) -> dict:
@@ -6055,12 +6253,20 @@ def build_system_prompt_for_gear(
     mode_name = context_package.get("mode_name", "")
     boot_md = load_boot_md()
 
-    # Locked mode template (2026-05-01): one ## section per pipeline step.
-    # `~/Documents/vault/Reference — Mode Specification Template.md` is the
-    # canonical schema; all 58 mode files use it.
+    # Locked mode template (2026-05-01, revised 2026-05-24): one ## section
+    # per pipeline step plus a shared BRIEF + EC bundle. `~/Documents/vault/
+    # Reference — Mode Specification Template.md` is the canonical schema.
     depth_guidance         = _extract_section(mode_text, "DEPTH ANALYSIS GUIDANCE")
     breadth_guidance       = _extract_section(mode_text, "BREADTH ANALYSIS GUIDANCE")
-    evaluation_criteria    = _extract_section(mode_text, "EVALUATION CRITERIA")
+    # 2026-05-24: section renamed from "EVALUATION CRITERIA" to
+    # "ANALYTICAL BRIEF AND EVALUATION CRITERIA" — absorbs the brief
+    # (what/how/goal) alongside the existing evaluation criteria. Falls
+    # back to the legacy section name during the 60-mode propagation.
+    brief_and_eval = (
+        _extract_section(mode_text, "ANALYTICAL BRIEF AND EVALUATION CRITERIA")
+        or _extract_section(mode_text, "EVALUATION CRITERIA")
+    )
+    evaluation_criteria    = brief_and_eval  # alias preserved for downstream readers
     revision_guidance      = _extract_section(mode_text, "REVISION GUIDANCE")
     consolidation_guidance = _extract_section(mode_text, "CONSOLIDATION GUIDANCE")
     verification_criteria  = _extract_section(mode_text, "VERIFICATION CRITERIA")
@@ -6093,17 +6299,39 @@ def build_system_prompt_for_gear(
             f"{inferred_items}\n"
         )
 
-    # Per-step dispatch. One section per step.
+    # Baseline criteria injection (2026-05-24): every role-specific step
+    # gets the BRIEF + EC and VERIFICATION CRITERIA up front, so the
+    # analyst sees what good looks like before writing, the evaluator and
+    # reviser see the same canonical criteria, and the verifier sees the
+    # gate it grades against. This closes the gap where the first pass was
+    # writing blind to the standard it'd be graded against.
+    #
+    # The role-specific section (depth/breadth guidance for analyst,
+    # revision guidance for reviser, etc.) layers ON TOP of this baseline.
+    # Gear 1 is structurally protected — it doesn't route through
+    # build_system_prompt_for_gear at all.
+    if brief_and_eval:
+        parts.append(
+            f"\n## MODE — {mode_name} — Analytical brief and evaluation criteria\n\n"
+            f"{brief_and_eval}"
+        )
+    if verification_criteria:
+        parts.append(
+            f"\n## MODE — {mode_name} — Verification criteria (PASS gate)\n\n"
+            f"{verification_criteria}"
+        )
+
+    # Per-step dispatch. One role-specific section per step, layered on
+    # top of the baseline above.
     if step == "analyst":
         instructions = depth_guidance if slot == "depth" else breadth_guidance
         if instructions:
             parts.append(f"\n## MODE INSTRUCTIONS — {mode_name}\n\n{instructions}")
     elif step == "evaluator":
-        if evaluation_criteria:
-            parts.append(
-                f"\n## MODE — {mode_name} — Evaluation criteria\n\n"
-                f"{evaluation_criteria}"
-            )
+        # Evaluator's role-specific framing comes from the f-evaluate
+        # universal scaffolding (7-section output contract); the criteria
+        # it grades against are already in the baseline above.
+        pass
     elif step == "reviser":
         if revision_guidance:
             parts.append(
@@ -6111,14 +6339,10 @@ def build_system_prompt_for_gear(
                 f"{revision_guidance}"
             )
     elif step == "verifier":
-        # Mode-specific checks layer on top of the universal V1-V8 floor
-        # (the universal checklist lives in f-verify.md; loaded alongside
-        # this prompt by the pipeline function).
-        if verification_criteria:
-            parts.append(
-                f"\n## MODE — {mode_name} — Verification criteria\n\n"
-                f"{verification_criteria}"
-            )
+        # Verifier's role-specific framing comes from the f-verify universal
+        # V1-V8 floor; the mode-specific gate is the VERIFICATION CRITERIA
+        # already injected as baseline above.
+        pass
     elif step == "consolidator":
         # Consolidator (Gear 4) produces the irreducible corpus from
         # depth + breadth revised streams (semantic extraction, cross-stream
@@ -6578,19 +6802,34 @@ def run_pipeline(user_input: str, history: list = None,
         degradation_signal = format_degradation_signal(deg_state)
 
     # --- Gear-appropriate execution ---
+    # 2026-05-24 gear-architecture redesign:
+    #   Gear 1 — small model, no review, no RAG-heavy path. Sidebar / classification
+    #     slot. Used by Stage 0 bypass cases that still need a model response
+    #     (e.g. greetings with substance).
+    #   Gear 2 — fast/medium model, single pass WITH RAG and tool use. New `fast`
+    #     slot when present in configuration; falls back to `step1_cleanup` for
+    #     backward compatibility until the model-selector thread lands the Fast
+    #     slot infrastructure. Used by factual-lookup dispatches.
+    #   Gear 3 — full sequential adversarial pipeline (run_gear3). Reclaimed
+    #     from dead code 2026-05-24; now the universal pipeline for judgment-
+    #     required prompts that don't trigger a Gear 4 mode.
+    #   Gear 4+ — parallel adversarial (run_gear4). Reserved for the 56 deep-
+    #     analysis modes that explicitly opt in.
     if gear <= 2:
         # Gear 1-2: Single model pass with context package.
-        # Gear 1 (simple/trivial) routes through the `classification` utility
-        # cell (bucket order: local-fast → local-mid → fast) so trivial prompts
-        # land on the smallest fast model (e.g. 4B) without UI changes.
-        # Gear 2 (standard catch-all) uses the active endpoint, which resolves
-        # through `step1_cleanup` (bucket order: local-mid → fast → free) and
-        # picks a mid-tier model that can handle moderate reasoning.
         system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
         if gear == 1:
             endpoint = get_slot_endpoint(config, "classification")
         else:
-            endpoint = get_active_endpoint(config)
+            # Gear 2: prefer the `fast` slot (new in the 2026-05-24 redesign,
+            # being wired by the parallel model-selector thread). Fall back
+            # to `step1_cleanup` then to active endpoint when fast is not yet
+            # configured — so the dispatch is safe before the slot lands.
+            endpoint = (
+                get_slot_endpoint(config, "fast")
+                or get_slot_endpoint(config, "step1_cleanup")
+                or get_active_endpoint(config)
+            )
         if endpoint is None:
             return "[No AI endpoints configured.]"
 
@@ -6604,7 +6843,14 @@ def run_pipeline(user_input: str, history: list = None,
         response = _run_model_with_tools(messages, endpoint)
 
     elif gear == 3:
-        # Gear 3: Sequential review — Depth analyzes, Breadth reviews, Depth revises
+        # Gear 3: Sequential review — Depth analyzes, Breadth reviews, Depth revises.
+        # Reclaimed 2026-05-24 as the universal pipeline for judgment-required
+        # prompts. Model slots inside run_gear3 will resolve to the `fast` slot
+        # once the model-selector thread wires the per-gear slot blocks into
+        # configuration files. Until then, run_gear3 uses the existing depth /
+        # breadth / consolidator slot resolution from the active configuration —
+        # which may produce slower performance until the Fast slot lands but
+        # remains functionally correct.
         response = run_gear3(context_pkg, config, history, config_name=config_name)
 
     elif gear >= 4:

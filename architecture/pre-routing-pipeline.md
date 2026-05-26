@@ -13,6 +13,24 @@ This replaces the retired Mode Classification Directory's intent-classification 
 
 The pipeline has four sequential stages. Each stage has a clear input, processing logic, and output. Stage transitions are deterministic (no stage advances on a partial decision; each stage's output is complete before the next stage begins).
 
+## The Four-Gear Taxonomy (2026-05-24 redesign)
+
+The orchestrator routes each prompt to one of four gears. The gear determines pipeline shape and model selection; pre-routing determines which gear fires.
+
+- **Gear 1 — Direct response, no RAG.** Greetings, system commands, "what time is it", `/help`, mechanical translations. Stage 0 strong-bypass triggers and weak-bypass triggers under the short-prompt-no-analytical-vocab constraint. Small model (classification slot). Sub-3-second response.
+- **Gear 2 — Single-pass with RAG and tools.** Factual lookups that need retrieval but no judgment: "who is the current X", "weather today", "who won the Super Bowl in 2026", "what's the capital of Y". Routes to the `factual-lookup` mode. Fast/medium model (new `fast` slot in the configuration system). 5–15 second response.
+- **Gear 3 — Full sequential adversarial pipeline.** Judgment-required prompts that don't trigger a specific Gear 4 analytical mode. Routes to `general-inquiry` (default) or `subjective-inquiry` (when subjective markers detected) — the T0 catch-all modes. The universal f-evaluate / f-revise / f-verify / f-consolidate / f-format scaffolding is the discipline; mode-specific layers are intentionally light. Fast/medium model in all pipeline slots. 30–90 second response.
+- **Gear 4 — Parallel adversarial pipeline.** The 56 deep-analysis modes (cui-bono, ACH, wicked-problems, root-cause-analysis, etc.) that explicitly declare Gear 4. Two big models running in parallel (depth + breadth slots). Full evaluator / reviser / verifier / consolidator / formatter cascade with mode-specific bespoke depth. 5–15 minute response.
+
+Gear assignment by stage:
+- **Stage 0** (raw prompt, pre-Phase-A) — strong bypass → direct response with `mode: simple, gear: 2` (chat handler intercepts and runs `_direct_stream`, not the gear pipeline). Gear 2 RAG dispatch → factual-lookup mode, Gear 2. Weak bypass → direct response.
+- **Stage 1** (operational notation, defensive backup) — same checks as Stage 0; in normal operation silent because Stage 0 already handled the case.
+- **Stage 2** (mode disambiguation) — dispatches to a specific analytical mode (Gear 3 or Gear 4 per the mode's `## DEFAULT GEAR` heading).
+- **Stage 2 fallback** (no specific mode) — dispatches to subjective-inquiry (when subjective markers present) or general-inquiry (default), both Gear 3.
+- **`extract_default_gear` fallback** — when a mode file is missing its `## DEFAULT GEAR` heading, default to Gear 3 (universal pipeline). Modes that want single-pass behavior must declare Gear 1 or Gear 2 explicitly.
+
+The four-gear redesign reclaims Gear 3 from dead code (it existed but no mode dispatched to it pre-2026-05-24) and gives Gear 2 a meaningful single-pass-with-RAG role that the prior architecture lacked.
+
 ---
 
 ## Stage 0 — Pre-Phase-A Bypass Check
@@ -23,13 +41,15 @@ The pipeline has four sequential stages. Each stage has a clear input, processin
 
 **Processing logic.**
 
-1. **Strong bypass triggers** — concrete factual lookups ("what time is it", "what's today's date"), system-meta references ("what did you just say", "repeat that"), mechanical translation / formatting requests ("translate this", "fix the spelling"), and explicit user opt-outs from the analytical pipeline ("don't analyze", "skip the analysis"). Match → bypass immediately.
-2. **Weak bypass triggers (constrained)** — greetings and acknowledgements. These bypass only when the prompt is plausibly *just* a greeting: short (≤ 8 normalised words) AND containing no obvious analytical-vocabulary tokens (analyze, evaluate, audit, steelman, compare, cui bono, root cause, etc.). The "Hi! Steelman this op-ed" case correctly falls through to Phase A because the analytical hint disqualifies the weak match.
-3. **No match** — fall through to Phase A; the prompt is presumed analytical until later stages prove otherwise.
+1. **Strong bypass triggers** — concrete factual lookups that need NO retrieval ("what time is it", "what's today's date"), system-meta references ("what did you just say", "repeat that"), mechanical translation / formatting requests ("translate this", "fix the spelling"), and explicit user opt-outs from the analytical pipeline ("don't analyze", "skip the analysis"). Match → bypass immediately. The list was narrowed 2026-05-24 to remove patterns that may require retrieval ("what is the capital", "remind me of") — those now route to Gear 2 RAG dispatch instead.
+2. **Gear 2 RAG dispatch (added 2026-05-24)** — information requests that need retrieval but no judgment: "who is the current president", "weather today", "who won the Super Bowl in 2026", "what is the capital of Burma". Match condition is `GEAR2_RAG_TRIGGERS substring present AND NO JUDGMENT_MARKERS substring`. Match → dispatch to `factual-lookup` mode (Gear 2) immediately, skipping Stage 2 mode disambiguation. The judgment-marker gate ensures that "should I bring an umbrella tomorrow" (retrieval + judgment) routes to Stage 2 rather than Gear 2 lookup.
+3. **Weak bypass triggers (constrained)** — greetings and acknowledgements. These bypass only when the prompt is plausibly *just* a greeting: short (≤ 8 normalised words) AND containing no obvious analytical-vocabulary tokens (analyze, evaluate, audit, steelman, compare, cui bono, root cause, etc.). The "Hi! Steelman this op-ed" case correctly falls through to Phase A because the analytical hint disqualifies the weak match.
+4. **No match** — fall through to Phase A; the prompt is presumed analytical until later stages prove otherwise.
 
 **Output.**
 
-- If bypass fires: `{ bypass_to_direct_response: true, rationale: "<trigger>", stage: "pre-phase-a" }`. Phase A and Stages 1–4 are all skipped. `step1_result.mode` is set to `simple`, gear 2, and the raw prompt is used as `cleaned_prompt` without expansion.
+- If strong / weak bypass fires: `{ bypass_to_direct_response: true, rationale: "<trigger>", stage: "pre-phase-a" }`. Phase A and Stages 1–4 are all skipped. `step1_result.mode` is set to `simple`, gear 2, and the raw prompt is used as `cleaned_prompt` without expansion. The chat handler intercepts `simple`/`standard` placeholder modes and routes to `_direct_stream`, so bypass cases skip the gear pipeline entirely.
+- If Gear 2 RAG dispatch fires: `{ gear2_rag_dispatch: true, dispatched_mode_id: "factual-lookup", rationale: "<trigger>", stage: "pre-phase-a" }`. Phase A and Stage 2 disambiguation are skipped; the pipeline loads `factual-lookup` mode (Gear 2) and runs the single-pass-with-RAG-and-tools dispatch in `_run_pipeline_from_step2`.
 - If no match: control passes to Phase A, then to Stage 1.
 
 **Why this exists.** Detector layering is the structural risk. Phase A's job is to expand and normalise; running bypass detectors on the post-expansion text means the detector's input space depends on what Phase A produced for *this* prompt. Substring detectors don't compose cleanly across layers — a phrase legitimate inside the expansion ("Structured cui bono analysis") can contain a substring legitimate as a bypass trigger ("no analysis"). The pre-Phase-A check runs on input the user controls directly, which is the layer where bypass triggers were designed to be evaluated.
@@ -46,14 +66,16 @@ The pipeline has four sequential stages. Each stage has a clear input, processin
 
 **Processing logic.**
 
-1. **Analytical-artifact signal detection.** Substring match against a curated signal vocabulary list of analytical-artifact triggers (≥40 phrases). Examples: "analyze," "make the case for," "what could go wrong," "who benefits," "compare these," "is this argument sound," "what are the tradeoffs," "stress-test," "what's missing," "frame this." Match is case-insensitive. Negation is detected (e.g., "don't analyze" bypasses).
-2. **Bypass detection.** Substring match against bypass triggers: greetings, simple factual questions, system commands, prior-answer references ("what did you say earlier"). Matches → direct response (no analytical pipeline).
-3. **Ambiguity handling.** When neither analytical signal nor bypass signal matches, default to **permissive** (let the prompt enter the pipeline). The downstream stages will catch genuinely non-analytical prompts and route to direct response.
+1. **Strong bypass detection (defensive backup).** Same substring scan as Stage 0; silent in normal operation because Stage 0 already caught these. Defensive against the rare case where Phase A's normalization legitimately reveals a bypass-worthy element the raw prompt didn't carry.
+2. **Gear 2 RAG dispatch (defensive backup, added 2026-05-24).** Same substring + judgment-marker check as Stage 0; silent in normal operation. Defensive against the rare case where Phase A's normalization legitimately reveals a retrieval-needed pattern the raw prompt didn't carry.
+3. **Analytical-artifact signal detection.** Substring match against a curated signal vocabulary list of analytical-artifact triggers (≥40 phrases). Examples: "analyze," "make the case for," "what could go wrong," "who benefits," "compare these," "is this argument sound," "what are the tradeoffs," "stress-test," "what's missing," "frame this." Match is case-insensitive. Negation is detected (e.g., "don't analyze" bypasses).
+4. **Weak bypass detection.** Substring match against bypass triggers: greetings, simple factual questions, system commands, prior-answer references ("what did you say earlier"). Matches with no strong analytical signal → direct response (no analytical pipeline).
+5. **Ambiguity handling.** When neither analytical signal nor bypass signal matches, default to **permissive** (let the prompt enter the pipeline). The downstream stages will catch genuinely non-analytical prompts and route to direct response or the T0 catch-all modes.
 
 **Output.**
 - `bypass_to_direct_response: true | false`
-- If `false`: forwarded prompt + initial signal-vocabulary matches as input to Stage 2.
-- If `true`: bypass with rationale.
+- `gear2_rag_dispatch: true | false` (when true, also carries `dispatched_mode_id: "factual-lookup"`)
+- If neither bypass nor gear2_rag fires: forwarded prompt + initial signal-vocabulary matches as input to Stage 2.
 
 **Detection logic notes.**
 - Substring match (not regex) for performance and predictability.
@@ -123,6 +145,15 @@ When the user's response to a disambiguation question is ambiguous or absent:
 - **Tier-2 thorough atomic** by default (per Style Guide §5.6).
 - **Neutral stance** when the territory has a stance axis and the user has not signaled.
 - **General specificity** when the territory has a specificity axis.
+
+### 2.6a T0 catch-all fallback (added 2026-05-24)
+
+When Stage 2 finds no specific analytical mode AND no disambiguation conflict to surface (the prompt has judgment markers but doesn't fit any T1–T21 mode), dispatch to a T0 catch-all mode rather than asking the generic clarification:
+
+- **subjective-inquiry** (T0, Gear 3) when SUBJECTIVE_TRIGGERS match — opinion / preference / aesthetic-judgment questions where no objective criteria exist. Examples: "Cowboys vs Packers", "is blue more attractive than green", "best tasting burger".
+- **general-inquiry** (T0, Gear 3) otherwise — judgment-required prompts that don't fit any specific analytical mode. The universal f-evaluate / f-revise / f-verify / f-consolidate / f-format scaffolding carries the discipline; mode-specific layer is intentionally light.
+
+This replaces the prior behavior of asking the user a generic "what kind of analysis do you want" clarification when nothing specific dispatched. Clarification is still surfaced when Stage 2 detects an actual conflict between competing signals; the T0 fallback only fires when there's no conflict to resolve.
 
 ### 2.7 Friction-reducer behavior
 

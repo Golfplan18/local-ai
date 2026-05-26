@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -143,25 +143,41 @@ Depth in Dialectical Analysis is the strength of the antithesis's adversarial co
 
 Breadth in Dialectical Analysis is the catalog of candidate antitheses considered before settling on the one that emerges most directly from the thesis's internal contradictions. Generate alternatives that arise from different internal contradictions in the thesis. Widen the lens to consider whether the apparent dialectic is in fact a Synthesis problem (positions do not generate each other) or a Constraint Mapping problem (alternatives to choose among). Breadth markers: the analysis tests at least one alternative antithesis derivation before locking the canonical one.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Dialectical Analysis is read in Hegelian Aufheben vocabulary (cancellation + preservation + elevation — sublation is a mechanism, not a synonym for "synthesis") with Adornian negative-dialectics as the load-bearing counter-tradition for irreducibility cases, and Marxist historical-materialism when material conditions structure the tension. The "argued as if believed" standard governs the antithesis posture. All four critical questions are load-bearing because each protects a distinct part of the methodology: CQ1 (weak-antithesis) protects the dialectical-emergence contract that distinguishes Dialectical Analysis from external critique, CQ2 (premature-synthesis) protects sublation from collapse into averaging, CQ3 (forced-triad) protects the Adornian escape valve against manufactured resolution, CQ4 (recursion-omission) protects against treating sublation as terminal. The unnamed teleological-construction failure mode acts as an additional gate.
+**What this analysis is.** Dialectical Analysis is a thesis-antithesis-sublation drive operating in Hegelian Aufheben vocabulary (cancellation + preservation + elevation — sublation is a mechanism, not a synonym for "synthesis"), with Adornian negative-dialectics held as the counter-tradition for cases where the contradiction is genuinely irreducible. It is distinct from synthesis (neutral integrative examination, not adversarial drive), from constraint-mapping (choosing between alternatives), from steelman-construction (the strongest version of one position rather than triadic motion), and from red-team modes (adversarial stress on one artifact rather than dialectical emergence). The mode's character is to drive through the contradiction by adversarial commitment to both sides, not to neutralize the tension by averaging.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Internal-derivation provenance for the antithesis (CQ1, load-bearing).** The antithesis must visibly emerge from contradictions internal to the thesis — not from external critique, not from a position the analyst already held. Weak-antithesis residue is an antithesis that reads as "an alternative view" rather than as "what the thesis itself, taken seriously, generates as its negation." The test: does the antithesis's derivation-provenance atom point to specific internal-contradiction atoms in the thesis? Antithesis without that pointer is external critique mislabelled.
+1. State the generating question once at the head — the framing question the dialectic addresses.
+2. Articulate the thesis in its strongest form, with claims to completeness — not as the foil for an easier antithesis.
+3. Surface internal contradictions WITHIN the thesis — tensions the thesis's own commitments produce, named with the specific aspect they target and the mechanism by which the contradiction surfaces.
+4. Derive the antithesis from those internal contradictions — derivation-provenance points to specific contradictions; antithesis without that pointer is external critique mislabelled.
+5. Argue the antithesis as if believed — a reader unfamiliar with the analyst's position cannot tell which side the analyst started from. Token-objection antitheses fail the commitment test.
+6. Test the dialectic's possibilities — can the contradiction be sublated honestly (Aufheben: cancellation + preservation + transcendence mechanism), or is it genuinely irreducible (Adornian standoff)?
+7. If sublation: name what is cancelled in thesis and antithesis (with reason), what is preserved from each (with the mechanism by which they coexist). Vocabulary tells: "balance", "middle ground", "drawing from each" are averaging-language and get reshaped.
+8. If irreducibility: invoke the Adornian escape valve — name which mechanism for sublation was tested and failed, and what stays unresolved.
+9. Resist teleological construction — the antithesis must not appear reverse-engineered to fit a predetermined sublation.
+10. Name recursion — when sublation is offered, at least one next-level contradiction it generates; when irreducibility is declared, the forward problems the standoff implies.
 
-2. **Adversarial commitment, "argued as if believed" (CQ1, continued).** The antithesis must be stated with genuine force — a reader unfamiliar with the analyst's position should be unable to tell which side the analyst started from. Token-objection antitheses fail the commitment test. The reading vocabulary is the steelman discipline applied internally: the antithesis is the strongest version the analyst can construct, including premises the thesis would reject.
+**Goal.** Produce a triadic peer-position dialectic with explicit transcending mechanism (or honest irreducibility declaration) — thesis, antithesis, and (if present) sublation rendered as peer positions, never as thesis-with-modifications progression.
 
-3. **Aufheben mechanism on sublation (CQ2, load-bearing).** Where sublation is offered, the deliverable must carry both a cancellation atom (what aspect of thesis is cancelled, what aspect of antithesis is cancelled, and why each is correctly cancelled) and a preservation atom (what is preserved from each, and the mechanism by which the preserved aspects coexist in the sublation). Sublation without explicit cancellation + preservation is premature-synthesis — averaging disguised as transcendence. Vocabulary tells: "a balance of both," "the middle ground," "drawing from each," "combining the insights of" are all averaging-language and are reshaped or downgraded.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Adornian honest standoff (CQ3, load-bearing).** When sublation cannot be achieved honestly, the deliverable must invoke the Adornian escape valve — declare irreducibility, name which mechanism for sublation was tested and failed, and state what stays unresolved. Forcing a sublation when irreducibility was the honest finding is forced-triad — a manufactured resolution that pretends Hegel where Adorno applies. The evaluator confirms the choice between sublation and irreducibility is grounded in what the dialectic actually produced, not in what would be more satisfying.
+- **CQ1 — internal derivation (load-bearing).** Does the antithesis emerge from the thesis's own internal contradictions, or is it external critique? Failure mode if unmet: `weak-antithesis`.
+- **CQ2 — Aufheben mechanism (load-bearing).** Does the sublation transcend by mechanism (cancellation + preservation), or does it average the two positions? Failure mode if unmet: `premature-synthesis`.
+- **CQ3 — Adornian honest standoff (load-bearing).** If no genuine sublation is available, has the analysis honored irreducibility rather than forcing one? Failure mode if unmet: `forced-triad`.
+- **CQ4 — recursion named (load-bearing).** Have the next-level contradictions the sublation generates (or the forward problems the standoff implies) been named explicitly? Failure mode if unmet: `recursion-omission`.
 
-5. **No teleological construction.** The antithesis must not appear reverse-engineered to fit a predetermined sublation. Teleological-construction residue shows up as antithesis premises that, on inspection, are exactly what the sublation needs to cancel — making the dialectic a stage performance rather than analysis. The evaluator's test: would the antithesis's "argued as if believed" version generate this sublation, or only this exact constructed version?
+A passing output states the thesis in its strongest form, names internal contradictions WITHIN the thesis with structural specificity, develops the antithesis with adversarial commitment from those contradictions, either produces a sublation with explicit cancellation + preservation mechanism or invokes the Adornian escape valve with the failed-mechanism reason, names at least one recursion (forward contradiction or forward problem), and preserves disagreements between streams as parallel atoms rather than silently picking.
 
-6. **Recursion named (CQ4).** When sublation is offered, the deliverable must name at least one next-level contradiction the sublation generates — a forward problem the synthesis itself opens. Sublation-as-terminal is recursion-omission; the Hegelian tradition's claim is precisely that aufheben moves dialectical thinking forward by generating new contradictions. When irreducibility is declared (the Adornian path), the recursion section names the forward problems the standoff implies rather than the sublation's generated contradictions.
+**Named failure modes.**
 
-Confidence applies differently per atom: the antithesis is the riskiest commitment (carries the highest analytic load even when the analyst doesn't share the position); the sublation is the highest-confidence-required claim (averaging slips in here). Where streams disagreed on which is the right antithesis (different internal contradictions in the thesis admit different antitheses), or where one stream produced a sublation and the other declared irreducibility, the evaluator confirms the disagreements are preserved as parallel atoms — the dialectic cannot determine which is correct without further work.
+- *weak-antithesis* — antithesis is thesis with minor modifications, not genuine adversarial commitment.
+- *premature-synthesis* — sublation averages positions ("do a little of both") rather than transcending.
+- *forced-triad* — analysis forces a sublation when the contradiction is genuinely irreducible.
+- *teleological-construction* — antithesis appears constructed to arrive at a predetermined sublation.
+- *recursion-omission* — sublation presented as terminal without naming next-level contradictions it generates.
 
 ## REVISION GUIDANCE
 

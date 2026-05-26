@@ -165,23 +165,38 @@ Depth in Argument Audit is the degree to which the cross-cutting-integration sta
 
 Breadth in Argument Audit is the catalog of frames considered before frame-audit narrows. Widen the lens to scan: dominant-paradigm frame; minority-tradition frame; rhetorical-genre frame; historical-genealogy frame. Even when the cross-cutting-integration narrows to specific cross-cutting issues, breadth is documented in the frame-surfacing-findings section. Note: alternative compositions considered included adding propaganda-audit; current composition stays neutral and routes to propaganda-audit when artifact is propaganda-engineered.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Argument Audit's evaluation surface is bifurcated because the mode is molecular: per-component quality (frame-audit and coherence-audit each performed substantively) and synthesis quality (cross-cutting integration producing findings neither component would have produced alone). Synthesis is load-bearing — CQ1 (integration vs concatenation) is the critical question whose negative answer most directly invalidates the output, and integration-failure is the failure mode that distinguishes a successful Argument Audit from a stapling of two sub-audits. CQ2–CQ4 act as quality gates on the underlying components.
+**What this analysis is.** Argument Audit is a molecular argument-evaluation method that integrates frame-audit and coherence-audit into a single pass, producing cross-cutting findings neither component pass would catch alone. It is descriptive of argument structure, not evaluative of conclusion truth — stance-bearing verdicts ("the argument is dishonest," "the conclusion is wrong") route to T15 modes (steelman, red-team variants, balanced-critique) rather than appearing in the audit output.
 
-The evaluator works in Walton-scheme, Toulmin, and Lakoff vocabulary, with Shackel checks when motte-and-bailey is invoked. Five checks:
+**Procedure.**
 
-1. **Cross-cutting integration (CQ1, load-bearing).** For each cross-cutting atom, ask: could frame-audit alone have produced this finding? Could coherence-audit alone? If yes to either, the atom is mis-routed. Genuine cross-cutting findings name a structural interaction — a frame-import doing inferential work coherence alone misses, a coherence-failure tracking a frame-substitution across claims, motte-and-bailey-style alternation operating across multiple claims. No atoms meeting this test means integration-failure: the audit is a concatenation, not a molecular pass.
+1. State the argument under audit once at the head — claim, supporting moves, conclusion.
+2. Decompose each claim into Toulmin elements — claim, grounds, warrant, backing, qualifier, rebuttal.
+3. Run per-claim coherence audit — verdict (holds / fails / partially holds) with the specific claim-pair or inference step cited as structural reason.
+4. Run frame audit — for each frame surfaced, name the specific premise that carries the import and what alternative frames it displaces.
+5. Integrate cross-cuttingly — find issues that require BOTH frame-perception and coherence-tracking: frame-imports doing inferential work coherence alone misses, coherence-failures tracking frame-substitutions across claims, motte-and-bailey-style alternation operating across multiple claims.
+6. Name fallacies only with structural warrant — invoke Walton schemes (expert opinion, position to know, cause to effect, analogy) with the argument's actual premises matched to the scheme; invoke motte-and-bailey only when motte claim, bailey claim, and alternation point are each named.
+7. Stay neutral on conclusion-truth — flag any drift into stance-bearing evaluation as out-of-scope.
+8. Calibrate confidence — synthesis-stage atoms inherit lower confidence than component-stage atoms.
 
-2. **Frame-import specificity (CQ2).** Each frame-surfacing atom must name the specific premise carrying the import. References to "the X frame" without locating the importing premise are frame-import-vagueness. The reading is Lakoff — surface frame, deep frame, framing presupposition — applied to specific premises.
+**Goal.** Produce an integrated argument audit that identifies structural moves the constituent passes (frame-audit, coherence-audit) cannot detect alone, with each finding traceable to a specific claim, premise, or inference step.
 
-3. **Coherence grounding (CQ3).** Each coherence finding must cite the specific claim-pair or inference step at issue. The Toulmin decomposition (claim / grounds / warrant / backing / qualifier / rebuttal) is the evaluator's reading vocabulary; verdicts of "the reasoning is shaky" or "something feels off" without claim-pair citations are coherence-impressionism.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Fallacy and scheme warrant (CQ4).** Where a Walton scheme is named (expert opinion, position to know, cause to effect, analogy, etc.), the audit's premise pattern must match the argument's actual structure, and the scheme's critical questions must be applied to the argument's actual premises rather than to a reconstructed strawman. Where motte-and-bailey is invoked, the motte claim, the bailey claim, and the alternation point must each be named. Bare labels are fallacy-labeling-without-warrant.
+- **CQ1 — integration vs concatenation (load-bearing).** Does the cross-cutting-integration stage surface issues neither component pass would catch alone, or does it merely concatenate them? Failure mode if unmet: `integration-failure`.
+- **CQ2 — frame-import specificity.** Are frame-imports identified concretely (which premises smuggle in which framings), or noted vaguely? Failure mode if unmet: `frame-import-vagueness`.
+- **CQ3 — coherence grounding.** Are coherence findings grounded in specific claim-pairs and inference steps, or stated as general impressions? Failure mode if unmet: `coherence-impressionism`.
+- **CQ4 — fallacy warrant.** Where named fallacies are invoked (motte-and-bailey, equivocation, etc.), is the invocation specific and warranted with the structural move shown? Failure mode if unmet: `fallacy-labeling-without-warrant`.
 
-5. **Stance neutrality.** Argument Audit is descriptive of argument structure, not evaluative of conclusion-truth. Verdicts that step beyond soundness ("the argument is dishonest," "the conclusion is wrong") are out-of-scope and route to T15 (steelman, balanced-critique, the red-team modes). The evaluator flags such residue rather than smoothing it.
+A passing output names the argument's Toulmin decomposition per claim, surfaces frames at the level of specific premises, produces at least one cross-cutting integration atom that requires both passes to detect, warrants any named fallacy with structural detail, and stays descriptive of argument structure.
 
-Confidence is calibrated separately: synthesis-stage atoms inherit lower confidence than component-stage atoms; uniform confidence across both surfaces is miscalibrated. Where Debate D2 (motte-and-bailey doctrine vs. fallacy) applies, the evaluator confirms the audit named the structural move in the argument's terms rather than relying on the label alone.
+**Named failure modes.**
+
+- *integration-failure* — cross-cutting-issues section restates per-claim and frame findings without identifying interactions between them.
+- *frame-import-vagueness* — frame findings refer to "the frame" or "the assumption" without naming which premise carries which import.
+- *coherence-impressionism* — coherence findings cite no specific claim-pair or inference step.
+- *fallacy-labeling-without-warrant* — named fallacies invoked without showing the specific structural move.
 
 ## REVISION GUIDANCE
 

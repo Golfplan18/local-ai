@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -156,9 +156,42 @@ Going deeper in Competing Hypotheses means working **across** the evidence-hypot
 
 Widening the lens means generating the widest plausible hypothesis set — at minimum one beyond the user's initial proposals, including unconventional explanations and a null/"something else" hypothesis. Identify what evidence would **disconfirm** each hypothesis, since disconfirmation is more diagnostic than confirmation. Identify the missing-evidence question: what single piece of information would most change the analysis? Where adversarial actors are plausible, scan for whether high-diagnosticity evidence could be manufactured. Breadth markers: at least one hypothesis is explicitly flagged as analyst-generated, sensitivity analysis names at least one evidence item whose reversal would change the ranking, and leading indicators are identified for each surviving hypothesis.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) hypothesis breadth beyond user-proposed; (CQ2) across-not-down matrix posture; (CQ3) elimination framing; (CQ4) at least one high-diagnosticity item; (CQ5) deception assessment when applicable. The named failure modes (missing-hypothesis, confirmation-framing, false-rigour, deception-blindness, wrong-tally, static-snapshot) are the evaluation checklist. A passing ACH output has a fully populated matrix with Heuer vocabulary (CC, C, N, I, II, NA), names the surviving hypothesis as the one with fewest I+II cells, identifies high-diagnosticity evidence explicitly, performs sensitivity analysis, and lists monitoring priorities.
+**What this analysis is.** Competing Hypotheses applies Heuer's Analysis of Competing Hypotheses (ACH) — a hypothesis-by-evidence matrix evaluated **across** rather than down, with consistency ratings (CC, C, N, I, II, NA) per cell, diagnosticity assessment per evidence row, and elimination arithmetic naming the surviving hypothesis as the one with fewest inconsistent cells. It is distinct from differential-diagnosis (lighter triage among 3-5 candidates, no full matrix) and from bayesian-hypothesis-network (full molecular pass with priors, likelihoods, posterior, conditional-dependency arcs). Its discipline is disconfirmation rigor — the methodology's value emerges when the user's favoured hypothesis loses.
+
+**Procedure.**
+
+1. Enumerate hypotheses widely — at least three, including ≥1 analyst-generated beyond the user's initial set; add a null / "something else" hypothesis when applicable.
+2. Inventory evidence items — each with credibility, relevance, source attribution.
+3. Populate the matrix across — for each evidence row, rate every hypothesis cell with Heuer vocabulary (CC, C, N, I, II, NA). NA is explicit; never leave cells absent.
+4. Assess diagnosticity per evidence row — high-diagnosticity rows discriminate sharply; low-diagnosticity rows are uniform. At minimum one high-diagnosticity item must be named.
+5. Compute elimination arithmetic — I+II count per hypothesis, II as tie-breaker. The surviving hypothesis is the one with fewest I+II cells.
+6. Frame the verdict in elimination language — "H_x survives because fewer items contradict it" — not confirmation framing ("H_x is supported by E1, E3").
+7. Run sensitivity analysis — name at least one evidence item whose reversal would flip the ranking, with the specific cell change required.
+8. When adversarial actors are plausible, assess whether high-diagnosticity evidence could be manufactured or planted, and which hypotheses benefit.
+9. List monitoring priorities per surviving hypothesis — leading indicators that would update the analysis.
+
+**Goal.** Produce a matrix-format ACH artifact with Heuer vocabulary, elimination-arithmetic verdict, diagnosticity assessment, sensitivity findings, and (when applicable) deception assessment.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — hypothesis breadth.** Has at least one hypothesis beyond the user's initial set been generated, or is the matrix limited to user-proposed explanations? Failure mode if unmet: `missing-hypothesis`.
+- **CQ2 — across-not-down posture.** Has each evidence item been assessed across all hypotheses, or only against the favoured one? Failure mode if unmet: `confirmation-framing`.
+- **CQ3 — elimination framing.** Is the conclusion framed as elimination of least-consistent hypotheses, or as confirmation of the favoured one? Failure mode if unmet: `confirmation-framing`.
+- **CQ4 — diagnosticity.** Has at least one piece of evidence been identified as high-diagnosticity, distinguishing sharply between hypotheses? Failure mode if unmet: `false-rigour`.
+- **CQ5 — deception assessment.** If adversarial actors are plausible, has the analysis assessed whether high-diagnosticity evidence could be manufactured? Failure mode if unmet: `deception-blindness`.
+
+A passing output has a fully populated matrix in Heuer vocabulary, names the surviving hypothesis as the one with fewest I+II cells with arithmetic shown, identifies high-diagnosticity evidence explicitly, performs sensitivity analysis with at least one ranking-flip candidate, addresses deception when applicable, and lists monitoring priorities.
+
+**Named failure modes.**
+
+- *missing-hypothesis* — all hypotheses user-proposed; no analyst-generated alternative or null hypothesis.
+- *confirmation-framing* — conclusion phrased as "H_x is supported by E1, E3" rather than "H_x survives because fewer items contradict it"; or evidence assessed only against the favoured hypothesis.
+- *false-rigour* — matrix format used but consistency ratings uniform across rows or unjustified; all rows non-diagnostic.
+- *deception-blindness* — adversarial context plausible but no assessment of whether high-diagnosticity evidence could be planted or manufactured.
+- *wrong-tally* — endorsed surviving hypothesis has more inconsistent (I + II) cells than an alternative; conclusion contradicts cell count.
+- *static-snapshot* — no monitoring priorities or leading indicators stated; analysis treated as final in an evolving situation.
 
 ## REVISION GUIDANCE
 

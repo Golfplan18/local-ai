@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -156,9 +156,40 @@ Depth in Balanced Critique is the rigor with which strengths and weaknesses are 
 
 Widening the lens in Balanced Critique means deliberate scanning across stakeholder perspectives — what looks like a strength from the user's vantage may be a weakness from another's; what looks settled may be contested. The breadth pass surfaces perspective-dependent findings and flags them as such rather than asserting universal evaluations. Adjacent considerations (comparable alternatives, opportunity costs, downstream consequences) are scanned as inputs to the assessment even when they are not the primary focus.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) symmetric rigor on strengths and weaknesses; (CQ2) perspective-dependent findings flagged; (CQ3) residual tensions named in net assessment; (CQ4) evidence-backed claims rather than analyst opinion. The named failure modes (stance-tilt, false-universality, premature-resolution, opinion-as-evaluation, bothsidesism) are the evaluation checklist. A passing Balanced Critique output presents strengths and weaknesses with comparable evidence depth, flags perspective-dependence, names residual tensions in the synthesis, and grounds claims in the artifact's specifics.
+**What this analysis is.** Balanced Critique is a neutral-stance evaluation that surfaces strengths and weaknesses of an artifact with comparable rigor, flags perspective-dependent findings, and resists collapse into a single verdict. It is distinct from steelman-construction (which advocates the strongest version of the artifact), benefits-analysis (constructive-balanced PMI envelope), and the red-team modes (adversarial-actor stress testing). Its neutrality is in evaluative method — symmetric depth of evidence — not in forced symmetry of conclusions; honest asymmetry survives into the output.
+
+**Procedure.**
+
+1. Restate the artifact under evaluation in one neutral paragraph at the head — no advocacy lean, no teardown framing.
+2. Identify evaluation criteria from the artifact's stated purpose (or elicited purpose) before surfacing claims.
+3. Surface strengths — each one tied to a specific element of the artifact, with evidence basis, conditions under which the strength would fail to hold, and a qualifier-depth tag (load-bearing / moderate / minor).
+4. Surface weaknesses at parallel depth — same structural template, same evidence-citation density. Asymmetry between Strengths and Weaknesses sections is a stance-tilt signal.
+5. Scan across stakeholder vantages — findings whose valence depends on whose seat one inhabits are tagged as perspective-dependent and named with the constituency on each side, not asserted as universal.
+6. Surface load-bearing assumptions whose alteration would shift the evaluation, and the uncertainties whose resolution would settle open disagreements.
+7. Build a net assessment that explicitly names the residual tensions surviving the synthesis — the assessment is allowed to be qualified; single-verdict endings are premature-resolution.
+8. Report the honest distribution — N strengths to N weaknesses — and name asymmetry where it exists, rather than padding the weaker side.
+9. Assign confidence per finding with explicit basis (training-grounded, RAG-grounded, user-supplied, analyst inference).
+
+**Goal.** Produce a structured neutral-stance evaluation with paired strength/weakness atoms rendered at parallel depth, perspective-tagged findings, residual tensions surfaced, and honest distribution reported rather than padded.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — symmetric rigor.** Have strengths and weaknesses been surfaced with comparable rigor, or has one side been treated more thoroughly? Failure mode if unmet: `stance-tilt`.
+- **CQ2 — perspective-dependence flagged.** Have findings that hold from one stakeholder vantage and not another been flagged as such rather than asserted as universal? Failure mode if unmet: `false-universality`.
+- **CQ3 — residual tensions named.** Have residual tensions been named in the net assessment, or has the synthesis collapsed them into a tidy verdict? Failure mode if unmet: `premature-resolution`.
+- **CQ4 — evidence-grounded claims.** Are claims of strength and weakness backed by specific evidence from the artifact rather than analyst preference? Failure mode if unmet: `opinion-as-evaluation`.
+
+A passing output presents strengths and weaknesses with comparable evidence depth tied to specific artifact elements, flags perspective-dependence with named stakeholder vantages, names residual tensions in the synthesis, reports honest distribution rather than padded balance, and assigns confidence per finding.
+
+**Named failure modes.**
+
+- *stance-tilt* — strengths and weaknesses sections asymmetric in length, specificity, or evidence depth; analysis has slipped into advocacy or critique.
+- *false-universality* — findings dependent on stakeholder perspective stated as universal; perspective-dependent section empty or trivial.
+- *premature-resolution* — net assessment delivers a verdict without naming residual tensions; synthesis silently overrides surfaced strengths and weaknesses.
+- *opinion-as-evaluation* — claims unbacked by specific evidence; analysis reads as analyst preferences.
+- *bothsidesism* — strengths and weaknesses forced into balance even when the artifact is genuinely strong or weak; neutrality has become artificial symmetry.
 
 ## REVISION GUIDANCE
 

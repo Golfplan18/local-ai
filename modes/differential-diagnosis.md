@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -146,9 +146,40 @@ Depth in Differential Diagnosis is the rigor with which diagnosticity is assesse
 
 Widening the lens in Differential Diagnosis means deliberate inclusion of rare-but-serious candidates, candidates from adjacent domains (a symptom that looks like X in domain A might be Y in domain B), candidates that combine mechanisms (the situation may be H1 *and* H3 together rather than H1 alone), and the null hypothesis (the situation is benign and self-resolving). Even when only the top two-or-three are ranked, the breadth pass documents the candidates considered and rejected with a one-line reason for rejection.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) hypothesis distinctness; (CQ2) consistency vs. diagnosticity; (CQ3) actionable disconfirmer for top two; (CQ4) confidence honesty when evidence is sparse. The named failure modes (hypothesis-collapse, confirmation-anchoring, no-actionable-disconfirmer, false-confidence, missing-zebra) are the evaluation checklist. A passing Differential Diagnosis output ranks distinct hypotheses by diagnosticity, offers a disconfirming test per top candidate, and either supports its confidence with evidence or flags the ranking as evidence-limited.
+**What this analysis is.** Differential Diagnosis is a light medical-tradition differential — the depth-light sibling of competing-hypotheses' full ACH matrix. Given two-to-five candidate explanations and a modest evidence base, it ranks the candidates by diagnosticity in disconfirming-power language and produces an actionable disconfirming test per top candidate. It is distinct from competing-hypotheses (full Heuer ACH with evidence-by-hypothesis matrix and disconfirming focus across all cells), from bayesian-hypothesis-network (probability network with conditional dependencies), and from frame-comparison (which handles inter-frame paradigm clash rather than within-frame hypothesis weighing). The mode's value is honest residual uncertainty when evidence supports two or three candidates roughly equally, not a forced single-explanation verdict.
+
+**Procedure.**
+
+1. Name the candidate hypotheses as genuinely distinct explanations — collapse candidates that make identical predictions, or differentiate them by surfacing where their predictions diverge.
+2. Inventory the evidence — each observation named once, tagged with which hypotheses it bears on.
+3. Assess diagnosticity per (evidence × hypothesis) cell in disconfirming-power language verbatim: `rules out` / `discriminating-positive` / `consistent with` / `irrelevant`.
+4. Surface rare-but-serious "zebra" candidates that common-case explanations would otherwise eclipse — explicitly note them at low rank rather than omitting, or state "no plausible zebra in this evidence base" with reason.
+5. Consider combination candidates — when the situation may be one hypothesis AND another together rather than one alone, render as its own candidate with joint diagnosticity reasoning.
+6. Rank candidates with reasoning — name which evidence cells were load-bearing for each rank, plus a sensitivity check (what perturbation would change the rank).
+7. Produce a disconfirming test per top-two candidate — actionable observation or experiment, cost or feasibility, and the evidence-shift it would produce.
+8. Flag evidence sufficiency — when the evidence base is too sparse for a confident ranking, surface the `Evidence-sufficiency flag` explicitly rather than inflating confidence.
+9. Calibrate confidence per ranking — per-candidate, not collapsed into a single overall verdict.
+
+**Goal.** Produce a structured differential — a ranked-options artifact where distinct candidates are weighed against the evidence in disconfirming-power language and each top candidate carries an actionable test.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — hypothesis distinctness.** Are the candidates genuinely different explanations of the evidence, or are some re-descriptions of the same underlying explanation? Failure mode if unmet: `hypothesis-collapse`.
+- **CQ2 — consistency vs diagnosticity.** Does the diagnosticity assessment distinguish evidence that rules out from evidence merely consistent with, given that consistent evidence is weak diagnostic? Failure mode if unmet: `confirmation-anchoring`.
+- **CQ3 — actionable disconfirmer.** Has the analysis identified at least one disconfirming test for each of the top two candidates? Failure mode if unmet: `no-actionable-disconfirmer`.
+- **CQ4 — confidence honesty.** Has the analysis flagged when the evidence base is too small for a confident ranking, rather than producing one it cannot support? Failure mode if unmet: `false-confidence`.
+
+A passing output ranks distinct candidate hypotheses by diagnosticity in disconfirming-power language verbatim (`rules out`, `discriminating-positive`, `consistent with`, `irrelevant`), offers at least one actionable disconfirming test per top candidate, surfaces zebra candidates (or notes their absence with reason), preserves equally-ranked candidates as ties rather than forcing a verdict, and either supports its confidence with evidence or flags the ranking as evidence-limited.
+
+**Named failure modes.**
+
+- *hypothesis-collapse* — two or more named hypotheses make identical predictions about the evidence; the differential is artificial.
+- *confirmation-anchoring* — diagnosticity assessed via consistency only, rather than via disconfirming power.
+- *no-actionable-disconfirmer* — top-ranked hypotheses returned without naming a test that would distinguish them.
+- *false-confidence* — ranking produced when evidence is too sparse to support it; confidence inflated.
+- *missing-zebra* — common-case explanations dominate; rare-but-serious explanations absent even at low rank.
 
 ## REVISION GUIDANCE
 

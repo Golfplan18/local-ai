@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-04-17
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -153,25 +153,41 @@ Depth in Benefits Analysis is the specificity and mechanism-grounding of each co
 
 Breadth in Benefits Analysis is the survey of affected parties before settling on the asymmetries to surface. Widen the lens to scan: parties who benefit if the proposal succeeds; parties who pay costs; parties whose interests are unaffected but whose narrative is changed; parties whose absence from the analysis itself constitutes an asymmetry. Breadth markers: the affected-parties map has at least three rows; the Interesting column captures non-obvious implications; the analysis identifies at least one item that is Plus for one party and Minus for another.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Benefits Analysis is read in De Bono PMI vocabulary — Plus, Minus, and Interesting as three irreducible columns rather than a pro/con dyad with garnish. The Interesting column is the methodology's distinctive contribution: it catches the second-order implications (precedent, signaling, path-dependency) that pro/con thinking systematically misses. The evaluator's primary axis is whether the output is a PMI artifact or a disguised verdict. CQ5 (verdict-trap) is load-bearing — an unsolicited recommendation collapses the mode into an opinion piece and invalidates its contribution. CQ1 (two-column-trap) and CQ3 (second-order-omission) are also load-bearing for the methodology's identity: without populated Interesting, the artifact is pro/con, not PMI. CQ2 (boilerplate-trap) and CQ4 (single-perspective-trap) act as quality gates.
+**What this analysis is.** Benefits Analysis is a single-artifact PMI (Plus / Minus / Interesting) evaluation per de Bono, producing a constructive-balanced envelope rather than a verdict. It is distinct from balanced-critique (neutral stance, no constructive lean, strengths-and-weaknesses framing), steelman-construction (constructive-strong, advocacy of the strongest version), the red-team modes (adversarial-actor stress testing), and constraint-mapping (comparing alternatives, not evaluating a single proposal). Its distinctive contribution is the Interesting column — the second-order implications (precedent, signaling, path-dependency) that pro/con thinking systematically misses; without populated Interesting the artifact is pro/con, not PMI.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Verdict abstention (CQ5, load-bearing).** The recommendation slot must be empty unless the user explicitly asked for a lean. Verdict-trap residue includes hedged forms — "the proposal appears net-positive," "the case for adoption seems strong," "on balance this looks worth doing." Each of these is an unsolicited recommendation in evaluator's clothing. The deliverable presents the envelope; the user decides. When the user asked for a recommendation, the slot is populated explicitly and labelled as such; when they did not, the slot carries an explicit "empty (user did not request a lean)" atom rather than silent omission.
+1. Restate the proposal precisely once at the head — the user must see what is being evaluated before the evaluation.
+2. Map affected parties — at least three party rows; the analysis is descriptive of impact distribution, not aggregated from a single seat.
+3. Populate the Plus column — each claim names the mechanism by which the benefit arises (literal "mechanism:" phrasing), the affected party, and the evidence basis. Generic claims that could apply to any proposal of this type are boilerplate-trap.
+4. Populate the Minus column with parallel structure — claims with named mechanisms, affected parties, evidence basis. Vague "potential risk" without mechanism is bloat.
+5. Populate the Interesting column — items tagged by subtype (precedent / signaling / path-dependency / other-second-order). Items that merely restate Plus or Minus content in milder language are second-order-omission residue.
+6. Surface asymmetries — items that are Plus for one party and Minus for another. At minimum one asymmetry, or say so explicitly when none honestly exist.
+7. Mark the most-consequential Plus, Minus, and Interesting (one tag each).
+8. Report the honest distribution — N Plus, N Minus, N Interesting — and name asymmetry where it exists. Padding weaker columns to look balanced is false-symmetry-trap.
+9. Leave the recommendation slot empty by default. Populate only when the user explicitly asked for a lean. Hedged verdicts ("on balance," "appears net-positive") are unsolicited recommendations in evaluator's clothing.
 
-2. **Three-column discipline (CQ1).** All three columns must be populated, or an empty column must be explicitly marked "none identified." Two-column-trap is the failure mode — the analyst has imported a pro/con frame and silently dropped the Interesting column. The check is structural: does the deliverable have a labelled Interesting section, populated or explicitly empty? A missing or unlabelled Interesting section fails CQ1.
+**Goal.** Produce a structured three-column PMI artifact with mechanism-grounded claims, affected-parties map, surfaced asymmetries, honest distribution, and an explicit empty recommendation slot unless the user requested a lean.
 
-3. **Second-order substance in Interesting (CQ3, load-bearing for PMI identity).** The Interesting column must carry items tagged by subtype (precedent / signaling / path-dependency / other-second-order). Items that merely restate Plus or Minus content in milder language are second-order-omission residue — the Interesting column has been populated as decoration rather than as De Bono prescribed. The test: does each Interesting item name an implication orthogonal to the proposal's primary effect, and does it carry an explicit subtype tag?
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Mechanism-grounded specificity (CQ2).** Each claim must name the mechanism by which the Plus or Minus arises — "mechanism: by reducing X" rather than "improves efficiency." Generic claims that could apply to any proposal of this type are boilerplate-trap. The De Bono discipline is per-claim mechanism, not category-level summary. Test: could the same Plus or Minus apply to a substantially different proposal? If yes, the claim is generic and is reshaped.
+- **CQ1 — three-column discipline.** Are all three columns populated, or has the analysis collapsed into Plus/Minus only? Failure mode if unmet: `two-column-trap`.
+- **CQ2 — mechanism-grounded specificity.** Are claims grounded in the user's specific case with named mechanism, or generic boilerplate? Failure mode if unmet: `boilerplate-trap`.
+- **CQ3 — second-order substance in Interesting.** Has the Interesting column captured at least one second-order implication (precedent, signaling, path-dependency) — or explicitly noted that none was identified? Failure mode if unmet: `second-order-omission`.
+- **CQ4 — affected-party asymmetry.** Have asymmetries (Plus for one party, Minus for another) been surfaced via the affected-parties map? Failure mode if unmet: `single-perspective-trap`.
+- **CQ5 — verdict abstention.** Has the analysis avoided unsolicited recommendation — presenting the envelope rather than rendering a verdict? Failure mode if unmet: `verdict-trap`.
 
-5. **Affected-party asymmetry (CQ4).** The affected-parties map must carry at least three party rows, and the deliverable must surface at least one asymmetry — an item that is Plus for party_A and Minus for party_B. A single-perspective analysis (all claims viewed from one party's vantage) is single-perspective-trap; PMI methodology is descriptive of impact distribution, not aggregated from a single seat. When no asymmetries are honestly present, the deliverable says so explicitly rather than fabricating one.
+A passing output names the proposal precisely, populates all three columns (with each claim grounded in mechanism and party), surfaces ≥1 second-order implication tagged by subtype, maps ≥3 affected parties with ≥1 asymmetry, reports honest distribution, and leaves the recommendation slot empty unless the user explicitly asked for a lean.
 
-6. **Honest distribution over false symmetry.** When the corpus reaches the deliverable with a 5-1-0 distribution, the deliverable carries that skew with the count stated. Padding weaker columns to look balanced is false-symmetry-trap — appearance of balance smuggled in at the cost of honest reporting. The PMI artifact's value is the actual distribution; the user reads it as data.
+**Named failure modes.**
 
-Confidence is per-claim: training-grounded vs RAG-grounded vs user-supplied vs analyst inference. Per-column evidence quality is the aggregated note. Where streams disagreed on whether an item is Plus, Minus, or Interesting (column-classification disagreement), the evaluator confirms the disagreement is preserved as a tension atom rather than silently picked.
+- *two-column-trap* — Plus and Minus populated; Interesting column empty without explicit "none identified" statement.
+- *boilerplate-trap* — claims read as generic; could apply to any proposal of this type.
+- *single-perspective-trap* — all claims viewed from one party's perspective; affected-parties map missing or single-row.
+- *verdict-trap* — output recommends adoption (or rejection) when user did not ask for a lean.
+- *false-symmetry-trap* — equal pros and cons presented for appearance of balance rather than honest distribution.
 
 ## REVISION GUIDANCE
 

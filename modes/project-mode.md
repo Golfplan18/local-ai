@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 meta_mode: true
 
 ---
@@ -145,9 +145,40 @@ When Project Mode dispatches to an analytical mode (the typical case for analyti
 
 Breadth in Project Mode is the survey of alternative approaches considered before committing to the deliverable's form. Widen the lens to consider: alternative formats, alternative scopes, alternative tools, alternative interpretations of the request. Breadth markers: at least one alternative was considered before commitment; the lightweight paradigm check has been applied to constraints that look like unstated assumptions; adjacent opportunities (scope additions the user might want) are surfaced as suggestions, not silently included.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ5. The named failure modes are the evaluation checklist. The dispatch check fires first — if the request matches an analytical mode, that is the correct response rather than Project Mode execution. If Project Mode is terminal (pure document production), evaluate by: (a) requirement satisfaction; (b) scope discipline; (c) decisions log substance; (d) limitations named; (e) lightweight paradigm check applied where constraints look unnecessary. Silent scope expansion without acknowledgement is a verification failure.
+**What this analysis is.** Project Mode is execution-oriented: the user has named a deliverable and Project Mode produces it. The mode's distinctive move is the dispatch-check — when the request actually matches an analytical mode (DUU, RCA, SD, etc.), Project Mode re-routes rather than executing in-mode. It is distinct from structured-output (which renders existing content into a format rather than producing original work) and from passion-exploration / terrain-mapping (which explore an open space generatively rather than producing a defined deliverable).
+
+**Procedure.**
+
+1. Apply the dispatch-check first — if the request matches an analytical mode, re-dispatch rather than executing in Project Mode.
+2. Lock the deliverable shape — its form, scope, and acceptance criteria, named explicitly before its content.
+3. Apply the lightweight paradigm check — surface constraints that look like unstated assumptions limiting the solution space.
+4. Survey alternative approaches (alternative formats, scopes, tools, interpretations) before committing to the chosen path.
+5. Produce the deliverable in its native form — memo format for a memo, code for code, outline for an outline; do not impose analytical-mode template shapes.
+6. Trace each stated requirement to a specific element of the deliverable; gap-report any unaddressed requirements rather than silently skipping them.
+7. Log substantive decisions with alternatives considered and reasoning — entries without reasoning are trivial.
+8. Acknowledge at least one limitation or risk — what the deliverable does not address or what could go wrong.
+9. Run the scope-discipline check — was there silent expansion beyond the user's stated requirements? Trim back or surface as a separate suggestion.
+
+**Goal.** Produce the user-requested deliverable in its native form, plus three universal accompanying elements (decisions log, limitations, scope-discipline note), with the dispatch-check guard rail honoured when the request actually matches an analytical mode.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — requirement satisfaction.** Have all stated requirements been satisfied in the deliverable? Failure mode if unmet: `requirement-unmet`.
+- **CQ2 — scope discipline.** Is the deliverable scoped to what was requested, or has it expanded beyond? Failure mode if unmet: `scope-creep`.
+- **CQ3 — dispatch check.** Does the request actually match an analytical mode, in which case dispatch is the correct response rather than direct Project Mode execution? Failure mode if unmet: `dispatch-missed`.
+- **CQ4 — decisions and limitations.** Have substantive decisions been logged with reasoning, and ≥1 limitation or risk acknowledged? Failure mode if unmet: `decision-and-limitation-omission`.
+- **CQ5 — paradigm check.** If a constraint looks like an unstated assumption limiting the solution space, has the lightweight paradigm check been applied? Failure mode if unmet: `assumption-lock`.
+
+A passing output satisfies all stated requirements, stays scoped to the request, logs at least one substantive decision with reasoning, acknowledges at least one limitation or risk, applies the lightweight paradigm check where constraints look unnecessary, and (when applicable) re-dispatches rather than executing analytical-shaped requests.
+
+**Named failure modes.**
+
+- *dispatch-missed* — Project Mode is executing what should have been dispatched to a specific analytical mode.
+- *scope-creep* — deliverable expands beyond user's stated requirements without explicit acknowledgement.
+- *gold-plating* — over-engineering beyond what the request needs.
+- *assumption-lock* — a constraint is accepted as fixed when it is actually an unstated assumption limiting the solution space.
 
 ## REVISION GUIDANCE
 

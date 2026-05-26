@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 no_visual: true
 
 ---
@@ -161,9 +161,41 @@ Going deeper in Steelman Construction means reconstructing the position at its l
 
 Widening the lens means scanning for the proponent's full philosophical or strategic context, not just the immediate claim. Identify hidden premises, fill gaps, and look for the strongest available support across the position's intellectual lineage. Identify at least two points of agreement between the steelmanned position and the user's own — these are not concessions but genuine common ground that often opens unexpected analytical leverage. Identify what is genuinely valuable in the position, separate from its rhetorical packaging. Breadth markers: hidden premises are explicitly surfaced, points of agreement are numbered and grounded in the user's stated view, and the steelman's intellectual lineage is acknowledged.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) mirror test pass; (CQ2) identity preservation; (CQ3) critique-targets-steelman-only; (CQ4) construction-before-critique. The named failure modes (tinman-trap, identity-loss, retreat-to-original, steel-strawman, projection-trap, entangled-construction) are the evaluation checklist. A passing Steelman output has all six required sections, the steelmanned reconstruction is recognizably the same argument strengthened, at least two points of agreement are explicit, the critique addresses only the strongest version, and the survival assessment names what remains compelling after critique. Mode is prose-only — any visual emission is an evaluation failure.
+**What this analysis is.** Steelman Construction is a constructive-strong stance mode that reconstructs a position at its logical best — surfacing hidden premises, filling logical gaps charitably, and marshalling the best available evidence — then critiques only that strongest version. It is asymmetric by design: it is distinct from balanced-critique (neutral weighing), benefits-analysis (Plus/Minus/Interesting balanced evaluation), red-team-assessment (adversarial-stance evaluation of an artifact for the user's own decision), and red-team-advocate (adversarial brief for external use). The mode is prose-only — any visual emission is a structural failure.
+
+**Procedure.**
+
+1. State the original position once in bounded form (≤ ⅓ of the steelman section length) — including the weaknesses the reconstruction will strengthen.
+2. Reconstruct the position at its logical best — surface hidden premises that strengthen the argument, fill logical gaps with the most charitable inferences, marshal the most defensible evidence and intellectual lineage.
+3. Apply the mirror test — would a thoughtful proponent endorse the reconstruction? If not, strengthen further before proceeding.
+4. Identify load-bearing strengths — the most defensible premises, the hardest-to-dismiss evidence, the intellectual lineage that gives the position weight.
+5. Surface at least two concrete points of agreement between the steelmanned position and the user's own view (when supplied) — genuine common ground, not concessions.
+6. Critique only the steelman — each critique passage anchors to a strength identified in step 4. If a critique only applies to the original-position weaknesses, drop it; do not weaken the steelman to make the critique fit.
+7. Maintain construction-before-critique ordering — build the steelman fully before critique begins. Interleaved construction-and-critique is a structural failure.
+8. Produce the survival assessment — what remains compelling after critique. Even when the critique lands, name what holds, what is qualified, and what falls.
+9. When multiple positions are steelmanned, apply identical rigor to each (symmetry guard rail).
+
+**Goal.** Produce a constructive-strong charitable reconstruction with critique-at-steelman-strength, in prose only — where the steelman is recognizably the same argument strengthened, at least two points of agreement are explicit, the critique addresses only the strongest version, and the survival assessment names what remains compelling.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — mirror test pass.** Would a thoughtful proponent endorse the reconstruction, or would they recognize their argument weakened? Failure mode if unmet: `tinman-trap`.
+- **CQ2 — identity preservation.** Is the steelman recognizably the same argument strengthened, or has it drifted into a different argument the analyst prefers? Failure mode if unmet: `identity-loss`.
+- **CQ3 — critique targets steelman only.** Does the critique address only the steelmanned version, or does it retreat to the weaker original at any point? Failure mode if unmet: `retreat-to-original`.
+- **CQ4 — construction before critique.** Was the steelman built fully before critique began, or were construction and critique entangled? Failure mode if unmet: `entangled-construction`.
+
+A passing output has all six required sections, the steelmanned reconstruction is recognizably the same argument strengthened, at least two points of agreement are explicit, the critique addresses only the strongest version, the survival assessment names what remains compelling after critique, and no visual envelope is emitted.
+
+**Named failure modes.**
+
+- *tinman-trap* — reconstruction appears strong but is designed to be defeated; mirror test fails (proponent would not endorse).
+- *identity-loss* — reconstruction has drifted into a different argument; core claim of original position no longer present.
+- *retreat-to-original* — critique paragraph addresses the weaker original formulation at one or more passages.
+- *steel-strawman* — steelman appears generally strong but a specific point is engineered for defeat by the subsequent critique.
+- *projection-trap* — reconstruction filtered through analyst's worldview rather than the proponent's values; charitable inferences favour analyst's frame.
+- *entangled-construction* — construction and critique appear interleaved; steelman was not built fully before critique began.
 
 ## REVISION GUIDANCE
 

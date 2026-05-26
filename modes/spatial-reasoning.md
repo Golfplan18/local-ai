@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-04-17
-date modified: 2026-05-01
+date modified: 2026-05-24
 wp: WP-3.4
 
 ---
@@ -144,27 +144,40 @@ Depth in Spatial Reasoning is the rigour of structural extraction and gap analys
 
 Breadth in Spatial Reasoning is the catalog of structural patterns considered (hub-and-spoke / chain / cycle / star / cluster bridge / orphan) and the range of fog-clearing questions generated. Widen the lens to identify multiple plausible patterns the arrangement might instantiate, generate open questions targeting different aspects of the user's pre-conscious understanding, and surface the single most consequential gap (the addition that, if real, would most change what the diagram implies). Breadth markers: ≥2 candidate patterns considered (with verification per CQ2); ≥1 fog-clearing question per ambiguity; one most-consequential gap highlighted.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Spatial Reasoning is read in Tversky's spatial-correspondence-principles vocabulary (proximity = relatedness, verticality = hierarchy, containment = category, connection = relationship), with structural-pattern libraries (hub-and-spoke, chain, cycle, star, cluster-bridge, orphan) as the catalog the gap analysis draws from, Larkin-Simon diagrammatic-representation theory for what diagrams do that text doesn't, and systems-archetype recognition when causal structure is implied. The evaluator's primary axis is *spatial fidelity to the user* — the user's arrangement is signal of their pre-conscious structure, and the methodology surfaces what that arrangement implies without rearranging it or evaluating its correctness. CQ4 (rearrangement-trap) and CQ3 (leading-question) are load-bearing because they protect the elicitation contract: the mode pulls the user's structure into articulation, it does not impose the analyst's. CQ1 (structural-misrepresentation) and CQ2 (gap-fabrication) act as fidelity gates on extraction and gap proposal.
+**What this analysis is.** Spatial Reasoning is Tversky-correspondence structural gap detection on user-drawn diagrammatic input (sketches, whiteboard photos, Excalidraw, Obsidian Canvas, prior Ora visuals). It extracts the diagram's entities, relationships, clusters, and hierarchy, audits them against Tversky's correspondences (proximity = relatedness, verticality = hierarchy, containment = category, connection = relationship), identifies gaps with grounded evidence, and proposes open fog-clearing questions — all while *preserving the user's arrangement* (annotations overlay, never relocate). It is the visual-input variant within T11, distinct from relationship-mapping (text-input general-specificity counterpart), from T19 spatial-composition modes (read the layout itself as primary content), and from systems-dynamics modes (text-only feedback-loop work without diagrammatic input).
 
-Evaluator checks:
+**Procedure.**
 
-1. **Arrangement preservation (CQ4, load-bearing).** The user's spatial arrangement must be preserved exactly; annotations overlay, entities are never relocated. Rearrangement-trap residue is a "cleaner" version of the user's diagram with entities moved — even subtle relocation is a violation, because the arrangement carries the user's pre-conscious structure. Suggestions for restructuring belong in the transition-prompt section as recommendations, never in the annotated output as modifications. The envelope `canvas_action` must be `annotate`, not `replace` or `update`.
+1. Extract structural elements — entities, relationships, clusters, hierarchy — with positions and ambiguities flagged rather than silently resolved.
+2. Audit Tversky correspondences — where the arrangement honours or contradicts proximity = relatedness, verticality = hierarchy, containment = category, connection = relationship.
+3. Scan structural-pattern candidates (hub-and-spoke / chain / cycle / star / cluster-bridge / orphan) — apply concept-verification per pattern: is it present in conceptual content, or only in pixels?
+4. Identify gaps with specific spatial or domain evidence per gap — Tversky-correspondence contradiction, structural-pattern implication, or domain-logic constraint; mark the most-consequential gap with ★.
+5. Generate open fog-clearing questions — willing to accept "no" as an answer; never lead with the expected answer ("Isn't there a feedback loop?" → "What relationship, if any, exists?").
+6. Emit annotations that overlay the user's diagram (`canvas_action: annotate`) — entities are never relocated; restructuring suggestions belong only in the transition-prompt section.
+7. Treat the user's diagram as signal of pre-conscious structure, not as a claim to be graded right/wrong (critic-trap avoidance).
+8. Calibrate confidence lower for rough inputs (napkin sketches, low-resolution photos) than for structured inputs (Excalidraw JSON, Obsidian Canvas).
+9. Surface the transition prompt when the structure has crystallised into a specific analytical question — route sideways to relationship-mapping or the matching analytical mode.
 
-2. **Open fog-clearing questions (CQ3, load-bearing).** Questions targeting the user's structure must be open — willing to accept "no" as an answer. Leading-question residue is "Isn't there a feedback loop between A and B?" which encodes the expected answer; the open form is "What relationship, if any, exists between A and B?" Questions that the user could only answer in one direction are reshaped to admit multiple directions, or downgraded to gap-hypothesis findings rather than questions.
+**Goal.** Produce a Tversky-correspondence audit on user-drawn input with grounded gap identifications, open fog-clearing questions, and an annotation envelope preserving the user's arrangement.
 
-3. **Spatial-extraction fidelity with ambiguities flagged (CQ1).** The structural extraction must capture entities, relationships, clusters, and hierarchy accurately, with ambiguous elements explicitly flagged rather than silently resolved. Structural-misrepresentation residue is a line that may or may not be a connection silently read as a connection; a grouping that may or may not be a cluster silently read as a cluster. The reading discipline: ambiguity is content, not noise, and the deliverable surfaces it.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Gap grounding (CQ2).** Each proposed missing element must cite specific spatial or domain evidence — Tversky-correspondence contradiction (e.g., proximity suggests relatedness that the connections don't draw), structural-pattern implication (an incomplete hub-and-spoke missing its hub), or domain-logic constraint (a feedback-loop the topology implies). Gap-fabrication residue is speculative additions without grounding — "you should add X" with no evidence trail. Gaps without evidence are reshaped or downgraded to questions.
+- **CQ1 — structural extraction fidelity.** Does the structural extraction capture all visible entities, relationships, clusters, and hierarchy with ambiguities flagged rather than silently resolved? Failure mode if unmet: `structural-misrepresentation`.
+- **CQ2 — gap grounding.** Are identified gaps genuine — implied by the spatial structure or domain logic — or are they template pattern-matching artifacts? Failure mode if unmet: `gap-fabrication`.
+- **CQ3 — open fog-clearing questions (load-bearing).** Are fog-clearing questions open (eliciting the user's pre-conscious structure) rather than leading (encoding a specific answer)? Failure mode if unmet: `leading-question`.
+- **CQ4 — arrangement preservation (load-bearing).** Does the mode preserve the user's spatial arrangement — annotating without rearranging? Failure mode if unmet: `rearrangement-trap`.
 
-5. **Pattern-in-concept, not pattern-in-pixel.** Where the deliverable identifies a structural pattern, the pattern must be present in the conceptual content of the diagram, not merely in its visual arrangement. Template-projection residue is hub-and-spoke (or cycle, or hierarchy) identified because the arrangement looks like one without verifying that the concepts at the nodes actually instantiate the pattern. Each pattern atom carries a concept-verification atom: yes-or-no, is the pattern present in concept space?
+A passing output extracts the diagram faithfully with ambiguities flagged, cites spatial or domain evidence for every gap identification, phrases all fog-clearing questions openly, emits annotations with `canvas_action="annotate"` and valid target_ids, and fires the transition prompt when structure has crystallised into a specific analytical question.
 
-6. **Spatial intuition as signal, not as claim.** The user's diagram is treated as evidence of their pre-conscious structure, not as a proposition to be evaluated. Critic-trap residue is the analyst grading the diagram (right/wrong/inaccurate) rather than surfacing what it contains and implies. The methodology's posture is collaborative articulation — pulling the user's intuition into legible form — not evaluation of whether the intuition was correct.
+**Named failure modes.**
 
-7. **Confidence calibration to input fidelity.** Rough inputs (napkin sketches, low-resolution photos) carry lower confidence on mark-level claims than structured inputs (Excalidraw JSON, Obsidian Canvas). Confidence inflation on rough input — making fine-grained claims the visual fidelity cannot support — is its own failure mode the evaluator flags.
-
-Where streams disagreed on what's missing (different gap-hypotheses for the same arrangement), the evaluator confirms both are preserved with their respective evidence. Where the structure has crystallised into a specific analytical question (the user is now asking about relations the diagram asserts, not about gaps in the diagram), the evaluator confirms the transition-prompt fires sideways to relationship-mapping or the appropriate analytical mode.
+- *rearrangement-trap* — mode produces a "cleaner" version of the user's diagram with entities relocated.
+- *template-projection* — a familiar pattern (hub-and-spoke, cycle, tree) is identified that the spatial arrangement visually suggests but the conceptual content does not actually instantiate.
+- *gap-fabrication* — proposed missing elements are not implied by the spatial structure or domain logic; they are speculative additions.
+- *leading-question* — fog-clearing question encodes a specific answer ("Isn't there a feedback loop between A and B?").
+- *critic-trap* — mode evaluates the user's diagram as correct or incorrect rather than treating spatial intuition as signal.
 
 ## REVISION GUIDANCE
 

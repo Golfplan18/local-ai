@@ -5,7 +5,7 @@ type: mode
 tags:
   - molecular
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -180,25 +180,42 @@ Depth in Decision Clarity is the degree to which the four synthesis stages produ
 
 Breadth in Decision Clarity is the catalog of stakeholders and intervention candidates considered before narrowing to the recommendation. Widen the lens to scan: visible stakeholders; absent stakeholders (boundary-critique territory); intervention status quo; intervention reversal; intervention defer-and-monitor. Even when the recommendation lands on one intervention, breadth is documented in the stakeholder-map-with-positions and intervention-recommendation sections. Note: alternative compositions considered included substituting full red-team for the fragment; current composition uses the fragment to keep the document decision-shaped rather than analysis-shaped.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Decision Clarity is read as a decision-brief tradition — Rumelt strategy-kernel framing combined with cui-bono interest-pathway analysis, Mitchell-Agle-Wood stakeholder-salience overlay, Schwartz/Wack scenario contrast, and red-team-assessment adversarial stress against the leading intervention. The evaluator's primary axis is decision-maker grounding: this mode exists to produce a document a named third-party decision-maker can act on within their authority, not an exploratory analysis. CQ1 (decision-maker-disconnection) and CQ4 (out-of-scope recommendation) are load-bearing — together they protect the deliverable's reason for existing. CQ2 (stakeholder collapse), CQ3 (stress-test omission), and CQ5 (scenario flattening) act as quality gates on inputs and scenario structure.
+**What this analysis is.** Decision Clarity is a molecular decision-brief that integrates cui-bono interest-pathway analysis, stakeholder mapping, two-scenario contrast, and red-team adversarial stress against the leading intervention into a single decision-shaped document for a named third-party decision-maker. It is distinct from wicked-problems (which produces integrated multi-perspective analysis without the decision-shape constraint), from cui-bono (which gives a quick read on who benefits but is not addressed to a decision-maker), and from decision-architecture (which serves a decision-maker making the decision themselves). The deliverable's reason for existing is grounding in the named decision-maker's actual authority and scope — not exploratory mapping of the territory.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Decision-maker grounding (CQ1, load-bearing).** The document must address the named decision-maker's actual context: their authority, their constraints, the audiences they answer to, the time-window they operate within. Generic decision analysis without decision-maker-context anchoring is decision-maker-disconnection — it could be addressed to anyone, which means it is addressed to no one. Test: does the document name the decision-maker, and does the recommendation language presuppose their specific authority and constraints?
+1. Lock the decision-maker, the decision at hand, and the time-window — name the decision-maker explicitly, state their authority and accountability, and bound what is and isn't theirs to decide.
+2. Run cui-bono and stakeholder-mapping in parallel, then merge into a single interest-and-stakeholder picture with concrete positions, pathways (money / power / time / narrative), and concerns per stakeholder.
+3. Construct two contrasting scenarios — most-likely and most-adverse, qualitatively different (different causal pathway, not just numerically worse) — and overlay the stakeholder picture on each to surface position flips.
+4. Identify the leading intervention candidate from the analysis.
+5. Run red-team-assessment fragment against the leading intervention only — adversarial dynamics, exploit pathways, failure scenarios that specifically target this intervention (assessment stance, not advocate).
+6. Surface flip-points (stakeholders whose positions reverse under stress) and contradictions (red-team findings that invalidate the cui-bono interest-rationale) as labelled findings rather than burying them.
+7. Compose recommendations within the decision-maker's authority — flag scope-exceeding recommendations explicitly rather than silently demoting them.
+8. State residual risks and decision conditions — what monitoring or trigger would warrant revisiting the decision.
+9. Populate a confidence map distinguishing structural confidence (analytical frame is sound) from substantive confidence (inputs are reliable).
+10. Hold decision-shape discipline throughout — the document tells the decision-maker what to do, when, and under what conditions; it does not invite further exploration.
 
-2. **Recommendation scope discipline (CQ4, load-bearing).** Recommendations must lie within the named decision-maker's authority. Recommendations that require authority they don't have are out-of-scope-recommendation — they invite the decision-maker to act beyond warrant. When synthesis surfaces a scope-exceeding recommendation, the evaluator confirms the document flags the scope question explicitly rather than burying it.
+**Goal.** Produce a Decision Clarity Document that a named third-party decision-maker can act on within their authority — integrating interest, stakeholder, scenario, and adversarial-stress analyses into a single decision-shaped brief with actionable recommendations.
 
-3. **Stakeholder concreteness (CQ2).** Each stakeholder must carry a concrete position, interest pathway (money / power / time / narrative per cui-bono shape), and concern. Generic categories ("employees," "customers," "the community") without specificity are stakeholder-collapse — the document feels comprehensive but gives the decision-maker no actionable understanding.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Adversarial stress test on the leading intervention (CQ3).** The red-team fragment must run against the *leading* intervention — not a runner-up, and not generally against the situation. The test: does the document name adversarial dynamics, exploit pathways, or failure scenarios that specifically target the recommended intervention? Stress-test-omission is the failure mode and the recommendation does not pass without it. The stance is assessment (red-team-assessment), not advocate — the document is decision-maker-facing, not audience-facing.
+- **CQ1 — decision-maker grounding (load-bearing).** Does the document address the named decision-maker's authority, constraints, and accountability, or is it generic analysis that could be addressed to anyone? Failure mode if unmet: `decision-maker-disconnection`.
+- **CQ2 — stakeholder concreteness.** Are stakeholder positions surfaced with concrete interests and concerns per cui-bono shape, or collapsed into generic categories (employees, customers)? Failure mode if unmet: `stakeholder-collapse`.
+- **CQ3 — stress-test on the leading intervention.** Has the red-team fragment run against the leading intervention (not a runner-up, not the situation generally), naming adversarial dynamics that specifically target it? Failure mode if unmet: `stress-test-omission`.
+- **CQ4 — recommendation scope discipline (load-bearing).** Are recommendations within the named decision-maker's authority, with scope-exceeding ones flagged explicitly? Failure mode if unmet: `out-of-scope-recommendation`.
+- **CQ5 — scenario kind-vs-degree.** Are the two scenarios qualitatively contrasting (different causal pathway), or variations of the same trajectory? Failure mode if unmet: `scenario-flattening`.
 
-5. **Scenario kind-vs-degree (CQ5).** The two scenarios must differ qualitatively, not just in magnitude. Most-likely and most-adverse that both privilege the dominant trajectory are scenario-flattening; the adverse scenario must surface a different causal pathway, not the same pathway worse.
+A passing output names the decision-maker and their context, surfaces stakeholders with concrete pathways, presents two qualitatively contrasting scenarios with flip-points labelled, stress-tests the leading intervention with red-team findings (including contradictions when they invalidate the interest-rationale), produces scope-respecting recommendations, names residual risks and revision-triggers, and renders a confidence map distinguishing structural from substantive confidence.
 
-6. **Decision-shape vs analysis-shape.** Decision Clarity is decision-shaped: the document tells the decision-maker what to do, when, and under what conditions. Exploratory framing that maps the territory exhaustively without converging on an actionable recommendation is route-to-wicked-problems residue — the evaluator flags it as mode misfit rather than smoothing it.
+**Named failure modes.**
 
-Where a stakeholder's position flips across scenarios, the evaluator confirms the flip is surfaced as a named finding rather than buried in a table row — flip-points are load-bearing for the decision-maker's read. Where red-team findings invalidate the cui-bono interest-rationale underlying the recommendation, the contradiction is preserved as a labelled finding rather than silently reconciled.
+- *decision-maker-disconnection* — document is generic; no reference to the decision-maker's role, authority, or constraints.
+- *stakeholder-collapse* — stakeholders listed in generic categories without concrete interests or positions.
+- *stress-test-omission* — red-team fragment did not run against the leading intervention.
+- *out-of-scope-recommendation* — recommendations require authority or scope the named decision-maker does not have.
+- *scenario-flattening* — two scenarios differ only in degree; both privilege the dominant trajectory.
 
 ## REVISION GUIDANCE
 

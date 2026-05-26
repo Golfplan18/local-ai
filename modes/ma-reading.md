@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -165,9 +165,42 @@ Depth in Ma Reading is the precision with which (1) operative voids/intervals ar
 
 Widening the lens means scanning across the four Japanese-aesthetic operations before narrowing: **Ma** (the void/interval as primary content; placement-spacing rather than place; Isozaki / Nitschke / Itō); **Yūgen** (suggestion / withholding / depth-direction; Zeami; the dragon-veins of unpainted space; Suzuki's "cloudy impenetrability... not utter darkness"); **Wabi-sabi** (impermanence / asymmetry / shadow-as-material; Tanizaki's *In Praise of Shadows*); **Mu** (emptiness as generative reservoir; Suzuki / Okakura's "vacuum is all-potent because all-containing"). Where applicable, scan also: Cage's framing-of-attention silence; Ozu's pillow shots and intermediate spaces; Tarkovsky's sculpting in time; Sesshū's unpainted space. Breadth markers: the reading has surveyed which of the four operations are active in the composition (often one is primary, one or two are subsidiary; rarely all four) before narrowing the reading.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) load-bearing vs. incidental; (CQ2) active vs. passive void; (CQ3) removal/alteration test performed; (CQ4) productive incompleteness vs. under-specification; (CQ5) defeasibility (counter-readings present). The named failure modes (incidental-void-mistaken-for-ma, passive-void-asserted-as-active, removal-test-failure, under-specification-mistaken-for-yūgen, inviolable-reading, tradition-misappropriation) are the evaluation checklist. A passing Ma Reading identifies operative voids, names what each does in tradition-specific vocabulary, performs the removal test per void, traces suggestion-resonances, and offers at least one counter-reading or specifies the conditions under which the reading would be falsified.
+**What this analysis is.** Ma Reading is a contemplative-descriptive-deep articulation of how operative voids and intervals do load-bearing work in a composition, applied in the Japanese-aesthetic vocabulary of Ma (void/interval-as-primary-content), Yūgen (suggestion / depth-direction), Wabi-sabi (impermanence / asymmetry / shadow-as-material), and Mu (emptiness as generative reservoir). The reading participates in articulating the experience rather than analysing it from outside — but remains defeasible: every claim carries at least one counter-reading or specifies the conditions under which it would be falsified. The mode is distinct from compositional-dynamics (universal-perceptual gestalt / Arnheim-forces reading), place-reading-genius-loci (affordance and inhabited-place), and information-density (Tufte / Bertin data-encoding analysis).
+
+**Procedure.**
+
+1. Scan the composition for voids/intervals; identify only those whose absence does work (apply the load-bearing test, not all empty space).
+2. Survey which of the four Japanese-aesthetic operations are active in the composition (Ma / Yūgen / Wabi-sabi / Mu) — often one primary, one or two subsidiary; rarely all four.
+3. Name what each operative void does in tradition-specific vocabulary (rhythm, breath, suggestion, ma-ai, kami-space, narrative caesura, perceptual rest, gravel-as-ma, intermediate-space, transcendental-style duration, shadow-as-material).
+4. Perform the removal-test per operative void — what would collapse if the void were replaced by content of equal weight or its proportions altered? Active voids survive the test; passive / residual ones do not.
+5. Trace suggestion-resonances — what the void invites the viewer/listener to complete (yūgen depth-direction, wabi-sabi temporal-weathering, mu generative-reservoir).
+6. Distinguish productive incompleteness from under-specification — confirm the suggestion is enabled by the work, not projected by the reader onto under-developed material.
+7. Ground tradition-vocabulary engagement — note where Ma / Yūgen / Wabi-sabi / Mu vocabulary is invoked via lineage, training, explicit reference, or clear convergent operation, vs. where its use would be appropriation.
+8. Offer at least one counter-reading per major claim and specify the falsifiability condition — contemplative-stance with structural defeasibility, not devotional assertion.
+9. Hold the contemplative posture throughout — articulate the experience, do not slide into clinical analytical-distance.
+
+**Goal.** Produce a contemplative-descriptive-deep reading that identifies operative voids, names what each does in tradition-specific vocabulary, performs the removal-test, traces suggestion-resonances, and preserves defeasibility through counter-readings and falsifiability conditions.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — load-bearing vs incidental.** Is the interval load-bearing for meaning, or is it incidental negative space the analysis is mistaking for ma? Failure mode if unmet: `incidental-void-mistaken-for-ma`.
+- **CQ2 — active vs passive void.** Is the void held open as content (generative — rhythm / breath / suggestion / kami-space / ma-ai) or passive / residual? Failure mode if unmet: `passive-void-asserted-as-active`.
+- **CQ3 — removal test performed.** Would removing or altering the void substantively change the work — and has the analysis performed that test? Failure mode if unmet: `removal-test-failure`.
+- **CQ4 — productive incompleteness vs under-specification.** Is the suggestion productive incompleteness (viewer invited to complete) or under-specification (failure of execution; the suggestion projected by the reader)? Failure mode if unmet: `under-specification-mistaken-for-yūgen`.
+- **CQ5 — defeasibility.** Is the reading falsifiable by a counter-example in the same tradition, or asserted as inviolable? Failure mode if unmet: `inviolable-reading`.
+
+A passing output identifies operative voids (not all empty space), names what each does in tradition-specific vocabulary, performs the removal-test per void, traces suggestion-resonances, and offers at least one counter-reading or specifies the conditions under which the reading would be falsified.
+
+**Named failure modes.**
+
+- *incidental-void-mistaken-for-ma* — reading treats negative space as load-bearing without applying the removal-test or showing what each void is doing.
+- *passive-void-asserted-as-active* — reading describes the void's effect without showing it is held open as content (generative) rather than residual.
+- *removal-test-failure* — reading does not perform the removal/alteration test.
+- *under-specification-mistaken-for-yūgen* — reading attributes yūgen-like withholding to a work that is simply under-developed; the suggestion-resonances are projected by the reader.
+- *inviolable-reading* — reading is asserted as inviolable; contemplative stance has slid into devotional assertion.
+- *tradition-misappropriation* — reading invokes Ma/Yūgen/Wabi-sabi/Mu vocabulary on a composition that bears no engagement with those traditions, asserting an aesthetic genealogy that is not present.
 
 ## REVISION GUIDANCE
 

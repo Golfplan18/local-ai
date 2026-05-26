@@ -5,7 +5,7 @@ type: mode
 tags:
   - molecular
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -158,25 +158,40 @@ Depth in Domain Induction is the degree to which the connectivity-mapping and st
 
 Breadth in Domain Induction is the catalog of subfields and traditions surveyed in the orientation and terrain-mapping stages. Widen the lens to scan: dominant subfield; minority traditions; cross-disciplinary inflows; methodological alternatives; historical figures vs. contemporary figures. Even when the learning sequence narrows to a focused path, breadth is documented in the what-is-here section so the user can see what's being deferred and what's being prioritized.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Domain Induction is read against Bloom-taxonomy cognitive-level scaffolding and the novice-expert cognition literature, with connectivity-graph reading (central nodes, bridges, dependency chains) layered on top. The evaluator's primary axis is whether the induction is doing pedagogy or surveying: a successful Domain Induction produces a dependency-ordered learning architecture that lifts a real reader from their stated familiarity level toward their stated goal, not a flat list of "things in the field." CQ2 (relation-omission) and CQ3 (arbitrary-sequencing) are load-bearing — together they protect the deliverable's distinctive contribution against the two failure modes that reduce it to a survey. CQ1 (dominant-subfield-bias) and CQ4 (goal-disconnection) act as quality gates on input breadth and pedagogical fit.
+**What this analysis is.** Domain Induction is a molecular three-layer induction — quick-orientation fragment + full terrain-mapping + connectivity-mapping synthesised into a dependency-ordered learning architecture for a user with a stated familiarity level and induction goal (research-level / working-knowledge / general-orientation). It is distinct from quick-orientation (which gives fast lay-of-the-land in a few minutes), from terrain-mapping (which produces a thorough terrain map without a learning sequence), and from passion-exploration (which is generative exploration of an open space rather than structured induction). The mode does pedagogy, not surveying — what distinguishes the deliverable is the connectivity-graph and dependency-ordered sequence that lift a real reader from their stated familiarity toward their stated goal.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Connectivity over enumeration (CQ2, load-bearing).** What's-connected-to-what must consist of edges between elements, not a second list. Each edge must carry both a relation type (depends-on / extends / analogous-to / opposes / bridges-subfields / supersedes) and a substantive reason. An induction with rich what-is-here but no edges is relation-omission — it identifies the territory without inducting through it.
+1. Lock domain, user familiarity level (novice / intermediate / advanced), and induction goal (research-level / working-knowledge / general-orientation) — these three anchor everything downstream.
+2. Run quick-orientation fragment — rapid lay-of-the-land: key terms, dominant figures, central debates as breadth seed.
+3. Run terrain-mapping in full — survey what's here, including minority traditions, competing schools, cross-disciplinary inflows, historical vs contemporary figures.
+4. Tag each element by dominance: `dominant-subfield` / `minority-tradition` / `cross-disciplinary-inflow` / `historical` / `contemporary` — at least one minority-tradition or competing-school element must appear.
+5. Build connectivity graph — for each pair, name the edge type (`depends-on` / `extends` / `analogous-to` / `opposes` / `bridges-subfields` / `supersedes`) and the substantive reason. Elements without edges are isolated-element residue.
+6. Identify central nodes (highest in-degree — concepts other concepts depend on) and bridge concepts (linking otherwise-separate subfields).
+7. Produce a dependency-ordered learning sequence — each item names prerequisite items (by canonical ID), a Bloom-tag (`remember` / `understand` / `apply` / `analyze` / `evaluate` / `create`), and a rationale for its position. The sequence is ordered by genuine prerequisite relationships, not by alphabet, chronology, or analyst convenience.
+8. Scaffold by familiarity — novice sequences concentrate at understand-and-apply rather than evaluate-and-create; inverted progressions are pedagogical malformation.
+9. Render familiarity-tagged guidance per learning item — the annotations vary visibly across novice / intermediate / advanced (if all three would read the same, the induction has collapsed into generic survey).
+10. Tag conjectural edges as conjectural — connectivity-graph speculation in unfamiliar domains is real; don't present as established.
 
-2. **Dependency-ordered sequencing (CQ3, load-bearing).** The learning sequence must be ordered by genuine prerequisite relationships, not by alphabet, chronology, importance, or analyst convenience. Test: can each later item's rationale name which earlier item(s) it builds on? Sequences where item N's rationale would work equally well at position N+1 or N–1 are arbitrary-sequencing.
+**Goal.** Produce a three-layer induction document — what's here / what's connected / what to learn next — tagged by familiarity level and induction goal, with Bloom-tagged learning items and a connectivity-graph that distinguishes the induction from a flat survey.
 
-3. **Bloom-level scaffolding.** Each learning item carries a cognitive-level tag (remember / understand / apply / analyze / evaluate / create). When familiarity is novice, the early items must concentrate at understand-and-apply rather than evaluate-and-create — novice-expert cognition makes the higher levels unreachable without the lower ones. Items lacking Bloom tags or carrying inverted progressions (create before understand) are pedagogical malformation.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Breadth before narrowing (CQ1).** The what-is-here layer must survey beyond the dominant subfield — minority traditions, competing schools, cross-disciplinary inflows, historical vs contemporary figures. An induction whose entire element set lives inside one subfield is dominant-subfield-bias; the corpus carries at least one minority-tradition or competing-school element or the breadth check fails.
+- **CQ1 — breadth before narrowing.** Has the orientation surveyed beyond the dominant subfield (minority traditions, competing schools, cross-disciplinary inflows)? Failure mode if unmet: `dominant-subfield-bias`.
+- **CQ2 — connectivity over enumeration (load-bearing).** Does the connectivity-mapping actually identify dependencies and bridges, or does it list elements without showing relations? Failure mode if unmet: `relation-omission`.
+- **CQ3 — dependency-ordered sequencing (load-bearing).** Is the what-to-learn-next sequence ordered by genuine prerequisite relationships, or by alphabet / chronology / analyst convenience? Failure mode if unmet: `arbitrary-sequencing`.
+- **CQ4 — goal and familiarity grounding.** Does the induction respect the user's stated familiarity level and goal, or does it default to a generic survey? Failure mode if unmet: `goal-disconnection`.
 
-5. **Goal and familiarity grounding (CQ4).** The deliverable must read differently for a research-level induction than for a general-orientation induction. Test: would the familiarity-tagged guidance lines read the same regardless of the stated familiarity? If yes, the induction has collapsed into generic survey — goal-disconnection. The annotations vary visibly across novice / intermediate / advanced.
+A passing output locks domain, familiarity, and goal; surveys what-is-here with at least one minority-tradition element; builds a connectivity graph with edges carrying both relation type and substantive reason; identifies central nodes and bridges; orders the learning sequence by dependency with Bloom tags; produces familiarity-tagged guidance that reads visibly differently across novice / intermediate / advanced; and tags conjectural edges as such.
 
-6. **Central nodes and bridges identified.** The connectivity graph must surface its central nodes (highest in-degree — concepts other concepts depend on) and bridge concepts (linking otherwise-separate subfields). These are the load-bearing entries in the learning sequence; an induction that lists items without identifying which are central is missing the pedagogical signal a sequence needs.
+**Named failure modes.**
 
-Confidence is calibrated separately. Connectivity-graph edges in unfamiliar domains often carry conjectural-mapping risk; the evaluator confirms speculative edges are tagged as conjectural rather than presented as established. Where streams disagreed about which tradition is dominant or which item depends on which, the evaluator confirms disagreements are preserved as parallel atoms rather than silently reconciled.
+- *dominant-subfield-bias* — what-is-here over-represents one subfield; minority traditions or competing schools absent.
+- *relation-omission* — what's-connected-to-what is a list of elements without arrows, dependencies, or bridge concepts.
+- *arbitrary-sequencing* — learning sequence reads as alphabetical or import order rather than dependency-ordered.
+- *goal-disconnection* — induction is generic; ignores the stated familiarity level or induction goal.
 
 ## REVISION GUIDANCE
 

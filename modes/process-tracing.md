@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -161,9 +161,41 @@ Depth in Process Tracing is the explicitness of (a) competing causal hypotheses 
 
 Widening the lens means scanning for additional plausible causal hypotheses (especially ones favored by different theoretical traditions or stakeholder perspectives), surfacing evidence the analyst lacks but could obtain, and noting which evidence-piece-not-yet-found would be doubly-decisive (eliminate one hypothesis and confirm another). Breadth markers: the analysis names at least three plausible hypotheses (even if only two are seriously tested), and identifies the most diagnostic evidence-piece that does not currently exist in the inventory.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) competing hypotheses; (CQ2) test classification; (CQ3) appropriate updating; (CQ4) provenance assessment; (CQ5) causal chain reconstruction. The named failure modes (hypothesis-monoculture, test-misclassification, evidence-overreach, source-naivety, chain-elision, presentism) are the evaluation checklist. A passing Process Tracing output names competing hypotheses, classifies each evidence piece by test type with justification, updates hypothesis status appropriately, assesses source provenance, and reconstructs the causal chain with explicit intermediate links.
+**What this analysis is.** Process Tracing is Bennett-Checkel-style historical causal inference: a single case is analyzed against ≥2 competing causal hypotheses using the four diagnostic-test framework (hoop, smoking-gun, doubly-decisive, straw-in-the-wind) to calibrate confidence to the diagnostic strength of available evidence. It is distinct from root-cause-analysis (which traces a single chain backward without a formal evidence-test framework), from causal-dag (which builds general formal structures rather than case-specific reconstruction), and from systems-dynamics-causal (which investigates feedback structure rather than historical event-causation).
+
+**Procedure.**
+
+1. Lock the case and the causal question — the specific historical event and what is being explained.
+2. Construct at least two genuinely competing causal hypotheses before evidence is considered; flag presentism if hypotheses require knowledge actors at the time could not have held.
+3. Inventory available evidence with provenance assessment (primary / secondary / tertiary; contemporaneous / retrospective; partisan / disinterested; documentary / testimonial; reliability tier).
+4. Classify each evidence piece by test type — hoop (necessary not sufficient), smoking-gun (sufficient not necessary), doubly-decisive (both), straw-in-the-wind (neither) — with justification for the classification.
+5. Apply tests to each hypothesis and update status (eliminated on failed-hoop; weakly supported on passed-straw-in-the-wind; strongly supported on passed-smoking-gun; confirmed on passed-doubly-decisive).
+6. Reconstruct the causal chain in temporal sequence with each link's mechanism explicit; no "X led to Z" with Y elided.
+7. Name diagnostic evidence not yet available — the most consequential absent piece is the next investigation step.
+8. Assign confidence per causal claim with grounding in test outcomes and provenance.
+
+**Goal.** Produce a Bennett-Checkel process-tracing synthesis where competing causal hypotheses have been tested against classified evidence, hypothesis status is calibrated to test outcomes, and the causal chain is reconstructed in temporal sequence with explicit mechanisms.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — competing hypotheses.** Have at least two genuinely competing causal hypotheses been named, or has the analysis privileged one explanation by failing to construct alternatives? Failure mode if unmet: `hypothesis-monoculture`.
+- **CQ2 — test classification.** Has each evidence piece been classified by test type (hoop / smoking-gun / doubly-decisive / straw-in-the-wind) with justification? Failure mode if unmet: `test-misclassification`.
+- **CQ3 — appropriate updating.** Has hypothesis status been updated appropriately given test outcomes, or has weak evidence been overweighted? Failure mode if unmet: `evidence-overreach`.
+- **CQ4 — provenance assessment.** Has the provenance and reliability of each evidence piece been assessed, or are all sources treated as equally credible? Failure mode if unmet: `source-naivety`.
+- **CQ5 — causal chain reconstruction.** Has the causal chain been reconstructed in temporal sequence with explicit links, or have intermediate steps been elided? Failure mode if unmet: `chain-elision`.
+
+A passing output names competing hypotheses, classifies each evidence piece by test type with justification, updates hypothesis status appropriately, assesses source provenance, and reconstructs the causal chain with explicit intermediate links.
+
+**Named failure modes.**
+
+- *hypothesis-monoculture* — only one causal hypothesis tested; no genuinely competing alternative considered.
+- *test-misclassification* — evidence treated as smoking-gun (sufficient) when its absence would not eliminate the hypothesis (only hoop), or vice versa.
+- *evidence-overreach* — hypothesis declared confirmed on straw-in-the-wind evidence, or eliminated on weak negative evidence.
+- *source-naivety* — all evidence pieces treated as equally credible; no provenance assessment.
+- *chain-elision* — causal chain skips intermediate steps without justification (e.g., "X led to Z" with Y unexplained).
+- *presentism* — hypotheses constructed from present knowledge that actors at the time could not have held; counterfactual reasoning anachronistic.
 
 ## REVISION GUIDANCE
 

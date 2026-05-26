@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -148,9 +148,41 @@ Depth in Frame Comparison is the descent from stated positions to the conceptual
 
 Widening the lens means surveying the frame typologies that might apply (Lakoff's family-based moral frames, Schön-Rein policy frames, collective-action frames, narrative frames, frame-of-justice variants), considering whether the named frames exhaust the live alternatives or whether unnamed frames are also in play (a third or fourth perspective excluded from the comparison), and scanning for hybrid or emerging frames that don't fit either pole cleanly. Breadth markers: at least three frame-typology candidates are considered before locking the comparison axis; the possibility of frames-not-yet-named is acknowledged.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) symmetric articulation; (CQ2) descent to conceptual metaphor; (CQ3) blind-spot surfacing; (CQ4) honored irreducibility. The named failure modes (asymmetric-articulation, surface-position-only, blind-spot-omission, false-translation, typology-imposition) are the evaluation checklist. A passing Frame Comparison output articulates each frame on its own terms with equal rigor, surfaces core metaphors, identifies blind spots per frame, and honors residual irreducibility.
+**What this analysis is.** Frame Comparison is a symmetric multi-frame mapping — articulating two or more frames each on its own terms (steelman-discipline within each frame), descending to the conceptual metaphors that structure each, surfacing what each makes visible and what each obscures, and honoring residual irreducibility where one frame's commitments cannot be cashed out in another's vocabulary without loss. It is distinct from paradigm-suspension (stance-counterpart: single-frame surfacing without comparison), from worldview-cartography (depth-molecular sibling integrating many worldviews), from frame-audit (single-artifact frame-surfacing in T1), and from T12 synthesis (which integrates frames rather than comparing them). The mode's posture is comparing, not integrating — when integration is wanted, route to T12.
+
+**Procedure.**
+
+1. Identify the frames in play (2 or more) — name each in the frame's own preferred or neutral vocabulary, not in the rival camp's caricature.
+2. Articulate each frame symmetrically — steelmanned one-paragraph treatment per frame, with parallel internal structure across all frames. Asymmetric articulation is the named failure mode.
+3. Anchor each to a typology where one applies — Lakoff strict-father / nurturant-parent for moral-political; Schön-Rein for policy frames; Snow-Benford for collective-action frames. Note when typology-imposition risk is high (the typology doesn't naturally fit the domain).
+4. Descend to core conceptual metaphors per frame — source-domain → target-domain mapping with inferential entailments the metaphor licenses.
+5. Name moral and value commitments that flow from the core metaphor of each frame.
+6. Surface what each frame makes visible — what it foregrounds, enables, gives analytical purchase on.
+7. Surface what each frame obscures — what it backgrounds, makes harder to see, cannot represent. Every frame has blind spots, including the analyst's preferred one.
+8. Catalogue cross-frame translation attempts — concept from frame A, attempted translation into frame B's vocabulary, whether the translation works or distorts.
+9. Honor residual irreducibility — where one frame's commitment cannot be cashed out in another's vocabulary without loss, name the loss and why the irreducibility matters.
+10. Flag frames-not-yet-named when a third or fourth perspective doesn't fit either pole cleanly.
+
+**Goal.** Produce a frame comparison mapping — a symmetric articulation of two or more frames on their own terms, with descent to conceptual metaphor, parallel blind-spot surfacing, and explicit residual irreducibility.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — symmetric articulation.** Has each frame been articulated on its own terms with equal rigor, or has the analyst's preferred frame received fuller articulation than the others? Failure mode if unmet: `asymmetric-articulation`.
+- **CQ2 — descent to conceptual metaphor.** Have the core conceptual metaphors of each frame been surfaced, or has the analysis stayed at the level of stated positions? Failure mode if unmet: `surface-position-only`.
+- **CQ3 — blind-spot surfacing.** Has the analysis surfaced what each frame obscures as well as what it makes visible — for every frame, including the analyst's preferred one? Failure mode if unmet: `blind-spot-omission`.
+- **CQ4 — irreducibility honored.** Has the analysis resisted false translation between frames where such translation distorts? Failure mode if unmet: `false-translation`.
+
+A passing output articulates each frame symmetrically in the frame's own vocabulary, names core conceptual metaphors with their inferential entailments, names moral/value commitments per frame, surfaces what each makes visible AND what each obscures, catalogues cross-frame translation difficulty, honors residual irreducibility explicitly, and resists synthesis drift (synthesis routes to T12).
+
+**Named failure modes.**
+
+- *asymmetric-articulation* — one frame's section is substantially longer, more nuanced, or more sympathetic than the others'.
+- *surface-position-only* — frames described in stated positions and policy preferences without surfacing the underlying conceptual metaphors.
+- *blind-spot-omission* — what-each-frame-obscures is empty, thin, or applied only to the analyst's non-preferred frame.
+- *false-translation* — cross-frame translation presented as smooth when residual irreducibility is more honest; one frame's vocabulary used to describe the other's commitments.
+- *typology-imposition* — named typology applied to a domain where it doesn't naturally fit, distorting the actual frames in play.
 
 ## REVISION GUIDANCE
 

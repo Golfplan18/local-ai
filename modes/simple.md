@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-15
-date modified: 2026-05-15
+date modified: 2026-05-24
 ---
 
 # MODE: Simple
@@ -89,9 +89,15 @@ Not applicable — this mode does not run depth analysis. Bypass responses are s
 
 Not applicable — this mode does not run breadth analysis.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Not applicable — this mode does not run cross-evaluation.
+**What this analysis is.** Simple is the Stage 0 / Stage 1 bypass mode — not an analytical operation but a direct conversational response routed around the analytical pipeline. Reached when the pre-analysis filter identifies the prompt as a greeting, simple factual lookup, system-meta reference, mechanical translation, or explicit user opt-out from analysis. There is no analytical posture, no depth/breadth pass, no consolidation, no verification — the model produces a conversational answer from `boot.md` plus the user's raw prompt.
+
+**Goal.** Produce a direct conversational response appropriate to the bypass class, with the anti-confabulation discipline applied throughout (facts the model cannot verify must be acknowledged as such, not confabulated).
+
+**Evaluation criteria.** Not applicable — this mode does not run cross-evaluation. The only operative discipline is anti-confabulation: if the prompt asks for a fact the model cannot verify (current time, today's date, recent events, system state), the response must say so explicitly rather than fabricating a plausible-looking answer. The Excel-formula failure class is the dominant risk because bypass responses are short, plausible, and often consumed at face value.
+
+**Named failure modes.** None formally declared — bypass is structural, not analytical. The standing risk is *confabulation-by-bypass*: a fabricated factual answer that bypasses the analytical pipeline's verification entirely.
 
 ## REVISION GUIDANCE
 

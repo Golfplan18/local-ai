@@ -411,6 +411,12 @@ def find_canonical_conversation(prompt: str, submit_time: float) -> Optional[Pat
             # Only look at top-level conversations/, skip raw/, processed/, etc.
             if f.parent != CANONICAL_CONV_DIR:
                 continue
+            # Skip files written by Ora's startup-recovery code path
+            # (filename contains "_recovered_"). These are stub records for
+            # crashed submissions, not real assistant outputs — they would
+            # otherwise outrank the real conversation file on mtime sort.
+            if "_recovered_" in f.name:
+                continue
             try:
                 # Only check files modified after submission (5s slack for
                 # filesystem timestamp variance).
@@ -424,7 +430,12 @@ def find_canonical_conversation(prompt: str, submit_time: float) -> Optional[Pat
                 # Normalize whitespace in the user block for the substring match.
                 user_block_norm = " ".join(user_block.split())
                 if needle in user_block_norm:
-                    candidates.append((f.stat().st_mtime, f))
+                    # Also require a substantive assistant body (>500 chars
+                    # after stripping wrapping) — guards against catching a
+                    # file mid-write or a stub with just the user prompt.
+                    asst = text.split("**Assistant:**", 1)[1].strip()
+                    if len(asst) >= 500:
+                        candidates.append((f.stat().st_mtime, f))
             except Exception:
                 continue
         # Return the earliest match — in the rare case multiple files match

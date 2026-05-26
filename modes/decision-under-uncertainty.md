@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -157,25 +157,42 @@ Depth in Decision Under Uncertainty is the rigour with which uncertainty is clas
 
 Breadth in Decision Under Uncertainty is the catalog of alternatives the framing might exclude. Widen the lens to surface defer, sequence, hedge, and buy-information options alongside direct choices. Identify robust alternatives (perform acceptably across multiple states) versus optimal alternatives (best in one state). Surface non-quantifiable factors. Breadth markers: at least one defer/pilot/hedge alternative; explicit assessment of which alternatives are robust vs optimal; reversibility cost named per alternative.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Decision Under Uncertainty is read in expected-utility theory's foundational frame, with Knightian risk-vs-uncertainty-vs-deep-uncertainty classification as the operative reading vocabulary, real-options methodology for staged commitments, minimax regret / robust decision-making when deep uncertainty dominates, and Tetlock-style superforecasting calibration when probabilities can be anchored. The evaluator's primary axis is whether the analysis honors what it knows about its own uncertainty — that is, whether probabilities are classified, grounded, and treated as the kind of thing they actually are. CQ1 (false-precision) and CQ2 (missing-defer) are load-bearing: CQ1 because misclassifying uncertainty as risk corrupts every downstream number, CQ2 because binary framings hide the defer/sequence/hedge options that the methodology exists to surface. CQ3 (quantification-trap), CQ4 (unconditional-recommendation), and CQ5 (anchoring-trap) act as honest-reporting gates.
+**What this analysis is.** Decision Under Uncertainty is a probability-and-time-weighted decision analysis built on expected-utility theory with Knightian risk-vs-uncertainty-vs-deep-uncertainty classification as the operative reading vocabulary. It is distinct from constraint-mapping (which handles deterministic tradeoffs without probability arithmetic), from multi-criteria-decision (which weighs many criteria deterministically), from decision-architecture (the full molecular sibling with stakeholders + risk + future composed), and from scenario-planning (which explores multiple plausible futures rather than converging on one decision). The mode's analytical character is to honor what it knows about its own uncertainty — classifying probabilities, grounding them in base rates, and treating each as the kind of thing it actually is.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Knightian classification (CQ1, load-bearing).** Each critical variable must carry an explicit class label — `risk` (assignable probability), `uncertainty` (estimable range), `deep uncertainty` (no meaningful probability). The labels are operative, not decorative: a variable misclassified as risk gets a point probability that misrepresents what is known. False-precision residue is specific percentages (17%, 23%) presented without base-rate grounding. The evaluator either confirms the base rate or reshapes the estimate to a range or qualitative band.
+1. Frame the decision — name the alternatives, the decision-maker, the time-window, and the reversibility of each alternative.
+2. Classify each critical variable per Knightian distinction — `risk` (assignable probability), `uncertainty` (estimable range), or `deep uncertainty` (no meaningful probability). Apply labels verbatim, not decoratively.
+3. Ground probabilities in base rates or qualitative bands — replace point estimates lacking base-rate justification with ranges or qualitative bands (high / medium / low / negligible).
+4. Trace consequences per (alternative × state) — name the consequence and a utility unit (or qualitative magnitude); align units across cells.
+5. Surface defer / sequence / hedge / buy-information alternatives alongside direct A-vs-B framing; when no defer-class alternative is feasible, state so with reason.
+6. Assess value-of-information against cost-of-delay — each VOI lever names what information would resolve which uncertainty, what it costs to obtain, and whether VOI exceeds cost-of-delay.
+7. Surface non-quantifiable factors (ethics, identity, relationships, morale, reputation, dignity) as their own atoms alongside the quantitative framework — never as footnotes.
+8. Recommend with conditions — state the recommended alternative (or staged sequence) plus an explicit `Revisit if:` block naming what change in inputs would warrant rerunning.
+9. Distinguish robust alternatives (perform acceptably across states) from optimal alternatives (best in one state) when streams identified both.
+10. Calibrate confidence per finding, distinguishing structural confidence (decision frame, classification) from substantive confidence (probability estimates, consequence projections).
 
-2. **Defer / sequence / hedge / buy-information surfacing (CQ2, load-bearing).** The deliverable must consider non-binary alternatives — wait-and-learn, pilot, partial commitment, hedge — alongside the direct A-vs-B framing. A binary analysis when defer was feasible is missing-defer; the methodology's contribution is precisely to widen the action space beyond "act now or don't." When no defer-class alternative is feasible, the deliverable says so with reason rather than silently presenting binary as exhaustive.
+**Goal.** Produce a decision-analysis recommendation under uncertainty — classifying each variable, tracing consequences across plausible states, assessing information vs delay, and converging on a conditional recommendation with non-quantifiable factors preserved alongside the quantitative framework.
 
-3. **VOI vs cost-of-delay (paired with CQ2).** Each candidate VOI lever (information that would resolve uncertainty) must carry both the cost of obtaining it and the value of obtaining it, with the comparison stated. Real-options framing that rationalises indefinite delay without this comparison is analysis-paralysis residue — delay disguised as information-seeking. The evaluator confirms VOI-vs-cost-of-delay is explicit, not implicit.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Conditional recommendation (CQ4).** Recommendations must carry an explicit revision-condition block — what change in inputs would warrant rerunning the analysis. Unconditional recommendations present the verdict as if the underlying probabilities were stable; the methodology's honesty is exactly that they aren't. The deliverable's `Revisit if:` block is non-negotiable and visually distinct so the decision-maker can see at a glance what would change the recommendation.
+- **CQ1 — Knightian classification (load-bearing).** Is each critical variable classified as risk, uncertainty, or deep uncertainty, with labels appearing verbatim? Failure mode if unmet: `false-precision`.
+- **CQ2 — defer / sequence / hedge / buy-information (load-bearing).** Have non-binary alternatives been considered alongside direct choices, or has the framing been binary? Failure mode if unmet: `missing-defer`.
+- **CQ3 — non-quantifiable factors.** Are ethics, identity, relationships, and other non-quantifiable factors presented alongside the quantitative framework as their own atoms (not footnotes, not compressed into utility numbers)? Failure mode if unmet: `quantification-trap`.
+- **CQ4 — conditional recommendation.** Does the recommendation name what would change it — the `Revisit if:` conditions? Failure mode if unmet: `unconditional-recommendation`.
+- **CQ5 — anchoring discipline.** Are probabilities grounded in base rates or qualitative bands, not anchored to initial guesses presented as point estimates? Failure mode if unmet: `anchoring-trap`.
 
-5. **Non-quantifiable factors at full salience (CQ3).** Ethics, identity, relationships, morale, reputation, dignity — factors that resist meaningful quantification — ride alongside the quantitative framework as their own atoms, not as footnotes. Quantification-trap residue is utility numbers attached to dignity claims or ethical commitments. The evaluator confirms each non-quantifiable atom names the factor and its consideration explicitly, without compression into a comparable utility scale.
+A passing output classifies each variable per Knightian distinction with labels verbatim, considers defer/sequence/hedge alternatives, traces consequences with aligned utility units, assesses VOI against cost-of-delay, surfaces non-quantifiable factors at full salience, produces a recommendation with explicit revision-conditions, distinguishes robust from optimal alternatives when both are in play, and carries per-finding confidence.
 
-6. **Anchoring discipline (CQ5).** Probability estimates must be grounded in base rates or qualitative bands, not in initial-guess anchors. Anchoring-trap residue shows up as point estimates that survive subsequent analysis unchanged regardless of new evidence. The evaluator's test: does the deliverable show probabilities updating in response to evidence, or are they fixed at the framing stage?
+**Named failure modes.**
 
-Confidence is split between structural confidence (the decision frame and uncertainty classification) and substantive confidence (the probability estimates and consequence projections). Where streams disagreed on a variable's class (one stream as risk with a probability, another as deep uncertainty), the evaluator confirms the disagreement is preserved as a finding about the contested classification rather than silently resolved. Where streams produced robust vs optimal alternatives (one that performs acceptably across states, one that's best in a single state), both are preserved — the choice between them is the decision-maker's.
+- *false-precision* — specific point probability assigned without base-rate grounding.
+- *analysis-paralysis* — real-options framing rationalises indefinite delay without cost-of-delay vs VOI comparison.
+- *quantification-trap* — all factors reduced to utility numbers when some (ethics, identity, morale) resist meaningful quantification.
+- *missing-defer* — decision framed as binary when wait-and-learn or buy-information was feasible.
+- *anchoring-trap* — initial probability estimates anchor subsequent analysis regardless of evidence.
 
 ## REVISION GUIDANCE
 

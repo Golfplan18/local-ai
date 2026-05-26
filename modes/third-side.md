@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -168,9 +168,45 @@ Depth in Third Side is the rigor with which the ten Ury roles are surveyed acros
 
 Widening the lens means scanning the surrounding community in three rings (intimate — family / close colleagues; mid — extended network / institutional context; outer — wider community / public / norms); surveying all three role-clusters (prevention / resolution / containment) before narrowing; considering escalation signals (rhetoric hardening, third-party recruitment to one side, breakdown of channels of communication, emergence of public symbolic markers, threats of exit or violence); and considering parallel third-side traditions (Lederach's conflict-transformation lineage on identity-rooted conflict; Kriesberg's constructive-conflicts trajectory analysis; restorative justice; indigenous and traditional dispute-resolution practices that may already exist in the community). Breadth markers: all ten Ury roles considered (even if most are not active); all three role-clusters considered; the surrounding community mapped in at least two rings; escalation signals listed; the limits of third-side intervention acknowledged.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) third-side stance maintained, not party-stance creep; (CQ2) ten-role checklist surveyed; (CQ3) all three role-clusters (prevention / resolution / containment) considered; (CQ4) roles linked to bearers; (CQ5) limits acknowledged. The named failure modes are the evaluation checklist. A passing Third Side output names parties and conflict, maps surrounding community, surveys the ten roles across three clusters, names role-assignment candidates, surfaces escalation signals, recommends specific interventions keyed to role gaps, flags unknowns testable in practice, and acknowledges intervention limits.
+**What this analysis is.** Third Side is Ury's third-side mediation analysis — a mediator-stance multi-party reading of a conflict from the surrounding community's vantage. It surveys the ten Ury roles (provider / teacher / bridge-builder / mediator / arbiter / equalizer / healer / witness / referee / peacekeeper) across three clusters (prevention / resolution / containment), linking each active or needed role to actual bearers in the community. It is distinct from interest-mapping (party-stance, two-party-default, depth-light), principled-negotiation (party-stance, two-party-default, depth-thorough), stakeholder-mapping (T8 descriptive multi-party without active conflict-resolution framing), strategic-interaction (T18 game-theoretic equilibria/coalitions), and boundary-critique (T2 policy/excluded-voices analysis).
+
+**Procedure.**
+
+1. Summarise parties and the conflict in neutral third-side stance — not party-stance.
+2. Map the surrounding community in three rings — intimate (family / close colleagues), mid (extended network / institutional context), outer (wider community / public / norms). The third side is a *social fact* that may or may not contain the roles needed.
+3. Survey the ten Ury roles across three clusters: **prevention** (provider, teacher, bridge-builder), **resolution** (mediator, arbiter, equalizer, healer), **containment** (witness, referee, peacekeeper) — each tagged `active` / `needed but unfilled` / `not yet relevant`.
+4. Link each active or needed role to a named bearer in the surrounding community — actual person, institution, or norm. Abstract role assertions without candidates are reshaped.
+5. Filter bearer candidates through cultural context — the community's norms, hierarchies, and existing institutions shape who can credibly fill which role.
+6. Surface escalation signals (rhetoric hardening, third-party recruitment, channel breakdown, public symbolic markers, threats of exit/violence) and the cluster-shift they imply (typically toward containment).
+7. Recommend candidate third-side interventions, each keyed to a specific role gap and a candidate bearer — at least two.
+8. Flag unknowns testable in practice — questions whose answers would change the role analysis.
+9. Acknowledge intervention limits — where power asymmetry makes mediation cover for coercion, where parties' agency requires confrontation rather than mediation, where third-side intervention would be intrusive.
+10. Maintain third-side stance throughout (no party-stance creep) and parties-as-agents discipline (not passive objects of intervention).
+11. Provide three-kind confidence per finding: role-need / bearer-availability / intervention-effectiveness, kept distinct.
+
+**Goal.** Produce a Ury third-side mediation analysis that surveys all ten roles across three clusters, links each active or needed role to a named bearer in the surrounding community, surfaces escalation signals and intervention limits, and maintains third-side stance throughout.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — third-side stance maintained.** Has the analysis stayed at "what the surrounding community can do" rather than slipping into party-side advocacy for one party's interests? Failure mode if unmet: `party-stance-creep`.
+- **CQ2 — ten-role checklist surveyed.** Have the ten Ury roles been considered as a checklist rather than collapsing into a generic mediator role? Failure mode if unmet: `ten-role-collapse`.
+- **CQ3 — three role-clusters considered.** Have prevention, resolution, and containment all been considered, rather than defaulting to resolution roles only? Failure mode if unmet: `prevention-or-containment-omission`.
+- **CQ4 — roles linked to bearers.** Have role assignments been linked to actual people / institutions / norms in the surrounding community, rather than asserting roles in the abstract? Failure mode if unmet: `roles-without-bearers`.
+- **CQ5 — limits acknowledged.** Have the limits of third-side intervention been acknowledged — power asymmetry, parties' primary agency, situations requiring confrontation — rather than asserting third side as universally appropriate? Failure mode if unmet: `third-side-overreach`.
+
+A passing output names parties and conflict in neutral stance, maps the surrounding community in at least two rings, surveys the ten roles across all three clusters with status per role, names bearer candidates for active or needed roles, surfaces escalation signals, recommends at least two specific interventions keyed to role gaps, flags testable unknowns, acknowledges intervention limits, and keeps three confidence kinds distinct.
+
+**Named failure modes.**
+
+- *party-stance-creep* — analysis recommends moves that favor one party's interests rather than analyzing what the surrounding community can do; output reads as advocacy.
+- *ten-role-collapse* — output names only mediator (or only one or two of the ten roles); the full ten-role checklist is not surveyed.
+- *prevention-or-containment-omission* — output addresses only resolution roles; prevention and/or containment clusters not addressed.
+- *roles-without-bearers* — roles listed without naming actual people / institutions / norms who could fill them.
+- *third-side-overreach* — analysis asserts third-side intervention as appropriate without considering its limits (power asymmetry covering coercion, parties' agency, situations requiring confrontation).
+- *cultural-context-flatness* — third-side roles applied without considering how surrounding-community cultural norms, hierarchies, and institutions shape availability.
+- *parties-as-passive* — parties framed as objects of third-side intervention rather than agents whose own moves matter.
 
 ## REVISION GUIDANCE
 

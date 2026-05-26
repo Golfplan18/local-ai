@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -159,9 +159,43 @@ Depth in Fragility Antifragility Audit is the explicitness of (a) the convex/con
 
 Widening the lens means scanning for stressors outside the analyst's normal frame (regulatory shocks, supply-chain disruption, key-person dependency, reputational tail events, technological obsolescence), surfacing hidden concavities the system's stakeholders have learned not to see (insurance-style payoff structures, tax-loss harvesting profiles, leveraged exposures), and considering Lindy-effect adjustments where applicable (durability of older elements vs. fragility of newer elements). Breadth markers: the analysis names at least one stressor-type the user did not initially mention, and surfaces at least one hidden concavity in the existing exposure profile.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) fragility/robustness/antifragility classification; (CQ2) hidden concavities; (CQ3) variance vs. tail distinction; (CQ4) via negativa recommendations; (CQ5) Talebian assumptions held lightly. The named failure modes (antifragility-collapse, hidden-concavity, variance-tail-conflation, addition-bias, Talebian-orthodoxy, false-antifragility) are the evaluation checklist. A passing audit classifies the system per the three-way distinction, surfaces hidden concavities, distinguishes normal-condition variance from tail-event response, and recommends both subtraction and addition.
+**What this analysis is.** Fragility Antifragility Audit is a Talebian convex-response audit — classifying a system per the three-way distinction (fragile loses from volatility / robust is indifferent / antifragile gains from volatility), enumerating convex and concave exposures, surfacing hidden concavities (small frequent gains masking rare catastrophic losses), and recommending both via-negativa (subtraction) and addition interventions. It is distinct from pre-mortem-fragility (which uses pre-mortem heuristic without the convex-response framework), from red-team modes (which model adversarial actors rather than structural fragility), and from formal failure-mode-and-effects analysis (which decomposes but does not classify by convex response). The mode's analytical character is adversarial-Talebian — an audit that finds nothing fragile has likely missed hidden concavities.
+
+**Procedure.**
+
+1. Lock the system or strategy with its boundary — what counts as inside, what counts as outside.
+2. Inventory stressors with frequency-and-magnitude pair preserved as separate dimensions (`frequent / occasional / rare / Black-Swan` × `small / moderate / large / catastrophic`). Merging into a single risk score is bloat.
+3. Identify convex exposures — elements whose response curve produces disproportionate gains from larger inputs (gains-from-volatility); name the mechanism and the stressor each benefits from.
+4. Identify concave exposures — elements whose response curve produces disproportionate losses; name the mechanism, the stressor, and explicitly tag visibility as `visible` or `hidden` (small frequent gains masking rare catastrophic losses).
+5. Classify the system per the three-way distinction at system level and per major subsystem; the labels `fragile`, `robust`, `antifragile` appear verbatim with their distinctions preserved.
+6. Surface tail-event atoms separately from normal-condition variance — name the tail event, its exposure magnitude, and its probability band (`low / Black-Swan-class / unknown`).
+7. Identify asymmetric-payoff structures — small inputs producing disproportionate outputs in either direction, with skin-in-the-game considerations where applicable.
+8. Produce via-negativa recommendations alongside addition recommendations — subtraction of fragility-creating elements is a first-class intervention, not a footnote.
+9. Test past-volatility-benefit claims for future antifragility — does the same convex mechanism apply to the volatility ahead, or is it false-antifragility?
+10. Hold Talebian heuristics lightly — barbell, Lindy, via negativa applied only with case-specific reasoning that justifies the application.
+
+**Goal.** Produce a fragility / antifragility audit — a structured analysis that classifies the system per the three-way Talebian distinction, enumerates convex and concave exposures, surfaces hidden concavities and tail-event responses, and recommends both subtraction and addition interventions.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — fragility/robustness/antifragility classification.** Has the analysis classified per the three-way distinction, or collapsed antifragility into mere robustness? Failure mode if unmet: `antifragility-collapse`.
+- **CQ2 — hidden concavity.** Have concave exposures where small frequent gains hide rare catastrophic losses been surfaced explicitly, or has analysis focused only on visible volatility? Failure mode if unmet: `hidden-concavity`.
+- **CQ3 — variance vs tail distinction.** Has the analysis distinguished normal-condition variance from tail-event response, or has it conflated them? Failure mode if unmet: `variance-tail-conflation`.
+- **CQ4 — via negativa considered.** Has subtraction of fragility-creating elements been considered, or are all recommendations additions? Failure mode if unmet: `addition-bias`.
+- **CQ5 — Talebian assumptions held lightly.** Have the analyst's Talebian assumptions (fat-tail markets, poor expert prediction, undervalued optionality) been held lightly rather than mechanically applied? Failure mode if unmet: `Talebian-orthodoxy`.
+
+A passing output classifies the system per the three-way distinction with labels verbatim, enumerates convex and concave exposures per element, surfaces hidden concavities with their masking mechanism, distinguishes normal-condition variance from tail-event response, recommends both via-negativa and addition interventions, holds Talebian heuristics with case-specific reasoning, and tests past-benefit antifragility claims against future mechanism-application.
+
+**Named failure modes.**
+
+- *antifragility-collapse* — `robust` and `antifragile` used interchangeably; the three-way distinction collapsed to two-way.
+- *hidden-concavity* — analysis identifies only visible volatility exposures; no hidden concave exposure surfaced.
+- *variance-tail-conflation* — high variance and high tail risk treated as the same property.
+- *addition-bias* — all recommendations involve adding elements; no subtraction-of-fragility-source recommendations.
+- *Talebian-orthodoxy* — Talebian aphorisms applied without case-specific reasoning; heuristics recommended without checking they suit the actual exposure profile.
+- *false-antifragility* — system claimed antifragile based on past benefit from volatility, without checking whether the same mechanism applies ahead.
 
 ## REVISION GUIDANCE
 

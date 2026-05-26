@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -145,27 +145,41 @@ Depth in Terrain Mapping is the precision with which concepts are classified by 
 
 Breadth in Terrain Mapping is the cartographic completeness — all major sub-areas, schools of thought, and adjacent domains represented. Widen the lens to map the full landscape: settled facts, contested positions (with rival schools represented), open questions, principal actors, and adjacent domains. Generate ≥3 questions the user has not asked but would need to answer to navigate effectively. Breadth markers: at least one cross-link to an adjacent domain (`is_cross_link: true`); ≥3 open questions tied to specific concepts; rival schools represented when domain has them.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Terrain Mapping is read in the Novak concept-map tradition (concepts + linking phrases + propositions, with cross-links as the marker of integrative understanding) combined with cartographic discipline (survey-level coverage, no single sub-area dominating) and explicit epistemic-status classification (known / contested / open). The evaluator's primary axes are honest epistemic status (separating settled from disputed from unknown) and survey-level breadth (no premature depth). CQ1 (false-consensus / textbook-trap) is load-bearing because conflating settled with contested misleads the newcomer at the worst possible point — at orientation, when they're forming their map. CQ3 (premature-depth) is also load-bearing because survey-level coverage is the mode's contract; drilling into one sub-area is a different operation (deep-clarification). CQ2 (no-cross-link-trap) and CQ4 (missing-boundary) act as integrative and scope gates.
+**What this analysis is.** Terrain Mapping is a thorough (~5min) Novak-tradition concept-map orientation for a user new to a domain. It is the depth-thorough sibling to quick-orientation (depth-light, ~1min) and domain-induction (depth-molecular, ~10+min) within T14. The mode is descriptive of the domain's concepts, organising structure, and epistemic-status distribution (known / contested / open) — not deep mechanism investigation (deep-clarification, T10) and not open-ended generative exploration (passion-exploration, T20). Its central discipline is honest epistemic-status classification: contested territory rendered as authoritative consensus misleads the newcomer at the worst possible point — when they're forming their map.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Epistemic-status classification per concept (CQ1, load-bearing).** Each major concept must carry an explicit `known` / `contested` / `open` tag — `known` for settled material, `contested` for rival schools or active debate, `open` for genuine unknowns. False-consensus residue is contested positions presented as settled ("the consensus is X" when rival schools disagree); textbook-trap residue is standard overviews delivered without epistemic-status classification at all. The reading: where rival schools exist, the deliverable uses the qualified pattern "the standard view holds X; dissenters argue Y" rather than authoritative single-school framing.
+1. Lock the focus question — the orientation question driving the map, plus the user's starting knowledge level.
+2. Inventory concepts (minimum 4) — each with brief characterisation and position in domain structure. Below 4 concepts, surface the sideways-route to deep-clarification.
+3. Classify each concept with an epistemic-status tag: `known` (settled in the domain), `contested` (rival schools or active debate), `open` (genuine unknown).
+4. Represent rival schools in qualified form where they exist — "the standard view holds X; dissenters argue Y" rather than authoritative single-school framing.
+5. Surface at least 3 open questions, each tied to a specific concept in the inventory.
+6. Name the organising topology of the domain (`hierarchy` / `hub-and-spoke` / `network` / `chain` / `cluster-bridge`) and prerequisite chains.
+7. Add at least one cross-link to an adjacent domain — Novak's marker of integrative understanding. Cross-links appear in their own section, not buried inside concept descriptions.
+8. State the boundary explicitly — what's out of scope, adjacent domains touched but not surveyed, sub-areas deferred to follow-on modes.
+9. Maintain survey-level discipline — no single sub-area exceeds ~30% of the map. Drilling that breached the threshold gets pulled back to survey breadth.
+10. Assign confidence per epistemic-status classification and per cross-link.
 
-2. **Survey-level discipline (CQ3, load-bearing).** No single sub-area exceeds ~30% of the deliverable's content. Premature-depth residue is the deliverable drilling into one concept (often the most interesting) before mapping the full territory; the user gets depth in one corner and no orientation. The evaluator's test: scan the section lengths — is one sub-area noticeably outsizing the others? If yes, the deliverable pulls back to survey breadth, and the deep material routes to deep-clarification.
+**Goal.** Produce a thorough survey-level orientation map — a Novak-tradition concept map with epistemic-status tagging per concept, at least one adjacent-domain cross-link, at least three concept-tied open questions, and an explicit boundary statement.
 
-3. **Cross-link to adjacent domain (CQ2).** At least one cross-link must connect this domain to an adjacent one — Novak's marker that the orientation has produced integrative understanding rather than a siloed map. No-cross-link-trap residue is a strict tree without lateral connections to neighbouring domains. The reading: cross-links surface in their own section, not buried inside concept descriptions, so the integrative signal is visible.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Boundary statement explicit (CQ4).** The deliverable names what is *out of scope* — adjacent domains the map touches but does not survey, sub-areas deferred to follow-on modes, framings excluded. Missing-boundary residue is implicit completeness; the user reads the map as complete coverage when it covers a chosen slice. The evaluator confirms the boundary atom is present and substantive.
+- **CQ1 — epistemic-status honesty (load-bearing).** Are concepts classified as known / contested / open, with no contested position presented as settled (or vice versa)? Failure mode if unmet: `false-consensus`.
+- **CQ2 — cross-link present.** Does the map have at least one cross-link to an adjacent domain (Novak's marker of integrative understanding)? Failure mode if unmet: `no-cross-link-trap`.
+- **CQ3 — survey-level discipline (load-bearing).** Does the prose stay at survey level rather than drilling into one sub-area (≤30% on any single sub-area)? Failure mode if unmet: `premature-depth`.
+- **CQ4 — boundary statement explicit.** Does the map name what is out of scope — its boundary? Failure mode if unmet: `missing-boundary`.
 
-5. **Open questions tied to concepts.** At least three open questions appear, each tied to a specific concept in the inventory. Open questions without concept-ties are decorative; open questions tied to concepts are the load-bearing finding for a newcomer — they name what the user does not yet know and where to look next.
+A passing output covers at least 4 concepts each carrying a known/contested/open tag, represents rival schools in qualified form where they exist, names the organising topology, surfaces at least 3 concept-tied open questions, includes at least one adjacent-domain cross-link in its own section, and states the boundary explicitly with what's out of scope.
 
-6. **Concept count and orientation appropriateness.** At minimum four concepts appear in the inventory. Below four, the domain may be too narrow for survey-level orientation, and the deliverable surfaces the sideways-route to deep-clarification rather than producing a thin survey. The evaluator confirms the count discipline holds.
+**Named failure modes.**
 
-7. **Rival schools represented where applicable.** Where the domain has rival schools of thought, the deliverable carries them in the qualified pattern. Authoritative tone applied to contested territory is its own failure — the newcomer's map should show the disputes, not paper over them.
-
-Confidence is per-concept-classification and per-cross-link. Where streams disagreed on whether a concept is contested or settled, the evaluator confirms the disagreement is preserved as a finding about the domain's contested-vs-settled boundary rather than silently resolved. Where the domain has fewer than four mapped concepts despite a focus question that warranted broader scope, the evaluator confirms the deliverable surfaces the count issue and the sideways-route.
+- *premature-depth* — prose spends more than 30% on any single sub-area before the full territory is mapped.
+- *textbook-trap* — output reproduces a standard overview without known/contested/open separation.
+- *false-consensus* — one school of thought's view is presented as the domain consensus when rival schools exist.
+- *no-cross-link-trap* — output is a strict tree with no lateral connections to adjacent domains.
+- *low-concept-count* — map has fewer than 4 concepts; below threshold, route to deep-clarification.
 
 ## REVISION GUIDANCE
 

@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -135,25 +135,38 @@ Depth in Deep Clarification is vertical: each successive level reveals the mecha
 
 Breadth in Deep Clarification is the surrounding terrain that anchors the mechanism: analogies in other domains, alternative mechanistic explanations, connections to adjacent areas of the user's knowledge, and the point at which further depth becomes academic rather than actionable. Widen the lens to identify ≥1 analogy, ≥1 alternative mechanism, and ≥1 practical implication. Breadth markers: the analysis identifies where deeper understanding changes practical implications and where it does not.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Deep Clarification is read in the ordinary-language philosophy tradition (what is the phenomenon actually doing, in plain terms?) combined with the mechanistic-explanation tradition from philosophy of science (each level names what causes the previous level's behaviour). The evaluator's primary axis is vertical depth — successive levels reveal mechanism beneath mechanism, not adjacent facts at the same level. All three critical questions are load-bearing because each protects a distinct dimension of the methodology: CQ1 (elaboration-trap) protects the vertical-depth contract, CQ2 (false-certainty) protects honest epistemic boundary-marking, CQ3 (academic-drift) protects the practical-bearing requirement that distinguishes clarification from academic exposition. The unnamed jargon-trap and lateral-drift-trap act as additional gates.
+**What this analysis is.** Deep Clarification descends through ordinary-language explanations into the mechanisms beneath — what makes the surface phenomenon work at level N-1, what makes that level work at N-2, marking explicitly where settled knowledge ends. It is distinct from terrain-mapping (which lays out the lay of the land for users unfamiliar with the domain), from conceptual-engineering (which normatively redefines concepts rather than describing how they work), from definitional-dispute (which adjudicates between rival defenders of essentially-contested concepts), and from paradigm-suspension (which questions the framework holding the concept). The depth axis is vertical: each level reveals mechanism beneath mechanism, not adjacent facts at the same level.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Vertical not horizontal (CQ1, load-bearing).** Each successive level must name a mechanism that causes the previous level's behaviour, not more facts at the same level of abstraction. Elaboration-trap residue is "Level 1 beneath" that reads as "more about the surface" rather than "what makes the surface work." The test: does the deeper level predict behaviour the surface level cannot? Could the surface explanation be derived from the deeper one rather than vice versa? If the deeper level is just additional surface detail, it is reshaped to name an actual mechanism or downgraded.
+1. State the surface explanation the user already (likely) has — the accessible-level explanation, labelled `**Surface:**` verbatim. Never skip this anchor.
+2. Identify the mechanism beneath at Level 1 — what causes the surface-level phenomenon to behave as it does, named in plain terms.
+3. Descend to Level 2 beneath — what makes the Level 1 mechanism work as it does, still on the same phenomenon (not lateral drift to neighbouring topics).
+4. Test verticality per level — could the deeper level predict behaviour the surface couldn't? Could the surface be derived from the deeper one? If the deeper level is just more surface detail, it gets reshaped to name an actual mechanism.
+5. Gloss terminology rather than substituting for it — when a technical term must appear, it sits alongside the plain-terms statement, not as replacement.
+6. Mark the epistemic boundary explicitly — where settled knowledge ends and current-best-understanding (or active debate) begins. When the mechanism is fully settled, say so explicitly.
+7. Surface alternative mechanisms when the phenomenon admits more than one explanation — preserve both with their respective epistemic standing rather than silently picking.
+8. Name at least one practical implication — what the deeper understanding changes (a predicted behaviour, a reframed decision, an enabled intervention). When the deeper level genuinely has no practical consequence, say so explicitly rather than fabricating one.
+9. Calibrate confidence per level — surface-level typically high; Level 2 often touches the active-research frontier.
 
-2. **Same phenomenon, not lateral drift.** Each level must descend into the same phenomenon, not migrate to an adjacent topic. Lateral-drift-trap is "Level 2 beneath" that ends up explaining a neighbouring phenomenon rather than a deeper layer of the original one. The test: does each level still name the same surface phenomenon as the thing being explained? A level that has changed subject has drifted laterally and is reshaped.
+**Goal.** Produce a deep clarification — prose that walks from surface accessible reading down through at least two genuine mechanistic layers, marks where settled knowledge ends, and lands at least one practical implication.
 
-3. **Epistemic boundary marked (CQ2, load-bearing).** The deliverable must explicitly name where settled knowledge ends and current-best-understanding (or active debate) begins. False-certainty residue is mechanistic claims presented as settled when current science is indeterminate, or "Level 2 beneath" claims at the frontier of a field's actual knowledge presented in confident declarative voice. When the mechanism is fully settled, the boundary section says so explicitly rather than being silently elided.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Plain-terms over jargon.** Each mechanism must be stated in plain terms first, with terminology glossed alongside rather than substituting for the explanation. Jargon-trap residue is "the phenomenon is explained by entropic relaxation" without saying what entropic relaxation does in plain terms. The technical vocabulary appears as a gloss for readers who recognize it, not as a substitute for the mechanism itself.
+- **CQ1 — vertical not horizontal (load-bearing).** Is each successive level a genuine mechanism beneath, or is it horizontal detail at the same level? Failure mode if unmet: `elaboration-trap`.
+- **CQ2 — epistemic boundary marked (load-bearing).** Has the epistemic boundary been named explicitly — where settled knowledge ends and current-best-understanding begins? Failure mode if unmet: `false-certainty`.
+- **CQ3 — practical implication present (load-bearing).** Does the deeper understanding change what the user would do or conclude — is there a practical bearing? Failure mode if unmet: `academic-drift`.
 
-5. **Practical implication present (CQ3, load-bearing).** The deeper understanding must change something for the user — predict a behaviour the surface didn't, reframe a decision, enable an intervention. Academic-drift residue is depth-for-depth's-sake: technically deeper levels that have no bearing on what the user would do, conclude, or expect. When the deeper level genuinely has no practical consequence in the user's situation, the deliverable says so explicitly rather than fabricating an implication.
+A passing output anchors with a labelled surface explanation, descends through at least two genuinely-vertical mechanistic levels into the same phenomenon (not lateral drift), states each mechanism in plain terms with terminology glossed alongside, marks the epistemic boundary explicitly, names at least one practical implication, preserves alternative mechanisms when the phenomenon admits more than one, and calibrates confidence per level.
 
-6. **Surface anchor preserved.** The surface-explanation atom is the baseline the deeper levels deepen; deliverables that jump straight to mechanism without the surface anchor lose the reader's purchase. The evaluator confirms the surface atom is present (and clearly labelled) so the depth-axis is legible.
+**Named failure modes.**
 
-Confidence is calibrated per-level: surface-level confidence is typically high; Level 2-beneath confidence often touches the active-research frontier. Where streams produced alternative mechanisms (the same phenomenon admits more than one mechanistic explanation), the evaluator confirms both are preserved with their respective epistemic standing rather than silently picked. Where streams produced different "Level 2 beneath" axes (e.g., chemical mechanism vs evolutionary mechanism), both are preserved as labelled alternative depth-axes.
+- *lateral-drift-trap* — successive levels move to adjacent topics rather than deeper into the same phenomenon.
+- *elaboration-trap* — deeper level adds more facts at the same level of abstraction rather than revealing mechanism.
+- *jargon-trap* — replacing accessible explanation with terminology without naming a mechanism in plain terms.
+- *false-certainty* — mechanistic claims presented as settled when current science is indeterminate.
 
 ## REVISION GUIDANCE
 

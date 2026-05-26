@@ -6,7 +6,7 @@ tags:
   - framework/instruction
   - architecture
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -156,9 +156,44 @@ Depth in Systems Dynamics Structural is the rigour of current-state articulation
 
 Breadth in Systems Dynamics Structural is the catalog of relevant loops, stocks, and boundary candidates considered before the map is committed. Widen the lens by scanning: which Senge archetypes might describe the structure (Fixes That Fail, Shifting the Burden, Limits to Growth, Eroding Goals, Escalation, Success to the Successful, Tragedy of the Commons, Growth and Underinvestment); which timescales matter (some loops dominate short-term, others long-term); which actors or institutions sit at the boundary and might be drawn inside or kept out. Breadth markers: at least one explicit "outside the boundary" exclusion is named with rationale, and structural observations note which loops dominate at which timescales.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) loop genuineness with closing edge; (CQ2) polarity parity matches declared type; (CQ3) boundary stated explicitly; (CQ4) descriptive (not prescriptive) posture maintained; (CQ5) archetype-loop fit when archetype named. The named failure modes are the evaluation checklist. A passing Systems Dynamics Structural output declares its boundary, names every loop with id pattern R<n>/B<n>, verifies polarity parity, describes the structure without recommending interventions, and grounds any named archetype in matching loop topology.
+**What this analysis is.** Systems Dynamics Structural is a Forrester/Senge-tradition feedback-system *structural mapping* — descriptive of how the system currently operates, including its stocks, flows, and feedback loops. It is the T17 operation-counterpart to systems-dynamics-causal (T4 causal-investigation posture — same feedback lenses, different operation). The parse-preserving discipline is descriptive-only posture: prescriptive drift (intervention recommendations, leverage-point prescriptions) is reshaped out and routed to systems-dynamics-causal. The mode is distinct from process-mapping (linear/non-feedback workflow), relationship-mapping (T11 static structural relations without temporal dynamics), and mechanism-understanding (T16 principle-level rather than operational map).
+
+**Procedure.**
+
+1. State the system boundary explicitly — what's inside, what's outside, and which excluded variables would change the structural picture if included.
+2. Name variables with role tags (`stock` / `flow` / `auxiliary` / `exogenous`); distinguish stocks (accumulate) from flows (alter stock levels per time unit) — stock/flow conflation reshapes here.
+3. Declare each feedback loop with id (`R<n>` / `B<n>`), members in order, polarity per edge (`+` / `−`), and the closing edge that returns influence to start.
+4. Verify polarity parity per loop — even number of `−` edges → R; odd → B. Declared type contradicting parity is validator-rejected.
+5. Mark delays — temporal delay between cause and effect, where operative.
+6. Identify Senge archetypes (Fixes That Fail, Shifting the Burden, Limits to Growth, Eroding Goals, Escalation, Success to the Successful, Tragedy of the Commons, Growth and Underinvestment) only with matching loop topology.
+7. State structural observations descriptively — which loops dominate at which timescales, where stocks accumulate, where flows are throttled, where the system is in tension with itself.
+8. Reshape out prescriptive language ("the system should…", "the leverage point is…") and surface as a sideways-route note to systems-dynamics-causal.
+9. State observer position when analyst or user is part of the system being mapped.
+10. Assign per-loop and per-stock confidence with boundary caveats — what was deliberately excluded.
+
+**Goal.** Produce a Forrester/Senge descriptive-stance current-state diagram with stocks, flows, polarity-parity-verified loops, archetype identification grounded in matching topology, and structural observations that do not slide into prescription.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — loop genuineness.** Are the declared loops genuine cycles in the graph (closing edge present), or linear chains mis-labelled as loops? Failure mode if unmet: `linear-masquerading-as-loop`.
+- **CQ2 — polarity parity matches type.** Does each loop's declared type (R or B) match its polarity parity (even number of negative edges → R; odd → B)? Failure mode if unmet: `polarity-parity-mismatch`.
+- **CQ3 — boundary stated.** Has the system boundary been stated explicitly, or has the map silently absorbed every adjacent variable? Failure mode if unmet: `boundary-dishonesty`.
+- **CQ4 — descriptive posture maintained.** Does the structural map describe the system as it currently is, or has it drifted into prescriptive recommendations that belong in a different mode? Failure mode if unmet: `prescriptive-drift`.
+- **CQ5 — archetype-loop fit.** If a system archetype is named, does its characteristic loop topology actually appear in the declared loops? Failure mode if unmet: `archetype-name-drop`.
+
+A passing output declares the system boundary, distinguishes stocks from flows, names every loop with id pattern R<n>/B<n> and verified polarity parity, marks delays where operative, grounds any named archetype in matching loop topology, and describes the structure without recommending interventions.
+
+**Named failure modes.**
+
+- *linear-masquerading-as-loop* — a declared loop's members do not return influence to the start variable along an edge in the graph.
+- *polarity-parity-mismatch* — declared type contradicts negative-edge count (validator-rejected).
+- *boundary-dishonesty* — map omits explicit boundary statement; variables outside scope absorbed silently.
+- *prescriptive-drift* — map drifts from describing what is to recommending what should be — leverage-point recommendations or intervention proposals appear in the structural mapping. Reshape and route to systems-dynamics-causal.
+- *archetype-name-drop* — archetype named in prose without a matching loop topology in the declared loops.
+- *everything-connects-holism* — unfalsifiable claim that "everything connects" without specific mechanism per link.
+- *observer-blindness* — map positions analyst and user outside the system when they are part of it.
 
 ## REVISION GUIDANCE
 

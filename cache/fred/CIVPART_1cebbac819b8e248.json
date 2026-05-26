@@ -1,0 +1,113 @@
+{
+  "series_id": "CIVPART",
+  "observations": [
+    {
+      "date": "2024-04-01",
+      "value": 62.6
+    },
+    {
+      "date": "2024-05-01",
+      "value": 62.6
+    },
+    {
+      "date": "2024-06-01",
+      "value": 62.6
+    },
+    {
+      "date": "2024-07-01",
+      "value": 62.7
+    },
+    {
+      "date": "2024-08-01",
+      "value": 62.7
+    },
+    {
+      "date": "2024-09-01",
+      "value": 62.7
+    },
+    {
+      "date": "2024-10-01",
+      "value": 62.5
+    },
+    {
+      "date": "2024-11-01",
+      "value": 62.4
+    },
+    {
+      "date": "2024-12-01",
+      "value": 62.5
+    },
+    {
+      "date": "2025-01-01",
+      "value": 62.6
+    },
+    {
+      "date": "2025-02-01",
+      "value": 62.5
+    },
+    {
+      "date": "2025-03-01",
+      "value": 62.5
+    },
+    {
+      "date": "2025-04-01",
+      "value": 62.6
+    },
+    {
+      "date": "2025-05-01",
+      "value": 62.4
+    },
+    {
+      "date": "2025-06-01",
+      "value": 62.3
+    },
+    {
+      "date": "2025-07-01",
+      "value": 62.2
+    },
+    {
+      "date": "2025-08-01",
+      "value": 62.3
+    },
+    {
+      "date": "2025-09-01",
+      "value": 62.5
+    },
+    {
+      "date": "2025-10-01",
+      "value": null
+    },
+    {
+      "date": "2025-11-01",
+      "value": 62.5
+    },
+    {
+      "date": "2025-12-01",
+      "value": 62.4
+    },
+    {
+      "date": "2026-01-01",
+      "value": 62.1
+    },
+    {
+      "date": "2026-02-01",
+      "value": 62.0
+    },
+    {
+      "date": "2026-03-01",
+      "value": 61.9
+    }
+  ],
+  "metadata": {
+    "id": "CIVPART",
+    "title": "Labor Force Participation Rate",
+    "units": "Percent",
+    "units_short": "%",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2026-04-03 08:21:47-05",
+    "notes": "The series comes from the 'Current Population Survey (Household Survey)'\r\nThe source code is: LNS11300000\r\n\r\nThe Labor Force Participation Rate is defined by the Current Population Survey (CPS) as \u201cthe number of people in the labor force as a percentage of the civilian noninstitutional population [\u2026] the participation rate is the percentage of the population that is either working or actively looking for work.\u201d \r\n\r\nThe Labor Force Participation Rate is collected in the CPS and published by the BLS. It is provided on a monthly basis, so this data is used in part by macroeconomists as an initial economic indicator of current labor market trends. The labor force participation rate helps government agencies, financial markets, and researchers gauge the overall health of the economy. \r\n\r\nNote that long-run changes in labor force participation may reflect secular economic trends that are unrelated to the overall health of the economy. For instance, demographic changes such as the aging of population can lead to a secular increase of exits from the labor force, shrinking the labor force and decreasing the labor force participation rate. \r\n\r\nFor more information, see:\r\nU.S. Bureau of Labor Statistics, CES Overview (https://www.bls.gov/web/empsit/cesprog.htm)\r\nU.S. Bureau of Labor Statistics, Concepts and Definitions (CPS) (https://www.bls.gov/cps/definitions.htm#lfpr)"
+  },
+  "retrieved_at": "2026-05-24T09:39:09-0700"
+}

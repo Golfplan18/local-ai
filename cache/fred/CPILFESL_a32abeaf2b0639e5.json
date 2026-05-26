@@ -1,0 +1,273 @@
+{
+  "series_id": "CPILFESL",
+  "observations": [
+    {
+      "date": "2021-01-01",
+      "value": 270.387
+    },
+    {
+      "date": "2021-02-01",
+      "value": 270.793
+    },
+    {
+      "date": "2021-03-01",
+      "value": 271.459
+    },
+    {
+      "date": "2021-04-01",
+      "value": 273.66
+    },
+    {
+      "date": "2021-05-01",
+      "value": 275.465
+    },
+    {
+      "date": "2021-06-01",
+      "value": 277.651
+    },
+    {
+      "date": "2021-07-01",
+      "value": 278.648
+    },
+    {
+      "date": "2021-08-01",
+      "value": 278.997
+    },
+    {
+      "date": "2021-09-01",
+      "value": 279.698
+    },
+    {
+      "date": "2021-10-01",
+      "value": 281.668
+    },
+    {
+      "date": "2021-11-01",
+      "value": 283.406
+    },
+    {
+      "date": "2021-12-01",
+      "value": 285.18
+    },
+    {
+      "date": "2022-01-01",
+      "value": 286.757
+    },
+    {
+      "date": "2022-02-01",
+      "value": 288.273
+    },
+    {
+      "date": "2022-03-01",
+      "value": 289.056
+    },
+    {
+      "date": "2022-04-01",
+      "value": 290.514
+    },
+    {
+      "date": "2022-05-01",
+      "value": 292.063
+    },
+    {
+      "date": "2022-06-01",
+      "value": 294.05
+    },
+    {
+      "date": "2022-07-01",
+      "value": 295.088
+    },
+    {
+      "date": "2022-08-01",
+      "value": 296.535
+    },
+    {
+      "date": "2022-09-01",
+      "value": 298.226
+    },
+    {
+      "date": "2022-10-01",
+      "value": 299.399
+    },
+    {
+      "date": "2022-11-01",
+      "value": 300.325
+    },
+    {
+      "date": "2022-12-01",
+      "value": 301.394
+    },
+    {
+      "date": "2023-01-01",
+      "value": 302.642
+    },
+    {
+      "date": "2023-02-01",
+      "value": 304.123
+    },
+    {
+      "date": "2023-03-01",
+      "value": 305.147
+    },
+    {
+      "date": "2023-04-01",
+      "value": 306.534
+    },
+    {
+      "date": "2023-05-01",
+      "value": 307.652
+    },
+    {
+      "date": "2023-06-01",
+      "value": 308.322
+    },
+    {
+      "date": "2023-07-01",
+      "value": 308.96
+    },
+    {
+      "date": "2023-08-01",
+      "value": 309.58
+    },
+    {
+      "date": "2023-09-01",
+      "value": 310.539
+    },
+    {
+      "date": "2023-10-01",
+      "value": 311.457
+    },
+    {
+      "date": "2023-11-01",
+      "value": 312.392
+    },
+    {
+      "date": "2023-12-01",
+      "value": 313.195
+    },
+    {
+      "date": "2024-01-01",
+      "value": 314.319
+    },
+    {
+      "date": "2024-02-01",
+      "value": 315.564
+    },
+    {
+      "date": "2024-03-01",
+      "value": 316.792
+    },
+    {
+      "date": "2024-04-01",
+      "value": 317.649
+    },
+    {
+      "date": "2024-05-01",
+      "value": 318.095
+    },
+    {
+      "date": "2024-06-01",
+      "value": 318.39
+    },
+    {
+      "date": "2024-07-01",
+      "value": 318.94
+    },
+    {
+      "date": "2024-08-01",
+      "value": 319.75
+    },
+    {
+      "date": "2024-09-01",
+      "value": 320.732
+    },
+    {
+      "date": "2024-10-01",
+      "value": 321.731
+    },
+    {
+      "date": "2024-11-01",
+      "value": 322.657
+    },
+    {
+      "date": "2024-12-01",
+      "value": 323.259
+    },
+    {
+      "date": "2025-01-01",
+      "value": 324.638
+    },
+    {
+      "date": "2025-02-01",
+      "value": 325.465
+    },
+    {
+      "date": "2025-03-01",
+      "value": 325.69
+    },
+    {
+      "date": "2025-04-01",
+      "value": 326.467
+    },
+    {
+      "date": "2025-05-01",
+      "value": 326.893
+    },
+    {
+      "date": "2025-06-01",
+      "value": 327.658
+    },
+    {
+      "date": "2025-07-01",
+      "value": 328.682
+    },
+    {
+      "date": "2025-08-01",
+      "value": 329.7
+    },
+    {
+      "date": "2025-09-01",
+      "value": 330.418
+    },
+    {
+      "date": "2025-10-01",
+      "value": null
+    },
+    {
+      "date": "2025-11-01",
+      "value": 331.043
+    },
+    {
+      "date": "2025-12-01",
+      "value": 331.814
+    },
+    {
+      "date": "2026-01-01",
+      "value": 332.793
+    },
+    {
+      "date": "2026-02-01",
+      "value": 333.512
+    },
+    {
+      "date": "2026-03-01",
+      "value": 334.165
+    },
+    {
+      "date": "2026-04-01",
+      "value": 335.423
+    }
+  ],
+  "metadata": {
+    "id": "CPILFESL",
+    "title": "Consumer Price Index for All Urban Consumers: All Items Less Food and Energy in U.S. City Average",
+    "units": "Index 1982-1984=100",
+    "units_short": "Index 1982-1984=100",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2026-05-12 08:03:59-05",
+    "notes": "The \"Consumer Price Index for All Urban Consumers: All Items Less Food & Energy\" is an aggregate of prices paid by urban consumers for a typical basket of goods, excluding food and energy. This measurement, known as \"Core CPI,\" is widely used by economists because food and energy have very volatile prices. The Bureau of Labor Statistics defines and measures the official CPI, and more information can be found in the FAQ (https://www.bls.gov/cpi/questions-and-answers.htm) or in this article (https://www.bls.gov/opub/hom/pdf/cpihom.pdf)."
+  },
+  "retrieved_at": "2026-05-13T22:48:03-0700"
+}

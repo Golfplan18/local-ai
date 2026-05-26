@@ -1,0 +1,109 @@
+{
+  "series_id": "CSUSHPISA",
+  "observations": [
+    {
+      "date": "2024-03-01",
+      "value": 318.137
+    },
+    {
+      "date": "2024-04-01",
+      "value": 319.179
+    },
+    {
+      "date": "2024-05-01",
+      "value": 320.079
+    },
+    {
+      "date": "2024-06-01",
+      "value": 320.79
+    },
+    {
+      "date": "2024-07-01",
+      "value": 321.524
+    },
+    {
+      "date": "2024-08-01",
+      "value": 322.31
+    },
+    {
+      "date": "2024-09-01",
+      "value": 323.329
+    },
+    {
+      "date": "2024-10-01",
+      "value": 324.441
+    },
+    {
+      "date": "2024-11-01",
+      "value": 325.943
+    },
+    {
+      "date": "2024-12-01",
+      "value": 327.654
+    },
+    {
+      "date": "2025-01-01",
+      "value": 329.172
+    },
+    {
+      "date": "2025-02-01",
+      "value": 329.791
+    },
+    {
+      "date": "2025-03-01",
+      "value": 329.012
+    },
+    {
+      "date": "2025-04-01",
+      "value": 328.182
+    },
+    {
+      "date": "2025-05-01",
+      "value": 327.591
+    },
+    {
+      "date": "2025-06-01",
+      "value": 326.987
+    },
+    {
+      "date": "2025-07-01",
+      "value": 326.792
+    },
+    {
+      "date": "2025-08-01",
+      "value": 327.064
+    },
+    {
+      "date": "2025-09-01",
+      "value": 327.541
+    },
+    {
+      "date": "2025-10-01",
+      "value": 328.72
+    },
+    {
+      "date": "2025-11-01",
+      "value": 330.135
+    },
+    {
+      "date": "2025-12-01",
+      "value": 331.413
+    },
+    {
+      "date": "2026-01-01",
+      "value": 332.183
+    }
+  ],
+  "metadata": {
+    "id": "CSUSHPISA",
+    "title": "S&P Cotality Case-Shiller U.S. National Home Price Index",
+    "units": "Index Jan 2000=100",
+    "units_short": "Index Jan 2000=100",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2026-03-31 08:14:28-05",
+    "notes": "For more information regarding the index, please visit Standard & Poor's (https://www.spglobal.com/spdji/en/documents/methodologies/methodology-sp-corelogic-cs-home-price-indices.pdf). There is more information about home price sales pairs in the Methodology section. Copyright, 2016, Standard & Poor's Financial Services LLC. Reprinted with permission."
+  },
+  "retrieved_at": "2026-05-24T23:05:39-0700"
+}

@@ -6,7 +6,7 @@ tags:
   - framework/instruction
   - architecture
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -162,9 +162,44 @@ Depth in Systems Dynamics Causal is the rigour of feedback-structure articulatio
 
 Breadth in Systems Dynamics Causal is the catalog of loops considered before the dominant loop is committed and the leverage-point candidates considered before the recommendation is committed. Widen the lens by scanning: which Senge archetypes might fit (Fixes That Fail, Shifting the Burden, Limits to Growth, Eroding Goals, Escalation, Success to the Successful, Tragedy of the Commons, Growth and Underinvestment); which delays may be hiding causal links across timescales; which variables outside the current boundary would change the dominant-loop story if included. Breadth markers: at least one explicit "outside the boundary" exclusion is named, and leverage points span multiple Meadows depths (not all depth 1-3 parameter tweaks).
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) loop genuineness with closing edge; (CQ2) polarity parity matches declared type; (CQ3) boundary stated explicitly; (CQ4) archetype-loop fit when archetype named; (CQ5) Meadows-ranked leverage points. The named failure modes are the evaluation checklist. A passing Systems Dynamics Causal output declares its boundary, names every loop with id pattern R<n>/B<n>, verifies polarity parity, predicts at least one counterintuitive behaviour, and ranks leverage points by Meadows depth with reasoning.
+**What this analysis is.** Systems Dynamics Causal is a Forrester/Senge-tradition feedback-system causal analysis: a *causal-investigation* mode that diagnoses why a symptom keeps recurring given the system's feedback dynamics. It is distinct from systems-dynamics-structural (T17 counterpart — how the system currently works, structural-descriptive posture), from root-cause-analysis (T4 lighter sibling — single-cause-chain), from causal-dag (Pearl-tradition formal DAG with conditional independence), from process-tracing (Bennett/Checkel historical-event variant), and from relationship-mapping (T11 static structural relations without temporal dynamics). The posture is descriptive of feedback structure with counterintuitive-behaviour prediction; routing between the causal and structural variants is determined by the user's actual question — diagnostic recurrence (why) vs current-state mapping (how).
+
+**Procedure.**
+
+1. State the system boundary explicitly — what's inside, what's outside, and which excluded variables would change the dominant-loop story if included.
+2. Name variables with kind (stock / flow / auxiliary) and short labels; exclude out-of-boundary variables with rationale.
+3. Declare each feedback loop with id (`R1`, `R2`, `B1`, `B2`…), members in order, polarity per edge (`+` / `−`), and the closing edge that returns influence to start. Loops without a closing edge migrate out of the declarations.
+4. Verify polarity parity per loop — even number of `−` edges → R; odd → B. Declared type contradicting parity is validator-rejected (hard failure).
+5. Mark delays — at least one delay surfaces; delays are pervasive in feedback systems.
+6. Identify Senge archetypes only with matching topology — Fixes That Fail, Shifting the Burden, Limits to Growth, Eroding Goals, Escalation, Success to the Successful, Tragedy of the Commons, Growth and Underinvestment. Name-drops without matching loop topology are reshaped or removed.
+7. Predict at least one counterintuitive behaviour grounded in the declared loop structure (fixes that fail, intervention worsens symptom, delayed feedback masks cause).
+8. Rank leverage points by Meadows depth (12 parameters → 1 power to transcend paradigm) with reasoning; recommendations only at depths 12–10 when deeper structural leverage is available are reshaped.
+9. State observer position when analyst or user is part of the system being analysed.
+10. Assign per-loop confidence with boundary caveats — what was deliberately excluded and how its inclusion would change findings.
+
+**Goal.** Produce a Forrester/Senge causal feedback-system mapping where every loop is closed and polarity-parity-verified, archetypes match loop topology, leverage points are Meadows-ranked, and at least one counterintuitive behaviour is predicted from the structure.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — loop genuineness.** Are the declared loops genuine cycles in the graph (closing edge present), or are they linear chains mis-labelled as loops? Failure mode if unmet: `linear-masquerading-as-loop`.
+- **CQ2 — polarity parity matches type.** Does each loop's declared type (R or B) match its polarity parity (even number of negative edges → R; odd → B)? Failure mode if unmet: `polarity-parity-mismatch`.
+- **CQ3 — boundary stated.** Has the system boundary been stated explicitly, or has the analysis silently expanded to absorb every adjacent variable? Failure mode if unmet: `boundary-dishonesty`.
+- **CQ4 — archetype-loop fit.** If a system archetype is named, does its characteristic loop topology actually appear in the declared loops? Failure mode if unmet: `archetype-name-drop`.
+- **CQ5 — Meadows-ranked leverage.** Are leverage points ranked by Meadows depth with reasoning, or is the recommendation a parameter tweak presented as systemic intervention? Failure mode if unmet: `deep-leverage-omission`.
+
+A passing output declares the system boundary, names every loop with id pattern R<n>/B<n> and verified polarity parity, marks at least one delay, grounds any named archetype in matching loop topology, predicts at least one counterintuitive behaviour from the structure, and ranks leverage points by Meadows depth with reasoning.
+
+**Named failure modes.**
+
+- *linear-masquerading-as-loop* — a declared loop's members do not return influence to the start variable along an edge in the graph.
+- *polarity-parity-mismatch* — loop declared R has odd negative-edge count, or B has even — declared type contradicts parity (validator-rejected).
+- *boundary-dishonesty* — analysis omits explicit boundary statement; variables outside the relevant scope absorbed silently.
+- *archetype-name-drop* — archetype named in prose without a matching loop topology in the declared loops.
+- *deep-leverage-omission* — leverage recommendations sit only at parameter-adjustment depth (Meadows 12–10) when structural depth is available.
+- *everything-connects-holism* — unfalsifiable claim that "everything connects" without specific mechanism per link.
+- *observer-blindness* — analyst and user are positioned outside the system being analysed when they are part of it.
 
 ## REVISION GUIDANCE
 

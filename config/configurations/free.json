@@ -1,0 +1,61 @@
+{
+  "name": "free",
+  "description": "Auto-populated from preset 'free' on 2026-05-26T22:37:46.662084+00:00.",
+  "preset_lineage": "free",
+  "cells": {
+    "utility": {
+      "step1_cleanup": null,
+      "classification": null,
+      "rag_planner": null,
+      "gear2_rag_lookup": {
+        "primary": "openrouter/free",
+        "fallback": [
+          "nvidia/nemotron-nano-12b-v2-vl:free"
+        ]
+      }
+    },
+    "analysis": {
+      "gear4": {
+        "depth": null,
+        "breadth": null
+      },
+      "gear3": {
+        "depth": {
+          "primary": "openrouter/free",
+          "fallback": [
+            "nvidia/nemotron-nano-12b-v2-vl:free"
+          ]
+        },
+        "breadth": {
+          "primary": "openrouter/free",
+          "fallback": [
+            "nvidia/nemotron-nano-12b-v2-vl:free"
+          ],
+          "vision_substitute": null
+        }
+      }
+    },
+    "post_analysis": {
+      "consolidation": null,
+      "verification": null,
+      "formatter": null
+    },
+    "image_generation": {
+      "image_generation": {
+        "primary": "aa-img:886888eb-1c9f-4207-9b79-78119957c1e9",
+        "fallback": []
+      }
+    }
+  },
+  "_auto_populate_metadata": {
+    "preset": "free",
+    "vision_only": true,
+    "vision_substitute": null,
+    "loosening_log": {},
+    "catalog_models_considered": 579
+  },
+  "toggles": {
+    "adversarial_diversity": false,
+    "vision_only": true
+  }
+}

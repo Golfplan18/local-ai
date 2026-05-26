@@ -6,7 +6,7 @@ tags:
   - framework/instruction
   - architecture
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -154,9 +154,42 @@ Depth in Root Cause Analysis is the number of genuine causal levels traversed be
 
 Breadth in Root Cause Analysis is the catalog of categories considered before the fishbone is committed and the alternative causal chains scanned before the dominant chain is locked. Widen the lens by considering: which canonical Ishikawa framework (6M, 4P, 4S, 8P) best matches the failure domain; whether two or more chains converge on the same symptom such that the actual cause is their interaction; whether contributing factors not on the dominant chain amplify the failure. Breadth markers: at least two alternative causal chains have been generated (even if only one ships), and contributing factors are recorded distinctly from root-cause leaves.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) genuine root vs premature stop; (CQ2) process-not-people terminal; (CQ3) evidence per link with correlation-causation distinguished; (CQ4) framework coherence with canonical category names. The named failure modes are the evaluation checklist. A passing Root Cause Analysis output declares its framework before naming categories, reaches sub-cause depth 2 on at least one branch, terminates no chain at human error without a process sub-cause, supports each causal link with evidence, and distinguishes root causes from contributing factors with explicit reasoning.
+**What this analysis is.** Root Cause Analysis is fishbone-structured backward causal-chain tracing (5 Whys / Ishikawa): the observed failure is decomposed by a declared canonical framework (6M / 4P / 4S / 8P), candidate causes within each category are descended through the why-chain to at least sub-cause depth 2, and human-error leaves are followed to the process / policy / incentive structure that permitted them. It is distinct from systems-dynamics-causal (the complexity-heavier sibling — feedback structures rather than single chains), from causal-dag (depth-thorough sibling — Pearl-style formal causal graphs), and from process-tracing (specificity-historical sibling — Bennett-Checkel evidence-test framework for a specific past event).
+
+**Procedure.**
+
+1. Phrase the presented problem as a failure (not as a desired target state) — "X currently exhibits failure mode Y," not "we need X to work better."
+2. Declare the Ishikawa framework (6M / 4P / 4S / 8P) with rationale tying it to the failure domain — before naming categories, not after.
+3. Populate canonical categories from the declared framework; non-canonical category names or mixing across frameworks is framework-incoherence.
+4. Apply the 5-whys descent — reach sub-cause depth 2 on at least one branch; chains that stop at intermediate-and-actionable causes get one more "why" applied.
+5. Wherever a leaf names human error, attach the process / policy / incentive sub-cause that permitted or incentivised the behaviour — process-not-people is load-bearing, not optional.
+6. Distinguish root causes (removal prevents recurrence) from contributing factors (amplify probability but don't by themselves prevent recurrence).
+7. Assess evidence per causal link — `mechanism`, `correlation`, `inference`; on at least one link, address correlation-vs-causation explicitly.
+8. Consider whether multiple chains converge on the same symptom; surface alternative chains rather than smoothing for tidiness.
+9. Translate to recommendations tagged `corrective` (addresses surfaced failure) or `preventive` (addresses root condition).
+10. State confidence in the dominant chain (`low` / `moderate` / `high`) with reasoning.
+
+**Goal.** Produce a fishbone-structured root-cause analysis that declares its Ishikawa framework, populates canonical categories, descends through 5-whys to genuine root causes (process-not-people), and distinguishes corrective from preventive recommendations.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — genuine root vs premature stop.** Has the chain reached a genuine root cause, or stopped at an intermediate cause that itself has deeper causes? Failure mode if unmet: `premature-stop`.
+- **CQ2 — process-not-people terminal.** Has any branch terminated at human error, bad judgment, or insufficient effort without naming the process that permitted or incentivised the behaviour? Failure mode if unmet: `human-error-terminal`.
+- **CQ3 — evidence per link.** Are causal claims supported by evidence, with correlation explicitly distinguished from causation on at least one link? Failure mode if unmet: `correlation-causation-conflation`.
+- **CQ4 — framework coherence.** Is the declared categorisation framework used coherently — every category populated by causes that genuinely belong, every category name canonical for the framework? Failure mode if unmet: `framework-incoherence`.
+
+A passing output declares its framework before naming categories, reaches sub-cause depth 2 on at least one branch, terminates no chain at human error without a process sub-cause, supports each causal link with evidence, and distinguishes root causes from contributing factors with explicit reasoning.
+
+**Named failure modes.**
+
+- *premature-stop* — chain accepts an intermediate cause as root because it is satisfying or actionable; one more "why" would yield non-trivial deeper cause.
+- *human-error-terminal* — leaf cause names a person's mistake or judgment without a sub-cause naming the process, policy, or incentive structure that permitted it.
+- *correlation-causation-conflation* — causal links asserted without evidence of mechanism; co-occurrence treated as causation.
+- *framework-incoherence* — categories named before framework declared, or non-canonical category names within a declared canonical framework, or causes mixed across multiple frameworks.
+- *linear-chain-isolation* — single causal chain investigated without considering whether multiple chains converge on the same symptom.
+- *restatement-as-cause* — cause paraphrases the effect ("deployments fail" → cause "deployments are unreliable") rather than naming a deeper mechanism.
 
 ## REVISION GUIDANCE
 

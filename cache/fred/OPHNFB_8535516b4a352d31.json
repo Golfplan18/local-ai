@@ -1,0 +1,49 @@
+{
+  "series_id": "OPHNFB",
+  "observations": [
+    {
+      "date": "2024-01-01",
+      "value": 113.902
+    },
+    {
+      "date": "2024-04-01",
+      "value": 114.947
+    },
+    {
+      "date": "2024-07-01",
+      "value": 115.989
+    },
+    {
+      "date": "2024-10-01",
+      "value": 116.394
+    },
+    {
+      "date": "2025-01-01",
+      "value": 116.127
+    },
+    {
+      "date": "2025-04-01",
+      "value": 117.319
+    },
+    {
+      "date": "2025-07-01",
+      "value": 118.814
+    },
+    {
+      "date": "2025-10-01",
+      "value": 119.642
+    }
+  ],
+  "metadata": {
+    "id": "OPHNFB",
+    "title": "Nonfarm Business Sector: Labor Productivity (Output per Hour) for All Workers",
+    "units": "Index 2017=100",
+    "units_short": "Index 2017=100",
+    "frequency": "Quarterly",
+    "frequency_short": "Q",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2026-03-05 07:38:26-06",
+    "notes": "The Productivity and Costs release on August 7, 2003, will reflect the June 2003 benchmark revision to payroll employment. Since employment is now reported on a North American Industry Classification System (NAICS) basis, all of the historical data will be revised. Changes as a consequence of the move to NAICS should not be significant since this release carries data at high levels of aggregation."
+  },
+  "retrieved_at": "2026-05-24T05:00:46-0700"
+}

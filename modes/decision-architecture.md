@@ -5,7 +5,7 @@ type: mode
 tags:
   - molecular
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -175,25 +175,42 @@ Depth in Decision Architecture is the degree to which the four synthesis stages 
 
 Breadth in Decision Architecture is the catalog of alternatives considered before the architecture narrows to a recommendation. Widen the lens to scan: status-quo alternative; obvious binary; creative third option; do-nothing; reverse-the-question; defer-and-monitor. Even when the recommendation lands on one alternative, breadth is documented in the alternatives section. Breadth also covers stakeholder enumeration: ensure the stakeholder-mapping fragment surveys absent voices, not just visible parties.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Decision Architecture is read as a Howard-Raiffa-tradition decision analysis with Kahneman-Tversky bias hygiene, Klein prospective-hindsight stress-testing, and Mitchell-Agle-Wood stakeholder-salience overlay. Because the mode is molecular — four components run in parallel (decision-under-uncertainty, constraint-mapping, stakeholder-mapping, pre-mortem-action) and pass through four sequenced synthesis stages — the evaluator's primary axis is whether the synthesis stages produce an integrated architecture or a stapling of four sub-passes. CQ2 (silo-aggregation) and CQ4 (pre-mortem-omission) are load-bearing: they protect against the two failures that most directly invalidate the deliverable — a non-integrated recommendation, and a recommendation unprotected by a failure-pathway stress test. CQ1 (option set), CQ3 (stakeholder-disconnection), and CQ5 (monitoring vagueness) act as quality gates on inputs and outputs.
+**What this analysis is.** Decision Architecture is the molecular T3 mode integrating decision-under-uncertainty (probability-weighted outcomes), constraint-mapping (binding constraints), stakeholder-mapping (per-alternative stakeholder impacts), and pre-mortem-action (failure-pathway stress test) through four sequenced synthesis stages into a single integrated recommendation. It is distinct from constraint-mapping (light deterministic terrain), decision-under-uncertainty (probability-weighted but stakeholder-light), multi-criteria-decision (criteria-weighting complexity), and decision-clarity (decision document for a third-party decision-maker, not your own decision). The mode's distinctive value is integration — a recommendation no single component could have produced; silo-aggregation is the load-bearing failure mode.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Integration vs concatenation (CQ2, load-bearing).** For each synthesis-stage output, ask: could decision-under-uncertainty alone have produced this? Could constraint-mapping alone? Genuine integration names interactions — a constraint that invalidates the probability-weighted leading option, a stakeholder impact that flips the pre-mortem failure scenario, a failure pathway that defeats the constraint-favoured alternative. A document of four parallel sub-pass sections in sequence is silo-aggregation.
+1. State the decision being architected once at the head — scope, time horizon, who decides.
+2. Enumerate alternatives broadly — at least three, with at least one analyst-generated (status-quo, creative third, do-nothing, reverse-the-question, defer-and-monitor). Binary framings without analyst expansion are option-set-poverty.
+3. For each alternative attach probability-weighted outcomes from decision-under-uncertainty — bands when uncertain, point estimates when well-anchored, provenance-tagged.
+4. Attach binding constraints from constraint-mapping per alternative — each constraint names which alternatives it eliminates or qualifies, and the binding mechanism (hard / soft / contingent).
+5. Attach per-alternative stakeholder impacts from stakeholder-mapping — direction, magnitude, power-asymmetry note when the stakeholder bears the impact but cannot influence the decision. A flat stakeholder list disconnected from alternatives is the failure mode.
+6. Run pre-mortem stress test on the leading alternative(s) — failure-pathway narratives in past-tense prospective-hindsight, leading indicators, recoverability assessment.
+7. Integrate the four components — surface tensions: a constraint that invalidates the probability-weighted leader, a stakeholder impact that flips the pre-mortem scenario, a failure pathway that defeats the constraint-favoured option. Stapling four sub-pass sections in sequence is silo-aggregation.
+8. Produce a single recommendation with residual risks — what the recommendation does NOT eliminate. Clean recommendations without residual risks are hedging-disguised-as-rigor.
+9. Specify decision-conditions-to-monitor concretely — each names an observable signal, threshold, and signal latency (how long after the underlying shift the signal appears). Vague conditions ("monitor the situation") are monitoring-vagueness.
+10. Map confidence — synthesis-stage atoms inherit lower confidence than component-stage atoms; uniform confidence across both surfaces is miscalibrated.
 
-2. **Pre-mortem stress test on the leading alternative (CQ4, load-bearing).** The leading alternative must carry an attached failure-pathway atom from pre-mortem-action — past-tense prospective-hindsight narrative, leading indicators, recoverability assessment. A recommendation without pre-mortem coverage is decision architecture without stress test; pre-mortem-omission is the failure mode and the recommendation does not pass.
+**Goal.** Produce a structured integrated decision architecture — alternatives with attached attributes (probability-weighted outcomes, binding constraints, stakeholder impacts, failure pathways), a single recommendation with residual risks, and concrete monitoring conditions — that the four components could not individually have produced.
 
-3. **Option-set breadth (CQ1).** At minimum three alternatives must survive, and at least one must be analyst-generated (creative-third / do-nothing / reverse-the-question / defer-and-monitor). Binary framings with no analyst expansion are option-set-poverty — the architecture is evaluating a pre-narrowed choice set, not a decision space.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Per-alternative stakeholder impact (CQ3).** Stakeholder impacts must attach to specific alternatives, not to the situation generally. A single flat stakeholder enumeration is stakeholder-disconnection; the test is whether the same stakeholder appears under multiple alternatives with different impact directions and magnitudes. The Mitchell-Agle-Wood power-legitimacy-urgency triad is the reading vocabulary; power-asymmetry (a stakeholder bears the impact but cannot influence the decision) is surfaced explicitly.
+- **CQ1 — option-set breadth.** Have alternatives been generated broadly enough, or is the analysis evaluating an artificially narrow option set? Failure mode if unmet: `option-set-poverty`.
+- **CQ2 — integration vs concatenation (load-bearing).** Do the constraint findings actually bound the alternatives, or do they sit in a separate silo from the probability-weighted outcomes? Failure mode if unmet: `silo-aggregation`.
+- **CQ3 — per-alternative stakeholder impact.** Are the stakeholder impacts surfaced per alternative, or aggregated into a generic stakeholder list disconnected from choice? Failure mode if unmet: `stakeholder-disconnection`.
+- **CQ4 — pre-mortem on leading alternative (load-bearing).** Has the leading alternative been pre-mortem-stress-tested, or has the synthesis presented a recommendation without naming failure pathways? Failure mode if unmet: `pre-mortem-omission`.
+- **CQ5 — monitoring concreteness.** Are the decision-conditions-to-monitor concrete enough to detect drift, or vague enough to be unfalsifiable? Failure mode if unmet: `monitoring-vagueness`.
 
-5. **Monitoring concreteness (CQ5).** Decision-conditions-to-monitor must name observable signals with thresholds and signal latency (how long after the underlying shift the signal appears). "Monitor the situation," "watch for developments," "track relevant signals" are monitoring-vagueness — they look like monitoring but carry no falsifiable trigger.
+A passing output maps ≥3 alternatives (including ≥1 analyst-generated), attaches probability-weighted outcomes / binding constraints / stakeholder impacts / failure pathways per alternative with provenance tags, produces a recommendation that integrates all four component findings with named residual risks, specifies concrete monitoring conditions with observable signals and signal latency, and calibrates confidence separately for component-stage and synthesis-stage atoms.
 
-6. **Residual-risk honesty.** The recommendation atom must carry residual risks the recommendation does NOT eliminate. A clean recommendation without named residual risks is hedging disguised as rigor — the residual-risk surfacing protects against the post-hoc "we considered everything" narrative that flattens decision quality. Kahneman-Tversky overconfidence is the underlying bias.
+**Named failure modes.**
 
-Confidence is calibrated separately: synthesis-stage atoms inherit lower confidence than component-stage atoms; uniform confidence across both surfaces is miscalibrated. Where the four components disagreed on the leading alternative, the evaluator confirms the disagreement is preserved as a recommendation-tension atom rather than silently reconciled.
+- *option-set-poverty* — alternatives enumerated are fewer than three or are obvious binary; no creative or boundary alternative considered.
+- *silo-aggregation* — synthesis stages concatenate constraint, decision-under-uncertainty, stakeholder, and pre-mortem outputs without integration.
+- *stakeholder-disconnection* — stakeholder impacts listed once for the situation generally rather than mapped per alternative.
+- *pre-mortem-omission* — pre-mortem-action did not run against the leading alternative.
+- *monitoring-vagueness* — decision-conditions-to-monitor stated as "watch how things develop" or similar without concrete signals.
 
 ## REVISION GUIDANCE
 

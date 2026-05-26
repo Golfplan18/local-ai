@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -154,9 +154,40 @@ Depth in Probabilistic Forecasting is the explicitness of base-rate reasoning, r
 
 Widening the lens means surveying multiple candidate reference classes before locking one (or explicitly weighting across several), scanning for inside-view drivers in multiple categories (mechanism, motivation, capacity, environment, base-rate-defying factors), and surfacing leading indicators that would update the estimate. A breadth-passing analysis names at least two candidate reference classes and explains the choice, even if only one is used for the final estimate.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) operational resolvability; (CQ2) explicit reference class with stated base rate; (CQ3) inside-vs-outside-view separation with shown adjustment; (CQ4) range rather than false-precision point. The named failure modes (unresolvable-question, base-rate-neglect, view-collapse, false-precision, anchor-bias) are the evaluation checklist. A passing forecast states resolution criteria operationally, names reference class and base rate, separates and combines inside/outside views, and produces a probability range with leading indicators for update.
+**What this analysis is.** Probabilistic Forecasting is the Tetlock-style superforecasting method applied to a resolvable future question — producing a calibrated probability range anchored in an explicit reference-class base rate, adjusted by transparent inside-view drivers, with leading indicators that would trigger updates. The mode is depth-thorough in T6's forward-exploration territory with probability-as-output stance, distinct from consequences-and-sequel (depth-lighter; forward causal cascade with no probability commitment), scenario-planning (depth-counterpart; narrative scenarios rather than a probability number), and pre-mortem-action (stance-counterpart; adversarial-future failure walk on a plan). The Tetlock commandments are held lightly as heuristics, not applied mechanically; the disposition (operational resolvability, base-rate anchoring, view-separation, range-not-point) is what matters.
+
+**Procedure.**
+
+1. Lock operational resolution criteria — what observable fact, by what date, would resolve the forecast yes or no. Hedged language disqualifies; route to deep-clarification if criteria can't be operationalized.
+2. Survey candidate reference classes — at least two before locking the primary; name the alternative considered and the reason for not using it as primary.
+3. State the base rate for the chosen reference class with citation or structural reasoning.
+4. Identify inside-view drivers individually — case-specific factors by category (mechanism / motivation / capacity / environment / base-rate-defying), each with direction (raises or lowers probability from base rate) and magnitude estimate (percentage points or qualitative band).
+5. Show the math of the outside-view adjustment transparently — `base rate [X%] + drivers shifting [+/−Y pp range] = final estimate [Z% ± width]`. A reader could reproduce the estimate from the components.
+6. Produce a probability range whose width reflects actual confidence, not default fermization or false precision.
+7. Identify leading indicators and update triggers — observable signals, thresholds, the directional adjustment each implies.
+8. Hold two confidence kinds distinct — calibration confidence (am I right about the range) and point confidence (where in the range is most likely).
+9. Flag anchor-bias where the final estimate sits suspiciously close to the first-mentioned base rate or a salient round number.
+
+**Goal.** Produce a calibrated probabilistic forecast where the resolution criteria are operational, the reference-class base rate is explicit, inside-view drivers are individuated and combined transparently with the base rate, and the final probability is a range whose width reflects the analyst's actual confidence — with leading indicators that would trigger updates.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — operational resolvability.** Is the forecast question operationally resolvable, or has it been left vague enough to escape evaluation? Failure mode if unmet: `unresolvable-question`.
+- **CQ2 — reference class and base rate.** Has an explicit reference class been selected and its base rate stated, or has the analysis jumped to inside-view reasoning without an outside-view anchor? Failure mode if unmet: `base-rate-neglect`.
+- **CQ3 — view separation.** Has the analysis distinguished inside-view drivers (what's specific to this case) from outside-view adjustment (how this case compares to the reference class), and shown the math of the adjustment? Failure mode if unmet: `view-collapse`.
+- **CQ4 — range not point.** Has the probability been stated as a range (with explicit confidence interval or fermization) rather than a false-precision point estimate? Failure mode if unmet: `false-precision`.
+
+A passing output states resolution criteria operationally, names at least two candidate reference classes (with one chosen and the alternative noted), states the base rate as a number, lists inside-view drivers individually with direction and magnitude, shows the outside-view adjustment math transparently, produces a probability range with width reflecting confidence, names leading indicators with thresholds, and keeps calibration and point confidence distinct.
+
+**Named failure modes.**
+
+- *unresolvable-question* — resolution-criteria section empty or contains hedged language ("roughly", "meaningfully", "in the ballpark") without operational definition.
+- *base-rate-neglect* — no reference class named, or reference class named without a base-rate number.
+- *view-collapse* — inside-view drivers and outside-view base rate not separately stated; final estimate not derivable from the two views' combination.
+- *false-precision* — probability stated as a single point (e.g., "37%") without range, or with range narrower than the evidence supports.
+- *anchor-bias* — final estimate suspiciously close to the first-mentioned base rate or to a salient round number.
 
 ## REVISION GUIDANCE
 

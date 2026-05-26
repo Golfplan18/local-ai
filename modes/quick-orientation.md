@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -145,9 +145,40 @@ Depth in Quick Orientation is honest depth restraint: the orientation must give 
 
 Widening the lens in Quick Orientation means deliberate scanning across the full domain landscape before narrowing to three-to-five sub-areas: include the established core, the live frontier, the dissenting traditions, and the adjacent domains that share vocabulary. Even when only three sub-areas are surfaced, the breadth pass ensures they are spread across the domain rather than concentrated in one corner. Common misconceptions are surveyed and the most predictable ones flagged.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) corner bias; (CQ2) decorative distinction; (CQ3) misconception blindness; (CQ4) scope creep. The named failure modes (corner-bias, decorative-distinction, misconception-blindness, scope-creep, contested-as-settled) are the evaluation checklist. A passing Quick Orientation output names three-to-five sub-areas spread across the domain, surfaces load-bearing distinctions, flags common newcomer misconceptions, distinguishes settled from contested, and stays within tier-1 depth.
+**What this analysis is.** Quick Orientation is a tier-1 lay-of-the-land for someone new to a domain under time pressure: three-to-five major sub-areas spread across the domain, the foundational distinctions that organize it, the concrete entry-point concepts a newcomer should learn first, and the predictable wrong impressions light exposure produces. It is distinct from terrain-mapping (the depth-heavier sibling that maps sub-areas, open questions, contested points, and entry-point chains thoroughly), from domain-induction (the molecular variant for layered orientation across multiple domains), and from passion-exploration (T20 — generative open-space exploration rather than analytical orientation).
+
+**Procedure.**
+
+1. State the domain in one sentence at the head — single canonical definition, not paraphrased multiple times.
+2. Survey the full domain landscape across four quadrants before narrowing: established core, live frontier, dissenting tradition, adjacent shares-vocabulary.
+3. Pick three-to-five sub-areas spread across at least three quadrants (corner-bias detector) — one-line characterisation each, no paragraph elaboration.
+4. Name the foundational distinctions that organize the domain — apply the load-bearing test: could the user navigate the domain ignoring this distinction? If yes, drop the distinction.
+5. Identify concrete entry points — the first concepts or first questions that unlock subsequent understanding, not just "this is foundational."
+6. Flag common newcomer misconceptions a typical newcomer with light exposure would actually form (obscure misconceptions are padding).
+7. Tag each atom settled / contested / mixed — when streams disagree, contested wins (audit conservatism).
+8. Stay within tier-1 depth — three-to-five sub-areas (not ten), one-line characterisations (not paragraphs); escalate to terrain-mapping rather than over-delivering.
+9. Surface the escalation pointer — terrain-mapping is the heavier T14 sibling; name the specific triggers.
+
+**Goal.** Produce a tier-1 orientation packet — short, distributed, load-bearing — that gives a newcomer a usable map of an unfamiliar domain within the tier-1 time budget, with honest restraint about depth.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — corner bias.** Has the orientation surveyed the major sub-areas of the domain, or focused narrowly on one corner the analyst knows best? Failure mode if unmet: `corner-bias`.
+- **CQ2 — decorative distinction.** Are foundational distinctions load-bearing for the domain, or merely decorative? Failure mode if unmet: `decorative-distinction`.
+- **CQ3 — misconception blindness.** Has the orientation flagged the predictable wrong impressions a newcomer would form? Failure mode if unmet: `misconception-blindness`.
+- **CQ4 — scope creep.** Has the depth been honestly tier-1, or has the analysis crept into tier-2 territory and exceeded the user's time budget? Failure mode if unmet: `scope-creep`.
+
+A passing output names three-to-five sub-areas spread across the domain, surfaces load-bearing distinctions, flags common newcomer misconceptions, distinguishes settled from contested, and stays within tier-1 depth.
+
+**Named failure modes.**
+
+- *corner-bias* — sub-areas concentrated in one quadrant of the domain; major established sub-areas absent.
+- *decorative-distinction* — foundational distinctions named but the user could navigate the domain ignoring them; not load-bearing.
+- *misconception-blindness* — no common misconceptions section, or misconceptions named are too obscure to actually trip a newcomer.
+- *scope-creep* — output is structurally tier-2 (terrain-mapping shape) rather than tier-1; user's time budget would be exceeded.
+- *contested-as-settled* — active debates in the domain presented as settled facts; orientation lacks "this is contested" flagging.
 
 ## REVISION GUIDANCE
 

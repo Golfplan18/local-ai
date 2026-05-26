@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -147,9 +147,40 @@ Depth in Conceptual Engineering is the rigor of the function-failure analysis an
 
 Widening the lens means surveying the conceptual landscape around the target: adjacent concepts that would shift under the revision, alternative engineering moves the same problem might admit, prior engineering attempts (successful or failed) that bear on the proposal, normative frameworks that motivate or resist the revision. Breadth markers: at least two candidate revisions are surfaced; at least one alternative ameliorative purpose is considered; the revision's relationship to neighboring concepts is mapped.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) function-articulated purpose, not stipulation-smuggle; (CQ2) descriptive baseline before ameliorative move; (CQ3) implementation problem acknowledged; (CQ4) revision costs surfaced. The named failure modes (stipulation-smuggle, baseline-skip, implementation-blindness, cost-blindness, ameliorative-overreach) are the evaluation checklist. A passing engineering output maps current usage, articulates function-shaped purpose, proposes candidates with rationale, names implementation gap, and surfaces costs.
+**What this analysis is.** Conceptual Engineering applies Cappelen-Plunkett ameliorative analysis — normative redesign of a concept to better serve a stated function, distinguished from descriptive clarification of current usage. It is distinct from deep-clarification (descriptive ordinary-language clarification of how the concept is currently used) and from definitional-dispute (essentially-contested concepts where the dispute is constitutive). It produces a proposal-with-honest-difficulty rather than a stipulative redefinition — the implementation problem (the gap between proposing a revision and getting communities to adopt it, Cappelen 2018) and the revision's costs are surfaced rather than concealed.
+
+**Procedure.**
+
+1. Name the target concept explicitly and minimally; state the engineering question on the table.
+2. Map the descriptive baseline — current uses, distinctions, and commitments the concept carries. This is descriptive, not normative; the ameliorative move begins only after the baseline is in place.
+3. Identify function failures — for each, name the function the concept should serve, how the current concept fails or distorts it, and what the failure costs in practice.
+4. Articulate the ameliorative purpose as a *function* (something the revised concept should do, distinguish, accomplish), not as a *conclusion* (a desired classification the concept should produce). Stipulation-smuggle is the failure mode here.
+5. Propose candidate revisions — each with rationale tying it to the ameliorative purpose and a tradeoff/cost note. Multiple candidates are preserved when streams converged on different proposals; collapse to a single recommendation prematurely is breadth-loss.
+6. Acknowledge the implementation problem — who would need to adopt the revision, what coordination problem adoption faces, what mechanism (use, argument, education, legislation, movement-building) could carry it into community usage.
+7. Surface revision costs — current uses, distinctions, or commitments the revision would displace or lose, with an assessment of whether the loss is worth the gain.
+8. Flag ameliorative-overreach when the concept's contested status is constitutive (Gallie's essentially-contested concepts) — engineering move offered with explicit caveat rather than as a resolution.
+9. Keep three confidences separate — function-failure diagnosis, proposed revision, adoption feasibility — they are not blended into a single verdict.
+
+**Goal.** Produce an ameliorative-analysis clarification that walks from descriptive baseline through function-failure to candidate revision, with the implementation problem and revision costs honestly surfaced rather than concealed by stipulative confidence.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — function-articulated purpose.** Has the ameliorative purpose been articulated as something the revised concept should *do* (a function it should serve), rather than as a stipulation that smuggles in conclusions? Failure mode if unmet: `stipulation-smuggle`.
+- **CQ2 — descriptive baseline first.** Has the current concept's descriptive baseline been mapped before the ameliorative move, so the revision is responsive to actual usage rather than to a strawman? Failure mode if unmet: `baseline-skip`.
+- **CQ3 — implementation problem acknowledged.** Has the implementation problem been acknowledged — the gap between proposing a revision and getting communities to adopt it — rather than treating proposal as adoption? Failure mode if unmet: `implementation-blindness`.
+- **CQ4 — revision costs surfaced.** Have revision costs been surfaced — what current uses, distinctions, or commitments would be lost or displaced by the proposed engineering? Failure mode if unmet: `cost-blindness`.
+
+A passing output maps current usage as descriptive baseline, articulates function-shaped purpose (not conclusion-shaped), proposes candidate revisions with rationale and tradeoffs, names the implementation gap explicitly, surfaces revision costs, and keeps three confidence categories separate.
+
+**Named failure modes.**
+
+- *stipulation-smuggle* — ameliorative purpose stated as a desired conclusion rather than a function.
+- *baseline-skip* — current usage descriptive section absent or thin; the engineering move proceeds without grounding in what the concept currently does.
+- *implementation-blindness* — output proposes a revision without acknowledging the gap between proposal and uptake.
+- *cost-blindness* — revision costs absent or treats current usage as having no value worth preserving.
+- *ameliorative-overreach* — engineering move applied to a concept whose contested status is constitutive without acknowledging essentially-contested character.
 
 ## REVISION GUIDANCE
 

@@ -7,20 +7,20 @@
       "step1_cleanup": {
         "primary": "qwen/qwen3.6-35b-a3b",
         "fallback": [
-          "local-mlx-qwen3.5-27b-opus",
-          "openrouter/free",
+          "mistralai/ministral-3b-2512",
+          "openai/gpt-4.1-mini",
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
-        "vision_substitute": "openrouter:openai/gpt-5"
+        "vision_substitute": "openai/gpt-5.4-image-2"
       },
       "classification": {
-        "primary": "local-mlx-qwen3.5-4b",
+        "primary": "qwen/qwen3.6-35b-a3b",
         "fallback": [
           "local-mlx-qwen3.5-9b-optiq",
           "local-mlx-qwen3.5-27b-opus",
           "qwen/qwen3.6-35b-a3b"
         ],
-        "vision_substitute": "openrouter:openai/gpt-5"
+        "vision_substitute": "openai/gpt-5.4-image-2"
       },
       "rag_planner": {
         "primary": "qwen/qwen3.6-35b-a3b",
@@ -29,7 +29,7 @@
           "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
-        "vision_substitute": "openrouter:openai/gpt-5"
+        "vision_substitute": "openai/gpt-5.4-image-2"
       }
     },
     "analysis": {
@@ -38,15 +38,15 @@
           "primary": "qwen/qwen3.6-plus",
           "fallback": [
             "moonshotai/kimi-k2.6",
-            "local-mlx-kimi-dev-72b",
-            "local-mlx-hermes-4-70b",
+            "qwen/qwen3-vl-235b-a22b-instruct",
             "qwen/qwen3.5-122b-a10b",
+            "qwen/qwen3.5-397b-a17b",
             "nvidia/nemotron-3-super-120b-a12b:free"
           ],
-          "vision_substitute": "openrouter:openai/gpt-5"
+          "vision_substitute": "openai/gpt-5.4-image-2"
         },
         "breadth": {
-          "primary": "qwen/qwen3.6-plus",
+          "primary": "moonshotai/kimi-k2.6",
           "fallback": [
             "moonshotai/kimi-k2.6",
             "local-mlx-kimi-dev-72b",
@@ -54,12 +54,12 @@
             "qwen/qwen3.5-122b-a10b",
             "nvidia/nemotron-3-super-120b-a12b:free"
           ],
-          "vision_substitute": "openrouter:openai/gpt-5"
+          "vision_substitute": "openai/gpt-5.4-image-2"
         }
       },
       "gear3": {
         "depth": {
-          "primary": "local-mlx-kimi-dev-72b",
+          "primary": "qwen/qwen3.6-plus",
           "fallback": [
             "local-mlx-hermes-4-70b",
             "qwen/qwen3.6-plus",
@@ -67,7 +67,7 @@
             "qwen/qwen3.5-122b-a10b",
             "nvidia/nemotron-3-super-120b-a12b:free"
           ],
-          "vision_substitute": "openrouter:openai/gpt-5"
+          "vision_substitute": "openai/gpt-5.4-image-2"
         },
         "breadth": null
       }
@@ -82,7 +82,7 @@
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],
-        "vision_substitute": "openrouter:openai/gpt-5"
+        "vision_substitute": "openai/gpt-5.4-image-2"
       },
       "verification": {
         "primary": "qwen/qwen3.6-plus",
@@ -93,7 +93,7 @@
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],
-        "vision_substitute": "openrouter:openai/gpt-5"
+        "vision_substitute": "openai/gpt-5.4-image-2"
       },
       "formatter": {
         "primary": "qwen/qwen3.6-plus",
@@ -104,8 +104,19 @@
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],
-        "vision_substitute": "openrouter:openai/gpt-5"
+        "vision_substitute": "openai/gpt-5.4-image-2"
+      }
+    },
+    "image_generation": {
+      "image_generation": {
+        "primary": "aa-img:9570e1d0-a390-48c1-a270-1317570fe3d5",
+        "fallback": [],
+        "vision_substitute": "openai/gpt-5.4-image-2"
       }
     }
+  },
+  "toggles": {
+    "vision_only": true,
+    "adversarial_diversity": false
   }
 }

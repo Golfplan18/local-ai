@@ -1,8 +1,29 @@
 {
-  "fetched_at": "2026-05-17T00:48:18+00:00",
+  "fetched_at": "2026-05-26T17:43:30+00:00",
   "source": "https://openrouter.ai/api/v1/models",
-  "model_count": 435,
+  "model_count": 437,
   "models": [
+    {
+      "id": "x-ai/grok-imagine-image-quality",
+      "vendor": "x-ai",
+      "display_name": "xAI: Grok Imagine Image Quality",
+      "modality": "image",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 65536,
+      "max_completion": null,
+      "description": "Grok Imagine Image Quality is xAI's fast, high-fidelity image generation and editing model. It accepts text prompts and optional reference images, producing photorealistic outputs at 1K or 2K across a...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": 10000.0,
+        "request": null
+      },
+      "created": 1779117584
+    },
     {
       "id": "recraft/recraft-v4.1-pro-vector",
       "vendor": "recraft",
@@ -598,6 +619,27 @@
       "created": 1699401600
     },
     {
+      "id": "x-ai/grok-imagine-video",
+      "vendor": "x-ai",
+      "display_name": "xAI: Grok Imagine Video",
+      "modality": "video",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 0,
+      "max_completion": null,
+      "description": "Grok Imagine Video is xAI's fast, text-, image-, and reference-conditioned video generation model. It produces short videos (1\u201315 seconds, 24 fps) at 480p or 720p across seven aspect ratios -...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1779117586
+    },
+    {
       "id": "kwaivgi/kling-v3.0-pro",
       "vendor": "kwaivgi",
       "display_name": "Kling: Video v3.0 Pro",
@@ -724,27 +766,6 @@
       "created": 1776702740
     },
     {
-      "id": "alibaba/wan-2.7",
-      "vendor": "alibaba",
-      "display_name": "Alibaba: Wan 2.7",
-      "modality": "video",
-      "input_modalities": [
-        "text",
-        "image"
-      ],
-      "accepts_image": true,
-      "context_length": 0,
-      "max_completion": null,
-      "description": "Wan 2.7 is a video generation model from Alibaba. It supports text-to-video, image-to-video with first and last frame control, and reference-to-video, where multiple reference images guide the style and content...",
-      "pricing_per_million": {
-        "prompt": 0.0,
-        "completion": 0.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1776211362
-    },
-    {
       "id": "bytedance/seedance-2.0-fast",
       "vendor": "bytedance",
       "display_name": "ByteDance: Seedance 2.0 Fast",
@@ -778,6 +799,27 @@
       "context_length": 0,
       "max_completion": null,
       "description": "Seedance 2.0 is a video generation model from ByteDance. It supports text-to-video, image-to-video with first and last frame control, and multimodal reference-to-video. It is particularly strong at preserving character consistency,...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1776211362
+    },
+    {
+      "id": "alibaba/wan-2.7",
+      "vendor": "alibaba",
+      "display_name": "Alibaba: Wan 2.7",
+      "modality": "video",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 0,
+      "max_completion": null,
+      "description": "Wan 2.7 is a video generation model from Alibaba. It supports text-to-video, image-to-video with first and last frame control, and reference-to-video, where multiple reference images guide the style and content...",
       "pricing_per_million": {
         "prompt": 0.0,
         "completion": 0.0,
@@ -1881,6 +1923,71 @@
       "created": 1761662922
     },
     {
+      "id": "qwen/qwen3.7-max",
+      "vendor": "qwen",
+      "display_name": "Qwen: Qwen3.7 Max",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 1000000,
+      "max_completion": 65536,
+      "description": "Qwen3.7-Max is the flagship model in Alibaba's Qwen3.7 series. It supports text input and output and is designed for agent-centric workloads, with particular strengths in coding, office and productivity tasks,...",
+      "pricing_per_million": {
+        "prompt": 2.5,
+        "completion": 7.5,
+        "image": null,
+        "request": null
+      },
+      "created": 1779376861
+    },
+    {
+      "id": "x-ai/grok-build-0.1",
+      "vendor": "x-ai",
+      "display_name": "xAI: Grok Build 0.1",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 256000,
+      "max_completion": null,
+      "description": "Grok Build 0.1 is xAI\u2019s fast coding model trained specifically for agentic software engineering workflows. It supports text and image inputs with text output, and is optimized for interactive coding...",
+      "pricing_per_million": {
+        "prompt": 1.0,
+        "completion": 2.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1779298123
+    },
+    {
+      "id": "google/gemini-3.5-flash",
+      "vendor": "google",
+      "display_name": "Google: Gemini 3.5 Flash",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image",
+        "video",
+        "file",
+        "audio"
+      ],
+      "accepts_image": true,
+      "context_length": 1048576,
+      "max_completion": 65536,
+      "description": "Gemini 3.5 Flash is Google's high-efficiency multimodal model, bringing near-Pro level coding and reasoning at Flash-tier cost and speed. It is highly optimized for coding proficiency and parallel agentic execution...",
+      "pricing_per_million": {
+        "prompt": 1.5,
+        "completion": 9.0,
+        "image": 1.5,
+        "request": null
+      },
+      "created": 1779193800
+    },
+    {
       "id": "anthropic/claude-opus-4.7-fast",
       "vendor": "anthropic",
       "display_name": "Anthropic: Claude Opus 4.7 (Fast)",
@@ -2145,8 +2252,8 @@
         "text"
       ],
       "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 8192,
+      "context_length": 262144,
+      "max_completion": 32768,
       "description": "Laguna M.1 is the flagship coding agent model from [Poolside](https://poolside.ai), optimized for complex software engineering tasks. Designed for agentic coding workflows, it supports tool calling and reasoning, with a 128K...",
       "pricing_per_million": {
         "prompt": 0.0,
@@ -2253,18 +2360,18 @@
       "input_modalities": [
         "text",
         "image",
+        "video",
         "file",
-        "audio",
-        "video"
+        "audio"
       ],
       "accepts_image": true,
       "context_length": 1048576,
       "max_completion": 65536,
       "description": "This model always redirects to the latest model in the Google Gemini Flash family.",
       "pricing_per_million": {
-        "prompt": 0.5,
-        "completion": 3.0,
-        "image": 0.5,
+        "prompt": 1.5,
+        "completion": 9.0,
+        "image": 1.5,
         "request": null
       },
       "created": 1777318398
@@ -2369,7 +2476,7 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 262144,
+      "max_completion": 262140,
       "description": "Qwen3.6-35B-A3B is an open-weight multimodal model from Alibaba Cloud with 35 billion total parameters and 3 billion active parameters per token. It uses a hybrid sparse mixture-of-experts architecture combining Gated...",
       "pricing_per_million": {
         "prompt": 0.15,
@@ -2411,11 +2518,11 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 81920,
+      "max_completion": 65536,
       "description": "Qwen3.6 27B is a dense 27-billion-parameter language model from the Qwen Team at Alibaba, released in April 2026. It features hybrid multimodal capabilities \u2014 accepting text, image, and video inputs...",
       "pricing_per_million": {
-        "prompt": 0.32,
-        "completion": 3.2,
+        "prompt": 0.3,
+        "completion": 2.0,
         "image": null,
         "request": null
       },
@@ -2515,11 +2622,11 @@
       ],
       "accepts_image": false,
       "context_length": 1048576,
-      "max_completion": null,
+      "max_completion": 16384,
       "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
       "pricing_per_million": {
-        "prompt": 0.112,
-        "completion": 0.224,
+        "prompt": 0.1,
+        "completion": 0.2,
         "image": null,
         "request": null
       },
@@ -2538,8 +2645,8 @@
       "max_completion": 32768,
       "description": "Ling-2.6-1T is an instant (instruct) model from inclusionAI and the company\u2019s trillion-parameter flagship, designed for real-world agents that require fast execution and high efficiency at scale. It uses a \u201cfast...",
       "pricing_per_million": {
-        "prompt": 0.3,
-        "completion": 2.5,
+        "prompt": 0.075,
+        "completion": 0.625,
         "image": null,
         "request": null
       },
@@ -2575,11 +2682,11 @@
       ],
       "accepts_image": false,
       "context_length": 1048576,
-      "max_completion": 16384,
+      "max_completion": 131072,
       "description": "MiMo-V2.5-Pro is Xiaomi\u2019s flagship model, delivering strong performance in general agentic capabilities, complex software engineering, and long-horizon tasks, with top rankings on benchmarks such as ClawEval, GDPVal, and SWE-bench Pro....",
       "pricing_per_million": {
-        "prompt": 1.0,
-        "completion": 3.0,
+        "prompt": 0.435,
+        "completion": 0.87,
         "image": null,
         "request": null
       },
@@ -2601,8 +2708,8 @@
       "max_completion": 131072,
       "description": "MiMo-V2.5 is a native omnimodal model by Xiaomi. It delivers Pro-level agentic performance at roughly half the inference cost, while surpassing MiMo-V2-Omni in multimodal perception across image and video understanding...",
       "pricing_per_million": {
-        "prompt": 0.4,
-        "completion": 2.0,
+        "prompt": 0.14,
+        "completion": 0.28,
         "image": null,
         "request": null
       },
@@ -2810,11 +2917,11 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 16384,
+      "max_completion": null,
       "description": "Gemma 4 26B A4B IT is an instruction-tuned Mixture-of-Experts (MoE) model from Google DeepMind. Despite 25.2B total parameters, only 3.8B activate per token during inference \u2014 delivering near-31B quality at...",
       "pricing_per_million": {
-        "prompt": 0.07,
-        "completion": 0.34,
+        "prompt": 0.06,
+        "completion": 0.33,
         "image": null,
         "request": null
       },
@@ -2907,26 +3014,6 @@
         "request": null
       },
       "created": 1775061458
-    },
-    {
-      "id": "arcee-ai/trinity-large-thinking:free",
-      "vendor": "arcee-ai",
-      "display_name": "Arcee AI: Trinity Large Thinking (free)",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 262144,
-      "max_completion": 80000,
-      "description": "Trinity Large Thinking is a powerful open source reasoning model from the team at Arcee AI. It shows strong performance in PinchBench, agentic workloads, and reasoning tasks. Launch video: https://youtu.be/Gc82AXLa0Rg?si=4RLn6WBz33qT--B7...",
-      "pricing_per_million": {
-        "prompt": 0.0,
-        "completion": 0.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1775058318
     },
     {
       "id": "arcee-ai/trinity-large-thinking",
@@ -3212,11 +3299,11 @@
       ],
       "accepts_image": false,
       "context_length": 1000000,
-      "max_completion": 16384,
+      "max_completion": null,
       "description": "NVIDIA Nemotron 3 Super is a 120B-parameter open hybrid MoE model, activating just 12B parameters for maximum compute efficiency and accuracy in complex multi-agent applications. Built on a hybrid Mamba-Transformer...",
       "pricing_per_million": {
-        "prompt": 0.1,
-        "completion": 0.5,
+        "prompt": 0.09,
+        "completion": 0.45,
         "image": null,
         "request": null
       },
@@ -3410,10 +3497,10 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 81920,
+      "max_completion": null,
       "description": "The Qwen3.5 Series 35B-A3B is a native vision-language model designed with a hybrid architecture that integrates linear attention mechanisms and a sparse mixture-of-experts model, achieving higher inference efficiency. Its overall...",
       "pricing_per_million": {
-        "prompt": 0.14,
+        "prompt": 0.139,
         "completion": 1.0,
         "image": null,
         "request": null
@@ -3454,7 +3541,7 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 65536,
+      "max_completion": 262144,
       "description": "The Qwen3.5 122B-A10B native vision-language model is built on a hybrid architecture that integrates a linear attention mechanism with a sparse mixture-of-experts model, achieving higher inference efficiency. In terms of...",
       "pricing_per_million": {
         "prompt": 0.26,
@@ -3815,35 +3902,15 @@
       ],
       "accepts_image": false,
       "context_length": 262144,
-      "max_completion": 65536,
+      "max_completion": 16384,
       "description": "Step 3.5 Flash is StepFun's most capable open-source foundation model. Built on a sparse Mixture of Experts (MoE) architecture, it selectively activates only 11B of its 196B parameters per token....",
       "pricing_per_million": {
-        "prompt": 0.1,
+        "prompt": 0.09,
         "completion": 0.3,
         "image": null,
         "request": null
       },
       "created": 1769728337
-    },
-    {
-      "id": "arcee-ai/trinity-large-preview",
-      "vendor": "arcee-ai",
-      "display_name": "Arcee AI: Trinity Large Preview",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131000,
-      "max_completion": null,
-      "description": "Trinity-Large-Preview is a frontier-scale open-weight language model from Arcee, built as a 400B-parameter sparse Mixture-of-Experts with 13B active parameters per token using 4-of-256 expert routing. It excels in creative writing,...",
-      "pricing_per_million": {
-        "prompt": 0.15,
-        "completion": 0.45,
-        "image": null,
-        "request": null
-      },
-      "created": 1769552670
     },
     {
       "id": "moonshotai/kimi-k2.5",
@@ -4898,7 +4965,7 @@
       ],
       "accepts_image": false,
       "context_length": 131000,
-      "max_completion": null,
+      "max_completion": 131000,
       "description": "Granite-4.0-H-Micro is a 3B parameter from the Granite 4 family of models. These models are the latest in a series of models released by IBM. They are fine-tuned for long...",
       "pricing_per_million": {
         "prompt": 0.017,
@@ -5390,26 +5457,6 @@
       "created": 1758548275
     },
     {
-      "id": "alibaba/tongyi-deepresearch-30b-a3b",
-      "vendor": "alibaba",
-      "display_name": "Tongyi DeepResearch 30B A3B",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 131072,
-      "description": "Tongyi DeepResearch is an agentic large language model developed by Tongyi Lab, with 30 billion total parameters activating only 3 billion per token. It's optimized for long-horizon, deep information-seeking tasks...",
-      "pricing_per_million": {
-        "prompt": 0.09,
-        "completion": 0.45,
-        "image": null,
-        "request": null
-      },
-      "created": 1758210804
-    },
-    {
       "id": "qwen/qwen3-coder-flash",
       "vendor": "qwen",
       "display_name": "Qwen: Qwen3 Coder Flash",
@@ -5891,11 +5938,11 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": 131072,
+      "max_completion": null,
       "description": "gpt-oss-120b is an open-weight, 117B-parameter Mixture-of-Experts (MoE) language model from OpenAI designed for high-reasoning, agentic, and general-purpose production use cases. It activates 5.1B parameters per forward pass and is optimized...",
       "pricing_per_million": {
         "prompt": 0.039,
-        "completion": 0.19,
+        "completion": 0.18,
         "image": null,
         "request": null
       },
@@ -7145,7 +7192,7 @@
       ],
       "accepts_image": true,
       "context_length": 128000,
-      "max_completion": null,
+      "max_completion": 128000,
       "description": "Mistral Small 3.1 24B Instruct is an upgraded variant of Mistral Small 3 (2501), featuring 24 billion parameters with advanced multimodal capabilities. It provides state-of-the-art performance in text-based reasoning and...",
       "pricing_per_million": {
         "prompt": 0.351,
@@ -7435,7 +7482,7 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": null,
+      "max_completion": 131072,
       "description": "Llama Guard 3 is a Llama-3.1-8B pretrained model, fine-tuned for content safety classification. Similar to previous versions, it can be used to classify content in both LLM inputs (prompt classification)...",
       "pricing_per_million": {
         "prompt": 0.484,
@@ -7479,7 +7526,7 @@
         "video"
       ],
       "accepts_image": true,
-      "context_length": 1048576,
+      "context_length": 1000000,
       "max_completion": 8192,
       "description": "Gemini Flash 2.0 offers a significantly faster time to first token (TTFT) compared to [Gemini Flash 1.5](/google/gemini-flash-1.5), while maintaining quality on par with larger models like [Gemini Pro 1.5](/google/gemini-pro-1.5). It...",
       "pricing_per_million": {
@@ -7783,12 +7830,12 @@
         "text"
       ],
       "accepts_image": false,
-      "context_length": 163840,
-      "max_completion": 16384,
+      "context_length": 131072,
+      "max_completion": 16000,
       "description": "DeepSeek-V3 is the latest model from the DeepSeek team, building upon the instruction following and coding abilities of the previous versions. Pre-trained on nearly 15 trillion tokens, the reported evaluations...",
       "pricing_per_million": {
-        "prompt": 0.32,
-        "completion": 0.89,
+        "prompt": 0.2288,
+        "completion": 0.9144,
         "image": null,
         "request": null
       },
@@ -8054,7 +8101,7 @@
       ],
       "accepts_image": false,
       "context_length": 128000,
-      "max_completion": null,
+      "max_completion": 32768,
       "description": "Qwen2.5-Coder is the latest series of Code-Specific Qwen large language models (formerly known as CodeQwen). Qwen2.5-Coder brings the following improvements upon CodeQwen1.5: - Significantly improvements in **code generation**, **code reasoning**...",
       "pricing_per_million": {
         "prompt": 0.66,
@@ -8236,7 +8283,7 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": null,
+      "max_completion": 60000,
       "description": "Llama 3.2 1B is a 1-billion-parameter language model focused on efficiently performing natural language tasks, such as summarization, dialogue, and multilingual text analysis. Its smaller size allows it to operate...",
       "pricing_per_million": {
         "prompt": 0.027,
@@ -8276,7 +8323,7 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": null,
+      "max_completion": 80000,
       "description": "Llama 3.2 3B is a 3-billion-parameter multilingual large language model, optimized for advanced natural language processing tasks like dialogue generation, reasoning, and summarization. Designed with the latest transformer architecture, it...",
       "pricing_per_million": {
         "prompt": 0.0509,
@@ -8307,26 +8354,6 @@
       "created": 1726704000
     },
     {
-      "id": "cohere/command-r-plus-08-2024",
-      "vendor": "cohere",
-      "display_name": "Cohere: Command R+ (08-2024)",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 128000,
-      "max_completion": 4000,
-      "description": "command-r-plus-08-2024 is an update of the [Command R+](/models/cohere/command-r-plus) with roughly 50% higher throughput and 25% lower latencies as compared to the previous Command R+ version, while keeping the hardware footprint...",
-      "pricing_per_million": {
-        "prompt": 2.5,
-        "completion": 10.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1724976000
-    },
-    {
       "id": "cohere/command-r-08-2024",
       "vendor": "cohere",
       "display_name": "Cohere: Command R (08-2024)",
@@ -8341,6 +8368,26 @@
       "pricing_per_million": {
         "prompt": 0.15,
         "completion": 0.6,
+        "image": null,
+        "request": null
+      },
+      "created": 1724976000
+    },
+    {
+      "id": "cohere/command-r-plus-08-2024",
+      "vendor": "cohere",
+      "display_name": "Cohere: Command R+ (08-2024)",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 128000,
+      "max_completion": 4000,
+      "description": "command-r-plus-08-2024 is an update of the [Command R+](/models/cohere/command-r-plus) with roughly 50% higher throughput and 25% lower latencies as compared to the previous Command R+ version, while keeping the hardware footprint...",
+      "pricing_per_million": {
+        "prompt": 2.5,
+        "completion": 10.0,
         "image": null,
         "request": null
       },
@@ -8518,11 +8565,11 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": 16384,
+      "max_completion": null,
       "description": "A 12B parameter model with a 128k token context length built by Mistral in collaboration with NVIDIA. The model is multilingual, supporting English, French, German, Spanish, Italian, Portuguese, Chinese, Japanese,...",
       "pricing_per_million": {
         "prompt": 0.02,
-        "completion": 0.04,
+        "completion": 0.03,
         "image": null,
         "request": null
       },
@@ -8821,26 +8868,6 @@
       "created": 1708905600
     },
     {
-      "id": "openai/gpt-4-turbo-preview",
-      "vendor": "openai",
-      "display_name": "OpenAI: GPT-4 Turbo Preview",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 128000,
-      "max_completion": 4096,
-      "description": "The preview GPT-4 model with improved instruction following, JSON mode, reproducible outputs, parallel function calling, and more. Training data: up to Dec 2023. **Note:** heavily rate limited by OpenAI while...",
-      "pricing_per_million": {
-        "prompt": 10.0,
-        "completion": 30.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1706140800
-    },
-    {
       "id": "openai/gpt-3.5-turbo-0613",
       "vendor": "openai",
       "display_name": "OpenAI: GPT-3.5 Turbo (older v0613)",
@@ -8855,6 +8882,26 @@
       "pricing_per_million": {
         "prompt": 1.0,
         "completion": 2.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1706140800
+    },
+    {
+      "id": "openai/gpt-4-turbo-preview",
+      "vendor": "openai",
+      "display_name": "OpenAI: GPT-4 Turbo Preview",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 128000,
+      "max_completion": 4096,
+      "description": "The preview GPT-4 model with improved instruction following, JSON mode, reproducible outputs, parallel function calling, and more. Training data: up to Dec 2023. **Note:** heavily rate limited by OpenAI while...",
+      "pricing_per_million": {
+        "prompt": 10.0,
+        "completion": 30.0,
         "image": null,
         "request": null
       },
@@ -8890,7 +8937,7 @@
       ],
       "accepts_image": false,
       "context_length": 4096,
-      "max_completion": null,
+      "max_completion": 2824,
       "description": "A 7.3B parameter model that outperforms Llama 2 13B on all benchmarks, with optimizations for speed and context length.",
       "pricing_per_million": {
         "prompt": 0.11,
@@ -9090,7 +9137,8 @@
       "sourceful/riverflow-v2-fast-preview",
       "sourceful/riverflow-v2-max-preview",
       "sourceful/riverflow-v2-pro",
-      "sourceful/riverflow-v2-standard-preview"
+      "sourceful/riverflow-v2-standard-preview",
+      "x-ai/grok-imagine-image-quality"
     ],
     "video": [
       "alibaba/wan-2.6",
@@ -9105,7 +9153,8 @@
       "kwaivgi/kling-v3.0-pro",
       "kwaivgi/kling-v3.0-std",
       "minimax/hailuo-2.3",
-      "openai/sora-2-pro"
+      "openai/sora-2-pro",
+      "x-ai/grok-imagine-video"
     ],
     "audio": [
       "google/lyria-3-clip-preview",
@@ -9174,7 +9223,6 @@
       "aion-labs/aion-2.0",
       "aion-labs/aion-rp-llama-3.1-8b",
       "alfredpros/codellama-7b-instruct-solidity",
-      "alibaba/tongyi-deepresearch-30b-a3b",
       "allenai/olmo-3-32b-think",
       "amazon/nova-2-lite-v1",
       "amazon/nova-lite-v1",
@@ -9198,9 +9246,7 @@
       "arcee-ai/coder-large",
       "arcee-ai/maestro-reasoning",
       "arcee-ai/spotlight",
-      "arcee-ai/trinity-large-preview",
       "arcee-ai/trinity-large-thinking",
-      "arcee-ai/trinity-large-thinking:free",
       "arcee-ai/trinity-mini",
       "arcee-ai/virtuoso-large",
       "baidu/cobuddy:free",
@@ -9249,6 +9295,7 @@
       "google/gemini-3.1-flash-lite-preview",
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
+      "google/gemini-3.5-flash",
       "google/gemma-2-27b-it",
       "google/gemma-3-12b-it",
       "google/gemma-3-27b-it",
@@ -9463,6 +9510,7 @@
       "qwen/qwen3.6-flash",
       "qwen/qwen3.6-max-preview",
       "qwen/qwen3.6-plus",
+      "qwen/qwen3.7-max",
       "rekaai/reka-edge",
       "rekaai/reka-flash-3",
       "relace/relace-apply-3",
@@ -9486,6 +9534,7 @@
       "x-ai/grok-4.20",
       "x-ai/grok-4.20-multi-agent",
       "x-ai/grok-4.3",
+      "x-ai/grok-build-0.1",
       "xiaomi/mimo-v2-flash",
       "xiaomi/mimo-v2-omni",
       "xiaomi/mimo-v2-pro",
@@ -9515,6 +9564,15 @@
     ]
   },
   "by_vendor": {
+    "x-ai": [
+      "x-ai/grok-4.20",
+      "x-ai/grok-4.20-multi-agent",
+      "x-ai/grok-4.3",
+      "x-ai/grok-build-0.1",
+      "x-ai/grok-imagine-image-quality",
+      "x-ai/grok-imagine-video",
+      "x-ai/grok-voice-tts-1.0"
+    ],
     "recraft": [
       "recraft/recraft-v3",
       "recraft/recraft-v4",
@@ -9621,6 +9679,7 @@
       "google/gemini-3.1-flash-tts-preview",
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
+      "google/gemini-3.5-flash",
       "google/gemini-embedding-001",
       "google/gemini-embedding-2-preview",
       "google/gemma-2-27b-it",
@@ -9684,22 +9743,15 @@
       "minimax/minimax-m2.7",
       "minimax/minimax-01"
     ],
-    "alibaba": [
-      "alibaba/wan-2.6",
-      "alibaba/wan-2.7",
-      "alibaba/tongyi-deepresearch-30b-a3b"
-    ],
     "bytedance": [
       "bytedance/seedance-1-5-pro",
       "bytedance/seedance-2.0",
       "bytedance/seedance-2.0-fast",
       "bytedance/ui-tars-1.5-7b"
     ],
-    "x-ai": [
-      "x-ai/grok-4.20",
-      "x-ai/grok-4.20-multi-agent",
-      "x-ai/grok-4.3",
-      "x-ai/grok-voice-tts-1.0"
+    "alibaba": [
+      "alibaba/wan-2.6",
+      "alibaba/wan-2.7"
     ],
     "zyphra": [
       "zyphra/zonos-v0.1-hybrid",
@@ -9794,7 +9846,8 @@
       "qwen/qwen3.6-35b-a3b",
       "qwen/qwen3.6-flash",
       "qwen/qwen3.6-max-preview",
-      "qwen/qwen3.6-plus"
+      "qwen/qwen3.6-plus",
+      "qwen/qwen3.7-max"
     ],
     "cohere": [
       "cohere/command-a",
@@ -9956,9 +10009,7 @@
       "arcee-ai/coder-large",
       "arcee-ai/maestro-reasoning",
       "arcee-ai/spotlight",
-      "arcee-ai/trinity-large-preview",
       "arcee-ai/trinity-large-thinking",
-      "arcee-ai/trinity-large-thinking:free",
       "arcee-ai/trinity-mini",
       "arcee-ai/virtuoso-large"
     ],
@@ -10103,7 +10154,6 @@
       "alfredpros/codellama-7b-instruct-solidity",
       "alibaba/wan-2.6",
       "alibaba/wan-2.7",
-      "alibaba/tongyi-deepresearch-30b-a3b",
       "allenai/olmo-3-32b-think",
       "amazon/nova-2-lite-v1",
       "amazon/nova-lite-v1",
@@ -10127,9 +10177,7 @@
       "arcee-ai/coder-large",
       "arcee-ai/maestro-reasoning",
       "arcee-ai/spotlight",
-      "arcee-ai/trinity-large-preview",
       "arcee-ai/trinity-large-thinking",
-      "arcee-ai/trinity-large-thinking:free",
       "arcee-ai/trinity-mini",
       "arcee-ai/virtuoso-large",
       "baai/bge-base-en-v1.5",
@@ -10194,6 +10242,7 @@
       "google/gemini-3.1-flash-tts-preview",
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
+      "google/gemini-3.5-flash",
       "google/gemini-embedding-001",
       "google/gemini-embedding-2-preview",
       "google/gemma-2-27b-it",
@@ -10446,6 +10495,7 @@
       "qwen/qwen3.6-flash",
       "qwen/qwen3.6-max-preview",
       "qwen/qwen3.6-plus",
+      "qwen/qwen3.7-max",
       "recraft/recraft-v3",
       "recraft/recraft-v4",
       "recraft/recraft-v4-pro",
@@ -10493,6 +10543,9 @@
       "x-ai/grok-4.20",
       "x-ai/grok-4.20-multi-agent",
       "x-ai/grok-4.3",
+      "x-ai/grok-build-0.1",
+      "x-ai/grok-imagine-image-quality",
+      "x-ai/grok-imagine-video",
       "x-ai/grok-voice-tts-1.0",
       "xiaomi/mimo-v2-flash",
       "xiaomi/mimo-v2-omni",
@@ -10573,6 +10626,7 @@
       "google/gemini-3.1-flash-lite-preview",
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
+      "google/gemini-3.5-flash",
       "google/gemini-embedding-2-preview",
       "google/gemma-3-12b-it",
       "google/gemma-3-27b-it",
@@ -10707,6 +10761,9 @@
       "x-ai/grok-4.20",
       "x-ai/grok-4.20-multi-agent",
       "x-ai/grok-4.3",
+      "x-ai/grok-build-0.1",
+      "x-ai/grok-imagine-image-quality",
+      "x-ai/grok-imagine-video",
       "xiaomi/mimo-v2-omni",
       "xiaomi/mimo-v2.5",
       "z-ai/glm-4.5v",
@@ -10747,6 +10804,7 @@
       "google/gemini-3.1-flash-lite-preview",
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
+      "google/gemini-3.5-flash",
       "google/gemini-embedding-2-preview",
       "mistralai/mistral-large",
       "mistralai/mistral-large-2407",
@@ -10830,6 +10888,7 @@
       "google/gemini-3.1-flash-lite-preview",
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
+      "google/gemini-3.5-flash",
       "google/gemini-embedding-2-preview",
       "mistralai/voxtral-mini-transcribe",
       "mistralai/voxtral-small-24b-2507",
@@ -10867,6 +10926,7 @@
       "google/gemini-3.1-flash-lite-preview",
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
+      "google/gemini-3.5-flash",
       "google/gemini-embedding-2-preview",
       "google/gemma-4-26b-a4b-it",
       "google/gemma-4-26b-a4b-it:free",

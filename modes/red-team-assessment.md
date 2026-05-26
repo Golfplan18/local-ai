@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -204,9 +204,51 @@ Going deeper in Red Team (Assessment) means attacking from inside the artifact f
 
 Widening the lens in assessment means attacking from outside the artifact while keeping the operation focused on what the user needs to fix: adversarial use cases (how would a hostile actor exploit this; what abuse vectors did the author not model); failure modes (under what conditions does the artifact break; what operating-envelope boundaries are undocumented); second-order blowback (who or what reacts to deployment in unpredicted ways — counter-moves, displaced costs, regulatory responses, market reactions). Same sycophantic-inverse self-check as Depth: every finding requires artifact-specific grounding, not hypothetical pressure that doesn't anchor in the deployment context. Each external-surface vulnerability also needs a fix-recommendation: surfacing a vulnerability without telling the user what to do about it leaves the assessment incomplete.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the seven critical questions: (CQ1) finding grounding; (CQ2) severity calibration honesty; (CQ3) fix-actionability; (CQ4) fix-feasibility-per-vulnerability; (CQ5) Attack-Failure Disclosure presence; (CQ6) framework-vs-artifact discipline; (CQ7) override-flag presence when override invoked. The named failure modes (pulled-punches, severity-inflation, fix-handwaving, nitpick-trap, sycophantic-inverse-trap, straw-target-trap, framework-attack-trap, manufacture-on-revise-trap, fabricated-override-trap, shallow-attack) are the evaluation checklist. A passing Red Team (Assessment) output has stance declared at top ("Stance: assessment"), every vulnerability tagged with severity (Showstopper/Major/Caveat) and surface (Internal/External) and grounded with quotes where possible, every vulnerability paired with an actionable fix recommendation and a fix-feasibility note, residual uncertainties named, Attack-Failure Disclosure present with at least one disclosed attack class, severity-floor declaration when no Major/Showstopper findings exist, and output structure matching the assessment shape throughout.
+**What this analysis is.** Red Team (Assessment) stress-tests a named artifact for the user's own benefit before they commit or ship: vulnerabilities rank by severity (Showstopper / Major / Caveat) for fix-prioritisation, each paired with an actionable fix recommendation and fix-feasibility tag. It is distinct from red-team-advocate (the same territory's counterpart — builds a case for an external audience ranked by persuasive force; assessment is the safer default when external audience is not in the picture), from steelman-construction (direct opposite — strongest case FOR the artifact), and from T7 pre-mortem-fragility (audits structural fragility regardless of adversary presence; assessment models a hostile actor specifically).
+
+**Procedure.**
+
+1. Run the Input Sufficiency Protocol before attacking — identifiable artifact, bounded scope, sufficient specificity; emit a three-part redirect rather than attacking thin material.
+2. Declare stance at top: `Stance: assessment.`
+3. Restate the artifact in brief with quotes where possible — vulnerabilities anchor here.
+4. Attack from inside the artifact (Depth): hidden assumptions, understated costs, missing stakeholders, internal logical gaps, steps that assume away the hard part.
+5. Attack from outside the artifact (Breadth): adversarial use cases, failure modes, second-order blowback, regulatory or market responses.
+6. Apply the sycophantic-inverse self-check — would a committed opponent actually use this, grounded in the artifact's specifics? Drop attacks that fail.
+7. Tag each finding with Severity (Showstopper / Major / Caveat), Surface (Internal / External), and a Why-this-is-real grounding (quoted where possible).
+8. Pair every vulnerability with an actionable fix recommendation and a fix-feasibility tag (user-implementable / requires-outside-resources / structural-redesign-needed).
+9. Disclose attack classes attempted that produced no findings — empty Attack-Failure Disclosure signals shallow attack.
+10. When no Major/Showstopper findings exist, declare the severity floor explicitly — the anti-nitpick guard, not a failure to attack.
+11. Flag any framework-level drift and surface paradigm-suspension as the sideways-route.
+12. Resist pulled-punches (softening real vulnerabilities to spare the user) and severity-inflation (promoting Caveats to Major to manufacture productive-attack feel).
+
+**Goal.** Produce an adversarial vulnerability assessment — a structured audit of the user's own artifact, ranked by severity for fix-prioritisation, with actionable fixes and fix-feasibility per finding.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — finding grounding.** Does each vulnerability have artifact-specific grounding (Why this is real with quotes where possible), or are findings manufactured? Failure mode if unmet: `nitpick-trap`.
+- **CQ2 — severity calibration.** Is severity calibration honest, or has severity been inflated (or deflated)? Failure mode if unmet: `severity-inflation`.
+- **CQ3 — fix actionability.** Is each fix recommendation actionable by the user — does the user know what to do next? Failure mode if unmet: `fix-handwaving`.
+- **CQ4 — fix-feasibility.** Has fix-feasibility been assessed per vulnerability, distinguishing fixes the user can implement from those requiring outside resources? Failure mode if unmet: `fix-handwaving`.
+- **CQ5 — Attack-Failure Disclosure.** Does the section name attack classes attempted that produced no findings, or is it empty? Failure mode if unmet: `shallow-attack`.
+- **CQ6 — framework-vs-artifact discipline.** Does the attack stay within the artifact's framework, or drift into framework-level critique? Failure mode if unmet: `framework-attack-trap`.
+- **CQ7 — override flag.** If Input Sufficiency override was invoked, is every finding flagged as low-specificity / generic? Failure mode if unmet: `fabricated-override-trap`.
+
+A passing output has stance declared at top ("Stance: assessment"), every vulnerability tagged with severity (Showstopper/Major/Caveat) and surface (Internal/External) and grounded with quotes where possible, every vulnerability paired with an actionable fix recommendation and a fix-feasibility note, residual uncertainties named, Attack-Failure Disclosure present with at least one disclosed attack class, severity-floor declaration when no Major/Showstopper findings exist, and output structure matching the assessment shape throughout.
+
+**Named failure modes.**
+
+- *pulled-punches* — mode avoids hard truths to spare the user; vulnerabilities softened, severity deflated, real risks dressed as "minor considerations".
+- *severity-inflation* — severity profile inflated above what artifact's actual flaws warrant; severity-floor declaration skipped despite no Major/Showstopper findings.
+- *fix-handwaving* — fix recommendations are vague without artifact-specific actionable instructions or feasibility assessment.
+- *nitpick-trap* — findings emitted without artifact-specific grounding; cosmetic-level objections promoted to vulnerability status.
+- *sycophantic-inverse-trap* — performing hostility rather than analysing; findings fail the "would a committed opponent actually use this" check.
+- *straw-target-trap* — attack targets a weakened version of the artifact; doesn't apply to artifact as written.
+- *framework-attack-trap* — attack drifts into critique of the framework the artifact rests on rather than the artifact within it.
+- *manufacture-on-revise-trap* — reviser added findings without new evidence; sycophantic-inverse drift at revision stage.
+- *fabricated-override-trap* — override invoked but findings not flagged as low-specificity / generic; user loses signal that attack was run on thin material.
+- *shallow-attack* — Attack-Failure Disclosure empty or missing; mode failed to attack thoroughly.
 
 ## REVISION GUIDANCE
 

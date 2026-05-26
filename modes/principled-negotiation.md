@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -170,9 +170,48 @@ Depth in Principled Negotiation is the rigor of all four Fisher-Ury elements *pl
 
 Widening the lens means surveying the interest categories per party (substantive economic, procedural, relational, identity-and-recognition, security, fairness-perception, future-relationship); considering BATNA categories beyond the obvious (no-deal-and-walk-away, partial-deal, deal-with-a-different-party, deal-deferred, regulatory-or-legal-alternative, public-pressure-route); scanning objective-criteria categories (market value, precedent, expert opinion, scientific judgment, professional standards, efficiency, costs, what-a-court-would-decide, moral standards, equal treatment, tradition); and noting cultural or contextual factors that shape which moves are available. Breadth markers: at least three interest-category candidates per party; at least two BATNA candidates for the user (sometimes the second is the strongest); at least three objective-criteria candidates with reasoning about counterparty acceptance. The Voss critique scan (Debate D6) is part of breadth: where adversarial dynamics dominate, surface them rather than papering over with integrative framing.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the six critical questions: (CQ1) position-vs-interest distinction maintained; (CQ2) inferred-vs-confirmed flagged across interests, BATNAs, and motivations; (CQ3) shared and opposed both surfaced; (CQ4) BATNA concrete not placeholder; (CQ5) objective criteria genuinely third-party-acceptable; (CQ6) people-problem separation specific not slogan. The named failure modes are the evaluation checklist. A passing Principled Negotiation output has all twelve required sections populated, with hypothesis-flagging on inferred content, concrete BATNA description (the alternative is walkable-through), and at least one Voss-style adversarial-context flag if context warrants it.
+**What this analysis is.** Principled Negotiation is the full Fisher-Ury method — people-problem separation, interests-not-positions, options-for-mutual-gain, objective-criteria — plus BATNA assessment on both sides plus a specific opening-and-fallback pattern. The mode is constructive (it generates options and recommends openings) but honest about the interest landscape, including its genuinely-opposed regions. It is the depth-thorough position in T13's negotiation territory, sitting above interest-mapping (depth-lighter; position-to-interest descent only), distinct from third-side (stance-counterpart; mediator perspective in multi-party conflicts), and parallel to cui-bono (descriptive interest-power analysis without negotiation framing). The Voss critique applies in genuinely adversarial contexts where tactical-empathy lenses may need to supplement the integrative frame.
+
+**Procedure.**
+
+1. Name parties and stated positions in each party's own vocabulary; identify the user's role.
+2. Diagnose people-problem separation specifics — particular perception gaps, emotional triggers, communication failures that need separate handling from the substantive bargaining; not generic gestures.
+3. Descend from each position to the underlying interests it serves (substantive economic, procedural, relational, identity-and-recognition, security, fairness-perception, future-relationship) with symmetric descent across parties and explicit hypothesis-flagging on inferred interests.
+4. Separate shared/compatible interests from genuinely-opposed interests — surface both territories without smoothing one into the other.
+5. Generate options for mutual gain keyed to the interest pattern — differential valuation, contingency, dovetailing of differences, shared cost reduction — that satisfy more interest on more sides, not generic compromise.
+6. Surface objective-criteria candidates (market data, precedent, expert opinion, scientific judgment, professional standards, efficiency, costs, court-decision, moral standards, equal-treatment, tradition) with reasoning about why the counterparty could plausibly accept each.
+7. Assess the user's BATNA concretely — the actual alternative described, costed, walked-through, with its weaknesses surfaced.
+8. Infer the counterparty's BATNA with explicit hypothesis-flagging and the evidence basis.
+9. Generate a specific opening-and-fallback pattern — opening move, expected counter, fallback options keyed to BATNA, walk-away threshold.
+10. Surface flagged-unknowns the user could test in the negotiation.
+11. Scan for Voss-warning conditions — high-stakes adversarial, hostage-style, deeply distributive, strongly asymmetric power — and flag where Fisher-Ury alone may be insufficient.
+12. Hold three confidence kinds distinct — high for stated positions, lower for inferred interests/BATNAs/motivations, conditional for candidate moves.
+
+**Goal.** Produce a principled negotiation preparation covering all four Fisher-Ury elements plus BATNA on both sides plus a specific opening-and-fallback pattern, with hypothesis-flagging on inferred content, walkable-through BATNA description, and a Voss-warning flag where context warrants.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — position vs interest distinction.** Has the analysis maintained the Fisher-Ury distinction between positions (what each party asks for) and interests (what each party needs), or conflated them? Failure mode if unmet: `position-interest-collapse`.
+- **CQ2 — inferred vs confirmed.** Have inferred interests, BATNAs, and counterparty motivations been distinguished from confirmed ones — flagged as hypotheses to test rather than asserted as known facts? Failure mode if unmet: `inference-as-fact`.
+- **CQ3 — shared and opposed both surfaced.** Has the analysis surfaced both shared/compatible interests (integrative) and genuinely-opposed interests (distributive), rather than presenting the situation as fully integrative or fully zero-sum? Failure mode if unmet: `integrative-overreach-or-zero-sum-default`.
+- **CQ4 — BATNA concreteness.** Is the user's BATNA assessed concretely (the actual alternative described, costed, walked-through), or asserted abstractly as a placeholder? Failure mode if unmet: `batna-as-placeholder`.
+- **CQ5 — objective criteria.** Are the proposed objective criteria genuinely objective (third-party standards both parties could plausibly accept), or the user's preferences in objective-sounding language? Failure mode if unmet: `pseudo-objective-criteria`.
+- **CQ6 — people-problem specificity.** Has the people-problem separation diagnosis identified specific perception, emotion, and communication issues that would benefit from separate handling, rather than treating people-problem separation as a slogan? Failure mode if unmet: `people-problem-conflation`.
+
+A passing output populates all twelve required sections — parties, people-problem diagnosis, inferred interests per party with hypothesis flags, shared/opposed interests both surfaced, ≥2 options-for-mutual-gain with supporting interest-pattern, ≥3 objective-criteria with counterparty-acceptance reasoning, walkable-through user-BATNA, hypothesis-flagged counterparty-BATNA, specific opening-and-fallback pattern with walk-away threshold, testable flagged-unknowns, three distinct confidence kinds, and a Voss-warning flag if context warrants.
+
+**Named failure modes.**
+
+- *position-interest-collapse* — inferred interests track stated positions too closely; the analyst restated asks in interest-language without descending to underlying need.
+- *inference-as-fact* — inferred interests, BATNAs, or counterparty motivations presented without hypothesis flags; flagged-unknowns section empty or thin.
+- *integrative-overreach-or-zero-sum-default* — negotiation framed as either fully solvable through integrative moves (no opposed interests acknowledged) or fully zero-sum (no shared interests or mutual-gain options generated).
+- *batna-as-placeholder* — user BATNA asserted abstractly without concrete description, cost, or walk-through.
+- *pseudo-objective-criteria* — proposed criteria align suspiciously with the user's preferred outcome; no third-party-acceptable standards surfaced.
+- *people-problem-conflation* — people-problem separation section is a generic gesture rather than diagnosing specific perception, emotion, and communication issues.
+- *cultural-context-flatness* — interest inferences, BATNA assessments, and recommended openings applied without considering how cultural, organisational, or relational context shapes which moves are available.
+- *voss-warning-unflagged* — high-stakes adversarial context with Fisher-Ury applied uncritically; Voss-critique limitations not flagged where they apply.
 
 ## REVISION GUIDANCE
 

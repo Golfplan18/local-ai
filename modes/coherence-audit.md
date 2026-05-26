@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -165,9 +165,42 @@ Depth in Coherence Audit is the precision with which (1) charitable reconstructi
 
 Widening the lens means scanning across the three traditions of fallacy theory before narrowing: (a) Walton's pragmatic / dialectical theory (fallacy depends on dialogue type — persuasion, inquiry, negotiation, deliberation, information-seeking, eristic); (b) pragma-dialectics (fallacies as violations of rules for critical discussion); (c) Hintikka's question-dialogue (fallacies as illegitimate moves in question-answer games). Scan also: formal vs. informal fallacy taxonomy (formal is rare in natural discourse; informal dominates); informal-fallacy families (relevance / presumption / ambiguity / rhetorical-strategic); structural failures not named in the taxonomy (premise smuggling, scope shift, definitional drift). Breadth markers: the audit has surveyed at least the formal/informal/structural cleavages and has applied the dialogue-type lens (Walton) to dialectical context before producing findings.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) charitable reconstruction performed first; (CQ2) Toulmin warrants surfaced per inferential move; (CQ3) fallacy claims substantiated with quoted text + violated principle + reason-it-fails-here; (CQ4) argument-wrong vs. conclusion-wrong separated; (CQ5) unnamed structural failures examined beyond the named-fallacy list. The named failure modes (uncharitable-reconstruction, warrant-blindness, name-without-structure, argument-conclusion-conflation, named-fallacy-only-reading, asymmetric-rigor) are the evaluation checklist. A passing Coherence Audit reconstructs charitably, decomposes by Toulmin, substantiates any fallacy claims, separates argument-soundness from conclusion-truth, surveys both named-fallacy and structural-failure lenses, and applies standards symmetrically across the artifact.
+**What this analysis is.** Coherence Audit is a neutral inferential audit of an argumentative artifact — does the argument as given actually establish its conclusion? It applies Toulmin reconstruction (claim, grounds, warrant, backing, qualifier, rebuttal per inferential move) and Walton's argumentation-scheme critical questions, layers fallacy-taxonomy and structural-failure lenses, and produces a verdict that separates argument-soundness from conclusion-truth. It is distinct from frame-audit (frame-surfacing rather than inferential check), propaganda-audit (specifically adversarial-stance, Stanley-influenced), and argument-audit (molecular composition of coherence + frame + propaganda). It is conclusion-agnostic by design — the argument may fail while the conclusion remains true.
+
+**Procedure.**
+
+1. Open with a charitable reconstruction — surface implicit premises (enthymemes), resolve textual ambiguity in the speaker's favor, identify the strongest version of the argument actually present.
+2. Decompose each inferential move into Toulmin elements — claim, grounds, warrant (explicit or reconstructed), backing, qualifier, rebuttal conditions. Render implicit-component absences explicitly ("no rebuttal conditions considered") as findings.
+3. Classify moves that instantiate Walton schemes (Expert Opinion, Position to Know, Cause to Effect, Sign, Analogy, Practical Reasoning, Slippery Slope, etc.) and audit each scheme's critical questions with verdicts (satisfied / defeated / unaddressed).
+4. Substantiate any named fallacy with all four parts — quoted text, identified inferential move, violated principle, reason it fails *here* (not just in the abstract). Bare labels do not survive.
+5. Sweep for structural coherence failures beyond the named-fallacy taxonomy — premise smuggling, scope shift, definitional drift, unstated load-bearing assumption, enthymeme failure.
+6. Verdict per inferential move — holds / fails / partially-holds, with the load-bearing structural reason.
+7. Separate argument-wrong from conclusion-wrong explicitly — "this argument as given does not establish its conclusion because [structural reason]; the conclusion may still be true." This is the mode's signature posture; it lands once at the corpus level.
+8. Check symmetric rigor — apply the same standards to comparable inferential moves across the artifact; asymmetric severity grading is a quality-gate failure.
+9. Assign confidence per finding (warrant reconstruction, fallacy claim, structural failure) with explicit basis.
+
+**Goal.** Produce a structured coherence audit organized per inferential move with Toulmin decomposition, Walton-scheme critical-question audit, fallacy substantiation, structural-failure sweep, and the argument-wrong-vs-conclusion-wrong verdict separated cleanly.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — charitable reconstruction first.** Has the audit performed charitable reconstruction first — surfacing implicit premises, resolving textual ambiguity in the speaker's favor — before flagging any fallacy? Failure mode if unmet: `uncharitable-reconstruction`.
+- **CQ2 — Toulmin warrants surfaced.** Has the audit decomposed the argument into Toulmin elements per inferential move, surfacing the warrants explicitly so the inferential move can be examined? Failure mode if unmet: `warrant-blindness`.
+- **CQ3 — fallacy substantiation.** When fallacies are named, has each been substantiated with quoted text, inferential move, violated principle, and reason it fails *here*? Failure mode if unmet: `name-without-structure`.
+- **CQ4 — argument vs conclusion separated.** Has the audit clearly separated "this argument as given does not establish its conclusion" from "the conclusion is false," refusing the latter absent independent grounds? Failure mode if unmet: `argument-conclusion-conflation`.
+- **CQ5 — structural-failure sweep.** Has the audit looked beyond named fallacies for structural coherence failures (premise smuggling, scope shift, definitional drift, unstated load-bearing assumptions, enthymeme failure)? Failure mode if unmet: `named-fallacy-only-reading`.
+
+A passing output reconstructs charitably, decomposes by Toulmin per move with warrants surfaced, substantiates any named fallacy with the four-part structure, separates argument-soundness from conclusion-truth at the corpus level, surveys both named-fallacy and structural-failure lenses, and applies standards symmetrically across the artifact.
+
+**Named failure modes.**
+
+- *uncharitable-reconstruction* — audit flags fallacies in surface text without first attempting a charitable reconstruction.
+- *warrant-blindness* — audit examines premises and conclusion without surfacing the warrant (Toulmin) that connects them.
+- *name-without-structure* — fallacy claim invokes a label without specifying which inferential move fails, the principle it violates, and why it fails here.
+- *argument-conclusion-conflation* — audit treats demonstrating the argument as fallacious as evidence the conclusion is false (the fallacy fallacy / argumentum ad logicam).
+- *named-fallacy-only-reading* — audit checks against the named-fallacy taxonomy but does not look for unnamed structural failures.
+- *asymmetric-rigor* — audit applies different standards to comparable inferential moves; severity grading is uneven across the artifact.
 
 ## REVISION GUIDANCE
 

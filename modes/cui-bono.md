@@ -158,9 +158,43 @@ Going deeper in Cui Bono means tracing concrete benefit pathways (money flows, p
 
 Widening the lens means scanning for parties not visible from the artifact's own frame: parties who would benefit if the situation were framed differently; parties who pay costs the artifact treats as natural; parties absent from the discussion whose voices would change the analysis. Construct the alternative design that would emerge from the opposite constituency's interests, with equal technical sophistication. Identify the legitimate value the current position serves, separate from its distributional overlay. Breadth markers: the analysis surveys the boundary of who is and isn't being asked, and offers an alternative as well-formed as the original.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) symbolic vs. concrete benefit; (CQ2) frame-bounded blindness; (CQ3) cost-incidence accuracy; (CQ4) FGL symmetry. The named failure modes (symbolic-inference, frame-bounded-blindness, cost-incidence-error, conspiracy-trap, cynicism-trap, mirror-trap, asymmetric-fgl) are the evaluation checklist. A passing Cui Bono output names institutional author, names benefit pathways concretely with specific parameters, surfaces an alternative design from the disadvantaged constituency, applies FGL symmetrically across constituencies, separates legitimate value from distributional overlay, and assigns confidence per finding.
+**What this analysis is.** Cui Bono — "who benefits" — traces incidence: who captures the residual benefit from a state of affairs and who bears the cost. The analytical move is identifying who has the leverage to change the situation and chose not to. It is distinct from conspiracy analysis (which requires evidence of intent) and from ideological-alignment analysis (which mistakes affinity for benefit). The mode is descriptive of interest structure, not neutralizing of it: when real power asymmetries surface they should be named, not softened toward false balance.
+
+**Procedure.**
+
+1. Verify the premise — confirm the situation, decision, or artifact being analyzed actually holds before building a beneficiary map on top of it.
+2. Identify institutional authorship — who authored, sponsored, or otherwise issued the situation, including named individuals or sub-units when known.
+3. Capture the stated rationale — the reason given by the author for the situation, in the author's own framing. Descriptive, not evaluative.
+4. Map beneficiaries — for each: concrete pathway (money flow, power-position change, time-and-attention capture, narrative-control gain — not ideological alignment) and the specific parameter or definitional choice that drives the distribution.
+5. Map cost-bearers — for each: concrete cost pathway (payment, time, freedom-loss, displacement) and the parameter that drives it.
+6. Apply FGL (Fear, Greed, Laziness) symmetrically — same treatment for the analytically sympathetic side and the analytically suspect side.
+7. Construct alternative design from the disadvantaged constituency's interests, with technical sophistication equal to the original. Not a cosmetic re-framing.
+8. Separate legitimate value from distributional overlay — what the current position gets right (coordination problem solved, safety concern addressed) independent of who benefits.
+9. Surface frame-bounded blindness when all identified parties share the artifact's frame; flag rather than present the inventory as complete.
+10. Assign confidence per finding with explicit basis (named evidence, structural inference, speculation).
+
+**Goal.** Produce a row-auditable analysis where each benefit, cost, and causal parameter is traceable to a named party, a concrete pathway, and a specific causal lever — distinguishing structural incidence from intentional coordination.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — symbolic vs concrete benefit.** Are identified beneficiaries actually positioned to benefit through a named pathway, or is the inference symbolic (alignment-based, ideological)? Failure mode if unmet: `symbolic-inference`.
+- **CQ2 — frame-bounded blindness.** Are there beneficiaries the analysis is missing because they are not visible from the artifact's frame? Failure mode if unmet: `frame-bounded-blindness`.
+- **CQ3 — cost-incidence accuracy.** Are the costs identified actually borne by the parties named, with concrete pathways? Failure mode if unmet: `cost-incidence-error`.
+- **CQ4 — FGL symmetry.** Has Fear/Greed/Laziness been applied symmetrically across constituencies, or only against the disfavoured side? Failure mode if unmet: `asymmetric-fgl`.
+
+A passing output names institutional author, names benefit pathways concretely with specific parameters, surfaces an alternative design from the disadvantaged constituency, applies FGL symmetrically, separates legitimate value from distributional overlay, and assigns confidence per finding.
+
+**Named failure modes.**
+
+- *symbolic-inference* — beneficiary identified by ideological alignment rather than concrete benefit pathway.
+- *frame-bounded-blindness* — all identified parties share the artifact's frame; no parties from outside the frame appear.
+- *cost-incidence-error* — costs attributed to a party without a concrete payment, time, or freedom-loss pathway.
+- *conspiracy-trap* — distributional outcomes attributed to deliberate coordination without explicit evidence; intent assumed where structural incentives suffice.
+- *cynicism-trap* — position concluded to have no legitimate basis; legitimate value collapsed into distributional overlay.
+- *mirror-trap* — alternative design reflects analyst's preference rather than the disadvantaged constituency's interests.
+- *asymmetric-fgl* — FGL applied to only one constituency; opposing party's motives uninspected.
 
 ## REVISION GUIDANCE
 

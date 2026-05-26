@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -163,9 +163,42 @@ Going deeper in Scenario Planning means tracing each scenario's causal logic —
 
 Widening the lens means scanning STEEP driving forces (Social, Technological, Economic, Environmental, Political) before narrowing to the two axes. Generate at least one wild-card scenario outside the 2×2 — a low-probability/high-impact future that would invalidate the matrix. Identify robust strategies (work across scenarios) vs scenario-dependent strategies (require correctly identifying which scenario is unfolding) vs contingent actions (tied to specific leading indicators). Breadth markers: every quadrant carries leading indicators; strategies are tagged robust or scenario-dependent; the wild card sits in prose, not in the matrix; the two axes' independence is argued non-trivially.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) structural distinctiveness; (CQ2) axes independence; (CQ3) no most-likely designation; (CQ4) honest predetermined vs uncertain classification; (CQ5) strategic actionability. The named failure modes (good-bad-medium-trap, official-future-trap, story-without-strategy-trap, certainty-masquerade-trap, correlated-axes-trap) are the evaluation checklist. A passing Scenario Planning output has four scenarios with distinct causal logic, axes whose independence is argued in ≥40 chars of rationale, leading indicators per quadrant, robust vs scenario-dependent strategies distinguished, a wild card in prose, and no scenario marked "most likely."
+**What this analysis is.** Scenario Planning is Wack/Schwartz-lineage 2×2 alternative-future construction: driving forces are classified predetermined-vs-critical-uncertainty, two independent critical uncertainties form the axes, and four causally-distinct scenarios populate the quadrants with leading indicators, strategic translation, and at least one wild card sitting outside the matrix. It is distinct from consequences-and-sequel (depth-lighter sibling — light forward projection), from probabilistic-forecasting (depth-thorough sibling — probability distributions instead of narrative), from pre-mortem-action (stance-counterpart — adversarial-future-on-plan), and from decision-under-uncertainty (T3 — one decision now with probability + payoff rather than preparation for multiple futures).
+
+**Procedure.**
+
+1. Lock the focal question and planning horizon (5–20 years typical for strategic scenarios).
+2. Catalogue driving forces across STEEP (Social / Technological / Economic / Environmental / Political).
+3. Classify each force honestly — `predetermined` (will happen regardless of axis position) vs. `critical-uncertainty` (could go either way); resist certainty-masquerade (treating uncertainty as fixed).
+4. Select two critical uncertainties as axes; argue their independence substantively (>40 chars) — distinct drivers, historical decorrelation, orthogonal dependencies. Correlated axes collapse the 2×2 to a 1×4.
+5. Construct four scenarios with distinct *causal logic* (not magnitude variants like optimistic / pessimistic / baseline) — coherent sequences of what unfolds in each quadrant.
+6. Name each scenario by causal-logic shorthand (e.g., `Constrained Boom`, `Wild West`, `Soft Landing`, `Stall`).
+7. Generate leading indicators per scenario — observable signals that, if seen early, mark this scenario as materialising.
+8. Translate to strategic implications tagged `robust` (works across all four), `scenario-dependent` (requires correctly identifying which is unfolding), or `contingent` (tied to a specific leading indicator).
+9. Generate at least one wild card — a low-probability/high-impact future outside the 2×2 that would invalidate the matrix.
+10. Preserve equal standing for all four scenarios — no "most likely" designation; the mode does not predict.
+
+**Goal.** Produce a 2×2 scenario set with strategic translation where four causally-distinct scenarios are populated, axes are genuinely independent, leading indicators per scenario surface, strategic implications distinguish robust / scenario-dependent / contingent, and at least one wild card sits outside the matrix.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — structural distinctiveness.** Are the four scenarios structurally distinct (different causal logic), or merely magnitude variants (good/bad/medium)? Failure mode if unmet: `good-bad-medium-trap`.
+- **CQ2 — axes independence.** Are the two axes genuinely independent, or do they correlate so the scenarios cluster on a diagonal? Failure mode if unmet: `correlated-axes-trap`.
+- **CQ3 — no most-likely designation.** Has any scenario been designated "most likely" or "official," undermining the mode's anti-prediction stance? Failure mode if unmet: `official-future-trap`.
+- **CQ4 — honest predetermined-vs-uncertain.** Have driving forces been honestly classified as predetermined vs critical uncertainty, or has a genuine uncertainty been treated as predetermined? Failure mode if unmet: `certainty-masquerade-trap`.
+- **CQ5 — strategic actionability.** Does each scenario translate into actionable strategic guidance (leading indicators, robust vs scenario-dependent strategies, contingent actions), or does it remain a story without strategy? Failure mode if unmet: `story-without-strategy-trap`.
+
+A passing output has four scenarios with distinct causal logic, axes whose independence is argued in ≥40 chars of rationale, leading indicators per quadrant, robust vs scenario-dependent strategies distinguished, a wild card in prose, and no scenario marked "most likely."
+
+**Named failure modes.**
+
+- *good-bad-medium-trap* — scenarios labelled by magnitude (optimistic/pessimistic/baseline) rather than distinct causal logic.
+- *official-future-trap* — one scenario labelled "most likely" or designated as the planning baseline.
+- *story-without-strategy-trap* — scenario narratives lack leading indicators or actionable strategy translations.
+- *certainty-masquerade-trap* — driving force classified as predetermined that could plausibly go either way; classification not defended.
+- *correlated-axes-trap* — items cluster on a diagonal (axes covary); axes-independence rationale missing or trivial (< 40 chars).
 
 ## REVISION GUIDANCE
 

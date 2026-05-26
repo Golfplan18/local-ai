@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -149,9 +149,41 @@ Depth in Multi-Criteria Decision is the explicitness of method choice, weight el
 
 Widening the lens means surveying the criteria space for under-named dimensions (the criterion the decision-maker would notice they cared about only if it were missing), scanning for criterion redundancy (two criteria measuring the same underlying attribute), and considering whether the option set itself is complete (would option-set expansion change the analysis?). Breadth markers: criteria are surveyed across at least three categories (e.g., outcome-quality, cost, risk, fit, reversibility); option set is sanity-checked for completeness before scoring.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) criterion independence; (CQ2) weight elicitation rather than imposition; (CQ3) sensitivity analysis surfacing robustness; (CQ4) dominance pruning. The named failure modes (criterion-redundancy, weight-imposition, false-stability, dominance-blindness, aggregation-method-opacity) are the evaluation checklist. A passing MCDM output names method with rationale, surfaces weights with elicitation, scores explicitly, runs sensitivity analysis, and flags dominance relations.
+**What this analysis is.** Multi-Criteria Decision (MCDM) is a structured comparison of discrete options across multiple weighted criteria, applying a named aggregation method (SMART additive, AHP pairwise, ELECTRE outranking, TOPSIS distance-from-ideal, etc.) with explicit weight elicitation, sensitivity analysis, and dominance pruning. It is the multi-criteria position in T3's complexity ladder — distinct from constraint-mapping (depth-lighter; environment-known, no scoring) and decision-under-uncertainty (depth-thorough; probability-and-time-weighted single criterion). When the decision involves multiple stakeholders, scenario integration, or sequential-decision structure, the mode escalates to decision-architecture; when a single criterion turns out to dominate, it routes sideways to decision-under-uncertainty.
+
+**Procedure.**
+
+1. Enumerate the option set and sanity-check completeness — flag missing options that would change the analysis.
+2. Define each criterion operationally — name, units, score-assignment rule, preference direction (higher better / lower better / target).
+3. Check criterion independence — flag or merge criteria measuring the same underlying attribute under different names.
+4. Elicit weights with rationale — decision-maker preference statements, pairwise comparison, or explicit assignment; when weights are equal, state explicitly that equal weighting is itself a preference choice.
+5. Score each (option × criterion) cell — score, units, grounding (evidence / inference / qualitative estimate); flag gaps rather than silently zeroing.
+6. Name the aggregation method and explain why it fits the decision shape — additive SMART, AHP, ELECTRE, TOPSIS, etc.
+7. Produce the aggregated ranking with per-option scores.
+8. Run sensitivity analysis — at minimum one joint weight-score perturbation; identify the ranking-flip threshold; flag method-fragile top choices.
+9. Surface dominance relations — prune dominated options; flag dominant ones as no-brainer choices that make the rest of the matrix ceremony.
+10. Hold three confidence kinds distinct — scoring uncertainty, weight uncertainty, method-fit uncertainty.
+
+**Goal.** Produce an MCDM matrix-with-ranking that names the aggregation method, makes weights explicit with elicitation rationale, surfaces sensitivity and dominance relations, and tells the decision-maker not just which option ranks first but how robust the ranking is to perturbation.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — criterion independence.** Are the criteria genuinely independent, or do they double-count by measuring the same underlying attribute under different names? Failure mode if unmet: `criterion-redundancy`.
+- **CQ2 — weight elicitation.** Are the weights elicited from the decision-maker's actual preferences, or imposed by the analyst's method choice without preference elicitation? Failure mode if unmet: `weight-imposition`.
+- **CQ3 — sensitivity robustness.** Has sensitivity analysis surfaced how robust the ranking is to weight perturbations and scoring uncertainty, or is the top-ranked option presented as if the ranking were stable? Failure mode if unmet: `false-stability`.
+- **CQ4 — dominance handling.** Have dominated options been pruned and dominant options flagged as no-brainer choices? Failure mode if unmet: `dominance-blindness`.
+
+A passing output names the aggregation method with rationale, surfaces weights with elicitation, scores each cell explicitly, runs at least one joint weight-score sensitivity perturbation, flags dominance relations, and keeps scoring / weight / method-fit confidences distinct.
+
+**Named failure modes.**
+
+- *criterion-redundancy* — two or more criteria score highly correlated across options without acknowledgment that they capture related aspects.
+- *weight-imposition* — weights stated without rationale or elicitation history; equal weights used as a "neutral" default without surfacing that equal weighting is itself a preference choice.
+- *false-stability* — sensitivity analysis section empty, or perturbation tested only one weight at a time when joint perturbation would change the ranking.
+- *dominance-blindness* — output presents a full ranking when dominance relations would have pruned the option set or made the top choice obvious.
+- *aggregation-method-opacity* — aggregation method (additive, multiplicative, ELECTRE-style outranking, etc.) not named, or named without explanation of why it fits the decision shape.
 
 ## REVISION GUIDANCE
 

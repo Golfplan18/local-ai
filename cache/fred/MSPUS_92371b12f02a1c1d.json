@@ -1,0 +1,49 @@
+{
+  "series_id": "MSPUS",
+  "observations": [
+    {
+      "date": "2024-01-01",
+      "value": 426800.0
+    },
+    {
+      "date": "2024-04-01",
+      "value": 414500.0
+    },
+    {
+      "date": "2024-07-01",
+      "value": 415300.0
+    },
+    {
+      "date": "2024-10-01",
+      "value": 419300.0
+    },
+    {
+      "date": "2025-01-01",
+      "value": 423100.0
+    },
+    {
+      "date": "2025-04-01",
+      "value": 416100.0
+    },
+    {
+      "date": "2025-07-01",
+      "value": 410100.0
+    },
+    {
+      "date": "2025-10-01",
+      "value": 405300.0
+    }
+  ],
+  "metadata": {
+    "id": "MSPUS",
+    "title": "Median Sales Price of Houses Sold for the United States",
+    "units": "Dollars",
+    "units_short": "$",
+    "frequency": "Quarterly",
+    "frequency_short": "Q",
+    "seasonal_adjustment": "Not Seasonally Adjusted",
+    "last_updated": "2026-02-20 09:05:04-06",
+    "notes": ""
+  },
+  "retrieved_at": "2026-05-24T07:36:32-0700"
+}

@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -152,9 +152,40 @@ Depth in Pre-Mortem (Fragility) is the specificity with which the breakage narra
 
 Widening the lens in Pre-Mortem (Fragility) means scanning the structural-fragility landscape: load fragilities (the structure breaks under unusual but specifiable load), dependency fragilities (a component depends on a fragile-or-absent counterpart), interface fragilities (the joint between components is the failure surface), state fragilities (the structure breaks when accumulated state crosses a threshold), and emergent fragilities (the structure exhibits a failure mode that no single component shows). A breadth-passing analysis surveys all five classes before narrowing to the two-or-three most plausible breakage narratives for the prospective-hindsight pass.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) stance integrity (prospective hindsight on the structure); (CQ2) structure-specific vs. generic fragility tropes; (CQ3) load pathway with mechanism present; (CQ4) structural vs. operational mitigations distinguished. The named failure modes (stance-slippage, generic-fragility-trope, mechanism-gap, structure-operation-conflation, actor-modeling-drift) are the evaluation checklist. A passing Pre-Mortem (Fragility) output names structure-specific yield mechanisms in past-tense narrative, cites observable leading indicators per fragility, and offers structural mitigations rather than operational workarounds.
+**What this analysis is.** Pre-Mortem (Fragility) is Klein's prospective-hindsight method applied to a system, design, structure, architecture, or institution — writing the post-incident report before deployment to surface the structural fragilities that would yield under stress. The mode is parsed from a plan/action counterpart (pre-mortem-action in T6 — same Klein lens, different artifact shape); it sits in T7's risk-and-failure territory with adversarial-future stance toward the structure. It is distinct from fragility-antifragility-audit (depth-heavier Talebian asymmetry framing), red-team-assessment / red-team-advocate (adversarial-actor stress test — structural fragility has no actor), failure-mode-scan (lighter sibling, deferred), and fault-tree (heavier sibling, deferred). The mode targets structural mechanism, not operator behavior — recommending "more careful monitoring" instead of structural change is collapsing fragility into operation.
+
+**Procedure.**
+
+1. Anchor the system, its components, its dependencies, its interfaces, and the operating envelope it's intended to function within.
+2. Write the imagined breakage narrative in past tense — "The system broke under [load condition]. Here is what yielded." The grammar stays retrospective; forward conditional language is stance slippage.
+3. Survey the structural-fragility landscape across the five classes — load (the structure breaks under unusual but specifiable load), dependency (a component depends on a fragile-or-absent counterpart), interface (the joint between components is the failure surface), state (the structure breaks when accumulated state crosses a threshold), emergent (the structure exhibits a failure mode no single component shows).
+4. Name each fragility with structure-specific mechanism — the actual component, link, or interface where it sits and the structural property that yields; never generic tropes like "single point of failure" without naming the point.
+5. Trace the load pathway per fragility — operating-envelope condition that triggered the breakage, structural property that yielded, immediate consequence, cascade through dependencies.
+6. Identify leading indicators per fragility — observable signals approaching failure (drift, saturation, latency increase, error rate climb, queue depth, retry rate, accumulated state crossing threshold), signal-acquisition cost, lead time.
+7. Generate structural mitigations — component replacement, interface hardening, dependency removal, state-bound enforcement, redundancy with independence, decoupling. Never operational workarounds (better monitoring, more careful operators).
+8. Surface residual unmitigated fragilities that survive the structural mitigations, with the operating-envelope conditions under which they would yield.
+9. Resist actor-modeling drift — if the narrative becomes about someone trying to defeat the system, escalate to red-team modes; structural fragility has no actor.
+
+**Goal.** Produce a prospective-hindsight structural-fragility analysis where each fragility is structure-specific, each has a load-pathway mechanism, each has at least one leading indicator the team could observe pre-failure, and each mitigation is a structural change — delivered as past-tense post-incident report the team can read before deployment.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — stance integrity.** Has the analysis genuinely adopted prospective-hindsight stance on the system (writing as though the breakage has already occurred), or slipped into hedged forward-projection? Failure mode if unmet: `stance-slippage`.
+- **CQ2 — structure-specific vs generic.** Are the named fragilities specific to this structure's components and dependencies, or generic system-failure tropes (single point of failure, cascading failure) without structural specificity? Failure mode if unmet: `generic-fragility-trope`.
+- **CQ3 — load pathway mechanism.** Have load pathways been traced from operating-envelope stresses to specific structural elements that yield, or do the breakages appear without mechanism? Failure mode if unmet: `mechanism-gap`.
+- **CQ4 — structural vs operational mitigations.** Have structural mitigations been distinguished from operational workarounds, given that fragility is a property of the structure rather than its operation? Failure mode if unmet: `structure-operation-conflation`.
+
+A passing output narrates structure-specific yield mechanisms in past tense throughout, cites observable leading indicators per fragility, offers structural mitigations rather than operational workarounds, and surveys the fragility landscape across the five classes rather than concentrating in one (typically load).
+
+**Named failure modes.**
+
+- *stance-slippage* — output uses forward conditional language ("this might fail under load") rather than retrospective ("the system broke when load exceeded X because component Y could not...").
+- *generic-fragility-trope* — fragilities named are pattern-matched abstractions (single point of failure, cascading failure, brittle dependency) without naming the specific component, link, or interface.
+- *mechanism-gap* — fragility asserted without naming the load condition that triggers it or the structural property that yields under that load.
+- *structure-operation-conflation* — mitigations include operational practices (better monitoring, more careful operators) rather than structural changes.
+- *actor-modeling-drift* — failure narratives invoke an adversarial actor trying to defeat the system; that's Red Team's territory, not structural fragility.
 
 ## REVISION GUIDANCE
 

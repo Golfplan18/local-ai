@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -166,9 +166,43 @@ Depth in Propaganda Audit is the precision with which (1) the professed ideal is
 
 Widening the lens means scanning the propaganda-tradition layers before narrowing: Bernays (engineering-of-consent / PR-as-symbolic-environment-management); Ellul (integration vs. agitation; ambient cumulative narrowing of the conceivable); Herman & Chomsky (five-filter propaganda model — ownership, advertising, official sources, flak, common-enemy); Stanley (supporting / undermining distinction; flawed-ideology precondition; not-at-issue content). Where applicable, scan also: Lakoff (lexical metaphor activation); CDA (presupposition, nominalization, agent deletion, lexicalization choices); Iyengar (episodic vs. thematic framing for attribution manipulation). Breadth markers: the audit has surveyed at least the Stanley diagnostic plus one structural-context layer (Bernays / Ellul / Herman-Chomsky) and one linguistic-mechanism layer (Lakoff / CDA) before producing findings.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) professed ideal named; (CQ2) supporting / undermining classification with evidence; (CQ3) flawed-ideology premises identified if undermining; (CQ4) not-at-issue content inventoried; (CQ5) propaganda diagnosis distinguished from conclusion-rejection. The named failure modes (ideal-omission, classification-collapse, flawed-ideology-omission, at-issue-only-reading, propaganda-charge-as-refutation, motive-attribution-without-evidence) are the evaluation checklist. A passing Propaganda Audit names the professed ideal, classifies supporting vs. undermining with evidence, identifies flawed-ideology premises if undermining, inventories not-at-issue content with quoted text, and distinguishes the propaganda diagnosis from rejection of the artifact's conclusion.
+**What this analysis is.** Propaganda Audit is a Stanley-style structured diagnostic of a suspected propaganda artifact: it names the ideal the artifact professes, classifies the artifact as supporting (non-rational means for a worthy ideal) or undermining (presents itself as embodying the ideal while actually eroding it), identifies the flawed-ideology premises required for undermining-class artifacts, and inventories the not-at-issue content (presupposition, conventional implicature, lexical activation) doing persuasive work. It is the adversarial-stance specialized variant in T1, distinct from coherence-audit (neutral inferential-structure assessment) and frame-audit (stance-suspending frame surfacing); it is also distinct from cui-bono (T2 — whose interests the artifact serves) and the red-team modes (T15 — attacking the artifact as a proposal).
+
+**Procedure.**
+
+1. Name the professed ideal — the freedom / fairness / security / truth / dignity the artifact claims to embody, with quoted text from the artifact.
+2. Hypothesise the actual function — predicted audience uptake, behavioural consequence, attentional or affective effect, inferred from structure and targeting (not from author psychology).
+3. Apply the Stanley supporting / undermining distinction with evidence — supporting deploys non-rational means for a worthy ideal; undermining presents itself as embodying the ideal while eroding it.
+4. If undermining, identify the flawed-ideology premises — the prior beliefs the audience must hold for the contradiction between professed and actual to remain invisible to them.
+5. Inventory the not-at-issue content — presuppositions, conventional implicatures, lexical activations doing persuasive work, with quoted text and the persuasive effect each produces.
+6. Catalogue frame-manipulation techniques (responsibility relocation, loaded terms, episodic framing, presupposition smuggling, naturalization, agent deletion, manufactured-doubt) with quoted artifact evidence.
+7. When the artifact is mass-media, situate it through the Herman-Chomsky five-filter model (ownership, advertising, official sources, flak, common-enemy); mark not-applicable when not mass-media.
+8. Predict audience uptake — cognitive, affective, behavioural shifts with evidence basis.
+9. Preserve the diagnosis-vs-conclusion distinction throughout — the propaganda diagnosis is not a refutation of the artifact's claims.
+10. Apply symmetry-discipline — would a structurally-equivalent instance on the other political side be flagged? Per Debate D5 sensitivity.
+
+**Goal.** Produce a Stanley-style propaganda diagnostic that names the professed ideal with quoted text, classifies supporting vs. undermining with evidence, identifies flawed-ideology premises if undermining, inventories not-at-issue content, and keeps the diagnosis distinct from rejection of the artifact's conclusion.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — professed ideal named.** Has the audit named the artifact's professed ideal (the freedom / fairness / security / truth it claims to embody) explicitly before assessing function? Failure mode if unmet: `ideal-omission`.
+- **CQ2 — supporting vs undermining classification.** Has the Stanley distinction been applied with evidence — non-rational means for a worthy ideal (supporting) versus presents-as-embodying-while-eroding (undermining)? Failure mode if unmet: `classification-collapse`.
+- **CQ3 — flawed-ideology premises identified.** If undermining, has the audit identified the prior beliefs the audience must hold for the contradiction to remain invisible? Failure mode if unmet: `flawed-ideology-omission`.
+- **CQ4 — not-at-issue content inventoried.** Has the audit catalogued presupposed and conventionally-implicated content doing persuasive work, not just what the artifact asserts? Failure mode if unmet: `at-issue-only-reading`.
+- **CQ5 — diagnosis vs conclusion distinction.** Has the audit avoided treating the propaganda charge as evidence that the artifact's conclusion is false? Failure mode if unmet: `propaganda-charge-as-refutation`.
+
+A passing output names the professed ideal with quoted text, classifies supporting vs. undermining with evidence, identifies flawed-ideology premises if undermining, inventories not-at-issue content with quoted text, and distinguishes the propaganda diagnosis from rejection of the artifact's conclusion.
+
+**Named failure modes.**
+
+- *ideal-omission* — audit assesses propaganda function without naming the specific ideal the artifact professes; supporting/undermining classification is therefore unevaluable.
+- *classification-collapse* — audit names "propaganda" without distinguishing supporting (non-rational means for worthy ideal) from undermining (presents-as-embodying-ideal-while-eroding-it).
+- *flawed-ideology-omission* — audit classifies as undermining without identifying the prior flawed beliefs the audience must hold for the contradiction to remain invisible.
+- *at-issue-only-reading* — audit examines only what the artifact asserts; presupposed and conventionally-implicated content is not catalogued.
+- *propaganda-charge-as-refutation* — audit treats the propaganda diagnosis as evidence the artifact's conclusion is false (a meta-level fallacy of fallacy).
+- *motive-attribution-without-evidence* — audit imputes deliberate manipulative intent to the author/sponsor without textual or contextual evidence; the diagnostic should focus on the artifact's structure and effect, not the author's psychology.
 
 ## REVISION GUIDANCE
 

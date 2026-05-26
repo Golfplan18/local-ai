@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -154,9 +154,40 @@ Depth in Stakeholder Mapping is the granularity with which each party's stake is
 
 Widening the lens in Stakeholder Mapping means deliberate scanning for parties outside the user's initial frame: parties affected but not represented, parties with informal influence not visible on org charts, parties whose voices are filtered through intermediaries, parties from adjacent domains who become stakeholders if the situation shifts, future parties whose interests will be created by the action under consideration, and silent parties whose absence is itself a stake. Apply Mitchell-Agle-Wood salience (power × legitimacy × urgency) on each candidate party rather than collapsing to power alone.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) frame-bounded inventory; (CQ2) role-as-stake; (CQ3) single-axis salience; (CQ4) silent power mirroring. The named failure modes (frame-bounded-inventory, role-as-stake, single-axis-salience, silent-power-mirroring, laundry-list-flatness) are the evaluation checklist. A passing Stakeholder Mapping output names parties from outside the user's initial frame, articulates stakes as concrete interests, classifies salience along all three Mitchell-Agle-Wood dimensions, surfaces relationships among parties, and explicitly names absent or marginalized parties.
+**What this analysis is.** Stakeholder Mapping is multi-party descriptive landscape work: a Bryson power-interest grid plus Mitchell-Agle-Wood three-dimensional salience (power × legitimacy × urgency) over an inventory that deliberately scans for parties outside the user's initial frame, with concrete interests (Wants / Could-lose / BATNA) articulated per party, relationships among parties surfaced, and absent-or-marginalized parties named explicitly. It is distinct from cui-bono (the lighter T2 sibling — single situation, single set of beneficiaries), from conflict-structure (the heavier sibling — systemic conflict, gap-deferred), from interest-mapping / principled-negotiation / third-side (cross-territory T13 follow-ons — active negotiation), and from wicked-problems (T2 — tangled multi-system feedback rather than descriptive multi-party landscape).
+
+**Procedure.**
+
+1. Lock the situation or decision under analysis.
+2. Build the party inventory deliberately scanning beyond the user's initial frame — affected-but-unrepresented parties, informal influencers, intermediary-filtered voices, adjacent-domain parties, future parties, silent parties whose absence is itself a stake.
+3. Articulate stakes per party as concrete interests — what they Want, what they could Lose, their BATNA if the situation goes against them, internal heterogeneity (large groups are rarely monolithic).
+4. Position each party on the Bryson 2×2 grid — high-power-high-interest (manage closely) / high-power-low-interest (keep satisfied) / low-power-high-interest (keep informed) / low-power-low-interest (monitor).
+5. Apply Mitchell-Agle-Wood salience on three dimensions (power, legitimacy, urgency) — produce one of eight classes (definitive / dominant / dangerous / dependent / dormant / discretionary / demanding / non-stakeholder) with per-dimension reasoning.
+6. Map relationships among parties — ally / opposition / dependency / broker / coalition — with the basis of the relationship.
+7. Name absent or marginalised parties explicitly — kind of absence, reason, what their stake would be if present; or note that none were identifiable in this situation.
+8. Resist tidiness — never drop low-salience-but-legitimate parties for a cleaner diagram; the long tail of the inventory is the mode's analytical value.
+9. Assign confidence per finding.
+
+**Goal.** Produce a multi-party stakeholder map — Bryson + Mitchell-Agle-Wood structured matrix where each party's concrete interests, two-dimensional power-interest position, three-dimensional salience class, and relationships to other parties are explicit, with absent or marginalised parties surfaced.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — frame-bounded inventory.** Has the inventory identified parties from outside the user's initial frame, or has the analysis stayed inside the user's pre-existing mental model? Failure mode if unmet: `frame-bounded-inventory`.
+- **CQ2 — concrete-interest stakes.** Are stakes named at the level of concrete interests (what the party wants and could lose), rather than role-labels alone? Failure mode if unmet: `role-as-stake`.
+- **CQ3 — three-dimensional salience.** Has salience been assessed using power AND legitimacy AND urgency (Mitchell-Agle-Wood), so a high-power-low-legitimacy party isn't conflated with a high-legitimacy-low-power party? Failure mode if unmet: `single-axis-salience`.
+- **CQ4 — absent parties surfaced.** Have absent or marginalized parties been explicitly named, or has the map silently mirrored existing power asymmetries? Failure mode if unmet: `silent-power-mirroring`.
+
+A passing output names parties from outside the user's initial frame, articulates stakes as concrete interests, classifies salience along all three Mitchell-Agle-Wood dimensions, surfaces relationships among parties, and explicitly names absent or marginalized parties.
+
+**Named failure modes.**
+
+- *frame-bounded-inventory* — every party in the inventory shares the user's frame; no parties from outside the frame appear.
+- *role-as-stake* — stakes named as role-labels (regulator, investor, end-user) without articulating what the party concretely wants and could lose.
+- *single-axis-salience* — salience plotted on one dimension (usually power) only; legitimacy and urgency are absent or collapsed.
+- *silent-power-mirroring* — salience map ranks parties in proportion to their existing power; no marginalized-but-legitimate party appears.
+- *laundry-list-flatness* — stakeholders listed without relationships among them or differential stakes; the map is a list, not a map.
 
 ## REVISION GUIDANCE
 

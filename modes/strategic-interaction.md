@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-24
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -151,29 +151,42 @@ Depth in Strategic Interaction is the explicitness of the equilibrium derivation
 
 Breadth in Strategic Interaction is the catalog of alternative game structures considered before locking the canonical one. Widen the lens to scan: alternative move-order assumptions; alternative information structures (complete vs incomplete; perfect vs imperfect); alternative duration framings (one-shot vs repeated); alternative sum (zero-sum vs positive-sum). Breadth markers: at least one alternative structure is tested with its own equilibrium derivation; commitment devices, game-changing moves, coalition possibilities, and outside options are surveyed.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Strategic Interaction is read in Schelling's strategy-of-conflict vocabulary (commitment, credibility, focal points, deterrence-vs-compellence) combined with game-theory equilibrium concepts (Nash, subgame-perfect, Perfect Bayesian, backward induction, repeated cooperation), Axelrod evolution-of-cooperation analysis when the game is repeated, and Simon bounded-rationality discipline against hyperrationality. The evaluator's primary axes are credibility honesty (Schelling's central contribution), classification completeness (the four-dimensional game-typing that makes equilibrium-talk meaningful), and payoff realism (actual value terms, not stated preferences). CQ3 (cheap-talk-treated-as-credible) is load-bearing because credibility discipline is Schelling's distinctive analytical move. CQ1 (classification-incomplete) is load-bearing because the equilibrium method is meaningless without knowing the game type. CQ5 (stated-vs-actual-payoffs) is load-bearing because actors lie about what they want and the analysis must read past that. CQ2 (method-unnamed) and CQ4 (classification-lock) act as derivational and breadth gates.
+**What this analysis is.** Strategic Interaction is a 2-to-n-player game-theoretic analysis of situations where outcomes depend on actors' choices affecting one another. It is read in Schelling's strategy-of-conflict vocabulary (commitment, credibility, focal points, deterrence vs compellence) combined with equilibrium concepts (Nash, subgame-perfect, Perfect Bayesian, backward induction, repeated cooperation), Axelrod when the game is repeated, and Simon bounded-rationality against hyperrationality. It is distinct from decision-under-uncertainty (uncertainty from nature, not from a strategic opponent), cui-bono (interest tracing without modeling interaction), systems-dynamics-causal (feedback structure rather than actor-to-actor), and principled-negotiation (conflict resolution rather than strategic modeling).
 
-Evaluator checks:
+**Procedure.**
 
-1. **Credibility audit per threat or promise (CQ3, load-bearing).** Each threat or promise in the analysis must carry a `credibility:` label with grounding — `credible` (commitment device named, sunk cost identified, repeated-game future-shadow operative) or `cheap talk` (no commitment device, no sunk cost, no future-shadow). The Schelling discipline: announcements without commitment are not threats. Cheap-talk-treated-as-credible is the failure mode where a verbal threat is read as binding equilibrium force; the evaluator confirms each threat earns its credibility status rather than receiving it by default.
+1. Inventory players and infer payoffs in each player's *actual* value terms — revealed-by-behaviour rather than stated-and-claimed. Name where actual diverges from claimed.
+2. Classify the game on all four dimensions — timing (simultaneous / sequential / extensive-form) × information (complete / incomplete; perfect / imperfect) × duration (one-shot / repeated / infinite-horizon) × sum (zero-sum / positive-sum / mixed) — with reasoning per classification.
+3. Derive the equilibrium by an explicitly-named method (Nash / subgame-perfect / backward induction / repeated cooperation / Perfect Bayesian) with a trace a reader could reproduce from players + payoffs + method.
+4. Audit credibility for each threat and promise — apply the literal `credibility:` label with grounding: `credible` (commitment device, sunk cost, or future-shadow named) vs `cheap talk` (none of these). Announcements without commitment are not threats.
+5. Test at least one alternative game classification — alternative move-order, alternative information structure, alternative duration (especially one-shot vs repeated), or alternative sum — with its own equilibrium derivation.
+6. Surface missing reactive players whose response would shift the equilibrium; flag the analysis as bounded if any are inferred but unincludable.
+7. Pair the rational equilibrium with a bounded-rationality reading where real-actor deviation (cognitive bias, political constraint, incomplete preference orderings) is plausible.
+8. Test static-vs-repeated framing where the parties plausibly interact again — one-shot equilibrium is often unstable under repetition (Axelrod).
+9. Enforce probability discipline — decision-node edges carry no probabilities (decisions are choices); only chance/nature nodes do.
+10. Ground each strategic recommendation in the specific game-structure lever (commitment device, credibility shift, classification-dimension alteration, coalition formation, outside option) — not generic strategic advice.
 
-2. **Four-dimensional game classification (CQ1, load-bearing).** The game must be classified on all four dimensions — timing (simultaneous / sequential / extensive-form) × information (complete / incomplete; perfect / imperfect) × duration (one-shot / repeated / infinite-horizon) × sum (zero-sum / positive-sum / mixed). Each classification carries reasoning. Classification-incomplete residue is fewer than four dimensions populated, or dimensions asserted without reasoning. The classification is what makes the equilibrium method meaningful — without it, "Nash equilibrium" is vocabulary, not analysis.
+**Goal.** Produce a structured equilibrium derivation with explicit four-dimensional classification, credibility audit on threats/promises, alternative-structure stress-test, and mechanism-grounded recommendations — reproducible from the components stated.
 
-3. **Actual payoffs, not stated preferences (CQ5, load-bearing).** Each player's payoffs must be stated in their *actual* value terms — what their behaviour reveals they value, not what they claim to want. Stated-vs-actual-payoffs residue is professed preferences treated as payoff structure (e.g., a politician's "we want peace" taken as a peace-payoff). The evaluator's test: where the player's stated values and revealed values diverge, does the analysis name the divergence and use the revealed values? The Schelling tradition is realist about preferences.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Equilibrium method named with derivation (CQ2).** The equilibrium must be derived by an explicitly-named method — Nash, subgame-perfect, backward induction, repeated cooperation, Perfect Bayesian — with a derivation trace a reader could reproduce from the players, payoffs, and method. Method-unnamed residue is asserted equilibria without method-name; the analysis cannot be checked because the route to the conclusion is hidden.
+- **CQ1 — classification completeness.** Has the game been classified on all four dimensions (timing, information, duration, sum)? Failure mode if unmet: `classification-incomplete`.
+- **CQ2 — method named with derivation.** Has the equilibrium method been named (Nash / subgame-perfect / backward induction / repeated cooperation / Perfect Bayesian) with a traceable derivation? Failure mode if unmet: `method-unnamed`.
+- **CQ3 — credibility honesty (load-bearing, Schelling's distinctive move).** Have threats and promises passed the credibility test, or are some cheap talk? Failure mode if unmet: `cheap-talk-treated-as-credible`.
+- **CQ4 — alternative-structure breadth.** Has at least one alternative game structure been tested, or is the analysis classification-locked? Failure mode if unmet: `classification-lock`.
+- **CQ5 — payoff realism.** Have payoffs been stated in each player's actual value terms, not what they claim to want? Failure mode if unmet: `stated-vs-actual-payoffs`.
 
-5. **Alternative structure tested (CQ4).** At least one alternative game classification must be tested with its own equilibrium derivation — alternative move-order, alternative information structure, alternative duration (especially one-shot vs repeated), alternative sum. Classification-lock residue is single-structure analysis without breadth check. The reading: if the dominant equilibrium is robust to re-classification, the analysis is strong; if it changes radically, the dominant classification was the load-bearing assumption.
+A passing output names players with payoffs in actual value terms, completes the four-dimension classification with reasoning, names the equilibrium method with reproducible derivation, applies the `credibility:` label to each threat/promise with commitment-device grounding, tests at least one alternative structure, grounds recommendations in specific mechanisms, and emits no decision-node probabilities (hard verification failure).
 
-6. **Hard probability-discipline.** Decision-node edges *do not* carry probabilities (decisions are choices, not chance outcomes); only chance/nature nodes carry probabilities. Probability-on-decision-trap is a *hard* verification failure — when a decision-node child carries a probability, the underlying decision-theory model is structurally malformed. The evaluator catches this at envelope-emission and elsewhere.
+**Named failure modes.**
 
-7. **Bounded-rationality reading where applicable.** Where the equilibrium derivation assumes perfect rationality and the real actors plausibly deviate (cognitive bias, political constraint, incomplete preference orderings), the deviation is named alongside the rational equilibrium. Hyperrationality-trap residue is equilibrium derivations that read as if the analyst forgot Simon. The evaluator confirms the bounded-rationality reading is paired with the rational one where relevant.
-
-8. **Static-vs-repeated framing check.** Where the situation is plausibly a repeated game (parties will interact again under similar structure), the analysis must test the repeated framing — one-shot equilibrium is often unstable under repetition (Axelrod's evolution-of-cooperation findings). Static-frame-trap residue is one-shot analysis applied to ongoing relationships.
-
-Confidence is per-equilibrium, per-credibility-assessment, per-alternative-structure result. Where streams disagreed on payoff inference (actual values are themselves uncertain), the evaluator confirms the disagreement is preserved. Where the missing-player flag fires (a reactive third party whose response would shift the equilibrium is absent from the inventory), the evaluator confirms the analysis is bounded to its current inventory rather than presented as complete.
+- *hyperrationality-trap* — equilibrium assumes perfect rationality without bounded-rationality assessment.
+- *static-frame-trap* — one-shot analysis applied to what is actually a repeated game.
+- *classification-lock* — only one game classification tested; no alternative structure considered.
+- *missing-player-trap* — only obvious actors modeled; reactive third parties absent.
+- *probability-on-decision-trap* — decision-node edges carry probabilities (decisions are choices, not chance outcomes). Hard verification failure.
 
 ## REVISION GUIDANCE
 

@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -162,9 +162,43 @@ Depth in Causal DAG analysis is the explicitness of (a) Pearl-ladder rung select
 
 Widening the lens means scanning for plausible confounders the analyst might miss (selection effects, reverse causation candidates, time-varying confounders, latent variables), considering alternative DAG structures consistent with the same observations, and surfacing the identifiability boundary — under which assumption violations would the conclusion fail. Breadth markers: the analysis names at least one alternative DAG that observational data could not distinguish from the chosen one, and notes which intervention or natural experiment would discriminate.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) rung specification; (CQ2) confounder enumeration; (CQ3) identifiability verdict; (CQ4) collider handling; (CQ5) assumption explicitness. The named failure modes (rung-confusion, hidden-confounder, non-identifiability-elision, collider-conditioning, implicit-assumption, cycle-violation) are the evaluation checklist. A passing Causal DAG output locks the question at a Pearl rung, presents the DAG with all variables classified, applies the appropriate identifiability criterion, answers the intervention or counterfactual query, and surfaces the most fragile structural assumptions.
+**What this analysis is.** Causal DAG analysis formalizes causal structure using Pearl's directed-acyclic-graph methodology — variables as nodes classified by causal role, arrows as directed dependencies, absent-arrow assumptions made explicit, identifiability criteria (back-door, front-door, do-calculus rules) applied to determine whether the causal effect of interest is recoverable from the assumed graph. It is distinct from root-cause-analysis (single cause-chain, no formal graph), systems-dynamics-causal (feedback structure, cyclic — DAG is acyclic by definition), and process-tracing (historical-event-specific, evidence-test-driven). The mode's analytical character is rigorous identifiability discipline — interventional claims that the graph cannot identify are demoted to associational, not asserted under the same language.
+
+**Procedure.**
+
+1. Lock the causal question at a specific Pearl rung — observation (level 1) / intervention (level 2 — `do(X=x)`) / counterfactual (level 3 — `Y_x | X=x', Y=y'`). Rung-confusion is the failure mode when interventional questions are answered in observational language.
+2. Enumerate variables with role classifications — cause / effect / confounder / mediator / collider / instrument / outcome / exposure — and observational status (observed / unobserved).
+3. Draw the DAG explicitly — each present arrow carries a reason; each absent arrow is itself an atom with a justification (no-direct-effect assumption).
+4. Classify confounders, mediators, and colliders in the context of the identifiability analysis — which to adjust for, which block or open paths, which must NOT be conditioned on.
+5. Apply the back-door (or front-door) criterion to check whether the causal effect is identifiable from the assumed graph.
+6. Render the identifiability verdict — `identifiable / not identifiable via [criterion] given assumptions [list]`. If not identifiable, name the assumption that would be required.
+7. Answer the intervention or counterfactual query in the language of the locked rung — when identifiability failed, demote to an associational claim explicitly.
+8. Inventory assumptions in fragility order — most fragile first; each carries what would falsify it.
+9. Surface alternative DAGs consistent with the same observations and the intervention or natural experiment that would discriminate among them.
+10. When feedback structure is detected (cycle), suppress the DAG and escalate to systems-dynamics-causal — DAG cannot represent feedback.
+
+**Goal.** Produce a diagram-friendly causal mapping with Pearl-rung-locked question, DAG specification (present and absent arrows), identifiability verdict, rung-appropriate answer, and fragility-ordered assumption inventory.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — rung specification.** Has the causal question been locked at a specific rung of Pearl's ladder, and does the analysis use the operators appropriate to that rung? Failure mode if unmet: `rung-confusion`.
+- **CQ2 — confounder enumeration.** Have all plausible confounders been named and either included in the DAG or explicitly assumed away with justification? Failure mode if unmet: `hidden-confounder`.
+- **CQ3 — identifiability verdict.** Has the back-door (or front-door) criterion been checked, and is the causal effect identifiable from the assumed graph? Failure mode if unmet: `non-identifiability-elision`.
+- **CQ4 — collider handling.** Have collider variables been correctly classified, with the analysis avoiding conditioning on them? Failure mode if unmet: `collider-conditioning`.
+- **CQ5 — assumption explicitness.** Are structural assumptions encoded in the DAG (which arrows present, which absent) made explicit, with the most fragile assumptions flagged? Failure mode if unmet: `implicit-assumption`.
+
+A passing output locks the question at a Pearl rung with the appropriate operator, classifies every variable, specifies both present and absent arrows with reasons, applies the appropriate identifiability criterion with a verdict, answers in rung-appropriate language (or demotes to associational), and orders the assumption inventory by fragility.
+
+**Named failure modes.**
+
+- *rung-confusion* — analysis uses observational language to answer an interventional question, or vice versa.
+- *hidden-confounder* — DAG omits a plausible common cause without an explicit no-confounding assumption.
+- *non-identifiability-elision* — final causal claim made without checking back-door or front-door criterion.
+- *collider-conditioning* — analysis conditions on a variable that is a common effect of two others in the graph, inducing spurious association.
+- *implicit-assumption* — DAG presented without enumerating which arrows were excluded and why.
+- *cycle-violation* — causal structure exhibits feedback (X → Y → X); DAG cannot represent this and mode boundary is violated.
 
 ## REVISION GUIDANCE
 

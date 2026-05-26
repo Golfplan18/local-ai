@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -168,9 +168,43 @@ Depth in Compositional Dynamics is the precision with which (1) the perceptual p
 
 Widening the lens means scanning across the two integrated traditions before narrowing: **Gestalt grouping and figure-ground** (Wertheimer / Köhler / Koffka founding work; Wagemans et al. 2012 century-of-gestalt review; Rubin 1921 figure-ground; border-ownership neurons per Zhou, Friedman & von der Heydt 2000) — predicts how perception parses the visual field; **Arnheim compositional forces** (*Art and Visual Perception*, *The Power of the Center*, *The Dynamics of Architectural Form*; McManus, Stöver & Kim 2011 partial empirical support for center-of-mass formalization) — predicts the force vectors, tensions, and dynamic equilibrium once the parse is established. Where applicable, scan also: **Itten** (seven color contrasts); **Albers** (color's absolute relativity, figure-ground reversal via color); **Hambidge** (proportional vocabulary, treated as tool with weak empirical warrant); **cinematic mise-en-scène** for film stills. Breadth markers: the reading has surveyed both gestalt parsing AND Arnheim forces (the M2+M3 integration) and has applied color/proportion lenses where relevant before producing findings.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) cue-swap robustness for groupings; (CQ2) border-ownership assignment for figure-ground; (CQ3) displacement-test for force vectors; (CQ4) cropping-robustness for skeleton; (CQ5) empirical defensibility of visual-weight assignments. The named failure modes (cue-fragile-grouping, contested-border-asserted-as-stable, post-hoc-force-story, imposed-skeleton, symbolic-weight-confusion, void-blindness) are the evaluation checklist. A passing Compositional Dynamics reading predicts the perceptual parse with cue-robustness, identifies the skeleton with cropping-robustness, assigns visual weights on empirical grounds, names force vectors with displacement-robustness, classifies the dynamic equilibrium, predicts an eye-path, and surfaces ambiguity-loci.
+**What this analysis is.** Compositional Dynamics is a universal-perceptual reading of a spatial composition that integrates Gestalt grouping principles (proximity, similarity, common fate, good continuation, closure, symmetry, parallelism, common region, connectedness; figure-ground with border-ownership) with Arnheim compositional forces (structural skeleton, visual weight on empirical grounds, force vectors, dynamic equilibrium), supplemented where applicable by Itten contrasts and Albers color-field interactions. It is distinct from ma-reading (Japanese aesthetics of held-open void), place-reading-genius-loci (affordance + inhabited place), and information-density (Tufte/Bertin/Cleveland-McGill applied evaluation). It is descriptive of perceptual dynamics — predicting the viewer's parse and force-reading — not symbolic interpretation of meaning.
+
+**Procedure.**
+
+1. Name the composition and focal question (if any) at the head.
+2. Predict the perceptual parse — groupings with the specific Gestalt cue(s) responsible (proximity / similarity / etc.); test each grouping with cue-swap robustness.
+3. Assign figure-ground with border-ownership reading — note whether the assignment is stable, contested, or reverses under attention shift.
+4. Identify the structural skeleton — axes, center, frame — and test with cropping-robustness (does the skeleton survive cropping, or is it the analyst's framing?).
+5. Assign visual weight per element on empirical grounds — size, contrast, color, isolation, position, depth — never on symbolic meaning.
+6. Name force vectors and tensions — each with direction, source, target; test with displacement-robustness (would small displacement alter the reading, or is the force-story decorative?).
+7. Classify dynamic equilibrium — stable / unstable / directional, with reason.
+8. Predict an eye-path — likely fixation sequence with cues driving each fixation.
+9. Surface ambiguity loci — places where the parse is unstable, figure-ground reversal candidates, alternative readings.
+10. Escalate sideways to ma-reading when held-open void is doing the operative compositional work rather than figure-ground / grouping / force vectors.
+
+**Goal.** Produce a reading-with-vocabulary using Gestalt and Arnheim concepts operatively (not decoratively), predicting the perceptual parse, naming force vectors that survive displacement, classifying dynamic equilibrium, and surfacing ambiguity loci.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — cue-swap robustness for groupings.** Does the proposed grouping survive a swap of grouping cues, or is it brittle to cue substitution? Failure mode if unmet: `cue-fragile-grouping`.
+- **CQ2 — border-ownership for figure-ground.** Does the figure-ground assignment reverse under attention shift, or is it locked? Where contested, are the borders unambiguously owned or contested? Failure mode if unmet: `contested-border-asserted-as-stable`.
+- **CQ3 — displacement-robustness for forces.** Does displacing an element by a small amount alter the reading substantively, or is the force-story decorative? Failure mode if unmet: `post-hoc-force-story`.
+- **CQ4 — cropping-robustness for skeleton.** Does the structural-skeleton assignment survive cropping, or is the skeleton imposed by the analyst's frame? Failure mode if unmet: `imposed-skeleton`.
+- **CQ5 — empirical visual-weight grounds.** Are visual-weight assignments empirically defensible (size, contrast, color, isolation, position), or is the analyst asserting symbolic weight masquerading as visual weight? Failure mode if unmet: `symbolic-weight-confusion`.
+
+A passing output predicts the perceptual parse with cue-robustness, identifies the skeleton with cropping-robustness, assigns visual weights on empirical grounds, names force vectors with displacement-robustness, classifies dynamic equilibrium, predicts an eye-path, and surfaces ambiguity loci with alternative parses.
+
+**Named failure modes.**
+
+- *cue-fragile-grouping* — reading proposes a grouping that depends on a single cue and would dissolve if the cue were swapped.
+- *contested-border-asserted-as-stable* — reading asserts a stable figure-ground for a composition where border-ownership is contested or the figure-ground reverses under attention shift.
+- *post-hoc-force-story* — reading describes force vectors and tensions that would survive arbitrary displacement of elements; the force-story is decorative rather than analytical.
+- *imposed-skeleton* — reading asserts a structural skeleton that does not survive cropping; the skeleton is the analyst's frame, not the composition's.
+- *symbolic-weight-confusion* — reading attributes high visual weight on grounds of meaning or symbol rather than empirical visual properties.
+- *void-blindness* — reading produces forces-and-grouping analysis where the operative work is being done by held-open void; ma-reading would have been the right mode.
 
 ## REVISION GUIDANCE
 

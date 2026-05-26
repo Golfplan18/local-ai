@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -141,9 +141,39 @@ Passion Exploration is generative rather than analytical, so depth here means de
 
 Breadth in Passion Exploration is the catalog of unexpected angles and lateral connections offered. Widen the lens to cross-domain echoes, analogical resonances, and adjacent territories the user has not named. Generate at minimum two next-directions — one deepening (stay in current domain) and one lateral (cross to adjacent domain). Breadth markers: the exploration map fans rather than converges; frontier concepts (those with few outgoing connections) are explicit rather than padded. The mode does NOT optimize for closure — open questions outrank tidy conclusions.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against CQ1–CQ4. The named failure modes are the evaluation checklist. A passing Passion Exploration output (a) carries ≥ 3 open questions; (b) offers ≥ 2 next-directions; (c) reflects crystallization signals when present (or explicitly notes their absence); (d) preserves frontier roughness rather than over-polishing the map. Adversarial strictness is **relaxed** for this mode — Passion Exploration is navigation, not argument; do not over-apply analytical-mode rules. The Premature Closure Trap and Lecture Trap are the load-bearing failures.
+**What this analysis is.** Passion Exploration is the personal-interest position in T20's open-exploration territory — a generative (not analytical) mode for productive wandering when the user has supplied a seed of curiosity but no deliverable, no defined output, no destination. The mode produces an exploration map, open questions, cross-domain echoes, and next-directions; the wandering IS the product. It is distinct from terrain-mapping (structured orientation when the user is unfamiliar with a domain), project-mode (where a deliverable has been named or directive grammar has appeared), and dialectical-analysis or synthesis (where two developed positions are already in tension). Adversarial strictness is deliberately relaxed: Passion Exploration is navigation, not argument; analytical-mode rules over-apply at their own cost.
+
+**Procedure.**
+
+1. Take the user's seed thread or topic of curiosity as the starting point — accept loose, partial, evolving framing rather than asking for crisp scope.
+2. Wander productively from the seed — surface concepts, follow lateral threads, generate cross-domain echoes and analogical resonances.
+3. Generate at least three open questions; preserve them as open rather than converging toward conclusions.
+4. Offer at least two next-directions — one deepening (stay in the current domain, follow a thread further) and one lateral (cross to an adjacent domain, an unexpected angle).
+5. Mark frontier nodes — concepts with few outgoing connections — explicitly rather than smoothing them into apparent completion.
+6. Monitor for crystallization signals — defined-deliverable language, scope narrowing, exploratory→directive grammar shift, repeated return to one branch, request for next-actions or outline.
+7. Reflect crystallization signals back to the user using the literal phrase "crystallization signal" when present, and offer Project Mode as the sideways-route; when absent, state "no crystallization yet" explicitly.
+8. Honour wandering as productive — resist the productivity-trap that treats exploration as inefficient and pushes toward output.
+
+**Goal.** Produce a loose exploration map and questions inventory that honours the user's wandering, preserves open questions as the mode's product, surfaces deepening and lateral next-directions, and reflects crystallization signals when (and only when) the user's language has shifted toward a deliverable.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — open questions preserved.** Have at least three open questions emerged and remained open, rather than being closed prematurely? Failure mode if unmet: `premature-closure`.
+- **CQ2 — next-directions offered.** Have at least two next-directions been offered (one deepening, one lateral)? Failure mode if unmet: `lecture-trap`.
+- **CQ3 — crystallization monitoring.** Has the mode monitored for crystallization signals (shift to directive language) and reflected them back to the user? Failure mode if unmet: `missed-crystallization`.
+- **CQ4 — frontier honesty.** Does the exploration map honestly reflect the wandering state, or has it been over-polished into apparent completion? Failure mode if unmet: `over-polished-map`.
+
+A passing output carries ≥ 3 open questions in prose form, offers ≥ 2 next-directions (one deepening, one lateral), reflects crystallization signals when present (or explicitly notes their absence), and preserves frontier roughness rather than smoothing it into apparent completion. The Premature Closure Trap and Lecture Trap are the load-bearing failures.
+
+**Named failure modes.**
+
+- *premature-closure* — output converges to conclusions rather than maintaining open questions.
+- *lecture-trap* — output delivers a monologue or comprehensive briefing rather than exploring; concepts catalogued rather than connected.
+- *missed-crystallization* — user's language has shifted to directive ("I want to", "let's build") but the mode continued to explore without reflecting the signal back.
+- *over-polished-map* — map is tightly balanced when exploration is still fanning; frontier roughness smoothed away.
+- *productivity-trap* — mode treats exploration as inefficient and pushes toward output; the exploration IS the product.
 
 ## REVISION GUIDANCE
 
@@ -244,7 +274,7 @@ The Missed-Crystallization Trap is the failure mode for missing the signal; the 
 
 ## DEFAULT GEAR
 
-Gear 2
+Gear 3
 
 - **Expected Runtime:** ~1min
 - **Context Budget:** conversation_history_soft_ceiling=0.5

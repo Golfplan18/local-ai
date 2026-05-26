@@ -5,7 +5,7 @@ type: mode
 tags:
   - molecular
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -161,23 +161,40 @@ Depth in Bayesian Hypothesis Network is the degree to which the prior-elicitatio
 
 Breadth in Bayesian Hypothesis Network is the catalog of hypotheses considered before the network narrows. The differential-diagnosis fragment serves as breadth seed: enumerate widely (including unlikely-but-possible explanations) before pruning. Widen the lens to scan: dominant-narrative hypothesis; orthogonal hypothesis (different mechanism); null hypothesis (no underlying cause, observations are noise); cross-domain analogical hypothesis. Even when the network narrows to 3–5 hypotheses for the formalism, breadth is documented in the hypothesis-set section.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-A Bayesian Hypothesis Network is read against Heuer-ACH diagnosticity discipline, Pearl-style conditional-dependency reasoning, and Tetlock-Kahneman base-rate calibration, with Knightian risk-vs-uncertainty distinctions held throughout. The evaluator's reading frame: a Bayesian output is honest to the degree its priors are anchored, its arcs are mechanism-justified, its sensitivity analysis surfaces what could overturn the posterior, and its hypothesis space is acknowledged as MECE-or-not. CQ1 (prior anchoring) and CQ3 (sensitivity) are load-bearing — they protect against the two failure modes that make a Bayesian output worse than a qualitative one: false precision from fabricated priors, and false stability from posteriors that hide their fragility. CQ2 (conditional dependency) and CQ4 (MECE) are quality gates on the network's structural integrity.
+**What this analysis is.** Bayesian Hypothesis Network is a molecular probabilistic mode that composes a differential-diagnosis hypothesis-list seed with a full competing-hypotheses (ACH) pass, then constructs an explicit network of hypothesis nodes (with priors) and evidence nodes (with likelihoods), conditional-dependency arcs, posterior-update calculation, and sensitivity analysis. It is distinct from differential-diagnosis (medical-tradition triage among 3-5 candidates, no formal posterior) and from competing-hypotheses (qualitative ACH matrix, no Bayesian formalism). The network is the load-bearing data structure; the mode produces probabilistic-but-honest output by reporting bands-with-confidence when priors and likelihoods are uncertain rather than fabricating point estimates.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Prior anchoring (CQ1, load-bearing).** Each P(H) must trace to a base rate, named domain knowledge, or an explicit flat-prior assumption with reason. Round-number priors (0.5, 0.33, 0.2) without anchor are prior-fabrication — they look quantitative but are intuition wearing a number. The evaluator either finds the anchor or downgrades the atom to flat-prior; round numbers do not pass through.
+1. Lock the phenomenon or question once at the head and confirm hypotheses are MECE-or-explicitly-not.
+2. Enumerate hypotheses widely first — differential-diagnosis fragment seeds breadth (dominant-narrative, orthogonal-mechanism, null, cross-domain-analogical) before pruning.
+3. Elicit priors per hypothesis from base rates or named domain knowledge — when no anchor exists, declare flat-prior assumption explicitly with reason rather than fabricating a round number.
+4. Inventory evidence items, each with source attribution, credibility/relevance ratings, and likelihood per hypothesis (P(E|H)).
+5. Surface conditional dependencies among hypotheses — each arc names the underlying mechanism creating the dependency; arcs without mechanism are not warranted. When no arcs apply, name independence explicitly as the default.
+6. Compute posteriors by evidence integration — render as point estimates only when priors and likelihoods are well-anchored; otherwise render as bands with confidence intervals.
+7. Run sensitivity analysis — identify which evidence items dominate the posterior; for each, name the magnitude of the shift if reversed or removed and whether leading-hypothesis ranking is stable, flips, or reorders.
+8. Check MECE structure explicitly and state the result; when not MECE, name the specific overlap or gap rather than letting it pass silently.
+9. Render the leading hypothesis with residual-uncertainty — name what would update the analysis.
+10. Apply Knightian framing throughout — distinguish risk-quality (probabilities knowable in principle) from uncertainty-quality (probabilities as heuristic scaffolding); flag outputs that present the latter as the former.
 
-2. **Conditional-dependency arcs (CQ2).** For each arc, the mechanism creating the dependency must be named. Arcs without mechanism are speculative structure invented by the analyst. The default position is independence; arcs are earned by mechanism, not assumed by similarity. Equally, when hypotheses share an underlying causal substrate and no arcs are drawn, independence-assumption-collapse is in play and the evaluator flags the missing arcs.
+**Goal.** Produce a Bayesian-network artifact with hypothesis-and-evidence nodes, mechanism-justified conditional-dependency arcs, posterior distribution (point or band per anchoring), and sensitivity findings identifying what could overturn the leading hypothesis.
 
-3. **Sensitivity analysis (CQ3, load-bearing).** The output must identify which evidence items dominate the posterior. The evaluator's question: if a single key piece of evidence were reversed, removed, or downgraded in source credibility, would the ranking change? At minimum one sensitivity finding specifies the evidence item, the magnitude of the shift, and whether the leading-hypothesis ranking is robust or unstable. Posteriors reported without this analysis are sensitivity-omission.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **MECE structure (CQ4).** The hypothesis set must be explicitly checked for mutual exclusivity and collective exhaustiveness, and the result stated. Overlapping hypotheses cause double-counting of evidence; non-exhaustive sets implicitly assume the truth lies within the listed candidates. Silent assumption of MECE structure when it doesn't hold is mece-violation-unnamed and corrupts posterior interpretation.
+- **CQ1 — prior anchoring (load-bearing).** Have priors been elicited from base rates or named domain knowledge, or are they fabricated point estimates dressed up as quantitative? Failure mode if unmet: `prior-fabrication`.
+- **CQ2 — conditional dependency.** Have conditional dependencies among hypotheses been surfaced with mechanism, or has the network silently treated all hypotheses as independent when they share a causal substrate? Failure mode if unmet: `independence-assumption-collapse`.
+- **CQ3 — sensitivity analysis (load-bearing).** Has sensitivity analysis identified which evidence items most shift the posterior, or does the output present a single posterior without robustness check? Failure mode if unmet: `sensitivity-omission`.
+- **CQ4 — MECE structure.** Are the hypotheses mutually exclusive and collectively exhaustive, or is non-MECE structure explicitly named? Failure mode if unmet: `mece-violation-unnamed`.
 
-5. **Posterior form discipline.** Point-estimate posteriors are honest only when priors and likelihoods are well-anchored. When inputs are uncertain, the posterior must render as a band with confidence rather than a single number — false precision is the reviser's named failure mode, and the evaluator flags single-number posteriors over uncertain inputs.
+A passing output anchors every prior in a base rate or names a flat-prior assumption explicitly, justifies each arc with a mechanism (or declares independence), reports posteriors in the form anchoring discipline supports (point estimate vs. band-with-confidence), specifies sensitivity-dominant evidence with the magnitude of the resulting shift, and states MECE structure explicitly rather than assuming it.
 
-Knightian framing applies throughout. In domains of true uncertainty (novel events, deep-structural-change phenomena), the Bayesian formalism is read as a structured framework for organizing reasoning, not as a probability-theoretic theorem. The evaluator distinguishes risk-quality (probabilities knowable in principle) from uncertainty-quality (probabilities are heuristic scaffolding) and flags outputs that present the latter as the former.
+**Named failure modes.**
+
+- *prior-fabrication* — priors stated as round numbers (0.5, 0.33) without base-rate or domain-knowledge anchor.
+- *independence-assumption-collapse* — network has no conditional-dependency arcs even when hypotheses share underlying mechanism.
+- *sensitivity-omission* — posterior reported without indication of which evidence items dominate the update.
+- *mece-violation-unnamed* — hypotheses overlap or do not exhaust the space, and this is not flagged in the output.
 
 ## REVISION GUIDANCE
 

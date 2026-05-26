@@ -5,7 +5,7 @@ type: mode
 tags:
   - molecular
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -175,25 +175,40 @@ Depth in Wicked Future is the degree to which scenario-probability-overlay and f
 
 Breadth in Wicked Future is the catalog of scenarios considered before narrowing to a probability-weighted set. Widen the lens to scan: trend-extrapolation; orthogonal-driver scenario; discontinuity (extremistan event); reversal; backcasting-from-desired-future (flagged as gap). Even when only 3–5 scenarios are kept, breadth is documented in the scenario-set section. Note: alternative compositions considered included substituting consequences-and-sequel for probabilistic-forecasting in lighter pass; current composition selects the full probabilistic forecasting for calibrated bands.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Wicked Future is read against Schwartz/Wack scenario-planning, Tetlock-Kahneman calibrated probabilistic forecasting, Klein prospective-hindsight pre-mortem discipline, and Taleb extremistan-mediocristan distinctions, with Knightian risk-vs-uncertainty framing in long-horizon territory. The evaluator's primary axes are integration vs concatenation across the three components and the visibility of the constructive-future gap. CQ2 (silo-aggregation), CQ3 (pre-mortem-omission), and CQ4 (silent-gap) are all load-bearing: CQ2 because the mode's molecular value is exactly the integration the components alone cannot produce, CQ3 because un-stress-tested scenarios are wishful rather than analytical, CQ4 because Wicked Future's descriptive-only scope is honest only when the Backcasting absence is surfaced. CQ1 (trend-extrapolation-bias) acts as a quality gate on scenario breadth.
+**What this analysis is.** Wicked Future is a depth-molecular T6 future-exploration mode that composes scenario-planning (narrative scenarios), probabilistic-forecasting (calibrated probability bands), and pre-mortem-action (Klein prospective-hindsight adversarial-future stress test) into an integrated forward analysis. Backcasting (constructive-future stance) is *deferred* per CR-6; the mode covers descriptive-future only and is honest about that gap. It is distinct from consequences-and-sequel (depth-light forward projection), probabilistic-forecasting alone (probability-output only), scenario-planning alone (narrative-output only), and pre-mortem-action (adversarial-future on a specific plan, not future broadly). Read against Schwartz/Wack scenario-planning, Tetlock-Kahneman calibrated forecasting, Klein prospective-hindsight, Taleb extremistan-mediocristan, and Knightian risk-vs-uncertainty in long-horizon territory.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Integration across components (CQ2, load-bearing).** The integrated-future-architecture must contain a forecast-claim that no single component could have produced — typically one that requires scenarios + probability bands + failure pathways together (e.g., "scenario A has 30% band but two of its three failure pathways are detectable via the same leading indicator scenario C would also produce — so the indicator is dual-purpose"). A document of three parallel component sections in sequence is silo-aggregation.
+1. Lock the forward question and explicit time horizon at the corpus head.
+2. Generate a scenario set with type-tag diversity (trend-extrapolation / orthogonal-driver / discontinuity / reversal) — at least one non-trend-extrapolation scenario must survive; otherwise CQ1 fires (trend-extrapolation-bias).
+3. Assign probability bands per scenario with explicit bounds (`40%–60%`, not "around 50%"), calibration notes, and the evidence anchoring each bound. Point estimates over long-horizon inputs are false precision.
+4. Identify divergence points — the variable or event whose realization splits scenarios — with leading indicators that would reveal which branch is taking.
+5. Run pre-mortem stress test on the leading scenarios (top by probability band). Each failure-pathway atom is in past-tense Klein prospective-hindsight form ("the failure has already happened, here's how it played out") with leading indicators and recoverability assessment.
+6. Produce the integrated-future-architecture — a forecast-claim no single component could have produced (scenarios + bands + failure pathways together).
+7. Surface the constructive-future gap-flag explicitly — its own H2 section, not folded into confidence map or footnotes. Backcasting is deferred per CR-6.
+8. Derive the divergence-points-to-monitor forward watchlist from step 4.
+9. Surface residual uncertainties that cannot be priced by the probability formalism (Knightian uncertainty, model-misspecification risk, unknown unknowns) — distinct from low-confidence bands.
+10. Distinguish priceable risk (probabilities knowable in principle) from Knightian or model-misspecification uncertainty (not priceable); flag outputs that present the latter as the former.
 
-2. **Pre-mortem stress test on leading scenarios (CQ3, load-bearing).** Each leading scenario (top by probability band) must carry attached failure-pathway atoms in Klein prospective-hindsight form — past-tense narrative ("the failure has already happened, here's how it played out"), leading indicators, recoverability. Present-tense or future-tense failure narratives miss the Klein discipline. Scenarios without attached failure pathways are pre-mortem-omission.
+**Goal.** Produce a structured forward analysis — probability-weighted scenarios with divergence points, attached past-tense Klein failure pathways, an integrated forward architecture that requires all three components together, and a mandatory visible constructive-future gap-flag.
 
-3. **Constructive-future gap visibility (CQ4, load-bearing).** The deliverable must carry a structurally prominent gap-flag stating that Backcasting (constructive-future stance) is deferred and this analysis covers descriptive-future only. A gap-flag buried in the confidence map or footnotes is silent-gap residue. The evaluator confirms the gap-flag is at its own H2 position, not folded into another section.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Scenario-type breadth (CQ1).** At minimum one non-trend-extrapolation scenario must survive — orthogonal-driver, discontinuity (extremistan event per Taleb), or reversal. A scenario set composed entirely of trend variations is trend-extrapolation-bias; the analyst's imagination has narrowed to the dominant trajectory. The Taleb distinction is the reading vocabulary when the domain plausibly admits discontinuities (the mediocristan/extremistan check).
+- **CQ1 — scenario-type breadth.** Have the scenarios been constructed broadly enough, or has the analysis privileged extrapolation of the dominant trend? Failure mode if unmet: `trend-extrapolation-bias`.
+- **CQ2 — integration vs concatenation (load-bearing).** Do the probability bands integrate with the scenario narratives, or do they sit in a separate silo from the divergence points? Failure mode if unmet: `silo-aggregation`.
+- **CQ3 — pre-mortem stress test (load-bearing).** Has pre-mortem-action stress-tested the leading scenarios for failure pathways, or has the synthesis presented scenarios without naming failure modes? Failure mode if unmet: `pre-mortem-omission`.
+- **CQ4 — constructive-future gap visible (load-bearing).** Has the absence of constructive-future analysis (Backcasting deferred) been gap-flagged at its own structurally prominent position, or has the output silently presented descriptive-future as if complete? Failure mode if unmet: `silent-gap`.
 
-5. **Probability-band discipline.** Long-horizon probabilities render as bands with explicit bounds and calibration notes, not point estimates. Wide bands earn an explanation (long-horizon, Knightian, structural uncertainty rather than risk). Point estimates over genuinely uncertain inputs are false precision and the evaluator flags them. Tetlock-style calibration (anchored in base rates, separating inside view from outside view) is the reading frame.
+A passing output names forward question with time horizon, generates at least three scenarios including at least one non-trend-extrapolation type, assigns probability bands with explicit bounds, identifies divergence points with leading indicators, attaches past-tense Klein failure pathways to leading scenarios, produces an integrated-architecture forecast-claim no single component could have produced, carries the constructive-future gap-flag at its own H2 position, and distinguishes priceable risk from Knightian uncertainty.
 
-6. **Divergence-point and leading-indicator surfacing.** Scenarios laid out in parallel without naming where they branch are silo-aggregation residue. Each divergence point must name the variable or event whose realization splits scenarios, which scenarios it routes to under which realization, and the leading indicator that would reveal the branch taking. The forward watchlist is what the user actually acts on.
+**Named failure modes.**
 
-Knightian framing applies throughout. In long-horizon territory, scenarios + probabilities + pre-mortem stress are a structured reasoning architecture rather than a probability-theoretic theorem; the evaluator distinguishes priceable risk (probabilities knowable in principle) from Knightian or model-misspecification uncertainty (not priceable) and flags outputs that present the latter as the former. Where streams disagreed on a scenario's probability band or a divergence point's variable, the evaluator confirms disagreements are preserved rather than silently reconciled.
+- *trend-extrapolation-bias* — all scenarios are variations of the dominant trend; no orthogonal or discontinuity scenario.
+- *silo-aggregation* — synthesis stage outputs concatenate scenario, probability, and pre-mortem sections without integration.
+- *pre-mortem-omission* — pre-mortem-action did not run against the leading scenario.
+- *silent-gap* — output presents integrated-future-architecture without flagging Backcasting absence.
 
 ## REVISION GUIDANCE
 

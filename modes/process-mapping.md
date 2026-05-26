@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -159,9 +159,43 @@ Depth in Process Mapping is the explicitness of (a) actor-and-role attribution p
 
 Widening the lens means scanning for exception paths and edge cases (what happens when the input is malformed, when an actor is absent, when a dependency is unavailable), surfacing the gap between documented and actual process flow, and identifying handoff friction (information loss, role-confusion, queue accumulation) at every actor boundary. Breadth markers: the map shows at least one exception path explicitly, surfaces at least one official-vs-actual deviation, and flags handoffs as friction zones rather than treating them as transparent.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) boundary lock; (CQ2) official-vs-actual distinction; (CQ3) decision-point and branch surfacing; (CQ4) bottleneck constraint-identification; (CQ5) handoff examination. The named failure modes (scope-creep, official-vs-actual-elision, happy-path-flattening, bottleneck-symptom-only, handoff-blindness, causal-overreach) are the evaluation checklist. A passing Process Mapping output locks scope, distinguishes documented from actual flow, surfaces decision points and branches with criteria, identifies bottlenecks with underlying constraints named, and examines handoffs for friction.
+**What this analysis is.** Process Mapping is a current-state documentation method that produces a directed step-graph with actor swim-lanes, decision-point branches, dependency arcs, bottleneck atoms (constraint-typed), and handoff-friction findings. It is descriptive of how the process actually flows — distinct from systems-dynamics-structural (complexity-counterpart; cyclic feedback structure rather than linear / branching process flow), mechanism-understanding (T16; how the parts produce the whole's behavior at the principle level, not the step-by-step flow), root-cause-analysis (T4; why a particular outcome occurred), and future-state design (execution-tier T21 or future-mode T6). The mode is acyclic by territory — feedback loops escalate to systems-dynamics-structural — and stays descriptive: causal explanation of why outcomes occur escalates to T4.
+
+**Procedure.**
+
+1. Lock process scope — name the process, the start trigger, the end condition; these govern what survives into the step graph.
+2. Inventory actors and roles — each actor's responsibility scope and the steps they perform; orphan actors get flagged.
+3. Decompose the process into steps — each with actor attribution (who performs it), predecessors, successors, and lane assignment. Steps without actor attribution do not survive as steps.
+4. Surface decision points and branches — each with explicit decision criteria (never "depending on the situation") and the branches it spawns with the predicate routing to each.
+5. Identify exception paths — what happens when input is malformed, when an actor is absent, when a dependency is unavailable; the breadth marker is at least one exception-path atom.
+6. Map dependency arcs — "step A blocks step B" with the resource or precondition that creates the dependency; cycles are forbidden (escalate to systems-dynamics-structural if cycles exist).
+7. Identify bottlenecks with underlying constraints typed — capacity / authority / information / sequencing — not just the symptom ("approval takes too long" + "single approver, no delegation authority, full inbox").
+8. Examine handoffs between actors for friction type — information-loss / role-confusion / queue-accumulation / context-collapse — and the cost the friction imposes.
+9. Surface official-vs-actual divergence — where the documented process differs from the lived process, with the deviation and any workaround. If not investigated, say so explicitly rather than defaulting to the official version.
+10. Hold the territory line — stay descriptive; causal explanation of outcomes escalates to T4.
+
+**Goal.** Produce a diagram-friendly process map — swim-lane step graph with decision-point branches, dependency arcs, bottleneck atoms (constraint-typed), and handoff-friction findings — that any new actor entering at any step could read to understand what they need, who they wait for, and what unblocks them.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — scope lock.** Have the process boundaries been locked (clear start trigger and end condition), or is the scope ambiguous? Failure mode if unmet: `scope-creep`.
+- **CQ2 — official vs actual.** Has the analysis distinguished between the documented (official) process and the actual (lived) process, or described only one as if it were both? Failure mode if unmet: `official-vs-actual-elision`.
+- **CQ3 — decision points and branches.** Have decision points and branching paths been identified with explicit decision criteria, or has the process been flattened into a single happy path? Failure mode if unmet: `happy-path-flattening`.
+- **CQ4 — bottleneck constraint identification.** Have bottlenecks been identified with the underlying constraint typed (capacity / authority / information / sequencing), rather than just the symptom? Failure mode if unmet: `bottleneck-symptom-only`.
+- **CQ5 — handoff examination.** Have handoffs between actors been examined for friction and information loss, or treated as frictionless? Failure mode if unmet: `handoff-blindness`.
+
+A passing output locks scope explicitly, attributes each step to an actor, surfaces decision points with criteria, includes at least one exception-path atom, names bottlenecks with constraint-type tagged (using the canonical four labels), examines at least one handoff for friction (when multiple actors participate), acknowledges the official-vs-actual distinction (or marks it not-investigated), and stays descriptive — never overreaching into causal explanation.
+
+**Named failure modes.**
+
+- *scope-creep* — process boundaries shifted during execution; map covers more than the locked scope.
+- *official-vs-actual-elision* — map describes the process as documented in policy without acknowledging known deviations or workarounds.
+- *happy-path-flattening* — all branching paths collapsed to one main flow; exception paths absent.
+- *bottleneck-symptom-only* — bottleneck named (e.g., "approval takes too long") without the underlying constraint identified (e.g., "single approver, no delegation").
+- *handoff-blindness* — handoffs between actors presented without examining where information is lost, transformed, or queued.
+- *causal-overreach* — process map presented as causal explanation of why outcomes occur; mode boundary violation into T4.
 
 ## REVISION GUIDANCE
 

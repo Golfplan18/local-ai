@@ -1,0 +1,273 @@
+{
+  "series_id": "PAYEMS",
+  "observations": [
+    {
+      "date": "2021-01-01",
+      "value": 142863.0
+    },
+    {
+      "date": "2021-02-01",
+      "value": 143380.0
+    },
+    {
+      "date": "2021-03-01",
+      "value": 144232.0
+    },
+    {
+      "date": "2021-04-01",
+      "value": 144587.0
+    },
+    {
+      "date": "2021-05-01",
+      "value": 145065.0
+    },
+    {
+      "date": "2021-06-01",
+      "value": 145820.0
+    },
+    {
+      "date": "2021-07-01",
+      "value": 146762.0
+    },
+    {
+      "date": "2021-08-01",
+      "value": 147314.0
+    },
+    {
+      "date": "2021-09-01",
+      "value": 147771.0
+    },
+    {
+      "date": "2021-10-01",
+      "value": 148572.0
+    },
+    {
+      "date": "2021-11-01",
+      "value": 149230.0
+    },
+    {
+      "date": "2021-12-01",
+      "value": 149816.0
+    },
+    {
+      "date": "2022-01-01",
+      "value": 150006.0
+    },
+    {
+      "date": "2022-02-01",
+      "value": 150825.0
+    },
+    {
+      "date": "2022-03-01",
+      "value": 151315.0
+    },
+    {
+      "date": "2022-04-01",
+      "value": 151623.0
+    },
+    {
+      "date": "2022-05-01",
+      "value": 151924.0
+    },
+    {
+      "date": "2022-06-01",
+      "value": 152358.0
+    },
+    {
+      "date": "2022-07-01",
+      "value": 153072.0
+    },
+    {
+      "date": "2022-08-01",
+      "value": 153362.0
+    },
+    {
+      "date": "2022-09-01",
+      "value": 153582.0
+    },
+    {
+      "date": "2022-10-01",
+      "value": 153939.0
+    },
+    {
+      "date": "2022-11-01",
+      "value": 154242.0
+    },
+    {
+      "date": "2022-12-01",
+      "value": 154342.0
+    },
+    {
+      "date": "2023-01-01",
+      "value": 154776.0
+    },
+    {
+      "date": "2023-02-01",
+      "value": 155066.0
+    },
+    {
+      "date": "2023-03-01",
+      "value": 155134.0
+    },
+    {
+      "date": "2023-04-01",
+      "value": 155375.0
+    },
+    {
+      "date": "2023-05-01",
+      "value": 155655.0
+    },
+    {
+      "date": "2023-06-01",
+      "value": 155880.0
+    },
+    {
+      "date": "2023-07-01",
+      "value": 156043.0
+    },
+    {
+      "date": "2023-08-01",
+      "value": 156261.0
+    },
+    {
+      "date": "2023-09-01",
+      "value": 156417.0
+    },
+    {
+      "date": "2023-10-01",
+      "value": 156576.0
+    },
+    {
+      "date": "2023-11-01",
+      "value": 156703.0
+    },
+    {
+      "date": "2023-12-01",
+      "value": 156857.0
+    },
+    {
+      "date": "2024-01-01",
+      "value": 157032.0
+    },
+    {
+      "date": "2024-02-01",
+      "value": 157238.0
+    },
+    {
+      "date": "2024-03-01",
+      "value": 157466.0
+    },
+    {
+      "date": "2024-04-01",
+      "value": 157530.0
+    },
+    {
+      "date": "2024-05-01",
+      "value": 157608.0
+    },
+    {
+      "date": "2024-06-01",
+      "value": 157695.0
+    },
+    {
+      "date": "2024-07-01",
+      "value": 157748.0
+    },
+    {
+      "date": "2024-08-01",
+      "value": 157757.0
+    },
+    {
+      "date": "2024-09-01",
+      "value": 157912.0
+    },
+    {
+      "date": "2024-10-01",
+      "value": 157945.0
+    },
+    {
+      "date": "2024-11-01",
+      "value": 158079.0
+    },
+    {
+      "date": "2024-12-01",
+      "value": 158316.0
+    },
+    {
+      "date": "2025-01-01",
+      "value": 158268.0
+    },
+    {
+      "date": "2025-02-01",
+      "value": 158310.0
+    },
+    {
+      "date": "2025-03-01",
+      "value": 158377.0
+    },
+    {
+      "date": "2025-04-01",
+      "value": 158485.0
+    },
+    {
+      "date": "2025-05-01",
+      "value": 158498.0
+    },
+    {
+      "date": "2025-06-01",
+      "value": 158478.0
+    },
+    {
+      "date": "2025-07-01",
+      "value": 158542.0
+    },
+    {
+      "date": "2025-08-01",
+      "value": 158472.0
+    },
+    {
+      "date": "2025-09-01",
+      "value": 158548.0
+    },
+    {
+      "date": "2025-10-01",
+      "value": 158408.0
+    },
+    {
+      "date": "2025-11-01",
+      "value": 158449.0
+    },
+    {
+      "date": "2025-12-01",
+      "value": 158432.0
+    },
+    {
+      "date": "2026-01-01",
+      "value": 158592.0
+    },
+    {
+      "date": "2026-02-01",
+      "value": 158436.0
+    },
+    {
+      "date": "2026-03-01",
+      "value": 158621.0
+    },
+    {
+      "date": "2026-04-01",
+      "value": 158736.0
+    }
+  ],
+  "metadata": {
+    "id": "PAYEMS",
+    "title": "All Employees, Total Nonfarm",
+    "units": "Thousands of Persons",
+    "units_short": "Thous. of Persons",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2026-05-08 08:30:33-05",
+    "notes": "All Employees: Total Nonfarm, commonly known as Total Nonfarm Payroll, is a measure of the number of U.S. workers in the economy that excludes proprietors, private household employees, unpaid volunteers, farm employees, and the unincorporated self-employed. This measure accounts for approximately 80 percent of the workers who contribute to Gross Domestic Product (GDP).\n\nThis measure provides useful insights into the current economic situation because it can represent the number of jobs added or lost in an economy. Increases in employment might indicate that businesses are hiring which might also suggest that businesses are growing. Additionally, those who are newly employed have increased their personal incomes, which means (all else constant) their disposable incomes have also increased, thus fostering further economic expansion.\n\nGenerally, the U.S. labor force and levels of employment and unemployment are subject to fluctuations due to seasonal changes in weather, major holidays, and the opening and closing of schools. The Bureau of Labor Statistics (BLS) adjusts the data to offset the seasonal effects to show non-seasonal changes: for example, women's participation in the labor force; or a general decline in the number of employees, a possible indication of a downturn in the economy. To closely examine seasonal and non-seasonal changes, the BLS releases two monthly statistical measures: the seasonally adjusted All Employees: Total Nonfarm (PAYEMS) and All Employees: Total Nonfarm (PAYNSA), which is not seasonally adjusted.\n\nThe series comes from the 'Current Employment Statistics (Establishment Survey).'\n\nThe source code is: CES0000000001"
+  },
+  "retrieved_at": "2026-05-14T02:55:50Z"
+}

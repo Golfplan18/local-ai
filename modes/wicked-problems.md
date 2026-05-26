@@ -5,7 +5,7 @@ type: mode
 tags:
   - molecular
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -178,25 +178,41 @@ Depth in Wicked Problems Analysis is the degree to which framing-reconciliation,
 
 Breadth in Wicked Problems Analysis is the catalog of framings considered before the steelman fragment narrows to two leading framings. Widen the lens to scan: dominant-paradigm framing; stakeholder-position framing; historical-genealogy framing; cross-domain analogical framing. Even when only two framings are steelmanned, breadth is documented in the framing-reconciliation stage.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Wicked Problems is read in Rittel-Webber's wicked-characteristics vocabulary first, with Meadows twelve-leverage-points and Senge system-archetypes as the systems-dynamics reading layer, and Ulrich CSH boundary-categories where boundary-critique cross-cuts. All four critical questions are load-bearing because each protects a distinct part of the methodology: CQ1 (frame-privileging) protects multi-frame analysis, CQ2 (silo-aggregation) protects the molecular integration, CQ3 (stress-test-omission) protects against wishful intervention proposals, CQ4 (premature-resolution) protects against the collapse to clean recommendation that the mode's posture forbids. No single CQ acts as a supporting gate — Wicked Problems is the deepest analytical mode and the standards are concurrent rather than ranked.
+**What this analysis is.** Wicked Problems is a depth-molecular, complexity-systemic T2 mode in the Rittel-Webber tradition that composes competing-hypotheses (fragment — diagnosticity matrix), cui-bono (full), steelman-construction (fragment — two leading framings), systems-dynamics-causal (full), scenario-planning (full), and red-team-assessment (fragment — intervention stress-test) into an integrated analysis of a tangled problem. Read with Meadows twelve-leverage-points and Senge system-archetypes as the systems-dynamics layer, plus Ulrich CSH boundary-categories where boundary-critique cross-cuts. The mode is distinct from cui-bono (T2 simple/lighter — single situation, who benefits), stakeholder-mapping (T8 multi-party-descriptive), decision-clarity (T2 depth-molecular — decision-maker-output operation), boundary-critique (T2 stance counterpart — Ulrich CSH), and systems-dynamics-causal (feedback-dynamics-only). The mode's posture is anti-resolution: it honors irresolvability where the wicked characteristics demand it; collapsing tensions is a failure mode, not a polish.
 
-Evaluator checks:
+**Procedure.**
 
-1. **Multiple steelmanned framings (CQ1).** At minimum two framings must survive in the framing-reconciliation section, both steelmanned with comparable depth and identifiable stakeholders. A single-framing analysis is frame-privileging — wicked-problems methodology fails at the first stage if it picks one frame. The reconciliation atom names the relationships among framings without picking one as correct.
+1. State the problem once and tag which Rittel-Webber wicked characteristics actually apply (undefinability / no-stopping-rule / no-right-answer / irreversibility / every-attempt-counts / no-enumerable-solution-set / sui-generis), naming characteristics that do not apply explicitly.
+2. Steelman at least two leading framings of the problem at comparable depth — each with worldview, account of the problem under this framing, and stakeholders who hold it.
+3. Run cui-bono on the problem — stakeholder-interest atoms distinguish beneficiaries of the problem's current state from beneficiaries of its resolution; each stakeholder cross-referenced to a framing.
+4. Run competing-hypotheses fragment — diagnosticity matrix on candidate framings, naming the evidence that would differentiate them.
+5. Run systems-dynamics-causal — feedback loops and causal mechanisms, each with polarity (R/B) and Meadows leverage-point tag (12 constants → 1 transcending-paradigm); name Senge archetype signatures where present (limits-to-growth, shifting-the-burden, tragedy-of-the-commons, fixes-that-fail, escalation, success-to-the-successful, eroding-goals, accidental-adversaries, growth-and-underinvestment).
+6. Run scenario-planning — scenarios under multiple framings with driving uncertainties; preserve scenarios that diverge across framings (their frame-dependence is the finding).
+7. Surface candidate interventions, each tagged with target Meadows leverage-point and the framing's account it addresses.
+8. Run red-team-assessment fragment on the leading interventions — vulnerability statements with severity, mechanism by which the intervention fails, stakeholder dynamics emerging under stress. Interventions without attached stress-test atoms do not survive.
+9. Integrate dialectically — framing-reconciliation (named tensions, dominant-frame note), dynamic-projection (frame-dependent dynamics), intervention-stress-test (interventions whose outcome flips under a different framing). Synthesis-stage outputs must contain claims no single component could have produced.
+10. Preserve residual tensions explicitly — each tension naming which wickedness characteristic makes resolution unavailable and what the user lives with rather than resolves. Premature-resolution is a load-bearing failure mode.
+11. Calibrate confidence per finding; synthesis-stage atoms inherit lower confidence from component aggregation and the deliverable surfaces this rather than presenting synthesized findings at component-level confidence.
 
-2. **Component integration (CQ2).** Each synthesis-stage output must contain claims that no single component could have produced — a causal mechanism that becomes legible only after cui-bono surfaces the interest structure; a scenario whose plausibility depends on which framing dominates; an intervention whose stress-test outcome flips under a different framing. Provenance tags (`[from cui-bono]`, `[from systems-dynamics-causal]`, `[from red-team-fragment]`) make integration auditable — when atoms cluster in single-component blocks rather than interleaving, that is silo-aggregation.
+**Goal.** Produce a structured wicked-problems analysis — problem statement with wickedness-characteristics tags, multiple steelmanned framings with named tensions, stakeholder-interest map, causal dynamics with Meadows leverage-point tags, scenario projections under multiple framings, candidate interventions with red-team stress-test findings, and preserved residual tensions that the user lives with rather than resolves.
 
-3. **Adversarial stress test on leading interventions (CQ3).** Each leading intervention candidate must carry attached red-team findings — vulnerability statements with severity, the mechanism by which the intervention fails, and stakeholder dynamics that emerge under stress. Interventions without attached stress-test atoms are stress-test-omission and do not survive. The stance is assessment (red-team-assessment), not advocate.
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
-4. **Residual tensions preserved (CQ4).** The deliverable must carry an explicit residual-tensions section, each tension naming why it is irreducible (which wickedness characteristic makes resolution unavailable) and what the user lives with rather than resolves. A document with a single recommended intervention and no residual tensions is premature-resolution — the collapse to clean recommendation that the Rittel-Webber tradition explicitly forbids. The evaluator confirms the tensions section is structurally prominent (its own H2), not buried.
+- **CQ1 — multi-frame analysis.** Have all major framings been steelmanned, or has the analysis privileged one frame? Failure mode if unmet: `frame-privileging`.
+- **CQ2 — molecular integration.** Do the systems-dynamics findings actually integrate with the cui-bono findings, or do they sit in separate silos? Failure mode if unmet: `silo-aggregation`.
+- **CQ3 — adversarial stress test.** Have candidate interventions been stress-tested against the leading adversarial scenarios, or only against neutral projections? Failure mode if unmet: `stress-test-omission`.
+- **CQ4 — residual tensions preserved.** Are the residual tensions named explicitly, or has the synthesis collapsed them prematurely? Failure mode if unmet: `premature-resolution`.
 
-5. **Rittel-Webber characteristics tagged.** "Wicked" claims are honest only when grounded in which characteristics apply. The evaluator confirms the problem-statement section names which Rittel-Webber characteristics obtain (undefinability / no-stopping-rule / no-right-answer / irreversibility / every-attempt-counts / no-enumerable-solution-set / sui-generis) and which do not — not every "tangled" problem is wicked across every characteristic.
+All four CQs are load-bearing — Wicked Problems is the deepest analytical mode and the standards are concurrent rather than ranked. A passing output tags applicable Rittel-Webber characteristics, steelmans at least two framings, surfaces stakeholder-interest distinctions, tags each causal mechanism with a Meadows leverage-point, projects scenarios under multiple framings, attaches red-team findings to every surviving intervention candidate, preserves residual tensions in their own structurally prominent section, and never collapses to a single recommendation.
 
-6. **Meadows leverage-point tagging on dynamics.** Each causal mechanism in the dynamic-projection must carry a Meadows leverage-point tag (constants / buffers / stock-and-flow / delays / balancing loops / reinforcing loops / information flows / rules / self-organization / goals / paradigms / transcending-paradigms). The tag is operative for intervention design — interventions target leverage points, and untagged mechanisms cannot anchor intervention atoms. Where a Senge archetype signature is present (limits-to-growth, shifting-the-burden, tragedy-of-the-commons, etc.), the evaluator confirms it is named rather than left as a bare loop diagram.
+**Named failure modes.**
 
-Confidence is calibrated separately: synthesis-stage atoms inherit lower confidence from component aggregation, and the deliverable surfaces this rather than presenting synthesized findings at component-level confidence. Where Debate D3 (wicked-as-category vs wicked-as-extreme-complexity) is implicit in the analysis, the evaluator confirms the mode operates without adjudicating — applying the characteristics as analytical lens rather than ontological commitment.
+- *frame-privileging* — steelman-construction fragment surfaces only one framing.
+- *silo-aggregation* — synthesis stage outputs concatenate component outputs without integration.
+- *stress-test-omission* — red-team-fragment did not run against the leading intervention.
+- *premature-resolution* — output presents a single recommended intervention without residual tensions.
 
 ## REVISION GUIDANCE
 

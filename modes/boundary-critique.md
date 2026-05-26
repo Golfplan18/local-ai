@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -153,9 +153,40 @@ Depth in Boundary Critique is the rigor with which Ulrich's twelve boundary cate
 
 Widening the lens means surveying the full Ulrich category-cluster space (motivation: client/purpose/measure-of-improvement; control: decision-maker/resources/decision-environment; knowledge: expert/expertise/guarantor; legitimacy: witness/emancipation/worldview) and considering boundary frames from adjacent traditions (Habermasian discourse-ethics, Midgley's systemic intervention, Mackenzie's situated knowledges) where they bear. Breadth markers: all four category-clusters are visited; affected-but-not-involved parties are sought across all four (not only the obvious ones); the worldview category is treated with care because it surfaces the deepest boundary judgments.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the four critical questions: (CQ1) boundaries surfaced as judgments not naturalized; (CQ2) involved/affected distinction maintained; (CQ3) all four category-clusters audited; (CQ4) is-vs-ought comparison performed. The named failure modes (boundary-naturalization, involved-affected-collapse, selective-categories, ought-omission, critique-without-purpose) are the evaluation checklist. A passing Boundary Critique output names the system, surfaces current boundary judgments per Ulrich's four clusters, identifies affected-but-not-involved parties, and constructs the *ought* counterpart.
+**What this analysis is.** Boundary Critique applies Ulrich's Critical Systems Heuristics (CSH) to surface the boundary judgments embedded in a system, decision, or design — what counts as the system, whose voice counts, what the criterion of improvement is, who is affected without being involved. It is distinct from cui-bono (descriptive who-benefits within the artifact's own frame), stakeholder-mapping (multi-party landscape without critical stance), and wicked-problems (integrated multi-perspective synthesis). Its analytical character is critical — it surfaces contestation rather than smoothing it; consensus-seeking framing is a category error.
+
+**Procedure.**
+
+1. Name the system, plan, policy, design, or proposal under critique precisely at the head.
+2. Surface the boundary judgments currently embedded in the artifact — often implicit; state explicitly what is taken as given.
+3. Walk through Ulrich's twelve categories in four clusters — Motivation (beneficiary / purpose / measure of improvement), Control (decision-maker / resources / decision environment), Expertise (expert / expertise / guarantor), Legitimacy (witness / emancipation / worldview).
+4. For each category render three atoms — `is` (what the artifact takes as given), `ought` (what would obtain if affected-but-not-represented parties counted, from their standpoint), `gap` (the consequence-bearing distance between the two, flagged as live contestation).
+5. Treat worldview (category 12) with extended attention — it is the most invisible and most-commonly-skipped boundary judgment; deferring it as "too philosophical" is the single most common failure.
+6. Maintain Ulrich's involved-vs-affected distinction — list affected-but-not-involved parties by which categories surface them; if "the analyst" is currently the witness for an affected party, surface this as analyst-substitution rather than masking it.
+7. Construct implications for action — for each load-bearing gap, name what boundary judgment if revised would change the system's relation to its affected parties.
+8. Frame all surfaced gaps as live political contestation, not as technical or objective findings — boundary critique makes boundary judgments visible and contestable; it cannot eliminate them.
+9. Assign confidence per gap atom with explicit basis.
+
+**Goal.** Produce a 12-category boundary audit organized by Ulrich's four source-clusters with is/ought rendering per category and explicit implications for action that name what the user could do with the surfaced judgments.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — boundaries surfaced as judgments.** Have boundary judgments been surfaced as judgments (contestable, made by someone for some purpose), or are they treated as natural givens of the system? Failure mode if unmet: `boundary-naturalization`.
+- **CQ2 — involved-vs-affected distinction.** Has the analysis distinguished those involved in the system's design and benefit from those affected by but not involved in the system, per Ulrich's core asymmetry? Failure mode if unmet: `involved-affected-collapse`.
+- **CQ3 — all four clusters audited.** Have all four of Ulrich's category-clusters (motivation, control, knowledge, legitimacy) been audited, or has the analysis selected only categories that confirm an initial suspicion? Failure mode if unmet: `selective-categories`.
+- **CQ4 — is-vs-ought comparison.** Has the *is* vs *ought* boundary comparison been performed rather than only diagnosing the current boundary? Failure mode if unmet: `ought-omission`.
+
+A passing output names the system under critique, audits all twelve categories across the four clusters with explicit is/ought/gap atoms (including a worldview gap), maintains the involved-vs-affected distinction with affected-but-not-involved parties identified per category, names implications for action per cluster, and frames gaps as live contestation rather than as objective findings.
+
+**Named failure modes.**
+
+- *boundary-naturalization* — boundary judgments described in system-spec language rather than as contestable choices made by someone for some purpose.
+- *involved-affected-collapse* — affected-but-not-involved parties section absent or merged into the involved-stakeholder list.
+- *selective-categories* — only one or two of Ulrich's four category-clusters audited; others skipped or noted "not applicable" without justification.
+- *ought-omission* — output diagnoses the current boundary without articulating what an inclusive-of-affected-parties boundary would look like.
+- *critique-without-purpose* — boundary critique surfaced without articulating what the user could do with the surfaced judgments.
 
 ## REVISION GUIDANCE
 

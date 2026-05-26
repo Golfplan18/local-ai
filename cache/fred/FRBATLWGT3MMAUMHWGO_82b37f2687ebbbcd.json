@@ -1,0 +1,117 @@
+{
+  "series_id": "FRBATLWGT3MMAUMHWGO",
+  "observations": [
+    {
+      "date": "2024-02-01",
+      "value": 5.0
+    },
+    {
+      "date": "2024-03-01",
+      "value": 4.7
+    },
+    {
+      "date": "2024-04-01",
+      "value": 5.3
+    },
+    {
+      "date": "2024-05-01",
+      "value": 5.2
+    },
+    {
+      "date": "2024-06-01",
+      "value": 5.3
+    },
+    {
+      "date": "2024-07-01",
+      "value": 4.7
+    },
+    {
+      "date": "2024-08-01",
+      "value": 4.7
+    },
+    {
+      "date": "2024-09-01",
+      "value": 4.8
+    },
+    {
+      "date": "2024-10-01",
+      "value": 4.7
+    },
+    {
+      "date": "2024-11-01",
+      "value": 4.3
+    },
+    {
+      "date": "2024-12-01",
+      "value": 4.2
+    },
+    {
+      "date": "2025-01-01",
+      "value": 4.2
+    },
+    {
+      "date": "2025-02-01",
+      "value": 4.3
+    },
+    {
+      "date": "2025-03-01",
+      "value": 4.3
+    },
+    {
+      "date": "2025-04-01",
+      "value": 4.3
+    },
+    {
+      "date": "2025-05-01",
+      "value": 4.3
+    },
+    {
+      "date": "2025-06-01",
+      "value": 4.1
+    },
+    {
+      "date": "2025-07-01",
+      "value": 4.1
+    },
+    {
+      "date": "2025-08-01",
+      "value": 4.0
+    },
+    {
+      "date": "2025-09-01",
+      "value": 4.1
+    },
+    {
+      "date": "2025-10-01",
+      "value": null
+    },
+    {
+      "date": "2025-11-01",
+      "value": 4.0
+    },
+    {
+      "date": "2025-12-01",
+      "value": 3.7
+    },
+    {
+      "date": "2026-01-01",
+      "value": 3.6
+    },
+    {
+      "date": "2026-02-01",
+      "value": 3.7
+    }
+  ],
+  "metadata": {
+    "id": "FRBATLWGT3MMAUMHWGO",
+    "title": "3-Month Moving Average of Unweighted Median Hourly Wage Growth: Overall",
+    "units": "Percent Change from Year Ago",
+    "units_short": "% Chg. from Yr. Ago",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Not Seasonally Adjusted",
+    "last_updated": "2026-03-13 14:34:42-05",
+    "notes": "Median of the year-over-year percent change in hourly wage rates computed at the individual level using linked wage records. Reported as a 3-month moving average.\n\nFor more details about this release from the Federal Reserve Bank of Atlanta, visit their Wage Growth Tracker webpage (https://www.atlantafed.org/chcs/wage-growth-tracker?panel=2)."
+  },
+  "retrieved_at": "2026-05-24T21:39:03-0700"
+}

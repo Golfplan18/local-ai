@@ -1,0 +1,49 @@
+{
+  "series_id": "GDPC1",
+  "observations": [
+    {
+      "date": "2021-10-01",
+      "value": 21847.602
+    },
+    {
+      "date": "2022-01-01",
+      "value": 21738.871
+    },
+    {
+      "date": "2022-04-01",
+      "value": 21708.16
+    },
+    {
+      "date": "2022-07-01",
+      "value": 21851.134
+    },
+    {
+      "date": "2022-10-01",
+      "value": 21989.981
+    },
+    {
+      "date": "2023-01-01",
+      "value": 22112.329
+    },
+    {
+      "date": "2023-04-01",
+      "value": 22225.35
+    },
+    {
+      "date": "2023-07-01",
+      "value": 22491.567
+    }
+  ],
+  "metadata": {
+    "id": "GDPC1",
+    "title": "Real Gross Domestic Product",
+    "units": "Billions of Chained 2017 Dollars",
+    "units_short": "Bil. of Chn. 2017 $",
+    "frequency": "Quarterly",
+    "frequency_short": "Q",
+    "seasonal_adjustment": "Seasonally Adjusted Annual Rate",
+    "last_updated": "2023-10-26 07:55:01-05",
+    "notes": "BEA Account Code: A191RX\n\nReal gross domestic product is the inflation adjusted value of the goods and services produced by labor and property located in the United States.For more information see the Guide to the National Income and Product Accounts of the United States (NIPA). For more information, please visit the Bureau of Economic Analysis (http://www.bea.gov/national/pdf/nipaguid.pdf)."
+  },
+  "retrieved_at": "2026-05-16T03:23:27-0700"
+}

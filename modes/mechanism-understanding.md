@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -150,9 +150,43 @@ Depth in Mechanism Understanding is the explicitness of (a) level-of-analysis se
 
 Widening the lens means scanning for components the analyst might omit (background conditions, supporting infrastructure, regulatory or constraining elements that do not actively contribute but enable contribution), considering alternative mechanism descriptions at different levels of analysis, and surfacing where the mechanism is incomplete or where multiple mechanisms could account for the same observed behavior. Breadth markers: the analysis names at least one background-or-enabling component that easy descriptions tend to omit, and acknowledges at least one alternative-mechanism candidate the available evidence cannot rule out.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) level lock; (CQ2) function attribution; (CQ3) emergence account; (CQ4) boundary conditions; (CQ5) territory distinction from T4 and T17. The named failure modes (level-confusion, component-inventory-without-function, emergence-elision, scope-overreach, territory-conflation, just-so-explanation) are the evaluation checklist. A passing Mechanism Understanding output locks the level of analysis, attributes function per component, accounts for emergence as interaction-pattern-producing-behavior, names boundary conditions, and stays within T16's mechanism-territory rather than drifting into T4 causation or T17 process-flow.
+**What this analysis is.** Mechanism Understanding is a principle-level structural explanation of how the parts of a phenomenon produce the whole's behavior. It is descriptive of how-it-works, distinct from a process map (T17 — temporal flow, step-by-step over time) and from a causal-chain analysis (T4 — backward-to-causes for a particular outcome). The mode locks a level of analysis, inventories components with their functional role (not just their names), describes the interaction pattern as the source of the whole's behavior, and names the boundary conditions under which the mechanism applies. It is the founder and currently only mode in T16.
+
+**Procedure.**
+
+1. State the phenomenon and the specific behavior to be explained — one canonical pairing at the head.
+2. Lock the level of analysis (molecular / organizational / system-wide / domain-specific). The lock is the load-bearing precondition; explanation that drifts between levels without acknowledgment is the level-confusion failure mode.
+3. Inventory the components at the locked level — each component named with its functional role in producing the whole's behavior, not merely identified as present.
+4. Surface background and enabling components — regulatory conditions, supporting infrastructure, constraining elements that enable contribution without actively contributing; easy explanations omit these.
+5. Describe the interaction pattern explicitly — the choreography among components, the relationship-among-components that is the actual mechanism. A list of components and their separate functions is not a mechanism.
+6. Render the emergence account — state as a single integrated claim that the interaction pattern produces the whole's behavior, rather than describing behavior alongside components.
+7. Name boundary conditions — when the mechanism applies, when it breaks down, what it does not explain.
+8. Produce at least one prediction under altered conditions — what changes in the whole's behavior if a specific component is altered, removed, or replaced, with the prediction following from the stated mechanism.
+9. Surface at least one alternative mechanism the available evidence cannot rule out, with discrimination criteria.
+10. Hold the territory line — distinguish the mechanism explanation from a T4 causal chain or a T17 process flow.
+
+**Goal.** Produce a structured mechanism explanation that locks a level of analysis, attributes function per component, accounts for emergence as interaction-pattern-producing-behavior, names boundary conditions, and produces falsifiable predictions about behavior under altered conditions.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — level lock.** Has the level of analysis been locked (molecular / organizational / system-wide), or has the explanation jumped between levels without acknowledgment? Failure mode if unmet: `level-confusion`.
+- **CQ2 — function per component.** Have components been inventoried with each component's function stated, rather than merely named? Failure mode if unmet: `component-inventory-without-function`.
+- **CQ3 — emergence account.** Has the interaction pattern among components been described as the source of the whole's behavior, rather than treating the whole's behavior as a separate fact alongside the components? Failure mode if unmet: `emergence-elision`.
+- **CQ4 — boundary conditions.** Are boundary conditions named — when the mechanism applies, when it breaks down, what it does not explain? Failure mode if unmet: `scope-overreach`.
+- **CQ5 — territory distinction.** Has the explanation been distinguished from a process map (temporal flow) and a causal chain (backward-to-causes), or have these been conflated? Failure mode if unmet: `territory-conflation`.
+
+A passing output locks the level of analysis, attributes function per component, names at least one background/enabling component, makes the interaction pattern explicit, renders the emergence account, names boundary conditions, produces at least one falsifiable prediction under altered conditions, and stays within T16's mechanism territory rather than drifting into T4 causation or T17 process-flow.
+
+**Named failure modes.**
+
+- *level-confusion* — explanation moves between molecular, organizational, and system-wide accounts without explicit acknowledgment of level shift.
+- *component-inventory-without-function* — components named but their functional role in producing the whole's behavior not stated.
+- *emergence-elision* — whole's behavior described separately from components without an explicit account of how the interaction pattern produces it.
+- *scope-overreach* — mechanism explanation extended to phenomena outside the boundary conditions; over-generalization.
+- *territory-conflation* — output blends process-flow narration (T17) or causal-chain investigation (T4) with mechanism explanation.
+- *just-so-explanation* — explanation appears to fit the observed behavior but makes no predictions about behavior under altered conditions.
 
 ## REVISION GUIDANCE
 

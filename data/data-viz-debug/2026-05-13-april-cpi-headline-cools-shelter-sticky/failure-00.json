@@ -1,0 +1,9 @@
+{
+  "logged_at_utc": "2026-05-14T15:05:30+00:00",
+  "article_slug": "2026-05-13-april-cpi-headline-cools-shelter-sticky",
+  "figure_index": 0,
+  "error_code": "model_unavailable",
+  "error_message": "FRED fetch failed: FRED unexpected HTTP 500: {\"error_code\":500,\"error_message\":\"Internal Server Error\"}",
+  "envelope": {},
+  "figure_schema": null
+}

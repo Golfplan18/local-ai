@@ -1,0 +1,117 @@
+{
+  "series_id": "CPILFESL",
+  "observations": [
+    {
+      "date": "2023-07-01",
+      "value": 308.959
+    },
+    {
+      "date": "2023-08-01",
+      "value": 309.646
+    },
+    {
+      "date": "2023-09-01",
+      "value": 310.616
+    },
+    {
+      "date": "2023-10-01",
+      "value": 311.433
+    },
+    {
+      "date": "2023-11-01",
+      "value": 312.373
+    },
+    {
+      "date": "2023-12-01",
+      "value": 313.23
+    },
+    {
+      "date": "2024-01-01",
+      "value": 314.389
+    },
+    {
+      "date": "2024-02-01",
+      "value": 315.555
+    },
+    {
+      "date": "2024-03-01",
+      "value": 316.762
+    },
+    {
+      "date": "2024-04-01",
+      "value": 317.596
+    },
+    {
+      "date": "2024-05-01",
+      "value": 318.053
+    },
+    {
+      "date": "2024-06-01",
+      "value": 318.343
+    },
+    {
+      "date": "2024-07-01",
+      "value": 318.933
+    },
+    {
+      "date": "2024-08-01",
+      "value": 319.839
+    },
+    {
+      "date": "2024-09-01",
+      "value": 320.835
+    },
+    {
+      "date": "2024-10-01",
+      "value": 321.688
+    },
+    {
+      "date": "2024-11-01",
+      "value": 322.619
+    },
+    {
+      "date": "2024-12-01",
+      "value": 323.296
+    },
+    {
+      "date": "2025-01-01",
+      "value": 324.739
+    },
+    {
+      "date": "2025-02-01",
+      "value": 325.475
+    },
+    {
+      "date": "2025-03-01",
+      "value": 325.659
+    },
+    {
+      "date": "2025-04-01",
+      "value": 326.43
+    },
+    {
+      "date": "2025-05-01",
+      "value": 326.854
+    },
+    {
+      "date": "2025-06-01",
+      "value": 327.6
+    },
+    {
+      "date": "2025-07-01",
+      "value": 328.656
+    }
+  ],
+  "metadata": {
+    "id": "CPILFESL",
+    "title": "Consumer Price Index for All Urban Consumers: All Items Less Food and Energy in U.S. City Average",
+    "units": "Index 1982-1984=100",
+    "units_short": "Index 1982-1984=100",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2025-08-12 07:42:31-05",
+    "notes": "The \"Consumer Price Index for All Urban Consumers: All Items Less Food & Energy\" is an aggregate of prices paid by urban consumers for a typical basket of goods, excluding food and energy. This measurement, known as \"Core CPI,\" is widely used by economists because food and energy have very volatile prices. The Bureau of Labor Statistics defines and measures the official CPI, and more information can be found in the FAQ (https://www.bls.gov/cpi/questions-and-answers.htm) or in this article (https://www.bls.gov/opub/hom/pdf/cpihom.pdf)."
+  },
+  "retrieved_at": "2026-05-24T05:32:54-0700"
+}

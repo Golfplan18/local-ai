@@ -1,0 +1,45 @@
+{
+  "series_id": "GDI",
+  "observations": [
+    {
+      "date": "2024-01-01",
+      "value": 28468.437
+    },
+    {
+      "date": "2024-04-01",
+      "value": 28861.12
+    },
+    {
+      "date": "2024-07-01",
+      "value": 29117.284
+    },
+    {
+      "date": "2024-10-01",
+      "value": 29560.027
+    },
+    {
+      "date": "2025-01-01",
+      "value": 29895.65
+    },
+    {
+      "date": "2025-04-01",
+      "value": 30244.878
+    },
+    {
+      "date": "2025-07-01",
+      "value": 30706.517
+    }
+  ],
+  "metadata": {
+    "id": "GDI",
+    "title": "Gross Domestic Income",
+    "units": "Billions of Dollars",
+    "units_short": "Bil. of $",
+    "frequency": "Quarterly",
+    "frequency_short": "Q",
+    "seasonal_adjustment": "Seasonally Adjusted Annual Rate",
+    "last_updated": "2025-12-23 07:51:11-06",
+    "notes": "BEA Account Code: A261RC\r\nGross domestic income  is an alternative way of measuring the nation's economy, by counting the incomes earned and costs incurred in production. In theory, GDI should equal gross domestic product, but the different source data yield different results. The difference between the two measures is known as the \"statistical discrepancy.\" BEA considers GDP more reliable because it's based on timelier, more expansive data."
+  },
+  "retrieved_at": "2026-05-24T17:12:06-0700"
+}

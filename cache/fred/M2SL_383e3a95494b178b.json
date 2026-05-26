@@ -1,0 +1,113 @@
+{
+  "series_id": "M2SL",
+  "observations": [
+    {
+      "date": "2024-02-01",
+      "value": 20903.0
+    },
+    {
+      "date": "2024-03-01",
+      "value": 20943.8
+    },
+    {
+      "date": "2024-04-01",
+      "value": 20969.9
+    },
+    {
+      "date": "2024-05-01",
+      "value": 21032.0
+    },
+    {
+      "date": "2024-06-01",
+      "value": 21094.6
+    },
+    {
+      "date": "2024-07-01",
+      "value": 21122.6
+    },
+    {
+      "date": "2024-08-01",
+      "value": 21204.7
+    },
+    {
+      "date": "2024-09-01",
+      "value": 21289.0
+    },
+    {
+      "date": "2024-10-01",
+      "value": 21337.0
+    },
+    {
+      "date": "2024-11-01",
+      "value": 21440.0
+    },
+    {
+      "date": "2024-12-01",
+      "value": 21458.4
+    },
+    {
+      "date": "2025-01-01",
+      "value": 21519.7
+    },
+    {
+      "date": "2025-02-01",
+      "value": 21587.5
+    },
+    {
+      "date": "2025-03-01",
+      "value": 21657.8
+    },
+    {
+      "date": "2025-04-01",
+      "value": 21792.0
+    },
+    {
+      "date": "2025-05-01",
+      "value": 21849.5
+    },
+    {
+      "date": "2025-06-01",
+      "value": 21967.8
+    },
+    {
+      "date": "2025-07-01",
+      "value": 22046.6
+    },
+    {
+      "date": "2025-08-01",
+      "value": 22105.5
+    },
+    {
+      "date": "2025-09-01",
+      "value": 22188.6
+    },
+    {
+      "date": "2025-10-01",
+      "value": 22260.1
+    },
+    {
+      "date": "2025-11-01",
+      "value": 22280.9
+    },
+    {
+      "date": "2025-12-01",
+      "value": 22366.2
+    },
+    {
+      "date": "2026-01-01",
+      "value": 22442.1
+    }
+  ],
+  "metadata": {
+    "id": "M2SL",
+    "title": "M2",
+    "units": "Billions of Dollars",
+    "units_short": "Bil. of $",
+    "frequency": "Monthly",
+    "frequency_short": "M",
+    "seasonal_adjustment": "Seasonally Adjusted",
+    "last_updated": "2026-02-24 12:01:12-06",
+    "notes": "announcements (https://www.federalreserve.gov/feeds/h6.html) and Technical Q&As (https://www.federalreserve.gov/releases/h6/h6_technical_qa.htm) posted on December 17, 2020.\n\nFor questions on the data, please contact the data source (https://www.federalreserve.gov/apps/ContactUs/feedback.aspx?refurl=/releases/h6/%). For questions on FRED functionality, please contact us here (https://fred.stlouisfed.org/contactus/).</p>"
+  },
+  "retrieved_at": "2026-05-23T23:28:41-0700"
+}

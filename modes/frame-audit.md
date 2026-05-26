@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -166,9 +166,43 @@ Depth in Frame Audit is the precision with which (1) the operative frame is name
 
 Widening the lens means scanning all seven framing-tradition layers before narrowing: cognitive linguistic (Lakoff — lexical activation, metaphor); sociological (Goffman — primary frameworks, keyings, fabrications); media studies (Entman — selection, salience, four functions; Gitlin — institutional routinization; Tuchman — news-net constitutive activity); CDA (Fairclough, van Dijk, Wodak — presupposition, nominalization, passivization, ideological square, intertextuality); propaganda analysis (Bernays, Ellul, Herman/Chomsky, Stanley — strategic deployment, institutional incentives, not-at-issue content); political communication (Iyengar — episodic/thematic; Chong/Druckman — emphasis/equivalence); social-movement framing (Snow/Benford — diagnostic/prognostic/motivational; alignment processes). Breadth markers: the audit has surveyed at least four of these layers before producing findings.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the five critical questions: (CQ1) frame named in alternative-comparable vocabulary; (CQ2) Entman four functions populated; (CQ3) selection and silence both catalogued; (CQ4) lexical and grammatical mechanisms inventoried; (CQ5) counterframe constructed. The named failure modes (frame-naturalization, function-collapse, silence-blindness, macro-frame-only-reading, counterframe-omission, stance-slippage-into-attack) are the evaluation checklist. A passing Frame Audit names frames in vocabulary that travels across alternatives, populates the four functions per frame, inventories selection and silence, cites the lexical-grammatical mechanisms with quoted text, and constructs at least one counterframe.
+**What this analysis is.** Frame Audit is a stance-suspending frame-surfacing analysis on a single argumentative artifact — operating in Lakoff conceptual-metaphor, Goffman primary-frameworks-and-keyings, and Entman four-functions (problem definition / causal interpretation / moral evaluation / treatment recommendation) vocabularies, with CDA mechanisms (presupposition, nominalisation, passivisation, lexicalisation) inventoried where they appear. It is distinct from coherence-audit (which checks internal inferential structure neutrally), from propaganda-audit (which is adversarial-stance Stanley-influenced), from argument-audit (the depth-molecular sibling that composes coherence + frame), from frame-comparison (which compares multiple frames across artifacts), and from paradigm-suspension (which questions the framework holding the concept). The mode's posture is suspending — surface what the frame does and what it costs, without rejecting it.
+
+**Procedure.**
+
+1. Identify the operative frame(s) — name each in vocabulary that travels across alternative frames (e.g., `markets-as-rational-actors`, `nation-as-family`), not in the artifact's own naturalised terms.
+2. Surface the focal topic the audit centers on.
+3. Inventory Lakoff metaphors — each carries quoted text, source-domain → target-domain mapping, and the inferential entailments the mapping smuggles in.
+4. Apply Goffman primary-framework analysis — natural / social, any keying (make-believe / contests / ceremonials / technical-redoings / regroundings), fabrication flag if present.
+5. Populate Entman four functions per frame — problem definition, causal interpretation, moral evaluation, treatment recommendation — each with quoted evidence.
+6. Inventory selection AND silence — both what the artifact includes/emphasises AND what it excludes/downplays. Frames live in their silences.
+7. Catalogue lexical-grammatical mechanisms — presupposition, nominalisation, passivisation, lexicalisation choices — with quoted text and the framing work each does.
+8. Construct at least one counterframe — what the issue would look like under an alternative frame, with the four Entman functions briefly re-populated under it.
+9. Hold the stance-suspending posture — do not slip from frame-surfacing into frame-rejection. (If adversarial reading is wanted, route to propaganda-audit or the red-team modes.)
+10. Calibrate confidence per major claim with quoted-text or lens-application grounding.
+
+**Goal.** Produce a frame audit — a stance-suspending analysis that names operative frames in alternative-comparable vocabulary, populates Entman's four functions with quoted evidence, inventories selection and silence, cites the lexical-grammatical mechanisms by which the frame travels, and sketches at least one counterframe.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — frame named in alternative-comparable vocabulary.** Has the operative frame been named in vocabulary that allows comparison with alternative frames, rather than treating the artifact's framing as the natural way to see the issue? Failure mode if unmet: `frame-naturalization`.
+- **CQ2 — Entman four functions populated.** Has the analysis applied the four functions (problem / cause / moral / treatment) per frame with quoted evidence? Failure mode if unmet: `function-collapse`.
+- **CQ3 — selection and silence both catalogued.** Has the audit surfaced what the artifact excludes and downplays as well as what it includes and emphasises? Failure mode if unmet: `silence-blindness`.
+- **CQ4 — lexical-grammatical mechanisms inventoried.** Has the audit catalogued the metaphors, presuppositions, nominalisations, and lexicalisation choices by which the frame travels at the word and grammar level? Failure mode if unmet: `macro-frame-only-reading`.
+- **CQ5 — counterframe constructed.** Has at least one counterframe been sketched to make the operative frame visible as a frame? Failure mode if unmet: `counterframe-omission`.
+
+A passing output names operative frames in alternative-comparable vocabulary, populates Entman's four functions per frame with quoted evidence, inventories both inclusions and silences, cites lexical-grammatical mechanisms with quoted text, constructs at least one counterframe, holds the stance-suspending posture without slipping into frame-rejection, and carries per-finding confidence.
+
+**Named failure modes.**
+
+- *frame-naturalization* — audit reads the artifact's framing as "the way the issue is" rather than as one frame among possible alternatives.
+- *function-collapse* — audit names the operative frame but does not break it into Entman's four functions.
+- *silence-blindness* — selection-and-salience inventory focuses only on what is included; what is excluded or downplayed is not catalogued.
+- *macro-frame-only-reading* — audit identifies a frame at the macro level but does not show the lexical and grammatical mechanisms by which the frame travels.
+- *counterframe-omission* — counterframe section is empty or asserts that no alternative frame is available.
+- *stance-slippage-into-attack* — audit slides from frame-surfacing into frame-rejection, asserting the operative frame is wrong rather than naming what it does and what it costs.
 
 ## REVISION GUIDANCE
 

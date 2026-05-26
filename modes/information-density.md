@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-05-01
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -193,9 +193,47 @@ Depth in Information Density is the rigor with which four analytical operations 
 
 Widening the lens means scanning across the four lens-clusters before narrowing (Tufte data-ink / Bertin visual-variables / Cleveland-McGill perceptual-tasks / Bringhurst-Lupton typography); considering the graphic in its decision-support context (what does the audience need to read off the graphic at a glance, what at sustained attention, what should they decide or notice); considering the chart-type alternatives at the decision point (could a different chart type — small multiples, sparkline, dot plot, slope graph, table — support the elementary task more accurately); considering the constraints (brand / house-style; accessibility — color-blindness, contrast, screen-reader; data-honesty — does the encoding mislead through truncation, area-vs-length confusion, or 3D distortion; audience expectation — convention may justify deviation from theoretical optimum); and noting where the input is part of a larger system (a dashboard's coordination, a report's narrative arc, a presentation's slide rhythm). Breadth markers: at least three of the four lens-clusters substantively addressed (typography skipped only if input is purely chart-without-text); at least one chart-type alternative considered if the chart-type-fit is in question; at least one constraint acknowledged.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-Evaluate against the six critical questions: (CQ1) elementary perceptual task identified and encoding-fitness assessed; (CQ2) visual-variable mapping checked against Bertin properties; (CQ3) data-ink ratio audited specifically not asserted as label; (CQ4) typographic hierarchy and grid analyzed where applicable; (CQ5) recommendations specific not gestures; (CQ6) constraints acknowledged. The named failure modes are the evaluation checklist. A passing Information Density output addresses the four operations substantively, produces specific prescriptive recommendations (which mark to change, which encoding to substitute, which element to remove), acknowledges residual tradeoffs and constraints, ranks recommendations by impact, and assigns confidence per recommendation.
+**What this analysis is.** Information Density is an applied-evaluative info-graphic critique integrating four operations: Tufte data-ink audit (mark-by-mark classification of data-ink / structure-ink / chartjunk), Bertin visual-variable mapping check (selective / associative / ordered / quantitative fitness per data attribute), Cleveland-McGill elementary-perceptual-task assessment (encoding-accuracy ranking), and Bringhurst-Lupton typographic-hierarchy analysis where typography is present. It produces specific, ranked, implementable prescriptive recommendations. It is distinct from compositional-dynamics (universal-perceptual gestalt + Arnheim reading without info-encoding focus), from ma-reading (contemplative aesthetic reading of void / interval), from place-reading-genius-loci (affordance + inhabited-place reading), and from T11 relation-extraction (which reads what a diagram asserts about A→B→C rather than evaluating its encoding). The mode produces prescriptive recommendations grounded in encoding-fitness, not aesthetic preference.
+
+**Procedure.**
+
+1. Lock the information graphic with its intended message (or decision it supports) and its intended audience.
+2. Inventory stressors of the graphic — what the audience needs to read at a glance vs sustained attention.
+3. Audit data-ink mark by mark — classify each as `data-ink` (carries data), `structure-ink` (axes / scale references / data-defining frames), or `chartjunk` (decoration / redundancy / moiré / 3D / unnecessary color). Estimate the ratio; name specific removable elements.
+4. Check Bertin visual-variable mapping per data attribute — identify the variable encoding it (position / size / shape / value / colour / orientation / texture), check fitness against the variable's properties (`selective` / `associative` / `ordered` / `quantitative`), flag mismatches with distortion mechanism.
+5. Identify the elementary perceptual task the message demands (Cleveland-McGill: `position-on-common-scale` > `nonaligned-position` > `length` > `angle` > `direction` > `area` > `volume` > `color/shading`, descending accuracy) and check chart-type support at the demanded accuracy.
+6. Analyze typographic hierarchy and grid where input includes typography — scale, weight, colour, rhythm, measure, leading, grid alignment.
+7. Produce prescriptive recommendations — each specific (which mark to change, which encoding to substitute, which element to remove, which hierarchy to strengthen), ranked by impact, with the diagnosing operation named.
+8. Acknowledge residual tradeoffs and constraints — brand, accessibility, data-honesty, audience-expectation, system-coordination — recommendations that conflict get flagged with resolution paths.
+9. Hold Tufte minimalism as default but not dogma — contexts where minor redundancy / framing / annotation actively serves the audience are real.
+10. Calibrate confidence per recommendation (`high-confidence` / `medium-confidence` / `low-confidence`) with grounding.
+
+**Goal.** Produce a prescriptive critique of an information graphic — a structured audit that runs the four operations (Tufte / Bertin / Cleveland-McGill / Bringhurst-Lupton) on a named graphic and produces specific, ranked, implementable recommendations.
+
+**Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
+
+- **CQ1 — Cleveland-McGill task fitness.** Has the analysis identified the elementary perceptual task the graphic requires and assessed whether the visual encoding supports that task at the accuracy the message demands? Failure mode if unmet: `elementary-task-mismatch-undiagnosed`.
+- **CQ2 — Bertin mapping check.** Has the visual-variable-to-data-attribute mapping been checked for fitness against Bertin properties (selective / associative / ordered / quantitative)? Failure mode if unmet: `bertin-mapping-unchecked`.
+- **CQ3 — data-ink audited specifically.** Has data-ink ratio been audited mark by mark, or has "too much chartjunk" been asserted as a vague label? Failure mode if unmet: `data-ink-as-slogan`.
+- **CQ4 — typographic hierarchy analyzed.** Has Bringhurst-Lupton typographic hierarchy and grid analysis been performed where the input includes typography? Failure mode if unmet: `typography-as-not-encoding`.
+- **CQ5 — recommendations specific.** Are prescriptive recommendations specific (which mark / encoding / element / hierarchy), or general gestures (simplify, declutter, improve hierarchy)? Failure mode if unmet: `recommendations-as-gestures`.
+- **CQ6 — constraints acknowledged.** Have residual tradeoffs and constraints (brand, accessibility, data-honesty, audience-expectation) been acknowledged? Failure mode if unmet: `constraint-blindness`.
+
+A passing output addresses all four operations substantively, produces specific prescriptive recommendations a designer could implement without further interpretation, ranks them by impact, acknowledges residual constraints, holds Tufte minimalism as default-but-not-dogma, grounds critique in encoding-fitness rather than aesthetic preference, and assigns confidence per recommendation.
+
+**Named failure modes.**
+
+- *elementary-task-mismatch-undiagnosed* — Cleveland-McGill ranking not applied; encoding-fitness for the elementary perceptual task not assessed.
+- *bertin-mapping-unchecked* — visual-variable-to-data-attribute mapping not assessed against Bertin properties.
+- *data-ink-as-slogan* — data-ink ratio invoked as a label without auditing specific marks.
+- *typography-as-not-encoding* — typography in the input but hierarchy and grid analysis skipped; text treated as carrier rather than encoding.
+- *recommendations-as-gestures* — recommendations general (simplify, declutter, improve hierarchy) rather than mark / encoding / element / hierarchy specific.
+- *constraint-blindness* — recommendations asserted without acknowledging brand / accessibility / data-honesty / audience-expectation constraints.
+- *tufte-orthodoxy* — Tufte minimalism applied dogmatically without acknowledging contexts where minor redundancy / annotation actively serves the audience.
+- *aesthetic-only-critique* — critique addresses aesthetic preferences without grounding in encoding-fitness or perceptual-task analysis.
+- *m5-promotion-evidence* — repeated invocations encountering dashboard-orchestration / chart-type-selection / sparkline-specialty cases this mode handles awkwardly (signals Reserved-M5 promotion threshold).
 
 ## REVISION GUIDANCE
 
