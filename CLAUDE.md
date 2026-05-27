@@ -51,13 +51,15 @@ Ora is a multi-model orchestrator for local LLMs on Apple Silicon. It runs an 8-
 
 **Hardware:** Apple M4 Max, 128 GB RAM, macOS 26.3
 
-**Local Models (Config A — "The Surgeon and the Architect"):**
-- **Breadth/Consolidator (local-premium):** Hermes-4-70B (Llama 3.1 base, NousResearch) — 40 GB, dense 70B
-- **Depth/Evaluator (local-premium):** Kimi-Dev-72B (Qwen 2.5 base, Moonshot AI) — 41 GB, dense 72B
-- **Sidebar/Step1/RAG (local-mid):** Qwen3.5-27B-Claude-Opus-Distilled — 14 GB, dense 27B
-- **Classification (local-fast):** Qwen3.5-4B-MLX (4-bit) — 3 GB, dense 4B. 100% mode classification accuracy at ~10s.
-- **Backup fast (local-fast):** Qwen3.5-9B-OptiQ (4-bit) — 6 GB, dense 9B. 94.4% accuracy at ~34s (before directory fix).
-- **Total model RAM:** ~95 GB active with 33 GB headroom. Three model families for adversarial diversity.
+**Local Models (vision-capable lineup, 2026-05-26 swap — three training families: Qwen / Zhipu / Mistral):**
+- **Utility (4B):** Huihui-Qwen3.5-4B Claude-Opus-abliterated (4-bit) — 4 GB, dense, vision-capable. Classification, step1 cleanup, RAG planning.
+- **Campaign baseline (9B):** Qwen3.5-9B Vision (4-bit MLX) — 7 GB, dense, vision-capable. Powers the `qwen-9b-only` configuration; the file that drives the "reproducible on $1K consumer hardware" demonstration.
+- **Fast slot (27B):** Qwen3.6-27B Vision (4-bit) — 17 GB, dense, vision-capable. Sidebar / step1 cleanup / RAG planning at higher quality than the 9B.
+- **Large local A — Qwen 122B MoE:** Qwen3.5-122B-A10B (mxfp4) — 62 GB, MoE (~10B active per token), vision-capable. Fast inference relative to dense equivalents.
+- **Large local B — GLM 4.6V MoE:** GLM-4.6V (mxfp4) — 58 GB, MoE (128 routed + 1 shared experts, 8 active per token, ~11B active), vision-capable. Zhipu-family alternative for cross-family adversarial pairing.
+- **Large local C — Mistral 128B dense:** Mistral-Medium-3.5-128B Vision (4-bit) — 82 GB, dense ~123B + Pixtral vision tower. Mistral-family third option; heavier compute-per-token than the MoE alternatives.
+- **Active-at-once headroom:** one large (60–80 GB) + 27B + 9B + 4B fits comfortably in 128 GB. Two large models simultaneously exceeds RAM.
+- **Architectural note:** `config/models.json` is hand-curated and gitignored. Auto-discovery from `~/ora/models/` directory contents is a known gap; see scripts/local_models.py for the install-side helper.
 
 ## Architecture
 
