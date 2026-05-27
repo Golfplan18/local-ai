@@ -375,5 +375,112 @@ class TestDelete(_Fixture):
             self.module.delete_configuration("ghost")
 
 
+class TestFastSlot(_Fixture):
+    """Coverage for the Fast slot (Chunks A–D, 2026-05-23):
+      - SLOT_LABEL_TO_PATHS schema: fast 1 fans out to gear3.depth +
+        utility.gear2_rag_lookup; fast 2 writes only to gear3.breadth.
+      - set_slot_primary respects the fan-out.
+      - _is_baseline_complete now requires fast 1 (and fast 2 when
+        adversarial diversity is on).
+    """
+
+    # ─── Schema ──────────────────────────────────────────────────────────
+    def test_fast1_schema_fans_out_to_gear3_and_gear2_rag(self):
+        paths = self.module.SLOT_LABEL_TO_PATHS["fast 1"]
+        # Order isn't load-bearing — just that both cells are covered.
+        as_tuples = {tuple(p) for p in paths}
+        self.assertIn(("analysis", "gear3", "depth"), as_tuples)
+        self.assertIn(("utility", "gear2_rag_lookup"), as_tuples)
+
+    def test_fast2_schema_writes_only_gear3_breadth(self):
+        paths = self.module.SLOT_LABEL_TO_PATHS["fast 2"]
+        self.assertEqual([tuple(p) for p in paths],
+                         [("analysis", "gear3", "breadth")])
+
+    def test_big1_no_longer_fans_into_gear3_depth(self):
+        """Chunk A handed gear3.depth off to fast 1. big 1 must not write
+        it any more — otherwise picking a Big model would overwrite the
+        Fast pick."""
+        paths = self.module.SLOT_LABEL_TO_PATHS["big 1"]
+        as_tuples = {tuple(p) for p in paths}
+        self.assertNotIn(("analysis", "gear3", "depth"), as_tuples)
+
+    # ─── set_slot_primary fan-out ────────────────────────────────────────
+    def test_set_fast1_writes_both_gear3_depth_and_gear2_rag(self):
+        self._write_config("c", {"cells": {}})
+        self.module.set_slot_primary("c", "fast 1", "qwen/qwen-fast")
+        with open(self.config_dir / "c.json") as f:
+            cells = json.load(f)["cells"]
+        self.assertEqual(cells["analysis"]["gear3"]["depth"]["primary"],
+                         "qwen/qwen-fast")
+        self.assertEqual(cells["utility"]["gear2_rag_lookup"]["primary"],
+                         "qwen/qwen-fast")
+
+    def test_set_fast2_writes_only_gear3_breadth(self):
+        self._write_config("c", {"cells": {}})
+        self.module.set_slot_primary("c", "fast 2", "anthropic/haiku")
+        with open(self.config_dir / "c.json") as f:
+            cells = json.load(f)["cells"]
+        self.assertEqual(cells["analysis"]["gear3"]["breadth"]["primary"],
+                         "anthropic/haiku")
+        # Must NOT have spilled into Fast 1's cells
+        self.assertNotIn("depth", cells.get("analysis", {}).get("gear3", {}))
+        self.assertNotIn("gear2_rag_lookup", cells.get("utility", {}))
+
+    def test_set_fast1_then_fast2_independent_writes(self):
+        """Two sequential picks should not clobber each other — fast 1
+        keeps its fan-out, fast 2 lands cleanly in gear3.breadth."""
+        self._write_config("c", {"cells": {}})
+        self.module.set_slot_primary("c", "fast 1", "qwen/q-primary")
+        self.module.set_slot_primary("c", "fast 2", "anthropic/h-secondary")
+        with open(self.config_dir / "c.json") as f:
+            cells = json.load(f)["cells"]
+        self.assertEqual(cells["analysis"]["gear3"]["depth"]["primary"],
+                         "qwen/q-primary")
+        self.assertEqual(cells["analysis"]["gear3"]["breadth"]["primary"],
+                         "anthropic/h-secondary")
+        self.assertEqual(cells["utility"]["gear2_rag_lookup"]["primary"],
+                         "qwen/q-primary")
+
+    # ─── _is_baseline_complete ───────────────────────────────────────────
+    def _full_baseline(self, *, fast1="f1", fast2=None, adversarial=False):
+        """Build a config with big1, small, image filled + optional fast1/fast2
+        and an explicit adversarial toggle."""
+        cells = {
+            "utility": {"step1_cleanup": {"primary": "s"}},
+            "analysis": {
+                "gear4": {"depth": {"primary": "b1"}, "breadth": None},
+                "gear3": {
+                    "depth": ({"primary": fast1} if fast1 else None),
+                    "breadth": ({"primary": fast2} if fast2 else None),
+                },
+            },
+            "image_generation": {"image_generation": {"primary": "img"}},
+        }
+        if adversarial:
+            cells["analysis"]["gear4"]["breadth"] = {"primary": "b2"}
+        return {
+            "cells": cells,
+            "toggles": {"adversarial_diversity": adversarial,
+                        "vision_only": False},
+        }
+
+    def test_baseline_incomplete_when_fast1_missing(self):
+        config = self._full_baseline(fast1=None)
+        self.assertFalse(self.module._is_baseline_complete(config))
+
+    def test_baseline_complete_with_fast1_when_adversarial_off(self):
+        config = self._full_baseline(fast1="f1", fast2=None, adversarial=False)
+        self.assertTrue(self.module._is_baseline_complete(config))
+
+    def test_baseline_incomplete_when_fast2_missing_and_adversarial_on(self):
+        config = self._full_baseline(fast1="f1", fast2=None, adversarial=True)
+        self.assertFalse(self.module._is_baseline_complete(config))
+
+    def test_baseline_complete_with_fast1_and_fast2_when_adversarial_on(self):
+        config = self._full_baseline(fast1="f1", fast2="f2", adversarial=True)
+        self.assertTrue(self.module._is_baseline_complete(config))
+
+
 if __name__ == "__main__":
     unittest.main()
