@@ -5613,6 +5613,31 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         cleaned_prompt = raw_prompt or cleaned_nl
     rag_query = raw_prompt or cleaned_nl
 
+    # CAMPAIGN-RAG-BYPASS-2026-05-26 (REMOVE WHEN PHASE 5 CAPTURES COMPLETE) {{{
+    # Temporary bypass for the Comparative Evaluation Campaign documented in
+    # `Reference — Trigger Prompt Corpus.md` §"Comparative Evaluation Campaign"
+    # → "Pre-Phase-1 prerequisites". When the active configuration carries
+    # `rag_isolation: web_only`, conversation RAG, concept (vault) RAG, and
+    # relationship RAG are all skipped. Web consultation, supplemental RAG
+    # against the web, and trusted-source retrieval remain active. The goal:
+    # captured outputs only draw on model background knowledge + web search,
+    # so a clean-install visitor with no vault and no conversation history
+    # can reproduce them.
+    #
+    # Removal procedure when campaign captures complete:
+    #   1. Delete this comment block.
+    #   2. Delete the `_RAG_ISOLATION_WEB_ONLY` constant below.
+    #   3. Search for the marker `CAMPAIGN-RAG-BYPASS-2026-05-26` throughout
+    #      this file and revert each guarded branch to its pre-campaign form
+    #      (drop the `not _RAG_ISOLATION_WEB_ONLY and` prefix, drop the
+    #      `if _RAG_ISOLATION_WEB_ONLY:` early-set blocks, drop the
+    #      `"rag_isolation"` field from the trace metadata).
+    #   4. Delete `orchestrator/tests/test_rag_isolation_bypass.py`.
+    #   5. Remove the `rag_isolation` field from any configuration JSON
+    #      under `~/ora/config/configurations/`.
+    _RAG_ISOLATION_WEB_ONLY = config.get("rag_isolation") == "web_only"
+    # CAMPAIGN-RAG-BYPASS-2026-05-26 }}}
+
     # Phase 5.6 ranker: type-weighted ranking with provenance markers,
     # type_filter from active mode's RAG PROFILE, archived/private filters.
     # Falls back to the legacy formatted-string knowledge_search when the
@@ -5625,7 +5650,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # directory, so silent fallbacks become inspectable.
     conv_rag = ""
     conv_rag_path = "unknown"
-    if RAG_ENGINE_AVAILABLE:
+    # CAMPAIGN-RAG-BYPASS-2026-05-26: short-circuit when flag is set.
+    if _RAG_ISOLATION_WEB_ONLY:
+        conv_rag_path = "skipped_rag_isolation_web_only"
+    elif RAG_ENGINE_AVAILABLE:
         try:
             conv_rag = assemble_ranked_context(
                 query=rag_query,
@@ -5656,7 +5684,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # Concept RAG (vault knowledge) — only for Gear 2+
     concept_rag = ""
     concept_rag_path = "skipped_gear_below_2"
-    if gear >= 2:
+    # CAMPAIGN-RAG-BYPASS-2026-05-26: short-circuit when flag is set.
+    if _RAG_ISOLATION_WEB_ONLY:
+        concept_rag_path = "skipped_rag_isolation_web_only"
+    elif gear >= 2:
         if RAG_ENGINE_AVAILABLE:
             try:
                 concept_rag = assemble_ranked_context(
@@ -5691,7 +5722,9 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     rag_utilization = ""
     hardware_tier = 0
 
-    if RAG_ENGINE_AVAILABLE and gear >= 2:
+    # CAMPAIGN-RAG-BYPASS-2026-05-26: also skip relationship traversal
+    # (depends on concept_rag results that are now empty).
+    if RAG_ENGINE_AVAILABLE and gear >= 2 and not _RAG_ISOLATION_WEB_ONLY:
         try:
             engine = RAGEngine(config)
             hardware_tier = engine.hardware["tier"]
@@ -5875,6 +5908,9 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             "mode_name": mode_name,
             "mode_text_chars": len(mode_text),
             "gear": gear,
+            # CAMPAIGN-RAG-BYPASS-2026-05-26: surface flag state so captures
+            # are auditable. Remove this key when the bypass is removed.
+            "rag_isolation": config.get("rag_isolation"),
             "cleaned_prompt": cleaned_prompt,
             # The three prompt forms broken out for trace-side audit.
             # cleaned_prompt above is the composite that downstream user
