@@ -10072,6 +10072,33 @@ if __name__ == "__main__":
     except Exception as _e:
         print(f"[startup] Direct-API refresh hook failed: {_e}")
 
+    # Auto-discover local MLX models in ~/ora/models/. Probes each
+    # subdirectory's config.json + safetensors, derives ram_gb / type /
+    # vision_capable / recommended_roles / active_params_per_token, and
+    # rewrites the local_models section of config/models.json. Skips the
+    # rewrite (safety) if discovery returns zero entries — protects
+    # against the models directory being momentarily inaccessible.
+    # The V3 Models pane reads models.json on its next request, so the
+    # new inventory shows up without further intervention.
+    try:
+        from local_model_discovery import refresh as _refresh_local_models
+        _r = _refresh_local_models(write=True)
+        if _r.get("wrote"):
+            count = len(_r["discovered"])
+            added = _r.get("added") or []
+            removed = _r.get("removed") or []
+            msg = f"[startup] local-models discovery: {count} model(s)"
+            if added:
+                msg += f", added {len(added)}"
+            if removed:
+                msg += f", removed {len(removed)}"
+            print(msg)
+        else:
+            print("[startup] local-models discovery: skipped "
+                  "(no models found in ~/ora/models/)")
+    except Exception as _e:
+        print(f"[startup] local-models discovery failed: {_e}")
+
     # Self-heal the Lucide icon-set: rebuild runtime/icon-set.json
     # whenever the toolbar / pack JSON sources have moved on. Keeps
     # newly-added toolbar icons from rendering as fallback "?" glyphs
