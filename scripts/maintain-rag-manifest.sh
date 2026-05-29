@@ -170,21 +170,30 @@ if os.path.isdir(frameworks_dir):
 else:
     issues.append('Frameworks directory not found: ' + frameworks_dir)
 
-# Check ChromaDB collections match manifest descriptions
+# Check ChromaDB collections match manifest descriptions. Resolve logical
+# names ('knowledge', 'conversations', 'conversations_incognito') through
+# embedding.resolve_collection() so this script keeps working across
+# embedder migrations that rename collections (e.g. v1 -> v2).
 try:
+    import sys as _sys
+    _sys.path.insert(0, os.path.expanduser('~/ora'))
+    from orchestrator.embedding import resolve_collection
+
     import chromadb
     client = chromadb.PersistentClient(path=chromadb_path)
     collections = {c.name: c.count() for c in client.list_collections()}
-    # Manifest describes: knowledge, conversations
-    for expected in ['knowledge', 'conversations']:
-        if expected in collections:
-            print(f'  ChromaDB {expected}: {collections[expected]} records')
+    logical_required = ['knowledge', 'conversations']
+    logical_described = ['knowledge', 'conversations', 'conversations_incognito']
+    physical_described = {resolve_collection(n) for n in logical_described}
+    for logical in logical_required:
+        physical = resolve_collection(logical)
+        if physical in collections:
+            print(f'  ChromaDB {logical} (-> {physical}): {collections[physical]} records')
         else:
-            issues.append(f'ChromaDB collection \"{expected}\" not found but described in manifest')
+            issues.append(f'ChromaDB collection \"{physical}\" (logical: {logical}) not found but described in manifest')
     # Check for collections not in manifest
-    described = {'knowledge', 'conversations', 'conversations-incognito'}
     for col_name in collections:
-        if col_name not in described:
+        if col_name not in physical_described:
             issues.append(f'ChromaDB collection \"{col_name}\" exists but not in manifest')
 except Exception as e:
     issues.append(f'ChromaDB check failed: {e}')

@@ -23,17 +23,70 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any, Optional
 
 
 # ---------------------------------------------------------------------------
 # Configuration
+#
+# embedder choice + collection naming load from ~/ora/config/chromadb.json
+# at import. Defaults match the historical hardcoded state, so first
+# import after this refactor is no-op against existing nomic collections.
+# At cutover for an embedder swap (e.g. nomic-embed-text → bge-m3), edit
+# chromadb.json's embedder + collections blocks and restart — no code
+# changes needed.
 # ---------------------------------------------------------------------------
 
 
-EMBEDDING_MODEL = "nomic-embed-text"
-EMBEDDING_DIM = 768
-OLLAMA_URL = "http://localhost:11434"
+_DEFAULT_EMBEDDING_MODEL = "nomic-embed-text"
+_DEFAULT_EMBEDDING_DIM = 768
+_DEFAULT_OLLAMA_URL = "http://localhost:11434"
+
+# Logical name → physical ChromaDB collection name. Call sites pass logical
+# names; the get_collection / get_or_create_collection / delete_collection
+# helpers translate via resolve_collection(). Unknown logical names pass
+# through unchanged so ad-hoc / test collections don't have to be registered.
+_DEFAULT_COLLECTIONS = {
+    "knowledge": "knowledge",
+    "conversations": "conversations",
+    "atomics": "atomic_dedup",
+    "conversations_incognito": "conversations-incognito",
+}
+
+
+_CHROMADB_CONFIG_PATH = Path(__file__).parent.parent / "config" / "chromadb.json"
+
+
+def _load_chromadb_config() -> dict:
+    """Load chromadb.json once at module import. Missing file or parse
+    error returns empty dict — defaults apply.
+    """
+    if not _CHROMADB_CONFIG_PATH.exists():
+        return {}
+    try:
+        with open(_CHROMADB_CONFIG_PATH, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+_CONFIG = _load_chromadb_config()
+_embedder_cfg = _CONFIG.get("embedder", {}) or {}
+
+EMBEDDING_MODEL = _embedder_cfg.get("model") or _DEFAULT_EMBEDDING_MODEL
+EMBEDDING_DIM = int(_embedder_cfg.get("dim") or _DEFAULT_EMBEDDING_DIM)
+OLLAMA_URL = _embedder_cfg.get("url") or _DEFAULT_OLLAMA_URL
+
+COLLECTIONS = {**_DEFAULT_COLLECTIONS, **(_CONFIG.get("collections") or {})}
+
+
+def resolve_collection(logical: str) -> str:
+    """Translate a logical collection name to its physical ChromaDB name.
+
+    Unknown logical names pass through unchanged.
+    """
+    return COLLECTIONS.get(logical, logical)
 
 
 # ---------------------------------------------------------------------------
@@ -140,9 +193,14 @@ def get_or_create_collection(client, name: str, *, metadata: Optional[dict] = No
     embedding_function. Use everywhere instead of
     `client.get_or_create_collection(name)` so collections never end
     up bound to chromadb's default embedder by accident.
+
+    `name` is the *logical* collection name (e.g. "knowledge",
+    "conversations", "atomics", "conversations_incognito"). The
+    physical ChromaDB name is resolved through chromadb.json's
+    collection map.
     """
     return client.get_or_create_collection(
-        name=name,
+        name=resolve_collection(name),
         metadata=metadata or {"hnsw:space": "cosine"},
         embedding_function=get_embedding_function(),
     )
@@ -155,11 +213,22 @@ def get_collection(client, name: str):
     collections originally created with one — otherwise queries embed
     via the default and produce dimension mismatches. Use this rather
     than `client.get_collection(name)`.
+
+    `name` is the *logical* collection name; physical name is resolved
+    via resolve_collection().
     """
     return client.get_collection(
-        name=name,
+        name=resolve_collection(name),
         embedding_function=get_embedding_function(),
     )
+
+
+def delete_collection(client, name: str):
+    """Delete a collection by logical name. Translates to the physical
+    name via resolve_collection() so direct `client.delete_collection(...)`
+    callers can move through this helper and pick up the migration map.
+    """
+    return client.delete_collection(name=resolve_collection(name))
 
 
 # ---------------------------------------------------------------------------
@@ -248,12 +317,15 @@ __all__ = [
     "EMBEDDING_MODEL",
     "EMBEDDING_DIM",
     "OLLAMA_URL",
+    "COLLECTIONS",
+    "resolve_collection",
     "get_embedding_function",
     "check_ollama_available",
     "check_embedding_model_available",
     "assert_embedding_ready",
     "get_or_create_collection",
     "get_collection",
+    "delete_collection",
     "install_test_stub",
     "uninstall_test_stub",
 ]

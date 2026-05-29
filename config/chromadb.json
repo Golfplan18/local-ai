@@ -1,0 +1,15 @@
+{
+  "_schema_version": 1,
+  "_note": "Single source of truth for embedder + collection naming. embedding.py loads this at import. Defaults match current state (no-op against existing nomic collections). When migrating to a new embedder, create _v2 collections, flip the values, restart orchestrator. Embedder choice and collection names couple deliberately — bge-m3 against a nomic-embedded collection would dimension-mismatch.",
+  "embedder": {
+    "model": "nomic-embed-text",
+    "dim": 768,
+    "url": "http://localhost:11434"
+  },
+  "collections": {
+    "knowledge": "knowledge",
+    "conversations": "conversations",
+    "atomics": "atomic_dedup",
+    "conversations_incognito": "conversations-incognito"
+  }
+}

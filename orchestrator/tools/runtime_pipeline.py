@@ -496,8 +496,9 @@ class RuntimePipeline:
 
         try:
             import chromadb
+            from orchestrator.embedding import get_collection
             client = chromadb.PersistentClient(path=CHROMADB_PATH)
-            collection = client.get_collection("knowledge")
+            collection = get_collection(client, "knowledge")
         except Exception:
             return 0
 

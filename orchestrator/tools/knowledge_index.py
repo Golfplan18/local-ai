@@ -391,13 +391,13 @@ def index_path(path: str, reindex: bool = False) -> None:
     """Index a file or directory into the knowledge collection."""
     import chromadb
     # Lazy import to avoid circular dependencies at module load.
-    from orchestrator.embedding import get_or_create_collection
+    from orchestrator.embedding import delete_collection, get_or_create_collection
 
     client = chromadb.PersistentClient(path=CHROMADB_PATH)
 
     if reindex:
         try:
-            client.delete_collection("knowledge")
+            delete_collection(client, "knowledge")
             print("Cleared existing knowledge collection.")
         except Exception:
             pass

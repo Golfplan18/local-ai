@@ -22,6 +22,12 @@ import os
 import sys
 from typing import Any
 
+# Reach into the ora orchestrator so we share embedding.py's logical->physical
+# collection translation. Logical names ("atomics", "conversations") are used
+# throughout this script; embedding.resolve_collection() maps them to the
+# physical ChromaDB names at query time.
+sys.path.insert(0, os.path.expanduser("~/ora"))
+
 CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
 
 
@@ -74,6 +80,7 @@ def _format_conversation(rank: int, doc: str, meta: dict[str, Any], dist: float)
 
 
 def _build_where(args: argparse.Namespace, collection: str) -> dict | None:
+    # `collection` is the logical name ("atomics", "conversations").
     clauses: list[dict] = []
     if args.chain:
         key = "chain_label" if collection == "conversations" else "chain_id"
@@ -96,7 +103,7 @@ def _build_where(args: argparse.Namespace, collection: str) -> dict | None:
 
 
 def _post_filter(docs, metas, dists, args, collection):
-    if collection == "atomic_dedup" and args.year:
+    if collection == "atomics" and args.year:
         keep = []
         for i, m in enumerate(metas):
             vp = m.get("vault_path", "")
@@ -109,9 +116,12 @@ def _post_filter(docs, metas, dists, args, collection):
 
 
 def _query(client, collection_name: str, args, oversample: int = 4):
-    col = client.get_collection(collection_name)
+    # `collection_name` is the logical name; embedding.get_collection
+    # resolves to the physical ChromaDB collection.
+    from orchestrator.embedding import get_collection
+    col = get_collection(client, collection_name)
     where = _build_where(args, collection_name)
-    n = max(args.n * oversample, args.n) if args.year and collection_name == "atomic_dedup" else args.n
+    n = max(args.n * oversample, args.n) if args.year and collection_name == "atomics" else args.n
     res = col.query(query_texts=[args.query], n_results=n, where=where)
     docs = res["documents"][0]
     metas = res["metadatas"][0]
@@ -148,11 +158,11 @@ def main() -> int:
 
     targets = []
     if args.both:
-        targets = ["atomic_dedup", "conversations"]
+        targets = ["atomics", "conversations"]
     elif args.conversations:
         targets = ["conversations"]
     else:
-        targets = ["atomic_dedup"]
+        targets = ["atomics"]
 
     payload: dict[str, list[dict]] = {}
     for col in targets:
@@ -180,12 +190,12 @@ def main() -> int:
     out.append("")
 
     for col, hits in payload.items():
-        label = "Atomic notes" if col == "atomic_dedup" else "Conversation pairs"
+        label = "Atomic notes" if col == "atomics" else "Conversation pairs"
         out.append(f"## {label} ({len(hits)})")
         if not hits:
             out.append("_no matches_\n")
             continue
-        formatter = _format_atomic if col == "atomic_dedup" else _format_conversation
+        formatter = _format_atomic if col == "atomics" else _format_conversation
         for i, h in enumerate(hits, 1):
             out.append(formatter(i, h["document"], h["metadata"], h["distance"]))
             out.append("")
