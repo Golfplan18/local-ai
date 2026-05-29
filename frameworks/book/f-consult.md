@@ -58,6 +58,8 @@ The fast model slot (`step1_cleanup` endpoint) reads the raw prompt plus the con
 
 Queries fire in **parallel**. There is no count cap on intents. Per-query timeout (default 15s) provides failure containment; queries that exceed it are abandoned with the failure logged in the consultation trace.
 
+Each intent's query runs through the web-search cascade (Tavily → Brave → DDG by default). When semantic augmentation is enabled (`semantic_augment` in `routing-config.json`) and the semantic provider's key is present, the consultation step also runs an Exa (neural / semantic) search for the same query and merges the results — so each intent draws on both keyword and semantic retrieval rather than keyword alone. This is a no-op when the feature is disabled or the provider is unkeyed, so a clean install consults keyword search only. Note that claim verification (Step 5) deliberately does **not** augment — verifying a specific factual claim wants keyword precision, not semantic similarity.
+
 ### Provenance per chunk
 
 Every chunk in the web-RAG portion of the package carries:

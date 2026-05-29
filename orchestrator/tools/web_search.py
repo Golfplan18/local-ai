@@ -274,11 +274,100 @@ def _reset_cascade_order_cache() -> None:
     _cached_cascade_order = None
 
 
+# ── Semantic augmentation ───────────────────────────────────────────
+
+
+_DEFAULT_SEMANTIC_PROVIDER = "exa"
+_cached_semantic_augment: tuple[bool, str] | None = None
+
+
+def _load_semantic_augment() -> tuple[bool, str]:
+    """Read the ``semantic_augment`` block from routing-config.json.
+
+    Returns ``(enabled, provider_name)``. When enabled, a caller that
+    opts in (``semantic_augment=True``) runs the keyword cascade AND a
+    provider-only semantic search, merging the two. Disabled-safe:
+    returns ``(False, "exa")`` if the block is absent, malformed, or the
+    config file is missing — so a clean install never augments until the
+    operator turns it on.
+    """
+    global _cached_semantic_augment
+    if _cached_semantic_augment is not None:
+        return _cached_semantic_augment
+
+    enabled, provider = False, _DEFAULT_SEMANTIC_PROVIDER
+    try:
+        with open(_ROUTING_CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        block = cfg.get("semantic_augment")
+        if isinstance(block, dict):
+            enabled = bool(block.get("enabled", False))
+            prov = block.get("provider")
+            if isinstance(prov, str) and prov in _PROVIDERS:
+                provider = prov
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+
+    _cached_semantic_augment = (enabled, provider)
+    return _cached_semantic_augment
+
+
+def _reset_semantic_augment_cache() -> None:
+    """Test helper — clear the semantic-augment config cache."""
+    global _cached_semantic_augment
+    _cached_semantic_augment = None
+
+
+def _merge_dedup(primary: list[dict], secondary: list[dict]) -> list[dict]:
+    """Concatenate two result lists, dropping entries whose URL
+    (``href`` / ``url``) has already been seen. Primary first, then
+    secondary — so keyword results lead and semantic results fill in."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for r in list(primary) + list(secondary):
+        url = (r.get("href") or r.get("url") or "").strip()
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        out.append(r)
+    return out
+
+
+def _gather_raw(
+    query: str, max_results: int, *, semantic_augment: bool = False,
+) -> list[dict]:
+    """Run the keyword cascade and, when ``semantic_augment`` is requested
+    AND enabled in config AND the semantic provider is keyed, also run a
+    provider-only semantic search and merge the two (dedup by URL).
+
+    Returns raw provider dicts (``title`` / ``href`` / ``body``); callers
+    normalise. Safe no-op whenever the semantic provider has no key — the
+    semantic search is simply not run, so the result is exactly the
+    keyword cascade. This is the gate that keeps no-key installs (and
+    forks) on keyword-only behaviour with zero cost.
+    """
+    raw, _provider = _search_text(query, max_results)
+    if not semantic_augment:
+        return raw
+    enabled, provider = _load_semantic_augment()
+    if not enabled:
+        return raw
+    env_var = _PROVIDERS.get(provider, (None, None))[0]
+    if not env_var or not os.environ.get(env_var, "").strip():
+        return raw  # semantic provider not keyed → keyword-only no-op
+    sem, _sp = _search_text(query, max_results, order=(provider,))
+    if not sem:
+        return raw
+    return _merge_dedup(raw, sem)
+
+
 # ── Cascade execution ───────────────────────────────────────────────
 
 
-def _search_text(query: str, max_results: int) -> tuple[list[dict], str]:
-    """Iterate the configured cascade, return first successful provider's results.
+def _search_text(
+    query: str, max_results: int, order: tuple[str, ...] | None = None,
+) -> tuple[list[dict], str]:
+    """Iterate the cascade, return first successful provider's results.
 
     Returns ``(results, provider_tag)``. ``provider_tag`` is the name of
     the provider that returned non-empty results; ``"none"`` when every
@@ -287,9 +376,17 @@ def _search_text(query: str, max_results: int) -> tuple[list[dict], str]:
     continues to the next tier — a thin index or a free tier that returns
     empty-on-exhaustion should not dead-end the search.
 
+    ``order`` overrides the configured cascade for this call — e.g.
+    ``("exa",)`` to force a semantic-only search. Unknown names are
+    dropped; an empty / all-invalid override falls back to the configured
+    cascade. ``None`` (default) uses ``_load_cascade_order()``.
+
     Errors are logged to stderr so the cascade behavior is inspectable.
     """
-    order = _load_cascade_order()
+    if order is None:
+        order = _load_cascade_order()
+    else:
+        order = tuple(p for p in order if p in _PROVIDERS) or _load_cascade_order()
     for provider in order:
         env_var, fetcher = _PROVIDERS[provider]
         if env_var is not None and not os.environ.get(env_var, "").strip():
@@ -328,14 +425,17 @@ def _search_text(query: str, max_results: int) -> tuple[list[dict], str]:
 # ── Public entry points ─────────────────────────────────────────────
 
 
-def web_search(query: str, max_results: int = 5) -> str:
+def web_search(query: str, max_results: int = 5, *, semantic_augment: bool = False) -> str:
     """Markdown-formatted search results for tool-calling models.
 
     Provider is auto-selected per the cascade order in routing-config.json
-    (default: Tavily → Brave → DDG).
+    (default: Tavily → Brave → DDG). When ``semantic_augment`` is set —
+    and the feature is enabled in config with the semantic provider keyed
+    — results from the semantic provider (e.g. Exa) are merged in. The
+    model-facing tool wrapper opts in so the agentic loop benefits.
     """
     try:
-        results, _provider = _search_text(query, max_results)
+        results = _gather_raw(query, max_results, semantic_augment=semantic_augment)
         if not results:
             return f"No results found for: {query}"
         output = []
@@ -349,7 +449,9 @@ def web_search(query: str, max_results: int = 5) -> str:
         return f"Search error: {str(e)}"
 
 
-def web_search_structured(query: str, max_results: int = 5) -> list[dict]:
+def web_search_structured(
+    query: str, max_results: int = 5, *, semantic_augment: bool = False,
+) -> list[dict]:
     """Search returning a list of ``{title, url, snippet}`` dicts.
 
     Provider is auto-selected per the cascade order in routing-config.json
@@ -360,11 +462,16 @@ def web_search_structured(query: str, max_results: int = 5) -> list[dict]:
     ``url``/``snippet`` in different releases. This wrapper normalises
     all of them to ``title``/``url``/``snippet``.
 
+    When ``semantic_augment`` is set — and the feature is enabled in
+    config with the semantic provider keyed — results from the semantic
+    provider (e.g. Exa) are merged in. Step-2 web consultation opts in;
+    claim verification does not (fact-checking wants keyword precision).
+
     Returns an empty list on no results or on provider error. Errors are
     logged to stderr so the failure becomes inspectable.
     """
     try:
-        raw, _provider = _search_text(query, max_results)
+        raw = _gather_raw(query, max_results, semantic_augment=semantic_augment)
     except Exception as e:
         print(
             f"[web_search_structured] cascade error for query {query!r}: {e}",

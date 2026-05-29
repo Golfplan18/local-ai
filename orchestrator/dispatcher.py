@@ -75,7 +75,14 @@ except ImportError:
 # ── Tool Registry ─────────────────────────────────────────────────────────
 
 def _wrap_web_search(params):
-    return web_search(params.get("query", ""), params.get("max_results", 5))
+    # Opt the agentic-loop tool into semantic augmentation: when enabled in
+    # config with the semantic provider keyed, model-initiated searches merge
+    # in semantic (e.g. Exa) results alongside the keyword cascade. No-op when
+    # the feature is off or the provider is unkeyed.
+    return web_search(
+        params.get("query", ""), params.get("max_results", 5),
+        semantic_augment=True,
+    )
 
 def _wrap_web_fetch(params):
     return web_fetch(

@@ -328,7 +328,7 @@ def _execute_intent_query(
     }
     try:
         results = web_search_structured(
-            intent["query"], max_results=max_results,
+            intent["query"], max_results=max_results, semantic_augment=True,
         )
     except Exception as exc:
         out["error"] = f"web_search_failed: {exc}"

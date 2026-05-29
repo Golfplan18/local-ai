@@ -256,6 +256,23 @@ class SearchTextCascadeTests(unittest.TestCase):
             self.assertEqual(provider, "ddg")
             ws._PROVIDERS["exa"][1].assert_called_once()
 
+    def test_order_param_forces_single_provider(self):
+        """order=("exa",) bypasses the configured cascade for this call."""
+        self._set_fetcher("exa",    result=[{"title": "e"}])
+        self._set_fetcher("tavily", result=[{"title": "t"}])
+        with _isolate_keys(EXA_API_KEY="key", TAVILY_API_KEY="key"):
+            results, provider = ws._search_text("q", 5, order=("exa",))
+        self.assertEqual(provider, "exa")
+        self.assertEqual(results, [{"title": "e"}])
+        ws._PROVIDERS["tavily"][1].assert_not_called()
+
+    def test_order_param_unknown_falls_back_to_configured(self):
+        """An all-invalid order override falls back to the configured cascade."""
+        self._set_fetcher("tavily", result=[{"title": "t"}])
+        with _isolate_keys(TAVILY_API_KEY="key"):
+            results, provider = ws._search_text("q", 5, order=("bogus",))
+        self.assertEqual(provider, "tavily")
+
     def test_custom_order_brave_first(self):
         with mock.patch.object(
             ws, "_load_cascade_order",
@@ -343,6 +360,66 @@ class WebSearchMarkdownTests(unittest.TestCase):
                 ws.web_search("anything", 5),
                 "No results found for: anything",
             )
+
+
+class SemanticAugmentTests(unittest.TestCase):
+    """_gather_raw merges keyword + semantic results when a caller opts in."""
+
+    def setUp(self):
+        ws._reset_semantic_augment_cache()
+
+    def tearDown(self):
+        ws._reset_semantic_augment_cache()
+
+    @staticmethod
+    def _kw_or_exa(q, n, order=None):
+        """order=('exa',) → a semantic hit; anything else → a keyword hit."""
+        if order == ("exa",):
+            return ([{"title": "e", "href": "https://exa.com", "body": "x"}], "exa")
+        return ([{"title": "k", "href": "https://kw.com", "body": "y"}], "tavily")
+
+    def test_augment_merges_keyword_and_semantic(self):
+        with mock.patch.object(ws, "_load_semantic_augment", return_value=(True, "exa")), \
+             mock.patch.object(ws, "_search_text", side_effect=self._kw_or_exa), \
+             _isolate_keys(EXA_API_KEY="key"):
+            out = ws.web_search_structured("q", 5, semantic_augment=True)
+        self.assertEqual({r["url"] for r in out}, {"https://kw.com", "https://exa.com"})
+
+    def test_augment_dedups_shared_url(self):
+        def both_same(q, n, order=None):
+            url = "https://dup.com"
+            tag = "exa" if order == ("exa",) else "tavily"
+            return ([{"title": "d", "href": url, "body": tag}], tag)
+        with mock.patch.object(ws, "_load_semantic_augment", return_value=(True, "exa")), \
+             mock.patch.object(ws, "_search_text", side_effect=both_same), \
+             _isolate_keys(EXA_API_KEY="key"):
+            out = ws.web_search_structured("q", 5, semantic_augment=True)
+        self.assertEqual(len(out), 1)
+
+    def test_augment_noop_without_key(self):
+        with mock.patch.object(ws, "_load_semantic_augment", return_value=(True, "exa")), \
+             mock.patch.object(ws, "_search_text", side_effect=self._kw_or_exa) as m, \
+             _isolate_keys():  # EXA_API_KEY absent
+            out = ws.web_search_structured("q", 5, semantic_augment=True)
+        self.assertEqual([r["url"] for r in out], ["https://kw.com"])
+        self.assertEqual(m.call_count, 1)  # the exa sub-call is never made
+
+    def test_augment_noop_when_disabled(self):
+        with mock.patch.object(ws, "_load_semantic_augment", return_value=(False, "exa")), \
+             mock.patch.object(ws, "_search_text", side_effect=self._kw_or_exa) as m, \
+             _isolate_keys(EXA_API_KEY="key"):
+            out = ws.web_search_structured("q", 5, semantic_augment=True)
+        self.assertEqual([r["url"] for r in out], ["https://kw.com"])
+        self.assertEqual(m.call_count, 1)
+
+    def test_no_augment_flag_skips_config_and_semantic(self):
+        with mock.patch.object(ws, "_load_semantic_augment", return_value=(True, "exa")) as la, \
+             mock.patch.object(ws, "_search_text", side_effect=self._kw_or_exa) as m, \
+             _isolate_keys(EXA_API_KEY="key"):
+            out = ws.web_search_structured("q", 5)  # semantic_augment defaults False
+        self.assertEqual([r["url"] for r in out], ["https://kw.com"])
+        self.assertEqual(m.call_count, 1)
+        la.assert_not_called()
 
 
 if __name__ == "__main__":
