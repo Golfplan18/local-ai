@@ -14,6 +14,7 @@ to be configured on a dev machine.
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import sys
@@ -284,6 +285,13 @@ class SearchTextCascadeTests(unittest.TestCase):
                 results, provider = ws._search_text("q", 5)
             self.assertEqual(provider, "brave")
 
+    def test_max_results_threaded_to_provider(self):
+        """query + max_results reach the selected provider's fetcher verbatim."""
+        self._set_fetcher("tavily", result=[{"title": "t"}])
+        with _isolate_keys(TAVILY_API_KEY="key"):
+            ws._search_text("test query", 12)
+        ws._PROVIDERS["tavily"][1].assert_called_once_with("test query", 12)
+
 
 class StructuredEntryPointTests(unittest.TestCase):
     """web_search_structured normalises across provider shapes."""
@@ -420,6 +428,34 @@ class SemanticAugmentTests(unittest.TestCase):
         self.assertEqual([r["url"] for r in out], ["https://kw.com"])
         self.assertEqual(m.call_count, 1)
         la.assert_not_called()
+
+
+class PublicEntryPointErrorPaths(unittest.TestCase):
+    """Both public entry points degrade gracefully when the cascade raises
+    (rather than returning the ``([], "none")`` soft-miss tuple). The
+    cascade tests above only exercise return values, so these two paths —
+    ``web_search``'s ``"Search error:"`` string and
+    ``web_search_structured``'s empty-list-plus-stderr-log — are the slice
+    of the retired ``test_web_search.py`` not otherwise covered."""
+
+    def test_web_search_returns_error_string_on_exception(self):
+        with mock.patch.object(
+            ws, "_gather_raw", side_effect=RuntimeError("rate limited")
+        ):
+            text = ws.web_search("any query")
+        self.assertTrue(text.startswith("Search error:"))
+        self.assertIn("rate limited", text)
+
+    def test_web_search_structured_returns_empty_and_logs(self):
+        captured = io.StringIO()
+        with mock.patch.object(
+            ws, "_gather_raw", side_effect=RuntimeError("rate limited")
+        ), mock.patch.object(sys, "stderr", captured):
+            out = ws.web_search_structured("any query")
+        self.assertEqual(out, [])
+        msg = captured.getvalue()
+        self.assertIn("web_search_structured", msg)
+        self.assertIn("rate limited", msg)
 
 
 if __name__ == "__main__":
