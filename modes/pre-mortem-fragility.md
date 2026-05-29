@@ -18,7 +18,7 @@ suffix_rule: analysis
 educational_name: pre-mortem on structural fragilities (Klein, Taleb adjacent)
 
 # 1. TERRITORY AND POSITION
-territory: T7-risk-and-failure
+territory: T7-risk-and-failure-analysis
 gradation_position:
   axis: stance
   value: adversarial-future
