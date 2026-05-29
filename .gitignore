@@ -84,3 +84,21 @@ __pycache__/
 # Drift framework backups
 *.bak*
 ~/
+
+# --- 2026-05-28 server-side hygiene ---
+# Server-side ChromaDB lives at orchestrator/chroma_db/ (different path
+# than the existing chromadb/ rule). Untrack so it doesn't bloat commits.
+orchestrator/chroma_db/
+
+# Server-only venv (each machine builds its own).
+.venv/
+
+# Server-side data caches (regenerable from canonical sources).
+cache/
+
+# Routing-config + capabilities one-shot backup files left by prior tuning
+# sessions. Keep them on disk for recovery but never commit.
+config/*.pre-*
+config/*.bak-*
+config/configurations/*.bak-*
+vault-sync/

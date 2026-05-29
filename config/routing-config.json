@@ -44,7 +44,7 @@
         "openrouter:openai/gpt-5-image",
         "civitai-hector-lora-v1"
       ],
-      "_note": "MSI editorial-cartoon slot (Hector Rentier). Publisher chain revised 2026-05-27: GPT-5.4 Image 2 preferred (best fidelity when it accepts), but it moderation-refuses Hector's butt-face caricature anatomy. On a refusal the OpenRouter integration classifies the empty-image response as prompt_rejected and the registry walks the chain — FIRST to Nano Banana 2 (google/gemini-3.1-flash-image-preview) because Google does NOT refuse this content, so cloud-quality output is produced without falling to the LoRA; then Nano Banana Pro (gemini-3-pro-image-preview) and GPT-5 Image as further cloud options; then the style-locked civitai-hector-lora-v1 backstop only if every cloud provider fails. Putting a non-refusing Google model in the backup position is the publisher's fix for the GPT moderation lottery (keeps the established §5.4.1 look on a cloud renderer instead of the lower-quality LoRA). This explicit entry fully overrides the MSI manifest routing (merge_project_capability_slots skips the manifest routing when a publisher entry exists). local-diffusers omitted; gpt-5-image-mini omitted (full models only)."
+      "_note": "MSI editorial-cartoon slot (Hector Rentier). Publisher chain revised 2026-05-27: GPT-5.4 Image 2 preferred (best fidelity when it accepts), but it moderation-refuses Hector's butt-face caricature anatomy. On a refusal the OpenRouter integration classifies the empty-image response as prompt_rejected and the registry walks the chain \u2014 FIRST to Nano Banana 2 (google/gemini-3.1-flash-image-preview) because Google does NOT refuse this content, so cloud-quality output is produced without falling to the LoRA; then Nano Banana Pro (gemini-3-pro-image-preview) and GPT-5 Image as further cloud options; then the style-locked civitai-hector-lora-v1 backstop only if every cloud provider fails. Putting a non-refusing Google model in the backup position is the publisher's fix for the GPT moderation lottery (keeps the established \u00a75.4.1 look on a cloud renderer instead of the lower-quality LoRA). This explicit entry fully overrides the MSI manifest routing (merge_project_capability_slots skips the manifest routing when a publisher entry exists). local-diffusers omitted; gpt-5-image-mini omitted (full models only)."
     },
     "image_edits": {
       "preferred": "local-diffusers",
@@ -386,8 +386,8 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "mid",
-      "status": "active",
-      "enabled": true,
+      "status": "disabled",
+      "enabled": false,
       "credential_key": "ora/anthropic-api-key",
       "verified": "2026-04-16",
       "capabilities": {
@@ -396,7 +396,8 @@
         "web_access": false,
         "retrieval_approach": "pre-assembled"
       },
-      "vision_capable": true
+      "vision_capable": true,
+      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
     },
     {
       "id": "anthropic-api-haiku",
@@ -407,8 +408,8 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "fast",
-      "status": "active",
-      "enabled": true,
+      "status": "disabled",
+      "enabled": false,
       "credential_key": "ora/anthropic-api-key",
       "verified": "2026-04-16",
       "capabilities": {
@@ -417,7 +418,8 @@
         "web_access": false,
         "retrieval_approach": "pre-assembled"
       },
-      "vision_capable": true
+      "vision_capable": true,
+      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
     },
     {
       "id": "anthropic-api-opus",
@@ -428,8 +430,8 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "premium",
-      "status": "active",
-      "enabled": true,
+      "status": "disabled",
+      "enabled": false,
       "credential_key": "ora/anthropic-api-key",
       "verified": "2026-04-16",
       "capabilities": {
@@ -438,7 +440,8 @@
         "web_access": false,
         "retrieval_approach": "pre-assembled"
       },
-      "vision_capable": true
+      "vision_capable": true,
+      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
     },
     {
       "id": "anthropic-api-sonnet-4-5",
@@ -449,8 +452,8 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "mid",
-      "status": "active",
-      "enabled": true,
+      "status": "disabled",
+      "enabled": false,
       "credential_key": "ora/anthropic-api-key",
       "capabilities": {
         "tool_access": true,
@@ -458,7 +461,8 @@
         "web_access": false,
         "retrieval_approach": "pre-assembled"
       },
-      "vision_capable": true
+      "vision_capable": true,
+      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
     },
     {
       "id": "anthropic-api-sonnet-3-5",
@@ -469,8 +473,8 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "fast",
-      "status": "deprecated",
-      "enabled": true,
+      "status": "disabled",
+      "enabled": false,
       "credential_key": "ora/anthropic-api-key",
       "capabilities": {
         "tool_access": true,
@@ -478,7 +482,8 @@
         "web_access": false,
         "retrieval_approach": "pre-assembled"
       },
-      "vision_capable": true
+      "vision_capable": true,
+      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
     },
     {
       "id": "anthropic-api-haiku-3-5",
@@ -489,8 +494,8 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "fast",
-      "status": "deprecated",
-      "enabled": true,
+      "status": "disabled",
+      "enabled": false,
       "credential_key": "ora/anthropic-api-key",
       "capabilities": {
         "tool_access": true,
@@ -498,7 +503,8 @@
         "web_access": false,
         "retrieval_approach": "pre-assembled"
       },
-      "vision_capable": true
+      "vision_capable": true,
+      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
     },
     {
       "id": "anthropic-api-opus-3",
@@ -509,8 +515,8 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "mid",
-      "status": "deprecated",
-      "enabled": true,
+      "status": "disabled",
+      "enabled": false,
       "credential_key": "ora/anthropic-api-key",
       "capabilities": {
         "tool_access": true,
@@ -518,7 +524,8 @@
         "web_access": false,
         "retrieval_approach": "pre-assembled"
       },
-      "vision_capable": true
+      "vision_capable": true,
+      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
     },
     {
       "id": "openai-api-gpt4-turbo",
@@ -800,8 +807,8 @@
       "provider": "anthropic",
       "training_family": "claude",
       "tier": "premium",
-      "status": "active",
-      "enabled": true,
+      "status": "disabled",
+      "enabled": false,
       "credential_key": "ora/anthropic-api-key",
       "verified": "2026-05-13",
       "capabilities": {
@@ -811,7 +818,8 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_auto_discovered": true
+      "_auto_discovered": true,
+      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
     },
     {
       "id": "openai-api-o1",

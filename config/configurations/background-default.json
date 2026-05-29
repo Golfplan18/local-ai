@@ -31,66 +31,76 @@
     "analysis": {
       "gear4": {
         "depth": {
-          "primary": "local-mlx-kimi-dev-72b",
+          "primary": "deepseek/deepseek-v4-pro",
           "fallback": [
-            "local-mlx-hermes-4-70b",
-            "qwen/qwen3.6-35b-a3b",
-            "local-mlx-qwen3.5-27b-opus",
-            "openrouter/free",
-            "meta-llama/llama-3.3-70b-instruct:free"
+            "qwen/qwen3.6-plus",
+            "qwen/qwen3.5-plus-20260420"
           ],
-          "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+          "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
+          "_note": "PUBLISHER 2026-05-28: production author-tier chain. NO Anthropic API. NO direct OpenAI API. All three entries are OpenRouter, billed against the publisher's OpenRouter account. Used by every MSI pipeline that calls invoke_chat(slot='breadth'|'depth', context='autonomous'): article_generator (news), gear3_orchestrator (columns/EB/phukher/hector/propaganda), analysis_generator, floor_engagement."
         },
         "breadth": {
-          "primary": "local-mlx-kimi-dev-72b",
+          "primary": "deepseek/deepseek-v4-pro",
           "fallback": [
-            "local-mlx-hermes-4-70b",
-            "qwen/qwen3.6-35b-a3b",
-            "local-mlx-qwen3.5-27b-opus",
-            "openrouter/free",
-            "meta-llama/llama-3.3-70b-instruct:free"
+            "qwen/qwen3.6-plus",
+            "qwen/qwen3.5-plus-20260420"
           ],
-          "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+          "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
+          "_note": "PUBLISHER 2026-05-28: production author-tier chain. NO Anthropic API. NO direct OpenAI API. All three entries are OpenRouter, billed against the publisher's OpenRouter account. Used by every MSI pipeline that calls invoke_chat(slot='breadth'|'depth', context='autonomous'): article_generator (news), gear3_orchestrator (columns/EB/phukher/hector/propaganda), analysis_generator, floor_engagement."
         }
       },
       "gear3": {
-        "depth": null,
-        "breadth": null
+        "depth": {
+          "primary": "deepseek/deepseek-v4-pro",
+          "fallback": [
+            "qwen/qwen3.6-plus",
+            "qwen/qwen3.5-plus-20260420"
+          ],
+          "_note": "PUBLISHER 2026-05-28: production author-tier chain. NO Anthropic API. NO direct OpenAI API. All three entries are OpenRouter, billed against the publisher's OpenRouter account. Used by every MSI pipeline that calls invoke_chat(slot='breadth'|'depth', context='autonomous'): article_generator (news), gear3_orchestrator (columns/EB/phukher/hector/propaganda), analysis_generator, floor_engagement."
+        },
+        "breadth": {
+          "primary": "deepseek/deepseek-v4-pro",
+          "fallback": [
+            "qwen/qwen3.6-plus",
+            "qwen/qwen3.5-plus-20260420"
+          ],
+          "_note": "PUBLISHER 2026-05-28: production author-tier chain. NO Anthropic API. NO direct OpenAI API. All three entries are OpenRouter, billed against the publisher's OpenRouter account. Used by every MSI pipeline that calls invoke_chat(slot='breadth'|'depth', context='autonomous'): article_generator (news), gear3_orchestrator (columns/EB/phukher/hector/propaganda), analysis_generator, floor_engagement."
+        }
       }
     },
     "post_analysis": {
       "consolidation": {
-        "primary": "local-mlx-kimi-dev-72b",
+        "primary": "qwen/qwen3.6-plus",
         "fallback": [
-          "local-mlx-hermes-4-70b",
-          "qwen/qwen3.6-35b-a3b",
-          "local-mlx-qwen3.5-27b-opus",
+          "deepseek/deepseek-v4-pro",
+          "qwen/qwen3.5-plus-20260420",
           "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
-        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
+        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator \u2192 Qwen 3.5 Plus, consolidation+formatter \u2192 Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
       },
       "verification": {
-        "primary": "local-mlx-kimi-dev-72b",
+        "primary": "qwen/qwen3.5-plus-20260420",
         "fallback": [
-          "local-mlx-hermes-4-70b",
-          "qwen/qwen3.6-35b-a3b",
-          "local-mlx-qwen3.5-27b-opus",
+          "qwen/qwen3.6-plus",
+          "deepseek/deepseek-v4-pro",
           "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
-        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
+        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator \u2192 Qwen 3.5 Plus, consolidation+formatter \u2192 Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
       },
       "formatter": {
-        "primary": "local-mlx-kimi-dev-72b",
+        "primary": "qwen/qwen3.6-plus",
         "fallback": [
-          "local-mlx-hermes-4-70b",
-          "qwen/qwen3.6-35b-a3b",
-          "local-mlx-qwen3.5-27b-opus",
+          "deepseek/deepseek-v4-pro",
+          "qwen/qwen3.5-plus-20260420",
           "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
-        "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
+        "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
+        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator \u2192 Qwen 3.5 Plus, consolidation+formatter \u2192 Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
       }
     }
   }
