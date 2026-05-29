@@ -1,4 +1,4 @@
-"""Web search — Brave (paid) preferred, DuckDuckGo (free) fallback.
+"""Web search — three-tier cascade Tavily → Brave → DuckDuckGo.
 
 Two entry points:
 
@@ -15,12 +15,29 @@ Two entry points:
     and ``rag_engine.format_context_with_provenance`` for injection
     into the context package.
 
-Provider selection (2026-05-28): when ``BRAVE_API_KEY`` is set in the
-environment (sourced from ``~/.config/ora/brave-api-key`` by ora.env),
-queries route to Brave Search API. Brave survives the MSI production
-burst (~400-700 queries/overnight pass) that DDG silently rate-limits.
-When ``BRAVE_API_KEY`` is unset, falls back to free DDG. Result shape
-is identical across providers so downstream consumers don't branch.
+Provider cascade (2026-05-28, Phase 3 G1.10):
+
+  1. Tavily  — LLM-friendly result shape, smaller free tier. Used first
+     when ``TAVILY_API_KEY`` is set.
+  2. Brave   — Stronger result quality + larger free tier; survives the
+     MSI production burst (~400–700 queries/overnight pass) that DDG
+     silently rate-limits. Used when ``BRAVE_API_KEY`` is set.
+  3. DDG     — Keyless fallback. Always available.
+
+Providers without an API key configured are skipped silently. On a
+provider error (HTTP, parse, timeout), the cascade falls through to the
+next tier and logs to stderr. If every tier fails or returns empty,
+``_search_text`` returns ``([], "none")`` and ``web_search_structured``
+returns ``[]`` — callers (notably the Step-2 web consultation step)
+treat that as a COVERAGE GAP rather than a fatal pipeline error.
+
+The cascade order is configurable via ``search_cascade_order`` in
+``config/routing-config.json`` (list of provider names). When the field
+is absent the default order above applies.
+
+Result shape is normalised to DDG-style keys (``title`` / ``href`` /
+``body``) at the provider boundary so downstream consumers don't
+branch on provider identity.
 """
 
 from __future__ import annotations
@@ -33,6 +50,60 @@ import urllib.request
 
 
 BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
+TAVILY_ENDPOINT = "https://api.tavily.com/search"
+
+_DEFAULT_CASCADE_ORDER = ("tavily", "brave", "ddg")
+_ROUTING_CONFIG_PATH = os.path.expanduser(
+    "~/ora/config/routing-config.json"
+)
+
+
+# ── Providers ────────────────────────────────────────────────────────
+
+
+def _tavily_text(query: str, max_results: int) -> list[dict]:
+    """Tavily Search API. POST JSON body, parse ``results[]``.
+
+    Tavily's response shape: ``{"results": [{"title", "url", "content",
+    "score"}, ...]}``. We re-emit DDG keys (``title``/``href``/``body``)
+    so downstream stays uniform.
+
+    Raises on HTTP / parse error so the cascade catches and falls through.
+    """
+    api_key = os.environ.get("TAVILY_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("TAVILY_API_KEY not set")
+
+    # Tavily caps at 20 per query; clamp.
+    count = max(1, min(int(max_results), 20))
+    payload = {
+        "api_key": api_key,
+        "query": query,
+        "max_results": count,
+        "search_depth": "basic",
+    }
+    req = urllib.request.Request(
+        TAVILY_ENDPOINT,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Ora/1.0 (web_search via Tavily)",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+
+    items = data.get("results") or []
+    out: list[dict] = []
+    for r in items[:count]:
+        out.append({
+            "title": r.get("title", ""),
+            "href":  r.get("url", ""),
+            "body":  r.get("content", ""),
+        })
+    return out
 
 
 def _brave_text(query: str, max_results: int) -> list[dict]:
@@ -44,8 +115,7 @@ def _brave_text(query: str, max_results: int) -> list[dict]:
     We re-emit DDG's keys (``title``/``href``/``body``) so callers that read
     either key family keep working without branching.
 
-    Raises on HTTP / parse error so the caller's try/except logs it the
-    same way DDG errors are logged.
+    Raises on HTTP / parse error so the cascade catches and falls through.
     """
     api_key = os.environ.get("BRAVE_API_KEY", "").strip()
     if not api_key:
@@ -97,31 +167,109 @@ def _ddgs_text(query: str, max_results: int) -> list[dict]:
     return list(DDGS().text(query, max_results=max_results))
 
 
-def _search_text(query: str, max_results: int) -> tuple[list[dict], str]:
-    """Dispatch to Brave when BRAVE_API_KEY is set, else DDG.
+# Provider registry: name → (env_var_name | None, fetcher_callable).
+# env_var_name == None means the provider is keyless (DDG).
+_PROVIDERS: dict[str, tuple[str | None, "callable"]] = {
+    "tavily": ("TAVILY_API_KEY", _tavily_text),
+    "brave":  ("BRAVE_API_KEY",  _brave_text),
+    "ddg":    (None,             _ddgs_text),
+}
 
-    Returns (results, provider_tag). provider_tag is "brave" or "ddg" —
-    used by callers that want to log which provider answered.
+
+# ── Cascade ordering ────────────────────────────────────────────────
+
+
+_cached_cascade_order: tuple[str, ...] | None = None
+
+
+def _load_cascade_order() -> tuple[str, ...]:
+    """Read ``search_cascade_order`` from routing-config.json.
+
+    Cached at module level; first call reads the file. Restart picks up
+    config changes. Returns a tuple of valid provider names; unknown
+    names are dropped with a stderr warning. Falls back to the default
+    on any failure (file missing, parse error, field absent / wrong shape).
     """
-    if os.environ.get("BRAVE_API_KEY", "").strip():
+    global _cached_cascade_order
+    if _cached_cascade_order is not None:
+        return _cached_cascade_order
+
+    order = _DEFAULT_CASCADE_ORDER
+    try:
+        with open(_ROUTING_CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        raw = cfg.get("search_cascade_order")
+        if isinstance(raw, list) and all(isinstance(x, str) for x in raw):
+            valid = tuple(x for x in raw if x in _PROVIDERS)
+            dropped = [x for x in raw if x not in _PROVIDERS]
+            if dropped:
+                print(
+                    f"[web_search] Unknown provider(s) in search_cascade_order: "
+                    f"{dropped} — ignored",
+                    file=sys.stderr, flush=True,
+                )
+            if valid:
+                order = valid
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        # Silent fall-through to default — routing-config may be absent
+        # in test environments or temporarily broken during edits.
+        pass
+
+    _cached_cascade_order = order
+    return order
+
+
+def _reset_cascade_order_cache() -> None:
+    """Test helper — clear the module-level cache so the next call re-reads."""
+    global _cached_cascade_order
+    _cached_cascade_order = None
+
+
+# ── Cascade execution ───────────────────────────────────────────────
+
+
+def _search_text(query: str, max_results: int) -> tuple[list[dict], str]:
+    """Iterate the configured cascade, return first successful provider's results.
+
+    Returns ``(results, provider_tag)``. ``provider_tag`` is the name of
+    the provider that succeeded; ``"none"`` when every tier failed or was
+    skipped. Empty results from a successful provider are NOT treated as
+    failure — they're a real "no results" answer and the cascade stops.
+
+    Errors are logged to stderr so the cascade behavior is inspectable.
+    """
+    order = _load_cascade_order()
+    for provider in order:
+        env_var, fetcher = _PROVIDERS[provider]
+        if env_var is not None and not os.environ.get(env_var, "").strip():
+            # Silently skip providers without a configured key.
+            continue
         try:
-            return _brave_text(query, max_results), "brave"
+            results = fetcher(query, max_results)
         except Exception as e:
             print(
-                f"[web_search] Brave error for query {query!r}: {e} "
-                f"— falling back to DDG",
+                f"[web_search] {provider} error for query {query!r}: {e} "
+                f"— cascading to next tier",
                 file=sys.stderr, flush=True,
             )
-            # Fall through to DDG so a Brave outage doesn't kill the
-            # pipeline. DDG may rate-limit, but partial is better than
-            # nothing for non-burst single-query callers.
-    return _ddgs_text(query, max_results), "ddg"
+            continue
+        return results, provider
+
+    print(
+        f"[web_search] All cascade tiers failed or skipped for query {query!r}",
+        file=sys.stderr, flush=True,
+    )
+    return [], "none"
+
+
+# ── Public entry points ─────────────────────────────────────────────
 
 
 def web_search(query: str, max_results: int = 5) -> str:
     """Markdown-formatted search results for tool-calling models.
 
-    Provider is auto-selected (Brave when BRAVE_API_KEY is set, else DDG).
+    Provider is auto-selected per the cascade order in routing-config.json
+    (default: Tavily → Brave → DDG).
     """
     try:
         results, _provider = _search_text(query, max_results)
@@ -141,12 +289,13 @@ def web_search(query: str, max_results: int = 5) -> str:
 def web_search_structured(query: str, max_results: int = 5) -> list[dict]:
     """Search returning a list of ``{title, url, snippet}`` dicts.
 
-    Provider is auto-selected (Brave when BRAVE_API_KEY is set, else DDG).
-    Result keys are normalised across providers and library versions:
-    the legacy ``ddgs`` and ``duckduckgo_search`` packages have used both
-    ``href``/``body`` and ``url``/``snippet`` in different releases, and
-    Brave uses ``url``/``description``. This wrapper normalises all of
-    them to ``title``/``url``/``snippet``.
+    Provider is auto-selected per the cascade order in routing-config.json
+    (default: Tavily → Brave → DDG). Result keys are normalised across
+    providers and library versions: Tavily uses ``url``/``content``, Brave
+    uses ``url``/``description``, the legacy ``ddgs`` and
+    ``duckduckgo_search`` packages have used both ``href``/``body`` and
+    ``url``/``snippet`` in different releases. This wrapper normalises
+    all of them to ``title``/``url``/``snippet``.
 
     Returns an empty list on no results or on provider error. Errors are
     logged to stderr so the failure becomes inspectable.
@@ -155,7 +304,7 @@ def web_search_structured(query: str, max_results: int = 5) -> list[dict]:
         raw, _provider = _search_text(query, max_results)
     except Exception as e:
         print(
-            f"[web_search_structured] provider error for query {query!r}: {e}",
+            f"[web_search_structured] cascade error for query {query!r}: {e}",
             file=sys.stderr, flush=True,
         )
         return []
