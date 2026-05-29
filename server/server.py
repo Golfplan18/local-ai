@@ -4669,13 +4669,14 @@ def api_bootstrap():
     chroma_path = None
     try:
         import chromadb
+        from orchestrator.embedding import get_collection
         cfg = load_config()
         chroma_path = cfg.get("chromadb_path", os.path.join(WORKSPACE, "chromadb/"))
         client = chromadb.PersistentClient(path=chroma_path)
 
         # Knowledge collection (mental models, no privacy filter).
         try:
-            kn = client.get_collection("knowledge")
+            kn = get_collection(client, "knowledge")
             kn_results = kn.query(query_texts=[topic], n_results=5)
             docs = (kn_results or {}).get("documents") or [[]]
             metas = (kn_results or {}).get("metadatas") or [[]]
@@ -4691,7 +4692,7 @@ def api_bootstrap():
 
         # Conversations collection with privacy filter.
         try:
-            conv = client.get_collection("conversations")
+            conv = get_collection(client, "conversations")
             where_clause = None if caller_tag == "private" else {"tag": {"$ne": "private"}}
             conv_results = conv.query(
                 query_texts=[topic],
@@ -5995,10 +5996,11 @@ def vault_search():
         return json.dumps({"results": []})
     try:
         import chromadb
+        from orchestrator.embedding import get_collection
         config     = load_config()
         chroma_path = config.get("chromadb_path", os.path.expanduser("~/ora/chromadb/"))
         client     = chromadb.PersistentClient(path=chroma_path)
-        collection = client.get_collection("knowledge")
+        collection = get_collection(client, "knowledge")
         raw = collection.query(query_texts=[query], n_results=n)
         results = []
         for i, doc in enumerate(raw["documents"][0]):
