@@ -29,8 +29,9 @@ Default cascade order: ``tavily → brave → ddg``. Configurable via the
 ``search_cascade_order`` field in ``config/routing-config.json``.
 
 Providers without an API key configured are skipped silently. On a
-provider error (HTTP, parse, timeout), the cascade falls through to the
-next tier and logs to stderr. If every tier fails or returns empty,
+provider error (HTTP, parse, timeout) — or an empty result from a
+successful provider — the cascade falls through to the next tier and
+logs to stderr. If every tier fails, is skipped, or returns empty,
 ``_search_text`` returns ``([], "none")`` and ``web_search_structured``
 returns ``[]`` — callers (notably the Step-2 web consultation step)
 treat that as a COVERAGE GAP rather than a fatal pipeline error.
@@ -280,9 +281,11 @@ def _search_text(query: str, max_results: int) -> tuple[list[dict], str]:
     """Iterate the configured cascade, return first successful provider's results.
 
     Returns ``(results, provider_tag)``. ``provider_tag`` is the name of
-    the provider that succeeded; ``"none"`` when every tier failed or was
-    skipped. Empty results from a successful provider are NOT treated as
-    failure — they're a real "no results" answer and the cascade stops.
+    the provider that returned non-empty results; ``"none"`` when every
+    tier failed, was skipped, or returned empty. An empty result from a
+    successful provider is treated as a soft miss and the cascade
+    continues to the next tier — a thin index or a free tier that returns
+    empty-on-exhaustion should not dead-end the search.
 
     Errors are logged to stderr so the cascade behavior is inspectable.
     """
@@ -297,6 +300,18 @@ def _search_text(query: str, max_results: int) -> tuple[list[dict], str]:
         except Exception as e:
             print(
                 f"[web_search] {provider} error for query {query!r}: {e} "
+                f"— cascading to next tier",
+                file=sys.stderr, flush=True,
+            )
+            continue
+        if not results:
+            # Empty (but successful) result is a soft miss, not a terminal
+            # "no results" answer: a thin index or a free tier that returns
+            # empty-on-exhaustion must not dead-end the cascade before the
+            # paid / keyless tiers are tried. Fall through; only report
+            # "none" when every tier is empty or errored.
+            print(
+                f"[web_search] {provider} returned no results for query {query!r} "
                 f"— cascading to next tier",
                 file=sys.stderr, flush=True,
             )

@@ -199,15 +199,26 @@ class SearchTextCascadeTests(unittest.TestCase):
         self.assertEqual(results, [])
         self.assertEqual(provider, "none")
 
-    def test_empty_results_not_treated_as_failure(self):
-        """Provider returning [] is a real 'no results' answer — cascade stops."""
+    def test_empty_results_cascade_to_next_tier(self):
+        """Provider returning [] is a soft miss — cascade continues to next tier."""
         self._set_fetcher("tavily", result=[])
-        self._set_fetcher("brave",  result=[{"title": "should-not-appear"}])
+        self._set_fetcher("brave",  result=[{"title": "b"}])
         with _isolate_keys(TAVILY_API_KEY="key", BRAVE_API_KEY="key"):
             results, provider = ws._search_text("q", 5)
-        self.assertEqual(provider, "tavily")
+        self.assertEqual(provider, "brave")
+        self.assertEqual(results, [{"title": "b"}])
+        ws._PROVIDERS["tavily"][1].assert_called_once()
+        ws._PROVIDERS["brave"][1].assert_called_once()
+
+    def test_all_tiers_empty_returns_none(self):
+        """When every tier returns [], the cascade reports ([], 'none')."""
+        self._set_fetcher("tavily", result=[])
+        self._set_fetcher("brave",  result=[])
+        self._set_fetcher("ddg",    result=[])
+        with _isolate_keys(TAVILY_API_KEY="key", BRAVE_API_KEY="key"):
+            results, provider = ws._search_text("q", 5)
         self.assertEqual(results, [])
-        ws._PROVIDERS["brave"][1].assert_not_called()
+        self.assertEqual(provider, "none")
 
     def test_exa_first_when_listed_and_key_present(self):
         with mock.patch.object(
