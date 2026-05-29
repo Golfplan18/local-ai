@@ -49,6 +49,7 @@ def convert_to_markdown(file_path: str) -> str:
         ".pdf": _convert_pdf,
         ".docx": _convert_docx,
         ".pptx": _convert_pptx,
+        ".xlsx": _convert_xlsx,
         ".html": _convert_html,
         ".htm": _convert_html,
         ".rtf": _convert_rtf,
@@ -69,6 +70,7 @@ def detect_format(file_path: str) -> str:
     ext = Path(file_path).suffix.lower()
     format_map = {
         ".pdf": "pdf", ".docx": "docx", ".pptx": "pptx",
+        ".xlsx": "xlsx",
         ".html": "html", ".htm": "html", ".rtf": "rtf",
         ".txt": "text", ".md": "markdown",
     }
@@ -136,6 +138,57 @@ def _convert_docx(file_path: str) -> str:
         if rows:
             parts.append(_table_to_markdown(rows))
 
+    return "\n\n".join(parts)
+
+
+def _convert_xlsx(file_path: str) -> str:
+    """Convert Excel workbook to markdown — one ## heading per sheet, each
+    populated table rendered with _table_to_markdown.
+
+    Uses ``data_only=True`` so cells containing formulas render their
+    cached computed value rather than the formula text. Fully-empty rows
+    and trailing-empty columns are trimmed so the markdown table stays
+    tight. Numeric values render as plain string; percentages stay as
+    fractions (Excel stores ``13.6%`` as ``0.136``); date and time cells
+    render via their string form.
+    """
+    from openpyxl import load_workbook
+
+    wb = load_workbook(file_path, data_only=True, read_only=True)
+    parts: list[str] = []
+
+    for sheet in wb.worksheets:
+        # Skip hidden sheets — author marked them not for general reading.
+        if sheet.sheet_state != "visible":
+            continue
+
+        rows: list[list[str]] = []
+        max_col = 0
+        for row in sheet.iter_rows(values_only=True):
+            cells = ["" if v is None else str(v) for v in row]
+            # Track the rightmost populated column across the sheet so we
+            # can trim trailing empty columns uniformly.
+            for i, c in enumerate(cells):
+                if c.strip():
+                    if i + 1 > max_col:
+                        max_col = i + 1
+            rows.append(cells)
+
+        # Trim trailing empty rows.
+        while rows and not any(c.strip() for c in rows[-1]):
+            rows.pop()
+
+        # Trim each row to max_col so we don't render columns full of empties.
+        if max_col > 0:
+            rows = [r[:max_col] for r in rows]
+
+        if not rows:
+            continue
+
+        parts.append(f"## Sheet: {sheet.title}")
+        parts.append(_table_to_markdown(rows))
+
+    wb.close()
     return "\n\n".join(parts)
 
 
