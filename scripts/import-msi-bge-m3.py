@@ -100,9 +100,14 @@ def main() -> int:
             ids=batch_ids,
             include=["embeddings", "documents", "metadatas"],
         )
-        embeddings = batch.get("embeddings") or []
-        documents = batch.get("documents") or []
-        metadatas = batch.get("metadatas") or []
+        # ChromaDB returns embeddings as a numpy array; `arr or []` raises
+        # "truth value of an array is ambiguous". Use explicit None checks.
+        embeddings = batch.get("embeddings")
+        embeddings = embeddings if embeddings is not None else []
+        documents = batch.get("documents")
+        documents = documents if documents is not None else []
+        metadatas = batch.get("metadatas")
+        metadatas = metadatas if metadatas is not None else []
         if not (len(embeddings) == len(batch_ids) == len(documents) == len(metadatas)):
             print(
                 f"  WARN: batch shape mismatch at offset {batch_start} "
