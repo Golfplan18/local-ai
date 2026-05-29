@@ -280,6 +280,27 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- AGO
+- C&S
+- FIP
+
+Mental models (always loaded):
+- nash-equilibrium
+- brinkmanship
+- mutually-assured-destruction
+- tit-for-tat
+- signaling
+- schelling-point
+- backward-induction
+- asymmetric-warfare
+- prisoners-dilemma
+
+---
 ## RAG PROFILE
 
 ### type_filter

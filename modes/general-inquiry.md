@@ -224,6 +224,21 @@ Gear 3
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- CAF
+- OPV
+- FIP
+
+Mental models (always loaded):
+- bayesian-reasoning
+- base-rate-neglect
+- confirmation-bias
+- bounded-rationality
+
+---
 ## RAG PROFILE
 
 ### type_filter

@@ -260,6 +260,25 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- APC
+- FIP
+- CAF
+- C&S
+
+Mental models (always loaded):
+- ooda-loop
+- first-principles
+- satisficing
+- leverage
+- bottlenecks
+- klein-pre-mortem
+- decision-trees
+
+---
 ## RAG PROFILE
 
 ### type_filter

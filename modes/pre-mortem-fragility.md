@@ -276,6 +276,25 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Challenge
+- Provocation
+- C&S
+- FIP
+- CAF
+
+Mental models (always loaded):
+- klein-pre-mortem
+- premortem-analysis
+- swiss-cheese-model
+- normal-accident-theory
+- taleb-fragility-antifragility
+- normalization-of-deviance
+- margin-of-safety
+
+---
 ## RAG PROFILE
 
 ### type_filter

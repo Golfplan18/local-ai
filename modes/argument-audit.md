@@ -287,6 +287,27 @@ Argument Audit's molecular composition (parallel frame-audit + coherence-audit w
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- Challenge
+- Concept Fan
+- Provocation
+- OPV
+- FIP
+- AGO
+
+Mental models (always loaded):
+- bayesian-reasoning
+- confirmation-bias
+- anchoring
+- cappelen-plunkett-conceptual-engineering
+- affect-heuristic
+- bennett-checkel-process-tracing-tests
+- allisons-three-lenses
+
+---
 ## RAG PROFILE
 
 ### type_filter

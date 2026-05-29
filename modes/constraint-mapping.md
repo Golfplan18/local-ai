@@ -282,6 +282,22 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- APC
+- FIP
+- AGO
+
+Mental models (always loaded):
+- bayesian-reasoning
+- trade-offs
+- satisficing
+- bottlenecks
+- leverage
+
+---
 ## RAG PROFILE
 
 ### type_filter

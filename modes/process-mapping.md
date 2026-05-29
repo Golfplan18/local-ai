@@ -291,6 +291,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- FIP
+- C&S
+- AGO
+
+Mental models (always loaded):
+- bottlenecks
+- leverage
+- feedback-loops
+- alexander-pattern-language
+- swiss-cheese-model
+- practical-drift
+- scale
+
+---
 ## RAG PROFILE
 
 ### type_filter

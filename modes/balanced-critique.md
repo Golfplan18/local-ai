@@ -275,6 +275,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- CAF
+- Challenge
+- Concept Fan
+- FIP
+
+Mental models (always loaded):
+- bayesian-reasoning
+- confirmation-bias
+- devils-advocacy
+- walton-schemes-and-critical-questions
+- occams-razor
+- narrative-instinct
+
+---
 ## RAG PROFILE
 
 ### type_filter

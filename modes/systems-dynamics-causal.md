@@ -296,6 +296,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- C&S
+- Challenge
+- Concept Fan
+
+Mental models (always loaded):
+- feedback-loops
+- second-order-thinking
+- normal-accident-theory
+- practical-drift
+- leverage
+- emergence
+- reward-undermining
+
+---
 ## RAG PROFILE
 
 ### type_filter

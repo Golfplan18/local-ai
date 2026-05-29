@@ -301,6 +301,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- Challenge
+- C&S
+- FIP
+
+Mental models (always loaded):
+- pearl-causal-graphs
+- pearl-do-calculus
+- bayesian-reasoning
+- base-rate-neglect
+- confirmation-bias
+- regression-to-mean
+- falsifiability
+
+---
 ## RAG PROFILE
 
 ### type_filter

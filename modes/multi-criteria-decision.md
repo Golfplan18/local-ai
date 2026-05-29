@@ -279,6 +279,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- FIP
+- APC
+- AGO
+- KVI
+
+Mental models (always loaded):
+- mcdm-methods
+- trade-offs
+- arrows-impossibility-theorem
+- prospect-theory
+- loss-aversion
+- decision-trees
+
+---
 ## RAG PROFILE
 
 ### type_filter

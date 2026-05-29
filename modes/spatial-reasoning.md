@@ -299,6 +299,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Concept Fan
+- Challenge
+- CAF
+- OPV
+
+Mental models (always loaded):
+- gestalt-grouping-principles
+- arnheim-compositional-forces
+- bertin-visual-variables
+- cleveland-mcgill-perceptual-tasks
+- lynch-image-of-the-city
+- alexander-pattern-language
+- map-territory
+
+---
 ## RAG PROFILE
 
 ### type_filter

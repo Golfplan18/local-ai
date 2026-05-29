@@ -347,6 +347,25 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Challenge
+- Provocation
+- CAF
+- FIP
+- OPV
+
+Mental models (always loaded):
+- cia-tradecraft-red-team
+- devils-advocacy
+- walton-schemes-and-critical-questions
+- confirmation-bias
+- taleb-fragility-antifragility
+- swiss-cheese-model
+- klein-pre-mortem
+
+---
 ## RAG PROFILE
 
 ### type_filter

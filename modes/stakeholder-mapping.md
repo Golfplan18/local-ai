@@ -272,6 +272,25 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- CAF
+- C&S
+- FIP
+
+Mental models (always loaded):
+- stakeholder-analysis-frameworks
+- incentives
+- signaling
+- principal-agent-problem
+- schelling-point
+- fisher-ury-principled-negotiation
+- cooperation
+
+---
 ## RAG PROFILE
 
 ### type_filter

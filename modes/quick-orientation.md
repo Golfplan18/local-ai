@@ -258,6 +258,21 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- CAF
+- FIP
+
+Mental models (always loaded):
+- ooda-loop
+- map-territory
+- first-principles
+- circle-of-competence
+- pareto-principle
+
+---
 ## RAG PROFILE
 
 ### type_filter

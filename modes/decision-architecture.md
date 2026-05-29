@@ -300,6 +300,27 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- APC
+- CAF
+- C&S
+- FIP
+- KVI
+- OPV
+
+Mental models (always loaded):
+- bayesian-reasoning
+- prospect-theory
+- loss-aversion
+- decision-trees
+- mcdm-methods
+- batna
+- margin-of-safety
+
+---
 ## RAG PROFILE
 
 ### type_filter

@@ -332,6 +332,27 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- FIP
+- CAF
+- APC
+- AGO
+
+Mental models (always loaded):
+- fisher-ury-principled-negotiation
+- batna
+- ury-third-side
+- cooperation
+- tit-for-tat
+- signaling
+- procedural-justice
+- schelling-point
+
+---
 ## RAG PROFILE
 
 ### type_filter

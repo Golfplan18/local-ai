@@ -274,6 +274,23 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- Concept Fan
+- Challenge
+- CAF
+
+Mental models (always loaded):
+- lakoff-conceptual-metaphor
+- goffman-frame-analysis
+- entman-framing-functions
+- allisons-three-lenses
+- framing-effect
+- narrative-instinct
+
+---
 ## RAG PROFILE
 
 ### type_filter

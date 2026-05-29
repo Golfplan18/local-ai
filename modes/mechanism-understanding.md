@@ -292,6 +292,26 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- CAF
+- Concept Fan
+- Challenge
+- FIP
+
+Mental models (always loaded):
+- first-principles
+- map-territory
+- lakoff-conceptual-metaphor
+- occams-razor
+- falsifiability
+- emergence
+- feedback-loops
+- system-one-system-two
+
+---
 ## RAG PROFILE
 
 ### type_filter

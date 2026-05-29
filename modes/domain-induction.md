@@ -278,6 +278,25 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- CAF
+- FIP
+- Concept Fan
+
+Mental models (always loaded):
+- map-territory
+- first-principles
+- cynefin-framework
+- circle-of-competence
+- ooda-loop
+- niches
+- scale
+- alexander-pattern-language
+
+---
 ## RAG PROFILE
 
 ### type_filter

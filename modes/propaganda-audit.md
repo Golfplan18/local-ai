@@ -306,6 +306,23 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Challenge
+- Provocation
+- OPV
+- FGL
+
+Mental models (always loaded):
+- affect-heuristic
+- availability-heuristic
+- anchoring
+- commitment-consistency
+- social-proof
+- scarcity
+
+---
 ## RAG PROFILE
 
 ### type_filter

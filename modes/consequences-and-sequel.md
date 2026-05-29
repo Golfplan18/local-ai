@@ -295,6 +295,22 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- C&S
+- CAF
+- Concept Fan
+- FIP
+
+Mental models (always loaded):
+- feedback-loops
+- second-order-thinking
+- taleb-fragility-antifragility
+- narrative-instinct
+- hindsight-bias
+
+---
 ## RAG PROFILE
 
 ### type_filter

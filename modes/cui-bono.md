@@ -284,14 +284,20 @@ Gear 4
 Thinking tools (always loaded):
 - OPV
 - KVI
+- CAF
+- C&S
+- FIP
 
 Mental models (always loaded):
 - nash-equilibrium
 - batna
 - cooperation
+- prisoners-dilemma
+- principal-agent-problem
+- schelling-point
+- tit-for-tat
 
 ---
-
 ## RAG PROFILE
 
 ### type_filter

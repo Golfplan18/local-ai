@@ -252,6 +252,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Concept Fan
+- CAF
+- OPV
+- AGO
+
+Mental models (always loaded):
+- lakoff-conceptual-metaphor
+- evolution-natural-selection
+- emergence
+- alexander-pattern-language
+- first-principles
+- map-territory
+- allisons-three-lenses
+
+---
 ## RAG PROFILE
 
 ### type_filter

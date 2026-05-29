@@ -259,6 +259,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- Concept Fan
+- Challenge
+- FIP
+
+Mental models (always loaded):
+- emergence
+- feedback-loops
+- alexander-pattern-language
+- niches
+- scale
+- equilibrium
+- leverage
+
+---
 ## RAG PROFILE
 
 ### type_filter

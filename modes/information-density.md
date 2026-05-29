@@ -347,6 +347,23 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Challenge
+- CAF
+- FIP
+- AGO
+
+Mental models (always loaded):
+- tufte-data-ink-chartjunk
+- bertin-visual-variables
+- cleveland-mcgill-perceptual-tasks
+- gestalt-grouping-principles
+- arnheim-compositional-forces
+- alexander-pattern-language
+
+---
 ## RAG PROFILE
 
 ### type_filter

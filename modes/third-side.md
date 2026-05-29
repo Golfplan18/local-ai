@@ -322,6 +322,25 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- CAF
+- FIP
+- AGO
+
+Mental models (always loaded):
+- ury-third-side
+- fisher-ury-principled-negotiation
+- cooperation
+- procedural-justice
+- psychological-safety
+- stakeholder-analysis-frameworks
+- social-proof
+
+---
 ## RAG PROFILE
 
 ### type_filter

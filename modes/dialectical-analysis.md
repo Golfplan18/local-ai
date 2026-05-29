@@ -267,6 +267,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Concept Fan
+- OPV
+- Provocation
+- Challenge
+- AGO
+
+Mental models (always loaded):
+- lakoff-conceptual-metaphor
+- allisons-three-lenses
+- cappelen-plunkett-conceptual-engineering
+- sensemaking
+- devils-advocacy
+- walton-schemes-and-critical-questions
+
+---
 ## RAG PROFILE
 
 ### type_filter

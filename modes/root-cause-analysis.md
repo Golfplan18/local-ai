@@ -288,6 +288,25 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Challenge
+- CAF
+- C&S
+- FIP
+- AGO
+
+Mental models (always loaded):
+- five-whys
+- fishbone-diagram
+- swiss-cheese-model
+- normal-accident-theory
+- hindsight-bias
+- fundamental-attribution-error
+- bayesian-reasoning
+
+---
 ## RAG PROFILE
 
 ### type_filter

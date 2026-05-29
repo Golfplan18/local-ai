@@ -293,6 +293,25 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Concept Fan
+- APC
+- CAF
+- C&S
+- OPV
+
+Mental models (always loaded):
+- tetlock-superforecasting
+- klein-pre-mortem
+- taleb-fragility-antifragility
+- narrative-instinct
+- second-order-thinking
+- sensemaking
+- cynefin-framework
+
+---
 ## RAG PROFILE
 
 ### type_filter

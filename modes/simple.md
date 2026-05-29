@@ -69,6 +69,11 @@ The **anti-confabulation discipline still applies** even in bypass: if the promp
 
 Gear 1
 
+## ANALYTICAL PERSPECTIVES
+
+*(no perspectives configured — this mode does not run through the analyst pipeline)*
+
+---
 ## RAG PROFILE
 
 ```yaml

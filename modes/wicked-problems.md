@@ -325,6 +325,27 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- CAF
+- C&S
+- FIP
+- Concept Fan
+- APC
+
+Mental models (always loaded):
+- nash-equilibrium
+- batna
+- cooperation
+- prisoners-dilemma
+- tragedy-of-the-commons
+- bounded-rationality
+- schelling-point
+
+---
 ## RAG PROFILE
 
 ### type_filter

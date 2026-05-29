@@ -266,6 +266,19 @@ Gear 2
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- CAF
+
+Mental models (always loaded):
+- map-territory
+- narrative-instinct
+- bertin-visual-variables
+- alexander-pattern-language
+
+---
 ## RAG PROFILE
 
 ### type_filter

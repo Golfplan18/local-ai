@@ -292,6 +292,21 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- Challenge
+- FIP
+- AGO
+
+Mental models (always loaded):
+- bayesian-reasoning
+- base-rate-neglect
+- confirmation-bias
+- bennett-checkel-process-tracing-tests
+
+---
 ## RAG PROFILE
 
 ### type_filter

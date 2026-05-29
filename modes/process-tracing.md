@@ -285,6 +285,23 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- Challenge
+- FIP
+- OPV
+
+Mental models (always loaded):
+- bennett-checkel-process-tracing-tests
+- bayesian-reasoning
+- confirmation-bias
+- falsifiability
+- hindsight-bias
+- narrative-instinct
+
+---
 ## RAG PROFILE
 
 ### type_filter

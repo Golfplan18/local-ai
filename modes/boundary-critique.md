@@ -306,6 +306,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- CAF
+- Challenge
+- Provocation
+
+Mental models (always loaded):
+- ulrich-csh-boundary-categories
+- tragedy-of-the-commons
+- free-rider-problem
+- arrows-impossibility-theorem
+- bounded-rationality
+- confirmation-bias
+
+---
 ## RAG PROFILE
 
 ### type_filter

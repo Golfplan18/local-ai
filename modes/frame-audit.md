@@ -299,6 +299,21 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- Concept Fan
+- Provocation
+- Challenge
+
+Mental models (always loaded):
+- anchoring
+- cappelen-plunkett-conceptual-engineering
+- choice-architecture
+- allisons-three-lenses
+
+---
 ## RAG PROFILE
 
 ### type_filter

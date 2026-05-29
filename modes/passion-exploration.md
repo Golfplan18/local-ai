@@ -280,6 +280,21 @@ Gear 3
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Concept Fan
+- AGO
+- OPV
+
+Mental models (always loaded):
+- lakoff-conceptual-metaphor
+- allisons-three-lenses
+- evolution-natural-selection
+- emergence
+- narrative-instinct
+
+---
 ## RAG PROFILE
 
 ### type_filter

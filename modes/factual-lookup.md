@@ -220,6 +220,18 @@ Gear 2
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- CAF
+
+Mental models (always loaded):
+- bayesian-reasoning
+- base-rate-neglect
+- availability-heuristic
+
+---
 ## RAG PROFILE
 
 ### type_filter

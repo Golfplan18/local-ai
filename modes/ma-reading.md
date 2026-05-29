@@ -298,6 +298,23 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- Concept Fan
+- Challenge
+- KVI
+
+Mental models (always loaded):
+- japanese-aesthetics-catalog
+- arnheim-compositional-forces
+- bachelard-topoanalysis
+- kaplan-attention-restoration
+- alexander-pattern-language
+- narrative-instinct
+
+---
 ## RAG PROFILE
 
 ### type_filter

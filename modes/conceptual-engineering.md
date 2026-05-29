@@ -277,6 +277,22 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- AGO
+- Concept Fan
+- Challenge
+- CAF
+
+Mental models (always loaded):
+- cappelen-plunkett-conceptual-engineering
+- lakoff-conceptual-metaphor
+- map-territory
+- framing-effect
+- narrative-instinct
+
+---
 ## RAG PROFILE
 
 ### type_filter

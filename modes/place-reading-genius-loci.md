@@ -357,6 +357,24 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- OPV
+- Concept Fan
+- KVI
+
+Mental models (always loaded):
+- appleton-prospect-refuge
+- lynch-image-of-the-city
+- norberg-schulz-genius-loci
+- alexander-pattern-language
+- bachelard-topoanalysis
+- kaplan-attention-restoration
+- arnheim-compositional-forces
+
+---
 ## RAG PROFILE
 
 ### type_filter

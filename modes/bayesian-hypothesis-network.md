@@ -290,6 +290,23 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- Challenge
+- CAF
+- FIP
+- AGO
+
+Mental models (always loaded):
+- bayesian-reasoning
+- base-rate-neglect
+- confirmation-bias
+- falsifiability
+- occams-razor
+- tetlock-superforecasting
+
+---
 ## RAG PROFILE
 
 ### type_filter

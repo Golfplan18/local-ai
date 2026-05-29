@@ -249,6 +249,22 @@ Gear 3
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- AGO
+- Concept Fan
+
+Mental models (always loaded):
+- confirmation-bias
+- availability-heuristic
+- anchoring
+- affect-heuristic
+- endowment-effect
+
+---
 ## RAG PROFILE
 
 ### type_filter

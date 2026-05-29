@@ -267,6 +267,21 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- CAF
+- FIP
+- Challenge
+
+Mental models (always loaded):
+- bayesian-reasoning
+- base-rate-neglect
+- representativeness-heuristic
+- differential-diagnosis-schema
+- occams-razor
+
+---
 ## RAG PROFILE
 
 ### type_filter
