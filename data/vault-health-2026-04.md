@@ -18,7 +18,7 @@ Stale incubators queued for review: 0
 
 ## Missing Yaml (368)
 - Reference — Reducing Ambiguity in AI Prompts.md (missing: tags)
-- Framework — API Key Acquisition.md (missing: tags)
+- Framework — API Key Setup.md (missing: tags)
 - How_to_Learn_Book_Report.md
 - Mary_Magdalene_Report.md
 - Reference — Prompting Research.md (missing: tags)
