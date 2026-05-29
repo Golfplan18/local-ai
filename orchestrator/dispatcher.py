@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/tools/"))
 
 try:
     from web_search import web_search
+    from web_fetch import web_fetch
     from file_ops import file_read, file_write, _validate_path
     from knowledge_search import knowledge_search
     from credential_store import credential_store
@@ -50,6 +51,13 @@ except ImportError:
 
 def _wrap_web_search(params):
     return web_search(params.get("query", ""), params.get("max_results", 5))
+
+def _wrap_web_fetch(params):
+    return web_fetch(
+        params.get("url", ""),
+        channel=params.get("channel", "auto"),
+        persist=params.get("persist", False),
+    )
 
 def _wrap_file_read(params):
     return file_read(params.get("path", ""))
@@ -218,6 +226,7 @@ def _wrap_remove_scheduled_task(params):
 
 TOOL_REGISTRY = {
     "web_search":       {"handler": _wrap_web_search,       "permission": "auto",    "category": "read"},
+    "web_fetch":        {"handler": _wrap_web_fetch,        "permission": "auto",    "category": "read"},
     "file_read":        {"handler": _wrap_file_read,        "permission": "auto",    "category": "read"},
     "file_write":       {"handler": _wrap_file_write,       "permission": "approve", "category": "write"},
     "file_edit":        {"handler": _wrap_file_edit,        "permission": "approve", "category": "write"},
