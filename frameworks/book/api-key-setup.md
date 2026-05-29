@@ -174,14 +174,22 @@ Present the options:
 
 **Image-generation providers (visual pane):**
 
-5. **OpenAI image (DALL-E)** — Reuses the OpenAI key from option 2. If you've already configured OpenAI, no additional setup is needed; the same `ora-openai` keychain entry serves DALL-E.
+5. **OpenAI image (DALL-E)** — Reuses the OpenAI key from option 2. If you've already configured OpenAI, no additional setup is needed; the same `ora/openai-api-key` keychain entry serves DALL-E.
 6. **Stability AI** — Stable Diffusion family models (SDXL, SD3). Quality control via image-to-image, ControlNet, and style references. Pay-per-image.
 7. **Replicate** — Aggregator hosting hundreds of community image models, plus video and style-training. Long-tail fallback for capabilities the other two image providers don't cover.
 8. **All image providers** — Configure all three for maximum image-generation fallback coverage.
 
+**Search and metadata providers (free tier — recommended):**
+
+9. **Tavily search** — Free tier ~1,000 searches/month. LLM-friendly snippet shape. First tier of Ora's web-search cascade when configured. Optional but recommended.
+10. **Brave Search** — Free tier ~2,000 queries/month. Larger free tier than Tavily; survives heavy production search bursts that DDG silently rate-limits. Optional but recommended.
+11. **Exa neural search** — Free tier ~1,000 searches/month. Embedding-based / semantic retrieval — different result shape from the keyword tiers, useful for concept-style queries. Opt-in to the cascade by adding `"exa"` to `search_cascade_order` in `config/routing-config.json` once configured. Optional.
+12. **Artificial Analysis** — Free key. Improves the automated model selector by giving Ora structured access to live model intelligence / latency / cost data instead of falling back to a public-page scrape that can break when the page layout changes. Recommended.
+13. **All four search and metadata providers** — Configure all four for maximum search coverage and reliable live model metadata.
+
 **Other:**
 
-9. **I already have one or more API keys** — Skip to key entry.
+14. **I already have one or more API keys** — Skip to key entry.
 
 Record the user's selection. Process each selected provider through Layers 2–4 sequentially.
 
@@ -222,7 +230,7 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
 3. Guide: "Log in or create an account. You should see the API Keys page. Click 'Create new secret key.' Give it a name like 'ora' so you can identify it later."
 4. **Critical warning (first delivery):** Same as above, noting OpenAI keys start with `sk-`.
-5. **Image-generation note:** "The OpenAI API key you just created serves both the chat completions endpoint (used for evaluation) AND the image-generation endpoints (DALL-E 3 / DALL-E 2). One key, both capabilities. The credential store entry `ora-openai` is what the visual pane will look up when it routes to DALL-E. You do not need to create a separate key for image generation."
+5. **Image-generation note:** "The OpenAI API key you just created serves both the chat completions endpoint (used for evaluation) AND the image-generation endpoints (DALL-E 3 / DALL-E 2). One key, both capabilities. The credential store entry `ora/openai-api-key` is what the visual pane will look up when it routes to DALL-E. You do not need to create a separate key for image generation."
 
 **IF provider is Google:**
 
@@ -250,7 +258,7 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
    ```
 
 3. Guide: "Log in or create a Stability AI account. Once you're in the platform, look for 'Account' or 'API Keys' in the navigation — Stability typically presents it as part of the account settings rather than a separate developer console. Click to generate a new API key. You may also need to add a payment method or purchase credits before the key will work for live generation calls."
-4. **Critical warning (first delivery):** "IMPORTANT: The key will be shown exactly ONCE. Do NOT close this page until you've copied the key. Stability AI keys typically start with `sk-` and are a long string of letters and numbers. Note: this prefix is the same shape as an OpenAI key — make sure you keep them separate, since they go to different services and to different `ora-` keychain entries."
+4. **Critical warning (first delivery):** "IMPORTANT: The key will be shown exactly ONCE. Do NOT close this page until you've copied the key. Stability AI keys typically start with `sk-` and are a long string of letters and numbers. Note: this prefix is the same shape as an OpenAI key — make sure you keep them separate, since they go to different services and to different keychain entries (`ora/stability-api-key` vs `ora/openai-api-key`)."
 5. **Pricing transparency:** Per the architectural decision in §11.13 of the visual-pane plan, the framework does not preview or estimate per-call costs. You can monitor spending on Stability AI's billing dashboard at any time. If you want a hard ceiling, set a monthly spending cap inside Stability's billing settings — Ora itself does not enforce one.
 
 **IF provider is Replicate:**
@@ -267,6 +275,66 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 3. Guide: "Log in or create a Replicate account (you can sign in with GitHub if you have one). The API tokens page should appear directly after sign-in. Click 'Create token' and give it a name like 'ora' so you can identify it later. Replicate will also ask for a payment method before runs will execute, even though the token itself is created without one."
 4. **Critical warning (first delivery):** "IMPORTANT: The token will be shown exactly ONCE. Do NOT close this page until you've copied it. Replicate tokens start with `r8_` and are a long string of letters and numbers."
 5. **Pricing transparency:** Per the architectural decision in §11.13 of the visual-pane plan, the framework does not preview or estimate per-call costs. You can monitor spending on Replicate's billing dashboard at any time. If you want a hard ceiling, set a monthly spending cap inside Replicate's billing settings — Ora itself does not enforce one.
+
+**IF provider is Tavily:**
+
+1. Tell the user: "I'm going to open Tavily in your browser. Tavily is a web-search API designed for LLM workflows — it returns clean snippet text rather than raw HTML. The free tier covers about 1,000 searches per month, which is more than enough for personal use. No payment method is required to start."
+2. Open the browser:
+   ```xml
+   <tool_call>
+   <n>browser_open</n>
+   <url>https://app.tavily.com/</url>
+   </tool_call>
+   ```
+
+3. Guide: "Log in or sign up — you can use Google, GitHub, or email. Once you're in the dashboard, find 'API Keys' (it's usually in the left sidebar or under your account menu). Copy the default key that's already there, or click 'Create new key' to generate a fresh one."
+4. **Critical warning (first delivery):** "IMPORTANT: Tavily keys typically start with `tvly-` followed by a long alphanumeric string. Copy the full key before you leave the page."
+5. **Cascade note:** "Tavily is the first tier of Ora's web search cascade. Once configured, search queries automatically route through Tavily before falling back to Brave or DDG. No additional configuration required."
+
+**IF provider is Brave:**
+
+1. Tell the user: "I'm going to open Brave Search API in your browser. Brave is a keyword search API with a generous free tier — about 2,000 queries per month. It's reliable for production search workloads and complements Tavily as a fallback tier. Free tier requires signing up but does not require a payment method."
+2. Open the browser:
+   ```xml
+   <tool_call>
+   <n>browser_open</n>
+   <url>https://api-dashboard.search.brave.com/app/keys</url>
+   </tool_call>
+   ```
+
+3. Guide: "Sign up or log in (Brave Account works). You'll need to subscribe to the 'Free' plan if you haven't already — it's $0 and requires no card. Once subscribed, click 'API Keys' in the sidebar and 'Add API Key' to generate one."
+4. **Critical warning (first delivery):** "IMPORTANT: The key is shown once at creation time. Copy the full string before you leave the page. Brave keys are typically a long alphanumeric token without a fixed prefix."
+5. **Cascade note:** "Brave is the second tier of Ora's web search cascade. It activates automatically once configured."
+
+**IF provider is Exa:**
+
+1. Tell the user: "I'm going to open Exa in your browser. Exa is a neural search API that uses embeddings to find conceptually relevant documents — a different retrieval shape from the keyword search providers (Tavily, Brave, DDG). The free tier covers about 1,000 searches per month."
+2. Open the browser:
+   ```xml
+   <tool_call>
+   <n>browser_open</n>
+   <url>https://dashboard.exa.ai/api-keys</url>
+   </tool_call>
+   ```
+
+3. Guide: "Sign up or log in (Google sign-in works). The API Keys page should appear directly after sign-in. Click 'Create new API key' and give it a name like 'ora' so you can identify it later. No payment method required for the free tier."
+4. **Critical warning (first delivery):** "IMPORTANT: Exa keys are UUID-shaped — a long string of hex digits separated by dashes, like `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. Copy the full key before you leave the page."
+5. **Opt-in note:** "Exa is registered as a cascade provider but is **not** in the default cascade order (Tavily → Brave → DDG). To use Exa, edit `config/routing-config.json` and add `\"exa\"` to the `search_cascade_order` list at the position you want it — typically first, since neural results complement the keyword tiers."
+
+**IF provider is Artificial Analysis:**
+
+1. Tell the user: "I'm going to open Artificial Analysis in your browser. Artificial Analysis publishes benchmarks for hundreds of language models (intelligence index, latency, tokens-per-second, per-token cost). Ora uses this data to populate the Models pane and to power the automated model selector. Without a key, Ora falls back to scraping the public pages — which works but breaks when the page layout changes. The API key is free and removes that fragility."
+2. Open the browser:
+   ```xml
+   <tool_call>
+   <n>browser_open</n>
+   <url>https://artificialanalysis.ai/</url>
+   </tool_call>
+   ```
+
+3. Guide: "Log in or create an account (top-right of the page). Once signed in, look for the API section in your account menu — Artificial Analysis presents API key management as part of the user profile rather than a separate developer console. Generate a new API key."
+4. **Critical warning (first delivery):** "IMPORTANT: The key is shown once at creation time. Copy the full string before you leave the page. Artificial Analysis keys are typically a long alphanumeric bearer token."
+5. **Recommendation note:** "Configuring this key is recommended. The automated model selector compares your prompt against current model benchmarks to choose the right tier (premium / mid / fast). Live data via the API is more reliable than the fallback scrape, especially when Artificial Analysis updates their model rankings."
 
 ---
 
@@ -285,18 +353,23 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
    - IF provider is OpenAI AND key does not start with `sk-`, THEN warn: "This doesn't look like an OpenAI API key — they typically start with 'sk-'. Check that you copied the full key."
    - IF provider is Stability AI AND key does not start with `sk-`, THEN warn: "This doesn't look like a Stability AI API key — they typically start with 'sk-' (the same prefix shape as OpenAI; verify it's the Stability key, not an OpenAI key pasted by mistake). Check that you copied the full key."
    - IF provider is Replicate AND key does not start with `r8_`, THEN warn: "This doesn't look like a Replicate API token — they typically start with 'r8_'. Check that you copied the full token."
+   - IF provider is Tavily AND key does not start with `tvly-`, THEN warn: "This doesn't look like a Tavily API key — they typically start with 'tvly-'. Check that you copied the full key."
+   - IF provider is Exa AND key does not match the UUID pattern (8-4-4-4-12 hex), THEN warn: "This doesn't look like an Exa API key — they're typically UUID-shaped (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). Check that you copied the full key."
+   - IF provider is Brave OR provider is Artificial Analysis, THEN no specific prefix check applies — both providers issue opaque bearer tokens. Fall through to the length check.
    - IF key is shorter than 20 characters, THEN warn: "This seems too short for an API key. Did you copy the full string?"
 
-4. **Store the key securely:**
+4. **Store the key securely** under the canonical Ora keychain convention — service `ora`, username `<provider>-api-key`. This matches what `scripts/sync_model_registry.py`, `orchestrator/boot.py::_export_search_keys_to_env`, and the V3 settings panel all read from. Per the v1.4 normalization (see CHANGELOG), no provider uses a `ora-<provider>` service namespace anymore.
    ```xml
    <tool_call>
    <n>credential_store</n>
    <action>store</action>
-   <service>ora-[provider]</service>
-   <username>api-key</username>
+   <service>ora</service>
+   <username>[provider]-api-key</username>
    <key>[the pasted key]</key>
    </tool_call>
    ```
+
+   Username slug per provider: `anthropic-api-key`, `openai-api-key`, `google-api-key`, `openrouter-api-key`, `stability-api-key`, `replicate-api-key`, `tavily-api-key`, `brave-api-key`, `exa-api-key`, `aa-api-key`.
 
 5. Confirm: "Key stored securely in your system's credential manager. It is not saved in any file or log. Your system can retrieve it when needed without you entering it again."
 6. **Log the event (without the key value):**
@@ -310,13 +383,13 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
 
 ### Processing Instructions
 
-1. Retrieve the stored key:
+1. Retrieve the stored key (canonical convention — service `ora`, username `<provider>-api-key`):
    ```xml
    <tool_call>
    <n>credential_store</n>
    <action>retrieve</action>
-   <service>ora-[provider]</service>
-   <username>api-key</username>
+   <service>ora</service>
+   <username>[provider]-api-key</username>
    </tool_call>
    ```
 
@@ -333,6 +406,14 @@ IF the user decides to skip, THEN: "No problem. Your system will continue using 
    **Replicate:** POST to `https://api.replicate.com/v1/predictions` invoking a known fast, cheap model (e.g., a small SDXL or Stable Diffusion variant) with prompt `"hi"` and the lowest supported step count and resolution. The verification call generates one real image; expected cost is on the order of fractions of a cent to a few cents depending on the model and GPU class. The framework warns the user before running the call: "Verifying the Replicate token requires running one small model, which will incur a charge of typically less than a cent on your account. Proceed?" Expected cost: ~$0.001–0.02 depending on the model selected.
 
    **Note on image-provider verification:** Unlike text providers, image providers have no genuinely free verification endpoint — listing models is sometimes available without auth and so doesn't actually verify the key. The framework therefore performs a real (smallest-possible) generation. This is consistent with the §11.13 cost-transparency design: charges land where they land, and the user is informed before the call so the small verification charge isn't a surprise.
+
+   **Tavily:** POST to `https://api.tavily.com/search` with body `{"api_key": <key>, "query": "ping", "max_results": 1, "search_depth": "basic"}`. A 200 response with a `results` array (possibly empty) confirms the key works. Counts as one free-tier query.
+
+   **Brave:** GET to `https://api.search.brave.com/res/v1/web/search?q=ping&count=1` with header `X-Subscription-Token: <key>`. A 200 response with a `web.results` array confirms the key works. Counts as one free-tier query.
+
+   **Exa:** POST to `https://api.exa.ai/search` with header `x-api-key: <key>` and body `{"query": "ping", "numResults": 1}`. A 200 response with a `results` array confirms the key works. Counts as one free-tier query.
+
+   **Artificial Analysis:** GET to `https://artificialanalysis.ai/api/v2/data/llms/models` with header `Authorization: Bearer <key>`. A 200 response with a model envelope confirms the key works. The endpoint is metered but the free tier is generous; one ping is negligible.
 
 3. **Interpret the result:**
 
@@ -645,3 +726,5 @@ v1.2 (2026/04/23): Added Layer 6 (Self-Evaluation) in penultimate position and L
 v1.3 (2026/04/29): Extended Layer 2 with image-generation providers per WP-7.3.5 and §11.13 of the visual-pane plan. Added Stability AI section (signup `https://platform.stability.ai/`, key prefix `sk-`, keychain entry `ora-stability`) and Replicate section (signup `https://replicate.com/account/api-tokens`, key prefix `r8_`, keychain entry `ora-replicate`). Added a note under the existing OpenAI section confirming that the same `ora-openai` key serves DALL-E 3 / DALL-E 2 alongside chat completions — no separate setup required. Layer 1 Section 3 split into evaluation-cost regime (per-token) and image-generation-cost regime (per-image), and the provider-selection menu split into evaluation / image-generation / other groups. Layer 3 validation extended with prefix checks for Stability and Replicate. Layer 4 verification calls added for Stability (smallest viable SDXL/SD3 generation, ~$0.01–0.05) and Replicate (smallest viable model run, ~$0.001–0.02), with a note that image providers have no genuinely free verification endpoint and the user is informed before the small charge lands. Layer 5 endpoint-registry guidance extended with `type: image-api` entries for Stability and Replicate, plus a note that OpenAI image generation reuses the existing `openai-api` entry. Layer 5 also writes a sibling `[workspace]/config/Reference — API Image Providers.md` when image providers are configured; the template/spec lives in vault root as `Reference — API Image Providers.md`. Named Failure Modes Key Format Trap extended with the new prefixes.
 
 v1.4 (2026/05/10): Keychain naming normalized. Stability and Replicate previously used a per-provider service namespace (`ora-stability` / `ora-replicate` with account `api-key`) — every other provider used the canonical pattern (service `ora`, account `<provider>-api-key`). The divergence meant keys saved through the user-settings panel never landed where the integrations looked. Resolved by moving Stability and Replicate to the canonical pattern: keychain service `ora`, accounts `stability-api-key` and `replicate-api-key`. Code touched: `orchestrator/integrations/stability.py`, `orchestrator/integrations/replicate.py` (constants), `orchestrator/user_settings.py` (added both providers to PROVIDER_KEYRING_USERNAME and PROVIDER_LABELS), `server/server.py::_try_keychain_stability_key` (call site), `config/models.json` (display credential_key fields). Endpoint-registry credential_key fields now read `ora/stability-api-key` and `ora/replicate-api-key` to make the canonical pattern explicit on inspection. Operators with existing keys under the old service names need to re-save via the settings panel; the panel writes to the canonical address.
+
+v1.5 (2026/05/29): Added four search and metadata providers as free-tier optional keys: Tavily (Tier 1 of the web-search cascade), Brave (Tier 2), Exa (neural / semantic search, opt-in addition to the cascade), and Artificial Analysis (live model intelligence / latency / cost metadata; supersedes a fragile public-page scrape in `scripts/sync_model_registry.py`). Layer 1 provider menu extended with a new "Search and metadata providers (free tier — recommended)" group (options 9–13). Layer 2 grew per-provider signup blocks for the four. Layer 3 validation added key-format hints (`tvly-` prefix for Tavily, UUID shape for Exa; Brave and Artificial Analysis are opaque bearer tokens). Layer 4 verification calls added for all four — all free-tier, no payment-method warning required. Layer 3 storage template and Layer 4 retrieve template were also normalized to the canonical `service="ora", username="<provider>-api-key"` pattern documented in v1.4 — the templates had stayed in the pre-v1.4 `service="ora-[provider]"` form even though the per-provider integrations had moved. The bridge function `orchestrator/boot.py::_export_search_keys_to_env` reads `ora/tavily-api-key`, `ora/brave-api-key`, `ora/exa-api-key` and exports to `TAVILY_API_KEY` / `BRAVE_API_KEY` / `EXA_API_KEY` at module load so `tools/web_search.py` sees them. The AA path is consumed directly via `scripts/sync_model_registry.py::_load_aa_api_key` (no env-var bridge needed). The Exa provider is registered in `tools/web_search.py::_PROVIDERS` but is **not** in the default `search_cascade_order` — users opt in by adding `"exa"` to that list in `config/routing-config.json`.
