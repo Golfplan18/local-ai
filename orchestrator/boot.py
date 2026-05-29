@@ -86,6 +86,39 @@ except ImportError as e:
     print(f"[WARNING] Tool import failed: {e}")
     TOOLS_AVAILABLE = False
 
+
+# Search-API key bridge — keyring → env var. ``tools/web_search.py``
+# reads ``TAVILY_API_KEY`` / ``BRAVE_API_KEY`` / ``EXA_API_KEY`` from
+# ``os.environ``, but the Framework — API Key Acquisition flow stores
+# keys in the macOS keychain under the canonical convention
+# ``service="ora", username="<provider>-api-key"`` (also used by
+# ``scripts/sync_model_registry.py``). Export each key into the env at
+# module load so the cascade sees them. Pre-set env vars win (CI,
+# shell rc), so we only write keys not already present.
+def _export_search_keys_to_env() -> None:
+    try:
+        import keyring
+    except ImportError:
+        return
+    pairs = (
+        ("TAVILY_API_KEY", "tavily-api-key"),
+        ("BRAVE_API_KEY",  "brave-api-key"),
+        ("EXA_API_KEY",    "exa-api-key"),
+    )
+    for env_name, kr_key in pairs:
+        if os.environ.get(env_name, "").strip():
+            continue
+        try:
+            value = keyring.get_password("ora", kr_key)
+        except Exception:
+            continue
+        if value:
+            os.environ[env_name] = value
+
+
+_export_search_keys_to_env()
+
+
 # RAG engine (Phase 8 + Phase 5.6 ranker) — optional, falls back to basic ChromaDB if unavailable
 RAG_ENGINE_AVAILABLE = False
 try:
