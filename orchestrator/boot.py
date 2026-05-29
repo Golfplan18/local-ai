@@ -6443,6 +6443,112 @@ def _reset_perspective_caches() -> None:
     _MENTAL_MODELS_CACHE = None
 
 
+# ── MCP tool catalog (G1.10 Phase 5) ─────────────────────────────────────
+#
+# At runtime the orchestrator may have one or more MCP servers connected
+# (registered in ``config/mcp-servers.json``, initialized by ``server.py``
+# at startup, routed through ``dispatcher.dispatch()`` for ``mcp_*`` tool
+# calls). The model needs to know which mcp_* tools exist or it can't
+# call them; ``_get_mcp_tool_catalog`` formats the live tool list as a
+# markdown block injected into the analyst's system prompt.
+
+
+def _get_mcp_tool_catalog() -> str:
+    """Return a markdown catalog of currently-available MCP tools.
+
+    Reads the MCP client manager registered on the dispatcher (set by
+    ``server.py`` at startup via ``dispatcher.set_mcp_client``). Returns
+    the empty string when no manager is registered, no servers connected,
+    or no tools are exposed. Tools are grouped by server name so the
+    catalog reads as one block per connected server.
+    """
+    try:
+        import dispatcher  # type: ignore
+    except ImportError:
+        return ""
+
+    mgr = getattr(dispatcher, "_mcp_client", None)
+    if mgr is None or not hasattr(mgr, "get_tool_definitions"):
+        return ""
+
+    try:
+        defs = mgr.get_tool_definitions()
+    except Exception as e:
+        print(
+            f"[mcp_catalog] get_tool_definitions failed: {e}",
+            file=sys.stderr, flush=True,
+        )
+        return ""
+
+    if not defs:
+        return ""
+
+    # Group tools by server name. Names are formatted
+    # ``mcp_<server>_<tool>`` by ``MCPClientManager.get_tool_definitions``.
+    by_server: dict[str, list[dict]] = {}
+    for d in defs:
+        name = d.get("name", "")
+        if not name.startswith("mcp_"):
+            continue
+        rest = name[len("mcp_"):]
+        if "_" not in rest:
+            continue
+        server, tool_name = rest.split("_", 1)
+        by_server.setdefault(server, []).append({
+            "name": name,
+            "tool_name": tool_name,
+            "description": d.get("description", "") or "",
+            "parameters": d.get("parameters", {}) or {},
+        })
+
+    if not by_server:
+        return ""
+
+    parts: list[str] = [
+        "## AVAILABLE MCP TOOLS",
+        "",
+        (
+            "External Model Context Protocol servers are connected. Each "
+            "tool below can be invoked via tool calls using its full "
+            "namespaced name; the dispatcher routes `mcp_*` calls to the "
+            "appropriate server. Use them when their description matches "
+            "your task. MCP tools complement (not replace) the dispatcher's "
+            "registered tools."
+        ),
+        "",
+    ]
+
+    for server in sorted(by_server):
+        parts.append(f"### Server `{server}`")
+        parts.append("")
+        for d in by_server[server]:
+            line = f"- **`{d['name']}`**"
+            if d["description"]:
+                # Collapse multi-line descriptions to single-line for the
+                # catalog; the full description is what the MCP server
+                # publishes, often spans multiple sentences.
+                desc = " ".join(d["description"].split())
+                line += f" — {desc}"
+            parts.append(line)
+            params_schema = d["parameters"]
+            if isinstance(params_schema, dict):
+                props = params_schema.get("properties", {})
+                if props and isinstance(props, dict):
+                    for pname, pinfo in props.items():
+                        if not isinstance(pinfo, dict):
+                            continue
+                        ptype = pinfo.get("type", "any")
+                        pdesc = pinfo.get("description", "") or ""
+                        pdesc = " ".join(pdesc.split())
+                        line = f"  - `{pname}` ({ptype})"
+                        if pdesc:
+                            line += f": {pdesc}"
+                        parts.append(line)
+        parts.append("")
+
+    return "\n".join(parts).strip()
+
+
 def _images_for_endpoint(images, endpoint):
     """Return images only when the endpoint is vision-capable (Chunk 6 gate).
 
@@ -6728,6 +6834,14 @@ def build_system_prompt_for_gear(
                         f"\n## ANALYTICAL PERSPECTIVES — {mode_name}\n\n"
                         f"{resolved}"
                     )
+        # G1.10 Phase 5 — MCP tool catalog. Both depth and breadth analysts
+        # may want to invoke MCP-namespaced tools (filesystem, browser,
+        # github, etc.). The catalog is the model's only signal that
+        # mcp_* tools exist; without it the model would never name them.
+        # Empty when no MCP servers are connected — clean no-op.
+        mcp_catalog = _get_mcp_tool_catalog()
+        if mcp_catalog:
+            parts.append(f"\n{mcp_catalog}")
         if instructions:
             parts.append(f"\n## MODE INSTRUCTIONS — {mode_name}\n\n{instructions}")
     elif step == "evaluator":

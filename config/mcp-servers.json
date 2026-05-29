@@ -1,6 +1,33 @@
 {
-  "servers": [],
-  "notes": "Each server entry: {name, transport (stdio|http), command (for stdio) or url (for http), args (optional), env (optional)}. Servers are initialized at orchestrator startup. Add servers with the format shown in examples below.",
+  "servers": [
+    {
+      "name": "vault-fs",
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/oracle/Documents/vault/"
+      ],
+      "_purpose": "Structured filesystem operations (read, write, list, search) scoped to the Wisdom Nexus vault. Adds tool-calling-friendly file primitives over the dispatcher's existing file_read/file_write surface."
+    },
+    {
+      "name": "playwright",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "_purpose": "Browser automation — navigate, click, fill, screenshot, console. Complements the existing internal Playwright path used by web_fetch's channel=local tier."
+    },
+    {
+      "name": "github",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "_purpose": "GitHub repo / issue / PR operations. Requires GITHUB_PERSONAL_ACCESS_TOKEN in the orchestrator's environment (inherited from the shell that started Ora). Fails-soft if the token is absent — the github server reports startup failure and the dispatcher routes the other two servers normally.",
+      "_env_required": "GITHUB_PERSONAL_ACCESS_TOKEN"
+    }
+  ],
+  "notes": "Each server entry: {name, transport (stdio|http), command (for stdio) or url (for http), args (optional), env (optional)}. Servers are initialized at orchestrator startup. Servers that fail to start are logged but do not block the orchestrator. The _purpose / _env_required fields are documentation only — the MCP client ignores underscore-prefixed keys.",
   "examples": [
     {"name": "playwright", "transport": "stdio", "command": "npx", "args": ["@playwright/mcp@latest"]},
     {"name": "custom-server", "transport": "http", "url": "http://localhost:8080/mcp"}
