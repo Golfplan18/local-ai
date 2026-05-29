@@ -761,12 +761,23 @@ def assemble_consultation_package(
     executor = ThreadPoolExecutor(max_workers=max_workers)
     budget_exceeded = False
     try:
+        # 2026-05-28: ContextVar propagation. Wrap submit so the
+        # per-turn rag_isolation + trace_dir ContextVars set by
+        # boot.run_step2_context_assembly survive into the worker
+        # thread. Without this, model calls made inside web
+        # consultation lose token capture and any flag-based gating.
+        import contextvars as _ctxvars
+        def _ctx_submit(fn, *args, **kwargs):
+            ctx = _ctxvars.copy_context()
+            _s = executor.submit
+            return _s(ctx.run, fn, *args, **kwargs)
+
         # Submit the sanity check.
         if prompt_sanity_enabled:
             sanity_user = _SANITY_USER_TEMPLATE.format(
                 user_prompt=user_prompt or "(empty)",
             )
-            sanity_future = executor.submit(
+            sanity_future = _ctx_submit(
                 _safe_call_model,
                 call_model,
                 [{"role": "system", "content": _SANITY_SYSTEM_PROMPT},
@@ -776,7 +787,7 @@ def assemble_consultation_package(
 
         # Submit all intent queries.
         intent_futures = {
-            executor.submit(
+            _ctx_submit(
                 _execute_intent_query,
                 intent,
                 max_results=max_results_per_query,

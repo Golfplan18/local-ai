@@ -12,7 +12,39 @@ import sys
 import json
 import re
 import glob as globmod
-from datetime import datetime
+import contextvars
+from contextvars import ContextVar
+from datetime import datetime, timezone
+
+
+def _submit_with_context(executor, fn, *args, **kwargs):
+    """Submit ``fn(*args, **kwargs)`` to ``executor`` with a copy of the
+    current ContextVars so per-turn flags (rag_isolation, trace_dir for
+    token-usage capture) propagate into worker threads.
+
+    Python's ThreadPoolExecutor does NOT copy contextvars to worker
+    threads by default. Without this wrapper the Gear-4 parallel
+    cascade (analysts / evaluators / revisers / verifiers running in
+    workers) sees ContextVar defaults instead of the values the main
+    pipeline thread set, so model calls in those steps no-op the
+    usage logger and the cost summary loses 70%+ of the calls.
+
+    Pattern: ``ctx.run(fn, *args)`` re-binds the captured snapshot,
+    then runs ``fn`` in the worker thread under that snapshot.
+    """
+    ctx = contextvars.copy_context()
+    _submit = executor.submit  # alias so global executor.submit→_submit_with_context replacements don't recurse
+    return _submit(ctx.run, fn, *args, **kwargs)
+
+# Per-turn trace directory. Set by ``run_step2_context_assembly`` so any
+# downstream model call (claude / openai / gemini / openrouter) can write
+# its token-usage record to ``<trace_dir>/usage.jsonl`` without each call
+# site having to thread ``trace_dir`` through three layers of helpers.
+# Per-thread / per-request — Flask runs each request on its own thread so
+# parallel turns can't trample each other's usage logs.
+_TURN_TRACE_DIR_CV: ContextVar[str | None] = ContextVar(
+    "turn_trace_dir", default=None,
+)
 
 # Paths
 WORKSPACE = os.path.expanduser("~/ora/")
@@ -5557,8 +5589,32 @@ def _load_web_consultation_config() -> dict:
         return defaults
 
 
+def _load_profile_config(config_name: str | None) -> dict | None:
+    """Load a per-profile configuration from ``config/configurations/<name>.json``.
+
+    Used by ``run_step2_context_assembly`` to resolve per-profile fields
+    (e.g., ``rag_isolation``) that live in the named-configuration JSON
+    rather than in ``routing-config.json``. Returns ``None`` when
+    ``config_name`` is falsy or the file cannot be read.
+    """
+    if not config_name:
+        return None
+    import json as _json
+    import os as _os
+    path = _os.path.expanduser(
+        f"~/ora/config/configurations/{config_name}.json"
+    )
+    try:
+        with open(path) as f:
+            return _json.load(f)
+    except Exception as exc:
+        print(f"[step2] failed to load profile config {config_name!r}: {exc}")
+        return None
+
+
 def run_step2_context_assembly(step1_result: dict, config: dict,
-                               trace_dir: str | None = None) -> dict:
+                               trace_dir: str | None = None,
+                               config_name: str | None = None) -> dict:
     """Step 2: Assemble context package for pipeline stages.
 
     Python loads the mode file, performs RAG queries, and builds the complete
@@ -5571,6 +5627,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     ``pipeline_trace.start_trace``. RAG retrieval failures that previously
     fell silently to empty strings now write structured failure entries
     to ``rag-failures.jsonl`` in this directory.
+
+    ``config_name``: when provided, the matching per-profile configuration at
+    ``config/configurations/<config_name>.json`` is loaded and per-profile
+    fields (currently ``rag_isolation``) are consulted alongside ``config``.
+    Per-profile values take precedence when present.
     """
     mode_name = step1_result["mode"]
     mode_text = load_mode(mode_name)
@@ -5635,7 +5696,35 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     #   4. Delete `orchestrator/tests/test_rag_isolation_bypass.py`.
     #   5. Remove the `rag_isolation` field from any configuration JSON
     #      under `~/ora/config/configurations/`.
-    _RAG_ISOLATION_WEB_ONLY = config.get("rag_isolation") == "web_only"
+    # 2026-05-28: per-turn trace dir on a ContextVar so every model
+    # call wrapper can record its token usage without each call site
+    # having to thread ``trace_dir`` through three layers of helpers.
+    if trace_dir:
+        _TURN_TRACE_DIR_CV.set(trace_dir)
+    else:
+        _TURN_TRACE_DIR_CV.set(None)
+
+    # Per-profile configs (config/configurations/<name>.json) hold the flag;
+    # routing-config.json (the ``config`` parameter) does not. Load the
+    # per-profile config when ``config_name`` is provided so the production
+    # path actually fires. Fall back to ``config.get("rag_isolation")`` for
+    # backward compat with the unit test and any caller that pre-merges.
+    _profile_cfg = _load_profile_config(config_name)
+    _rag_isolation_value = None
+    if _profile_cfg is not None:
+        _rag_isolation_value = _profile_cfg.get("rag_isolation")
+    if _rag_isolation_value is None:
+        _rag_isolation_value = config.get("rag_isolation")
+    _RAG_ISOLATION_WEB_ONLY = _rag_isolation_value == "web_only"
+    # Propagate the resolved flag to the tool dispatcher so the
+    # knowledge_search tool (and any future vault-touching tool) refuses
+    # when the model tries to call it mid-pipeline. ContextVar — per-thread,
+    # per-request, no leak across parallel turns.
+    try:
+        from dispatcher import set_rag_isolation as _set_dispatcher_rag_isolation
+        _set_dispatcher_rag_isolation(_rag_isolation_value)
+    except Exception as _exc:
+        print(f"[step2] failed to propagate rag_isolation to dispatcher: {_exc}")
     # CAMPAIGN-RAG-BYPASS-2026-05-26 }}}
 
     # Phase 5.6 ranker: type-weighted ranking with provenance markers,
@@ -5910,7 +5999,8 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             "gear": gear,
             # CAMPAIGN-RAG-BYPASS-2026-05-26: surface flag state so captures
             # are auditable. Remove this key when the bypass is removed.
-            "rag_isolation": config.get("rag_isolation"),
+            # Resolved value (per-profile takes precedence over routing-config).
+            "rag_isolation": _rag_isolation_value,
             "cleaned_prompt": cleaned_prompt,
             # The three prompt forms broken out for trace-side audit.
             # cleaned_prompt above is the composite that downstream user
@@ -6085,6 +6175,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         # Trace directory threaded through to run_gear3 / run_gear4 so
         # later steps land in the same per-turn directory.
         "trace_dir": trace_dir,
+        # CAMPAIGN-RAG-BYPASS-2026-05-26: surface the resolved flag value on
+        # the context package so mid-pipeline RAG channels (supplemental-RAG
+        # in _fetch_supplement) can honour it without re-loading the profile.
+        "rag_isolation": _rag_isolation_value,
     }
 
 
@@ -6808,7 +6902,8 @@ def run_pipeline(user_input: str, history: list = None,
                               history_truncation_stats=history_trunc)
 
     # --- Step 2: Context Package Assembly ---
-    context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir)
+    context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
+                                             config_name=config_name)
     gear = context_pkg["gear"]
 
     # --- WP-4.2 — capability-conditional vision routing gate ---
@@ -7928,10 +8023,29 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
             )
             return final_text, final_ok, final_reason
 
-        # Fetch the supplement
-        fetched = _fetch_supplement(supp["query_terms"], mode_text=mode_text)
-        supplements_used += 1
-        resolved = bool(fetched.strip())
+        # CAMPAIGN-RAG-BYPASS-2026-05-26: when rag_isolation is web_only,
+        # the supplemental channel must NOT hit vault collections. Return
+        # empty so the model emits COVERAGE GAP rather than confabulating;
+        # the trace records a skipped-by-isolation marker so this is auditable.
+        if context_pkg and context_pkg.get("rag_isolation") == "web_only":
+            fetched = ""
+            supplements_used += 1
+            resolved = False
+            if PIPELINE_TRACE_AVAILABLE and trace_dir:
+                pipeline_trace.append_jsonl(
+                    trace_dir, "supplemental-rag.jsonl",
+                    {
+                        "step": step_name,
+                        "skipped": "rag_isolation_web_only",
+                        "gap_statement": supp["gap_statement"],
+                        "query_terms": supp["query_terms"],
+                    },
+                )
+        else:
+            # Fetch the supplement
+            fetched = _fetch_supplement(supp["query_terms"], mode_text=mode_text)
+            supplements_used += 1
+            resolved = bool(fetched.strip())
 
         if PIPELINE_TRACE_AVAILABLE and trace_dir:
             pipeline_trace.record_supplemental_request(
@@ -8803,14 +8917,14 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        depth_future = executor.submit(
+        depth_future = _submit_with_context(executor,
             _call_with_supplement,
             [{"role": "system", "content": depth_system},
              {"role": "user", "content": cleaned_prompt}],
             depth_endpoint, "analyst", 30, None, images, context_pkg,
             slot="depth", gear=4, config_name=config_name,
         )
-        breadth_future = executor.submit(
+        breadth_future = _submit_with_context(executor,
             _call_with_supplement,
             [{"role": "system", "content": breadth_system},
              {"role": "user", "content": cleaned_prompt}],
@@ -8904,7 +9018,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         # check image-grounded claims rather than reviewing the analyst's
         # textual representation alone. Restores full adversarial integrity
         # on image-attached prompts.
-        eval_a_future = executor.submit(
+        eval_a_future = _submit_with_context(executor,
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": eval_a_user_message}],
@@ -8912,7 +9026,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _images_for_endpoint(images, breadth_endpoint), context_pkg,
             slot="breadth", gear=4, config_name=config_name,
         )
-        eval_b_future = executor.submit(
+        eval_b_future = _submit_with_context(executor,
             _call_with_supplement,
             [{"role": "system", "content": eval_system},
              {"role": "user", "content": eval_b_user_message}],
@@ -9035,7 +9149,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         # B (image passthrough): revisers receive `images` so they can apply
         # image-aware corrections (e.g. "your description of the upper-right
         # quadrant is wrong, what's actually there is X").
-        depth_revise_future = executor.submit(
+        depth_revise_future = _submit_with_context(executor,
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": depth_revise_user_message}],
@@ -9043,7 +9157,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             _images_for_endpoint(images, depth_endpoint), context_pkg,
             slot="depth", gear=4, config_name=config_name,
         )
-        breadth_revise_future = executor.submit(
+        breadth_revise_future = _submit_with_context(executor,
             _call_with_supplement,
             [{"role": "system", "content": revise_system},
              {"role": "user", "content": breadth_revise_user_message}],
@@ -9243,7 +9357,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             # unblocked the cycle without re-revision. Retry recovers
             # the common transient case; persistent failures still
             # produce an output ``_verifier_broken`` flags downstream.
-            verify_depth_future = executor.submit(
+            verify_depth_future = _submit_with_context(executor,
                 _call_with_retry,
                 [{"role": "system", "content": verify_system},
                  {"role": "user", "content": verify_depth_user_message}],
@@ -9251,7 +9365,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 _images_for_endpoint(images, breadth_endpoint),
                 slot="breadth", gear=4, config_name=config_name,
             )
-            verify_breadth_future = executor.submit(
+            verify_breadth_future = _submit_with_context(executor,
                 _call_with_retry,
                 [{"role": "system", "content": verify_system},
                  {"role": "user", "content": verify_breadth_user_message}],
@@ -9419,7 +9533,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         futures = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             if not depth_unblocks:
-                futures["depth"] = executor.submit(
+                futures["depth"] = _submit_with_context(executor,
                     _call_with_retry,
                     [{"role": "system", "content": revise_system},
                      {"role": "user", "content": (
@@ -9432,7 +9546,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                     slot="depth", gear=4, config_name=config_name,
                 )
             if not breadth_unblocks:
-                futures["breadth"] = executor.submit(
+                futures["breadth"] = _submit_with_context(executor,
                     _call_with_retry,
                     [{"role": "system", "content": revise_system},
                      {"role": "user", "content": (
@@ -9742,6 +9856,221 @@ def _inject_images_into_messages(messages: list, images: list, api_format: str =
     return messages
 
 
+# ---------------------------------------------------------------------------
+# Per-call token usage capture (2026-05-28)
+# ---------------------------------------------------------------------------
+# Every provider SDK we call returns the actual prompt / completion token
+# counts the upstream charged us for. The pipeline used to discard that
+# data — we kept only the text. ``_record_model_usage`` writes one JSONL
+# entry per call into ``<trace_dir>/usage.jsonl`` so the per-turn cost
+# summary can be reconstructed deterministically from disk.
+#
+# Each provider call wrapper extracts its own usage shape (Claude exposes
+# ``msg.usage.input_tokens`` / ``output_tokens``; OpenAI and OpenRouter
+# expose ``resp.usage.prompt_tokens`` / ``completion_tokens``; Gemini
+# exposes ``resp.usage_metadata.prompt_token_count`` /
+# ``candidates_token_count``) and calls this helper with the normalised
+# field names.
+def _record_model_usage(
+    endpoint: dict,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    *,
+    total_tokens: int | None = None,
+    cache_read_tokens: int | None = None,
+    cache_creation_tokens: int | None = None,
+    step_hint: str | None = None,
+) -> None:
+    """Append a token-usage record for one model call to the active
+    turn's ``usage.jsonl``. No-op when no trace dir is set.
+
+    ``step_hint`` is best-effort — the call wrappers don't always know
+    which pipeline step they're being invoked from, so the per-turn
+    summary aggregator groups by ``model_id`` rather than by step.
+    """
+    trace_dir = _TURN_TRACE_DIR_CV.get()
+    if not trace_dir:
+        return
+    try:
+        record = {
+            "timestamp_utc": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%S.%fZ"
+            ),
+            "endpoint_id": endpoint.get("id") or endpoint.get("name"),
+            "model_id": (
+                endpoint.get("model_id")
+                or endpoint.get("model")
+                or endpoint.get("id")
+            ),
+            "service": endpoint.get("service"),
+            "step_hint": step_hint,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": (
+                total_tokens
+                if total_tokens is not None
+                else (prompt_tokens or 0) + (completion_tokens or 0)
+            ),
+            "cache_read_tokens": cache_read_tokens,
+            "cache_creation_tokens": cache_creation_tokens,
+        }
+        if PIPELINE_TRACE_AVAILABLE:
+            pipeline_trace.append_jsonl(trace_dir, "usage.jsonl", record)
+    except Exception as exc:
+        print(f"[usage] failed to record token usage: {exc}",
+              file=sys.stderr)
+
+
+def compute_cost_summary(trace_dir: str) -> dict:
+    """Aggregate the per-turn ``usage.jsonl`` into a cost summary.
+
+    Reads ``<trace_dir>/usage.jsonl``, joins each record against the
+    pricing table in ``config/model-registry.json``, and writes
+    ``<trace_dir>/cost-summary.json`` with per-model rows plus the
+    grand totals. Returns the same dict that was written, or a
+    ``status: "no_usage_data"`` placeholder when usage.jsonl is absent
+    or empty.
+
+    Safe to call repeatedly — overwrites the existing summary each call.
+    """
+    if not trace_dir:
+        return {"status": "no_trace_dir"}
+    usage_path = os.path.join(trace_dir, "usage.jsonl")
+    if not os.path.exists(usage_path):
+        return {"status": "no_usage_data", "calls": 0}
+
+    # Load model-registry pricing once.
+    pricing_table: dict = {}
+    try:
+        with open(
+            os.path.join(WORKSPACE, "config/model-registry.json")
+        ) as f:
+            reg = json.load(f)
+        for mid, info in (reg.get("models") or {}).items():
+            p = (info or {}).get("pricing") or {}
+            pricing_table[mid] = {
+                "input_per_token": p.get("input_per_token"),
+                "output_per_token": p.get("output_per_token"),
+            }
+    except Exception as exc:
+        print(f"[cost-summary] failed to load model-registry: {exc}",
+              file=sys.stderr)
+
+    per_model: dict[str, dict] = {}
+    grand = {
+        "calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "input_cost_usd": 0.0,
+        "output_cost_usd": 0.0,
+        "total_cost_usd": 0.0,
+    }
+    unpriced_models: set[str] = set()
+    with open(usage_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            # 2026-05-28: pricing keys in model-registry.json use the
+            # vendor-prefixed form ("openai/gpt-5.4-mini"). Direct-vendor
+            # API calls (claude / openai / gemini) record the bare model
+            # name as model_id and the prefixed form as endpoint_id, so
+            # we try the prefixed key first and fall back to the bare
+            # name for OpenRouter records where both are prefixed.
+            bare_model = r.get("model_id") or "unknown"
+            endpoint_id = r.get("endpoint_id") or ""
+            # Prefer the key that exists in the pricing table; default
+            # to endpoint_id when both miss so per-model groupings stay
+            # consistent across direct + OpenRouter dispatch of the
+            # same underlying model.
+            if endpoint_id and endpoint_id in pricing_table:
+                model = endpoint_id
+            elif bare_model in pricing_table:
+                model = bare_model
+            else:
+                model = endpoint_id or bare_model
+            row = per_model.setdefault(model, {
+                "model_id": model,
+                "service": r.get("service"),
+                "calls": 0,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+                "input_per_million_usd": None,
+                "output_per_million_usd": None,
+                "input_cost_usd": 0.0,
+                "output_cost_usd": 0.0,
+                "total_cost_usd": 0.0,
+                "priced": False,
+            })
+            pt = r.get("prompt_tokens") or 0
+            ct = r.get("completion_tokens") or 0
+            tt = r.get("total_tokens") or (pt + ct)
+            row["calls"] += 1
+            row["prompt_tokens"] += pt
+            row["completion_tokens"] += ct
+            row["total_tokens"] += tt
+            grand["calls"] += 1
+            grand["prompt_tokens"] += pt
+            grand["completion_tokens"] += ct
+            grand["total_tokens"] += tt
+
+            price = pricing_table.get(model) or {}
+            inp = price.get("input_per_token")
+            out = price.get("output_per_token")
+            if inp is not None or out is not None:
+                row["priced"] = True
+                if inp is not None:
+                    row["input_per_million_usd"] = round(inp * 1_000_000, 6)
+                    cost_in = pt * inp
+                    row["input_cost_usd"] += cost_in
+                    grand["input_cost_usd"] += cost_in
+                if out is not None:
+                    row["output_per_million_usd"] = round(out * 1_000_000, 6)
+                    cost_out = ct * out
+                    row["output_cost_usd"] += cost_out
+                    grand["output_cost_usd"] += cost_out
+            else:
+                unpriced_models.add(model)
+
+    # Round and finalise per-model totals.
+    for row in per_model.values():
+        row["input_cost_usd"] = round(row["input_cost_usd"], 6)
+        row["output_cost_usd"] = round(row["output_cost_usd"], 6)
+        row["total_cost_usd"] = round(
+            row["input_cost_usd"] + row["output_cost_usd"], 6
+        )
+    grand["input_cost_usd"] = round(grand["input_cost_usd"], 6)
+    grand["output_cost_usd"] = round(grand["output_cost_usd"], 6)
+    grand["total_cost_usd"] = round(
+        grand["input_cost_usd"] + grand["output_cost_usd"], 6
+    )
+
+    summary = {
+        "status": "computed",
+        "generated_at_utc": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%S.%fZ"
+        ),
+        "per_model": sorted(
+            per_model.values(), key=lambda r: -r["total_cost_usd"],
+        ),
+        "totals": grand,
+        "unpriced_models": sorted(unpriced_models),
+    }
+    try:
+        with open(os.path.join(trace_dir, "cost-summary.json"), "w") as f:
+            json.dump(summary, f, indent=2)
+    except Exception as exc:
+        print(f"[cost-summary] failed to write summary: {exc}",
+              file=sys.stderr)
+    return summary
+
+
 def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> str:
     """Dispatch an API call with direct-vendor preference + OpenRouter fallback.
 
@@ -9891,6 +10220,25 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                     msg = stream.get_final_message()
                 text = (msg.content[0].text if msg.content else "") or ""
                 truncated = getattr(msg, "stop_reason", None) == "max_tokens"
+                # 2026-05-28: capture token usage for the per-turn
+                # cost summary. Claude's Usage has input_tokens /
+                # output_tokens plus optional cache_* fields.
+                try:
+                    u = getattr(msg, "usage", None)
+                    if u is not None:
+                        _record_model_usage(
+                            endpoint,
+                            prompt_tokens=getattr(u, "input_tokens", None),
+                            completion_tokens=getattr(u, "output_tokens", None),
+                            cache_read_tokens=getattr(
+                                u, "cache_read_input_tokens", None,
+                            ),
+                            cache_creation_tokens=getattr(
+                                u, "cache_creation_input_tokens", None,
+                            ),
+                        )
+                except Exception:
+                    pass
                 return text, truncated
 
             return _call_api_with_truncation_retry(_claude_call, "Claude", endpoint)
@@ -9921,6 +10269,21 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 )
                 text = resp.choices[0].message.content or ""
                 truncated = getattr(resp.choices[0], "finish_reason", None) == "length"
+                # 2026-05-28: capture token usage. OpenAI's Usage exposes
+                # prompt_tokens / completion_tokens / total_tokens.
+                try:
+                    u = getattr(resp, "usage", None)
+                    if u is not None:
+                        _record_model_usage(
+                            endpoint,
+                            prompt_tokens=getattr(u, "prompt_tokens", None),
+                            completion_tokens=getattr(
+                                u, "completion_tokens", None,
+                            ),
+                            total_tokens=getattr(u, "total_tokens", None),
+                        )
+                except Exception:
+                    pass
                 return text, truncated
 
             return _call_api_with_truncation_retry(_openai_call, "OpenAI", endpoint)
@@ -9967,6 +10330,22 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                         if "MAX_TOKENS" in str(fr) or fr == 2:
                             truncated = True
                             break
+                except Exception:
+                    pass
+                # 2026-05-28: capture token usage. Gemini's
+                # usage_metadata has prompt_token_count /
+                # candidates_token_count / total_token_count.
+                try:
+                    u = getattr(resp, "usage_metadata", None)
+                    if u is not None:
+                        _record_model_usage(
+                            endpoint,
+                            prompt_tokens=getattr(u, "prompt_token_count", None),
+                            completion_tokens=getattr(
+                                u, "candidates_token_count", None,
+                            ),
+                            total_tokens=getattr(u, "total_token_count", None),
+                        )
                 except Exception:
                     pass
                 return text, truncated
@@ -10035,6 +10414,22 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                         print(f"[openrouter-empty-content] diag failed: {diag_err}", flush=True)
                 text = content or ""
                 truncated = getattr(resp.choices[0], "finish_reason", None) == "length"
+                # 2026-05-28: capture token usage. OpenRouter passes
+                # through OpenAI's Usage shape regardless of which
+                # upstream provider answered.
+                try:
+                    u = getattr(resp, "usage", None)
+                    if u is not None:
+                        _record_model_usage(
+                            endpoint,
+                            prompt_tokens=getattr(u, "prompt_tokens", None),
+                            completion_tokens=getattr(
+                                u, "completion_tokens", None,
+                            ),
+                            total_tokens=getattr(u, "total_tokens", None),
+                        )
+                except Exception:
+                    pass
                 return text, truncated
 
             return _call_api_with_truncation_retry(_openrouter_call, "OpenRouter", endpoint)

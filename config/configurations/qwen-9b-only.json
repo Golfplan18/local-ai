@@ -3,6 +3,8 @@
   "description": "Single-model demonstration configuration: qwen/qwen3.5-9b in every slot, routed via OpenRouter so both analysts can run in parallel (the local MLX equivalent would serialize on the per-machine mutex). Built 2026-05-23 to test whether Ora's pipeline architecture lifts a 9B model's output to useful structured analysis. The OpenRouter 9B is the full-precision twin of the local OptiQ 4-bit MLX bundle \u2014 same base model, same family, slight quality bump from full precision. Target story: this configuration's results demonstrate what a $1K consumer Mac with 16 GB RAM could produce locally (via the OptiQ 4-bit) with the same architecture. No cascade fallback \u2014 if the model fails, the step genuinely degrades.",
   "preset_lineage": "custom",
   "diversity_override": false,
+  "_rag_isolation_note": "CAMPAIGN-RAG-BYPASS-2026-05-26 \u2014 set during Comparative Evaluation Campaign to demonstrate clean-install reproducibility. Remove this field and the _note when campaign captures complete.",
+  "rag_isolation": "web_only",
   "cells": {
     "utility": {
       "step1_cleanup": {
@@ -21,7 +23,7 @@
     "analysis": {
       "gear4": {
         "depth": {
-          "primary": "qwen/qwen3-vl-235b-a22b-instruct",
+          "primary": "qwen/qwen3.5-9b",
           "fallback": []
         },
         "breadth": {
@@ -31,7 +33,7 @@
       },
       "gear3": {
         "depth": {
-          "primary": "qwen/qwen3-vl-235b-a22b-instruct",
+          "primary": "qwen/qwen3.5-9b",
           "fallback": []
         },
         "breadth": {
@@ -42,17 +44,26 @@
     },
     "post_analysis": {
       "consolidation": {
-        "primary": "qwen/qwen3-vl-235b-a22b-instruct",
+        "primary": "qwen/qwen3.5-9b",
         "fallback": []
       },
       "verification": {
-        "primary": "qwen/qwen3-vl-235b-a22b-instruct",
+        "primary": "qwen/qwen3.5-9b",
         "fallback": []
       },
       "formatter": {
-        "primary": "qwen/qwen3-vl-235b-a22b-instruct",
+        "primary": "qwen/qwen3.5-9b",
+        "fallback": []
+      }
+    },
+    "image_generation": {
+      "image_generation": {
+        "primary": "aa-img:df44f7b5-8035-4a99-a0bb-ff22149d0464",
         "fallback": []
       }
     }
+  },
+  "toggles": {
+    "adversarial_diversity": false
   }
 }

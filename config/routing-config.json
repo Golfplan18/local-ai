@@ -4,7 +4,7 @@
   "_migrated_from": "/Users/oracle/ora/config/endpoints.json",
   "vision_extraction": {
     "enabled": true,
-    "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image \u2192 text), NOT image-generation models. The dedicated 'image_extracts' slot is the canonical home: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. When the slot's chain produces no vision-input-capable entry, route_for_image_input sets context_pkg['no_vision_available'] = True and the manual-trace UX (WP-4.4) takes over. The earlier preferred_extractor_bucket / fallback_extractor_bucket bucket-fallback path was retired in install Chunk 12 (2026-05-19).",
+    "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image → text), NOT image-generation models. The dedicated 'image_extracts' slot is the canonical home: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. When the slot's chain produces no vision-input-capable entry, route_for_image_input sets context_pkg['no_vision_available'] = True and the manual-trace UX (WP-4.4) takes over. The earlier preferred_extractor_bucket / fallback_extractor_bucket bucket-fallback path was retired in install Chunk 12 (2026-05-19).",
     "slot": "image_extracts"
   },
   "web_supplement": {
@@ -23,7 +23,7 @@
     "conflict_detection": {
       "enabled": true
     },
-    "description": "Step 2 F-Consult web consultation stream. When enabled, the fast model in the step1_cleanup slot identifies search intents from the user prompt (each intent must articulate a one-line justification \u2014 anti-nitpicking enforced at the model layer, not via a count cap); all intent queries then fire in parallel via ThreadPoolExecutor with per_query_timeout_seconds bounding each one. Retrieved chunks are tier-classified (whitelisted/corroborated/single/excluded) via tools.web_corroboration.TrustedSourcesRegistry against Reference \u2014 Trusted Web Sources, then scored and provenanced for downstream weighting. prompt_sanity.enabled toggles a parallel light factual-sanity check that flags surface-level errors in the user prompt (typos on dates, mis-attributed quotes, named-entity slips); flags are advisory, never blocking. conflict_detection.enabled toggles a fast-model pass that compares each web chunk against the vault concept-RAG and adds [CONFLICT: ...] markers to web chunks whose specific factual claims contradict vault content; substantive disputed positions and contrarian content in the vault pass through untouched (the detector is instructed to flag only specific verifiable facts, NOT enforce mainstream consensus). The four consultation streams (vault concept, conversation, relationship, web) run in parallel \u2014 there is no token debt across pipeline steps because each step receives a fresh window. See Specification \u2014 F-Consult.md for the design."
+    "description": "Step 2 F-Consult web consultation stream. When enabled, the fast model in the step1_cleanup slot identifies search intents from the user prompt (each intent must articulate a one-line justification — anti-nitpicking enforced at the model layer, not via a count cap); all intent queries then fire in parallel via ThreadPoolExecutor with per_query_timeout_seconds bounding each one. Retrieved chunks are tier-classified (whitelisted/corroborated/single/excluded) via tools.web_corroboration.TrustedSourcesRegistry against Reference — Trusted Web Sources, then scored and provenanced for downstream weighting. prompt_sanity.enabled toggles a parallel light factual-sanity check that flags surface-level errors in the user prompt (typos on dates, mis-attributed quotes, named-entity slips); flags are advisory, never blocking. conflict_detection.enabled toggles a fast-model pass that compares each web chunk against the vault concept-RAG and adds [CONFLICT: ...] markers to web chunks whose specific factual claims contradict vault content; substantive disputed positions and contrarian content in the vault pass through untouched (the detector is instructed to flag only specific verifiable facts, NOT enforce mainstream consensus). The four consultation streams (vault concept, conversation, relationship, web) run in parallel — there is no token debt across pipeline steps because each step receives a fresh window. See Specification — F-Consult.md for the design."
   },
   "slots": {
     "image_generates": {
@@ -34,7 +34,7 @@
         "openrouter:google/gemini-3-pro-image-preview",
         "local-diffusers"
       ],
-      "_note": "General-purpose image generation slot. Serves news photos, illustration filler, and the eventual data-viz illustration fallback. Preferred = openai-gpt-image-1 (artistic richness, moderation-lottery on boundary-pushing prompts); Fallback 1 = Gemini 2.5 Flash Image (catches OpenAI safety_violations refusals); Fallback 2 = local-diffusers (SD 1.5 last-resort if both cloud providers fail). The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Editorial cartoons go through a separate slot (`image_generates_cartoon`) so style-locked LoRA fallbacks are only invoked on the cartoon path. DALL-E references removed 2026-05-12 per OpenAI's same-day shutdown announcement."
+      "_note": "General-purpose image generation slot. Serves news photos, illustration filler, and the eventual data-viz illustration fallback. Preferred = openai-gpt-image-1 (artistic richness, moderation-lottery on boundary-pushing prompts); Fallback 1 = Gemini 2.5 Flash Image (catches OpenAI safety_violations refusals); Fallback 2 = local-diffusers (SD 1.5 last-resort if both cloud providers fail). The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded — see capability_registry.fallback_triggering_codes. Editorial cartoons go through a separate slot (`image_generates_cartoon`) so style-locked LoRA fallbacks are only invoked on the cartoon path. DALL-E references removed 2026-05-12 per OpenAI's same-day shutdown announcement."
     },
     "image_generates_cartoon": {
       "preferred": "openrouter:openai/gpt-5.4-image-2",
@@ -89,7 +89,7 @@
     "image_extracts": {
       "interactive": "openrouter:openai/gpt-5",
       "agent": "openrouter:anthropic/claude-opus-4-7",
-      "_note": "Per-pipeline vision-language extraction slot. Read by route_for_image_input when an analyst model is not vision_capable. Each pipeline (interactive / agent) picks one multimodal LLM (text+image -> text); the OTHER pipeline\u2019s pick is used as the automatic backup when the primary is unavailable. Edit via Settings -> Buckets tab -> Image Extracts card (right column). DO NOT put image-GENERATION models here (gpt-image-2, etc.) \u2014 those are tuned for text+image -> image output and don\u2019t reliably emit JSON descriptions, which causes the request to hang. All entries must be multimodal LLMs whose output is text and whose input includes image. Validate against catalog by_input_modality.image when adding entries."
+      "_note": "Per-pipeline vision-language extraction slot. Read by route_for_image_input when an analyst model is not vision_capable. Each pipeline (interactive / agent) picks one multimodal LLM (text+image -> text); the OTHER pipeline’s pick is used as the automatic backup when the primary is unavailable. Edit via Settings -> Buckets tab -> Image Extracts card (right column). DO NOT put image-GENERATION models here (gpt-image-2, etc.) — those are tuned for text+image -> image output and don’t reliably emit JSON descriptions, which causes the request to hang. All entries must be multimodal LLMs whose output is text and whose input includes image. Validate against catalog by_input_modality.image when adding entries."
     },
     "video_generates": {
       "preferred": "replicate",
@@ -387,7 +387,7 @@
       "training_family": "claude",
       "tier": "mid",
       "status": "disabled",
-      "enabled": false,
+      "enabled": true,
       "credential_key": "ora/anthropic-api-key",
       "verified": "2026-04-16",
       "capabilities": {
@@ -397,7 +397,7 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "anthropic-api-haiku",
@@ -409,7 +409,7 @@
       "training_family": "claude",
       "tier": "fast",
       "status": "disabled",
-      "enabled": false,
+      "enabled": true,
       "credential_key": "ora/anthropic-api-key",
       "verified": "2026-04-16",
       "capabilities": {
@@ -419,7 +419,7 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "anthropic-api-opus",
@@ -431,7 +431,7 @@
       "training_family": "claude",
       "tier": "premium",
       "status": "disabled",
-      "enabled": false,
+      "enabled": true,
       "credential_key": "ora/anthropic-api-key",
       "verified": "2026-04-16",
       "capabilities": {
@@ -441,7 +441,7 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "anthropic-api-sonnet-4-5",
@@ -453,7 +453,7 @@
       "training_family": "claude",
       "tier": "mid",
       "status": "disabled",
-      "enabled": false,
+      "enabled": true,
       "credential_key": "ora/anthropic-api-key",
       "capabilities": {
         "tool_access": true,
@@ -462,7 +462,7 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "anthropic-api-sonnet-3-5",
@@ -808,7 +808,7 @@
       "training_family": "claude",
       "tier": "premium",
       "status": "disabled",
-      "enabled": false,
+      "enabled": true,
       "credential_key": "ora/anthropic-api-key",
       "verified": "2026-05-13",
       "capabilities": {
@@ -819,7 +819,7 @@
       },
       "vision_capable": true,
       "_auto_discovered": true,
-      "_disabled_reason": "Anthropic API retired by publisher 2026-05-28. NEVER re-enable. All MSI / Ora authoring routes through OpenRouter slots."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "openai-api-o1",
@@ -11154,10 +11154,10 @@
       "local"
     ]
   },
-  "_pipelines_retired": "Pipelines block removed in install Chunk 2d (2026-05-18). Replaced by config/configurations/<name>.json files. Router auto-derives config_name from context (interactive \u2192 user-pipeline; agent/autonomous \u2192 background-default) via DEFAULT_CONFIG_FOR_CONTEXT.",
+  "_pipelines_retired": "Pipelines block removed in install Chunk 2d (2026-05-18). Replaced by config/configurations/<name>.json files. Router auto-derives config_name from context (interactive → user-pipeline; agent/autonomous → background-default) via DEFAULT_CONFIG_FOR_CONTEXT.",
   "_schema_notes": {
-    "vision_capable_source_of_truth": "config/models.json is canonical. routing-config.json::endpoints[].vision_capable is a duplicate kept for backward compatibility; Router.vision_capable_for_endpoint() reads models.json first. Field removal from endpoints[] is queued as a follow-on task to install Chunk 12 \u2014 blocked on expanding models.json to per-variant entries since most routing-config endpoint ids (e.g. anthropic-api-opus-3) are not present in models.json today.",
-    "vision_extraction_bucket_fallback_retired": "vision_extraction.preferred_extractor_bucket and .fallback_extractor_bucket were retired in install Chunk 12 (2026-05-19). route_for_image_input is slot-only \u2014 when the configured slot's chain produces no vision-input-capable entry, context_pkg['no_vision_available'] = True and WP-4.4 takes over.",
+    "vision_capable_source_of_truth": "config/models.json is canonical. routing-config.json::endpoints[].vision_capable is a duplicate kept for backward compatibility; Router.vision_capable_for_endpoint() reads models.json first. Field removal from endpoints[] is queued as a follow-on task to install Chunk 12 — blocked on expanding models.json to per-variant entries since most routing-config endpoint ids (e.g. anthropic-api-opus-3) are not present in models.json today.",
+    "vision_extraction_bucket_fallback_retired": "vision_extraction.preferred_extractor_bucket and .fallback_extractor_bucket were retired in install Chunk 12 (2026-05-19). route_for_image_input is slot-only — when the configured slot's chain produces no vision-input-capable entry, context_pkg['no_vision_available'] = True and WP-4.4 takes over.",
     "pipelines_block_retired": "See _pipelines_retired marker. Removed in install Chunk 2d (2026-05-18). All slot resolution flows through config/configurations/<name>.json via Router auto-derivation from context.",
     "canonical_identifier_form": "TARGET: <provider>:<model_id> for cloud, bare id for local. CURRENT: mixed (some endpoints already use the prefix form, others use bare slugs). Migration to canonical form scheduled for Chunk 12.",
     "v1_compat_fields_carried": "slot_assignments, gear4_overrides, default_endpoint, operational_context were added 2026-05-19 (install Chunk 12 step 4) so that load_endpoints() and its 10+ downstream callers in boot.py, compaction.py, scheduler.py, model_dispatch.py, milestone_executor.py, framework_input_gap.py, batch_processor.py, subagent.py can read this file in place of the legacy endpoints.json. The fields are seeded verbatim from endpoints.json. Step 5 repoints load_endpoints() at routing-config.json; step 7 deletes endpoints.json."

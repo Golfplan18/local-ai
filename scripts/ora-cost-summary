@@ -1,0 +1,171 @@
+#!/usr/bin/env /opt/homebrew/bin/python3
+"""ora-cost-summary — compute or display the cost summary for a pipeline
+trace directory.
+
+Reads ``<trace-dir>/usage.jsonl``, joins each call against the pricing
+table in ``~/ora/config/model-registry.json``, and either writes a
+fresh ``cost-summary.json`` or just prints the table to stdout.
+
+The token data is already captured at call time by the pipeline (per
+the 2026-05-28 token-capture wiring). This script is for two cases:
+
+    1. Recomputing after pricing updates: the registry is refreshed
+       every time ``scripts/refresh-catalog.py`` runs; old traces
+       contain the token counts but may have an outdated summary.
+
+    2. Inspecting a trace from the command line without opening JSON.
+
+Usage:
+    ora-cost-summary <trace-dir>
+    ora-cost-summary --write <trace-dir>     # write cost-summary.json
+    ora-cost-summary --latest                # most recent trace
+
+Examples:
+    ora-cost-summary ~/ora/data/pipeline-traces/ora-test-.../20260528T211900Z
+    ora-cost-summary --latest --write
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+ORA_HOME = os.path.expanduser("~/ora")
+sys.path.insert(0, os.path.join(ORA_HOME, "orchestrator"))
+
+import boot  # noqa: E402
+
+
+TRACE_ROOT = Path(os.path.expanduser("~/ora/data/pipeline-traces/"))
+
+
+def find_latest_trace() -> str | None:
+    """Return the most recent turn directory under TRACE_ROOT, or None.
+
+    Walks one level into each conversation directory to pick the most
+    recently modified turn timestamp folder.
+    """
+    if not TRACE_ROOT.is_dir():
+        return None
+    candidates: list[tuple[float, Path]] = []
+    for conv_dir in TRACE_ROOT.iterdir():
+        if not conv_dir.is_dir():
+            continue
+        for turn_dir in conv_dir.iterdir():
+            if turn_dir.is_dir() and turn_dir.name[:1].isdigit():
+                try:
+                    candidates.append((turn_dir.stat().st_mtime, turn_dir))
+                except OSError:
+                    continue
+    if not candidates:
+        return None
+    candidates.sort(reverse=True)
+    return str(candidates[0][1])
+
+
+def print_summary(summary: dict) -> None:
+    """Pretty-print a summary dict to stdout."""
+    if summary.get("status") != "computed":
+        status = summary.get("status", "unknown")
+        print(f"status: {status}")
+        return
+
+    rows = summary.get("per_model") or []
+    totals = summary.get("totals") or {}
+    if not rows:
+        print("status: computed (no model calls recorded)")
+        return
+
+    print(f"  {'model':<42}{'calls':>6}{'prompt':>11}"
+          f"{'completion':>13}{'$ cost':>10}")
+    print(f"  {'-' * 82}")
+    for r in rows:
+        cost = r.get("total_cost_usd") or 0.0
+        cost_str = (f"${cost:.4f}" if cost > 0
+                    else ("(unpriced)" if not r.get("priced") else "$0.0000"))
+        print(f"  {r.get('model_id', 'unknown'):<42}"
+              f"{r.get('calls', 0):>6}"
+              f"{r.get('prompt_tokens', 0):>11,}"
+              f"{r.get('completion_tokens', 0):>13,}"
+              f"{cost_str:>10}")
+    print(f"  {'-' * 82}")
+    print(f"  {'TOTAL':<42}"
+          f"{totals.get('calls', 0):>6}"
+          f"{totals.get('prompt_tokens', 0):>11,}"
+          f"{totals.get('completion_tokens', 0):>13,}"
+          f"{'$' + format(totals.get('total_cost_usd', 0.0), '.4f'):>10}")
+    unpriced = summary.get("unpriced_models") or []
+    if unpriced:
+        print(f"  pricing unavailable for {len(unpriced)} model(s): "
+              f"{', '.join(unpriced[:5])}"
+              f"{' …' if len(unpriced) > 5 else ''}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        prog="ora-cost-summary",
+        description=(
+            "Compute or display the cost summary for an Ora pipeline "
+            "trace directory."
+        ),
+    )
+    parser.add_argument("trace_dir", nargs="?",
+                        help="Path to a turn trace directory. Required "
+                             "unless --latest is set.")
+    parser.add_argument("--latest", action="store_true",
+                        help="Use the most recently modified turn trace "
+                             "under ~/ora/data/pipeline-traces/.")
+    parser.add_argument("--write", action="store_true",
+                        help="Write cost-summary.json into the trace dir. "
+                             "Otherwise just print to stdout.")
+    parser.add_argument("--json", action="store_true",
+                        help="Emit the summary as raw JSON instead of a table.")
+    args = parser.parse_args()
+
+    if args.latest:
+        trace = find_latest_trace()
+        if trace is None:
+            print("error: no traces found", file=sys.stderr)
+            return 1
+        args.trace_dir = trace
+        print(f"using latest trace: {trace}", file=sys.stderr)
+    if not args.trace_dir:
+        parser.print_help(sys.stderr)
+        return 2
+
+    trace = os.path.expanduser(args.trace_dir).rstrip("/")
+    if not os.path.isdir(trace):
+        print(f"error: trace directory does not exist: {trace}",
+              file=sys.stderr)
+        return 1
+
+    usage_path = os.path.join(trace, "usage.jsonl")
+    summary_path = os.path.join(trace, "cost-summary.json")
+
+    # Prefer recomputing when --write is set; otherwise read existing
+    # summary if available, fall through to recompute when not.
+    if args.write or not os.path.exists(summary_path):
+        if not os.path.exists(usage_path):
+            print(f"error: no usage.jsonl in {trace} — the run had no "
+                  f"model calls, or this is a pre-2026-05-28 trace "
+                  f"without token capture",
+                  file=sys.stderr)
+            return 1
+        summary = boot.compute_cost_summary(trace)
+    else:
+        with open(summary_path) as f:
+            summary = json.load(f)
+
+    if args.json:
+        json.dump(summary, sys.stdout, indent=2)
+        print()
+    else:
+        print_summary(summary)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

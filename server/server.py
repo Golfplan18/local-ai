@@ -1875,7 +1875,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
             except Exception as exc:
                 print(f"[pre-routing] resume re-route failed: {exc}")
 
-    context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir)
+    context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
+                                             config_name=config_name)
     # WP-3.3: thread merged-input extras (spatial_representation, image_path,
     # …) into the context package for build_system_prompt_for_gear.
     if extra_context:
@@ -2395,9 +2396,21 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                    territory=pre_routing.get("territory"))
 
     yield _sse("pipeline_stage", stage="step2_context", label="Assembling context…")
-    yield from _run_pipeline_from_step2(step1, config, history, user_input,
-                                        images=images, extra_context=extra_context,
-                                        trace_dir=trace_dir, config_name=config_name)
+    try:
+        yield from _run_pipeline_from_step2(step1, config, history, user_input,
+                                            images=images, extra_context=extra_context,
+                                            trace_dir=trace_dir, config_name=config_name)
+    finally:
+        # 2026-05-28: aggregate per-turn token usage into cost-summary.json.
+        # Runs even when the SSE consumer disconnects mid-stream (GeneratorExit)
+        # so partial traces still get a cost summary computed.
+        if trace_dir:
+            try:
+                from boot import compute_cost_summary as _ccs
+                _ccs(trace_dir)
+            except Exception as _cs_exc:
+                print(f"[cost-summary] post-stream computation failed: "
+                      f"{_cs_exc}", flush=True)
 
 
 def _tool_status_label(tool_name, params):

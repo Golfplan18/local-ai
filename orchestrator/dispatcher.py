@@ -6,7 +6,32 @@ from __future__ import annotations
 import json
 import os
 import time
+from contextvars import ContextVar
 from datetime import datetime
+
+# CAMPAIGN-RAG-BYPASS-2026-05-26 — context-propagated flag set by the
+# pipeline (boot.run_step2_context_assembly) at the start of every turn.
+# When set to "web_only", any vault-touching tool dispatched on this
+# thread is refused. Per-turn lifetime via Python contextvars: each Flask
+# request thread reads its own value, so a parallel non-isolated request
+# is unaffected. Read this via ``_get_rag_isolation()``; set via
+# ``set_rag_isolation()``. Removal: delete with the rest of the bypass
+# (see boot.py removal procedure under the same marker).
+_RAG_ISOLATION_CTX: ContextVar[str | None] = ContextVar(
+    "rag_isolation", default=None,
+)
+
+
+def set_rag_isolation(value: str | None) -> None:
+    """Set the per-turn rag_isolation flag. Called by boot.py at step 2.
+
+    Lives in dispatcher.py (not boot.py) to avoid a circular import.
+    """
+    _RAG_ISOLATION_CTX.set(value)
+
+
+def _get_rag_isolation() -> str | None:
+    return _RAG_ISOLATION_CTX.get()
 
 WORKSPACE = os.path.expanduser("~/ora/")
 VAULT = os.path.expanduser("~/Documents/vault/")
@@ -84,6 +109,20 @@ def _wrap_list_directory(params):
                           params.get("max_depth", 2))
 
 def _wrap_knowledge_search(params):
+    # CAMPAIGN-RAG-BYPASS-2026-05-26 — refuse vault/conversation lookups
+    # when the per-turn flag is "web_only". The knowledge_search tool
+    # hits ChromaDB's ``knowledge`` (vault) and ``conversations``
+    # collections, which a clean-install visitor would not have. Returns
+    # a refusal string the model can act on (typically by emitting
+    # COVERAGE GAP or by calling web_search instead).
+    if _get_rag_isolation() == "web_only":
+        return (
+            "[knowledge_search refused — rag_isolation: web_only is active for "
+            "this run. Conversation RAG and vault RAG are both off so the "
+            "output remains reproducible from a clean install. Use web_search "
+            "instead, or emit a COVERAGE GAP block naming the unverifiable "
+            "claim.]"
+        )
     return knowledge_search(
         params.get("query", ""),
         params.get("collection", "knowledge"),

@@ -1,0 +1,339 @@
+#!/usr/bin/env /opt/homebrew/bin/python3
+"""ora-test — submit a test prompt to the running Ora chat server under a
+named saved configuration, without changing the server's active config.
+
+The configurations live under ~/ora/config/configurations/<name>.json and
+are the same profiles editable from the Models pane in the chat UI.
+Selecting one here via --config affects this run only.
+
+The trace lands under ~/ora/data/pipeline-traces/<id>/<turn>/ as usual;
+when the run completes the path is printed so it's easy to inspect.
+
+Usage:
+    ora-test [--config NAME] [--mode MODE] [--id ID] [--timeout N]
+             [--server URL] [--quiet] [--no-wait] PROMPT
+    ora-test --list-configs
+    ora-test --list-modes
+
+Examples:
+    ora-test --config qwen-9b-only --mode cui-bono "US labor productivity..."
+    ora-test --mode root-cause-analysis "Why does X happen?"
+    ora-test --no-wait --config premium --mode synthesis "$(cat prompt.txt)"
+
+Exit codes:
+    0  pipeline completed (or run dispatched in --no-wait mode)
+    1  general error (server unreachable, bad config, etc.)
+    2  bad arguments
+    130 interrupted (Ctrl-C); server-side run continues
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+try:
+    import requests
+except ImportError:
+    sys.stderr.write(
+        "error: the `requests` library is not available to this Python.\n"
+        "Run: /opt/homebrew/bin/python3 -m pip install requests\n"
+    )
+    sys.exit(1)
+
+CONFIG_DIR = Path(os.path.expanduser("~/ora/config/configurations/"))
+MODE_DIR = Path(os.path.expanduser("~/ora/modes/"))
+TRACE_ROOT = Path(os.path.expanduser("~/ora/data/pipeline-traces/"))
+DEFAULT_SERVER = "http://localhost:5000"
+
+
+def list_configs() -> list[str]:
+    """Return saved configuration names (no .json suffix), sorted."""
+    if not CONFIG_DIR.is_dir():
+        return []
+    return sorted(p.stem for p in CONFIG_DIR.glob("*.json"))
+
+
+def list_modes() -> list[str]:
+    """Return available mode names (the filename stem), sorted."""
+    if not MODE_DIR.is_dir():
+        return []
+    return sorted(p.stem for p in MODE_DIR.glob("*.md"))
+
+
+def validate_config(name: str) -> bool:
+    return (CONFIG_DIR / f"{name}.json").is_file()
+
+
+def validate_mode(name: str) -> bool:
+    return (MODE_DIR / f"{name}.md").is_file()
+
+
+def latest_trace_dir(conv_id: str) -> str | None:
+    base = TRACE_ROOT / conv_id
+    if not base.is_dir():
+        return None
+    turns = sorted(p.name for p in base.iterdir() if p.is_dir())
+    return str(base / turns[-1]) if turns else None
+
+
+def submit(args: argparse.Namespace) -> int:
+    conv_id = args.id or f"ora-test-{int(time.time())}"
+    payload: dict = {
+        "message": args.prompt,
+        "panel_id": conv_id,
+        "history": [],
+    }
+    if args.config:
+        payload["config_name"] = args.config
+    if args.mode:
+        payload["manual_mode_selection"] = args.mode
+
+    if not args.quiet:
+        print(f"conv_id: {conv_id}")
+        print(f"config:  {args.config or '(active configuration)'}")
+        print(f"mode:    {args.mode or '(auto-routed by pre-routing pipeline)'}")
+        print(f"server:  {args.server}")
+        print()
+
+    # --no-wait: detach via os.fork so the request outlives this process,
+    # the child consumes the SSE stream to keep the server's pipeline
+    # alive, parent exits immediately. The server-side run continues
+    # regardless of whether anyone reads the response.
+    if args.no_wait:
+        try:
+            pid = os.fork()
+        except OSError as exc:
+            print(f"error: fork() failed: {exc}", file=sys.stderr)
+            return 1
+        if pid > 0:
+            # Parent: report and exit immediately.
+            if not args.quiet:
+                print(f"dispatched (--no-wait, background pid {pid})")
+                print(f"trace will land under: "
+                      f"{TRACE_ROOT}/{conv_id}/<turn>/")
+            return 0
+        # Child: detach from parent's stdio and consume the stream so
+        # Flask doesn't see a dropped connection. Any error here is
+        # silent — by design; the parent already returned.
+        os.setsid()
+        try:
+            with open(os.devnull, "w") as devnull:
+                os.dup2(devnull.fileno(), 1)
+                os.dup2(devnull.fileno(), 2)
+        except Exception:
+            pass
+        try:
+            r = requests.post(
+                f"{args.server}/chat", json=payload,
+                stream=True, timeout=args.timeout,
+            )
+            for _ in r.iter_lines():
+                pass
+        except Exception:
+            pass
+        os._exit(0)
+
+    try:
+        r = requests.post(
+            f"{args.server}/chat", json=payload,
+            stream=True, timeout=args.timeout,
+        )
+    except requests.exceptions.ConnectionError as exc:
+        print(f"error: cannot reach {args.server} — is the server up?",
+              file=sys.stderr)
+        print(f"       ({exc})", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"error: request failed: {exc}", file=sys.stderr)
+        return 1
+
+    if r.status_code != 200:
+        print(f"error: server returned HTTP {r.status_code}", file=sys.stderr)
+        return 1
+
+    # Stream the SSE events.
+    try:
+        for line in r.iter_lines():
+            if not line or not line.startswith(b"data:"):
+                continue
+            try:
+                d = json.loads(line[5:].strip())
+            except json.JSONDecodeError:
+                continue
+            t = d.get("type")
+            if t == "pipeline_stage" and not args.quiet:
+                stage = d.get("stage", "")
+                label = d.get("label") or ""
+                if label:
+                    print(f"  [{stage}] {label}")
+                else:
+                    print(f"  [{stage}]")
+            elif t == "done":
+                break
+            elif t == "error":
+                msg = (d.get("message") or "")[:300]
+                print(f"  error: {msg}", file=sys.stderr)
+                return 1
+    except KeyboardInterrupt:
+        print("\ninterrupted (server-side run continues — trace will still land)",
+              file=sys.stderr)
+        # Try to locate any partial trace.
+        trace = latest_trace_dir(conv_id)
+        if trace:
+            print(f"partial trace: {trace}", file=sys.stderr)
+        return 130
+
+    if not args.quiet:
+        print()
+    trace = latest_trace_dir(conv_id)
+    if trace:
+        print(f"trace: {trace}")
+        if not args.quiet:
+            _print_cost_summary(trace)
+    else:
+        print("trace: (none — bypass path or pipeline-trace disabled)")
+    return 0
+
+
+def _print_cost_summary(trace_dir: str) -> None:
+    """Read cost-summary.json from the trace dir (if present) and print
+    a compact per-model + grand-total table.
+    """
+    path = os.path.join(trace_dir, "cost-summary.json")
+    if not os.path.exists(path):
+        # Cost summary may not exist if the pipeline took a short-circuit
+        # path with no model calls, or if writing failed. Stay quiet.
+        return
+    try:
+        with open(path) as f:
+            summary = json.load(f)
+    except Exception:
+        return
+    if summary.get("status") != "computed":
+        return
+
+    rows = summary.get("per_model") or []
+    totals = summary.get("totals") or {}
+    if not rows:
+        return
+
+    print()
+    print("cost summary (per model)")
+    print(f"  {'model':<42}{'calls':>6}{'prompt':>11}"
+          f"{'completion':>13}{'$ cost':>10}")
+    for r in rows:
+        cost = r.get("total_cost_usd") or 0.0
+        cost_str = (f"${cost:.4f}" if cost > 0
+                    else ("(unpriced)" if not r.get("priced") else "$0.0000"))
+        print(f"  {r.get('model_id', 'unknown'):<42}"
+              f"{r.get('calls', 0):>6}"
+              f"{r.get('prompt_tokens', 0):>11,}"
+              f"{r.get('completion_tokens', 0):>13,}"
+              f"{cost_str:>10}")
+    print(f"  {'-' * 82}")
+    print(f"  {'TOTAL':<42}"
+          f"{totals.get('calls', 0):>6}"
+          f"{totals.get('prompt_tokens', 0):>11,}"
+          f"{totals.get('completion_tokens', 0):>13,}"
+          f"{'$' + format(totals.get('total_cost_usd', 0.0), '.4f'):>10}")
+    unpriced = summary.get("unpriced_models") or []
+    if unpriced:
+        print(f"  note: pricing unavailable for {len(unpriced)} model(s): "
+              f"{', '.join(unpriced[:3])}"
+              f"{' …' if len(unpriced) > 3 else ''}")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="ora-test",
+        description=(
+            "Submit a test prompt to the running Ora chat server using a "
+            "saved configuration profile. Does not change the server's "
+            "active configuration."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Configurations live at ~/ora/config/configurations/<name>.json. "
+            "Modes live at ~/ora/modes/<name>.md. Run with --list-configs or "
+            "--list-modes to see what's available."
+        ),
+    )
+    p.add_argument("prompt", nargs="?",
+                   help="The user prompt to submit. Required unless --list-* is used.")
+    p.add_argument("-c", "--config", default=None, metavar="NAME",
+                   help="Saved configuration name (e.g. qwen-9b-only, premium). "
+                        "Omitted = use the server's active configuration.")
+    p.add_argument("-m", "--mode", default=None, metavar="MODE",
+                   help="Manually pin the analytical mode (e.g. cui-bono, "
+                        "root-cause-analysis). Omitted = auto-route via "
+                        "pre-routing pipeline.")
+    p.add_argument("--id", default=None, metavar="ID",
+                   help="Conversation id. Omitted = auto-generated "
+                        "(ora-test-<unix-timestamp>).")
+    p.add_argument("--timeout", type=int, default=2400, metavar="SEC",
+                   help="HTTP read timeout in seconds. Default 2400 (40 min) "
+                        "to accommodate long Gear-4 runs on local/free-tier "
+                        "models.")
+    p.add_argument("--server", default=DEFAULT_SERVER, metavar="URL",
+                   help=f"Chat server URL. Default {DEFAULT_SERVER}.")
+    p.add_argument("--quiet", action="store_true",
+                   help="Suppress preamble and per-stage progress; print only "
+                        "the trace path at the end.")
+    p.add_argument("--no-wait", action="store_true",
+                   help="Dispatch the request and exit without waiting for the "
+                        "pipeline to complete. Useful for batch submission.")
+    p.add_argument("--list-configs", action="store_true",
+                   help="Print available saved configuration names and exit.")
+    p.add_argument("--list-modes", action="store_true",
+                   help="Print available analytical mode names and exit.")
+    return p
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.list_configs:
+        for name in list_configs():
+            print(name)
+        return 0
+    if args.list_modes:
+        for name in list_modes():
+            print(name)
+        return 0
+
+    if not args.prompt:
+        parser.print_help(sys.stderr)
+        print("\nerror: missing PROMPT argument", file=sys.stderr)
+        return 2
+
+    if args.config and not validate_config(args.config):
+        available = list_configs()
+        print(f"error: configuration {args.config!r} not found at "
+              f"~/ora/config/configurations/{args.config}.json", file=sys.stderr)
+        if available:
+            print(f"available: {', '.join(available)}", file=sys.stderr)
+        return 2
+
+    if args.mode and not validate_mode(args.mode):
+        available = list_modes()
+        print(f"error: mode {args.mode!r} not found at "
+              f"~/ora/modes/{args.mode}.md", file=sys.stderr)
+        if available:
+            preview = available[:12]
+            more = f" (+{len(available) - 12} more — use --list-modes)" \
+                   if len(available) > 12 else ""
+            print(f"available (first {len(preview)}): "
+                  f"{', '.join(preview)}{more}", file=sys.stderr)
+        return 2
+
+    return submit(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
