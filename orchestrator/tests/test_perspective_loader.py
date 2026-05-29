@@ -193,14 +193,26 @@ class CuiBonoEndToEndTests(unittest.TestCase):
         section = boot._extract_section(mode_text, "ANALYTICAL PERSPECTIVES")
         self.assertTrue(section, "## ANALYTICAL PERSPECTIVES section missing in cui-bono.md")
         tools, models = boot._parse_analytical_perspectives(section)
-        self.assertEqual(tools, ["OPV", "KVI"])
+        # Phase 4C expansion + 4E FGL addition. If the cui-bono allowlist
+        # is intentionally retuned later, update this expected list.
         self.assertEqual(
-            models, ["nash-equilibrium", "batna", "cooperation"],
+            tools, ["OPV", "KVI", "CAF", "C&S", "FIP", "FGL"],
+        )
+        self.assertEqual(
+            models,
+            [
+                "nash-equilibrium", "batna", "cooperation",
+                "prisoners-dilemma", "principal-agent-problem",
+                "schelling-point", "tit-for-tat",
+            ],
         )
         resolved = boot._resolve_analytical_perspectives(tools, models)
         self.assertIn("OPV", resolved)
         self.assertIn("KVI", resolved)
+        self.assertIn("FGL", resolved)
         self.assertIn("Nash Equilibrium", resolved)
+        self.assertIn("BATNA", resolved)
+        self.assertIn("Schelling", resolved)
 
 
 if __name__ == "__main__":

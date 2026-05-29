@@ -287,6 +287,7 @@ Thinking tools (always loaded):
 - CAF
 - C&S
 - FIP
+- FGL
 
 Mental models (always loaded):
 - nash-equilibrium
