@@ -1,6 +1,6 @@
 {
   "name": "free",
-  "description": "Auto-populated from preset 'free' on 2026-05-26T22:37:46.662084+00:00.",
+  "description": "Auto-populated from preset 'free' on 2026-05-28T20:49:01.158464+00:00.",
   "preset_lineage": "free",
   "cells": {
     "utility": {
@@ -27,11 +27,8 @@
           ]
         },
         "breadth": {
-          "primary": "openrouter/free",
-          "fallback": [
-            "nvidia/nemotron-nano-12b-v2-vl:free"
-          ],
-          "vision_substitute": null
+          "primary": "nvidia/nemotron-nano-12b-v2-vl:free",
+          "fallback": []
         }
       }
     },
@@ -55,7 +52,7 @@
     "catalog_models_considered": 579
   },
   "toggles": {
-    "adversarial_diversity": false,
+    "adversarial_diversity": true,
     "vision_only": true
   }
 }

@@ -1,4 +1,4 @@
 {
-  "adversarial_diversity": false,
+  "adversarial_diversity": true,
   "vision_only": true
 }

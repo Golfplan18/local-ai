@@ -1,6 +1,6 @@
 {
   "name": "budget",
-  "description": "Auto-populated from preset 'budget' on 2026-05-26T22:37:46.664904+00:00.",
+  "description": "Auto-populated from preset 'budget' on 2026-05-28T20:49:01.164141+00:00.",
   "preset_lineage": "budget",
   "cells": {
     "utility": {
@@ -50,9 +50,9 @@
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         },
         "breadth": {
-          "primary": "qwen/qwen3.5-122b-a10b",
+          "primary": "moonshotai/kimi-k2.6",
           "fallback": [
-            "qwen/qwen3.6-plus",
+            "openai/gpt-5.1-chat",
             "google/gemini-3.1-pro-preview-customtools",
             "google/gemini-3.1-pro-preview"
           ],
@@ -70,11 +70,11 @@
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         },
         "breadth": {
-          "primary": "qwen/qwen3.5-flash-02-23",
+          "primary": "google/gemini-2.5-flash-image",
           "fallback": [
+            "google/gemini-2.5-flash",
             "google/gemini-3-flash-preview",
-            "openai/gpt-4.1",
-            "anthropic/claude-haiku-4.5"
+            "openai/gpt-4.1"
           ],
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         }
@@ -120,15 +120,14 @@
     "vision_only": true,
     "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct",
     "loosening_log": {
-      "analysis.gear4.breadth": [
-        "floor loosened to 40% (attempt 1)",
-        "floor loosened to 30% (attempt 2)"
+      "fast.secondary": [
+        "floor loosened to 40% (attempt 1)"
       ]
     },
     "catalog_models_considered": 579
   },
   "toggles": {
-    "adversarial_diversity": false,
+    "adversarial_diversity": true,
     "vision_only": true
   }
 }

@@ -1,7 +1,9 @@
 {
-  "name": "optimum",
-  "description": "Auto-populated from preset 'optimum' on 2026-05-28T20:49:01.169009+00:00.",
-  "preset_lineage": "optimum",
+  "name": "Testing Optimum",
+  "description": "Copied from 'optimum' via the Models pane Customize action. Original lineage: optimum.",
+  "_rag_isolation_note": "CAMPAIGN-RAG-BYPASS-2026-05-26 — set during Comparative Evaluation Campaign to demonstrate clean-install reproducibility. Remove this field and the _note when campaign captures complete.",
+  "rag_isolation": "web_only",
+  "preset_lineage": "custom",
   "cells": {
     "utility": {
       "step1_cleanup": {
@@ -26,7 +28,7 @@
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       },
       "gear2_rag_lookup": {
-        "primary": "qwen/qwen3.5-plus-20260420",
+        "primary": "qwen/qwen3.6-35b-a3b",
         "fallback": [
           "qwen/qwen3.5-plus-02-15",
           "anthropic/claude-opus-4.5",
@@ -47,7 +49,7 @@
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         },
         "breadth": {
-          "primary": "google/gemini-3.1-pro-preview-customtools",
+          "primary": "moonshotai/kimi-k2.6",
           "fallback": [
             "google/gemini-3.1-pro-preview",
             "anthropic/claude-opus-4.7",
@@ -58,7 +60,7 @@
       },
       "gear3": {
         "depth": {
-          "primary": "qwen/qwen3.5-plus-20260420",
+          "primary": "qwen/qwen3.6-35b-a3b",
           "fallback": [
             "qwen/qwen3.5-plus-02-15",
             "anthropic/claude-opus-4.5",
@@ -67,7 +69,7 @@
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         },
         "breadth": {
-          "primary": "anthropic/claude-opus-4.5",
+          "primary": "xiaomi/mimo-v2.5",
           "fallback": [
             "anthropic/claude-sonnet-4.6",
             "anthropic/claude-opus-4.6-fast",
@@ -111,13 +113,6 @@
         ]
       }
     }
-  },
-  "_auto_populate_metadata": {
-    "preset": "optimum",
-    "vision_only": true,
-    "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct",
-    "loosening_log": {},
-    "catalog_models_considered": 579
   },
   "toggles": {
     "adversarial_diversity": true,

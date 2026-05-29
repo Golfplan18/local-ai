@@ -5,7 +5,7 @@
   "cells": {
     "utility": {
       "step1_cleanup": {
-        "primary": "qwen/qwen3.6-35b-a3b",
+        "primary": "google/gemini-3.1-flash-lite",
         "fallback": [
           "mistralai/ministral-3b-2512",
           "openai/gpt-4.1-mini",
@@ -14,7 +14,7 @@
         "vision_substitute": "openai/gpt-5.4-image-2"
       },
       "classification": {
-        "primary": "qwen/qwen3.6-35b-a3b",
+        "primary": "google/gemini-3.1-flash-lite",
         "fallback": [
           "local-mlx-qwen3.5-9b-optiq",
           "local-mlx-qwen3.5-27b-opus",
@@ -23,13 +23,17 @@
         "vision_substitute": "openai/gpt-5.4-image-2"
       },
       "rag_planner": {
-        "primary": "qwen/qwen3.6-35b-a3b",
+        "primary": "google/gemini-3.1-flash-lite",
         "fallback": [
           "local-mlx-qwen3.5-27b-opus",
           "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
         "vision_substitute": "openai/gpt-5.4-image-2"
+      },
+      "gear2_rag_lookup": {
+        "primary": "xiaomi/mimo-v2.5",
+        "fallback": []
       }
     },
     "analysis": {
@@ -59,7 +63,7 @@
       },
       "gear3": {
         "depth": {
-          "primary": "qwen/qwen3.6-plus",
+          "primary": "xiaomi/mimo-v2.5",
           "fallback": [
             "local-mlx-hermes-4-70b",
             "qwen/qwen3.6-plus",
@@ -69,7 +73,10 @@
           ],
           "vision_substitute": "openai/gpt-5.4-image-2"
         },
-        "breadth": null
+        "breadth": {
+          "primary": "qwen/qwen3.6-35b-a3b",
+          "fallback": []
+        }
       }
     },
     "post_analysis": {
@@ -116,7 +123,7 @@
     }
   },
   "toggles": {
-    "vision_only": true,
+    "vision_only": false,
     "adversarial_diversity": false
   }
 }
