@@ -1,4 +1,4 @@
-"""Web search — three-tier cascade Tavily → Brave → DuckDuckGo.
+"""Web search — configurable cascade across Tavily, Brave, Exa, DuckDuckGo.
 
 Two entry points:
 
@@ -15,14 +15,18 @@ Two entry points:
     and ``rag_engine.format_context_with_provenance`` for injection
     into the context package.
 
-Provider cascade (2026-05-28, Phase 3 G1.10):
+Registered providers:
 
-  1. Tavily  — LLM-friendly result shape, smaller free tier. Used first
-     when ``TAVILY_API_KEY`` is set.
-  2. Brave   — Stronger result quality + larger free tier; survives the
-     MSI production burst (~400–700 queries/overnight pass) that DDG
-     silently rate-limits. Used when ``BRAVE_API_KEY`` is set.
-  3. DDG     — Keyless fallback. Always available.
+  - Tavily — keyword + LLM-friendly snippets (``TAVILY_API_KEY``).
+  - Brave  — keyword, larger free tier, survives MSI production burst
+    that DDG silently rate-limits (``BRAVE_API_KEY``).
+  - Exa    — neural / semantic retrieval (``EXA_API_KEY``); different
+    shape from the keyword tiers, useful for concept-style queries.
+    Not in the default cascade — opt in via ``search_cascade_order``.
+  - DDG    — keyless fallback. Always available.
+
+Default cascade order: ``tavily → brave → ddg``. Configurable via the
+``search_cascade_order`` field in ``config/routing-config.json``.
 
 Providers without an API key configured are skipped silently. On a
 provider error (HTTP, parse, timeout), the cascade falls through to the
@@ -30,10 +34,6 @@ next tier and logs to stderr. If every tier fails or returns empty,
 ``_search_text`` returns ``([], "none")`` and ``web_search_structured``
 returns ``[]`` — callers (notably the Step-2 web consultation step)
 treat that as a COVERAGE GAP rather than a fatal pipeline error.
-
-The cascade order is configurable via ``search_cascade_order`` in
-``config/routing-config.json`` (list of provider names). When the field
-is absent the default order above applies.
 
 Result shape is normalised to DDG-style keys (``title`` / ``href`` /
 ``body``) at the provider boundary so downstream consumers don't
@@ -51,6 +51,7 @@ import urllib.request
 
 BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
 TAVILY_ENDPOINT = "https://api.tavily.com/search"
+EXA_ENDPOINT = "https://api.exa.ai/search"
 
 _DEFAULT_CASCADE_ORDER = ("tavily", "brave", "ddg")
 _ROUTING_CONFIG_PATH = os.path.expanduser(
@@ -153,6 +154,52 @@ def _brave_text(query: str, max_results: int) -> list[dict]:
     return out
 
 
+def _exa_text(query: str, max_results: int) -> list[dict]:
+    """Exa Search API (neural / semantic). POST JSON body, parse ``results[]``.
+
+    Exa returns documents with metadata only by default; we request
+    ``contents.text`` with a 500-char cap so the cascade sees a body
+    field comparable to Tavily/Brave snippets. Re-emits DDG keys
+    (``title``/``href``/``body``) so downstream stays uniform.
+
+    Raises on HTTP / parse error so the cascade catches and falls through.
+    """
+    api_key = os.environ.get("EXA_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("EXA_API_KEY not set")
+
+    count = max(1, min(int(max_results), 20))
+    payload = {
+        "query": query,
+        "numResults": count,
+        "type": "auto",
+        "contents": {"text": {"maxCharacters": 500}},
+    }
+    req = urllib.request.Request(
+        EXA_ENDPOINT,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "x-api-key": api_key,
+            "User-Agent": "Ora/1.0 (web_search via Exa)",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+
+    items = data.get("results") or []
+    out: list[dict] = []
+    for r in items[:count]:
+        out.append({
+            "title": r.get("title", ""),
+            "href":  r.get("url", ""),
+            "body":  r.get("text", "") or "",
+        })
+    return out
+
+
 def _ddgs_text(query: str, max_results: int) -> list[dict]:
     """Run a DDG text search and return the library's raw result dicts.
 
@@ -172,6 +219,7 @@ def _ddgs_text(query: str, max_results: int) -> list[dict]:
 _PROVIDERS: dict[str, tuple[str | None, "callable"]] = {
     "tavily": ("TAVILY_API_KEY", _tavily_text),
     "brave":  ("BRAVE_API_KEY",  _brave_text),
+    "exa":    ("EXA_API_KEY",    _exa_text),
     "ddg":    (None,             _ddgs_text),
 }
 

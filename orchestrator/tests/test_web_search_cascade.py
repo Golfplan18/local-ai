@@ -30,8 +30,8 @@ import web_search as ws  # noqa: E402
 
 
 def _isolate_keys(**env):
-    """Patch all three provider keys at once. Empty string ⇒ absent."""
-    base = {"TAVILY_API_KEY": "", "BRAVE_API_KEY": ""}
+    """Patch all keyed provider envs at once. Empty string ⇒ absent."""
+    base = {"TAVILY_API_KEY": "", "BRAVE_API_KEY": "", "EXA_API_KEY": ""}
     base.update(env)
     return mock.patch.dict(os.environ, base, clear=False)
 
@@ -86,6 +86,23 @@ class CascadeOrderTests(unittest.TestCase):
         finally:
             os.unlink(path)
 
+    def test_exa_recognized_in_custom_order(self):
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as f:
+            json.dump(
+                {"search_cascade_order": ["exa", "tavily", "ddg"]}, f,
+            )
+            path = f.name
+        try:
+            with mock.patch.object(ws, "_ROUTING_CONFIG_PATH", path):
+                self.assertEqual(
+                    ws._load_cascade_order(),
+                    ("exa", "tavily", "ddg"),
+                )
+        finally:
+            os.unlink(path)
+
     def test_malformed_config_falls_back_to_default(self):
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", delete=False
@@ -113,6 +130,8 @@ class SearchTextCascadeTests(unittest.TestCase):
                     name="tavily_fetcher")),
                 "brave":  ("BRAVE_API_KEY",  mock.MagicMock(
                     name="brave_fetcher")),
+                "exa":    ("EXA_API_KEY",    mock.MagicMock(
+                    name="exa_fetcher")),
                 "ddg":    (None,             mock.MagicMock(
                     name="ddg_fetcher")),
             }),
@@ -189,6 +208,42 @@ class SearchTextCascadeTests(unittest.TestCase):
         self.assertEqual(provider, "tavily")
         self.assertEqual(results, [])
         ws._PROVIDERS["brave"][1].assert_not_called()
+
+    def test_exa_first_when_listed_and_key_present(self):
+        with mock.patch.object(
+            ws, "_load_cascade_order",
+            return_value=("exa", "tavily", "ddg"),
+        ):
+            self._set_fetcher("exa",    result=[{"title": "e"}])
+            self._set_fetcher("tavily", result=[{"title": "t"}])
+            with _isolate_keys(EXA_API_KEY="key", TAVILY_API_KEY="key"):
+                results, provider = ws._search_text("q", 5)
+            self.assertEqual(provider, "exa")
+            self.assertEqual(results, [{"title": "e"}])
+            ws._PROVIDERS["tavily"][1].assert_not_called()
+
+    def test_exa_skipped_when_key_absent(self):
+        with mock.patch.object(
+            ws, "_load_cascade_order",
+            return_value=("exa", "tavily", "ddg"),
+        ):
+            self._set_fetcher("tavily", result=[{"title": "t"}])
+            with _isolate_keys(TAVILY_API_KEY="key"):
+                results, provider = ws._search_text("q", 5)
+            self.assertEqual(provider, "tavily")
+            ws._PROVIDERS["exa"][1].assert_not_called()
+
+    def test_exa_error_cascades_to_next_tier(self):
+        with mock.patch.object(
+            ws, "_load_cascade_order",
+            return_value=("exa", "ddg"),
+        ):
+            self._set_fetcher("exa", raises=RuntimeError("upstream"))
+            self._set_fetcher("ddg", result=[{"title": "d"}])
+            with _isolate_keys(EXA_API_KEY="key"):
+                results, provider = ws._search_text("q", 5)
+            self.assertEqual(provider, "ddg")
+            ws._PROVIDERS["exa"][1].assert_called_once()
 
     def test_custom_order_brave_first(self):
         with mock.patch.object(
