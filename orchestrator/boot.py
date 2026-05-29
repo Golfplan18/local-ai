@@ -54,6 +54,8 @@ TOOLS_DIR = os.path.join(WORKSPACE, "orchestrator/tools/")
 FRAMEWORKS_DIR = os.path.join(WORKSPACE, "frameworks/book/")
 MODES_DIR = os.path.join(WORKSPACE, "modes/")
 MODULES_DIR = os.path.join(WORKSPACE, "modules/")
+THINKING_TOOLS_MD = os.path.join(WORKSPACE, "modules/tools/thinking-tools.md")
+MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "knowledge/mental-models/")
 
 # Phase 9 — Pre-routing pipeline architecture files (~/ora/architecture/).
 # These nine files replace the retired Mode Classification Directory's
@@ -6193,6 +6195,254 @@ def _extract_section(text: str, heading: str) -> str:
     return m.group(1).strip() if m else ""
 
 
+# ── Analytical Perspectives layer (G1.10 Phase 4) ────────────────────────
+#
+# Unified Tier 1 (de Bono thinking tools) + Tier 3 (mental-model lenses)
+# loader. A mode declares its perspective allowlist in a ``## ANALYTICAL
+# PERSPECTIVES`` section in the mode body; this loader resolves the listed
+# ids against the in-memory caches at build_system_prompt_for_gear time
+# and injects the resolved definitions into the Breadth analyst's system
+# prompt. Both caches are loaded once at first use and held module-level.
+
+_THINKING_TOOLS_CACHE: dict[str, str] | None = None
+_MENTAL_MODELS_CACHE: dict[str, str] | None = None
+
+
+def _load_thinking_tools() -> dict[str, str]:
+    """Parse ``thinking-tools.md`` → ``{tool_id: section_body}``.
+
+    Extracts every ``### `` heading inside ``## Tier 1 Tool Definitions``.
+    The tool id is the heading text up to the em-dash (e.g.
+    ``"AGO — Aims, Goals, Objectives"`` → ``"AGO"``); for tools without
+    an em-dash, the parenthetical alias is stripped (``"Provocation (Po)"``
+    → ``"Provocation"``); for bare headings (``"Concept Fan"``) the entire
+    heading is the id.
+
+    Cached at module level — first call reads the file. Empty dict on
+    file-missing / parse-failure (logs to stderr).
+    """
+    global _THINKING_TOOLS_CACHE
+    if _THINKING_TOOLS_CACHE is not None:
+        return _THINKING_TOOLS_CACHE
+
+    tools: dict[str, str] = {}
+    try:
+        with open(THINKING_TOOLS_MD, "r", encoding="utf-8") as f:
+            text = f.read()
+    except OSError as e:
+        print(
+            f"[perspective_loader] Failed to read {THINKING_TOOLS_MD}: {e}",
+            file=sys.stderr, flush=True,
+        )
+        _THINKING_TOOLS_CACHE = tools
+        return tools
+
+    # Locate the Tier 1 section. The file has multiple `## ` sections;
+    # only Tier 1 contains the tools we want.
+    tier1_marker = "## Tier 1 Tool Definitions"
+    tier1_start = text.find(tier1_marker)
+    if tier1_start == -1:
+        _THINKING_TOOLS_CACHE = tools
+        return tools
+
+    # End of Tier 1 = next top-level `## ` heading (excluding the Tier 1
+    # heading itself).
+    after_tier1 = text[tier1_start + len(tier1_marker):]
+    next_section = re.search(r"\n## (?!Tier 1)", after_tier1)
+    if next_section:
+        tier1_text = after_tier1[: next_section.start()]
+    else:
+        tier1_text = after_tier1
+
+    # Extract each `### ` block. The body runs from the heading to the
+    # next `### ` or end of section.
+    pattern = re.compile(
+        r"^### (?P<heading>.+?)$\n(?P<body>.*?)(?=\n^### |\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    for m in pattern.finditer(tier1_text):
+        heading = m.group("heading").strip()
+        body = m.group("body").strip()
+        # Skip `### `-prefixed horizontal-rule separators if any.
+        if not body:
+            continue
+        # Derive the tool id.
+        em_dash_idx = heading.find("—")
+        if em_dash_idx != -1:
+            tool_id = heading[:em_dash_idx].strip()
+        else:
+            paren_idx = heading.find("(")
+            tool_id = (heading[:paren_idx] if paren_idx != -1 else heading).strip()
+        if tool_id:
+            tools[tool_id] = f"### {heading}\n\n{body}"
+
+    _THINKING_TOOLS_CACHE = tools
+    return tools
+
+
+def _load_mental_models() -> dict[str, str]:
+    """Walk ``knowledge/mental-models/*.md`` → ``{stem: body}``.
+
+    ``stem`` is the filename without extension (``nash-equilibrium.md`` →
+    ``nash-equilibrium``). ``body`` is the markdown content with the YAML
+    frontmatter stripped (everything past the second ``---`` delimiter).
+    Files without frontmatter are loaded whole.
+
+    Cached at module level — first call walks the directory. Empty dict
+    on directory-missing (logs to stderr).
+    """
+    global _MENTAL_MODELS_CACHE
+    if _MENTAL_MODELS_CACHE is not None:
+        return _MENTAL_MODELS_CACHE
+
+    models: dict[str, str] = {}
+    if not os.path.isdir(MENTAL_MODELS_DIR):
+        print(
+            f"[perspective_loader] Mental models dir missing: "
+            f"{MENTAL_MODELS_DIR}",
+            file=sys.stderr, flush=True,
+        )
+        _MENTAL_MODELS_CACHE = models
+        return models
+
+    for path in sorted(globmod.glob(os.path.join(MENTAL_MODELS_DIR, "*.md"))):
+        stem = os.path.splitext(os.path.basename(path))[0]
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            continue
+        # Strip YAML frontmatter if present.
+        if text.startswith("---\n"):
+            end = text.find("\n---\n", 4)
+            if end != -1:
+                text = text[end + 5:].lstrip()
+        models[stem] = text
+
+    _MENTAL_MODELS_CACHE = models
+    return models
+
+
+_PERSPECTIVE_TOOLS_HEADER_RE = re.compile(
+    r"^\s*(?:thinking\s+tools?|tier\s*1)[^:\n]*:\s*$",
+    re.IGNORECASE,
+)
+_PERSPECTIVE_MODELS_HEADER_RE = re.compile(
+    r"^\s*(?:mental\s+models?|tier\s*3|lenses?)[^:\n]*:\s*$",
+    re.IGNORECASE,
+)
+
+
+def _parse_analytical_perspectives(
+    section_text: str,
+) -> tuple[list[str], list[str]]:
+    """Parse the body of ``## ANALYTICAL PERSPECTIVES`` → (tool_ids, model_ids).
+
+    Expected shape::
+
+        Thinking tools (always loaded):
+        - OPV
+        - FGL
+
+        Mental models (always loaded):
+        - nash-equilibrium
+        - batna
+
+    Either bucket may be empty or absent. Bullets without a preceding
+    bucket header are ignored. Order is preserved.
+    """
+    if not section_text:
+        return [], []
+
+    tool_ids: list[str] = []
+    model_ids: list[str] = []
+    current: list[str] | None = None
+
+    for line in section_text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _PERSPECTIVE_TOOLS_HEADER_RE.match(line):
+            current = tool_ids
+            continue
+        if _PERSPECTIVE_MODELS_HEADER_RE.match(line):
+            current = model_ids
+            continue
+        if stripped.startswith("- ") and current is not None:
+            item = stripped[2:].strip()
+            if item:
+                current.append(item)
+
+    return tool_ids, model_ids
+
+
+def _resolve_analytical_perspectives(
+    tool_ids: list[str], model_ids: list[str],
+) -> str:
+    """Resolve ids against the in-memory registries → injectable markdown.
+
+    Returns a markdown body with thinking-tool definitions and mental-model
+    bodies, ready to append to a Breadth analyst's system prompt under a
+    ``## ANALYTICAL PERSPECTIVES`` heading. Unknown ids are skipped with
+    a stderr warning. Returns the empty string if every id is unknown or
+    both lists are empty.
+    """
+    if not tool_ids and not model_ids:
+        return ""
+
+    tools = _load_thinking_tools()
+    models = _load_mental_models()
+
+    parts: list[str] = []
+
+    if tool_ids:
+        loaded: list[str] = []
+        unknown: list[str] = []
+        for tid in tool_ids:
+            body = tools.get(tid)
+            if body:
+                loaded.append(body)
+            else:
+                unknown.append(tid)
+        if unknown:
+            print(
+                f"[perspective_loader] Unknown thinking tool(s) skipped: "
+                f"{unknown}",
+                file=sys.stderr, flush=True,
+            )
+        if loaded:
+            parts.append("### Thinking tools (always loaded)\n")
+            parts.append("\n\n".join(loaded))
+
+    if model_ids:
+        loaded = []
+        unknown = []
+        for mid in model_ids:
+            body = models.get(mid)
+            if body:
+                loaded.append(body)
+            else:
+                unknown.append(mid)
+        if unknown:
+            print(
+                f"[perspective_loader] Unknown mental model(s) skipped: "
+                f"{unknown}",
+                file=sys.stderr, flush=True,
+            )
+        if loaded:
+            parts.append("\n### Mental models (always loaded)\n")
+            parts.append("\n\n---\n\n".join(loaded))
+
+    return "\n".join(parts).strip()
+
+
+def _reset_perspective_caches() -> None:
+    """Test helper — clear the module-level caches so the next call re-reads."""
+    global _THINKING_TOOLS_CACHE, _MENTAL_MODELS_CACHE
+    _THINKING_TOOLS_CACHE = None
+    _MENTAL_MODELS_CACHE = None
+
+
 def _images_for_endpoint(images, endpoint):
     """Return images only when the endpoint is vision-capable (Chunk 6 gate).
 
@@ -6455,6 +6705,29 @@ def build_system_prompt_for_gear(
     # top of the baseline above.
     if step == "analyst":
         instructions = depth_guidance if slot == "depth" else breadth_guidance
+        # G1.10 Phase 4 — Analytical Perspectives layer. The Breadth
+        # analyst gets the mode's declared Tier-1 thinking tools and
+        # Tier-3 mental-model lenses injected ahead of the breadth
+        # instructions so the lenses prime the analyst's frame. Depth
+        # analyst is intentionally skipped (depth is already focused;
+        # the perspectives layer is a lateral-thinking aid). Empty
+        # allowlists / unknown ids are clean no-ops.
+        if slot == "breadth":
+            perspectives_section = _extract_section(
+                mode_text, "ANALYTICAL PERSPECTIVES",
+            )
+            if perspectives_section:
+                tool_ids, model_ids = _parse_analytical_perspectives(
+                    perspectives_section,
+                )
+                resolved = _resolve_analytical_perspectives(
+                    tool_ids, model_ids,
+                )
+                if resolved:
+                    parts.append(
+                        f"\n## ANALYTICAL PERSPECTIVES — {mode_name}\n\n"
+                        f"{resolved}"
+                    )
         if instructions:
             parts.append(f"\n## MODE INSTRUCTIONS — {mode_name}\n\n{instructions}")
     elif step == "evaluator":

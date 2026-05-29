@@ -279,6 +279,19 @@ Gear 4
 
 ---
 
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+
+Mental models (always loaded):
+- nash-equilibrium
+- batna
+- cooperation
+
+---
+
 ## RAG PROFILE
 
 ### type_filter
