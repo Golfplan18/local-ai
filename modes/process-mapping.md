@@ -298,6 +298,7 @@ Thinking tools (always loaded):
 - FIP
 - C&S
 - AGO
+- RAD
 
 Mental models (always loaded):
 - bottlenecks

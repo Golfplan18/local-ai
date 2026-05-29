@@ -273,6 +273,7 @@ Thinking tools (always loaded):
 - CAF
 - FIP
 - Challenge
+- PMI
 
 Mental models (always loaded):
 - bayesian-reasoning

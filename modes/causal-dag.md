@@ -308,6 +308,7 @@ Thinking tools (always loaded):
 - Challenge
 - C&S
 - FIP
+- RAD
 
 Mental models (always loaded):
 - pearl-causal-graphs

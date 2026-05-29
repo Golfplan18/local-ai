@@ -296,6 +296,7 @@ Thinking tools (always loaded):
 - C&S
 - FIP
 - AGO
+- RAD
 
 Mental models (always loaded):
 - five-whys

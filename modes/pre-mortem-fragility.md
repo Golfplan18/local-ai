@@ -284,6 +284,7 @@ Thinking tools (always loaded):
 - C&S
 - FIP
 - CAF
+- PMI
 
 Mental models (always loaded):
 - klein-pre-mortem

@@ -335,6 +335,7 @@ Thinking tools (always loaded):
 - FIP
 - Concept Fan
 - APC
+- RAD
 
 Mental models (always loaded):
 - nash-equilibrium

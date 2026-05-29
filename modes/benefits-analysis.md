@@ -283,6 +283,7 @@ Thinking tools (always loaded):
 - OPV
 - FIP
 - Concept Fan
+- PMI
 
 Mental models (always loaded):
 - bayesian-reasoning

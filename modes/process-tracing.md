@@ -292,6 +292,7 @@ Thinking tools (always loaded):
 - Challenge
 - FIP
 - OPV
+- RAD
 
 Mental models (always loaded):
 - bennett-checkel-process-tracing-tests

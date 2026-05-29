@@ -301,6 +301,7 @@ Thinking tools (always loaded):
 - CAF
 - C&S
 - OPV
+- PMI
 
 Mental models (always loaded):
 - tetlock-superforecasting

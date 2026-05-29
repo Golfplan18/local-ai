@@ -310,6 +310,7 @@ Thinking tools (always loaded):
 - FIP
 - KVI
 - OPV
+- PMI
 
 Mental models (always loaded):
 - bayesian-reasoning

@@ -284,6 +284,7 @@ Thinking tools (always loaded):
 - Concept Fan
 - Challenge
 - CAF
+- RAD
 
 Mental models (always loaded):
 - cappelen-plunkett-conceptual-engineering

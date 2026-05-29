@@ -283,6 +283,7 @@ Thinking tools (always loaded):
 - Challenge
 - Concept Fan
 - FIP
+- PMI
 
 Mental models (always loaded):
 - bayesian-reasoning

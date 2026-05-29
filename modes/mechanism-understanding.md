@@ -300,6 +300,7 @@ Thinking tools (always loaded):
 - Concept Fan
 - Challenge
 - FIP
+- RAD
 
 Mental models (always loaded):
 - first-principles

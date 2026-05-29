@@ -293,6 +293,7 @@ Thinking tools (always loaded):
 - C&S
 - Challenge
 - Concept Fan
+- RAD
 
 Mental models (always loaded):
 - feedback-loops
