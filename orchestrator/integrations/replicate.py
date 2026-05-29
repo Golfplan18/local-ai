@@ -22,7 +22,7 @@ Authentication
 
 Per §11.13 the API key lives in the macOS Keychain under service-name
 ``ora-replicate``, account ``api-key``. The acquisition flow (Layer 2 of
-``Framework — API Key Acquisition.md``) places the key there. We also
+``Framework — API Key Setup.md``) places the key there. We also
 respect the ``REPLICATE_API_TOKEN`` environment variable as a developer
 override (used in tests / CI). When the key is missing we surface
 ``model_unavailable`` per the slot's ``common_errors`` taxonomy — the

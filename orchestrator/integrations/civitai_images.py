@@ -371,7 +371,7 @@ def dispatch_hector_lora(inputs: dict) -> bytes:
             "model_unavailable",
             "No Civitai API key configured. Store at keyring "
             "service='ora', username='civitai-api-key', or set "
-            "$CIVITAI_API_KEY. See Framework — API Key Acquisition.md.",
+            "$CIVITAI_API_KEY. See Framework — API Key Setup.md.",
             slot="image_generates_cartoon",
         )
 

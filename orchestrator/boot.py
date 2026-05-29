@@ -89,7 +89,7 @@ except ImportError as e:
 
 # Search-API key bridge — keyring → env var. ``tools/web_search.py``
 # reads ``TAVILY_API_KEY`` / ``BRAVE_API_KEY`` / ``EXA_API_KEY`` from
-# ``os.environ``, but the Framework — API Key Acquisition flow stores
+# ``os.environ``, but the Framework — API Key Setup flow stores
 # keys in the macOS keychain under the canonical convention
 # ``service="ora", username="<provider>-api-key"`` (also used by
 # ``scripts/sync_model_registry.py``). Export each key into the env at

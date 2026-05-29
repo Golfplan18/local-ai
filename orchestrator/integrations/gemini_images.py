@@ -29,7 +29,7 @@ Authentication
 Canonical keychain pattern matching every other API key Ora stores:
 service ``ora``, account ``gemini-api-key``. ``$GEMINI_API_KEY`` as an
 env override (used in tests / CI). Missing key surfaces
-``model_unavailable`` pointing at ``Framework — API Key Acquisition.md``.
+``model_unavailable`` pointing at ``Framework — API Key Setup.md``.
 
 Error taxonomy
 --------------
@@ -183,7 +183,7 @@ def _get_api_key() -> str:
             "No Gemini API key found in Keychain "
             f"(service='{KEYRING_SERVICE}', account='{KEYRING_ACCOUNT}'). "
             "Configure via the conversational walkthrough in "
-            "`Framework — API Key Acquisition.md` (Layer 2). "
+            "`Framework — API Key Setup.md` (Layer 2). "
             "Or store directly: "
             f"`keyring set {KEYRING_SERVICE} {KEYRING_ACCOUNT}`.",
             slot="image_generates",

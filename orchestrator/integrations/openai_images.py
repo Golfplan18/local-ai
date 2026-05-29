@@ -134,7 +134,7 @@ def _get_client():
         raise CapabilityError(
             "model_unavailable",
             "openai Python SDK not installed (pip install openai). "
-            "Configure a provider via Framework — API Key Acquisition.md.",
+            "Configure a provider via Framework — API Key Setup.md.",
         ) from exc
 
     key = _get_api_key()
@@ -143,7 +143,7 @@ def _get_client():
             "model_unavailable",
             "No OpenAI API key configured. Set $OPENAI_API_KEY or store "
             "via keyring service='ora', username='openai-api-key'. "
-            "See Framework — API Key Acquisition.md.",
+            "See Framework — API Key Setup.md.",
         )
     return OpenAI(api_key=key)
 

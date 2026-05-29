@@ -67,5 +67,5 @@ delete than to discover and add.
 ## Updating Keys
 
 To update or replace a key, tell your AI:
-"Read and execute Framework — API Key Acquisition.md"
+"Read and execute Framework — API Key Setup.md"
 and select the provider you want to update.

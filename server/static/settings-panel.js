@@ -586,7 +586,7 @@
     }
 
     // ── Add new provider ───────────────────────────────────────────────
-    // The user already has Framework — API Key Acquisition for end-to-end
+    // The user already has Framework — API Key Setup for end-to-end
     // provider setup (key elicitation, keychain storage, endpoint
     // registration). Rather than duplicate that flow inline, surface a
     // button that drops the slash-command into the input pane, closes the
@@ -597,7 +597,7 @@
     addBtn.type = 'button';
     addBtn.className = 'ora-settings-btn ora-settings-btn--ghost';
     addBtn.textContent = '+ Add new provider';
-    addBtn.title = 'Run Framework — API Key Acquisition to register a new provider';
+    addBtn.title = 'Run Framework — API Key Setup to register a new provider';
     addBtn.addEventListener('click', function () {
       var input = document.querySelector('.input-pane textarea');
       if (!input) {

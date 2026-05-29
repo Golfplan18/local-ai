@@ -1,10 +1,10 @@
-# API Key Acquisition Framework
+# API Key Setup Framework
 
 ## Display Name
-API Key Acquisition
+API Key Setup
 
 ## Display Description
-Acquire and securely store API keys for commercial AI services, then register endpoints in endpoints.json. Use when adding a new external model provider (Anthropic, OpenAI, Google, etc.) for the orchestrator to call.
+Acquire and securely store API keys for commercial AI providers and free-tier search/metadata providers, then register endpoints where applicable. Use when adding a new external provider (Anthropic, OpenAI, Google, OpenRouter, Stability, Replicate, Tavily, Brave, Exa, Artificial Analysis) for the orchestrator to call.
 
 
 *Guided Setup for Commercial AI API Access*
@@ -709,7 +709,7 @@ WHEN the user wants to stop partway through:
 
 ---
 
-*End of API Key Acquisition Framework v1.3*
+*End of API Key Setup Framework v1.3*
 
 ---
 

@@ -23,7 +23,7 @@ Default model: **SD3 Large** (``stability-sd3-large``). Rationale —
 auth pattern: keyring service-name ``ora``, account
 ``stability-api-key`` (canonical pattern matching every other API
 key Ora stores). Missing key surfaces ``model_unavailable`` pointing
-at ``Framework — API Key Acquisition.md``.
+at ``Framework — API Key Setup.md``.
 
 Errors are mapped to the slot's declared ``common_errors`` codes per
 ``capabilities.json`` so callers see consistent error taxonomies
@@ -118,7 +118,7 @@ def _get_api_key() -> str:
             "No Stability AI API key found in Keychain "
             f"(service='{KEYRING_SERVICE}', account='{KEYRING_ACCOUNT}'). "
             "Configure via the conversational walkthrough in "
-            "`Framework — API Key Acquisition.md` (Layer 2). "
+            "`Framework — API Key Setup.md` (Layer 2). "
             "Or store directly: "
             f"`keyring set {KEYRING_SERVICE} {KEYRING_ACCOUNT}`.",
         )
