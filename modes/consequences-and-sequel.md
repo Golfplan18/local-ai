@@ -280,11 +280,9 @@ The deliverable is a **directed acyclic cascade map** rooted at the action or ev
 - Time-horizon tags use the canonical four labels (immediate / short / medium / long) — not "near-term" or other variations.
 - When section 10 fires (cycle detected), it replaces sections 2 through 9 for the affected branch rather than appearing alongside them.
 
-
 ## CAVEATS AND OPEN DEBATES
 
 Consequences and Sequel operates as the Tier-1 light variant in the T6 future-exploration ladder; it complements but does not substitute for the heavier modes — `probabilistic-forecasting` (when probability weights matter), `scenario-planning` (when divergent narratives carry the analysis better than a single cascade), `wicked-future` (the molecular variant for tangled forward problems). The mode's load-bearing constraint is acyclicity: when a cycle appears in the cascade, the right move is handoff to `systems-dynamics-causal`, not forcing the cycle into a DAG that misrepresents the structure. The third-order discipline (extend at least one branch to depth 3) is the discipline that distinguishes a real cascade from an enumeration of immediate effects.
-
 
 ---
 

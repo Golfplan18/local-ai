@@ -256,7 +256,6 @@ The deliverable is a **structured differential** — a ranked-options artifact w
 - When the corpus carried a frame-clash flag (the candidates may be inter-frame paradigm disagreement rather than within-frame hypotheses), the deliverable opens with a brief note before section 1: `**Note: if the candidates below are reading the situation through different frames rather than offering different explanations within one frame, frame-comparison is the appropriate sideways-route.**`
 - Confidence (section 6) stays per-candidate; collapsing into a single overall confidence is reshaped at this layer.
 
-
 ---
 
 ## DEFAULT GEAR

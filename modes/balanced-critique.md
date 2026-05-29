@@ -264,7 +264,6 @@ The deliverable is a **structured neutral-stance evaluation with paired strength
 - Avoid verdict-collapse phrasings in the net assessment: "on balance", "overall", "in conclusion the artifact is" — keep the qualified characterization with residual tensions named.
 - Avoid bothsidesism padding: do not write "for every strength there is a corresponding weakness" or similar forced-symmetry framings.
 
-
 ---
 
 ## DEFAULT GEAR

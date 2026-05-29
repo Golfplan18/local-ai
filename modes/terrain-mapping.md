@@ -258,7 +258,6 @@ The deliverable is a **thorough survey-level orientation map** — a Novak-tradi
 - When envelope-bearing rendering is appropriate: `concept_map` envelope with ≥4 concepts each carrying `hierarchy_level`, ≥2 linking phrases, ≥3 propositions with all ids resolving, ≥1 proposition with `is_cross_link: true`, and `focus_question` matching prose.
 - When the concept-count fell below 4 despite the focus question warranting a broader map, the deliverable opens with: `**Note: the domain may be narrower than survey-level orientation requires. Deep-clarification (T10) is the appropriate sideways-route for narrow conceptual deepening; if survey breadth is what's wanted, the focus question may need to widen.**`
 
-
 ---
 
 ## DEFAULT GEAR

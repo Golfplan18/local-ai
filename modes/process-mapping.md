@@ -280,7 +280,6 @@ The deliverable is a **diagram-friendly process map: swim-lane step graph with d
 - When the medium supports it, render the swim-lane visually (actors as rows, steps as cells); otherwise per-step list with explicit `Actor: A_n` tags.
 - Avoid causal-explanation framing throughout (the mode is descriptive process documentation; causal-overreach escalates to T4).
 
-
 ---
 
 ## DEFAULT GEAR

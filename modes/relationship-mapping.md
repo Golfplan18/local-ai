@@ -248,7 +248,6 @@ The deliverable is a **typed relational map** — a diagram-friendly structured 
 - When the linear-reduction flag survived consolidation, the deliverable opens with: `**Note: portions of the consolidated corpus drifted toward sequential narrative. The relational structure below has been reshaped from the narrative; if further structural reduction is wanted, deeper concept-mapping is the route.**`
 - The acyclicity check (section 7) is not optional. Acyclicity is the mode's structural commitment; cycles surface explicitly with sideways-route rather than being hidden.
 
-
 ---
 
 ## DEFAULT GEAR

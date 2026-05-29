@@ -311,7 +311,6 @@ The deliverable is a **Ury third-side mediation analysis** — a structured mapp
 
 This mode does not carry mode-specific debates. The Wave 2 sibling `interest-mapping` and the Wave 3 sibling `principled-negotiation` carry **Debate D6** (Fisher-Ury sufficiency for adversarial contexts; Voss critique), which bears on third-side intervention obliquely: when a third party coaches one of the parties in negotiation method, the choice of method (Fisher-Ury integrative vs. Voss tactical-empathy adversarial) is a third-side decision the analysis may need to address. The `voss-tactical-empathy` lens is carried optionally for that case. The territory-level question of how mediator-stance interacts with deep-identity / community-rooted conflicts (Lederach's transformation lineage) and with conflicts that have historical trajectory (Kriesberg's constructive-conflicts) is treated as breadth scanning rather than as a mode-specific debate; both lenses are carried optionally for context where the Ury ten-role frame benefits from supplementation. Citations: Ury 2000 *The Third Side: Why We Fight and How We Can Stop*; Lederach 2003 *The Little Book of Conflict Transformation*; Kriesberg & Dayton 2017 *Constructive Conflicts*; Fisher, Ury & Patton 1981/2011 *Getting to Yes* for the cross-reference to party-side method.
 
-
 ---
 
 ## DEFAULT GEAR

@@ -277,7 +277,6 @@ The deliverable is a **fishbone-structured root-cause analysis** — a backward-
 
 Root Cause Analysis applies most cleanly to problems with bounded causal histories — failures in well-instrumented systems where evidence is recoverable. For systems exhibiting feedback dynamics where corrective interventions keep being counteracted, the mode should escalate to `systems-dynamics-causal`; the boundary is that Root Cause Analysis traces a chain backward whereas systems-dynamics-causal investigates how feedback structures generate recurring symptoms. Where the historical record is the load-bearing evidence (a specific past event), `process-tracing` may be the better tool. Where the formal causal-inference question is which conditional independencies are implied by the structure, `causal-dag` applies.
 
-
 ---
 
 ## DEFAULT GEAR

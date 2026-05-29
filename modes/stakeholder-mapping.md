@@ -261,7 +261,6 @@ The deliverable is a **multi-party stakeholder map** — a Bryson + Mitchell-Agl
 - When streams diverged on salience class for the same party, section 3 carries inline disagreement: `**[Party] — contested MAW class:** stream A: [class]; stream B: [class]. Resolution path: [what would decide].`
 - When the inventory lacked outside-frame parties despite breadth scanning, section 1 closes with: `**Frame-bounded note:** no parties from outside the user's initial frame were identifiable in this situation. Boundary-critique (Ulrich CSH) is the appropriate sideways-route if frame-completeness is the operative question.`
 
-
 ---
 
 ## DEFAULT GEAR

@@ -290,7 +290,6 @@ The deliverable is a **diagram-friendly causal mapping with Pearl-rung-locked qu
 
 **Debate D4 — Are Pearl's ladder levels 2 (intervention) and 3 (counterfactual) genuinely distinct rungs, or is intervention a special case of counterfactual reasoning?** Pearl (2009, *Causality*; 2018, *Book of Why*) argues for a strict three-rung hierarchy: observation (seeing), intervention (doing, via the do-operator), and counterfactuals (imagining what would have been). Each rung requires strictly more structural commitment than the one below; effects identifiable at level 3 are not generally identifiable from level 2 information alone. Maudlin and other philosophers of causation have argued the distinction is blurrier — interventions are themselves a kind of counterfactual ("what if we set X to x"), and the three-rung architecture is more pedagogical than ontological. The Pearl-Maudlin exchange surfaces this debate without resolving it. This mode operates with Pearl's strict hierarchy as the operational stance: critical question CQ1 requires explicit rung selection, and the intervention-or-counterfactual-answer section is rung-tagged. The debate is surfaced for users whose causal question sits at the level-2/level-3 boundary and who want to know whether the distinction matters for their application. Citations: Pearl 2009 *Causality*; Pearl 2018 *Book of Why*; Maudlin and related counterfactual-theoretic critiques.
 
-
 ---
 
 ## DEFAULT GEAR

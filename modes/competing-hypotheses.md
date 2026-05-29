@@ -263,7 +263,6 @@ The deliverable is a **matrix-format ACH artifact with elimination-arithmetic ve
 - Elimination arithmetic is shown numerically (e.g., "H1: I+II = 3, II = 1"), not paraphrased.
 - Across-the-matrix posture is preserved in framing: the analysis is keyed to evidence-rows (what does each evidence item discriminate among hypotheses?), not to hypothesis-columns (what supports each hypothesis?).
 
-
 ---
 
 ## DEFAULT GEAR

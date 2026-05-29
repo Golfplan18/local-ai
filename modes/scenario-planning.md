@@ -282,7 +282,6 @@ The deliverable is a **2×2 scenario set with strategic translation** — a Schw
 - Wild cards (section 7) sit in prose, *outside* the matrix. Wild cards pulled into the matrix get reshaped — their structural function is to mark what the matrix doesn't capture.
 - When streams diverged on axis-pair selection, the deliverable carries a labelled note in section 3: `**Alternative axes considered:** stream A selected [pair X] for [reason]; stream B selected [pair Y]. The deliverable uses [chosen] because [...]; the alternative axes would have produced [different scenario logic].`
 
-
 ---
 
 ## DEFAULT GEAR

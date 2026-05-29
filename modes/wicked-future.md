@@ -290,7 +290,6 @@ The deliverable is a **structured forward analysis: probability-weighted scenari
 - Section 6's gap-flag is non-negotiable — it appears regardless of whether streams or earlier sections elsewhere implied the gap.
 - Failure narratives in section 4 use past-tense Klein prospective-hindsight framing throughout — present-tense or future-tense narratives are bloat per the corpus discipline.
 
-
 ---
 
 ## DEFAULT GEAR

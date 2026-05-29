@@ -250,7 +250,6 @@ The deliverable is a **paradigm suspension audit** — a prose analysis that sur
 - When the indeterminate verdict survived consolidation, section 5 carries it explicitly — "indeterminate on current evidence" is a first-class outcome, never collapsed into a forced verdict.
 - When streams diverged on observational/interpretive tagging or on load-bearing status, the disagreement surfaces inside the relevant section as `**Contested tagging:** [item] — stream A: observational; stream B: interpretive. [What this reveals about field's bedrock commitments].`
 
-
 ---
 
 ## DEFAULT GEAR

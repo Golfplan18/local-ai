@@ -263,7 +263,6 @@ The deliverable is a **frame comparison mapping** — a symmetric articulation o
 - When frames-not-yet-named were flagged, section 1 closes with `**Frames not represented in this comparison:** [...] — [why they may also be in play, what the comparison would gain from including them].`
 - Residual irreducibility (section 7) is never described as a flaw to be resolved; it is the analytical finding that justifies the comparing-stance over false synthesis.
 
-
 ---
 
 ## DEFAULT GEAR

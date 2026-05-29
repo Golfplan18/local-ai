@@ -289,7 +289,6 @@ The deliverable is a **structured integrated decision architecture: alternatives
 - Section 4's stakeholder-impact rendering: table form when ≤4 stakeholders × ≤4 alternatives; per-stakeholder blocks when complexity exceeds table-readability.
 - The single recommendation in section 6 is integrated, not a single component's verdict. If the recommendation matches one component's leading choice exactly, name what the other three components contributed to the rationale.
 
-
 ---
 
 ## DEFAULT GEAR

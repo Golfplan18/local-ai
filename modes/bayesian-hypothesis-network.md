@@ -279,7 +279,6 @@ The deliverable is a **Bayesian-network artifact with hypothesis-and-evidence no
 - When the rendering form for section 5 is annotated-table-plus-narrative, the table goes first and the narrative supplements it.
 - Conditional dependencies render with explicit edge direction (`→`) and a mechanism-per-edge — arcs without mechanisms do not appear.
 
-
 ---
 
 ## DEFAULT GEAR

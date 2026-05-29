@@ -285,7 +285,6 @@ The deliverable is a **causal feedback-system mapping** — a Forrester/Senge st
 
 This mode is one of two parsed from the legacy Systems Dynamics mode per Decision D (parsing principle, 2026-05-01 architecture lock). The legacy mode conflated two distinct operations: causal investigation ("why does this keep happening, given the feedback dynamics?") and structural mapping ("how does this system currently work, including its feedback dynamics?"). Both share the same feedback-loop lenses and the same diagrammatic vocabulary, but they differ in posture (causal-investigation vs structural-descriptive), output contract (counterintuitive-behaviour prediction vs current-state mapping), and disambiguation question (why vs how). This mode is the T4 causal variant; its structural counterpart `systems-dynamics-structural` lives in T17 and shares the foundational feedback lenses including `feedback-loops`. Routing between the two is determined by the user's actual question — diagnostic recurrence (why) routes here; current-state mapping (how) routes to the structural variant.
 
-
 ---
 
 ## DEFAULT GEAR

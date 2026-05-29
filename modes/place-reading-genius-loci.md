@@ -346,7 +346,6 @@ This mode does not carry mode-specific debates. Five territory-level debates (pe
 
 These five debates are *not* re-documented here. They are referenced because they bear on Place Reading's stance, lens dependencies, and implementability. See the T19 entry in `Reference — Analytical Territories.md` for the full debate text and citations.
 
-
 ---
 
 ## DEFAULT GEAR

@@ -281,7 +281,6 @@ The deliverable is a **structured cartography of paradigms: suspended-paradigm b
 - Avoid meta-vocabulary throughout the deliverable: phrases like "from a higher-level perspective", "transcending these views", "integrating both insights" are forbidden — meta-paradigm-imposition is the named failure mode.
 - Avoid unified-worldview residue: the cartography preserves plurality where it exists.
 
-
 ---
 
 ## DEFAULT GEAR

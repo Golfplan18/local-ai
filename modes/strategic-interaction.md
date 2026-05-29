@@ -269,7 +269,6 @@ The deliverable is a **game-theoretic strategic-interaction analysis** — a str
 - When the hyperrationality flag survived consolidation, section 3 closes with: `**Bounded-rationality note:** the equilibrium above assumes perfect rationality. Real-actor deviations (cognitive bias, political constraint, incomplete preference orderings) shift expected play [direction]; the recommendation in section 6 accounts for this.`
 - Strategic recommendations (section 6) are mechanism-grounded — they reference the specific game-structure lever that produces the recommendation. Generic strategic advice is reshaped.
 
-
 ---
 
 ## DEFAULT GEAR

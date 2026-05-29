@@ -255,7 +255,6 @@ Place the consolidated-corpus atoms into the following sections (or their format
 - When the template-trap flag survived consolidation, section 3 carries: `**Format-adaptation note:** source content did not fit the requested format cleanly. [Adaptation made] — [why this serves the content better than forcing the original format].`
 - The depth ceiling is set by source — SO does not deepen content beyond what source supports. Adversarial review at Gear 3 is appropriate for high-stakes rendering; consolidator merging is *not* applied to SO outputs.
 
-
 ---
 
 ## DEFAULT GEAR

@@ -271,7 +271,6 @@ The deliverable is a **structured matrix of alternatives with per-alternative fo
 - The format-choice in section 4 is operative — choose one and commit; the deliverable should not carry both a 2×2 grid and a pro/con tree.
 - Hard vs soft constraint tags are explicit; do not list constraints without classification.
 
-
 ---
 
 ## DEFAULT GEAR

@@ -290,7 +290,6 @@ The deliverable is a **fragility / antifragility audit** — a structured analys
 - When Talebian heuristics were applied without case-specific reasoning, the deliverable surfaces this inside section 8 or 9 as a labelled `**Talebian-heuristic caveat:** [heuristic name] was applied; the case-specific reasoning that justifies it here is [...].`
 - Confidence (section 10) is per-finding, not per-audit; collapsing into a single overall confidence is reshaped at this layer.
 
-
 ---
 
 ## DEFAULT GEAR

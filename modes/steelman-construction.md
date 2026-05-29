@@ -273,7 +273,6 @@ The deliverable is a **constructive-strong charitable reconstruction with critiq
 - When multiple positions are being steelmanned (rare but possible), each receives identical rigour — symmetry across reconstructions. Asymmetric treatment is reshaped at this layer.
 - Survival assessment (section 6) preserves the residual force of the position. "And the steelman fails" verdicts that elide what survives get reshaped to honest accounting of what holds.
 
-
 ---
 
 ## DEFAULT GEAR

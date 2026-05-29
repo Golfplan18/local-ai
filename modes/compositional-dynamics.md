@@ -297,7 +297,6 @@ These five debates are *not* re-documented here. They are referenced because the
 
 **Integration note (M2 + M3 combined per locked decisions).** This mode combines M2 (Figure-Ground & Perceptual-Grouping Analysis / Gestalt-mode) and M3 (Compositional-Forces & Balance Analysis / Arnheim-mode) from the T19 reanalysis §3 mode catalog. The integration follows the locked decisions: M2 (perceptual parse) runs first conceptually, then M3 (forces among parsed elements) layers on top — the two operations are sequenced within a single mode because (a) they almost always co-occur on the same input, (b) M3 takes M2's output as input (forces operate on parsed groupings), and (c) splitting them would generate two modes whose outputs always cite each other. Itten's seven contrasts and Albers's *Interaction of Color* ride inside as optional lenses for color-driven figure-ground and force phenomena. The reserved Mode 5 (Information-Graphic Visual-Hierarchy Analysis, Tufte/Bertin/Cleveland) is held against the territory-level promotion threshold; below threshold, info-graphic inputs route through this mode.
 
-
 ---
 
 ## DEFAULT GEAR

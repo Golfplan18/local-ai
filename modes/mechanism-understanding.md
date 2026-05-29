@@ -281,7 +281,6 @@ The deliverable is a **structured mechanism explanation: phenomenon-and-behavior
 - Avoid causal-chain framing in the emergence account ("X causes Y" with backward-to-causes posture) — keep the structural framing ("interaction pattern produces behavior").
 - The prediction in section 8 is concrete and falsifiable, not a hedged "behavior might change."
 
-
 ---
 
 ## DEFAULT GEAR

@@ -288,7 +288,6 @@ The deliverable is a **frame audit** — a stance-suspending analysis that names
 - When multiple operative frames survived consolidation, sections 4 and 7 render each frame as its own labelled sub-block; the deliverable does not collapse to a single dominant frame unless one stream uniquely identified one.
 - When streams disagreed on selection-vs-silence cells, the disagreement renders in section 5 as `**Contested:** [item] — stream A: included and emphasised; stream B: downplayed. [What this contest reveals about the artifact's framing structure].`
 
-
 ---
 
 ## DEFAULT GEAR

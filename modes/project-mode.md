@@ -249,7 +249,6 @@ Place the consolidated-corpus atoms into the following sections (or their delive
 - When the lightweight paradigm-check surfaced an unstated assumption limiting the solution space, section 2 closes with a labelled `**Paradigm-check note:** [constraint that may be unnecessary; alternative solution-space if the constraint is relaxed].`
 - Limitations and risks (section 3) use the literal prefixes `**Limitation N:**` or `**Risk N:**` for audit traceability.
 
-
 ---
 
 ## DEFAULT GEAR

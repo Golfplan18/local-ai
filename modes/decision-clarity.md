@@ -296,7 +296,6 @@ The deliverable is a **Decision Clarity Document** — a decision-brief for the 
 - When red-team findings invalidate the cui-bono interest-rationale, the contradiction is rendered as a labelled finding inside section 7: `**Contradiction:** the adversarial dynamic [...] invalidates the interest-rationale that the recommendation rests on. [Implications].`
 - When the decision-maker's scope is contested (synthesis disagreed on whether a recommendation falls inside their authority), section 9 carries the disagreement as an explicit flag rather than picking one reading: `**Scope-contested:** [recommendation] — [stream A: in-scope by authority X; stream B: requires extension Y].`
 
-
 ---
 
 ## DEFAULT GEAR

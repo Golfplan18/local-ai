@@ -247,7 +247,6 @@ The deliverable is a **tier-1 orientation packet — short, distributed, load-be
 - Avoid "tier-2 phrasing" — the deliverable does not include "open questions in the field include..." or "the methodological debate centers on..." (those signal scope-creep into terrain-mapping territory).
 - The escalation pointer is operative — name terrain-mapping as the target and the specific trigger signals.
 
-
 ---
 
 ## DEFAULT GEAR

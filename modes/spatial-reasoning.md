@@ -288,7 +288,6 @@ The deliverable is a **diagram-gap annotation deliverable** — a Tversky-corres
 
 **Re-home from old T19 to T11 per Decision G.** Spatial Reasoning was originally placed in the old T19 territory ("Visual and Spatial Structure"). Decision G renamed T19 to "Spatial Composition" (analyzing what the spatial structure itself does as primary content — voids, groupings, forces, affordances per the Ma Reading / Compositional Dynamics / Place Reading / Information Density mode population). The mode's actual operation — structural gap detection on diagrammatic input (missing nodes, missing connections, missing levels, missing feedback loops) — is a T11 operation (notice missing relations) on visual-medium input rather than a T19 operation (read the composition's own meaning). Re-homed accordingly: territory is T11-structural-relationship-mapping; gradation_position is specificity-visual-input; adjacent_modes_in_territory pairs with relationship-mapping (general specificity counterpart). The mode_id remains `spatial-reasoning` for filename and registry continuity. When the user's input is a diagram and the question is about layout / composition / spatial-structure-as-primary-content rather than about the relations the diagram asserts, route to T19 instead. See `Reference — Analytical Territories.md` §T11 and §T19 and the boundary-verification entry T11 ↔ T19 for the disambiguating question.
 
-
 ---
 
 ## DEFAULT GEAR

@@ -295,7 +295,6 @@ The deliverable is a **12-category boundary audit organized by Ulrich's four sou
 - All twelve categories appear in the audit; explicit "minimal — [reason]" rather than silent omission.
 - Avoid consensus-seeking framing throughout the deliverable: "a balanced boundary would...", "what both perspectives share..." are forbidden — boundary critique surfaces contestation.
 
-
 ---
 
 ## DEFAULT GEAR

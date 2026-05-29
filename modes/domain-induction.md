@@ -267,7 +267,6 @@ The deliverable is a **three-layer induction document — what's here / what's c
 - Bloom tags use canonical six-level vocabulary; do not invent intermediate levels.
 - Section 7's familiarity-tagged guidance reads visibly different for novice vs intermediate vs advanced — if all three would read the same, the goal-tagging has collapsed into generic-survey residue.
 
-
 ---
 
 ## DEFAULT GEAR

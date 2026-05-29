@@ -274,7 +274,6 @@ The deliverable is a **process-tracing synthesis** — a structured Bennett-Chec
 - When provenance disagreements survived, section 3 carries explicit flags inline: `**Contested reliability:** [source] — assessed differently across streams: [...] vs [...].`
 - Causal chain (section 6) is temporal and link-explicit. Jumps from cause to effect without naming the intermediate step are reshaped at this layer.
 
-
 ---
 
 ## DEFAULT GEAR

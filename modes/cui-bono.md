@@ -4,7 +4,7 @@ nexus:
 type: mode
 tags:
 date created: 2026-03-23
-date modified: 2026-05-01
+date modified: 2026-05-24
 
 ---
 
@@ -267,7 +267,6 @@ The deliverable is a **structured who-benefits mapping** — a row-auditable ana
 - FGL (section 5) is applied symmetrically across constituencies; if FGL only appears for one side, the deliverable is failing its own format guidance.
 - When frame-bounded-blindness is flagged in the corpus, the deliverable opens (before section 1) with a brief escalation note: `**Note: all identified parties may share the artifact's frame; parties outside the frame are not visible from this analysis. Boundary-critique is the appropriate sideways-route if frame-completeness is the operative question.**`
 - The institutional-author claim and the intent-attribution language stay separated — structural incentives are the default explanatory frame; intent attribution requires named evidence and appears with explicit confidence labelling.
-
 
 ---
 

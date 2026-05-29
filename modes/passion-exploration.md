@@ -269,7 +269,6 @@ When crystallization signals appear, name the signal in prose using the literal 
 
 The Missed-Crystallization Trap is the failure mode for missing the signal; the Productivity Trap is the failure mode for forcing crystallization that hasn't happened.
 
-
 ---
 
 ## DEFAULT GEAR

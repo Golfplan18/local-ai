@@ -271,7 +271,6 @@ The deliverable is a **decision-analysis recommendation under uncertainty** — 
 - Recommendation revision-conditions (section 6) appear as a labelled `**Revisit if:**` block — visually distinct so the decision-maker can see at a glance what would change the recommendation.
 - Non-quantifiable factors (section 7) are listed at full salience; collapsing them into utility numbers is reshaped at this layer.
 
-
 ---
 
 ## DEFAULT GEAR

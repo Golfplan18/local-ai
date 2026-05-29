@@ -268,7 +268,6 @@ The deliverable is an **MCDM matrix-with-ranking** — a structured analysis whe
 - When streams diverged on method fit, section 5 renders the disagreement: `**Method-disagreement:** stream A favoured [method] for [reason]; stream B favoured [method] for [reason]. Where the two methods agree on the top choice: [...]. Where they diverge: [...].`
 - Confidence (section 8) stays as three distinct kinds; collapsing to single overall confidence is reshaped here.
 
-
 ---
 
 ## DEFAULT GEAR

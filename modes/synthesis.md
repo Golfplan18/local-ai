@@ -241,7 +241,6 @@ The deliverable is a **structured peer-root synthesis: two (or more) frameworks 
 - Avoid harmony-padding throughout: "the frameworks beautifully complement each other", "they share a deep affinity" are forbidden phrasings.
 - Avoid reduction-language: "X is really a kind of Y", "Y is the more general case of X" — peer-root posture is maintained.
 
-
 ---
 
 ## DEFAULT GEAR

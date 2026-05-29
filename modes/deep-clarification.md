@@ -235,7 +235,6 @@ The deliverable is a **deep clarification** — a prose explanation that walks f
 - When analogies anchor the mechanism, they appear inline within the level they support: `Analogous to: [domain] [analogy]. The transfer holds because [mechanism in common]; it does not transfer where [disanalogy].` Analogies that decorate without transferring mechanism are reshaped or removed at this layer.
 - The epistemic-boundary section (3) is never silently elided; if the mechanism is fully settled, the boundary section states that explicitly (`No active boundary at the levels traversed here; the mechanism is settled at both Level 1 and Level 2.`).
 
-
 ---
 
 ## DEFAULT GEAR

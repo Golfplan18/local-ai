@@ -264,7 +264,6 @@ The deliverable is a **structured three-column PMI artifact with affected-partie
 - Mechanism phrases use the literal "mechanism:" label or its tag — `mechanism: X` — never "this benefits the user because" without the mechanism named explicitly.
 - Most-consequential tags appear exactly once per column.
 
-
 ---
 
 ## DEFAULT GEAR

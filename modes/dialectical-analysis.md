@@ -256,7 +256,6 @@ The deliverable is a **triadic peer-position dialectic with explicit transcendin
 - When sub-block 6a is in play, the cancellation/preservation pair renders as two named H3 sub-headers OR as bolded inline labels — choose whichever the medium supports cleanly.
 - Avoid sublation-averaging vocabulary anywhere in the deliverable: "balance", "middle ground", "drawing from each", "combining the insights" are forbidden phrasings when describing the sublation. If the sublation is honestly transcending, name the mechanism; if it isn't, render 6b instead.
 
-
 ---
 
 ## DEFAULT GEAR
