@@ -103,38 +103,49 @@ class MCPConnection:
     def _send(self, message: dict):
         with self._lock:
             data = json.dumps(message)
-            header = f"Content-Length: {len(data)}\r\n\r\n"
-            self.process.stdin.write(header + data)
+            # MCP stdio transport is newline-delimited JSON-RPC — one compact
+            # JSON message per line, NOT LSP-style Content-Length framing.
+            # (The earlier Content-Length header made the server fail to parse
+            # the request and made _recv block forever waiting for a \r\n\r\n
+            # terminator the server never sends.)
+            self.process.stdin.write(data + "\n")
             self.process.stdin.flush()
 
     def _recv(self, timeout: int = 10) -> dict | None:
-        """Read a JSON-RPC response with timeout."""
+        """Read one newline-delimited JSON-RPC response, with a real timeout.
+
+        Uses select() on the stdout fd so a server that never answers times
+        out cleanly (returning None) instead of blocking the whole startup on
+        a bare read(). Server-initiated notifications (lines with no id/result/
+        error) are skipped so they don't get mistaken for the response.
+        """
         import select
         deadline = time.time() + timeout
+        stream = self.process.stdout
         while time.time() < deadline:
-            # Read Content-Length header
-            line = ""
-            while time.time() < deadline:
-                try:
-                    ch = self.process.stdout.read(1)
-                    if not ch:
-                        return None
-                    line += ch
-                    if line.endswith("\r\n\r\n"):
-                        break
-                except Exception:
-                    return None
-
-            # Parse content length
-            for header_line in line.strip().split("\r\n"):
-                if header_line.lower().startswith("content-length:"):
-                    length = int(header_line.split(":")[1].strip())
-                    data = self.process.stdout.read(length)
-                    try:
-                        return json.loads(data)
-                    except json.JSONDecodeError:
-                        return None
-            return None
+            remaining = max(0.0, deadline - time.time())
+            try:
+                ready, _, _ = select.select([stream], [], [], remaining)
+            except Exception:
+                return None
+            if not ready:
+                return None  # timed out — server did not respond
+            try:
+                line = stream.readline()
+            except Exception:
+                return None
+            if not line:
+                return None  # EOF — server closed its stdout
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                msg = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # not a complete JSON line; keep reading
+            if isinstance(msg, dict) and ("result" in msg or "error" in msg or "id" in msg):
+                return msg
+            # otherwise it's a notification — keep waiting for the real response
         return None
 
 
