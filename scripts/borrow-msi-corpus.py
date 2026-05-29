@@ -214,7 +214,11 @@ def build(
                 skipped_empty_embed += 1
                 continue
             chroma_meta = _compose_chroma_metadata(path, meta_dict)
-            batch_ids.append(path)  # doc id = absolute file path (same convention as news_index.py)
+            # Portable id = filename slug (matches news_index.py). Absolute
+            # paths are machine-specific (/Users vs /home) and broke
+            # cross-machine re-index dedup when shipping Mac->server.
+            _base = os.path.basename(path)
+            batch_ids.append(_base[:-3] if _base.endswith(".md") else _base)
             batch_docs.append(embed_text)
             batch_metas.append(chroma_meta)
 
