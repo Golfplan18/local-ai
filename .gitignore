@@ -102,3 +102,9 @@ config/*.pre-*
 config/*.bak-*
 config/configurations/*.bak-*
 vault-sync/
+
+# Machine-specific embedder + collection-name config. Each machine (Mac on
+# bge-m3, server on nomic during a migration window, forks on defaults) keeps
+# its own. Tracked documentation lives in config/chromadb.json.template; the
+# live file is gitignored so machines don't clobber each other via git.
+config/chromadb.json

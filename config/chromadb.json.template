@@ -1,0 +1,16 @@
+{
+  "_schema_version": 1,
+  "_note": "TEMPLATE / machine-specific config. Copy to chromadb.json (which is gitignored) on each machine and edit for that machine's embedder + collections. embedding.py loads chromadb.json at import; if the file is ABSENT it falls back to the nomic-embed-text defaults shown here, so a fresh checkout works with no file present. Keep this template tracked as documentation; keep the live chromadb.json untracked so machines (e.g. Mac on bge-m3, a server still on nomic, a fork on defaults) don't clobber each other through git.",
+  "_migration_note": "To swap embedders (e.g. nomic-embed-text -> bge-m3): build the new collections under _v2 names, then set embedder.model/dim and point each logical name at its _v2 physical collection, then restart whatever reads ChromaDB. The old collections stay in place for rollback. embedder.model must match the model the target collections were actually embedded with, or queries dimension-mismatch.",
+  "embedder": {
+    "model": "nomic-embed-text",
+    "dim": 768,
+    "url": "http://localhost:11434"
+  },
+  "collections": {
+    "knowledge": "knowledge",
+    "conversations": "conversations",
+    "atomics": "atomic_dedup",
+    "conversations_incognito": "conversations-incognito"
+  }
+}
