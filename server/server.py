@@ -2538,20 +2538,11 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
 
 @app.route("/")
 def index():
-    # V3 cutover 2026-05-02: `/` now serves index-v3.html. The classic
-    # interface stays accessible at /classic for one work-week before
-    # retirement; /v3 remains as a stable alias for direct V3 access.
+    # V3 cutover 2026-05-02: `/` serves index-v3.html; /v3 remains as a
+    # stable alias for direct V3 access. The legacy /classic and /v2 routes
+    # (pre-cutover index.html / index-v2.html) were retired 2026-05-30 —
+    # both interfaces remain recoverable from git history.
     return send_from_directory(os.path.join(WORKSPACE, "server"), "index-v3.html")
-
-@app.route("/classic")
-def index_classic():
-    # Pre-V3-cutover interface preserved as a fallback during the transition
-    # window. Snapshot also at server/index.html.bak.pre-v3-cutover-2026-05-02.
-    return send_from_directory(os.path.join(WORKSPACE, "server"), "index.html")
-
-@app.route("/v2")
-def index_v2():
-    return send_from_directory(os.path.join(WORKSPACE, "server"), "index-v2.html")
 
 @app.route("/v3")
 def index_v3():

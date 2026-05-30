@@ -7,12 +7,6 @@
     "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image → text), NOT image-generation models. The dedicated 'image_extracts' slot is the canonical home: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. When the slot's chain produces no vision-input-capable entry, route_for_image_input sets context_pkg['no_vision_available'] = True and the manual-trace UX (WP-4.4) takes over. The earlier preferred_extractor_bucket / fallback_extractor_bucket bucket-fallback path was retired in install Chunk 12 (2026-05-19).",
     "slot": "image_extracts"
   },
-  "web_supplement": {
-    "enabled": false,
-    "max_gaps": 3,
-    "max_attempts_per_gap": 2,
-    "description": "DEPRECATED 2026-05-19. Superseded by web_consultation (below) per F-Consult. Disabled by default; section retained so the legacy test_web_supplement.py / test_web_supplement_integration.py suites continue to exercise the old gap-driven sequential flow until they are migrated to the new module. New code should use web_consultation."
-  },
   "web_consultation": {
     "enabled": true,
     "per_query_timeout_seconds": 15,
@@ -31,7 +25,7 @@
     "enabled": true,
     "provider": "exa"
   },
-  "_semantic_augment_note": "When enabled and the named provider's key is present, web_search callers that opt in (semantic_augment=True) run the keyword cascade AND a provider-only semantic search in parallel and merge the two (dedup by URL) — so semantic results SUPPLEMENT keyword results rather than replacing them. Opted-in callers: Step-2 web consultation (web_consultation.py) and the model-facing web_search dispatcher tool. NOT opted in: claim_verification.py (fact-checking wants keyword precision, not semantic similarity) and the legacy web_supplement.py. Set enabled=false to turn the feature off without removing the key. No-op when the provider has no key, so clean / no-key installs and forks are unaffected. provider must be a registered provider in web_search.py::_PROVIDERS (currently only 'exa' is a semantic provider).",
+  "_semantic_augment_note": "When enabled and the named provider's key is present, web_search callers that opt in (semantic_augment=True) run the keyword cascade AND a provider-only semantic search in parallel and merge the two (dedup by URL) — so semantic results SUPPLEMENT keyword results rather than replacing them. Opted-in callers: Step-2 web consultation (web_consultation.py) and the model-facing web_search dispatcher tool. NOT opted in: claim_verification.py (fact-checking wants keyword precision, not semantic similarity). Set enabled=false to turn the feature off without removing the key. No-op when the provider has no key, so clean / no-key installs and forks are unaffected. provider must be a registered provider in web_search.py::_PROVIDERS (currently only 'exa' is a semantic provider).",
   "slots": {
     "image_generates": {
       "preferred": "openrouter:openai/gpt-5.4-image-2",

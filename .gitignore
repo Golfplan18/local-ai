@@ -46,6 +46,12 @@ data/conversation-indexing-failures.jsonl
 # Per-session runtime state (conversations, canvas snapshots, uploads)
 sessions/
 
+# Active-configuration pointer + preset toggle state (per-machine runtime
+# selection). Loader falls back to "user-pipeline" / baked presets if absent
+# (orchestrator/active_configuration.py).
+data/active-configuration.json
+data/preset-toggles.json
+
 # Meta-layer oversight runtime state (heartbeats, event logs, router log,
 # corpus state, workflow pointers — daemon auto-registers PEDs and workflow
 # specs at startup, so these are regenerable)
@@ -92,6 +98,9 @@ orchestrator/chroma_db/
 
 # Server-only venv (each machine builds its own).
 .venv/
+
+# Node test dependencies (reinstall from package-lock.json with `npm ci`).
+**/node_modules/
 
 # Server-side data caches (regenerable from canonical sources).
 cache/

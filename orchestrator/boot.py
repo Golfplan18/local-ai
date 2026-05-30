@@ -138,25 +138,9 @@ try:
 except ImportError:
     pass
 
-# Step 2.5 web-supplement loop (LEGACY — pre-F-Consult; superseded
-# 2026-05-19 by web_consultation below). Kept importable so the legacy
-# test suite continues to exercise the module until it is migrated.
-WEB_SUPPLEMENT_AVAILABLE = False
-try:
-    from web_supplement import (
-        assemble_web_supplemental_context,
-        DEFAULT_MAX_GAPS as _WEB_SUPP_DEFAULT_MAX_GAPS,
-        DEFAULT_MAX_ATTEMPTS_PER_GAP as _WEB_SUPP_DEFAULT_MAX_ATTEMPTS,
-        DEFAULT_SLOT as _WEB_SUPP_DEFAULT_SLOT,
-    )
-    WEB_SUPPLEMENT_AVAILABLE = True
-except ImportError:
-    pass
-
-# Step 2 F-Consult web consultation stream (parallel CAG; supersedes the
-# legacy web_supplement module as of 2026-05-19). When unavailable,
-# run_step2_context_assembly emits a 'web_consultation_skipped' signal
-# and the pipeline proceeds with vault-only RAG.
+# Step 2 F-Consult web consultation stream (parallel CAG). When
+# unavailable, run_step2_context_assembly emits a 'web_consultation_skipped'
+# signal and the pipeline proceeds with vault-only RAG.
 WEB_CONSULTATION_AVAILABLE = False
 try:
     from web_consultation import (
@@ -5554,33 +5538,6 @@ _GEAR_SLOTS_USED = {
     3: ("depth", "breadth", "evaluator", "sidebar", "step1_cleanup"),
     4: ("depth", "breadth", "evaluator", "consolidator", "sidebar", "step1_cleanup"),
 }
-
-
-def _load_web_supplement_config() -> dict:
-    """Read the LEGACY ``web_supplement`` section from routing-config.json.
-
-    Deprecated 2026-05-19 (superseded by ``web_consultation``). The
-    function-level default for ``enabled`` is kept at True to match the
-    legacy test-suite contract (test_web_supplement_integration.py
-    asserts defaults when the section is missing). The live
-    routing-config.json now ships with ``web_supplement.enabled: false``
-    explicitly, so the production pipeline does not invoke the legacy
-    loop. Retained so the existing test_web_supplement.py suite can
-    still exercise the old module before its migration. New code should
-    call ``_load_web_consultation_config`` instead.
-    """
-    defaults = {
-        "enabled": True,
-        "max_gaps": _WEB_SUPP_DEFAULT_MAX_GAPS if WEB_SUPPLEMENT_AVAILABLE else 3,
-        "max_attempts_per_gap": _WEB_SUPP_DEFAULT_MAX_ATTEMPTS if WEB_SUPPLEMENT_AVAILABLE else 2,
-    }
-    try:
-        with open(ROUTING_CONFIG_JSON, "r") as f:
-            rc = json.load(f)
-        section = rc.get("web_supplement") or {}
-        return {**defaults, **section}
-    except Exception:
-        return defaults
 
 
 def _load_web_consultation_config() -> dict:
