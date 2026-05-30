@@ -89,8 +89,8 @@ Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `d
 - **`/chat` bypass guard (2026-05-02):** the plain-HTTP `_pipeline_stream` falls through to `_direct_stream` when the pre-routing pipeline returns `bypass_to_direct_response: True`, when `step1["mode"]` is one of the placeholder modes (`simple` / `standard` — both Phase-9-archived), or when a `pending_clarification` is set. Without this guard, those three paths produced empty `pipeline produced no response` errors because `load_mode()` returned `""` and the pipeline never emitted a response event. The analytical pipeline still runs for prompts that successfully dispatch to a real mode.
 
 ### Knowledge System
-- **ChromaDB** vector store with `knowledge` and `conversations` collections
-- **Embeddings** via nomic-embed-text through Ollama
+- **ChromaDB** vector store with `knowledge`, `conversations`, and `atomics` collections (plus project collections such as MSI's `msi_news_articles` / `msi_conversations`)
+- **Embeddings** via **bge-m3 (1024-dim)** through Ollama — migrated from `nomic-embed-text` (768-dim) on 2026-05-29. The embedder model and physical collection names are **machine-specific config** in `config/chromadb.json` (gitignored; schema + nomic defaults documented in `config/chromadb.json.template`). `orchestrator/embedding.py` loads it at import (falling back to nomic defaults if absent); all call sites use the `get_collection` / `get_or_create_collection` helpers, which resolve logical→physical collection names and bind the embedder so a collection can never silently fall through to a different model. MSI article IDs are portable slugs (not absolute paths) so collections survive a Mac↔server round-trip.
 - **Knowledge indexer**: `orchestrator/tools/knowledge_index.py` indexes markdown files with YAML frontmatter
 - **Mental models**: `knowledge/mental-models/` — 33 atomic notes indexed into ChromaDB, surface via Step 2 concept RAG
 
