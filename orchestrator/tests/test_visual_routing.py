@@ -459,14 +459,30 @@ class ModelsJsonSchemaTests(unittest.TestCase):
         missing = [m.get("id", "?") for m in all_models if "vision_capable" not in m]
         self.assertEqual(missing, [], f"models missing vision_capable: {missing}")
 
-    def test_all_local_models_are_text_only(self) -> None:
+    def test_local_models_declare_valid_vision_capable(self) -> None:
+        """Local models must declare ``vision_capable`` as a boolean.
+
+        Historical note: an earlier revision of this test asserted every
+        local model was ``vision_capable: false`` (the lineup was text-only
+        at the time). The 2026-05-26 model swap moved the local lineup to a
+        vision-capable family (Qwen / GLM / Mistral vision variants — see
+        CLAUDE.md), so ``vision_capable: true`` is now correct and expected.
+        ``config/models.json`` is gitignored and machine-specific (each Mac /
+        server / fork curates its own), so this checks the schema invariant
+        — a valid boolean flag the routing gate can read — rather than a
+        fixed value that would be brittle across machines.
+        """
         models_path = WORKSPACE / "config" / "models.json"
+        if not models_path.exists():
+            self.skipTest("models.json not present")
         with open(models_path) as f:
             cfg = json.load(f)
         for m in cfg.get("local_models", []):
-            self.assertFalse(
-                m.get("vision_capable", True),
-                f"local model {m.get('id')} should be vision_capable: false",
+            self.assertIsInstance(
+                m.get("vision_capable"),
+                bool,
+                f"local model {m.get('id')} must declare vision_capable "
+                "as a boolean",
             )
 
     def test_all_commercial_models_are_vision_capable_by_default(self) -> None:
