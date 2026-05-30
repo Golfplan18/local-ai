@@ -172,7 +172,7 @@ modes/                                       — Mode files (22 modes incl. spat
 modules/tools/                               — Thinking tools (Tier 1) and question banks (Tier 2)
 knowledge/mental-models/                     — Tier 3 mental model notes (gitignored, local-only)
 config/model-registry.json                   — Curated runtime registry (OpenRouter + LiteLLM + Arena + AA); written by scripts/sync_model_registry.py
-config/models.json                           — Legacy model registry; being phased out in favor of model-registry.json
+config/models.json                           — Active local-model registry (machine-specific, gitignored). Source of truth for local-model discovery + vision_capable routing; read by router.py / boot.py / local_model_discovery.py. Distinct from model-registry.json (cloud catalog), NOT superseded by it.
 config/routing-config.json                   — Single source of truth for endpoints, capability routing, slot assignments, gear4 overrides, vision_extraction policy. Subsumed config/endpoints.json (retired in Chunk 12, commit e3bb000f).
 config/interface.json                        — Active layout (default: solo)
 config/panel-types.json                      — Panel type registry (chat, vault, pipeline, clarification, visual, switcher)
