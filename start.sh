@@ -2,6 +2,15 @@
 # Local AI — Start Script
 WORKSPACE="$HOME/ora"
 
+# Export a robust Ora root for the whole server process tree. Every
+# orchestrator module prefers $ORA_HOME over os.path.expanduser("~/ora"),
+# so exporting it here guarantees correct path resolution even if HOME (or
+# the passwd-db lookup) is transiently unavailable in a child process.
+# Root cause of the stray "~/ora/..." directories: a path helper fell back
+# to a literal "~" when expanduser could not resolve HOME (fixed 2026-05-30).
+export HOME
+export ORA_HOME="$WORKSPACE"
+
 # Kill any stale server process
 pkill -f "server/server.py" 2>/dev/null
 sleep 1

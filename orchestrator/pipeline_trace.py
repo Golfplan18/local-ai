@@ -32,7 +32,28 @@ import datetime as _dt
 from pathlib import Path
 from typing import Any
 
-TRACE_ROOT = os.path.expanduser("~/ora/data/pipeline-traces")
+def _resolve_ora_home() -> str:
+    """Resolve the Ora installation root without depending on ``HOME``.
+
+    Prefer the ``ORA_HOME`` env var (exported by ``start.sh`` and the
+    launchd jobs); otherwise derive from this file's own location
+    (``orchestrator/pipeline_trace.py`` → parent.parent == the ora root).
+
+    We deliberately avoid ``os.path.expanduser("~/ora")`` here. When ``HOME``
+    is unset AND the passwd-database lookup transiently fails, ``expanduser``
+    returns the literal string ``"~"`` unchanged — and ``os.makedirs`` then
+    creates a ``~`` directory under the current working directory instead of
+    the real home. Deriving from ``__file__`` never needs ``HOME`` and can
+    never yield a literal ``"~"``. (Root cause of the stray ``~/ora/...``
+    trace directories observed through 2026-05-30.)
+    """
+    env_home = os.environ.get("ORA_HOME")
+    if env_home and "~" not in env_home:
+        return env_home
+    return str(Path(__file__).resolve().parent.parent)
+
+
+TRACE_ROOT = os.path.join(_resolve_ora_home(), "data", "pipeline-traces")
 
 # Environment variable gate. Setting ``ORA_PIPELINE_TRACE=off`` (or any
 # value in ``_DISABLE_VALUES``) disables tracing globally regardless of
@@ -91,6 +112,14 @@ def start_trace(conversation_id: str | None,
         conv = conversation_id or "_orphan"
         ts = _now_ts()
         trace_dir = os.path.join(TRACE_ROOT, conv, ts)
+        # Defence-in-depth: never create a path containing a literal "~".
+        # _resolve_ora_home() should already prevent this, but if TRACE_ROOT
+        # is ever reintroduced as a literal-"~" path, disable tracing for the
+        # turn rather than littering the working directory with a "~" tree.
+        if "~" in trace_dir:
+            print("[pipeline_trace] start_trace: refusing literal '~' path "
+                  f"{trace_dir!r}; tracing disabled this turn", file=sys.stderr)
+            return None
         os.makedirs(trace_dir, exist_ok=True)
         meta = {
             "conversation_id": conversation_id,
