@@ -30,6 +30,12 @@ data/entity-index.json
 data/vault-index.json
 data/extraction-staging/
 data/conversation-manifest.jsonl
+
+# Historical corpus-pipeline resume checkpoints (orchestrator/historical/*).
+# Regenerable; read only by the one-time migration scripts to skip completed
+# work, never by the live runtime. Untracked 2026-05-30 (~61 MB).
+data/*-manifest.json
+data/chain-index.json
 data/compaction-events.jsonl
 data/session-logs/
 data/hector-training-corpus/
