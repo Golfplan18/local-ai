@@ -274,10 +274,12 @@ def bake_missing_presets(force: bool = False) -> list:
     registry_path = ORA_HOME / "config" / "model-registry.json"
     tokens_per_sec: dict = {}
     reasoning_model_ids: set = set()
+    registry_ids: set = set()
     if registry_path.exists():
         try:
             with open(registry_path) as f:
                 registry = json.load(f)
+            registry_ids = set((registry.get("models") or {}).keys())
             for mid, m in (registry.get("models") or {}).items():
                 if m.get("reasoning_model") is True:
                     reasoning_model_ids.add(mid)
@@ -301,7 +303,8 @@ def bake_missing_presets(force: bool = False) -> list:
                 preset_name, catalog, presets_config,
                 vision_only=vision_only,
                 tokens_per_sec=tokens_per_sec,
-                reasoning_model_ids=reasoning_model_ids)
+                reasoning_model_ids=reasoning_model_ids,
+                registry_ids=registry_ids)
             config["name"] = preset_name
             # Adversarial OFF: top model fills both Big AND Fast pairs.
             # When Adversarial is on (or not specified), keep the

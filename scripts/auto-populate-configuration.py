@@ -228,6 +228,24 @@ def filter_reachable(candidates: list[dict], unreachable_ids: set[str]) -> list[
     return [m for m in candidates if m.get("id") not in unreachable_ids]
 
 
+def filter_in_registry(candidates: list[dict], registry_ids: set[str]) -> list[dict]:
+    """Drop catalog entries whose id is absent from the live model registry.
+
+    The catalog (config/model-catalog.json) and the registry
+    (config/model-registry.json) refresh on independent schedules — the
+    Models pane's Refresh button re-syncs the registry but not the catalog —
+    so the catalog can carry models the registry has since dropped or renamed
+    (a ``:free`` tier that went away, a model superseded by a newer version).
+    Picking one of those yields a slot the Models pane flags DEPRECATED
+    ("model no longer in the registry"). Filtering against the registry here
+    guarantees the autopicker only ever selects live models, regardless of how
+    stale the catalog is. Empty/None registry_ids → no-op (fresh install
+    before any sync, or an older caller that can't supply the set)."""
+    if not registry_ids:
+        return candidates
+    return [m for m in candidates if m.get("id") in registry_ids]
+
+
 def sort_by_cost_ascending(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
     return sorted(candidates, key=cost_fn)
 
@@ -534,6 +552,7 @@ def populate_configuration(
     unreachable_ids: set[str] | None = None,
     tokens_per_sec: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
+    registry_ids: set[str] | None = None,
 ) -> dict:
     """Compute the full configuration dict for a given preset.
 
@@ -549,6 +568,12 @@ def populate_configuration(
     filtered out of every paid / free pick. Rate-limited and inconclusive
     verdicts are NOT excluded — those endpoints still work, the fallback
     chain absorbs transient 429s at runtime.
+
+    ``registry_ids``: set of model ids present in the live registry. When
+    supplied, the catalog is filtered down to these before any slot picks,
+    so a stale catalog can never inject a model the Models pane would flag
+    DEPRECATED. None/empty → no filtering (fresh install before any sync).
+    See filter_in_registry.
     """
     presets = presets_config["presets"]
     slot_specs = presets_config["slot_specs"]
@@ -557,6 +582,12 @@ def populate_configuration(
     if preset_name not in presets:
         raise ValueError(f"Unknown preset: {preset_name}. Known: {list(presets)}")
     preset = presets[preset_name]
+
+    # Drop catalog entries no longer in the live registry before any pick —
+    # otherwise a stale catalog injects models the Models pane flags
+    # DEPRECATED. Applied once here so it covers every slot (chat + media)
+    # and the vision-substitute pick below. See filter_in_registry.
+    catalog = filter_in_registry(catalog, registry_ids or set())
 
     # vision_only resolution: CLI override > preset default > False
     effective_vision_only = vision_only if vision_only is not None else preset.get("vision_only", False)
@@ -745,11 +776,13 @@ def main():
     unreachable_ids: set[str] = set()
     reasoning_model_ids: set[str] = set()
     tokens_per_sec: dict[str, float] = {}
+    registry_ids: set[str] = set()
     registry_path = CONFIG_DIR / "model-registry.json"
     if registry_path.exists():
         try:
             with open(registry_path) as f:
                 registry = json.load(f)
+            registry_ids = set((registry.get("models") or {}).keys())
             for mid, m in (registry.get("models") or {}).items():
                 if m.get("reachable") is False:
                     unreachable_ids.add(mid)
@@ -771,6 +804,7 @@ def main():
         unreachable_ids=unreachable_ids,
         tokens_per_sec=tokens_per_sec,
         reasoning_model_ids=reasoning_model_ids,
+        registry_ids=registry_ids,
     )
     config["name"] = args.config_name
 

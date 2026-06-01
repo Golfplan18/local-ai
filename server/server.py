@@ -8754,6 +8754,35 @@ def model_registry_refresh():
             "stdout_tail": (result.stdout or "").strip().split("\n")[-8:],
             "stderr_tail": (result.stderr or "").strip().split("\n")[-4:] if not ok else [],
         }
+        # Rebuild the model catalog from the freshly-synced registry. The
+        # catalog (config/model-catalog.json) is the list the preset
+        # autopicker selects from; it enriches off the registry, so it must
+        # rebuild AFTER the sync or the two drift apart — a stale catalog
+        # injects models the registry has since dropped, which get picked
+        # into presets and then flagged DEPRECATED. Both refresh paths (the
+        # manual ↻ button and the 24h auto-refresh) POST here, so coupling
+        # the rebuild in keeps catalog and registry in lockstep no matter
+        # how the refresh was triggered. Fail-soft: a catalog failure does
+        # NOT void the registry sync (and the autopicker's registry-presence
+        # filter still guards picks until the next successful rebuild).
+        if ok:
+            catalog_script = os.path.join(WORKSPACE, "scripts", "refresh-catalog.py")
+            try:
+                cat_result = subprocess.run(
+                    [sys.executable, catalog_script],
+                    cwd=WORKSPACE, capture_output=True, text=True, timeout=120,
+                )
+                summary["catalog_ok"] = (cat_result.returncode == 0)
+                summary["catalog_returncode"] = cat_result.returncode
+                summary["catalog_stdout_tail"] = (cat_result.stdout or "").strip().split("\n")[-6:]
+                if cat_result.returncode != 0:
+                    summary["catalog_stderr_tail"] = (cat_result.stderr or "").strip().split("\n")[-4:]
+            except subprocess.TimeoutExpired:
+                summary["catalog_ok"] = False
+                summary["catalog_warning"] = "catalog rebuild exceeded the 120s timeout."
+            except Exception as cat_exc:
+                summary["catalog_ok"] = False
+                summary["catalog_warning"] = f"catalog rebuild failed: {cat_exc}"
         # Force the in-process reader to re-read the new file
         try:
             from orchestrator import model_registry as mr

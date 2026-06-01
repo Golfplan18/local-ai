@@ -575,6 +575,64 @@ class TestCostOfMedia(unittest.TestCase):
         self.assertEqual(auto_populate.cost_of_media(m), math.inf)
 
 
+class TestFilterInRegistry(unittest.TestCase):
+    """The registry-presence filter keeps a stale catalog from injecting
+    models the Models pane would flag DEPRECATED (id no longer in the live
+    registry). Regression guard for the catalog/registry drift fix."""
+
+    def test_drops_ids_absent_from_registry(self):
+        cands = [_model("a/live"), _model("b/stale"), _model("c/live")]
+        out = auto_populate.filter_in_registry(cands, {"a/live", "c/live"})
+        self.assertEqual({m["id"] for m in out}, {"a/live", "c/live"})
+
+    def test_empty_registry_is_noop(self):
+        # Empty / None must NOT filter everything out — a fresh install with
+        # no registry yet must still bake against the full catalog.
+        cands = [_model("a/live"), _model("b/live")]
+        self.assertEqual(auto_populate.filter_in_registry(cands, set()), cands)
+        self.assertEqual(auto_populate.filter_in_registry(cands, None), cands)
+
+    def _referenced_ids(self, config, catalog):
+        catalog_ids = {m["id"] for m in catalog}
+        seen: set = set()
+
+        def walk(o):
+            if isinstance(o, dict):
+                for v in o.values():
+                    walk(v)
+            elif isinstance(o, list):
+                for v in o:
+                    walk(v)
+            elif isinstance(o, str) and o in catalog_ids:
+                seen.add(o)
+
+        walk(config.get("cells", {}))
+        return seen
+
+    def test_populate_configuration_never_picks_non_registry_model(self):
+        # A maximally-attractive stale model (large, smartest, cheapest) the
+        # picker would otherwise grab first — but it's absent from the registry.
+        ghost = _model("ghost/stale", intelligence=99, blended=0.01,
+                       size="large", provider="ghost")
+        catalog = _fixture_catalog() + [ghost]
+        presets = _fixture_presets()
+        registry_ids = {m["id"] for m in _fixture_catalog()}  # excludes ghost
+
+        # Without the filter, the ghost is attractive enough to be picked.
+        unfiltered = auto_populate.populate_configuration("premium", catalog, presets)
+        self.assertIn("ghost/stale", self._referenced_ids(unfiltered, catalog))
+
+        # With the filter, nothing outside the live registry can be selected.
+        filtered = auto_populate.populate_configuration(
+            "premium", catalog, presets, registry_ids=registry_ids)
+        referenced = self._referenced_ids(filtered, catalog)
+        self.assertNotIn("ghost/stale", referenced)
+        self.assertTrue(
+            referenced <= registry_ids,
+            f"picked ids outside registry: {referenced - registry_ids}",
+        )
+
+
 class TestPopulateConfiguration(unittest.TestCase):
     def test_optimum_end_to_end(self):
         catalog = _fixture_catalog()

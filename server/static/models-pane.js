@@ -283,7 +283,7 @@
       +   _toggleHTML('vision_only', vis,
                      'Vision-capable only',
                      'restrict picks to models that see images directly')
-      +   '<div class="ora-models-refresh-wrap" title="Re-fetch the model registry from OpenRouter + AA + LiteLLM (~15-30s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
+      +   '<div class="ora-models-refresh-wrap" title="Re-sync the model registry (OpenRouter + AA + LiteLLM) and rebuild the picker\'s model catalog from it, so the two stay in lockstep (~20-40s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
       +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
       +     (aaBadgeLabel
         ? '<span class="ora-models-aa-source-badge" title="' + _esc(aaBadgeTitle) + '">' + _esc(aaBadgeLabel) + '</span>'
