@@ -1,41 +1,84 @@
 {
   "name": "free",
-  "description": "Auto-populated from preset 'free' on 2026-05-28T20:49:01.158464+00:00.",
+  "description": "Auto-populated from preset 'free' on 2026-06-01T17:50:39.522433+00:00.",
   "preset_lineage": "free",
   "cells": {
     "utility": {
-      "step1_cleanup": null,
-      "classification": null,
-      "rag_planner": null,
+      "step1_cleanup": {
+        "primary": "nvidia/nemotron-nano-9b-v2:free",
+        "fallback": [],
+        "vision_substitute": "moonshotai/kimi-k2.6:free"
+      },
+      "classification": {
+        "primary": "nvidia/nemotron-nano-9b-v2:free",
+        "fallback": [],
+        "vision_substitute": "moonshotai/kimi-k2.6:free"
+      },
+      "rag_planner": {
+        "primary": "nvidia/nemotron-nano-9b-v2:free",
+        "fallback": [],
+        "vision_substitute": "moonshotai/kimi-k2.6:free"
+      },
       "gear2_rag_lookup": {
-        "primary": "openrouter/free",
+        "primary": "qwen/qwen3-next-80b-a3b-instruct:free",
         "fallback": [
-          "nvidia/nemotron-nano-12b-v2-vl:free"
-        ]
+          "nvidia/nemotron-nano-9b-v2:free",
+          "qwen/qwen3-coder:free",
+          "meta-llama/llama-3.3-70b-instruct:free"
+        ],
+        "vision_substitute": "moonshotai/kimi-k2.6:free"
       }
     },
     "analysis": {
       "gear4": {
-        "depth": null,
-        "breadth": null
+        "depth": {
+          "primary": "nvidia/nemotron-3-super-120b-a12b:free",
+          "fallback": [],
+          "vision_substitute": "moonshotai/kimi-k2.6:free"
+        },
+        "breadth": {
+          "primary": "openai/gpt-oss-120b:free",
+          "fallback": [],
+          "vision_substitute": "moonshotai/kimi-k2.6:free"
+        }
       },
       "gear3": {
         "depth": {
-          "primary": "openrouter/free",
+          "primary": "qwen/qwen3-next-80b-a3b-instruct:free",
           "fallback": [
-            "nvidia/nemotron-nano-12b-v2-vl:free"
-          ]
+            "nvidia/nemotron-nano-9b-v2:free",
+            "qwen/qwen3-coder:free",
+            "meta-llama/llama-3.3-70b-instruct:free"
+          ],
+          "vision_substitute": "moonshotai/kimi-k2.6:free"
         },
         "breadth": {
-          "primary": "nvidia/nemotron-nano-12b-v2-vl:free",
-          "fallback": []
+          "primary": "nvidia/nemotron-nano-9b-v2:free",
+          "fallback": [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "meta-llama/llama-3.2-3b-instruct:free",
+            "openrouter/owl-alpha"
+          ],
+          "vision_substitute": "moonshotai/kimi-k2.6:free"
         }
       }
     },
     "post_analysis": {
-      "consolidation": null,
-      "verification": null,
-      "formatter": null
+      "consolidation": {
+        "primary": "nvidia/nemotron-3-super-120b-a12b:free",
+        "fallback": [],
+        "vision_substitute": "moonshotai/kimi-k2.6:free"
+      },
+      "verification": {
+        "primary": "nvidia/nemotron-3-super-120b-a12b:free",
+        "fallback": [],
+        "vision_substitute": "moonshotai/kimi-k2.6:free"
+      },
+      "formatter": {
+        "primary": "nvidia/nemotron-3-super-120b-a12b:free",
+        "fallback": [],
+        "vision_substitute": "moonshotai/kimi-k2.6:free"
+      }
     },
     "image_generation": {
       "image_generation": {
@@ -46,13 +89,13 @@
   },
   "_auto_populate_metadata": {
     "preset": "free",
-    "vision_only": true,
-    "vision_substitute": null,
+    "vision_only": false,
+    "vision_substitute": "moonshotai/kimi-k2.6:free",
     "loosening_log": {},
-    "catalog_models_considered": 579
+    "catalog_models_considered": 570
   },
   "toggles": {
     "adversarial_diversity": true,
-    "vision_only": true
+    "vision_only": false
   }
 }

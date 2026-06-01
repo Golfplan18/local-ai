@@ -1,13 +1,13 @@
 {
   "name": "budget",
-  "description": "Auto-populated from preset 'budget' on 2026-05-28T20:49:01.164141+00:00.",
+  "description": "Auto-populated from preset 'budget' on 2026-06-01T17:50:39.531199+00:00.",
   "preset_lineage": "budget",
   "cells": {
     "utility": {
       "step1_cleanup": {
         "primary": "qwen/qwen3.5-9b",
         "fallback": [
-          "openai/gpt-5.4-nano",
+          "deepseek/deepseek-v4-flash",
           "openai/gpt-5.4-mini"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
@@ -15,7 +15,7 @@
       "classification": {
         "primary": "qwen/qwen3.5-9b",
         "fallback": [
-          "openai/gpt-5.4-nano",
+          "deepseek/deepseek-v4-flash",
           "openai/gpt-5.4-mini"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
@@ -23,7 +23,7 @@
       "rag_planner": {
         "primary": "qwen/qwen3.5-9b",
         "fallback": [
-          "openai/gpt-5.4-nano",
+          "deepseek/deepseek-v4-flash",
           "openai/gpt-5.4-mini"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
@@ -32,8 +32,8 @@
         "primary": "qwen/qwen3.5-flash-02-23",
         "fallback": [
           "google/gemini-3-flash-preview",
-          "openai/gpt-4.1",
-          "anthropic/claude-haiku-4.5"
+          "xiaomi/mimo-v2-flash",
+          "qwen/qwen3-coder-next"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
@@ -41,18 +41,18 @@
     "analysis": {
       "gear4": {
         "depth": {
-          "primary": "qwen/qwen3.5-122b-a10b",
+          "primary": "openai/gpt-oss-120b",
           "fallback": [
-            "qwen/qwen3.6-plus",
-            "google/gemini-3.1-pro-preview-customtools",
-            "google/gemini-3.1-pro-preview"
+            "nvidia/nemotron-3-super-120b-a12b",
+            "xiaomi/mimo-v2.5-pro",
+            "google/gemini-3.1-pro-preview-customtools"
           ],
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         },
         "breadth": {
-          "primary": "moonshotai/kimi-k2.6",
+          "primary": "nvidia/nemotron-3-super-120b-a12b",
           "fallback": [
-            "openai/gpt-5.1-chat",
+            "xiaomi/mimo-v2.5-pro",
             "google/gemini-3.1-pro-preview-customtools",
             "google/gemini-3.1-pro-preview"
           ],
@@ -64,17 +64,17 @@
           "primary": "qwen/qwen3.5-flash-02-23",
           "fallback": [
             "google/gemini-3-flash-preview",
-            "openai/gpt-4.1",
-            "anthropic/claude-haiku-4.5"
+            "xiaomi/mimo-v2-flash",
+            "qwen/qwen3-coder-next"
           ],
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         },
         "breadth": {
-          "primary": "google/gemini-2.5-flash-image",
+          "primary": "google/gemini-3-flash-preview",
           "fallback": [
-            "google/gemini-2.5-flash",
-            "google/gemini-3-flash-preview",
-            "openai/gpt-4.1"
+            "xiaomi/mimo-v2-flash",
+            "openai/gpt-4.1",
+            "anthropic/claude-haiku-4.5"
           ],
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         }
@@ -82,26 +82,26 @@
     },
     "post_analysis": {
       "consolidation": {
-        "primary": "qwen/qwen3.5-122b-a10b",
+        "primary": "openai/gpt-oss-120b",
         "fallback": [
-          "qwen/qwen3.6-plus",
-          "google/gemini-3.1-pro-preview-customtools"
+          "nvidia/nemotron-3-super-120b-a12b",
+          "xiaomi/mimo-v2.5-pro"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       },
       "verification": {
-        "primary": "qwen/qwen3.5-122b-a10b",
+        "primary": "openai/gpt-oss-120b",
         "fallback": [
-          "qwen/qwen3.6-plus",
-          "google/gemini-3.1-pro-preview-customtools"
+          "nvidia/nemotron-3-super-120b-a12b",
+          "xiaomi/mimo-v2.5-pro"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       },
       "formatter": {
-        "primary": "qwen/qwen3.5-122b-a10b",
+        "primary": "openai/gpt-oss-120b",
         "fallback": [
-          "qwen/qwen3.6-plus",
-          "google/gemini-3.1-pro-preview-customtools"
+          "nvidia/nemotron-3-super-120b-a12b",
+          "xiaomi/mimo-v2.5-pro"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
@@ -117,17 +117,13 @@
   },
   "_auto_populate_metadata": {
     "preset": "budget",
-    "vision_only": true,
+    "vision_only": false,
     "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct",
-    "loosening_log": {
-      "fast.secondary": [
-        "floor loosened to 40% (attempt 1)"
-      ]
-    },
-    "catalog_models_considered": 579
+    "loosening_log": {},
+    "catalog_models_considered": 570
   },
   "toggles": {
     "adversarial_diversity": true,
-    "vision_only": true
+    "vision_only": false
   }
 }
