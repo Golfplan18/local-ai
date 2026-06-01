@@ -1,8 +1,6 @@
 {
-  "name": "Testing Optimum",
-  "description": "Copied from 'optimum' via the Models pane Customize action. Original lineage: optimum.",
-  "_rag_isolation_note": "CAMPAIGN-RAG-BYPASS-2026-05-26 \u2014 set during Comparative Evaluation Campaign to demonstrate clean-install reproducibility. Remove this field and the _note when campaign captures complete.",
-  "rag_isolation": "web_only",
+  "name": "Testing Optimum Eval-Safe Vision",
+  "description": "Vision variant: ALL gear-4 analyst + post-analysis slots = qwen3-vl-235b so the image survives analyst->eval->revise->consolidate->format (non-vision downstream steps were overriding the vision reading with 'no image'). Claude-free.",
   "preset_lineage": "custom",
   "cells": {
     "utility": {
@@ -38,7 +36,7 @@
     "analysis": {
       "gear4": {
         "depth": {
-          "primary": "qwen/qwen3.6-plus",
+          "primary": "qwen/qwen3-vl-235b-a22b-instruct",
           "fallback": [
             "google/gemini-3.1-pro-preview-customtools",
             "google/gemini-3.1-pro-preview"
@@ -46,7 +44,7 @@
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         },
         "breadth": {
-          "primary": "moonshotai/kimi-k2.6",
+          "primary": "qwen/qwen3-vl-235b-a22b-instruct",
           "fallback": [
             "google/gemini-3.1-pro-preview",
             "openai/gpt-5.5"
@@ -71,26 +69,23 @@
     },
     "post_analysis": {
       "consolidation": {
-        "primary": "qwen/qwen3.6-plus",
+        "primary": "qwen/qwen3-vl-235b-a22b-instruct",
         "fallback": [
-          "google/gemini-3.1-pro-preview-customtools",
-          "google/gemini-3.1-pro-preview"
+          "qwen/qwen3-vl-235b-a22b-instruct"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       },
       "verification": {
-        "primary": "qwen/qwen3.6-plus",
+        "primary": "qwen/qwen3-vl-235b-a22b-instruct",
         "fallback": [
-          "google/gemini-3.1-pro-preview-customtools",
-          "google/gemini-3.1-pro-preview"
+          "qwen/qwen3-vl-235b-a22b-instruct"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       },
       "formatter": {
-        "primary": "qwen/qwen3.6-plus",
+        "primary": "qwen/qwen3-vl-235b-a22b-instruct",
         "fallback": [
-          "google/gemini-3.1-pro-preview-customtools",
-          "google/gemini-3.1-pro-preview"
+          "qwen/qwen3-vl-235b-a22b-instruct"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
@@ -106,7 +101,6 @@
   },
   "toggles": {
     "adversarial_diversity": true,
-    "vision_only": false
-  },
-  "_anthropic_trap_fix": "2026-06-01: stripped 9 direct-Anthropic (service=claude) fallback ids to honor the no-Anthropic-API guardrail. rag_isolation + toggles preserved."
+    "vision_only": true
+  }
 }

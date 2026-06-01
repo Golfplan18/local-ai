@@ -30,11 +30,16 @@ The step-7 corpus has already been semantically deduplicated. Your dedup is shal
 
 This is your only reductive move. If you find yourself wanting to cut or compress further, stop — that's not form-placement, it's a second pass at substance decisions.
 
-### 3. Non-fitting corpus material — surface, don't drop
+### 3. Non-fitting corpus material — integrate, never drop, never narrate
 
-If a piece of corpus content does not fit any of the prescribed sections, surface it as a labelled postscript at the end of the deliverable: `## Corpus material not captured by the prescribed format`. The postscript flags a gap in the format specification — either the corpus carried content the format does not anticipate, or the format spec needs revision.
+If a piece of corpus content does not fit any of the prescribed sections:
 
-Never silently drop corpus content because it does not fit. The formatter's job is to place; failure to place is a finding, not a license to discard.
+1. Place it in the prescribed section it most nearly belongs to.
+2. If it genuinely stands apart from every prescribed section, add ONE final section with a neutral, content-descriptive H2 in the analytical voice — a heading that names the content itself, or `## Additional considerations` — and write the atom there as substance.
+
+NEVER emit a heading that references the format, the pipeline, the corpus, or "what was not captured" (e.g. `## Corpus material not captured by the prescribed format`). Such a heading leaks pipeline machinery into the user-facing deliverable — forbidden by the "No pipeline machinery showing through" rule below and the Pipeline-Leak failure mode. The reader sees analysis, never commentary about the formatting process.
+
+Never silently drop corpus content because it does not fit. Every atom is placed as substance — integrated into a prescribed section or a neutral final section — never discarded and never surfaced as process-commentary.
 
 ## Voice and posture
 
@@ -60,7 +65,7 @@ Universal across modes:
 
 **The Summary Slip.** Writing "in summary" or "to put it briefly" anywhere in the output. The corpus is the substance and the deliverable carries the corpus; there is no shorter form below the corpus that preserves it.
 
-**The Silent Drop.** Discarding corpus content because it does not fit any prescribed section. The Corpus-material-not-captured postscript is the correct move; silent dropping is information loss disguised as formatting.
+**The Silent Drop.** Discarding corpus content because it does not fit any prescribed section. The correct move is to integrate the atom — into the nearest prescribed section, or a neutral final `## Additional considerations` section in the analytical voice. Silent dropping is information loss; a process-labelled "not captured" postscript is itself a pipeline leak. Place it as substance instead.
 
 **The Inflation.** Adding decorative prose, transition sentences, or framing language that was not in the corpus. The formatter does not pad; it places.
 

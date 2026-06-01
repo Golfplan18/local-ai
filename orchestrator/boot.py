@@ -8196,6 +8196,51 @@ def _resolve_fallback_endpoint(slot: str, gear: int,
     return router._to_v1_endpoint(next_ep)
 
 
+# Step-8 formatter process-meta leak. The formatter must place every corpus
+# atom into the deliverable's prescribed sections (or a neutral in-voice
+# section), never under a heading that narrates the formatting process. A
+# heading like "## Corpus material not captured by the prescribed format" leaks
+# pipeline machinery into the user-facing output — forbidden by f-format.md's
+# own "No pipeline machinery showing through" rule. (2026-06-01: surfaced by the
+# analytical-repertoire evaluation — 9/62 modes leaked this exact heading.)
+_FORMATTER_LEAK_RE = re.compile(
+    r"(?im)^#{1,6}[ \t]*.*?("
+    r"corpus material not captured|not captured by the prescribed|"
+    r"(?:material|content|atoms?)\s+(?:not|that could not be)\s+(?:captured|placed)|"
+    r"unplaced corpus|corpus material the (?:prescribed )?format|"
+    r"outside the prescribed format"
+    r").*$"
+)
+
+
+def _formatter_output_structural_check(text: str) -> tuple[bool, str]:
+    """Deterministic shape check on the Step-8 formatter output.
+
+    Fails when the formatter leaked a process-meta section (a heading that
+    narrates the formatting process / references the corpus or prescribed
+    format). Returns ``(passed, reason)`` — ``reason`` names the offending
+    heading on failure, ``"ok"`` on pass.
+    """
+    if not text or not text.strip():
+        return (False, "empty formatter output")
+    m = _FORMATTER_LEAK_RE.search(text)
+    if m:
+        return (False, f"process-meta leak heading: {m.group(0).strip()[:90]!r}")
+    return (True, "ok")
+
+
+def _neutralise_formatter_leak(text: str) -> tuple[str, str]:
+    """Last-resort backstop: rename a leaked process-meta heading to a neutral
+    in-voice section so the (often substantive) body survives without the
+    pipeline-leak label. Returns ``(cleaned_text, note)``."""
+    note = ""
+    m = _FORMATTER_LEAK_RE.search(text)
+    if m:
+        note = m.group(0).strip()
+        text = _FORMATTER_LEAK_RE.sub("## Additional considerations", text, count=1)
+    return text, note
+
+
 def _reviser_output_structural_check(revised_text: str) -> tuple[bool, str]:
     """Deterministic shape check on a Step-5 revised output.
 
@@ -10063,10 +10108,13 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "prompt). When the mode's format guidance is absent, default to "
         "flowing prose addressed to the user with H2 headings derived "
         "from the corpus's organizational structure. Preserve every "
-        "atom — the formatter places, does not summarise. Surface any "
-        "corpus material that does not fit a prescribed section as a "
-        "labelled postscript rather than dropping it. Do not call any "
-        "tool — write the deliverable inline."
+        "atom — the formatter places, does not summarise. If an atom does "
+        "not fit a prescribed section, integrate it into the nearest "
+        "section, or add a final `## Additional considerations` section in "
+        "the analytical voice; NEVER drop it and NEVER emit a process-"
+        "labelled heading such as `## Corpus material not captured by the "
+        "prescribed format` (that leaks pipeline machinery and is "
+        "forbidden). Do not call any tool — write the deliverable inline."
     )
     format_messages = [
         {"role": "system", "content": format_system},
@@ -10090,6 +10138,43 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             + consolidated
         )
         contingencies_fired.append("step8-formatter-degraded-using-consolidated-corpus")
+
+    # Formatter structural-gate (2026-06-01): the formatter must never leak a
+    # process-meta section ("## Corpus material not captured by the prescribed
+    # format" etc.). Detect -> retry once with a corrective hint -> if it
+    # persists, neutralise the leaked heading (preserve the body as substance)
+    # and log to a sidecar so the diagnostic signal isn't lost. Embodies the
+    # "derive each step's ok from a structural check" principle for step 8.
+    if format_ok:
+        _fmt_ok, _fmt_reason = _formatter_output_structural_check(formatted)
+        if not _fmt_ok:
+            _retry_msgs = format_messages + [
+                {"role": "assistant", "content": formatted},
+                {"role": "user", "content": (
+                    f"Your output included a process-meta section ({_fmt_reason}). "
+                    "Re-emit the FULL deliverable with every atom integrated into "
+                    "the prescribed sections, or a final `## Additional "
+                    "considerations` section in the analytical voice. Emit NO "
+                    "heading that references the format, the corpus, the "
+                    "pipeline, or 'what was not captured'.")},
+            ]
+            _re_fmt, _re_ok, _re_reason = _call_with_retry(
+                _retry_msgs, formatter_endpoint, "formatter-leak-retry",
+                min_chars=30, retry_hint=None, images=None,
+                slot="formatter", gear=4, config_name=config_name,
+            )
+            _re_struct_ok = _formatter_output_structural_check(_re_fmt)[0] if _re_ok else False
+            if _re_ok and _re_struct_ok:
+                formatted = _re_fmt
+                _record("step8-formatter-leak-fixed", True, "leak cleared on retry")
+            else:
+                formatted, _leak_note = _neutralise_formatter_leak(formatted)
+                _record("step8-formatter-leak-relabelled", True, _fmt_reason)
+                contingencies_fired.append("step8-formatter-leak-relabelled")
+                if PIPELINE_TRACE_AVAILABLE and trace_dir:
+                    pipeline_trace.append_jsonl(trace_dir, "formatter-leak.jsonl", {
+                        "reason": _fmt_reason, "relabelled_heading": _leak_note,
+                    })
 
     _trace_step("step8-formatted", {
         "system_prompt": format_system,
