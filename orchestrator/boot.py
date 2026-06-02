@@ -46,6 +46,20 @@ _TURN_TRACE_DIR_CV: ContextVar[str | None] = ContextVar(
     "turn_trace_dir", default=None,
 )
 
+# Per-call pipeline-step label. Set at the entry of ``_call_with_retry`` so
+# the provider call wrappers can stamp each ``usage.jsonl`` record with the
+# step it served (analyst / evaluator / reviser / verifier / consolidator /
+# formatter) without threading ``step_name`` through three helper layers.
+# Best-effort: model calls that bypass ``_call_with_retry`` (Phase A cleanup,
+# direct mode) leave it at whatever the last cascade call set, so consumers
+# treat a stale-looking label as advisory. Parallel Gear-4 workers each run
+# under their own ``copy_context()`` snapshot (see ``_submit_with_context``),
+# so depth and breadth never race on this var. Added 2026-06-01 (trace
+# self-detection — handoff #5) alongside per-step finish_reason capture.
+_CURRENT_STEP_CV: ContextVar[str | None] = ContextVar(
+    "current_pipeline_step", default=None,
+)
+
 # Paths
 WORKSPACE = os.path.expanduser("~/ora/")
 BOOT_MD = os.path.join(WORKSPACE, "boot/boot.md")
@@ -8072,6 +8086,29 @@ def _step_output_health(text: str, step_name: str, min_chars: int = 30) -> tuple
         # output to the cycle-unblock path downstream.
         if _extract_structured_verdict(cleaned) is None:
             return False, "missing verifier verdict token"
+    if step_name == "reviser":
+        # The reviser must re-emit a substantive ``## REVISED DRAFT`` —
+        # even on a "no changes needed" judgment. A reviser that narrates
+        # verification ("Now I'll run web verification queries… the draft
+        # stands as previously emitted") with no ``## REVISED DRAFT``
+        # section leaves nothing harvestable downstream, yet sails past
+        # the refusal/min-chars checks above (it is long enough and is not
+        # a refusal idiom). Classify that as unhealthy so the existing
+        # retry-once-then-degrade path in ``_call_with_retry`` fires: the
+        # retry re-asks for the full draft, and if it still fails the
+        # caller's Step-5 contingency wraps the analyst output in a valid
+        # reviser envelope. Before this gate the empty stub was written
+        # ``ok=True`` and passed on (MSI voice trace, 2026-06-01:
+        # prudence/ashley step5-revised-depth stubs). The reason string is
+        # phrased as a directive because it is folded verbatim into the
+        # regenerate hint.
+        struct_ok, struct_reason = _reviser_output_structural_check(cleaned)
+        if not struct_ok:
+            return False, (
+                f"reviser emitted no usable ## REVISED DRAFT "
+                f"({struct_reason}); re-emit the FULL revised draft under a "
+                f"## REVISED DRAFT header even when nothing changed"
+            )
     return True, "ok"
 
 
@@ -8551,6 +8588,10 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     Backwards-compatible: when any of these is None, retry reuses
     ``endpoint`` — the pre-Chunk-B behaviour.
     """
+    # Stamp the current pipeline step so each provider call wrapper can
+    # label its usage.jsonl record (trace self-detection — handoff #5).
+    # Both the first attempt and the retry below run under this label.
+    _CURRENT_STEP_CV.set(step_name)
     try:
         text = _run_model_with_tools(list(messages), endpoint, images=images)
     except Exception as e:
@@ -9695,6 +9736,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "system_prompt": revise_system,
         "user_message": depth_revise_user_message,
         "stream": "depth",
+        "reviser_endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
         "raw_response": revised_depth,
         "ok": depth_rev_ok,
         "reason": depth_rev_reason,
@@ -9707,6 +9749,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "system_prompt": revise_system,
         "user_message": breadth_revise_user_message,
         "stream": "breadth",
+        "reviser_endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
         "raw_response": revised_breadth,
         "ok": breadth_rev_ok,
         "reason": breadth_rev_reason,
@@ -10379,17 +10422,28 @@ def _record_model_usage(
     cache_read_tokens: int | None = None,
     cache_creation_tokens: int | None = None,
     step_hint: str | None = None,
+    finish_reason: str | None = None,
 ) -> None:
     """Append a token-usage record for one model call to the active
     turn's ``usage.jsonl``. No-op when no trace dir is set.
 
-    ``step_hint`` is best-effort — the call wrappers don't always know
-    which pipeline step they're being invoked from, so the per-turn
-    summary aggregator groups by ``model_id`` rather than by step.
+    ``step_hint`` is best-effort: when the caller doesn't pass one
+    explicitly it falls back to ``_CURRENT_STEP_CV`` (set at the entry of
+    ``_call_with_retry``), so cascade calls land labelled with the step
+    they served. ``finish_reason`` is the provider's raw stop reason
+    (``stop_reason`` / ``finish_reason`` / Gemini candidate reason),
+    captured so a truncated step (``length`` / ``max_tokens``) is
+    distinguishable from a complete one in the trace (handoff #5 — make
+    the trace self-detecting).
     """
     trace_dir = _TURN_TRACE_DIR_CV.get()
     if not trace_dir:
         return
+    if step_hint is None:
+        try:
+            step_hint = _CURRENT_STEP_CV.get()
+        except Exception:
+            step_hint = None
     try:
         record = {
             "timestamp_utc": datetime.now(timezone.utc).strftime(
@@ -10403,6 +10457,7 @@ def _record_model_usage(
             ),
             "service": endpoint.get("service"),
             "step_hint": step_hint,
+            "finish_reason": finish_reason,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": (
@@ -10735,6 +10790,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                             cache_creation_tokens=getattr(
                                 u, "cache_creation_input_tokens", None,
                             ),
+                            finish_reason=getattr(msg, "stop_reason", None),
                         )
                 except Exception:
                     pass
@@ -10780,6 +10836,9 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                                 u, "completion_tokens", None,
                             ),
                             total_tokens=getattr(u, "total_tokens", None),
+                            finish_reason=getattr(
+                                resp.choices[0], "finish_reason", None,
+                            ),
                         )
                 except Exception:
                     pass
@@ -10875,6 +10934,12 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                                 u, "candidates_token_count", None,
                             ),
                             total_tokens=getattr(u, "total_token_count", None),
+                            finish_reason=next(
+                                (str(getattr(c, "finish_reason", None))
+                                 for c in (getattr(resp, "candidates", None) or [])
+                                 if getattr(c, "finish_reason", None) is not None),
+                                None,
+                            ),
                         )
                 except Exception:
                     pass
@@ -10957,6 +11022,9 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                                 u, "completion_tokens", None,
                             ),
                             total_tokens=getattr(u, "total_tokens", None),
+                            finish_reason=getattr(
+                                resp.choices[0], "finish_reason", None,
+                            ),
                         )
                 except Exception:
                     pass
