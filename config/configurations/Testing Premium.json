@@ -1,7 +1,7 @@
 {
   "name": "Testing Premium",
   "description": "Copied from 'premium' via the Models pane Customize action. Original lineage: premium.",
-  "_rag_isolation_note": "CAMPAIGN-RAG-BYPASS-2026-05-26 — set during Comparative Evaluation Campaign to demonstrate clean-install reproducibility. Remove this field and the _note when campaign captures complete.",
+  "_rag_isolation_note": "CAMPAIGN-RAG-BYPASS-2026-05-26 \u2014 set during Comparative Evaluation Campaign to demonstrate clean-install reproducibility. Remove this field and the _note when campaign captures complete.",
   "rag_isolation": "web_only",
   "preset_lineage": "custom",
   "cells": {
@@ -119,6 +119,6 @@
   },
   "toggles": {
     "adversarial_diversity": true,
-    "vision_only": true
+    "vision_only": false
   }
 }
