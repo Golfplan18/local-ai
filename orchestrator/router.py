@@ -825,6 +825,120 @@ class Router:
                 chain.append(fb)
         return chain
 
+    def _slot_vision_substitute(
+        self,
+        slot: str,
+        gear: int,
+        config_name: str | None = None,
+    ) -> str | None:
+        """Return the ``vision_substitute`` endpoint id declared on a slot's
+        cell, or None when absent.
+
+        The vision_substitute is the cell's explicit text-to-vision backstop —
+        the vision-capable model to use when an image is present and the
+        configured primary/fallback chain would otherwise resolve to an
+        image-blind model. Mirrors ``get_slot_chain``'s cell walk.
+        """
+        if not config_name:
+            return None
+        cfg = self._load_configuration(config_name)
+        if cfg is None:
+            return None
+        cell_path = self._slot_to_cell_path(slot, gear)
+        if cell_path is None:
+            return None
+        cur: object = cfg.get("cells", {})
+        for key in cell_path:
+            if not isinstance(cur, dict):
+                return None
+            cur = cur.get(key)
+            if cur is None:
+                return None
+        if not isinstance(cur, dict):
+            return None
+        sub = cur.get("vision_substitute")
+        return sub if isinstance(sub, str) and sub else None
+
+    def resolve_vision_fallback(
+        self,
+        slot: str,
+        gear: int,
+        context: str = "interactive",
+        excluded_ids: set | None = None,
+        config_name: str | None = None,
+        mutex_check: bool = True,
+    ) -> dict | None:
+        """Resolve the fallback endpoint for a slot on an **image-bearing turn**,
+        binding the cell's ``vision_substitute`` across the entire fallback
+        chain.
+
+        Used when an image is present and the slot MUST be able to read it. A
+        plain fallback walk (``resolve_endpoint`` with ``excluded_ids``) can
+        advance into a model that does not actually deliver the image to the
+        provider — the breadth-slot defect surfaced by the 2026-06-01
+        analytical-repertoire evaluation, where the gear-4 breadth vision
+        primary failed and fell back to a model whose service path never
+        attaches the image, so the analyst ran blind. A ``vision_capable`` flag
+        is not sufficient to trust a chain entry, because image *delivery* is
+        per-service (see ``call_api_endpoint``).
+
+        The cell's ``vision_substitute`` is the model the configuration
+        explicitly designates for the image case. This method binds it as *the*
+        vision fallback for the whole chain:
+
+          * When a ``vision_substitute`` is declared, it is the only fallback
+            considered. If it is vision-capable, eligible, and not already in
+            ``excluded_ids`` (i.e. not itself the just-failed endpoint), it is
+            returned. Otherwise this returns ``None`` so the caller retries the
+            current (sighted) endpoint rather than advancing into the generic
+            fallback chain — which may carry image-blind entries.
+          * When no ``vision_substitute`` is declared (legacy cells), it walks
+            primary + fallback[] and returns the first vision-capable eligible
+            entry — best effort, never worse than the plain walk.
+
+        Returns a v2 endpoint dict, or ``None`` when no bound vision endpoint is
+        available (the caller then reuses the current endpoint, which for a
+        vision turn is the vision primary — so it stays sighted rather than
+        falling back blind).
+        """
+        excluded = set(excluded_ids or set())
+        sub_id = self._slot_vision_substitute(slot, gear, config_name)
+        if sub_id:
+            # A vision_substitute is declared — it IS the vision fallback. Bind
+            # it across the chain and never advance into the generic fallback
+            # (whose entries may be vision-capable yet image-blind in delivery).
+            # When the substitute is the already-excluded (just-failed)
+            # endpoint, return None so the caller cleanly retries the sighted
+            # primary instead of dropping to a blind chain entry.
+            if (sub_id not in excluded
+                    and self.vision_capable_for_endpoint(sub_id)):
+                sub_ep = self._endpoints.get(sub_id)
+                if (sub_ep and sub_ep.get("enabled", False)
+                        and sub_ep.get("status") == "active"):
+                    return sub_ep
+            return None
+        # Legacy cell with no vision_substitute — best-effort walk of the
+        # configured chain for the first vision-capable eligible entry. Each
+        # non-vision hit is added to ``excluded`` so the next resolve_endpoint
+        # call advances further down the chain; bounded so it cannot spin.
+        chain_len = len(self.get_slot_chain(slot, gear, config_name))
+        for _ in range(chain_len + 1):
+            ep = self.resolve_endpoint(
+                slot, gear, context,
+                excluded_ids=excluded,
+                config_name=config_name,
+                mutex_check=mutex_check,
+            )
+            if ep is None:
+                break
+            ep_id = ep.get("id")
+            if not ep_id:
+                break
+            if self.vision_capable_for_endpoint(ep_id):
+                return ep
+            excluded.add(ep_id)
+        return None
+
     def _resolve_from_configuration(
         self,
         slot: str,

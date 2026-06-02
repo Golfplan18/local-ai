@@ -8157,6 +8157,8 @@ def _resolve_fallback_endpoint(slot: str, gear: int,
                                current_endpoint: dict | None,
                                context: str = "interactive",
                                config_name: str | None = None,
+                               *,
+                               require_vision: bool = False,
                                ) -> dict | None:
     """Resolve the next endpoint in the slot's fallback chain.
 
@@ -8171,6 +8173,16 @@ def _resolve_fallback_endpoint(slot: str, gear: int,
     parameter — the same mechanism that enforces adversarial-diversity
     routing in ``resolve_gear`` — used here to advance the chain by one
     step rather than to enforce a different model in parallel.
+
+    ``require_vision`` (2026-06-01): set by ``_call_with_retry`` when an image
+    is in play. When True *and* the current endpoint is itself vision-capable,
+    the advancement is constrained to vision-capable endpoints via the router's
+    ``resolve_vision_fallback`` — which skips image-blind chain entries and
+    binds the cell's ``vision_substitute`` as the terminal backstop. This stops
+    a sighted analyst from silently falling back to a model that cannot see the
+    image (the breadth-slot defect from the analytical-repertoire evaluation).
+    The current-endpoint vision gate keeps text-config + vision-extractor
+    pipelines on their existing fallback path untouched.
     """
     router = _get_router()
     if router is None or not current_endpoint:
@@ -8181,12 +8193,30 @@ def _resolve_fallback_endpoint(slot: str, gear: int,
     current_id = current_endpoint.get("name")
     if not current_id:
         return None
+    # Only constrain to vision when we're advancing OFF a vision-capable
+    # endpoint with an image present — otherwise the chain is text-only by
+    # design (image handled via the extractor path) and the plain walk is
+    # correct. The router id-lookup is used (not the v1 dict, whose id lives
+    # in ``name``) so the capability check resolves against models.json.
+    use_vision_chain = False
+    if require_vision and hasattr(router, "resolve_vision_fallback"):
+        try:
+            use_vision_chain = bool(router.vision_capable_for_endpoint(current_id))
+        except Exception:
+            use_vision_chain = False
     try:
-        next_ep = router.resolve_endpoint(
-            slot, gear, context,
-            excluded_ids={current_id},
-            config_name=config_name,
-        )
+        if use_vision_chain:
+            next_ep = router.resolve_vision_fallback(
+                slot, gear, context,
+                excluded_ids={current_id},
+                config_name=config_name,
+            )
+        else:
+            next_ep = router.resolve_endpoint(
+                slot, gear, context,
+                excluded_ids={current_id},
+                config_name=config_name,
+            )
     except Exception:
         # Router-side failure should never poison the retry path —
         # caller falls back to the original endpoint.
@@ -8555,8 +8585,15 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     target_endpoint = endpoint
     endpoint_swapped = False
     if slot is not None and gear is not None:
+        # Bind vision across the fallback chain: when an image is in play,
+        # never let a sighted analyst advance into an image-blind model — the
+        # fallback resolver routes to a vision-capable entry / the cell's
+        # vision_substitute instead. ``images`` is truthy exactly when the
+        # caller passed image content for this call. (2026-06-01 breadth-
+        # blindness fix; see _resolve_fallback_endpoint.)
         fallback = _resolve_fallback_endpoint(
             slot, gear, endpoint, config_name=config_name,
+            require_vision=bool(images),
         )
         if fallback is not None:
             target_endpoint = fallback
@@ -10762,13 +10799,44 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
             if not key:
                 return "[Error calling Gemini API: No API key found. Store via: keyring set ora gemini-api-key]"
             client = genai.Client(api_key=key)
+            from google.genai import types as _genai_types
+            import base64 as _b64
             system_msg = next((m["content"] for m in messages if m["role"] == "system"), None)
+            # Attach image(s) to the LAST user message. The gemini branch
+            # previously built text-only parts and silently dropped any
+            # ``images`` — so a vision-capable Gemini model ran blind (the
+            # breadth-slot defect from the 2026-06-01 analytical-repertoire
+            # evaluation: the claude / openai / openrouter branches inject
+            # images here via _inject_images_into_messages; the gemini service
+            # path did not). Uses the google-genai Part API (Content/Part
+            # objects), so it can't reuse that message-dict helper.
+            _last_user_idx = None
+            for _i in range(len(messages) - 1, -1, -1):
+                if messages[_i].get("role") == "user":
+                    _last_user_idx = _i
+                    break
             contents = []
-            for m in messages:
+            for _idx, m in enumerate(messages):
                 if m["role"] == "system":
                     continue
                 role = "user" if m["role"] == "user" else "model"
-                contents.append({"role": role, "parts": [{"text": m["content"]}]})
+                parts: list = []
+                if images and _idx == _last_user_idx:
+                    for img in images:
+                        b64 = img.get("base64") if isinstance(img, dict) else None
+                        if not b64:
+                            continue
+                        try:
+                            _raw = _b64.b64decode(b64)
+                        except Exception:
+                            continue
+                        parts.append(_genai_types.Part.from_bytes(
+                            data=_raw,
+                            mime_type=(img.get("mime") if isinstance(img, dict)
+                                       else None) or "image/png",
+                        ))
+                parts.append({"text": m["content"]})
+                contents.append({"role": role, "parts": parts})
 
             def _gemini_call(max_tokens):
                 config = {"max_output_tokens": int(max_tokens)}
