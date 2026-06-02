@@ -31,22 +31,22 @@
     "analysis": {
       "gear4": {
         "depth": {
+          "primary": "deepseek/deepseek-v4-pro",
+          "fallback": [
+            "deepseek/deepseek-v4-flash",
+            "qwen/qwen3.5-plus-20260420"
+          ],
+          "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
+          "_note": "gear-4 op-ed cascade DEPTH = deepseek-v4-pro (intelligent, DeepSeek); breadth = qwen3.6 (Qwen) - adversarial across companies. Fast fallback. MiMo removed 2026-06-02. NO Anthropic."
+        },
+        "breadth": {
           "primary": "qwen/qwen3.6-plus",
           "fallback": [
             "qwen/qwen3.5-plus-20260420",
-            "deepseek/deepseek-v4-pro"
+            "deepseek/deepseek-v4-flash"
           ],
           "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-          "_note": "2026-06-02: MiMo removed (unreliable - 429/quarantine; reasoning -pro ballooned op-eds to ~20min). gear-4 cascade depth=qwen3.6-plus / breadth=qwen3.5-plus (distinct fast endpoints, adversarial split); deepseek tail. NO Anthropic."
-        },
-        "breadth": {
-          "primary": "qwen/qwen3.5-plus-20260420",
-          "fallback": [
-            "qwen/qwen3.6-plus",
-            "deepseek/deepseek-v4-pro"
-          ],
-          "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-          "_note": "2026-06-02: MiMo removed (unreliable - 429/quarantine; reasoning -pro ballooned op-eds to ~20min). gear-4 cascade depth=qwen3.6-plus / breadth=qwen3.5-plus (distinct fast endpoints, adversarial split); deepseek tail. NO Anthropic."
+          "_note": "gear-4 op-ed cascade BREADTH = qwen3.6 (intelligent, Qwen); depth = deepseek-v4-pro (DeepSeek) - adversarial across companies. Fast fallback. MiMo removed 2026-06-02. NO Anthropic."
         }
       },
       "gear3": {
@@ -105,20 +105,22 @@
     },
     "msi": {
       "speed": {
-        "primary": "qwen/qwen3.6-plus",
+        "primary": "deepseek/deepseek-v4-flash",
         "fallback": [
           "qwen/qwen3.5-plus-20260420",
-          "deepseek/deepseek-v4-pro"
+          "deepseek/deepseek-v4-pro",
+          "qwen/qwen3.6-plus"
         ],
-        "_note": "2026-06-02: MiMo removed (unreliable). News; fast qwen leads, deepseek tail. mimo-v2.5 was the parallel workhorse - qwen soft-throttles parallel; lower MSI_AUTHOR_WORKERS if 429s. Mirrors _BREADTH_CHAIN."
+        "_note": "SPEED (news/gear-3): fast pair deepseek-v4-flash + qwen3.5 (different companies), then INTELLIGENT pair (deepseek-v4-pro + qwen3.6) as cross-fallback. MiMo removed 2026-06-02. Uncapped."
       },
       "intelligence": {
-        "primary": "qwen/qwen3.6-plus",
+        "primary": "deepseek/deepseek-v4-pro",
         "fallback": [
-          "qwen/qwen3.5-plus-20260420",
-          "deepseek/deepseek-v4-pro"
+          "qwen/qwen3.6-plus",
+          "deepseek/deepseek-v4-flash",
+          "qwen/qwen3.5-plus-20260420"
         ],
-        "_note": "2026-06-02: MiMo removed (unreliable). Fast qwen leads; deepseek reasoning slow tail. Mirrors DEFAULT_CHAIN. Uncapped."
+        "_note": "INTELLIGENCE (op-eds/analyses): intelligent pair deepseek-v4-pro + qwen3.6-plus (different companies = adversarial), then FAST pair (deepseek-v4-flash + qwen3.5) as cross-fallback. MiMo removed 2026-06-02 (unreliable). Uncapped."
       }
     }
   }
