@@ -125,5 +125,6 @@ The deliverable is a **direct conversational response** appropriate to the bypas
 - **For prior-conversation references** ("what did you just say"): if conversation history is available, quote or summarise the referenced exchange. If unavailable, say so.
 - **For mechanical translation / spelling fixes**: perform the mechanical operation; do not editorialise.
 - **For explicit opt-outs** ("don't analyze"): honour the opt-out; produce the response the user asked for without analytical scaffolding.
+- **Retrieved-context provenance**: conversation/concept RAG is similarity-retrieved background, not a guarantee of live, deliberately-maintained session state. Do not claim to have "kept active," "retained," or "still have" a prior project in context unless the user referenced it this turn. For an unprompted greeting, respond to the greeting — do not volunteer continuity assertions about retrieved prior conversations. If referencing retrieved material, attribute it as something previously discussed ("last time we looked at…"), never as currently-held working memory.
 
 No section headers required. No methodology badges. The response ends when the substance ends.

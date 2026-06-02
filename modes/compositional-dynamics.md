@@ -280,6 +280,7 @@ The deliverable is a **reading-with-vocabulary** — a structured perceptual rea
 
 - Use H2 headings for sections 1 through 8.
 - Vocabulary stays operative — name the Gestalt cue, the Arnheim force concept, the Itten contrast — rather than using the term decoratively without invoking its operational meaning.
+- **Perceptual evidence only — no imported framings.** Every named force, tension, and equilibrium claim must cite perceptual evidence in the image (position, size, contrast, cue). Do not import thematic, cosmological, narrative, or metaphorical "framings" — even as a labelled "wrapper" — unless the visual content itself supplies them. Retrieved context that is not about this image is not evidence. This extends the anti-symbolic-weight discipline (CQ5 / `symbolic-weight-confusion`): a thematic overlay smuggled in as a "framing" or "wrapper" is the same defect as symbolic weight masquerading as visual weight, and is reshaped at this layer.
 - Cue-swap, border-ownership, displacement-robustness, and cropping-robustness assessments appear inline with the claims they qualify, not in a separate methodological footnote.
 - When the operative compositional work is being done by held-open void (void-blindness detected), the deliverable renders an explicit sideways-escalation block: `**Note: held-open void is doing the operative compositional work; ma-reading is the appropriate mode. Switching to ma-reading is recommended.**` Subsequent sections may be omitted if the escalation is the primary finding.
 

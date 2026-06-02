@@ -49,7 +49,6 @@ trigger_conditions:
     - "Bryson power-interest grid"
     - "Mitchell Agle Wood salience"
     - "who needs to be at the table"
-    - "RACI"
 disambiguation_routing:
   routes_to_this_mode_when:
     - "multiple identifiable parties with divergent stakes; user wants the landscape descriptively"
@@ -82,7 +81,7 @@ input_contract:
     optional: [parties_user_already_thought_of]
     notes: "Default. Mode infers stakeholder inventory from the situation and elicits parties the user has not yet named."
   detection:
-    expert_signals: ["stakeholder inventory", "salience dimensions", "RACI", "power-interest grid", "Mitchell Agle Wood"]
+    expert_signals: ["stakeholder inventory", "salience dimensions", "power-interest grid", "Mitchell Agle Wood"]
     accessible_signals: ["who's involved", "who has a stake", "who needs to be at the table", "stakeholder map"]
     default: accessible_mode
   graceful_degradation:
@@ -231,6 +230,10 @@ Organize the consolidated corpus as **a Bryson + Mitchell-Agle-Wood stakeholder 
 ## VERIFICATION CRITERIA
 
 Verified means: the inventory contains at least one party from outside the user's initial frame, or the analysis explicitly notes that no such party was identifiable; every party has a stake articulated as concrete interest, not just role-label; Mitchell-Agle-Wood salience is populated on all three dimensions for every party (or explicitly marked as not-applicable with reason); at least one absent or marginalized party is named, or the analysis explicitly notes that no such party exists; relationships among parties are stated rather than left implicit; the four critical questions are addressable from the output.
+
+## GUARD RAILS
+
+RACI matrices, decision-rights assignment, and accountability allocation are out of scope — they belong to `decision-clarity` / `decision-architecture`. When a prompt requests RACI, produce the stakeholder map and close with a one-line redirect (`A RACI / accountability matrix for these parties is decision-rights work — route to decision-clarity for the Accountable/Responsible assignment`). Do not emit an R/A/C/I table.
 
 ## OUTPUT FORMAT GUIDANCE
 

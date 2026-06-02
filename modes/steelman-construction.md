@@ -128,6 +128,9 @@ failure_modes:
   - name: entangled-construction
     detection_signal: "Construction and critique appear interleaved; steelman was not built fully before critique began."
     correction_protocol: re-dispatch
+  - name: agreement-by-restatement
+    detection_signal: "The points-of-agreement user-column duplicates the steelman's own premises rather than citing a distinct user-held position."
+    correction_protocol: flag
 
 # 7. LENS DEPENDENCIES
 lens_dependencies:
@@ -159,7 +162,7 @@ Going deeper in Steelman Construction means reconstructing the position at its l
 
 ## BREADTH ANALYSIS GUIDANCE
 
-Widening the lens means scanning for the proponent's full philosophical or strategic context, not just the immediate claim. Identify hidden premises, fill gaps, and look for the strongest available support across the position's intellectual lineage. Identify at least two points of agreement between the steelmanned position and the user's own — these are not concessions but genuine common ground that often opens unexpected analytical leverage. Identify what is genuinely valuable in the position, separate from its rhetorical packaging. Breadth markers: hidden premises are explicitly surfaced, points of agreement are numbered and grounded in the user's stated view, and the steelman's intellectual lineage is acknowledged.
+Widening the lens means scanning for the proponent's full philosophical or strategic context, not just the immediate claim. Identify hidden premises, fill gaps, and look for the strongest available support across the position's intellectual lineage. Identify at least two points of agreement between the steelmanned position and the user's own — these are not concessions but genuine common ground that often opens unexpected analytical leverage. Each point of agreement must cite a premise the user holds **independently** — from their stated or RAG-surfaced prior positions — not a paraphrase of the steelman's own claims; if no distinct user position exists, say so rather than restating the steelman's premises as agreement. Identify what is genuinely valuable in the position, separate from its rhetorical packaging. Breadth markers: hidden premises are explicitly surfaced, points of agreement are numbered and grounded in the user's stated view, and the steelman's intellectual lineage is acknowledged.
 
 ## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
@@ -196,6 +199,7 @@ A passing output has all six required sections, the steelmanned reconstruction i
 - *steel-strawman* — steelman appears generally strong but a specific point is engineered for defeat by the subsequent critique.
 - *projection-trap* — reconstruction filtered through analyst's worldview rather than the proponent's values; charitable inferences favour analyst's frame.
 - *entangled-construction* — construction and critique appear interleaved; steelman was not built fully before critique began.
+- *agreement-by-restatement* — the points-of-agreement user-column duplicates the steelman's own premises rather than citing a distinct user-held position.
 
 ## REVISION GUIDANCE
 
@@ -211,7 +215,7 @@ Organize the consolidated corpus as **a Rapoport/Dennett charitable-reconstructi
 
 3. **Strength-identification atoms.** Each atom names: the most defensible premises in the reconstruction, the hardest-to-dismiss evidence, the intellectual lineage that gives the position weight.
 
-4. **Points-of-agreement atoms.** At least two atoms naming concrete agreement between the steelmanned position and the user's own view (when the user supplied a view). These are not concessions; they are genuine common ground that often opens analytical leverage. Projection-trap is the named failure mode; reconstructions filtered through analyst's worldview such that charitable inferences favour analyst's frame get reshaped to build from the proponent's values.
+4. **Points-of-agreement atoms.** At least two atoms naming concrete agreement between the steelmanned position and the user's own view (when the user supplied a view). These are not concessions; they are genuine common ground that often opens analytical leverage. Each atom's user-side must cite a premise the user holds **independently** — from their stated or RAG-surfaced prior positions — not a paraphrase of the steelman's own claims. Agreement-by-restatement is the named failure mode the consolidator watches for; points-of-agreement atoms whose user-side merely duplicates the steelman's own premises get reshaped to cite a distinct user-held position, or, if none exists, reshaped to the explicit "no independent user position supplied" note. Projection-trap is the named failure mode; reconstructions filtered through analyst's worldview such that charitable inferences favour analyst's frame get reshaped to build from the proponent's values.
 
 5. **Critique atoms — addressing only the steelman.** Each critique addresses the strongest version, not the original. Retreat-to-original is the named failure mode; critique passages that target the weaker original get reshaped (or dropped if they don't survive against the steelman). Steel-strawman is also flagged: portions of the steelman engineered for defeat get reshaped.
 
@@ -257,7 +261,7 @@ The deliverable is a **constructive-strong charitable reconstruction with critiq
 
 3. **Strength identification.** Bulleted list of the steelman's load-bearing elements. Each: `**[Premise or evidence]** — why this is hardest to dismiss: [...]. Where in the reconstruction it appears: [...].`
 
-4. **Points of agreement.** Numbered list. At least two. Each: `[N]. **[Point]** — how the steelmanned position holds it: [...]. How the user's view holds it: [...]. What common ground this opens: [...].`
+4. **Points of agreement.** Numbered list. At least two. Each: `[N]. **[Point]** — how the steelmanned position holds it: [...]. How the user's view holds it: [...]. What common ground this opens: [...].` The "How the user's view holds it" column must cite a premise the user holds **independently** — drawn from their stated or RAG-surfaced prior positions — not a paraphrase of the steelman's own claims. If no distinct user position exists, write: `No independent user position supplied; points of agreement are with the proponent's strongest premises rather than a distinct user view.`
 
 5. **Critique of the steelman.** Prose addressing only the strongest version. Each critique passage anchors to a strength identified in section 3 rather than to the original-position weaknesses. Critique passages that don't apply to the steelman get reshaped or dropped, not the steelman.
 

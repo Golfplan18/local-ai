@@ -155,9 +155,13 @@ escalation_signals:
 
 Depth in Process Mapping is the explicitness of (a) actor-and-role attribution per step (who does what), (b) decision-point criteria (what triggers each branch), (c) dependency relationships between steps (what blocks what), and (d) bottleneck constraint-identification (not just where it slows but why it slows). A thin pass lists the steps; a substantive pass attributes each step to an actor, identifies decision-point criteria explicitly, maps step-to-step dependencies, and names the underlying constraint at each bottleneck (capacity / authority / information / sequencing). Test depth by asking: could a new actor entering the process at any step understand from the map alone what they need, who they wait for, and what unblocks them?
 
+**Substrate check before mapping.** If the prompt supplies no concrete process content — no named steps, no real actors, no observed timings or pain points — do NOT fabricate a representative archetype as the deliverable. Lead with the named gap and a single elicitation block ("To map your actual process I need: the start trigger, the end condition, the actors, and 3–5 known steps or pain points"). An archetype may follow only as an explicitly-labelled illustrative scaffold subordinate to that request — never as the primary output. A clearly-flagged archetype with placeholder metrics still reads as generic; the elicitation is what converts this into the user's actual map.
+
 ## BREADTH ANALYSIS GUIDANCE
 
 Widening the lens means scanning for exception paths and edge cases (what happens when the input is malformed, when an actor is absent, when a dependency is unavailable), surfacing the gap between documented and actual process flow, and identifying handoff friction (information loss, role-confusion, queue accumulation) at every actor boundary. Breadth markers: the map shows at least one exception path explicitly, surfaces at least one official-vs-actual deviation, and flags handoffs as friction zones rather than treating them as transparent.
+
+**Substrate check before mapping.** If the prompt supplies no concrete process content — no named steps, no real actors, no observed timings or pain points — do NOT fabricate a representative archetype as the deliverable. Lead with the named gap and a single elicitation block ("To map your actual process I need: the start trigger, the end condition, the actors, and 3–5 known steps or pain points"). An archetype may follow only as an explicitly-labelled illustrative scaffold subordinate to that request — never as the primary output. A clearly-flagged archetype with placeholder metrics still reads as generic; the elicitation is what converts this into the user's actual map.
 
 ## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
