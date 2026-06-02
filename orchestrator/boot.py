@@ -461,7 +461,14 @@ def vision_capable_for_endpoint(endpoint: dict | None) -> bool:
     if "vision_capable" in endpoint:
         return bool(endpoint["vision_capable"])
     router = _get_router()
-    ep_id = endpoint.get("id") if isinstance(endpoint, dict) else None
+    # v1 endpoint dicts (from Router._to_v1_endpoint) carry the endpoint id
+    # under ``name``, not ``id``, and omit ``vision_capable``. Without the
+    # ``name`` fallback this returned False for genuinely vision-capable
+    # resolved endpoints (e.g. qwen3-vl), so ``_images_for_endpoint`` withheld
+    # the image from the gear-4 eval / revise / verifier / consolidator steps —
+    # they re-read "this image" with no image and overrode the analysts' sighted
+    # reading. (2026-06-01, with the breadth-blindness fixes.)
+    ep_id = (endpoint.get("id") or endpoint.get("name")) if isinstance(endpoint, dict) else None
     if router and ep_id:
         try:
             return router.vision_capable_for_endpoint(ep_id)
