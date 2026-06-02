@@ -6406,16 +6406,8 @@ def capability_image_generates():
             "message": f"Capability registry unavailable: {exc}"
         }}), status=503, mimetype="application/json")
 
-    # §5.8.1 Slot 1 (post-2026-05-11) — civitai-hector-lora-v1, the
-    # purpose-trained Hector Rentier editorial-cartoon LoRA on Flux.2
-    # Klein 9B-base. Always-spec-compliant butt-face caricature; the
-    # downstream providers (gpt-image-1, Gemini) are kept as fallbacks
-    # for cases where Civitai is unreachable or rejects the prompt.
-    try:
-        import civitai_images as _civitai
-        _civitai.register(registry)
-    except Exception:
-        pass
+    # civitai-hector-lora-v1 (Hector editorial-cartoon LoRA) decommissioned
+    # 2026-06-01 with the moral-disgust pivot; butt-face device retired.
     try:
         import openai_images as _oai
         _oai.register(registry)
@@ -9560,7 +9552,7 @@ def capability_providers_get():
         # Best-effort: try registering each known image-providing
         # integration. Each is wrapped so a missing dependency on one
         # doesn't break visibility into the others.
-        for module_name in ("civitai_images", "openai_images", "stability",
+        for module_name in ("openai_images", "stability",
                              "replicate", "openrouter_images"):
             try:
                 module = __import__(module_name)
