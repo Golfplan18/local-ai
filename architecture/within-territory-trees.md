@@ -519,10 +519,15 @@ Route: mechanism-understanding (Tier-2, territory founder)
 ```
 [Territory identified: process or system mapping, current state]
 
-Q1 (specificity): "Is the system you're mapping fundamentally a feedback structure
+Q1 (specificity): "Is the system you're mapping a market or economy
+                    (prices, supply and demand, competition, network effects),
+                    a feedback structure
                     (loops, reinforcing or balancing dynamics),
-                    or fundamentally a process flow
+                    or a process flow
                     (sequenced steps, inputs producing outputs)?"
+  ├─ "a market or economy / prices / supply and demand / competition / network effects" →
+        market-dynamics (Tier-2; describes market behavior — design of a mechanism or
+                          contract routes to T18 mechanism-design)
   ├─ "feedback structure / loops / reinforcing or balancing dynamics" →
         systems-dynamics-structural (Tier-2; cross-territory note: causal variant
                                       lives in T4, parsed per Decision D)
@@ -549,21 +554,29 @@ Q1 (specificity): "Is the system you're mapping fundamentally a feedback structu
 ```
 [Territory identified: strategic interaction, situation modelable as a game]
 
-Route: strategic-interaction (Tier-2, territory founder)
+Q1 (complexity): "Is the crux observable moves between players
+                  (what will they do, what's the equilibrium),
+                  or hidden information / hidden action and the incentive structure
+                  (who privately knows or does what; designing rules so agents behave)?"
+  ├─ "observable moves / equilibrium / what will they do if we do X" →
+        strategic-interaction (Tier-2, territory founder)
+  ├─ "hidden information / hidden action / adverse selection / moral hazard /
+        design the incentives or contract or auction" → mechanism-design (Tier-2)
+  └─ ambiguous → strategic-interaction with escalation hook to mechanism-design
 ```
 
-**Axes used.** Complexity (founder mode at 2-to-n-player complexity). Mechanism-design and signaling-game variants are deferred per CR-6.
+**Axes used.** Complexity — the territory's primary axis (observable-move game vs. information-and-incentive structure / mechanism design). Signaling-game variant remains deferred per CR-6.
 
-**Default route.** `strategic-interaction` at Tier-2 — singleton at current population. No within-territory disambiguation needed.
+**Default route.** `strategic-interaction` at Tier-2 when ambiguous (the founder mode); `mechanism-design` when hidden information, hidden action, or incentive/contract design is the crux.
 
 **Escalation hooks.**
-- After `strategic-interaction`: if the question becomes about designing rules under which agents will produce a desired equilibrium, hook upward to `mechanism-design` (deferred — surface the flag).
+- After `strategic-interaction`: if the question becomes about hidden information / hidden action or designing rules under which agents will produce a desired outcome, hook sideways to `mechanism-design` (now resident).
 - After `strategic-interaction`: if the question becomes specifically about signaling-game dynamics (asymmetric information, costly signals), hook sideways to `signaling` (deferred — surface the flag).
 - After `strategic-interaction`: if the question shifts from analyzing the game to actually negotiating it, hook sideways to T13 (`principled-negotiation` or `third-side`).
 - After `strategic-interaction`: if the question shifts to "where could this strategic structure fail", hook sideways to T7 (`pre-mortem-fragility` or `fragility-antifragility-audit`).
 - After `strategic-interaction`: if the question is really about who benefits and who has power rather than equilibrium analysis, hook sideways to T2 (`cui-bono`).
 
-**Singleton note.** T18 currently has one resident mode (`strategic-interaction`). Expansion candidates `mechanism-design` and `signaling` are deferred per CR-6.
+**Population note.** T18 has two resident modes: `strategic-interaction` (founder) and `mechanism-design` (added 2026-06-01, un-deferring the CR-6 expansion candidate). The `signaling`-game variant remains deferred per CR-6.
 
 ---
 

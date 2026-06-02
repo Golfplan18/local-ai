@@ -1,0 +1,95 @@
+---
+lens_id: activation-energy
+name: Activation Energy
+lens_type: mental-model
+applicability: [behavior-change-design, project-initiation, friction-audit]
+foundational: false
+source: "Arrhenius, Svante (1889). Über die Reaktionsgeschwindigkeit bei der Inversion von Rohrzucker durch Säuren (origin of the activation-energy concept in chemistry); Fogg, BJ (2009). A Behavior Model for Persuasive Design. Persuasive Technology 4."
+date created: 2026-04-01
+date modified: 2026-05-01
+nexus:
+  - ora
+type: resource
+tags:
+  - lens
+  - mental-model
+  - behavior-change
+  - friction
+---
+
+# Activation Energy
+
+*A lens that treats the energy required to *begin* a process as a separable variable from the energy required to sustain it, and identifies friction reduction at the start as the dominant lever for change.*
+
+---
+
+## Trigger
+
+Invoked from within behavior-change design, project-initiation, and friction-audit modes when the analyst observes that a desired action has clear thermodynamic favorability (the actor wants to do it, the benefits exceed the costs) yet repeatedly fails to begin. The lens supplies the chemical-reaction analogy and the operational distinction between activation energy (cost to start) and sustained energy (cost to continue), which together reorient the analysis away from motivation and toward starting friction.
+
+## Core Structure
+
+### Core Insight
+
+Every reaction — chemical, behavioral, organizational — requires a minimum energy input to get started, even when the reaction is thermodynamically favorable. A catalyst lowers activation energy without being consumed. In behavioral and organizational contexts, the hardest part of most worthwhile actions is beginning; reducing the initial friction to start is often more effective than increasing motivation to continue.
+
+### Mechanism
+
+Cognitive and procedural startup costs are paid in full at the moment of initiation, before any reward has materialized. Motivation is a probabilistic resource that fluctuates; a small persistent friction at the start of an action reliably wins against an intermittent surge of intent. Once the action is underway, momentum, sunk-cost commitment, and partial reward together sustain the action with less ongoing energy than was required to begin it. The asymmetry between starting cost and sustaining cost is the structural feature the lens exploits: shrink the start cost and the rest of the action is largely self-driving.
+
+### Applicability Conditions
+
+- The desired action's net benefits exceed its costs (the reaction is thermodynamically favorable in principle).
+- The failure mode is non-initiation rather than mid-action abandonment.
+- A concrete first step can be specified small enough that its activation energy is near zero.
+- The actor has the relevant skill or capacity once started; the gap is initiation, not competence.
+
+### Common Misapplications
+
+- Applying the lens when the actor lacks the skill or capacity to perform the action — no friction reduction will compensate for absent capability.
+- Treating motivation as the friction when the friction is actually procedural (decisions, materials, setup).
+- Assuming small wins always sustain — some actions have rapidly rising mid-action friction (e.g., creative work after the easy opening), and the lens does not address those.
+
+### Related Models
+
+- **Choice Architecture** — environmental design that pre-positions defaults so the activation energy of the desired choice is the lowest available.
+- **Feedback Loops** — the post-initiation reinforcement that compounds the lens's payoff.
+- **Bottlenecks** — when the constraint is not initiation but a mid-process step.
+
+## Application Steps
+
+1. Identify the specific first action required; reduce it to its smallest concrete form.
+2. Map the friction at the moment of initiation: decisions, setup, materials, context-switches.
+3. Pre-stage materials, eliminate decisions from the start, and pair the action with an existing trigger.
+4. For undesired behaviors, raise activation energy by adding friction at the initiation step (delete apps, move junk food, require approval).
+5. Verify post-launch: confirm that once initiated, the action sustains itself with minimal further intervention.
+
+## Detection Signals
+
+- An actor knows what to do but consistently does not start.
+- Procrastination is the dominant failure mode rather than skill gap or competing priority.
+- The first step in a process requires multiple small decisions before any progress is visible.
+- Habits or routines are repeatedly broken at the same initiation point regardless of motivation.
+- A desired organizational change requires "just one more meeting" or "just one more form" before it starts.
+
+## Critical Questions
+
+- Is the actor's failure genuinely a starting failure, or is it a mid-action abandonment masquerading as one? The lens addresses initiation, not endurance.
+- Has the first step been reduced to its smallest concrete form, or is "the first step" itself a large compound action?
+- Does the actor have the skill to perform the action once started? If no, friction reduction is irrelevant.
+- Is the activation friction procedural (decisions, setup) or psychological (fear, identity-threat)? Procedural friction is more easily reduced; psychological friction needs different lenses.
+- Does the action genuinely sustain itself after initiation, or does it require continuous re-initiation? Continuous re-initiation reframes the problem as repeated activation rather than sustained action.
+
+## Common Failure Modes
+
+- **Friction misdiagnosis** — the analyst reduces the wrong friction. Detection: friction is reduced but initiation rate does not improve. Correction: re-observe the actual point of failure; the friction may be one step earlier or later than assumed.
+- **Skill-substitution** — the lens is applied where the gap is competence, not initiation. Detection: actor still fails after friction is reduced. Correction: shift to skill-acquisition framing.
+- **Sustained-cost neglect** — the lens reduces initiation but the action collapses mid-stream because the analyst did not assess whether the action self-sustains. Correction: pair the activation lens with feedback-loop or momentum analysis for the post-initiation phase.
+- **Psychological-friction blind spot** — the lens treats all friction as procedural; identity-threatening or fear-loaded actions have psychological activation costs that procedural reduction does not address. Correction: name the psychological component separately and apply identity- or fear-specific lenses to it.
+
+## Source Citations
+
+- Arrhenius, Svante (1889). Foundational chemistry of activation energy.
+- Fogg, BJ (2009). "A Behavior Model for Persuasive Design." *Persuasive Technology* 4. Operationalizes friction reduction as the dominant lever for behavior change.
+- Thaler, Richard, and Cass Sunstein (2008). *Nudge*. The choice-architecture sibling that operationalizes activation-energy reduction at population scale.
+- Related: Atomic Habits (James Clear, 2018) — popular extension to habit design.

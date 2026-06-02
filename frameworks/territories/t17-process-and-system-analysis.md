@@ -21,7 +21,7 @@
 
 Use T17 when the user wants a current-state map of how a process, workflow, or system actually works — sequenced steps, actors, decision points, dependencies, bottlenecks, handoffs, and (for feedback-bearing systems) loops with polarity. T17 is descriptive: it documents what is, not why it produces particular outcomes (T4) and not what should be done about it (T15 stance modes).
 
-T17 has two primary modes: `process-mapping` (linear / branching workflow without feedback dominance) and `systems-dynamics-structural` (feedback structure with stocks, flows, and loops). The Organizational Structure mode is deferred per CR-6.
+T17 has three primary modes: `process-mapping` (linear / branching workflow without feedback dominance), `systems-dynamics-structural` (feedback structure with stocks, flows, and loops), and `market-dynamics` (descriptive analysis of how a market or economic system behaves — supply and demand, equilibrium, selection effects, network effects, returns to scale, competitive dynamics). The Organizational Structure mode is deferred per CR-6.
 
 T17 does NOT do causal investigation (T4), mechanism explanation (T16), or relationship topology without temporal flow (T11).
 
@@ -32,10 +32,15 @@ T17 does NOT do causal investigation (T4), mechanism explanation (T16), or relat
 ```
 [Territory identified: process or system mapping, current state]
 
-Q1 (specificity): "Is the system you're mapping fundamentally a feedback structure
+Q1 (specificity): "Is the system you're mapping a market or economy
+                    (prices, supply and demand, competition, network effects),
+                    a feedback structure
                     (loops, reinforcing or balancing dynamics),
-                    or fundamentally a process flow
+                    or a process flow
                     (sequenced steps, inputs producing outputs)?"
+  ├─ "a market or economy / prices / supply and demand / competition / network effects" →
+        market-dynamics (Tier-2; describes market behavior — design of a mechanism or
+                          contract routes to T18 mechanism-design)
   ├─ "feedback structure / loops / reinforcing or balancing dynamics" →
         systems-dynamics-structural (Tier-2; cross-territory note: causal variant
                                       lives in T4, parsed per Decision D)
@@ -52,6 +57,8 @@ Q1 (specificity): "Is the system you're mapping fundamentally a feedback structu
 - After `systems-dynamics-structural`: if the question becomes "why does this keep happening" (causal rather than structural), hook sideways to T4 `systems-dynamics-causal` (the parsed sibling per Decision D).
 - After either T17 mode: if the question becomes "how do the parts produce the whole's behavior at the principle level", hook sideways to T16 (`mechanism-understanding`).
 - After either T17 mode: if the question becomes "what relations does the system assert among its parts", hook sideways to T11 (`relationship-mapping`).
+- After `market-dynamics`: if the question shifts from describing how the market behaves to designing a mechanism, contract, or auction, hook sideways to T18 (`mechanism-design`).
+- After `market-dynamics`: if the question shifts to advising a specific participant what to do, hook sideways to T3 (`decision-architecture`).
 
 ---
 
@@ -117,6 +124,37 @@ Q1 (specificity): "Is the system you're mapping fundamentally a feedback structu
 
 **Decision D parse note.** This mode is one of two parsed from the legacy Systems Dynamics mode per Decision D (parsing principle, 2026-05-01 architecture lock). The legacy mode conflated two distinct operations: causal investigation ("why does this keep happening, given the feedback dynamics?") and structural mapping ("how does this system currently work, including its feedback dynamics?"). Both share the same feedback-loop lenses and the same diagrammatic vocabulary, but they differ in posture (causal-investigation vs structural-descriptive), output contract (counterintuitive-behaviour prediction vs current-state mapping), and disambiguation question (why vs how). This mode is the T17 structural variant; its causal counterpart `systems-dynamics-causal` lives in T4.
 
+### `market-dynamics` — Market Dynamics
+
+**Educational name:** market and economic-system behavior analysis (supply-demand / selection / network-effects lineage) (specificity-market-system).
+
+**Plain-language description.** Descriptive current-state read of how a market or economic system behaves. States the market boundary (good/service/factor, participants, in/out of scope); models BOTH sides (demand-side and supply-side drivers, with qualitative elasticity reasoning); identifies the equilibrium (or disequilibrium) and the adjustment process that reaches it; separates the short-run response from the long-run response (entry, exit, capacity change, substitution); grounds any named economic dynamic (Gresham's law, diminishing returns, critical mass / network effects, creative destruction, Red Queen) in an actual mechanism on this market rather than a name-drop; and produces a descriptive market read (direction and rough magnitude, with the timescale at which it holds). Descriptive in posture — participant advice routes to T3 `decision-architecture`; mechanism / contract / auction design routes to T18 `mechanism-design`.
+
+**Critical questions.**
+- CQ1: Are both sides of the market modeled (supply AND demand), or has the analysis silently fixed one side?
+- CQ2: Is the equilibrium (or disequilibrium) identified, with the adjustment process that moves the market toward or away from it?
+- CQ3: Is the short-run response distinguished from the long-run response (entry, exit, capacity, substitution)?
+- CQ4: When a named economic dynamic is invoked (Gresham's law, creative destruction, Red Queen, critical mass), is its actual mechanism shown to operate here, or is it a name-drop?
+- CQ5: Does the analysis describe how the market behaves, or has it drifted into prescribing what a participant SHOULD do?
+
+**Per-pipeline-stage guidance.**
+- **Analyst.** State the market boundary; model both sides with drivers and qualitative elasticity; identify equilibrium and adjustment; separate short-run from long-run; scan named dynamics and rule each in or out with a mechanism; state the descriptive read with confidence and load-bearing assumptions.
+- **Evaluator.** Verify both sides modeled (one-sided-market); verify equilibrium and adjustment named (equilibrium-unstated); verify timescale separated (timescale-collapse); verify named dynamics grounded (dynamic-name-drop); verify descriptive posture (prescriptive-drift); watch for ceteris-paribus-blindness.
+- **Reviser.** Add the missing side of the market; name the equilibrium and adjustment before stylistic refinement; split conflated timescales into explicit short-run and long-run; strip prescriptive advice (route to decision-architecture / mechanism-design); ground each named dynamic in its mechanism on this market or cut the name.
+- **Verifier.** Confirm seven sections (market_boundary, supply_and_demand, equilibrium_and_adjustment, short_run_vs_long_run, named_dynamics, market_read, confidence_and_assumptions); confirm the read is descriptive (no participant advice) and the load-bearing assumptions are named.
+- **Consolidator.** Merge as a descriptive market-read atom set: boundary lock, two-sided supply/demand atoms, equilibrium-and-adjustment atoms, short-run/long-run atoms, named-dynamic atoms grounded in mechanism, descriptive market-read atoms, and confidence-with-assumption-caveat atoms.
+
+**Source tradition.** Neoclassical price theory (Marshall — supply, demand, equilibrium, elasticity); information-economics selection (Gresham's law: bad drives out good under hidden quality); Schumpeterian creative destruction; network economics and critical mass (Katz-Shapiro, Rohlfs); evolutionary competitive coevolution (Van Valen's Red Queen).
+
+**Lens dependencies.**
+- Required: supply-demand, equilibrium.
+- Optional: greshams-law, diminishing-returns, critical-mass, creative-destruction, red-queen-effect, feedback-loops.
+- Foundational: kahneman-tversky-bias-catalog.
+
+**Composition.** Atomic.
+
+**Decision note (2026-06-01).** Market Dynamics was added to T17 to home the market-behavior economics lenses (supply-demand, Gresham's law, diminishing returns, critical mass, creative destruction, Red Queen) that no prior mode loaded. It is the market-specialized sibling of `systems-dynamics-structural` along the territory's specificity axis: structural reads a generic feedback system; market-dynamics reads the specific case of a market or economic system. The parse-preserving boundary is descriptive-vs-prescriptive — analyzing how a market behaves stays here; designing a mechanism / contract / auction routes to T18 `mechanism-design`; advising a specific participant routes to T3 `decision-architecture`. Defaults to a partial-equilibrium (single-market) read with cross-market spillovers flagged, not fully modeled.
+
 ---
 
 ## Cross-territory adjacencies
@@ -142,6 +180,20 @@ Q1 (specificity): "Is the system you're mapping fundamentally a feedback structu
 **Disambiguating question.** "Is the question about *how* this works (the gears), about the *flow or process* (sequence), or about how the *parts relate* (structure)?"
 
 **Routing.** How → T16. Flow → T17. Structure → T11.
+
+### T17 ↔ T18 (Process and System Analysis ↔ Strategic Interaction)
+
+**Why adjacent.** Both can engage with markets and economic situations. T17's `market-dynamics` describes how a market *behaves* (prices, quantities, selection, competition); T18's `mechanism-design` analyzes the *information-and-incentive structure* and *designs* the rules, contract, or auction.
+
+**Disambiguating question.** "Is the question how this market behaves (prices, supply and demand, competition — describe), or is it about hidden information / hidden action and designing the incentives or contract (analyze / design)?"
+
+**Routing.** Market behavior, descriptive → T17 `market-dynamics`. Information-and-incentive structure or mechanism design → T18 `mechanism-design`.
+
+**Examples.**
+- "What happens to rents if the city upzones?" → T17 `market-dynamics`.
+- "Why is this insurance market full of high-risk customers, and how do we design the policy so it isn't?" → T18 `mechanism-design`.
+- "How will competitive dynamics play out as this platform scales?" → T17 `market-dynamics`.
+- "Design the auction so bidders don't overpay." → T18 `mechanism-design`.
 
 ---
 
@@ -186,6 +238,14 @@ Quantitative modeling supports prediction of behavior over time, but the structu
 
 **Core Structure.** Hierarchy of intervention points (least to most effective): numbers → buffers → stock-and-flow structures → delays → balancing loops → reinforcing loops → information flows → rules → self-organization → goals → paradigms → power to transcend paradigms. Used in T17 for transparency only — T17 is descriptive and structural-mapping does not include intervention recommendations. The mention of leverage points names them as a vocabulary if the structural map enables a future intervention discussion in another mode.
 
+### Supply and Demand (required for market-dynamics)
+
+**Core Structure.** A market is modeled as two opposing schedules: the demand schedule (quantity buyers will take at each price, falling in price) and the supply schedule (quantity sellers will offer at each price, rising in price). Each side carries drivers (the non-price factors that shift the whole schedule) and an elasticity (responsiveness of quantity to price). The market read is two-sided by construction: a shock to one side moves price and quantity only as far as the *other* side's elasticity accommodates. Modeling one side while silently fixing the other (one-sided-market) is a hard failure mode. Elasticity is reasoned about qualitatively when no data is given, and flagged wherever it is load-bearing (a read can reverse between elastic and inelastic supply).
+
+### Market Equilibrium (required for market-dynamics)
+
+**Core Structure.** Equilibrium is the price-quantity pair where the quantity demanded equals the quantity supplied — the market clears and no participant has an unmet incentive to change behavior. The equilibrium is named together with the *adjustment process* that reaches it (a shortage pulling price up, entry bidding price down, a queue clearing) and its stability (does the adjustment converge on the equilibrium or push away from it). A conclusion asserted with no settling point and no path to it is the equilibrium-unstated failure mode. Short-run equilibrium (before entry, exit, capacity change, or substitution) is distinguished from long-run equilibrium (after those adjustments work through) — the two frequently differ in direction, and conflating them is timescale-collapse.
+
 ---
 
 ## Open debates
@@ -202,6 +262,9 @@ T17 carries no territory-level open debates at present. The Decision D parse (se
 - Meadows, D. H. (1999). *Leverage Points: Places to Intervene in a System*. Sustainability Institute.
 - Meadows, D. H. (2008). *Thinking in Systems: A Primer*. Chelsea Green.
 - Lean / Toyota Production System tradition (foundational for swim-lane and value-stream mapping in process-mapping).
+- Marshall, A. (1890). *Principles of Economics*. Macmillan. Supply, demand, equilibrium, and elasticity (foundational for market-dynamics).
+- Schumpeter, J. A. (1942). *Capitalism, Socialism and Democracy*. Harper. Creative destruction (market-dynamics).
+- Katz, M. L. & Shapiro, C. (1985). "Network Externalities, Competition, and Compatibility." *American Economic Review* 75(3). Network effects and critical mass (market-dynamics).
 - Kahneman, D. & Tversky, A. (Various). Heuristics-and-biases catalog (foundational substrate).
 
 *End of Framework — Process and System Analysis.*

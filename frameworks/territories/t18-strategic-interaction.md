@@ -1,6 +1,6 @@
 # Framework — Strategic Interaction
 
-*Self-contained framework for modeling situations as games between rational (or boundedly rational) agents — equilibria, signaling, incentive design (singleton territory). Compiled 2026-05-01.*
+*Self-contained framework for modeling situations as games between rational (or boundedly rational) agents — equilibria, signaling, incentive design, and mechanism design. Compiled 2026-05-01; `mechanism-design` (Mechanism and Incentive Analysis) added 2026-06-01.*
 
 ---
 
@@ -13,7 +13,7 @@
 - **Boundary conditions:** Input is a situation modelable as a game with two-or-more agents. Excludes situations where the parties' conflict is to be resolved rather than analyzed strategically (T13).
 - **Primary axis:** Complexity (2-to-n-player → mechanism design).
 - **Secondary axes:** Specificity (signaling games as their own variant).
-- **Coverage status:** Moderate (founder strong; gaps deferred per CR-6).
+- **Coverage status:** Moderate (founder strong; `mechanism-design` built 2026-06-01; signaling gap deferred per CR-6).
 
 ---
 
@@ -21,7 +21,9 @@
 
 Use T18 when the user has a situation involving two or more agents whose choices interact and wants game-theoretic analysis of likely play: equilibria (Nash, subgame perfect, Perfect Bayesian), credibility of threats and promises, alternative game structures, strategic recommendations grounded in game structure. T18 answers questions like "what will they do if we do X?", "is this threat credible?", "what's their best move?", "are we in a repeated game or one-shot?".
 
-T18 does NOT do interest-mapping for active negotiation guidance (that is T13), descriptive interest-power analysis (that is T2), or feedback-system structural mapping (T4/T17 systems-dynamics).
+T18 has two resident modes. `strategic-interaction` (the founder) analyzes games of observable moves — equilibria, credibility of threats and promises, repeated play. `mechanism-design` (Mechanism and Incentive Analysis) handles the case where hidden information, hidden action, and the incentive structure are the crux: adverse selection (hidden type, pre-contract), moral hazard (hidden action, post-contract), the winner's curse, signaling, and screening — and it designs the rules, contract, or auction that aligns incentives. It answers questions like "why is this market full of lemons?", "will only the high-risk people opt in?", "design the contract so people behave honestly". The `signaling`-game variant remains deferred per CR-6.
+
+T18 does NOT do interest-mapping for active negotiation guidance (that is T13), descriptive interest-power analysis (that is T2), or feedback-system structural mapping (T4/T17 systems-dynamics). The descriptive behavior of a market's prices and quantities is T17 `market-dynamics`, not this territory.
 
 ---
 
@@ -30,15 +32,23 @@ T18 does NOT do interest-mapping for active negotiation guidance (that is T13), 
 ```
 [Territory identified: strategic interaction, situation modelable as a game]
 
-Route: strategic-interaction (Tier-2, territory founder)
+Q1 (complexity): "Is the crux observable moves between players
+                  (what will they do, what's the equilibrium),
+                  or hidden information / hidden action and the incentive structure
+                  (who privately knows or does what; designing rules so agents behave)?"
+  ├─ "observable moves / equilibrium / what will they do if we do X" →
+        strategic-interaction (Tier-2, territory founder)
+  ├─ "hidden information / hidden action / adverse selection / moral hazard /
+        design the incentives or contract or auction" → mechanism-design (Tier-2)
+  └─ ambiguous → strategic-interaction with escalation hook to mechanism-design
 ```
 
-**Singleton territory.** T18 currently has one resident mode (`strategic-interaction`). Expansion candidates `mechanism-design` and `signaling` are deferred per CR-6.
+**Population note.** T18 has two resident modes: `strategic-interaction` (founder) and `mechanism-design` (Mechanism and Incentive Analysis, added 2026-06-01, un-deferring the CR-6 expansion candidate). The `signaling`-game variant remains deferred per CR-6.
 
-**Default route.** `strategic-interaction` at Tier-2.
+**Default route.** `strategic-interaction` at Tier-2 when ambiguous (the founder mode); `mechanism-design` when hidden information, hidden action, or incentive / contract design is the crux.
 
 **Escalation hooks.**
-- After `strategic-interaction`: if the question becomes about designing rules under which agents will produce a desired equilibrium, hook upward to `mechanism-design` (deferred — surface the flag).
+- After `strategic-interaction`: if the question becomes about hidden information / hidden action or designing rules under which agents will produce a desired outcome, hook sideways to `mechanism-design` (now resident).
 - After `strategic-interaction`: if the question becomes specifically about signaling-game dynamics (asymmetric information, costly signals), hook sideways to `signaling` (deferred — surface the flag).
 - After `strategic-interaction`: if the question shifts from analyzing the game to actually negotiating it, hook sideways to T13 (`principled-negotiation` or `third-side`).
 - After `strategic-interaction`: if the question shifts to "where could this strategic structure fail", hook sideways to T7 (`pre-mortem-fragility` or `fragility-antifragility-audit`).
@@ -77,6 +87,37 @@ Route: strategic-interaction (Tier-2, territory founder)
 
 **Composition.** Atomic.
 
+### `mechanism-design` — Mechanism and Incentive Analysis
+
+**Educational name:** mechanism design and information-economics analysis (adverse-selection / moral-hazard / auction lineage) (complexity-mechanism-design).
+
+**Plain-language description.** Analysis of situations where hidden information, hidden action, and the incentive structure — not the observable moves — determine the outcome, and (when asked) design of the rules, contract, or auction that aligns incentives. Names the parties and the information asymmetry (who privately knows or does what, unobserved by whom, and when); classifies it as adverse selection (hidden type, pre-contract) or moral hazard (hidden action, post-contract), naming both if both operate; traces the distortion (which good actors exit, which hidden risks are taken, who overpays, pooling vs. separating outcome); grounds named mechanisms (winner's curse, signaling, screening, principal-agent) in their operation here; for a design, satisfies BOTH participation (individual-rationality) and incentive-compatibility constraints and surfaces the residual gaming surface; marks the analysis-vs-design posture explicitly.
+
+**Critical questions.**
+- CQ1: Is the information asymmetry named explicitly — who holds private information or takes hidden action, and who cannot observe it?
+- CQ2: Is hidden information (adverse selection — type private before contracting) distinguished from hidden action (moral hazard — effort private after contracting)?
+- CQ3: For a designed mechanism, are participation (individual-rationality) and incentive-compatibility both addressed?
+- CQ4: When a named mechanism concept is invoked (winner's curse, screening, signaling), is its actual mechanism shown to operate here, or is it a name-drop?
+- CQ5: Is the analytical-vs-design posture explicit, rather than silently sliding between explaining a failure and proposing a fix?
+
+**Per-pipeline-stage guidance.**
+- **Analyst.** Name the parties and the asymmetry (who knows/does what unseen, and when); classify adverse selection vs. moral hazard; trace the distortion; scan named mechanisms and ground each; for a design, check both participation and incentive-compatibility and surface the gaming surface; mark posture.
+- **Evaluator.** Verify the asymmetry is named (asymmetry-unnamed, assume-away-asymmetry); verify selection/hazard distinguished (selection-hazard-conflation); verify both design constraints present (constraint-omission); verify named mechanisms grounded (mechanism-name-drop); verify posture marked (posture-drift).
+- **Reviser.** Name the asymmetry first; separate adverse selection from moral hazard (the pre-contract/post-contract distinction is the parse-preserving core); add the missing design constraint (participation or incentive-compatibility); ground each named concept or cut it; mark analysis vs. design explicitly.
+- **Verifier.** Confirm seven sections (parties_and_asymmetry, selection_vs_hazard, distortion, named_mechanisms, mechanism_for_design, read, confidence_and_assumptions); confirm a design carries BOTH constraints and that the posture is explicit.
+- **Consolidator.** Merge as an information-and-incentive atom set: party-and-asymmetry lock, selection-vs-hazard classification atoms, distortion-trace atoms, named-mechanism atoms grounded in operation, design-constraint atoms (participation + incentive-compatibility), gaming-surface atoms, confidence-with-information-assumption atoms.
+
+**Source tradition.** Akerlof market-for-lemons (adverse selection); Holmström / principal-agent theory (moral hazard); Spence signaling; Stiglitz-Rothschild screening; Vickrey-Myerson mechanism design and auction theory.
+
+**Lens dependencies.**
+- Required: adverse-selection, moral-hazard.
+- Optional: winners-curse, signaling, principal-agent-problem.
+- Foundational: kahneman-tversky-bias-catalog.
+
+**Composition.** Atomic.
+
+**Decision note (2026-06-01).** Mechanism and Incentive Analysis un-defers the `mechanism-design` CR-6 expansion candidate. It is the complexity-axis sibling of `strategic-interaction`: that mode analyzes games of observable moves; this one handles the case where hidden information (adverse selection), hidden action (moral hazard), and incentive structure are the crux, and extends to designing mechanisms. The parse-preserving boundary against T17 `market-dynamics` is information-vs-price: this mode is about who-knows-what and how incentives are structured; market-dynamics is about how prices and quantities behave. v1 keeps designs at the structural level (constraints named and satisfied qualitatively) and flags when a problem needs formal optimization (revelation principle, optimal-auction derivation).
+
 ---
 
 ## Cross-territory adjacencies
@@ -98,6 +139,14 @@ Route: strategic-interaction (Tier-2, territory founder)
 **Disambiguating question.** Where could the strategic structure fail (T7), or what is the equilibrium analysis (T18)?
 
 **Routing.** Failure of strategic structure → T7. Equilibrium analysis → T18.
+
+### T17 ↔ T18 (Process and System Analysis ↔ Strategic Interaction)
+
+**Why adjacent.** Both can engage with markets and economic situations. T17's `market-dynamics` describes how a market *behaves* (prices, quantities, selection, competition); T18's `mechanism-design` analyzes the *information-and-incentive structure* and *designs* the rules, contract, or auction.
+
+**Disambiguating question.** "Is the question how this market behaves (prices, supply and demand, competition — describe), or is it about hidden information / hidden action and designing the incentives or contract (analyze / design)?"
+
+**Routing.** Market behavior, descriptive → T17 `market-dynamics`. Information-and-incentive structure or mechanism design → T18 `mechanism-design`. (A used-car or insurance market can be read either way: market-dynamics asks where the price settles; mechanism-design asks why the informed side self-selects and how to separate the types.)
 
 ---
 
@@ -145,7 +194,15 @@ For T18, Axelrod's results inform repeated-game analysis: when the game is genui
 - **Revelation principle** — any equilibrium of any mechanism can be replicated by a direct-revelation mechanism in which agents report their types truthfully.
 - **Auction theory** — applications to selling and buying with private information (Vickrey auction, English auction, sealed-bid auctions).
 
-Mechanism-design extensions are deferred per CR-6 to a future `mechanism-design` mode; the founder T18 mode names the lens for transparency when game-design questions surface.
+Mechanism design is now a resident T18 mode (`mechanism-design`, built 2026-06-01); this lens supplies its formal-design foundations alongside the adverse-selection and moral-hazard lenses below.
+
+### Adverse Selection (required for mechanism-design)
+
+**Core Structure.** A hidden-*type* problem: one side knows its own quality or risk type before contracting, and the other side cannot observe it. Because the uninformed side can only price to the average, the best types are underpaid and exit, lowering the average, which drives out the next-best types — the market unravels toward the worst types (Akerlof's "lemons"). Distinguished from moral hazard by timing: the asymmetry is over a *type fixed before* the contract. Remedies separate the types: signaling (the informed side takes a costly action only good types will bear) and screening (the uninformed side offers a self-sorting menu). Conflating adverse selection with moral hazard is a hard failure mode (`selection-hazard-conflation`).
+
+### Moral Hazard (required for mechanism-design)
+
+**Core Structure.** A hidden-*action* problem: after contracting, one party takes an action (effort, risk-taking, care) the other cannot observe, and the incentive structure makes the unobserved action diverge from what the counterparty would want — the insured drives less carefully, the agent shirks, the borrower takes on more risk. Distinguished from adverse selection by timing: the asymmetry is over an *action exercised after* the contract. Remedies tie payoff to observable proxies of the action (deductibles, performance pay, monitoring, bonding) so the incentive-compatible action moves toward the desired one. The principal-agent split is the canonical frame.
 
 ### Bounded Rationality (Simon) (foundational)
 
@@ -162,7 +219,7 @@ For T18, the hyperrationality-trap is the failure mode that bounded rationality 
 
 ## Open debates
 
-T18 carries no territory-level open debates at present. As a singleton territory, mode-level debates do not currently apply. The Hyperrationality vs. Bounded-Rationality choice is treated within the mode rather than as a debate.
+T18 carries no territory-level open debates at present. Mode-level debates are carried in the mode specs: the Hyperrationality vs. Bounded-Rationality choice within `strategic-interaction`, and the structural-vs-formal boundary within `mechanism-design` (how far a design should go before it needs the revelation principle or an optimal-auction derivation).
 
 ---
 
@@ -175,6 +232,10 @@ T18 carries no territory-level open debates at present. As a singleton territory
 - Axelrod, R. (1984). *The Evolution of Cooperation*. Basic Books. Iterated prisoner's dilemma tournament.
 - Fudenberg, D. & Tirole, J. (1991). *Game Theory*. MIT Press. Standard graduate-level reference.
 - Myerson, R. B. (1991). *Game Theory: Analysis of Conflict*. Harvard University Press. Mechanism design foundations.
+- Akerlof, G. A. (1970). "The Market for 'Lemons': Quality Uncertainty and the Market Mechanism." *Quarterly Journal of Economics* 84(3). Adverse selection (mechanism-design).
+- Spence, M. (1973). "Job Market Signaling." *Quarterly Journal of Economics* 87(3). Signaling (mechanism-design).
+- Holmström, B. (1979). "Moral Hazard and Observability." *Bell Journal of Economics* 10(1). Moral hazard / principal-agent (mechanism-design).
+- Vickrey, W. (1961). "Counterspeculation, Auctions, and Competitive Sealed Tenders." *Journal of Finance* 16(1). Auction theory (mechanism-design).
 - Simon, H. A. (1955). "A Behavioral Model of Rational Choice." *Quarterly Journal of Economics*. Bounded rationality.
 - Simon, H. A. (1996). *The Sciences of the Artificial* (3rd ed.). MIT Press. Foundational bounded-rationality treatment.
 - Kahneman, D. & Tversky, A. (Various). Heuristics-and-biases catalog (foundational substrate).

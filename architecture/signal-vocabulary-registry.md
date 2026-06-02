@@ -730,6 +730,21 @@ Each migrated mode contributes 5–15 entries — 2–3 mode-name aliases plus t
 | flow chart | T17-process-and-system | process-mapping | — | strong | trigger phrase |
 | dependency map | T17-process-and-system | process-mapping | — | strong | trigger phrase |
 | step by step how does this work | T17-process-and-system | process-mapping | — | strong | trigger phrase |
+| market dynamics | T17-process-and-system | market-dynamics | within-territory: specificity? → market-system | strong | mode-name reference |
+| supply and demand | T17-process-and-system | market-dynamics | within-territory: specificity? → market-system | strong | trigger phrase |
+| supply-demand | T17-process-and-system | market-dynamics | within-territory: specificity? → market-system | strong | mode vocabulary |
+| market equilibrium | T17-process-and-system | market-dynamics | within-territory: specificity? → market-system | strong | trigger phrase |
+| price equilibrium | T17-process-and-system | market-dynamics | within-territory: specificity? → market-system | strong | mode vocabulary |
+| network effects | T17-process-and-system | market-dynamics | within-territory: specificity? → market-system | strong | mode vocabulary |
+| critical mass | T17-process-and-system | market-dynamics | — | strong | method-name reference |
+| creative destruction | T17-process-and-system | market-dynamics | — | strong | method-name reference |
+| Gresham's law | T17-process-and-system | market-dynamics | — | strong | method-name reference |
+| Red Queen effect | T17-process-and-system | market-dynamics | — | strong | method-name reference |
+| diminishing returns | T17-process-and-system | market-dynamics | — | strong | method-name reference |
+| how will this market behave | T17-process-and-system | market-dynamics | within-territory: specificity? → market-system | strong | trigger phrase |
+| what happens to prices if | T17-process-and-system | market-dynamics | within-territory: specificity? → market-system | strong | trigger phrase |
+| why is this industry consolidating | T17-process-and-system | market-dynamics | — | weak | trigger phrase |
+| market behavior | T17-process-and-system | market-dynamics | — | weak | mode vocabulary |
 
 ---
 
@@ -749,6 +764,21 @@ Each migrated mode contributes 5–15 entries — 2–3 mode-name aliases plus t
 | credibility of threat | T18-strategic-interaction | strategic-interaction | — | strong | trigger phrase |
 | signalling | T18-strategic-interaction | strategic-interaction | — | weak | tonal cue (game-theoretic) |
 | coalition | T18-strategic-interaction | strategic-interaction | — | weak | tonal cue (multi-actor) |
+| adverse selection | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | method-name reference |
+| moral hazard | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | method-name reference |
+| winner's curse | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | method-name reference |
+| winners curse | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | method-name reference |
+| mechanism design | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | mode-name reference |
+| incentive compatible | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | mode vocabulary |
+| incentive-compatible | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | mode vocabulary |
+| screening | T18-strategic-interaction | mechanism-design | — | strong | method-name reference |
+| principal-agent | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | method-name reference |
+| information asymmetry | T18-strategic-interaction | mechanism-design | within-territory: complexity? → mechanism-design | strong | mode vocabulary |
+| hidden information | T18-strategic-interaction | mechanism-design | — | strong | mode vocabulary |
+| hidden action | T18-strategic-interaction | mechanism-design | — | strong | mode vocabulary |
+| market for lemons | T18-strategic-interaction | mechanism-design | — | strong | method-name reference |
+| design the contract so | T18-strategic-interaction | mechanism-design | — | weak | trigger phrase |
+| auction design | T18-strategic-interaction | mechanism-design | — | weak | trigger phrase |
 
 ---
 
