@@ -1776,6 +1776,24 @@ _PHASE9_SIGNAL_ALIASES: list[dict] = [
 # four-axis framing.
 
 
+
+# Targeted hard-lens signals (2026-06-01): distinctive-named lenses that were
+# mis-routing as standalone prompts. Code-side, sync-proof.
+_PHASE9_SIGNAL_ALIASES.extend([
+    {"signal": 'conceptual metaphor', "territory": 'T9-paradigm-and-assumption-examination', "mode": 'frame-comparison', "confidence_weight": "strong"},
+    {"signal": 'conceptual metaphors', "territory": 'T9-paradigm-and-assumption-examination', "mode": 'frame-comparison', "confidence_weight": "strong"},
+    {"signal": 'entman framing functions', "territory": 'T9-paradigm-and-assumption-examination', "mode": 'frame-comparison', "confidence_weight": "strong"},
+    {"signal": 'framing functions', "territory": 'T9-paradigm-and-assumption-examination', "mode": 'frame-comparison', "confidence_weight": "strong"},
+    {"signal": 'costly signal', "territory": 'T18-strategic-interaction', "mode": 'mechanism-design', "confidence_weight": "strong"},
+    {"signal": 'signaling game', "territory": 'T18-strategic-interaction', "mode": 'mechanism-design', "confidence_weight": "strong"},
+    {"signal": 'signal quality', "territory": 'T18-strategic-interaction', "mode": 'mechanism-design', "confidence_weight": "strong"},
+    {"signal": 'attention restoration', "territory": 'T19-spatial-composition', "mode": 'place-reading-genius-loci', "confidence_weight": "strong"},
+    {"signal": 'attention-restoration theory', "territory": 'T19-spatial-composition', "mode": 'place-reading-genius-loci', "confidence_weight": "strong"},
+    {"signal": 'decision tree', "territory": 'T3-decision-making-under-uncertainty', "mode": 'decision-architecture', "confidence_weight": "strong"},
+    {"signal": 'decision trees', "territory": 'T3-decision-making-under-uncertainty', "mode": 'decision-architecture', "confidence_weight": "strong"},
+    {"signal": 'expected-value rollback', "territory": 'T3-decision-making-under-uncertainty', "mode": 'decision-architecture', "confidence_weight": "strong"},
+])
+
 # New-mode routing (market-dynamics T17, mechanism-design T18), code-side so it
 # survives vault->ora syncs of the signal-vocabulary registry (2026-06-01).
 _PHASE9_SIGNAL_ALIASES.extend([
