@@ -158,7 +158,7 @@ Widening the lens means surveying the criteria space for under-named dimensions 
 1. Enumerate the option set and sanity-check completeness — flag missing options that would change the analysis.
 2. Define each criterion operationally — name, units, score-assignment rule, preference direction (higher better / lower better / target).
 3. Check criterion independence — flag or merge criteria measuring the same underlying attribute under different names.
-4. Elicit weights with rationale — decision-maker preference statements, pairwise comparison, or explicit assignment; when weights are equal, state explicitly that equal weighting is itself a preference choice.
+4. Elicit weights with rationale — weights MUST trace to the decision-maker's stated preferences (preference statements, pairwise comparison, or explicit assignment); when weights are equal, state explicitly that equal weighting is itself a preference choice. Imposition is a last resort: when the prompt supplies no preference signal, do NOT impose placeholder weights as the deliverable — emit the AHP pairwise scaffold (a blank Saaty 1–9 comparison matrix plus the criterion definitions) and request the user's judgments. Present any analyst-filled weights only as a clearly-subordinate worked example, never as the basis for a headline ranking.
 5. Score each (option × criterion) cell — score, units, grounding (evidence / inference / qualitative estimate); flag gaps rather than silently zeroing.
 6. Name the aggregation method and explain why it fits the decision shape — additive SMART, AHP, ELECTRE, TOPSIS, etc.
 7. Produce the aggregated ranking with per-option scores.
@@ -230,7 +230,7 @@ Organize the consolidated corpus as **an MCDM matrix atom set: enumerated option
 
 ## VERIFICATION CRITERIA
 
-Verified means: criteria are named and defined operationally; weights are elicited or explicitly noted as analyst-imposed (with reason); aggregation method is named and explained; scoring is explicit per option per criterion; sensitivity analysis runs at least one joint weight-score perturbation; dominance relations are surfaced; the four critical questions are addressable from the output. Confidence accompanies each major finding.
+Verified means: criteria are named and defined operationally; weights are elicited or explicitly noted as analyst-imposed (with reason); aggregation method is named and explained; scoring is explicit per option per criterion; sensitivity analysis runs at least one joint weight-score perturbation; dominance relations are surfaced; the four critical questions are addressable from the output. Confidence accompanies each major finding. When no decision-maker preference was supplied, a headline ranking driven by analyst-imposed weights is a FAIL — the analyst-imposed escape hatch is valid only when the user explicitly declined to weight; otherwise the deliverable must be the AHP pairwise scaffold with a request for the user's judgments, not a ranking.
 
 ## OUTPUT FORMAT GUIDANCE
 

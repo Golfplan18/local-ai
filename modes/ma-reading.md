@@ -159,9 +159,13 @@ escalation_signals:
 
 ## DEPTH ANALYSIS GUIDANCE
 
+**Image-presence anchor (read first).** This mode is dispatched only when an image is attached. The reading MUST address the actual visual content of that image. Treating the *absence of an upload* (a missing attachment, the deictic gap of "this image") as the operative void is a hard failure mode — `missing-upload-mistaken-for-ma`. If you cannot perceive any image content, do not reinterpret the void as the absent artwork; emit a single line flagging a vision-delivery failure and stop.
+
 Depth in Ma Reading is the precision with which (1) operative voids/intervals are identified (not all empty space; only the empty space that is load-bearing), (2) what each void *does* is named in vocabulary the tradition supplies (rhythm, breath, suggestion, ma-ai, kami-space, narrative caesura, perceptual rest), (3) the removal/alteration test is performed (would replacing the void with content of equal weight alter the work?), and (4) suggestion-resonances are traced — what the void invites the viewer/listener to complete. A thin pass identifies emptiness and asserts ma; a substantive pass shows the void is held open as content (active), names what each void does in tradition-specific vocabulary, performs the removal test, and traces the resonances. Depth in this mode is *contemplative-deep* per T19 reanalysis M1: the analysis participates in articulating the experience, but it remains defeasible — every reading has critical questions whose negative answers invalidate it. Test depth by asking: would a practitioner of the relevant tradition (a tea master, a nō actor, a slow-cinema director) recognize the reading as articulating something present in the work?
 
 ## BREADTH ANALYSIS GUIDANCE
+
+**Image-presence anchor (read first).** This mode is dispatched only when an image is attached. The reading MUST address the actual visual content of that image. Treating the *absence of an upload* (a missing attachment, the deictic gap of "this image") as the operative void is a hard failure mode — `missing-upload-mistaken-for-ma`. If you cannot perceive any image content, do not reinterpret the void as the absent artwork; emit a single line flagging a vision-delivery failure and stop.
 
 Widening the lens means scanning across the four Japanese-aesthetic operations before narrowing: **Ma** (the void/interval as primary content; placement-spacing rather than place; Isozaki / Nitschke / Itō); **Yūgen** (suggestion / withholding / depth-direction; Zeami; the dragon-veins of unpainted space; Suzuki's "cloudy impenetrability... not utter darkness"); **Wabi-sabi** (impermanence / asymmetry / shadow-as-material; Tanizaki's *In Praise of Shadows*); **Mu** (emptiness as generative reservoir; Suzuki / Okakura's "vacuum is all-potent because all-containing"). Where applicable, scan also: Cage's framing-of-attention silence; Ozu's pillow shots and intermediate spaces; Tarkovsky's sculpting in time; Sesshū's unpainted space. Breadth markers: the reading has surveyed which of the four operations are active in the composition (often one is primary, one or two are subsidiary; rarely all four) before narrowing the reading.
 
@@ -208,7 +212,11 @@ Revise to perform the removal test where the draft asserts a void's load-bearing
 
 ## CONSOLIDATION GUIDANCE
 
-Organize the consolidated corpus as **a contemplative-descriptive-deep reading: operative-void atoms (load-bearing only), what-each-does atoms in tradition-specific vocabulary, removal-test atoms, suggestion-resonance atoms, and counter-reading atoms preserving defeasibility**. The atoms are:
+Organize the consolidated corpus as **a contemplative-descriptive-deep reading: operative-void atoms (load-bearing only), what-each-does atoms in tradition-specific vocabulary, removal-test atoms, suggestion-resonance atoms, and counter-reading atoms preserving defeasibility**.
+
+**Image-presence anchor (consolidator watch).** This mode is dispatched only when an image is attached; the corpus must read the actual visual content of that image. `missing-upload-mistaken-for-ma` — treating the *absence of an upload* (a missing attachment, the deictic gap of "this image") as the operative void — is a hard failure mode the consolidator watches for; atoms that frame the missing artwork rather than the attached image's actual negative space get reshaped or dropped. When two analyst streams disagree on whether an image exists, the consolidator privileges the stream that describes concrete visual content over the stream that describes absence.
+
+The atoms are:
 
 1. **Operative-void atoms.** Each atom names one void or interval that is *load-bearing* for meaning — not all empty space, only the empty space whose absence does work. Incidental-void-mistaken-for-ma is the named failure mode the consolidator watches for; atoms that treat residual negative space as ma without applying the removal test get reshaped or sideways-routed to compositional-dynamics.
 

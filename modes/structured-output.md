@@ -152,6 +152,8 @@ Breadth in Structured Output is the survey of format options considered before s
 
 **Procedure.**
 
+0. Source-presence gate (precedes all rendering). First check whether ANY renderable source content exists (prompt, conversation context, or knowledge package). If NO source content exists at all, do NOT emit a skeleton or gap report — emit only the elicitation question (`What's the source content I should render, and what format do you want it in?`) and stop. The gap-report / format-notes scaffolding below applies only to PARTIAL gaps, where some source exists but does not fully satisfy the requested format.
+
 1. Lock the source content — name what is being rendered. SO does not extend beyond what source supports.
 2. Identify the requested format and its conventions (memo / report / one-pager / outline / comparison-table / etc.).
 3. Render source into the format faithfully — structure follows the requested format type, not a generic analytical-mode shape.
@@ -239,7 +241,7 @@ Place the consolidated-corpus atoms into the following sections (or their format
 
 1. **Formatted deliverable.** The user-requested artifact, in its native form, rendered faithfully from source. Structure follows the requested format type. Visual envelopes from source are passed through byte-equivalent with `mode_context` preserved (NOT rewritten to `structured-output`).
 
-2. **Gap report.** A short labelled section after the deliverable. Bulleted list. Each: `**Gap:** [what the requested format required that source did not provide]. **What the user could supply:** [...]. **Why this gap was not silently filled:** [...].` At least one entry when source did not fully satisfy the format; explicit `No gaps — source fully satisfied format.` when applicable.
+2. **Gap report.** A short labelled section after the deliverable. Bulleted list. Each: `**Gap:** [what the requested format required that source did not provide]. **What the user could supply:** [...]. **Why this gap was not silently filled:** [...].` At least one entry when source did not fully satisfy the format; explicit `No gaps — source fully satisfied format.` when applicable. The gap report is for PARTIAL shortfalls only — where some source exists but does not fully satisfy the requested format. Total absence of source content is not a gap-report case: per the source-presence gate, emit no skeleton and no table, ask for the source content, and stop.
 
 3. **Format notes.** A short labelled section. Bulleted list. Each: `**Structural choice:** [ordering / compression / section organisation / format adaptation]. **What was done:** [...]. **What it cost:** [if anything was lost or compressed].`
 

@@ -140,6 +140,8 @@ escalation_signals:
 
 Depth in Spatial Reasoning is the rigour of structural extraction and gap analysis on user-drawn input. A thin pass labels what is visible; a substantive pass extracts entities, relationships, clusters, and hierarchy with positions and ambiguities flagged, applies Tversky's correspondence audit (proximity = relatedness, verticality = hierarchy, containment = category, connection = relationship), and identifies gaps with specific spatial or domain evidence per gap. Test depth by asking: would the gap analysis name what to look for in the user's intuition rather than what to add to the diagram?
 
+When the input is a raster image with no addressable entity ids (Path B), commit a candidate normalized `x/y` (top-left origin, `0–1`) for each entity, gap, and ambiguity you flag *while the image is in view* — so coordinates originate from the actual reading rather than being fabricated downstream by the formatter. These are best-effort visual estimates, not measured positions; where a position cannot be localized with confidence, say so rather than inventing a precise value.
+
 ## BREADTH ANALYSIS GUIDANCE
 
 Breadth in Spatial Reasoning is the catalog of structural patterns considered (hub-and-spoke / chain / cycle / star / cluster bridge / orphan) and the range of fog-clearing questions generated. Widen the lens to identify multiple plausible patterns the arrangement might instantiate, generate open questions targeting different aspects of the user's pre-conscious understanding, and surface the single most consequential gap (the addition that, if real, would most change what the diagram implies). Breadth markers: ≥2 candidate patterns considered (with verification per CQ2); ≥1 fog-clearing question per ambiguity; one most-consequential gap highlighted.
@@ -248,11 +250,13 @@ The deliverable is a **diagram-gap annotation deliverable** — a Tversky-corres
 
 7. **Annotated visual output.** One labelled envelope or annotation block. `canvas_action: annotate` (never `replace` / `update`); one envelope per response.
 
+   Annotation coordinates are best-effort visual estimates, not measured positions. Prefer `target_id` references (Path A) whenever the input has addressable ids; reserve raw `x/y` for true raster input (Path B). When element positions cannot be localized with confidence, set `"coordinate_fidelity": "approximate"` on the envelope and open the section with: `**Annotation coordinates are approximate visual estimates, not measured positions.**`
+
    - **Path A (structured input):** when the user submitted a structured `spatial_representation` with resolvable entity ids (Excalidraw JSON, Obsidian Canvas), emit `type: <existing diagram type>` and reference entities by `target_id` in each annotation. `annotation kind`: `callout` / `highlight`. Callout text ≤60 characters.
 
    - **Path B (photo or unstructured visual input):** when the user attached a photograph, whiteboard snapshot, or other raster image with no addressable entity ids, emit `type: annotated_image` and reference positions by normalized image-relative coordinates. The backdrop is the user's uploaded image (already on the visual panel's `backgroundLayer`). Each annotation carries `kind: callout | box | highlight | arrow | text`, plus normalized `x: 0–1` and `y: 0–1` (top-left origin) for its anchor point. Box and highlight may additionally carry `width: 0–1` and `height: 0–1`; arrow carries `to_x: 0–1` and `to_y: 0–1` for the endpoint. Callout text ≤60 characters. Coordinates are anchored to the image's drawn bounds, so 0.5/0.5 is the centre of the image regardless of pixel resolution.
 
-     Envelope skeleton:
+     Envelope skeleton (the coordinate values below are **illustrative only** — do not anchor to them; emit the `x/y` you read off the actual image):
 
      ```json
      {
@@ -264,9 +268,9 @@ The deliverable is a **diagram-gap annotation deliverable** — a Tversky-corres
        "canvas_action": "annotate",
        "spec": { "image_source": { "kind": "user_upload" } },
        "annotations": [
-         { "kind": "callout",  "x": 0.42, "y": 0.31, "text": "missing edge: training → champions" },
-         { "kind": "box",      "x": 0.65, "y": 0.55, "width": 0.18, "height": 0.12, "text": "under-specified cluster" },
-         { "kind": "arrow",    "x": 0.22, "y": 0.40, "to_x": 0.50, "to_y": 0.40, "text": "proposed connection" }
+         { "kind": "callout",  "x": 0.42, "y": 0.31, "text": "missing edge: training → champions" },  /* illustrative coordinates */
+         { "kind": "box",      "x": 0.65, "y": 0.55, "width": 0.18, "height": 0.12, "text": "under-specified cluster" },  /* illustrative coordinates */
+         { "kind": "arrow",    "x": 0.22, "y": 0.40, "to_x": 0.50, "to_y": 0.40, "text": "proposed connection" }  /* illustrative coordinates */
        ],
        "semantic_description": { /* per the envelope contract */ }
      }

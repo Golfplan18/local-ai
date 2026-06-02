@@ -282,33 +282,36 @@ The deliverable is a **structured wicked-problems analysis: problem statement wi
 
    At minimum two framings, both steelmanned. After the per-framing blocks, render: `**Reconciliation notes:** [which framings the analysis reconciles; which it leaves in tension because the tension is the finding]. Dominant frame in the user's situation: [framing X — with the structural reason for dominance, OR "no single dominant frame"].`
 
-3. **Stakeholder-interest map (cui-bono provenance).** Numbered list of stakeholders. Each: `**[Stakeholder]** — interest in problem [persisting / resolving / shifting]. Position in power asymmetry: [...]. Framing they hold: [F_n cross-reference].` Beneficiaries of the problem's current state are distinguished from beneficiaries of its resolution.
+3. **Competing-framing diagnosticity matrix (competing-hypotheses provenance).** Render as a distinct table — one row per candidate framing/hypothesis; columns `Framing | Evidence that would confirm it | Evidence that would disconfirm it`. This is the diagnosticity-atom corpus from the competing-hypotheses fragment, surfaced as its own structure: it is structurally distinct from the framing narrative (section 2) and the confidence map (section 10), and is never merged into either. When local data can't weight the matrix (the evidence to differentiate framings is not available in context), note that beneath the table rather than omitting the section.
 
-4. **Dynamic projection — causal dynamics with leverage-point tags (systems-dynamics-causal provenance).** Numbered list of feedback loops / causal mechanisms. Each: `**[Loop or mechanism]** — polarity: [reinforcing / balancing]. **Meadows leverage-point tag:** [one of the twelve levels — constants, buffers, stock-and-flow, delays, balancing loops, reinforcing loops, information flows, rules, self-organization, goals, paradigms, transcending-paradigms]. Mechanism: [how the dynamic operates].`
+4. **Stakeholder-interest map (cui-bono provenance).** Numbered list of stakeholders. Each: `**[Stakeholder]** — interest in problem [persisting / resolving / shifting]. Position in power asymmetry: [...]. Framing they hold: [F_n cross-reference].` Beneficiaries of the problem's current state are distinguished from beneficiaries of its resolution.
 
-5. **System archetype atoms (Senge provenance) — when applicable.** Bulleted list of recognized archetype signatures (limits-to-growth / shifting-the-burden / tragedy-of-the-commons / success-to-the-successful / fixes-that-fail / eroding-goals / escalation / accidental-adversaries / growth-and-underinvestment). When no archetype signatures are present, write "No recognized system-archetype signatures in the dynamics."
+5. **Dynamic projection — causal dynamics with leverage-point tags (systems-dynamics-causal provenance).** Numbered list of feedback loops / causal mechanisms. Each: `**[Loop or mechanism]** — polarity: [reinforcing / balancing]. **Meadows leverage-point tag:** [one of the twelve levels — constants, buffers, stock-and-flow, delays, balancing loops, reinforcing loops, information flows, rules, self-organization, goals, paradigms, transcending-paradigms]. Mechanism: [how the dynamic operates].`
 
-6. **Scenario projections (scenario-planning provenance).** Bulleted list of scenarios under multiple framings. Each: `**[Scenario]** — time horizon: [...]. Driving uncertainties: [...]. Under which framings: [F_n cross-references]. Which stakeholders benefit/lose: [...].`
+6. **System archetype atoms (Senge provenance) — when applicable.** Bulleted list of recognized archetype signatures (limits-to-growth / shifting-the-burden / tragedy-of-the-commons / success-to-the-successful / fixes-that-fail / eroding-goals / escalation / accidental-adversaries / growth-and-underinvestment). When no archetype signatures are present, write "No recognized system-archetype signatures in the dynamics."
 
-7. **Candidate intervention catalog with stress-test findings (red-team provenance).** For each candidate intervention I1, I2, I3, …, render:
+7. **Scenario projections (scenario-planning provenance).** Bulleted list of scenarios under multiple framings. Each: `**[Scenario]** — time horizon: [...]. Driving uncertainties: [...]. Under which framings: [F_n cross-references]. Which stakeholders benefit/lose: [...].`
+
+8. **Candidate intervention catalog with stress-test findings (red-team provenance).** For each candidate intervention I1, I2, I3, …, render:
    - **Intervention:** statement
    - **Which framing's account it addresses:** F_n
-   - **Target Meadows leverage point:** [tag from section 4]
+   - **Target Meadows leverage point:** [tag from section 5]
    - **Red-team stress-test findings:** numbered list of vulnerabilities, each: `**[Vulnerability]** — severity: [high / moderate / low]. Mechanism by which the intervention fails: [...].`
 
    Interventions without attached stress-test findings do not appear — stress-test-omission is the named failure mode.
 
-8. **Residual tensions — never resolved.** Numbered list of tensions that survive the analysis. Each: `**[Tension]** — why irreducible: [which wickedness characteristic makes resolution unavailable]. What the user lives with: [the specific trade-off or open question that persists].` Premature-resolution is the named failure mode; corpus with a single recommended intervention and no residual tensions is its signature.
+9. **Residual tensions — never resolved.** Numbered list of tensions that survive the analysis. Each: `**[Tension]** — why irreducible: [which wickedness characteristic makes resolution unavailable]. What the user lives with: [the specific trade-off or open question that persists].` Premature-resolution is the named failure mode; corpus with a single recommended intervention and no residual tensions is its signature.
 
-9. **Confidence map.** Bulleted list of confidence markers per major finding. Synthesis-stage atoms inherit lower confidence from component aggregation; flag this explicitly rather than presenting synthesized findings at component-level confidence.
+10. **Confidence map.** Bulleted list of confidence markers per major finding. Synthesis-stage atoms inherit lower confidence from component aggregation; flag this explicitly rather than presenting synthesized findings at component-level confidence.
 
 **Per-section conventions:**
 
-- Use H2 headings for sections 1 through 9.
+- Use H2 headings for sections 1 through 10.
 - Framing IDs (F1, F2, ...), stakeholder IDs, intervention IDs (I1, I2, ...) are referenced consistently throughout once introduced.
-- Section 4's leverage-point tags use Meadows' canonical twelve-level vocabulary; do not invent intermediate levels.
+- Section 3's diagnosticity matrix is a standalone table, never dissolved into the framing narrative (section 2) or the confidence map (section 10).
+- Section 5's leverage-point tags use Meadows' canonical twelve-level vocabulary; do not invent intermediate levels.
 - Avoid recommendation-collapse phrasings: "the best approach is", "the recommended intervention is" — wicked problems do not collapse to clean recommendations.
-- Section 8's residual tensions are visibly load-bearing — do not hide them in a final footnote or confidence map.
+- Section 9's residual tensions are visibly load-bearing — do not hide them in a final footnote or confidence map.
 
 ## CAVEATS AND OPEN DEBATES
 
