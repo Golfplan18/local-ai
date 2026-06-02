@@ -173,6 +173,7 @@ The boundary-verification sub-deliverable appears at the end of this file. It en
 **Resident modes.**
 - `systems-dynamics-structural` — Phase 2 parse from `systems-dynamics` per Decision D. complexity-feedback (T4-T17 boundary case).
 - `process-mapping` — existing (built Wave 3, 2026-05-01). specificity-process-flow.
+- `market-dynamics` — built 2026-06-01. specificity-market-system (homes the market-behavior economics lenses: supply-demand, Gresham's law, diminishing returns, critical mass, creative destruction, Red Queen).
 - `organizational-structure` — gap-deferred. specificity-organizational.
 
 **Adjacencies.** T4 (causal-vs.-structural framing of feedback), T11 (structural-relationship overlap), T16 (process vs. mechanism).
@@ -294,7 +295,7 @@ The boundary-verification sub-deliverable appears at the end of this file. It en
 
 **Resident modes.**
 - `strategic-interaction` — existing. complexity-2-to-n-player.
-- `mechanism-design` — gap-deferred. complexity-mechanism-design.
+- `mechanism-design` — built 2026-06-01 (un-defers the CR-6 expansion candidate). complexity-mechanism-design (homes the information-economics lenses: adverse selection, moral hazard, winner's curse; reuses signaling, principal-agent).
 - `signaling` — gap-deferred. specificity-signaling-games.
 
 **Adjacencies.** T7 (failure-of-strategy), T13 (negotiation as strategic), T2 (power as strategic resource).
@@ -467,20 +468,23 @@ The boundary-verification sub-deliverable appears at the end of this file. It en
 | T12 | Cross-Domain and Knowledge Synthesis | E | Stance | 2 (Cross-Domain Analogical deferred) | Strong |
 | T13 | Negotiation and Conflict Resolution | D | Depth | 3 | Strong |
 | T14 | Orientation in Unfamiliar Territory | E | Depth | 3 | Strong |
-| T15 | Artifact Evaluation by Stance | D | Stance | 4 (Devil's Advocate Lite deferred) | Strong |
+| T15 | Artifact Evaluation by Stance | D | Stance | 5 (Devil's Advocate Lite deferred) | Strong |
 | T16 | Mechanism Understanding | B | Depth | 1 | Moderate |
-| T17 | Process and System Analysis | B | Specificity | 2 (Organizational Structure deferred) | Moderate |
-| T18 | Strategic Interaction | D | Complexity | 1 (Mechanism Design + Signaling deferred) | Moderate |
+| T17 | Process and System Analysis | B | Specificity | 3 (Organizational Structure deferred) | Moderate |
+| T18 | Strategic Interaction | D | Complexity | 2 (Signaling deferred) | Moderate |
 | T19 | Spatial Composition | E | Specificity | 4 (Mode 5 reserved against threshold) | Strong |
 | T20 | Open Exploration (Generative) | E | Specificity | 1 (Idea Development + Research Question Generation deferred) | Partial |
 | T21 | Execution / Project Mode (Non-Analytical) | — | Specificity | 2 | Strong |
 
-**Total resident modes (post-Wave-4):** 57 modes across 21 territories. Of these:
+**Total resident modes:** 60 modes across 21 territories. Of these:
 - 22 keep-modes from the existing 25 (after retiring 3 catch-alls and parsing Systems Dynamics into 2)
 - 1 Wicked Problems mode created from existing framework (Decision H)
 - 33 new modes built across Waves 1–4
+- 2 modes added 2026-06-01: `market-dynamics` (T17) and `mechanism-design` (T18, un-deferring the CR-6 candidate)
 - 1 Wicked Problems framework restructured to Decision Clarity Analysis framework (Decision H)
 - Plus 14 deferred candidates per CR-6
+
+*(The post-Wave-4 table summed to 57; the current total of 60 reflects the two 2026-06-01 additions plus a correction to the T15 row, which had undercounted its built modes by one.)*
 
 ---
 

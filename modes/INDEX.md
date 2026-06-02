@@ -13,7 +13,7 @@ date modified: 2026-05-04
 
 # Modes — Index
 
-*Per-mode index for the analytical mode files in `Modes/`. 58 mode files currently. One-line description per mode, organized by home territory per the post-2026-05-01 architecture.*
+*Per-mode index for the analytical mode files in `Modes/`. 60 mode files currently. One-line description per mode, organized by home territory per the post-2026-05-01 architecture.*
 
 *Authoritative source for mode-id, suffix, gradation position, and depth tier:* `Registry — Mode Registry.md`.
 *Authoritative source for territory boundaries and resident-mode mapping:* `Reference — Analytical Territories.md`.
@@ -63,12 +63,14 @@ date modified: 2026-05-04
 - **`interest-mapping.md`** — Stakeholder interests and incentive structures behind a contested situation.
 - **`stakeholder-mapping.md`** — Stakeholder positions in a conflict; tradeoffs surfaced.
 - **`strategic-interaction.md`** — Game-theoretic analysis of competition / coordination / signaling among self-interested actors.
+- **`mechanism-design.md`** — "Mechanism and Incentive Analysis." Hidden-information / hidden-action / incentive situations and mechanism design: adverse selection, moral hazard, winner's curse, signaling, principal-agent. Complexity sibling of `strategic-interaction` (canonical territory T18). Added 2026-06-01.
 
 ## T8 — Process and System Analysis
 
 - **`process-mapping.md`** — Map a process: stages, inputs, outputs, decision points, failure modes.
 - **`systems-dynamics-causal.md`** — Causal-loop and stock-and-flow modeling. Parsed pair with `systems-dynamics-structural.md`.
 - **`systems-dynamics-structural.md`** — Structural decomposition of a system's components and their interactions. Parsed pair with `systems-dynamics-causal.md`.
+- **`market-dynamics.md`** — Descriptive analysis of how a market or economy behaves: supply & demand, equilibrium, selection (Gresham's law), network effects / critical mass, diminishing returns, creative destruction, Red Queen. Market-specialized sibling of `systems-dynamics-structural` (canonical territory T17). Added 2026-06-01.
 
 ## T9 — Decision-Making Under Uncertainty
 

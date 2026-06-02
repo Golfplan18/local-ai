@@ -1,0 +1,96 @@
+---
+lens_id: small-wins
+name: Small Wins
+lens_type: mental-model
+applicability: [strategy-decomposition, change-management, momentum-design]
+foundational: false
+source: "Weick, Karl E. (1984). 'Small wins: Redefining the scale of social problems.' *American Psychologist* 39(1):40-49."
+date created: 2026-04-01
+date modified: 2026-05-01
+nexus:
+  - ora
+type: resource
+tags:
+  - lens
+  - mental-model
+  - strategy
+  - change
+---
+
+# Small Wins
+
+## Trigger
+
+Invoked from modes that face large, intractable problems where momentum has stalled or no obvious starting point exists — change management, technical debt reduction, organizational transformation. The host mode supplies the large problem and the actor; the lens supplies the decomposition-and-sequencing strategy that converts overwhelming scale into a sequence of complete achievements.
+
+## Core Structure
+
+### Core Insight
+
+Large, intractable problems become manageable when recast as a series of small, achievable steps. Each small win produces visible results, builds confidence, attracts allies, and shifts the perceived difficulty of the next step. The key insight is that small wins are not just scaled-down versions of the big goal — they are complete achievements that change the conditions for the next action. Karl Weick: "A small win is a concrete, complete, implemented outcome of moderate importance. Once a small win has been accomplished, forces are set in motion that favor another small win."
+
+### Mechanism
+
+A complete small win produces three effects: visible result (changes perception of feasibility), allies attracted (success draws support), and changed conditions (the next step starts from a different baseline). The sequence is not a master plan; it is opportunistic. Each win redefines what is possible, which determines what win can come next. The pattern compounds because each win lowers the activation energy for the subsequent one.
+
+### Applicability Conditions
+
+- The large problem can be decomposed into smaller independent or loosely coupled sub-problems.
+- Some sub-problems have a high ratio of achievability to visibility.
+- Resources permit completing each win fully (half-finished does not work).
+- Stakeholders' perception of the problem's tractability matters.
+
+### Common Misapplications
+
+- Treating arbitrary small steps as wins when they do not produce visible complete results.
+- Locking into a master plan that requires wins to occur in a specific order.
+- Substituting small wins for genuine confrontation when the large problem requires frontal engagement.
+- Pursuing wins that are visible but trivial, undermining credibility for the strategy.
+
+### Related Models
+
+- **Bottlenecks** — the right small win often is the bottleneck.
+- **Compound Returns** — the underlying mechanism: small wins compound by changing conditions.
+- **Activation Energy** — what each win lowers for the next one.
+
+### Worked example
+
+An engineering team inherits a legacy codebase with no tests, no documentation, and inconsistent formatting. Tackling the whole thing feels hopeless. Instead, they start with one small win: enforce a linter on all new code via a pre-commit hook — zero disruption to existing code, immediately visible. That win makes the next one easier: add tests for the three most-changed files. Those tests catch a bug, which gives the team a concrete story for management. Management approves a 20% time allocation for further cleanup.
+
+## Application Steps
+
+1. Decompose the large problem into independent or loosely coupled sub-problems.
+2. Identify the sub-problem with the highest ratio of achievability to visibility — easy to accomplish, easy for others to see.
+3. Execute it fully — a small win must be complete, not a half-finished fragment.
+4. Publicize the result so it shifts perceptions and attracts support.
+5. Use the changed conditions (new allies, new confidence, new resources) to select and execute the next small win.
+6. Let the sequence of wins redefine what seems possible — do not pre-commit to a master plan that must work in order.
+
+## Detection Signals
+
+- A problem feels overwhelming and no one knows where to start.
+- A team or organization is demoralized by repeated failure on a large initiative.
+- Early evidence of progress is needed to maintain stakeholder support.
+- Resistance to change is high and a frontal assault will trigger opposition.
+- Resources are limited and cannot be committed to a single large bet.
+
+## Critical Questions
+
+- Is the proposed small win actually a complete achievement, or only a partial step?
+- Will the win be visible to the stakeholders whose perception matters?
+- Does the win change conditions for the next step, or is it isolated?
+- Is the large problem genuinely decomposable, or does it require unified action?
+- Is the strategy being used to delay confrontation that should happen frontally?
+
+## Common Failure Modes
+
+- **Trivial wins** — small visible accomplishments that don't change conditions. Detection: wins accumulate but the underlying problem persists. Correction: select wins by their effect on conditions, not just visibility.
+- **Decomposition failure** — large problem turns out to require unified action. Detection: small wins produce no progress on the underlying problem. Correction: distinguish problems that decompose from problems that don't.
+- **Master-plan rigidity** — pre-committing to a sequence rather than letting the next win emerge from changed conditions. Detection: the plan persists despite conditions diverging. Correction: re-select the next win based on current conditions.
+
+## Source Citations
+
+- Weick, Karl E. (1984). "Small wins: Redefining the scale of social problems." *American Psychologist* 39(1):40-49. Originating paper.
+- Amabile, Teresa M. and Steven J. Kramer (2011). *The Progress Principle*. Harvard Business Review Press. Empirical work on small wins and motivation.
+- Heath, Chip and Dan Heath (2010). *Switch: How to Change Things When Change Is Hard*. Crown Business. "Shrink the change" application.
+- Duhigg, Charles (2012). *The Power of Habit*. Random House. Keystone-habit application.
