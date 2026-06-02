@@ -82,6 +82,12 @@ Each resolution state maps to a specific draft action:
 
 The `## CLAIM RESOLUTIONS` section documents the state and the action for each flagged claim. The CHANGELOG names any substantive corrections; cosmetic hedges may be omitted from CHANGELOG when not load-bearing.
 
+### A fact-correction never relocates a first-person or home-ground reference
+
+A `wrong`-state correction fixes a *source* detail. It never moves the author's vantage. When the draft speaks in the first person from a home ground — "here in Adams County," "back home," "the county where I farm," "our town," "down the road from me" — that anchor is the author's point of view, not a claim about the subject of the piece. If web verification establishes that the *story's* setting is somewhere else (the events happened in Stevens County, Kansas, not where the author writes from), the correction fixes the **source** reference and leaves the author's "here" exactly where it stood.
+
+The two references are never merged. The source location stays a source fact; the author's "here" stays the author's home. Collapsing a first-person "here" onto the distant subject "to match the source" erases the author's vantage — that is a correction failure, not a fix, even when the relocated place name is factually correct for the source. When a genuine factual error sits in the same sentence as a home-ground reference, correct the source fact and preserve the vantage; split the sentence if that is the only way to keep both true. This guard binds regardless of claim state: no resolution action (`wrong`, `ambiguous`, or otherwise) may rewrite a first-person/home-ground deictic into the subject's location.
+
 ## Named failure modes
 
 **The Capitulation.** Accepting all feedback wholesale and rewriting the analysis to match the evaluator's perspective. Destroys the adversarial signal. Retain independent judgment and decline-with-reason where the feedback is invalid.
@@ -94,6 +100,8 @@ The `## CLAIM RESOLUTIONS` section documents the state and the action for each f
 
 **The Orphan Fix.** Addressing a mandatory fix in the envelope but not updating the prose that referenced the now-changed field (or vice versa). The verifier runs a prose-envelope agreement check; silent-update-one-side fails it.
 
+**The Narration Stub.** Emitting verification narration or a "no changes needed" note *in place of* the `## REVISED DRAFT` — e.g. "Now I'll run web verification queries…" or "the revised draft stands as previously emitted" with no draft following. The draft is the load-bearing artifact every downstream step consumes; replacing it with process commentary leaves nothing to verify, consolidate, format, or (for committed-voice work) harvest. Even a genuine no-op re-emits the full prior draft under `## REVISED DRAFT`. The orchestrator's structural gate rejects a turn missing a substantive draft and regenerates it.
+
 **The Consensus Enforcer.** Resolving a substantive disputed claim as `wrong` because web verification returned consensus content contradicting it. The five-state taxonomy includes `disputed` for exactly this case; collapsing `disputed` into `wrong` converts the reviser into a mainstream enforcer and destroys contrarian analysis. When the analyst is taking a contested position with defensible reasoning, the resolution is `disputed`, not `wrong`.
 
 **The Silent Web Bypass.** Receiving a FLAGGED CLAIMS list and not running web queries — declaring claims `confirmed` based on training knowledge alone. The point of Step 5 verification is independent grounding via the web tool; confirming from memory undermines the framework. Every claim resolution carries a `sources_consulted` list; an empty list is a verifier-detectable failure.
@@ -101,6 +109,8 @@ The `## CLAIM RESOLUTIONS` section documents the state and the action for each f
 **The Unsourced Confidence.** Marking a claim `confirmed` despite web verification turning up insufficient or weak sources. Confirmation requires at least one approved-tier source OR two independent open-web sources. Marking `confirmed` on weaker evidence is a failure mode the verifier will catch.
 
 **The Disputed Flatten.** Treating a `disputed` state the same as `wrong` — rewriting the claim into the consensus position despite resolving it as contested. Disputed means the claim survives in the draft with appropriate framing; rewriting it as consensus is the failure the `disputed` state was created to prevent.
+
+**The Vantage Collapse.** Relocating a first-person or home-ground reference during a fact-correction to "match the source" — rewriting the author's "here in [home county]" to the subject's distant location. A source location is a source fact; the author's "here" is the author's home, and the two are never merged. The relocated place name can be factually correct for the source and the edit still fails: it has erased the author's point of view. Fix the source fact, keep the vantage (see *A fact-correction never relocates a first-person or home-ground reference* above).
 
 ## Universal reviser output contract
 
@@ -179,13 +189,15 @@ Evaluator-flagged uncertainties that propagate forward, plus any new uncertainti
 
 The complete revised output — prose plus envelope (if the mode emits one) — in the same format as your original analysis. This is the final output shape the verifier compares against the mandatory list and the mode's content + emission contracts.
 
+**Re-emit the full draft even when nothing changed.** This section is mandatory and load-bearing on every reviser turn, including a "no changes needed" judgment. If you decline every finding, or your web verification confirms every claim, you still re-emit the *entire* prior draft verbatim under this header. Never replace the draft with verification narration ("Now I'll run web verification queries…", "the revised draft stands as previously emitted", "no changes are needed so the draft is unchanged") — narration is not a draft, and downstream steps (verification, consolidation, formatting, and for committed-voice work the harvest/merge) have nothing to read when the section is missing or empty. A reviser turn whose `## REVISED DRAFT` is absent or under one substantive paragraph is rejected by the orchestrator's structural gate and regenerated.
+
 For visual-bearing modes, emit the prose followed by exactly one fenced `ora-visual` block as the final block of this section. The envelope conforms to the mode's EMISSION CONTRACT. If the evaluator's mandatory fixes required envelope edits, the revised envelope carries them.
 
 ### `## CHANGELOG`
 
 One short paragraph summarising what changed between original and revised, in natural language for the user who will eventually read it. Name every load-bearing commitment that changed (framework declaration, root-cause identification, decision recommendation, chosen alternative, etc.). Silent changes surface here as declared changes.
 
-If nothing of substance changed — the evaluator's findings were all declined-with-reason — the CHANGELOG reads: `No substantive changes; see NOT ADDRESSED and DECLINED for rationale.`
+If nothing of substance changed — the evaluator's findings were all declined-with-reason — the CHANGELOG reads: `No substantive changes; see NOT ADDRESSED and DECLINED for rationale.` A no-op CHANGELOG does **not** license a no-op `## REVISED DRAFT`: the prior draft is still re-emitted in full under that header (see `## REVISED DRAFT` above).
 
 ## Where mode-specific content lives
 
