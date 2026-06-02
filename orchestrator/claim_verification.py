@@ -83,7 +83,12 @@ _CLAIM_HEADER_RE = re.compile(
     # the parser must accept them (F-Evaluate spec lists single types
     # but evaluators in the wild compose them).
     r"`?(?P<type>[^`—]+?)`?\s*[—\-]\s*"
-    r"risk\s*:\s*(?P<risk>high|moderate|low)\s*\*\*\s*$",
+    # risk level: allow OPTIONAL backticks around the value. Some evaluators
+    # emit ``risk: `high` `` (backticked); the bare alternation missed those
+    # and silently dropped the claim (observed on the MSI voice path —
+    # thomas step4-eval-of-depth, 2026-06-01), while ``risk: low`` (plain)
+    # parsed. Mirrors the optional-backtick handling on the claim_type group.
+    r"risk\s*:\s*`?(?P<risk>high|moderate|low)`?\s*\*\*\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 _CLAIM_FIELD_RE = re.compile(
