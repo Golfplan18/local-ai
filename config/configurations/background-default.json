@@ -33,20 +33,18 @@
         "depth": {
           "primary": "deepseek/deepseek-v4-pro",
           "fallback": [
-            "qwen/qwen3.6-plus",
-            "qwen/qwen3.5-plus-20260420"
+            "qwen/qwen3.6-plus"
           ],
           "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-          "_note": "PUBLISHER 2026-05-28: production author-tier chain. NO Anthropic API. NO direct OpenAI API. All three entries are OpenRouter, billed against the publisher's OpenRouter account. Used by every MSI pipeline that calls invoke_chat(slot='breadth'|'depth', context='autonomous'): article_generator (news), gear3_orchestrator (columns/EB/phukher/hector/propaganda), analysis_generator, floor_engagement."
+          "_note": "PUBLISHER 2026-05-30: gear-4 depth/breadth split to distinct OpenRouter models for the run_gear4 cascade. depth=mimo-v2.5, breadth=qwen3.5-plus, fallback qwen3.6-plus. NO Anthropic."
         },
         "breadth": {
-          "primary": "deepseek/deepseek-v4-pro",
+          "primary": "xiaomi/mimo-v2.5-pro",
           "fallback": [
-            "qwen/qwen3.6-plus",
-            "qwen/qwen3.5-plus-20260420"
+            "qwen/qwen3.6-plus"
           ],
           "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-          "_note": "PUBLISHER 2026-05-28: production author-tier chain. NO Anthropic API. NO direct OpenAI API. All three entries are OpenRouter, billed against the publisher's OpenRouter account. Used by every MSI pipeline that calls invoke_chat(slot='breadth'|'depth', context='autonomous'): article_generator (news), gear3_orchestrator (columns/EB/phukher/hector/propaganda), analysis_generator, floor_engagement."
+          "_note": "PUBLISHER 2026-05-30: gear-4 depth/breadth split to distinct OpenRouter models for the run_gear4 cascade. depth=mimo-v2.5, breadth=qwen3.5-plus, fallback qwen3.6-plus. NO Anthropic."
         }
       },
       "gear3": {
@@ -78,7 +76,7 @@
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator \u2192 Qwen 3.5 Plus, consolidation+formatter \u2192 Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
+        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator → Qwen 3.5 Plus, consolidation+formatter → Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
       },
       "verification": {
         "primary": "qwen/qwen3.5-plus-20260420",
@@ -89,7 +87,7 @@
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator \u2192 Qwen 3.5 Plus, consolidation+formatter \u2192 Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
+        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator → Qwen 3.5 Plus, consolidation+formatter → Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
       },
       "formatter": {
         "primary": "qwen/qwen3.6-plus",
@@ -100,7 +98,7 @@
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator \u2192 Qwen 3.5 Plus, consolidation+formatter \u2192 Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
+        "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator → Qwen 3.5 Plus, consolidation+formatter → Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
       }
     }
   }
