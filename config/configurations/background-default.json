@@ -31,20 +31,22 @@
     "analysis": {
       "gear4": {
         "depth": {
-          "primary": "deepseek/deepseek-v4-pro",
+          "primary": "qwen/qwen3.6-plus",
           "fallback": [
-            "qwen/qwen3.6-plus"
+            "qwen/qwen3.5-plus-20260420",
+            "deepseek/deepseek-v4-pro"
           ],
           "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-          "_note": "PUBLISHER 2026-05-30: gear-4 depth/breadth split to distinct OpenRouter models for the run_gear4 cascade. depth=mimo-v2.5, breadth=qwen3.5-plus, fallback qwen3.6-plus. NO Anthropic."
+          "_note": "2026-06-02: MiMo removed (unreliable - 429/quarantine; reasoning -pro ballooned op-eds to ~20min). gear-4 cascade depth=qwen3.6-plus / breadth=qwen3.5-plus (distinct fast endpoints, adversarial split); deepseek tail. NO Anthropic."
         },
         "breadth": {
-          "primary": "xiaomi/mimo-v2.5-pro",
+          "primary": "qwen/qwen3.5-plus-20260420",
           "fallback": [
-            "qwen/qwen3.6-plus"
+            "qwen/qwen3.6-plus",
+            "deepseek/deepseek-v4-pro"
           ],
           "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-          "_note": "PUBLISHER 2026-05-30: gear-4 depth/breadth split to distinct OpenRouter models for the run_gear4 cascade. depth=mimo-v2.5, breadth=qwen3.5-plus, fallback qwen3.6-plus. NO Anthropic."
+          "_note": "2026-06-02: MiMo removed (unreliable - 429/quarantine; reasoning -pro ballooned op-eds to ~20min). gear-4 cascade depth=qwen3.6-plus / breadth=qwen3.5-plus (distinct fast endpoints, adversarial split); deepseek tail. NO Anthropic."
         }
       },
       "gear3": {
@@ -103,24 +105,20 @@
     },
     "msi": {
       "speed": {
-        "primary": "xiaomi/mimo-v2.5",
+        "primary": "qwen/qwen3.6-plus",
         "fallback": [
-          "qwen/qwen3.6-plus",
           "qwen/qwen3.5-plus-20260420",
-          "deepseek/deepseek-v4-pro",
-          "xiaomi/mimo-v2.5-pro"
+          "deepseek/deepseek-v4-pro"
         ],
-        "_note": "MSI SPEED config (news, high volume). Mirrors backfill_orchestrator._BREADTH_CHAIN exactly: fast models lead, smart reasoning models back up. Consumed by the MSI news walker (_invoke) once Move #2 P1 sources the chain from config. Walker/quarantine/uncapped-max_tokens/completeness-gate unchanged — this only relocates the model LIST from a hardcoded constant to the canonical config."
+        "_note": "2026-06-02: MiMo removed (unreliable). News; fast qwen leads, deepseek tail. mimo-v2.5 was the parallel workhorse - qwen soft-throttles parallel; lower MSI_AUTHOR_WORKERS if 429s. Mirrors _BREADTH_CHAIN."
       },
       "intelligence": {
-        "primary": "deepseek/deepseek-v4-pro",
+        "primary": "qwen/qwen3.6-plus",
         "fallback": [
-          "xiaomi/mimo-v2.5-pro",
-          "xiaomi/mimo-v2.5",
-          "qwen/qwen3.6-plus",
-          "qwen/qwen3.5-plus-20260420"
+          "qwen/qwen3.5-plus-20260420",
+          "deepseek/deepseek-v4-pro"
         ],
-        "_note": "MSI INTELLIGENCE config (op-eds/analyses/consolidation/headlines/floor/voice prose). Mirrors msi_model_call.DEFAULT_CHAIN exactly: smart reasoning models lead, fast models back up. Consumed by msi_model_call.chain_invoke once Move #2 P1 sources the chain from config. Same walker/quarantine/uncapped behavior."
+        "_note": "2026-06-02: MiMo removed (unreliable). Fast qwen leads; deepseek reasoning slow tail. Mirrors DEFAULT_CHAIN. Uncapped."
       }
     }
   }
