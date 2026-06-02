@@ -100,6 +100,28 @@
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
         "_note": "PUBLISHER 2026-05-28 (PM fixup): server has no MLX runtime, so post_analysis primaries that pointed at local-mlx-* models were breaking every invoke_chat(slot=\"evaluator\"|\"consolidator\"|\"formatter\", context=\"autonomous\") call. Replaced with the publisher-stated routing: evaluator → Qwen 3.5 Plus, consolidation+formatter → Qwen 3.6 Plus, all on OpenRouter. Fallbacks point only at OpenRouter-resolvable models."
       }
+    },
+    "msi": {
+      "speed": {
+        "primary": "xiaomi/mimo-v2.5",
+        "fallback": [
+          "qwen/qwen3.6-plus",
+          "qwen/qwen3.5-plus-20260420",
+          "deepseek/deepseek-v4-pro",
+          "xiaomi/mimo-v2.5-pro"
+        ],
+        "_note": "MSI SPEED config (news, high volume). Mirrors backfill_orchestrator._BREADTH_CHAIN exactly: fast models lead, smart reasoning models back up. Consumed by the MSI news walker (_invoke) once Move #2 P1 sources the chain from config. Walker/quarantine/uncapped-max_tokens/completeness-gate unchanged — this only relocates the model LIST from a hardcoded constant to the canonical config."
+      },
+      "intelligence": {
+        "primary": "deepseek/deepseek-v4-pro",
+        "fallback": [
+          "xiaomi/mimo-v2.5-pro",
+          "xiaomi/mimo-v2.5",
+          "qwen/qwen3.6-plus",
+          "qwen/qwen3.5-plus-20260420"
+        ],
+        "_note": "MSI INTELLIGENCE config (op-eds/analyses/consolidation/headlines/floor/voice prose). Mirrors msi_model_call.DEFAULT_CHAIN exactly: smart reasoning models lead, fast models back up. Consumed by msi_model_call.chain_invoke once Move #2 P1 sources the chain from config. Same walker/quarantine/uncapped behavior."
+      }
     }
   }
 }
