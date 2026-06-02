@@ -1775,13 +1775,54 @@ _PHASE9_SIGNAL_ALIASES: list[dict] = [
 # opportunities, threats) is essentially balanced critique with a fixed
 # four-axis framing.
 
+
+# New-mode routing (market-dynamics T17, mechanism-design T18), code-side so it
+# survives vault->ora syncs of the signal-vocabulary registry (2026-06-01).
+_PHASE9_SIGNAL_ALIASES.extend([
+    {"signal": 'market dynamics', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'supply and demand', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'supply-demand', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'market equilibrium', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'price equilibrium', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'network effects', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'critical mass', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'creative destruction', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": "gresham's law", "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'red queen effect', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'diminishing returns', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'how will this market behave', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'what happens to prices if', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'why is this industry consolidating', "territory": "T17-process-and-system-analysis", "mode": "market-dynamics", "confidence_weight": "strong"},
+    {"signal": 'adverse selection', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'moral hazard', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": "winner's curse", "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'winners curse', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'mechanism design', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'incentive compatible', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'incentive-compatible', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'screening', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'principal-agent', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'information asymmetry', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'hidden information', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'hidden action', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'market for lemons', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+    {"signal": 'auction design', "territory": "T18-strategic-interaction", "mode": "mechanism-design", "confidence_weight": "strong"},
+])
+
 # Lens-forward routing (2026-06-01). Canonical mental-model lens names become
 # routing signals so naming a lens directs the (possibly ambiguous) prompt to a
 # mode that foregrounds it. Generic single-word lens names are intentionally
 # omitted (they would hijack routing); those rely on host-mode wording. Code-side
 # bridge per the note above; the canonical signal-vocabulary-registry update is a
 # separate vault-paired pass.
-_PHASE9_SIGNAL_ALIASES.extend([
+#
+# Collected as a named list and tagged evidence="lens-alias" (tagging loop
+# after the block) so Stage 2 can treat a named lens as a *decisive* signal:
+# when a strong lens-alias uniquely identifies a host mode and the prompt
+# does not explicitly name a different technique, the lens directs routing
+# to its host — overriding the cross-territory / within-territory
+# disambiguation that would otherwise fire on the ambiguous remainder.
+_LENS_FORWARD_ALIASES: list[dict] = [
     {"signal": "allison's three lenses", "territory": 'T12-cross-domain-and-knowledge-synthesis', "mode": 'dialectical-analysis', "confidence_weight": "strong"},
     {"signal": 'allisons three lenses', "territory": 'T12-cross-domain-and-knowledge-synthesis', "mode": 'dialectical-analysis', "confidence_weight": "strong"},
     {"signal": 'bayesian reasoning', "territory": 'T5-hypothesis-evaluation', "mode": 'bayesian-hypothesis-network', "confidence_weight": "strong"},
@@ -1883,7 +1924,12 @@ _PHASE9_SIGNAL_ALIASES.extend([
     {"signal": 'the anchoring effect', "territory": 'T1-argumentative-artifact-examination', "mode": 'propaganda-audit', "confidence_weight": "strong"},
     {"signal": 'batna', "territory": 'T13-negotiation-and-conflict-resolution', "mode": 'interest-mapping', "confidence_weight": "strong"},
     {"signal": 'best alternative to a negotiated agreement', "territory": 'T13-negotiation-and-conflict-resolution', "mode": 'interest-mapping', "confidence_weight": "strong"},
-])
+]
+# Tag the lens-forward block so Stage 2 can detect a named-lens signal and
+# make it decisive (Problem 2 fix), then fold it into the alias list.
+for _lf in _LENS_FORWARD_ALIASES:
+    _lf.setdefault("evidence", "lens-alias")
+_PHASE9_SIGNAL_ALIASES.extend(_LENS_FORWARD_ALIASES)
 
 _PHASE9_SIGNAL_ALIASES.extend([
     {"signal": "causal analysis",
@@ -1969,6 +2015,12 @@ _FRAMEWORK_PHRASE_TYPOS = {
 _SIGNAL_REGISTRY_CACHE: list[dict] | None = None
 _FRAMEWORK_TOKENS_CACHE: set | None = None
 
+# Single-word T21 project-mode execution verbs that must NOT be fuzzy-match
+# targets (Problem 1). They still exact-match via the registry; this only
+# stops near-words ("product", "designed", "produced") from being typo-
+# corrected into a project-mode dispatch.
+_FUZZY_EXCLUDED_TOKENS = {"create", "draft", "design", "produce"}
+
 
 def _build_framework_tokens() -> set:
     """Extract single-word framework tokens (≥4 chars) from the registry.
@@ -1984,6 +2036,13 @@ def _build_framework_tokens() -> set:
         sig = entry["signal"].lower()
         # Single-word framework name
         if " " not in sig and "-" not in sig and len(sig) >= 4:
+            # Skip T21 project-mode's generic execution verbs (Problem 1).
+            # These are everyday English words, not distinctive technique
+            # names: a near-match ("product"→"produce", "designed"→"design")
+            # is almost always the real word, not a typo — and fuzzy-matching
+            # them hijacks analytical prompts to the execution mode.
+            if sig in _FUZZY_EXCLUDED_TOKENS:
+                continue
             tokens.add(sig)
         # Multi-word phrases — keep the first significant word too
         # so e.g., "frame audit" contributes "frame".
@@ -2512,7 +2571,7 @@ def _load_signal_registry() -> list[dict]:
             "mode": alias["mode"],
             "disambiguation_answer": alias.get("disambiguation_answer", "—"),
             "confidence_weight": alias["confidence_weight"],
-            "evidence": "phase-9 alias",
+            "evidence": alias.get("evidence", "phase-9 alias"),
         })
 
     _SIGNAL_REGISTRY_CACHE = entries
@@ -3074,6 +3133,25 @@ def _signal_kind(m: dict) -> str:
 
 def _select_dispatch_mode(matches: list[dict],
                           depth_signal: str | None) -> tuple[str | None, str]:
+    """Pick the best mode_id, deprioritizing T21 project-mode (Problem 1).
+
+    project-mode is the execution / non-analytical mode whose triggers are
+    generic execution verbs ("create", "draft", "design", "produce") that
+    also appear in analytical prompts. It must not pre-empt a genuine
+    analytical mode: run the normal priority cascade on the non-project-mode
+    matches first, and fall back to project-mode only when nothing analytical
+    dispatched (e.g. "Build me a React app" — pure execution intent).
+    """
+    if any(m.get("mode") == "project-mode" for m in matches):
+        analytical = [m for m in matches if m.get("mode") != "project-mode"]
+        mode_id, conf = _select_dispatch_mode_core(analytical, depth_signal)
+        if mode_id:
+            return mode_id, conf
+    return _select_dispatch_mode_core(matches, depth_signal)
+
+
+def _select_dispatch_mode_core(matches: list[dict],
+                          depth_signal: str | None) -> tuple[str | None, str]:
     """Pick the best mode_id, prioritizing in this order:
 
       1. Explicit framework name (registry method/mode-name reference)
@@ -3201,6 +3279,37 @@ def stage2_sufficiency_analyzer(prompt: str, stage1_output: dict,
             "territory": None,
             "rationale": f"conflict on axis '{c['axis']}'",
         }
+
+    # 2.3b Named-lens decisiveness (Problem 2). A canonical mental-model lens
+    # name (tagged evidence="lens-alias") is a strong, specific signal that
+    # should DIRECT routing to its host mode even when the prompt also carries
+    # competing or ambiguous signals that would otherwise trigger a
+    # cross-territory / within-territory disambiguation question. Fires only
+    # when the strong lens-aliases point to a single mode AND the prompt does
+    # not explicitly name a different technique (an explicit framework/mode
+    # name still wins — e.g. "principled negotiation ... BATNA"). The
+    # lens_dispatch flag lets Stage 3 treat the named-lens prompt as
+    # self-sufficient rather than re-eliciting an artifact (Problem 3).
+    strong_lens = [m for m in matches
+                   if m["confidence_weight"] == "strong"
+                   and (m.get("evidence") or "") == "lens-alias"]
+    if strong_lens:
+        lens_modes = {m["mode"] for m in strong_lens}
+        explicit_modes = {m["mode"] for m in matches
+                          if m["confidence_weight"] == "strong"
+                          and _signal_kind(m) == "explicit_framework"}
+        if len(lens_modes) == 1 and not (explicit_modes - lens_modes):
+            lens_mode = next(iter(lens_modes))
+            lens_match = next(m for m in strong_lens if m["mode"] == lens_mode)
+            return {
+                "dispatched_mode_id": lens_mode,
+                "disambiguation_questions_asked": [],
+                "disambiguation_answers_received": [],
+                "confidence": "high",
+                "territory": _territory_of(lens_match),
+                "rationale": f"named-lens decisive dispatch on {lens_mode}",
+                "lens_dispatch": True,
+            }
 
     # 2.4 Cross-territory adjacency check — when signals straddle two
     # territories, the cross-territory question fires first.
@@ -4523,6 +4632,17 @@ def run_pre_routing_pipeline(prompt: str,
     # --- Stage 3 ---
     mode_id = s2["dispatched_mode_id"]
     s3 = stage3_input_completeness_check(mode_id, full_prompt, context)
+
+    # Named-lens dispatch is self-sufficient (Problem 3): the user named a
+    # mental-model lens to apply to the situation they described, so don't
+    # re-elicit a pasted artifact / "who are the parties" — the lens + the
+    # described situation is enough to run. (Prompts that genuinely require a
+    # pasted artifact don't arrive via the lens-alias path; their primes
+    # supply the artifact and dispatch through the normal flow.)
+    if not s3["inputs_complete"] and s2.get("lens_dispatch"):
+        s3 = {**s3, "inputs_complete": True, "missing_fields": [],
+              "completeness_question": None, "graceful_degradation_offer": None,
+              "stage3_status": "complete-lens-dispatch"}
 
     if not s3["inputs_complete"]:
         # Completeness question first; graceful-degradation offer second if available
