@@ -807,6 +807,15 @@ def assemble_ranked_context(
     if type_filter is None and mode_text:
         type_filter = _knowledge_search._extract_mode_type_filter(mode_text)
 
+    # Mode-conditioned tag exclusions (e.g. `msi-news`) — parsed from the
+    # mode's `## RAG PROFILE → ### exclude_tags` subsection. None when the
+    # mode declares no exclusions (the default: nothing filtered out, so
+    # MSI news rides along with curated resources in the knowledge lane).
+    exclude_tags = (
+        _knowledge_search._extract_mode_exclude_tags(mode_text)
+        if mode_text else None
+    )
+
     # The `type_filter` in mode files is authored for the `knowledge`
     # collection's vault-type taxonomy (engram, resource, incubator,
     # etc.). The `conversations` collection's chunks all carry
@@ -821,6 +830,7 @@ def assemble_ranked_context(
     # conversations-side filter declaration.
     if collection == "conversations":
         type_filter = None
+        exclude_tags = None
 
     if max_chars is None:
         max_chars = RAG_MAX_CHARS
@@ -832,6 +842,7 @@ def assemble_ranked_context(
         type_filter=type_filter,
         include_private=include_private,
         include_archived=include_archived,
+        exclude_tags=exclude_tags,
     )
     ranked = rank_vault_chunks(chunks)
     return format_context_with_provenance(ranked, max_chars=max_chars)

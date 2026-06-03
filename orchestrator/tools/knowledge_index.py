@@ -72,7 +72,7 @@ CHROMADB_PATH = os.path.expanduser("~/ora/chromadb/")
 
 # Tag values that need fast where-filterable boolean extracts.
 # Schema §6.5 — these three tags drive the RAG retrieval filters.
-_FILTERABLE_TAGS = ("archived", "incubating", "private")
+_FILTERABLE_TAGS = ("archived", "incubating", "private", "msi-news")
 
 # Properties retired per Schema §9 — drop from metadata if a legacy
 # file still carries them.
@@ -343,8 +343,26 @@ def _build_embed_text(meta: dict[str, Any], body: str, filepath: str | None = No
 # ---------------------------------------------------------------------------
 
 
-def index_file(collection, filepath: str, stats: dict[str, int]) -> None:
-    """Index a single .md file into the knowledge collection."""
+def index_file(
+    collection,
+    filepath: str,
+    stats: dict[str, int],
+    meta_overrides: dict[str, Any] | None = None,
+    force: bool = False,
+) -> None:
+    """Index a single .md file into the knowledge collection.
+
+    meta_overrides, when given, are merged over the file's parsed
+    frontmatter before metadata composition and embed-text building. This
+    forces schema fields (e.g. type/tags/nexus) onto a corpus whose
+    on-disk files don't carry them — notably the MSI News mirror, an rsync
+    --delete copy of the cloud pipeline whose files can't be persistently
+    stamped (see orchestrator/tools/index_msi_news.py).
+
+    force=True re-indexes even when the id already exists (delete-then-add),
+    for refreshing a changed source file. Default False keeps the original
+    skip-if-already-indexed behaviour.
+    """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
@@ -358,16 +376,25 @@ def index_file(collection, filepath: str, stats: dict[str, int]) -> None:
         return
 
     meta, body = _parse_frontmatter(content)
+    if meta_overrides:
+        meta = {**meta, **meta_overrides}
     doc_id = os.path.abspath(filepath)
 
-    # Already-indexed check
-    try:
-        existing = collection.get(ids=[doc_id])
-        if existing and existing["ids"]:
-            stats["skipped"] += 1
-            return
-    except Exception:
-        pass
+    if force:
+        # Drop any prior copy so the re-index reflects current content/meta.
+        try:
+            collection.delete(ids=[doc_id])
+        except Exception:
+            pass
+    else:
+        # Already-indexed check
+        try:
+            existing = collection.get(ids=[doc_id])
+            if existing and existing["ids"]:
+                stats["skipped"] += 1
+                return
+        except Exception:
+            pass
 
     chroma_meta = _compose_chroma_metadata(filepath, meta)
     embed_text = _build_embed_text(meta, body, filepath)

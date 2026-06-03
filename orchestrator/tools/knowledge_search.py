@@ -81,6 +81,41 @@ def _extract_mode_type_filter(mode_text: str) -> Optional[list[str]]:
     return types or None
 
 
+def _extract_mode_exclude_tags(mode_text: str) -> Optional[list[str]]:
+    """Pull the `exclude_tags` list out of a mode file's RAG PROFILE.
+
+    Mirrors `_extract_mode_type_filter`. Looks for an `### exclude_tags`
+    subsection and returns the bracketed list of tag names to filter OUT
+    of retrieval. Returns None when the section is missing, malformed, or
+    empty — in which case nothing is excluded (the default: a tag like
+    `msi-news` rides along with the rest of the `knowledge` collection).
+
+    Mode files express exclude_tags like:
+
+        ### exclude_tags
+
+        Exclude chunks tagged: `[msi-news]`
+    """
+    if not mode_text:
+        return None
+
+    section_match = re.search(
+        r"^###\s+exclude_tags\s*\n(.*?)(?=^##|\Z)",
+        mode_text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if not section_match:
+        return None
+
+    list_match = _TYPE_FILTER_LIST_RE.search(section_match.group(1))
+    if not list_match:
+        return None
+
+    tags = [t.strip() for t in list_match.group(1).split(",")]
+    tags = [t for t in tags if t]
+    return tags or None
+
+
 # ---------------------------------------------------------------------------
 # Where-clause composition
 # ---------------------------------------------------------------------------
@@ -91,6 +126,7 @@ def _build_where_clause(
     type_filter: Optional[list[str]],
     include_private: bool,
     include_archived: bool,
+    exclude_tags: Optional[list[str]] = None,
 ) -> Optional[dict[str, Any]]:
     """Compose a ChromaDB where-clause for the supplied filters.
 
@@ -114,6 +150,14 @@ def _build_where_clause(
             clauses.append({"tag_archived": False})
         if not include_private:
             clauses.append({"tag_private": False})
+        # Mode-conditioned tag exclusions (e.g. `msi-news`). Uses
+        # `$ne True` rather than `== False` so that documents indexed
+        # before the tag was added to knowledge_index._FILTERABLE_TAGS
+        # (field absent) are treated as not carrying the tag and stay
+        # retrievable. Verified against ChromaDB 1.5.5 missing-key
+        # semantics: `{$ne: True}` matches both `False` and absent.
+        for _tag in (exclude_tags or []):
+            clauses.append({f"tag_{_tag}": {"$ne": True}})
     elif collection == "conversations":
         # Legacy V3: stealth/private encoded in a single `tag` string
         # field. Archived isn't represented in the conversations
@@ -163,6 +207,7 @@ def knowledge_search(
     type_filter: Optional[list[str]] = None,
     include_private: bool = False,
     include_archived: bool = False,
+    exclude_tags: Optional[list[str]] = None,
 ) -> str:
     """Query a ChromaDB collection with schema-aware tag filters.
 
@@ -204,6 +249,7 @@ def knowledge_search(
             type_filter=type_filter,
             include_private=include_private,
             include_archived=include_archived,
+            exclude_tags=exclude_tags,
         )
 
         query_kwargs: dict[str, Any] = {
@@ -232,6 +278,7 @@ def knowledge_search_raw(
     type_filter: Optional[list[str]] = None,
     include_private: bool = False,
     include_archived: bool = False,
+    exclude_tags: Optional[list[str]] = None,
 ) -> list[dict[str, Any]]:
     """Like `knowledge_search` but returns raw chunk dicts instead of a
     formatted string. Used by the Phase 5.6 ranker.
@@ -265,6 +312,7 @@ def knowledge_search_raw(
             type_filter=type_filter,
             include_private=include_private,
             include_archived=include_archived,
+            exclude_tags=exclude_tags,
         )
 
         query_kwargs: dict[str, Any] = {
