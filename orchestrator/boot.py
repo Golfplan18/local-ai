@@ -7241,6 +7241,40 @@ _PIPELINE_STEPS = frozenset({
 })
 
 
+def _model_tool_selection_enabled() -> bool:
+    """Whether the model-driven tool escape hatch is on (Option C, default off).
+
+    Capability note: enable ORA_MODEL_TOOL_SELECTION only for configurations
+    whose analyst slots run tool-capable models — weak local models (e.g. the
+    9B that drives the $1K-hardware demo) emit malformed tool calls. Leave OFF
+    during the G1.11 comparative evaluation so captures stay reproducible
+    (model-chosen tools would confound the four-config comparison). Model-
+    initiated calls are audited by the dispatcher's _log_dispatch like any other.
+    Capability gating is by this flag plus operator discipline; an automatic
+    per-endpoint gate (a `tool_capable` flag) was considered and dropped
+    2026-06-05 as not worth the hot-path cost for the mixed-config case.
+    """
+    val = os.environ.get("ORA_MODEL_TOOL_SELECTION", "0").strip().lower()
+    return val not in ("", "0", "false", "no", "off")
+
+
+def _get_requestable_tools_catalog(mode_text: str) -> str:
+    """Analyst-step ``## REQUESTABLE TOOLS`` block (model-driven escape hatch).
+
+    Empty string unless ORA_MODEL_TOOL_SELECTION is enabled and the mode
+    declares a ## TOOLS -> Model-requestable allowlist. Thin wrapper over
+    tool_selector.build_requestable_tools_catalog (which holds the testable
+    logic). Fail-soft: any import/parse error yields "".
+    """
+    try:
+        from tool_selector import build_requestable_tools_catalog
+        return build_requestable_tools_catalog(
+            mode_text, enabled=_model_tool_selection_enabled(),
+        )
+    except Exception:
+        return ""
+
+
 def build_system_prompt_for_gear(
     context_package: dict,
     slot: str = "breadth",
@@ -7383,6 +7417,14 @@ def build_system_prompt_for_gear(
         mcp_catalog = _get_mcp_tool_catalog()
         if mcp_catalog:
             parts.append(f"\n{mcp_catalog}")
+        # G1.10 #7 — model-driven tool escape hatch (Option C, default off via
+        # ORA_MODEL_TOOL_SELECTION). When enabled, surfaces the mode's
+        # ## TOOLS -> Model-requestable allowlist so the analyst can request
+        # those read tools through the existing <tool_call> agentic loop. Empty
+        # string (clean no-op) when the flag is off or the mode declares none.
+        requestable_catalog = _get_requestable_tools_catalog(mode_text)
+        if requestable_catalog:
+            parts.append(f"\n{requestable_catalog}")
         if instructions:
             parts.append(f"\n## MODE INSTRUCTIONS — {mode_name}\n\n{instructions}")
     elif step == "evaluator":
