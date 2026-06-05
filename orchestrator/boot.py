@@ -5914,6 +5914,61 @@ def _format_rag_candidates_md(candidates: list) -> str:
     return "\n".join(lines)
 
 
+def _format_extraction_md(extraction: dict | None) -> str:
+    """Render the Process 14 extraction-escalation sub-trace as readable
+    markdown — the trigger decision (which URLs were deep-fetched and why the
+    rest were not), the fetch tier each used, and the fit-gate keep/drop on
+    every extracted passage. Written into the step2-web-consultation trace so a
+    real turn's web-side decisions are auditable at a glance, not just as JSON.
+    """
+    ex = extraction or {}
+    status = ex.get("status")
+    if not status:
+        return "_(extraction escalation did not run — flag off or no web chunks)_"
+    out = [f"**Status:** `{status}`"
+           + (f" — {ex.get('reason')}" if ex.get("reason") else "")]
+    cands = ex.get("candidates") or []
+    selected = [c for c in cands if c.get("selected")]
+    out.append(
+        f"\n**Considered {len(cands)} candidate URL(s); deep-fetched "
+        f"{len(selected)}.** Passages extracted/kept/dropped: "
+        f"{ex.get('passages_extracted', 0)}/{ex.get('passages_kept', 0)}/"
+        f"{ex.get('passages_dropped', 0)}."
+    )
+    if selected:
+        fetch_by_url = {f.get("url"): f for f in (ex.get("fetches") or [])}
+        out.append("\n**Deep-fetched:**\n")
+        out.append("| trust | tier (passages) | source |")
+        out.append("|-------|-----------------|--------|")
+        for c in selected:
+            f = fetch_by_url.get(c.get("url"), {})
+            try:
+                w = f"{float(c.get('weight') or 0):.2f}"
+            except (TypeError, ValueError):
+                w = "?"
+            tier = f"{f.get('channel_used') or '?'} ({f.get('passages', 0)}p)"
+            if f.get("error"):
+                tier += f" ERR:{str(f['error'])[:28]}"
+            src = str(c.get("url", ""))[:72].replace("|", r"\|")
+            out.append(f"| {w} {c.get('classification', '')} | {tier} | {src} |")
+    skipped = [c for c in cands if not c.get("selected")]
+    if skipped:
+        from collections import Counter
+        reasons = Counter((c.get("skip_reason") or "?") for c in skipped)
+        out.append("\n**Not fetched:** "
+                   + ", ".join(f"{k}×{v}" for k, v in reasons.most_common()))
+    verds = ex.get("verdicts") or []
+    if verds:
+        out.append("\n**Fit-gate keep/drop on extracted passages:**\n")
+        out.append("| verdict | reason | preview |")
+        out.append("|---------|--------|---------|")
+        for v in verds:
+            rsn = str(v.get("reason", ""))[:48].replace("|", r"\|")
+            prev = str(v.get("preview", ""))[:44].replace("|", r"\|")
+            out.append(f"| {str(v.get('verdict', '')).upper()} | {rsn} | {prev} |")
+    return "\n".join(out)
+
+
 def _env_flag(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "on", "true", "yes")
 
@@ -6470,14 +6525,6 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 "chars": len(relationship_rag),
                 "content": relationship_rag,
             },
-            # Web consultation trace (F-Consult) — intents, per-tier chunk
-            # counts, conflict detection, and the Process 14 extraction
-            # escalation sub-trace (which URLs were deep-fetched, each fetch's
-            # resolved tier, and the fit-gate keep/drop on every extracted
-            # passage). Persisted so a real turn's web-side decisions are
-            # auditable on disk alongside the vault-RAG candidates, not just
-            # held in memory during the turn.
-            "web_consultation": consultation_trace,
             "rag_signals": signal_descriptions,
             "rag_utilization_header": rag_utilization,
             "hardware_tier": hardware_tier,
@@ -6574,6 +6621,8 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 + "\n".join(
                     f"- {s}" for s in consultation_trace.get("signals", [])
                 )
+                + "\n\n## Extraction escalation (Process 14)\n\n"
+                + _format_extraction_md(consultation_trace.get("extraction"))
                 + "\n"
             ))
 
