@@ -18,6 +18,13 @@ export ORA_HOME="$WORKSPACE"
 export ORA_RAG_SELECTION=1
 export ORA_RAG_FIT_GATE_SLOT=sidebar
 
+# Extraction escalation (Process 14): when a high-trust Step-2 web snippet is
+# too thin to carry the needed detail, deep-fetch the full page, chunk it,
+# fit-gate the passages, and fold survivors into WEB CONTEXT. Bounded
+# (<=3 fetches/turn) + fail-closed. See Book — RAG Architecture Report v2.0
+# §"Process 14". Enabled 2026-06-05.
+export ORA_WEB_EXTRACTION=1
+
 # Kill any stale server process
 pkill -f "server/server.py" 2>/dev/null
 sleep 1
