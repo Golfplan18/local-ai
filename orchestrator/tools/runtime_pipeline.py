@@ -76,6 +76,7 @@ class RuntimeResult:
     notes_extracted: int = 0
     notes_approved: int = 0
     notes_review: int = 0
+    notes_promoted: int = 0
     relationships_found: int = 0
     pass2_relationships: int = 0
     convergence_flags: list[str] = field(default_factory=list)
@@ -204,6 +205,21 @@ class RuntimePipeline:
             result.steps_completed.append("convergence_check")
         except Exception as e:
             result.steps_failed.append(f"convergence_check: {e}")
+
+        # Step 14: Promote staged notes into the vault as engrams — the
+        # previously-missing final step that closes the conversation→engram loop.
+        # Runs last so promoted engrams carry the relationships/enrichment added
+        # by steps 8/12. Behind ORA_RUNTIME_ENGRAM_PROMOTION (off by default) so
+        # merging this changes nothing until the flag is set.
+        try:
+            if os.environ.get("ORA_RUNTIME_ENGRAM_PROMOTION", "").strip().lower() in (
+                    "1", "on", "true", "yes"):
+                from orchestrator.tools.engram_promotion import promote_staging_dir
+                promo = promote_staging_dir(index=True)
+                result.notes_promoted = promo.get("promoted", 0)
+                result.steps_completed.append("engram_promotion")
+        except Exception as e:
+            result.steps_failed.append(f"engram_promotion: {e}")
 
         result.total_time_seconds = time.time() - start_time
 
