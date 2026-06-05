@@ -6425,6 +6425,32 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     consultation_trace = {"status": "errored",
                                           "reason": str(exc)[:300]}
 
+    # Step 2 deterministic tool resolution (Option C deterministic lane —
+    # G1.10 #7). When the dispatched mode declares ## TOOLS → Deterministic,
+    # run those tools with prompt-derived parameters and inject the results as
+    # the ## TOOL RESULTS block. Ora-driven (not model-driven): the same tools
+    # fire regardless of slot model, so this is reproducible and safe under the
+    # G1.11 comparative evaluation. Gear >= 2 only (mirrors web consultation;
+    # Gear 1 / bypass skip). Fail-soft: never blocks the pipeline. The
+    # model-driven escape hatch is separate (behind ORA_MODEL_TOOL_SELECTION).
+    tool_results = ""
+    tool_selection_trace: dict = {"status": "skipped", "reason": "not_attempted"}
+    if gear >= 2:
+        try:
+            from tool_selector import run_deterministic_tools as _run_det_tools
+            _tsel = _run_det_tools(
+                mode_text, raw_prompt or cleaned_nl or cleaned_prompt,
+            )
+            tool_results = _tsel.get("body", "") or ""
+            tool_selection_trace = _tsel.get("trace") or tool_selection_trace
+        except Exception as exc:
+            print(
+                f"[tool-selector] unexpected error: {exc}. "
+                f"Continuing without deterministic tools.",
+                file=sys.stderr, flush=True,
+            )
+            tool_selection_trace = {"status": "errored", "reason": str(exc)[:300]}
+
     # Phase 9 — Decision I/J output format expansion. New fields surface
     # pre-routing-pipeline state populated by run_step1_cleanup → routing.
     pre_routing = step1_result.get("pre_routing", {}) or {}
@@ -6661,6 +6687,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         # intents ran, which failed, chunks retained by tier, latency,
         # signals. Kept on the package for server-side observability.
         "consultation_trace": consultation_trace,
+        # Step 2 deterministic tool results (Option C deterministic lane).
+        # Pre-formatted body injected by build_system_prompt_for_gear as the
+        # ## TOOL RESULTS block; empty string when no mode-declared tool ran.
+        "tool_results": tool_results,
+        "tool_selection_trace": tool_selection_trace,
         "triage_tier": step1_result["triage_tier"],
         "rag_signals": rag_signals,
         "rag_utilization": rag_utilization,
@@ -7414,6 +7445,13 @@ def build_system_prompt_for_gear(
         # approved-tier sources higher, open-web lower, with duplication
         # across vault/web/training as cross-confirmation signal.
         parts.append(f"\n## WEB CONTEXT (Step 2 F-Consult consultation)\n\n{context_package['web_rag']}")
+    if context_package.get("tool_results"):
+        # Step 2 deterministic tool calls (mode-declared ## TOOLS →
+        # Deterministic). Ora retrieved these BEFORE the analyst runs, with
+        # prompt-derived parameters — the same tools fire regardless of slot
+        # model. Treat as retrieved evidence, not the user's words; weigh by
+        # source as with web context.
+        parts.append(f"\n## TOOL RESULTS (Step 2 deterministic tool calls)\n\n{context_package['tool_results']}")
 
     # Step 2 F-Consult prompt-sanity advisories. The fast model's light
     # factual-sanity check may flag surface-level errors in the user's

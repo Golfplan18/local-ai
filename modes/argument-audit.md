@@ -308,6 +308,16 @@ Mental models (always loaded):
 - allisons-three-lenses
 
 ---
+
+## TOOLS
+
+### Deterministic (Ora runs at context assembly)
+- web_fetch — fetch any URLs included in the prompt (the artifact under audit is often a linked article or post)
+
+### Model-requestable (escape hatch; capable slots only, behind ORA_MODEL_TOOL_SELECTION)
+- web_search
+
+---
 ## RAG PROFILE
 
 ### type_filter
