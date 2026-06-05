@@ -232,13 +232,21 @@ def reembed_collection(
         # Fetch a page of ids from source.
         page_ids = all_ids[idx : idx + fetch_size]
         page = source.get(ids=page_ids, include=["documents", "metadatas"])
+        # CRITICAL: chromadb's get(ids=[...]) returns rows in STORAGE order,
+        # NOT in the requested `page_ids` order. ids/documents/metadatas in the
+        # response are aligned with each OTHER, so we must zip the RETURNED ids
+        # (page.get("ids")) with the returned docs/metas — never `page_ids`.
+        # Zipping page_ids here welds each id to another row's doc+meta, which
+        # silently corrupted the v2 collections in the 2026-05-29 migration
+        # (id↔payload misalignment; doc+meta stayed mutually consistent).
+        page_ret_ids: list[str] = page.get("ids") or []
         page_docs: list[str] = page.get("documents") or []
         page_metas: list[dict] = page.get("metadatas") or []
         # Filter out empty docs — Ollama embed errors on empty strings.
         keep_ids: list[str] = []
         keep_docs: list[str] = []
         keep_metas: list[dict] = []
-        for pid, pdoc, pmeta in zip(page_ids, page_docs, page_metas):
+        for pid, pdoc, pmeta in zip(page_ret_ids, page_docs, page_metas):
             if not pdoc or not str(pdoc).strip():
                 docs_skipped_empty += 1
                 continue
