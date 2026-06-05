@@ -3,7 +3,7 @@
 Implements the four-stage cascade from Reference — Ora YAML Schema §15
 (rev 3, 2026-04-30) for live web fetches:
 
-    1. Whitelist match (high-provenance) → "whitelisted" (0.7)
+    1. Whitelist match (high-provenance) → "whitelisted" (0.8, resource tier)
     2. Page-specific override            → override's declared tier
     3. Corroboration count (≥2 unaffiliated domains in result set)
                                           → "corroborated" (0.3)

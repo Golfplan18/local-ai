@@ -25,6 +25,12 @@ export ORA_RAG_FIT_GATE_SLOT=sidebar
 # §"Process 14". Enabled 2026-06-05.
 export ORA_WEB_EXTRACTION=1
 
+# Conversation→engram loop: after each session, promote the runtime-extracted,
+# quality-gated atomic notes from staging into the vault as engrams (the
+# previously-missing final step). See engram_promotion.py + Working — RAG
+# Sources and Provenance Rework 2026-06-05 §7. Enabled 2026-06-05.
+export ORA_RUNTIME_ENGRAM_PROMOTION=1
+
 # Kill any stale server process
 pkill -f "server/server.py" 2>/dev/null
 sleep 1

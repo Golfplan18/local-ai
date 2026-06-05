@@ -12,27 +12,35 @@ Authoritative reference: Reference — Ora YAML Schema §4 (type vocabulary
 + weights), §5 (provenance hierarchy), §6.5 (weight-modifier tags).
 Last revised 2026-05-10 (rev 5.1 — `superseded` temporal-state tag).
 
-Vault tier — eleven types. Weights:
-    engram                              → 1.0   (user-authored, no decay)
-    engram + ai-derived tag             → 0.9   (AI-side cleaned-pair atomic)
-    engram + source-derived tag         → 0.9   (DP-of-external-doc atomic)
-    resource                            → 0.8   (vetted external, no decay)
+Vault tier (rev 5.2, 2026-06-05). Weights:
+    engram                              → 1.0   (a kept atomic note — user-side OR
+                                                  AI-side; no decay)
+    resource                            → 0.8   (vetted reference material the user
+                                                  curated, incl. trusted websites; no decay)
     resource + superseded tag           → 0.6   (older version of evolving story)
-    chat, transcript                    → 0.6   (conversation/recording, decays)
+    chat, transcript                    → 0.6   (conversation/recording; the backup /
+                                                  shaping layer; decays)
     web                                 → 0.1   (manually saved web, decays)
     framework, mode, reference,
       working, matrix, supervision      → None  (not retrieved)
 
 External tier (live web fetches; never written to vault by default):
-    whitelisted   → 0.7   (matches Reference — Trusted Web Sources)
+    whitelisted   → 0.8   (matches Reference — Trusted Web Sources; a cleared site
+                           is curated reference, so it weights at the resource tier)
     corroborated  → 0.3   (≥2 unaffiliated occurrences in result set)
     single        → 0.15  (one non-farm source)
     excluded      → 0.0   (link farm / blacklisted; filtered before ranking)
 
-AHI grounding (load-bearing): AI-derived and source-derived engrams
-carry a 0.9 modifier so AI-authored and external-author claims never
-outrank user-authored engrams at retrieval. Curation by the user does
-not transfer authorship; the claim still belongs to its originator.
+AHI grounding (load-bearing): retrieval trust follows the user's observational
+standing — whether the user has reviewed and KEPT a claim — not which keyboard
+typed it. The former `ai-derived` / `source-derived` 0.9 caps were RETIRED
+2026-06-05: a kept engram is the user's adopted thinking regardless of whether
+the words originated with the AI, and the extraction quality gate already weeds
+out AI content the user pushed back on. (Those tags may persist on notes as a
+provenance record; they no longer affect weight.) Likewise a website the user
+has cleared onto the trusted list is curated reference, so it weights as a
+resource (0.8), not a discounted external source. See `Working — RAG Sources and
+Provenance Rework 2026-06-05`.
 
 News-supersession grounding (rev 5.1): `superseded` resources stay in
 retrieval (weight modifier, not filter) because news stories develop
@@ -48,7 +56,7 @@ from typing import Optional
 
 
 TYPE_WEIGHTS: dict[str, Optional[float]] = {
-    "engram":      1.0,    # tag-modified per PROVENANCE_MODIFIER_TAGS below
+    "engram":      1.0,    # user-side OR AI-side; authorship no longer modifies weight
     "resource":    0.8,
     "chat":        0.6,
     "transcript":  0.6,
@@ -62,12 +70,13 @@ TYPE_WEIGHTS: dict[str, Optional[float]] = {
 }
 
 
-# Tags applied to engrams that lower the effective retrieval weight to
-# signal not-user-authored provenance. Per §6.5 of the YAML Schema.
-PROVENANCE_MODIFIER_TAGS: dict[str, float] = {
-    "ai-derived":     0.9,   # AI-side of cleaned-pair conversations
-    "source-derived": 0.9,   # DP atomic extracted from external document
-}
+# Engram provenance-modifier tags (`ai-derived`, `source-derived`) were RETIRED
+# 2026-06-05. They capped AI-/external-authored engrams to 0.9, but retrieval
+# trust now follows review-status (a kept engram is the user's adopted thinking)
+# rather than authorship side. The tags may persist on notes as a provenance
+# record; they no longer modify weight. Left as an empty dict (not removed) so
+# the modifier mechanism remains available for any future weight modifier.
+PROVENANCE_MODIFIER_TAGS: dict[str, float] = {}
 
 
 # Tags applied to resources (typically news articles) that lower the
@@ -87,7 +96,7 @@ DECAY_ELIGIBLE_TYPES: set[str] = {
 
 
 EXTERNAL_WEIGHTS: dict[str, float] = {
-    "whitelisted":  0.7,
+    "whitelisted":  0.8,   # cleared site = curated reference (resource tier)
     "corroborated": 0.3,
     "single":       0.15,
     "excluded":     0.0,
@@ -99,9 +108,10 @@ def weight_for(chunk_type: Optional[str],
     """Look up the effective retrieval weight for a chunk.
 
     Combines the type's base weight with any weight-modifier tags
-    present (per §6.5). Two tag families act as modifiers:
-      - PROVENANCE_MODIFIER_TAGS (`ai-derived`, `source-derived`) —
-        applied to engrams to signal not-user-authored provenance.
+    present (per §6.5). The modifier families:
+      - PROVENANCE_MODIFIER_TAGS — empty since 2026-06-05 (the engram
+        `ai-derived` / `source-derived` caps were retired; authorship no
+        longer modifies weight).
       - TEMPORAL_STATE_TAGS (`superseded`) — applied to resources to
         signal that a newer version of the story exists.
 

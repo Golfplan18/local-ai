@@ -1,9 +1,11 @@
 """Tests for orchestrator/provenance.py — Phase 5.1.
 
-Contract from Reference — Ora YAML Schema §4 (rev 5, 2026-05-09):
-    Eleven types in the vocabulary. Provenance weights and decay
-    eligibility are derived from type, with provenance-modifier tags
-    (`ai-derived`, `source-derived`) lowering effective weight per §6.5.
+Contract from Reference — Ora YAML Schema §4 (rev 5.2, 2026-06-05):
+    Eleven types in the vocabulary. Provenance weights and decay eligibility
+    are derived from type. The engram authorship caps (`ai-derived`,
+    `source-derived`) were retired 2026-06-05 — trust follows whether the user
+    kept the claim, not which side typed it. `superseded` (resources) remains a
+    weight modifier per §6.5.
 
 Contract from Reference — Ora YAML Schema §5:
     External tier (live web fetches) classified as one of four values, each
@@ -74,16 +76,17 @@ class TestTypeWeights(unittest.TestCase):
 
 
 class TestProvenanceModifierTags(unittest.TestCase):
-    """Provenance-modifier tags lower effective engram weight per §6.5."""
+    """The engram authorship caps (`ai-derived`, `source-derived`) were retired
+    2026-06-05 — trust follows review-status, not authorship side."""
 
-    def test_ai_derived_modifier(self):
-        self.assertEqual(provenance.PROVENANCE_MODIFIER_TAGS["ai-derived"], 0.9)
+    def test_ai_derived_retired(self):
+        self.assertNotIn("ai-derived", provenance.PROVENANCE_MODIFIER_TAGS)
 
-    def test_source_derived_modifier(self):
-        self.assertEqual(provenance.PROVENANCE_MODIFIER_TAGS["source-derived"], 0.9)
+    def test_source_derived_retired(self):
+        self.assertNotIn("source-derived", provenance.PROVENANCE_MODIFIER_TAGS)
 
-    def test_modifier_set_size(self):
-        self.assertEqual(len(provenance.PROVENANCE_MODIFIER_TAGS), 2)
+    def test_modifier_set_empty(self):
+        self.assertEqual(len(provenance.PROVENANCE_MODIFIER_TAGS), 0)
 
 
 class TestWeightFor(unittest.TestCase):
@@ -97,18 +100,18 @@ class TestWeightFor(unittest.TestCase):
         self.assertEqual(provenance.weight_for("resource"), 0.8)
 
     def test_engram_with_ai_derived_tag(self):
-        # AHI grounding: AI-derived engrams are weighted below user-authored.
-        self.assertEqual(provenance.weight_for("engram", ["ai-derived"]), 0.9)
+        # Cap retired 2026-06-05: a kept engram is adopted thinking regardless
+        # of authorship side. AI-side engrams now weigh the same as user-side.
+        self.assertEqual(provenance.weight_for("engram", ["ai-derived"]), 1.0)
 
     def test_engram_with_source_derived_tag(self):
-        # External-author engrams are weighted at the same tier as AI-derived.
-        self.assertEqual(provenance.weight_for("engram", ["source-derived"]), 0.9)
+        self.assertEqual(provenance.weight_for("engram", ["source-derived"]), 1.0)
 
-    def test_engram_with_both_modifier_tags(self):
-        # Defensive: if both apply, the lower (or equal) wins.
+    def test_engram_authorship_tags_no_longer_modify(self):
+        # The former caps are inert tags now.
         self.assertEqual(
             provenance.weight_for("engram", ["ai-derived", "source-derived"]),
-            0.9,
+            1.0,
         )
 
     def test_engram_with_unrelated_tags_unchanged(self):
@@ -122,15 +125,11 @@ class TestWeightFor(unittest.TestCase):
         self.assertEqual(provenance.weight_for("engram", []), 1.0)
         self.assertEqual(provenance.weight_for("engram", None), 1.0)
 
-    def test_modifier_tags_on_non_engram_apply(self):
-        # The modifier is keyed on tag, not type — if a resource somehow
-        # carries `ai-derived`, the modifier still applies (defensive).
-        # Unlikely in practice but the invariant is: tag-aware weighting
-        # is uniform.
-        self.assertEqual(
-            provenance.weight_for("resource", ["ai-derived"]),
-            0.8,  # min(0.8, 0.9) — base wins because base is lower
-        )
+    def test_retired_authorship_tags_are_inert(self):
+        # `ai-derived` no longer modifies weight anywhere — a resource (or any
+        # type) carrying it keeps its base weight.
+        self.assertEqual(provenance.weight_for("resource", ["ai-derived"]), 0.8)
+        self.assertEqual(provenance.weight_for("engram", ["ai-derived"]), 1.0)
 
     def test_non_retrieved_type_returns_none(self):
         # Not-retrieved types return None regardless of tags.
@@ -183,7 +182,13 @@ class TestExternalWeights(unittest.TestCase):
     """External-tier classifications per Schema §5 (live web fetches)."""
 
     def test_whitelisted_weight(self):
-        self.assertEqual(provenance.EXTERNAL_WEIGHTS["whitelisted"], 0.7)
+        # Merged into the resource tier 2026-06-05: a cleared site is curated
+        # reference, so a trusted-web hit weighs the same as a saved resource.
+        self.assertEqual(provenance.EXTERNAL_WEIGHTS["whitelisted"], 0.8)
+
+    def test_whitelisted_matches_resource_tier(self):
+        self.assertEqual(provenance.EXTERNAL_WEIGHTS["whitelisted"],
+                         provenance.TYPE_WEIGHTS["resource"])
 
     def test_corroborated_weight(self):
         self.assertEqual(provenance.EXTERNAL_WEIGHTS["corroborated"], 0.3)
@@ -201,26 +206,22 @@ class TestExternalWeights(unittest.TestCase):
 class TestOrdering(unittest.TestCase):
     """Provenance ordering invariants the ranker depends on (rev 5)."""
 
-    def test_user_engram_outranks_ai_derived_engram(self):
-        # AHI grounding: human-authored beats AI-authored at retrieval.
-        self.assertGreater(
+    def test_ai_side_engram_equals_user_side(self):
+        # 2026-06-05: the authorship gap was retired. A kept engram weighs 1.0
+        # whether its words originated with the user or the AI.
+        self.assertEqual(
             provenance.weight_for("engram"),
             provenance.weight_for("engram", ["ai-derived"]),
         )
-
-    def test_user_engram_outranks_source_derived_engram(self):
-        # External-author engrams are subordinate to user-authored.
-        self.assertGreater(
+        self.assertEqual(
             provenance.weight_for("engram"),
             provenance.weight_for("engram", ["source-derived"]),
         )
 
-    def test_engram_tagged_outranks_resource(self):
-        # An AI-derived or source-derived engram still ranks above a
-        # raw resource chunk — the distillation premium survives the
-        # provenance discount.
+    def test_engram_outranks_resource(self):
+        # Engrams (the user's kept thinking) rank above curated resources.
         self.assertGreater(
-            provenance.weight_for("engram", ["ai-derived"]),
+            provenance.weight_for("engram"),
             provenance.weight_for("resource"),
         )
 
@@ -318,9 +319,9 @@ class TestSupersededTag(unittest.TestCase):
             0.8,
         )
 
-    def test_multiple_modifiers_take_minimum(self):
-        # Defensive: if a resource somehow carried both `superseded`
-        # (0.6) and `ai-derived` (0.9), the minimum (0.6) wins.
+    def test_superseded_with_inert_authorship_tag(self):
+        # `superseded` (0.6) still modifies; `ai-derived` is now inert, so a
+        # resource with both lands at 0.6 (superseded alone).
         self.assertEqual(
             provenance.weight_for(
                 "resource",
