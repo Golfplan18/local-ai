@@ -11,6 +11,13 @@ WORKSPACE="$HOME/ora"
 export HOME
 export ORA_HOME="$WORKSPACE"
 
+# RAG selection layer (Process 13): wider retrieval + similarity floor +
+# relevance fit-gate + dedup, applied to every retrieval lane. The pipeline
+# behaves as before without this var. See Book — RAG Architecture Report v2.0
+# §"Process 13". Enabled 2026-06-04.
+export ORA_RAG_SELECTION=1
+export ORA_RAG_FIT_GATE_SLOT=sidebar
+
 # Kill any stale server process
 pkill -f "server/server.py" 2>/dev/null
 sleep 1
