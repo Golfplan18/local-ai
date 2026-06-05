@@ -8909,10 +8909,14 @@ _PIPELINE_LEAK_HEADING_RE = re.compile(
     + r")[ \t]*:?[ \t]*$"
 )
 
-# The verifier verdict line, line-anchored to the contract form. "The jury's
-# verdict: guilty" or prose mentioning a verdict will NOT match — only a line
-# that starts with VERDICT: followed by PASS / FAIL / BROKEN.
-_VERDICT_LINE_RE = re.compile(r"(?im)^[ \t]*VERDICT:[ \t]*(?:PASS|FAIL|BROKEN)\b.*$")
+# A leaked verifier verdict line, line-anchored to the contract form. "The
+# jury's verdict: guilty" or prose mentioning a verdict will NOT match — only a
+# line starting with VERDICT: followed by PASS / FAIL / BROKEN. NAMED DISTINCTLY
+# from the verifier's own ``_VERDICT_LINE_RE`` (defined far above, with a
+# ``(?P<verdict>…)`` group that ``_extract_structured_verdict`` reads). Do NOT
+# reuse that name — this regex has no named group, and shadowing it breaks the
+# verifier health check with "no such group".
+_SCRUB_VERDICT_LINE_RE = re.compile(r"(?im)^[ \t]*VERDICT:[ \t]*(?:PASS|FAIL|BROKEN)\b.*$")
 
 
 def _scrub_pipeline_leaks(text: str) -> tuple[str, list[str], bool]:
@@ -8939,7 +8943,7 @@ def _scrub_pipeline_leaks(text: str) -> tuple[str, list[str], bool]:
     removed: list[str] = []
     kept: list[str] = []
     for line in text.split("\n"):
-        if _PIPELINE_LEAK_HEADING_RE.match(line) or _VERDICT_LINE_RE.match(line):
+        if _PIPELINE_LEAK_HEADING_RE.match(line) or _SCRUB_VERDICT_LINE_RE.match(line):
             removed.append(line.strip())
             continue
         kept.append(line)

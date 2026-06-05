@@ -182,5 +182,37 @@ class TestGear3LeakFixContract(unittest.TestCase):
         self.assertEqual(extract_revised_draft_section(""), "")
 
 
+class TestScrubDoesNotShadowVerifier(unittest.TestCase):
+    """Regression guard for the _VERDICT_LINE_RE name collision (2026-06-05).
+
+    The scrub's verdict regex must NOT reuse the name of the verifier's own
+    ``_VERDICT_LINE_RE`` (whose ``(?P<verdict>...)`` group
+    ``_extract_structured_verdict`` reads). The collision shadowed the
+    verifier's regex with one that has no named group, so every verifier
+    health-check raised ``no such group`` — silently disabling verification
+    across gear-3 and gear-4 (the structural-fallback unblocked every cycle).
+    These assert the verifier path is intact.
+    """
+
+    def test_extract_structured_verdict_does_not_raise(self):
+        # The exact operation that threw: .group("verdict") on a verdict line.
+        self.assertEqual(boot._extract_structured_verdict("checks done.\n\nVERDICT: PASS"), "PASS")
+        self.assertEqual(boot._extract_structured_verdict("issues found.\n\nVERDICT: FAIL"), "FAIL")
+        self.assertEqual(boot._extract_structured_verdict("VERDICT: BROKEN"), "BROKEN")
+        # legacy free-form must still classify (not raise)
+        self.assertIsNotNone(boot._extract_structured_verdict("The analysis is sound.\n\nVERIFIED"))
+
+    def test_verifier_health_check_passes_on_valid_verdict(self):
+        # The exact call that threw in the gear-4 smoke test (step6 verifier).
+        ok, reason = boot._step_output_health(
+            "Ran V1-V9. All checks pass.\n\nVERDICT: PASS", "verifier", min_chars=20)
+        self.assertTrue(ok, f"verifier health check should pass, got: {reason!r}")
+
+    def test_the_two_verdict_regexes_are_distinct(self):
+        # Verifier's regex carries the named group; the scrub's deliberately does not.
+        self.assertIn("verdict", boot._VERDICT_LINE_RE.groupindex)
+        self.assertEqual(boot._SCRUB_VERDICT_LINE_RE.groupindex, {})
+
+
 if __name__ == "__main__":
     unittest.main()
