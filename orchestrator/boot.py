@@ -8863,6 +8863,99 @@ def _neutralise_formatter_leak(text: str) -> tuple[str, str]:
     return text, note
 
 
+# ── Step 8.5: generalized deliverable scrub ─────────────────────────────────
+# The narrow ``_FORMATTER_LEAK_RE`` above catches one leak family (the "corpus
+# material not captured" process-meta heading, 2026-06-01). This generalizes
+# the same lesson MSI's ``normalize_article`` proved in production: a
+# deterministic, zero-model final pass that strips Ora's OWN internal
+# vocabulary when it leaks into a user-facing deliverable.
+#
+# Deliberately HIGH-PRECISION. The deny-list holds only whole-line headings
+# whose text EXACTLY matches an internal f-* / mode contract section name that
+# is unmistakable Ora jargon — a real analytical answer would essentially
+# never use it as a heading. Ambiguous headings a genuine answer might emit
+# (## Summary, ## Analysis, ## Recommendations, ## Changelog, ## Mandatory
+# Fixes, ## Coverage Gaps, ## Trigger Conditions, ## Success Criteria) are
+# EXCLUDED by design, and bare inline words ("corpus", "provenance", "depth
+# stream", "verdict") are never touched. The list is the tuning surface:
+# adding an ambiguous name here would silently delete real user content, so
+# extend it with care and verify against realistic answers. Provisional —
+# widen only after live-trace validation.
+_PIPELINE_LEAK_HEADINGS = (
+    # F-Revise reviser envelope — the signature of a leaked gear-3 envelope.
+    "NOT ADDRESSED", "INCORPORATED", "DECLINED", "CLAIM RESOLUTIONS",
+    "REMAINING UNCERTAINTIES", "REVISED DRAFT",
+    # F-Evaluate evaluator contract (distinctive members only).
+    "FLAGGED CLAIMS", "CROSS-FINDING CONFLICTS",
+    # F-Verify verifier output sections.
+    "UNIVERSAL CHECKS", "MODE-SPECIFIC CHECKS", "CORRECTIONS APPLIED",
+    "VERIFICATION STATUS", "VERIFIED FINAL OUTPUT",
+    # Phase-A prompt cleanup.
+    "PHASE A — PROMPT CLEANUP", "CORRECTIONS_LOG", "INFERRED_ITEMS",
+    "AMBIGUITY FLAGS", "CLEANUP METADATA",
+    # Mode-internal scaffolding sections (Ora-specific phrasings).
+    "DEFAULT GEAR", "RAG PROFILE", "DEPTH ANALYSIS GUIDANCE",
+    "BREADTH ANALYSIS GUIDANCE", "OUTPUT FORMAT GUIDANCE",
+    "CONSOLIDATION GUIDANCE", "EMISSION CONTRACT",
+)
+
+# Heading line whose text is exactly one of the denied names (any heading
+# level, optional trailing colon / whitespace). Fully end-anchored so
+# "## Revised draft (v2)" or "## Claim resolutions for the merger" do NOT
+# match — only the bare contract heading does.
+_PIPELINE_LEAK_HEADING_RE = re.compile(
+    r"(?im)^[ \t]*#{1,6}[ \t]*(?:"
+    + "|".join(re.escape(h) for h in _PIPELINE_LEAK_HEADINGS)
+    + r")[ \t]*:?[ \t]*$"
+)
+
+# The verifier verdict line, line-anchored to the contract form. "The jury's
+# verdict: guilty" or prose mentioning a verdict will NOT match — only a line
+# that starts with VERDICT: followed by PASS / FAIL / BROKEN.
+_VERDICT_LINE_RE = re.compile(r"(?im)^[ \t]*VERDICT:[ \t]*(?:PASS|FAIL|BROKEN)\b.*$")
+
+
+def _scrub_pipeline_leaks(text: str) -> tuple[str, list[str], bool]:
+    """Deterministic, high-precision strip of leaked Ora pipeline vocabulary
+    from a user-facing deliverable.
+
+    Removes whole lines that are (a) a heading whose text exactly matches an
+    internal contract/section name in ``_PIPELINE_LEAK_HEADINGS`` or (b) a
+    verifier ``VERDICT:`` line. Surgical line removal only — the body under a
+    stripped heading is left in place, so a mis-match can at worst drop a
+    single scaffolding line, never a block of real content.
+
+    Also reports whether a provider / truncation error string leaked into the
+    body as content (bracket-prefixed forms only). That is NOT stripped here —
+    the caller routes it to the degraded-corpus banner, since an error string
+    as the deliverable means the formatter genuinely failed.
+
+    Returns ``(cleaned_text, removed_lines, error_marker_found)``. When nothing
+    is stripped the original ``text`` is returned verbatim (whitespace
+    preserved).
+    """
+    if not text or not text.strip():
+        return text, [], False
+    removed: list[str] = []
+    kept: list[str] = []
+    for line in text.split("\n"):
+        if _PIPELINE_LEAK_HEADING_RE.match(line) or _VERDICT_LINE_RE.match(line):
+            removed.append(line.strip())
+            continue
+        kept.append(line)
+    cleaned = re.sub(r"\n{3,}", "\n\n", "\n".join(kept)).strip()
+    low = (cleaned if removed else text).lower()
+    error_marker_found = (
+        "[error calling" in low
+        or "[truncated at max_tokens" in low
+        or "[mlx model not found" in low
+        or "[verification error" in low
+    )
+    if not removed:
+        return text, [], error_marker_found
+    return cleaned, removed, error_marker_found
+
+
 def _reviser_output_structural_check(revised_text: str) -> tuple[bool, str]:
     """Deterministic shape check on a Step-5 revised output.
 
@@ -9840,13 +9933,47 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         )
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
 
+    # Gear 3 has no formatter — it returns the reviser output directly. Surface
+    # ONLY the ## REVISED DRAFT body; the bookkeeping sections (ADDRESSED / NOT
+    # ADDRESSED / INCORPORATED / DECLINED / CLAIM RESOLUTIONS / REMAINING
+    # UNCERTAINTIES / CHANGELOG) are pipeline scaffolding the user must never
+    # see — the same "no pipeline machinery" rule the gear-4 formatter obeys.
+    # (2026-06-05.) Reuse the extractor the unflagged-claim scan already uses;
+    # fall back to the full text only when the draft section can't be isolated,
+    # so this is never worse than the prior behaviour.
+    deliverable = revised_analysis
+    if CLAIM_VERIFICATION_AVAILABLE:
+        try:
+            _draft_body = extract_revised_draft_section(revised_analysis or "")
+        except Exception:
+            _draft_body = ""
+        if _draft_body and _draft_body.strip():
+            deliverable = _draft_body.strip()
+            _record("step8_5-gear3-draft-surfaced", True,
+                    f"REVISED DRAFT body ({len(deliverable)} chars)")
+        else:
+            contingencies_fired.append(
+                "step8_5-gear3-draft-extract-missing-using-full-envelope")
+    # Step 8.5 deliverable scrub (shared with gear 4), gated default OFF: a
+    # no-op on a clean extracted draft; defense-in-depth on the fallback path
+    # where the raw envelope is surfaced.
+    if _env_flag("ORA_DELIVERABLE_SCRUB"):
+        _scrubbed, _g3_removed, _g3_err = _scrub_pipeline_leaks(deliverable)
+        if _g3_removed:
+            deliverable = _scrubbed
+            contingencies_fired.append("step8_5-gear3-deliverable-scrub-stripped-leak")
+            if PIPELINE_TRACE_AVAILABLE and trace_dir:
+                pipeline_trace.append_jsonl(trace_dir, "deliverable-scrub.jsonl", {
+                    "removed_lines": _g3_removed, "gear": 3,
+                })
+
     if PIPELINE_TRACE_AVAILABLE and trace_dir:
         pipeline_trace.write_step_health(
             trace_dir, step_health, gear=3,
             contingencies_fired=contingencies_fired,
         )
 
-    return revised_analysis
+    return deliverable
 
 
 def _strip_consolidator_preamble(text: str) -> str:
@@ -10812,6 +10939,37 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                     pipeline_trace.append_jsonl(trace_dir, "formatter-leak.jsonl", {
                         "reason": _fmt_reason, "relabelled_heading": _leak_note,
                     })
+
+    # Step 8.5 (2026-06-05): generalized deliverable scrub. Broadens the narrow
+    # process-meta leak gate above to Ora's full internal-vocabulary deny-list
+    # (leaked f-* contract headings, the verifier VERDICT line, provider /
+    # truncation error strings). Deterministic, zero-model — generalizes the
+    # lesson MSI's normalize_article proved in production. Default OFF
+    # (ORA_DELIVERABLE_SCRUB) pending false-positive validation on live traces;
+    # flip to default-ON once a handful of clean runs confirm no real content
+    # is ever stripped. See _scrub_pipeline_leaks for the precision rationale.
+    if _env_flag("ORA_DELIVERABLE_SCRUB"):
+        _scrubbed, _scrub_removed, _scrub_error_marker = _scrub_pipeline_leaks(formatted)
+        if _scrub_removed:
+            formatted = _scrubbed
+            _record("step8_5-deliverable-scrub", True,
+                    f"stripped {len(_scrub_removed)} leaked line(s)")
+            contingencies_fired.append("step8_5-deliverable-scrub-stripped-leak")
+            if PIPELINE_TRACE_AVAILABLE and trace_dir:
+                pipeline_trace.append_jsonl(trace_dir, "deliverable-scrub.jsonl", {
+                    "removed_lines": _scrub_removed,
+                })
+        # If an error string leaked as the deliverable, or scrubbing gutted it
+        # to near-nothing, fall back to the step-7 corpus with the standard
+        # degradation banner rather than ship an error/empty body.
+        if _scrub_error_marker or len(formatted.strip()) < 30:
+            formatted = (
+                "> _Note: the formatted deliverable was unusable (leaked "
+                "pipeline scaffolding or an upstream error); showing the "
+                "consolidated corpus directly._\n\n"
+                + consolidated
+            )
+            contingencies_fired.append("step8_5-scrub-fellback-to-consolidated-corpus")
 
     _trace_step("step8-formatted", {
         "system_prompt": format_system,
