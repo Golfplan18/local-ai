@@ -606,7 +606,41 @@ class RAGEngine:
 # (rev 3, 2026-04-30) for the contract this implements.
 
 
-def rank_vault_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _chunk_source(chunk: dict[str, Any]) -> str:
+    """Best-effort human-readable source label for a chunk.
+
+    Mirrors the precedence the provenance markers use: explicit
+    metadata `source` → `url` → `id` → 'unknown'. Factored out so the
+    ranker's candidate-trace labels chunks the same way the formatted
+    package does. (format_context_with_provenance still carries its own
+    inline copy; fold it into this helper when that function is next
+    edited for the floor/fit-gate.)
+    """
+    meta = chunk.get("metadata") or {}
+    return (
+        meta.get("source")
+        or chunk.get("url")
+        or chunk.get("id")
+        or "unknown"
+    )
+
+
+def _candidate_preview(chunk: dict[str, Any], limit: int = 160) -> str:
+    """First `limit` chars of the chunk body, whitespace-collapsed.
+
+    Enough to eyeball topical fit in the trace (e.g. spot a cosmology
+    chunk that matched an art query) without storing the full body for
+    every candidate.
+    """
+    body = chunk.get("document") or ""
+    return " ".join(body.split())[:limit]
+
+
+def rank_vault_chunks(
+    chunks: list[dict[str, Any]],
+    *,
+    candidate_sink: Optional[list[dict[str, Any]]] = None,
+) -> list[dict[str, Any]]:
     """Score and sort vault chunks by similarity × type_weight × recency.
 
     Each input chunk dict should have:
@@ -621,21 +655,47 @@ def rank_vault_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     matrix, supervision; or unknown types). Annotates each surviving
     chunk with score / weight / recency fields and returns the list
     sorted by score descending.
+
+    When ``candidate_sink`` is provided, it is populated with one record
+    per *input* chunk — kept chunks first (in final ranked order, each
+    with a 1-based ``rank``) then dropped chunks — capturing raw
+    ``similarity``, ``weight``, ``recency``, composite ``score``,
+    ``status`` (kept/dropped), ``drop_reason``, type, source, and a
+    short body ``preview``. This is the per-candidate observability the
+    RAG selection upgrade is calibrated against; it does NOT change what
+    the ranker returns or what the pipeline retrieves. Pre-upgrade the
+    only ``drop_reason`` is ``type_not_retrievable`` (the
+    ``weight is None`` filter); the floor and fit-gate will add their
+    own reasons here.
     """
     # All-chunks pool used for cluster-recency newer_count.
     all_metas = [c.get("metadata") or {} for c in chunks]
 
     scored: list[dict[str, Any]] = []
+    dropped_records: list[dict[str, Any]] = []
     for chunk in chunks:
         meta = chunk.get("metadata") or {}
         chunk_type = meta.get("type")
         chunk_tags = meta.get("tags") or []
+        similarity = float(chunk.get("similarity", 0.0))
         weight = provenance.weight_for(chunk_type, chunk_tags)
         if weight is None:
+            if candidate_sink is not None:
+                dropped_records.append({
+                    "rank": None,
+                    "source": _chunk_source(chunk),
+                    "type": chunk_type,
+                    "similarity": similarity,
+                    "weight": None,
+                    "recency": None,
+                    "score": None,
+                    "status": "dropped",
+                    "drop_reason": "type_not_retrievable",
+                    "preview": _candidate_preview(chunk),
+                })
             continue
 
         recency = cluster_recency.recency_factor(meta, all_metas)
-        similarity = float(chunk.get("similarity", 0.0))
         score = similarity * weight * recency
 
         annotated = dict(chunk)
@@ -645,6 +705,24 @@ def rank_vault_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         scored.append(annotated)
 
     scored.sort(key=lambda c: c["score"], reverse=True)
+
+    if candidate_sink is not None:
+        for rank, c in enumerate(scored, start=1):
+            c_meta = c.get("metadata") or {}
+            candidate_sink.append({
+                "rank": rank,
+                "source": _chunk_source(c),
+                "type": c_meta.get("type"),
+                "similarity": float(c.get("similarity", 0.0)),
+                "weight": c.get("weight"),
+                "recency": c.get("recency"),
+                "score": c.get("score"),
+                "status": "kept",
+                "drop_reason": None,
+                "preview": _candidate_preview(c),
+            })
+        candidate_sink.extend(dropped_records)
+
     return scored
 
 
@@ -793,6 +871,7 @@ def assemble_ranked_context(
     include_private: bool = False,
     include_archived: bool = False,
     max_chars: Optional[int] = None,
+    candidate_sink: Optional[list[dict[str, Any]]] = None,
 ) -> str:
     """End-to-end Phase 5.6 ranker: query → rank → format.
 
@@ -844,5 +923,5 @@ def assemble_ranked_context(
         include_archived=include_archived,
         exclude_tags=exclude_tags,
     )
-    ranked = rank_vault_chunks(chunks)
+    ranked = rank_vault_chunks(chunks, candidate_sink=candidate_sink)
     return format_context_with_provenance(ranked, max_chars=max_chars)

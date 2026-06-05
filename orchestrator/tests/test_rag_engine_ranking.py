@@ -451,5 +451,74 @@ class TestAssembleRankedContextEndToEnd(unittest.TestCase):
         self.assertNotIn("framework.md", out)  # rev 5: not retrieved
 
 
+# ---------------------------------------------------------------------------
+# candidate_sink — per-candidate RAG observability (2026-06-04, RAG
+# selection upgrade step 1). Additive trace; must NOT change the ranking,
+# the returned list, or what the pipeline retrieves.
+# ---------------------------------------------------------------------------
+
+
+class TestCandidateSink(unittest.TestCase):
+    """rank_vault_chunks(..., candidate_sink=[]) records every input chunk —
+    kept chunks in ranked order, then dropped chunks — with the full score
+    decomposition that the formatter otherwise strips before any trace."""
+
+    def test_sink_records_kept_in_ranked_order_then_dropped(self):
+        engram    = _vault_chunk("engram",    similarity=0.50, source="engram.md",
+                                 document="on-topic engram body")
+        resource  = _vault_chunk("resource",  similarity=0.95, source="resource.md")
+        framework = _vault_chunk("framework", similarity=0.99, source="framework.md")
+
+        sink = []
+        ranked = rag_engine.rank_vault_chunks(
+            [engram, resource, framework], candidate_sink=sink)
+
+        # Returned list unchanged: framework dropped (weight None); resource
+        # (0.95×0.8=0.76) outranks engram (0.50×1.0=0.50).
+        self.assertEqual([c["metadata"]["source"] for c in ranked],
+                         ["resource.md", "engram.md"])
+
+        kept    = [c for c in sink if c["status"] == "kept"]
+        dropped = [c for c in sink if c["status"] == "dropped"]
+        self.assertEqual([c["source"] for c in kept],
+                         ["resource.md", "engram.md"])
+        self.assertEqual([c["rank"] for c in kept], [1, 2])
+        self.assertEqual(len(dropped), 1)
+        self.assertEqual(dropped[0]["source"], "framework.md")
+        self.assertEqual(dropped[0]["drop_reason"], "type_not_retrievable")
+
+    def test_sink_preserves_raw_similarity_and_decomposition(self):
+        engram    = _vault_chunk("engram",    similarity=0.62, source="e.md",
+                                 document="body text here")
+        framework = _vault_chunk("framework", similarity=0.95, source="f.md")
+        sink = []
+        rag_engine.rank_vault_chunks([engram, framework], candidate_sink=sink)
+
+        kept = next(c for c in sink if c["status"] == "kept")
+        self.assertAlmostEqual(kept["similarity"], 0.62, places=6)
+        self.assertEqual(kept["weight"], 1.0)
+        self.assertIsNotNone(kept["recency"])
+        self.assertAlmostEqual(
+            kept["score"],
+            kept["similarity"] * kept["weight"] * kept["recency"], places=6)
+        self.assertTrue(kept["preview"])
+
+        # Raw similarity is captured even for the dropped chunk — the exact
+        # value that was previously discarded before any trace could see it.
+        drop = next(c for c in sink if c["status"] == "dropped")
+        self.assertAlmostEqual(drop["similarity"], 0.95, places=6)
+        self.assertIsNone(drop["score"])
+
+    def test_sink_is_optional_and_does_not_change_ranking(self):
+        engram   = _vault_chunk("engram",   similarity=0.5, source="engram.md")
+        resource = _vault_chunk("resource", similarity=0.5, source="resource.md")
+        with_sink = []
+        a = rag_engine.rank_vault_chunks([engram, resource], candidate_sink=with_sink)
+        b = rag_engine.rank_vault_chunks([engram, resource])  # no sink
+        self.assertEqual([c["metadata"]["source"] for c in a],
+                         [c["metadata"]["source"] for c in b])
+        self.assertEqual(len(with_sink), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -5874,6 +5874,42 @@ def _load_profile_config(config_name: str | None) -> dict | None:
         return None
 
 
+def _format_rag_candidates_md(candidates: list) -> str:
+    """Render the per-candidate RAG trace as a compact markdown table.
+
+    One row per retrieved chunk: raw similarity, provenance weight,
+    recency, composite score, kept/dropped status, type, source, and a
+    short body preview — the human-readable view of *why* each chunk
+    ranked where it did, or was dropped. This is the RAG observability
+    the selection upgrade is calibrated against. Added 2026-06-04 (RAG
+    selection upgrade, step 1: instrumentation).
+    """
+    if not candidates:
+        return "_(no candidates captured)_"
+
+    def _f(v) -> str:
+        return f"{v:.3f}" if isinstance(v, (int, float)) else "—"
+
+    lines = [
+        "| # | sim | wt | rec | score | status | type | source | preview |",
+        "|---|-----|----|-----|-------|--------|------|--------|---------|",
+    ]
+    for c in candidates:
+        rank = c.get("rank")
+        status = c.get("status", "?")
+        if c.get("drop_reason"):
+            status = f"{status} ({c['drop_reason']})"
+        src = str(c.get("source", "")).replace("|", r"\|")[:48]
+        prev = str(c.get("preview", "")).replace("|", r"\|")[:60]
+        lines.append(
+            f"| {rank if rank is not None else '—'} "
+            f"| {_f(c.get('similarity'))} | {_f(c.get('weight'))} "
+            f"| {_f(c.get('recency'))} | {_f(c.get('score'))} | {status} "
+            f"| {c.get('type') or '—'} | {src} | {prev} |"
+        )
+    return "\n".join(lines)
+
+
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None,
                                config_name: str | None = None) -> dict:
@@ -6001,6 +6037,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # directory, so silent fallbacks become inspectable.
     conv_rag = ""
     conv_rag_path = "unknown"
+    # Per-candidate RAG trace (raw similarity / weight / recency / score /
+    # kept-dropped) captured by the ranker via candidate_sink. Always defined
+    # so the step2-context trace can reference it even when retrieval is
+    # skipped. Additive observability only — does not affect what is retrieved.
+    conv_candidates: list = []
     # CAMPAIGN-RAG-BYPASS-2026-05-26: short-circuit when flag is set.
     if _RAG_ISOLATION_WEB_ONLY:
         conv_rag_path = "skipped_rag_isolation_web_only"
@@ -6011,6 +6052,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 collection="conversations",
                 mode_text=mode_text,
                 n_results=3,
+                candidate_sink=conv_candidates,
             )
             conv_rag_path = "rag_engine.assemble_ranked_context"
         except Exception as e:
@@ -6035,6 +6077,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # Concept RAG (vault knowledge) — only for Gear 2+
     concept_rag = ""
     concept_rag_path = "skipped_gear_below_2"
+    concept_candidates: list = []
     # CAMPAIGN-RAG-BYPASS-2026-05-26: short-circuit when flag is set.
     if _RAG_ISOLATION_WEB_ONLY:
         concept_rag_path = "skipped_rag_isolation_web_only"
@@ -6046,6 +6089,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     collection="knowledge",
                     mode_text=mode_text,
                     n_results=5,
+                    candidate_sink=concept_candidates,
                 )
                 concept_rag_path = "rag_engine.assemble_ranked_context"
             except Exception as e:
@@ -6277,12 +6321,16 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 "chars": len(conv_rag),
                 "content": conv_rag,
                 "empty_diagnosis": conv_rag_diagnosis,
+                # Per-candidate score decomposition + kept/dropped status
+                # (raw similarity is otherwise discarded before the trace).
+                "candidates": conv_candidates,
             },
             "concept_rag": {
                 "retrieval_path": concept_rag_path,
                 "chars": len(concept_rag),
                 "content": concept_rag,
                 "empty_diagnosis": concept_rag_diagnosis,
+                "candidates": concept_candidates,
             },
             "relationship_rag": {
                 "chars": len(relationship_rag),
@@ -6315,7 +6363,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 if conv_rag_diagnosis else ""
             )
             + f"```\n{conv_rag or '_(empty)_'}\n```\n\n"
-            f"## Concept RAG ({len(concept_rag)} chars, "
+            + "### Conversation RAG candidates\n\n"
+            + _format_rag_candidates_md(conv_candidates)
+            + "\n\n"
+            + f"## Concept RAG ({len(concept_rag)} chars, "
             f"path: `{concept_rag_path}`)\n\n"
             + (
                 f"**Empty-result diagnosis:** `{concept_rag_diagnosis['empty_reason']}` "
@@ -6325,7 +6376,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 if concept_rag_diagnosis else ""
             )
             + f"```\n{concept_rag or '_(empty)_'}\n```\n\n"
-            f"## Relationship RAG ({len(relationship_rag)} chars)\n\n"
+            + "### Concept RAG candidates\n\n"
+            + _format_rag_candidates_md(concept_candidates)
+            + "\n\n"
+            + f"## Relationship RAG ({len(relationship_rag)} chars)\n\n"
             f"```\n{relationship_rag or '_(empty)_'}\n```\n\n"
             f"## Web consultation (Step 2 — F-Consult)\n\n"
             f"**Status:** `{consultation_trace.get('status')}` "
