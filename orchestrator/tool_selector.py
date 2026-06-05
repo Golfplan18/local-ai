@@ -238,3 +238,62 @@ def run_deterministic_tools(mode_text: str, prompt: str, *, executor=None) -> di
     else:
         trace["status"], trace["reason"] = "skipped", "no_calls_executed"
     return {"body": body, "trace": trace}
+
+
+# ── Model-driven escape hatch (Option C, opt-in lane) ────────────────────────
+#
+# The deterministic lane above is the default. This is the OPT-IN model-driven
+# half: when the caller's gate is enabled (boot reads ORA_MODEL_TOOL_SELECTION,
+# default off), the analyst is shown the mode's ## TOOLS → Model-requestable
+# allowlist and may request those tools mid-analysis via the existing
+# <tool_call> agentic loop (boot._run_model_with_tools). The dispatcher
+# executes the request and audit-logs it; the model continues with the result.
+
+# Read-category dispatcher tools an analyst may request, with short model-facing
+# descriptions. Restricted to reads on purpose — an analyst never writes files,
+# runs shell, or mutates state mid-analysis.
+REQUESTABLE_TOOL_DESCRIPTIONS = {
+    "web_search": 'search the open web (Tavily → Brave → DDG cascade). params: {"query": str}',
+    "web_fetch": 'fetch a specific URL as clean markdown. params: {"url": str}',
+    "knowledge_search": 'semantic search over the vault + conversation corpus. params: {"query": str}',
+    "search_files": 'filename / content search across a path. params: {"pattern": str, "directory": str}',
+    "file_read": 'read a file\'s contents. params: {"path": str}',
+    "list_directory": 'list a directory\'s contents. params: {"path": str}',
+}
+
+
+def build_requestable_tools_catalog(mode_text: str, *, enabled: bool) -> str:
+    """Return the ``## REQUESTABLE TOOLS`` analyst block, or ``""``.
+
+    Empty unless ``enabled`` AND the mode declares a ## TOOLS →
+    Model-requestable allowlist AND at least one declared tool is a known
+    read-category requestable tool. ``enabled`` is the caller's resolved gate
+    (boot reads ORA_MODEL_TOOL_SELECTION) — kept as a param so this stays pure
+    and unit-testable.
+    """
+    if not enabled:
+        return ""
+    requestable = parse_tool_profile(mode_text).get("model_requestable", [])
+    tools = [t for t in requestable if t in REQUESTABLE_TOOL_DESCRIPTIONS]
+    if not tools:
+        return ""
+    lines = [
+        "## REQUESTABLE TOOLS (model-driven; you may call these)",
+        "",
+        ("When the provided context is insufficient and one of the tools below "
+         "would close the gap, request it by emitting a tool-call block; Ora "
+         "executes it, returns the result, and you continue. Request a tool "
+         "only when it genuinely changes your analysis — otherwise answer from "
+         "the context already provided."),
+        "",
+        "Format (exact — note the `<n>` name tag):",
+        "",
+        "```",
+        '<tool_call><n>TOOL_NAME</n><parameters>{"param": "value"}</parameters></tool_call>',
+        "```",
+        "",
+        "Available:",
+    ]
+    for t in tools:
+        lines.append(f"- **`{t}`** — {REQUESTABLE_TOOL_DESCRIPTIONS[t]}")
+    return "\n".join(lines)

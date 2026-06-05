@@ -158,5 +158,34 @@ class TestRunDeterministicTools(unittest.TestCase):
         self.assertIn("empty", [c.get("outcome") for c in r["trace"]["calls"]])
 
 
+class TestRequestableToolsCatalog(unittest.TestCase):
+    def test_disabled_returns_empty(self):
+        self.assertEqual(
+            ts.build_requestable_tools_catalog(SECTIONED_MODE, enabled=False), "")
+
+    def test_enabled_lists_requestable(self):
+        out = ts.build_requestable_tools_catalog(SECTIONED_MODE, enabled=True)
+        self.assertIn("## REQUESTABLE TOOLS", out)
+        self.assertIn("web_search", out)         # declared + known read tool
+        self.assertIn("knowledge_search", out)   # declared + known read tool
+        self.assertIn("<tool_call><n>", out)     # exact parser protocol format
+
+    def test_no_section_returns_empty_even_if_enabled(self):
+        self.assertEqual(
+            ts.build_requestable_tools_catalog(NO_TOOLS_MODE, enabled=True), "")
+
+    def test_unknown_requestable_tool_filtered(self):
+        mode = "## TOOLS\n\n### Model-requestable\n- bogus_tool — not real\n"
+        self.assertEqual(
+            ts.build_requestable_tools_catalog(mode, enabled=True), "")
+
+    def test_write_tools_not_offered(self):
+        # Even if a mode declares a write/execute tool as requestable, the
+        # catalog only surfaces read-category tools.
+        mode = "## TOOLS\n\n### Model-requestable\n- file_write\n- bash_execute\n"
+        self.assertEqual(
+            ts.build_requestable_tools_catalog(mode, enabled=True), "")
+
+
 if __name__ == "__main__":
     unittest.main()
