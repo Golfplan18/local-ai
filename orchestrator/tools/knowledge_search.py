@@ -338,7 +338,20 @@ def knowledge_search_raw(
                 "similarity": 1.0 - float(dist) if dist is not None else 0.0,
             })
         return chunks
-    except Exception:
+    except Exception as exc:
+        # Previously this swallowed every error into an empty result with no
+        # signal — a transient ChromaDB write-lock during indexing, or an
+        # import/path error, would silently blank the RAG package and the
+        # model would proceed context-free. Surface it so RAG outages are
+        # visible; still degrade gracefully (empty list) rather than crashing
+        # the pipeline. (Added 2026-06-04, RAG selection upgrade.)
+        import sys
+        print(
+            f"[knowledge_search_raw] retrieval failed for collection "
+            f"{collection!r} (query {query[:80]!r}): "
+            f"{type(exc).__name__}: {exc}. Returning empty result.",
+            file=sys.stderr, flush=True,
+        )
         return []
 
 
