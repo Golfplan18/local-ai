@@ -5921,10 +5921,10 @@ def _env_flag(name: str) -> bool:
 def _build_rag_selection(config: dict):
     """Resolve the RAG selection layer (Process 13) for this turn.
 
-    Returns ``(n_results, similarity_floor, fit_gate)``. When
-    ``ORA_RAG_SELECTION`` is not enabled, returns ``(None, None, None)`` so
-    callers keep their existing per-lane ``n_results`` and ungated, no-floor
-    behaviour (the exact pre-Process-13 path). When enabled: wider retrieval
+    Returns ``(n_results, similarity_floor, fit_gate, dedup)``. When
+    ``ORA_RAG_SELECTION`` is not enabled, returns ``(None, None, None, False)``
+    so callers keep their existing per-lane ``n_results`` and ungated, no-floor,
+    no-dedup behaviour (the exact pre-Process-13 path). When enabled: wider retrieval
     (``ORA_RAG_SELECTION_N``, default 15), a low similarity floor
     (``ORA_RAG_SELECTION_FLOOR``, default 0.40), and a batched relevance
     fit-gate backed by the ``ORA_RAG_FIT_GATE_SLOT`` slot (default
@@ -5933,7 +5933,7 @@ def _build_rag_selection(config: dict):
     failing the turn.
     """
     if not _env_flag("ORA_RAG_SELECTION"):
-        return (None, None, None)
+        return (None, None, None, False)
     try:
         n_results = int(os.environ.get("ORA_RAG_SELECTION_N", "15"))
     except ValueError:
@@ -5962,7 +5962,7 @@ def _build_rag_selection(config: dict):
     except Exception as exc:
         print(f"[step2] RAG fit-gate unavailable, using floor only: "
               f"{type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
-    return (n_results, floor, fit_gate)
+    return (n_results, floor, fit_gate, True)
 
 
 def run_step2_context_assembly(step1_result: dict, config: dict,
@@ -6093,7 +6093,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # RAG selection layer (Process 13): wider retrieval + similarity floor +
     # fit-gate when ORA_RAG_SELECTION is enabled; (None, None, None) otherwise
     # so the lanes keep their existing 5/3, ungated, no-floor behaviour.
-    _sel_n, _sel_floor, _sel_gate = _build_rag_selection(config)
+    _sel_n, _sel_floor, _sel_gate, _sel_dedup = _build_rag_selection(config)
 
     conv_rag = ""
     conv_rag_path = "unknown"
@@ -6115,6 +6115,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 candidate_sink=conv_candidates,
                 similarity_floor=_sel_floor,
                 fit_gate=_sel_gate,
+                dedup=_sel_dedup,
             )
             conv_rag_path = "rag_engine.assemble_ranked_context"
         except Exception as e:
@@ -6154,6 +6155,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     candidate_sink=concept_candidates,
                     similarity_floor=_sel_floor,
                     fit_gate=_sel_gate,
+                    dedup=_sel_dedup,
                 )
                 concept_rag_path = "rag_engine.assemble_ranked_context"
             except Exception as e:
@@ -6559,6 +6561,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         # the context package so mid-pipeline RAG channels (supplemental-RAG
         # in _fetch_supplement) can honour it without re-loading the profile.
         "rag_isolation": _rag_isolation_value,
+        # RAG selection layer (Process 13) threaded through so the mid-pipeline
+        # supplemental-RAG fetch (_fetch_supplement) applies the same wider-n +
+        # floor + fit-gate + dedup the primary lanes did this turn.
+        # (None, None, None, False) when ORA_RAG_SELECTION is off.
+        "rag_selection": (_sel_n, _sel_floor, _sel_gate, _sel_dedup),
     }
 
 
@@ -8537,7 +8544,8 @@ def _parse_supplemental_request(text: str) -> dict | None:
 
 
 def _fetch_supplement(query_terms: str, mode_text: str | None = None,
-                     max_chars: int | None = None) -> str:
+                     max_chars: int | None = None,
+                     selection: tuple | None = None) -> str:
     """Run a vault-RAG query for the requested terms.
 
     Uses ``rag_engine.assemble_ranked_context`` when available so the
@@ -8545,17 +8553,27 @@ def _fetch_supplement(query_terms: str, mode_text: str | None = None,
     ``knowledge_search`` if the ranker is unavailable. Empty string when
     no engine is reachable — caller surfaces that as a degraded supplement
     via the trace and the model emits COVERAGE GAP instead of confabulating.
+
+    ``selection`` is the per-turn RAG selection tuple
+    ``(n_results, similarity_floor, fit_gate, dedup)`` threaded from
+    ``context_pkg["rag_selection"]`` so the supplemental fetch applies the
+    same Process 13 wider-retrieval + floor + fit-gate + dedup the primary
+    lanes used. ``None`` / off-tuple => the prior ungated, n=5 behaviour.
     """
     if not query_terms:
         return ""
+    sn, sf, sg, sd = (selection or (None, None, None, False))
     try:
         if RAG_ENGINE_AVAILABLE:
             return assemble_ranked_context(
                 query=query_terms,
                 collection="knowledge",
                 mode_text=mode_text,
-                n_results=5,
+                n_results=sn or 5,
                 max_chars=max_chars,
+                similarity_floor=sf,
+                fit_gate=sg,
+                dedup=sd,
             )
         if TOOLS_AVAILABLE:
             return knowledge_search(query_terms, "knowledge", 5)
@@ -8827,6 +8845,7 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
 
     trace_dir = context_pkg.get("trace_dir") if context_pkg else None
     mode_text = context_pkg.get("mode_text") if context_pkg else None
+    rag_selection = context_pkg.get("rag_selection") if context_pkg else None
 
     current = list(messages)
     supplements_used = 0
@@ -8906,7 +8925,8 @@ def _call_with_supplement(messages: list, endpoint: dict, step_name: str,
                 )
         else:
             # Fetch the supplement
-            fetched = _fetch_supplement(supp["query_terms"], mode_text=mode_text)
+            fetched = _fetch_supplement(supp["query_terms"], mode_text=mode_text,
+                                        selection=rag_selection)
             supplements_used += 1
             resolved = bool(fetched.strip())
 

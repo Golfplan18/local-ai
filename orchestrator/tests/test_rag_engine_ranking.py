@@ -585,6 +585,29 @@ class TestSelectionFunnel(unittest.TestCase):
         self.assertEqual(reasons["floored.md"], "below_floor")
         self.assertEqual(reasons["fw.md"], "type_not_retrievable")
 
+    def test_dedup_collapses_exact_content_keeping_highest_scored(self):
+        a = _vault_chunk("engram", 0.60, source="a.md", document="identical text here")
+        b = _vault_chunk("chat",   0.60, source="b.md", document="identical text here")
+        sink = []
+        ranked = rag_engine.rank_vault_chunks([a, b], candidate_sink=sink, dedup=True)
+        # Same content; engram (1.0) outscores chat (0.6), so the engram is kept.
+        self.assertEqual([c["metadata"]["source"] for c in ranked], ["a.md"])
+        d = next(c for c in sink if c["status"] == "dropped")
+        self.assertEqual(d["source"], "b.md")
+        self.assertEqual(d["drop_reason"], "duplicate")
+
+    def test_dedup_keeps_distinct_passages_of_one_note(self):
+        a = _vault_chunk("engram", 0.60, source="note.md", document="first passage")
+        b = _vault_chunk("engram", 0.55, source="note.md", document="second passage")
+        ranked = rag_engine.rank_vault_chunks([a, b], dedup=True)
+        self.assertEqual(len(ranked), 2)  # different content, not collapsed
+
+    def test_no_dedup_by_default(self):
+        a = _vault_chunk("engram", 0.60, source="a.md", document="same text")
+        b = _vault_chunk("engram", 0.55, source="b.md", document="same text")
+        ranked = rag_engine.rank_vault_chunks([a, b])  # dedup defaults False
+        self.assertEqual(len(ranked), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

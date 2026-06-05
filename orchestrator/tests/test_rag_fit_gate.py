@@ -20,6 +20,7 @@ if _ORCHESTRATOR not in sys.path:
     sys.path.insert(0, _ORCHESTRATOR)
 
 import rag_fit_gate as fg  # noqa: E402
+import rag_engine  # noqa: E402
 
 
 def _chunks():
@@ -109,6 +110,64 @@ class TestApplyFitGate(unittest.TestCase):
         gate = fg.make_fit_gate(call_fn)
         out = gate(_chunks(), "q")
         self.assertEqual([c["gate_verdict"] for c in out], ["drop", "keep"])
+
+
+class TestCosmologyRegression(unittest.TestCase):
+    """End-to-end funnel regression for the original failure: a cosmology
+    chunk must not survive a Japanese-garden art query. A content-based stub
+    gate stands in for the model (the live-model check is the optional class
+    below), so the funnel behaviour is locked without a live model."""
+
+    def _scenario(self):
+        return [
+            {"document": ("Buddhist sunyata emptiness parallels the cosmological "
+                          "insight; Hubble's law and cosmic redshift describe expansion."),
+             "similarity": 0.71, "metadata": {"type": "engram", "source": "cosmo.md"}},
+            {"document": ("The Japanese tea garden uses ma negative space and "
+                          "yohaku-no-bi to frame stillness."),
+             "similarity": 0.60, "metadata": {"type": "engram", "source": "garden.md"}},
+        ]
+
+    def test_cosmology_dropped_garden_kept(self):
+        def call_fn(system, user):  # a correct model's verdicts for this scenario
+            return "1: DROP - cosmology not garden\n2: KEEP - garden composition"
+        gate = fg.make_fit_gate(call_fn)
+        chunks = gate(self._scenario(),
+                      "Ma reading of a Japanese garden — what is the empty space doing?")
+        ranked = rag_engine.rank_vault_chunks(chunks, similarity_floor=0.40)
+        sources = [c["metadata"]["source"] for c in ranked]
+        # The contaminant is gone and the on-topic chunk survives — even though
+        # the cosmology chunk had the HIGHER similarity (0.71 vs 0.60).
+        self.assertNotIn("cosmo.md", sources)
+        self.assertIn("garden.md", sources)
+
+
+@unittest.skipUnless(os.environ.get("ORA_RAG_GATE_LIVE_TEST") == "1",
+                     "set ORA_RAG_GATE_LIVE_TEST=1 to run the live-model gate check")
+class TestLiveModelGate(unittest.TestCase):
+    """Optional: validates that the real configured gate model actually drops
+    the cosmology engram on the art query. Skipped by default (needs a live
+    model endpoint + credentials)."""
+
+    def test_real_model_drops_cosmology_keeps_garden(self):
+        from orchestrator.model_dispatch import invoke_chat
+        def call_fn(system, user):
+            return invoke_chat(system, user, slot="classification", context="interactive")
+        chunks = [
+            {"document": ("Buddhist sunyata emptiness parallels the cosmological insight "
+                          "that observations depend on information propagation through "
+                          "space-time; Hubble's law and redshift."),
+             "metadata": {"source": "cosmo.md"}},
+            {"document": ("The Japanese tea garden uses ma (negative space) and "
+                          "yohaku-no-bi to frame stillness."),
+             "metadata": {"source": "garden.md"}},
+        ]
+        out = fg.apply_fit_gate(
+            chunks, "Ma reading of a Japanese garden — what is the empty space doing?",
+            call_fn=call_fn)
+        verdicts = {c["metadata"]["source"]: c["gate_verdict"] for c in out}
+        self.assertEqual(verdicts["cosmo.md"], "drop")
+        self.assertEqual(verdicts["garden.md"], "keep")
 
 
 if __name__ == "__main__":

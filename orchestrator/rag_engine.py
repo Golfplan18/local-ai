@@ -636,6 +636,14 @@ def _candidate_preview(chunk: dict[str, Any], limit: int = 160) -> str:
     return " ".join(body.split())[:limit]
 
 
+def _content_key(chunk: dict[str, Any]) -> str:
+    """Normalised chunk text for exact-duplicate detection — lowercased,
+    whitespace-collapsed. Two chunks with the same key are the same content
+    (a chunk indexed twice, or an identical passage under two sources);
+    distinct passages of one note differ in content and are kept."""
+    return " ".join((chunk.get("document") or "").split()).lower()
+
+
 def _sink_record(
     chunk: dict[str, Any],
     *,
@@ -671,6 +679,7 @@ def rank_vault_chunks(
     *,
     candidate_sink: Optional[list[dict[str, Any]]] = None,
     similarity_floor: Optional[float] = None,
+    dedup: bool = False,
 ) -> list[dict[str, Any]]:
     """Score and sort vault chunks by similarity × type_weight × recency.
 
@@ -745,6 +754,26 @@ def rank_vault_chunks(
         scored.append(annotated)
 
     scored.sort(key=lambda c: c["score"], reverse=True)
+
+    # Provenance-preserving dedup (Process 13 step 5): collapse exact content
+    # duplicates — the same chunk indexed twice, or an identical passage under
+    # two sources — keeping the highest-scored copy (first in ranked order).
+    # Distinct passages of one note differ in content and are NOT collapsed.
+    if dedup and scored:
+        seen: set = set()
+        deduped: list[dict[str, Any]] = []
+        for c in scored:
+            key = _content_key(c)
+            if key and key in seen:
+                if candidate_sink is not None:
+                    dropped_records.append(_sink_record(
+                        c, status="dropped", drop_reason="duplicate",
+                        weight=c.get("weight"), recency=c.get("recency"),
+                        score=c.get("score")))
+                continue
+            seen.add(key)
+            deduped.append(c)
+        scored = deduped
 
     if candidate_sink is not None:
         for rank, c in enumerate(scored, start=1):
@@ -905,6 +934,7 @@ def assemble_ranked_context(
     candidate_sink: Optional[list[dict[str, Any]]] = None,
     similarity_floor: Optional[float] = None,
     fit_gate: Optional[Callable[[list, str], list]] = None,
+    dedup: bool = False,
 ) -> str:
     """End-to-end Phase 5.6 ranker: query → rank → format.
 
@@ -967,5 +997,6 @@ def assemble_ranked_context(
             print(f"[rag_engine] fit_gate raised, proceeding ungated: "
                   f"{type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
     ranked = rank_vault_chunks(
-        chunks, candidate_sink=candidate_sink, similarity_floor=similarity_floor)
+        chunks, candidate_sink=candidate_sink,
+        similarity_floor=similarity_floor, dedup=dedup)
     return format_context_with_provenance(ranked, max_chars=max_chars)
