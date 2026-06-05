@@ -41,7 +41,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 WORKSPACE = os.path.expanduser("~/ora/")
 CONFIG_DIR = os.path.join(WORKSPACE, "config/")
@@ -636,10 +636,41 @@ def _candidate_preview(chunk: dict[str, Any], limit: int = 160) -> str:
     return " ".join(body.split())[:limit]
 
 
+def _sink_record(
+    chunk: dict[str, Any],
+    *,
+    status: str,
+    rank: Optional[int] = None,
+    drop_reason: Optional[str] = None,
+    weight: Optional[float] = None,
+    recency: Optional[float] = None,
+    score: Optional[float] = None,
+) -> dict[str, Any]:
+    """Build one per-candidate trace record — used for both kept and dropped
+    chunks so the candidate trace has a single, consistent shape. Carries the
+    raw similarity plus, when present, the fit-gate's verdict and reason."""
+    meta = chunk.get("metadata") or {}
+    return {
+        "rank": rank,
+        "source": _chunk_source(chunk),
+        "type": meta.get("type"),
+        "similarity": float(chunk.get("similarity", 0.0)),
+        "weight": weight,
+        "recency": recency,
+        "score": score,
+        "status": status,
+        "drop_reason": drop_reason,
+        "gate_verdict": chunk.get("gate_verdict"),
+        "gate_reason": chunk.get("gate_reason"),
+        "preview": _candidate_preview(chunk),
+    }
+
+
 def rank_vault_chunks(
     chunks: list[dict[str, Any]],
     *,
     candidate_sink: Optional[list[dict[str, Any]]] = None,
+    similarity_floor: Optional[float] = None,
 ) -> list[dict[str, Any]]:
     """Score and sort vault chunks by similarity × type_weight × recency.
 
@@ -678,21 +709,30 @@ def rank_vault_chunks(
         chunk_type = meta.get("type")
         chunk_tags = meta.get("tags") or []
         similarity = float(chunk.get("similarity", 0.0))
+
+        # 1. Fit-gate decision (gate-FIRST): a chunk the relevance gate marked
+        #    "drop" is removed before provenance can rank it — this is what
+        #    stops a high-provenance off-topic chunk from winning the package.
+        if chunk.get("gate_verdict") == "drop":
+            if candidate_sink is not None:
+                dropped_records.append(
+                    _sink_record(chunk, status="dropped", drop_reason="fit_gate"))
+            continue
+
+        # 2. Absolute similarity floor: drop clear noise-floor matches.
+        if similarity_floor is not None and similarity < similarity_floor:
+            if candidate_sink is not None:
+                dropped_records.append(
+                    _sink_record(chunk, status="dropped", drop_reason="below_floor"))
+            continue
+
+        # 3. Type weight: not-retrieved types (framework / mode / ...) drop out.
         weight = provenance.weight_for(chunk_type, chunk_tags)
         if weight is None:
             if candidate_sink is not None:
-                dropped_records.append({
-                    "rank": None,
-                    "source": _chunk_source(chunk),
-                    "type": chunk_type,
-                    "similarity": similarity,
-                    "weight": None,
-                    "recency": None,
-                    "score": None,
-                    "status": "dropped",
-                    "drop_reason": "type_not_retrievable",
-                    "preview": _candidate_preview(chunk),
-                })
+                dropped_records.append(
+                    _sink_record(chunk, status="dropped",
+                                 drop_reason="type_not_retrievable"))
             continue
 
         recency = cluster_recency.recency_factor(meta, all_metas)
@@ -708,19 +748,10 @@ def rank_vault_chunks(
 
     if candidate_sink is not None:
         for rank, c in enumerate(scored, start=1):
-            c_meta = c.get("metadata") or {}
-            candidate_sink.append({
-                "rank": rank,
-                "source": _chunk_source(c),
-                "type": c_meta.get("type"),
-                "similarity": float(c.get("similarity", 0.0)),
-                "weight": c.get("weight"),
-                "recency": c.get("recency"),
-                "score": c.get("score"),
-                "status": "kept",
-                "drop_reason": None,
-                "preview": _candidate_preview(c),
-            })
+            candidate_sink.append(_sink_record(
+                c, status="kept", rank=rank,
+                weight=c.get("weight"), recency=c.get("recency"),
+                score=c.get("score")))
         candidate_sink.extend(dropped_records)
 
     return scored
@@ -872,6 +903,8 @@ def assemble_ranked_context(
     include_archived: bool = False,
     max_chars: Optional[int] = None,
     candidate_sink: Optional[list[dict[str, Any]]] = None,
+    similarity_floor: Optional[float] = None,
+    fit_gate: Optional[Callable[[list, str], list]] = None,
 ) -> str:
     """End-to-end Phase 5.6 ranker: query → rank → format.
 
@@ -923,5 +956,16 @@ def assemble_ranked_context(
         include_archived=include_archived,
         exclude_tags=exclude_tags,
     )
-    ranked = rank_vault_chunks(chunks, candidate_sink=candidate_sink)
+    # Fit-gate (Process 13): mark each candidate keep/drop against the query's
+    # intent BEFORE the provenance ranker. Injected by the caller (boot.py) so
+    # this module stays model-free. Fail-open: a gate that raises leaves the
+    # candidates ungated rather than blanking the package.
+    if fit_gate is not None and chunks:
+        try:
+            chunks = fit_gate(chunks, query)
+        except Exception as exc:
+            print(f"[rag_engine] fit_gate raised, proceeding ungated: "
+                  f"{type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+    ranked = rank_vault_chunks(
+        chunks, candidate_sink=candidate_sink, similarity_floor=similarity_floor)
     return format_context_with_provenance(ranked, max_chars=max_chars)

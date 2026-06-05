@@ -5891,23 +5891,78 @@ def _format_rag_candidates_md(candidates: list) -> str:
         return f"{v:.3f}" if isinstance(v, (int, float)) else "—"
 
     lines = [
-        "| # | sim | wt | rec | score | status | type | source | preview |",
-        "|---|-----|----|-----|-------|--------|------|--------|---------|",
+        "| # | sim | wt | rec | score | status | gate | type | source | preview |",
+        "|---|-----|----|-----|-------|--------|------|------|--------|---------|",
     ]
     for c in candidates:
         rank = c.get("rank")
         status = c.get("status", "?")
         if c.get("drop_reason"):
             status = f"{status} ({c['drop_reason']})"
+        gate = c.get("gate_verdict") or "—"
+        if c.get("gate_reason") and gate != "—":
+            gate = f"{gate}: {c['gate_reason']}"
+        gate = str(gate).replace("|", r"\|")[:42]
         src = str(c.get("source", "")).replace("|", r"\|")[:48]
         prev = str(c.get("preview", "")).replace("|", r"\|")[:60]
         lines.append(
             f"| {rank if rank is not None else '—'} "
             f"| {_f(c.get('similarity'))} | {_f(c.get('weight'))} "
             f"| {_f(c.get('recency'))} | {_f(c.get('score'))} | {status} "
-            f"| {c.get('type') or '—'} | {src} | {prev} |"
+            f"| {gate} | {c.get('type') or '—'} | {src} | {prev} |"
         )
     return "\n".join(lines)
+
+
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "on", "true", "yes")
+
+
+def _build_rag_selection(config: dict):
+    """Resolve the RAG selection layer (Process 13) for this turn.
+
+    Returns ``(n_results, similarity_floor, fit_gate)``. When
+    ``ORA_RAG_SELECTION`` is not enabled, returns ``(None, None, None)`` so
+    callers keep their existing per-lane ``n_results`` and ungated, no-floor
+    behaviour (the exact pre-Process-13 path). When enabled: wider retrieval
+    (``ORA_RAG_SELECTION_N``, default 15), a low similarity floor
+    (``ORA_RAG_SELECTION_FLOOR``, default 0.40), and a batched relevance
+    fit-gate backed by the ``ORA_RAG_FIT_GATE_SLOT`` slot (default
+    ``classification``). Fail-safe: if the gate endpoint cannot be resolved,
+    returns wider-n + floor but ``fit_gate=None`` (floor-only) rather than
+    failing the turn.
+    """
+    if not _env_flag("ORA_RAG_SELECTION"):
+        return (None, None, None)
+    try:
+        n_results = int(os.environ.get("ORA_RAG_SELECTION_N", "15"))
+    except ValueError:
+        n_results = 15
+    try:
+        floor = float(os.environ.get("ORA_RAG_SELECTION_FLOOR", "0.40"))
+    except ValueError:
+        floor = 0.40
+
+    fit_gate = None
+    try:
+        try:
+            from rag_fit_gate import make_fit_gate
+        except ImportError:
+            from orchestrator.rag_fit_gate import make_fit_gate
+        slot = os.environ.get("ORA_RAG_FIT_GATE_SLOT", "classification")
+        gate_ep = get_slot_endpoint(config, slot)
+        if gate_ep is not None:
+            def _gate_call(system: str, user: str) -> str:
+                return call_model(
+                    [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+                    gate_ep,
+                )
+            fit_gate = make_fit_gate(_gate_call)
+    except Exception as exc:
+        print(f"[step2] RAG fit-gate unavailable, using floor only: "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+    return (n_results, floor, fit_gate)
 
 
 def run_step2_context_assembly(step1_result: dict, config: dict,
@@ -6035,6 +6090,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # The wrappers below preserve the same graceful-degradation behaviour
     # but write each failure to ``rag-failures.jsonl`` in the trace
     # directory, so silent fallbacks become inspectable.
+    # RAG selection layer (Process 13): wider retrieval + similarity floor +
+    # fit-gate when ORA_RAG_SELECTION is enabled; (None, None, None) otherwise
+    # so the lanes keep their existing 5/3, ungated, no-floor behaviour.
+    _sel_n, _sel_floor, _sel_gate = _build_rag_selection(config)
+
     conv_rag = ""
     conv_rag_path = "unknown"
     # Per-candidate RAG trace (raw similarity / weight / recency / score /
@@ -6051,8 +6111,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 query=rag_query,
                 collection="conversations",
                 mode_text=mode_text,
-                n_results=3,
+                n_results=_sel_n or 3,
                 candidate_sink=conv_candidates,
+                similarity_floor=_sel_floor,
+                fit_gate=_sel_gate,
             )
             conv_rag_path = "rag_engine.assemble_ranked_context"
         except Exception as e:
@@ -6088,8 +6150,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     query=rag_query,
                     collection="knowledge",
                     mode_text=mode_text,
-                    n_results=5,
+                    n_results=_sel_n or 5,
                     candidate_sink=concept_candidates,
+                    similarity_floor=_sel_floor,
+                    fit_gate=_sel_gate,
                 )
                 concept_rag_path = "rag_engine.assemble_ranked_context"
             except Exception as e:

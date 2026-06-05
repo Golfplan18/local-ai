@@ -520,5 +520,71 @@ class TestCandidateSink(unittest.TestCase):
         self.assertEqual(len(with_sink), 2)
 
 
+# ---------------------------------------------------------------------------
+# Selection funnel — similarity_floor + fit-gate verdict handling in
+# rank_vault_chunks (Process 13, 2026-06-04). The ranker drops gate-"drop"
+# and below-floor chunks before provenance ranks the survivors, recording
+# both to the sink. The fit-gate model call itself is tested separately in
+# test_rag_fit_gate.py — here we test the ranker's response to its verdicts.
+# ---------------------------------------------------------------------------
+
+
+class TestSelectionFunnel(unittest.TestCase):
+
+    def test_similarity_floor_drops_below_threshold(self):
+        hi = _vault_chunk("engram", 0.60, source="hi.md")
+        lo = _vault_chunk("engram", 0.30, source="lo.md")
+        sink = []
+        ranked = rag_engine.rank_vault_chunks(
+            [hi, lo], candidate_sink=sink, similarity_floor=0.40)
+        self.assertEqual([c["metadata"]["source"] for c in ranked], ["hi.md"])
+        dropped = [c for c in sink if c["status"] == "dropped"]
+        self.assertEqual(len(dropped), 1)
+        self.assertEqual(dropped[0]["source"], "lo.md")
+        self.assertEqual(dropped[0]["drop_reason"], "below_floor")
+
+    def test_no_floor_keeps_low_similarity(self):
+        lo = _vault_chunk("engram", 0.30, source="lo.md")
+        ranked = rag_engine.rank_vault_chunks([lo])  # floor None — unchanged
+        self.assertEqual(len(ranked), 1)
+
+    def test_gate_drop_removes_higher_similarity_chunk(self):
+        keep = _vault_chunk("engram", 0.60, source="keep.md")
+        drop = _vault_chunk("engram", 0.70, source="drop.md")  # HIGHER similarity
+        drop["gate_verdict"] = "drop"
+        drop["gate_reason"] = "off-topic cosmology"
+        keep["gate_verdict"] = "keep"
+        keep["gate_reason"] = "on topic"
+        sink = []
+        ranked = rag_engine.rank_vault_chunks([keep, drop], candidate_sink=sink)
+        # The higher-similarity chunk is gone because the gate dropped it —
+        # the cosmology-in-an-art-query fix in miniature.
+        self.assertEqual([c["metadata"]["source"] for c in ranked], ["keep.md"])
+        d = next(c for c in sink if c["status"] == "dropped")
+        self.assertEqual(d["source"], "drop.md")
+        self.assertEqual(d["drop_reason"], "fit_gate")
+        self.assertEqual(d["gate_reason"], "off-topic cosmology")
+        k = next(c for c in sink if c["status"] == "kept")
+        self.assertEqual(k["gate_verdict"], "keep")
+        self.assertEqual(k["gate_reason"], "on topic")
+
+    def test_drop_precedence_gate_then_floor_then_type(self):
+        gated = _vault_chunk("engram", 0.90, source="gated.md")
+        gated["gate_verdict"] = "drop"
+        floored = _vault_chunk("engram", 0.20, source="floored.md")
+        framewk = _vault_chunk("framework", 0.95, source="fw.md")  # weight None
+        kept = _vault_chunk("engram", 0.55, source="kept.md")
+        sink = []
+        ranked = rag_engine.rank_vault_chunks(
+            [gated, floored, framewk, kept],
+            candidate_sink=sink, similarity_floor=0.40)
+        self.assertEqual([c["metadata"]["source"] for c in ranked], ["kept.md"])
+        reasons = {c["source"]: c["drop_reason"]
+                   for c in sink if c["status"] == "dropped"}
+        self.assertEqual(reasons["gated.md"], "fit_gate")
+        self.assertEqual(reasons["floored.md"], "below_floor")
+        self.assertEqual(reasons["fw.md"], "type_not_retrievable")
+
+
 if __name__ == "__main__":
     unittest.main()
