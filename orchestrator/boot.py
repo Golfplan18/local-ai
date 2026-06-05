@@ -6470,6 +6470,14 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 "chars": len(relationship_rag),
                 "content": relationship_rag,
             },
+            # Web consultation trace (F-Consult) — intents, per-tier chunk
+            # counts, conflict detection, and the Process 14 extraction
+            # escalation sub-trace (which URLs were deep-fetched, each fetch's
+            # resolved tier, and the fit-gate keep/drop on every extracted
+            # passage). Persisted so a real turn's web-side decisions are
+            # auditable on disk alongside the vault-RAG candidates, not just
+            # held in memory during the turn.
+            "web_consultation": consultation_trace,
             "rag_signals": signal_descriptions,
             "rag_utilization_header": rag_utilization,
             "hardware_tier": hardware_tier,
