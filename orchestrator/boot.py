@@ -5965,6 +5965,67 @@ def _build_rag_selection(config: dict):
     return (n_results, floor, fit_gate, True)
 
 
+def _build_web_extraction(config: dict) -> dict:
+    """Resolve the extraction-escalation layer (Process 14) for this turn.
+
+    Returns the parameter dict the consultation's extraction sub-pass consumes.
+    When ``ORA_WEB_EXTRACTION`` is off, ``enabled`` is False and the web stream
+    stays snippet-only (the exact pre-Process-14 path). When on: a bounded
+    deep-fetch of thin high-trust snippets — ``ORA_WEB_EXTRACTION_MAX_FETCHES``
+    (default 3, the cost ceiling), ``_MIN_WEIGHT`` (0.3 = whitelisted +
+    corroborated), ``_THIN_CHARS`` (350), ``_CHANNEL`` ("auto"; "httpx" forbids
+    the browser tier). The relevance gate is built from the SAME slot the vault
+    fit-gate uses (``ORA_RAG_FIT_GATE_SLOT``) so one knob governs which small
+    model judges relevance everywhere. Fail-safe: an unresolvable gate endpoint
+    leaves ``fit_gate=None`` and the escalation then folds nothing (fail-closed)
+    rather than dumping ungated full pages on the analyst.
+    """
+    enabled = _env_flag("ORA_WEB_EXTRACTION")
+    try:
+        min_weight = float(os.environ.get("ORA_WEB_EXTRACTION_MIN_WEIGHT", "0.3"))
+    except ValueError:
+        min_weight = 0.3
+    try:
+        thin_chars = int(os.environ.get("ORA_WEB_EXTRACTION_THIN_CHARS", "350"))
+    except ValueError:
+        thin_chars = 350
+    try:
+        max_fetches = int(os.environ.get("ORA_WEB_EXTRACTION_MAX_FETCHES", "3"))
+    except ValueError:
+        max_fetches = 3
+    channel = os.environ.get("ORA_WEB_EXTRACTION_CHANNEL", "auto") or "auto"
+
+    fit_gate = None
+    if enabled:
+        try:
+            try:
+                from rag_fit_gate import make_fit_gate
+            except ImportError:
+                from orchestrator.rag_fit_gate import make_fit_gate
+            slot = os.environ.get("ORA_RAG_FIT_GATE_SLOT", "classification")
+            gate_ep = get_slot_endpoint(config, slot)
+            if gate_ep is not None:
+                def _gate_call(system: str, user: str) -> str:
+                    return call_model(
+                        [{"role": "system", "content": system},
+                         {"role": "user", "content": user}],
+                        gate_ep,
+                    )
+                fit_gate = make_fit_gate(_gate_call)
+        except Exception as exc:
+            print(f"[step2] web-extraction gate unavailable, escalation will "
+                  f"fold nothing: {type(exc).__name__}: {exc}",
+                  file=sys.stderr, flush=True)
+    return {
+        "enabled": enabled,
+        "fit_gate": fit_gate,
+        "min_weight": min_weight,
+        "thin_chars": thin_chars,
+        "max_fetches": max_fetches,
+        "channel": channel,
+    }
+
+
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None,
                                config_name: str | None = None) -> dict:
@@ -6251,6 +6312,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 consultation_trace = {"status": "skipped",
                                       "reason": "no_fast_endpoint"}
             else:
+                _wx = _build_web_extraction(config)
                 try:
                     wc_result = assemble_consultation_package(
                         user_prompt=raw_prompt or cleaned_nl or cleaned_prompt,
@@ -6282,6 +6344,12 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                                 "enabled", True,
                             )
                         ),
+                        extraction_enabled=_wx["enabled"],
+                        extraction_fit_gate=_wx["fit_gate"],
+                        extraction_min_weight=_wx["min_weight"],
+                        extraction_thin_chars=_wx["thin_chars"],
+                        extraction_max_fetches=_wx["max_fetches"],
+                        extraction_channel=_wx["channel"],
                     )
                     web_rag = wc_result.get("web_rag") or ""
                     prompt_sanity_flags = wc_result.get(

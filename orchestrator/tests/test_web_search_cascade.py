@@ -404,6 +404,27 @@ class SemanticAugmentTests(unittest.TestCase):
             out = ws.web_search_structured("q", 5, semantic_augment=True)
         self.assertEqual(len(out), 1)
 
+    def test_augment_interleaves_semantic_co_equal(self):
+        """Exa is co-primary: its hit lands at position 2 (interleaved), not
+        after every keyword result."""
+        def kw_or_exa(q, n, order=None):
+            if order == ("exa",):
+                return ([{"title": "e", "href": "https://exa.com", "body": "x"}],
+                        "exa")
+            return ([
+                {"title": "k1", "href": "https://kw1.com", "body": "y"},
+                {"title": "k2", "href": "https://kw2.com", "body": "y"},
+                {"title": "k3", "href": "https://kw3.com", "body": "y"},
+            ], "tavily")
+        with mock.patch.object(ws, "_load_semantic_augment",
+                               return_value=(True, "exa")), \
+             mock.patch.object(ws, "_search_text", side_effect=kw_or_exa), \
+             _isolate_keys(EXA_API_KEY="key"):
+            out = ws.web_search_structured("q", 5, semantic_augment=True)
+        urls = [r["url"] for r in out]
+        self.assertEqual(urls, ["https://kw1.com", "https://exa.com",
+                                "https://kw2.com", "https://kw3.com"])
+
     def test_augment_noop_without_key(self):
         with mock.patch.object(ws, "_load_semantic_augment", return_value=(True, "exa")), \
              mock.patch.object(ws, "_search_text", side_effect=self._kw_or_exa) as m, \

@@ -304,6 +304,70 @@ class AssembleConsultationPackage(unittest.TestCase):
         self.assertEqual(len(out["prompt_sanity_flags"]), 1)
         self.assertIn("moon landing", out["prompt_sanity_flags"][0]["claim"])
 
+    def test_extraction_escalation_folds_in_when_enabled(self):
+        """Wiring: a thin trusted snippet triggers a deep fetch whose gated
+        passages are folded into web_rag as a DEEP EXTRACTIONS block."""
+        intent_response = (
+            "INTENTS:\n"
+            "- query: q\n"
+            "  justification: j"
+        )
+        results = [_ddg_result("https://source.example/a", "T", "thin")]
+
+        def _stub_fetch(url, channel="auto"):
+            return {"url": url, "markdown": "EXTRACTEDCONTENT " * 60,
+                    "title": "P", "channel": "httpx", "fetched_at": "now"}
+
+        def _gate_keep_all(chunks, query):
+            for c in chunks:
+                c["gate_verdict"] = "keep"
+                c["gate_reason"] = "ok"
+            return chunks
+
+        with mock.patch.object(web_consultation, "web_search_structured",
+                               return_value=results), \
+             mock.patch.object(web_consultation, "web_fetch", new=_stub_fetch):
+            out = web_consultation.assemble_consultation_package(
+                user_prompt="x",
+                call_model=_make_call_model(intent_response, ""),
+                fast_endpoint=_make_fast_endpoint(),
+                prompt_sanity_enabled=False,
+                conflict_detection_enabled=False,
+                extraction_enabled=True,
+                extraction_fit_gate=_gate_keep_all,
+                extraction_min_weight=0.15,  # admit single-source for the test
+            )
+        ex = out["consultation_trace"]["extraction"]
+        self.assertEqual(ex["status"], "ran")
+        self.assertGreater(ex["passages_kept"], 0)
+        self.assertIn("DEEP EXTRACTIONS", out["web_rag"])
+        self.assertIn("EXTRACTEDCONTENT", out["web_rag"])
+        # The snippet body is still present — extractions are folded in beside
+        # the snippets, not in place of them.
+        self.assertIn("thin", out["web_rag"])
+
+    def test_extraction_disabled_by_default(self):
+        """Off by default: no fetch, no DEEP EXTRACTIONS block, trace skipped."""
+        intent_response = "INTENTS:\n- query: q\n  justification: j"
+        results = [_ddg_result("https://source.example/a", "T", "thin")]
+
+        def _explode_fetch(url, channel="auto"):  # must never be called
+            raise AssertionError("web_fetch called while extraction disabled")
+
+        with mock.patch.object(web_consultation, "web_search_structured",
+                               return_value=results), \
+             mock.patch.object(web_consultation, "web_fetch", new=_explode_fetch):
+            out = web_consultation.assemble_consultation_package(
+                user_prompt="x",
+                call_model=_make_call_model(intent_response, ""),
+                fast_endpoint=_make_fast_endpoint(),
+                prompt_sanity_enabled=False,
+                conflict_detection_enabled=False,
+            )
+        self.assertEqual(
+            out["consultation_trace"]["extraction"]["status"], "skipped")
+        self.assertNotIn("DEEP EXTRACTIONS", out["web_rag"])
+
 
 # ---------------------------------------------------------------------------
 # _parse_conflict_blocks

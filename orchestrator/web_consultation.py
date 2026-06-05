@@ -55,6 +55,19 @@ from rag_engine import (  # noqa: E402
 from tools import web_corroboration  # noqa: E402
 from tools.web_search import web_search_structured  # noqa: E402
 
+# Extraction-failure escalation (Process 14) — optional deep-fetch of thin
+# high-trust snippets, chunked + fit-gated + folded back in beside the
+# snippets. Guarded so a missing/broken module never breaks the consultation;
+# extraction simply stays unavailable and the stream remains snippet-only.
+try:
+    from tools.web_fetch import web_fetch  # noqa: E402
+    from web_extraction import escalate_extraction  # noqa: E402
+    WEB_EXTRACTION_AVAILABLE = True
+except Exception:  # pragma: no cover - defensive import guard
+    web_fetch = None  # type: ignore
+    escalate_extraction = None  # type: ignore
+    WEB_EXTRACTION_AVAILABLE = False
+
 
 # ---------------------------------------------------------------------------
 # Configuration constants (overridable at call site via kwargs)
@@ -599,6 +612,12 @@ def assemble_consultation_package(
     max_chars: int = DEFAULT_MAX_CHARS,
     prompt_sanity_enabled: bool = DEFAULT_PROMPT_SANITY_ENABLED,
     conflict_detection_enabled: bool = DEFAULT_CONFLICT_DETECTION_ENABLED,
+    extraction_enabled: bool = False,
+    extraction_fit_gate: Optional[Callable[[list, str], list]] = None,
+    extraction_min_weight: float = 0.3,
+    extraction_thin_chars: int = 350,
+    extraction_max_fetches: int = 3,
+    extraction_channel: str = "auto",
 ) -> dict:
     """Run F-Consult's web consultation stream.
 
@@ -677,6 +696,8 @@ def assemble_consultation_package(
                 "chunks_total": 0,
                 "chunks_approved": 0,
                 "chunks_open": 0,
+                "extraction": {"status": "skipped",
+                               "reason": "consultation_not_run"},
                 "elapsed_seconds": time.time() - t_start,
                 "endpoint_used": endpoint_name,
                 "signals": signals,
@@ -956,6 +977,45 @@ def assemble_consultation_package(
     else:
         web_rag_text = ""
 
+    # --- Extraction escalation (Process 14) ---------------------------
+    # The middle of the three failure modes: a high-trust snippet that is too
+    # thin to carry the detail the analysis needs. escalate_extraction selects
+    # those (cheap, deterministic, capped), fetches the full page via web_fetch,
+    # chunks the markdown, runs the passages through the SAME relevance gate the
+    # vault lanes use, and folds the survivors in beside the snippets. Bounded
+    # and fail-CLOSED (no gate / gate error => fold nothing). See
+    # orchestrator/web_extraction.py and Book — RAG Architecture Report Process 14.
+    extraction_trace: dict = {"status": "skipped", "reason": "disabled"}
+    if extraction_enabled and not WEB_EXTRACTION_AVAILABLE:
+        extraction_trace = {"status": "skipped", "reason": "module_unavailable"}
+    elif extraction_enabled and all_chunks:
+        try:
+            ex = escalate_extraction(
+                all_chunks, user_prompt,
+                fetch_fn=web_fetch,
+                fit_gate=extraction_fit_gate,
+                min_weight=extraction_min_weight,
+                thin_chars=extraction_thin_chars,
+                max_fetches=extraction_max_fetches,
+                channel=extraction_channel,
+            )
+            extraction_trace = ex.get("trace") or {"status": "ran"}
+            block = ex.get("extracted_block") or ""
+            if block:
+                web_rag_text = (
+                    f"{web_rag_text}\n\n{block}" if web_rag_text else block
+                )
+            signals.append(
+                f"web_consultation_extraction: "
+                f"status={extraction_trace.get('status')}, "
+                f"kept={extraction_trace.get('passages_kept', 0)}, "
+                f"dropped={extraction_trace.get('passages_dropped', 0)}"
+            )
+        except Exception as exc:
+            # Fail-soft: extraction must never block the consultation.
+            extraction_trace = {"status": "errored", "reason": str(exc)[:200]}
+            signals.append(f"web_consultation_extraction_error: {exc}")
+
     signals.append(
         f"web_consultation_summary: intents={len(intents)}, "
         f"executed={len(intent_results)}, failed={len(intents_failed)}, "
@@ -978,6 +1038,7 @@ def assemble_consultation_package(
             "chunks_open": chunks_open,
             "conflicts_count": conflicts_count,
             "conflict_detection": conflict_trace,
+            "extraction": extraction_trace,
             # Observability fix #2/#3 — preserve the intent-call diagnostic
             # data so trace consumers can debug 0-intent outcomes and slow
             # cloud-model calls without needing per-call instrumentation.

@@ -22,7 +22,12 @@ Registered providers:
     that DDG silently rate-limits (``BRAVE_API_KEY``).
   - Exa    — neural / semantic retrieval (``EXA_API_KEY``); different
     shape from the keyword tiers, useful for concept-style queries.
-    Not in the default cascade — opt in via ``search_cascade_order``.
+    Runs as a co-equal semantic tier: when ``semantic_augment`` is enabled
+    (the default for the Step-2 consultation and the model web_search tool),
+    Exa results are interleaved round-robin with the keyword cascade
+    (``_merge_interleave``) rather than appended after it, so its best hit is
+    not buried below — or truncated past — the keyword results. Can still be
+    pinned into ``search_cascade_order`` for a keyword-style fallback.
   - DDG    — keyless fallback. Always available.
 
 Default cascade order: ``tavily → brave → ddg``. Configurable via the
@@ -318,18 +323,29 @@ def _reset_semantic_augment_cache() -> None:
     _cached_semantic_augment = None
 
 
-def _merge_dedup(primary: list[dict], secondary: list[dict]) -> list[dict]:
-    """Concatenate two result lists, dropping entries whose URL
-    (``href`` / ``url``) has already been seen. Primary first, then
-    secondary — so keyword results lead and semantic results fill in."""
+def _merge_interleave(primary: list[dict], secondary: list[dict]) -> list[dict]:
+    """Round-robin merge of two result lists, deduped by URL.
+
+    Unlike a plain concatenation (primary then secondary), this interleaves the
+    two sources — ``primary[0]``, ``secondary[0]``, ``primary[1]``,
+    ``secondary[1]``, … — so the semantic provider (Exa) is a *co-equal*
+    discovery tier whose best hit lands at position 2 rather than after every
+    keyword result (and thus past the point a ``max_results`` / char budget
+    would cut it). Primary still leads each pair, preserving keyword priority
+    within a tie. Dedup keeps the first occurrence of each URL.
+    """
+    from itertools import zip_longest
     seen: set[str] = set()
     out: list[dict] = []
-    for r in list(primary) + list(secondary):
-        url = (r.get("href") or r.get("url") or "").strip()
-        if not url or url in seen:
-            continue
-        seen.add(url)
-        out.append(r)
+    for a, b in zip_longest(primary, secondary):
+        for r in (a, b):
+            if r is None:
+                continue
+            url = (r.get("href") or r.get("url") or "").strip()
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            out.append(r)
     return out
 
 
@@ -358,7 +374,22 @@ def _gather_raw(
     sem, _sp = _search_text(query, max_results, order=(provider,))
     if not sem:
         return raw
-    return _merge_dedup(raw, sem)
+    merged = _merge_interleave(raw, sem)
+    # Observability: how many semantic hits were genuinely new (not already
+    # surfaced by the keyword cascade). Lets "is Exa actually contributing?"
+    # be answered from the logs instead of guessed.
+    raw_urls = {(r.get("href") or r.get("url") or "").strip() for r in raw}
+    new_sem = sum(
+        1 for r in sem
+        if (r.get("href") or r.get("url") or "").strip() not in raw_urls
+    )
+    if new_sem:
+        print(
+            f"[web_search] semantic({provider}) contributed {new_sem} new "
+            f"result(s) alongside {len(raw)} keyword result(s) for {query!r}",
+            file=sys.stderr, flush=True,
+        )
+    return merged
 
 
 # ── Cascade execution ───────────────────────────────────────────────
