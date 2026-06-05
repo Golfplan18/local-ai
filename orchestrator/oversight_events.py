@@ -100,10 +100,17 @@ def emit(event) -> dict:
 
 
 # Per-thread stealth context — set by the server's _pipeline_stream at the
-# top of each turn. Threading-local rather than contextvars because Flask's
-# request handler runs each request on its own thread and we want
-# fire-and-forget background workers spawned from that thread to inherit
-# the flag (which threading.local does within the same thread).
+# top of each turn. Threading-local rather than contextvars: Flask's request
+# handler runs each turn on its own thread, and the flag persists across every
+# function call made on that same thread for the turn's duration.
+#
+# CAUTION: threading.local does NOT propagate to child threads. A
+# ThreadPoolExecutor worker or a Thread() spawned mid-turn (e.g. the Gear-4
+# parallel analysts) gets its own empty local and will NOT see the stealth
+# flag. No code currently emits oversight events from a spawned worker, so the
+# gap is latent — but if that changes, the worker must call
+# set_stealth_context() itself, or the durable-log skip in emit() silently
+# leaks stealth-derived content.
 import threading as _threading
 _stealth_ctx = _threading.local()
 
