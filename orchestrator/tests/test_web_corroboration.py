@@ -3,7 +3,7 @@
 Per Reference — Ora YAML Schema §15 (rev 3) the external-tier
 classifier runs a four-stage cascade:
 
-    1. Whitelist match (high-provenance)  → "whitelisted" (0.7)
+    1. Whitelist match (high-provenance)  → "whitelisted" (0.8, resource tier)
     2. Page-specific override            → override's tier
     3. Corroboration count (≥2 unaffiliated domains in result set)
                                           → "corroborated" (0.3)
@@ -45,7 +45,7 @@ type: supervision
 
 # Trusted Web Sources
 
-## High Provenance (resource-tier, weight 0.7)
+## High Provenance (resource-tier, weight 0.8)
 
 ```
 pubmed.ncbi.nlm.nih.gov/*

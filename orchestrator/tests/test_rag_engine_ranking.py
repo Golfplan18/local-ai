@@ -249,9 +249,10 @@ bbc.com/news/*
             [chunk], all_urls=[chunk["url"]], registry=self.registry,
         )
         self.assertEqual(scored[0]["classification"], "whitelisted")
-        self.assertAlmostEqual(scored[0]["weight"], 0.7, places=6)
-        # 0.5 × 0.7 = 0.35
-        self.assertAlmostEqual(scored[0]["score"], 0.35, places=6)
+        # whitelisted merged into the resource tier (0.8) on 2026-06-05
+        self.assertAlmostEqual(scored[0]["weight"], 0.8, places=6)
+        # 0.5 × 0.8 = 0.40
+        self.assertAlmostEqual(scored[0]["score"], 0.40, places=6)
 
     def test_corroborated_external(self):
         chunk = _external_chunk("https://bbc.com/news/world", similarity=0.5)
