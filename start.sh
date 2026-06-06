@@ -31,6 +31,15 @@ export ORA_WEB_EXTRACTION=1
 # Sources and Provenance Rework 2026-06-05 §7. Enabled 2026-06-05.
 export ORA_RUNTIME_ENGRAM_PROMOTION=1
 
+# Deliverable scrub (Step 8.5): after the gear-4 formatter writes the final
+# answer, a deterministic zero-model pass strips any leaked internal pipeline
+# scaffolding (stray contract headings, VERDICT: lines, provider/truncation
+# error markers). High-precision — only removes exact internal jargon, never
+# normal answer content; logs anything stripped to the per-turn
+# deliverable-scrub.jsonl trace sidecar. See boot.py::_scrub_pipeline_leaks.
+# Enabled 2026-06-05.
+export ORA_DELIVERABLE_SCRUB=1
+
 # Kill any stale server process
 pkill -f "server/server.py" 2>/dev/null
 sleep 1
