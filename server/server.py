@@ -1777,6 +1777,101 @@ def _build_visual_fallback_frame(context_pkg: dict | None) -> dict | None:
     return None
 
 
+def _build_visual_diagnostics_frame(context_pkg: dict | None) -> dict | None:
+    """Phase 0 — surface ora-visual suppression to the client.
+
+    The visual hook stashes per-visual diagnostics on
+    ``context_pkg['visual_diagnostics']``. This turns those into a compact
+    SSE payload, but only when at least one envelope was actually suppressed —
+    so the pane stays quiet on healthy turns and gets loud (with the reason)
+    when a visual silently failed to render. Returns ``None`` when there is
+    nothing to report.
+    """
+    if not isinstance(context_pkg, dict):
+        return None
+    diag = context_pkg.get("visual_diagnostics") or {}
+    visuals = diag.get("visuals") or []
+    blocked = [v for v in visuals if v.get("blocked")]
+    if not blocked:
+        return None
+
+    def _reason(v):
+        val = v.get("validator") or {}
+        if not val.get("valid", True):
+            errs = val.get("errors") or []
+            if errs and "parse failed" in (errs[0].get("message", "") or "").lower():
+                return "Not valid JSON — the model didn't emit a parseable envelope"
+            return "Schema/structural error — the envelope didn't match the visual contract"
+        adv = v.get("adversarial") or {}
+        if adv.get("blocks"):
+            return "Failed an honesty check (Tufte / clarity rule)"
+        return "Suppressed"
+
+    def _fmt(items, kfields):
+        out = []
+        for it in items or []:
+            parts = [str(it.get(k, "")).strip() for k in kfields]
+            out.append(": ".join(p for p in parts if p))
+        return [s for s in out if s][:5]
+
+    return {
+        "visuals_seen": len(visuals),
+        "visuals_suppressed": len(blocked),
+        "mode": context_pkg.get("mode_name"),
+        "suppressed": [{
+            "id": v.get("id"),
+            "type": v.get("type"),
+            "reason": _reason(v),
+            "validator_errors": _fmt((v.get("validator") or {}).get("errors"), ("code", "message")),
+            "adversarial_blocks": _fmt((v.get("adversarial") or {}).get("blocks"), ("rule", "message")),
+        } for v in blocked],
+    }
+
+
+@app.route("/api/visual/regenerate", methods=["POST"])
+def visual_regenerate():
+    """Phase 1 — on-demand envelope synthesis for the visual pane's
+    'Regenerate visual' button. Body: ``{prose, mode}``. Runs the same
+    synthesize→validate→repair loop the pipeline uses on a miss, and returns
+    a ready-to-render ora-visual block. Returns ``{ok, block?, type?, reason}``.
+    """
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        data = {}
+    prose = (data.get("prose") or "").strip()
+    mode = data.get("mode") or ""
+    if not prose:
+        return jsonify({"ok": False, "reason": "no prose supplied"}), 400
+    try:
+        from boot import (_mode_target_types, _resolve_synthesis_endpoint,
+                          _strip_visual_blocks_and_markers, call_model)
+        from visual_synthesis import synthesize_envelope, SYSTEM_PROMPT
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": f"synthesis unavailable: {exc}"}), 500
+    target_types = _mode_target_types(mode) or ["concept_map"]
+    endpoint = _resolve_synthesis_endpoint()
+    if not endpoint:
+        return jsonify({"ok": False, "reason": "no synthesis endpoint resolved"}), 503
+    clean = _strip_visual_blocks_and_markers(prose)
+
+    def _call_fn(prompt):
+        return call_model(
+            [{"role": "system", "content": SYSTEM_PROMPT},
+             {"role": "user", "content": prompt}],
+            endpoint,
+        )
+
+    try:
+        env, attempts = synthesize_envelope(clean, mode or "unknown", target_types, _call_fn)
+    except Exception as exc:
+        return jsonify({"ok": False, "reason": f"synthesis error: {exc}"}), 500
+    if env is None:
+        return jsonify({"ok": False, "reason": f"synthesis failed after {len(attempts)} attempt(s)"})
+    block = "```ora-visual\n" + json.dumps(env, indent=2) + "\n```"
+    return jsonify({"ok": True, "block": block, "type": env.get("type"), "envelope": env})
+
+
 # In-memory vision-retry queue keyed by conversation_id. Each entry is a
 # dict {image_path, attempt_reason, queued_at}. Also mirrored to disk at
 # ``~/ora/sessions/<conversation_id>/vision-retry-queue.json`` so a future
@@ -1997,6 +2092,18 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
     yield _sse("pipeline_stage", stage="complete", gear=gear,
                mode=step1["mode"], label="Pipeline complete")
     yield _sse("response", text=response)
+
+    # Phase 0 — make suppressed visuals loud + actionable. The hook above
+    # stashed per-visual diagnostics on context_pkg; surface the reason so the
+    # pane can explain why a visual didn't render instead of leaving only the
+    # bare inline "[visual … suppressed]" marker in the prose. Emitted only
+    # when something was actually suppressed; fail-open.
+    try:
+        _vdiag_frame = _build_visual_diagnostics_frame(context_pkg)
+        if _vdiag_frame:
+            yield _sse("visual_diagnostics", **_vdiag_frame)
+    except Exception as _vd_exc:
+        print(f"[server visual-diagnostics] skipped: {_vd_exc}")
 
 
 def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_context=None,

@@ -235,39 +235,85 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     """
     if not VISUAL_HOOK_AVAILABLE or not response:
         return response
-    if "ora-visual" not in response:
-        return response
     trace_dir = (context_pkg or {}).get("trace_dir") if isinstance(context_pkg, dict) else None
+    # Phase 0 — observe-only emission telemetry across ALL pipeline steps.
+    # Runs regardless of whether the FINAL response carries a block (an
+    # intermediate analyst may have emitted one the formatter later dropped),
+    # so the true envelope valid-rate is measurable. Never mutates state;
+    # fully fail-open; no-op when tracing is off.
     try:
-        mode = (context_pkg or {}).get("mode_name")
-        new_text, diagnostics = _visual_process_response(response, mode=mode)
-    except Exception as exc:  # fail-open: never block legitimate prose on a hook bug
-        print(f"[visual hook] skipped due to error: {exc}")
-        if PIPELINE_TRACE_AVAILABLE and trace_dir:
-            pipeline_trace.write_step(trace_dir, "step-visual-hook", {
-                "status": "hook_exception",
-                "error": str(exc),
-                "response_contained_ora_visual_block": True,
-            }, markdown=(
-                "# Visual Hook — exception\n\n"
-                f"`{exc}` — visual hook fail-open; response prose continues unchanged.\n"
-            ))
-        return response
-    if context_pkg is not None:
-        context_pkg["visual_diagnostics"] = diagnostics
+        _log_visual_emissions_for_turn(trace_dir, context_pkg)
+    except Exception as _emit_exc:
+        print(f"[visual emission log] sweep skipped: {_emit_exc}")
+    mode = (context_pkg or {}).get("mode_name") if isinstance(context_pkg, dict) else None
 
-    if PIPELINE_TRACE_AVAILABLE and trace_dir:
-        visuals = (diagnostics or {}).get("visuals") or []
+    # Validate / suppress any ora-visual blocks the model emitted.
+    new_text = response
+    diagnostics = {"visuals": []}
+    if "ora-visual" in response:
+        try:
+            new_text, diagnostics = _visual_process_response(response, mode=mode)
+        except Exception as exc:  # fail-open: never block legitimate prose on a hook bug
+            print(f"[visual hook] skipped due to error: {exc}")
+            if PIPELINE_TRACE_AVAILABLE and trace_dir:
+                pipeline_trace.write_step(trace_dir, "step-visual-hook", {
+                    "status": "hook_exception",
+                    "error": str(exc),
+                    "response_contained_ora_visual_block": True,
+                }, markdown=(
+                    "# Visual Hook — exception\n\n"
+                    f"`{exc}` — visual hook fail-open; response prose continues unchanged.\n"
+                ))
+            return response
+
+    visuals = (diagnostics or {}).get("visuals") or []
+
+    # Phase 1 — repair-on-miss synthesis. If the mode EXPECTED a visual and the
+    # turn rendered zero valid envelopes (none emitted, or every one
+    # suppressed), synthesize a valid envelope from the prose and splice it in
+    # so the user gets a visual instead of a silent miss. Fully fail-open.
+    rendered_ok = any(not v.get("blocked") for v in visuals)
+    # A visual deliberately marked relation_to_prose='redundant' is suppressed
+    # by the clarity.redundant rule — a "no visual needed" signal. Don't fight
+    # it with synthesis (Phase 2 reconciliation).
+    only_redundant = bool(visuals) and all(
+        v.get("blocked") and any(
+            (b or {}).get("rule") == "clarity.redundant"
+            for b in ((v.get("adversarial") or {}).get("blocks") or [])
+        )
+        for v in visuals
+    )
+    if not rendered_ok and not only_redundant:
+        try:
+            spliced, synth_diag = _maybe_synthesize_visual(new_text, context_pkg, mode)
+            if synth_diag is not None:
+                visuals = visuals + [synth_diag]
+            if spliced is not None:
+                new_text = spliced
+        except Exception as _syn_exc:
+            print(f"[visual synthesis] skipped: {_syn_exc}")
+
+    # Client-facing diagnostics: if synthesis RECOVERED a visual, don't alarm
+    # the user about the superseded failures; the trace keeps the full record.
+    synthesized_ok = any(v.get("synthesized") and not v.get("blocked") for v in visuals)
+    client_visuals = [v for v in visuals if not v.get("blocked")] if synthesized_ok else visuals
+    if context_pkg is not None:
+        context_pkg["visual_diagnostics"] = {"visuals": client_visuals}
+
+    if PIPELINE_TRACE_AVAILABLE and trace_dir and visuals:
         suppressed = [v for v in visuals if v.get("blocked")]
+        synth = [v for v in visuals if v.get("synthesized")]
         pipeline_trace.write_step(trace_dir, "step-visual-hook", {
             "status": "ok",
             "visuals_seen": len(visuals),
             "visuals_suppressed": len(suppressed),
-            "diagnostics": diagnostics,
+            "synthesized": len(synth),
+            "diagnostics": {"visuals": visuals},
         }, markdown=(
             "# Visual Hook\n\n"
             f"**Visuals seen:** {len(visuals)}  \n"
-            f"**Visuals suppressed (Critical findings):** {len(suppressed)}\n\n"
+            f"**Visuals suppressed (Critical findings):** {len(suppressed)}  \n"
+            f"**Synthesized (Phase 1 repair):** {len(synth)}\n\n"
             + ("## Suppressed blocks\n\n" if suppressed else "")
             + "\n".join(
                 f"- `{v.get('id') or '?'}` ({v.get('type') or '?'}) — "
@@ -279,6 +325,220 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
             + ("\n" if suppressed else "")
         ))
     return new_text
+
+
+# Visual types the synthesis path may target — the 22 renderable diagram types.
+# annotated_image is intentionally excluded: it needs a user-uploaded image
+# backdrop, so it can't be synthesized from prose alone.
+_KNOWN_VISUAL_TYPES = frozenset({
+    "comparison", "time_series", "distribution", "scatter", "heatmap", "tornado",
+    "causal_loop_diagram", "stock_and_flow", "causal_dag", "fishbone",
+    "decision_tree", "influence_diagram", "ach_matrix", "quadrant_matrix", "bow_tie",
+    "ibis", "pro_con", "concept_map", "sequence", "flowchart", "state", "c4",
+})
+
+
+def _mode_target_types(mode: str | None) -> list[str]:
+    """Visual types a mode expects (from ``mode-to-visual.json``). Returns an
+    empty list for linguistically-native modes (``no_visual``), unconfigured
+    modes, or modes whose only types aren't synthesizable from prose."""
+    if not mode:
+        return []
+    try:
+        from visual_adversarial import _load_mode_config
+        cfg = _load_mode_config() or {}
+        m = (cfg.get("modes") or {}).get(mode) or {}
+        if m.get("relation_to_prose_default") == "no_visual":
+            return []
+        types = [t for t in (m.get("visual_types") or []) if isinstance(t, str)]
+        return [t for t in types if t in _KNOWN_VISUAL_TYPES]
+    except Exception:
+        return []
+
+
+def _strip_visual_blocks_and_markers(text: str) -> str:
+    """Remove ora-visual fenced blocks and ``[visual … suppressed …]`` markers
+    so synthesis sees clean analytical prose (and so a recovered turn doesn't
+    leave confusing failure markers in the output)."""
+    import re
+    if not text:
+        return text or ""
+    t = re.sub(r"```ora-visual\s*\n.*?\n```", "", text, flags=re.DOTALL)
+    t = re.sub(r"\[visual[^\]]*suppressed[^\]]*\]", "", t)
+    return t.strip()
+
+
+def _resolve_synthesis_endpoint() -> dict | None:
+    """Resolve the endpoint used to synthesize/repair an envelope. Prefers a
+    configured ``visual_synthesis.preferred`` (endpoint name/id) in
+    routing-config; otherwise the active (reliable) endpoint. ``None`` ⇒ skip."""
+    try:
+        config = load_routing_config()
+    except Exception:
+        return None
+    if not isinstance(config, dict):
+        return None
+    pref = (config.get("visual_synthesis") or {}).get("preferred")
+    if pref:
+        for ep in (config.get("endpoints") or []):
+            if isinstance(ep, dict) and (ep.get("name") == pref or ep.get("id") == pref):
+                return ep
+    try:
+        return get_active_endpoint(config)
+    except Exception:
+        return None
+
+
+def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | None):
+    """Phase 1 repair-on-miss. Returns ``(spliced_text | None, diag | None)``.
+
+    Fires only when the mode expects a visual and we're in an interactive
+    context (synthesis adds a model call; gated off in autonomous/agent runs to
+    keep unattended cost bounded, matching the image-gen stance)."""
+    target_types = _mode_target_types(mode)
+    if not target_types:
+        return None, None
+    exec_ctx = "interactive"
+    if isinstance(context_pkg, dict):
+        exec_ctx = (context_pkg.get("execution_context")
+                    or context_pkg.get("operational_context")
+                    or "interactive")
+    if exec_ctx != "interactive":
+        return None, None
+    endpoint = _resolve_synthesis_endpoint()
+    if not endpoint:
+        return None, None
+    clean_prose = _strip_visual_blocks_and_markers(prose)
+    if not clean_prose:
+        return None, None
+
+    from visual_synthesis import synthesize_envelope, SYSTEM_PROMPT
+
+    def _call_fn(prompt: str) -> str:
+        return call_model(
+            [{"role": "system", "content": SYSTEM_PROMPT},
+             {"role": "user", "content": prompt}],
+            endpoint,
+        )
+
+    env, attempts = synthesize_envelope(clean_prose, mode or "unknown", target_types, _call_fn)
+
+    if PIPELINE_TRACE_AVAILABLE:
+        try:
+            pipeline_trace.append_emission_record({
+                "conversation_id": (context_pkg or {}).get("conversation_id") if isinstance(context_pkg, dict) else None,
+                "source": "synthesis",
+                "mode": mode,
+                "type": target_types[0],
+                "endpoint": endpoint.get("name") or endpoint.get("id"),
+                "rounds": len(attempts),
+                "succeeded": env is not None,
+            })
+        except Exception:
+            pass
+
+    if env is None:
+        diag = {
+            "id": None, "type": target_types[0], "blocked": True,
+            "validator": {"valid": False, "errors": [{
+                "code": "E_SYNTHESIS_FAILED",
+                "message": f"envelope synthesis failed after {len(attempts)} attempt(s)"}]},
+            "adversarial": None, "synthesized": True,
+        }
+        return None, diag
+
+    block = "```ora-visual\n" + json.dumps(env, indent=2) + "\n```"
+    spliced = (clean_prose.rstrip() + "\n\n" + block) if clean_prose else block
+    diag = {
+        "id": env.get("id"), "type": env.get("type"), "blocked": False,
+        "validator": {"valid": True, "errors": []},
+        "adversarial": {"blocks": []}, "synthesized": True,
+    }
+    return spliced, diag
+
+
+def _log_visual_emissions_for_turn(trace_dir: str | None, context_pkg: dict | None) -> None:
+    """Phase 0 — observe-only ora-visual emission telemetry.
+
+    Scans the per-turn trace's ``step*.json`` files for ``ora-visual`` blocks,
+    evaluates each through the validator + adversarial review WITHOUT
+    suppressing anything, and appends one record per emission attempt to the
+    corpus emission log (``data/visual-emission-log.jsonl``) plus a per-turn
+    ``step-visual-emissions.json`` summary. This is the data that was missing:
+    intermediate analyst steps emit envelopes that the single final hook never
+    saw, so the real valid-rate (and its model-tier dependence) was
+    unmeasurable. No-op when tracing is off; fully fail-open.
+    """
+    if not PIPELINE_TRACE_AVAILABLE or not trace_dir:
+        return
+    try:
+        from visual_adversarial import inspect_response
+    except Exception:
+        return
+
+    import glob
+
+    mode = (context_pkg or {}).get("mode_name") if isinstance(context_pkg, dict) else None
+    conv = (context_pkg or {}).get("conversation_id") if isinstance(context_pkg, dict) else None
+    text_keys = ("raw_response", "response", "answer", "output",
+                 "formatted", "text", "content", "result")
+    summary = {"total_emissions": 0, "valid": 0, "would_suppress": 0, "by_step": []}
+
+    try:
+        step_files = sorted(glob.glob(os.path.join(trace_dir, "step*.json")))
+    except Exception:
+        step_files = []
+
+    for sf in step_files:
+        try:
+            with open(sf) as fh:
+                data = json.load(fh)
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        endpoint = data.get("endpoint") or data.get("model") or data.get("endpoint_name")
+        stream = data.get("stream")
+        seen_here = 0
+        for k in text_keys:
+            v = data.get(k)
+            if not isinstance(v, str) or "ora-visual" not in v:
+                continue
+            diag = inspect_response(v, mode=mode)
+            for vis in diag.get("visuals", []):
+                blocked = bool(vis.get("blocked"))
+                summary["total_emissions"] += 1
+                summary["valid"] += 0 if blocked else 1
+                summary["would_suppress"] += 1 if blocked else 0
+                seen_here += 1
+                pipeline_trace.append_emission_record({
+                    "conversation_id": conv,
+                    "trace_dir": os.path.basename(os.path.dirname(trace_dir)) + "/" + os.path.basename(trace_dir),
+                    "step_file": os.path.basename(sf),
+                    "endpoint": endpoint,
+                    "stream": stream,
+                    "mode": mode,
+                    "type": vis.get("type"),
+                    "id": vis.get("id"),
+                    "parse_ok": bool(vis.get("parse_ok")),
+                    "schema_valid": bool((vis.get("validator") or {}).get("valid")),
+                    "adversarial_blocks": len(((vis.get("adversarial") or {}).get("blocks")) or []),
+                    "would_suppress": blocked,
+                })
+        if seen_here:
+            summary["by_step"].append({"step_file": os.path.basename(sf),
+                                       "endpoint": endpoint, "emissions": seen_here})
+
+    if summary["total_emissions"]:
+        pipeline_trace.write_step(trace_dir, "step-visual-emissions", summary, markdown=(
+            "# Visual Emissions — observe-only sweep\n\n"
+            f"**Emission attempts (all steps):** {summary['total_emissions']}  \n"
+            f"**Valid (would render):** {summary['valid']}  \n"
+            f"**Would-suppress:** {summary['would_suppress']}\n\n"
+            + ("## By step\n\n" + "\n".join(
+                f"- `{s['step_file']}` ({s.get('endpoint') or '?'}) — {s['emissions']} emission(s)"
+                for s in summary["by_step"]) + "\n" if summary["by_step"] else "")
+        ))
 
 
 def _extract_final_response(raw: str) -> str:
