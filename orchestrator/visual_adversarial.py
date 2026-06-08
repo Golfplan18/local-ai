@@ -491,6 +491,243 @@ def _t15_caption_source_n(envelope: dict, vtype: str) -> list[Finding]:
 
 
 # ---------------------------------------------------------------------------
+# T-rules completed in Phase 2 (T4, T6, T9, T11, T12, T13, T14)
+# ---------------------------------------------------------------------------
+
+def _mark_type(spec: dict) -> str:
+    mark = spec.get("mark")
+    if isinstance(mark, str):
+        return mark
+    if isinstance(mark, dict):
+        return mark.get("type") or ""
+    return ""
+
+
+def _t4_data_ink(envelope: dict, vtype: str) -> list[Finding]:
+    """T4: data-ink ratio — decorative non-data ink (drop shadow, gradient fill
+    on a data mark). Minor / informational; relaxed under memorability_goal.
+    3D extrusion / chartjunk is the harder T5 (Critical)."""
+    if vtype not in QUANT_TYPES or envelope.get("memorability_goal"):
+        return []
+    spec = envelope.get("spec") or {}
+    mark = spec.get("mark")
+    decorations: list[str] = []
+    if isinstance(mark, dict):
+        for deco in ("shadow", "dropShadow", "drop_shadow"):
+            if mark.get(deco):
+                decorations.append(deco)
+        for ch in ("fill", "color"):
+            val = mark.get(ch)
+            if isinstance(val, dict) and "gradient" in val:
+                decorations.append(f"mark.{ch}.gradient")
+    if not decorations:
+        return []
+    return [Finding(
+        rule="T4", severity="Minor",
+        message=f"decorative non-data ink present ({', '.join(decorations)}) — lowers data-ink ratio",
+        path="spec.mark",
+        suggestion="Drop shadows/gradients on data marks, or set memorability_goal if the embellishment is intentional.",
+    )]
+
+
+def _t6_show_the_data(envelope: dict, vtype: str) -> list[Finding]:
+    """T6: show the data. A y-axis aggregate (mean/median/sum) over >20 points
+    with no distributional layer hides the spread (Weissgerber). Major."""
+    if vtype != "comparison":
+        return []
+    spec = envelope.get("spec") or {}
+    yagg = ((( spec.get("encoding") or {}).get("y") or {}).get("aggregate") or "").lower()
+    if yagg not in ("mean", "average", "median", "sum"):
+        return []
+    data = (spec.get("data") or {}).get("values") or []
+    if len(data) <= 20:
+        return []
+    return [Finding(
+        rule="T6", severity="Major",
+        message=f"y aggregated by '{yagg}' over {len(data)} points with no distributional layer — hides spread",
+        path="spec.encoding.y.aggregate",
+        suggestion="Add a box/strip/violin distributional layer, or justify the aggregation.",
+    )]
+
+
+def _t9_axis_orientation(envelope: dict, vtype: str) -> list[Finding]:
+    """T9: inverted y-scale on a conventional quantity without an explicit
+    integrity declaration. Critical (§7.3)."""
+    if vtype not in QUANT_TYPES:
+        return []
+    spec = envelope.get("spec") or {}
+    yscale = (((spec.get("encoding") or {}).get("y") or {}).get("scale") or {})
+    inverted = yscale.get("reverse") is True
+    dom = yscale.get("domain")
+    if (isinstance(dom, list) and len(dom) == 2
+            and all(isinstance(x, (int, float)) for x in dom) and dom[0] > dom[1]):
+        inverted = True
+    if not inverted:
+        return []
+    if (envelope.get("integrity_declarations") or {}).get("inverted_axis_justified"):
+        return []
+    return [Finding(
+        rule="T9", severity="Critical",
+        message="inverted y-axis on a conventional quantity without justification",
+        path="spec.encoding.y.scale.reverse",
+        suggestion="Remove the inversion or set integrity_declarations.inverted_axis_justified.",
+    )]
+
+
+def _t11_small_multiples(envelope: dict, vtype: str) -> list[Finding]:
+    """T11: >=7 categorical colors on a single panel — suggest small multiples
+    (facet). Minor / suggestion."""
+    if vtype not in QUANT_TYPES:
+        return []
+    spec = envelope.get("spec") or {}
+    enc = spec.get("encoding") or {}
+    field = (enc.get("color") or {}).get("field")
+    data = (spec.get("data") or {}).get("values") or []
+    if not field or not data or enc.get("facet") or "facet" in spec:
+        return []
+    cats = {row[field] for row in data if isinstance(row, dict) and field in row}
+    if len(cats) < 7:
+        return []
+    return [Finding(
+        rule="T11", severity="Minor",
+        message=f"{len(cats)} categorical colors on one panel — consider small multiples (facet)",
+        path="spec.encoding.color",
+        suggestion="Facet into small multiples; >6 colors strain preattentive discrimination.",
+    )]
+
+
+def _t12_currency(envelope: dict, vtype: str) -> list[Finding]:
+    """T12: nominal currency on a time series should be real/deflated over
+    multi-year spans. Heuristic Minor (fires only when a currency unit is
+    declared and no real/deflated note is present)."""
+    if vtype != "time_series":
+        return []
+    spec = envelope.get("spec") or {}
+    cap = spec.get("caption") or {}
+    units = (cap.get("units") or "") if isinstance(cap, dict) else ""
+    blob = " ".join([units, envelope.get("caption") or "", envelope.get("title") or ""]).lower()
+    if not any(sym in blob for sym in ("$", "usd", "eur", "gbp", "dollar", "euro", "currency")):
+        return []
+    if any(w in blob for w in ("real", "deflated", "inflation-adjusted", "constant", "chained")):
+        return []
+    return [Finding(
+        rule="T12", severity="Minor",
+        message="nominal currency on a time series — prefer real/deflated values over multi-year spans",
+        path="caption.units",
+        suggestion="Use inflation-adjusted (real) values or state explicitly that figures are nominal.",
+    )]
+
+
+def _t13_event_labelling(envelope: dict, vtype: str) -> list[Finding]:
+    """T13: a long time series with no event annotations. Conservative Minor."""
+    if vtype != "time_series":
+        return []
+    spec = envelope.get("spec") or {}
+    data = (spec.get("data") or {}).get("values") or []
+    if len(data) < 60:
+        return []
+    if envelope.get("annotations") or "layer" in spec or "rule" in str(spec.get("mark")):
+        return []
+    return [Finding(
+        rule="T13", severity="Minor",
+        message=f"long time series ({len(data)} points) with no event annotations",
+        path="spec",
+        suggestion="Label major events (rule layers / annotations) so readers can anchor inflections.",
+    )]
+
+
+def _t14_tick_consistency(envelope: dict, vtype: str) -> list[Finding]:
+    """T14: non-uniform explicit tick spacing on a linear quantitative axis.
+    Minor (log axes excluded — their ticks aren't uniform by design; T8)."""
+    if vtype not in QUANT_TYPES:
+        return []
+    enc = (envelope.get("spec") or {}).get("encoding") or {}
+    findings: list[Finding] = []
+    for ch in ("x", "y"):
+        cdef = enc.get(ch) or {}
+        if (cdef.get("scale") or {}).get("type") in ("log", "symlog", "pow"):
+            continue
+        vals = (cdef.get("axis") or {}).get("values")
+        if isinstance(vals, list) and len(vals) >= 3 and all(isinstance(v, (int, float)) for v in vals):
+            diffs = {round(vals[i + 1] - vals[i], 9) for i in range(len(vals) - 1)}
+            if len(diffs) > 1:
+                findings.append(Finding(
+                    rule="T14", severity="Minor",
+                    message=f"non-uniform tick spacing on {ch}-axis ({vals})",
+                    path=f"spec.encoding.{ch}.axis.values",
+                    suggestion="Use a constant tick step on linear quantitative axes.",
+                ))
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Clarity gates (Phase 2) — catch unclear/empty/redundant emissions that the
+# Tufte honesty rules don't cover.
+# ---------------------------------------------------------------------------
+
+_PLACEHOLDER_SD = {"", "n/a", "na", "none", "todo", "...", "tbd", "see above", "placeholder"}
+
+
+def _clarity_semantic_quality(envelope: dict, vtype: str) -> list[Finding]:
+    """The four-level semantic_description must be substantive, not placeholder
+    or copy-pasted across levels; short_alt follows the Cesal <=150 form."""
+    sd = envelope.get("semantic_description")
+    if not isinstance(sd, dict):
+        return []  # absence is a schema error caught upstream
+    findings: list[Finding] = []
+    short_alt = (sd.get("short_alt") or "").strip()
+    if not short_alt:
+        findings.append(Finding(
+            rule="clarity.semantic", severity="Major",
+            message="semantic_description.short_alt is empty (accessibility)",
+            path="semantic_description.short_alt",
+            suggestion="Write the Cesal one-liner: '<chart type> of <data>, where <key takeaway>.'",
+        ))
+    elif len(short_alt) > 150:
+        findings.append(Finding(
+            rule="clarity.semantic", severity="Minor",
+            message=f"short_alt is {len(short_alt)} chars (>150; Cesal one-liner)",
+            path="semantic_description.short_alt",
+            suggestion="Trim short_alt to <=150 characters.",
+        ))
+    levels = [(sd.get(k) or "").strip().lower() for k in
+              ("level_1_elemental", "level_2_statistical", "level_3_perceptual")]
+    if any(lv in _PLACEHOLDER_SD for lv in levels):
+        findings.append(Finding(
+            rule="clarity.semantic", severity="Minor",
+            message="a semantic_description level is placeholder/empty",
+            path="semantic_description",
+            suggestion="Populate level_1/2/3 with real elemental / statistical / perceptual descriptions.",
+        ))
+    # Identical non-redundant-guard levels indicate copy-paste.
+    redundancy_guard = {"see surrounding prose.", "see surrounding prose"}
+    nonempty = [lv for lv in levels if lv and lv not in redundancy_guard]
+    if len(nonempty) >= 2 and len(set(nonempty)) == 1:
+        findings.append(Finding(
+            rule="clarity.semantic", severity="Minor",
+            message="semantic_description levels are identical (copy-pasted)",
+            path="semantic_description",
+            suggestion="Each level serves a distinct purpose — differentiate elemental / statistical / perceptual.",
+        ))
+    return findings
+
+
+def _clarity_redundant(envelope: dict, vtype: str) -> list[Finding]:
+    """relation_to_prose='redundant' means the visual only restates prose;
+    Mayer's redundancy principle makes that actively harmful, so the protocol
+    prefers no_visual. Suppress it (Critical). ``boot._run_visual_hook``
+    recognizes this rule and does NOT re-synthesize — a deliberate no-visual."""
+    if envelope.get("relation_to_prose") == "redundant":
+        return [Finding(
+            rule="clarity.redundant", severity="Critical",
+            message="relation_to_prose='redundant' — visual restates prose; prefer no_visual (Mayer redundancy)",
+            path="relation_to_prose",
+            suggestion="Emit no visual, or make it carry pattern/structure prose doesn't (relation=integrated).",
+        )]
+    return []
+
+
+# ---------------------------------------------------------------------------
 # LLM-prior-inversion (§7.5)
 # ---------------------------------------------------------------------------
 
@@ -663,6 +900,16 @@ def review_envelope(envelope: dict, mode: str | None = None) -> ReviewResult:
     findings.extend(_inv_chart_type(envelope, vtype))
     findings.extend(_inv_default_settings(envelope, vtype))
     findings.extend(_quadrant_axes_dependence(envelope, vtype))
+    # Phase 2 — remaining Tufte rules + clarity gates.
+    findings.extend(_t4_data_ink(envelope, vtype))
+    findings.extend(_t6_show_the_data(envelope, vtype))
+    findings.extend(_t9_axis_orientation(envelope, vtype))
+    findings.extend(_t11_small_multiples(envelope, vtype))
+    findings.extend(_t12_currency(envelope, vtype))
+    findings.extend(_t13_event_labelling(envelope, vtype))
+    findings.extend(_t14_tick_consistency(envelope, vtype))
+    findings.extend(_clarity_semantic_quality(envelope, vtype))
+    findings.extend(_clarity_redundant(envelope, vtype))
 
     # The per-mode structural-criteria hook (mode_success_criteria) was
     # retired 2026-05-10 along with the cascade architecture: the locked
@@ -771,10 +1018,72 @@ def process_response(response: str, mode: str | None = None) -> tuple[str, dict]
     return new_text, diagnostics
 
 
+def inspect_response(response: str, mode: str | None = None) -> dict:
+    """Observe-only twin of :func:`process_response`.
+
+    Runs the same parse → validator → adversarial evaluation over every
+    ``ora-visual`` block and returns the SAME ``diagnostics`` shape, but
+    **never mutates the text and never suppresses anything**. Each per-visual
+    entry additionally carries ``parse_ok`` (False only when the fenced body
+    failed ``json.loads``).
+
+    Used by the Phase-0 emission-telemetry sweep so intermediate pipeline
+    steps can be measured without altering analytical output. Kept as a
+    parallel implementation (rather than refactoring ``process_response``) so
+    the live suppression path stays byte-for-byte unchanged.
+    """
+    import re
+
+    diagnostics: dict[str, list] = {"visuals": []}
+    if not response or "ora-visual" not in response:
+        return diagnostics
+
+    pattern = re.compile(r"```ora-visual\s*\n(.*?)\n```", re.DOTALL)
+    for match in pattern.finditer(response):
+        raw = match.group(1)
+        try:
+            envelope = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            diagnostics["visuals"].append({
+                "id": None,
+                "type": None,
+                "parse_ok": False,
+                "blocked": True,
+                "validator": {"valid": False, "errors": [{"code": V_CODES["E_SCHEMA_INVALID"], "message": f"JSON parse failed: {exc}"}]},
+                "adversarial": None,
+            })
+            continue
+
+        from visual_validator import validate_envelope
+        vresult = validate_envelope(envelope)
+        if not vresult.valid:
+            diagnostics["visuals"].append({
+                "id": envelope.get("id"),
+                "type": envelope.get("type"),
+                "parse_ok": True,
+                "blocked": True,
+                "validator": vresult.as_dict(),
+                "adversarial": None,
+            })
+            continue
+
+        review = review_envelope(envelope, mode or envelope.get("mode_context"))
+        diagnostics["visuals"].append({
+            "id": envelope.get("id"),
+            "type": envelope.get("type"),
+            "parse_ok": True,
+            "blocked": bool(review.blocks),
+            "validator": vresult.as_dict(),
+            "adversarial": review.as_dict(),
+        })
+    return diagnostics
+
+
 __all__ = [
     "Finding",
     "ReviewResult",
     "review_envelope",
     "process_response",
+    "inspect_response",
     "TEMPLATE_TRAP_STRINGS",
 ]

@@ -2,6 +2,11 @@
   "_schema_version": 2,
   "_note": "Schema v2. As of Chunk 2d (2026-05-18) the pipelines block is retired and slot resolution flows through config/configurations/. See _schema_notes for the deprecation roadmap.",
   "_migrated_from": "/Users/oracle/ora/config/endpoints.json",
+  "visual_synthesis": {
+    "preferred": null,
+    "fallback": [],
+    "_note": "Phase 1 (2026-06-07) — endpoint that synthesizes/repairs an ora-visual envelope from analyst prose when the analytical model didn't emit a valid one (boot._maybe_synthesize_visual). Set 'preferred' to an endpoint name/id from the 'endpoints' block that is reliable at strict JSON (Grok / GPT class). When null or unresolvable, synthesis falls back to the turn's active endpoint. Repair-on-miss: fires only when a mode expects a visual and the turn rendered none; interactive contexts only."
+  },
   "vision_extraction": {
     "enabled": true,
     "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image \u2192 text), NOT image-generation models. The dedicated 'image_extracts' slot is the canonical home: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. When the slot's chain produces no vision-input-capable entry, route_for_image_input sets context_pkg['no_vision_available'] = True and the manual-trace UX (WP-4.4) takes over. The earlier preferred_extractor_bucket / fallback_extractor_bucket bucket-fallback path was retired in install Chunk 12 (2026-05-19).",
