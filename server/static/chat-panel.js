@@ -927,6 +927,7 @@ class ChatPanel {
           }
           else if (d.type === 'response') {
             aiBubble.innerHTML = _md(d.text);
+            this._lastResponseText = d.text;   // stash for visual_diagnostics / Regenerate (Phase 1)
             this.history.push({role: 'user',      content: text});
             this.history.push({role: 'assistant', content: d.text});
             // WP-2.3 — extract any ora-visual fenced blocks from the final
@@ -958,6 +959,28 @@ class ChatPanel {
               }
             } catch (e) {
               try { console.warn('[chat-panel] visual_fallback dispatch failed:', e); } catch (e2) {}
+            }
+          }
+          // ── Phase 0 — visual suppression diagnostics ──────────────────
+          // The server emits `visual_diagnostics` AFTER the response when one
+          // or more ora-visual envelopes were suppressed (schema/adversarial).
+          // Surface the reason in the visual panel instead of leaving only the
+          // bare inline "[visual … suppressed]" marker in the prose.
+          else if (d.type === 'visual_diagnostics') {
+            try {
+              var vpd = this._findSubscribedVisualPanel();
+              if (vpd && typeof vpd.showVisualDiagnostics === 'function') {
+                vpd.showVisualDiagnostics({
+                  visuals_seen:       d.visuals_seen || 0,
+                  visuals_suppressed: d.visuals_suppressed || 0,
+                  suppressed:         Array.isArray(d.suppressed) ? d.suppressed : [],
+                  conversation_id:    this.panelId,
+                  responseText:       this._lastResponseText || '',   // Phase 1 — for Regenerate
+                  mode:               d.mode || '',
+                });
+              }
+            } catch (e) {
+              try { console.warn('[chat-panel] visual_diagnostics dispatch failed:', e); } catch (e2) {}
             }
           }
         }

@@ -4284,6 +4284,137 @@
   };
 
   /**
+   * Phase 0 — render a "Visual couldn't be shown" card explaining why each
+   * suppressed ora-visual envelope was blocked, instead of leaving only the
+   * bare inline "[visual … suppressed]" marker in the chat prose. Reuses the
+   * fallback overlay's CSS classes (no new stylesheet). The Regenerate action
+   * is intentionally disabled here and wired live in Phase 1, once the
+   * envelope-synthesis/repair step exists to regenerate against.
+   *
+   * @param {object} payload - {visuals_seen, visuals_suppressed, suppressed[], conversation_id}
+   *   suppressed[i] = {id, type, reason, validator_errors[], adversarial_blocks[]}
+   */
+  VisualPanel.prototype.showVisualDiagnostics = function (payload) {
+    if (!payload || typeof payload !== 'object') return;
+    var suppressed = Array.isArray(payload.suppressed) ? payload.suppressed : [];
+    if (!suppressed.length) return;
+    var doc = (this.el && this.el.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+    if (!doc) return;
+
+    // Context the Regenerate button synthesizes from (refreshed each call).
+    this._diagCtx = { responseText: payload.responseText || '', mode: payload.mode || '' };
+
+    if (!this._diagOverlayEl) {
+      var overlay = doc.createElement('div');
+      overlay.className = 'visual-panel__fallback-overlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'false');
+      overlay.hidden = true;
+
+      var card = doc.createElement('div');
+      card.className = 'visual-panel__fallback-overlay-card';
+
+      var heading = doc.createElement('div');
+      heading.className = 'visual-panel__fallback-heading';
+      heading.textContent = "Visual couldn’t be shown";
+
+      var body = doc.createElement('div');
+      body.className = 'visual-panel__fallback-body';
+      this._diagBodyEl = body;
+
+      var actions = doc.createElement('div');
+      actions.className = 'visual-panel__fallback-actions';
+
+      var regenBtn = doc.createElement('button');
+      regenBtn.type = 'button';
+      regenBtn.className = 'visual-panel__fallback-btn visual-panel__fallback-btn--primary';
+      regenBtn.textContent = 'Regenerate visual';
+      this._diagRegenBtn = regenBtn;
+
+      var dismissBtn = doc.createElement('button');
+      dismissBtn.type = 'button';
+      dismissBtn.className = 'visual-panel__fallback-btn';
+      dismissBtn.textContent = 'Dismiss';
+      dismissBtn.addEventListener('click', function () { overlay.hidden = true; });
+
+      // Phase 1 — Regenerate runs the synthesis/repair loop server-side and
+      // renders the recovered envelope onto the canvas.
+      var self = this;
+      regenBtn.addEventListener('click', function () {
+        var ctx = self._diagCtx || {};
+        if (!ctx.responseText) return;
+        var prev = regenBtn.textContent;
+        regenBtn.disabled = true;
+        regenBtn.textContent = 'Regenerating…';
+        fetch('/api/visual/regenerate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prose: ctx.responseText, mode: ctx.mode || '' })
+        }).then(function (r) { return r.json(); }).then(function (data) {
+          regenBtn.disabled = false;
+          regenBtn.textContent = prev;
+          if (data && data.ok && data.envelope && typeof self.renderSpec === 'function') {
+            try { self.renderSpec(data.envelope); } catch (e) {}
+            overlay.hidden = true;
+          } else if (self._diagBodyEl) {
+            var f = doc.createElement('div');
+            f.className = 'visual-panel__fallback-meta';
+            f.textContent = 'Regeneration failed: ' + ((data && data.reason) || 'unknown');
+            self._diagBodyEl.appendChild(f);
+          }
+        }).catch(function () {
+          regenBtn.disabled = false;
+          regenBtn.textContent = prev;
+        });
+      });
+
+      actions.appendChild(regenBtn);
+      actions.appendChild(dismissBtn);
+      card.appendChild(heading);
+      card.appendChild(body);
+      card.appendChild(actions);
+      overlay.appendChild(card);
+
+      var host = this.el
+        || (this.stage && this.stage.container && this.stage.container())
+        || doc.body;
+      try { host.appendChild(overlay); } catch (e) { doc.body.appendChild(overlay); }
+      this._diagOverlayEl = overlay;
+    }
+
+    var bodyEl = this._diagBodyEl;
+    bodyEl.textContent = '';
+    var intro = doc.createElement('div');
+    intro.textContent = (payload.visuals_suppressed || suppressed.length) + ' of '
+      + (payload.visuals_seen || suppressed.length)
+      + ' visual(s) were suppressed. Your analysis text is unaffected.';
+    bodyEl.appendChild(intro);
+
+    var list = doc.createElement('ul');
+    suppressed.forEach(function (s) {
+      var li = doc.createElement('li');
+      li.textContent = (s.id || 'figure') + ' (' + (s.type || 'unknown') + '): '
+        + (s.reason || 'suppressed');
+      var details = [].concat(s.validator_errors || [], s.adversarial_blocks || []);
+      if (details.length) {
+        var sub = doc.createElement('div');
+        sub.className = 'visual-panel__fallback-meta';
+        sub.textContent = details.join(' · ');
+        li.appendChild(sub);
+      }
+      list.appendChild(li);
+    });
+    bodyEl.appendChild(list);
+    // Enable Regenerate only when we have analysis prose to synthesize from.
+    if (this._diagRegenBtn) {
+      var hasProse = !!(this._diagCtx && this._diagCtx.responseText);
+      this._diagRegenBtn.disabled = !hasProse;
+      this._diagRegenBtn.title = hasProse ? '' : 'No analysis text available to regenerate from';
+    }
+    this._diagOverlayEl.hidden = false;
+  };
+
+  /**
    * Lazy-create the overlay DOM. Idempotent — subsequent calls are no-ops.
    * Overlay lives inside the panel's root `<div>` so it's positioned
    * relative to the panel, not the document. Three buttons wire to

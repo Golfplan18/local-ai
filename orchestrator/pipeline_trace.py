@@ -213,6 +213,34 @@ def append_jsonl(trace_dir: str | None,
               file=sys.stderr)
 
 
+# Corpus-wide ora-visual emission log. Unlike the per-turn trace files, this
+# is a single fixed-path JSONL that accumulates one record per visual-envelope
+# emission ATTEMPT across every turn — the data needed to measure the real
+# envelope valid-rate (and its model-tier dependence) over time. Phase 0
+# observability: previously only a single ``step-visual-hook.json`` ever landed
+# on disk, so the true emission failure rate was unmeasurable.
+EMISSION_LOG_PATH = os.path.join(_resolve_ora_home(), "data", "visual-emission-log.jsonl")
+
+
+def append_emission_record(record: dict[str, Any]) -> None:
+    """Append one ora-visual emission-attempt record to the corpus emission log.
+
+    Not gated on a per-turn ``trace_dir`` — it always lands in
+    ``data/visual-emission-log.jsonl`` so the valid-rate can be aggregated
+    across turns. A ``timestamp_utc`` is filled in when absent. Fail-open: a
+    logging error prints to stderr and never disturbs the pipeline.
+    """
+    try:
+        record.setdefault("timestamp_utc", _dt.datetime.utcnow().isoformat() + "Z")
+        os.makedirs(os.path.dirname(EMISSION_LOG_PATH), exist_ok=True)
+        line = json.dumps(record, default=_json_default) + "\n"
+        with open(EMISSION_LOG_PATH, "a") as f:
+            f.write(line)
+    except Exception as e:
+        print(f"[pipeline_trace] append_emission_record failed: {e}",
+              file=sys.stderr)
+
+
 def record_rag_failure(trace_dir: str | None,
                        query_type: str,
                        query: str,
