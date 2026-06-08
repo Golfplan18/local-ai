@@ -4415,6 +4415,60 @@
   };
 
   /**
+   * Phase 3 — "examine as a unit". True when the canvas holds a raster
+   * background image (uploaded photo / diagram) that the user has marked up
+   * (drawings on userInputLayer or overlays on annotationLayer). chat-panel
+   * uses this to decide whether to flatten + send the composite to a vision
+   * model so it can see what the user circled/drew.
+   */
+  VisualPanel.prototype.hasAnnotatedImage = function () {
+    if (!this._backgroundImageNode) return false;
+    var ui = (this.userInputLayer && this.userInputLayer.getChildren)
+      ? this.userInputLayer.getChildren() : [];
+    var an = (this.annotationLayer && this.annotationLayer.getChildren)
+      ? this.annotationLayer.getChildren() : [];
+    return ((ui ? ui.length : 0) + (an ? an.length : 0)) > 0;
+  };
+
+  /**
+   * Phase 3 — flatten the visible canvas (background image + annotations +
+   * user markup, excluding the selection layer) into one PNG, cropped to the
+   * background image's bounds, so a vision model examines the marked-up image
+   * as a unit. Returns Promise<Blob|null>.
+   */
+  VisualPanel.prototype.flattenToBlob = function () {
+    var self = this;
+    return new Promise(function (resolve) {
+      if (!self.stage || !self._backgroundImageNode) { resolve(null); return; }
+      var hidden = [];
+      var restore = function () { hidden.forEach(function (l) { try { l.show(); } catch (e) {} }); };
+      try {
+        if (self.selectionLayer && typeof self.selectionLayer.isVisible === 'function'
+            && self.selectionLayer.isVisible()) {
+          self.selectionLayer.hide();
+          hidden.push(self.selectionLayer);
+        }
+        var img = self._backgroundImageNode;
+        var rect = (typeof img.getClientRect === 'function')
+          ? img.getClientRect({ relativeTo: self.stage }) : null;
+        var opts = { mimeType: 'image/png', pixelRatio: 1 };
+        if (rect && rect.width > 0 && rect.height > 0) {
+          var m = 8;
+          opts.x = Math.max(0, rect.x - m);
+          opts.y = Math.max(0, rect.y - m);
+          opts.width = rect.width + 2 * m;
+          opts.height = rect.height + 2 * m;
+        }
+        opts.callback = function (blob) { restore(); resolve(blob || null); };
+        self.stage.toBlob(opts);
+      } catch (e) {
+        restore();
+        resolve(null);
+      }
+    });
+  };
+
+  /**
    * Lazy-create the overlay DOM. Idempotent — subsequent calls are no-ops.
    * Overlay lives inside the panel's root `<div>` so it's positioned
    * relative to the panel, not the document. Three buttons wire to
