@@ -55,7 +55,7 @@
     pick: false,
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
-    sort_by: 'alpha_desc',  // alphabetical descending — newest releases bubble up by version-string convention
+    sort_by: 'intelligence_desc',  // highest-intelligence first so the strongest models surface by default (Phase 5; was 'alpha_desc')
     category: 'chat',       // inventory category: chat | image_generation | image_editing | text_to_video. Slot-pick mode overrides to the slot's category.
     grouping: 'vendor',     // 'vendor' (default — vendor blocks, collapsible) or 'flat' (no grouping, one sorted list)
   };
@@ -149,7 +149,7 @@
     _configs = null;
     _filters = {
       vision: false, free_filter: 'any', pick: false,
-      intelligence_pct: 0, search: '', sort_by: 'alpha_desc',
+      intelligence_pct: 0, search: '', sort_by: 'intelligence_desc',
       category: 'chat', grouping: 'vendor',
     };
     _expandedVendors = new Set();
