@@ -806,6 +806,23 @@ class ChatPanel {
         // turns. The upload UI owns that lifecycle; leaving the field alone
         // here keeps the contract one-way for now.
       }
+      // Phase 3 — "examine as a unit". If the user has drawn/annotated on an
+      // uploaded image and hasn't already staged a pendingImage, flatten the
+      // canvas (background image + their markup) into one raster and send it
+      // as the image so a vision model can see what they marked up. Routes
+      // through the proven multipart vision path (useMultipart below).
+      if (!pendingImage && visualPanel
+          && typeof visualPanel.hasAnnotatedImage === 'function'
+          && visualPanel.hasAnnotatedImage()) {
+        try {
+          const flatBlob = await visualPanel.flattenToBlob();
+          if (flatBlob) {
+            pendingImage = { blob: flatBlob, name: 'canvas-annotated.png', type: 'image/png' };
+          }
+        } catch (e) {
+          try { console.warn('[chat-panel] canvas flatten failed:', e); } catch (e2) {}
+        }
+      }
       if (visualPanel && typeof window !== 'undefined'
           && window.OraAnnotationParser
           && typeof window.OraAnnotationParser.captureFromPanel === 'function') {
