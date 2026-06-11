@@ -133,14 +133,18 @@ class _FakeResult:
 
 class SweepTests(SchedulerBase):
     def _mock_pm(self, success=True):
-        fake_pm = mock.MagicMock()
-        for fn_name in ms.TASK_FUNCTIONS.values():
-            setattr(fake_pm, fn_name, mock.MagicMock(return_value=_FakeResult(success)))
-        return mock.patch.dict(sys.modules, {
-            "orchestrator.tools.periodic_maintenance": fake_pm,
-            "orchestrator": mock.MagicMock(tools=mock.MagicMock(periodic_maintenance=fake_pm)),
-            "orchestrator.tools": mock.MagicMock(periodic_maintenance=fake_pm),
-        }), fake_pm
+        """Mock every task module in TASK_FUNCTIONS; returns (patcher, fake_pm)
+        where fake_pm is the periodic_maintenance fake (the daily_note fake is
+        reachable via the same patched sys.modules)."""
+        fakes = {}
+        for mod_name, fn_name in ms.TASK_FUNCTIONS.values():
+            fake = fakes.setdefault(mod_name, mock.MagicMock())
+            setattr(fake, fn_name, mock.MagicMock(return_value=_FakeResult(success)))
+        modules = dict(fakes)
+        modules["orchestrator"] = mock.MagicMock()
+        modules["orchestrator.tools"] = mock.MagicMock()
+        fake_pm = fakes["orchestrator.tools.periodic_maintenance"]
+        return mock.patch.dict(sys.modules, modules), fake_pm
 
     def test_dry_run_reports_without_running(self):
         summary = ms.sweep(dry_run=True)
@@ -154,12 +158,12 @@ class SweepTests(SchedulerBase):
         with patcher:
             summary = ms.sweep()
         self.assertEqual(set(summary["ran"]),
-                         {"orphan_cleanup", "vault_health", "graph_density"})
+                         {"orphan_cleanup", "vault_health", "graph_density", "daily_note"})
         self.assertNotIn("archive_cleanup", summary["ran"])  # off by default
         state = json.loads((self.data / "maintenance-state.json").read_text())
         self.assertIn("orphan_cleanup", state)
         results = (self.data / "maintenance-results.jsonl").read_text().strip().split("\n")
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 4)
         self.assertTrue((self.oversight / "maintenance-scheduler-heartbeat.json").exists())
 
     def test_second_sweep_runs_nothing(self):
@@ -176,7 +180,7 @@ class SweepTests(SchedulerBase):
             summary = ms.sweep()
         self.assertEqual(summary["ran"], [])
         self.assertEqual(set(summary["failed"]),
-                         {"orphan_cleanup", "vault_health", "graph_density"})
+                         {"orphan_cleanup", "vault_health", "graph_density", "daily_note"})
         state = json.loads((self.data / "maintenance-state.json").read_text())
         self.assertIn("orphan_cleanup", state)  # no hourly retry-hammering
 
@@ -186,11 +190,13 @@ class SweepTests(SchedulerBase):
         with patcher:
             summary = ms.sweep()
         self.assertIn("orphan_cleanup", summary["failed"])
-        self.assertEqual(set(summary["ran"]), {"vault_health", "graph_density"})
+        self.assertEqual(set(summary["ran"]),
+                         {"vault_health", "graph_density", "daily_note"})
 
     def test_control_doc_off_respected_in_sweep(self):
         self.doc.write_text(_doc(
-            "  orphan_cleanup: off\n  vault_health: off\n  graph_density: off\n"))
+            "  orphan_cleanup: off\n  vault_health: off\n  graph_density: off\n"
+            "  daily_note: off\n"))
         patcher, fake_pm = self._mock_pm()
         with patcher:
             summary = ms.sweep()

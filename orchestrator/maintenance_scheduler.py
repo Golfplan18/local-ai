@@ -18,6 +18,7 @@ dir with $ORA_VAULT_PATH). Its YAML frontmatter carries the live config:
       vault_health: monthly
       graph_density: monthly
       archive_cleanup: off
+      daily_note: daily
 
 Editing the document changes behavior on the scheduler's next check (no
 restart): cadence values are ``daily`` / ``weekly`` / ``monthly`` /
@@ -63,7 +64,6 @@ def control_doc_path() -> str:
     return os.path.join(vault, CONTROL_DOC_NAME)
 
 
-# Task name → (default cadence, callable name on periodic_maintenance)
 DEFAULT_CONFIG = {
     "orphan_cleanup": "weekly",
     "vault_health": "monthly",
@@ -73,13 +73,19 @@ DEFAULT_CONFIG = {
     # defaults off. The unique piece it still covers is review-queue
     # archival — flip to "monthly" in the control doc to re-enable.
     "archive_cleanup": "off",
+    # Auto-generated vault daily note (temporal index) — generates
+    # yesterday's note once the day is complete.
+    "daily_note": "daily",
 }
 
+# Task name → (module, callable). Each callable returns a TaskResult-shaped
+# object (success / message / stats / alerts / duration_seconds).
 TASK_FUNCTIONS = {
-    "orphan_cleanup": "task_1_orphan_cleanup",
-    "vault_health": "task_2_vault_health",
-    "graph_density": "task_3_graph_density",
-    "archive_cleanup": "task_4_archive_cleanup",
+    "orphan_cleanup": ("orchestrator.tools.periodic_maintenance", "task_1_orphan_cleanup"),
+    "vault_health": ("orchestrator.tools.periodic_maintenance", "task_2_vault_health"),
+    "graph_density": ("orchestrator.tools.periodic_maintenance", "task_3_graph_density"),
+    "archive_cleanup": ("orchestrator.tools.periodic_maintenance", "task_4_archive_cleanup"),
+    "daily_note": ("orchestrator.tools.daily_note", "task_daily_note"),
 }
 
 CADENCE_SECONDS = {
@@ -178,9 +184,10 @@ def due_tasks(config: dict, state: dict, now: float | None = None) -> list[str]:
 
 
 def _run_task(task: str) -> dict:
-    """Run one periodic_maintenance task; return a JSON-safe result record."""
-    from orchestrator.tools import periodic_maintenance as pm
-    fn = getattr(pm, TASK_FUNCTIONS[task])
+    """Run one scheduled task; return a JSON-safe result record."""
+    import importlib
+    mod_name, fn_name = TASK_FUNCTIONS[task]
+    fn = getattr(importlib.import_module(mod_name), fn_name)
     result = fn()
     return {
         "task": task,
