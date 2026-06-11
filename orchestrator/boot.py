@@ -953,7 +953,6 @@ _VISION_EXTRACTION_SKIP_SLOT_ENTRIES = frozenset({
     "local-diffusers",
     "stability",
     "replicate",
-    "civitai-hector-lora-v1",
 })
 
 
@@ -970,9 +969,9 @@ def _endpoint_from_slot_entry(entry: str, routing_config: dict) -> dict | None:
         conditioning by construction.
       * ``"<endpoint id>"`` — looks the id up in ``routing_config.endpoints``;
         returns the endpoint dict iff its ``vision_capable`` flag is true.
-      * ``"local-diffusers"`` / ``"replicate"`` / ``"stability"`` /
-        ``"civitai-hector-lora-v1"`` — pure text→image generators or
-        engine identifiers. Not vision-input-capable. Skipped.
+      * ``"local-diffusers"`` / ``"replicate"`` / ``"stability"`` —
+        pure text→image generators or engine identifiers. Not
+        vision-input-capable. Skipped.
 
     Used by ``route_for_image_input`` when ``vision_extraction.slot`` is
     configured.
@@ -10252,9 +10251,11 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         else:
             contingencies_fired.append(
                 "step8_5-gear3-draft-extract-missing-using-full-envelope")
-    # Step 8.5 deliverable scrub (shared with gear 4), gated default OFF: a
-    # no-op on a clean extracted draft; defense-in-depth on the fallback path
-    # where the raw envelope is surfaced.
+    # Step 8.5 deliverable scrub (shared with gear 4). Default-ON: start.sh
+    # exports ORA_DELIVERABLE_SCRUB=1 (since 2026-06-05); set
+    # ORA_DELIVERABLE_SCRUB=0 to disable for debugging. A no-op on a clean
+    # extracted draft; defense-in-depth on the fallback path where the raw
+    # envelope is surfaced.
     if _env_flag("ORA_DELIVERABLE_SCRUB"):
         _scrubbed, _g3_removed, _g3_err = _scrub_pipeline_leaks(deliverable)
         if _g3_removed:
@@ -11242,10 +11243,11 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # process-meta leak gate above to Ora's full internal-vocabulary deny-list
     # (leaked f-* contract headings, the verifier VERDICT line, provider /
     # truncation error strings). Deterministic, zero-model — generalizes the
-    # lesson MSI's normalize_article proved in production. Default OFF
-    # (ORA_DELIVERABLE_SCRUB) pending false-positive validation on live traces;
-    # flip to default-ON once a handful of clean runs confirm no real content
-    # is ever stripped. See _scrub_pipeline_leaks for the precision rationale.
+    # lesson MSI's normalize_article proved in production. Default-ON: start.sh
+    # exports ORA_DELIVERABLE_SCRUB=1 (since 2026-06-05); set
+    # ORA_DELIVERABLE_SCRUB=0 to disable for debugging. See
+    # _scrub_pipeline_leaks for the precision rationale; canonical doc at
+    # Reference — Ora Runtime Configuration §3.
     if _env_flag("ORA_DELIVERABLE_SCRUB"):
         _scrubbed, _scrub_removed, _scrub_error_marker = _scrub_pipeline_leaks(formatted)
         if _scrub_removed:

@@ -512,7 +512,7 @@
     },
     "image_generates_cartoon": {
       "name": "image_generates_cartoon",
-      "summary": "Generate an editorial-cartoon image from a text description. Reserved for Hector Rentier's cartoon path so the dedicated Civitai LoRA (when configured) is only ever reached for cartoons.",
+      "summary": "Generate an editorial-cartoon image from a text description. Dedicated slot for Hector Rentier's cartoon path so cartoon-specific routing (cloud-only chain since the 2026-06-01 LoRA decommission) never affects general image generation.",
       "required_inputs": [
         {
           "name": "prompt",

@@ -59,7 +59,7 @@ Ora is a multi-model orchestrator for local LLMs on Apple Silicon. It runs an 8-
 - **Large local B — GLM 4.6V MoE:** GLM-4.6V (mxfp4) — 58 GB, MoE (128 routed + 1 shared experts, 8 active per token, ~11B active), vision-capable. Zhipu-family alternative for cross-family adversarial pairing.
 - **Large local C — Mistral 128B dense:** Mistral-Medium-3.5-128B Vision (4-bit) — 82 GB, dense ~123B + Pixtral vision tower. Mistral-family third option; heavier compute-per-token than the MoE alternatives.
 - **Active-at-once headroom:** one large (60–80 GB) + 27B + 9B + 4B fits comfortably in 128 GB. Two large models simultaneously exceeds RAM.
-- **Architectural note:** `config/models.json` is hand-curated and gitignored. Auto-discovery from `~/ora/models/` directory contents is a known gap; see scripts/local_models.py for the install-side helper.
+- **Architectural note:** `config/models.json` is machine-specific and gitignored; its `local_models` section is auto-managed, not hand-curated. `orchestrator/local_model_discovery.py` scans `~/ora/models/` at server startup (`refresh(write=True)`, called best-effort from `server.py` after the OpenRouter/Direct-API refresh hooks) and rewrites the `local_models` array, preserving `commercial_models` and all other keys; a zero-entry safety guard refuses to blank the file when the directory is empty/unmounted. Manual rescans via the module's CLI (dry-run by default, `--write` to persist). Canonical description: vault `Reference — Ora Local Model Discovery.md`. `scripts/local_models.py` remains the separate install-side selection/download helper.
 
 ## Architecture
 

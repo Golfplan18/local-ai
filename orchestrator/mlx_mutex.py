@@ -16,8 +16,8 @@ API endpoints don't go through this layer's blocking acquire — they go
 through ``track_api_call`` for in-flight observability only. API
 providers handle their own concurrency on their side.
 
-See vault ``Working — Framework — Concurrency Architecture.md.archived-2026-05-18``
-for the full design.
+See vault ``Reference — Ora Concurrency Architecture.md`` for the
+canonical design reference.
 """
 
 from __future__ import annotations

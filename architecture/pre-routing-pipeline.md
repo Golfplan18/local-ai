@@ -1,7 +1,7 @@
 
 # Reference — Pre-Routing Pipeline Architecture
 
-*The four-stage routing pipeline that replaces the intent-classification flow of the retired Mode Classification Directory. This file specifies the architecture; companion files specify the supporting registries: `Reference — Signal Vocabulary Registry.md` (Stage 2 lookup), `Reference — Within-Territory Disambiguation Trees.md` (Stage 2 within-territory disambiguation), `Reference — Cross-Territory Adjacency.md` (Stage 1 cross-territory disambiguation), `Reference — Disambiguation Style Guide.md` (Stage 2 and Stage 3 question phrasing). The orchestrator implementation (Phase 9) reads from `~/ora/architecture/pre-routing-pipeline.md` (this file's ora-runtime pair) and the supporting registries.*
+*The four-stage routing pipeline that replaces the intent-classification flow of the retired Mode Classification Directory. This file specifies the architecture; companion files specify the supporting registries: `Registry — Signal Vocabulary Registry.md` (Stage 2 lookup), `Reference — Within-Territory Disambiguation Trees.md` (Stage 2 within-territory disambiguation), `Reference — Cross-Territory Adjacency.md` (Stage 1 cross-territory disambiguation), `Reference — Disambiguation Style Guide.md` (Stage 2 and Stage 3 question phrasing). The orchestrator implementation (Phase 9) reads from `~/ora/architecture/pre-routing-pipeline.md` (this file's ora-runtime pair) and the supporting registries.*
 
 ---
 
@@ -246,6 +246,91 @@ When the user supplies the missing input, Stage 3 re-runs the completeness check
 
 ---
 
+## Manual Mode-Selection Override (server layer)
+
+The four-stage pipeline is the default mode-selection mechanism, not the sole one. The `/chat` and `/chat/multipart` endpoints accept a `manual_mode_selection` field carrying an explicit mode pick. Current senders are the maintenance scripts `scripts/refresh-image-modes.py` and `scripts/refresh-mode-pages.py`; the V3 UI does not send the field yet (its interactive mode picker belongs to the in-flight mode-selection redesign — see `server/static/js/input-state.js`), but any caller of either endpoint may supply it. After the four-stage pipeline runs inside Step 1, the server (`server/server.py::_pipeline_stream`) applies the override when **all** of the following hold:
+
+- `manual_mode_selection` is non-empty,
+- it names a mode whose file exists at `~/ora/modes/<slug>.md`,
+- it differs from the pipeline's dispatched mode, and
+- Stage 1 did **not** select bypass-to-direct-response.
+
+When those conditions are met, the manual pick supersedes Stage 2's dispatch. The pipeline still runs in full — signal logging and telemetry are preserved — only the dispatched mode changes. The override is recorded on the pipeline output as `pre_routing.manual_override_applied: true`, with `manual_override_prior_dispatch` holding the superseded Stage 2 pick. The intent-comparison layer (`boot.py::compare_intent_with_mode`) likewise treats the manual pick as the winning expressed intent.
+
+**Invalid picks.** A `manual_mode_selection` naming a mode with no file at `~/ora/modes/<slug>.md` is logged server-side and falls through to Stage 2's dispatch — it is not silently ignored, but it never blocks the pipeline.
+
+**Bypass preservation.** A pure chitchat/lookup prompt bypasses to direct response even when a manual pick accompanies it — the override is suppressed whenever Stage 1 chose bypass-to-direct-response.
+
+**Rationale.** Stage 2's signal-vocabulary dispatch is best-effort inference; an explicit user pick is the reliable disambiguator when a prompt's signals overlap across modes.
+
+---
+
+## Baseline Criteria Injection (Cross-Stage ANALYTICAL BRIEF)
+
+Once Stage 4 dispatches a mode into the gear pipeline, every pipeline-step system prompt is assembled by `~/ora/orchestrator/boot.py::build_system_prompt_for_gear(context_package, slot, step, ...)`. Before any role-specific material is added, the function extracts two sections from the dispatched mode file and injects both as **baseline blocks** into the system prompt of **every** pipeline step:
+
+- `## ANALYTICAL BRIEF AND EVALUATION CRITERIA` (legacy fallback during mode propagation: `## EVALUATION CRITERIA`) — injected as `## MODE — <mode name> — Analytical brief and evaluation criteria`.
+- `## VERIFICATION CRITERIA` — injected as `## MODE — <mode name> — Verification criteria (PASS gate)`.
+
+"Every pipeline step" means the full `_PIPELINE_STEPS` set: **analyst, evaluator, reviser, verifier, consolidator, formatter**. There is no RAG-planner step in this set — RAG planning happens outside `build_system_prompt_for_gear` and receives no baseline injection.
+
+**The BRIEF is a cross-stage performance contract, not analyst-only context.** The first-pass analyst sees what good looks like before writing — it writes targeting the criteria it will later be graded against. The evaluator and reviser see the same canonical criteria the analyst wrote to, so grading and revision happen against one shared standard rather than each stage's private reconstruction of it. This closes the gap where the first pass wrote blind to the standard it would be graded against.
+
+**Role-specific sections layer ON TOP of this baseline.** The analyst additionally receives `## DEPTH ANALYSIS GUIDANCE` or `## BREADTH ANALYSIS GUIDANCE` (per slot), the reviser receives `## REVISION GUIDANCE`, the consolidator `## CONSOLIDATION GUIDANCE`, and the formatter `## OUTPUT FORMAT GUIDANCE`. The evaluator and verifier receive **no** additional mode-file section — their role framing comes from the universal `f-evaluate.md` / `f-verify.md` scaffolding, and the criteria they apply are already present in the baseline.
+
+**BRIEF vs. VERIFICATION CRITERIA.** The two baseline blocks serve distinct functions. The BRIEF is the shared standard every stage works to: what the analysis is, the procedure, the goal, the evaluation criteria, and the named failure modes. The VERIFICATION CRITERIA section is the mode-specific PASS gate the Step-6 per-stream verifier grades against (layered on `f-verify.md`'s universal floor). Both ride in every step's prompt so no stage is surprised by the gate.
+
+**Gear 1 is structurally exempt.** Gear 1 direct responses do not route through `build_system_prompt_for_gear`, so no injection occurs there.
+
+**Sources.** The injected content lives in the mode files (`~/ora/modes/<mode_id>.md`); the BRIEF's content schema (What this analysis is / Procedure / Goal / Evaluation criteria / Named failure modes) is specified in `Reference — Mode Specification Template.md`; the injection mechanism is `build_system_prompt_for_gear` in `~/ora/orchestrator/boot.py`.
+
+---
+
+## Analyst System Prompt Injection — Analytical Perspectives
+
+Stage 4's gear pipeline composes each role's system prompt via `build_system_prompt_for_gear` (`orchestrator/boot.py`). Every role-specific step receives the same baseline injections — the mode's `## ANALYTICAL BRIEF AND EVALUATION CRITERIA` and `## VERIFICATION CRITERIA` sections (see § Baseline Criteria Injection above). On top of that baseline, the **analyst step** carries analyst-only content injections composed at the same site. This section is the umbrella home for those analyst-prompt injections; the Analytical Perspectives layer is documented here, and future analyst-step injections (e.g. the MCP tool catalog, which both analysts receive) belong as sibling subsections.
+
+### Analytical Perspectives (Breadth analyst only)
+
+**Mode-file source.** `## ANALYTICAL PERSPECTIVES` is a structured, machine-parsed body section in each mode file — every mode file in `~/ora/modes/` carries one (the only `.md` file there without it is the `INDEX.md` inventory, which is not a mode). It is a perspective *allowlist*: the Tier 1 de Bono thinking tools and Tier 3 mental-model lenses appropriate to that mode.
+
+**Parse shape.** Two bullet buckets, each introduced by a bucket-header line:
+
+```markdown
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- FGL
+
+Mental models (always loaded):
+- nash-equilibrium
+- batna
+```
+
+The bucket headers are matched case-insensitively by regex: the thinking-tools bucket accepts any header line of the form `Thinking tool(s) …:` or `Tier 1 …:`; the mental-models bucket accepts `Mental model(s) …:`, `Tier 3 …:`, or `Lens(es) …:`. Either bucket may be empty or absent. Bullets without a preceding bucket header are ignored. Within-bucket order is preserved.
+
+**Runtime resolution.** Two module-level registries resolve the listed ids at `build_system_prompt_for_gear` time:
+
+- **Thinking-tool ids** resolve against the `### ` headings of the `## Tier 1 Tool Definitions` section of `~/ora/modules/tools/thinking-tools.md` (loader: `_load_thinking_tools`). The tool id is the heading text up to the em-dash (`AGO — Aims, Goals, Objectives` → `AGO`); for headings without an em-dash the parenthetical alias is stripped (`Provocation (Po)` → `Provocation`); a bare heading (`Concept Fan`) is its own id.
+- **Mental-model ids** resolve against filename stems in `~/ora/knowledge/mental-models/` (loader: `_load_mental_models`) — currently 131 lens notes, vault-paired with `Lenses/`. The id is the filename without extension (`nash-equilibrium.md` → `nash-equilibrium`); YAML frontmatter is stripped from the loaded body.
+
+**Injection target.** The resolved definitions inject into the **Breadth analyst's system prompt only**, as a `## ANALYTICAL PERSPECTIVES — <mode>` block placed ahead of the `## MODE INSTRUCTIONS` section. The Depth analyst is intentionally skipped — depth is already focused; the perspectives layer is a lateral-thinking aid. The evaluator, reviser, verifier, consolidator, and formatter never receive it.
+
+**Fail-soft semantics.** A missing source file or directory yields an empty registry plus a stderr log line; the mode still runs without the injection. Unknown ids are skipped with a stderr warning (`[perspective_loader] Unknown …`); the mode author sees no user-facing error. An empty or absent `## ANALYTICAL PERSPECTIVES` section is a clean no-op.
+
+**Caching.** Both registries load once at first use and are held module-level for the orchestrator's lifetime. Edits to `thinking-tools.md` or the `mental-models/` directory require an orchestrator restart to take effect.
+
+**Distinctions.**
+
+- The `## ANALYTICAL BRIEF AND EVALUATION CRITERIA` baseline injection goes to **all** role-specific pipeline steps; the Analytical Perspectives injection goes to the Breadth analyst only.
+- The `lens_dependencies` YAML block (`Reference — Lens Library Specification.md` §5) is a dispatch-gating dependency declaration — it governs whether a mode may dispatch given lens availability. It is not a prompt-content injection; `## ANALYTICAL PERSPECTIVES` is the prompt-content mechanism.
+
+Mode-author guidance for the section lives in `Reference — Mode Specification Template.md` (Locked Template + Template Field Quick Reference).
+
+---
+
 ## End-to-End Worked Example
 
 **Prompt.** "give me a quick steelman of this op-ed on housing policy"
@@ -333,6 +418,7 @@ These invariants hold across all pipeline behavior. They are the bedrock for orc
 6. **Cross-territory disambiguation precedes within-territory.** When signals straddle two territories, the cross-territory question fires first.
 7. **Graceful degradation pairs heavy mode with light sibling.** When required input is missing, Stage 3 offers a lighter sibling explicitly so the user has a real choice.
 8. **Vault canonical and ora runtime stay synchronized.** Phase 9 reads exclusively from `~/ora/architecture/`; any change to `Reference — Pre-Routing Pipeline Architecture.md` (this file) requires drift sync.
+9. **Explicit user pick supersedes inference.** A valid `manual_mode_selection` from the caller overrides Stage 2's dispatch (except on Stage 1 bypass); the pipeline is authoritative only in the absence of an explicit pick.
 
 ---
 
@@ -340,8 +426,10 @@ These invariants hold across all pipeline behavior. They are the bedrock for orc
 
 This file is **read by** the orchestrator implementation (Phase 9 reads its ora-runtime pair `~/ora/architecture/pre-routing-pipeline.md`).
 
+The Baseline Criteria Injection (§ above) is **implemented in** `~/ora/orchestrator/boot.py::build_system_prompt_for_gear`; its injected content is sourced from the mode files (`~/ora/modes/<mode_id>.md`).
+
 This file **references**:
-- `Reference — Signal Vocabulary Registry.md` (Stage 1 + Stage 2)
+- `Registry — Signal Vocabulary Registry.md` (Stage 1 + Stage 2)
 - `Reference — Within-Territory Disambiguation Trees.md` (Stage 2)
 - `Reference — Cross-Territory Adjacency.md` (Stage 1 + Stage 2)
 - `Reference — Disambiguation Style Guide.md` (Stage 2 + Stage 3 question phrasing)
@@ -350,7 +438,7 @@ This file **references**:
 - `Reference — Analytical Territories.md` (territory inventory; consulted across stages)
 
 This file **is referenced from**:
-- `Reference — Mode Registry.md` (Phase 7 rewrite — opens with pipeline overview)
+- `Registry — Mode Registry.md` (Phase 7 rewrite — opens with pipeline overview)
 - `Reference — Ora Overview and Document Registry.md` (Phase 7 update)
 - `~/ora/CLAUDE.md` (Phase 7 update — pairing rules + orchestrator architecture pointer)
 - `Framework — System File Drift Correction.md` (Phase 1 update — drift correction registry)

@@ -37,7 +37,7 @@ If a piece of corpus content does not fit any of the prescribed sections:
 1. Place it in the prescribed section it most nearly belongs to.
 2. If it genuinely stands apart from every prescribed section, add ONE final section with a neutral, content-descriptive H2 in the analytical voice — a heading that names the content itself, or `## Additional considerations` — and write the atom there as substance.
 
-NEVER emit a heading that references the format, the pipeline, the corpus, or "what was not captured" (e.g. `## Corpus material not captured by the prescribed format`). Such a heading leaks pipeline machinery into the user-facing deliverable — forbidden by the "No pipeline machinery showing through" rule below and the Pipeline-Leak failure mode. The reader sees analysis, never commentary about the formatting process.
+NEVER emit a heading that references the format, the pipeline, the corpus, or "what was not captured" (e.g. `## Corpus material not captured by the prescribed format`). Such a heading leaks pipeline machinery into the user-facing deliverable — forbidden by the "No pipeline machinery showing through" rule below and the Pipeline-Leak failure mode. The reader sees analysis, never commentary about the formatting process. This prohibition is enforced at runtime by the Step 8.5 deliverable scrub (`boot.py::_scrub_pipeline_leaks`, gated by `ORA_DELIVERABLE_SCRUB`, default-on via `start.sh` since 2026-06-05), documented in `Reference — Ora Runtime Configuration` §3.
 
 Never silently drop corpus content because it does not fit. Every atom is placed as substance — integrated into a prescribed section or a neutral final section — never discarded and never surfaced as process-commentary.
 

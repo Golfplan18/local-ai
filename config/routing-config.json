@@ -52,10 +52,9 @@
       "fallback": [
         "openrouter:google/gemini-3.1-flash-image-preview",
         "openrouter:google/gemini-3-pro-image-preview",
-        "openrouter:openai/gpt-5-image",
-        "civitai-hector-lora-v1"
+        "openrouter:openai/gpt-5-image"
       ],
-      "_note": "MSI editorial-cartoon slot (Hector Rentier). Publisher chain revised 2026-05-27: GPT-5.4 Image 2 preferred (best fidelity when it accepts), but it moderation-refuses Hector's butt-face caricature anatomy. On a refusal the OpenRouter integration classifies the empty-image response as prompt_rejected and the registry walks the chain \u2014 FIRST to Nano Banana 2 (google/gemini-3.1-flash-image-preview) because Google does NOT refuse this content, so cloud-quality output is produced without falling to the LoRA; then Nano Banana Pro (gemini-3-pro-image-preview) and GPT-5 Image as further cloud options; then the style-locked civitai-hector-lora-v1 backstop only if every cloud provider fails. Putting a non-refusing Google model in the backup position is the publisher's fix for the GPT moderation lottery (keeps the established \u00a75.4.1 look on a cloud renderer instead of the lower-quality LoRA). This explicit entry fully overrides the MSI manifest routing (merge_project_capability_slots skips the manifest routing when a publisher entry exists). local-diffusers omitted; gpt-5-image-mini omitted (full models only)."
+      "_note": "Editorial-cartoon image slot. Cloud-only chain since the 2026-06-01 decommission of the civitai-hector-lora-v1 LoRA (moral-disgust pivot): preferred cloud model first, Google image models catch OpenAI moderation refusals, gpt-5-image variants as deeper fallback. This publisher entry overrides MSI manifest routing. The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded."
     },
     "image_edits": {
       "preferred": "local-diffusers",

@@ -604,8 +604,7 @@ class EndpointFromSlotEntry(unittest.TestCase):
         # Pure text-to-image services aren't vision-input-capable, so they
         # must never resolve as a vision extractor — even though they
         # legitimately appear in image_generates fallback chains.
-        for entry in ("local-diffusers", "stability", "replicate",
-                      "civitai-hector-lora-v1"):
+        for entry in ("local-diffusers", "stability", "replicate"):
             self.assertIsNone(self.resolve(entry, self.rc),
                               f"{entry} should NOT resolve as extractor")
 

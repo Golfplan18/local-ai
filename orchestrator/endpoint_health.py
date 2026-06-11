@@ -18,8 +18,8 @@ Configuration defaults match the concurrency spec section 5:
 - After cooldown, the next call is a "probe": success → fully
   healthy, failure → extend cooldown.
 
-See vault Working — Framework — Concurrency Architecture.md.archived-2026-05-18
-section 5 ("Worker health monitoring").
+See vault Reference — Ora Concurrency Architecture.md (circuit-breaker
+section) for the canonical reference.
 """
 
 from __future__ import annotations

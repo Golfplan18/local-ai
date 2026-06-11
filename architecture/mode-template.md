@@ -138,12 +138,19 @@ substantive pass? What dimensions does depth in this mode operate along?]
 scanned but not necessarily pursued? What breadth markers signal that the
 analysis has surveyed the relevant landscape?]
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-[Mode-specific direction for the F-Evaluate pipeline stage. By what criteria
-is this mode's draft output evaluated? Which critical questions (from the
-YAML's critical_questions block) drive the evaluation? Which named failure
-modes (from failure_modes) are checked here?]
+[The canonical statement of what this analysis is, the procedure, the goal,
+the evaluation criteria (which critical questions from the YAML's
+critical_questions block drive the evaluation), and the named failure modes
+(from failure_modes) checked here. This section is injected by
+`build_system_prompt_for_gear` (`~/ora/orchestrator/boot.py`) into EVERY
+pipeline stage's system prompt — analyst, evaluator, reviser, verifier,
+consolidator, formatter — alongside ## VERIFICATION CRITERIA, as the
+cross-stage performance contract. Write it as the shared standard the
+analyst writes to and the evaluator grades against, not as evaluator-only
+direction. Structure: What this analysis is / Procedure / Goal / Evaluation
+criteria / Named failure modes.]
 
 ## REVISION GUIDANCE
 
@@ -154,16 +161,68 @@ of an adversarial-stance mode toward neutrality)?]
 
 ## CONSOLIDATION GUIDANCE
 
-[Mode-specific direction for the F-Consolidate pipeline stage. How is this
-mode's output structured for handoff? What format conventions apply
-(matrix, prose, ranked list, diagram-friendly)? What metadata accompanies
-the artifact?]
+[Mode-specific direction for the F-Consolidate pipeline stage (step 7).
+Step 7 produces the irreducible corpus, not the user-facing deliverable
+(deliverable form is step 8's job — see ## OUTPUT FORMAT GUIDANCE). What
+atom types does the corpus carry? What is the corpus organization (matrix,
+sequential, categorical, triadic, fixed-grid, network, cascade, etc.) per
+the mode's methodology? What mode-specific bloat patterns does the
+consolidator cut during the bloat strip? What disagreements between the
+two streams must be preserved as tensions rather than collapsed?]
 
 ## VERIFICATION CRITERIA
 
 [Mode-specific direction for the F-Verify pipeline stage. What does
 "verified" mean for this mode? What verification questions does the mode
 admit? What standards of evidence apply?]
+
+## OUTPUT FORMAT GUIDANCE
+
+[Mode-specific direction for the F-Format pipeline stage (step 8). Step 8
+takes the step-7 corpus and places it into the user-facing deliverable
+form. What are the prescribed sections of the deliverable, in what order?
+What per-section structural conventions apply (matrix / table / per-row
+format / one-line summary atoms / prose / diagram-friendly)? What
+ordering and rendering conventions does the mode's literature prescribe
+(e.g., Toulmin per-inferential-move structure; Heuer ACH matrix-then-
+conclusion; Klein prospective-hindsight past-tense failure narrative)?
+Voice and posture are universal in f-format.md, so they do not need to be
+repeated here — only the per-mode form-placement spec.]
+
+## ANALYTICAL PERSPECTIVES
+
+Thinking tools (always loaded):
+- OPV
+- KVI
+- CAF
+- C&S
+- FIP
+- FGL
+
+Mental models (always loaded):
+- nash-equilibrium
+- batna
+- cooperation
+- prisoners-dilemma
+
+[Optional — an empty or absent section is a clean no-op (no injection). The
+example bullets above are cui-bono's allowlist. The section is machine-parsed:
+the two bucket-header lines are matched case-insensitively by regex —
+"Thinking tools (always loaded):" (any header of the form `Thinking
+tool(s) …:` or `Tier 1 …:`) and "Mental models (always loaded):" (any header
+of the form `Mental model(s) …:`, `Tier 3 …:`, or `Lens(es) …:`). Bullets
+without a preceding bucket header are ignored; within-bucket order is
+preserved. Valid thinking-tool ids are the `### ` headings of the `## Tier 1
+Tool Definitions` section of `modules/tools/thinking-tools.md` (id = heading
+text up to the em-dash, else with the parenthetical alias stripped, else the
+bare heading). Valid mental-model ids are filename stems in
+`knowledge/mental-models/`. Unknown ids resolve silently to nothing for the
+user (stderr-only warning). The resolved definitions inject into the
+**Breadth analyst's system prompt only** — no other pipeline role receives
+them. In shipped mode files this section sits after `## DEFAULT GEAR`,
+before `## RAG PROFILE`. Mechanism details: `Reference — Pre-Routing
+Pipeline Architecture.md` § "Analyst System Prompt Injection — Analytical
+Perspectives".]
 
 ## CAVEATS AND OPEN DEBATES
 
@@ -188,19 +247,45 @@ plus citations.]
 - `default_depth_tier` — user-facing depth contract: Tier-1 (~1 min, light), Tier-2 (~5 min, thorough — default), Tier-3 (~10+ min, molecular).
 - `escalation_signals` — sibling modes within this territory to escalate (heavier), switch (sideways), or de-escalate (lighter) to. Used by Stage 2 sufficiency analyzer when the prompt's signals straddle two siblings.
 
-### What is NOT in the mode template
+### Runtime fields live in the mode file (revised 2026-05-12)
 
-The following live in `Reference — Mode Runtime Configuration.md` (vault canonical) ↔ `~/ora/architecture/runtime-configuration.md` (ora runtime), keyed by `mode_id`:
+Decision C originally specified that runtime mechanics live in a separate `Reference — Mode Runtime Configuration.md` file, keyed by `mode_id`. This split was reversed on 2026-05-12 after the split caused drift failures (the loader for the runtime config was defined but never wired up; mode files fell back to a hardcoded Gear 2 in code while the runtime config claimed Gear 4 universal; per-stage instruction text appeared in both the mode-file body subsections AND the runtime-config `instructions.*` blocks). The runtime configuration file is now archived at `Old AI Working Files/Reference — Mode Runtime Configuration.md.archived-2026-05-12`.
 
-- `gear` (orchestrator implementation: 1–4; default 4 universally per Decision C)
-- `instructions.{depth_pass, breadth_pass, evaluation_pass, revision_pass, consolidation_pass, verification_pass}` (per-pipeline-stage instruction design)
-- `type_filter` (RAG content-tier filter)
-- `context_budget` (token allocation)
-- `expected_runtime` (orchestrator-side estimate)
-- `RAG_profile.relationship_priorities` (`prioritize` and `deprioritize` lists)
-- `RAG_profile.provenance_treatment` (text)
+**All runtime fields now live in the mode file:**
 
-Mode files are clean analytical specs (shareable). Runtime mechanics live in runtime config (ora-specific). The verification script enforces: every `mode_id` in the registry has a runtime config entry.
+- `gear` — declared in a `## DEFAULT GEAR` section near the bottom of the mode file (e.g., `Gear 4`). The orchestrator's `extract_default_gear` regex reads this directly.
+- `expected_runtime` — bullet under `## DEFAULT GEAR` (e.g., `- **Expected Runtime:** ~5min`).
+- `context_budget` — bullet under `## DEFAULT GEAR` (e.g., `- **Context Budget:** default`).
+- `type_filter` — `### type_filter` subsection inside `## RAG PROFILE` (e.g., ``Retrieve only chunks whose `type` is in: `[engram, resource, incubator]```). The orchestrator's `_extract_mode_type_filter` reads this directly.
+- `exclude_tags` — `### exclude_tags` subsection inside `## RAG PROFILE` (e.g., ``Exclude chunks tagged: `[msi-news]``). Filters OUT `knowledge`-collection chunks carrying any listed tag. Only tags registered in `knowledge_index._FILTERABLE_TAGS` are filterable — currently `archived`, `incubating`, `private`, `msi-news`. The orchestrator's `_extract_mode_exclude_tags` reads this directly; exclusion uses `{$ne: True}` so chunks indexed before a tag was registered (field absent) are treated as not carrying it and stay retrievable. Omit the subsection to exclude nothing — the default, so e.g. `msi-news` (Main Street Independent published articles) rides along with curated `resource` chunks at provenance 0.8.
+- `RAG_profile.relationship_priorities` — `### RAG PROFILE — RELATIONSHIP PRIORITIES` subsection inside `## RAG PROFILE`.
+- Per-stage instructions (depth_pass, breadth_pass, evaluation_pass, revision_pass, consolidation_pass, verification_pass, format_pass) — the existing `## DEPTH ANALYSIS GUIDANCE`, `## BREADTH ANALYSIS GUIDANCE`, `## ANALYTICAL BRIEF AND EVALUATION CRITERIA`, `## REVISION GUIDANCE`, `## CONSOLIDATION GUIDANCE`, `## VERIFICATION CRITERIA`, and `## OUTPUT FORMAT GUIDANCE` body sections (in place per Phase 5/6/7 cascade work plus the 2026-05-14 step 7/8 split). The `instructions.*` YAML blocks in the retired runtime config were dead code with no consumer.
+
+The rationale for consolidation: a single source of truth per mode prevents drift, single-file artifacts are loadable and shareable as one unit, and the original "shareability" argument for the split was theoretical (mode specs would still need transformation to run in any non-Ora orchestrator). See the consolidated-files preference in vault `CLAUDE.md`.
+
+### Step 7 / Step 8 split: corpus and form separated (revised 2026-05-14)
+
+Before 2026-05-14, step 8 ran a final verifier (V1-V8 + mode-specific checks) on the consolidated output, and the consolidator was responsible for producing the user-facing deliverable directly. Two structural problems with that design: (1) the consolidator was doing two distinct jobs at once (semantic synthesis + form-placement), with no observability into which job produced bloat; (2) the final verifier was repeating work the per-stream verifier (step 6) had already done, and its corrective-revision fallback was itself a generative rewrite that could drift.
+
+The 2026-05-14 split separates substance from form:
+
+- **Step 7 (consolidator)** now produces the *irreducible corpus*: semantic atom extraction across both revised streams, cross-stream deduplication, bloat strip, and synthesis per the mode's `## CONSOLIDATION GUIDANCE`. Output is internal to the pipeline.
+
+- **Step 8 (formatter)** takes the corpus and places it into the user-facing deliverable per the mode's `## OUTPUT FORMAT GUIDANCE`. Form-placement only; the formatter does not summarise, condense, or re-decide substance. Universal scaffolding in `f-format.md`.
+
+Mode files gain `## OUTPUT FORMAT GUIDANCE` as a new flat-`##` section. The `## CONSOLIDATION GUIDANCE` section is reshaped from describing the user-facing deliverable to describing the corpus organization and mode-specific bloat patterns. The YAML `output_contract.required_sections` block remains for now (deprecation deferred until all 60 modes have load-bearing `## OUTPUT FORMAT GUIDANCE` sections; deletion is a separate later pass).
+
+The new step 8 (formatter) replaces the prior step 8 (final verifier). Verification of the consolidator's accuracy to the source streams was redundant with the per-stream verifier at step 6; structural defenses against consolidation injection now live in `f-consolidate.md` and `f-format.md`'s anti-confabulation rules.
+
+Universal scaffolding files: `f-consolidate.md` rewritten 2026-05-14 around the four-operation flow (extract → dedup → bloat-strip → synthesise); `f-format.md` authored 2026-05-14 around the three-operation form-placement flow (placement → surface-dedup → non-fitting-postscript). The worked examples in this template will be updated to carry `## OUTPUT FORMAT GUIDANCE` sections as part of Phase 2b per-mode authoring.
+
+### EVALUATION CRITERIA → ANALYTICAL BRIEF AND EVALUATION CRITERIA: cross-stage baseline (revised 2026-05-26)
+
+The 2026-05-26 gear redesign (commit `d4ce7da`) renamed the `## EVALUATION CRITERIA` body section to `## ANALYTICAL BRIEF AND EVALUATION CRITERIA` across all live mode files and changed its runtime role. The section absorbs the analytical brief (What this analysis is / Procedure / Goal) alongside the evaluation criteria and named failure modes, and `build_system_prompt_for_gear` (`~/ora/orchestrator/boot.py`) now injects it — together with `## VERIFICATION CRITERIA` — as a baseline block into **every** pipeline stage's system prompt (analyst, evaluator, reviser, verifier, consolidator, formatter), not just the evaluator's. The section is therefore a cross-stage performance contract: the analyst writes targeting the criteria it will be graded against, and the evaluator, reviser, and verifier all grade against the same canonical statement. The code retains `## EVALUATION CRITERIA` as a legacy extraction fallback only. Injection mechanism details: `Reference — Pre-Routing Pipeline Architecture.md` § "Baseline Criteria Injection (Cross-Stage ANALYTICAL BRIEF)".
+
+### Analytical Perspectives allowlist (revised 2026-06-11)
+
+Mode files carry an optional `## ANALYTICAL PERSPECTIVES` body section — a machine-parsed two-bucket allowlist of Tier 1 de Bono thinking tools and Tier 3 mental-model lenses. At runtime the orchestrator resolves the listed ids (thinking tools against the `## Tier 1 Tool Definitions` section of `modules/tools/thinking-tools.md`; mental models against `knowledge/mental-models/` filename stems) and injects the resolved definitions into the **Breadth analyst's system prompt only** — the Depth analyst, evaluator, reviser, verifier, consolidator, and formatter never receive them. Unknown ids resolve silently to nothing for the user (stderr-only warning); an empty or absent section is a clean no-op, so the section is optional. The stanza in the body-subsections block above shows the exact bucket-header lines and example bullets. This allowlist is distinct from the `lens_dependencies` YAML block (a dispatch-gating dependency declaration per `Reference — Lens Library Specification.md` §5) — `lens_dependencies` governs whether the mode may dispatch; `## ANALYTICAL PERSPECTIVES` governs what perspective content the Breadth analyst's prompt carries. Mechanism details (loaders, id-derivation rules, caching, fail-soft semantics): `Reference — Pre-Routing Pipeline Architecture.md` § "Analyst System Prompt Injection — Analytical Perspectives".
 
 ---
 
@@ -351,7 +436,7 @@ differently; parties who pay costs the artifact treats as natural; parties
 absent from the discussion whose voices would change the analysis. Breadth
 markers: the analysis surveys the boundary of who is and isn't being asked.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
 Evaluate against the three critical questions: (CQ1) symbolic vs. concrete
 benefit; (CQ2) frame-bounded blindness; (CQ3) cost-incidence accuracy. The
@@ -380,6 +465,29 @@ Verified means: every named beneficiary has a concrete benefit pathway;
 every named cost has a concrete bearer; the analysis has surfaced
 absent-voices or explicitly noted that boundary-critique was deferred.
 Confidence per finding accompanies every claim.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is a **row-auditable who-benefits mapping**. Place the
+consolidated-corpus atoms into:
+
+1. **Institutional authorship.** Naming the authoring institution.
+2. **Stated rationale.** The author's own framing of why.
+3. **Distributional impact.** Paired beneficiary / cost-bearer rows with
+   concrete pathway and the specific parameter driving each.
+4. **Alternative design from the opposite constituency.** Constructed with
+   equal technical sophistication.
+5. **Motivational analysis (FGL).** Fear / Greed / Laziness applied
+   symmetrically across constituencies.
+6. **Legitimate value.** Non-distributional value the position serves,
+   separated from the distributional overlay.
+7. **Confidence per finding.**
+
+Per-section conventions: parameters are named with audit-level specificity;
+alternative design is grounded in the disadvantaged constituency's interests
+(not the analyst's preferences); FGL is symmetric across sides; intent
+attribution requires named evidence (structural incentives are the default
+explanatory frame).
 ```
 
 ---
@@ -580,7 +688,7 @@ historical-genealogy framing; cross-domain analogical framing. Even when
 only two framings are steelmanned, breadth is documented in the framing-
 reconciliation stage.
 
-## EVALUATION CRITERIA
+## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
 Evaluate against CQ1–CQ4. The named failure modes are the evaluation
 checklist. A passing Wicked Problems output integrates components rather
@@ -607,6 +715,33 @@ Verified means: every component ran (or was flagged as proceeded-with-gap);
 synthesis stages integrated rather than concatenated; residual tensions are
 named; confidence map is populated. The four critical questions are
 addressed in the output.
+
+## OUTPUT FORMAT GUIDANCE
+
+The deliverable is an **integrated multi-perspective synthesis on a wicked
+problem**, surfacing irresolvable tensions rather than smoothing them. Place
+the consolidated-corpus atoms into:
+
+1. **Problem framing(s).** The steelmanned framings considered, with the
+   two-or-three leading framings articulated.
+2. **Stakeholder and interest landscape.** Multi-party map with concrete
+   interests and unresolved value-conflicts surfaced.
+3. **Systems-dynamics findings.** Feedback loops and leverage points,
+   linked to the framings rather than siloed.
+4. **Convergences and irresolvable tensions.** Where the components agree;
+   where they don't, and why the tension is structural rather than a
+   defect of analysis.
+5. **Open-ended next moves.** Provisional moves that honour irresolvability
+   — partial, reversible, scenario-dependent — not clean recommendations.
+6. **Confidence map.** Per-finding confidence with reason, with synthesis
+   stages tagged for the lower confidence inherited from component
+   aggregation.
+
+Per-section conventions: integration not concatenation throughout;
+provenance-to-components stays implicit in the body (visible in section 6);
+clean-recommendation framing is reshaped to provisional-moves framing —
+Wicked Problems Analysis honours irresolvability; collapsing tensions is a
+failure mode, not a polish.
 
 ## CAVEATS AND OPEN DEBATES
 
@@ -669,6 +804,7 @@ When in doubt, parse. Two well-specified modes that share a lens are easier to m
 | `expected_runtime` | yes | ~1min / ~5min / ~10+min |
 | `escalation_signals` | yes | Upward / sideways / downward |
 | Per-pipeline-stage `##` sections | yes | Six body subsections |
+| `## ANALYTICAL PERSPECTIVES` | optional | Two-bucket allowlist (Tier 1 thinking tools + mental-model lenses); resolved at runtime; injects into the Breadth analyst's prompt only |
 | `## CAVEATS AND OPEN DEBATES` | optional | Populated when debates apply |
 
 The verification script enforces template conformance per the field list above.
