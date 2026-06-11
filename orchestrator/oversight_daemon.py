@@ -25,6 +25,7 @@ DEFAULT_PED_WATCHER_INTERVAL_SEC = int(os.environ.get("ORA_PED_WATCHER_SEC", "60
 DEFAULT_CORPUS_WATCHER_INTERVAL_SEC = int(os.environ.get("ORA_CORPUS_WATCHER_SEC", "60"))
 DEFAULT_WORKFLOW_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_WORKFLOW_SWEEPER_SEC", "300"))
 DEFAULT_REVISIT_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_REVISIT_SWEEPER_SEC", "3600"))
+DEFAULT_RETENTION_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_RETENTION_SWEEPER_SEC", "21600"))
 
 # Vault path — the canonical location for PEDs and other oversight artifacts.
 VAULT_PATH = os.path.expanduser(os.environ.get("ORA_VAULT_PATH", "~/Documents/vault/"))
@@ -362,6 +363,7 @@ class OversightDaemon:
         self._run_corpus_watcher(emit)
         self._run_workflow_spec_sweeper(emit)
         self._run_revisit_sweeper(emit)
+        self._run_retention_sweeper()
 
     def _loop(self):
         """Main loop — checks each watcher's due time once per second.
@@ -380,7 +382,8 @@ class OversightDaemon:
         # real sweep, and the health check sees stale heartbeats from a
         # prior run and falsely reports "daemon down."
         for watcher_mod_name in ("ped_watcher", "corpus_watcher",
-                                 "workflow_spec_sweeper", "revisit_sweeper"):
+                                 "workflow_spec_sweeper", "revisit_sweeper",
+                                 "retention_sweeper"):
             try:
                 _mod = __import__(watcher_mod_name)
                 _mod._write_heartbeat()
@@ -401,6 +404,8 @@ class OversightDaemon:
                                 lambda: self._run_workflow_spec_sweeper(emit))
                 self._maybe_run("revisit_sweeper", DEFAULT_REVISIT_SWEEPER_INTERVAL_SEC, now,
                                 lambda: self._run_revisit_sweeper(emit))
+                self._maybe_run("retention_sweeper", DEFAULT_RETENTION_SWEEPER_INTERVAL_SEC, now,
+                                self._run_retention_sweeper)
             except Exception as e:
                 print(f"[oversight_daemon] loop error: {e}")
 
@@ -447,6 +452,19 @@ class OversightDaemon:
             revisit_sweeper.sweep(emit_event=emit)
         except Exception as e:
             print(f"[oversight_daemon] revisit_sweeper failed: {e}")
+
+    def _run_retention_sweeper(self):
+        # Mechanical housekeeping — no oversight events to emit.
+        try:
+            import retention_sweeper
+            summary = retention_sweeper.sweep()
+            acted = (summary["traces_removed"] or summary["logs_archived"]
+                     or summary["archives_deleted"] or summary["server_log_rotated"]
+                     or summary["jsonl_rotated"] or summary["sessions_archived"])
+            if acted:
+                print(f"[oversight_daemon] retention sweep: {summary}")
+        except Exception as e:
+            print(f"[oversight_daemon] retention_sweeper failed: {e}")
 
 
 # ---------- Module-level singleton ----------

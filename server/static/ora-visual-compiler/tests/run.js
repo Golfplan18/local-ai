@@ -224,12 +224,6 @@ async function bootCompiler() {
   // into structured pipeline instructions. Consumes VisualPanel.getUserAnnotations().
   loadScript(path.join(COMPILER_DIR, '..', 'annotation-parser.js'));
 
-  // WP-2.3 — chat-panel.js exposes window.extractVisualBlocks which the
-  // end-to-end integration test exercises as the chat→visual bridge entry
-  // point. Loading the full class is a no-op side-effect in jsdom; only
-  // the top-level helper function is needed for the test.
-  loadScript(path.join(COMPILER_DIR, '..', 'chat-panel.js'));
-
   // WP-7.0.2 — canvas-state file format reader/writer. Load before the
   // Phase 7 commands (resize-canvas / lazy-expansion) so they can pull
   // OraCanvasFileFormat.newCanvasState() at boot.
@@ -339,7 +333,6 @@ async function runSuite(label, fn, ctx) {
     './cases/test-pro-con.js',
     './cases/test-accessibility.js',
     './cases/test-visual-panel.js',
-    './cases/test-e2e-chat-to-visual.js',
     './cases/test-canvas-action.js',
     './cases/test-artifact-adversarial.js',
     './cases/test-canvas-serializer.js',
@@ -347,7 +340,6 @@ async function runSuite(label, fn, ctx) {
     './cases/test-lazy-expansion.js',
     './cases/test-shape-tools.js',
     './cases/test-annotation-tools.js',
-    './cases/test-merged-input.js',
     './cases/test-spatial-reasoning-e2e.js',
     './cases/test-image-upload.js',
     './cases/test-visual-fallback.js',

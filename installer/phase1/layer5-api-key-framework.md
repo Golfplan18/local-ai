@@ -21,7 +21,7 @@
 
 ### Model Registration Rule
 
-When a user provides an API key for any provider, **all available models** from that provider are registered in `routing-config.json` automatically. The canonical model list is defined in `config/api-model-registry.json`. Users can disable or remove models they don't want from the Model Configuration panel.
+When a user provides an API key for any provider, **all available models** from that provider are registered in `routing-config.json` automatically. The canonical model list is defined in `config/model-registry.json` (synced by `scripts/sync_model_registry.py`). Users can disable or remove models they don't want from the Model Configuration panel.
 
 **Rationale:** It is easier to delete what you don't need than to discover and add what you didn't know existed. Default to everything.
 

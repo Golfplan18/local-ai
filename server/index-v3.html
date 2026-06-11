@@ -104,7 +104,7 @@
      capability-video-generates / capability-style-trains + OraJobQueue
      init calls that index-v3.html's inline init script never made;
      runs the /api/jobs/<conversation_id> polling loop the legacy
-     chat-panel.js used to own; renders job entries into the sidebar
+     classic-UI chat panel used to own; renders job entries into the sidebar
      Operating tray alongside re-eval and elicitation items (B+C hybrid
      design — tray entry for status, canvas placeholder for spatial
      pre-allocation). Loaded non-deferred so window.OraV3CapabilityAsync
@@ -1796,7 +1796,7 @@
 
   // ─── Audio/Video Phase 2 — transcription dispatcher bring-up ────────
   // Connects the SSE stream and exposes window.OraTranscribeInput so
-  // chat-panel.js can dispatch audio/video drops through it.
+  // input handlers can dispatch audio/video drops through it.
   if (window.OraTranscribeInput && typeof window.OraTranscribeInput.init === 'function') {
     try { window.OraTranscribeInput.init(); }
     catch (e) { console.error('OraTranscribeInput init failed:', e); }

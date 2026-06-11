@@ -3141,14 +3141,6 @@ def _territory_of(entry: dict) -> str:
     return t.split("-")[0] if "-" in t else t
 
 
-def _matches_grouped_by_mode(matches: list[dict]) -> dict[str, list[dict]]:
-    grouped: dict[str, list[dict]] = {}
-    for m in matches:
-        mode = m["mode"]
-        grouped.setdefault(mode, []).append(m)
-    return grouped
-
-
 def _matches_grouped_by_territory(matches: list[dict]) -> dict[str, list[dict]]:
     grouped: dict[str, list[dict]] = {}
     for m in matches:

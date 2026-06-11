@@ -9,7 +9,7 @@ Tests:
 4. Pass B produces candidate notes
 5. Full pipeline run_sync() returns notes_extracted > 0
 
-Run: /opt/homebrew/bin/python3 ~/ora/tests/test_extraction_pipeline.py
+Run: /opt/homebrew/bin/python3 ~/ora/scripts/diagnose-extraction-pipeline.py
 """
 import os
 import sys
