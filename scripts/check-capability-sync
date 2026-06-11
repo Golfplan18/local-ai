@@ -13,8 +13,8 @@ Exit codes:
   2 — input file not found, or malformed JSON.
 
 Usage:
-  /opt/homebrew/bin/python3 ~/ora/tools/check-capability-sync
-  /opt/homebrew/bin/python3 ~/ora/tools/check-capability-sync --doc /path/to/contracts.md
+  /opt/homebrew/bin/python3 ~/ora/scripts/check-capability-sync
+  /opt/homebrew/bin/python3 ~/ora/scripts/check-capability-sync --doc /path/to/contracts.md
 
 Checks performed (each emits a specific message on failure):
 

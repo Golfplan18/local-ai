@@ -11,7 +11,7 @@ Three test classes:
 * ``CapabilityRegistryContractTests`` — extended coverage of contract
   validation, defaults, provider resolution, error codes.
 * ``CheckCapabilitySyncTests``     — invokes the
-  ``tools/check-capability-sync`` script as a subprocess against the
+  ``scripts/check-capability-sync`` script as a subprocess against the
   shipped configs and expects exit 0; also flips a slot name to verify
   drift is detected.
 
@@ -45,7 +45,7 @@ from capability_registry import (  # noqa: E402
 
 CAPABILITIES_JSON = WORKSPACE / "config" / "capabilities.json"
 ROUTING_CONFIG_JSON = WORKSPACE / "config" / "routing-config.json"
-SYNC_CHECK_SCRIPT = WORKSPACE / "tools" / "check-capability-sync"
+SYNC_CHECK_SCRIPT = WORKSPACE / "scripts" / "check-capability-sync"
 
 
 # ---------------------------------------------------------------------------
