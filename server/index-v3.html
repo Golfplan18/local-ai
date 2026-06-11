@@ -81,6 +81,58 @@
      dependency-free helpers. Ajv2020 is borrowed from the ora-visual-
      compiler vendor dir — pack-validator looks for it on window.Ajv2020. -->
 <script src="/static/ora-visual-compiler/vendor/ajv/ajv2020.bundle.min.js"></script>
+
+<!-- Ora visual compiler — full browser boot (2026-06-11). Until now V3
+     never loaded the compiler, so model-emitted ora-visual envelopes
+     displayed as raw JSON and visual-panel renderSpec always fell back
+     with E_COMPILER_UNAVAILABLE. Load order mirrors the canonical boot
+     in ora-visual-compiler/tools/render-envelope.js (core → vendor →
+     palettes/dot/ajv-init → renderers → accessibility/adversarial).
+     bootstrapAjv() fetches schemas from /static/visual-schemas/ (Flask
+     maps that route onto config/visual-schemas/); on any fetch failure
+     it degrades to Layer-1 structural validation rather than blocking. -->
+<script src="/static/ora-visual-compiler/errors.js"></script>
+<script src="/static/ora-visual-compiler/validator.js"></script>
+<script src="/static/ora-visual-compiler/renderers/stub.js"></script>
+<script src="/static/ora-visual-compiler/dispatcher.js"></script>
+<script src="/static/ora-visual-compiler/index.js"></script>
+<script src="/static/ora-visual-compiler/vendor/vega/vega.min.js"></script>
+<script src="/static/ora-visual-compiler/vendor/vega-lite/vega-lite.min.js"></script>
+<script src="/static/ora-visual-compiler/vendor/mermaid/mermaid.min.js"></script>
+<script src="/static/ora-visual-compiler/vendor/viz-js/viz-standalone.js"></script>
+<script src="/static/ora-visual-compiler/vendor/d3/d3.min.js"></script>
+<script src="/static/ora-visual-compiler/vendor/dagre/dagre.min.js"></script>
+<script src="/static/ora-visual-compiler/vendor/structurizr-mini/parser.js"></script>
+<script src="/static/ora-visual-compiler/vendor/structurizr-mini/renderer.js"></script>
+<script src="/static/ora-visual-compiler/palettes.js"></script>
+<script src="/static/ora-visual-compiler/dot-engine.js"></script>
+<script src="/static/ora-visual-compiler/ajv-init.js"></script>
+<script src="/static/ora-visual-compiler/renderers/vega-lite.js"></script>
+<script src="/static/ora-visual-compiler/renderers/mermaid.js"></script>
+<script src="/static/ora-visual-compiler/renderers/causal-dag.js"></script>
+<script src="/static/ora-visual-compiler/renderers/c4.js"></script>
+<script src="/static/ora-visual-compiler/renderers/causal-loop-diagram.js"></script>
+<script src="/static/ora-visual-compiler/renderers/stock-and-flow.js"></script>
+<script src="/static/ora-visual-compiler/renderers/fishbone.js"></script>
+<script src="/static/ora-visual-compiler/renderers/decision-tree.js"></script>
+<script src="/static/ora-visual-compiler/renderers/influence-diagram.js"></script>
+<script src="/static/ora-visual-compiler/renderers/ach-matrix.js"></script>
+<script src="/static/ora-visual-compiler/renderers/quadrant-matrix.js"></script>
+<script src="/static/ora-visual-compiler/renderers/bow-tie.js"></script>
+<script src="/static/ora-visual-compiler/renderers/ibis.js"></script>
+<script src="/static/ora-visual-compiler/renderers/pro-con.js"></script>
+<script src="/static/ora-visual-compiler/renderers/concept-map.js"></script>
+<script src="/static/ora-visual-compiler/alt-text-generator.js"></script>
+<script src="/static/ora-visual-compiler/aria-annotator.js"></script>
+<script src="/static/ora-visual-compiler/keyboard-nav.js"></script>
+<script src="/static/ora-visual-compiler/artifact-adversarial.js"></script>
+<script>
+  if (window.OraVisualCompiler && typeof window.OraVisualCompiler.bootstrapAjv === 'function') {
+    window.OraVisualCompiler.bootstrapAjv().then(function (r) {
+      if (!r || !r.ok) console.warn('[ora-visual] Ajv bootstrap degraded to Layer 1:', r && r.reason);
+    });
+  }
+</script>
 <script src="/static/capability-invocation-ui.js"></script>
 <script src="/static/prompt-template-engine.js"></script>
 <script src="/static/shape-with-text.js"></script>
@@ -219,6 +271,9 @@
 <script src="/static/js/v3-canvas-to-library.js" defer></script>
 <script src="/static/js/v3-canvas-mount.js" defer></script>
 <script src="/static/js/prompt-overlay.js" defer></script>
+<!-- Envelope → visual-pane dispatch (2026-06-11). Must precede
+     v3-conversation.js, whose renderTurn calls OraV3VisualDispatch. -->
+<script src="/static/js/v3-visual-dispatch.js" defer></script>
 <script src="/static/js/v3-conversation.js" defer></script>
 <!-- V3 Input Handling Phase 4 — input-pane state container + framework
      picker. input-state.js must load before framework-picker.js so the

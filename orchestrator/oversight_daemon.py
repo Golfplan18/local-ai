@@ -26,6 +26,7 @@ DEFAULT_CORPUS_WATCHER_INTERVAL_SEC = int(os.environ.get("ORA_CORPUS_WATCHER_SEC
 DEFAULT_WORKFLOW_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_WORKFLOW_SWEEPER_SEC", "300"))
 DEFAULT_REVISIT_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_REVISIT_SWEEPER_SEC", "3600"))
 DEFAULT_RETENTION_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_RETENTION_SWEEPER_SEC", "21600"))
+DEFAULT_MAINTENANCE_SCHEDULER_INTERVAL_SEC = int(os.environ.get("ORA_MAINTENANCE_SCHEDULER_SEC", "3600"))
 
 # Vault path — the canonical location for PEDs and other oversight artifacts.
 VAULT_PATH = os.path.expanduser(os.environ.get("ORA_VAULT_PATH", "~/Documents/vault/"))
@@ -364,6 +365,7 @@ class OversightDaemon:
         self._run_workflow_spec_sweeper(emit)
         self._run_revisit_sweeper(emit)
         self._run_retention_sweeper()
+        self._run_maintenance_scheduler()
 
     def _loop(self):
         """Main loop — checks each watcher's due time once per second.
@@ -383,7 +385,7 @@ class OversightDaemon:
         # prior run and falsely reports "daemon down."
         for watcher_mod_name in ("ped_watcher", "corpus_watcher",
                                  "workflow_spec_sweeper", "revisit_sweeper",
-                                 "retention_sweeper"):
+                                 "retention_sweeper", "maintenance_scheduler"):
             try:
                 _mod = __import__(watcher_mod_name)
                 _mod._write_heartbeat()
@@ -406,6 +408,8 @@ class OversightDaemon:
                                 lambda: self._run_revisit_sweeper(emit))
                 self._maybe_run("retention_sweeper", DEFAULT_RETENTION_SWEEPER_INTERVAL_SEC, now,
                                 self._run_retention_sweeper)
+                self._maybe_run("maintenance_scheduler", DEFAULT_MAINTENANCE_SCHEDULER_INTERVAL_SEC, now,
+                                self._run_maintenance_scheduler)
             except Exception as e:
                 print(f"[oversight_daemon] loop error: {e}")
 
@@ -465,6 +469,17 @@ class OversightDaemon:
                 print(f"[oversight_daemon] retention sweep: {summary}")
         except Exception as e:
             print(f"[oversight_daemon] retention_sweeper failed: {e}")
+
+    def _run_maintenance_scheduler(self):
+        # Vault-governed periodic maintenance (Reference — Ora Periodic
+        # Maintenance.md drives cadences). Mechanical — no events.
+        try:
+            import maintenance_scheduler
+            summary = maintenance_scheduler.sweep()
+            if summary["ran"] or summary["failed"]:
+                print(f"[oversight_daemon] maintenance: ran={summary['ran']} failed={summary['failed']}")
+        except Exception as e:
+            print(f"[oversight_daemon] maintenance_scheduler failed: {e}")
 
 
 # ---------- Module-level singleton ----------

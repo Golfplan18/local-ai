@@ -243,9 +243,18 @@
 
     // Assistant text of the current turn — what the output pane is for.
     if (t.assistant) {
+      let content = t.assistant.content || '';
+      // Model-emitted ora-visual envelopes: hand the turn's blocks to the
+      // visual pane (canvas_action semantics, deduped per conversation+turn)
+      // and swap the raw JSON fences for a one-line marker in the transcript.
+      if (window.OraV3VisualDispatch) {
+        const key = `${state.activeConversationId || ''}#${state.currentTurnIndex}`;
+        window.OraV3VisualDispatch.dispatch(content, key);
+        content = window.OraV3VisualDispatch.stripBlocks(content);
+      }
       const block = document.createElement('div');
       block.className = 'output-turn output-turn-assistant';
-      block.innerHTML = _md(t.assistant.content || '');
+      block.innerHTML = _md(content);
       outputContent.appendChild(block);
     } else {
       const pending = document.createElement('div');

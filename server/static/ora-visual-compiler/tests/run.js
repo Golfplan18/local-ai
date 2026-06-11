@@ -340,6 +340,7 @@ async function runSuite(label, fn, ctx) {
     './cases/test-lazy-expansion.js',
     './cases/test-shape-tools.js',
     './cases/test-annotation-tools.js',
+    './cases/test-v3-visual-dispatch.js',
     './cases/test-spatial-reasoning-e2e.js',
     './cases/test-image-upload.js',
     './cases/test-visual-fallback.js',

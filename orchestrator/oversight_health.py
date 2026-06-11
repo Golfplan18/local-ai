@@ -31,6 +31,7 @@ HEARTBEAT_INTERVALS = {
     "workflow_spec_sweeper": 300,
     "revisit_sweeper": 3600,
     "retention_sweeper": 21600,
+    "maintenance_scheduler": 3600,
     # Phase 2c: the local MLX worker heartbeat. "Alive" means Ora's
     # MLX-aware code path is responsive; staleness surfaces as a chat
     # warning the same way watcher staleness does. Emitted by
