@@ -15,8 +15,8 @@ Call path:
   3. OpenRouter returns a normal completion whose ``message.images``
      list carries ``{type: "image_url", image_url: {url: "data:..."}}``
      dicts. We extract the first base64 data URL, decode it to raw
-     bytes, and return the bytes — matching the openai / gemini /
-     civitai handler contract so downstream consumers (msi_image_render,
+     bytes, and return the bytes — matching the openai / gemini
+     handler contract so downstream consumers (msi_image_render,
      article_image_sweeper) can treat all image providers uniformly.
 
 Failure-signal contract (Image Spec §5.8.1 v2.0):
@@ -33,10 +33,11 @@ Failure-signal contract (Image Spec §5.8.1 v2.0):
     explaining what it won't generate — that has to fall through to the
     next provider, not silently succeed)
 
-  This is the contract that lets ``image_generates_cartoon`` (which
-  inherits the general slot's chain and appends civitai-hector-lora-v1
-  per spec v2.0) reach the LoRA when every OpenRouter and OpenAI
-  provider has refused or errored.
+  This is the contract that lets ``image_generates_cartoon`` (an
+  explicit publisher-defined cloud-only chain: GPT-5.4 Image 2
+  preferred, Google image models catching its moderation refusals,
+  gpt-5-image as the deeper fallback) walk past a refusing provider
+  instead of silently stopping the cascade.
 
 Video generation is registered for surface visibility but the call path
 is stubbed — OpenRouter's video models have provider-specific request
@@ -254,7 +255,7 @@ def _call_image_model(model_id: str, prompt: str,
     """Invoke a chosen OpenRouter image-output model and return raw bytes.
 
     Returns raw image bytes (PNG/JPEG/WebP) ready for vectorization or
-    direct write. Matches the openai/gemini/civitai handler contract.
+    direct write. Matches the openai/gemini handler contract.
 
     When ``source_image`` is provided (path, URL, or bytes), it's passed
     alongside the prompt as a chat-completions ``image_url`` content

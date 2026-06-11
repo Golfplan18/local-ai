@@ -5,10 +5,9 @@ Image (formerly nicknamed "Nano Banana"). Per the MSI Image Style
 Specification §5.8.1 lock-in (2026-05-10), this provider is the
 designated Slot 2 fallback when Slot 1 (``openai-gpt-image-1``) returns
 a content-policy rejection. The two-tier rotation (Slot 1 → Slot 2)
-covers the publication's reliability requirement during the LoRA-
-training window; Slots 3 + 4 (TensorArt, Civitai) are intentionally
-out-of-scope for this thread (the LoRA training thread is expected to
-demote Slot 1 within 1–2 weeks).
+covers the publication's reliability requirement. The former Slot 3/4
+LoRA providers (TensorArt, Civitai) were decommissioned 2026-06-01 with
+the moral-disgust pivot; the cartoon slot now runs a cloud-only chain.
 
 Endpoint
 --------

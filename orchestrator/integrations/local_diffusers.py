@@ -679,13 +679,13 @@ def dispatch_image_varies(inputs: dict) -> list[bytes]:
 
 _SLOT_HANDLERS = {
     "image_generates":          dispatch_image_generates,
-    # Image Spec §5.8.1 v2.0 (2026-05-13): the cartoon slot inherits
-    # its chain from image_generates and appends civitai-hector-lora-v1.
-    # For local-diffusers to actually be reachable through the inherited
-    # cartoon chain (last cloud fallback before the LoRA backstop),
-    # it has to register against both slots — resolve_provider_chain
-    # filters the materialized chain by what is actually registered
-    # against the destination slot.
+    # The cartoon slot is an explicit publisher-defined chain in
+    # routing-config.json (cloud-only since the Hector LoRA was
+    # decommissioned with the moral-disgust pivot). local-diffusers
+    # registers against both slots so it is reachable if the publisher
+    # ever adds it to that chain — resolve_provider_chain filters the
+    # materialized chain by what is actually registered against the
+    # destination slot.
     "image_generates_cartoon":  dispatch_image_generates,
     "image_edits":      dispatch_image_edits,
     "image_outpaints":  dispatch_image_outpaints,

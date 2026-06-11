@@ -25,7 +25,7 @@ API key resolved at call time:
    service ``"ora"``, username ``"fred-api-key"``
 
 The keychain pattern matches the rest of Ora's integration modules
-(openai_images, civitai_images, gemini_images).
+(openai_images, gemini_images).
 
 Error mapping
 -------------
