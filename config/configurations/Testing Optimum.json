@@ -106,7 +106,7 @@
   },
   "toggles": {
     "adversarial_diversity": true,
-    "vision_only": false
+    "vision_only": true
   },
   "_anthropic_trap_fix": "2026-06-01: stripped 9 direct-Anthropic (service=claude) fallback ids to honor the no-Anthropic-API guardrail. rag_isolation + toggles preserved."
 }

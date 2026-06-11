@@ -29,6 +29,7 @@ data/chroma/
 data/entity-index.json
 data/vault-index.json
 data/extraction-staging/
+data/extraction-promoted/
 data/conversation-manifest.jsonl
 
 # Historical corpus-pipeline resume checkpoints (orchestrator/historical/*).
@@ -97,6 +98,9 @@ __pycache__/
 # Drift framework backups
 *.bak*
 ~/
+
+# Pre-change backup tarballs (e.g. backups/msi-news-prestamp-*.tar.gz)
+backups/
 
 # --- 2026-05-28 server-side hygiene ---
 # Server-side ChromaDB lives at orchestrator/chroma_db/ (different path
