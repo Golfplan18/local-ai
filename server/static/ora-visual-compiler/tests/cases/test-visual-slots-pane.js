@@ -7,8 +7,7 @@
  * replacement for the classic ConfigPanel embed on the Settings →
  * Visual tab:
  *   1. Primary cards render for image_generates + video_generates only.
- *   2. Preferred select carries the stored value; dead DALL-E padding
- *      entries are filtered out of the candidates.
+ *   2. Preferred select carries the stored value.
  *   3. First-fallback select + read-only "Then:" chain line render the
  *      stored fallback chain.
  *   4. Advanced disclosure is collapsed by default and holds the
@@ -52,8 +51,6 @@ const PROVIDERS = {
       display_name: 'GPT-5 Image', available: true },
     { provider_id: 'local-diffusers', available: false,
       reason: 'install diffusers + torch', kind: 'local' },
-    { provider_id: 'openai-dalle3', available: false, reason: 'x', kind: 'api' },
-    { provider_id: 'openai-dalle2', available: false, reason: 'x', kind: 'api' },
   ],
   video_generates: [
     { provider_id: 'replicate', available: true },
@@ -115,18 +112,12 @@ module.exports = {
              && cards[1].dataset.slotCard === 'video_generates',
              'count=' + cards.length);
 
-      // 2. Preferred select — stored value selected, DALL-E filtered
+      // 2. Preferred select — stored value selected
       const prefSel = host.querySelector(
         '[data-slot="image_generates"][data-field="preferred"]');
       record('preferred: stored value selected',
              !!prefSel && prefSel.value === 'openrouter:openai/gpt-5.4-image-2',
              prefSel && prefSel.value);
-      const prefIds = prefSel
-        ? Array.from(prefSel.options).map((o) => o.value) : [];
-      record('preferred: dead DALL-E entries filtered out',
-             prefIds.indexOf('openai-dalle3') === -1
-             && prefIds.indexOf('openai-dalle2') === -1,
-             prefIds.join(','));
 
       // 3. Fallback select + chain line
       const fbSel = host.querySelector(

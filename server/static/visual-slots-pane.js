@@ -66,13 +66,6 @@
     { id: 'style_trains',            label: 'Style training' },
   ];
 
-  // KNOWN_PROVIDERS padding from /api/capability/providers still lists
-  // the DALL-E ids even though OpenAI shut DALL-E down 2026-05-12 (see
-  // the image_generates _note in routing-config.json). Hide them unless
-  // a slot still references one, in which case it must stay visible so
-  // the select renders the stored value.
-  var DEAD_PROVIDERS = { 'openai-dalle2': true, 'openai-dalle3': true };
-
   // ── public API ───────────────────────────────────────────────────────────
 
   function init(hostEl) {
@@ -231,9 +224,7 @@
   }
 
   function _candidatesFor(slotId, current) {
-    var list = (_providers[slotId] || []).filter(function (p) {
-      return !DEAD_PROVIDERS[p.provider_id] || p.provider_id === current;
-    });
+    var list = _providers[slotId] || [];
     if (current && !list.some(function (p) { return p.provider_id === current; })) {
       list = list.concat([{
         provider_id: current,

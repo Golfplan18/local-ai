@@ -9802,8 +9802,6 @@ def capability_providers_get():
     # for providers that are known but not currently registered.
     KNOWN_PROVIDERS = {
         "local-diffusers": ("install diffusers + torch to enable offline image generation", "local"),
-        "openai-dalle3":   ("set OpenAI API key in Settings → External APIs", "api"),
-        "openai-dalle2":   ("set OpenAI API key in Settings → External APIs", "api"),
         "stability":       ("set Stability API key in Settings → External APIs", "api"),
         "replicate":       ("set Replicate token in Settings → External APIs", "api"),
     }
@@ -9813,7 +9811,6 @@ def capability_providers_get():
     # the user can configure them at runtime), so "registered" alone
     # over-reports availability. Here we cross-check actual credential
     # state and downgrade the dot to "not configured" when missing.
-    has_openai = bool(os.environ.get("OPENAI_API_KEY") or _try_keychain_openai_key())
     has_stability = bool(os.environ.get("STABILITY_API_KEY") or _try_keychain_stability_key())
     has_replicate = bool(os.environ.get("REPLICATE_API_TOKEN") or _try_keychain_replicate_token())
 
@@ -9822,8 +9819,6 @@ def capability_providers_get():
         # package being importable, so a registered local-diffusers is
         # always usable. Treat as always-credentialed.
         "local-diffusers": True,
-        "openai-dalle3":   has_openai,
-        "openai-dalle2":   has_openai,
         "stability":       has_stability,
         "replicate":       has_replicate,
     }
