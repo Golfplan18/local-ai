@@ -102,8 +102,10 @@
       "_note": "Per-pipeline vision-language extraction slot. Read by route_for_image_input when an analyst model is not vision_capable. Each pipeline (interactive / agent) picks one multimodal LLM (text+image -> text); the OTHER pipeline\u2019s pick is used as the automatic backup when the primary is unavailable. Edit via Settings -> Buckets tab -> Image Extracts card (right column). DO NOT put image-GENERATION models here (gpt-image-2, etc.) \u2014 those are tuned for text+image -> image output and don\u2019t reliably emit JSON descriptions, which causes the request to hang. All entries must be multimodal LLMs whose output is text and whose input includes image. Validate against catalog by_input_modality.image when adding entries."
     },
     "video_generates": {
-      "preferred": "replicate",
-      "fallback": []
+      "preferred": "openrouter:alibaba/wan-2.6",
+      "fallback": [
+        "openrouter:google/veo-3.1-fast"
+      ]
     },
     "style_trains": {
       "preferred": "replicate",

@@ -128,3 +128,6 @@ vault-sync/
 # its own. Tracked documentation lives in config/chromadb.json.template; the
 # live file is gitignored so machines don't clobber each other via git.
 config/chromadb.json
+data/campaign/
+config/configurations/campaign-*.json
+data/visual-emission-log.jsonl
