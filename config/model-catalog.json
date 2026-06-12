@@ -1,6 +1,6 @@
 {
   "_schema_version": 1,
-  "_refreshed_at": "2026-06-12T21:00:55.197894+00:00",
+  "_refreshed_at": "2026-06-12T21:26:16.447768+00:00",
   "_sources": {
     "openrouter": {
       "url": "https://openrouter.ai/api/v1/models",
@@ -8,7 +8,7 @@
     },
     "model_registry": {
       "path": "config/model-registry.json",
-      "enriched_count": 223,
+      "enriched_count": 225,
       "skipped": false
     }
   },
@@ -4106,7 +4106,7 @@
         "output_per_m": 0.35,
         "blended_per_m": 0.1475
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 8.38999850631525,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -7283,7 +7283,7 @@
         "output_per_m": 0.14,
         "blended_per_m": 0.08375
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 10.4141524759837,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
