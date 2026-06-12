@@ -4,10 +4,11 @@
  * Replaces the classic ConfigPanel embed inside the V3 Settings →
  * Visual tab. The old grid exposed all ten capability slots with full
  * preferred + reorderable-fallback editors — far more surface than
- * anyone actually configures. This pane shows the two slots users
- * really touch (image_generates, video_generates) as first-class
- * cards, and folds the rest into a collapsed Advanced section where
- * they inherit their routing-config defaults silently.
+ * anyone actually configures. This pane is a two-column layout: the
+ * two slots users really touch (image_generates, video_generates) as
+ * first-class cards on the left, and the remaining specialized slots
+ * exposed in an Advanced routing column on the right (the modal is
+ * wide — space is not the constraint; comprehension is).
  *
  * Data sources:
  *   GET /config/routing/slots            — current slots block (routing-config.json)
@@ -45,10 +46,9 @@
   var _slots = null;        // slots block from /config/routing/slots
   var _providers = null;    // per-slot provider lists from /api/capability/providers
   var _summaries = null;    // slot → one-line summary from capabilities.json
-  var _advancedOpen = false; // <details> state, preserved across re-renders
 
   // The two slots users actually configure. Everything else inherits
-  // defaults and lives under the Advanced disclosure.
+  // defaults and lives in the Advanced routing column.
   var PRIMARY_SLOTS = [
     {
       id: 'image_generates',
@@ -89,7 +89,6 @@
       + '<div data-section="header"></div>'
       + '<div data-section="primary"></div>'
       + '<div data-section="advanced"></div>';
-    _advancedOpen = false;
     _renderHeader('Loading…');
     _loadAll();
   }
@@ -198,8 +197,8 @@
     });
     if (!rows.length) { section.innerHTML = ''; return; }
     section.innerHTML = ''
-      + '<details class="ora-vslots-advanced"' + (_advancedOpen ? ' open' : '') + '>'
-      +   '<summary>Advanced routing</summary>'
+      + '<section class="ora-vslots-advanced">'
+      +   '<div class="ora-vslots-advanced-title">Advanced routing</div>'
       +   '<div class="ora-vslots-advanced-hint">'
       +     'Specialized image operations. Each one picks its own provider '
       +     'because not every model supports every operation — these '
@@ -227,14 +226,8 @@
               +   _providerNoticeHtml(s.id, cfg.preferred || '')
               + '</div>';
           }).join('')
-      + '</details>';
+      + '</section>';
     _bindEditors(section);
-    var details = section.querySelector('details.ora-vslots-advanced');
-    if (details) {
-      details.addEventListener('toggle', function () {
-        _advancedOpen = details.open;
-      });
-    }
   }
 
   // One <select> for a slot field. Candidates come from the provider
