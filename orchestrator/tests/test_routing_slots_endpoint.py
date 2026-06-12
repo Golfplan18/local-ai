@@ -50,7 +50,10 @@ class RoutingSlotsEndpoint(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Lazy server import — drags a lot of orchestrator code in.
-        sys.path.insert(0, str(Path.home() / "ora" / "server"))
+        # Repo-relative (not Path.home()/"ora") so the suite exercises
+        # the server.py checked out next to this test file — including
+        # when run from a worktree.
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
             import server as S  # type: ignore
             cls.S = S
@@ -171,6 +174,53 @@ class RoutingSlotsEndpoint(unittest.TestCase):
         resp = self._post({"slots": {"image_generates": "local-diffusers"}})
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(self._on_disk()["slots"], FIXTURE["slots"])
+
+
+class OpenRouterPriceSuffix(unittest.TestCase):
+    """Unit tests for ``_openrouter_price_suffix`` — the display-name
+    price tag in /api/capability/providers.
+
+    Media models (video especially) bill per output second / image on
+    OpenRouter; the public models API reports their token pricing as a
+    literal 0, which previously rendered as "($0.0/$0.0/M)" — reading
+    as "free". Zero/absent pricing must show nothing.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
+        try:
+            import server as S  # type: ignore
+            cls.fn = staticmethod(S._openrouter_price_suffix)
+            cls.import_ok = True
+        except Exception as exc:  # pragma: no cover
+            cls.import_ok = False
+            cls.import_err = str(exc)
+
+    def setUp(self):
+        if not self.import_ok:
+            self.skipTest(f"could not import server.py: "
+                          f"{getattr(self, 'import_err', '<unknown>')}")
+
+    def test_real_token_pricing_renders(self):
+        self.assertEqual(
+            self.fn({"prompt": 8.0, "completion": 15.0}),
+            "  ($8.0/$15.0/M)")
+
+    def test_zero_pricing_suppressed(self):
+        # The video-model shape: catalog carries literal zeros.
+        self.assertEqual(self.fn({"prompt": 0.0, "completion": 0.0}), "")
+
+    def test_absent_pricing_suppressed(self):
+        self.assertEqual(self.fn({}), "")
+        self.assertEqual(self.fn(None), "")
+        self.assertEqual(self.fn({"prompt": None, "completion": None}), "")
+
+    def test_one_sided_pricing_still_renders(self):
+        # Free prompt + paid completion is real data — keep it.
+        self.assertEqual(
+            self.fn({"prompt": 0.0, "completion": 15.0}),
+            "  ($0.0/$15.0/M)")
 
 
 if __name__ == "__main__":

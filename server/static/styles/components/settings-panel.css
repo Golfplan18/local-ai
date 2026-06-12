@@ -2070,11 +2070,19 @@
 }
 
 .ora-vslots-row {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
+}
+
+.ora-vslots-row:last-child {
+  border-bottom: none;
+}
+
+.ora-vslots-row-top {
   display: grid;
   grid-template-columns: 150px minmax(200px, 320px) 1fr;
   align-items: center;
   gap: 10px;
-  padding: 4px 0;
 }
 
 .ora-vslots-row-label {
@@ -2085,7 +2093,97 @@
 .ora-vslots-row-chain {
   font-size: 11px;
   color: var(--text-muted, #A89F8A);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.ora-vslots-row-hint {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-vslots-off {
+  font-style: italic;
+}
+
+/* ── fallback-chain editor (chips + add select) ───────────────────── */
+
+.ora-vslots-chainedit {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.ora-vslots-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  font-size: 11px;
+  color: var(--text-normal, #E8E0CC);
+  background: var(--background-primary, #15110A);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 10px;
   white-space: nowrap;
+}
+
+.ora-vslots-chip--stale {
+  color: var(--text-muted, #A89F8A);
+  border-style: dashed;
+}
+
+.ora-vslots-chip-x {
+  border: none;
+  background: none;
+  padding: 0 3px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-vslots-chip-x:hover {
+  color: var(--color-red, #C77958);
+}
+
+.ora-vslots-chain-sep {
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-vslots-select--add {
+  width: auto;
+  max-width: 220px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+}
+
+/* ── provider notices (setup guidance / async info) ───────────────── */
+
+.ora-vslots-notice {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-vslots-notice--warn {
+  color: var(--color-yellow, #D4AC4A);
+}
+
+.ora-vslots-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--link-color, #8A6849);
+  text-decoration: underline;
+}
+
+.ora-vslots-link:hover {
+  color: var(--link-color-hover, #A8825F);
 }
