@@ -55,14 +55,14 @@ function mkDiv(win) {
 
 function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-// rAF in jsdom runs out of band — drain a couple ticks so debounced checks fire.
+// rAF in jsdom runs out of band — lazy-expansion schedules its check via
+// requestAnimationFrame, and jsdom's pretendToBeVisual frame clock ticks
+// every ~16 ms. A sub-frame wait (the old 5 ms) races the frame phase and
+// flakes depending on how long earlier suites ran. Outwait two full frame
+// periods so any rAF requested before this call has definitely fired.
 function flushFrames() {
   return new Promise(function (resolve) {
-    if (typeof setImmediate === 'function') {
-      setImmediate(function () { setTimeout(resolve, 5); });
-    } else {
-      setTimeout(resolve, 10);
-    }
+    setTimeout(resolve, 40);
   });
 }
 
