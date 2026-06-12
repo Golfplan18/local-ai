@@ -1,6 +1,6 @@
 {
   "name": "optimum",
-  "description": "Auto-populated from preset 'optimum' on 2026-06-12T03:58:26.934330+00:00.",
+  "description": "Auto-populated from preset 'optimum' on 2026-06-12T04:52:09.196423+00:00.",
   "preset_lineage": "optimum",
   "cells": {
     "utility": {
@@ -101,9 +101,6 @@
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
-    },
-    "image_generation": {
-      "image_generation": null
     }
   },
   "_auto_populate_metadata": {

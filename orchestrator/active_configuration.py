@@ -452,11 +452,12 @@ def _is_baseline_complete(config: dict) -> bool:
     """A configuration is baseline-complete when the card-visible
     primary slots are filled: big 1 (gear4.depth.primary), fast 1
     (gear3.depth.primary), small (utility.step1_cleanup.primary),
-    image generation (image_generation.image_generation.primary),
     AND big 2 + fast 2 (gear4.breadth.primary, gear3.breadth.primary)
     when Adversarial Diversity is on (when off the data side mirrors
     big 1 / fast 1 into their breadth counterparts automatically, so
-    those are implicitly complete).
+    those are implicitly complete). Image generation is NOT part of
+    completeness — it left the configuration schema 2026-06-11 (the
+    Visual tab / routing-config slots chain owns image-model choice).
     """
     cells = (config or {}).get("cells") or {}
     big1 = (((cells.get("analysis") or {}).get("gear4") or {}).get("depth") or {}).get("primary")
@@ -466,12 +467,11 @@ def _is_baseline_complete(config: dict) -> bool:
     fast2 = (((cells.get("analysis") or {}).get("gear3") or {}).get("breadth") or {}).get("primary") \
         if isinstance(((cells.get("analysis") or {}).get("gear3") or {}).get("breadth"), dict) else None
     small = ((cells.get("utility") or {}).get("step1_cleanup") or {}).get("primary")
-    img = ((cells.get("image_generation") or {}).get("image_generation") or {}).get("primary")
     saved_toggles = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
     inferred = _infer_defaults(config)
     adversarial = bool(saved_toggles.get("adversarial_diversity",
                                          inferred.get("adversarial_diversity", False)))
-    if not big1 or not fast1 or not small or not img:
+    if not big1 or not fast1 or not small:
         return False
     if adversarial and (not big2 or not fast2):
         return False
@@ -676,13 +676,6 @@ def _summarize(name: str, config: dict) -> dict:
     # utility cells; UTILITY writes only step1_cleanup.
     utility_override = small_cell.get("primary")
 
-    # Media slots (Chunk 11). Currently only image_generation is surfaced
-    # on the Models pane — the others (image editing, image-to-prompt,
-    # critique, video) live on the Visual tab.
-    image_gen = (cells.get("image_generation") or {}).get("image_generation") or {}
-    image_generation_primary = image_gen.get("primary") if isinstance(image_gen, dict) else None
-    image_generation_fallback = list(image_gen.get("fallback") or []) if isinstance(image_gen, dict) else []
-
     return {
         "name": name,
         "preset_lineage": config.get("preset_lineage"),
@@ -707,10 +700,6 @@ def _summarize(name: str, config: dict) -> dict:
         "verify": verification,
         "utility": utility_override,
         "visual": visual,
-        # Media slot — image_generation; null when the configuration
-        # predates Chunk 11 step 3 (re-bake to fill).
-        "image_generation": image_generation_primary,
-        "image_generation_fallback": image_generation_fallback,
         "toggles": toggles_resolved,
         # `incomplete` is now derived live from the cell tree rather than
         # read off a one-shot intent marker: any configuration missing
@@ -821,11 +810,6 @@ SLOT_LABEL_TO_PATHS = {
         ["utility", "classification"],
         ["utility", "rag_planner"],
     ],
-    # Media slot — image generation is its own card-body row and writes
-    # to a single image_generation cell. Picking from the inventory
-    # commits via this path. (Image editing / image-to-prompt /
-    # critique / video live on the Visual tab and don't appear here.)
-    "image gen": [["image_generation", "image_generation"]],
     # Expand-view slots: individual overrides that break the default
     # inheritance from a card-body slot. Picking any of these writes
     # to a single cell; the next big-1 / small pick will overwrite
@@ -918,19 +902,18 @@ def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
 
 # Popout-section label → single cell path. Fallback writes target one
 # cell only (no fan-out): the popout edits the chain that lives behind
-# the specific big/small/image position, not the SMALL or BIG-1 fan-out
+# the specific big/small position, not the SMALL or BIG-1 fan-out
 # set the card-body rows trigger.
 POPOUT_LABEL_TO_CELL = {
     "large": ["analysis", "gear4", "depth"],
     "small": ["utility", "step1_cleanup"],
-    "image": ["image_generation", "image_generation"],
 }
 
 
 def set_slot_fallback(name: str, popout_label: str, index: int, model_id: str) -> dict:
     """Replace one fallback position in a popout-section's chain.
 
-    ``popout_label`` is one of "large" / "small" / "image" — the
+    ``popout_label`` is one of "large" / "small" — the
     sections the fallback popout renders. ``index`` is the 0-based
     position inside the cell's ``fallback`` list. ``model_id`` is the
     replacement. Pass an empty string to remove the position

@@ -492,8 +492,9 @@ class TestFastSlot(_Fixture):
 
     # ─── _is_baseline_complete ───────────────────────────────────────────
     def _full_baseline(self, *, fast1="f1", fast2=None, adversarial=False):
-        """Build a config with big1, small, image filled + optional fast1/fast2
-        and an explicit adversarial toggle."""
+        """Build a config with big1 + small filled + optional fast1/fast2
+        and an explicit adversarial toggle. (No image cell: image
+        generation left the configuration schema 2026-06-11.)"""
         cells = {
             "utility": {"step1_cleanup": {"primary": "s"}},
             "analysis": {
@@ -503,7 +504,6 @@ class TestFastSlot(_Fixture):
                     "breadth": ({"primary": fast2} if fast2 else None),
                 },
             },
-            "image_generation": {"image_generation": {"primary": "img"}},
         }
         if adversarial:
             cells["analysis"]["gear4"]["breadth"] = {"primary": "b2"}
