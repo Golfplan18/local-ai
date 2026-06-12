@@ -25,6 +25,10 @@ Source-of-truth precedence per field:
   vision_capable      → empirical probe (when run) > LiteLLM explicit
                         true/false > OpenRouter ``architecture.input_modalities``
   intelligence_score  → Chatbot Arena ELO (authoritative)
+  aa_*_index          → OpenRouter-embedded ``benchmarks.artificial_analysis``
+                        (id-keyed, primary) > name-matched AA overlay
+                        (supplement; also sole source for aa_math_index,
+                        latency, tokens/sec, reasoning flag, release date)
   context_length      → OpenRouter (operational)
   pricing             → OpenRouter (operational)
 
@@ -515,6 +519,12 @@ def openrouter_view(model: dict) -> dict:
             "output_per_token": _maybe_float(pricing.get("completion")),
         },
         "hugging_face_id": model.get("hugging_face_id"),
+        # OpenRouter embeds third-party benchmark blocks per model id —
+        # ``benchmarks.artificial_analysis`` (intelligence / coding /
+        # agentic indexes) and ``benchmarks.design_arena``. The AA block
+        # is id-keyed by OpenRouter itself, so it is immune to the
+        # creator-rename drift the name-matched overlay suffers from.
+        "benchmarks": model.get("benchmarks") or {},
         "fetched_at": _now_iso(),
     }
 
@@ -1012,6 +1022,101 @@ def build_aa_overlay(
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# Layered AA enrichment: OpenRouter-embedded block (primary) + the
+# name-matched AA overlay above (supplement)
+# ──────────────────────────────────────────────────────────────────────────
+
+# OpenRouter ``benchmarks.artificial_analysis`` key → registry field.
+_AA_EMBEDDED_INDEX_FIELDS = (
+    ("intelligence_index", "aa_intelligence_index"),
+    ("coding_index", "aa_coding_index"),
+    ("agentic_index", "aa_agentic_index"),
+)
+
+# An embedded vs name-matched intelligence_index gap above this many
+# points marks the name-match as a probable fuzzy-match error (the
+# z-ai/glm-4.6v case: 23.4 embedded vs 17.1 fuzzy-matched).
+_AA_DISAGREEMENT_THRESHOLD = 2.0
+
+
+def layer_aa_enrichment(embedded: dict | None, matched: dict | None) -> tuple[dict, str | None, dict | None]:
+    """Combine the two AA sources for one model into final field values.
+
+    ``embedded`` is OpenRouter's ``benchmarks.artificial_analysis`` block
+    (id-keyed by OpenRouter — immune to AA creator renames); ``matched``
+    is the name-matched overlay view from ``build_aa_overlay``. Layering:
+
+      PRIMARY     embedded intelligence / coding / agentic indexes win
+                  whenever present.
+      SUPPLEMENT  the matched overlay fills everything OpenRouter doesn't
+                  embed (math index, latency, tokens/sec, reasoning flag,
+                  release date) and provides all fields for models
+                  OpenRouter hasn't linked to AA.
+
+    Returns ``(fields, aa_source, disagreement)``:
+      fields        the nine AA-derived registry fields, ready to merge
+      aa_source     "openrouter-embedded" | "aa-matched" | None —
+                    which source provided the headline indexes
+      disagreement  details dict when both sources carry an
+                    intelligence_index more than
+                    ``_AA_DISAGREEMENT_THRESHOLD`` points apart (the
+                    embedded value still wins; the caller logs it as a
+                    fuzzy-match-error indicator)
+    """
+    fields = {
+        "aa_intelligence_index": None,
+        "aa_coding_index": None,
+        "aa_agentic_index": None,
+        "aa_math_index": None,
+        "latency_total_seconds": None,
+        "latency_ttft_seconds": None,
+        "output_tokens_per_second": None,
+        "reasoning_model": None,
+        "release_date": None,
+    }
+    if matched:
+        fields["aa_intelligence_index"] = matched.get("aa_intelligence_index")
+        fields["aa_coding_index"] = matched.get("aa_coding_index")
+        fields["aa_agentic_index"] = matched.get("aa_agentic_index")
+        fields["aa_math_index"] = matched.get("aa_math_index")
+        fields["latency_total_seconds"] = matched.get("latency_total_seconds")
+        fields["latency_ttft_seconds"] = matched.get("latency_ttft_seconds")
+        fields["output_tokens_per_second"] = matched.get("output_tokens_per_second")
+        fields["reasoning_model"] = matched.get("aa_reasoning_model")
+        fields["release_date"] = matched.get("aa_release_date")
+
+    disagreement = None
+    embedded_used = False
+    if embedded:
+        for src_key, dst_key in _AA_EMBEDDED_INDEX_FIELDS:
+            value = _maybe_float(embedded.get(src_key))
+            if value is None:
+                continue
+            prior = fields[dst_key]
+            if (
+                dst_key == "aa_intelligence_index"
+                and prior is not None
+                and abs(prior - value) > _AA_DISAGREEMENT_THRESHOLD
+            ):
+                disagreement = {
+                    "field": dst_key,
+                    "embedded": value,
+                    "matched": prior,
+                    "match_type": (matched or {}).get("match_type"),
+                }
+            fields[dst_key] = value
+            embedded_used = True
+
+    if embedded_used:
+        aa_source = "openrouter-embedded"
+    elif matched:
+        aa_source = "aa-matched"
+    else:
+        aa_source = None
+    return fields, aa_source, disagreement
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # AA media leaderboards (text-to-image, image-editing, text-to-video) →
 # standalone registry entries. These models don't have OpenRouter or
 # LiteLLM presence, so they're added directly to ``registry["models"]``
@@ -1231,6 +1336,9 @@ def merge_sources(
     models: dict[str, dict] = {}
     ll_index = build_litellm_token_index(litellm)
     prior_models = (existing_registry or {}).get("models") or {}
+    aa_embedded_count = 0
+    aa_matched_only_count = 0
+    aa_disagreements: list[tuple[str, dict]] = []
     for ormodel in openrouter_models:
         or_view = openrouter_view(ormodel)
         model_id = or_view["id"]
@@ -1240,6 +1348,14 @@ def merge_sources(
         ll_view = litellm_view(ll_entry)
         arena = arena_overlay.get(model_id)
         aa = aa_overlay.get(model_id)
+        aa_embedded = (or_view.get("benchmarks") or {}).get("artificial_analysis") or None
+        aa_fields, aa_source, aa_disagreement = layer_aa_enrichment(aa_embedded, aa)
+        if aa_source == "openrouter-embedded":
+            aa_embedded_count += 1
+        elif aa_source == "aa-matched":
+            aa_matched_only_count += 1
+        if aa_disagreement:
+            aa_disagreements.append((model_id, aa_disagreement))
         vision = _resolve_vision_capable(or_view, ll_view)
 
         # Preserve prior empirical probe verdict if present — it's the
@@ -1268,7 +1384,15 @@ def merge_sources(
             "litellm": ll_view,
             "arena": arena,
             "artificialanalysis": aa,
+            # Which layer provided the headline AA indexes:
+            # "openrouter-embedded" (id-keyed block, primary) or
+            # "aa-matched" (name-matched overlay, supplement/fallback).
+            "aa_source": aa_source,
         }
+        if aa_embedded:
+            provenance["aa_embedded"] = aa_embedded
+        if aa_disagreement:
+            provenance["aa_disagreement"] = aa_disagreement
         if prior_probe:
             provenance["empirical_probe"] = prior_probe
         if prior_reach:
@@ -1291,16 +1415,12 @@ def merge_sources(
             "intelligence_score": arena["intelligence_score"] if arena else None,
             "intelligence_rank": arena["intelligence_rank"] if arena else None,
             "intelligence_votes": arena["votes"] if arena else None,
-            # Artificial Analysis enrichment (intelligence + latency + tps)
-            "aa_intelligence_index": aa["aa_intelligence_index"] if aa else None,
-            "aa_coding_index": aa["aa_coding_index"] if aa else None,
-            "aa_agentic_index": aa["aa_agentic_index"] if aa else None,
-            "aa_math_index": aa["aa_math_index"] if aa else None,
-            "latency_total_seconds": aa["latency_total_seconds"] if aa else None,
-            "latency_ttft_seconds": aa["latency_ttft_seconds"] if aa else None,
-            "output_tokens_per_second": aa["output_tokens_per_second"] if aa else None,
-            "reasoning_model": aa["aa_reasoning_model"] if aa else None,
-            "release_date": aa["aa_release_date"] if aa else None,
+            # Artificial Analysis enrichment, layered: OpenRouter's
+            # embedded benchmarks block is primary for the headline
+            # indexes; the name-matched overlay supplements (math index,
+            # latency, tps, reasoning flag, release date) and covers
+            # models OpenRouter hasn't linked.
+            **aa_fields,
             "last_synced_at": _now_iso(),
             "_provenance": provenance,
         }
@@ -1314,6 +1434,29 @@ def merge_sources(
         if prior_vendor_audit:
             models[model_id]["vendor_listed"] = prior_vendor_audit.get("vendor_listed")
             models[model_id]["vendor_audited_at"] = prior_vendor_audit.get("audited_at")
+    for model_id, d in aa_disagreements:
+        # A jaccard-matched disagreement usually means the fuzzy pass
+        # picked the wrong AA row (the z-ai/glm-4.6v case); a canonical
+        # match disagreeing usually means AA's row is stale or scores a
+        # different reasoning-effort variant than OpenRouter linked.
+        hint = (
+            "likely fuzzy-match error"
+            if d.get("match_type") == "jaccard"
+            else "AA row may be stale or a different variant"
+        )
+        print(
+            f"[sync] WARNING: AA intelligence_index disagreement on {model_id}: "
+            f"embedded {d['embedded']} vs matched {d['matched']} "
+            f"(match_type={d.get('match_type')}) — preferring the "
+            f"OpenRouter-embedded value; {hint}",
+            flush=True,
+        )
+    print(
+        f"[sync]   AA enrichment layering: {aa_embedded_count} openrouter-embedded "
+        f"(primary) + {aa_matched_only_count} aa-matched only "
+        f"({len(aa_disagreements)} disagreement(s))",
+        flush=True,
+    )
     # Post-process: ``:free`` suffix variants inherit from their paid base
     # (same underlying model, billing-tier-only differentiation).
     inherited = _apply_free_suffix_inheritance(models)
