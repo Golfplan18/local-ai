@@ -1268,13 +1268,18 @@
   letter-spacing: 0.03em;
 }
 
+/* Colored chips. The default rules below are the DARK-theme pair
+   (pale text on a tinted ground); the .theme-light block further down
+   swaps in ink-dark text + the same hue's tint, because these pastels
+   are unreadable on the cream light palette. Keep the two blocks in
+   sync when adding a chip. */
 .ora-models-chip-local {
-  background: rgba(150, 110, 220, 0.22);
+  background: rgba(150, 110, 220, 0.32);
   color: rgba(200, 170, 250, 1);
 }
 
 .ora-models-chip-vision {
-  background: rgba(80, 140, 200, 0.20);
+  background: rgba(80, 140, 200, 0.30);
   color: rgba(120, 180, 240, 1);
 }
 
@@ -1283,12 +1288,12 @@
    present), so calls bypass OpenRouter and its fee; OpenRouter remains
    the per-call fallback. */
 .ora-models-chip-direct {
-  background: rgba(60, 180, 160, 0.20);
+  background: rgba(60, 180, 160, 0.30);
   color: rgba(110, 220, 200, 1);
 }
 
 .ora-models-chip-free {
-  background: rgba(140, 200, 80, 0.16);
+  background: rgba(140, 200, 80, 0.26);
   color: rgba(180, 240, 120, 1);
 }
 
@@ -1297,17 +1302,17 @@
    rate-limited (200/429 with throttling flag), grey for unverified
    (no probe data or inconclusive). Auto-populate skips the red ones. */
 .ora-models-chip-unreachable {
-  background: rgba(196, 60, 60, 0.20);
+  background: rgba(196, 60, 60, 0.30);
   color: rgba(232, 128, 128, 1);
 }
 
 .ora-models-chip-rate-limited {
-  background: rgba(212, 172, 74, 0.20);
+  background: rgba(212, 172, 74, 0.30);
   color: rgba(232, 200, 120, 1);
 }
 
 .ora-models-chip-unverified {
-  background: rgba(150, 150, 150, 0.18);
+  background: rgba(150, 150, 150, 0.26);
   color: rgba(168, 159, 138, 1);
 }
 
@@ -1317,8 +1322,71 @@
    OpenRouter (open-source variants, third-party hosts). The reachability
    chip is the authoritative deployability signal — this one is informational. */
 .ora-models-chip-vendor-phantom {
-  background: rgba(212, 110, 60, 0.20);
+  background: rgba(212, 110, 60, 0.30);
   color: rgba(232, 152, 100, 1);
+}
+
+/* Light-theme chip pairs: same hue family, ink-dark text on a soft
+   tint so each chip clears AA contrast on the cream surfaces. The
+   dark-theme pastels above wash out completely on #F4ECD8. The
+   generic .ora-models-chip rule must stay ABOVE the per-color rules
+   — equal specificity, so source order decides which text color an
+   element carrying both classes gets. */
+.theme-light .ora-models-chip {
+  color: #3E382E;
+}
+
+.theme-light .ora-models-chip-local {
+  background: rgba(150, 110, 220, 0.16);
+  color: #5B3E8F;
+}
+
+.theme-light .ora-models-chip-vision {
+  background: rgba(80, 140, 200, 0.16);
+  color: #2D5E8A;
+}
+
+.theme-light .ora-models-chip-direct {
+  background: rgba(60, 180, 160, 0.18);
+  color: #1F6B5C;
+}
+
+.theme-light .ora-models-chip-free {
+  background: rgba(140, 200, 80, 0.22);
+  color: #4A6B1F;
+}
+
+.theme-light .ora-models-chip-unreachable {
+  background: rgba(196, 60, 60, 0.14);
+  color: #9C3232;
+}
+
+.theme-light .ora-models-chip-rate-limited {
+  background: rgba(212, 172, 74, 0.24);
+  color: #7A5E1E;
+}
+
+.theme-light .ora-models-chip-unverified {
+  background: rgba(90, 82, 72, 0.12);
+  color: var(--text-muted, #5A5248);
+}
+
+.theme-light .ora-models-chip-vendor-phantom {
+  background: rgba(212, 110, 60, 0.16);
+  color: #8F4A22;
+}
+
+/* Light-theme readability for the pane's small print. The global
+   --text-muted (#5A5248) is tuned for body-size text; at the pane's
+   9-10px monospace meta lines it reads washed-out on cream, so the
+   pane darkens its own small text rather than touching the global
+   token (the light palette is publisher-locked, 2026-05-22). */
+.theme-light .ora-models-model-meta,
+.theme-light .ora-models-slot-meta,
+.theme-light .ora-models-slot-label,
+.theme-light .ora-models-vendor-count,
+.theme-light .ora-models-flat-divider {
+  color: #3E382E;
 }
 
 /* ── Maintenance section: reachability-probe trigger ─────────────── */
@@ -1453,8 +1521,14 @@
   color: var(--text-normal, #E8E0CC);
 }
 
+/* Pressed state. NOTE: --background-modifier-active is not defined in
+   any theme token file — the old var(--background-modifier-active,
+   #3A3022) always resolved to the dark-brown fallback, which read as
+   a mud block in light mode. --background-modifier-border IS themed
+   (dark #3A3022 / light #D4C8A8), so dark mode keeps its exact old
+   color and light mode gets the pressed-cream tone. */
 .ora-models-grouping-btn-active {
-  background: var(--background-modifier-active, #3A3022);
+  background: var(--background-modifier-border, #3A3022);
   color: var(--text-normal, #E8E0CC);
   border-color: var(--color-active, #5FA86E);
 }
