@@ -50,6 +50,7 @@ window.OraVisualCompiler.errors = (function () {
     E_ARTIFACT_OVERLAP:            'E_ARTIFACT_OVERLAP',            // semantic elements overlap > 5% (blocks render; force fallback per Protocol §8.5)
     W_ARTIFACT_OVERLAP_MINOR:      'W_ARTIFACT_OVERLAP_MINOR',      // semantic elements touch (≤ 5% overlap); renders anyway
     W_ARTIFACT_TEXT_TRUNCATED:     'W_ARTIFACT_TEXT_TRUNCATED',     // estimated text width > containing bbox × 1.10 (critical if semantic primary label beyond 1.5×)
+    W_ARTIFACT_LABEL_OVERLAP:      'W_ARTIFACT_LABEL_OVERLAP',      // unclassed data-label <text> marks overlap each other (e.g. Vega text marks); renders anyway
     E_ARTIFACT_CONTRAST:           'E_ARTIFACT_CONTRAST',           // WCAG 2.1 SC 1.4.3 text contrast < 4.5:1 (blocks render)
     W_ARTIFACT_CONTRAST_GRAPHICAL: 'W_ARTIFACT_CONTRAST_GRAPHICAL', // WCAG 2.1 SC 1.4.11 graphical contrast < 3:1 (warning)
   };

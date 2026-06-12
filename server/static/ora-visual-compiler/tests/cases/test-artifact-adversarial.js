@@ -27,6 +27,10 @@
  *  17. Path bbox estimator correctness on a known d-attribute.
  *  18. Backward compatibility: when artifactAdversarial is deleted,
  *      compile() returns SVG unchanged.
+ *  19. Unclassed data-label overlap (check 1b): smashed Vega text marks →
+ *      W_ARTIFACT_LABEL_OVERLAP warnings (never blocks); healthy spacing,
+ *      axis/legend chrome, and in-semantic-group texts stay silent;
+ *      findings cap at LABEL_OVERLAP_MAX_FINDINGS + 1 summary.
  */
 
 'use strict';
@@ -124,6 +128,76 @@ function lowContrastGraphicalSvg() {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">' +
       '<g id="n1" class="ora-visual__node">' +
         '<rect x="50" y="20" width="100" height="60" stroke="#eeeeee" fill="none"/>' +
+      '</g>' +
+    '</svg>'
+  );
+}
+
+// Vega-style score row: unclassed middle-anchored text marks at a 20px
+// step. "0.00" estimates at ~26px wide so neighbours overlap — the
+// data/campaign ach-matrix capture failure (Heuer tally row), distilled.
+// No ora-visual__* class anywhere: invisible to the semantic overlap pass.
+function smashedScoreRowSvg() {
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 223 135">' +
+      '<g transform="translate(30,22)">' +
+        '<g class="mark-text role-mark concat_1_marks">' +
+          '<text text-anchor="middle" transform="translate(10,17)">0.00</text>' +
+          '<text text-anchor="middle" transform="translate(30,17)">0.00</text>' +
+          '<text text-anchor="middle" transform="translate(50,17)">−1.00</text>' +
+        '</g>' +
+      '</g>' +
+    '</svg>'
+  );
+}
+
+// The same marks at the post-_stepSizes 72px step — healthy spacing.
+function healthyScoreRowSvg() {
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 135">' +
+      '<g transform="translate(30,22)">' +
+        '<g class="mark-text role-mark concat_1_marks">' +
+          '<text text-anchor="middle" transform="translate(36,17)">0.00</text>' +
+          '<text text-anchor="middle" transform="translate(108,17)">0.00</text>' +
+          '<text text-anchor="middle" transform="translate(180,17)">−1.00</text>' +
+        '</g>' +
+      '</g>' +
+    '</svg>'
+  );
+}
+
+// Crowded axis tick labels inside Vega role-axis chrome — legitimately
+// tight (e.g. dense time axis); the label-overlap pass must skip them.
+// Same geometry crowding as smashedScoreRowSvg but wrapped in role-axis.
+function crowdedAxisChromeSvg() {
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 223 135">' +
+      '<g class="mark-group role-axis">' +
+        '<g class="mark-text role-axis-label">' +
+          '<text text-anchor="middle" transform="translate(10,17)">2026-01</text>' +
+          '<text text-anchor="middle" transform="translate(30,17)">2026-02</text>' +
+          '<text text-anchor="middle" transform="translate(50,17)">2026-03</text>' +
+        '</g>' +
+      '</g>' +
+      '<g class="mark-group role-legend">' +
+        '<g class="mark-text role-legend-label">' +
+          '<text text-anchor="start" transform="translate(10,40)">Consistency A</text>' +
+          '<text text-anchor="start" transform="translate(14,40)">Consistency B</text>' +
+        '</g>' +
+      '</g>' +
+    '</svg>'
+  );
+}
+
+// Overlapping texts INSIDE a semantic group — node-label territory owned
+// by the truncation check, not the label-overlap pass.
+function inGroupOverlappingTextsSvg() {
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">' +
+      '<g id="n1" class="ora-visual__node">' +
+        '<rect x="20" y="20" width="200" height="60"/>' +
+        '<text x="40" y="50">First label line</text>' +
+        '<text x="44" y="52">Second label line</text>' +
       '</g>' +
     '</svg>'
   );
@@ -511,6 +585,52 @@ module.exports = {
         b && b.r === 1 && b.g === 2 && b.b === 3, JSON.stringify(b));
       record('_parseColor: rgba alpha=0 → null', c === null, JSON.stringify(c));
       record('_parseColor: "none" → null', d === null, JSON.stringify(d));
+    }
+
+    // ── 21. Unclassed data-label overlap (Vega text marks) ───────────
+    {
+      // Smashed Heuer tally row → warnings, never blocks.
+      const r = adv.review(smashedScoreRowSvg(), { id: 'fig-smashed' });
+      const labelHits = r.findings.filter(f => f.code === 'W_ARTIFACT_LABEL_OVERLAP');
+      const allWarn = labelHits.length > 0 &&
+        labelHits.every(f => f.severity === 'warning');
+      record('smashed score row → W_ARTIFACT_LABEL_OVERLAP warnings',
+        allWarn && r.blocks === false,
+        'hits=' + labelHits.length + ' blocks=' + r.blocks +
+        ' codes=' + r.findings.map(f => f.code).join(','));
+
+      // Healthy 72px-step spacing → zero findings.
+      const rh = adv.review(healthyScoreRowSvg(), { id: 'fig-healthy' });
+      record('healthy score-row spacing → zero findings',
+        rh.findings.length === 0,
+        'codes=' + rh.findings.map(f => f.code).join(','));
+
+      // Same crowding inside role-axis / role-legend chrome → skipped.
+      const ra = adv.review(crowdedAxisChromeSvg(), { id: 'fig-axis-crowd' });
+      const axisHits = ra.findings.filter(f => f.code === 'W_ARTIFACT_LABEL_OVERLAP');
+      record('crowded axis/legend chrome → no label-overlap findings',
+        axisHits.length === 0,
+        'codes=' + ra.findings.map(f => f.code).join(','));
+
+      // Overlapping texts inside a semantic group → not this pass's job.
+      const rg = adv.review(inGroupOverlappingTextsSvg(), { id: 'fig-ingroup' });
+      const groupHits = rg.findings.filter(f => f.code === 'W_ARTIFACT_LABEL_OVERLAP');
+      record('texts inside semantic group → no label-overlap findings',
+        groupHits.length === 0,
+        'codes=' + rg.findings.map(f => f.code).join(','));
+
+      // Findings cap: a row of 30 mutually-overlapping labels produces at
+      // most LABEL_OVERLAP_MAX_FINDINGS pair findings + 1 summary.
+      let dense = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 50"><g class="mark-text role-mark">';
+      for (let i = 0; i < 30; i++) {
+        dense += '<text text-anchor="middle" transform="translate(' + (10 + i * 12) + ',20)">0.00</text>';
+      }
+      dense += '</g></svg>';
+      const rd = adv.review(dense, { id: 'fig-dense' });
+      const denseHits = rd.findings.filter(f => f.code === 'W_ARTIFACT_LABEL_OVERLAP');
+      record('dense smashed row → capped at MAX+1 summary finding',
+        denseHits.length === adv.LABEL_OVERLAP_MAX_FINDINGS + 1,
+        'hits=' + denseHits.length + ' cap=' + adv.LABEL_OVERLAP_MAX_FINDINGS);
     }
   },
 };
