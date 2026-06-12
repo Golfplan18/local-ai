@@ -2308,7 +2308,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     step1 = run_step1_cleanup(user_input, conv_context, config,
                               trace_dir=trace_dir,
                               history_truncation_stats=_hist_trunc,
-                              image_attached=image_attached)
+                              image_attached=image_attached,
+                              config_name=config_name)
     tier = step1["triage_tier"]
 
     # Manual mode-pick override. When the caller explicitly named a mode

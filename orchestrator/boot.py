@@ -368,16 +368,30 @@ def _strip_visual_blocks_and_markers(text: str) -> str:
     return t.strip()
 
 
-def _resolve_synthesis_endpoint() -> dict | None:
-    """Resolve the endpoint used to synthesize/repair an envelope. Prefers a
-    configured ``visual_synthesis.preferred`` (endpoint name/id) in
-    routing-config; otherwise the active (reliable) endpoint. ``None`` ⇒ skip."""
+def _resolve_synthesis_endpoint(config_name: str | None = None) -> dict | None:
+    """Resolve the endpoint used to synthesize/repair an envelope.
+
+    When the turn ran on a per-request named configuration, synthesis must
+    use THAT configuration's models (fast, then small) — otherwise a
+    repair call silently executes on the active configuration's model,
+    which breaks runs that pin their model set (campaign fidelity gate,
+    2026-06-12). Without a config_name: a configured
+    ``visual_synthesis.preferred`` (endpoint name/id) in routing-config,
+    else the active (reliable) endpoint. ``None`` ⇒ skip synthesis."""
     try:
         config = load_routing_config()
     except Exception:
         return None
     if not isinstance(config, dict):
         return None
+    if config_name:
+        try:
+            ep = (get_slot_endpoint(config, "fast", config_name=config_name)
+                  or get_slot_endpoint(config, "step1_cleanup",
+                                       config_name=config_name))
+        except Exception:
+            ep = None
+        return ep  # named-config turns never fall back to another config
     pref = (config.get("visual_synthesis") or {}).get("preferred")
     if pref:
         for ep in (config.get("endpoints") or []):
@@ -399,13 +413,15 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
     if not target_types:
         return None, None
     exec_ctx = "interactive"
+    config_name = None
     if isinstance(context_pkg, dict):
         exec_ctx = (context_pkg.get("execution_context")
                     or context_pkg.get("operational_context")
                     or "interactive")
+        config_name = context_pkg.get("config_name")
     if exec_ctx != "interactive":
         return None, None
-    endpoint = _resolve_synthesis_endpoint()
+    endpoint = _resolve_synthesis_endpoint(config_name)
     if not endpoint:
         return None, None
     clean_prose = _strip_visual_blocks_and_markers(prose)
@@ -5316,7 +5332,8 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
                       config: dict, ambiguity_mode: str = "assume",
                       trace_dir: str | None = None,
                       history_truncation_stats: dict | None = None,
-                      image_attached: bool = False) -> dict:
+                      image_attached: bool = False,
+                      config_name: str | None = None) -> dict:
     """Step 1: Two-pass prompt processing.
 
     Pass 1 (Phase A): Prompt cleanup only — no mode selection.
@@ -5418,7 +5435,7 @@ AMBIGUITY_MODE: {ambiguity_mode}
             "Do not write directives that exclude image input.]\n\n" + user_msg
         )
 
-    endpoint = get_slot_endpoint(config, "step1_cleanup")
+    endpoint = get_slot_endpoint(config, "step1_cleanup", config_name=config_name)
     if endpoint is None:
         # No step1_cleanup model — pass through uncleaned
         result = {
@@ -6224,7 +6241,7 @@ def _env_flag(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "on", "true", "yes")
 
 
-def _build_rag_selection(config: dict):
+def _build_rag_selection(config: dict, config_name: str | None = None):
     """Resolve the RAG selection layer (Process 13) for this turn.
 
     Returns ``(n_results, similarity_floor, fit_gate, dedup)``. When
@@ -6256,7 +6273,7 @@ def _build_rag_selection(config: dict):
         except ImportError:
             from orchestrator.rag_fit_gate import make_fit_gate
         slot = os.environ.get("ORA_RAG_FIT_GATE_SLOT", "classification")
-        gate_ep = get_slot_endpoint(config, slot)
+        gate_ep = get_slot_endpoint(config, slot, config_name=config_name)
         if gate_ep is not None:
             def _gate_call(system: str, user: str) -> str:
                 return call_model(
@@ -6271,7 +6288,7 @@ def _build_rag_selection(config: dict):
     return (n_results, floor, fit_gate, True)
 
 
-def _build_web_extraction(config: dict) -> dict:
+def _build_web_extraction(config: dict, config_name: str | None = None) -> dict:
     """Resolve the extraction-escalation layer (Process 14) for this turn.
 
     Returns the parameter dict the consultation's extraction sub-pass consumes.
@@ -6309,7 +6326,7 @@ def _build_web_extraction(config: dict) -> dict:
             except ImportError:
                 from orchestrator.rag_fit_gate import make_fit_gate
             slot = os.environ.get("ORA_RAG_FIT_GATE_SLOT", "classification")
-            gate_ep = get_slot_endpoint(config, slot)
+            gate_ep = get_slot_endpoint(config, slot, config_name=config_name)
             if gate_ep is not None:
                 def _gate_call(system: str, user: str) -> str:
                     return call_model(
@@ -6460,7 +6477,8 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # RAG selection layer (Process 13): wider retrieval + similarity floor +
     # fit-gate when ORA_RAG_SELECTION is enabled; (None, None, None) otherwise
     # so the lanes keep their existing 5/3, ungated, no-floor behaviour.
-    _sel_n, _sel_floor, _sel_gate, _sel_dedup = _build_rag_selection(config)
+    _sel_n, _sel_floor, _sel_gate, _sel_dedup = _build_rag_selection(
+        config, config_name=config_name)
 
     conv_rag = ""
     conv_rag_path = "unknown"
@@ -6613,12 +6631,13 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             consultation_trace = {"status": "skipped",
                                   "reason": "disabled_in_routing_config"}
         else:
-            fast_ep = get_slot_endpoint(config, _WEB_CONSULT_DEFAULT_SLOT)
+            fast_ep = get_slot_endpoint(config, _WEB_CONSULT_DEFAULT_SLOT,
+                                        config_name=config_name)
             if fast_ep is None:
                 consultation_trace = {"status": "skipped",
                                       "reason": "no_fast_endpoint"}
             else:
-                _wx = _build_web_extraction(config)
+                _wx = _build_web_extraction(config, config_name=config_name)
                 try:
                     wc_result = assemble_consultation_package(
                         user_prompt=raw_prompt or cleaned_nl or cleaned_prompt,
@@ -6921,6 +6940,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         "natural_language_prompt": step1_result["cleaned_prompt"],
         "mode_name": mode_name,
         "mode_text": mode_text,
+        # Per-request named configuration, threaded so late-stage hooks
+        # that resolve their own endpoints (visual synthesis repair) honor
+        # the configuration this turn was asked to run on.
+        "config_name": config_name,
         "gear": gear,
         "conversation_rag": conv_rag,
         "concept_rag": concept_rag,
@@ -8127,7 +8150,8 @@ def run_pipeline(user_input: str, history: list = None,
     step1 = run_step1_cleanup(user_input, conv_context, config,
                               ambiguity_mode=ambiguity_mode,
                               trace_dir=trace_dir,
-                              history_truncation_stats=history_trunc)
+                              history_truncation_stats=history_trunc,
+                              config_name=config_name)
 
     # --- Step 2: Context Package Assembly ---
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
@@ -8178,15 +8202,17 @@ def run_pipeline(user_input: str, history: list = None,
         # Gear 1-2: Single model pass with context package.
         system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
         if gear == 1:
-            endpoint = get_slot_endpoint(config, "classification")
+            endpoint = get_slot_endpoint(config, "classification",
+                                         config_name=config_name)
         else:
             # Gear 2: prefer the `fast` slot (new in the 2026-05-24 redesign,
             # being wired by the parallel model-selector thread). Fall back
             # to `step1_cleanup` then to active endpoint when fast is not yet
             # configured — so the dispatch is safe before the slot lands.
             endpoint = (
-                get_slot_endpoint(config, "fast")
-                or get_slot_endpoint(config, "step1_cleanup")
+                get_slot_endpoint(config, "fast", config_name=config_name)
+                or get_slot_endpoint(config, "step1_cleanup",
+                                     config_name=config_name)
                 or get_active_endpoint(config)
             )
         if endpoint is None:
@@ -9701,6 +9727,7 @@ def _run_unflagged_claim_scan(
     flagged_claims: list[dict],
     config: dict,
     label: str = "",
+    config_name: str | None = None,
 ) -> tuple[str, dict]:
     """V8 unflagged-claim scan (F-Verify §V8.3).
 
@@ -9741,7 +9768,8 @@ def _run_unflagged_claim_scan(
         }
 
     # Resolve the fast endpoint (same slot as F-Consult).
-    fast_ep = get_slot_endpoint(config, _WEB_CONSULT_DEFAULT_SLOT)
+    fast_ep = get_slot_endpoint(config, _WEB_CONSULT_DEFAULT_SLOT,
+                                config_name=config_name)
     if fast_ep is None:
         return "", {
             "status": "skipped",
@@ -10083,7 +10111,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     unflagged_evidence_text, unflagged_evidence_trace = (
         _run_unflagged_claim_scan(
             revised_analysis, flagged_claims_g3, config,
-            label="gear3",
+            label="gear3", config_name=config_name,
         )
     )
     _trace_step_g3("step5.5-unflagged-scan", {
@@ -10749,9 +10777,11 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # breadth's draft. See F-Verify §V8.3.
     depth_unflagged_text, depth_unflagged_trace = _run_unflagged_claim_scan(
         revised_depth, depth_flagged_claims, config, label="gear4-depth",
+        config_name=config_name,
     )
     breadth_unflagged_text, breadth_unflagged_trace = _run_unflagged_claim_scan(
         revised_breadth, breadth_flagged_claims, config, label="gear4-breadth",
+        config_name=config_name,
     )
     _trace_step("step5.5-unflagged-scan-depth", {
         "evidence_text": depth_unflagged_text,
