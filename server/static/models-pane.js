@@ -58,6 +58,7 @@
     sort_by: 'intelligence_desc',  // highest-intelligence first so the strongest models surface by default (Phase 5; was 'alpha_desc')
     category: 'chat',       // inventory category. Chat-only since 2026-06-11: image/video model selection lives on the Visual tab (routing-config slots chain), not in chat configurations.
     grouping: 'vendor',     // 'vendor' (default — vendor blocks, collapsible) or 'flat' (no grouping, one sorted list)
+    include_unsized: false, // during a sized slot pick, also admit models with no size_bucket (newly released / not yet classified). Opt-in via the pick banner.
   };
 
   var CATEGORY_OPTIONS = [
@@ -158,7 +159,7 @@
     _filters = {
       vision: false, free_filter: 'any', pick: false,
       intelligence_pct: 0, search: '', sort_by: 'intelligence_desc',
-      category: 'chat', grouping: 'vendor',
+      category: 'chat', grouping: 'vendor', include_unsized: false,
     };
     _expandedVendors = new Set();
     _activeSlotPick = null;
@@ -1396,6 +1397,24 @@
       var clearables = [];
       var sizeFilter = _activeSlotPickSizeBucket();
       if (sizeFilter) activeFilters.push(sizeFilter + ' size');
+      // Count candidates hidden ONLY because their size_bucket is
+      // unknown (newly released models the family rules haven't
+      // classified yet). Surfaced with a one-click include so a
+      // strict size gate never silently buries a brand-new model
+      // the user is specifically looking for.
+      if (sizeFilter && sizeFilter !== 'midsize' && !_filters.include_unsized) {
+        _filters.include_unsized = true;
+        var unsizedHidden = allModels.filter(function (m) {
+          return !m.size_bucket && _matchesFilters(m, rankedKeptIds);
+        }).length;
+        _filters.include_unsized = false;
+        if (unsizedHidden > 0) {
+          activeFilters.push(unsizedHidden + ' unknown-size models hidden (not yet classified — often the newest releases)');
+          clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="include_unsized">show unknown-size models</button>');
+        }
+      } else if (sizeFilter && _filters.include_unsized) {
+        activeFilters.push('including unknown-size models');
+      }
       if (_activeSlotPick.slotLabel === 'visual') {
         activeFilters.push('vision-capable (required for this slot)');
       } else if (_filters.vision) {
@@ -1482,11 +1501,15 @@
     if (_filters.pick && !(_picksSet && _picksSet.has(model.id))) return false;
     // Slot-pick size gate. When picking BIG 1 / BIG 2, restrict to
     // large-bucket models; SMALL / utility to small-bucket. Models
-    // with no size_bucket are excluded — most of them are "~latest"
+    // with no size_bucket are hidden by default — some are "~latest"
     // mirror aliases (where the route picks whatever the vendor's
-    // current latest is, so size is undefined) and showing them as
-    // candidates for a sized slot misleads the user. The size_bucket
-    // field is enriched by /api/model-registry from model-catalog.json.
+    // current latest is, so size is undefined) — but they're NOT
+    // excluded outright: a third of the catalog is unsized (newly
+    // released models the family rules haven't classified yet, e.g.
+    // Qwen 3.7 Plus the week it shipped), so the pick banner counts
+    // the hidden ones and offers a one-click include
+    // (_filters.include_unsized). The size_bucket field is enriched
+    // by /api/model-registry from model-catalog.json.
     var sizeFilter = _activeSlotPickSizeBucket();
     if (sizeFilter) {
       // 'midsize' is permissive: midsize-bucket models pass exactly,
@@ -1495,8 +1518,10 @@
       // exact-match. See the Fast slot rationale in SLOT_TO_SIZE_BUCKET.
       if (sizeFilter === 'midsize') {
         if (model.size_bucket === 'large' || model.size_bucket === 'small') return false;
-      } else {
-        if (!model.size_bucket || model.size_bucket !== sizeFilter) return false;
+      } else if (model.size_bucket) {
+        if (model.size_bucket !== sizeFilter) return false;
+      } else if (!_filters.include_unsized) {
+        return false;
       }
     }
     // Slot-pick capability gate. The VISUAL slot is the vision
@@ -2033,6 +2058,9 @@
         var key = btn.dataset.clearFilter;
         if (key === 'free_filter') _filters.free_filter = 'any';
         else if (key === 'intelligence_pct') _filters.intelligence_pct = 0;
+        // include_unsized is an opt-IN (the button widens the result
+        // set rather than clearing a restriction), so it sets true.
+        else if (key === 'include_unsized') _filters.include_unsized = true;
         else _filters[key] = false;
         _renderInventory();
       });

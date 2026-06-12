@@ -1,6 +1,6 @@
 {
   "_schema_version": 1,
-  "_refreshed_at": "2026-06-12T03:27:55.605349+00:00",
+  "_refreshed_at": "2026-06-12T16:32:47.893571+00:00",
   "_sources": {
     "openrouter": {
       "url": "https://openrouter.ai/api/v1/models",
@@ -8,11 +8,38 @@
     },
     "model_registry": {
       "path": "config/model-registry.json",
-      "enriched_count": 179,
+      "enriched_count": 178,
       "skipped": false
     }
   },
   "models": [
+    {
+      "id": "moonshotai/kimi-k2.7-code",
+      "display_name": "MoonshotAI: Kimi K2.7 Code",
+      "provider": "moonshotai",
+      "openrouter_slug": "moonshotai/kimi-k2.7-code",
+      "vision_capable": true,
+      "input_modalities": [
+        "text",
+        "image",
+        "video"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "context_window": 262144,
+      "parameters_b": null,
+      "openrouter_pricing": {
+        "input_per_m": 0.95,
+        "output_per_m": 4.0,
+        "blended_per_m": 1.7125
+      },
+      "aa_intelligence_index": null,
+      "aa_blended_per_m": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
+      "is_free": false
+    },
     {
       "id": "~anthropic/claude-fable-latest",
       "display_name": "Anthropic: Claude Fable Latest",
@@ -191,8 +218,8 @@
       },
       "aa_intelligence_index": 53.2528102257147,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -324,8 +351,8 @@
       },
       "aa_intelligence_index": 56.5844517545098,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -823,9 +850,9 @@
       "context_window": 262144,
       "parameters_b": null,
       "openrouter_pricing": {
-        "input_per_m": 0.67,
-        "output_per_m": 3.39,
-        "blended_per_m": 1.35
+        "input_per_m": 0.6799999999999999,
+        "output_per_m": 3.41,
+        "blended_per_m": 1.3625
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
@@ -939,8 +966,8 @@
       },
       "aa_intelligence_index": 38.6333183791893,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -1039,9 +1066,9 @@
       "context_window": 262144,
       "parameters_b": 27.0,
       "openrouter_pricing": {
-        "input_per_m": 0.28900000000000003,
-        "output_per_m": 2.4,
-        "blended_per_m": 0.81675
+        "input_per_m": 0.28850000000000003,
+        "output_per_m": 3.17,
+        "blended_per_m": 1.008875
       },
       "aa_intelligence_index": 45.8228437394046,
       "aa_blended_per_m": null,
@@ -1377,9 +1404,9 @@
       "context_window": 262144,
       "parameters_b": null,
       "openrouter_pricing": {
-        "input_per_m": 0.67,
-        "output_per_m": 3.39,
-        "blended_per_m": 1.35
+        "input_per_m": 0.6799999999999999,
+        "output_per_m": 3.41,
+        "blended_per_m": 1.3625
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
@@ -2502,8 +2529,8 @@
       },
       "aa_intelligence_index": 38.6333183791893,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -2604,8 +2631,8 @@
       },
       "aa_intelligence_index": 39.8487564946217,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -4634,8 +4661,8 @@
       },
       "aa_intelligence_index": 31.3769969869801,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -4659,8 +4686,8 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -6905,31 +6932,6 @@
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
-    },
-    {
-      "id": "meta-llama/llama-guard-3-8b",
-      "display_name": "Llama Guard 3 8B",
-      "provider": "meta-llama",
-      "openrouter_slug": "meta-llama/llama-guard-3-8b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 131072,
-      "parameters_b": 8.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.48400000000000004,
-        "output_per_m": 0.03,
-        "blended_per_m": 0.37050000000000005
-      },
-      "aa_intelligence_index": 6.3819780865041,
-      "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": "small",
       "is_free": false
     },
     {
