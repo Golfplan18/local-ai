@@ -107,18 +107,13 @@
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
-    },
-    "image_generation": {
-      "image_generation": {
-        "primary": "aa-img:9570e1d0-a390-48c1-a270-1317570fe3d5",
-        "fallback": [
-          "aa-img:a1ee4d6f-d136-434b-bb1d-066fe5f9bf6f"
-        ]
-      }
     }
   },
   "toggles": {
     "adversarial_diversity": true,
     "vision_only": false
-  }
+  },
+  "_notes": [
+    "2026-06-11: image_generation cell removed \u2014 it referenced AA media-leaderboard ids (aa-img:*) that Ora cannot invoke (image-gen routing not implemented). Re-add when the feature lands."
+  ]
 }

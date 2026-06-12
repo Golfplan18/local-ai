@@ -22,6 +22,20 @@ import keyring
 ORA = Path(__file__).resolve().parent.parent
 CATALOG_PATH = ORA / "config" / "model-catalog.json"
 ROUTING_PATH = ORA / "config" / "routing-config.json"
+REGISTRY_PATH = ORA / "config" / "model-registry.json"
+
+
+def load_vendor_listed() -> dict:
+    """Map model id → vendor_listed verdict from the registry's
+    vendor-direct audit (True / False / None=not audited)."""
+    try:
+        reg = json.loads(REGISTRY_PATH.read_text())
+    except Exception:
+        return {}
+    return {
+        mid: m.get("vendor_listed")
+        for mid, m in (reg.get("models") or {}).items()
+    }
 
 
 DIRECT_SERVICES = {
@@ -31,11 +45,20 @@ DIRECT_SERVICES = {
 }
 
 
+_KEY_CACHE: dict[str, bool] = {}
+
+
 def has_key(name: str) -> bool:
-    try:
-        return bool(keyring.get_password("ora", name))
-    except Exception:
-        return False
+    # Memoized: called once per direct-eligible catalog model (~100+),
+    # but there are only 3 distinct keys — each keyring lookup is a
+    # macOS security-framework IPC round-trip, and a locked Keychain
+    # can stall each one.
+    if name not in _KEY_CACHE:
+        try:
+            _KEY_CACHE[name] = bool(keyring.get_password("ora", name))
+        except Exception:
+            _KEY_CACHE[name] = False
+    return _KEY_CACHE[name]
 
 
 def strip_vendor(catalog_id: str) -> str:
@@ -53,7 +76,7 @@ def direct_model_name(provider: str, catalog_id: str) -> str:
     return stripped
 
 
-def build_endpoint(model: dict) -> dict:
+def build_endpoint(model: dict, vendor_listed: dict | None = None) -> dict:
     cid = model["id"]
     provider = model.get("provider", "")
     vision = bool(model.get("vision_capable", False))
@@ -79,8 +102,16 @@ def build_endpoint(model: dict) -> dict:
         "is_free": bool(model.get("is_free", False)),
     }
 
+    # Direct dispatch requires (a) the vendor's API key, and (b) the
+    # registry's vendor audit NOT having confirmed the id is absent from
+    # the vendor's own /models list. OpenRouter-only variants (e.g.
+    # anthropic/claude-opus-4.8-fast, google/...-customtools) carry
+    # vendor_listed=False — dispatching those direct guarantees a 404 +
+    # per-call fallback round-trip, so they route straight to OpenRouter.
+    # vendor_listed=None (audit unavailable) still allows direct.
+    listed = (vendor_listed or {}).get(cid)
     direct = DIRECT_SERVICES.get(provider)
-    if direct and has_key(direct["keyring_name"]):
+    if direct and has_key(direct["keyring_name"]) and listed is not False:
         ep["service"] = direct["service"]
         ep["model_id"] = direct_model_name(provider, cid)
         ep["openrouter_fallback_model_id"] = cid
@@ -102,7 +133,10 @@ def main() -> int:
         m for m in models if "text" in (m.get("output_modalities") or [])
     ]
 
-    catalog_endpoints = {m["id"]: build_endpoint(m) for m in text_models}
+    vendor_listed = load_vendor_listed()
+    catalog_endpoints = {
+        m["id"]: build_endpoint(m, vendor_listed) for m in text_models
+    }
 
     existing = routing.get("endpoints", [])
     by_id = {(e.get("id") or e.get("name")): e for e in existing}
@@ -124,7 +158,15 @@ def main() -> int:
 
     routing["endpoints"] = list(by_id.values())
 
-    ROUTING_PATH.write_text(json.dumps(routing, indent=2) + "\n")
+    # Atomic replace: this script now runs from the server's registry
+    # refresh while threaded Flask handlers read (and occasionally
+    # write) routing-config.json — a torn read of a half-written file
+    # must not be possible. (Last-writer-wins races with /config POSTs
+    # remain; the window is the subprocess's ~0.5s runtime.)
+    import os
+    tmp_path = str(ROUTING_PATH) + ".tmp"
+    Path(tmp_path).write_text(json.dumps(routing, indent=2) + "\n")
+    os.replace(tmp_path, ROUTING_PATH)
 
     print(f"Catalog text-output models:  {len(text_models)}")
     print(f"Endpoints added:             {added}")

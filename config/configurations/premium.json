@@ -1,6 +1,6 @@
 {
   "name": "premium",
-  "description": "Auto-populated from preset 'premium' on 2026-06-11T14:17:50.375426+00:00.",
+  "description": "Auto-populated from preset 'premium' on 2026-06-12T03:58:26.936477+00:00.",
   "preset_lineage": "premium",
   "cells": {
     "utility": {
@@ -107,12 +107,7 @@
       }
     },
     "image_generation": {
-      "image_generation": {
-        "primary": "aa-img:9570e1d0-a390-48c1-a270-1317570fe3d5",
-        "fallback": [
-          "aa-img:a1ee4d6f-d136-434b-bb1d-066fe5f9bf6f"
-        ]
-      }
+      "image_generation": null
     }
   },
   "_auto_populate_metadata": {
@@ -120,7 +115,7 @@
     "vision_only": true,
     "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct",
     "loosening_log": {},
-    "catalog_models_considered": 575
+    "catalog_models_considered": 337
   },
   "toggles": {
     "adversarial_diversity": true,

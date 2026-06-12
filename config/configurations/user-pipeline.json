@@ -113,17 +113,13 @@
         ],
         "vision_substitute": "openai/gpt-5.4-image-2"
       }
-    },
-    "image_generation": {
-      "image_generation": {
-        "primary": "aa-img:9570e1d0-a390-48c1-a270-1317570fe3d5",
-        "fallback": [],
-        "vision_substitute": "openai/gpt-5.4-image-2"
-      }
     }
   },
   "toggles": {
     "vision_only": false,
     "adversarial_diversity": false
-  }
+  },
+  "_notes": [
+    "2026-06-11: image_generation cell removed \u2014 it referenced AA media-leaderboard ids (aa-img:*) that Ora cannot invoke (image-gen routing not implemented). Re-add when the feature lands."
+  ]
 }

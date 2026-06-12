@@ -8460,9 +8460,29 @@ def model_registry_get():
             _rc_path = _Path2(__file__).resolve().parent.parent / "config" / "routing-config.json"
             if _rc_path.exists():
                 _rc = _json2.loads(_rc_path.read_text())
+                # The loop below adds and replaces entries in ``filtered``;
+                # when catalog enrichment was skipped, ``filtered`` can alias
+                # the in-process registry cache itself (wanted=None path) —
+                # copy the container first so UI-only additions (DIRECT
+                # stamps, local merges) never leak into the shared cache.
+                if filtered is all_models:
+                    filtered = dict(all_models)
                 for ep in (_rc.get("endpoints") or []):
                     eid = ep.get("id") or ep.get("name")
-                    if not eid or ep.get("type") != "local":
+                    if not eid:
+                        continue
+                    # DIRECT chip: the id has a registered api endpoint with
+                    # dispatch=direct (vendor key present, so calls go to the
+                    # vendor's own API, not OpenRouter). Copy the row before
+                    # stamping — its dict may belong to the registry cache.
+                    if ep.get("type") == "api" and ep.get("dispatch") == "direct":
+                        if eid in filtered:
+                            stamped = dict(filtered[eid])
+                            stamped["direct_dispatch"] = True
+                            stamped["direct_service"] = ep.get("service") or "direct"
+                            filtered[eid] = stamped
+                        continue
+                    if ep.get("type") != "local":
                         continue
                     if eid in filtered:
                         continue
@@ -8797,6 +8817,36 @@ def model_registry_picks():
     return _json_response(result)
 
 
+def _run_refresh_step(summary: dict, prefix: str, script_name: str,
+                      timeout: int) -> bool:
+    """Run one fail-soft subprocess step of the registry-refresh chain,
+    recording ``<prefix>_ok`` / ``<prefix>_returncode`` /
+    ``<prefix>_stdout_tail`` / ``<prefix>_stderr_tail`` (or
+    ``<prefix>_warning``) on the summary. Returns the step's success so
+    callers can chain data-dependent steps."""
+    import subprocess
+    script = os.path.join(WORKSPACE, "scripts", script_name)
+    try:
+        if not os.path.exists(script):
+            raise RuntimeError(f"script not found at {script}")
+        result = subprocess.run(
+            [sys.executable, script],
+            cwd=WORKSPACE, capture_output=True, text=True, timeout=timeout,
+        )
+        summary[f"{prefix}_ok"] = (result.returncode == 0)
+        summary[f"{prefix}_returncode"] = result.returncode
+        summary[f"{prefix}_stdout_tail"] = (result.stdout or "").strip().split("\n")[-6:]
+        if result.returncode != 0:
+            summary[f"{prefix}_stderr_tail"] = (result.stderr or "").strip().split("\n")[-4:]
+    except subprocess.TimeoutExpired:
+        summary[f"{prefix}_ok"] = False
+        summary[f"{prefix}_warning"] = f"{script_name} exceeded the {timeout}s timeout."
+    except Exception as exc:
+        summary[f"{prefix}_ok"] = False
+        summary[f"{prefix}_warning"] = f"{script_name} failed: {exc}"
+    return bool(summary.get(f"{prefix}_ok"))
+
+
 @app.route("/api/model-registry/refresh", methods=["POST"])
 def model_registry_refresh():
     """Trigger a registry sync (no-probe) and reload the in-process cache.
@@ -8865,23 +8915,18 @@ def model_registry_refresh():
         # NOT void the registry sync (and the autopicker's registry-presence
         # filter still guards picks until the next successful rebuild).
         if ok:
-            catalog_script = os.path.join(WORKSPACE, "scripts", "refresh-catalog.py")
-            try:
-                cat_result = subprocess.run(
-                    [sys.executable, catalog_script],
-                    cwd=WORKSPACE, capture_output=True, text=True, timeout=120,
-                )
-                summary["catalog_ok"] = (cat_result.returncode == 0)
-                summary["catalog_returncode"] = cat_result.returncode
-                summary["catalog_stdout_tail"] = (cat_result.stdout or "").strip().split("\n")[-6:]
-                if cat_result.returncode != 0:
-                    summary["catalog_stderr_tail"] = (cat_result.stderr or "").strip().split("\n")[-4:]
-            except subprocess.TimeoutExpired:
-                summary["catalog_ok"] = False
-                summary["catalog_warning"] = "catalog rebuild exceeded the 120s timeout."
-            except Exception as cat_exc:
-                summary["catalog_ok"] = False
-                summary["catalog_warning"] = f"catalog rebuild failed: {cat_exc}"
+            if _run_refresh_step(summary, "catalog", "refresh-catalog.py", 120):
+                # Register endpoints for every catalog model so the router
+                # can dispatch them (direct vendor API when the key exists,
+                # else OpenRouter). Before 2026-06-11 this script was
+                # manual-only, so newly cataloged models (e.g.
+                # anthropic/claude-opus-4.8) had no endpoint and silently
+                # fell through to fallbacks. Runs after the catalog rebuild
+                # because it reads the catalog; kept synchronous because the
+                # pane's immediate re-fetch paints DIRECT chips from the
+                # routing-config this writes.
+                _run_refresh_step(
+                    summary, "endpoints", "sync_endpoints_from_catalog.py", 60)
         # Force the in-process reader to re-read the new file
         try:
             from orchestrator import model_registry as mr
@@ -8889,6 +8934,16 @@ def model_registry_refresh():
             summary["stats"] = mr.stats()
         except Exception as exc:
             summary["reload_warning"] = str(exc)
+        # Kick the reachability probe in the background (stale + unprobed
+        # models only — the probe's default selection). Auto-pick requires
+        # a positive probe verdict since 2026-06-11, so refreshes must
+        # keep verdicts current or newly listed models would never become
+        # pick-eligible. Non-blocking; the pane polls reach/status.
+        if ok:
+            try:
+                summary["reach_probe"] = _spawn_reach_probe()
+            except Exception as reach_exc:
+                summary["reach_probe"] = {"status": "error", "message": str(reach_exc)}
         with _registry_refresh_lock:
             _registry_refresh_state["last_refresh_at"] = time.time()
             _registry_refresh_state["last_result"] = summary
@@ -8937,18 +8992,32 @@ def model_registry_reach_start():
                       many days.
     """
     body = request.get_json(silent=True) or {}
-    revalidate = bool(body.get("revalidate", False))
-    only_unknown = bool(body.get("only_unknown", False))
-    stale_days = int(body.get("stale_days", 7))
+    return _json_response(_spawn_reach_probe(
+        revalidate=bool(body.get("revalidate", False)),
+        only_unknown=bool(body.get("only_unknown", False)),
+        stale_days=int(body.get("stale_days", 7)),
+    ))
 
+
+def _spawn_reach_probe(revalidate: bool = False, only_unknown: bool = False,
+                       stale_days: int = 7) -> dict:
+    """Spawn the background reachability probe (shared by the manual
+    ``/api/model-registry/reach/start`` route and the automatic kick at
+    the end of every registry refresh). Returns the status dict the
+    route serializes: ``started`` on spawn, ``in_progress`` when a probe
+    is already running (no second spawn)."""
+    import subprocess  # function-local by file convention; the closure
+    # below needs it bound here — before this refactor the route body
+    # never imported it, so every probe spawn died on a NameError that
+    # the blanket except swallowed into last_summary.
     with _reach_probe_lock:
         if _reach_probe_state["in_progress"]:
-            return _json_response({
+            return {
                 "status": "in_progress",
                 "started_at": _reach_probe_state["started_at"],
                 "current_index": _reach_probe_state["current_index"],
                 "total": _reach_probe_state["total"],
-            })
+            }
         _reach_probe_state["in_progress"] = True
         _reach_probe_state["started_at"] = time.time()
         _reach_probe_state["completed_at"] = 0.0
@@ -9001,6 +9070,17 @@ def model_registry_reach_start():
                 mr.reload()
             except Exception:
                 pass
+            # Self-heal the auto-presets: the strict pick gate means fresh
+            # verdicts change eligibility, and any bake that ran mid-probe
+            # picked from a partial pool. Re-bake only when this probe
+            # actually produced verdicts.
+            try:
+                if proc.returncode == 0 and (reachable + rate_limited
+                                             + unreachable + inconclusive) > 0:
+                    from orchestrator import active_configuration as ac
+                    ac.bake_missing_presets(force=True)
+            except Exception:
+                pass
             with _reach_probe_lock:
                 _reach_probe_state["in_progress"] = False
                 _reach_probe_state["completed_at"] = time.time()
@@ -9018,7 +9098,7 @@ def model_registry_reach_start():
                 _reach_probe_state["last_summary"] = {"error": str(exc)}
 
     threading.Thread(target=_run_in_background, daemon=True).start()
-    return _json_response({"status": "started"})
+    return {"status": "started"}
 
 
 @app.route("/api/model-registry/reach/status", methods=["GET"])

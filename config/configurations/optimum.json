@@ -1,6 +1,6 @@
 {
   "name": "optimum",
-  "description": "Auto-populated from preset 'optimum' on 2026-06-11T14:17:50.369687+00:00.",
+  "description": "Auto-populated from preset 'optimum' on 2026-06-12T03:58:26.934330+00:00.",
   "preset_lineage": "optimum",
   "cells": {
     "utility": {
@@ -103,12 +103,7 @@
       }
     },
     "image_generation": {
-      "image_generation": {
-        "primary": "aa-img:0413f436-9aa3-4f92-aa34-9432841c1830",
-        "fallback": [
-          "aa-img:db7a9087-0b50-41f8-ac41-fb48db3aa459"
-        ]
-      }
+      "image_generation": null
     }
   },
   "_auto_populate_metadata": {
@@ -116,7 +111,7 @@
     "vision_only": true,
     "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct",
     "loosening_log": {},
-    "catalog_models_considered": 575
+    "catalog_models_considered": 337
   },
   "toggles": {
     "adversarial_diversity": true,

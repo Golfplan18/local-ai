@@ -1800,7 +1800,7 @@
     {
       "id": "openai/gpt-5.1-codex-mini",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.1-Codex-Mini",
@@ -1918,9 +1918,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.73,
-        "output_per_m": 3.49,
-        "blended_per_m": 1.42
+        "input_per_m": 0.67,
+        "output_per_m": 3.39,
+        "blended_per_m": 1.35
       },
       "tier": "flagship",
       "is_free": false,
@@ -1944,9 +1944,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 2.5,
-        "output_per_m": 7.5,
-        "blended_per_m": 3.75
+        "input_per_m": 1.25,
+        "output_per_m": 3.75,
+        "blended_per_m": 1.875
       },
       "tier": "",
       "is_free": false,
@@ -2010,7 +2010,7 @@
     {
       "id": "anthropic/claude-opus-4.7-fast",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "anthropic",
       "display_name": "Anthropic: Claude Opus 4.7 (Fast)",
@@ -2029,10 +2029,9 @@
       },
       "tier": "flagship",
       "is_free": false,
-      "service": "claude",
-      "model_id": "claude-opus-4-7-fast",
-      "openrouter_fallback_model_id": "anthropic/claude-opus-4.7-fast",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "anthropic/claude-opus-4.7-fast",
+      "dispatch": "openrouter"
     },
     {
       "id": "perceptron/perceptron-mk1",
@@ -2142,7 +2141,7 @@
     {
       "id": "openai/gpt-chat-latest",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT Chat Latest",
@@ -2161,10 +2160,9 @@
       },
       "tier": "",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-chat-latest",
-      "openrouter_fallback_model_id": "openai/gpt-chat-latest",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-chat-latest",
+      "dispatch": "openrouter"
     },
     {
       "id": "ibm-granite/granite-4.1-8b",
@@ -2277,7 +2275,7 @@
       "enabled": true,
       "provider": "poolside",
       "display_name": "Poolside: Laguna XS.2 (free)",
-      "context_window": 131072,
+      "context_window": 262144,
       "vision_capable": false,
       "capabilities": {
         "tool_access": true,
@@ -2303,7 +2301,7 @@
       "enabled": true,
       "provider": "poolside",
       "display_name": "Poolside: Laguna M.1 (free)",
-      "context_window": 131072,
+      "context_window": 262144,
       "vision_capable": false,
       "capabilities": {
         "tool_access": true,
@@ -2416,9 +2414,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.73,
-        "output_per_m": 3.49,
-        "blended_per_m": 1.42
+        "input_per_m": 0.67,
+        "output_per_m": 3.39,
+        "blended_per_m": 1.35
       },
       "tier": "",
       "is_free": false,
@@ -2598,9 +2596,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.3,
-        "output_per_m": 3.1999999999999997,
-        "blended_per_m": 1.025
+        "input_per_m": 0.28900000000000003,
+        "output_per_m": 2.4,
+        "blended_per_m": 0.81675
       },
       "tier": "",
       "is_free": false,
@@ -2730,9 +2728,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.112,
-        "output_per_m": 0.224,
-        "blended_per_m": 0.14
+        "input_per_m": 0.098,
+        "output_per_m": 0.196,
+        "blended_per_m": 0.12250000000000001
       },
       "tier": "fast",
       "is_free": false,
@@ -2782,9 +2780,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.06599999999999999,
-        "output_per_m": 0.26,
-        "blended_per_m": 0.11449999999999999
+        "input_per_m": 0.063,
+        "output_per_m": 0.21,
+        "blended_per_m": 0.09975
       },
       "tier": "",
       "is_free": false,
@@ -2808,9 +2806,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 1.0,
-        "output_per_m": 3.0,
-        "blended_per_m": 1.5
+        "input_per_m": 0.435,
+        "output_per_m": 0.87,
+        "blended_per_m": 0.54375
       },
       "tier": "flagship",
       "is_free": false,
@@ -2834,9 +2832,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.39999999999999997,
-        "output_per_m": 2.0,
-        "blended_per_m": 0.8
+        "input_per_m": 0.14,
+        "output_per_m": 0.28,
+        "blended_per_m": 0.17500000000000002
       },
       "tier": "mid",
       "is_free": false,
@@ -2847,7 +2845,7 @@
     {
       "id": "openai/gpt-5.4-image-2",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.4 Image 2",
@@ -2866,10 +2864,9 @@
       },
       "tier": "flagship",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-5.4-image-2",
-      "openrouter_fallback_model_id": "openai/gpt-5.4-image-2",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-5.4-image-2",
+      "dispatch": "openrouter"
     },
     {
       "id": "inclusionai/ling-2.6-flash",
@@ -3005,7 +3002,7 @@
     {
       "id": "anthropic/claude-opus-4.6-fast",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "anthropic",
       "display_name": "Anthropic: Claude Opus 4.6 (Fast)",
@@ -3024,10 +3021,9 @@
       },
       "tier": "flagship",
       "is_free": false,
-      "service": "claude",
-      "model_id": "claude-opus-4-6-fast",
-      "openrouter_fallback_model_id": "anthropic/claude-opus-4.6-fast",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "anthropic/claude-opus-4.6-fast",
+      "dispatch": "openrouter"
     },
     {
       "id": "z-ai/glm-5.1",
@@ -3058,7 +3054,7 @@
     {
       "id": "google/gemma-4-26b-a4b-it:free",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 4 26B A4B  (free)",
@@ -3085,7 +3081,7 @@
     {
       "id": "google/gemma-4-26b-a4b-it",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 4 26B A4B ",
@@ -3112,7 +3108,7 @@
     {
       "id": "google/gemma-4-31b-it:free",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 4 31B (free)",
@@ -3139,7 +3135,7 @@
     {
       "id": "google/gemma-4-31b-it",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 4 31B",
@@ -3153,8 +3149,8 @@
       },
       "openrouter_pricing": {
         "input_per_m": 0.12,
-        "output_per_m": 0.37,
-        "blended_per_m": 0.1825
+        "output_per_m": 0.35,
+        "blended_per_m": 0.1775
       },
       "tier": "",
       "is_free": false,
@@ -3296,7 +3292,7 @@
     {
       "id": "google/lyria-3-pro-preview",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Lyria 3 Pro Preview",
@@ -3323,7 +3319,7 @@
     {
       "id": "google/lyria-3-clip-preview",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Lyria 3 Clip Preview",
@@ -3441,9 +3437,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.27899999999999997,
-        "output_per_m": 1.2,
-        "blended_per_m": 0.50925
+        "input_per_m": 0.25,
+        "output_per_m": 1.0,
+        "blended_per_m": 0.4375
       },
       "tier": "",
       "is_free": false,
@@ -3538,7 +3534,7 @@
       "enabled": true,
       "provider": "z-ai",
       "display_name": "Z.ai: GLM 5 Turbo",
-      "context_window": 202752,
+      "context_window": 262144,
       "vision_capable": false,
       "capabilities": {
         "tool_access": true,
@@ -3625,9 +3621,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.04,
+        "input_per_m": 0.09999999999999999,
         "output_per_m": 0.15,
-        "blended_per_m": 0.0675
+        "blended_per_m": 0.11249999999999999
       },
       "tier": "",
       "is_free": false,
@@ -3718,7 +3714,7 @@
     {
       "id": "openai/gpt-5.3-chat",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.3 Chat",
@@ -3798,7 +3794,7 @@
     {
       "id": "google/gemini-3.1-flash-image-preview",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview)",
@@ -3838,9 +3834,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.13899999999999998,
+        "input_per_m": 0.14,
         "output_per_m": 1.0,
-        "blended_per_m": 0.35424999999999995
+        "blended_per_m": 0.355
       },
       "tier": "",
       "is_free": false,
@@ -3929,7 +3925,7 @@
     {
       "id": "google/gemini-3.1-pro-preview-customtools",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemini 3.1 Pro Preview Custom Tools",
@@ -3956,7 +3952,7 @@
     {
       "id": "openai/gpt-5.3-codex",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.3-Codex",
@@ -4155,8 +4151,8 @@
       },
       "openrouter_pricing": {
         "input_per_m": 0.15,
-        "output_per_m": 1.15,
-        "blended_per_m": 0.39999999999999997
+        "output_per_m": 0.8999999999999999,
+        "blended_per_m": 0.33749999999999997
       },
       "tier": "",
       "is_free": false,
@@ -4454,7 +4450,7 @@
     {
       "id": "openai/gpt-audio",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT Audio",
@@ -4481,7 +4477,7 @@
     {
       "id": "openai/gpt-audio-mini",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT Audio Mini",
@@ -4534,7 +4530,7 @@
     {
       "id": "openai/gpt-5.2-codex",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.2-Codex",
@@ -4770,7 +4766,7 @@
     {
       "id": "openai/gpt-5.2-chat",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.2 Chat",
@@ -5007,7 +5003,7 @@
     {
       "id": "openai/gpt-5.1-codex-max",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.1-Codex-Max",
@@ -5229,9 +5225,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.252,
-        "output_per_m": 0.378,
-        "blended_per_m": 0.2835
+        "input_per_m": 0.2288,
+        "output_per_m": 0.3432,
+        "blended_per_m": 0.2574
       },
       "tier": "flagship",
       "is_free": false,
@@ -5321,7 +5317,7 @@
     {
       "id": "google/gemini-3-pro-image-preview",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Nano Banana Pro (Gemini 3 Pro Image Preview)",
@@ -5401,7 +5397,7 @@
     {
       "id": "openai/gpt-5.1-chat",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.1 Chat",
@@ -5428,7 +5424,7 @@
     {
       "id": "openai/gpt-5.1-codex",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5.1-Codex",
@@ -5559,7 +5555,7 @@
     {
       "id": "openai/gpt-oss-safeguard-20b",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: gpt-oss-safeguard-20b",
@@ -5578,10 +5574,9 @@
       },
       "tier": "",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-oss-safeguard-20b",
-      "openrouter_fallback_model_id": "openai/gpt-oss-safeguard-20b",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-oss-safeguard-20b",
+      "dispatch": "openrouter"
     },
     {
       "id": "nvidia/nemotron-nano-12b-v2-vl:free",
@@ -5716,7 +5711,7 @@
     {
       "id": "openai/gpt-5-image-mini",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5 Image Mini",
@@ -5735,10 +5730,9 @@
       },
       "tier": "fast",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-5-image-mini",
-      "openrouter_fallback_model_id": "openai/gpt-5-image-mini",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-5-image-mini",
+      "dispatch": "openrouter"
     },
     {
       "id": "anthropic/claude-haiku-4.5",
@@ -5822,7 +5816,7 @@
     {
       "id": "openai/gpt-5-image",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5 Image",
@@ -5841,15 +5835,14 @@
       },
       "tier": "flagship",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-5-image",
-      "openrouter_fallback_model_id": "openai/gpt-5-image",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-5-image",
+      "dispatch": "openrouter"
     },
     {
       "id": "openai/o3-deep-research",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: o3 Deep Research",
@@ -5868,15 +5861,14 @@
       },
       "tier": "flagship",
       "is_free": false,
-      "service": "openai",
-      "model_id": "o3-deep-research",
-      "openrouter_fallback_model_id": "openai/o3-deep-research",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/o3-deep-research",
+      "dispatch": "openrouter"
     },
     {
       "id": "openai/o4-mini-deep-research",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: o4 Mini Deep Research",
@@ -5895,10 +5887,9 @@
       },
       "tier": "fast",
       "is_free": false,
-      "service": "openai",
-      "model_id": "o4-mini-deep-research",
-      "openrouter_fallback_model_id": "openai/o4-mini-deep-research",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/o4-mini-deep-research",
+      "dispatch": "openrouter"
     },
     {
       "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
@@ -5916,9 +5907,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.09999999999999999,
+        "input_per_m": 0.39999999999999997,
         "output_per_m": 0.39999999999999997,
-        "blended_per_m": 0.175
+        "blended_per_m": 0.39999999999999997
       },
       "tier": "",
       "is_free": false,
@@ -5955,7 +5946,7 @@
     {
       "id": "google/gemini-2.5-flash-image",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Nano Banana (Gemini 2.5 Flash Image)",
@@ -6192,7 +6183,7 @@
     {
       "id": "google/gemini-2.5-flash-lite-preview-09-2025",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemini 2.5 Flash Lite Preview 09-2025",
@@ -6211,10 +6202,9 @@
       },
       "tier": "fast",
       "is_free": false,
-      "service": "gemini",
-      "model_id": "models/gemini-2.5-flash-lite-preview-09-2025",
-      "openrouter_fallback_model_id": "google/gemini-2.5-flash-lite-preview-09-2025",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "google/gemini-2.5-flash-lite-preview-09-2025",
+      "dispatch": "openrouter"
     },
     {
       "id": "qwen/qwen3-vl-235b-a22b-thinking",
@@ -6323,7 +6313,7 @@
     {
       "id": "openai/gpt-5-codex",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5 Codex",
@@ -6897,7 +6887,7 @@
     {
       "id": "openai/gpt-5-chat",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-5 Chat",
@@ -7005,7 +6995,7 @@
     {
       "id": "openai/gpt-oss-120b:free",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: gpt-oss-120b (free)",
@@ -7024,15 +7014,14 @@
       },
       "tier": "",
       "is_free": true,
-      "service": "openai",
-      "model_id": "gpt-oss-120b:free",
-      "openrouter_fallback_model_id": "openai/gpt-oss-120b:free",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-oss-120b:free",
+      "dispatch": "openrouter"
     },
     {
       "id": "openai/gpt-oss-120b",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: gpt-oss-120b",
@@ -7051,15 +7040,14 @@
       },
       "tier": "",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-oss-120b",
-      "openrouter_fallback_model_id": "openai/gpt-oss-120b",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-oss-120b",
+      "dispatch": "openrouter"
     },
     {
       "id": "openai/gpt-oss-20b:free",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: gpt-oss-20b (free)",
@@ -7078,15 +7066,14 @@
       },
       "tier": "",
       "is_free": true,
-      "service": "openai",
-      "model_id": "gpt-oss-20b:free",
-      "openrouter_fallback_model_id": "openai/gpt-oss-20b:free",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-oss-20b:free",
+      "dispatch": "openrouter"
     },
     {
       "id": "openai/gpt-oss-20b",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: gpt-oss-20b",
@@ -7099,16 +7086,15 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.03,
+        "input_per_m": 0.029,
         "output_per_m": 0.14,
-        "blended_per_m": 0.0575
+        "blended_per_m": 0.05675000000000001
       },
       "tier": "",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-oss-20b",
-      "openrouter_fallback_model_id": "openai/gpt-oss-20b",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-oss-20b",
+      "dispatch": "openrouter"
     },
     {
       "id": "anthropic/claude-opus-4.1",
@@ -7196,7 +7182,7 @@
       "enabled": true,
       "provider": "qwen",
       "display_name": "Qwen: Qwen3 30B A3B Instruct 2507",
-      "context_window": 262144,
+      "context_window": 131072,
       "vision_capable": false,
       "capabilities": {
         "tool_access": true,
@@ -7205,9 +7191,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.09,
-        "output_per_m": 0.3,
-        "blended_per_m": 0.14250000000000002
+        "input_per_m": 0.04815,
+        "output_per_m": 0.19305,
+        "blended_per_m": 0.084375
       },
       "tier": "",
       "is_free": false,
@@ -7283,9 +7269,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.13,
+        "input_per_m": 0.125,
         "output_per_m": 0.85,
-        "blended_per_m": 0.31
+        "blended_per_m": 0.30625
       },
       "tier": "",
       "is_free": false,
@@ -7309,9 +7295,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.14950000000000002,
-        "output_per_m": 1.495,
-        "blended_per_m": 0.48587500000000006
+        "input_per_m": 0.09999999999999999,
+        "output_per_m": 0.09999999999999999,
+        "blended_per_m": 0.09999999999999999
       },
       "tier": "",
       "is_free": false,
@@ -7466,9 +7452,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.071,
+        "input_per_m": 0.09,
         "output_per_m": 0.09999999999999999,
-        "blended_per_m": 0.07824999999999999
+        "blended_per_m": 0.0925
       },
       "tier": "",
       "is_free": false,
@@ -7845,7 +7831,7 @@
     {
       "id": "openai/o3-pro",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: o3 Pro",
@@ -7864,15 +7850,14 @@
       },
       "tier": "flagship",
       "is_free": false,
-      "service": "openai",
-      "model_id": "o3-pro",
-      "openrouter_fallback_model_id": "openai/o3-pro",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/o3-pro",
+      "dispatch": "openrouter"
     },
     {
       "id": "google/gemini-2.5-pro-preview",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemini 2.5 Pro Preview 06-05",
@@ -7979,7 +7964,7 @@
     {
       "id": "google/gemma-3n-e4b-it",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 3n 4B",
@@ -7998,10 +7983,9 @@
       },
       "tier": "",
       "is_free": false,
-      "service": "gemini",
-      "model_id": "models/gemma-3n-e4b-it",
-      "openrouter_fallback_model_id": "google/gemma-3n-e4b-it",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "google/gemma-3n-e4b-it",
+      "dispatch": "openrouter"
     },
     {
       "id": "mistralai/mistral-medium-3",
@@ -8032,7 +8016,7 @@
     {
       "id": "google/gemini-2.5-pro-preview-05-06",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemini 2.5 Pro Preview 05-06",
@@ -8051,10 +8035,9 @@
       },
       "tier": "flagship",
       "is_free": false,
-      "service": "gemini",
-      "model_id": "models/gemini-2.5-pro-preview-05-06",
-      "openrouter_fallback_model_id": "google/gemini-2.5-pro-preview-05-06",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "google/gemini-2.5-pro-preview-05-06",
+      "dispatch": "openrouter"
     },
     {
       "id": "arcee-ai/spotlight",
@@ -8202,9 +8185,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.09,
-        "output_per_m": 0.44999999999999996,
-        "blended_per_m": 0.18
+        "input_per_m": 0.12,
+        "output_per_m": 0.5,
+        "blended_per_m": 0.215
       },
       "tier": "",
       "is_free": false,
@@ -8319,7 +8302,7 @@
     {
       "id": "openai/o4-mini-high",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: o4 Mini High",
@@ -8338,10 +8321,9 @@
       },
       "tier": "fast",
       "is_free": false,
-      "service": "openai",
-      "model_id": "o4-mini-high",
-      "openrouter_fallback_model_id": "openai/o4-mini-high",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/o4-mini-high",
+      "dispatch": "openrouter"
     },
     {
       "id": "openai/o3",
@@ -8546,9 +8528,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.08,
+        "input_per_m": 0.09999999999999999,
         "output_per_m": 0.3,
-        "blended_per_m": 0.135
+        "blended_per_m": 0.15
       },
       "tier": "",
       "is_free": false,
@@ -8638,7 +8620,7 @@
     {
       "id": "google/gemma-3-4b-it",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 3 4B",
@@ -8651,21 +8633,20 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.04,
-        "output_per_m": 0.08,
-        "blended_per_m": 0.05
+        "input_per_m": 0.049999999999999996,
+        "output_per_m": 0.09999999999999999,
+        "blended_per_m": 0.0625
       },
       "tier": "",
       "is_free": false,
-      "service": "gemini",
-      "model_id": "models/gemma-3-4b-it",
-      "openrouter_fallback_model_id": "google/gemma-3-4b-it",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "google/gemma-3-4b-it",
+      "dispatch": "openrouter"
     },
     {
       "id": "google/gemma-3-12b-it",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 3 12B",
@@ -8678,16 +8659,15 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.04,
-        "output_per_m": 0.13,
-        "blended_per_m": 0.0625
+        "input_per_m": 0.049999999999999996,
+        "output_per_m": 0.15,
+        "blended_per_m": 0.075
       },
       "tier": "",
       "is_free": false,
-      "service": "gemini",
-      "model_id": "models/gemma-3-12b-it",
-      "openrouter_fallback_model_id": "google/gemma-3-12b-it",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "google/gemma-3-12b-it",
+      "dispatch": "openrouter"
     },
     {
       "id": "cohere/command-a",
@@ -8718,7 +8698,7 @@
     {
       "id": "openai/gpt-4o-mini-search-preview",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-4o-mini Search Preview",
@@ -8745,7 +8725,7 @@
     {
       "id": "openai/gpt-4o-search-preview",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-4o Search Preview",
@@ -8798,7 +8778,7 @@
     {
       "id": "google/gemma-3-27b-it",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 3 27B",
@@ -8817,10 +8797,9 @@
       },
       "tier": "",
       "is_free": false,
-      "service": "gemini",
-      "model_id": "models/gemma-3-27b-it",
-      "openrouter_fallback_model_id": "google/gemma-3-27b-it",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "google/gemma-3-27b-it",
+      "dispatch": "openrouter"
     },
     {
       "id": "thedrummer/skyfall-36b-v2",
@@ -9008,7 +8987,7 @@
     {
       "id": "openai/o3-mini-high",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: o3 Mini High",
@@ -9027,10 +9006,9 @@
       },
       "tier": "fast",
       "is_free": false,
-      "service": "openai",
-      "model_id": "o3-mini-high",
-      "openrouter_fallback_model_id": "openai/o3-mini-high",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/o3-mini-high",
+      "dispatch": "openrouter"
     },
     {
       "id": "google/gemini-2.0-flash-001",
@@ -9153,9 +9131,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.25,
-        "output_per_m": 0.75,
-        "blended_per_m": 0.375
+        "input_per_m": 0.7999999999999999,
+        "output_per_m": 1.0,
+        "blended_per_m": 0.85
       },
       "tier": "",
       "is_free": false,
@@ -9301,7 +9279,7 @@
       "enabled": true,
       "provider": "deepseek",
       "display_name": "DeepSeek: R1 Distill Llama 70B",
-      "context_window": 131072,
+      "context_window": 128000,
       "vision_capable": false,
       "capabilities": {
         "tool_access": true,
@@ -9310,9 +9288,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.7,
+        "input_per_m": 0.7999999999999999,
         "output_per_m": 0.7999999999999999,
-        "blended_per_m": 0.7249999999999999
+        "blended_per_m": 0.7999999999999999
       },
       "tier": "",
       "is_free": false,
@@ -9431,7 +9409,7 @@
       "enabled": true,
       "provider": "deepseek",
       "display_name": "DeepSeek: DeepSeek V3",
-      "context_window": 163840,
+      "context_window": 131072,
       "vision_capable": false,
       "capabilities": {
         "tool_access": true,
@@ -9440,9 +9418,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.32,
-        "output_per_m": 0.8899999999999999,
-        "blended_per_m": 0.46249999999999997
+        "input_per_m": 0.20020000000000002,
+        "output_per_m": 0.8000999999999999,
+        "blended_per_m": 0.350175
       },
       "tier": "mid",
       "is_free": false,
@@ -9793,7 +9771,7 @@
     {
       "id": "anthropic/claude-3.5-haiku",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "anthropic",
       "display_name": "Anthropic: Claude 3.5 Haiku",
@@ -9812,10 +9790,9 @@
       },
       "tier": "fast",
       "is_free": false,
-      "service": "claude",
-      "model_id": "claude-3-5-haiku",
-      "openrouter_fallback_model_id": "anthropic/claude-3.5-haiku",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "anthropic/claude-3.5-haiku",
+      "dispatch": "openrouter"
     },
     {
       "id": "anthracite-org/magnum-v4-72b",
@@ -9963,9 +9940,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.245,
-        "output_per_m": 0.245,
-        "blended_per_m": 0.245
+        "input_per_m": 0.345,
+        "output_per_m": 0.345,
+        "blended_per_m": 0.345
       },
       "tier": "",
       "is_free": false,
@@ -10171,9 +10148,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.3,
-        "output_per_m": 0.3,
-        "blended_per_m": 0.3
+        "input_per_m": 0.7,
+        "output_per_m": 0.7,
+        "blended_per_m": 0.7
       },
       "tier": "",
       "is_free": false,
@@ -10329,8 +10306,8 @@
       },
       "openrouter_pricing": {
         "input_per_m": 0.02,
-        "output_per_m": 0.049999999999999996,
-        "blended_per_m": 0.027499999999999997
+        "output_per_m": 0.03,
+        "blended_per_m": 0.0225
       },
       "tier": "",
       "is_free": false,
@@ -10421,7 +10398,7 @@
     {
       "id": "google/gemma-2-27b-it",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "google",
       "display_name": "Google: Gemma 2 27B",
@@ -10440,10 +10417,9 @@
       },
       "tier": "",
       "is_free": false,
-      "service": "gemini",
-      "model_id": "models/gemma-2-27b-it",
-      "openrouter_fallback_model_id": "google/gemma-2-27b-it",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "google/gemma-2-27b-it",
+      "dispatch": "openrouter"
     },
     {
       "id": "sao10k/l3-euryale-70b",
@@ -10593,9 +10569,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.04,
-        "output_per_m": 0.04,
-        "blended_per_m": 0.04
+        "input_per_m": 0.14,
+        "output_per_m": 0.14,
+        "blended_per_m": 0.14
       },
       "tier": "",
       "is_free": false,
@@ -10685,7 +10661,7 @@
     {
       "id": "anthropic/claude-3-haiku",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "anthropic",
       "display_name": "Anthropic: Claude 3 Haiku",
@@ -10704,10 +10680,9 @@
       },
       "tier": "fast",
       "is_free": false,
-      "service": "claude",
-      "model_id": "claude-3-haiku",
-      "openrouter_fallback_model_id": "anthropic/claude-3-haiku",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "anthropic/claude-3-haiku",
+      "dispatch": "openrouter"
     },
     {
       "id": "mistralai/mistral-large",
@@ -10738,7 +10713,7 @@
     {
       "id": "openai/gpt-3.5-turbo-0613",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-3.5 Turbo (older v0613)",
@@ -10757,15 +10732,14 @@
       },
       "tier": "fast",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-3.5-turbo-0613",
-      "openrouter_fallback_model_id": "openai/gpt-3.5-turbo-0613",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-3.5-turbo-0613",
+      "dispatch": "openrouter"
     },
     {
       "id": "openai/gpt-4-turbo-preview",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-4 Turbo Preview",
@@ -10784,10 +10758,9 @@
       },
       "tier": "mid",
       "is_free": false,
-      "service": "openai",
-      "model_id": "gpt-4-turbo-preview",
-      "openrouter_fallback_model_id": "openai/gpt-4-turbo-preview",
-      "dispatch": "direct"
+      "service": "openrouter",
+      "model_id": "openai/gpt-4-turbo-preview",
+      "dispatch": "openrouter"
     },
     {
       "id": "openrouter/auto",
@@ -10871,7 +10844,7 @@
     {
       "id": "openai/gpt-3.5-turbo-instruct",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-3.5 Turbo Instruct",
@@ -10898,7 +10871,7 @@
     {
       "id": "openai/gpt-3.5-turbo-16k",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-3.5 Turbo 16k",
@@ -11030,7 +11003,7 @@
     {
       "id": "openai/gpt-3.5-turbo",
       "type": "api",
-      "status": "deprecated",
+      "status": "active",
       "enabled": true,
       "provider": "openai",
       "display_name": "OpenAI: GPT-3.5 Turbo",
@@ -11150,6 +11123,320 @@
       },
       "vision_capable": true,
       "_auto_discovered": true
+    },
+    {
+      "id": "~anthropic/claude-fable-latest",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "~anthropic",
+      "display_name": "Anthropic: Claude Fable Latest",
+      "context_window": 1000000,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 10.0,
+        "output_per_m": 50.0,
+        "blended_per_m": 20.0
+      },
+      "tier": "",
+      "is_free": false,
+      "service": "openrouter",
+      "model_id": "~anthropic/claude-fable-latest",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "anthropic/claude-fable-5",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "anthropic",
+      "display_name": "Anthropic: Claude Fable 5",
+      "context_window": 1000000,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 10.0,
+        "output_per_m": 50.0,
+        "blended_per_m": 20.0
+      },
+      "tier": "",
+      "is_free": false,
+      "service": "claude",
+      "model_id": "claude-fable-5",
+      "openrouter_fallback_model_id": "anthropic/claude-fable-5",
+      "dispatch": "direct"
+    },
+    {
+      "id": "nex-agi/nex-n2-pro:free",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "nex-agi",
+      "display_name": "Nex AGI: Nex-N2-Pro (free)",
+      "context_window": 262144,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 0.0,
+        "output_per_m": 0.0,
+        "blended_per_m": 0.0
+      },
+      "tier": "",
+      "is_free": true,
+      "service": "openrouter",
+      "model_id": "nex-agi/nex-n2-pro:free",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-content-safety:free",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "nvidia",
+      "display_name": "NVIDIA: Nemotron 3.5 Content Safety (free)",
+      "context_window": 128000,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 0.0,
+        "output_per_m": 0.0,
+        "blended_per_m": 0.0
+      },
+      "tier": "",
+      "is_free": true,
+      "service": "openrouter",
+      "model_id": "nvidia/nemotron-3.5-content-safety:free",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "nvidia",
+      "display_name": "NVIDIA: Nemotron 3 Ultra (free)",
+      "context_window": 1000000,
+      "vision_capable": false,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 0.0,
+        "output_per_m": 0.0,
+        "blended_per_m": 0.0
+      },
+      "tier": "",
+      "is_free": true,
+      "service": "openrouter",
+      "model_id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "nvidia",
+      "display_name": "NVIDIA: Nemotron 3 Ultra",
+      "context_window": 1000000,
+      "vision_capable": false,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 0.5,
+        "output_per_m": 2.5,
+        "blended_per_m": 1.0
+      },
+      "tier": "",
+      "is_free": false,
+      "service": "openrouter",
+      "model_id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "qwen/qwen3.7-plus",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "qwen",
+      "display_name": "Qwen: Qwen3.7 Plus",
+      "context_window": 1000000,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 0.32,
+        "output_per_m": 1.28,
+        "blended_per_m": 0.56
+      },
+      "tier": "",
+      "is_free": false,
+      "service": "openrouter",
+      "model_id": "qwen/qwen3.7-plus",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "minimax/minimax-m3",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "minimax",
+      "display_name": "MiniMax: MiniMax M3",
+      "context_window": 1048576,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 0.3,
+        "output_per_m": 1.2,
+        "blended_per_m": 0.5249999999999999
+      },
+      "tier": "",
+      "is_free": false,
+      "service": "openrouter",
+      "model_id": "minimax/minimax-m3",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "stepfun/step-3.7-flash",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "stepfun",
+      "display_name": "StepFun: Step 3.7 Flash",
+      "context_window": 256000,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 0.19999999999999998,
+        "output_per_m": 1.15,
+        "blended_per_m": 0.4375
+      },
+      "tier": "",
+      "is_free": false,
+      "service": "openrouter",
+      "model_id": "stepfun/step-3.7-flash",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "anthropic/claude-opus-4.8-fast",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "anthropic",
+      "display_name": "Anthropic: Claude Opus 4.8 (Fast)",
+      "context_window": 1000000,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 10.0,
+        "output_per_m": 50.0,
+        "blended_per_m": 20.0
+      },
+      "tier": "flagship",
+      "is_free": false,
+      "service": "openrouter",
+      "model_id": "anthropic/claude-opus-4.8-fast",
+      "dispatch": "openrouter"
+    },
+    {
+      "id": "anthropic/claude-opus-4.8",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "anthropic",
+      "display_name": "Anthropic: Claude Opus 4.8",
+      "context_window": 1000000,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 5.0,
+        "output_per_m": 25.0,
+        "blended_per_m": 10.0
+      },
+      "tier": "flagship",
+      "is_free": false,
+      "service": "claude",
+      "model_id": "claude-opus-4-8",
+      "openrouter_fallback_model_id": "anthropic/claude-opus-4.8",
+      "dispatch": "direct"
+    },
+    {
+      "id": "openrouter/fusion",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "openrouter",
+      "display_name": "OpenRouter: Fusion",
+      "context_window": 128000,
+      "vision_capable": false,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": -1000000.0,
+        "output_per_m": -1000000.0,
+        "blended_per_m": -1000000.0
+      },
+      "tier": "",
+      "is_free": false,
+      "service": "openrouter",
+      "model_id": "openrouter/fusion",
+      "dispatch": "openrouter"
     }
   ],
   "buckets": {

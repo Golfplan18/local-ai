@@ -1,6 +1,6 @@
 {
   "name": "free",
-  "description": "Auto-populated from preset 'free' on 2026-06-11T14:17:50.355287+00:00.",
+  "description": "Auto-populated from preset 'free' on 2026-06-12T03:58:26.929118+00:00.",
   "preset_lineage": "free",
   "cells": {
     "utility": {
@@ -45,10 +45,7 @@
       "formatter": null
     },
     "image_generation": {
-      "image_generation": {
-        "primary": "aa-img:886888eb-1c9f-4207-9b79-78119957c1e9",
-        "fallback": []
-      }
+      "image_generation": null
     }
   },
   "_auto_populate_metadata": {
@@ -56,7 +53,7 @@
     "vision_only": true,
     "vision_substitute": null,
     "loosening_log": {},
-    "catalog_models_considered": 575
+    "catalog_models_considered": 337
   },
   "toggles": {
     "adversarial_diversity": true,

@@ -55,15 +55,12 @@
         "primary": "qwen/qwen3.5-9b",
         "fallback": []
       }
-    },
-    "image_generation": {
-      "image_generation": {
-        "primary": "aa-img:df44f7b5-8035-4a99-a0bb-ff22149d0464",
-        "fallback": []
-      }
     }
   },
   "toggles": {
     "adversarial_diversity": false
-  }
+  },
+  "_notes": [
+    "2026-06-11: image_generation cell removed \u2014 it referenced AA media-leaderboard ids (aa-img:*) that Ora cannot invoke (image-gen routing not implemented). Re-add when the feature lands."
+  ]
 }
