@@ -1,7 +1,7 @@
 {
   "name": "Testing Budget",
   "description": "Copied from 'budget' via the Models pane Customize action. Original lineage: budget.",
-  "_rag_isolation_note": "CAMPAIGN-RAG-BYPASS-2026-05-26 — set during Comparative Evaluation Campaign to demonstrate clean-install reproducibility. Remove this field and the _note when campaign captures complete.",
+  "_rag_isolation_note": "CAMPAIGN-RAG-BYPASS-2026-05-26 \u2014 set during Comparative Evaluation Campaign to demonstrate clean-install reproducibility. Remove this field and the _note when campaign captures complete.",
   "rag_isolation": "web_only",
   "preset_lineage": "custom",
   "cells": {
@@ -107,18 +107,13 @@
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
-    },
-    "image_generation": {
-      "image_generation": {
-        "primary": "aa-img:886888eb-1c9f-4207-9b79-78119957c1e9",
-        "fallback": [
-          "aa-img:f1a89301-0c25-42d3-be68-ae73463d58bd"
-        ]
-      }
     }
   },
   "toggles": {
     "adversarial_diversity": true,
     "vision_only": true
-  }
+  },
+  "_notes": [
+    "2026-06-11: image_generation cell removed \u2014 it referenced AA media-leaderboard ids (aa-img:*) that Ora cannot invoke (image-gen routing not implemented). Re-add when the feature lands."
+  ]
 }

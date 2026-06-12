@@ -218,14 +218,83 @@ def filter_vision(candidates: list[dict]) -> list[dict]:
 
 
 def filter_reachable(candidates: list[dict], unreachable_ids: set[str]) -> list[dict]:
-    """Drop models the reachability probe (sync_model_registry.py reach)
-    has confirmed as unreachable (HTTP 404 / 410 / 400 not_token_limit on
-    a 1-prompt completion). Rate-limited and inconclusive verdicts are NOT
-    excluded — those models still have working endpoints; the fallback
-    chain handles transient 429s at runtime."""
+    """Drop models in the reachability exclusion set.
+
+    The set is built by ``registry_crossref``: with probe data present it
+    is STRICT — every chat id the probe has not positively verified
+    (``reachable`` is not True) is excluded, so an auto-pick can never
+    select a model that hasn't demonstrably answered a completion call.
+    Rate-limited verdicts count as verified (reachable=True +
+    rate_limited flag) — the fallback chain absorbs transient 429s at
+    runtime. On a fresh install with no probe data the set degrades to
+    confirmed-unreachable only (see registry_crossref)."""
     if not unreachable_ids:
         return candidates
     return [m for m in candidates if m.get("id") not in unreachable_ids]
+
+
+def registry_crossref(registry_path: Path | None = None) -> dict:
+    """Build the registry-derived pick inputs shared by the CLI and the
+    server-side bake (orchestrator/active_configuration.py).
+
+    Returns a dict with:
+      ``registry_ids``        — every id in the live registry (filter_in_registry)
+      ``unreachable_ids``     — reachability exclusion set (see below)
+      ``tokens_per_sec``      — Fast-slot sort key map
+      ``reasoning_model_ids`` — Fast-slot exclusion set
+
+    Reachability policy (2026-06-11): a chat model is pick-eligible only
+    when the probe POSITIVELY verified it (``reachable`` is True), so the
+    exclusion set contains every chat id with a false/null/absent verdict.
+    Safety valve: when the registry holds NO positive verdicts at all
+    (fresh install, probe never run), the strict gate would empty every
+    slot — fall back to excluding only confirmed-unreachable ids and let
+    the first probe tighten things up. Missing/unreadable registry →
+    empty sets (no filtering), same as before.
+    """
+    path = registry_path or (CONFIG_DIR / "model-registry.json")
+    out = {
+        "registry_ids": set(),
+        "unreachable_ids": set(),
+        "tokens_per_sec": {},
+        "reasoning_model_ids": set(),
+    }
+    if not Path(path).exists():
+        return out
+    try:
+        with open(path) as f:
+            registry = json.load(f)
+        models = registry.get("models") or {}
+        out["registry_ids"] = set(models.keys())
+        any_verified = any(m.get("reachable") is True for m in models.values())
+        for mid, m in models.items():
+            if (m.get("category") or "chat") == "chat":
+                if any_verified:
+                    if m.get("reachable") is not True:
+                        out["unreachable_ids"].add(mid)
+                elif m.get("reachable") is False:
+                    out["unreachable_ids"].add(mid)
+            if m.get("reasoning_model") is True:
+                out["reasoning_model_ids"].add(mid)
+            tps = m.get("output_tokens_per_second")
+            if tps is not None:
+                out["tokens_per_sec"][mid] = float(tps)
+    except Exception as exc:
+        # Fail soft but never silently: a corrupt registry disables the
+        # reachability gate, the in-registry filter, and the Fast-slot
+        # inputs all at once — the bake still runs, but say why.
+        print(
+            f"[auto-populate] registry read failed (proceeding without "
+            f"reachability/registry/reasoning/tps filters): {exc}",
+            file=sys.stderr,
+        )
+        return {
+            "registry_ids": set(),
+            "unreachable_ids": set(),
+            "tokens_per_sec": {},
+            "reasoning_model_ids": set(),
+        }
+    return out
 
 
 def filter_in_registry(candidates: list[dict], registry_ids: set[str]) -> list[dict]:
@@ -563,11 +632,12 @@ def populate_configuration(
     declared default (``vision_only`` field on the preset; defaults to
     False if absent).
 
-    ``unreachable_ids``: set of model ids the reachability probe has
-    confirmed as unreachable (HTTP 404 / 410 / non-token 400). These are
-    filtered out of every paid / free pick. Rate-limited and inconclusive
-    verdicts are NOT excluded — those endpoints still work, the fallback
-    chain absorbs transient 429s at runtime.
+    ``unreachable_ids``: reachability exclusion set, normally built by
+    ``registry_crossref`` — with probe data present it contains every
+    chat id the probe has not positively verified (strict gate), so picks
+    can only land on models that demonstrably answered a completion call.
+    Rate-limited models count as verified; the fallback chain absorbs
+    transient 429s at runtime.
 
     ``registry_ids``: set of model ids present in the live registry. When
     supplied, the catalog is filtered down to these before any slot picks,
@@ -768,35 +838,21 @@ def main():
         print("[auto-populate] catalog is empty.", file=sys.stderr)
         sys.exit(1)
 
-    # Cross-reference the registry: reachability probe (skip unreachables),
-    # reasoning_model flag (excluded from Fast slot), and tokens/sec
-    # (Fast slot's primary sort key). Registry lives next to the catalog;
-    # missing or unread → empty defaults, so the script still runs cleanly
-    # on a fresh install before any sync has happened.
-    unreachable_ids: set[str] = set()
-    reasoning_model_ids: set[str] = set()
-    tokens_per_sec: dict[str, float] = {}
-    registry_ids: set[str] = set()
-    registry_path = CONFIG_DIR / "model-registry.json"
-    if registry_path.exists():
-        try:
-            with open(registry_path) as f:
-                registry = json.load(f)
-            registry_ids = set((registry.get("models") or {}).keys())
-            for mid, m in (registry.get("models") or {}).items():
-                if m.get("reachable") is False:
-                    unreachable_ids.add(mid)
-                if m.get("reasoning_model") is True:
-                    reasoning_model_ids.add(mid)
-                tps = m.get("output_tokens_per_second")
-                if tps is not None:
-                    tokens_per_sec[mid] = float(tps)
-            if unreachable_ids:
-                print(f"[auto-populate] skipping {len(unreachable_ids)} models flagged unreachable by the reachability probe.")
-            if reasoning_model_ids:
-                print(f"[auto-populate] {len(reasoning_model_ids)} reasoning models available for exclusion (Fast slot).")
-        except Exception as exc:
-            print(f"[auto-populate] registry read failed (proceeding without reachability/reasoning/tps filters): {exc}", file=sys.stderr)
+    # Cross-reference the registry: reachability gate (only probe-verified
+    # models are pick-eligible — see registry_crossref), reasoning_model
+    # flag (excluded from Fast slot), and tokens/sec (Fast slot's primary
+    # sort key). Registry lives next to the catalog; missing or unread →
+    # empty defaults, so the script still runs cleanly on a fresh install
+    # before any sync has happened.
+    xref = registry_crossref()
+    unreachable_ids = xref["unreachable_ids"]
+    reasoning_model_ids = xref["reasoning_model_ids"]
+    tokens_per_sec = xref["tokens_per_sec"]
+    registry_ids = xref["registry_ids"]
+    if unreachable_ids:
+        print(f"[auto-populate] excluding {len(unreachable_ids)} models without a positive reachability verdict (strict gate; see registry_crossref).")
+    if reasoning_model_ids:
+        print(f"[auto-populate] {len(reasoning_model_ids)} reasoning models available for exclusion (Fast slot).")
 
     config = populate_configuration(
         args.preset, catalog, presets_config,

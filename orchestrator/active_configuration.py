@@ -268,26 +268,24 @@ def bake_missing_presets(force: bool = False) -> list:
     vision_only = global_toggles["vision_only"]
     adversarial = global_toggles["adversarial_diversity"]
 
-    # Cross-reference the registry for fields the catalog doesn't carry:
+    # Cross-reference the registry via the script's shared helper:
+    # reachability gate (only probe-verified models are pick-eligible),
     # output_tokens_per_second (Fast slot sort key) and reasoning_model
-    # (Fast slot exclusion). Mirrors the CLI script's behavior.
-    registry_path = ORA_HOME / "config" / "model-registry.json"
-    tokens_per_sec: dict = {}
-    reasoning_model_ids: set = set()
-    registry_ids: set = set()
-    if registry_path.exists():
-        try:
-            with open(registry_path) as f:
-                registry = json.load(f)
-            registry_ids = set((registry.get("models") or {}).keys())
-            for mid, m in (registry.get("models") or {}).items():
-                if m.get("reasoning_model") is True:
-                    reasoning_model_ids.add(mid)
-                tps = m.get("output_tokens_per_second")
-                if tps is not None:
-                    tokens_per_sec[mid] = float(tps)
-        except Exception:
-            pass
+    # (Fast slot exclusion). Before 2026-06-11 this path skipped the
+    # reachability set entirely, so server-side re-bakes could pick
+    # unprobed models the CLI would have excluded.
+    try:
+        xref = ap_module.registry_crossref(
+            ORA_HOME / "config" / "model-registry.json")
+    except Exception:
+        # registry_crossref is itself fail-soft; this only fires on a
+        # version-skewed scripts/ copy lacking the function. Degrade to
+        # no filtering rather than aborting every preset bake.
+        xref = {}
+    tokens_per_sec: dict = xref.get("tokens_per_sec") or {}
+    reasoning_model_ids: set = xref.get("reasoning_model_ids") or set()
+    registry_ids: set = xref.get("registry_ids") or set()
+    unreachable_ids: set = xref.get("unreachable_ids") or set()
 
     baked: list = []
     CONFIGURATIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -302,6 +300,7 @@ def bake_missing_presets(force: bool = False) -> list:
             config = ap_module.populate_configuration(
                 preset_name, catalog, presets_config,
                 vision_only=vision_only,
+                unreachable_ids=unreachable_ids,
                 tokens_per_sec=tokens_per_sec,
                 reasoning_model_ids=reasoning_model_ids,
                 registry_ids=registry_ids)

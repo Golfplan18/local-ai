@@ -1651,24 +1651,41 @@ def cmd_sync(args) -> int:
     aa_models, aa_chat_source = _fetch_aa_with_fallback(
         fetch_aa_models_via_api, fetch_aa_models, aa_key, aa_path, "AA chat models"
     )
-    t2i_rows, aa_t2i_source = _fetch_aa_with_fallback(
-        fetch_aa_text_to_image_via_api, fetch_aa_text_to_image,
-        aa_key, aa_path, "AA text-to-image",
-    )
-    edit_rows, aa_edit_source = _fetch_aa_with_fallback(
-        fetch_aa_image_editing_via_api, fetch_aa_image_editing,
-        aa_key, aa_path, "AA image-editing",
-    )
-    t2v_rows, aa_t2v_source = _fetch_aa_with_fallback(
-        fetch_aa_text_to_video_via_api, fetch_aa_text_to_video,
-        aa_key, aa_path, "AA text-to-video",
-    )
 
-    # Aggregate AA source label for the registry: "api" if all four
-    # used the API cleanly, "scrape" if all four used the scrape,
-    # "mixed" otherwise (one fell back). The Models pane reads this
-    # to badge the last sync's source.
-    aa_sources = {aa_chat_source, aa_t2i_source, aa_edit_source, aa_t2v_source}
+    # AA media leaderboards (text-to-image / image-editing / text-to-video)
+    # are opt-in: Ora has no runtime image-generation routing yet, so the
+    # entries they create (aa-img:/aa-edit:/aa-vid:) are not invokable and
+    # only pollute the inventory + auto-populate picks. Pass --include-media
+    # to restore them once image-gen routing lands.
+    include_media = bool(getattr(args, "include_media", False))
+    aa_sources = {aa_chat_source}
+    if include_media:
+        t2i_rows, aa_t2i_source = _fetch_aa_with_fallback(
+            fetch_aa_text_to_image_via_api, fetch_aa_text_to_image,
+            aa_key, aa_path, "AA text-to-image",
+        )
+        edit_rows, aa_edit_source = _fetch_aa_with_fallback(
+            fetch_aa_image_editing_via_api, fetch_aa_image_editing,
+            aa_key, aa_path, "AA image-editing",
+        )
+        t2v_rows, aa_t2v_source = _fetch_aa_with_fallback(
+            fetch_aa_text_to_video_via_api, fetch_aa_text_to_video,
+            aa_key, aa_path, "AA text-to-video",
+        )
+        aa_sources |= {aa_t2i_source, aa_edit_source, aa_t2v_source}
+    else:
+        t2i_rows, edit_rows, t2v_rows = [], [], []
+        print(
+            "[sync] AA media leaderboards skipped (no runtime image-gen "
+            "routing; pass --include-media to splice them back)",
+            flush=True,
+        )
+    # Aggregate AA source label for the registry: "api" if every fetch
+    # used the API cleanly, "scrape" if every fetch used the scrape,
+    # "mixed" otherwise (some fetch fell back — _fetch_aa_with_fallback
+    # can return e.g. "api→scrape"). The Models pane badges this value
+    # and only recognizes "api" / "scrape" / "mixed", so the collapse
+    # must run on BOTH branches — never write a raw source label.
     if aa_sources == {"api"}:
         aa_source_summary = "api"
     elif aa_sources == {"scrape"}:
@@ -2057,18 +2074,44 @@ def _run_reach_probe(registry: dict, args) -> int:
         return 0
 
     print(f"[reach] probing {len(targets)} chat models …", flush=True)
+    verdicts: dict[str, dict] = {}
+
+    def _flush_verdicts() -> None:
+        """Merge-safe write: re-read the on-disk registry and apply only
+        the verdicts THIS run produced, then write atomically. The probe
+        runs for many minutes and now auto-spawns after every registry
+        refresh, so a concurrent ``sync`` can rewrite the file mid-probe;
+        writing our whole startup snapshot back would silently revert it.
+        Models a concurrent sync dropped are skipped."""
+        try:
+            with open(REGISTRY_PATH) as f:
+                disk = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            disk = registry  # no readable on-disk copy — use our snapshot
+        disk_models = disk.get("models") or {}
+        for vmid, vrec in verdicts.items():
+            dm = disk_models.get(vmid)
+            if dm is None:
+                continue
+            dm.setdefault("_provenance", {})["reachability"] = vrec
+            # Top-level mirror for quick consumer-side checks
+            # (frontend, auto-populate).
+            dm["reachable"] = vrec.get("reachable")
+            dm["reachable_rate_limited"] = bool(vrec.get("rate_limited"))
+            dm["reachable_probed_at"] = vrec.get("probed_at")
+        disk["last_reach_probe_at"] = _now_iso()
+        tmp_path = f"{REGISTRY_PATH}.tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(disk, f, indent=2, sort_keys=False)
+        os.replace(tmp_path, REGISTRY_PATH)
+
     reachable = 0
     rate_limited = 0
     unreachable = 0
     inconclusive = 0
     for i, mid in enumerate(targets, start=1):
         rec = reach_probe_one(client, mid)
-        prov = models[mid].setdefault("_provenance", {})
-        prov["reachability"] = rec
-        # Top-level mirror for quick consumer-side checks (frontend, auto-populate).
-        models[mid]["reachable"] = rec.get("reachable")
-        models[mid]["reachable_rate_limited"] = bool(rec.get("rate_limited"))
-        models[mid]["reachable_probed_at"] = rec.get("probed_at")
+        verdicts[mid] = rec
 
         if rec["reachable"] is True and rec.get("rate_limited"):
             rate_limited += 1
@@ -2087,14 +2130,10 @@ def _run_reach_probe(registry: dict, args) -> int:
         # lose all in-progress probe data. The final write below still
         # runs at the end; this is just a backstop.
         if i % 25 == 0:
-            registry["last_reach_probe_at"] = _now_iso()
-            with open(REGISTRY_PATH, "w") as f:
-                json.dump(registry, f, indent=2, sort_keys=False)
+            _flush_verdicts()
         time.sleep(0.2)  # gentle on the API
 
-    registry["last_reach_probe_at"] = _now_iso()
-    with open(REGISTRY_PATH, "w") as f:
-        json.dump(registry, f, indent=2, sort_keys=False)
+    _flush_verdicts()
     print(
         f"[reach] done. reachable={reachable} rate_limited={rate_limited} "
         f"unreachable={unreachable} inconclusive={inconclusive}",
@@ -2231,12 +2270,20 @@ def _bare_id_for_vendor(or_id: str, vendor: str) -> str | None:
     # Strip "~latest" mirror prefix Used by OR for vendor-mirror aliases
     if prefix.startswith("~"):
         prefix = prefix[1:]
-    if prefix != vendor and prefix != _OR_PREFIX_TO_VENDOR.get(vendor, vendor):
+    # The map is keyed by OR prefix ("google" → "gemini"); a prefix equal
+    # to the vendor name itself also passes ("openai" → "openai").
+    if prefix != vendor and _OR_PREFIX_TO_VENDOR.get(prefix) != vendor:
         # The OR prefix doesn't match this vendor; skip
         return None
     # Drop any ``:free`` / ``:beta`` suffix appended by OR for variant routing
     if ":" in bare:
         bare = bare.split(":", 1)[0]
+    if vendor == "anthropic":
+        # Anthropic's own catalog ids are hyphenated throughout
+        # (claude-opus-4-5); OpenRouter slugs keep the dotted version
+        # (claude-opus-4.5). Same normalization
+        # scripts/sync_endpoints_from_catalog.py::direct_model_name applies.
+        bare = bare.replace(".", "-")
     return bare
 
 
@@ -2412,7 +2459,9 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI parser. Separate from main() so tests can assert
+    real flag defaults (e.g. sync's --include-media stays opt-in)."""
     p = argparse.ArgumentParser(description="Ora curated model registry sync.")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -2420,6 +2469,12 @@ def main() -> int:
     sp_sync.add_argument("--no-probe", action="store_true", help="Skip the empirical vision probe pass.")
     sp_sync.add_argument("--with-reach", action="store_true", help="Run the reachability probe (opt-in; ~15 min, a few cents of tokens).")
     sp_sync.add_argument("--no-vendor-audit", action="store_true", help="Skip the vendor-direct /models audit (fast, free — kept on by default).")
+    sp_sync.add_argument(
+        "--include-media", action="store_true",
+        help="Splice AA media-leaderboard entries (image/video generation) into "
+             "the registry. Off by default: Ora has no runtime image-generation "
+             "routing yet, so those ids cannot be invoked.",
+    )
     sp_sync.add_argument("--limit", type=int, default=0, help="(probe) Limit probe to this many models.")
     sp_sync.add_argument(
         "--aa-path", choices=("scrape", "api"), default=None,
@@ -2447,7 +2502,11 @@ def main() -> int:
     sp_audit = sub.add_parser("audit", help="Print a registry summary.")
     sp_audit.set_defaults(func=cmd_audit)
 
-    args = p.parse_args()
+    return p
+
+
+def main() -> int:
+    args = build_parser().parse_args()
     return args.func(args)
 
 

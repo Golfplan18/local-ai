@@ -1705,6 +1705,15 @@
     if (_picksSet && _picksSet.has(model.id)) {
       chips.push('<span class="ora-models-pick-chip">PICK</span>');
     }
+    // Direct-dispatch chip. Stamped server-side from routing-config
+    // endpoints with dispatch=direct: the user holds this vendor's API
+    // key, so calls go straight to the vendor (cheaper than OpenRouter);
+    // OpenRouter remains the per-call fallback.
+    if (model.direct_dispatch === true) {
+      chips.push('<span class="ora-models-chip ora-models-chip-direct" title="Dispatches via your '
+        + _esc(model.direct_service || 'vendor')
+        + ' API key (direct vendor API, no OpenRouter premium). OpenRouter is the per-call fallback.">DIRECT</span>');
+    }
     if (model.vision_capable === true) {
       chips.push('<span class="ora-models-chip ora-models-chip-vision">vision</span>');
     }
@@ -1722,7 +1731,7 @@
       chips.push('<span class="ora-models-chip ora-models-chip-rate-limited" title="Endpoint exists, but the probe hit a rate limit. Common on free-tier models; the fallback chain catches it at runtime.">RATE-LIMITED</span>');
     } else if (model.reachable !== true) {
       // null / undefined — never probed, or last probe was inconclusive.
-      chips.push('<span class="ora-models-chip ora-models-chip-unverified" title="No recent reachability probe data. Run scripts/sync_model_registry.py reach to verify.">UNVERIFIED</span>');
+      chips.push('<span class="ora-models-chip ora-models-chip-unverified" title="No conclusive reachability probe verdict yet. Probes now run automatically after every registry refresh; this clears once the model answers a probe. Unverified models are never auto-picked.">UNVERIFIED</span>');
     }
     // Vendor audit chip. vendor_listed=false means the vendor's own
     // /v1/models endpoint doesn't include this id. Could be a true
@@ -1820,29 +1829,93 @@
       + '</div>';
   }
 
+  // Which models can't be ranked under the active sort, and what to call
+  // the labeled tail section they go into. Mirrors the missing-key
+  // sentinels in _sortModels (null intelligence → -Infinity etc.) so the
+  // partition and the comparator can never disagree.
+  function _flatUnrankedSpec(by) {
+    switch (by) {
+      case 'intelligence_desc':
+        return {
+          label: 'No intelligence score',
+          pred: function (m) { return _rawIntelligence(m) == null; },
+        };
+      case 'cost_asc':
+        return {
+          label: 'No pricing data',
+          pred: function (m) {
+            var c = _blendedCostPerM(m);
+            return c == null || c < 0;
+          },
+        };
+      case 'latency_asc':
+        return {
+          label: 'No latency data',
+          pred: function (m) { return m.latency_ttft_seconds == null; },
+        };
+      case 'speed_desc':
+        return {
+          label: 'No throughput data',
+          pred: function (m) { return m.output_tokens_per_second == null; },
+        };
+      default:
+        return null; // alphabetical — every model is rankable
+    }
+  }
+
   // Flat-list layout: distribute matching models column-major across 4
   // columns. The user sorted by Cost (or whatever) sees the top of
-  // column 1 first; column 2 picks up where 1 left off.
+  // column 1 first; column 2 picks up where 1 left off. Models missing
+  // the active sort's key can't be ranked — they used to sink silently
+  // to the tail columns and read as a mystery group; now they render
+  // under an explicit divider, alphabetized.
   function _flatColumnsHTML(models) {
     if (!models.length) {
       return '<div class="ora-models-inventory-column">'
         + '<p class="ora-models-empty-msg">No models match the current filters.</p>'
         + '</div>';
     }
+    var spec = _flatUnrankedSpec(_filters.sort_by);
+    var ranked = models;
+    var unranked = [];
+    if (spec) {
+      ranked = models.filter(function (m) { return !spec.pred(m); });
+      unranked = models.filter(spec.pred);
+      // The active sort key says nothing about these — alphabetize so
+      // the tail's internal order is self-explanatory.
+      unranked.sort(function (a, b) {
+        return (a.id || '').localeCompare(b.id || '');
+      });
+    }
+    var html = '<div class="ora-models-flat-stack">' + _flatBandHTML(ranked);
+    if (unranked.length) {
+      html += '<div class="ora-models-flat-divider" title="These models are missing the data the active sort ranks by (usually no Artificial Analysis coverage yet). They are fully usable — just unrankable on this axis.">'
+        + _esc(spec.label) + ' — unranked, A→Z (' + unranked.length + ')'
+        + '</div>'
+        + _flatBandHTML(unranked);
+    }
+    return html + '</div>';
+  }
+
+  // One 4-column column-major band of flat rows.
+  function _flatBandHTML(models) {
+    if (!models.length) return '';
     var perCol = Math.ceil(models.length / 4);
     var cols = [[], [], [], []];
     models.forEach(function (m, i) {
       var idx = Math.min(3, Math.floor(i / perCol));
       cols[idx].push(m);
     });
-    return cols.map(function (col) {
-      if (!col.length) return '<div class="ora-models-inventory-column"></div>';
-      return '<div class="ora-models-inventory-column">'
-        + '<ul class="ora-models-model-list ora-models-model-list-flat">'
-        +   col.map(_modelRowHTML).join('')
-        + '</ul>'
-        + '</div>';
-    }).join('');
+    return '<div class="ora-models-flat-band">'
+      + cols.map(function (col) {
+          if (!col.length) return '<div class="ora-models-inventory-column"></div>';
+          return '<div class="ora-models-inventory-column">'
+            + '<ul class="ora-models-model-list ora-models-model-list-flat">'
+            +   col.map(_modelRowHTML).join('')
+            + '</ul>'
+            + '</div>';
+        }).join('')
+      + '</div>';
   }
 
   function _categorySelectHTML() {

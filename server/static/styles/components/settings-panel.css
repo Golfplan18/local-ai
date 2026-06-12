@@ -1070,12 +1070,44 @@
   align-items: start;
   max-height: 500px;
   overflow-y: auto;
+  /* Exactly 4 columns per line: columns compress rather than wrap.
+   * Before this, at narrower modal widths the 4th column wrapped under
+   * column 1 and read as a mysterious unlabeled extra group. */
+  flex-wrap: nowrap;
 }
 
 .ora-models-inventory-column {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Flat-list mode: a single full-width stack of 4-column bands, with a
+ * labeled divider before the unranked tail (models missing the active
+ * sort's data — usually no Artificial Analysis coverage). */
+.ora-models-flat-stack {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ora-models-flat-band {
+  display: flex;
+  gap: 8px;
+}
+
+.ora-models-flat-divider {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #A89F8A);
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
+  padding: 8px 0 2px;
 }
 
 .ora-models-vendor-block {
@@ -1170,6 +1202,15 @@
 .ora-models-chip-vision {
   background: rgba(80, 140, 200, 0.20);
   color: rgba(120, 180, 240, 1);
+}
+
+/* Direct-dispatch chip. Teal — distinct from vision blue and free green.
+   The id has a registered endpoint with dispatch=direct (vendor API key
+   present), so calls bypass OpenRouter and its fee; OpenRouter remains
+   the per-call fallback. */
+.ora-models-chip-direct {
+  background: rgba(60, 180, 160, 0.20);
+  color: rgba(110, 220, 200, 1);
 }
 
 .ora-models-chip-free {

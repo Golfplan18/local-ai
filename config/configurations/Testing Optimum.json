@@ -94,19 +94,14 @@
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
-    },
-    "image_generation": {
-      "image_generation": {
-        "primary": "aa-img:0413f436-9aa3-4f92-aa34-9432841c1830",
-        "fallback": [
-          "aa-img:db7a9087-0b50-41f8-ac41-fb48db3aa459"
-        ]
-      }
     }
   },
   "toggles": {
     "adversarial_diversity": true,
     "vision_only": true
   },
-  "_anthropic_trap_fix": "2026-06-01: stripped 9 direct-Anthropic (service=claude) fallback ids to honor the no-Anthropic-API guardrail. rag_isolation + toggles preserved."
+  "_anthropic_trap_fix": "2026-06-01: stripped 9 direct-Anthropic (service=claude) fallback ids to honor the no-Anthropic-API guardrail. rag_isolation + toggles preserved.",
+  "_notes": [
+    "2026-06-11: image_generation cell removed \u2014 it referenced AA media-leaderboard ids (aa-img:*) that Ora cannot invoke (image-gen routing not implemented). Re-add when the feature lands."
+  ]
 }
