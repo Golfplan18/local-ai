@@ -100,6 +100,36 @@ window.OraVisualCompiler._renderers.vegaLite = (function () {
     };
   }
 
+  // ── Default sizing for author-omitted width/height ──────────────────────────
+  /**
+   * The per-type schemas leave width/height optional. When the model omits
+   * them, Vega-Lite falls back to ~20px steps on discrete axes and small
+   * plots that cram axis labels and legends. Both consumers (the V3 visual
+   * panel's pan/zoom stage and the campaign rasterizer's scale-to-width)
+   * zoom to fit, so default to a canvas the content actually needs:
+   * discrete axes get a per-category step, continuous axes a fixed plot
+   * size. Author-specified sizes always win; composite specs (facet /
+   * concat / repeat) are left to the author untouched.
+   */
+  function _withDefaultSize(vlSpec) {
+    if (!vlSpec || typeof vlSpec !== 'object') return vlSpec;
+    if (!vlSpec.mark && !Array.isArray(vlSpec.layer)) return vlSpec;
+    const hasW = ('width' in vlSpec);
+    const hasH = ('height' in vlSpec);
+    if (hasW && hasH) return vlSpec;
+
+    const enc = vlSpec.encoding ||
+      (Array.isArray(vlSpec.layer) && vlSpec.layer[0] && vlSpec.layer[0].encoding) ||
+      {};
+    function discrete(ch) {
+      return !!ch && (ch.type === 'nominal' || ch.type === 'ordinal');
+    }
+    const out = Object.assign({}, vlSpec);   // never mutate the envelope's spec
+    if (!hasW) out.width  = discrete(enc.x) ? { step: 56 } : 480;
+    if (!hasH) out.height = discrete(enc.y) ? { step: 32 } : 300;
+    return out;
+  }
+
   // ── SVG post-processing ─────────────────────────────────────────────────────
   /**
    * Strip inline appearance attributes from a Vega-produced SVG string and
@@ -314,7 +344,7 @@ window.OraVisualCompiler._renderers.vegaLite = (function () {
     try {
       vlSpec = (type === 'tornado')
         ? _tornadoToVegaLite(envelope.spec)
-        : envelope.spec;
+        : _withDefaultSize(envelope.spec);
     } catch (err) {
       return Promise.resolve({
         svg: '',
@@ -343,7 +373,7 @@ window.OraVisualCompiler._renderers.vegaLite = (function () {
   }
 
   // ── Registration ───────────────────────────────────────────────────────────
-  const mod = { render, _internals: { _tornadoToVegaLite, _stripInlineStyles, _extractMark, QUANT_TYPES, ALLOWED_MARKS } };
+  const mod = { render, _internals: { _tornadoToVegaLite, _withDefaultSize, _stripInlineStyles, _extractMark, QUANT_TYPES, ALLOWED_MARKS } };
 
   if (window.OraVisualCompiler && typeof window.OraVisualCompiler.registerRenderer === 'function') {
     for (let i = 0; i < QUANT_TYPES.length; i++) {

@@ -284,6 +284,33 @@ window.OraVisualCompiler._renderers.achMatrix = (function () {
     return 0;
   }
 
+  // ── Content-aware sizing ─────────────────────────────────────────────────
+  /**
+   * _stepSizes(spec, scoring) → { stepX, stepY }
+   *
+   * Vega-Lite's default discrete step (~20px) crams real matrices: a
+   * 5-hypothesis × 3-evidence input lands in a ~224×135 viewBox where the
+   * Heuer score row overlaps itself and the legend crowds the plot. Both
+   * consumers (the V3 visual panel's pan/zoom stage and the campaign
+   * rasterizer's scale-to-width) zoom to fit, so the canvas should be as
+   * large as the content needs. Each column must carry the widest of: the
+   * hypothesis id on the top axis, a 2-char cell value, and the formatted
+   * score text in the tally row (post-processing strips inline styles, so
+   * the theme's ~12px label font is what has to fit).
+   */
+  function _stepSizes(spec, scoring) {
+    const CHAR_W = 8;            // ≈ theme 12px label font
+    let maxChars = 2;            // cell values are ≤ 2 chars
+    for (let j = 0; j < spec.hypotheses.length; j++) {
+      const h = spec.hypotheses[j];
+      maxChars = Math.max(maxChars, String(h.id).length);
+      maxChars = Math.max(maxChars, scoring.scores[h.id].toFixed(2).length);
+    }
+    const stepX = Math.min(220, Math.max(72, maxChars * CHAR_W + 28));
+    const stepY = 44;
+    return { stepX: stepX, stepY: stepY };
+  }
+
   // ── Vega-Lite spec construction ──────────────────────────────────────────
   /**
    * _buildVegaLiteSpec(spec, scoring) → Vega-Lite JSON
@@ -298,6 +325,9 @@ window.OraVisualCompiler._renderers.achMatrix = (function () {
    * fixed scale range. Other values take from palettes.diverging(5) mapped
    * by CELL_ORDER (II → C of RdBu cold, CC → hot). This gives visual
    * consistency with the "consistent vs inconsistent" gradient.
+   *
+   * Sizing comes from _stepSizes — explicit steps, never Vega-Lite's
+   * 20px default.
    */
   function _buildVegaLiteSpec(spec, scoring) {
     const hyps  = spec.hypotheses;
@@ -355,12 +385,16 @@ window.OraVisualCompiler._renderers.achMatrix = (function () {
     // text element). Here we just return the base spec + the score-row
     // overlay.
 
+    const steps = _stepSizes(spec, scoring);
+
     return {
       $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
       vconcat: [
         // Top plot: heatmap + value labels.
         {
           data: { values: rows },
+          width:  { step: steps.stepX },
+          height: { step: steps.stepY },
           layer: [
             {
               mark: { type: 'rect', tooltip: true },
@@ -408,10 +442,16 @@ window.OraVisualCompiler._renderers.achMatrix = (function () {
               format: '.2f',
             },
           },
+          width:  { step: steps.stepX },
           height: 28,
         },
       ],
       resolve: { scale: { x: 'shared' } },
+      // Extra right padding: Vega measures the legend title with its own
+      // ~10px font, but post-processing strips inline styles and the theme
+      // CSS re-applies a slightly wider face — without the cushion the
+      // title clips at the viewBox edge.
+      padding: { left: 8, top: 8, right: 24, bottom: 8 },
       config: {
         view: { stroke: null },
         axis: { grid: false },
@@ -861,6 +901,7 @@ window.OraVisualCompiler._renderers.achMatrix = (function () {
       _validateInvariants,
       _scoreHypotheses,
       _buildVegaLiteSpec,
+      _stepSizes,
       _cellContribution,
       CELL_ORDER,
       CREDIBILITY_WEIGHT,
