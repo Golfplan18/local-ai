@@ -64,6 +64,25 @@ class TestAACanonicalIdSynthesis(unittest.TestCase):
         m = _aa_entry("Qwen3-235B", "qwen3-235b-a22b", "alibaba")
         self.assertEqual(_aa_canonical_or_id(m), "qwen/qwen3-235b-a22b")
 
+    def test_kimi_remapped_to_moonshotai(self):
+        # AA rebranded Moonshot AI's creator entry to "Kimi"; OpenRouter
+        # keeps the moonshotai vendor prefix. Without the remap every
+        # Kimi model shipped aa_intelligence_index=None (2026-06-12).
+        m = _aa_entry("Kimi K2.6", "kimi-k2-6", "kimi")
+        self.assertEqual(_aa_canonical_or_id(m), "moonshotai/kimi-k2-6")
+
+    def test_kimi_dotted_or_id_matches_via_normalized_pass(self):
+        # The real OpenRouter id is dotted (kimi-k2.6); AA's slug is
+        # hyphenated (kimi-k2-6). End-to-end overlay must connect them
+        # through the canonical-normalized pass.
+        rows = [_aa_entry("Kimi K2.6", "kimi-k2-6", "kimi",
+                          intelligence_index=53.9)]
+        overlay = build_aa_overlay(rows, ["moonshotai/kimi-k2.6"])
+        self.assertIn("moonshotai/kimi-k2.6", overlay)
+        view = overlay["moonshotai/kimi-k2.6"]
+        self.assertEqual(view["match_type"], "canonical-normalized")
+        self.assertEqual(view["aa_intelligence_index"], 53.9)
+
     def test_missing_creator_returns_none(self):
         m = {"name": "X", "slug": "x"}
         self.assertIsNone(_aa_canonical_or_id(m))

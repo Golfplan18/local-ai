@@ -824,6 +824,13 @@ def map_arena_to_openrouter(
 _AA_CREATOR_SLUG_REMAP = {
     "meta": "meta-llama",
     "alibaba": "qwen",
+    # AA rebranded Moonshot AI's creator entry to "Kimi" (slug `kimi`);
+    # OpenRouter keeps the vendor prefix `moonshotai`. Without this
+    # remap every Kimi model misses all three overlay passes and ships
+    # with aa_intelligence_index=None — which also blanks the "% peak"
+    # column in the Models pane (chat % peak deliberately uses the AA
+    # scale only).
+    "kimi": "moonshotai",
 }
 
 
