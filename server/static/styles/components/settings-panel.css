@@ -115,12 +115,33 @@
   color: var(--text-muted, #A89F8A);
 }
 
-.ora-settings-field {
+.ora-settings-field,
+.ora-settings-row {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  /* The input column is capped: on the wide settings modal an
+     unconstrained 1fr stretched selects across ~1500px, which reads
+     terribly. ~760px total is the same comfortable measure the
+     Visual tab's two-column layout uses. */
+  grid-template-columns: 220px minmax(260px, 540px);
   gap: 12px;
   align-items: center;
   margin: 6px 0;
+}
+
+.ora-settings-row-label {
+  font-size: 13px;
+  color: var(--text-normal, #E8E0CC);
+}
+
+.ora-settings-row-input {
+  background: var(--background-secondary, #1F1A0F);
+  color: var(--text-normal, #E8E0CC);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
 }
 
 .ora-settings-field-label {
@@ -157,6 +178,9 @@
   font-size: 12px;
   color: var(--text-muted, #A89F8A);
   line-height: 1.45;
+  /* Same measure cap as .ora-settings-field — full-modal-width prose
+     is unreadable on the 1700px settings modal. */
+  max-width: 772px;
 }
 
 /* ── API key rows ──────────────────────────────────────────────── */
@@ -1956,11 +1980,22 @@
  * ──────────────────────────────────────────────────────────────────────*/
 
 .ora-visual-slots-pane {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(360px, 560px) minmax(420px, 760px);
+  gap: 14px 32px;
+  align-items: start;
   padding: 4px 2px 16px;
-  max-width: 720px;
+}
+
+.ora-visual-slots-pane > [data-section="header"] {
+  grid-column: 1 / -1;
+}
+
+/* Narrow viewports fall back to a single column. */
+@media (max-width: 1100px) {
+  .ora-visual-slots-pane {
+    grid-template-columns: minmax(320px, 720px);
+  }
 }
 
 .ora-vslots-header {
@@ -2046,20 +2081,14 @@
 .ora-vslots-advanced {
   border: 1px solid var(--background-modifier-border, #3A3022);
   border-radius: 6px;
-  padding: 8px 14px;
+  padding: 12px 14px;
 }
 
-.ora-vslots-advanced > summary {
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted, #A89F8A);
-  user-select: none;
-}
-
-.ora-vslots-advanced[open] > summary {
+.ora-vslots-advanced-title {
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-normal, #E8E0CC);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .ora-vslots-advanced-hint {
@@ -2080,7 +2109,7 @@
 
 .ora-vslots-row-top {
   display: grid;
-  grid-template-columns: 150px minmax(200px, 320px) 1fr;
+  grid-template-columns: 130px minmax(180px, 280px) 1fr;
   align-items: center;
   gap: 10px;
 }

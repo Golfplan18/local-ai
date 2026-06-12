@@ -11,10 +11,10 @@
  *   3. Fallback-chain editor: one removable chip per chain entry, an
  *      "+ add fallback" select offering unused providers, removal POSTs
  *      the shortened chain, adding appends to the end.
- *   4. Advanced disclosure is collapsed by default, holds the remaining
- *      slots with capability summaries, marks empty slots "off", and
- *      stays open across an edit re-render; image_extracts (different
- *      shape) never renders.
+ *   4. Advanced routing renders as an always-visible section (no
+ *      disclosure) holding the remaining slots with capability
+ *      summaries, marks empty slots "off", and survives an edit
+ *      re-render; image_extracts (different shape) never renders.
  *   5. A stored provider missing from the registry still renders,
  *      tagged "not in registry".
  *   6. Changing preferred POSTs a per-slot patch with the new value and
@@ -168,10 +168,12 @@ module.exports = {
              && vidAddIds[0] === 'openrouter:google/veo-3',
              vidAddIds.join(','));
 
-      // 4. Advanced disclosure
-      const adv = host.querySelector('details.ora-vslots-advanced');
-      record('advanced: disclosure present and collapsed',
-             !!adv && !adv.open);
+      // 4. Advanced routing — always-visible section, no disclosure
+      const adv = host.querySelector('.ora-vslots-advanced');
+      record('advanced: always-visible section (no details disclosure)',
+             !!adv && adv.tagName !== 'DETAILS'
+             && adv.textContent.indexOf('Advanced routing') !== -1,
+             adv && adv.tagName);
       const advRows = adv ? adv.querySelectorAll('.ora-vslots-row') : [];
       const advSlots = Array.from(advRows).map((r) => r.dataset.advRow);
       record('advanced: holds the remaining configured slots',
@@ -283,18 +285,16 @@ module.exports = {
              ]),
              JSON.stringify(patchAfterAdd.fallback));
 
-      // 4b. Advanced disclosure survives an edit re-render
-      const adv2 = host.querySelector('details.ora-vslots-advanced');
-      adv2.open = true;
-      adv2.dispatchEvent(new win.Event('toggle'));
+      // 4b. Advanced section survives an edit re-render with rows intact
       const editsSel = host.querySelector(
         '[data-slot="image_edits"][data-field="preferred"]');
       editsSel.value = 'replicate';
       editsSel.dispatchEvent(new win.Event('change'));
       await tick(); await tick();
-      const adv3 = host.querySelector('details.ora-vslots-advanced');
-      record('advanced: disclosure stays open across an edit re-render',
-             !!adv3 && adv3.open);
+      const adv3 = host.querySelector('.ora-vslots-advanced');
+      record('advanced: section intact after an edit re-render',
+             !!adv3 && adv3.querySelectorAll('.ora-vslots-row').length >= 3,
+             adv3 && String(adv3.querySelectorAll('.ora-vslots-row').length));
 
       // Status line reflects the save
       const status = host.querySelector('[data-role="status"]');
