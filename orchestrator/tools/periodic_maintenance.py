@@ -147,13 +147,14 @@ def task_1_orphan_cleanup(graph=None) -> TaskResult:
 
     The vault YAML is canonical, so a row that is still declared in a live
     note's frontmatter cannot be durably deleted here — any sync/rebuild
-    re-creates it. Dangling note-style targets are therefore REPORTED (the
-    fix belongs in the vault), while rows that are genuinely stale (source
-    note deleted, or its YAML edited) are removed by sync_from_vault()'s
-    diff. Engram/statement-keyed rows are exempt from orphan classification
-    inside find_orphan_targets(). The previous flow — delete ~1M "orphan"
-    rows one by one, then full-rebuild the 835 MB DB, re-inserting the same
-    rows — is gone.
+    re-creates it. Dangling targets are therefore REPORTED (the fix belongs
+    in the vault), while rows that are genuinely stale (source note deleted,
+    or its YAML edited) are removed by sync_from_vault()'s diff. Engram
+    claim-sentence targets are resolved to engram filename stems at scan
+    time (the claim is the target engram's H1), so a dangling target means
+    either a deleted/renamed note or a claim whose engram no longer exists.
+    The previous flow — delete ~1M "orphan" rows one by one, then
+    full-rebuild the 835 MB DB, re-inserting the same rows — is gone.
     """
     import time
     start = time.time()

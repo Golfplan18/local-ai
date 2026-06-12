@@ -184,11 +184,15 @@ class TestTask1Integration(Task1TestBase):
     def test_engram_rows_are_not_churned(self):
         from orchestrator.tools.relationship_graph import RelationshipGraph
 
+        # Engram one targets engram two by its claim sentence (= H1).
         self._write("Engrams/2024-01-01_claim.md", (
             "---\nrelationships:\n"
             "- type: supports\n  target: A claim sentence target\n"
             "  confidence: high\n"
-            "---\n\nBody.\n"))
+            "---\n\n# Claim one stands first\n"))
+        self._write("Engrams/2024-01-02_target.md", (
+            "---\ntype: engram\n"
+            "---\n\n# A claim sentence target\n"))
         graph = RelationshipGraph(
             db_path=os.path.join(self.tmp, "graph.db"), vault_path=self.vault)
         try:
@@ -198,6 +202,11 @@ class TestTask1Integration(Task1TestBase):
             self.assertEqual(result.stats["orphans_found"], 0)
             self.assertEqual(result.stats["rows_added"], 0)
             self.assertEqual(result.stats["rows_removed"], 0)
+            # The stored row is stem-keyed (claim resolved at build time).
+            rows = set(graph.conn.execute(
+                "SELECT source, target FROM relationships"))
+            self.assertEqual(
+                rows, {("2024-01-01_claim", "2024-01-02_target")})
         finally:
             graph.close()
 

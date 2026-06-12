@@ -31,8 +31,10 @@ from pathlib import Path
 # Vault folders whose notes use statement-keyed relationship targets:
 # engram/atomic notes reference other notes by their claim sentence
 # ("Anger impairs reasoning capacity and judgment quality"), not by
-# filename stem. Rows sourced from these folders can never be resolved
-# against filenames, so they are exempt from orphan classification.
+# filename stem. The claim IS the note's H1 heading, so at scan time the
+# walk builds a claim→stem map from these folders and resolves such
+# targets to filename stems — the compiled index is uniformly note-keyed.
+# Claims that resolve to no engram are reported as dangling targets.
 STATEMENT_KEYED_DIRS = frozenset({"Engrams"})
 
 # Directories excluded from every vault walk (sources, titles, orphan checks).
@@ -116,10 +118,11 @@ class RelationshipGraph:
                     yield root, filename
 
     @staticmethod
-    def _parse_relationships(filepath: str, source_title: str,
-                             errors: list[str]) -> set[tuple]:
+    def _parse_relationships_text(content: str, filepath: str,
+                                  errors: list[str]) -> set[tuple]:
         """Extract (target, type, confidence) tuples from a note's YAML
-        frontmatter. Returns an empty set when the note has none.
+        frontmatter (already-read file content). Returns an empty set when
+        the note has none.
 
         All three fields are coerced to str: YAML parses numeric confidences
         (engram similarity scores like 0.861) as floats and bare dates as
@@ -128,9 +131,6 @@ class RelationshipGraph:
         sync_from_vault never converges."""
         rows = set()
         try:
-            with open(filepath, "r") as f:
-                content = f.read()
-
             if not content.startswith("---"):
                 return rows
             end = content.find("---", 3)
@@ -154,6 +154,23 @@ class RelationshipGraph:
             errors.append(f"{filepath}: {e}")
         return rows
 
+    @staticmethod
+    def _extract_h1(content: str) -> str | None:
+        """First H1 heading of a note, skipping the YAML frontmatter block
+        (whose comment lines also start with '#'). For engrams the H1 IS the
+        claim sentence — the key other engrams' relationships target."""
+        body_start = 0
+        if content.startswith("---"):
+            end = content.find("\n---", 3)
+            if end != -1:
+                body_start = content.find("\n", end + 1)
+                if body_start == -1:
+                    return None
+        for line in content[body_start:].splitlines():
+            if line.startswith("# "):
+                return line[2:].strip()
+        return None
+
     _CONF_RANK = {"high": 3, "medium": 2, "low": 1}
 
     @classmethod
@@ -165,23 +182,73 @@ class RelationshipGraph:
         iteration order is hash-randomized) and sync never converges."""
         return a if (cls._CONF_RANK.get(a, 0), a) >= (cls._CONF_RANK.get(b, 0), b) else b
 
-    def _scan_vault_relationships(self, errors: list[str]) -> tuple[dict, int]:
+    def _scan_vault_relationships(self, errors: list[str]) -> tuple[dict, int, dict]:
         """One vault pass → ({source_title: {(target, type, confidence)}},
-        notes_scanned). Notes without relationships are not in the dict.
-        Duplicate (target, type) declarations — within one note or across
-        same-stem files — collapse to a single triple via _better_confidence,
-        matching the UNIQUE(source, target, type) constraint."""
-        desired_kv: dict[str, dict[tuple, str]] = {}
+        notes_scanned, resolution_stats). Notes without relationships are
+        not in the dict.
+
+        Claim-target resolution: engram relationships reference other
+        engrams by claim sentence (the target engram's H1), not by filename.
+        The walk collects a claim→filename-stem map from STATEMENT_KEYED_DIRS
+        notes; targets are then resolved to stems so the compiled index is
+        uniformly note-keyed (traversal, inverse lookups, and orphan checks
+        all key on filename stems). Precedence: a target that is already a
+        vault note title stays as-is; only otherwise is the claim map
+        consulted. Unresolved claims are kept verbatim (and will surface as
+        dangling targets in find_orphan_targets). Duplicate H1s resolve to
+        the lexicographically smallest stem — date-prefixed engram names
+        make that the earliest extraction — so resolution is deterministic.
+
+        Duplicate (target, type) declarations — within one note, across
+        same-stem files, or created by resolution itself (a claim target and
+        its stem declared side by side) — collapse to a single triple via
+        _better_confidence, matching the UNIQUE(source, target, type)
+        constraint."""
+        raw: list[tuple[str, set[tuple]]] = []
+        claim_to_stem: dict[str, str] = {}
+        titles: set[str] = set()
+        duplicate_claims = 0
         notes_scanned = 0
+
         for root, filename in self._walk_vault_md():
             source_title = filename[:-3]
+            titles.add(source_title)
             notes_scanned += 1
-            rows = self._parse_relationships(
-                os.path.join(root, filename), source_title, errors)
-            if not rows:
+            filepath = os.path.join(root, filename)
+            try:
+                with open(filepath, "r") as f:
+                    content = f.read()
+            except Exception as e:
+                errors.append(f"{filepath}: {e}")
                 continue
+
+            if os.path.basename(root) in STATEMENT_KEYED_DIRS:
+                h1 = self._extract_h1(content)
+                if h1:
+                    existing = claim_to_stem.get(h1)
+                    if existing is None:
+                        claim_to_stem[h1] = source_title
+                    else:
+                        duplicate_claims += 1
+                        if source_title < existing:
+                            claim_to_stem[h1] = source_title
+
+            rows = self._parse_relationships_text(content, filepath, errors)
+            if rows:
+                raw.append((source_title, rows))
+
+        # Resolution pass — needs the complete claim map and title set,
+        # so it runs after the walk.
+        desired_kv: dict[str, dict[tuple, str]] = {}
+        resolved_targets = 0
+        for source_title, rows in raw:
             kv = desired_kv.setdefault(source_title, {})
             for target, rtype, confidence in rows:
+                if target not in titles:
+                    stem = claim_to_stem.get(target)
+                    if stem is not None:
+                        target = stem
+                        resolved_targets += 1
                 key = (target, rtype)
                 if key in kv:
                     kv[key] = self._better_confidence(kv[key], confidence)
@@ -191,7 +258,12 @@ class RelationshipGraph:
             source: {(t, ty, c) for (t, ty), c in kv.items()}
             for source, kv in desired_kv.items()
         }
-        return desired, notes_scanned
+        resolution = {
+            "claims_indexed": len(claim_to_stem),
+            "resolved_targets": resolved_targets,
+            "duplicate_claims": duplicate_claims,
+        }
+        return desired, notes_scanned, resolution
 
     def build_from_vault(self) -> dict:
         """
@@ -204,7 +276,7 @@ class RelationshipGraph:
         self.conn.execute("DELETE FROM relationships")
 
         errors: list[str] = []
-        desired, notes_scanned = self._scan_vault_relationships(errors)
+        desired, notes_scanned, resolution = self._scan_vault_relationships(errors)
 
         relationships_indexed = 0
         for source_title, rows in desired.items():
@@ -230,6 +302,7 @@ class RelationshipGraph:
         return {
             "notes_scanned": notes_scanned,
             "relationships_indexed": relationships_indexed,
+            "resolution": resolution,
             "errors": errors
         }
 
@@ -246,7 +319,7 @@ class RelationshipGraph:
         Returns stats dict.
         """
         errors: list[str] = []
-        desired, notes_scanned = self._scan_vault_relationships(errors)
+        desired, notes_scanned, resolution = self._scan_vault_relationships(errors)
 
         db_sources = {row[0] for row in self.conn.execute(
             "SELECT DISTINCT source FROM relationships")}
@@ -301,6 +374,7 @@ class RelationshipGraph:
             "rows_added": rows_added,
             "rows_removed": rows_removed,
             "sources_removed": sources_removed,
+            "resolution": resolution,
             "errors": errors
         }
 
@@ -412,42 +486,45 @@ class RelationshipGraph:
 
     def find_orphan_targets(self) -> list[dict]:
         """
-        Find relationship targets that don't correspond to existing vault files.
+        Find relationship targets that resolve to nothing in the vault.
         Used by the orphan cleanup maintenance task.
 
-        Rows whose source note lives in a STATEMENT_KEYED_DIRS folder are
-        exempt: their targets are claim sentences by design (see the constant's
-        docstring), so "target is not a filename stem" is not an orphan signal
-        for them. Without the exemption, every engram row (~1M) classifies as
-        an orphan every week.
+        A target is valid if it is a vault note's filename stem OR a current
+        engram claim (the H1 of a STATEMENT_KEYED_DIRS note) — the latter
+        covers both rows the sync hasn't resolved to stems yet and YAML
+        claim references awaiting resolution. Everything else is a dangling
+        reference: a deleted/renamed note, or a claim whose engram no longer
+        exists.
         """
         valid_titles = set()
-        statement_sources = set()
+        valid_claims = set()
         for root, f in self._walk_vault_md():
             title = f[:-3]
             valid_titles.add(title)
             if os.path.basename(root) in STATEMENT_KEYED_DIRS:
-                statement_sources.add(title)
+                try:
+                    with open(os.path.join(root, f), "r") as fh:
+                        h1 = self._extract_h1(fh.read())
+                    if h1:
+                        valid_claims.add(h1)
+                except Exception:
+                    pass
 
         cur = self.conn.cursor()
-        cur.execute("DROP TABLE IF EXISTS temp._valid_titles")
-        cur.execute("DROP TABLE IF EXISTS temp._statement_sources")
-        cur.execute("CREATE TEMP TABLE _valid_titles (title TEXT PRIMARY KEY)")
-        cur.execute("CREATE TEMP TABLE _statement_sources (title TEXT PRIMARY KEY)")
-        cur.executemany("INSERT OR IGNORE INTO _valid_titles VALUES (?)",
+        cur.execute("DROP TABLE IF EXISTS temp._valid_targets")
+        cur.execute("CREATE TEMP TABLE _valid_targets (target TEXT PRIMARY KEY)")
+        cur.executemany("INSERT OR IGNORE INTO _valid_targets VALUES (?)",
                         ((t,) for t in valid_titles))
-        cur.executemany("INSERT OR IGNORE INTO _statement_sources VALUES (?)",
-                        ((t,) for t in statement_sources))
+        cur.executemany("INSERT OR IGNORE INTO _valid_targets VALUES (?)",
+                        ((c,) for c in valid_claims))
 
         try:
             rows = cur.execute("""
                 SELECT DISTINCT source, target, type FROM relationships
-                WHERE target NOT IN (SELECT title FROM _valid_titles)
-                  AND source NOT IN (SELECT title FROM _statement_sources)
+                WHERE target NOT IN (SELECT target FROM _valid_targets)
             """).fetchall()
         finally:
-            cur.execute("DROP TABLE IF EXISTS temp._valid_titles")
-            cur.execute("DROP TABLE IF EXISTS temp._statement_sources")
+            cur.execute("DROP TABLE IF EXISTS temp._valid_targets")
 
         return [{"source": r[0], "target": r[1], "type": r[2]} for r in rows]
 
@@ -530,6 +607,10 @@ if __name__ == "__main__":
         result = graph.build_from_vault()
         print(f"Notes scanned: {result['notes_scanned']}")
         print(f"Relationships indexed: {result['relationships_indexed']}")
+        res = result['resolution']
+        print(f"Claim targets resolved to stems: {res['resolved_targets']} "
+              f"({res['claims_indexed']} claims indexed, "
+              f"{res['duplicate_claims']} duplicate claims)")
         if result['errors']:
             print(f"Errors: {len(result['errors'])}")
             for err in result['errors'][:10]:
@@ -542,6 +623,10 @@ if __name__ == "__main__":
         print(f"Rows added: {result['rows_added']}")
         print(f"Rows removed: {result['rows_removed']} "
               f"(of which {result['sources_removed']} whole sources)")
+        res = result['resolution']
+        print(f"Claim targets resolved to stems: {res['resolved_targets']} "
+              f"({res['claims_indexed']} claims indexed, "
+              f"{res['duplicate_claims']} duplicate claims)")
         if result['errors']:
             print(f"Errors: {len(result['errors'])}")
             for err in result['errors'][:10]:
