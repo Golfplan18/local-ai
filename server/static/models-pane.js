@@ -768,7 +768,14 @@
     var parts = [];
     var isMedia = (model.category && model.category !== 'chat');
     var pct = _intelligencePeakPercent(model);
-    if (pct != null) parts.push(pct + '% peak');
+    if (pct != null) {
+      parts.push(pct + '% peak');
+    } else if (!isMedia && model.intelligence_score != null) {
+      // No AA coverage but Chatbot Arena has it — show the Elo rather
+      // than nothing. Different scale, so it's labeled, not folded
+      // into % peak.
+      parts.push('Elo ' + Math.round(model.intelligence_score));
+    }
     if (isMedia) {
       if (!opts.omitCost) {
         var pricing = model.pricing || {};
@@ -1626,14 +1633,16 @@
     switch (by) {
       case 'intelligence_desc':
         return arr.sort(function (a, b) {
-          // Use the same raw-intelligence helper the % peak chip uses
-          // so the visible chip and the sort order agree. Models with
-          // no AA index (chat) or no Arena Elo (image) get null →
-          // pushed to the bottom rather than sorted as if they were
-          // 90% peak via the Arena-Elo-fallback normalisation that
-          // _normalizedIntelligence applies for the slider.
-          var ai = _rawIntelligence(a);
-          var bi = _rawIntelligence(b);
+          // Rank by _normalizedIntelligence — AA index when present,
+          // Arena Elo normalized onto the same 0-100 scale otherwise.
+          // Arena-only models used to fall to the unranked tail even
+          // though we hold a score for them (GPT Chat Latest at Elo
+          // 1429, the whole Mistral Medium line, ...); the row chip
+          // shows "Elo N" for them so the visible number and the sort
+          // order still agree. Truly score-less models get null →
+          // bottom.
+          var ai = _normalizedIntelligence(a);
+          var bi = _normalizedIntelligence(b);
           if (ai == null) ai = -Infinity;
           if (bi == null) bi = -Infinity;
           return bi - ai;
@@ -1917,7 +1926,7 @@
       case 'intelligence_desc':
         return {
           label: 'No intelligence score',
-          pred: function (m) { return _rawIntelligence(m) == null; },
+          pred: function (m) { return _normalizedIntelligence(m) == null; },
         };
       case 'cost_asc':
         return {
