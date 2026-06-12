@@ -10,6 +10,11 @@ token usage, and cost:
   premium      — Ora server, campaign-premium configuration (gear 4)
   qwen9b       — Ora server, campaign-qwen9b (qwen/qwen3.5-9b in every slot)
   optimum      — Ora server, campaign-optimum configuration (gear 4)
+  optimum-plus — campaign-optimum with ONE upgraded cell: the flagship in
+                 the consolidation slot (step 7). Data lane for the
+                 "spend your money on the consolidator" hypothesis
+                 (experiment 2026-06-12); whether it ships as a preset
+                 default is decided AFTER the sweep.
   single-pass  — ONE bare API call to the flagship model, no harness.
                  The flagship is whatever the premium configuration's
                  big-1 slot picked (auto-selected by the same picker
@@ -80,8 +85,9 @@ ORA_PIPELINES = {
     "premium": "campaign-premium",
     "qwen9b": "campaign-qwen9b",
     "optimum": "campaign-optimum",
+    "optimum-plus": "campaign-optimum-plus",
 }
-ALL_PIPELINES = ["premium", "qwen9b", "optimum", "single-pass"]
+ALL_PIPELINES = ["premium", "qwen9b", "optimum", "optimum-plus", "single-pass"]
 
 # Same pattern orchestrator/visual_adversarial.py uses to find envelopes.
 VISUAL_FENCE = re.compile(r"```ora-visual\s*\n(.*?)\n```", re.DOTALL)
@@ -401,6 +407,27 @@ def build_subscription_premium() -> dict:
     }
 
 
+def build_optimum_plus(optimum_config: dict, consolidator_id: str) -> dict:
+    """Single-cell variant of campaign-optimum: the consolidation primary
+    (step 7 — the one call that reads both adversarial streams and writes
+    what the user sees) becomes the flagship. Fallbacks are emptied so a
+    throttled flagship fails loudly instead of silently restoring the
+    optimum model — the comparison must never quietly become a no-op."""
+    import copy
+    cfg = copy.deepcopy(optimum_config)
+    cell = cfg["cells"]["post_analysis"]["consolidation"]
+    cell["primary"] = consolidator_id
+    cell["fallback"] = []
+    cfg["description"] = (
+        "Optimum+ — the campaign-optimum configuration with ONE upgraded "
+        f"cell: post_analysis.consolidation → {consolidator_id}. Captures "
+        "whether a premium consolidator alone lifts the cheap pipeline's "
+        "deliverable (experiment 2026-06-12: 11-0-1 for the variant at "
+        "~+$0.25/run). Every other cell is byte-identical to "
+        "campaign-optimum.")
+    return cfg
+
+
 def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict:
     """Build the three campaign configurations + the pricing snapshot.
 
@@ -464,6 +491,34 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
             "pricing": {m: pricing.get(m) for m in set(filter(None, models.values()))},
         }
         print(f"[bake] {campaign_name}: {models}")
+
+    # campaign-optimum-plus — optimum with the flagship in the ONE cell the
+    # 2026-06-12 experiment showed concentrates intelligence-per-dollar:
+    # consolidation (step 7). Captured as its own lane so the full-sweep
+    # data exists BEFORE deciding whether the optimum preset default
+    # changes (n=12 verdict: 11-0-1 for the variant, ~+$0.25/run).
+    consolidator_id = snapshot["configs"]["campaign-premium"]["models"]["big1"]
+    for spec in CLAUDE_CODE_ENDPOINTS:
+        if consolidator_id == spec["id"]:
+            # The optimum lanes stay metered-API reproducible — the
+            # consolidator uses the flagship's API twin, not the
+            # subscription endpoint.
+            consolidator_id = spec["api_equivalent"]
+            break
+    opt_plus = build_optimum_plus(
+        json.loads((CONFIGURATIONS_DIR / "campaign-optimum.json").read_text()),
+        consolidator_id)
+    _stamp_campaign_fields(opt_plus, "campaign-optimum-plus",
+                           source=f"optimum+consolidator:{consolidator_id}")
+    (CONFIGURATIONS_DIR / "campaign-optimum-plus.json").write_text(
+        json.dumps(opt_plus, indent=2) + "\n")
+    models_plus = _config_models(opt_plus)
+    plus_ids = set(filter(None, models_plus.values())) | {consolidator_id}
+    snapshot["configs"]["campaign-optimum-plus"] = {
+        "models": dict(models_plus, consolidator=consolidator_id),
+        "pricing": {m: pricing.get(m) for m in plus_ids},
+    }
+    print(f"[bake] campaign-optimum-plus: optimum + consolidation→{consolidator_id}")
 
     # campaign-qwen9b — one model, every cell, no fallbacks.
     cells: dict = {}
@@ -1046,13 +1101,14 @@ def run_sweep(args) -> int:
             cfg = ORA_PIPELINES.get(p)
             if cfg and not (CONFIGURATIONS_DIR / f"{cfg}.json").exists():
                 raise SystemExit(f"missing {cfg}.json — run bake-configs")
-        # Subscription endpoints live outside the catalog: make sure the
-        # running server's router has loaded them (a bake that ran after
-        # server start left the in-memory router stale — observed live:
-        # 'claude-code:… not registered in routing-config').
-        if (snapshot.get("premium_mode") == "subscription"
-                and "premium" in pipelines):
-            _poke_router_reload(args.server)
+        # The server's Router singleton caches routing-config AND named
+        # configurations from process start / first use. Campaign configs
+        # baked or edited after that are invisible until a reload — twice
+        # observed live: 'claude-code:… not registered' (subscription
+        # endpoints), and a whole-lane fidelity wipeout where the server
+        # executed a previous bake's optimum models against the current
+        # file's expected set. Always poke before any Ora-lane sweep.
+        _poke_router_reload(args.server)
 
     # Fidelity expectations per Ora pipeline: only these models may
     # record usage during a run. Loaded once up front so a config edit
@@ -1405,6 +1461,7 @@ DOC_PIPELINE_ORDER = [
     ("premium", "Premium (Ora, gear 4)"),
     ("qwen9b", "Qwen 3.5 9B (Ora, gear 4 — single 9B model)"),
     ("optimum", "Optimum (Ora, gear 4)"),
+    ("optimum-plus", "Optimum+ (Ora, gear 4 — flagship consolidator)"),
     ("single-pass", "Single-pass flagship (bare model, no harness)"),
 ]
 

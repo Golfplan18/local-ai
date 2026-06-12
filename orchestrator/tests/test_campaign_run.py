@@ -360,6 +360,44 @@ class TestFidelityGate(unittest.TestCase):
         self.assertEqual(exp, {"a/x", "b/y"})  # fallbacks excluded
 
 
+class TestOptimumPlus(unittest.TestCase):
+    OPTIMUM = {
+        "name": "campaign-optimum",
+        "cells": {
+            "utility": {"step1_cleanup": {"primary": "a/small", "fallback": ["a/fb"]}},
+            "analysis": {"gear4": {"depth": {"primary": "a/big", "fallback": []},
+                                   "breadth": {"primary": "b/big", "fallback": []}}},
+            "post_analysis": {
+                "consolidation": {"primary": "a/big", "fallback": ["a/fb"]},
+                "verification": {"primary": "a/big", "fallback": []},
+                "formatter": {"primary": "a/big", "fallback": []},
+            },
+        },
+    }
+
+    def test_single_cell_diff(self):
+        plus = campaign.build_optimum_plus(self.OPTIMUM, "anthropic/claude-opus-4.8")
+        # Only consolidation changes; fallbacks emptied (throttle fails loudly).
+        self.assertEqual(plus["cells"]["post_analysis"]["consolidation"],
+                         {"primary": "anthropic/claude-opus-4.8", "fallback": []})
+        self.assertEqual(plus["cells"]["post_analysis"]["verification"],
+                         self.OPTIMUM["cells"]["post_analysis"]["verification"])
+        self.assertEqual(plus["cells"]["analysis"], self.OPTIMUM["cells"]["analysis"])
+        self.assertEqual(plus["cells"]["utility"], self.OPTIMUM["cells"]["utility"])
+
+    def test_source_config_not_mutated(self):
+        before = json.dumps(self.OPTIMUM, sort_keys=True)
+        campaign.build_optimum_plus(self.OPTIMUM, "x/y")
+        self.assertEqual(json.dumps(self.OPTIMUM, sort_keys=True), before)
+
+    def test_lane_registered(self):
+        self.assertEqual(campaign.ORA_PIPELINES.get("optimum-plus"),
+                         "campaign-optimum-plus")
+        self.assertIn("optimum-plus", campaign.ALL_PIPELINES)
+        self.assertIn("optimum-plus",
+                      [p for p, _ in campaign.DOC_PIPELINE_ORDER])
+
+
 class TestSinglePassClaudeCode(unittest.TestCase):
     EP = {"id": "claude-code:claude-opus-4.8", "service": "claude-code",
           "model_id": "claude-opus-4-8"}
