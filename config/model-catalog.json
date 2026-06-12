@@ -1,6 +1,6 @@
 {
   "_schema_version": 1,
-  "_refreshed_at": "2026-06-12T20:49:22.731203+00:00",
+  "_refreshed_at": "2026-06-12T21:00:55.197894+00:00",
   "_sources": {
     "openrouter": {
       "url": "https://openrouter.ai/api/v1/models",
@@ -8,7 +8,7 @@
     },
     "model_registry": {
       "path": "config/model-registry.json",
-      "enriched_count": 183,
+      "enriched_count": 223,
       "skipped": false
     }
   },
@@ -590,7 +590,7 @@
         "output_per_m": 2.5,
         "blended_per_m": 1.5625
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 53.1964261580552,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -615,7 +615,7 @@
         "output_per_m": 0.09999999999999999,
         "blended_per_m": 0.0625
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 12.3806003642436,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "small",
@@ -642,7 +642,7 @@
         "output_per_m": 7.5,
         "blended_per_m": 3.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 39.2258230149669,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -1487,7 +1487,7 @@
         "output_per_m": 3.08,
         "blended_per_m": 1.505
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 51.4080747547317,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -1647,7 +1647,7 @@
         "output_per_m": 0.85,
         "blended_per_m": 0.3775
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 31.8708686236368,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -1701,7 +1701,7 @@
         "output_per_m": 2.5,
         "blended_per_m": 1.5625
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 49.3319719150515,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -1780,7 +1780,7 @@
         "output_per_m": 1.2,
         "blended_per_m": 0.5249999999999999
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 43.8334653857388,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -1912,7 +1912,7 @@
         "output_per_m": 0.6,
         "blended_per_m": 0.26249999999999996
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 10.1787990162746,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -1937,7 +1937,7 @@
         "output_per_m": 4.0,
         "blended_per_m": 1.9
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 46.7579895566062,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -2363,7 +2363,7 @@
         "output_per_m": 0.12,
         "blended_per_m": 0.0525
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 10.4928483099187,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "midsize",
@@ -2604,7 +2604,7 @@
         "output_per_m": 1.92,
         "blended_per_m": 0.9299999999999999
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 49.769583495738,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -2858,7 +2858,7 @@
         "output_per_m": 0.0,
         "blended_per_m": 0.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 8.08222243374262,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "small",
@@ -2883,7 +2883,7 @@
         "output_per_m": 0.0,
         "blended_per_m": 0.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 8.08222243374262,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "small",
@@ -2962,7 +2962,7 @@
         "output_per_m": 0.39999999999999997,
         "blended_per_m": 0.145
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 30.1452199672089,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -3092,7 +3092,7 @@
         "output_per_m": 1.75,
         "blended_per_m": 0.7375
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 42.1079898832385,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -3355,7 +3355,7 @@
         "output_per_m": 0.8999999999999999,
         "blended_per_m": 0.44999999999999996
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 17.1004453717488,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -3459,7 +3459,7 @@
         "output_per_m": 2.5,
         "blended_per_m": 0.85
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 18.0299399733869,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -3564,7 +3564,7 @@
         "output_per_m": 1.5,
         "blended_per_m": 0.75
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 13.0330824386275,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -3691,7 +3691,7 @@
         "output_per_m": 0.5,
         "blended_per_m": 0.2375
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 12.0900869394889,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "midsize",
@@ -3900,7 +3900,7 @@
         "output_per_m": 12.5,
         "blended_per_m": 5.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 19.0143050314986,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -4081,7 +4081,7 @@
         "output_per_m": 0.112,
         "blended_per_m": 0.04075
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 7.67253267241308,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -4451,7 +4451,7 @@
         "output_per_m": 1.74,
         "blended_per_m": 0.7575000000000001
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 30.2421925478269,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -5062,7 +5062,7 @@
         "output_per_m": 2.0,
         "blended_per_m": 0.8
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 21.2548565635075,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -5088,7 +5088,7 @@
         "output_per_m": 1.7999999999999998,
         "blended_per_m": 0.8999999999999999
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 12.740282388384,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -5113,7 +5113,7 @@
         "output_per_m": 8.0,
         "blended_per_m": 3.5
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 10.8782892545569,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -5449,7 +5449,7 @@
         "output_per_m": 2.2,
         "blended_per_m": 1.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 26.4189565824233,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -5474,7 +5474,7 @@
         "output_per_m": 0.85,
         "blended_per_m": 0.30625
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 23.1661116874349,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -5831,7 +5831,7 @@
         "output_per_m": 0.19999999999999998,
         "blended_per_m": 0.10624999999999998
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 15.0667012782728,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "midsize",
@@ -6100,7 +6100,7 @@
         "output_per_m": 2.0,
         "blended_per_m": 0.8
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 18.7575195866019,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -6622,7 +6622,7 @@
         "output_per_m": 0.5549999999999999,
         "blended_per_m": 0.40199999999999997
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 14.4821683759619,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "midsize",
@@ -6774,7 +6774,7 @@
         "output_per_m": 0.19999999999999998,
         "blended_per_m": 0.125
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 9.52342611242975,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -6928,7 +6928,7 @@
         "output_per_m": 0.6,
         "blended_per_m": 0.3
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 12.1289835244553,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -7486,7 +7486,7 @@
         "output_per_m": 0.24,
         "blended_per_m": 0.105
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 12.6513340156618,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -7511,7 +7511,7 @@
         "output_per_m": 0.14,
         "blended_per_m": 0.061250000000000006
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 10.2682692357222,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -7537,7 +7537,7 @@
         "output_per_m": 3.1999999999999997,
         "blended_per_m": 1.4
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 13.4792010386582,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -7590,7 +7590,7 @@
         "output_per_m": 6.0,
         "blended_per_m": 3.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 13.0330824386275,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,
@@ -8017,7 +8017,7 @@
         "output_per_m": 0.7,
         "blended_per_m": 0.7
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 10.6473831583236,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "large",
@@ -8042,7 +8042,7 @@
         "output_per_m": 0.0,
         "blended_per_m": 0.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 17.6290776415101,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "large",
@@ -8067,7 +8067,7 @@
         "output_per_m": 1.0,
         "blended_per_m": 1.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 17.6290776415101,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": "large",
@@ -8506,7 +8506,7 @@
         "output_per_m": 6.0,
         "blended_per_m": 3.0
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 9.90917085347575,
       "aa_blended_per_m": null,
       "family_tier": null,
       "size_bucket": null,

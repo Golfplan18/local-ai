@@ -64,6 +64,23 @@ class TestAACanonicalIdSynthesis(unittest.TestCase):
         m = _aa_entry("Qwen3-235B", "qwen3-235b-a22b", "alibaba")
         self.assertEqual(_aa_canonical_or_id(m), "qwen/qwen3-235b-a22b")
 
+    def test_renamed_creators_remap_to_or_vendors(self):
+        # 2026-06-12 audit: AA's creator slugs drifted from OpenRouter's
+        # vendor prefixes for a dozen vendors (Mistral, xAI/Grok,
+        # Z-AI/GLM, AWS/Nova, ...). Each left its whole line-up with
+        # aa_intelligence_index=None.
+        cases = {
+            "mistral": ("mistral-medium-3-5", "mistralai/mistral-medium-3-5"),
+            "xai": ("grok-4-3", "x-ai/grok-4-3"),
+            "zai": ("glm-4-6v", "z-ai/glm-4-6v"),
+            "aws": ("nova-premier", "amazon/nova-premier"),
+            "nous-research": ("hermes-4-405b", "nousresearch/hermes-4-405b"),
+        }
+        for creator, (slug, expected) in cases.items():
+            m = _aa_entry(slug, slug, creator)
+            self.assertEqual(_aa_canonical_or_id(m), expected,
+                             f"creator {creator!r}")
+
     def test_kimi_remapped_to_moonshotai(self):
         # AA rebranded Moonshot AI's creator entry to "Kimi"; OpenRouter
         # keeps the moonshotai vendor prefix. Without the remap every

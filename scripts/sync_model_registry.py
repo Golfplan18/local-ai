@@ -831,6 +831,24 @@ _AA_CREATOR_SLUG_REMAP = {
     # column in the Models pane (chat % peak deliberately uses the AA
     # scale only).
     "kimi": "moonshotai",
+    # 2026-06-12 audit (the Kimi report turned out to be one of many):
+    # every AA creator slug was checked against the live OpenRouter
+    # vendor set; these are all the renames with an OR counterpart.
+    # Unmapped creators (azure, databricks, lg, naver, ...) have no
+    # OpenRouter presence to enrich.
+    "mistral": "mistralai",
+    "xai": "x-ai",
+    "zai": "z-ai",
+    "aws": "amazon",
+    "ai2": "allenai",
+    "ai21-labs": "ai21",
+    "nous-research": "nousresearch",
+    "ibm": "ibm-granite",
+    "liquidai": "liquid",
+    "reka-ai": "rekaai",
+    "arcee": "arcee-ai",
+    "bytedance_seed": "bytedance-seed",
+    "kwaikat": "kwaipilot",
 }
 
 
