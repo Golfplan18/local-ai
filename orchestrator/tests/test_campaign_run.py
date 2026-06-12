@@ -346,6 +346,24 @@ class TestFidelityGate(unittest.TestCase):
         res2 = campaign.verify_trace_fidelity(tmp, self.EXPECTED)
         self.assertIn("no_usage", {v["kind"] for v in res2["violations"]})
 
+    def test_missing_subscription_primary_fails(self):
+        # optimum-plus class of drift: a throttled subscription consolidator
+        # falls back to a model that is a LEGITIMATE primary elsewhere in
+        # the config — invisible to the unexpected-model check. The
+        # subscription primary's absence from the census must reject.
+        expected = {"qwen/big", "google/big2", "claude-code:claude-opus-4.8"}
+        t = self._trace([self._rec("qwen/big"), self._rec("google/big2")])
+        res = campaign.verify_trace_fidelity(t, expected)
+        self.assertFalse(res["ok"])
+        self.assertIn("required_model_missing",
+                      {v["kind"] for v in res["violations"]})
+
+    def test_present_subscription_primary_passes(self):
+        expected = {"qwen/big", "claude-code:claude-opus-4.8"}
+        t = self._trace([self._rec("qwen/big"),
+                         self._rec("claude-code:claude-opus-4.8")])
+        self.assertTrue(campaign.verify_trace_fidelity(t, expected)["ok"])
+
     def test_expected_primaries_collects_all_cells(self):
         with mock.patch.object(campaign, "CONFIGURATIONS_DIR",
                                Path(tempfile.mkdtemp())) as _:
@@ -375,11 +393,13 @@ class TestOptimumPlus(unittest.TestCase):
         },
     }
 
-    def test_single_cell_diff(self):
-        plus = campaign.build_optimum_plus(self.OPTIMUM, "anthropic/claude-opus-4.8")
-        # Only consolidation changes; fallbacks emptied (throttle fails loudly).
+    def test_single_field_diff_with_fallbacks_preserved(self):
+        plus = campaign.build_optimum_plus(self.OPTIMUM, "claude-code:claude-opus-4.8")
+        # Exact duplicate: ONLY the consolidation primary changes; the
+        # fallback chain is preserved (user spec 2026-06-12).
         self.assertEqual(plus["cells"]["post_analysis"]["consolidation"],
-                         {"primary": "anthropic/claude-opus-4.8", "fallback": []})
+                         {"primary": "claude-code:claude-opus-4.8",
+                          "fallback": ["a/fb"]})
         self.assertEqual(plus["cells"]["post_analysis"]["verification"],
                          self.OPTIMUM["cells"]["post_analysis"]["verification"])
         self.assertEqual(plus["cells"]["analysis"], self.OPTIMUM["cells"]["analysis"])
