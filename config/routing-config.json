@@ -1920,9 +1920,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.67,
-        "output_per_m": 3.39,
-        "blended_per_m": 1.35
+        "input_per_m": 0.6799999999999999,
+        "output_per_m": 3.41,
+        "blended_per_m": 1.3625
       },
       "tier": "flagship",
       "is_free": false,
@@ -2416,9 +2416,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.67,
-        "output_per_m": 3.39,
-        "blended_per_m": 1.35
+        "input_per_m": 0.6799999999999999,
+        "output_per_m": 3.41,
+        "blended_per_m": 1.3625
       },
       "tier": "",
       "is_free": false,
@@ -2598,9 +2598,9 @@
         "retrieval_approach": "pre-assembled"
       },
       "openrouter_pricing": {
-        "input_per_m": 0.28900000000000003,
-        "output_per_m": 2.4,
-        "blended_per_m": 0.81675
+        "input_per_m": 0.28850000000000003,
+        "output_per_m": 3.17,
+        "blended_per_m": 1.008875
       },
       "tier": "",
       "is_free": false,
@@ -11479,6 +11479,32 @@
         "retrieval_approach": "pre-assembled"
       },
       "_note": "Subscription execution via the local Claude Code CLI (claude -p). Zero marginal API cost; campaign cost tables price its tokens at the API-equivalent rate."
+    },
+    {
+      "id": "moonshotai/kimi-k2.7-code",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "moonshotai",
+      "display_name": "MoonshotAI: Kimi K2.7 Code",
+      "context_window": 262144,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "openrouter_pricing": {
+        "input_per_m": 0.95,
+        "output_per_m": 4.0,
+        "blended_per_m": 1.7125
+      },
+      "tier": "flagship",
+      "is_free": false,
+      "service": "openrouter",
+      "model_id": "moonshotai/kimi-k2.7-code",
+      "dispatch": "openrouter"
     }
   ],
   "buckets": {

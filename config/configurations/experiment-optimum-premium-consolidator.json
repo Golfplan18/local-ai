@@ -1,7 +1,7 @@
 {
-  "name": "optimum",
-  "description": "Auto-populated from preset 'optimum' on 2026-06-12T16:18:34.591059+00:00.",
-  "preset_lineage": "optimum",
+  "name": "experiment-optimum-premium-consolidator",
+  "description": "EXPERIMENT (2026-06-12): exact copy of campaign-optimum with ONE change \u2014 post_analysis.consolidation.primary = anthropic/claude-opus-4.8 (fallbacks emptied for fidelity). Tests whether a premium model in the consolidation slot alone lifts output quality. See data/campaign/experiments/premium-consolidator/.",
+  "preset_lineage": "campaign",
   "cells": {
     "utility": {
       "step1_cleanup": {
@@ -29,8 +29,8 @@
         "primary": "qwen/qwen3.5-plus-20260420",
         "fallback": [
           "qwen/qwen3.5-plus-02-15",
-          "anthropic/claude-sonnet-4.6",
-          "anthropic/claude-opus-4.5"
+          "anthropic/claude-opus-4.5",
+          "anthropic/claude-sonnet-4.6"
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
@@ -60,15 +60,15 @@
           "primary": "qwen/qwen3.5-plus-20260420",
           "fallback": [
             "qwen/qwen3.5-plus-02-15",
-            "anthropic/claude-sonnet-4.6",
-            "anthropic/claude-opus-4.5"
+            "anthropic/claude-opus-4.5",
+            "anthropic/claude-sonnet-4.6"
           ],
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         },
         "breadth": {
-          "primary": "anthropic/claude-sonnet-4.6",
+          "primary": "anthropic/claude-opus-4.5",
           "fallback": [
-            "anthropic/claude-opus-4.5",
+            "anthropic/claude-sonnet-4.6",
             "anthropic/claude-opus-4.6-fast",
             "anthropic/claude-opus-4.6"
           ],
@@ -78,11 +78,8 @@
     },
     "post_analysis": {
       "consolidation": {
-        "primary": "qwen/qwen3.6-plus",
-        "fallback": [
-          "google/gemini-3.1-pro-preview-customtools",
-          "google/gemini-3.1-pro-preview"
-        ],
+        "primary": "anthropic/claude-opus-4.8",
+        "fallback": [],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       },
       "verification": {
@@ -113,5 +110,9 @@
   "toggles": {
     "adversarial_diversity": true,
     "vision_only": true
-  }
+  },
+  "rag_isolation": "web_only",
+  "_rag_isolation_note": "CAMPAIGN-RAG-BYPASS \u2014 campaign configurations run with rag_isolation=web_only so captures reflect a clean install (no vault/conversation RAG), reproducible by third parties.",
+  "_campaign_source": "experiment:campaign-optimum+opus-4.8-consolidator",
+  "_campaign_baked_at": "2026-06-12T15:25:11+00:00"
 }

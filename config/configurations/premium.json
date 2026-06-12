@@ -1,6 +1,6 @@
 {
   "name": "premium",
-  "description": "Auto-populated from preset 'premium' on 2026-06-12T15:25:11.848702+00:00.",
+  "description": "Auto-populated from preset 'premium' on 2026-06-12T16:18:34.593082+00:00.",
   "preset_lineage": "premium",
   "cells": {
     "utility": {
@@ -74,7 +74,7 @@
           "fallback": [
             "google/gemini-2.5-flash-image",
             "google/gemini-2.5-flash",
-            "openai/gpt-4.1-nano"
+            "google/gemini-3-flash-preview"
           ],
           "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
         }
