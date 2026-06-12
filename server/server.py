@@ -9753,6 +9753,23 @@ def openrouter_refresh():
         return json.dumps({"ok": False, "error": str(e)}), 500
 
 
+def _openrouter_price_suffix(pricing: dict | None) -> str:
+    """Format the per-token price tag appended to an OpenRouter model's
+    display name in the capability-provider picker.
+
+    Returns "" when the catalog has no real token pricing — media models
+    (video especially) bill per output second / per image through
+    OpenRouter, and the public models API reports their prompt/completion
+    rates as a literal 0. Rendering that as "($0.0/$0.0/M)" reads as
+    "free", which is exactly wrong, so zero/absent pricing shows nothing.
+    """
+    p = pricing or {}
+    prompt, completion = p.get("prompt"), p.get("completion")
+    if not prompt and not completion:
+        return ""
+    return f"  (${prompt}/${completion}/M)"
+
+
 @app.route("/api/capability/providers")
 def capability_providers_get():
     """Return the set of providers registered (or registerable) per
@@ -9842,10 +9859,7 @@ def capability_providers_get():
     def _enrich_openrouter_entry(pid: str, slot: str) -> dict:
         model_id = pid.split(":", 1)[1] if ":" in pid else pid
         m = _or_lookup.get(model_id, {})
-        p = m.get("pricing_per_million", {}) or {}
-        price = ""
-        if p.get("prompt") is not None and p.get("completion") is not None:
-            price = f"  (${p['prompt']}/${p['completion']}/M)"
+        price = _openrouter_price_suffix(m.get("pricing_per_million"))
         reason = "" if has_or_key else "set OpenRouter API key in Settings → External APIs"
         # Video gens often run minutes and cost real money — note that.
         if slot == "video_generates" and has_or_key:

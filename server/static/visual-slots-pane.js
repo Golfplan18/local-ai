@@ -10,16 +10,25 @@
  * they inherit their routing-config defaults silently.
  *
  * Data sources:
- *   GET /config/routing/slots      — current slots block (routing-config.json)
- *   GET /api/capability/providers  — invokable providers per slot
- *                                    (registry-backed: OpenRouter
- *                                    image/video models + local-diffusers
- *                                    + stability / replicate)
+ *   GET /config/routing/slots            — current slots block (routing-config.json)
+ *   GET /api/capability/providers        — invokable providers per slot
+ *                                          (registry-backed: OpenRouter
+ *                                          image/video models + local-diffusers
+ *                                          + stability / replicate)
+ *   GET /static/config/capabilities.json — slot contracts; the `summary`
+ *                                          field captions each Advanced row
  *
  * Edits autosave per slot via POST /config/routing/slots, which merges
  * {preferred, fallback} into the named slot without touching the rest
  * of the slots block (the schema is unchanged — this pane is a UI-only
  * simplification).
+ *
+ * Every slot (primary cards and Advanced rows alike) gets the same
+ * editing surface: a preferred-model select plus a fallback-chain
+ * editor (removable chips + an "add fallback" select). When the
+ * selected provider isn't usable yet, the row explains why (the
+ * provider registry's `reason` string) and, for API-key problems,
+ * offers a jump to Settings → External APIs.
  *
  * Public surface:
  *   OraVisualSlotsPane.init(hostEl)  — mount into a container element
@@ -35,6 +44,8 @@
   var _hostEl = null;
   var _slots = null;        // slots block from /config/routing/slots
   var _providers = null;    // per-slot provider lists from /api/capability/providers
+  var _summaries = null;    // slot → one-line summary from capabilities.json
+  var _advancedOpen = false; // <details> state, preserved across re-renders
 
   // The two slots users actually configure. Everything else inherits
   // defaults and lives under the Advanced disclosure.
@@ -50,7 +61,10 @@
       id: 'video_generates',
       label: 'Video generation',
       hint: 'Video jobs run async — submission returns immediately, '
-          + 'generation takes 30s–10min on the provider.',
+          + 'generation takes 30s–10min on the provider. OpenRouter bills '
+          + 'video per output second and does not publish those rates '
+          + 'through its API, so no price tag is shown here — check '
+          + 'openrouter.ai for current per-video costs.',
     },
   ];
 
@@ -75,6 +89,7 @@
       + '<div data-section="header"></div>'
       + '<div data-section="primary"></div>'
       + '<div data-section="advanced"></div>';
+    _advancedOpen = false;
     _renderHeader('Loading…');
     _loadAll();
   }
@@ -87,6 +102,7 @@
     _hostEl = null;
     _slots = null;
     _providers = null;
+    _summaries = null;
   }
 
   // ── data load ────────────────────────────────────────────────────────────
@@ -99,9 +115,19 @@
       // the currently-stored values as the only options.
       fetch('/api/capability/providers').then(_json)
         .catch(function () { return { slots: {} }; }),
+      // Slot contracts caption the Advanced rows; absence is cosmetic.
+      fetch('/static/config/capabilities.json').then(_json)
+        .catch(function () { return { slots: {} }; }),
     ]).then(function (resp) {
       _slots = (resp[0] && resp[0].slots) || {};
       _providers = (resp[1] && resp[1].slots) || {};
+      _summaries = {};
+      var contracts = (resp[2] && resp[2].slots) || {};
+      Object.keys(contracts).forEach(function (name) {
+        if (contracts[name] && contracts[name].summary) {
+          _summaries[name] = contracts[name].summary;
+        }
+      });
       _renderHeader('');
       _renderPrimary();
       _renderAdvanced();
@@ -144,7 +170,6 @@
     section.innerHTML = PRIMARY_SLOTS.map(function (s) {
       var cfg = _slots[s.id] || {};
       var fallback = Array.isArray(cfg.fallback) ? cfg.fallback : [];
-      var rest = fallback.slice(1);
       return ''
         + '<section class="ora-vslots-card" data-slot-card="' + _esc(s.id) + '">'
         +   '<div class="ora-vslots-card-title">' + _esc(s.label) + '</div>'
@@ -154,17 +179,14 @@
         +     _selectHtml(s.id, 'preferred', cfg.preferred || '',
                           '(no preference — use fallback chain)')
         +   '</label>'
-        +   '<label class="ora-vslots-field">'
-        +     '<span class="ora-vslots-field-label">If unavailable</span>'
-        +     _selectHtml(s.id, 'fallback0', fallback[0] || '', '(none)')
-        +   '</label>'
-        +   (rest.length
-              ? '<div class="ora-vslots-chain">Then: '
-                + _esc(rest.map(_displayName).join(' → ')) + '</div>'
-              : '')
+        +   '<div class="ora-vslots-field">'
+        +     '<span class="ora-vslots-field-label">If unavailable, try in order</span>'
+        +     _chainEditorHtml(s.id, cfg.preferred || '', fallback)
+        +   '</div>'
+        +   _providerNoticeHtml(s.id, cfg.preferred || '')
         + '</section>';
     }).join('');
-    _bindSelects(section);
+    _bindEditors(section);
   }
 
   function _renderAdvanced() {
@@ -176,30 +198,43 @@
     });
     if (!rows.length) { section.innerHTML = ''; return; }
     section.innerHTML = ''
-      + '<details class="ora-vslots-advanced">'
+      + '<details class="ora-vslots-advanced"' + (_advancedOpen ? ' open' : '') + '>'
       +   '<summary>Advanced routing</summary>'
       +   '<div class="ora-vslots-advanced-hint">'
-      +     'These slots inherit sensible defaults — most setups never '
-      +     'change them. Fallback chains are managed in '
-      +     'config/routing-config.json.'
+      +     'Specialized image operations. Each one picks its own provider '
+      +     'because not every model supports every operation — these '
+      +     'inherit working defaults, so change them only if you want a '
+      +     'specific capability handled by a specific provider.'
       +   '</div>'
       +   rows.map(function (s) {
             var cfg = _slots[s.id] || {};
             var fallback = Array.isArray(cfg.fallback) ? cfg.fallback : [];
+            var off = !cfg.preferred && !fallback.length;
             return ''
-              + '<div class="ora-vslots-row">'
-              +   '<span class="ora-vslots-row-label">' + _esc(s.label) + '</span>'
-              +   _selectHtml(s.id, 'preferred', cfg.preferred || '',
-                              '(no preference)')
-              +   '<span class="ora-vslots-row-chain">'
-              +     (fallback.length
-                      ? 'then ' + _esc(fallback.map(_displayName).join(' → '))
-                      : '')
-              +   '</span>'
+              + '<div class="ora-vslots-row" data-adv-row="' + _esc(s.id) + '">'
+              +   '<div class="ora-vslots-row-top">'
+              +     '<span class="ora-vslots-row-label">' + _esc(s.label) + '</span>'
+              +     _selectHtml(s.id, 'preferred', cfg.preferred || '', '(none)')
+              +     '<span class="ora-vslots-row-chain">'
+              +       (off
+                        ? '<span class="ora-vslots-off">off — no provider set</span>'
+                        : _chainEditorHtml(s.id, cfg.preferred || '', fallback, true))
+              +     '</span>'
+              +   '</div>'
+              +   (_summaries[s.id]
+                    ? '<div class="ora-vslots-row-hint">' + _esc(_summaries[s.id]) + '</div>'
+                    : '')
+              +   _providerNoticeHtml(s.id, cfg.preferred || '')
               + '</div>';
           }).join('')
       + '</details>';
-    _bindSelects(section);
+    _bindEditors(section);
+    var details = section.querySelector('details.ora-vslots-advanced');
+    if (details) {
+      details.addEventListener('toggle', function () {
+        _advancedOpen = details.open;
+      });
+    }
   }
 
   // One <select> for a slot field. Candidates come from the provider
@@ -213,7 +248,7 @@
       .concat(candidates.map(function (p) {
         var label = p.display_name || p.provider_id;
         if (!p.available) {
-          label += p.missing ? ' — not in registry' : ' — not configured';
+          label += p.missing ? ' — not in registry' : ' — needs setup';
         }
         return '<option value="' + _esc(p.provider_id) + '"'
           + (p.provider_id === current ? ' selected' : '')
@@ -221,6 +256,81 @@
       }));
     return '<select class="ora-vslots-select" data-slot="' + _esc(slotId)
       + '" data-field="' + _esc(field) + '">' + options.join('') + '</select>';
+  }
+
+  // The fallback-chain editor: one removable chip per chain entry plus
+  // an "add" select offering every provider not already in use. This is
+  // how users extend routing beyond preferred + first fallback.
+  function _chainEditorHtml(slotId, preferred, fallback, compact) {
+    var used = {};
+    if (preferred) used[preferred] = true;
+    fallback.forEach(function (pid) { used[pid] = true; });
+    var addable = _candidatesFor(slotId, '').filter(function (p) {
+      return !used[p.provider_id] && !p.missing;
+    });
+
+    var chips = fallback.map(function (pid, i) {
+      var entry = _providerEntry(slotId, pid);
+      var stale = !entry;
+      return '<span class="ora-vslots-chip'
+        + (stale ? ' ora-vslots-chip--stale' : '') + '"'
+        + (stale ? ' title="not in registry"' : '') + '>'
+        + _esc(_displayName(pid))
+        + '<button type="button" class="ora-vslots-chip-x" '
+        +   'data-action="chain-remove" data-slot="' + _esc(slotId) + '" '
+        +   'data-index="' + i + '" aria-label="Remove fallback">×</button>'
+        + '</span>';
+    });
+
+    var addSelect = '';
+    if (addable.length) {
+      addSelect = '<select class="ora-vslots-select ora-vslots-select--add" '
+        + 'data-slot="' + _esc(slotId) + '" data-field="chain-add">'
+        + '<option value="">+ add fallback</option>'
+        + addable.map(function (p) {
+            var label = p.display_name || p.provider_id;
+            if (!p.available) label += ' — needs setup';
+            return '<option value="' + _esc(p.provider_id) + '">'
+              + _esc(label) + '</option>';
+          }).join('')
+        + '</select>';
+    }
+
+    return '<span class="ora-vslots-chainedit'
+      + (compact ? ' ora-vslots-chainedit--compact' : '') + '">'
+      + (chips.length ? chips.join('<span class="ora-vslots-chain-sep">→</span>') : '')
+      + addSelect
+      + '</span>';
+  }
+
+  // Inline notice under a slot's editors when the chosen preferred
+  // provider needs attention: either setup guidance (API key missing,
+  // package not installed) with a jump to the External APIs tab when
+  // a key is the problem, or an informational note (e.g. video runs
+  // async and needs OpenRouter credits).
+  function _providerNoticeHtml(slotId, preferred) {
+    if (!preferred) return '';
+    var entry = _providerEntry(slotId, preferred);
+    if (!entry || !entry.reason) return '';
+    var needsKey = /External APIs/i.test(entry.reason);
+    var cls = entry.available ? 'ora-vslots-notice' : 'ora-vslots-notice ora-vslots-notice--warn';
+    return '<div class="' + cls + '">'
+      + (entry.available ? '' : '⚠ ')
+      + _esc(entry.reason)
+      + (needsKey
+          ? ' <button type="button" class="ora-vslots-link" '
+            + 'data-action="open-apis" data-reason="' + _esc(entry.reason) + '"'
+            + '>Open External APIs →</button>'
+          : '')
+      + '</div>';
+  }
+
+  function _providerEntry(slotId, providerId) {
+    var list = _providers[slotId] || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].provider_id === providerId) return list[i];
+    }
+    return null;
   }
 
   function _candidatesFor(slotId, current) {
@@ -248,7 +358,7 @@
       for (var i = 0; i < list.length; i++) {
         if (list[i].provider_id === providerId) {
           // Strip the pricing suffix the providers endpoint appends —
-          // the chain line is informational, keep it short.
+          // the chain chips are informational, keep them short.
           return (list[i].display_name || providerId).replace(/\s+\(\$.*\)$/, '');
         }
       }
@@ -258,11 +368,28 @@
 
   // ── edits ────────────────────────────────────────────────────────────────
 
-  function _bindSelects(scope) {
+  function _bindEditors(scope) {
     var selects = scope.querySelectorAll('select[data-slot]');
     Array.prototype.forEach.call(selects, function (sel) {
       sel.addEventListener('change', function () {
         _applyEdit(sel.dataset.slot, sel.dataset.field, sel.value);
+      });
+    });
+    var removes = scope.querySelectorAll('[data-action="chain-remove"]');
+    Array.prototype.forEach.call(removes, function (btn) {
+      btn.addEventListener('click', function () {
+        _removeFromChain(btn.dataset.slot, parseInt(btn.dataset.index, 10));
+      });
+    });
+    var apiLinks = scope.querySelectorAll('[data-action="open-apis"]');
+    Array.prototype.forEach.call(apiLinks, function (btn) {
+      btn.addEventListener('click', function () {
+        // The settings panel listens for this event (deferrals row 52):
+        // it switches to the External APIs tab and highlights the key
+        // row for whichever provider it can extract from the message.
+        document.dispatchEvent(new CustomEvent('open-settings', {
+          detail: { message: btn.dataset.reason || '' },
+        }));
       });
     });
   }
@@ -279,13 +406,26 @@
         fallback = fallback.filter(function (pid) { return pid !== value; });
       }
       cfg.fallback = fallback;
-    } else if (field === 'fallback0') {
-      var rest = fallback.slice(1);
-      cfg.fallback = value ? [value].concat(rest.filter(function (pid) {
-        return pid !== value;
-      })) : rest;
+    } else if (field === 'chain-add') {
+      if (!value) return;
+      if (fallback.indexOf(value) === -1) fallback.push(value);
+      cfg.fallback = fallback;
+    } else {
+      return;
     }
 
+    _save(slotId, cfg);
+    _renderPrimary();
+    _renderAdvanced();
+  }
+
+  function _removeFromChain(slotId, index) {
+    var cfg = _slots[slotId];
+    if (!cfg || !Array.isArray(cfg.fallback)) return;
+    var fallback = cfg.fallback.slice();
+    if (index < 0 || index >= fallback.length) return;
+    fallback.splice(index, 1);
+    cfg.fallback = fallback;
     _save(slotId, cfg);
     _renderPrimary();
     _renderAdvanced();
