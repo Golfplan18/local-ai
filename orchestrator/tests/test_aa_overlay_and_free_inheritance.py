@@ -1,7 +1,12 @@
 """Tests for Path B additions to scripts/sync_model_registry.py:
   - AA overlay (build_aa_overlay): canonical-id + fuzzy-Jaccard match
+  - Layered AA enrichment (layer_aa_enrichment / merge_sources):
+    OpenRouter-embedded benchmarks block primary, name-matched overlay
+    supplement, disagreement warning
   - :free suffix inheritance (_apply_free_suffix_inheritance)
 """
+import contextlib
+import io
 import os
 import sys
 import unittest
@@ -15,6 +20,8 @@ for p in (HERE, WORKTREE_ROOT, SCRIPTS_DIR):
 
 from sync_model_registry import (  # noqa: E402
     build_aa_overlay,
+    layer_aa_enrichment,
+    merge_sources,
     _aa_canonical_or_id,
     _apply_free_suffix_inheritance,
     _project_aa_view,
@@ -239,6 +246,191 @@ class TestFreeSuffixInheritance(unittest.TestCase):
         }
         _apply_free_suffix_inheritance(models)
         self.assertEqual(models["x/foo:free"]["_inherited_from_base"], "x/foo")
+
+
+def _or_model(mid, benchmarks=None):
+    """Minimal OpenRouter /api/v1/models entry for merge_sources tests."""
+    return {
+        "id": mid,
+        "name": mid,
+        "context_length": 8192,
+        "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]},
+        "pricing": {"prompt": "0.000001", "completion": "0.000002"},
+        "benchmarks": benchmarks or {},
+    }
+
+
+def _merged(or_models, aa_overlay):
+    """Run merge_sources with empty LiteLLM/Arena, swallowing its log
+    lines; returns (registry, captured_stdout)."""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        registry = merge_sources(or_models, {}, {}, aa_overlay=aa_overlay)
+    return registry, buf.getvalue()
+
+
+class TestLayerAAEnrichment(unittest.TestCase):
+    """Unit tests for the layering helper itself."""
+
+    MATCHED = {
+        "aa_intelligence_index": 50.0,
+        "aa_coding_index": 45.0,
+        "aa_agentic_index": 55.0,
+        "aa_math_index": 40.0,
+        "latency_total_seconds": 5.0,
+        "latency_ttft_seconds": 1.0,
+        "output_tokens_per_second": 120.0,
+        "aa_reasoning_model": True,
+        "aa_release_date": "2025-01-01",
+        "match_type": "jaccard",
+    }
+    EMBEDDED = {
+        "intelligence_index": 51.0,
+        "coding_index": 46.5,
+        "agentic_index": 56.0,
+    }
+
+    def test_embedded_primary_wins_over_matched(self):
+        fields, source, _ = layer_aa_enrichment(self.EMBEDDED, self.MATCHED)
+        self.assertEqual(fields["aa_intelligence_index"], 51.0)
+        self.assertEqual(fields["aa_coding_index"], 46.5)
+        self.assertEqual(fields["aa_agentic_index"], 56.0)
+        self.assertEqual(source, "openrouter-embedded")
+
+    def test_matched_fills_supplementary_fields(self):
+        # Fields OpenRouter doesn't embed always come from the overlay,
+        # even when the embedded block wins the headline indexes.
+        fields, _, _ = layer_aa_enrichment(self.EMBEDDED, self.MATCHED)
+        self.assertEqual(fields["aa_math_index"], 40.0)
+        self.assertEqual(fields["latency_total_seconds"], 5.0)
+        self.assertEqual(fields["latency_ttft_seconds"], 1.0)
+        self.assertEqual(fields["output_tokens_per_second"], 120.0)
+        self.assertEqual(fields["reasoning_model"], True)
+        self.assertEqual(fields["release_date"], "2025-01-01")
+
+    def test_embedded_only(self):
+        fields, source, disagreement = layer_aa_enrichment(self.EMBEDDED, None)
+        self.assertEqual(fields["aa_intelligence_index"], 51.0)
+        self.assertIsNone(fields["aa_math_index"])
+        self.assertIsNone(fields["latency_total_seconds"])
+        self.assertEqual(source, "openrouter-embedded")
+        self.assertIsNone(disagreement)
+
+    def test_matched_only(self):
+        fields, source, disagreement = layer_aa_enrichment(None, self.MATCHED)
+        self.assertEqual(fields["aa_intelligence_index"], 50.0)
+        self.assertEqual(source, "aa-matched")
+        self.assertIsNone(disagreement)
+
+    def test_neither_source(self):
+        fields, source, disagreement = layer_aa_enrichment(None, None)
+        self.assertTrue(all(v is None for v in fields.values()))
+        self.assertIsNone(source)
+        self.assertIsNone(disagreement)
+
+    def test_partial_embedded_does_not_clobber_matched(self):
+        # An embedded block carrying only intelligence_index must not
+        # null out the overlay's coding / agentic values.
+        embedded = {"intelligence_index": 51.0, "coding_index": None}
+        fields, source, _ = layer_aa_enrichment(embedded, self.MATCHED)
+        self.assertEqual(fields["aa_intelligence_index"], 51.0)
+        self.assertEqual(fields["aa_coding_index"], 45.0)
+        self.assertEqual(fields["aa_agentic_index"], 55.0)
+        self.assertEqual(source, "openrouter-embedded")
+
+    def test_disagreement_above_threshold_flagged_embedded_wins(self):
+        # The glm-4.6v case: 23.4 embedded vs 17.1 fuzzy-matched.
+        embedded = {"intelligence_index": 23.4}
+        matched = dict(self.MATCHED, aa_intelligence_index=17.1)
+        fields, source, disagreement = layer_aa_enrichment(embedded, matched)
+        self.assertEqual(fields["aa_intelligence_index"], 23.4)
+        self.assertEqual(source, "openrouter-embedded")
+        self.assertIsNotNone(disagreement)
+        self.assertEqual(disagreement["embedded"], 23.4)
+        self.assertEqual(disagreement["matched"], 17.1)
+        self.assertEqual(disagreement["match_type"], "jaccard")
+
+    def test_small_delta_not_flagged(self):
+        embedded = {"intelligence_index": 51.5}
+        fields, _, disagreement = layer_aa_enrichment(embedded, self.MATCHED)
+        self.assertEqual(fields["aa_intelligence_index"], 51.5)
+        self.assertIsNone(disagreement)
+
+
+class TestMergeSourcesAALayering(unittest.TestCase):
+    """End-to-end through merge_sources: embedded block threaded from the
+    OpenRouter model entry, overlay supplement, provenance + warning."""
+
+    def test_embedded_wins_and_provenance_recorded(self):
+        aa = [_aa_entry("GLM 4.6V", "glm-4-6v", "zai", intelligence_index=17.1)]
+        or_models = [_or_model(
+            "z-ai/glm-4.6v",
+            benchmarks={"artificial_analysis": {
+                "intelligence_index": 23.4,
+                "coding_index": 19.7,
+                "agentic_index": 17.5,
+            }},
+        )]
+        overlay = build_aa_overlay(aa, ["z-ai/glm-4.6v"])
+        self.assertIn("z-ai/glm-4.6v", overlay)  # sanity: overlay matched
+        registry, out = _merged(or_models, overlay)
+        entry = registry["models"]["z-ai/glm-4.6v"]
+        self.assertEqual(entry["aa_intelligence_index"], 23.4)
+        self.assertEqual(entry["aa_coding_index"], 19.7)
+        self.assertEqual(entry["aa_agentic_index"], 17.5)
+        self.assertEqual(entry["_provenance"]["aa_source"], "openrouter-embedded")
+        self.assertEqual(
+            entry["_provenance"]["aa_embedded"]["intelligence_index"], 23.4)
+        # Disagreement (23.4 vs 17.1 > 2 points) recorded + warned
+        self.assertIn("aa_disagreement", entry["_provenance"])
+        self.assertIn("WARNING", out)
+        self.assertIn("z-ai/glm-4.6v", out)
+
+    def test_matched_supplements_embedded_in_registry_entry(self):
+        aa = [_aa_entry("GPT-4o", "gpt-4o", "openai",
+                        intelligence_index=50.0, math_index=44.0,
+                        reasoning_model=False, release_date="2024-08-06")]
+        or_models = [_or_model(
+            "openai/gpt-4o",
+            benchmarks={"artificial_analysis": {
+                "intelligence_index": 50.5,
+                "coding_index": 47.0,
+                "agentic_index": 52.0,
+            }},
+        )]
+        overlay = build_aa_overlay(aa, ["openai/gpt-4o"])
+        registry, out = _merged(or_models, overlay)
+        entry = registry["models"]["openai/gpt-4o"]
+        # Headline indexes from the embedded block
+        self.assertEqual(entry["aa_intelligence_index"], 50.5)
+        # Supplement from the matched overlay
+        self.assertEqual(entry["aa_math_index"], 44.0)
+        self.assertEqual(entry["latency_total_seconds"], 5.0)
+        self.assertEqual(entry["output_tokens_per_second"], 120.0)
+        self.assertEqual(entry["reasoning_model"], False)
+        self.assertEqual(entry["release_date"], "2024-08-06")
+        # 0.5-point delta is within tolerance — no warning
+        self.assertNotIn("WARNING", out)
+        self.assertNotIn("aa_disagreement", entry["_provenance"])
+
+    def test_matched_only_model_keeps_full_overlay_coverage(self):
+        # Models OpenRouter hasn't linked to AA (~40 today) still get the
+        # full name-matched enrichment.
+        aa = [_aa_entry("Kimi K2.6", "kimi-k2-6", "kimi", intelligence_index=53.9)]
+        or_models = [_or_model("moonshotai/kimi-k2.6")]  # no benchmarks
+        overlay = build_aa_overlay(aa, ["moonshotai/kimi-k2.6"])
+        registry, _ = _merged(or_models, overlay)
+        entry = registry["models"]["moonshotai/kimi-k2.6"]
+        self.assertEqual(entry["aa_intelligence_index"], 53.9)
+        self.assertEqual(entry["aa_math_index"], 40.0)
+        self.assertEqual(entry["_provenance"]["aa_source"], "aa-matched")
+        self.assertNotIn("aa_embedded", entry["_provenance"])
+
+    def test_no_aa_anywhere(self):
+        registry, _ = _merged([_or_model("some-vendor/some-model")], {})
+        entry = registry["models"]["some-vendor/some-model"]
+        self.assertIsNone(entry["aa_intelligence_index"])
+        self.assertIsNone(entry["_provenance"]["aa_source"])
 
 
 if __name__ == "__main__":
