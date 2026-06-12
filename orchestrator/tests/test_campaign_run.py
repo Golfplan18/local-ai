@@ -360,6 +360,61 @@ class TestFidelityGate(unittest.TestCase):
         self.assertEqual(exp, {"a/x", "b/y"})  # fallbacks excluded
 
 
+class TestSinglePassClaudeCode(unittest.TestCase):
+    EP = {"id": "claude-code:claude-opus-4.8", "service": "claude-code",
+          "model_id": "claude-opus-4-8"}
+
+    def _cli(self, stdout, returncode=0, stderr=""):
+        m = mock.Mock()
+        m.stdout, m.returncode, m.stderr = stdout, returncode, stderr
+        return m
+
+    def test_subscription_single_pass_parses_and_verifies(self):
+        payload = json.dumps({
+            "result": "Answer.", "is_error": False,
+            "usage": {"input_tokens": 999, "output_tokens": 999},
+            "modelUsage": {
+                "claude-opus-4-8-20260301": {"inputTokens": 120,
+                                             "outputTokens": 800},
+                "claude-haiku-4-5-20251001": {"inputTokens": 30,
+                                              "outputTokens": 4}}})
+        captured = {}
+
+        def fake_run(cmd, **kw):
+            captured["cmd"], captured["kw"] = cmd, kw
+            return self._cli(payload)
+
+        with mock.patch.object(campaign.subprocess, "run",
+                               side_effect=fake_run), \
+             mock.patch.dict(campaign.os.environ,
+                             {"ANTHROPIC_API_KEY": "sk-x"}):
+            rec = campaign.single_pass_call(dict(self.EP), "prompt")
+        self.assertEqual(rec["via"], "claude-code-subscription")
+        # Requested model's entry, not the helper's, not the total.
+        self.assertEqual(rec["prompt_tokens"], 120)
+        self.assertEqual(rec["completion_tokens"], 800)
+        self.assertEqual(rec["served_model"], "claude-opus-4-8-20260301")
+        self.assertNotIn("ANTHROPIC_API_KEY", captured["kw"]["env"])
+        self.assertIn("--tools", captured["cmd"])
+
+    def test_substituted_model_raises(self):
+        payload = json.dumps({"result": "x", "is_error": False,
+                              "modelUsage": {"claude-sonnet-4-6": {}}})
+        with mock.patch.object(campaign.subprocess, "run",
+                               return_value=self._cli(payload)):
+            with self.assertRaises(RuntimeError):
+                campaign.single_pass_call(dict(self.EP), "prompt")
+
+    def test_rate_limit_marks_error(self):
+        with mock.patch.object(campaign.subprocess, "run",
+                               return_value=self._cli(
+                                   "", returncode=1,
+                                   stderr="usage limit reached")):
+            with self.assertRaises(RuntimeError) as cm:
+                campaign.single_pass_call(dict(self.EP), "prompt")
+        self.assertIn("rate-limited", str(cm.exception))
+
+
 class TestSinglePassFidelity(unittest.TestCase):
     def test_substituted_model_raises(self):
         fake = {"choices": [{"message": {"content": "x"}}],

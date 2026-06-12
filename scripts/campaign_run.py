@@ -118,6 +118,25 @@ RAG_NOTE = ("CAMPAIGN-RAG-BYPASS — campaign configurations run with "
             "rag_isolation=web_only so captures reflect a clean install "
             "(no vault/conversation RAG), reproducible by third parties.")
 
+# Subscription-premium (decision 2026-06-12): the premium lane can run on
+# the user's Claude subscription via the local Claude Code CLI instead of
+# the metered API — same models, zero marginal dollars, throughput
+# governed by the subscription's rolling rate windows. Opus carries the
+# big + post-analysis slots; Haiku the fast + utility slots (single-family
+# adversarial pair — the cross-vendor diversity tradeoff is deliberate).
+CLAUDE_CODE_OPUS = "claude-code:claude-opus-4.8"
+CLAUDE_CODE_HAIKU = "claude-code:claude-haiku-4.5"
+CLAUDE_CODE_ENDPOINTS = [
+    {"id": CLAUDE_CODE_OPUS, "model_id": "claude-opus-4-8",
+     "display_name": "Claude Opus 4.8 (subscription via Claude Code)",
+     "api_equivalent": "anthropic/claude-opus-4.8"},
+    {"id": CLAUDE_CODE_HAIKU, "model_id": "claude-haiku-4-5",
+     "display_name": "Claude Haiku 4.5 (subscription via Claude Code)",
+     "api_equivalent": "anthropic/claude-haiku-4.5"},
+]
+SUBSCRIPTION_PIPELINES = {"premium"}  # lanes that ride the subscription
+                                      # when --premium subscription baked
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -275,13 +294,124 @@ def _config_models(config: dict) -> dict:
     }
 
 
-def bake_configs(rebake_presets: bool = True) -> dict:
+def _poke_router_reload(server: str = DEFAULT_SERVER) -> bool:
+    """Ask the running server to reload its singleton Router after this
+    process edited routing-config.json on disk. An EMPTY per-slot merge
+    (``POST /config/routing/slots`` with ``{"slots": {}}``) changes
+    nothing but runs the route's save + router-reload hook — the same
+    hook the Settings panel autosave uses. Best-effort: when the server
+    is down (bake before start), startup loads fresh anyway."""
+    try:
+        req = urllib.request.Request(
+            f"{server}/config/routing/slots",
+            data=json.dumps({"slots": {}}).encode(),
+            headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=20) as r:
+            out = json.loads(r.read())
+        reloaded = bool(out.get("router_reloaded"))
+        if not reloaded:
+            print("[bake] server saved config but router reload reported "
+                  "False — restart the server before a subscription run")
+        return reloaded
+    except Exception as exc:
+        print(f"[bake] router reload poke skipped ({str(exc)[:120]}) — "
+              f"if the server was already running, restart it to pick up "
+              f"the new endpoints")
+        return False
+
+
+def ensure_claude_code_endpoints() -> None:
+    """Register the subscription (Claude Code CLI) endpoints in
+    routing-config.json when absent. Their ids live outside the catalog
+    namespace, so the automatic endpoint sync preserves them."""
+    rc_path = CONFIG_DIR / "routing-config.json"
+    rc = json.loads(rc_path.read_text())
+    by_id = {(e.get("id") or e.get("name")): e for e in rc.get("endpoints") or []}
+    added = 0
+    for spec in CLAUDE_CODE_ENDPOINTS:
+        if spec["id"] in by_id:
+            continue
+        rc["endpoints"].append({
+            "id": spec["id"],
+            "type": "api",
+            "status": "active",
+            "enabled": True,
+            "provider": "anthropic",
+            "display_name": spec["display_name"],
+            "service": "claude-code",
+            "model_id": spec["model_id"],
+            "dispatch": "subscription",
+            "vision_capable": True,
+            "context_window": 200000,
+            "capabilities": {"tool_access": False, "file_system_access": False,
+                             "web_access": False,
+                             "retrieval_approach": "pre-assembled"},
+            "_note": ("Subscription execution via the local Claude Code CLI "
+                      "(claude -p). Zero marginal API cost; campaign cost "
+                      "tables price its tokens at the API-equivalent rate."),
+        })
+        added += 1
+    if added:
+        tmp = rc_path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(rc, indent=2) + "\n")
+        os.replace(tmp, rc_path)
+        print(f"[bake] registered {added} claude-code subscription endpoint(s)")
+        if _poke_router_reload():
+            print("[bake] running server reloaded its router")
+
+
+def build_subscription_premium() -> dict:
+    """The user-specified subscription premium: Opus 4.8 in both big
+    slots + all post-analysis cells; Haiku 4.5 in the fast pair and the
+    utility cells. No fallbacks — a failed call fails loudly (and the
+    fidelity gate keeps any drift out of the captures)."""
+    def cell(mid):
+        return {"primary": mid, "fallback": []}
+    cells = {
+        "utility": {
+            "step1_cleanup": cell(CLAUDE_CODE_HAIKU),
+            "classification": cell(CLAUDE_CODE_HAIKU),
+            "rag_planner": cell(CLAUDE_CODE_HAIKU),
+            "gear2_rag_lookup": cell(CLAUDE_CODE_HAIKU),
+        },
+        "analysis": {
+            "gear4": {"depth": cell(CLAUDE_CODE_OPUS),
+                      "breadth": cell(CLAUDE_CODE_OPUS)},
+            "gear3": {"depth": cell(CLAUDE_CODE_HAIKU),
+                      "breadth": cell(CLAUDE_CODE_HAIKU)},
+        },
+        "post_analysis": {
+            "consolidation": cell(CLAUDE_CODE_OPUS),
+            "verification": cell(CLAUDE_CODE_OPUS),
+            "formatter": cell(CLAUDE_CODE_OPUS),
+        },
+    }
+    return {
+        "name": "campaign-premium",
+        "description": (
+            "Subscription premium: Claude Opus 4.8 in both big slots and "
+            "all post-analysis cells, Claude Haiku 4.5 in fast + utility — "
+            "executed through the user's Claude subscription via the local "
+            "Claude Code CLI (service=claude-code), not the metered API. "
+            "Single-family adversarial pair by deliberate tradeoff. Cost "
+            "tables report API-equivalent token pricing."),
+        "diversity_override": False,
+        "cells": cells,
+        "toggles": {"adversarial_diversity": True, "vision_only": False},
+    }
+
+
+def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict:
     """Build the three campaign configurations + the pricing snapshot.
 
     premium/optimum come from a FRESH preset bake (the picker algorithm
     against the live catalog + probe-verified registry), then copied to
     campaign-* names so later pane edits / re-bakes can't drift the
     campaign mid-run. qwen9b is generated (single model in every cell).
+
+    ``premium_mode``: "api" (picker-baked, metered) or "subscription"
+    (Opus/Haiku through the user's Claude subscription via Claude Code;
+    cost tables then carry API-equivalent pricing for that lane).
     """
     sys.path.insert(0, str(ORA_HOME))
     from orchestrator import active_configuration as ac
@@ -290,11 +420,35 @@ def bake_configs(rebake_presets: bool = True) -> dict:
         baked = ac.bake_missing_presets(force=True)
         print(f"[bake] presets re-baked from live catalog: {baked}")
 
-    snapshot: dict = {"baked_at": _now_iso(), "configs": {}}
+    snapshot: dict = {"baked_at": _now_iso(), "configs": {},
+                      "premium_mode": premium_mode}
     pricing = _load_registry_pricing()
+    # claude-code ids price at their API twin's rate (API-equivalent).
+    for spec in CLAUDE_CODE_ENDPOINTS:
+        eq = pricing.get(spec["api_equivalent"])
+        if eq:
+            pricing[spec["id"]] = dict(eq, cost_basis="api_equivalent")
+            pricing[spec["model_id"]] = pricing[spec["id"]]
 
-    for preset, campaign_name in (("premium", "campaign-premium"),
-                                  ("optimum", "campaign-optimum")):
+    pairs = [("optimum", "campaign-optimum")]
+    if premium_mode == "api":
+        pairs.insert(0, ("premium", "campaign-premium"))
+    else:
+        ensure_claude_code_endpoints()
+        config = build_subscription_premium()
+        _stamp_campaign_fields(config, "campaign-premium",
+                               source="subscription:opus-4.8+haiku-4.5")
+        (CONFIGURATIONS_DIR / "campaign-premium.json").write_text(
+            json.dumps(config, indent=2) + "\n")
+        models = _config_models(config)
+        snapshot["configs"]["campaign-premium"] = {
+            "models": models,
+            "pricing": {m: pricing.get(m) for m in set(filter(None, models.values()))},
+            "cost_basis": "api_equivalent",
+        }
+        print(f"[bake] campaign-premium (subscription): {models}")
+
+    for preset, campaign_name in pairs:
         src = CONFIGURATIONS_DIR / f"{preset}.json"
         config = json.loads(src.read_text())
         config["description"] = (
@@ -339,7 +493,12 @@ def bake_configs(rebake_presets: bool = True) -> dict:
     }
     print(f"[bake] campaign-qwen9b: {QWEN9B_MODEL} in all {len(QWEN9B_CELL_PATHS)} cells")
 
-    # The single-pass flagship = premium's big-1 pick.
+    # The single-pass flagship = premium's big-1 pick, and it FOLLOWS the
+    # premium execution mode: subscription bake → the bare control call
+    # also rides the subscription (same model, same serving stack; cost
+    # tables price it API-equivalent). Third parties running the
+    # downloadable framework bake with --premium api and get the metered
+    # call instead.
     flagship = snapshot["configs"]["campaign-premium"]["models"]["big1"]
     snapshot["single_pass_flagship"] = {
         "model_id": flagship,
@@ -369,10 +528,14 @@ def load_manifest() -> dict:
     return done
 
 
+_MANIFEST_LOCK = __import__("threading").Lock()
+
+
 def append_manifest(rec: dict) -> None:
     CAMPAIGN_DIR.mkdir(parents=True, exist_ok=True)
-    with open(MANIFEST_PATH, "a") as f:
-        f.write(json.dumps(rec) + "\n")
+    with _MANIFEST_LOCK:
+        with open(MANIFEST_PATH, "a") as f:
+            f.write(json.dumps(rec) + "\n")
 
 
 # ─── Ora-pipeline capture (POST /chat — synchronous, file-as-truth) ──────
@@ -441,6 +604,37 @@ def _latest_trace_dir(conv_id: str) -> str | None:
         return None
     turns = sorted(p.name for p in base.iterdir() if p.is_dir())
     return str(base / turns[-1]) if turns else None
+
+
+def price_usage_records(trace_dir: str | None, rate_map: dict) -> float | None:
+    """Price a trace's usage.jsonl against a rate map (endpoint_id /
+    model_id → {input_per_million_usd, output_per_million_usd}).
+
+    Fallback for lanes whose endpoint ids aren't in the model registry —
+    the subscription endpoints (claude-code:*) cost $0 marginal, so the
+    campaign prices their tokens at the API-equivalent rate to keep the
+    published comparison honest."""
+    if not trace_dir or not rate_map:
+        return None
+    path = Path(trace_dir) / "usage.jsonl"
+    if not path.exists():
+        return None
+    total, any_priced = 0.0, False
+    for line in path.read_text().splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        rate = (rate_map.get(rec.get("endpoint_id"))
+                or rate_map.get(rec.get("model_id")))
+        if not rate or rate.get("input_per_million_usd") is None:
+            continue
+        total += ((rec.get("prompt_tokens") or 0) / 1e6
+                  * rate["input_per_million_usd"]
+                  + (rec.get("completion_tokens") or 0) / 1e6
+                  * rate["output_per_million_usd"])
+        any_priced = True
+    return round(total, 6) if any_priced else None
 
 
 def read_trace_cost(trace_dir: str | None) -> dict:
@@ -584,12 +778,56 @@ def resolve_flagship_endpoint(flagship_id: str) -> dict:
         f"Models pane and hit Refresh (runs the endpoint sync), then retry")
 
 
+def _single_pass_claude_code(endpoint: dict, prompt: str,
+                             timeout: int) -> dict:
+    """Bare flagship call through the Claude Code CLI (subscription).
+    Mirrors boot's claude-code service: no system prompt, no tools,
+    usage from the requested model's modelUsage entry, served-model
+    verified."""
+    import subprocess
+    model_id = endpoint.get("model_id") or "claude-opus-4-8"
+    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
+    r = subprocess.run(
+        [cli, "-p", "--model", model_id, "--output-format", "json",
+         "--tools", ""],
+        input=prompt, capture_output=True, text=True, timeout=timeout,
+        env=env)
+    if r.returncode != 0:
+        err = (r.stderr or r.stdout or "").strip()[:300]
+        kind = "rate-limited: " if ("limit" in err.lower()
+                                    or "rate" in err.lower()) else ""
+        raise RuntimeError(f"claude-code {kind}{err}")
+    d = json.loads(r.stdout)
+    if d.get("is_error"):
+        err = str(d.get("result") or "")[:300]
+        kind = "rate-limited: " if "limit" in err.lower() else ""
+        raise RuntimeError(f"claude-code {kind}{err}")
+    mu = d.get("modelUsage") or {}
+    main_key = next((k for k in mu if k.startswith(model_id)), None)
+    if mu and main_key is None:
+        raise RuntimeError(
+            f"single-pass fidelity: requested {model_id}, served {sorted(mu)}")
+    usage = (mu.get(main_key) or {}) if main_key else {}
+    top = d.get("usage") or {}
+    return {"text": d.get("result") or "",
+            "prompt_tokens": usage.get("inputTokens",
+                                       top.get("input_tokens", 0)),
+            "completion_tokens": usage.get("outputTokens",
+                                           top.get("output_tokens", 0)),
+            "model_id": model_id,
+            "served_model": main_key or model_id,
+            "via": "claude-code-subscription"}
+
+
 def single_pass_call(endpoint: dict, prompt: str, max_tokens: int = 16000,
                      timeout: int = 600) -> dict:
     """Bare one-model call with usage capture. Returns
     {text, prompt_tokens, completion_tokens, model_id, via}."""
     service = endpoint.get("service")
     model_id = endpoint.get("model_id") or endpoint.get("id")
+    if service == "claude-code":
+        return _single_pass_claude_code(endpoint, prompt, timeout)
     if service == "claude":
         key = _keyring_get("anthropic-api-key") or os.environ.get("ANTHROPIC_API_KEY")
         if not key:
@@ -808,6 +1046,13 @@ def run_sweep(args) -> int:
             cfg = ORA_PIPELINES.get(p)
             if cfg and not (CONFIGURATIONS_DIR / f"{cfg}.json").exists():
                 raise SystemExit(f"missing {cfg}.json — run bake-configs")
+        # Subscription endpoints live outside the catalog: make sure the
+        # running server's router has loaded them (a bake that ran after
+        # server start left the in-memory router stale — observed live:
+        # 'claude-code:… not registered in routing-config').
+        if (snapshot.get("premium_mode") == "subscription"
+                and "premium" in pipelines):
+            _poke_router_reload(args.server)
 
     # Fidelity expectations per Ora pipeline: only these models may
     # record usage during a run. Loaded once up front so a config edit
@@ -817,9 +1062,31 @@ def run_sweep(args) -> int:
         if p in pipelines
     }
 
+    # Rate map for API-equivalent pricing of lanes the registry can't
+    # price (subscription endpoints): union of every config's bake-time
+    # pricing snapshot + the flagship's.
+    rate_map: dict = {}
+    for c in (snapshot.get("configs") or {}).values():
+        for mid, rate in (c.get("pricing") or {}).items():
+            if rate:
+                rate_map[mid] = rate
+    fp = (snapshot.get("single_pass_flagship") or {})
+    if fp.get("pricing"):
+        rate_map[fp.get("model_id")] = fp["pricing"]
+
+    subscription_lanes = (
+        {p for p in pipelines if p in SUBSCRIPTION_PIPELINES}
+        if snapshot.get("premium_mode") == "subscription" else set())
+    # Single-pass follows the premium execution mode: a claude-code
+    # flagship makes the control lane a subscription lane too (serial +
+    # window-paced, API-equivalent pricing).
+    if (flagship or "").startswith("claude-code:") and "single-pass" in pipelines:
+        subscription_lanes.add("single-pass")
+
     done = load_manifest()
+    force = bool(getattr(args, "force_rerun", False))
     todo = [(t, p) for t in techniques for p in pipelines
-            if (done.get((t.id, p)) or {}).get("status") != "ok"]
+            if force or (done.get((t.id, p)) or {}).get("status") != "ok"]
     total = len(techniques) * len(pipelines)
     print(f"[run] {len(techniques)} techniques × {len(pipelines)} pipelines = "
           f"{total} captures ({total - len(todo)} already complete, {len(todo)} to run)")
@@ -831,102 +1098,211 @@ def run_sweep(args) -> int:
             print(f"  would run: {t.id} × {p}")
         return 0
 
-    failures = 0
-    for i, (tech, pipe) in enumerate(todo, start=1):
-        out_dir = CAPTURES_DIR / tech.id / pipe
-        out_dir.mkdir(parents=True, exist_ok=True)
-        print(f"[run] {i}/{len(todo)} {tech.id} × {pipe} …", flush=True)
-        started = time.time()
-        rec = {"technique": tech.id, "kind": tech.kind, "mode": tech.intended_mode,
-               "pipeline": pipe, "at": _now_iso(), "attempts": 0}
-        last_err = None
-        for attempt in (1, 2):  # one retry on transient failure
-            rec["attempts"] = attempt
+    ctx = {
+        "flagship_ep": flagship_ep,
+        "flagship_pricing": flagship_pricing,
+        "expected_primaries": expected_primaries,
+        "rate_map": rate_map,
+        "subscription_lanes": subscription_lanes,
+    }
+
+    # Lane-parallel execution: each pipeline is a lane; lanes always run
+    # concurrently (they hit disjoint providers); --concurrency adds
+    # workers WITHIN the API lanes. Subscription lanes stay at 1 worker —
+    # the rolling rate window is the bottleneck, and pacing handles it.
+    import queue as _queue
+    import threading as _threading
+
+    by_pipe: dict[str, list] = {}
+    for t, p in todo:
+        by_pipe.setdefault(p, []).append(t)
+    lanes = {}
+    for p, items in by_pipe.items():
+        q: _queue.Queue = _queue.Queue()
+        for t in items:
+            q.put(t)
+        workers = 1 if p in subscription_lanes else max(1, args.concurrency)
+        lanes[p] = (q, min(workers, len(items)))
+
+    progress = {"done": 0, "failures": 0, "lock": _threading.Lock()}
+
+    def _lane_worker(pipe: str, q: "_queue.Queue") -> None:
+        while True:
             try:
-                if pipe == "single-pass":
-                    sp = single_pass_call(flagship_ep, tech.prompt)
-                    cost = price_single_pass(sp, flagship_pricing)
-                    (out_dir / "answer.md").write_text(sp["text"])
-                    (out_dir / "cost.json").write_text(json.dumps({
-                        "model_id": sp["model_id"], "via": sp["via"],
-                        "prompt_tokens": sp["prompt_tokens"],
-                        "completion_tokens": sp["completion_tokens"],
-                        "pricing_per_million": flagship_pricing,
-                        "total_cost_usd": cost}, indent=2))
-                    rec.update(status="ok", cost_usd=cost,
-                               prompt_tokens=sp["prompt_tokens"],
-                               completion_tokens=sp["completion_tokens"],
-                               visuals=0, via=sp["via"],
-                               executed_models={sp["served_model"]: 1})
-                else:
-                    conv_id = f"campaign-{tech.id}-{pipe}"
-                    res = run_ora_pipeline(args.server, ORA_PIPELINES[pipe],
-                                           tech, conv_id, timeout=args.timeout)
-                    # Fidelity gate BEFORE the capture counts: every model
-                    # that recorded usage must be a configured primary —
-                    # a 429/throttle cascade to a fallback model, or a
-                    # silently failed step, invalidates the run.
-                    fidelity = verify_trace_fidelity(
-                        res["trace_dir"], expected_primaries[pipe])
-                    rec["executed_models"] = fidelity["executed"]
-                    rec["fidelity_warnings"] = fidelity["warnings"]
-                    if not fidelity["ok"]:
-                        raise RuntimeError(
-                            "fidelity violations: "
-                            + json.dumps(fidelity["violations"][:6]))
-                    prose, envelopes = extract_visuals(res["text"])
-                    (out_dir / "answer.md").write_text(prose)
-                    n_png = 0
-                    if envelopes:
-                        try:
-                            _, n_png = render_visuals_browser(
-                                args.server, envelopes, out_dir)
-                        except ImportError:
-                            # No Playwright: jsdom SVG only, no raster.
-                            for vi, env in enumerate(envelopes, start=1):
-                                (out_dir / f"visual-{vi}.json").write_text(env)
-                                render_svg(env, out_dir / f"visual-{vi}.svg")
-                        except Exception as vex:
-                            print(f"    [visual] browser render failed "
-                                  f"({str(vex)[:200]}); jsdom SVG fallback")
-                            for vi, env in enumerate(envelopes, start=1):
-                                (out_dir / f"visual-{vi}.json").write_text(env)
-                                render_svg(env, out_dir / f"visual-{vi}.svg")
-                    cost = read_trace_cost(res["trace_dir"])
-                    if res["trace_dir"]:
-                        src = Path(res["trace_dir"]) / "cost-summary.json"
-                        if src.exists():
-                            (out_dir / "cost.json").write_text(src.read_text())
-                    rec.update(status="ok", trace_dir=res["trace_dir"],
-                               cost_usd=cost["total_cost_usd"],
-                               prompt_tokens=cost["prompt_tokens"],
-                               completion_tokens=cost["completion_tokens"],
-                               visuals=len(envelopes), visuals_png=n_png)
-                rec["wall_seconds"] = round(time.time() - started, 1)
-                append_manifest(rec)
-                cost_str = f"${rec.get('cost_usd'):.4f}" if rec.get("cost_usd") else "unpriced"
-                executed = rec.get("executed_models") or {}
-                models_str = (" — models: " + ", ".join(
-                    f"{m}×{n}" for m, n in sorted(executed.items()))
-                    ) if executed else ""
-                warn_str = (f" — {len(rec.get('fidelity_warnings') or [])} warning(s)"
-                            if rec.get("fidelity_warnings") else "")
-                print(f"    ok in {rec['wall_seconds']}s — {cost_str}, "
-                      f"{rec.get('visuals', 0)} visual(s){models_str}{warn_str}")
-                last_err = None
-                break
-            except Exception as exc:
-                last_err = str(exc)[:400]
-                print(f"    attempt {attempt} failed: {last_err}")
-                time.sleep(5)
-        if last_err is not None:
-            rec.update(status="failed", error=last_err,
-                       wall_seconds=round(time.time() - started, 1))
-            append_manifest(rec)
-            failures += 1
+                tech = q.get_nowait()
+            except _queue.Empty:
+                return
+            ok = _execute_capture(tech, pipe, args, ctx)
+            with progress["lock"]:
+                progress["done"] += 1
+                if not ok:
+                    progress["failures"] += 1
+                done_n, fail_n = progress["done"], progress["failures"]
+            print(f"[run] progress {done_n}/{len(todo)}"
+                  + (f" ({fail_n} failed)" if fail_n else ""), flush=True)
+
+    threads = []
+    for pipe, (q, workers) in lanes.items():
+        for _ in range(workers):
+            th = _threading.Thread(target=_lane_worker, args=(pipe, q),
+                                   daemon=True)
+            th.start()
+            threads.append(th)
+    for th in threads:
+        th.join()
+
+    failures = progress["failures"]
     print(f"[run] complete — {len(todo) - failures} ok, {failures} failed "
           f"(failed pairs re-run on the next invocation)")
     return 1 if failures else 0
+
+
+def _wait_for_subscription_window(max_wait_s: int = 86400) -> None:
+    """Block until the Claude subscription accepts calls again. Probes
+    with a tiny Haiku completion; on a rate-limit reply, sleeps 15 min
+    and re-probes (the 5-hour rolling windows and weekly caps mean a
+    long sweep simply pauses instead of failing or falling back to the
+    metered API)."""
+    import subprocess
+    cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
+    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    waited = 0
+    while True:
+        try:
+            r = subprocess.run(
+                [cli, "-p", "--model", "claude-haiku-4-5",
+                 "--output-format", "text", "--tools", ""],
+                input="Reply with exactly: OK", capture_output=True,
+                text=True, timeout=180, env=env)
+            blob = ((r.stdout or "") + (r.stderr or "")).lower()
+            if r.returncode == 0 and "limit" not in blob:
+                return
+        except Exception:
+            pass
+        if waited >= max_wait_s:
+            raise RuntimeError(
+                f"subscription window did not reopen within {max_wait_s}s")
+        print("    [pacing] subscription window closed — sleeping 15 min",
+              flush=True)
+        time.sleep(900)
+        waited += 900
+
+
+def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
+    """One (technique, pipeline) capture: run, fidelity-gate, persist,
+    manifest. Returns True on an accepted capture. Thread-safe (manifest
+    writes locked; per-capture output dir is exclusive to this pair)."""
+    out_dir = CAPTURES_DIR / tech.id / pipe
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tag = f"[{pipe}] {tech.id}"
+    print(f"{tag} …", flush=True)
+    started = time.time()
+    rec = {"technique": tech.id, "kind": tech.kind, "mode": tech.intended_mode,
+           "pipeline": pipe, "at": _now_iso(), "attempts": 0}
+    last_err = None
+    for attempt in (1, 2):  # one retry on transient failure
+        rec["attempts"] = attempt
+        try:
+            if pipe in ctx["subscription_lanes"]:
+                # Don't start a long pipeline run into a closed window.
+                _wait_for_subscription_window()
+            if pipe == "single-pass":
+                sp = single_pass_call(ctx["flagship_ep"], tech.prompt)
+                cost = price_single_pass(sp, ctx["flagship_pricing"])
+                (out_dir / "answer.md").write_text(sp["text"])
+                (out_dir / "cost.json").write_text(json.dumps({
+                    "model_id": sp["model_id"], "via": sp["via"],
+                    "prompt_tokens": sp["prompt_tokens"],
+                    "completion_tokens": sp["completion_tokens"],
+                    "pricing_per_million": ctx["flagship_pricing"],
+                    "total_cost_usd": cost}, indent=2))
+                rec.update(status="ok", cost_usd=cost,
+                           prompt_tokens=sp["prompt_tokens"],
+                           completion_tokens=sp["completion_tokens"],
+                           visuals=0, via=sp["via"],
+                           executed_models={sp["served_model"]: 1})
+                if sp["via"] == "claude-code-subscription":
+                    rec["cost_basis"] = "api_equivalent"
+            else:
+                conv_id = f"campaign-{tech.id}-{pipe}"
+                res = run_ora_pipeline(args.server, ORA_PIPELINES[pipe],
+                                       tech, conv_id, timeout=args.timeout)
+                # Fidelity gate BEFORE the capture counts: every model
+                # that recorded usage must be a configured primary — a
+                # 429/throttle cascade to a fallback model, or a silently
+                # failed step, invalidates the run.
+                fidelity = verify_trace_fidelity(
+                    res["trace_dir"], ctx["expected_primaries"][pipe])
+                rec["executed_models"] = fidelity["executed"]
+                rec["fidelity_warnings"] = fidelity["warnings"]
+                if not fidelity["ok"]:
+                    raise RuntimeError(
+                        "fidelity violations: "
+                        + json.dumps(fidelity["violations"][:6]))
+                prose, envelopes = extract_visuals(res["text"])
+                (out_dir / "answer.md").write_text(prose)
+                n_png = 0
+                if envelopes:
+                    try:
+                        _, n_png = render_visuals_browser(
+                            args.server, envelopes, out_dir)
+                    except ImportError:
+                        # No Playwright: jsdom SVG only, no raster.
+                        for vi, env in enumerate(envelopes, start=1):
+                            (out_dir / f"visual-{vi}.json").write_text(env)
+                            render_svg(env, out_dir / f"visual-{vi}.svg")
+                    except Exception as vex:
+                        print(f"{tag} [visual] browser render failed "
+                              f"({str(vex)[:200]}); jsdom SVG fallback")
+                        for vi, env in enumerate(envelopes, start=1):
+                            (out_dir / f"visual-{vi}.json").write_text(env)
+                            render_svg(env, out_dir / f"visual-{vi}.svg")
+                cost = read_trace_cost(res["trace_dir"])
+                if cost["total_cost_usd"] is None:
+                    equiv = price_usage_records(res["trace_dir"],
+                                                ctx["rate_map"])
+                    if equiv is not None:
+                        cost["total_cost_usd"] = equiv
+                        rec["cost_basis"] = "api_equivalent"
+                if res["trace_dir"]:
+                    src = Path(res["trace_dir"]) / "cost-summary.json"
+                    if src.exists():
+                        (out_dir / "cost.json").write_text(src.read_text())
+                rec.update(status="ok", trace_dir=res["trace_dir"],
+                           cost_usd=cost["total_cost_usd"],
+                           prompt_tokens=cost["prompt_tokens"],
+                           completion_tokens=cost["completion_tokens"],
+                           visuals=len(envelopes), visuals_png=n_png)
+            rec["wall_seconds"] = round(time.time() - started, 1)
+            append_manifest(rec)
+            cost_str = (f"${rec.get('cost_usd'):.4f}" if rec.get("cost_usd")
+                        else "unpriced")
+            if rec.get("cost_basis") == "api_equivalent":
+                cost_str += " (API-equivalent)"
+            executed = rec.get("executed_models") or {}
+            models_str = (" — models: " + ", ".join(
+                f"{m}×{n}" for m, n in sorted(executed.items()))
+                ) if executed else ""
+            warn_str = (f" — {len(rec.get('fidelity_warnings') or [])} warning(s)"
+                        if rec.get("fidelity_warnings") else "")
+            print(f"{tag} ok in {rec['wall_seconds']}s — {cost_str}, "
+                  f"{rec.get('visuals', 0)} visual(s){models_str}{warn_str}")
+            return True
+        except Exception as exc:
+            last_err = str(exc)[:400]
+            print(f"{tag} attempt {attempt} failed: {last_err}")
+            # A rate-limited subscription mid-run: wait for the window
+            # before the retry instead of burning it immediately.
+            if "rate-limited" in last_err and pipe in ctx["subscription_lanes"]:
+                try:
+                    _wait_for_subscription_window()
+                except RuntimeError:
+                    break
+            time.sleep(5)
+    rec.update(status="failed", error=last_err,
+               wall_seconds=round(time.time() - started, 1))
+    append_manifest(rec)
+    return False
 
 
 # ─── Aggregation: cost tables ────────────────────────────────────────────
@@ -942,12 +1318,15 @@ def aggregate() -> dict:
         row = per.setdefault(pipe, {"runs": 0, "prompt_tokens": 0,
                                     "completion_tokens": 0, "cost_usd": 0.0,
                                     "unpriced_runs": 0, "visuals": 0,
-                                    "wall_seconds": 0.0})
+                                    "wall_seconds": 0.0,
+                                    "api_equivalent_runs": 0})
         row["runs"] += 1
         row["prompt_tokens"] += rec.get("prompt_tokens") or 0
         row["completion_tokens"] += rec.get("completion_tokens") or 0
         row["visuals"] += rec.get("visuals") or 0
         row["wall_seconds"] += rec.get("wall_seconds") or 0
+        if rec.get("cost_basis") == "api_equivalent":
+            row["api_equivalent_runs"] += 1
         if rec.get("cost_usd") is None:
             row["unpriced_runs"] += 1
         else:
@@ -989,21 +1368,32 @@ def aggregate() -> dict:
                       f"${pr.get('input_per_million_usd', '?')}/1M in, "
                       f"${pr.get('output_per_million_usd', '?')}/1M out", ""]
     lines += ["## Per-pipeline totals", "",
-              "| pipeline | runs | prompt tok | completion tok | visuals | wall (min) | cost (USD) |",
-              "|---|---|---|---|---|---|---|"]
+              "| pipeline | runs | prompt tok | completion tok | visuals | wall (min) | cost (USD) | **$ / run** | **min / run** |",
+              "|---|---|---|---|---|---|---|---|---|"]
+    any_equiv = False
     for pipe in ALL_PIPELINES:
         r = per.get(pipe)
         if not r:
             continue
         unpriced = f" ({r['unpriced_runs']} unpriced)" if r["unpriced_runs"] else ""
+        equiv = "†" if r.get("api_equivalent_runs") else ""
+        any_equiv = any_equiv or bool(equiv)
+        per_run_cost = r["cost_usd"] / r["runs"] if r["runs"] else 0.0
+        per_run_min = r["wall_seconds"] / 60 / r["runs"] if r["runs"] else 0.0
         lines.append(
-            f"| {pipe} | {r['runs']} | {r['prompt_tokens']:,} | "
+            f"| {pipe}{equiv} | {r['runs']} | {r['prompt_tokens']:,} | "
             f"{r['completion_tokens']:,} | {r['visuals']} | "
-            f"{r['wall_seconds']/60:.1f} | ${r['cost_usd']:.4f}{unpriced} |")
+            f"{r['wall_seconds']/60:.1f} | ${r['cost_usd']:.4f}{unpriced} | "
+            f"**${per_run_cost:.4f}** | **{per_run_min:.1f}** |")
+    per_run_grand = grand["cost_usd"] / grand["runs"] if grand["runs"] else 0.0
     lines += ["",
               f"**Grand total: {grand['runs']} runs — ${grand['cost_usd']:.4f}** "
               f"({grand['prompt_tokens']:,} prompt + {grand['completion_tokens']:,} "
-              f"completion tokens)", ""]
+              f"completion tokens) — **${per_run_grand:.4f} per run**", ""]
+    if any_equiv:
+        lines += ["† executed on the Claude subscription via Claude Code "
+                  "(zero marginal dollars); cost shown is the API-equivalent "
+                  "price of the tokens consumed.", ""]
     (CAMPAIGN_DIR / "cost-summary.md").write_text("\n".join(lines))
     print(f"[aggregate] → {CAMPAIGN_DIR / 'cost-summary.md'}")
     return summary
@@ -1072,7 +1462,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("bake-configs", help="Bake campaign-premium/-optimum/-qwen9b + pricing snapshot.")
     sp.add_argument("--no-rebake", action="store_true",
                     help="Copy the presets as-is instead of re-baking them first.")
-    sp.set_defaults(func=lambda a: (bake_configs(rebake_presets=not a.no_rebake), 0)[1])
+    sp.add_argument("--premium", choices=("api", "subscription"), default="api",
+                    help="Premium lane execution: 'api' (picker-baked, metered) "
+                         "or 'subscription' (Opus 4.8 big + Haiku 4.5 fast/small "
+                         "via the local Claude Code CLI on your subscription; "
+                         "cost tables show API-equivalent pricing).")
+    sp.set_defaults(func=lambda a: (bake_configs(
+        rebake_presets=not a.no_rebake, premium_mode=a.premium), 0)[1])
 
     sp = sub.add_parser("list", help="Parse the corpus; print counts + ids.")
     sp.add_argument("--corpus", default=str(DEFAULT_CORPUS))
@@ -1086,6 +1482,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--server", default=DEFAULT_SERVER)
     sp.add_argument("--timeout", type=int, default=2400, help="per-run seconds")
     sp.add_argument("--limit", type=int, default=0, help="cap runs this invocation")
+    sp.add_argument("--concurrency", type=int, default=1,
+                    help="workers WITHIN each API lane (lanes always run in "
+                         "parallel; subscription lanes stay at 1 — the rate "
+                         "window is their bottleneck).")
+    sp.add_argument("--force-rerun", action="store_true",
+                    help="Ignore completed manifest entries for the selected "
+                         "scope (re-capture after a config change).")
     sp.add_argument("--dry-run", action="store_true")
     sp.set_defaults(func=run_sweep)
 
@@ -1103,7 +1506,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--server", default=DEFAULT_SERVER)
     sp.add_argument("--timeout", type=int, default=2400)
     sp.add_argument("--limit", type=int, default=0)
-    sp.add_argument("--dry-run", action="store_true")
+    sp.add_argument("--concurrency", type=int, default=1)
+    sp.add_argument("--force-rerun", action="store_true")
+    sp.add_argument("--premium", choices=("api", "subscription"), default="api")
     sp.set_defaults(func=cmd_all)
 
     return p
@@ -1127,7 +1532,7 @@ def cmd_list(args) -> int:
 
 
 def cmd_all(args) -> int:
-    bake_configs()
+    bake_configs(premium_mode=getattr(args, "premium", "api"))
     rc = run_sweep(args)
     aggregate()
     render_doc(Path(args.corpus))
