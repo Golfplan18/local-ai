@@ -38,7 +38,7 @@
     "analysis": {
       "gear4": {
         "depth": {
-          "primary": "qwen/qwen3.6-plus",
+          "primary": "anthropic/claude-opus-4.8",
           "fallback": [
             "google/gemini-3.1-pro-preview-customtools",
             "google/gemini-3.1-pro-preview"
@@ -71,7 +71,7 @@
     },
     "post_analysis": {
       "consolidation": {
-        "primary": "qwen/qwen3.6-plus",
+        "primary": "anthropic/claude-opus-4.8",
         "fallback": [
           "google/gemini-3.1-pro-preview-customtools",
           "google/gemini-3.1-pro-preview"
@@ -79,7 +79,7 @@
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       },
       "verification": {
-        "primary": "qwen/qwen3.6-plus",
+        "primary": "anthropic/claude-opus-4.8",
         "fallback": [
           "google/gemini-3.1-pro-preview-customtools",
           "google/gemini-3.1-pro-preview"
@@ -87,7 +87,7 @@
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       },
       "formatter": {
-        "primary": "qwen/qwen3.6-plus",
+        "primary": "anthropic/claude-opus-4.8",
         "fallback": [
           "google/gemini-3.1-pro-preview-customtools",
           "google/gemini-3.1-pro-preview"
