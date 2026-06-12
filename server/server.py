@@ -8472,6 +8472,37 @@ def model_registry_get():
                     eid = ep.get("id") or ep.get("name")
                     if not eid:
                         continue
+                    # Subscription endpoints (claude-code:* — executed via the
+                    # local Claude Code CLI on the user's subscription) aren't
+                    # registry entries, so without this merge any config that
+                    # uses them renders DEPRECATED ("not in the registry") and
+                    # invites exactly the wrong fix — observed 2026-06-12 when
+                    # the user re-picked campaign-premium's big-1 onto the
+                    # metered API to clear the flag. Surface them as real,
+                    # pickable models under a "Subscription" vendor group.
+                    if (ep.get("type") == "api"
+                            and ep.get("service") == "claude-code"):
+                        if eid not in filtered:
+                            filtered[eid] = {
+                                "id": eid,
+                                "display_name": ep.get("display_name") or eid,
+                                "provider": "anthropic",
+                                "vendor": "Subscription",
+                                "category": "chat",
+                                "vision_capable": ep.get("vision_capable", True),
+                                "context_length": ep.get("context_window"),
+                                # Zero marginal dollars on subscription; the
+                                # campaign prices tokens API-equivalent.
+                                "pricing": {"input_per_token": 0,
+                                            "output_per_token": 0},
+                                "is_free": False,
+                                "reachable": bool(ep.get("enabled", True)
+                                                  and ep.get("status") == "active"),
+                                "reachable_rate_limited": False,
+                                "vendor_listed": None,
+                                "_subscription_endpoint": True,
+                            }
+                        continue
                     # DIRECT chip: the id has a registered api endpoint with
                     # dispatch=direct (vendor key present, so calls go to the
                     # vendor's own API, not OpenRouter). Copy the row before

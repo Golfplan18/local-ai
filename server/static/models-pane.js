@@ -1773,6 +1773,15 @@
     if (_picksSet && _picksSet.has(model.id)) {
       chips.push('<span class="ora-models-pick-chip">PICK</span>');
     }
+    // Subscription chip. Merged server-side from routing-config endpoints
+    // with service=claude-code: executes through the user's Claude
+    // subscription via the local Claude Code CLI — zero marginal API
+    // cost. These ids are NOT registry models, which previously made any
+    // configuration using them read DEPRECATED (and invited re-picking
+    // onto the metered API — the wrong fix).
+    if (model._subscription_endpoint === true) {
+      chips.push('<span class="ora-models-chip ora-models-chip-subscription" title="Executes through your Claude subscription via the local Claude Code CLI. Zero marginal API cost; campaign cost tables price its tokens at the API-equivalent rate.">SUBSCRIPTION</span>');
+    }
     // Direct-dispatch chip. Stamped server-side from routing-config
     // endpoints with dispatch=direct: the user holds this vendor's API
     // key, so calls go straight to the vendor (cheaper than OpenRouter);
