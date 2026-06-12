@@ -30,16 +30,13 @@
   var _apiKeys = [];
   var _dirty = {};       // pending changes, applied on Save
 
-  // Models tab hosts the classic ConfigPanel verbatim. _modelsConfigPanel
-  // is the one live instance for the open settings modal (see _renderModelsTab).
-  var _modelsConfigPanel = null;
-
   // Tabs declared in display order. The Buckets tab was retired with
   // install Chunk 10 step 2 — the bucket abstraction has been dissolved
   // by the configuration architecture (Premium / Optimum / Budget /
   // Free + named customs replace bucket-based slot assignment). The
-  // Models tab now hosts the new OraModelsPane (server/static/models-pane.js);
-  // Visual stays on the classic ConfigPanel until Chunk 11 rebuilds it.
+  // Models tab hosts OraModelsPane (server/static/models-pane.js); the
+  // Visual tab hosts OraVisualSlotsPane (server/static/visual-slots-pane.js)
+  // — the classic ConfigPanel embed was retired with install Chunk 11.
   var TABS = [
     { id: 'models',         label: 'Models' },
     { id: 'visual',         label: 'Visual' },
@@ -149,11 +146,11 @@
 
   function _renderTabContent() {
     _tabContentEl.innerHTML = '';
-    // The Models tab hosts the new OraModelsPane (install Chunk 10).
-    // Visual stays on the classic ConfigPanel until Chunk 11 rebuilds
-    // it; Buckets was retired (see the TABS comment above).
-    if (_activeTab === 'models')  { _renderModelsPane();                         return; }
-    if (_activeTab === 'visual')  { _renderConfigTab('visual', 'settings-visual'); return; }
+    // The Models tab hosts OraModelsPane (install Chunk 10); the Visual
+    // tab hosts OraVisualSlotsPane (install Chunk 11). Buckets was
+    // retired (see the TABS comment above).
+    if (_activeTab === 'models')  { _renderModelsPane();      return; }
+    if (_activeTab === 'visual')  { _renderVisualSlotsPane(); return; }
     if (!_settings) {
       _tabContentEl.textContent = 'Loading…';
       return;
@@ -189,10 +186,6 @@
   // /api/model-registry/picks on mount and renders preset cards, a
   // custom-new + previous grid, the vendor-organized inventory, and a
   // local-hardware section.
-  //
-  // The classic ConfigPanel is still loaded (server/static/config-panel.js
-  // remains in index-v3.html's script list) — it powers the Visual tab
-  // until Chunk 11 rebuilds that one too.
 
   function _renderModelsPane() {
     if (typeof OraModelsPane === 'undefined') {
@@ -212,27 +205,30 @@
     }
   }
 
-  // The classic ConfigPanel mount used by the Visual tab (until Chunk 11
-  // rebuilds it). Pre-Chunk-10 the Models + Buckets tabs also used this.
+  // ── Visual tab ───────────────────────────────────────────────────────────
+  // The Visual tab hosts OraVisualSlotsPane (server/static/
+  // visual-slots-pane.js), a compact editor for the routing-config
+  // slots block (install Chunk 11). It replaces the classic ConfigPanel
+  // ten-slot grid: image_generates + video_generates as first-class
+  // selectors, everything else under a collapsed Advanced disclosure.
+  // Mounted fresh on each tab open so the user always sees the current
+  // routing state.
 
-  function _renderConfigTab(view, id) {
-    if (typeof ConfigPanel === 'undefined') {
+  function _renderVisualSlotsPane() {
+    if (typeof OraVisualSlotsPane === 'undefined') {
       _tabContentEl.textContent =
-        'config-panel.js is not loaded. Reload the page or check the network tab.';
+        'visual-slots-pane.js is not loaded. Reload the page or check the network tab.';
       return;
     }
-    // Mount fresh on each tab open. Cheap (a single fetch + render) and
-    // means the user always sees current routing/status without a stale
-    // snapshot from a previous open.
     _tabContentEl.innerHTML = '';
     var host = document.createElement('div');
-    host.className = 'ora-settings-config-host';
+    host.className = 'ora-settings-visual-host';
     _tabContentEl.appendChild(host);
     try {
-      _modelsConfigPanel = new ConfigPanel(host, { id: id, view: view });
-      _modelsConfigPanel.init();
+      OraVisualSlotsPane.init(host);
     } catch (err) {
-      host.textContent = 'Could not load model configuration: ' + (err && err.message);
+      host.textContent = 'Could not load visual routing: '
+        + ((err && err.message) || 'unknown error');
     }
   }
 
