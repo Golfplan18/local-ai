@@ -168,16 +168,24 @@ def task_1_orphan_cleanup() -> TaskResult:
     orphan_count = len(orphans)
 
     if orphan_count > 0:
-        notes = _scan_vault_notes()
-        vault_titles = {n["title"] for n in notes}
-        resolved = 0
+        # Collect titles by filename walk only — _scan_vault_notes() parses
+        # YAML frontmatter for every file, which this task doesn't need.
+        # Normalize once into a set: the orphan list can run to millions of
+        # rows (engram relationships), and normalizing per comparison in a
+        # nested loop wedged the oversight daemon thread for hours.
+        vault_titles_normalized = set()
+        for root, dirs, files in os.walk(VAULT_PATH):
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
+            for fname in files:
+                if fname.endswith(".md"):
+                    title = fname.rsplit(".", 1)[0]
+                    vault_titles_normalized.add(title.lower().replace(" ", ""))
 
+        resolved = 0
         for orphan in orphans:
             target = orphan.get("target", "")
-            for title in vault_titles:
-                if title.lower().replace(" ", "") == target.lower().replace(" ", ""):
-                    resolved += 1
-                    break
+            if target.lower().replace(" ", "") in vault_titles_normalized:
+                resolved += 1
 
         try:
             removed = graph.remove_orphans()
