@@ -1785,7 +1785,9 @@
     // deployable. Only audited for openai / anthropic / google ids;
     // other vendors have no checked endpoint so the chip stays off.
     if (model.vendor_listed === false) {
-      chips.push('<span class="ora-models-chip ora-models-chip-vendor-phantom" title="Vendor\'s own /v1/models endpoint does not list this id. May be an AA-only phantom, or a real model that only routes via OpenRouter (open-source / third-party). Combine with the UNREACHABLE chip to identify true phantoms.">NOT IN VENDOR LIST</span>');
+      // Label kept to one word — the previous "NOT IN VENDOR LIST"
+      // crowded the model name out of narrow inventory columns.
+      chips.push('<span class="ora-models-chip ora-models-chip-vendor-phantom" title="Not in the vendor\'s own /v1/models catalog. May be an AA-only phantom, or a real model that only routes via OpenRouter (open-source / third-party). Combine with the UNREACHABLE chip to identify true phantoms.">UNLISTED</span>');
     }
     return chips.join('');
   }
