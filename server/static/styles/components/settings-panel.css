@@ -1948,3 +1948,144 @@
 .ora-models-card-btn-primary:hover {
   filter: brightness(1.08);
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * V3 Visual tab (install Chunk 11 — server/static/visual-slots-pane.js).
+ * Compact editor for the routing-config capability slots: two primary
+ * cards (image / video generation) + a collapsed Advanced disclosure.
+ * ──────────────────────────────────────────────────────────────────────*/
+
+.ora-visual-slots-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px 16px;
+  max-width: 720px;
+}
+
+.ora-vslots-header {
+  padding: 6px 8px 10px;
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
+}
+
+.ora-vslots-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-normal, #E8E0CC);
+}
+
+.ora-vslots-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-vslots-status {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-vslots-status--error {
+  color: var(--color-red, #C77958);
+}
+
+.ora-vslots-card {
+  background: var(--background-secondary, #1F1A0F);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin: 0 0 12px;
+}
+
+.ora-vslots-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-normal, #E8E0CC);
+}
+
+.ora-vslots-card-hint {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-vslots-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.ora-vslots-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-normal, #E8E0CC);
+}
+
+.ora-vslots-select {
+  width: 100%;
+  max-width: 480px;
+  padding: 5px 8px;
+  font-size: 13px;
+  color: var(--text-normal, #E8E0CC);
+  background: var(--background-primary, #15110A);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 4px;
+}
+
+.ora-vslots-chain {
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+  line-height: 1.4;
+}
+
+.ora-vslots-advanced {
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  padding: 8px 14px;
+}
+
+.ora-vslots-advanced > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted, #A89F8A);
+  user-select: none;
+}
+
+.ora-vslots-advanced[open] > summary {
+  color: var(--text-normal, #E8E0CC);
+  margin-bottom: 8px;
+}
+
+.ora-vslots-advanced-hint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted, #A89F8A);
+  margin-bottom: 10px;
+}
+
+.ora-vslots-row {
+  display: grid;
+  grid-template-columns: 150px minmax(200px, 320px) 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.ora-vslots-row-label {
+  font-size: 12px;
+  color: var(--text-normal, #E8E0CC);
+}
+
+.ora-vslots-row-chain {
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

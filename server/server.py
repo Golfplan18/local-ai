@@ -9436,6 +9436,51 @@ def routing_pipelines_post():
     return json.dumps({"ok": True, "router_reloaded": reloaded})
 
 
+@app.route("/config/routing/slots")
+def routing_slots_get():
+    """Return just the capability-slots block of routing-config.json.
+
+    Consumed by the V3 Settings → Visual tab (OraVisualSlotsPane),
+    which only needs the slots block — not the full routing config.
+    """
+    cfg = _load_routing_config()
+    return json.dumps({"slots": cfg.get("slots", {})})
+
+
+@app.route("/config/routing/slots", methods=["POST"])
+def routing_slots_post():
+    """Per-slot merge update for the capability-slots block.
+
+    Body: ``{"slots": {"<slot_name>": {"preferred": ..., "fallback": [...]}}}``
+
+    Unlike the whole-block ``/config/routing`` POST, this merges each
+    named slot's fields into the existing slot dict, so a pane that
+    edits only ``image_generates`` can never clobber the other slots
+    or strip the ``_note`` annotations routing-config.json carries.
+    Underscore-prefixed keys are rejected from the client patch for
+    the same reason.
+    """
+    data = request.get_json(force=True)
+    updates = data.get("slots")
+    if not isinstance(updates, dict):
+        return json.dumps({"ok": False, "error": "slots must be an object"}), 400
+    cfg = _load_routing_config()
+    slots = cfg.setdefault("slots", {})
+    for slot_name, patch in updates.items():
+        if not isinstance(patch, dict):
+            return json.dumps(
+                {"ok": False,
+                 "error": f"slot {slot_name!r} patch must be an object"}), 400
+        current = slots.setdefault(slot_name, {})
+        for key, value in patch.items():
+            if key.startswith("_"):
+                continue
+            current[key] = value
+    _save_routing_config(cfg)
+    reloaded = _reload_pipeline_router_after_config_change()
+    return json.dumps({"ok": True, "router_reloaded": reloaded})
+
+
 @app.route("/config/routing/buckets", methods=["POST"])
 def routing_buckets_post():
     """Update bucket contents (model ordering within tiers)."""
