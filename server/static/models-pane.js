@@ -92,6 +92,13 @@
   // _fallbackPopoutFor = <configName>. Close button or Escape clears.
   var _fallbackPopoutFor = null;
 
+  // Loosening-footnote expansion state. Clicking the "N picks
+  // loosened" footnote on a preset card sets _looseningOpenFor =
+  // <configName> and the card grows a per-cell detail list below the
+  // footnote. Clicking again (or expanding another card's footnote)
+  // collapses it.
+  var _looseningOpenFor = null;
+
   // Hardware data from /models — system_ram_gb / overhead_gb /
   // available_budget_gb / local_models[]. Used by the bottom
   // hardware analysis section.
@@ -112,6 +119,10 @@
       _renderPresets();
       _renderCustom();
       _renderInventory();
+    } else if (_looseningOpenFor) {
+      _looseningOpenFor = null;
+      _renderPresets();
+      _renderPopout();
     }
   }
 
@@ -466,6 +477,17 @@
           _renderPopout();
         });
       }
+      var looseningBtn = card.querySelector('[data-action="loosening"]');
+      if (looseningBtn) {
+        looseningBtn.addEventListener('click', function (evt) {
+          evt.stopPropagation();
+          _looseningOpenFor = (_looseningOpenFor === configName) ? null : configName;
+          _renderPresets();
+          // _renderPresets parked the popout at the pane root;
+          // re-attach it if a ▸ More expansion is open on some card.
+          _renderPopout();
+        });
+      }
     });
     _wireSlotPickHandlers(section);
   }
@@ -591,6 +613,7 @@
       +     _slotRowHTML('image gen', summary.image_generation,
             {omitCost: omitCost, configName: summary.name, isActive: editable})
       +     _expandSlotsHTML(summary, {omitCost: omitCost, isActive: editable})
+      +     _looseningFootnoteHTML(summary)
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
       +     '<button type="button" class="ora-models-card-btn" data-action="more">'
@@ -628,6 +651,39 @@
 
   function _moreLabelFor(configName) {
     return _fallbackPopoutFor === configName ? '▾ Less' : '▸ More';
+  }
+
+  // Footnote line for auto-populated presets whose bake had to relax a
+  // constraint (vision_only, budget ceiling, …) for some cells — the
+  // per-cell notes live in _auto_populate_metadata.loosening_log and
+  // arrive on the summary as summary.loosening_log. Without this the
+  // user sees e.g. a non-vision model in a Free-preset slot while the
+  // Vision toggle reads on, with no explanation. Click toggles an
+  // expandable per-cell detail list below the footnote.
+  function _looseningFootnoteHTML(summary) {
+    var log = summary.loosening_log || {};
+    var cells = Object.keys(log);
+    if (!cells.length) return '';
+    var open = (_looseningOpenFor === summary.name);
+    var n = cells.length;
+    var html = ''
+      + '<button type="button" class="ora-models-loosening-note"'
+      +   ' data-action="loosening"'
+      +   ' title="Auto-populate relaxed a constraint (e.g. Vision) for '
+      +     n + ' slot' + (n === 1 ? '' : 's') + ' — no eligible model matched. '
+      +     'Click for per-slot notes.">'
+      +   (open ? '▾' : '▸') + ' ' + n + ' pick' + (n === 1 ? '' : 's')
+      +   ' loosened'
+      + '</button>';
+    if (!open) return html;
+    var items = cells.map(function (cell) {
+      var notes = log[cell];
+      if (!Array.isArray(notes)) notes = [String(notes)];
+      return '<li><code>' + _esc(cell) + '</code> — '
+        + _esc(notes.join('; ')) + '</li>';
+    });
+    return html
+      + '<ul class="ora-models-loosening-detail">' + items.join('') + '</ul>';
   }
 
   function _slotRowHTML(label, modelId, opts) {

@@ -268,6 +268,54 @@ class TestListConfigurations(_Fixture):
         self.assertFalse(t["adversarial_diversity"])
         self.assertTrue(t["vision_only"])
 
+    def test_summary_includes_loosening_log(self):
+        config = self._ap_config(
+            "free", "free", "llama-70b", "nemo", "llama-3b")
+        config["_auto_populate_metadata"] = {
+            "preset": "free",
+            "vision_only": True,
+            "loosening_log": {
+                "utility.step1_cleanup": [
+                    "vision_only dropped: no eligible free vision model"],
+                "analysis.gear4.depth": [
+                    "vision_only dropped: no eligible free vision model"],
+            },
+        }
+        self._write_config("free", config)
+        result = self.module.list_configurations()
+        log = result["presets"]["free"]["loosening_log"]
+        self.assertEqual(set(log.keys()),
+                         {"utility.step1_cleanup", "analysis.gear4.depth"})
+        self.assertEqual(
+            log["utility.step1_cleanup"],
+            ["vision_only dropped: no eligible free vision model"])
+
+    def test_summary_loosening_log_defaults_empty(self):
+        # No metadata at all (custom / legacy config)
+        self._write_config("free", self._ap_config(
+            "free", "free", "llama-70b", "nemo", "llama-3b"))
+        result = self.module.list_configurations()
+        self.assertEqual(result["presets"]["free"]["loosening_log"], {})
+
+    def test_summary_loosening_log_tolerates_malformed_shapes(self):
+        config = self._ap_config(
+            "free", "free", "llama-70b", "nemo", "llama-3b")
+        config["_auto_populate_metadata"] = {
+            "loosening_log": {
+                "cell.a": "bare string note",      # string → wrapped in list
+                "cell.b": ["", "  ", "real note"],  # blanks dropped
+                "cell.c": 42,                       # non-list/str → dropped
+                "cell.d": [],                       # empty → dropped
+            },
+        }
+        self._write_config("free", config)
+        result = self.module.list_configurations()
+        log = result["presets"]["free"]["loosening_log"]
+        self.assertEqual(log, {
+            "cell.a": ["bare string note"],
+            "cell.b": ["real note"],
+        })
+
 
 class TestDuplicateAndCreate(_Fixture):
     """duplicate_configuration / create_blank_configuration / auto-naming."""
