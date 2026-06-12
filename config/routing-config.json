@@ -11439,6 +11439,46 @@
       "service": "openrouter",
       "model_id": "openrouter/fusion",
       "dispatch": "openrouter"
+    },
+    {
+      "id": "claude-code:claude-opus-4.8",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "anthropic",
+      "display_name": "Claude Opus 4.8 (subscription via Claude Code)",
+      "service": "claude-code",
+      "model_id": "claude-opus-4-8",
+      "dispatch": "subscription",
+      "vision_capable": true,
+      "context_window": 200000,
+      "capabilities": {
+        "tool_access": false,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "_note": "Subscription execution via the local Claude Code CLI (claude -p). Zero marginal API cost; campaign cost tables price its tokens at the API-equivalent rate."
+    },
+    {
+      "id": "claude-code:claude-haiku-4.5",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "anthropic",
+      "display_name": "Claude Haiku 4.5 (subscription via Claude Code)",
+      "service": "claude-code",
+      "model_id": "claude-haiku-4-5",
+      "dispatch": "subscription",
+      "vision_capable": true,
+      "context_window": 200000,
+      "capabilities": {
+        "tool_access": false,
+        "file_system_access": false,
+        "web_access": false,
+        "retrieval_approach": "pre-assembled"
+      },
+      "_note": "Subscription execution via the local Claude Code CLI (claude -p). Zero marginal API cost; campaign cost tables price its tokens at the API-equivalent rate."
     }
   ],
   "buckets": {
