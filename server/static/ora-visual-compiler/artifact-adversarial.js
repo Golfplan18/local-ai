@@ -19,6 +19,23 @@
  *      Parent/child pairs are skipped (a <text> inside a <g class="node"> is
  *      not an overlap).
  *
+ *   1b. Data-label text overlap — Vega-Lite renderers (ach-matrix cell
+ *      values + Heuer score rows, QUANT text marks) emit <text> elements
+ *      with NO ora-visual__* class, so check 1 never sees them; smashed
+ *      data labels rendered with zero findings. This pass collects texts
+ *      carrying no ora-visual__* class at all (any ora-visual class means
+ *      the renderer made a deliberate annotation decision — edge labels
+ *      and polarity glyphs legitimately ride close to their chrome),
+ *      excluding chart chrome (Vega role-axis*, role-legend*, role-title
+ *      groups, which legitimately sit tight) and any text inside a
+ *      semantic group (that is a node label; check 2 owns it), and flags
+ *      text-on-text overlap above 10% of the smaller label's estimated
+ *      box → W_ARTIFACT_LABEL_OVERLAP. Warning severity only: the
+ *      char-width estimate (chars × 6.5 px) is too rough to block a
+ *      render on. Findings cap at 12 per artifact (a dense grid of
+ *      smashed labels would otherwise flood); the remainder is
+ *      summarized in one finding.
+ *
  *   2. Text truncation — estimated text width (chars × 6.5 px/char at our
  *      default theme font size 13 px) compared to the containing semantic
  *      group's bbox width. Above 1.10× → W_ARTIFACT_TEXT_TRUNCATED. When the
@@ -534,6 +551,8 @@
   // ── Main review ───────────────────────────────────────────────────────
 
   var OVERLAP_CRITICAL_THRESHOLD = 0.05;   // > 5% of smaller area → Critical
+  var LABEL_OVERLAP_THRESHOLD    = 0.10;   // > 10% of smaller label box → warning
+  var LABEL_OVERLAP_MAX_FINDINGS = 12;     // per-artifact cap; remainder summarized
   var TEXT_TRUNC_WARN_THRESHOLD  = 1.10;   // > 110% of container width
   var TEXT_TRUNC_CRIT_THRESHOLD  = 1.50;   // > 150% of container when primary label
   var WCAG_TEXT_MIN              = 4.5;    // SC 1.4.3 body text / normal size
@@ -653,6 +672,85 @@
           ));
         }
       }
+    }
+
+    // ── 1b. Data-label text overlap (unclassed <text> marks) ───────────
+    // Vega-emitted data labels carry no ora-visual__* class, so the pass
+    // above is blind to them. Collect visible texts with NO ora-visual__*
+    // class at all — a renderer that attached any ora-visual class made a
+    // deliberate annotation decision (edge labels, polarity glyphs, loop
+    // badges legitimately ride close to their chrome); pure un-annotated
+    // texts are Vega leftovers (ach-matrix cell values / Heuer score rows,
+    // QUANT text marks). Also excluded: chart chrome (axis ticks, legend
+    // entries, titles — legitimately tight) and anything inside a semantic
+    // group (node labels; the truncation check owns those).
+    var VEGA_CHROME_RE = /\brole-(?:axis|legend|title)/;
+    var ORA_CLASSED_RE = /\bora-visual__/;
+
+    function _isChartChromeOrGrouped(el) {
+      var cur = el.parentNode;
+      while (cur && cur.nodeType === 1 && cur.tagName && cur.tagName.toLowerCase() !== 'svg') {
+        var c = (cur.getAttribute && cur.getAttribute('class')) || '';
+        if (VEGA_CHROME_RE.test(c)) return true;
+        if (cur.getAttribute && cur.getAttribute('aria-hidden') === 'true') return true;
+        if (_semanticClassOf(cur)) return true;
+        cur = cur.parentNode;
+      }
+      return false;
+    }
+
+    var labelTexts = [];
+    var allTexts = root.getElementsByTagName ? root.getElementsByTagName('text') : [];
+    for (var lt = 0; lt < allTexts.length; lt++) {
+      var lel = allTexts[lt];
+      if (!lel || !lel.getAttribute) continue;
+      if (lel.getAttribute('aria-hidden') === 'true') continue;
+      var ltxt = (lel.textContent || '').trim();
+      if (!ltxt) continue;
+      var lcls = lel.getAttribute('class') || '';
+      if (ORA_CLASSED_RE.test(lcls)) continue;      // renderer-annotated label
+      if (_isChartChromeOrGrouped(lel)) continue;
+      var lbox = _bbox(lel);
+      if (!lbox || lbox.width <= 0 || lbox.height <= 0) continue;
+      labelTexts.push({
+        el: lel,
+        id: lel.getAttribute('id') || null,
+        text: ltxt,
+        bbox: lbox,
+      });
+    }
+
+    var labelFindings = 0;
+    var labelSuppressed = 0;
+    for (var la = 0; la < labelTexts.length; la++) {
+      for (var lb = la + 1; lb < labelTexts.length; lb++) {
+        var LA = labelTexts[la], LB = labelTexts[lb];
+        var interL = _intersectArea(LA.bbox, LB.bbox);
+        if (interL <= 0) continue;
+        var smallerL = Math.min(_area(LA.bbox), _area(LB.bbox));
+        if (smallerL <= 0) continue;
+        var ratioL = interL / smallerL;
+        if (ratioL <= LABEL_OVERLAP_THRESHOLD) continue;
+        if (labelFindings >= LABEL_OVERLAP_MAX_FINDINGS) { labelSuppressed++; continue; }
+        labelFindings++;
+        findings.push(_make(
+          'W_ARTIFACT_LABEL_OVERLAP',
+          'Data labels overlap by ' + (ratioL * 100).toFixed(0) +
+          '% of the smaller label ("' + LA.text.slice(0, 24) + '" / "' +
+          LB.text.slice(0, 24) + '") — likely unreadable; widen the axis step or shorten the labels.',
+          null,
+          LA.id || LB.id
+        ));
+      }
+    }
+    if (labelSuppressed > 0) {
+      findings.push(_make(
+        'W_ARTIFACT_LABEL_OVERLAP',
+        labelSuppressed + ' further data-label overlap pair(s) suppressed after the first ' +
+        LABEL_OVERLAP_MAX_FINDINGS + ' findings.',
+        null,
+        null
+      ));
     }
 
     // ── 2. Text truncation ─────────────────────────────────────────────
@@ -824,6 +922,8 @@
 
     // Tunable thresholds (reviewers can poke these in tests).
     OVERLAP_CRITICAL_THRESHOLD: OVERLAP_CRITICAL_THRESHOLD,
+    LABEL_OVERLAP_THRESHOLD:    LABEL_OVERLAP_THRESHOLD,
+    LABEL_OVERLAP_MAX_FINDINGS: LABEL_OVERLAP_MAX_FINDINGS,
     TEXT_TRUNC_WARN_THRESHOLD:  TEXT_TRUNC_WARN_THRESHOLD,
     TEXT_TRUNC_CRIT_THRESHOLD:  TEXT_TRUNC_CRIT_THRESHOLD,
     WCAG_TEXT_MIN:              WCAG_TEXT_MIN,
