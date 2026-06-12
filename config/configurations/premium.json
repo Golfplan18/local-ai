@@ -1,6 +1,6 @@
 {
   "name": "premium",
-  "description": "Auto-populated from preset 'premium' on 2026-06-12T03:58:26.936477+00:00.",
+  "description": "Auto-populated from preset 'premium' on 2026-06-12T04:52:09.198944+00:00.",
   "preset_lineage": "premium",
   "cells": {
     "utility": {
@@ -105,9 +105,6 @@
         ],
         "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct"
       }
-    },
-    "image_generation": {
-      "image_generation": null
     }
   },
   "_auto_populate_metadata": {

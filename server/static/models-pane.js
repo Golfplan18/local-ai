@@ -56,15 +56,12 @@
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
     sort_by: 'intelligence_desc',  // highest-intelligence first so the strongest models surface by default (Phase 5; was 'alpha_desc')
-    category: 'chat',       // inventory category: chat | image_generation | image_editing | text_to_video. Slot-pick mode overrides to the slot's category.
+    category: 'chat',       // inventory category. Chat-only since 2026-06-11: image/video model selection lives on the Visual tab (routing-config slots chain), not in chat configurations.
     grouping: 'vendor',     // 'vendor' (default — vendor blocks, collapsible) or 'flat' (no grouping, one sorted list)
   };
 
   var CATEGORY_OPTIONS = [
     {id: 'chat',             label: 'Chat'},
-    {id: 'image_generation', label: 'Image gen'},
-    {id: 'image_editing',    label: 'Image edit'},
-    {id: 'text_to_video',    label: 'Video'},
   ];
 
   var SORT_OPTIONS = [
@@ -172,11 +169,10 @@
   // ── data load ───────────────────────────────────────────────────────────
 
   function _loadAll() {
-    // Chunk 11 step 4: fetch ALL categories so slot-row lookups can
-    // resolve image-gen / image-edit / text-to-video model ids in the
-    // registry. The inventory grid filters down to chat-only at render
-    // time (see _renderInventory) until step 5 wires the
-    // click-slot-then-swap-inventory gesture.
+    // categories=all is kept for forward-compat: the registry is
+    // chat-only today (media entries left 2026-06-11 with the
+    // image_generation slot), and the inventory renders whatever
+    // categories the response carries.
     Promise.all([
       fetch('/api/model-registry?categories=all').then(_json),
       fetch('/api/model-registry/picks').then(_json),
@@ -610,8 +606,6 @@
         ? _slotRowHTML('fast 2', summary.fast2, {omitCost: omitCost, configName: summary.name, isActive: editable})
         : '')
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name, isActive: editable})
-      +     _slotRowHTML('image gen', summary.image_generation,
-            {omitCost: omitCost, configName: summary.name, isActive: editable})
       +     _expandSlotsHTML(summary, {omitCost: omitCost, isActive: editable})
       +     _looseningFootnoteHTML(summary)
       +   '</div>'
@@ -882,14 +876,13 @@
     var BIG1_FANOUT = ['big 1', 'post_analysis.consolidation',
                        'post_analysis.verification', 'post_analysis.formatter'];
     var FAST1_FANOUT = ['fast 1', 'analysis.gear3.depth', 'utility.gear2_rag_lookup'];
-    var hits = {small: false, big1: false, big2: false, fast1: false, fast2: false, image: false, other: false};
+    var hits = {small: false, big1: false, big2: false, fast1: false, fast2: false, visual: false, other: false};
     // We don't have the cell paths surfaced per id in the summary —
     // so we infer by checking which visible fields the bad id lives in.
     var fields = {
       'small': summary.small,
       'big 1': summary.big1, 'big 2': summary.big2,
       'fast 1': summary.fast1, 'fast 2': summary.fast2,
-      'image gen': summary.image_generation,
       'visual': summary.visual, 'utility': summary.utility,
       'consolidate': summary.consolidate, 'verify': summary.verify,
     };
@@ -902,7 +895,7 @@
           else if (label === 'big 2') hits.big2 = true;
           else if (label === 'fast 1') hits.fast1 = true;
           else if (label === 'fast 2') hits.fast2 = true;
-          else if (label === 'image gen' || label === 'visual') hits.image = true;
+          else if (label === 'visual') hits.visual = true;
           matched = true;
         }
       });
@@ -918,7 +911,7 @@
     if (hits.big2) labels.push('BIG 2');
     if (hits.fast1) labels.push('FAST 1');
     if (hits.fast2) labels.push('FAST 2');
-    if (hits.image) labels.push('IMAGE GEN');
+    if (hits.visual) labels.push('VISUAL');
     if (hits.other) labels.push('SMALL or BIG 1 or FAST 1');
     return 'click ' + labels.join(' or ') + ' to repick';
   }
@@ -1286,8 +1279,6 @@
         ? _slotRowHTML('fast 2', summary.fast2, {configName: summary.name, isActive: editable})
         : '')
       +     _slotRowHTML('small', summary.small, {configName: summary.name, isActive: editable})
-      +     _slotRowHTML('image gen', summary.image_generation,
-            {configName: summary.name, isActive: editable})
       +     _expandSlotsHTML(summary, {isActive: editable})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
@@ -1535,8 +1526,7 @@
   // is in picking mode, the inventory restricts to that bucket so the
   // user doesn't see small models as candidates for a big-1 slot or
   // large models for a small slot. Returns null when no slot pick is
-  // active or when the slot's category swap (image gen) handles the
-  // restriction differently.
+  // active.
   var SLOT_TO_SIZE_BUCKET = {
     'big 1':       'large',
     'big 2':       'large',
@@ -1555,17 +1545,14 @@
     // they fall back from, so a SMALL fallback chain only sees small
     // models and a LARGE chain only sees large ones.
     'large':       'large',
-    // 'image gen' / 'image' intentionally absent — category swap
-    // handles it, image-gen models don't carry size_bucket.
   };
 
-  // Slot label → inventory category. When picking these, the
-  // inventory swaps from chat to image models. 'image' is the
-  // popout-fallback section label for the same dispatch.
-  var SLOT_TO_CATEGORY = {
-    'image gen': 'image_generation',
-    'image':     'image_generation',
-  };
+  // Slot label → inventory category. Empty since 2026-06-11: the
+  // image_generation slot left the configuration schema (image-model
+  // selection lives on the Visual tab / routing-config slots chain),
+  // so no slot pick swaps the inventory away from chat. Kept as a
+  // table so a future media slot can re-register here.
+  var SLOT_TO_CATEGORY = {};
 
   function _activeSlotPickSizeBucket() {
     if (!_activeSlotPick) return null;
@@ -1975,6 +1962,10 @@
   }
 
   function _categorySelectHTML() {
+    // A one-entry category list (chat-only, the state since the media
+    // categories left with the image_generation slot) makes the
+    // dropdown pure noise — render nothing.
+    if (CATEGORY_OPTIONS.length < 2) return '';
     // Active slot-pick locks the category to match the slot — show the
     // dropdown disabled so the user sees why their click can't change it.
     var slotPickLabel = _activeSlotPick ? _activeSlotPick.slotLabel : null;
@@ -2151,17 +2142,15 @@
     }
 
     // Three sections, fixed shape regardless of adversarial toggle.
-    // Each section's first row uses the section label (LARGE / SMALL /
-    // IMAGE) as the rank, displaying the primary inline with the label
+    // Each section's first row uses the section label (LARGE / SMALL)
+    // as the rank, displaying the primary inline with the label
     // — no separate h4. Remaining rows are FALLBACK N. Each section is
-    // capped: large gets at most 2 fallbacks (3 rows), small + image
-    // get 1 fallback each (2 rows). Empty fallback positions render as
-    // clickable placeholders so the user can fill them in place — used
-    // for the image-gen chain that auto-populate doesn't always seed.
+    // capped: large gets at most 2 fallbacks (3 rows), small gets 1
+    // fallback (2 rows). Empty fallback positions render as clickable
+    // placeholders so the user can fill them in place.
     var sections = [
       _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name, 3),
       _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name, 2),
-      _popoutSlotHTML('image', summary.image_generation, summary.image_generation_fallback, summary.name, 1),
     ];
 
     popout.hidden = false;

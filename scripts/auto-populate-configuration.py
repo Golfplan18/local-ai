@@ -77,28 +77,13 @@ def cost_of(model: dict) -> float:
     return float(val) if val is not None else math.inf
 
 
-def cost_of_media(model: dict) -> float:
-    """Get the image-generation cost ($/1k images). math.inf when missing.
-
-    Image-gen models price per-image rather than per-token; ``image_pricing``
-    is populated by the AA per-model detail-page scrape (see Models pane
-    refresh path). Models without pricing data sort to the bottom on
-    cost-ascending — same admissible-but-not-preferred treatment chat models
-    without ``blended_per_m`` get.
-    """
-    pricing = model.get("image_pricing") or {}
-    val = pricing.get("per_1k_images")
-    return float(val) if val is not None else math.inf
-
-
 def pareto_filter(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
     """Remove strictly dominated models.
 
     A model A is dominated by B if B has higher (or equal) intelligence
     AND lower (or equal) cost, with at least one strict inequality.
     Returns the Pareto-frontier subset of candidates. ``cost_fn`` picks
-    the cost axis — ``cost_of`` for chat (tokens) or ``cost_of_media``
-    for image-gen ($/1k images).
+    the cost axis (per-M-token blended cost for chat slots).
     """
     frontier = []
     for cand in candidates:
@@ -550,70 +535,6 @@ def pick_for_free_slot(
     return [], notes
 
 
-FREE_MEDIA_PROXY_CEILING = 10.0
-"""Free preset fallback: when no zero-cost image-gen models exist (or fewer
-than top-N do), admit models under this $/1k-images ceiling. Picked to be
-well below the median $35/1k so the Free pool stays recognisably budget."""
-
-
-def pick_for_media_slot(
-    catalog: list[dict],
-    category: str,
-    top_n: int,
-    mode: str = "paid_intelligence",
-    floor_pct: float | None = None,
-    cost_ceiling: float | None = None,
-    sort_by: str = "cost_asc",
-    excluded_ids: set | None = None,
-    excluded_vendors: set | None = None,
-) -> list[dict]:
-    """Pick top-N image-gen models, mirroring ``pick_for_paid_slot`` semantics
-    against per-1k-images cost rather than per-M-tokens cost.
-
-    ``mode`` switches the algorithm path:
-
-      "paid_intelligence" — Pareto pass on (Elo, $/1k) → floor_pct% of top
-                            Elo (when set) → cost ceiling (when set) →
-                            sort by ``sort_by``. Used by Premium / Optimum /
-                            Budget.
-      "free_intelligence" — Restrict to per_1k_images == 0; if that returns
-                            fewer than top_n, fall back to per_1k_images
-                            <= FREE_MEDIA_PROXY_CEILING ($10/1k) as the
-                            "cheap-enough-to-treat-as-free" pool. Pareto
-                            pass + sort by intelligence descending.
-
-    Models without ``image_pricing.per_1k_images`` get math.inf for cost
-    (same admissible-but-not-preferred treatment chat models without
-    blended_per_m get). They participate in Pareto + intelligence-desc
-    sort but never pass a finite cost ceiling.
-    """
-    excluded_ids = excluded_ids or set()
-    candidates = filter_by_category(catalog, category)
-    candidates = [m for m in candidates if m["id"] not in excluded_ids]
-    candidates = _apply_vendor_diversity(candidates, excluded_vendors)
-    if not candidates:
-        return []
-
-    if mode == "free_intelligence":
-        zero_cost = [m for m in candidates if cost_of_media(m) == 0]
-        pool = zero_cost
-        if len(pool) < top_n:
-            # Fallback: admit models priced below the free-proxy ceiling
-            # so the Free preset isn't capped at the handful of zero-cost
-            # image models AA exposes today (3 as of the 2026-05 scrape).
-            pool = [m for m in candidates if cost_of_media(m) <= FREE_MEDIA_PROXY_CEILING]
-        pool = pareto_filter(pool, cost_fn=cost_of_media)
-        return sort_by_intelligence_descending(pool)[:top_n]
-
-    # paid_intelligence path
-    candidates = pareto_filter(candidates, cost_fn=cost_of_media)
-    candidates = apply_floor(candidates, floor_pct)
-    candidates = apply_cost_ceiling(candidates, cost_ceiling, cost_fn=cost_of_media)
-    if sort_by == "intelligence_desc":
-        return sort_by_intelligence_descending(candidates)[:top_n]
-    return sort_by_cost_ascending(candidates, cost_fn=cost_of_media)[:top_n]
-
-
 def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: str) -> str | None:
     """Pick a vision-capable model from the configured size bucket.
 
@@ -733,10 +654,6 @@ def populate_configuration(
         diversity = slot_spec.get("diversity_excluded", False)
         excluded_so_far: set = set()
         excluded_vendors_so_far: set = set()
-        # Slots carrying a ``category`` field (e.g. image_generation) route
-        # through the media picker, which sorts by Elo and ignores the
-        # chat-only paid/free machinery. See pick_for_media_slot.
-        slot_category = slot_spec.get("category")
         # The slot_spec may override the preset's sort_by — Fast does this
         # to force tokens_per_sec_desc across every preset. Same story for
         # exclude_reasoning_models. size_bucket is optional; None means
@@ -746,22 +663,7 @@ def populate_configuration(
         slot_size_bucket = slot_spec.get("size_bucket")
         for cell_name in slot_spec["cells"]:
             notes: list = []
-            if slot_category and slot_category != "chat":
-                picks = pick_for_media_slot(
-                    catalog,
-                    category=slot_category,
-                    top_n=slot_spec["top_n"],
-                    mode=preset["mode"],
-                    floor_pct=preset.get("floor_pct"),
-                    cost_ceiling=preset.get("image_cost_ceiling_per_1k"),
-                    sort_by=preset.get("sort_by", "cost_asc"),
-                    excluded_ids=excluded_so_far if diversity else None,
-                    excluded_vendors=excluded_vendors_so_far if diversity else None,
-                )
-                # Media cells don't carry a vision_substitute (the slot IS
-                # the image-handling slot — no fallback needed).
-                section[cell_name] = picks_to_cell(picks, None)
-            elif preset["mode"] == "free_intelligence":
+            if preset["mode"] == "free_intelligence":
                 picks, notes = pick_for_free_slot(
                     catalog,
                     size_bucket=slot_size_bucket,
@@ -827,12 +729,10 @@ def populate_configuration(
 
     cells["post_analysis"] = _pick("post_analysis", slot_specs["post_analysis"])
 
-    # Media slots (image_generation today; image_editing + text_to_video
-    # will land on the Visual tab in later steps). Guarded by presence
-    # in the preset spec so a configuration without the slot still bakes
-    # cleanly against older preset files.
-    if "image_generation" in slot_specs:
-        cells["image_generation"] = _pick("image_generation", slot_specs["image_generation"])
+    # No media slots: image-model selection lives on the Visual tab /
+    # routing-config.json's slots.image_generates chain, not in chat
+    # configurations (decision 2026-06-11 — the configuration cell was
+    # never read by the image-generation runtime).
 
     return {
         "name": "<set by caller>",
