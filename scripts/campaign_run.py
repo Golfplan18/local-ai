@@ -408,23 +408,21 @@ def build_subscription_premium() -> dict:
 
 
 def build_optimum_plus(optimum_config: dict, consolidator_id: str) -> dict:
-    """Single-cell variant of campaign-optimum: the consolidation primary
-    (step 7 — the one call that reads both adversarial streams and writes
-    what the user sees) becomes the flagship. Fallbacks are emptied so a
-    throttled flagship fails loudly instead of silently restoring the
-    optimum model — the comparison must never quietly become a no-op."""
+    """Exact duplicate of campaign-optimum with ONE change: the
+    consolidation primary (step 7 — the call that reads both adversarial
+    streams and writes what the user sees) becomes the flagship. Every
+    other field — fallback chains included — stays identical (user spec
+    2026-06-12). A throttled flagship falling back to the chain is caught
+    by the fidelity gate's required-subscription-models check, not by
+    emptying the chain."""
     import copy
     cfg = copy.deepcopy(optimum_config)
-    cell = cfg["cells"]["post_analysis"]["consolidation"]
-    cell["primary"] = consolidator_id
-    cell["fallback"] = []
+    cfg["cells"]["post_analysis"]["consolidation"]["primary"] = consolidator_id
     cfg["description"] = (
-        "Optimum+ — the campaign-optimum configuration with ONE upgraded "
-        f"cell: post_analysis.consolidation → {consolidator_id}. Captures "
-        "whether a premium consolidator alone lifts the cheap pipeline's "
-        "deliverable (experiment 2026-06-12: 11-0-1 for the variant at "
-        "~+$0.25/run). Every other cell is byte-identical to "
-        "campaign-optimum.")
+        "Optimum+ — exact duplicate of campaign-optimum with one change: "
+        f"the consolidation primary is {consolidator_id}. Captures whether "
+        "a premium consolidator alone lifts the cheap pipeline's "
+        "deliverable (experiment 2026-06-12: 11-0-1 for the variant).")
     return cfg
 
 
@@ -497,14 +495,12 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
     # consolidation (step 7). Captured as its own lane so the full-sweep
     # data exists BEFORE deciding whether the optimum preset default
     # changes (n=12 verdict: 11-0-1 for the variant, ~+$0.25/run).
+    # The consolidator is premium's big-1 AS PICKED — in subscription mode
+    # that is the claude-code endpoint (user spec 2026-06-12: "the Opus 4.8
+    # from my subscription account"), so the 198 consolidation calls cost
+    # zero marginal dollars and the tables price them API-equivalent (†).
+    # Third parties baking with --premium api get the metered flagship.
     consolidator_id = snapshot["configs"]["campaign-premium"]["models"]["big1"]
-    for spec in CLAUDE_CODE_ENDPOINTS:
-        if consolidator_id == spec["id"]:
-            # The optimum lanes stay metered-API reproducible — the
-            # consolidator uses the flagship's API twin, not the
-            # subscription endpoint.
-            consolidator_id = spec["api_equivalent"]
-            break
     opt_plus = build_optimum_plus(
         json.loads((CONFIGURATIONS_DIR / "campaign-optimum.json").read_text()),
         consolidator_id)
@@ -806,6 +802,18 @@ def verify_trace_fidelity(trace_dir: str | None, expected: set) -> dict:
             result["violations"].append({
                 "kind": "step_failed", "step": step_file.stem,
                 "detail": str(d.get("reason"))[:200]})
+    # Subscription primaries MUST have executed. They dispatch only via
+    # the claude-code CLI (no same-id transport fallback), so their
+    # absence from the census means a throttle handed their step to a
+    # fallback-chain model — undetectable above when that model is a
+    # legitimate primary of some OTHER cell (e.g. optimum-plus: a
+    # throttled Opus consolidator falling back to the gemini big-2).
+    for mid in expected:
+        if mid.startswith("claude-code:") and mid not in result["executed"]:
+            result["violations"].append({
+                "kind": "required_model_missing", "model": mid,
+                "detail": "subscription primary never executed — its step "
+                          "was served by a fallback or skipped"})
     result["ok"] = not result["violations"]
     return result
 
