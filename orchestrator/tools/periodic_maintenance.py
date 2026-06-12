@@ -139,23 +139,35 @@ def _log(message: str, log_file: str):
 # Task 1 — Orphan Relationship Cleanup (Weekly)
 # ---------------------------------------------------------------------------
 
-def task_1_orphan_cleanup() -> TaskResult:
+def task_1_orphan_cleanup(graph=None) -> TaskResult:
     """
-    Scan all relationship targets and remove references to deleted notes.
-    No runtime trigger exists for external vault edits (Obsidian renames/deletes).
+    Report dangling relationship targets and reconcile the graph DB with
+    vault YAML. No runtime trigger exists for external vault edits
+    (Obsidian renames/deletes).
+
+    The vault YAML is canonical, so a row that is still declared in a live
+    note's frontmatter cannot be durably deleted here — any sync/rebuild
+    re-creates it. Dangling note-style targets are therefore REPORTED (the
+    fix belongs in the vault), while rows that are genuinely stale (source
+    note deleted, or its YAML edited) are removed by sync_from_vault()'s
+    diff. Engram/statement-keyed rows are exempt from orphan classification
+    inside find_orphan_targets(). The previous flow — delete ~1M "orphan"
+    rows one by one, then full-rebuild the 835 MB DB, re-inserting the same
+    rows — is gone.
     """
     import time
     start = time.time()
     result = TaskResult(task_number=1, name="Orphan Cleanup", success=True, message="")
 
-    try:
-        from orchestrator.tools.relationship_graph import RelationshipGraph
-        graph = RelationshipGraph()
-    except ImportError:
-        result.success = False
-        result.message = "RelationshipGraph module not available"
-        result.duration_seconds = time.time() - start
-        return result
+    if graph is None:
+        try:
+            from orchestrator.tools.relationship_graph import RelationshipGraph
+            graph = RelationshipGraph()
+        except ImportError:
+            result.success = False
+            result.message = "RelationshipGraph module not available"
+            result.duration_seconds = time.time() - start
+            return result
 
     try:
         orphans = graph.find_orphan_targets()
@@ -166,52 +178,54 @@ def task_1_orphan_cleanup() -> TaskResult:
         return result
 
     orphan_count = len(orphans)
+    resolved = 0
 
     if orphan_count > 0:
+        # Diagnostic: orphans whose target matches a vault title up to
+        # case/whitespace are likely rename artifacts, not deletions.
         # Collect titles by filename walk only — _scan_vault_notes() parses
         # YAML frontmatter for every file, which this task doesn't need.
-        # Normalize once into a set: the orphan list can run to millions of
-        # rows (engram relationships), and normalizing per comparison in a
-        # nested loop wedged the oversight daemon thread for hours.
         vault_titles_normalized = set()
         for root, dirs, files in os.walk(VAULT_PATH):
-            dirs[:] = [d for d in dirs if not d.startswith(".")]
+            dirs[:] = [d for d in dirs if not d.startswith(".")
+                       and d != "Old AI Working Files"]
             for fname in files:
                 if fname.endswith(".md"):
                     title = fname.rsplit(".", 1)[0]
                     vault_titles_normalized.add(title.lower().replace(" ", ""))
 
-        resolved = 0
         for orphan in orphans:
             target = orphan.get("target", "")
             if target.lower().replace(" ", "") in vault_titles_normalized:
                 resolved += 1
 
-        try:
-            removed = graph.remove_orphans()
-        except Exception:
-            removed = 0
+    try:
+        sync_stats = graph.sync_from_vault()
+    except Exception as e:
+        result.success = False
+        result.message = f"Error syncing graph with vault: {e}"
+        result.stats = {"orphans_found": orphan_count}
+        result.duration_seconds = time.time() - start
+        return result
 
-        try:
-            graph.build_from_vault()
-        except Exception:
-            pass
+    result.stats = {
+        "orphans_found": orphan_count,
+        "potentially_resolved": resolved,
+        "rows_added": sync_stats["rows_added"],
+        "rows_removed": sync_stats["rows_removed"],
+        "sources_removed": sync_stats["sources_removed"],
+    }
+    result.message = (
+        f"Found {orphan_count} dangling targets; sync added "
+        f"{sync_stats['rows_added']} rows, removed {sync_stats['rows_removed']}"
+    )
 
-        result.stats = {
-            "orphans_found": orphan_count,
-            "potentially_resolved": resolved,
-            "removed": removed,
-        }
-        result.message = f"Found {orphan_count} orphans, removed {removed}"
-
-        if orphan_count > 10:
-            result.alerts.append(
-                f"Found {orphan_count} orphan relationships — may indicate "
-                f"bulk vault reorganization needing manual review"
-            )
-    else:
-        result.message = "No orphan relationships found"
-        result.stats = {"orphans_found": 0}
+    if orphan_count > 10:
+        result.alerts.append(
+            f"Found {orphan_count} dangling relationship targets — fix the "
+            f"references in vault YAML (deleting the rows here would be "
+            f"undone by the next sync)"
+        )
 
     result.duration_seconds = time.time() - start
     return result
