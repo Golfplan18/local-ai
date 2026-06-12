@@ -28,6 +28,17 @@ import yaml
 from pathlib import Path
 
 
+# Vault folders whose notes use statement-keyed relationship targets:
+# engram/atomic notes reference other notes by their claim sentence
+# ("Anger impairs reasoning capacity and judgment quality"), not by
+# filename stem. Rows sourced from these folders can never be resolved
+# against filenames, so they are exempt from orphan classification.
+STATEMENT_KEYED_DIRS = frozenset({"Engrams"})
+
+# Directories excluded from every vault walk (sources, titles, orphan checks).
+EXCLUDED_DIRS = frozenset({"Old AI Working Files", ".trash"})
+
+
 # Inverse relationship lookup
 INVERSE_MAP = {
     "supports": "is-supported-by",
@@ -94,6 +105,94 @@ class RelationshipGraph:
         """)
         self.conn.commit()
 
+    def _walk_vault_md(self):
+        """Yield (root, filename) for every vault .md file, applying the
+        standard exclusions (hidden dirs, EXCLUDED_DIRS)."""
+        for root, dirs, files in os.walk(self.vault_path):
+            dirs[:] = [d for d in dirs if not d.startswith(".")
+                       and d not in EXCLUDED_DIRS]
+            for filename in files:
+                if filename.endswith(".md"):
+                    yield root, filename
+
+    @staticmethod
+    def _parse_relationships(filepath: str, source_title: str,
+                             errors: list[str]) -> set[tuple]:
+        """Extract (target, type, confidence) tuples from a note's YAML
+        frontmatter. Returns an empty set when the note has none.
+
+        All three fields are coerced to str: YAML parses numeric confidences
+        (engram similarity scores like 0.861) as floats and bare dates as
+        date objects, but the columns have TEXT affinity — comparing what
+        YAML yields against what SQLite returns must be type-stable or
+        sync_from_vault never converges."""
+        rows = set()
+        try:
+            with open(filepath, "r") as f:
+                content = f.read()
+
+            if not content.startswith("---"):
+                return rows
+            end = content.find("---", 3)
+            if end == -1:
+                return rows
+            fm = yaml.safe_load(content[3:end]) or {}
+
+            relationships = fm.get("relationships", [])
+            if not relationships or not isinstance(relationships, list):
+                return rows
+
+            for rel in relationships:
+                if not isinstance(rel, dict):
+                    continue
+                rtype = rel.get("type", "")
+                target = rel.get("target", "")
+                confidence = rel.get("confidence", "medium")
+                if rtype and target:
+                    rows.add((str(target), str(rtype), str(confidence)))
+        except Exception as e:
+            errors.append(f"{filepath}: {e}")
+        return rows
+
+    _CONF_RANK = {"high": 3, "medium": 2, "low": 1}
+
+    @classmethod
+    def _better_confidence(cls, a: str, b: str) -> str:
+        """Deterministically resolve two confidence values declared for the
+        same (source, target, type) key: higher rank wins, lexicographic
+        tiebreak for values outside the high/medium/low scale. Without a
+        deterministic rule the stored value flip-flops between runs (set
+        iteration order is hash-randomized) and sync never converges."""
+        return a if (cls._CONF_RANK.get(a, 0), a) >= (cls._CONF_RANK.get(b, 0), b) else b
+
+    def _scan_vault_relationships(self, errors: list[str]) -> tuple[dict, int]:
+        """One vault pass → ({source_title: {(target, type, confidence)}},
+        notes_scanned). Notes without relationships are not in the dict.
+        Duplicate (target, type) declarations — within one note or across
+        same-stem files — collapse to a single triple via _better_confidence,
+        matching the UNIQUE(source, target, type) constraint."""
+        desired_kv: dict[str, dict[tuple, str]] = {}
+        notes_scanned = 0
+        for root, filename in self._walk_vault_md():
+            source_title = filename[:-3]
+            notes_scanned += 1
+            rows = self._parse_relationships(
+                os.path.join(root, filename), source_title, errors)
+            if not rows:
+                continue
+            kv = desired_kv.setdefault(source_title, {})
+            for target, rtype, confidence in rows:
+                key = (target, rtype)
+                if key in kv:
+                    kv[key] = self._better_confidence(kv[key], confidence)
+                else:
+                    kv[key] = confidence
+        desired = {
+            source: {(t, ty, c) for (t, ty), c in kv.items()}
+            for source, kv in desired_kv.items()
+        }
+        return desired, notes_scanned
+
     def build_from_vault(self) -> dict:
         """
         Full rebuild: scan all vault notes, extract relationships from YAML,
@@ -104,60 +203,20 @@ class RelationshipGraph:
         # Clear existing data
         self.conn.execute("DELETE FROM relationships")
 
-        notes_scanned = 0
+        errors: list[str] = []
+        desired, notes_scanned = self._scan_vault_relationships(errors)
+
         relationships_indexed = 0
-        errors = []
-
-        for root, dirs, files in os.walk(self.vault_path):
-            # Skip hidden directories and non-content directories
-            dirs[:] = [d for d in dirs if not d.startswith(".")
-                       and d != "Old AI Working Files"
-                       and d != ".trash"]
-            for filename in files:
-                if not filename.endswith(".md"):
-                    continue
-
-                filepath = os.path.join(root, filename)
-                source_title = filename[:-3]  # Remove .md
-                notes_scanned += 1
-
+        for source_title, rows in desired.items():
+            for target, rtype, confidence in rows:
                 try:
-                    with open(filepath, "r") as f:
-                        content = f.read()
-
-                    # Parse YAML frontmatter
-                    if not content.startswith("---"):
-                        continue
-                    end = content.find("---", 3)
-                    if end == -1:
-                        continue
-                    fm = yaml.safe_load(content[3:end]) or {}
-
-                    relationships = fm.get("relationships", [])
-                    if not relationships or not isinstance(relationships, list):
-                        continue
-
-                    for rel in relationships:
-                        if not isinstance(rel, dict):
-                            continue
-                        rtype = rel.get("type", "")
-                        target = rel.get("target", "")
-                        confidence = rel.get("confidence", "medium")
-
-                        if not rtype or not target:
-                            continue
-
-                        try:
-                            self.conn.execute(
-                                "INSERT OR REPLACE INTO relationships (source, target, type, confidence) VALUES (?, ?, ?, ?)",
-                                (source_title, target, rtype, confidence)
-                            )
-                            relationships_indexed += 1
-                        except sqlite3.Error as e:
-                            errors.append(f"{source_title}: {e}")
-
-                except Exception as e:
-                    errors.append(f"{filepath}: {e}")
+                    self.conn.execute(
+                        "INSERT OR REPLACE INTO relationships (source, target, type, confidence) VALUES (?, ?, ?, ?)",
+                        (source_title, target, rtype, confidence)
+                    )
+                    relationships_indexed += 1
+                except sqlite3.Error as e:
+                    errors.append(f"{source_title}: {e}")
 
         self.conn.execute(
             "INSERT OR REPLACE INTO metadata (key, value) VALUES ('last_rebuild', datetime('now'))"
@@ -174,13 +233,85 @@ class RelationshipGraph:
             "errors": errors
         }
 
+    def sync_from_vault(self) -> dict:
+        """
+        Incremental reconcile: make the relationships table match current
+        vault YAML by writing only the differences. Unlike build_from_vault
+        (which deletes every row and re-inserts ~all of them — heavy write
+        churn on a large DB even when nothing changed), this adds rows that
+        are new in YAML, removes rows no longer backed by any live note's
+        YAML, and updates rows whose confidence changed. Safe to run on a
+        schedule.
+
+        Returns stats dict.
+        """
+        errors: list[str] = []
+        desired, notes_scanned = self._scan_vault_relationships(errors)
+
+        db_sources = {row[0] for row in self.conn.execute(
+            "SELECT DISTINCT source FROM relationships")}
+
+        rows_added = 0
+        rows_removed = 0
+        sources_removed = 0
+
+        for source, want in desired.items():
+            current = {(r[0], r[1], r[2]) for r in self.conn.execute(
+                "SELECT target, type, confidence FROM relationships WHERE source = ?",
+                (source,))}
+            if want == current:
+                continue
+            # UNIQUE(source, target, type) — a confidence-only change shows
+            # up in both diffs; INSERT OR REPLACE applies it, so only delete
+            # rows whose (target, type) key is gone from YAML entirely.
+            want_keys = {(t, ty) for t, ty, _ in want}
+            for target, rtype, confidence in want - current:
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO relationships (source, target, type, confidence) VALUES (?, ?, ?, ?)",
+                    (source, target, rtype, confidence))
+                rows_added += 1
+            for target, rtype, confidence in current - want:
+                if (target, rtype) in want_keys:
+                    continue
+                self.conn.execute(
+                    "DELETE FROM relationships WHERE source = ? AND target = ? AND type = ?",
+                    (source, target, rtype))
+                rows_removed += 1
+
+        # Sources present in the DB but absent from YAML: the note was
+        # deleted, or its YAML no longer declares any relationships.
+        for source in db_sources - set(desired):
+            cur = self.conn.execute(
+                "DELETE FROM relationships WHERE source = ?", (source,))
+            rows_removed += cur.rowcount
+            sources_removed += 1
+
+        self.conn.execute(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('last_sync', datetime('now'))"
+        )
+        self.conn.execute(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('notes_scanned', ?)",
+            (str(notes_scanned),)
+        )
+        self.conn.commit()
+
+        return {
+            "notes_scanned": notes_scanned,
+            "sources_in_yaml": len(desired),
+            "rows_added": rows_added,
+            "rows_removed": rows_removed,
+            "sources_removed": sources_removed,
+            "errors": errors
+        }
+
     def add_relationships(self, source: str, relationships: list[dict]):
         """Add relationships for a single note (incremental update)."""
         for rel in relationships:
             try:
                 self.conn.execute(
                     "INSERT OR REPLACE INTO relationships (source, target, type, confidence) VALUES (?, ?, ?, ?)",
-                    (source, rel["target"], rel["type"], rel.get("confidence", "medium"))
+                    (source, str(rel["target"]), str(rel["type"]),
+                     str(rel.get("confidence", "medium")))
                 )
             except sqlite3.Error:
                 pass
@@ -283,37 +414,60 @@ class RelationshipGraph:
         """
         Find relationship targets that don't correspond to existing vault files.
         Used by the orphan cleanup maintenance task.
+
+        Rows whose source note lives in a STATEMENT_KEYED_DIRS folder are
+        exempt: their targets are claim sentences by design (see the constant's
+        docstring), so "target is not a filename stem" is not an orphan signal
+        for them. Without the exemption, every engram row (~1M) classifies as
+        an orphan every week.
         """
-        # Get all valid note titles
         valid_titles = set()
-        for root, dirs, files in os.walk(self.vault_path):
-            dirs[:] = [d for d in dirs if not d.startswith(".")
-                       and d != "Old AI Working Files"]
-            for f in files:
-                if f.endswith(".md"):
-                    valid_titles.add(f[:-3])
+        statement_sources = set()
+        for root, f in self._walk_vault_md():
+            title = f[:-3]
+            valid_titles.add(title)
+            if os.path.basename(root) in STATEMENT_KEYED_DIRS:
+                statement_sources.add(title)
 
-        cursor = self.conn.execute(
-            "SELECT DISTINCT source, target, type FROM relationships"
+        cur = self.conn.cursor()
+        cur.execute("DROP TABLE IF EXISTS temp._valid_titles")
+        cur.execute("DROP TABLE IF EXISTS temp._statement_sources")
+        cur.execute("CREATE TEMP TABLE _valid_titles (title TEXT PRIMARY KEY)")
+        cur.execute("CREATE TEMP TABLE _statement_sources (title TEXT PRIMARY KEY)")
+        cur.executemany("INSERT OR IGNORE INTO _valid_titles VALUES (?)",
+                        ((t,) for t in valid_titles))
+        cur.executemany("INSERT OR IGNORE INTO _statement_sources VALUES (?)",
+                        ((t,) for t in statement_sources))
+
+        try:
+            rows = cur.execute("""
+                SELECT DISTINCT source, target, type FROM relationships
+                WHERE target NOT IN (SELECT title FROM _valid_titles)
+                  AND source NOT IN (SELECT title FROM _statement_sources)
+            """).fetchall()
+        finally:
+            cur.execute("DROP TABLE IF EXISTS temp._valid_titles")
+            cur.execute("DROP TABLE IF EXISTS temp._statement_sources")
+
+        return [{"source": r[0], "target": r[1], "type": r[2]} for r in rows]
+
+    def remove_orphans(self, orphans: list[dict] | None = None) -> int:
+        """
+        Remove relationships pointing to non-existent notes. Returns count removed.
+
+        Pass a precomputed find_orphan_targets() result to avoid recomputing
+        the vault walk; with no argument, computes it internally.
+
+        Note: a row that is still declared in a live note's YAML will be
+        re-created by the next sync/rebuild (the vault is canonical) — durable
+        removal requires fixing the YAML.
+        """
+        if orphans is None:
+            orphans = self.find_orphan_targets()
+        self.conn.executemany(
+            "DELETE FROM relationships WHERE source = ? AND target = ? AND type = ?",
+            ((o["source"], o["target"], o["type"]) for o in orphans)
         )
-        orphans = []
-        for row in cursor.fetchall():
-            if row[1] not in valid_titles:
-                orphans.append({
-                    "source": row[0],
-                    "target": row[1],
-                    "type": row[2]
-                })
-        return orphans
-
-    def remove_orphans(self) -> int:
-        """Remove relationships pointing to non-existent notes. Returns count removed."""
-        orphans = self.find_orphan_targets()
-        for orphan in orphans:
-            self.conn.execute(
-                "DELETE FROM relationships WHERE source = ? AND target = ? AND type = ?",
-                (orphan["source"], orphan["target"], orphan["type"])
-            )
         self.conn.commit()
         return len(orphans)
 
@@ -332,6 +486,9 @@ class RelationshipGraph:
         last_rebuild = self.conn.execute(
             "SELECT value FROM metadata WHERE key = 'last_rebuild'"
         ).fetchone()
+        last_sync = self.conn.execute(
+            "SELECT value FROM metadata WHERE key = 'last_sync'"
+        ).fetchone()
 
         return {
             "total_relationships": total,
@@ -339,7 +496,8 @@ class RelationshipGraph:
             "by_confidence": by_confidence,
             "unique_sources": unique_sources,
             "unique_targets": unique_targets,
-            "last_rebuild": last_rebuild[0] if last_rebuild else None
+            "last_rebuild": last_rebuild[0] if last_rebuild else None,
+            "last_sync": last_sync[0] if last_sync else None
         }
 
     def close(self):
@@ -357,6 +515,7 @@ if __name__ == "__main__":
         print("Usage: relationship_graph.py <command> [args]")
         print("Commands:")
         print("  rebuild              — Full rebuild from vault YAML")
+        print("  sync                 — Incremental reconcile with vault YAML (diff-only writes)")
         print("  query <note_title>   — Show relationships for a note")
         print("  connected <title> [depth] — Show connected notes")
         print("  orphans              — Find orphan targets")
@@ -371,6 +530,18 @@ if __name__ == "__main__":
         result = graph.build_from_vault()
         print(f"Notes scanned: {result['notes_scanned']}")
         print(f"Relationships indexed: {result['relationships_indexed']}")
+        if result['errors']:
+            print(f"Errors: {len(result['errors'])}")
+            for err in result['errors'][:10]:
+                print(f"  {err}")
+
+    elif command == "sync":
+        print("Syncing relationship graph with vault YAML (incremental)...")
+        result = graph.sync_from_vault()
+        print(f"Notes scanned: {result['notes_scanned']}")
+        print(f"Rows added: {result['rows_added']}")
+        print(f"Rows removed: {result['rows_removed']} "
+              f"(of which {result['sources_removed']} whole sources)")
         if result['errors']:
             print(f"Errors: {len(result['errors'])}")
             for err in result['errors'][:10]:
@@ -422,6 +593,7 @@ if __name__ == "__main__":
         print(f"Unique sources: {s['unique_sources']}")
         print(f"Unique targets: {s['unique_targets']}")
         print(f"Last rebuild: {s['last_rebuild']}")
+        print(f"Last sync: {s['last_sync']}")
         print("By type:")
         for t, c in sorted(s['by_type'].items()):
             print(f"  {t}: {c}")
