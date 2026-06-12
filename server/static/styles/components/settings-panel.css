@@ -1292,6 +1292,14 @@
   color: rgba(110, 220, 200, 1);
 }
 
+/* Subscription chip. Violet — executes through the user's Claude
+   subscription via the local Claude Code CLI (service=claude-code).
+   Zero marginal API cost; campaign tables price tokens API-equivalent. */
+.ora-models-chip-subscription {
+  background: rgba(150, 110, 220, 0.26);
+  color: rgba(205, 175, 255, 1);
+}
+
 .ora-models-chip-free {
   background: rgba(140, 200, 80, 0.26);
   color: rgba(180, 240, 120, 1);
