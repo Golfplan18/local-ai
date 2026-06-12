@@ -3,7 +3,8 @@
  *
  * WP-1.3g — renderer for the `quadrant_matrix` visual type (DECISION family).
  *
- * Produces a hand-rolled 600×600 SVG grid with:
+ * Produces a hand-rolled square SVG grid (canvas sized from content — see
+ * _computeInner; 600×600 minimum) with:
  *   - Four equal-sized quadrants separated by a horizontal + vertical axis line
  *   - Axis labels + low/high anchors on each axis, arrowhead markers on the ends
  *   - Quadrant labels at inset corners; optional multi-line narratives for
@@ -44,21 +45,71 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
 
   const { CODES, make } = window.OraVisualCompiler.errors;
 
-  // ── Geometry constants ────────────────────────────────────────────────
-  // ViewBox 600×600 with a 50-px padding, giving a 500×500 inner area.
-  // The axis cross-hair sits at (300, 300).
-  const VB = 600;
+  // ── Geometry ──────────────────────────────────────────────────────────
+  // The canvas is sized from content, not a fixed default: both consumers
+  // (the V3 visual panel's pan/zoom stage and the campaign rasterizer's
+  // scale-to-width) zoom to fit, so a larger viewBox costs nothing while a
+  // cramped one makes item labels and scenario narratives collide. The
+  // inner plotting square starts at 500px and grows with item count, item
+  // label length, and scenario narratives; padding stays constant.
+  const BASE_INNER = 500;
+  const MAX_INNER = 1600;
   const PAD = 50;
-  const INNER = VB - 2 * PAD;            // 500
-  const AX_MIN = PAD;                     // 50
-  const AX_MAX = VB - PAD;                // 550
-  const CENTER = VB / 2;                  // 300
   const ITEM_RADIUS = 5;
+  const LABEL_CHAR_W = 6.5;              // ≈ theme 12px label font
 
   // Quadrant corner insets for label placement. Each quadrant gets its label
   // at the inset corner AWAY from the axis cross-hair, pushing the label
   // into the quadrant's interior breathing room.
   const CORNER_INSET = 12;
+
+  /**
+   * _computeInner(spec) → inner square side (px)
+   *
+   * Three pressures grow the canvas:
+   *   - the longest item label must fit beside its dot inside half the
+   *     canvas (labels flip toward the interior at the centre line);
+   *   - item density — give each item room so adjacent labels are less
+   *     likely to collide;
+   *   - scenario narratives — each quadrant carries a multi-line block.
+   */
+  function _computeInner(spec) {
+    const items = (spec && Array.isArray(spec.items)) ? spec.items : [];
+    let maxLabelChars = 0;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it && typeof it.label === 'string') {
+        maxLabelChars = Math.max(maxLabelChars, it.label.length);
+      }
+    }
+    let inner = BASE_INNER;
+    inner = Math.max(inner, 2 * (maxLabelChars * LABEL_CHAR_W + 48));
+    inner = Math.max(inner, Math.ceil(Math.sqrt(items.length)) * 130);
+    if (spec && spec.subtype === 'scenario_planning') {
+      inner = Math.max(inner, 640);
+    }
+    return Math.min(Math.ceil(inner), MAX_INNER);
+  }
+
+  /** _geom(inner) → derived geometry bundle threaded through emitters. */
+  function _geom(inner) {
+    const VB = inner + 2 * PAD;
+    const AX_MIN = PAD;
+    const AX_MAX = VB - PAD;
+    const CENTER = VB / 2;
+    return {
+      VB: VB, INNER: inner,
+      AX_MIN: AX_MIN, AX_MAX: AX_MAX, CENTER: CENTER,
+      QUAD_RECTS: {
+        TL: { xMin: AX_MIN, yMin: AX_MIN, xMax: CENTER, yMax: CENTER },
+        TR: { xMin: CENTER, yMin: AX_MIN, xMax: AX_MAX, yMax: CENTER },
+        BL: { xMin: AX_MIN, yMin: CENTER, xMax: CENTER, yMax: AX_MAX },
+        BR: { xMin: CENTER, yMin: CENTER, xMax: AX_MAX, yMax: AX_MAX },
+      },
+    };
+  }
+
+  const DEFAULT_GEOM = _geom(BASE_INNER);
 
   // ── Small utilities ───────────────────────────────────────────────────
   function _esc(str) {
@@ -149,17 +200,11 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
 
   // ── Coordinate transforms ─────────────────────────────────────────────
   // Items live in normalized [0,1]² with y=0 at the bottom. SVG y-axis
-  // points down, so we invert y when mapping to screen coords.
-  function xToPx(x) { return AX_MIN + x * INNER; }
-  function yToPx(y) { return AX_MAX - y * INNER; }
-
-  // Quadrant screen-space centers (for placing the inset label + narrative).
-  const QUAD_RECTS = {
-    TL: { xMin: AX_MIN,  yMin: AX_MIN,  xMax: CENTER, yMax: CENTER },
-    TR: { xMin: CENTER,  yMin: AX_MIN,  xMax: AX_MAX, yMax: CENTER },
-    BL: { xMin: AX_MIN,  yMin: CENTER,  xMax: CENTER, yMax: AX_MAX },
-    BR: { xMin: CENTER,  yMin: CENTER,  xMax: AX_MAX, yMax: AX_MAX },
-  };
+  // points down, so we invert y when mapping to screen coords. Geometry
+  // defaults to the base square so the exported test helpers keep their
+  // one-argument signature.
+  function xToPx(x, g) { g = g || DEFAULT_GEOM; return g.AX_MIN + x * g.INNER; }
+  function yToPx(y, g) { g = g || DEFAULT_GEOM; return g.AX_MAX - y * g.INNER; }
 
   // ── SVG emission helpers ──────────────────────────────────────────────
   function emitDefs() {
@@ -181,22 +226,22 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     ].join('\n');
   }
 
-  function emitAxes(xAxis, yAxis) {
+  function emitAxes(xAxis, yAxis, g) {
     const parts = [];
 
     // x-axis: horizontal across the middle, arrow on its right end.
     parts.push(
       '<line class="ora-visual__axis ora-visual__axis--x" ' +
-      'x1="' + AX_MIN + '" y1="' + CENTER + '" ' +
-      'x2="' + AX_MAX + '" y2="' + CENTER + '" ' +
+      'x1="' + g.AX_MIN + '" y1="' + g.CENTER + '" ' +
+      'x2="' + g.AX_MAX + '" y2="' + g.CENTER + '" ' +
       'marker-end="url(#q-arrow-x)" />'
     );
 
     // y-axis: vertical through the middle, arrow on its top end.
     parts.push(
       '<line class="ora-visual__axis ora-visual__axis--y" ' +
-      'x1="' + CENTER + '" y1="' + AX_MAX + '" ' +
-      'x2="' + CENTER + '" y2="' + AX_MIN + '" ' +
+      'x1="' + g.CENTER + '" y1="' + g.AX_MAX + '" ' +
+      'x2="' + g.CENTER + '" y2="' + g.AX_MIN + '" ' +
       'marker-end="url(#q-arrow-y)" />'
     );
 
@@ -205,7 +250,7 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     if (xAxis) {
       parts.push(
         '<text class="ora-visual__axis-label ora-visual__axis-label--x" ' +
-        'x="' + AX_MAX + '" y="' + (CENTER + 28) + '" ' +
+        'x="' + g.AX_MAX + '" y="' + (g.CENTER + 28) + '" ' +
         'text-anchor="end">' + _esc(xAxis.label || '') + '</text>'
       );
     }
@@ -213,7 +258,7 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
       // Y-label sits ABOVE the top tip; written horizontally for legibility.
       parts.push(
         '<text class="ora-visual__axis-label ora-visual__axis-label--y" ' +
-        'x="' + CENTER + '" y="' + (AX_MIN - 14) + '" ' +
+        'x="' + g.CENTER + '" y="' + (g.AX_MIN - 14) + '" ' +
         'text-anchor="middle">' + _esc(yAxis.label || '') + '</text>'
       );
     }
@@ -222,24 +267,24 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     if (xAxis) {
       parts.push(
         '<text class="ora-visual__axis-anchor ora-visual__axis-anchor--x-low" ' +
-        'x="' + AX_MIN + '" y="' + (CENTER + 14) + '" ' +
+        'x="' + g.AX_MIN + '" y="' + (g.CENTER + 14) + '" ' +
         'text-anchor="start">' + _esc(xAxis.low_label || 'low') + '</text>'
       );
       parts.push(
         '<text class="ora-visual__axis-anchor ora-visual__axis-anchor--x-high" ' +
-        'x="' + AX_MAX + '" y="' + (CENTER + 14) + '" ' +
+        'x="' + g.AX_MAX + '" y="' + (g.CENTER + 14) + '" ' +
         'text-anchor="end">' + _esc(xAxis.high_label || 'high') + '</text>'
       );
     }
     if (yAxis) {
       parts.push(
         '<text class="ora-visual__axis-anchor ora-visual__axis-anchor--y-low" ' +
-        'x="' + (CENTER - 6) + '" y="' + AX_MAX + '" ' +
+        'x="' + (g.CENTER - 6) + '" y="' + g.AX_MAX + '" ' +
         'text-anchor="end">' + _esc(yAxis.low_label || 'low') + '</text>'
       );
       parts.push(
         '<text class="ora-visual__axis-anchor ora-visual__axis-anchor--y-high" ' +
-        'x="' + (CENTER - 6) + '" y="' + (AX_MIN + 10) + '" ' +
+        'x="' + (g.CENTER - 6) + '" y="' + (g.AX_MIN + 10) + '" ' +
         'text-anchor="end">' + _esc(yAxis.high_label || 'high') + '</text>'
       );
     }
@@ -247,8 +292,8 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     return parts.join('\n');
   }
 
-  function emitQuadrant(key, quadrantSpec, isScenario) {
-    const rect = QUAD_RECTS[key];
+  function emitQuadrant(key, quadrantSpec, isScenario, g) {
+    const rect = g.QUAD_RECTS[key];
     const name = quadrantSpec.name || key;
     const narrative = quadrantSpec.narrative || '';
 
@@ -293,9 +338,14 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     );
 
     // Narrative (scenario_planning) — small multi-line block under the label.
+    // Wrap width and line budget derive from the quadrant's actual pixel
+    // size rather than a fixed 28×4 box, so narratives use the room the
+    // content-sized canvas gives them.
     if (isScenario && narrative) {
-      const maxChars = 28;
-      const maxLines = 4;
+      const quadW = rect.xMax - rect.xMin - 2 * CORNER_INSET;
+      const quadH = rect.yMax - rect.yMin;
+      const maxChars = Math.max(28, Math.floor(quadW / LABEL_CHAR_W));
+      const maxLines = Math.max(4, Math.min(8, Math.floor((quadH - 80) / 14)));
       const lines = _wrap(narrative, maxChars, maxLines);
 
       // Narrative anchors match label anchor but start one line-height below.
@@ -319,14 +369,14 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     return parts.join('\n');
   }
 
-  function emitItem(item, idx) {
-    const cx = xToPx(item.x);
-    const cy = yToPx(item.y);
+  function emitItem(item, idx, g) {
+    const cx = xToPx(item.x, g);
+    const cy = yToPx(item.y, g);
     const id = 'q-item-' + _slug(item.label || ('item-' + (idx + 1)));
 
     // Label placement: to the right of the dot by default; if the item is in
     // the right half of the canvas, flip to the left to keep the label inside.
-    const labelLeft = cx >= CENTER;
+    const labelLeft = cx >= g.CENTER;
     const labelX = labelLeft ? (cx - ITEM_RADIUS - 3) : (cx + ITEM_RADIUS + 3);
     const labelAnchor = labelLeft ? 'end' : 'start';
     const labelY = cy + 4;   // small vertical nudge to center on cap-height
@@ -450,6 +500,7 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     }
 
     // ── SVG assembly ──
+    const g = _geom(_computeInner(spec));
     const title = envelope.title || '';
     const shortA = envelope.semantic_description && envelope.semantic_description.short_alt
       ? envelope.semantic_description.short_alt
@@ -469,7 +520,7 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
       'class="' + rootClasses + '" ' +
       'role="img" ' +
       'aria-label="' + _esc(ariaLabel) + '" ' +
-      'viewBox="0 0 ' + VB + ' ' + VB + '">'
+      'viewBox="0 0 ' + g.VB + ' ' + g.VB + '">'
     );
     svgParts.push('<title class="ora-visual__accessible-title">' + _esc(ariaLabel) + '</title>');
 
@@ -478,22 +529,22 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     // Title inside the plot area, above the grid.
     if (title) {
       svgParts.push(
-        '<text class="ora-visual__title" x="' + CENTER + '" y="' + (AX_MIN - 30) + '" ' +
+        '<text class="ora-visual__title" x="' + g.CENTER + '" y="' + (g.AX_MIN - 30) + '" ' +
         'text-anchor="middle">' + _esc(title) + '</text>'
       );
     }
 
     // Axes (with arrowheads) and axis labels.
-    svgParts.push(emitAxes(xAxis, yAxis));
+    svgParts.push(emitAxes(xAxis, yAxis, g));
 
     // Four quadrants (labels + hitbox + optional narrative).
     for (const k of ['TL', 'TR', 'BL', 'BR']) {
-      svgParts.push(emitQuadrant(k, quadrants[k], isScenario));
+      svgParts.push(emitQuadrant(k, quadrants[k], isScenario, g));
     }
 
     // Items last so dots sit on top of quadrant backgrounds.
     for (let i = 0; i < items.length; i++) {
-      svgParts.push(emitItem(items[i], i));
+      svgParts.push(emitItem(items[i], i, g));
     }
 
     svgParts.push('</svg>');
@@ -516,5 +567,7 @@ window.OraVisualCompiler._renderers.quadrantMatrix = (function () {
     _wrap: _wrap,
     _xToPx: xToPx,
     _yToPx: yToPx,
+    _computeInner: _computeInner,
+    _geom: _geom,
   };
 }());

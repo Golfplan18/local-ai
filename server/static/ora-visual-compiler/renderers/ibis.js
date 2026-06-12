@@ -109,6 +109,38 @@ window.OraVisualCompiler._renderers.ibis = (function () {
     return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
   }
 
+  // ── Node-label wrapping ──────────────────────────────────────────────────
+  // Graphviz sizes every node to its label box, so a long single-line label
+  // inflates a diamond/triangle node to enormous width and stretches the
+  // whole layout. Wrap node texts onto multiple lines (DOT \n escape) so
+  // nodes stay compact; Graphviz then sizes the canvas to the wrapped
+  // content. Word-boundary wrapping, no truncation — content is preserved.
+  const LABEL_WRAP_CHARS = 26;
+
+  function _wrapText(s, maxChars) {
+    const words = String(s).trim().split(/\s+/);
+    const lines = [];
+    let cur = '';
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      if (cur.length === 0) { cur = w; continue; }
+      if (cur.length + 1 + w.length <= maxChars) cur += ' ' + w;
+      else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  }
+
+  // Quote a (possibly wrapped) label for DOT. Escapes each line, then joins
+  // with the DOT \n line-break escape — _dotQ would double-escape it.
+  function _dotLabelQ(s, maxChars) {
+    const str = String(s);
+    const lines = (str.length > maxChars) ? _wrapText(str, maxChars) : [str];
+    return '"' + lines
+      .map(function (l) { return l.replace(/\\/g, '\\\\').replace(/"/g, '\\"'); })
+      .join('\\n') + '"';
+  }
+
   // ── Grammar validator ────────────────────────────────────────────────────
   /**
    * validateGrammar(nodes, edges) → { errors, nodeById }
@@ -240,7 +272,7 @@ window.OraVisualCompiler._renderers.ibis = (function () {
     for (const n of nodes) {
       const attrs = [];
       attrs.push('id=' + _dotQ(ID_PREFIX[n.type] + n.id));
-      attrs.push('label=' + _dotQ(n.text));
+      attrs.push('label=' + _dotLabelQ(n.text, LABEL_WRAP_CHARS));
 
       const classList = ['ora-visual__node', 'ora-visual__node--' + n.type];
       // The task spec also requested `ora-visual__ibis-<kind>` class; add
@@ -412,6 +444,8 @@ window.OraVisualCompiler._renderers.ibis = (function () {
     render: render,
     _validateGrammar: validateGrammar,
     _emitDot: emitDot,
+    _wrapText: _wrapText,
+    _dotLabelQ: _dotLabelQ,
     _LEGAL_TRIPLES: LEGAL_TRIPLES,
   };
 }());

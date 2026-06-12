@@ -69,16 +69,22 @@ window.OraVisualCompiler._renderers.proCon = (function () {
   }
 
   // ── Geometry constants (all px, honoured by the semantic CSS). ────────────
-  const WIDTH             = 720;           // nominal viewBox width
+  // The canvas WIDTH is no longer fixed: it grows from MIN_WIDTH so the
+  // longest (indented) argument label fits up to ARG_MAX_WIDTH before any
+  // truncation kicks in. Consumers (V3 visual panel, campaign rasterizer)
+  // zoom to fit, so a wider canvas costs nothing while a fixed 720 forced
+  // ellipses at ~36 chars.
+  const MIN_WIDTH         = 720;           // minimum viewBox width
   const MARGIN_X          = 24;
   const MARGIN_TOP        = 28;
   const CLAIM_Y           = 40;            // claim baseline
   const CLAIM_HEIGHT      = 56;
-  const CLAIM_MAX_WIDTH   = 520;
+  const CLAIM_MAX_WIDTH   = 520;           // floor of the dynamic claim cap
   const ROW_HEIGHT        = 54;            // vertical spacing per arg row
   const ARG_HEIGHT        = 38;
   const ARG_MIN_WIDTH     = 120;
-  const ARG_MAX_WIDTH     = 280;
+  const ARG_MAX_WIDTH     = 420;
+  const COL_MAX_WIDTH     = 480;           // arg box + deepest expected indent
   const INDENT_PX         = 22;            // horizontal offset per depth level
   const CHAR_WIDTH        = 7.0;           // conservative monospaced estimate
   const COLUMN_GAP        = 60;            // space between pros and cons columns
@@ -207,9 +213,19 @@ window.OraVisualCompiler._renderers.proCon = (function () {
     return Math.min(w, ARG_MAX_WIDTH);
   }
 
-  function _claimWidth(text) {
+  function _claimWidth(text, cap) {
     const w = Math.max(260, (text.length * (CHAR_WIDTH + 0.5)) + 40);
-    return Math.min(w, CLAIM_MAX_WIDTH);
+    return Math.min(w, cap || CLAIM_MAX_WIDTH);
+  }
+
+  // Widest row a side needs: indent + estimated label box + edge clearance.
+  function _neededColWidth(rowsSide) {
+    let need = 0;
+    for (let i = 0; i < rowsSide.length; i++) {
+      const r = rowsSide[i];
+      need = Math.max(need, r.depth * INDENT_PX + _labelWidth(r.text) + 8);
+    }
+    return need;
   }
 
   // ── Truncation with ellipsis (SVG text does not wrap; we keep one line). ─
@@ -238,8 +254,11 @@ window.OraVisualCompiler._renderers.proCon = (function () {
     const typeLab    = envelope.type || 'pro_con';
     const ariaLab    = (title || typeLab) + (shortAlt ? ' \u2014 ' + shortAlt : '');
 
-    // Column geometry.
-    const colWidth  = (WIDTH - MARGIN_X * 2 - COLUMN_GAP) / 2;
+    // Column geometry — width sized from content (see header note).
+    const minColWidth = (MIN_WIDTH - MARGIN_X * 2 - COLUMN_GAP) / 2;
+    const colWidth  = Math.min(COL_MAX_WIDTH,
+      Math.max(minColWidth, _neededColWidth(prosRows), _neededColWidth(consRows)));
+    const width     = MARGIN_X * 2 + colWidth * 2 + COLUMN_GAP;
     const leftColX  = MARGIN_X;
     const rightColX = MARGIN_X + colWidth + COLUMN_GAP;
 
@@ -262,7 +281,7 @@ window.OraVisualCompiler._renderers.proCon = (function () {
     const parts = [];
     parts.push(
       '<svg xmlns="http://www.w3.org/2000/svg" ' +
-      'viewBox="0 0 ' + WIDTH + ' ' + totalHeight.toFixed(0) + '" ' +
+      'viewBox="0 0 ' + width.toFixed(0) + ' ' + totalHeight.toFixed(0) + '" ' +
       'class="ora-visual ora-visual--pro_con" ' +
       'role="img" aria-label="' + _esc(ariaLab) + '">'
     );
@@ -274,14 +293,16 @@ window.OraVisualCompiler._renderers.proCon = (function () {
     if (title) {
       parts.push(
         '<text class="ora-visual__title" ' +
-          'x="' + (WIDTH / 2) + '" y="' + MARGIN_TOP + '" ' +
+          'x="' + (width / 2) + '" y="' + MARGIN_TOP + '" ' +
           'text-anchor="middle">' + _esc(title) + '</text>'
       );
     }
 
     // ── Claim rectangle (top-centre). ───────────────────────────────────────
-    const cw = _claimWidth(claimText);
-    const cx = (WIDTH - cw) / 2;
+    // The claim cap widens with the canvas so a wide tree doesn't force a
+    // needlessly truncated claim.
+    const cw = _claimWidth(claimText, Math.max(CLAIM_MAX_WIDTH, width - 200));
+    const cx = (width - cw) / 2;
     const cy = CLAIM_Y;
     const claimMax = _maxCharsFor(cw + 40);
     parts.push(
@@ -292,7 +313,7 @@ window.OraVisualCompiler._renderers.proCon = (function () {
         'width="' + cw.toFixed(2) + '" height="' + CLAIM_HEIGHT + '" ' +
         'rx="6" ry="6"/>' +
       '<text class="ora-visual__claim-label ora-visual__label" ' +
-        'x="' + (WIDTH / 2).toFixed(2) + '" ' +
+        'x="' + (width / 2).toFixed(2) + '" ' +
         'y="' + (cy + CLAIM_HEIGHT / 2).toFixed(2) + '" ' +
         'text-anchor="middle" dominant-baseline="central">' +
         _esc(_truncate(claimText, claimMax)) +
@@ -317,7 +338,7 @@ window.OraVisualCompiler._renderers.proCon = (function () {
 
     // ── Branches from claim bottom to first item of each side. ─────────────
     // Drawn before the argument rectangles so the rects overlay the lines.
-    const claimBottomX = WIDTH / 2;
+    const claimBottomX = width / 2;
     const claimBottomY = BRANCH_FROM_CLAIM_Y;
 
     parts.push('<g class="ora-visual__pc-branches">');
@@ -445,7 +466,8 @@ window.OraVisualCompiler._renderers.proCon = (function () {
             '<text class="ora-visual__annotation ora-visual__pc-source" ' +
               'x="' + (rowX + 4).toFixed(2) + '" ' +
               'y="' + (rowY + ARG_HEIGHT + 10).toFixed(2) + '">' +
-              _esc(_truncate('[' + r.source + ']', 48)) +
+              _esc(_truncate('[' + r.source + ']',
+                Math.max(48, _maxCharsFor(colWidth)))) +
             '</text>'
           );
         }
@@ -462,9 +484,10 @@ window.OraVisualCompiler._renderers.proCon = (function () {
       const dy = COLUMN_TOP_Y + columnsBlockHeight + 16;
       parts.push(
         '<text id="pc-decision" class="ora-visual__annotation ora-visual__pc-decision" ' +
-          'x="' + (WIDTH / 2).toFixed(2) + '" y="' + dy.toFixed(2) + '" ' +
+          'x="' + (width / 2).toFixed(2) + '" y="' + dy.toFixed(2) + '" ' +
           'text-anchor="middle" dominant-baseline="central">' +
-          _esc('Decision: ' + _truncate(decision, 96)) +
+          _esc('Decision: ' + _truncate(decision,
+            Math.max(96, Math.floor((width - 2 * MARGIN_X) / CHAR_WIDTH)))) +
         '</text>'
       );
     }
