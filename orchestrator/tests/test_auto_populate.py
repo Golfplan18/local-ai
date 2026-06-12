@@ -266,7 +266,7 @@ class TestVendorDiversity(unittest.TestCase):
             _model("openai/free-a", intelligence=70, blended=0.0, size="large",
                    is_free=True, provider="openai"),
         ]
-        picks = auto_populate.pick_for_free_slot(
+        picks, _ = auto_populate.pick_for_free_slot(
             catalog, size_bucket="large", top_n=1,
             excluded_vendors={"qwen"},
         )
@@ -323,7 +323,7 @@ class TestBudgetLoosening(unittest.TestCase):
 class TestFreeSlot(unittest.TestCase):
     def test_picks_free_models_only(self):
         catalog = _fixture_catalog()
-        picks = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2)
+        picks, _ = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2)
         pick_ids = {p["id"] for p in picks}
         # Only free large models
         for pid in pick_ids:
@@ -331,7 +331,7 @@ class TestFreeSlot(unittest.TestCase):
 
     def test_intelligence_descending(self):
         catalog = _fixture_catalog()
-        picks = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2)
+        picks, _ = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2)
         # free/large-1 (65) before free/large-2 (60)
         self.assertEqual(picks[0]["id"], "free/large-1")
 
@@ -340,7 +340,7 @@ class TestFreeSlot(unittest.TestCase):
             _model("free/only-small", intelligence=40, blended=0.0, size="small", is_free=True),
         ]
         # Asking for large; no free larges; falls back to any free
-        picks = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2)
+        picks, _ = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2)
         self.assertEqual(len(picks), 1)
         self.assertEqual(picks[0]["id"], "free/only-small")
 
@@ -361,6 +361,127 @@ class TestVisionSubstitute(unittest.TestCase):
             catalog, size_bucket="large", preset_mode="paid_intelligence",
         )
         self.assertIsNone(vid)
+
+    def test_soft_bucket_fallback_picks_off_bucket_vision(self):
+        # A null substitute means image input has no fallback path at all —
+        # an off-bucket vision model beats none. Live case: every free
+        # vision-capable model is midsize, so the large-bucket requirement
+        # baked vision_substitute=null into the Free preset.
+        catalog = [
+            _model("free/vis-mid", intelligence=65, blended=0.0,
+                   size="midsize", is_free=True, vision=True),
+            _model("free/txt-large", intelligence=60, blended=0.0,
+                   size="large", is_free=True),
+        ]
+        vid = auto_populate.pick_vision_substitute(
+            catalog, size_bucket="large", preset_mode="free_intelligence",
+        )
+        self.assertEqual(vid, "free/vis-mid")
+
+
+class TestFreeGracefulDegradation(unittest.TestCase):
+    """Free preset tier-by-tier loosening (2026-06-12 fix). Live failure:
+    with vision_only on plus the strict reachability gate, every free
+    vision-capable reachable model sat in the midsize bucket, so the
+    small/large slots baked primary=None across 7 cells of free.json.
+    pick_for_free_slot now loosens vision_only first, then size_bucket —
+    never the reachability gate — and logs each step."""
+
+    def test_no_loosening_when_vision_pool_sufficient(self):
+        catalog = [
+            _model("free/vis-large", intelligence=60, blended=0.0,
+                   size="large", is_free=True, vision=True),
+            _model("free/txt-large", intelligence=70, blended=0.0,
+                   size="large", is_free=True),
+        ]
+        picks, notes = auto_populate.pick_for_free_slot(
+            catalog, size_bucket="large", top_n=2, vision_only=True)
+        self.assertEqual([p["id"] for p in picks], ["free/vis-large"])
+        self.assertEqual(notes, [])
+
+    def test_nonempty_text_bucket_does_not_block_vision_drop(self):
+        # The exact live trap: the bucket holds text-only free models (so
+        # the old soft-bucket fallback never fired) and the vision filter
+        # then emptied the pool → null cell. Tier 1 recovers the in-bucket
+        # text models; the off-bucket vision model is NOT preferred because
+        # the prescribed loosening order keeps bucket conformance longer.
+        catalog = [
+            _model("free/txt-large", intelligence=60, blended=0.0,
+                   size="large", is_free=True),
+            _model("free/vis-mid", intelligence=65, blended=0.0,
+                   size="midsize", is_free=True, vision=True),
+        ]
+        picks, notes = auto_populate.pick_for_free_slot(
+            catalog, size_bucket="large", top_n=2, vision_only=True)
+        self.assertEqual(picks[0]["id"], "free/txt-large")
+        self.assertTrue(any("vision_only dropped" in n for n in notes))
+
+    def test_size_bucket_drop_tier(self):
+        # Tier 2: the bucket pool is non-empty but exclusions empty it;
+        # dropping the bucket recovers a pick from the wider free pool.
+        catalog = [
+            _model("free/large-1", intelligence=65, blended=0.0,
+                   size="large", is_free=True),
+            _model("free/small-1", intelligence=50, blended=0.0,
+                   size="small", is_free=True),
+        ]
+        picks, notes = auto_populate.pick_for_free_slot(
+            catalog, size_bucket="large", top_n=2,
+            excluded_ids={"free/large-1"})
+        self.assertEqual(picks[0]["id"], "free/small-1")
+        self.assertTrue(any("size_bucket 'large' dropped" in n for n in notes))
+
+    def test_reachability_gate_never_loosened(self):
+        # The only free vision model lacks a positive probe verdict; the
+        # degradation must drop vision_only (tier 1) rather than ever admit
+        # the unprobed model.
+        catalog = [
+            _model("free/vis-unprobed", intelligence=90, blended=0.0,
+                   size="large", is_free=True, vision=True),
+            _model("free/txt-probed", intelligence=50, blended=0.0,
+                   size="large", is_free=True),
+        ]
+        picks, notes = auto_populate.pick_for_free_slot(
+            catalog, size_bucket="large", top_n=2, vision_only=True,
+            unreachable_ids={"free/vis-unprobed"})
+        self.assertEqual([p["id"] for p in picks], ["free/txt-probed"])
+        self.assertTrue(any("vision_only dropped" in n for n in notes))
+
+    def test_exhausted_pool_returns_empty_with_note(self):
+        # Nothing free and probe-verified at all → empty picks plus an
+        # exhaustion note, and still no unreachable model admitted.
+        catalog = [
+            _model("free/unprobed", intelligence=90, blended=0.0,
+                   size="large", is_free=True, vision=True),
+            _model("paid/large", intelligence=80, blended=2.0, size="large"),
+        ]
+        picks, notes = auto_populate.pick_for_free_slot(
+            catalog, size_bucket="large", top_n=2, vision_only=True,
+            unreachable_ids={"free/unprobed"})
+        self.assertEqual(picks, [])
+        self.assertTrue(any("exhausted" in n for n in notes))
+
+    def test_populate_free_vision_only_bakes_no_null_chat_cells(self):
+        # End-to-end regression for the null-cell bake: free + vision_only
+        # over a catalog whose free models are all text-only must populate
+        # every chat cell and surface per-cell loosening in the metadata.
+        catalog = _fixture_catalog()
+        presets = _fixture_presets()
+        config = auto_populate.populate_configuration(
+            "free", catalog, presets, vision_only=True)
+        cells = config["cells"]
+        for cell_name in ("step1_cleanup", "classification", "rag_planner"):
+            self.assertIsNotNone(cells["utility"][cell_name], cell_name)
+        self.assertIsNotNone(cells["analysis"]["gear4"]["depth"])
+        self.assertIsNotNone(cells["analysis"]["gear4"]["breadth"])
+        self.assertIsNotNone(cells["analysis"]["gear3"]["depth"])
+        for cell_name in ("consolidation", "verification", "formatter"):
+            self.assertIsNotNone(cells["post_analysis"][cell_name], cell_name)
+        log = config["_auto_populate_metadata"]["loosening_log"]
+        self.assertTrue(
+            any("vision_only dropped" in n for notes in log.values() for n in notes),
+            f"expected vision loosening in log, got: {log}",
+        )
 
 
 class TestVisionOnlyToggle(unittest.TestCase):
@@ -384,14 +505,28 @@ class TestVisionOnlyToggle(unittest.TestCase):
         for m in with_filter:
             self.assertTrue(m.get("vision_capable"), f"{m['id']} should be vision-capable")
 
-    def test_free_slot_filters_to_vision_only(self):
-        # Free models in fixture are all text-only; vision-only should
-        # return zero picks
-        catalog = _fixture_catalog()
-        no_filter = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2, vision_only=False)
-        with_filter = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2, vision_only=True)
+    def test_free_slot_prefers_vision_when_available(self):
+        # When the free pool has a vision-capable model, vision_only picks
+        # it exclusively — no degradation, no notes.
+        catalog = _fixture_catalog() + [
+            _model("free/vis-large", intelligence=55, blended=0.0,
+                   size="large", is_free=True, vision=True),
+        ]
+        no_filter, _ = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2, vision_only=False)
+        with_filter, notes = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2, vision_only=True)
         self.assertGreater(len(no_filter), 0)
-        self.assertEqual(len(with_filter), 0)
+        self.assertEqual([p["id"] for p in with_filter], ["free/vis-large"])
+        self.assertEqual(notes, [])
+
+    def test_free_slot_degrades_when_no_free_vision(self):
+        # Free models in fixture are all text-only; vision-only used to
+        # return zero picks (→ null cells in the baked free preset). Now it
+        # loosens vision_only and reports the loosening instead.
+        catalog = _fixture_catalog()
+        picks, notes = auto_populate.pick_for_free_slot(catalog, size_bucket="large", top_n=2, vision_only=True)
+        self.assertGreater(len(picks), 0)
+        self.assertTrue(all(p["id"].startswith("free/") for p in picks))
+        self.assertTrue(any("vision_only dropped" in n for n in notes))
 
     def test_populate_configuration_respects_cli_override(self):
         catalog = _fixture_catalog()
