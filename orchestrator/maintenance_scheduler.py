@@ -210,6 +210,12 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
         return summary
 
     for task in due:
+        # Stamp at start, not just at completion — if the task wedges or
+        # the process dies mid-run, it must not be re-dispatched on the
+        # very next sweep (the 2026-06-12 daemon wedge re-armed itself on
+        # every server restart precisely because no stamp ever landed).
+        state[task] = _now_iso()
+        _save_state(state)
         try:
             record = _run_task(task)
         except Exception as e:
@@ -223,6 +229,9 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
         # hour and hammer the vault; it retries on its normal cadence
         # and the failure is visible in maintenance-results.jsonl.
         state[task] = record["ran_at"]
+        print(f"[maintenance_scheduler] {task}: "
+              f"{'ok' if record['success'] else 'FAILED'} "
+              f"in {record.get('duration_seconds', 0.0):.1f}s — {record.get('message', '')}")
         (summary["ran"] if record["success"] else summary["failed"]).append(task)
 
     if due:

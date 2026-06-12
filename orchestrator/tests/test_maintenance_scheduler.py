@@ -174,6 +174,26 @@ class SweepTests(SchedulerBase):
         self.assertEqual(summary2["due"], [])
         self.assertEqual(summary2["ran"], [])
 
+    def test_stamp_written_before_task_runs(self):
+        """A wedged or killed task must already be stamped, so the next
+        sweep (or a daemon restart) doesn't immediately re-dispatch it —
+        the 2026-06-12 wedge re-armed on every server restart because the
+        stamp only landed after task completion."""
+        state_seen_by_task = {}
+
+        def _task_observes_state():
+            with open(str(self.data / "maintenance-state.json")) as f:
+                state_seen_by_task.update(json.load(f))
+            return _FakeResult(True)
+
+        patcher, fake_pm = self._mock_pm()
+        with patcher:
+            fake_pm.task_1_orphan_cleanup = mock.MagicMock(
+                side_effect=_task_observes_state)
+            ms.sweep()
+        self.assertIn("orphan_cleanup", state_seen_by_task,
+                      "stamp must be on disk before the task body runs")
+
     def test_failure_still_stamps_and_logs(self):
         patcher, fake_pm = self._mock_pm(success=False)
         with patcher:
