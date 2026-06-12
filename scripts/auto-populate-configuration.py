@@ -18,7 +18,10 @@ Algorithm (per the install plan):
 
   Free preset operates over a parallel free-models list — no cost math,
   sort by intelligence descending, return top N. Free models are never
-  mixed into paid ranking.
+  mixed into paid ranking. The Free preset has its own loosening rule:
+  when a slot's pool comes up empty, drop vision_only first, then
+  size_bucket, before giving up — each step logged in the output
+  metadata's loosening_log. The reachability gate never loosens.
 
   Vision substitute: a single model id per configuration, picked from
   the vision_capable subset of the configured size bucket. Threaded into
@@ -468,7 +471,7 @@ def pick_for_free_slot(
     tokens_per_sec: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
     exclude_reasoning_models: bool = False,
-) -> list[dict]:
+) -> tuple[list[dict], list[str]]:
     """Pick top-N free models. No cost math.
 
     ``sort_by`` defaults to ``intelligence_desc`` (the historical Free
@@ -476,30 +479,75 @@ def pick_for_free_slot(
 
     size_bucket=None means "any free model" (Free preset doesn't require
     bucket conformance because free models are scarcer).
+
+    Returns (picks, loosening_notes) — mirroring pick_for_paid_slot.
+
+    Graceful degradation (2026-06-12): the free pool is small enough that
+    vision_only + size_bucket + the strict reachability gate can empty it
+    entirely (live example: every free vision-capable reachable model sits
+    in the midsize bucket, so small/large slots baked null cells). Rather
+    than return nothing, constraints loosen tier-by-tier, each loosening
+    recorded in the notes so the Models pane can show why:
+
+      Tier 0 — as configured (size_bucket soft-falls-back when the bucket
+               itself is empty, the pre-existing behavior).
+      Tier 1 — drop vision_only (the cell's vision_substitute still
+               carries a vision model for image-input fallback).
+      Tier 2 — drop size_bucket as well.
+
+    The reachability gate is NEVER loosened — picks stay probe-verified
+    even when the cell ends up empty.
     """
     excluded_ids = excluded_ids or set()
-    # Same chat-category + text-output guards as pick_for_paid_slot.
-    candidates = filter_by_category(catalog, "chat")
-    candidates = filter_text_output(candidates)
-    candidates = filter_free(candidates)
-    candidates = filter_reachable(candidates, unreachable_ids or set())
+    # Base pool — these filters never loosen. Same chat-category +
+    # text-output guards as pick_for_paid_slot.
+    base = filter_by_category(catalog, "chat")
+    base = filter_text_output(base)
+    base = filter_free(base)
+    base = filter_reachable(base, unreachable_ids or set())
     if exclude_reasoning_models and reasoning_model_ids:
-        candidates = filter_exclude_reasoning(candidates, reasoning_model_ids)
-    if size_bucket:
-        # Soft filter — fall back to all free if bucket-conformance is empty
-        bucketed = filter_by_size_bucket(candidates, size_bucket)
-        if bucketed:
-            candidates = bucketed
+        base = filter_exclude_reasoning(base, reasoning_model_ids)
+
+    # (apply_vision, apply_bucket, note-on-entering-this-tier)
+    tiers: list[tuple] = [(vision_only, True, None)]
     if vision_only:
-        candidates = filter_vision(candidates)
-    candidates = [m for m in candidates if m["id"] not in excluded_ids]
-    candidates = _apply_vendor_diversity(candidates, excluded_vendors)
-    # Same reason as pick_for_paid_slot: skip Pareto when selecting on speed.
-    if sort_by != "tokens_per_sec_desc":
-        candidates = pareto_filter(candidates)
-    if sort_by == "tokens_per_sec_desc":
-        return sort_by_tokens_per_sec_descending(candidates, tokens_per_sec or {})[:top_n]
-    return sort_by_intelligence_descending(candidates)[:top_n]
+        tiers.append((False, True,
+                      "vision_only dropped: no eligible free vision-capable "
+                      "model for this cell (vision_substitute still handles "
+                      "image input; reachability gate stays strict)"))
+    if size_bucket:
+        tiers.append((False, False,
+                      f"size_bucket '{size_bucket}' dropped: free pool "
+                      f"exhausted within the bucket"))
+
+    notes: list[str] = []
+    for tier_vision, tier_bucket, tier_note in tiers:
+        if tier_note:
+            notes.append(tier_note)
+        candidates = base
+        if tier_bucket and size_bucket:
+            # Soft filter — fall back to all free if bucket-conformance is empty
+            bucketed = filter_by_size_bucket(candidates, size_bucket)
+            if bucketed:
+                candidates = bucketed
+        if tier_vision:
+            candidates = filter_vision(candidates)
+        candidates = [m for m in candidates if m["id"] not in excluded_ids]
+        candidates = _apply_vendor_diversity(candidates, excluded_vendors)
+        # Same reason as pick_for_paid_slot: skip Pareto when selecting on speed.
+        if sort_by != "tokens_per_sec_desc":
+            candidates = pareto_filter(candidates)
+        if sort_by == "tokens_per_sec_desc":
+            picks = sort_by_tokens_per_sec_descending(candidates, tokens_per_sec or {})[:top_n]
+        else:
+            picks = sort_by_intelligence_descending(candidates)[:top_n]
+        if picks:
+            return picks, notes
+
+    notes.append(
+        "free pool exhausted even after dropping vision_only and size_bucket; "
+        "cell left empty (reachability gate never loosened)")
+    return [], notes
 
 
 FREE_MEDIA_PROXY_CEILING = 10.0
@@ -583,7 +631,13 @@ def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: s
         candidates = filter_free(candidates)
     else:
         candidates = filter_paid(candidates)
-    candidates = filter_by_size_bucket(candidates, size_bucket)
+    # Soft bucket filter: an off-bucket vision substitute beats none at all
+    # (a null substitute means image input has no fallback path). Live
+    # example: every free vision-capable model is midsize, so the large-
+    # bucket requirement left the Free preset with substitute=null.
+    bucketed = filter_by_size_bucket(candidates, size_bucket)
+    if bucketed:
+        candidates = bucketed
     if not candidates:
         return None
     candidates = pareto_filter(candidates)
@@ -708,7 +762,7 @@ def populate_configuration(
                 # the image-handling slot — no fallback needed).
                 section[cell_name] = picks_to_cell(picks, None)
             elif preset["mode"] == "free_intelligence":
-                picks = pick_for_free_slot(
+                picks, notes = pick_for_free_slot(
                     catalog,
                     size_bucket=slot_size_bucket,
                     top_n=slot_spec["top_n"],

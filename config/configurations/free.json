@@ -1,25 +1,46 @@
 {
   "name": "free",
-  "description": "Auto-populated from preset 'free' on 2026-06-12T03:58:26.929118+00:00.",
+  "description": "Auto-populated from preset 'free' on 2026-06-12T04:13:28.908773+00:00.",
   "preset_lineage": "free",
   "cells": {
     "utility": {
-      "step1_cleanup": null,
-      "classification": null,
-      "rag_planner": null,
+      "step1_cleanup": {
+        "primary": "meta-llama/llama-3.2-3b-instruct:free",
+        "fallback": [],
+        "vision_substitute": "google/gemma-4-31b-it:free"
+      },
+      "classification": {
+        "primary": "meta-llama/llama-3.2-3b-instruct:free",
+        "fallback": [],
+        "vision_substitute": "google/gemma-4-31b-it:free"
+      },
+      "rag_planner": {
+        "primary": "meta-llama/llama-3.2-3b-instruct:free",
+        "fallback": [],
+        "vision_substitute": "google/gemma-4-31b-it:free"
+      },
       "gear2_rag_lookup": {
         "primary": "nex-agi/nex-n2-pro:free",
         "fallback": [
           "nvidia/nemotron-3.5-content-safety:free",
           "openrouter/free",
           "nvidia/nemotron-nano-12b-v2-vl:free"
-        ]
+        ],
+        "vision_substitute": "google/gemma-4-31b-it:free"
       }
     },
     "analysis": {
       "gear4": {
-        "depth": null,
-        "breadth": null
+        "depth": {
+          "primary": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "fallback": [],
+          "vision_substitute": "google/gemma-4-31b-it:free"
+        },
+        "breadth": {
+          "primary": "openai/gpt-oss-120b:free",
+          "fallback": [],
+          "vision_substitute": "google/gemma-4-31b-it:free"
+        }
       },
       "gear3": {
         "depth": {
@@ -28,21 +49,35 @@
             "nvidia/nemotron-3.5-content-safety:free",
             "openrouter/free",
             "nvidia/nemotron-nano-12b-v2-vl:free"
-          ]
+          ],
+          "vision_substitute": "google/gemma-4-31b-it:free"
         },
         "breadth": {
           "primary": "nvidia/nemotron-3.5-content-safety:free",
           "fallback": [
             "openrouter/free",
             "nvidia/nemotron-nano-12b-v2-vl:free"
-          ]
+          ],
+          "vision_substitute": "google/gemma-4-31b-it:free"
         }
       }
     },
     "post_analysis": {
-      "consolidation": null,
-      "verification": null,
-      "formatter": null
+      "consolidation": {
+        "primary": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "fallback": [],
+        "vision_substitute": "google/gemma-4-31b-it:free"
+      },
+      "verification": {
+        "primary": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "fallback": [],
+        "vision_substitute": "google/gemma-4-31b-it:free"
+      },
+      "formatter": {
+        "primary": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "fallback": [],
+        "vision_substitute": "google/gemma-4-31b-it:free"
+      }
     },
     "image_generation": {
       "image_generation": null
@@ -51,8 +86,33 @@
   "_auto_populate_metadata": {
     "preset": "free",
     "vision_only": true,
-    "vision_substitute": null,
-    "loosening_log": {},
+    "vision_substitute": "google/gemma-4-31b-it:free",
+    "loosening_log": {
+      "utility.step1_cleanup": [
+        "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
+      ],
+      "utility.classification": [
+        "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
+      ],
+      "utility.rag_planner": [
+        "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
+      ],
+      "analysis.gear4.depth": [
+        "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
+      ],
+      "analysis.gear4.breadth": [
+        "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
+      ],
+      "post_analysis.consolidation": [
+        "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
+      ],
+      "post_analysis.verification": [
+        "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
+      ],
+      "post_analysis.formatter": [
+        "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
+      ]
+    },
     "catalog_models_considered": 337
   },
   "toggles": {
