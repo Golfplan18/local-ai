@@ -8432,6 +8432,15 @@ def model_registry_get():
                     merged["parameters_b"] = cm["parameters_b"]
                 if cm.get("is_free") is not None:
                     merged["is_free"] = cm["is_free"]
+                # Output modalities let the pane exclude image/video-
+                # OUTPUT models from the chat inventory. They accept
+                # image input (hence vision_capable=true) but generate
+                # media, not chat — they belong to the Visual tab's
+                # capability slots, and their fuzzy-borrowed Arena Elos
+                # (gpt-5-image inheriting gpt-5's score) polluted the
+                # chat intelligence sort.
+                if cm.get("output_modalities"):
+                    merged["output_modalities"] = cm["output_modalities"]
                 # Surface vendor_audit verdict + bare id to the frontend
                 # so the inventory can paint VENDOR-PHANTOM chips. Already
                 # mirrored at the top level by sync_model_registry.py's

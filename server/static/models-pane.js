@@ -768,14 +768,7 @@
     var parts = [];
     var isMedia = (model.category && model.category !== 'chat');
     var pct = _intelligencePeakPercent(model);
-    if (pct != null) {
-      parts.push(pct + '% peak');
-    } else if (!isMedia && model.intelligence_score != null) {
-      // No AA coverage but Chatbot Arena has it — show the Elo rather
-      // than nothing. Different scale, so it's labeled, not folded
-      // into % peak.
-      parts.push('Elo ' + Math.round(model.intelligence_score));
-    }
+    if (pct != null) parts.push(pct + '% peak');
     if (isMedia) {
       if (!opts.omitCost) {
         var pricing = model.pricing || {};
@@ -1325,7 +1318,22 @@
     }
     var allModels = Object.values(models).filter(function (m) {
       var c = (m && m.category) || 'chat';
-      return c === wantCategory;
+      if (c !== wantCategory) return false;
+      // OpenRouter media-output models (text+image→image / →video)
+      // ride along in the registry with no category field, so they
+      // defaulted into chat. They're vision_capable (image INPUT) and
+      // often carry an Arena Elo fuzzy-borrowed from their text base
+      // model (gpt-5-image ← gpt-5), which leaked them into the
+      // vision-filtered chat inventory near the top of the
+      // intelligence sort. Image/video generation lives on the Visual
+      // tab — not here.
+      if (wantCategory === 'chat') {
+        var outs = m.output_modalities || [];
+        for (var i = 0; i < outs.length; i++) {
+          if (outs[i] === 'image' || outs[i] === 'video') return false;
+        }
+      }
+      return true;
     });
 
     // Compute the intelligence cutoff once (used by both the filter
@@ -1633,16 +1641,17 @@
     switch (by) {
       case 'intelligence_desc':
         return arr.sort(function (a, b) {
-          // Rank by _normalizedIntelligence — AA index when present,
-          // Arena Elo normalized onto the same 0-100 scale otherwise.
-          // Arena-only models used to fall to the unranked tail even
-          // though we hold a score for them (GPT Chat Latest at Elo
-          // 1429, the whole Mistral Medium line, ...); the row chip
-          // shows "Elo N" for them so the visible number and the sort
-          // order still agree. Truly score-less models get null →
-          // bottom.
-          var ai = _normalizedIntelligence(a);
-          var bi = _normalizedIntelligence(b);
+          // Use the same raw-intelligence helper the % peak chip uses
+          // so the visible chip and the sort order agree. Arena-Elo-
+          // only chat models deliberately rank in the labeled
+          // unranked tail rather than via the (elo-800)/7
+          // normalisation: most chat Elos without AA coverage are
+          // fuzzy-borrowed from a base model (kimi-k2.7-code ←
+          // kimi-k2.x, o3-deep-research ← o3), and surfacing them
+          // sorted the borrowed scores ABOVE genuinely-measured
+          // models (publisher report 2026-06-12).
+          var ai = _rawIntelligence(a);
+          var bi = _rawIntelligence(b);
           if (ai == null) ai = -Infinity;
           if (bi == null) bi = -Infinity;
           return bi - ai;
@@ -1926,7 +1935,7 @@
       case 'intelligence_desc':
         return {
           label: 'No intelligence score',
-          pred: function (m) { return _normalizedIntelligence(m) == null; },
+          pred: function (m) { return _rawIntelligence(m) == null; },
         };
       case 'cost_asc':
         return {
