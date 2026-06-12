@@ -1,0 +1,50 @@
+{
+  "date": "2026-06-12T08:22:10.330899",
+  "total_notes": 142005,
+  "avg_relationships": 7.3,
+  "pct_zero_relationships": 13.3,
+  "pct_ten_plus": 28.3,
+  "unique_relationship_types": 14,
+  "top_connected": [
+    {
+      "note": "2026-05-17_middle-management-resistance-acts-as-a.md",
+      "count": 26
+    },
+    {
+      "note": "2026-05-16_temporal-mismatch-between-fast-political-backlash.md",
+      "count": 25
+    },
+    {
+      "note": "2026-05-16_the-essentialist-metaphor-nothing-more-than.md",
+      "count": 25
+    },
+    {
+      "note": "2026-05-16_the-fragmented-polarization-failure-pathway-locks.md",
+      "count": 24
+    },
+    {
+      "note": "2026-05-16_training-delays-and-prevention-investment-delays.md",
+      "count": 24
+    },
+    {
+      "note": "2026-05-16_if-the-seller-s-counter-offer.md",
+      "count": 24
+    },
+    {
+      "note": "2026-05-16_three-balancing-feedback-loops-govern-the.md",
+      "count": 24
+    },
+    {
+      "note": "2026-05-23_localized-reliability-degradation-or-third-party.md",
+      "count": 24
+    },
+    {
+      "note": "2026-05-16_the-structural-determinist-premise-applied-to.md",
+      "count": 24
+    },
+    {
+      "note": "2026-05-16_the-charter-s-expertise-category-privileges.md",
+      "count": 24
+    }
+  ]
+}
