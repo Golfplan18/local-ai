@@ -345,6 +345,13 @@
         "family_tier": "flagship",
         "size_bucket": "large"
       }
+    ],
+    "minimax": [
+      {
+        "pattern": "minimax",
+        "family_tier": "flagship",
+        "size_bucket": "large"
+      }
     ]
   },
   "size_bucket_definitions": {

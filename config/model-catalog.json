@@ -1,6 +1,6 @@
 {
   "_schema_version": 1,
-  "_refreshed_at": "2026-06-12T16:18:31.964830+00:00",
+  "_refreshed_at": "2026-06-12T20:49:22.731203+00:00",
   "_sources": {
     "openrouter": {
       "url": "https://openrouter.ai/api/v1/models",
@@ -8,7 +8,7 @@
     },
     "model_registry": {
       "path": "config/model-registry.json",
-      "enriched_count": 178,
+      "enriched_count": 183,
       "skipped": false
     }
   },
@@ -218,8 +218,8 @@
       },
       "aa_intelligence_index": 53.2528102257147,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -245,8 +245,8 @@
       },
       "aa_intelligence_index": 54.6747796156564,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -351,8 +351,8 @@
       },
       "aa_intelligence_index": 56.5844517545098,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -966,8 +966,8 @@
       },
       "aa_intelligence_index": 38.6333183791893,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -1408,7 +1408,7 @@
         "output_per_m": 3.41,
         "blended_per_m": 1.3625
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 53.904517585423,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -1834,8 +1834,8 @@
       },
       "aa_intelligence_index": 49.6153164886184,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -2529,8 +2529,8 @@
       },
       "aa_intelligence_index": 38.6333183791893,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -2581,8 +2581,8 @@
       },
       "aa_intelligence_index": 41.9330092208782,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -2631,8 +2631,8 @@
       },
       "aa_intelligence_index": 39.8487564946217,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -2758,7 +2758,7 @@
         "output_per_m": 1.9,
         "blended_per_m": 0.7749999999999999
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 46.8125298030348,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -2810,8 +2810,8 @@
       },
       "aa_intelligence_index": 36.0872956018061,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -3069,8 +3069,8 @@
       },
       "aa_intelligence_index": 39.4197363053186,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -3874,7 +3874,7 @@
         "output_per_m": 2.5,
         "blended_per_m": 1.075
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 40.89315933127,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -4032,8 +4032,8 @@
       },
       "aa_intelligence_index": 36.0872956018061,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -4661,8 +4661,8 @@
       },
       "aa_intelligence_index": 31.3769969869801,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -4686,8 +4686,8 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -4935,7 +4935,7 @@
         "output_per_m": 2.5,
         "blended_per_m": 1.075
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 30.8543002283523,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -5679,7 +5679,7 @@
         "output_per_m": 2.3,
         "blended_per_m": 1.0025
       },
-      "aa_intelligence_index": null,
+      "aa_intelligence_index": 26.3213081211457,
       "aa_blended_per_m": null,
       "family_tier": "flagship",
       "size_bucket": "large",
@@ -5858,8 +5858,8 @@
       },
       "aa_intelligence_index": 39.4197363053186,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
@@ -7260,8 +7260,8 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "family_tier": "flagship",
+      "size_bucket": "large",
       "is_free": false
     },
     {
