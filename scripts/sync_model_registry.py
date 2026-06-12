@@ -859,6 +859,11 @@ _AA_CREATOR_SLUG_REMAP = {
     "arcee": "arcee-ai",
     "bytedance_seed": "bytedance-seed",
     "kwaikat": "kwaipilot",
+    # AA files Microsoft's Phi models under creator slug `azure`;
+    # OpenRouter serves them under `microsoft/`. (Found by the
+    # 2026-06-12 drift-detection probe; the audit above missed it
+    # because it only checked for an exact-name OR vendor.)
+    "azure": "microsoft",
 }
 
 

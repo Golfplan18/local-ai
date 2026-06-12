@@ -82,6 +82,7 @@ class TestAACanonicalIdSynthesis(unittest.TestCase):
             "zai": ("glm-4-6v", "z-ai/glm-4-6v"),
             "aws": ("nova-premier", "amazon/nova-premier"),
             "nous-research": ("hermes-4-405b", "nousresearch/hermes-4-405b"),
+            "azure": ("phi-4", "microsoft/phi-4"),
         }
         for creator, (slug, expected) in cases.items():
             m = _aa_entry(slug, slug, creator)
