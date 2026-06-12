@@ -11786,9 +11786,131 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
     return text  # unreachable
 
 
+def _call_claude_code_subscription(messages: list, endpoint: dict) -> str:
+    """Bare completion through the local Claude Code CLI (``claude -p``),
+    which authenticates with the user's SUBSCRIPTION rather than the
+    metered Anthropic API. Built for the campaign's subscription-premium
+    configuration (decision 2026-06-12): same Opus/Haiku models at zero
+    marginal API cost; throughput governed by the subscription's rolling
+    rate windows instead of dollars.
+
+    Contract:
+      * system prompt via ``--system-prompt-file`` (pipeline prompts are
+        large); user message on stdin; ``--tools ""`` disables all tool
+        use so this is a bare completion, not an agent run.
+      * ``--output-format json`` → {result, usage, modelUsage}. Usage is
+        recorded through ``_record_model_usage`` like every other
+        wrapper, so the trace + campaign fidelity gate see the call.
+      * modelUsage is keyed by the concrete serving model; the entry must
+        match the requested model or an ``[Error …]`` string returns
+        (model substitution surfaces, never silent). Claude Code's small
+        internal helper model may also appear — ignored.
+      * ``ANTHROPIC_API_KEY`` is scrubbed from the subprocess env so the
+        CLI can never silently fall back to metered API billing.
+      * Rate-limit replies return ``[Error claude-code rate-limited …]``
+        so the campaign runner's pacing can wait for the window.
+    """
+    import subprocess
+    import tempfile
+
+    model = endpoint.get("model") or "claude-opus-4-8"
+    system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
+    conv = [m for m in messages if m["role"] != "system"]
+    parts = []
+    for m in conv:
+        content = m.get("content") or ""
+        if isinstance(content, list):  # multimodal shape — text parts only
+            content = "\n".join(
+                p.get("text", "") for p in content
+                if isinstance(p, dict) and p.get("type") == "text")
+        if m.get("role") == "user" and len(conv) == 1:
+            parts.append(content)
+        else:
+            parts.append(f"[{m.get('role', 'user')}]\n{content}")
+    prompt_text = "\n\n".join(parts)
+
+    cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
+    workdir = os.path.expanduser("~/ora/data/claude-code-runs")
+    os.makedirs(workdir, exist_ok=True)
+    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    sys_file = None
+    try:
+        cmd = [cli, "-p", "--model", model,
+               "--output-format", "json", "--tools", ""]
+        if system_msg:
+            fd, sys_file = tempfile.mkstemp(
+                suffix=".md", prefix="ora-cc-system-", dir=workdir)
+            with os.fdopen(fd, "w") as f:
+                f.write(system_msg)
+            cmd += ["--system-prompt-file", sys_file]
+        result = subprocess.run(
+            cmd, input=prompt_text, capture_output=True, text=True,
+            timeout=int(os.environ.get("ORA_CLAUDE_CODE_TIMEOUT", "1800")),
+            cwd=workdir, env=env,
+        )
+    except subprocess.TimeoutExpired:
+        return "[Error claude-code: call timeout]"
+    except FileNotFoundError:
+        return ("[Error claude-code: `claude` CLI not found — install "
+                "Claude Code or set ORA_CLAUDE_CODE_BIN]")
+    finally:
+        if sys_file:
+            try:
+                os.unlink(sys_file)
+            except OSError:
+                pass
+
+    raw = result.stdout or ""
+    if result.returncode != 0:
+        err = (result.stderr or raw).strip()[:400]
+        if "limit" in err.lower() or "rate" in err.lower():
+            return f"[Error claude-code rate-limited: {err}]"
+        return f"[Error claude-code rc={result.returncode}: {err}]"
+    try:
+        d = json.loads(raw)
+    except json.JSONDecodeError:
+        return f"[Error claude-code: unparseable CLI output: {raw[:200]}]"
+    if d.get("is_error"):
+        err = str(d.get("result") or "")[:400]
+        if "limit" in err.lower():
+            return f"[Error claude-code rate-limited: {err}]"
+        return f"[Error claude-code: {err}]"
+
+    text = d.get("result") or ""
+    mu = d.get("modelUsage") or {}
+    main = None
+    for k, v in mu.items():
+        if isinstance(k, str) and k.startswith(model):
+            main = v
+            break
+    if mu and main is None:
+        return (f"[Error claude-code: requested {model}, "
+                f"served {sorted(mu.keys())}]")
+    usage = d.get("usage") or {}
+    try:
+        _record_model_usage(
+            endpoint,
+            prompt_tokens=(main or {}).get("inputTokens",
+                                           usage.get("input_tokens")),
+            completion_tokens=(main or {}).get("outputTokens",
+                                               usage.get("output_tokens")),
+            cache_read_tokens=usage.get("cache_read_input_tokens"),
+            cache_creation_tokens=usage.get("cache_creation_input_tokens"),
+            finish_reason="stop",
+        )
+    except Exception:
+        pass
+    if not text.strip():
+        return "[Error claude-code: empty result]"
+    return text
+
+
 def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None) -> str:
     service = endpoint.get("service", "")
     model = endpoint.get("model", "")
+
+    if service == "claude-code":
+        return _call_claude_code_subscription(messages, endpoint)
 
     if service == "claude":
         try:
