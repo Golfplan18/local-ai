@@ -931,6 +931,56 @@
   letter-spacing: 0.05em;
 }
 
+/* Loosening footnote — the auto-populate bake relaxed a constraint
+   (e.g. vision_only) for some cells because no eligible model
+   matched. Yellow family: same "runs fine, but know why" tier as
+   the deprecated outline. Sits at the bottom of the card body;
+   clicking expands the per-cell notes list below it. */
+.ora-models-loosening-note {
+  background: transparent;
+  border: none;
+  padding: 1px 0 0;
+  margin-top: 2px;
+  text-align: left;
+  font-size: 9px;
+  font-style: italic;
+  color: var(--color-yellow, #D4AC4A);
+  cursor: pointer;
+  opacity: 0.85;
+  align-self: flex-start;
+}
+
+.ora-models-loosening-note:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.ora-models-loosening-detail {
+  margin: 2px 0 0;
+  padding: 3px 6px 3px 8px;
+  list-style: none;
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-left: 2px solid var(--color-yellow, #D4AC4A);
+  border-radius: 3px;
+  background: var(--background-primary, #15110A);
+  font-size: 9px;
+  color: var(--text-muted, #A89F8A);
+  max-height: 140px;
+  overflow-y: auto;
+  white-space: normal;
+}
+
+.ora-models-loosening-detail li {
+  margin: 2px 0;
+  line-height: 1.4;
+}
+
+.ora-models-loosening-detail code {
+  font-family: var(--font-monospace, ui-monospace, 'SF Mono', Menlo, monospace);
+  font-size: 9px;
+  color: var(--text-normal, #E8E0CC);
+}
+
 .ora-models-card-empty-state {
   cursor: default;
   opacity: 0.85;

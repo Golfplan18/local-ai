@@ -6,6 +6,12 @@
       "runtimeExecutable": "/opt/homebrew/bin/python3",
       "runtimeArgs": ["/Users/oracle/ora/server/server.py"],
       "port": 5000
+    },
+    {
+      "name": "ora-verify",
+      "runtimeExecutable": "/opt/homebrew/bin/python3",
+      "runtimeArgs": ["/Users/oracle/ora/server/server.py"],
+      "port": 5001
     }
   ]
 }

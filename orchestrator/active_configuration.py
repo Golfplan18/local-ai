@@ -724,7 +724,36 @@ def _summarize(name: str, config: dict) -> dict:
         # decide whether to render the yellow deprecated-model border —
         # the per-row deprecation chip handles the per-cell display.
         "all_primaries": _collect_all_primaries(config),
+        # Per-cell loosening notes from the auto-populate bake
+        # (_auto_populate_metadata.loosening_log): cell path → list of
+        # human-readable reasons a constraint (e.g. vision_only) was
+        # relaxed for that cell. The pane renders a footnote on the
+        # card when non-empty so the user knows why a slot holds a
+        # model that doesn't match the toggles. Customs read as {} —
+        # duplicate_configuration strips the auto-populate metadata.
+        "loosening_log": _loosening_log(config),
     }
+
+
+def _loosening_log(config: dict) -> dict:
+    """Extract the auto-populate loosening log, normalized to
+    {cell_path: [note, ...]}. Malformed shapes degrade to {}."""
+    meta = config.get("_auto_populate_metadata")
+    if not isinstance(meta, dict):
+        return {}
+    log = meta.get("loosening_log")
+    if not isinstance(log, dict):
+        return {}
+    out: dict = {}
+    for cell, notes in log.items():
+        if isinstance(notes, str):
+            notes = [notes]
+        if not isinstance(notes, list):
+            continue
+        cleaned = [n for n in notes if isinstance(n, str) and n.strip()]
+        if cleaned:
+            out[str(cell)] = cleaned
+    return out
 
 
 def _collect_all_primaries(config: dict) -> list[str]:
