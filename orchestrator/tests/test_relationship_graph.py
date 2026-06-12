@@ -1,15 +1,19 @@
-"""Tests for relationship_graph — orphan classification and incremental sync.
+"""Tests for relationship_graph — claim-target resolution, orphan
+classification, and incremental sync.
 
 Everything runs against a temp vault + temp SQLite DB; the real vault and
 ~/ora/data/relationship-graph.db are never touched.
 
 The load-bearing behaviors under test:
-  - find_orphan_targets exempts statement-keyed sources (Engrams/), whose
-    targets are claim sentences, not note filenames — without the exemption
-    every engram row classifies as an orphan.
+  - Engram relationships are statement-keyed in YAML (targets are claim
+    sentences = the target engram's H1). At scan time these resolve to
+    filename stems, so the compiled index is uniformly note-keyed and
+    traversal/inverse lookups work across engrams.
+  - find_orphan_targets treats a target as valid if it is a note title OR
+    a current engram claim — dangling references of either kind surface.
   - remove_orphans accepts a precomputed orphan list (no recompute).
-  - sync_from_vault reconciles the DB with vault YAML by writing diffs only,
-    replacing the weekly delete-everything + full-rebuild churn.
+  - sync_from_vault reconciles the DB with vault YAML by writing diffs only
+    and converges (including migrating pre-resolution claim-keyed rows).
 """
 
 import os
@@ -35,7 +39,15 @@ def write_note(vault_path: str, relpath: str, relationships=None, body="Body."):
     return path
 
 
+def engram_body(claim: str) -> str:
+    return f"# {claim}\n\n- supporting bullet\n"
+
+
+# Engram two's H1 — the claim that engram one's YAML targets.
 CLAIM = "Anger impairs reasoning capacity and judgment quality"
+CLAIM_ONE = "Claim one anchors the test fixture chain"
+ENGRAM_ONE = "2024-01-01_claim-one"
+ENGRAM_TWO = "2024-01-02_claim-two"
 
 
 class RelationshipGraphTestBase(unittest.TestCase):
@@ -51,12 +63,13 @@ class RelationshipGraphTestBase(unittest.TestCase):
             {"type": "extends", "target": "DeletedNote", "confidence": "medium"},
         ])
         write_note(self.vault, "NoteB.md")
-        # An engram: statement-keyed targets plus one note-title target.
-        self.engram_name = "2024-01-01_claim-one"
-        write_note(self.vault, f"Engrams/{self.engram_name}.md", [
+        # Engram one targets engram two by claim sentence + a note by title.
+        write_note(self.vault, f"Engrams/{ENGRAM_ONE}.md", [
             {"type": "analogous-to", "target": CLAIM, "confidence": "medium"},
             {"type": "supports", "target": "NoteB", "confidence": "high"},
-        ])
+        ], body=engram_body(CLAIM_ONE))
+        write_note(self.vault, f"Engrams/{ENGRAM_TWO}.md",
+                   body=engram_body(CLAIM))
 
         self.graph = RelationshipGraph(db_path=self.db_path, vault_path=self.vault)
 
@@ -77,7 +90,60 @@ class TestBuildFromVault(RelationshipGraphTestBase):
         rows = self.all_rows()
         self.assertIn(("NoteA", "NoteB", "supports", "high"), rows)
         self.assertIn(("NoteA", "DeletedNote", "extends", "medium"), rows)
-        self.assertIn((self.engram_name, CLAIM, "analogous-to", "medium"), rows)
+        self.assertIn((ENGRAM_ONE, "NoteB", "supports", "high"), rows)
+
+    def test_claim_target_resolves_to_stem(self):
+        result = self.graph.build_from_vault()
+        rows = self.all_rows()
+        # The claim-sentence target became the target engram's filename stem.
+        self.assertIn((ENGRAM_ONE, ENGRAM_TWO, "analogous-to", "medium"), rows)
+        self.assertNotIn((ENGRAM_ONE, CLAIM, "analogous-to", "medium"), rows)
+        self.assertEqual(result["resolution"]["resolved_targets"], 1)
+        self.assertEqual(result["resolution"]["claims_indexed"], 2)
+
+    def test_unresolved_claim_target_kept_verbatim(self):
+        write_note(self.vault, "Engrams/2024-01-03_claim-three.md", [
+            {"type": "supports", "target": "A claim no engram asserts"},
+        ], body=engram_body("Claim three stands alone"))
+        self.graph.build_from_vault()
+        self.assertIn(
+            ("2024-01-03_claim-three", "A claim no engram asserts",
+             "supports", "medium"),
+            self.all_rows())
+
+    def test_duplicate_h1_resolves_to_earliest_stem(self):
+        # Two engrams asserting the same claim: the lexicographically
+        # smallest stem (= earliest date prefix) wins, deterministically.
+        write_note(self.vault, "Engrams/2024-05-09_claim-two-dup.md",
+                   body=engram_body(CLAIM))
+        result = self.graph.build_from_vault()
+        self.assertEqual(result["resolution"]["duplicate_claims"], 1)
+        rows = self.all_rows()
+        self.assertIn((ENGRAM_ONE, ENGRAM_TWO, "analogous-to", "medium"), rows)
+        self.assertNotIn(
+            (ENGRAM_ONE, "2024-05-09_claim-two-dup", "analogous-to", "medium"),
+            rows)
+
+    def test_title_match_takes_precedence_over_claim(self):
+        # An engram whose H1 happens to equal a real note's title must not
+        # hijack targets that already resolve as note titles.
+        write_note(self.vault, "Engrams/2024-01-04_imposter.md",
+                   body=engram_body("NoteB"))
+        self.graph.build_from_vault()
+        rows = self.all_rows()
+        self.assertIn(("NoteA", "NoteB", "supports", "high"), rows)
+        self.assertNotIn(("NoteA", "2024-01-04_imposter", "supports", "high"), rows)
+
+    def test_resolution_key_collision_dedup(self):
+        # A note declaring both the claim sentence and the stem it resolves
+        # to collapses to one row with the better confidence.
+        write_note(self.vault, "NoteC.md", [
+            {"type": "supports", "target": CLAIM, "confidence": "medium"},
+            {"type": "supports", "target": ENGRAM_TWO, "confidence": "high"},
+        ])
+        self.graph.build_from_vault()
+        rows = [r for r in self.all_rows() if r[0] == "NoteC"]
+        self.assertEqual(rows, [("NoteC", ENGRAM_TWO, "supports", "high")])
 
     def test_excludes_trash_and_archived_dirs(self):
         write_note(self.vault, ".trash/Trashed.md",
@@ -98,6 +164,30 @@ class TestBuildFromVault(RelationshipGraphTestBase):
         self.assertEqual(types, {"supports", "extends"})
 
 
+class TestTraversal(RelationshipGraphTestBase):
+    def test_multi_hop_traversal_across_engrams(self):
+        # Resolution makes engram→engram links walkable: claim-one →
+        # claim-two → claim-five only connects if targets are stems.
+        claim_five = "Multi hop chains terminate at claim five"
+        write_note(self.vault, f"Engrams/{ENGRAM_TWO}.md", [
+            {"type": "extends", "target": claim_five, "confidence": "high"},
+        ], body=engram_body(CLAIM))
+        write_note(self.vault, "Engrams/2024-01-05_claim-five.md",
+                   body=engram_body(claim_five))
+        self.graph.build_from_vault()
+        connected = self.graph.get_connected(ENGRAM_ONE, depth=2)
+        notes = {c["note"] for c in connected}
+        self.assertIn(ENGRAM_TWO, notes)
+        self.assertIn("2024-01-05_claim-five", notes)
+
+    def test_inverse_lookup_finds_engram_referrers(self):
+        self.graph.build_from_vault()
+        incoming = self.graph.get_inverse_relationships(ENGRAM_TWO)
+        self.assertEqual(
+            [(r["source"], r["original_type"]) for r in incoming],
+            [(ENGRAM_ONE, "analogous-to")])
+
+
 class TestFindOrphanTargets(RelationshipGraphTestBase):
     def test_flags_dangling_note_reference(self):
         self.graph.build_from_vault()
@@ -105,22 +195,29 @@ class TestFindOrphanTargets(RelationshipGraphTestBase):
         self.assertEqual(orphans, [
             {"source": "NoteA", "target": "DeletedNote", "type": "extends"}])
 
-    def test_exempts_statement_keyed_sources(self):
+    def test_resolved_claim_targets_are_not_orphans(self):
         self.graph.build_from_vault()
         orphan_sources = {o["source"] for o in self.graph.find_orphan_targets()}
-        self.assertNotIn(self.engram_name, orphan_sources)
+        self.assertNotIn(ENGRAM_ONE, orphan_sources)
 
-    def test_flags_rows_from_deleted_statement_source(self):
-        # Rows whose engram source file no longer exists lose the exemption:
-        # they are genuinely stale, not statement-keyed-by-design.
-        self.graph.build_from_vault()
-        self.graph.add_relationships("2020-05-05_gone-engram", [
-            {"type": "supports", "target": "Some claim that was extracted"}])
-        orphans = self.graph.find_orphan_targets()
-        self.assertIn(
-            {"source": "2020-05-05_gone-engram",
-             "target": "Some claim that was extracted", "type": "supports"},
-            orphans)
+    def test_claim_keyed_rows_recognized_premigration(self):
+        # A pre-resolution DB still holds claim-sentence targets; they are
+        # valid (the claim's engram exists), not orphans.
+        self.graph.conn.execute(
+            "INSERT INTO relationships (source, target, type, confidence) "
+            "VALUES (?, ?, ?, ?)",
+            (ENGRAM_ONE, CLAIM, "analogous-to", "medium"))
+        self.graph.conn.commit()
+        self.assertEqual(self.graph.find_orphan_targets(), [])
+
+    def test_flags_dangling_claim(self):
+        self.graph.conn.execute(
+            "INSERT INTO relationships (source, target, type, confidence) "
+            "VALUES (?, ?, ?, ?)",
+            (ENGRAM_ONE, "A claim whose engram is gone", "supports", "medium"))
+        self.graph.conn.commit()
+        targets = {o["target"] for o in self.graph.find_orphan_targets()}
+        self.assertIn("A claim whose engram is gone", targets)
 
     def test_trashed_note_is_not_a_valid_target(self):
         write_note(self.vault, ".trash/Ghost.md")
@@ -140,7 +237,7 @@ class TestRemoveOrphans(RelationshipGraphTestBase):
         self.assertNotIn(("NoteA", "DeletedNote", "extends", "medium"), rows)
         # Untouched rows survive.
         self.assertIn(("NoteA", "NoteB", "supports", "high"), rows)
-        self.assertIn((self.engram_name, CLAIM, "analogous-to", "medium"), rows)
+        self.assertIn((ENGRAM_ONE, ENGRAM_TWO, "analogous-to", "medium"), rows)
 
     def test_computes_orphans_when_not_given(self):
         self.graph.build_from_vault()
@@ -151,9 +248,9 @@ class TestRemoveOrphans(RelationshipGraphTestBase):
 
     def test_engram_rows_survive_cleanup(self):
         self.graph.build_from_vault()
-        before = {r for r in self.all_rows() if r[0] == self.engram_name}
+        before = {r for r in self.all_rows() if r[0] == ENGRAM_ONE}
         self.graph.remove_orphans()
-        after = {r for r in self.all_rows() if r[0] == self.engram_name}
+        after = {r for r in self.all_rows() if r[0] == ENGRAM_ONE}
         self.assertEqual(before, after)
 
 
@@ -171,6 +268,38 @@ class TestSyncFromVault(RelationshipGraphTestBase):
         stats = self.graph.sync_from_vault()
         self.assertEqual(stats["rows_added"], 4)
         self.assertEqual(len(self.all_rows()), 4)
+        self.assertEqual(stats["resolution"]["resolved_targets"], 1)
+
+    def test_migrates_claim_keyed_rows_to_stems(self):
+        # Simulate a pre-resolution DB: claim-sentence target on disk.
+        self.graph.conn.execute(
+            "INSERT INTO relationships (source, target, type, confidence) "
+            "VALUES (?, ?, ?, ?)",
+            (ENGRAM_ONE, CLAIM, "analogous-to", "medium"))
+        self.graph.conn.commit()
+        self.graph.sync_from_vault()
+        rows = self.all_rows()
+        self.assertIn((ENGRAM_ONE, ENGRAM_TWO, "analogous-to", "medium"), rows)
+        self.assertNotIn((ENGRAM_ONE, CLAIM, "analogous-to", "medium"), rows)
+        # And converges: second run is a no-op.
+        stats = self.graph.sync_from_vault()
+        self.assertEqual(stats["rows_added"], 0)
+        self.assertEqual(stats["rows_removed"], 0)
+
+    def test_deleting_target_engram_reverts_rows_to_claim_text(self):
+        # When the target engram disappears, the claim can no longer
+        # resolve: the row reverts to the verbatim claim sentence and
+        # surfaces as a dangling target.
+        self.graph.build_from_vault()
+        os.remove(os.path.join(self.vault, f"Engrams/{ENGRAM_TWO}.md"))
+        stats = self.graph.sync_from_vault()
+        self.assertEqual(stats["rows_added"], 1)
+        self.assertEqual(stats["rows_removed"], 1)
+        rows = self.all_rows()
+        self.assertIn((ENGRAM_ONE, CLAIM, "analogous-to", "medium"), rows)
+        self.assertNotIn((ENGRAM_ONE, ENGRAM_TWO, "analogous-to", "medium"), rows)
+        targets = {o["target"] for o in self.graph.find_orphan_targets()}
+        self.assertIn(CLAIM, targets)
 
     def test_picks_up_new_note(self):
         self.graph.build_from_vault()
@@ -182,7 +311,7 @@ class TestSyncFromVault(RelationshipGraphTestBase):
 
     def test_removes_rows_for_deleted_source(self):
         self.graph.build_from_vault()
-        os.remove(os.path.join(self.vault, f"Engrams/{self.engram_name}.md"))
+        os.remove(os.path.join(self.vault, f"Engrams/{ENGRAM_ONE}.md"))
         stats = self.graph.sync_from_vault()
         self.assertEqual(stats["sources_removed"], 1)
         self.assertEqual(stats["rows_removed"], 2)
@@ -203,7 +332,7 @@ class TestSyncFromVault(RelationshipGraphTestBase):
         write_note(self.vault, "NoteA.md")  # no relationships key at all
         stats = self.graph.sync_from_vault()
         self.assertEqual(stats["rows_removed"], 2)
-        self.assertEqual({r[0] for r in self.all_rows()}, {self.engram_name})
+        self.assertEqual({r[0] for r in self.all_rows()}, {ENGRAM_ONE})
 
     def test_confidence_change_updates_in_place(self):
         self.graph.build_from_vault()
