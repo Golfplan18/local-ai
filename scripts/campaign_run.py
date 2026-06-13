@@ -657,14 +657,25 @@ def _latest_trace_dir(conv_id: str) -> str | None:
     return str(base / turns[-1]) if turns else None
 
 
-def price_usage_records(trace_dir: str | None, rate_map: dict) -> float | None:
+def price_usage_records(trace_dir: str | None, rate_map: dict,
+                        subscription_only: bool = False) -> float | None:
     """Price a trace's usage.jsonl against a rate map (endpoint_id /
     model_id → {input_per_million_usd, output_per_million_usd}).
 
     Fallback for lanes whose endpoint ids aren't in the model registry —
     the subscription endpoints (claude-code:*) cost $0 marginal, so the
     campaign prices their tokens at the API-equivalent rate to keep the
-    published comparison honest."""
+    published comparison honest.
+
+    Counts every input token once at the standard input rate — uncached
+    prompt PLUS cache_creation PLUS cache_read. Pricing only the uncached
+    prompt understated the subscription lanes massively (a premium run's input
+    is ~99.7% cache-creation tokens). The 1× (uncached) basis is used rather
+    than the 1.25×-write/0.1×-read cache schedule because the pipelines write
+    caches they never reread (cache_read ≈ 0), so a non-subscriber would send
+    the context uncached. When ``subscription_only`` is set, only claude-code:*
+    calls are priced — used to add the API-equivalent of subscription work to a
+    metered lane's real cost (e.g. optimum-plus's Opus consolidator)."""
     if not trace_dir or not rate_map:
         return None
     path = Path(trace_dir) / "usage.jsonl"
@@ -676,16 +687,50 @@ def price_usage_records(trace_dir: str | None, rate_map: dict) -> float | None:
             rec = json.loads(line)
         except json.JSONDecodeError:
             continue
-        rate = (rate_map.get(rec.get("endpoint_id"))
-                or rate_map.get(rec.get("model_id")))
+        eid = rec.get("endpoint_id") or ""
+        if subscription_only and not eid.startswith("claude-code:"):
+            continue
+        rate = rate_map.get(eid) or rate_map.get(rec.get("model_id"))
         if not rate or rate.get("input_per_million_usd") is None:
             continue
-        total += ((rec.get("prompt_tokens") or 0) / 1e6
-                  * rate["input_per_million_usd"]
+        ipm = rate["input_per_million_usd"]
+        # Price ALL input (uncached prompt + cache writes + cache reads) at the
+        # standard input rate. The campaign pipelines write caches they never
+        # reread (cache_read ≈ 0), so prompt caching only ADDS the 1.25× write
+        # premium for no benefit — a non-subscriber would rationally send the
+        # context uncached at 1×. Counting every input token once at 1× is the
+        # honest "what they'd actually pay" basis (verified 2026-06-13: premium
+        # cache_read ≈ 0 against ~620K cache_create/run).
+        input_toks = ((rec.get("prompt_tokens") or 0)
+                      + (rec.get("cache_creation_tokens") or 0)
+                      + (rec.get("cache_read_tokens") or 0))
+        total += (input_toks / 1e6 * ipm
                   + (rec.get("completion_tokens") or 0) / 1e6
                   * rate["output_per_million_usd"])
         any_priced = True
     return round(total, 6) if any_priced else None
+
+
+def _sum_usage_tokens(trace_dir: str | None) -> dict:
+    """Sum a trace's usage.jsonl token counts, including cache tokens, so the
+    aggregate's token columns reflect true input (not just the uncached
+    sliver the manifest records)."""
+    out = {"prompt": 0, "completion": 0, "cache_read": 0, "cache_create": 0}
+    if not trace_dir:
+        return out
+    path = Path(trace_dir) / "usage.jsonl"
+    if not path.exists():
+        return out
+    for line in path.read_text().splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        out["prompt"] += rec.get("prompt_tokens") or 0
+        out["completion"] += rec.get("completion_tokens") or 0
+        out["cache_read"] += rec.get("cache_read_tokens") or 0
+        out["cache_create"] += rec.get("cache_creation_tokens") or 0
+    return out
 
 
 def read_trace_cost(trace_dir: str | None) -> dict:
@@ -1375,6 +1420,17 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
 def aggregate() -> dict:
     done = load_manifest()
     snapshot = json.loads(SNAPSHOT_PATH.read_text()) if SNAPSHOT_PATH.exists() else {}
+    # API-equivalent rate map: registry rates for every metered model, plus
+    # claude-code:* priced at their API twin. The manifest records $0 for
+    # subscription calls, so their real-world (non-subscriber) cost — which is
+    # dominated by prompt-cache-creation input tokens — must be priced from
+    # each run's usage.jsonl here, cache-aware.
+    rate_map = _load_registry_pricing()
+    for spec in CLAUDE_CODE_ENDPOINTS:
+        eq = rate_map.get(spec["api_equivalent"])
+        if eq:
+            rate_map[spec["id"]] = dict(eq)
+            rate_map[spec["model_id"]] = rate_map[spec["id"]]
     per: dict = {}
     for (tech, pipe), rec in done.items():
         if rec.get("status") != "ok":
@@ -1385,16 +1441,40 @@ def aggregate() -> dict:
                                     "wall_seconds": 0.0,
                                     "api_equivalent_runs": 0})
         row["runs"] += 1
-        row["prompt_tokens"] += rec.get("prompt_tokens") or 0
-        row["completion_tokens"] += rec.get("completion_tokens") or 0
+        td = rec.get("trace_dir")
+        toks = _sum_usage_tokens(td)
+        # Token columns show TRUE input (incl. prompt-cache tokens); fall back
+        # to the manifest's uncached counts only when no trace is available.
+        if toks["prompt"] or toks["completion"] or toks["cache_create"]:
+            row["prompt_tokens"] += (toks["prompt"] + toks["cache_create"]
+                                     + toks["cache_read"])
+            row["completion_tokens"] += toks["completion"]
+        else:
+            row["prompt_tokens"] += rec.get("prompt_tokens") or 0
+            row["completion_tokens"] += rec.get("completion_tokens") or 0
         row["visuals"] += rec.get("visuals") or 0
         row["wall_seconds"] += rec.get("wall_seconds") or 0
+        # Cost = API-equivalent. Lanes already api-equivalent-priced at run
+        # time (single-pass) get a full cache-aware re-price; otherwise keep
+        # the real metered cost and ADD the cache-aware API-equivalent of any
+        # subscription (claude-code:*) calls the run made.
         if rec.get("cost_basis") == "api_equivalent":
-            row["api_equivalent_runs"] += 1
-        if rec.get("cost_usd") is None:
-            row["unpriced_runs"] += 1
+            full = price_usage_records(td, rate_map)
+            run_cost = full if full is not None else rec.get("cost_usd")
+            if run_cost is not None:
+                row["cost_usd"] += run_cost
+                row["api_equivalent_runs"] += 1
+            else:
+                row["unpriced_runs"] += 1
         else:
-            row["cost_usd"] += rec["cost_usd"]
+            sub = price_usage_records(td, rate_map, subscription_only=True)
+            base = rec.get("cost_usd")
+            if base is None and sub is None:
+                row["unpriced_runs"] += 1
+            else:
+                row["cost_usd"] += (base or 0.0) + (sub or 0.0)
+                if sub:
+                    row["api_equivalent_runs"] += 1
 
     grand = {"runs": sum(r["runs"] for r in per.values()),
              "cost_usd": round(sum(r["cost_usd"] for r in per.values()), 4),
@@ -1455,9 +1535,12 @@ def aggregate() -> dict:
               f"({grand['prompt_tokens']:,} prompt + {grand['completion_tokens']:,} "
               f"completion tokens) — **${per_run_grand:.4f} per run**", ""]
     if any_equiv:
-        lines += ["† executed on the Claude subscription via Claude Code "
-                  "(zero marginal dollars); cost shown is the API-equivalent "
-                  "price of the tokens consumed.", ""]
+        lines += ["† includes Claude-subscription work (Claude Code) priced at "
+                  "the API-equivalent rate — what a non-subscriber would pay; "
+                  "$0 actual out-of-pocket for those calls. All input tokens "
+                  "(incl. prompt-cache writes/reads) are priced once at the "
+                  "standard input rate — the pipelines write caches they never "
+                  "reread, so the uncached 1× basis is the honest figure.", ""]
     (CAMPAIGN_DIR / "cost-summary.md").write_text("\n".join(lines))
     print(f"[aggregate] → {CAMPAIGN_DIR / 'cost-summary.md'}")
     return summary
