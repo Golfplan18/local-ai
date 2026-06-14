@@ -492,15 +492,19 @@ def _maybe_recover_visual(prose: str, context_pkg: dict | None, mode: str | None
     if not result:
         return None, None
     env = result["envelope"]
-    block = "```ora-visual\n" + json.dumps(env, indent=2) + "\n```"
+    # ensure_ascii=False keeps real unicode (→, —) out of the rendered block as
+    # \uXXXX, and — critically — the replacement below uses a function so the
+    # envelope JSON is inserted literally (a string replacement would treat
+    # any backslash escape in the JSON as a regex group/escape and raise).
+    block = "```ora-visual\n" + json.dumps(env, indent=2, ensure_ascii=False) + "\n```"
     raw_block = result.get("raw_block")
     if raw_block and result.get("source_text_index") == 0:
         # The diagram lives in the final response — replace the model's raw
         # mermaid fence in place so the rendered envelope sits exactly where
         # the model drew it (and no duplicate raw diagram renders alongside).
         import re as _re
-        spliced, n = _re.subn(r"```(?:mermaid|mmd)\s*\n.*?\n```", block, prose,
-                              count=1, flags=_re.DOTALL)
+        spliced, n = _re.subn(r"```(?:mermaid|mmd)\s*\n.*?\n```", lambda _m: block,
+                              prose, count=1, flags=_re.DOTALL)
         if not n:  # couldn't locate the fence; append instead
             spliced = prose.rstrip() + "\n\n" + block
     else:
