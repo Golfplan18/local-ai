@@ -55,14 +55,46 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
 
   const THREAT_X     = Math.round(VB_W * 0.15);   // 144
   const CONS_X       = Math.round(VB_W * 0.85);   // 816
-  const EVENT_HALF_W = 80;
+  const EVENT_HALF_W = 80;   // minimum half-width; grows to fit the label
   const EVENT_HALF_H = 34;
 
-  const NODE_HALF_W  = 70;   // threats / consequences
+  const NODE_HALF_W  = 70;   // threats / consequences (triangle footprint — fixed)
   const NODE_HALF_H  = 22;
 
   const CONTROL_W    = 18;
   const CONTROL_H    = 30;
+
+  // ── Text-fit geometry ──────────────────────────────────────────────────────
+  //
+  // The artifact-level adversarial review (artifact-adversarial.js) estimates a
+  // label's rendered width as `chars × CHAR_W_EST` and compares it against the
+  // widest non-text drawable (rect/path) inside the label's semantic group. When
+  // a primary node-label exceeds 1.5× that slot width the render is SUPPRESSED
+  // (empty SVG) because truncation would lose the node's meaning. The default
+  // 13px theme font renders at roughly the same per-char width, so the same
+  // constant keeps our box-sizing in lock-step with the reviewer rather than
+  // guessing. We size every label-bearing box so the FULL label fits — never
+  // truncate, never shrink the chrome below the text.
+  const CHAR_W_EST   = 6.5;   // px/char — mirrors artifact-adversarial.js
+  const LINE_H       = 16;    // line box height at the body font size
+  const BOX_PAD_X    = 18;    // horizontal padding inside a sized box (each side gets half)
+  // Wrap a primary label once its single-line estimate passes this width, so a
+  // long hazard/threat/consequence label stacks into a few readable lines
+  // instead of stretching the box into a thin ribbon. Lines are still sized so
+  // the full text fits — wrapping is for proportion, the box width below is what
+  // actually clears the reviewer.
+  const WRAP_TARGET_PX = 180;
+
+  // The central event box may grow to fit its label, but it must never widen so
+  // far that it collides with the threat / consequence columns (which would
+  // trip the artifact reviewer's overlap gate instead of the truncation gate).
+  // Cap the half-width so the box edge stays clear of the nearest node tip with
+  // a small margin. At this cap the slot still holds a ~110-char label within
+  // the truncation gate's 1.5× critical headroom; a label longer than that is
+  // genuinely unfittable in a bow-tie pivot and should degrade to prose/table.
+  const NODE_CLEARANCE   = 24;
+  const EVENT_MAX_HALF_W =
+    CENTER_X - (THREAT_X + NODE_HALF_W + NODE_CLEARANCE);   // 242
 
   // ── HTML escape ────────────────────────────────────────────────────────────
   function esc(str) {
@@ -72,6 +104,76 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  // ── Label fitting ──────────────────────────────────────────────────────────
+  //
+  // Estimated rendered width of a string at the body font size.
+  function estWidth(str) {
+    return String(str == null ? '' : str).length * CHAR_W_EST;
+  }
+
+  // Greedy word-wrap on whitespace targeting `targetPx` per line. A single word
+  // wider than the target is NOT broken (we never split inside a token — that
+  // would mangle the meaning the same way truncation does); it simply occupies
+  // its own over-long line and the caller's box widens to hold it. Returns an
+  // array of line strings (always at least one, even for an empty label).
+  function wrapLabel(label, targetPx) {
+    const text = String(label == null ? '' : label).trim();
+    if (!text) return [''];
+    const words = text.split(/\s+/);
+    const lines = [];
+    let cur = '';
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      const candidate = cur ? cur + ' ' + w : w;
+      if (cur && estWidth(candidate) > targetPx) {
+        lines.push(cur);
+        cur = w;
+      } else {
+        cur = candidate;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  }
+
+  // Width (px) the widest wrapped line needs, plus the count, so a caller can
+  // size a box that holds the FULL label. We size to the *total* character
+  // budget when the reviewer would measure the concatenated text against a
+  // single slot (it sums every tspan's chars), guaranteeing the box clears the
+  // truncation gate. Returns { lines, lineCount, boxW } where boxW already
+  // includes horizontal padding and the renderer's minimum is applied by the
+  // caller.
+  function fitLabelBox(label, targetPx, minHalfW) {
+    const lines = wrapLabel(label, targetPx);
+    const totalChars = String(label == null ? '' : label).trim().length;
+    // The reviewer measures `totalChars × CHAR_W_EST` against the box's slot
+    // width, so the slot must hold the whole label, not just the widest line.
+    // Wrapping keeps the aspect ratio sane; this width keeps the gate cleared.
+    const widestLine = lines.reduce(function (m, ln) {
+      return Math.max(m, estWidth(ln));
+    }, 0);
+    const need = Math.max(totalChars * CHAR_W_EST, widestLine) + BOX_PAD_X;
+    const halfW = Math.max(minHalfW, Math.ceil(need / 2));
+    return { lines: lines, lineCount: lines.length, halfW: halfW };
+  }
+
+  // Emit one or more <tspan> rows for a vertically-centered multi-line label.
+  // `cx` is the horizontal anchor (text-anchor=middle); `cy` is the vertical
+  // center of the whole block. Each line gets its own <tspan> with an absolute
+  // x and a computed y so the block straddles `cy`.
+  function emitLabelTspans(lines, cx, cy) {
+    const n = lines.length;
+    // Vertical center of the block sits at cy: first line baseline is offset up
+    // by (n-1)/2 line-heights, then each subsequent line steps down by LINE_H.
+    const firstY = cy - ((n - 1) * LINE_H) / 2;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const ly = Math.round(firstY + i * LINE_H);
+      out.push('<tspan x="' + cx + '" y="' + ly + '">' + esc(lines[i]) + '</tspan>');
+    }
+    return out.join('');
   }
 
   // ── Symmetric y distribution ───────────────────────────────────────────────
@@ -224,11 +326,37 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
     ].join('\n');
   }
 
-  function emitEvent(label) {
-    const x = CENTER_X - EVENT_HALF_W;
-    const y = CENTER_Y - EVENT_HALF_H;
-    const w = EVENT_HALF_W * 2;
-    const h = EVENT_HALF_H * 2;
+  // Compute the central hazard box's half-dimensions for a given label. The box
+  // grows to fit the full label (wrapped onto a few lines), never shrinking
+  // below the EVENT_HALF_W / EVENT_HALF_H minimums. Returned half-width is the
+  // pivot the arrows aim at, so they meet the real box edge.
+  function eventBoxGeometry(label) {
+    const fit = fitLabelBox(label, WRAP_TARGET_PX, EVENT_HALF_W);
+    const halfW = Math.min(fit.halfW, EVENT_MAX_HALF_W);
+    // If the box hit the cap, re-wrap the label to the actual inner width so the
+    // lines fill the box rather than wrapping at the (now narrower) target.
+    const innerW = halfW * 2 - BOX_PAD_X;
+    const lines = (fit.halfW > EVENT_MAX_HALF_W)
+      ? wrapLabel(label, innerW)
+      : fit.lines;
+    return {
+      lines: lines,
+      halfW: halfW,
+      halfH: Math.max(EVENT_HALF_H, Math.round(lines.length * LINE_H / 2) + 8),
+    };
+  }
+
+  // The central hazard box grows to fit its label. Long labels wrap onto a few
+  // lines and the box deepens, so the full text always fits inside the chrome
+  // (no truncation, no overflow past the rect) and the artifact reviewer's
+  // truncation gate is cleared.
+  function emitEvent(label, geo) {
+    const halfW = geo.halfW;
+    const halfH = geo.halfH;
+    const x = CENTER_X - halfW;
+    const y = CENTER_Y - halfH;
+    const w = halfW * 2;
+    const h = halfH * 2;
     return [
       '  <g id="bt-event" class="ora-visual__bt-event ora-visual__hazard ora-visual__event">',
       '    <rect class="ora-visual__bt-event-shape" ' +
@@ -237,7 +365,7 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
       '    <text class="ora-visual__bt-event-label ora-visual__node-label" ' +
         'x="' + CENTER_X + '" y="' + CENTER_Y +
         '" text-anchor="middle" dominant-baseline="middle">' +
-        esc(label) +
+        emitLabelTspans(geo.lines, CENTER_X, CENTER_Y) +
         '</text>',
       '  </g>',
     ].join('\n');
@@ -253,6 +381,10 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
     const botY   = cy + NODE_HALF_H;
     const id = 'bt-threat-' + i;
     const origId = threat && threat.id ? threat.id : '';
+    // The triangle footprint stays fixed (symmetry invariant). The label wraps
+    // onto a few centered lines so a long threat name reads cleanly instead of
+    // running off the side of the triangle.
+    const lines = wrapLabel(threat && threat.label ? threat.label : '', WRAP_TARGET_PX);
     return [
       '  <g id="' + id + '" class="ora-visual__bt-threat ora-visual__threat" ' +
         'data-orig-id="' + esc(origId) + '">',
@@ -262,7 +394,7 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
       '    <text class="ora-visual__bt-threat-label ora-visual__node-label" ' +
         'x="' + (cx - 2) + '" y="' + cy +
         '" text-anchor="middle" dominant-baseline="middle">' +
-        esc(threat && threat.label ? threat.label : '') +
+        emitLabelTspans(lines, cx - 2, cy) +
         '</text>',
       '  </g>',
     ].join('\n');
@@ -277,6 +409,8 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
     const botY   = cy + NODE_HALF_H;
     const id = 'bt-consequence-' + i;
     const origId = cons && cons.id ? cons.id : '';
+    // Triangle footprint fixed (symmetry invariant); label wraps for legibility.
+    const lines = wrapLabel(cons && cons.label ? cons.label : '', WRAP_TARGET_PX);
     return [
       '  <g id="' + id +
         '" class="ora-visual__bt-consequence ora-visual__consequence" ' +
@@ -287,18 +421,19 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
       '    <text class="ora-visual__bt-consequence-label ora-visual__node-label" ' +
         'x="' + (cx - 2) + '" y="' + cy +
         '" text-anchor="middle" dominant-baseline="middle">' +
-        esc(cons && cons.label ? cons.label : '') +
+        emitLabelTspans(lines, cx - 2, cy) +
         '</text>',
       '  </g>',
     ].join('\n');
   }
 
   // Arrow from threat node (tip at threatX + NODE_HALF_W) to event
-  // (left edge of event box = CENTER_X - EVENT_HALF_W).
-  function emitThreatArrow(i, threatCx, threatCy) {
+  // (left edge of event box = CENTER_X - eventHalfW). The event box may have
+  // grown to fit a long hazard label, so we aim at its actual left edge.
+  function emitThreatArrow(i, threatCx, threatCy, eventHalfW) {
     const x1 = threatCx + NODE_HALF_W;
     const y1 = threatCy;
-    const x2 = CENTER_X - EVENT_HALF_W;
+    const x2 = CENTER_X - eventHalfW;
     const y2 = CENTER_Y;
     return '  <line id="bt-arrow-threat-' + i +
       '" class="ora-visual__bt-arrow ora-visual__bt-arrow--preventive" ' +
@@ -308,9 +443,9 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
 
   // Arrow from event (right edge) to consequence (base of triangle =
   // consCx - NODE_HALF_W). The arrow flows left→right mirroring the threat
-  // side.
-  function emitConsArrow(i, consCx, consCy) {
-    const x1 = CENTER_X + EVENT_HALF_W;
+  // side; it starts at the event box's actual right edge.
+  function emitConsArrow(i, consCx, consCy, eventHalfW) {
+    const x1 = CENTER_X + eventHalfW;
     const y1 = CENTER_Y;
     const x2 = consCx - NODE_HALF_W;
     const y2 = consCy;
@@ -428,6 +563,12 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
     const threatYs = distributeY(threats.length);
     const consYs   = distributeY(conseqs.length);
 
+    // Size the central event box up-front: a long hazard label grows the box,
+    // and arrows + control pathways must aim at its ACTUAL edges (not the fixed
+    // minimum) so nothing tucks under the widened box.
+    const eventGeo = eventBoxGeometry(spec.hazard_event.label);
+    const eventHalfW = eventGeo.halfW;
+
     // Build control index for escalation resolution.
     const controlIndex = {};
 
@@ -442,13 +583,13 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
 
     threats.forEach((t, i) => {
       const cy = threatYs[i];
-      arrowParts.push(emitThreatArrow(i, THREAT_X, cy));
+      arrowParts.push(emitThreatArrow(i, THREAT_X, cy, eventHalfW));
       // Preventive controls along the threat→event pathway.
       const pcs = Array.isArray(t.preventive_controls) ? t.preventive_controls : [];
       if (pcs.length > 0) {
         const x1 = THREAT_X + NODE_HALF_W;
         const y1 = cy;
-        const x2 = CENTER_X - EVENT_HALF_W;
+        const x2 = CENTER_X - eventHalfW;
         const y2 = CENTER_Y;
         const places = placeControls(x1, y1, x2, y2, pcs.length);
         pcs.forEach((c, j) => {
@@ -464,11 +605,11 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
 
     conseqs.forEach((c, i) => {
       const cy = consYs[i];
-      arrowParts.push(emitConsArrow(i, CONS_X, cy));
+      arrowParts.push(emitConsArrow(i, CONS_X, cy, eventHalfW));
       // Mitigative controls along the event→consequence pathway.
       const mcs = Array.isArray(c.mitigative_controls) ? c.mitigative_controls : [];
       if (mcs.length > 0) {
-        const x1 = CENTER_X + EVENT_HALF_W;
+        const x1 = CENTER_X + eventHalfW;
         const y1 = CENTER_Y;
         const x2 = CONS_X - NODE_HALF_W;
         const y2 = cy;
@@ -506,7 +647,7 @@ window.OraVisualCompiler._renderers.bowTie = (function () {
     parts.push('  </g>');
 
     // Central event on top (so it visually dominates the pivot).
-    parts.push(emitEvent(spec.hazard_event.label));
+    parts.push(emitEvent(spec.hazard_event.label, eventGeo));
 
     // Optional escalation factors at the end (so they sit below everything).
     const escalations = emitEscalations(spec, controlIndex);

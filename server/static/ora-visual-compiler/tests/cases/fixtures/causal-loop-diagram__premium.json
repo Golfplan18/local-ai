@@ -1,0 +1,167 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-causal_loop_diagram",
+  "type": "causal_loop_diagram",
+  "mode_context": "root_cause_analysis",
+  "relation_to_prose": "integrated",
+  "spec": {
+    "variables": [
+      {
+        "id": "gap",
+        "label": "Retention gap"
+      },
+      {
+        "id": "release",
+        "label": "Feature release rate"
+      },
+      {
+        "id": "complexity",
+        "label": "Product complexity"
+      },
+      {
+        "id": "friction",
+        "label": "UX friction"
+      },
+      {
+        "id": "novelty",
+        "label": "Novelty boost"
+      },
+      {
+        "id": "retention",
+        "label": "Retention"
+      },
+      {
+        "id": "maintenance",
+        "label": "Maintenance burden"
+      },
+      {
+        "id": "core_inv",
+        "label": "Core investment"
+      },
+      {
+        "id": "quality",
+        "label": "Core value quality"
+      }
+    ],
+    "links": [
+      {
+        "from": "gap",
+        "to": "release",
+        "polarity": "+"
+      },
+      {
+        "from": "release",
+        "to": "complexity",
+        "polarity": "+"
+      },
+      {
+        "from": "complexity",
+        "to": "friction",
+        "polarity": "+"
+      },
+      {
+        "from": "friction",
+        "to": "retention",
+        "polarity": "-"
+      },
+      {
+        "from": "retention",
+        "to": "gap",
+        "polarity": "-"
+      },
+      {
+        "from": "release",
+        "to": "novelty",
+        "polarity": "+"
+      },
+      {
+        "from": "novelty",
+        "to": "retention",
+        "polarity": "+"
+      },
+      {
+        "from": "release",
+        "to": "maintenance",
+        "polarity": "+"
+      },
+      {
+        "from": "maintenance",
+        "to": "core_inv",
+        "polarity": "-"
+      },
+      {
+        "from": "core_inv",
+        "to": "quality",
+        "polarity": "+"
+      },
+      {
+        "from": "quality",
+        "to": "retention",
+        "polarity": "+"
+      },
+      {
+        "from": "gap",
+        "to": "core_inv",
+        "polarity": "+"
+      }
+    ],
+    "loops": [
+      {
+        "id": "B1",
+        "type": "B",
+        "members": [
+          "gap",
+          "release",
+          "novelty",
+          "retention"
+        ],
+        "label": "Novelty balancing loop"
+      },
+      {
+        "id": "R1",
+        "type": "R",
+        "members": [
+          "gap",
+          "release",
+          "complexity",
+          "friction",
+          "retention"
+        ],
+        "label": "Complexity reinforcing trap"
+      },
+      {
+        "id": "R2",
+        "type": "R",
+        "members": [
+          "release",
+          "maintenance",
+          "core_inv",
+          "quality",
+          "retention",
+          "gap"
+        ],
+        "label": "Maintenance capacity drain"
+      },
+      {
+        "id": "B2",
+        "type": "B",
+        "members": [
+          "gap",
+          "core_inv",
+          "quality",
+          "retention"
+        ],
+        "label": "Core quality balancing loop"
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Nine variables representing retention dynamics, feature velocity, accumulated complexity, engineering capacity, and investment trade-offs, connected by twelve causal links arranged in four feedback loops.",
+    "level_2_statistical": "12 causal links across 9 variables; 4 loops total (2 reinforcing, 2 balancing); negative flows (friction-to-retention, maintenance-to-investment, retention-to-gap) create the balancing paths; positive flows dominate the system.",
+    "level_3_perceptual": "Two competing reinforcing loops (complexity trap R1, capacity drain R2) and two balancing loops (novelty B1, core investment B2) create a dynamic tension; the reinforcing loops drive ratcheting retention decline, while the balancing loops provide weaker recovery forces, with novelty decaying fast and core investment crowded out by maintenance.",
+    "level_4_contextual": "A software product trapped in a reinforcing cycle: high retention gap drives feature releases, which add complexity and increase maintenance burden. The complexity trap (R1) amplifies the gap through accumulated friction. Simultaneously, maintenance burden starves core-value investment (R2), further eroding retention quality. The novelty from releases provides temporary retention boost (B1), but this fast-decaying effect is overwhelmed by structural complexity damage. The only durable escape is core-value investment (B2), which the organization intellectually recognizes but operationally under-funds. The analysis deliberately excludes competitive poaching and cohort-mix effects as rival hypotheses; unless those are ruled out, the complexity loop's dominance cannot be trusted.",
+    "short_alt": "Feature velocity drives complexity feedback trap that outpaces novelty recovery.",
+    "data_table_fallback": null
+  },
+  "title": "Retention Feedback System: Complexity Trap vs. Novelty Balancing"
+}

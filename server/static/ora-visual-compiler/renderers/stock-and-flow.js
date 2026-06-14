@@ -80,7 +80,19 @@ window.OraVisualCompiler._renderers.stockAndFlow = (function () {
     marginY:       60,
     titleY:        28,
     titleH:        36,
-    auxRow:        -70,    // vertical offset of aux row above stocks
+    auxRow:        -70,    // nominal vertical offset of the aux band above stocks
+    // ── Auxiliary grid (collision-free packing) ──────────────────────────
+    // Auxiliaries are circles with a label rendered *below* the circle.
+    // Their adversarial bounding box is therefore the union of the circle
+    // (2·auxR wide) and the label text (label.length · auxCharW wide,
+    // centre-anchored on the circle) by ~auxBoxH tall. We pack them on a
+    // grid whose cell pitch is strictly larger than the widest box so no two
+    // aux bounding boxes can intersect.
+    auxCharW:      6.5,    // px/char — matches the adversarial width estimate
+    auxLabelGap:   12,     // gap from circle bottom to label baseline (see _emitAuxiliary)
+    auxGapX:       28,     // min horizontal whitespace between adjacent aux boxes
+    auxGapY:       34,     // min vertical whitespace between aux rows
+    auxBandPadY:   16,     // gap between the aux band and the top of the stocks
   };
 
   // ── Cloud-reference convention ─────────────────────────────────────────
@@ -494,48 +506,146 @@ window.OraVisualCompiler._renderers.stockAndFlow = (function () {
       }
     }
 
-    // Auxiliaries: place above the midpoint of their info-link targets,
-    // else staggered above middle band.
+    // ── Auxiliaries ────────────────────────────────────────────────────
+    // The old placement nudged each aux a fixed (≤40px) stagger toward the
+    // flow/node its first info-link targeted. With a single stock and many
+    // auxiliaries (the dense cash-dynamics case) several auxiliaries resolve
+    // to the SAME base point, and the stagger — smaller than an aux box —
+    // can't separate them, so their bounding boxes overlap 40–70% and the
+    // artifact-adversarial layer suppresses the whole render. It could also
+    // drive y negative, off the top of the canvas.
+    //
+    // We instead pack auxiliaries on a true grid whose cell pitch is strictly
+    // larger than the widest aux box, so no two aux bounding boxes can
+    // intersect by construction. We keep the old "near its target" intent as
+    // a horizontal ORDER hint only: auxiliaries are sorted by the x of the
+    // node/flow they feed, so they still read left-to-right beside their
+    // targets — but final placement is collision-free.
     const auxIds = [...auxiliaries.keys()];
-    for (let i = 0; i < auxIds.length; i++) {
-      const id = auxIds[i];
-      // Find the first info-link where this aux is the from; place above
-      // the flow (or node) it targets.
-      let baseX = colX.middle + GEOM.stockW / 2;
-      let baseY = GEOM.marginY + GEOM.titleH + GEOM.auxRow;
+
+    // Aux bounding box: circle (2·auxR) ∪ centre-anchored label below it.
+    //   width  = max(2·auxR, label.length · auxCharW)
+    //   height = circle (2·auxR) + label gap + one text line (~auxR)
+    // `x`/`y` are the circle's top-left, matching _emitAuxiliary/_anchor.
+    function _auxBoxW(a) {
+      const labelW = (a && a.label ? String(a.label).length : 1) * GEOM.auxCharW;
+      return Math.max(2 * GEOM.auxR, labelW);
+    }
+    const auxBoxH = 2 * GEOM.auxR + GEOM.auxLabelGap + GEOM.auxR;
+
+    // Preferred x of an aux = x of the first target it info-links into
+    // (flow midpoint or node), used only to order the grid.
+    function _auxPreferredX(id) {
       const outgoing = infoLinks.filter((l) => l.from === id);
       if (outgoing.length > 0) {
         const tgt = outgoing[0].to;
-        // Target may be a flow (midpoint between its endpoints) or a node.
         const flowHit = flows.find((f) => f.id === tgt);
         if (flowHit && flowHit.from && flowHit.to &&
             positions[flowHit.from.id] && positions[flowHit.to.id]) {
-          const a = positions[flowHit.from.id];
-          const b = positions[flowHit.to.id];
-          baseX = (a.x + b.x) / 2 + GEOM.stockW / 2;
-          baseY = Math.min(a.y, b.y) + GEOM.auxRow;
-        } else if (positions[tgt]) {
-          baseX = positions[tgt].x + GEOM.stockW / 2;
-          baseY = positions[tgt].y + GEOM.auxRow;
+          return (positions[flowHit.from.id].x + positions[flowHit.to.id].x) / 2;
         }
+        if (positions[tgt]) return positions[tgt].x;
       }
-      // Stagger aux to avoid overlaps.
-      baseX += (i % 2 === 0 ? 0 : 40);
-      baseY -= (i % 3) * 20;
-      positions[id] = { kind: 'aux', x: baseX, y: baseY };
+      return colX.middle;
     }
 
-    // Compute the SVG viewport.
-    let maxX = 0, maxY = 0;
+    if (auxIds.length > 0) {
+      // Widest box governs the column pitch so every column clears every box.
+      let widestAux = 2 * GEOM.auxR;
+      for (const id of auxIds) {
+        widestAux = Math.max(widestAux, _auxBoxW(auxiliaries.get(id)));
+      }
+      const cellW = widestAux + GEOM.auxGapX;
+      const cellH = auxBoxH + GEOM.auxGapY;
+
+      // Sort by preferred x so auxiliaries still sit roughly above the
+      // targets they feed (stable for ties via the id as a secondary key).
+      const ordered = auxIds.slice().sort((p, q) => {
+        const dx = _auxPreferredX(p) - _auxPreferredX(q);
+        return dx !== 0 ? dx : (p < q ? -1 : (p > q ? 1 : 0));
+      });
+
+      // Columns: as many as fit across the stock/cloud span, ≥ 1.
+      let stockSpan = colX.right + GEOM.stockW - colX.left;
+      if (!(stockSpan > 0)) stockSpan = cellW;
+      const maxCols = Math.max(1, Math.floor((stockSpan + GEOM.auxGapX) / cellW));
+      const cols = Math.min(ordered.length, maxCols);
+      const rows = Math.ceil(ordered.length / cols);
+
+      // The aux grid sits in a band above the stocks. Its bottom must clear
+      // the top of the topmost stock by auxBandPadY; its top must stay below
+      // the title. We grow the band upward (never off-canvas) to fit `rows`.
+      const stockTop = GEOM.marginY + GEOM.titleH;
+      const bandBottom = stockTop - GEOM.auxBandPadY;          // baseline of last row's box bottom
+      const gridH = rows * cellH - GEOM.auxGapY;               // total box-to-box extent
+      let bandTop = bandBottom - gridH;
+      const minTop = GEOM.titleH + GEOM.auxBandPadY;           // keep clear of the title
+      const shiftDown = minTop - bandTop;                      // >0 ⇒ band would clip the title
+      if (shiftDown > 0) bandTop = minTop;
+
+      // Centre the grid horizontally over the stock/cloud span.
+      const gridW = cols * cellW - GEOM.auxGapX;
+      const gridLeft = colX.left + (stockSpan - gridW) / 2;
+
+      for (let i = 0; i < ordered.length; i++) {
+        const id = ordered[i];
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const boxW = _auxBoxW(auxiliaries.get(id));
+        // Centre each box within its cell so labels of varying width don't
+        // bias toward one edge (and never collide with the next column).
+        const cellX = gridLeft + col * cellW;
+        const x = cellX + (cellW - GEOM.auxGapX - boxW) / 2;
+        const y = bandTop + row * cellH;
+        positions[id] = { kind: 'aux', x: x, y: y };
+      }
+
+      // If the band was pushed down into the title and would now collide
+      // with the stocks (very many rows, tiny canvas), shift the whole stock
+      // layout down so the band always clears it. Rare; keeps the invariant.
+      const bandActualBottom = bandTop + gridH + auxBoxH;
+      const needed = bandActualBottom + GEOM.auxBandPadY;
+      if (needed > stockTop) {
+        const push = needed - stockTop;
+        for (const pid in positions) {
+          if (positions[pid].kind !== 'aux') positions[pid].y += push;
+        }
+      }
+    }
+
+    // Compute the SVG viewport. Account for each kind's true bounding box,
+    // including aux label width (centre-anchored, extends past the circle).
+    let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
     for (const id in positions) {
       const p = positions[id];
-      const w = p.kind === 'stock' ? GEOM.stockW : (p.kind === 'cloud' ? 2 * GEOM.cloudR : 2 * GEOM.auxR);
-      const h = p.kind === 'stock' ? GEOM.stockH : (p.kind === 'cloud' ? 2 * GEOM.cloudR : 2 * GEOM.auxR);
-      if (p.x + w > maxX) maxX = p.x + w;
-      if (p.y + h > maxY) maxY = p.y + h;
+      let left = p.x, top = p.y, w, h;
+      if (p.kind === 'stock') {
+        w = GEOM.stockW; h = GEOM.stockH;
+      } else if (p.kind === 'cloud') {
+        w = 2 * GEOM.cloudR; h = 2 * GEOM.cloudR;
+      } else {
+        // aux: circle at [x, x+2·auxR]; label is centre-anchored on the
+        // circle centre and may overhang both sides.
+        const a = auxiliaries.get(id);
+        const labelW = (a && a.label ? String(a.label).length : 1) * GEOM.auxCharW;
+        const cx = p.x + GEOM.auxR;
+        left = Math.min(p.x, cx - labelW / 2);
+        const right = Math.max(p.x + 2 * GEOM.auxR, cx + labelW / 2);
+        w = right - left;
+        h = auxBoxH;
+      }
+      if (left < minX) minX = left;
+      if (top < minY) minY = top;
+      if (left + w > maxX) maxX = left + w;
+      if (top + h > maxY) maxY = top + h;
     }
-    const width  = Math.max(maxX + GEOM.marginX, 640);
-    const height = Math.max(maxY + GEOM.marginY, 360);
+    if (!isFinite(minX)) { minX = 0; minY = 0; }
+    // Guard: nothing should sit left of / above the margin. If an aux label
+    // overhangs into the left margin, the viewport still includes it.
+    const overhangX = Math.max(0, GEOM.marginX - minX);
+    const overhangY = Math.max(0, GEOM.marginY - minY);
+    const width  = Math.max(maxX + GEOM.marginX + overhangX, 640);
+    const height = Math.max(maxY + GEOM.marginY + overhangY, 360);
 
     return { positions: positions, width: width, height: height };
   }

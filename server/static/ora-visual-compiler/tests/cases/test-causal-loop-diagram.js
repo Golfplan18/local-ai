@@ -471,6 +471,90 @@ async function runAgainst(ctx, record) {
     record('unit: _seedFor ignores array order', false,
       'threw: ' + (err && err.stack ? err.stack : err));
   }
+
+  // ── Regression: dense, wide-label CLD must not collide ─────────────────
+  // Guards the 2026-06-14 layout fix. Before it, forceCollide used a fixed
+  // radius(44) (an 88px circle) while wide labels render boxes 170-370px
+  // across, so dense graphs overlapped > 5% of the smaller node's area and
+  // the artifact-adversarial layer suppressed the render to 0 bytes. The
+  // fix gives each node a collision radius from its real box diagonal. We
+  // render the campaign's hardest snapshot (the "premium" CLD — 9 nodes,
+  // wide multi-word labels, the case that overlapped 31.3%) and assert a
+  // non-empty SVG with no E_ARTIFACT_OVERLAP from the adversarial review.
+  try {
+    const COMPILER_DIR = path.resolve(__dirname, '..', '..');
+    const PREMIUM_CASE = path.join(COMPILER_DIR, 'tests', 'cases',
+      'fixtures', 'causal-loop-diagram__premium.json');
+
+    // Prefer the stable campaign snapshot if present; otherwise fall back
+    // to an inline representative dense spec so the test is self-contained.
+    let denseEnv;
+    if (fs.existsSync(PREMIUM_CASE)) {
+      denseEnv = JSON.parse(fs.readFileSync(PREMIUM_CASE, 'utf-8'));
+    } else {
+      denseEnv = envelope({
+        variables: [
+          { id: 'gap', label: 'Retention gap' },
+          { id: 'release', label: 'Feature release rate' },
+          { id: 'complexity', label: 'Product complexity' },
+          { id: 'friction', label: 'UX friction' },
+          { id: 'novelty', label: 'Novelty boost' },
+          { id: 'retention', label: 'Retention' },
+          { id: 'maintenance', label: 'Maintenance burden' },
+          { id: 'core', label: 'Core investment' },
+          { id: 'quality', label: 'Core value quality' },
+        ],
+        links: [
+          { from: 'gap', to: 'release', polarity: '+' },
+          { from: 'release', to: 'novelty', polarity: '+' },
+          { from: 'novelty', to: 'retention', polarity: '+' },
+          { from: 'retention', to: 'gap', polarity: '-' },
+          { from: 'release', to: 'complexity', polarity: '+' },
+          { from: 'complexity', to: 'friction', polarity: '+' },
+          { from: 'friction', to: 'retention', polarity: '-' },
+          { from: 'release', to: 'maintenance', polarity: '+' },
+          { from: 'maintenance', to: 'core', polarity: '-' },
+          { from: 'core', to: 'quality', polarity: '+' },
+          { from: 'quality', to: 'retention', polarity: '+' },
+          { from: 'complexity', to: 'maintenance', polarity: '+' },
+        ],
+        loops: [
+          { id: 'R1', type: 'R', members: ['gap', 'release', 'novelty', 'retention'], label: 'Novelty flywheel' },
+        ],
+      });
+    }
+
+    let dr = OVC._renderers.causalLoopDiagram.render(denseEnv);
+    if (dr && typeof dr.then === 'function') dr = await dr;
+
+    const nodeCount = (denseEnv.spec || denseEnv).variables.length;
+    const renderedNodes = countMatches(dr.svg, /id="cld-node-/g);
+    const svgOk = hasSvgRoot(dr.svg) && dr.svg.length > 0 &&
+                  renderedNodes === nodeCount &&
+                  (!dr.errors || dr.errors.length === 0);
+    record('dense wide-label CLD: renderer emits non-empty SVG', svgOk,
+      svgOk ? 'svg ' + dr.svg.length + ' chars, ' + renderedNodes + ' nodes'
+            : 'svg len=' + (dr.svg || '').length + ' nodes=' + renderedNodes +
+              '/' + nodeCount + ' errors=' + JSON.stringify(dr.errors || []));
+
+    // Run the artifact-level adversarial review and assert it does not block
+    // on overlap. Load the module into this window if the harness has not.
+    if (!win.OraVisualCompiler.artifactAdversarial) {
+      win.eval(fs.readFileSync(
+        path.join(COMPILER_DIR, 'artifact-adversarial.js'), 'utf-8'));
+    }
+    const review = win.OraVisualCompiler.artifactAdversarial.review(dr.svg, denseEnv);
+    const overlapErr = (review.findings || []).filter(
+      (f) => f.code === 'E_ARTIFACT_OVERLAP');
+    const advOk = !review.blocks && overlapErr.length === 0;
+    record('dense wide-label CLD: adversarial review passes (no overlap block)',
+      advOk,
+      advOk ? '' : 'blocks=' + review.blocks + ' overlap=' +
+        JSON.stringify(overlapErr.map((f) => f.message.slice(0, 80))));
+  } catch (err) {
+    record('dense wide-label CLD: no overlap', false,
+      'threw: ' + (err && err.stack ? err.stack : err));
+  }
 }
 
 // ── Case-file export (consumed by run.js) ────────────────────────────────────
