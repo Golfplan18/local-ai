@@ -23,11 +23,12 @@ SPEC.loader.exec_module(auto_populate)
 
 
 def _model(id, *, intelligence=None, blended=None, size="large",
-           vision=False, is_free=False, provider="x"):
+           vision=False, is_free=False, provider="x", release_date=None):
     return {
         "id": id, "display_name": id, "provider": provider,
         "size_bucket": size, "vision_capable": vision, "is_free": is_free,
         "aa_intelligence_index": intelligence,
+        "release_date": release_date,
         "openrouter_pricing": {"input_per_m": None, "output_per_m": None, "blended_per_m": blended},
     }
 
@@ -661,6 +662,97 @@ class TestPopulateConfiguration(unittest.TestCase):
         presets = _fixture_presets()
         with self.assertRaises(ValueError):
             auto_populate.populate_configuration("nonexistent", catalog, presets)
+
+
+class TestNewestModelSelection(unittest.TestCase):
+    """2026-06-14 fix: the picker excluded the newest/best models via
+    (1) a hard size_bucket=None exclusion from big slots and (2) no
+    recency preference. These tests pin the corrected behavior."""
+
+    def test_intelligence_of_no_elo_fallback(self):
+        # Arena Elo is a poor AA proxy; an unbenchmarked model is 0.0,
+        # never an Elo-derived estimate.
+        self.assertEqual(auto_populate.intelligence_of(
+            {"aa_intelligence_index": 64.9}), 64.9)
+        self.assertEqual(auto_populate.intelligence_of(
+            {"aa_intelligence_index": None,
+             "intelligence_score": 1474, "aa_intelligence_est": 41.7}), 0.0)
+
+    def test_large_bucket_admits_benchmarked_null_bucket(self):
+        # The headline fix: a BENCHMARKED null-bucket model (closed/
+        # codenamed flagship) competes in the large pool; an UNSCORED
+        # null model does not (doubly-unknown); small/midsize stay strict.
+        cands = [
+            _model("v/codename-flagship", intelligence=90, blended=20, size=None),
+            _model("v/unscored-null", intelligence=None, blended=0.1, size=None),
+            _model("v/known-large", intelligence=80, blended=10, size="large"),
+            _model("v/small", intelligence=30, blended=0.1, size="small"),
+        ]
+        large = auto_populate.filter_by_size_bucket(cands, "large")
+        ids = {m["id"] for m in large}
+        self.assertIn("v/codename-flagship", ids)    # benchmarked null admitted
+        self.assertIn("v/known-large", ids)
+        self.assertNotIn("v/unscored-null", ids)     # unscored null NOT admitted
+        self.assertNotIn("v/small", ids)             # small stays out
+        small = auto_populate.filter_by_size_bucket(cands, "small")
+        self.assertEqual({m["id"] for m in small}, {"v/small"})  # null NOT in small
+
+    def test_null_bucket_flagship_gets_picked(self):
+        # End-to-end: the highest-intelligence model is null-bucket; it
+        # must win the premium big slot (the claude-fable-5 case).
+        catalog = [
+            _model("anthropic/fable", intelligence=64.9, blended=20, size=None,
+                   release_date="2026-06-09"),
+            _model("anthropic/opus", intelligence=61.4, blended=10, size="large",
+                   release_date="2026-05-28"),
+            _model("x/small-junk", intelligence=8, blended=0.1, size=None),  # null but tiny
+        ]
+        picks, _ = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=2, floor_pct=None,
+            cost_ceiling=None, loosening=False, sort_by="intelligence_desc")
+        self.assertEqual(picks[0]["id"], "anthropic/fable")  # null flagship wins
+        self.assertNotIn("x/small-junk", [p["id"] for p in picks])  # junk excluded
+
+    def test_recency_tiebreak_intelligence(self):
+        # Equal intelligence → newer first; never reorders different intel.
+        cands = [
+            _model("v/older", intelligence=70, blended=5, release_date="2026-01-01"),
+            _model("v/newer", intelligence=70, blended=5, release_date="2026-06-01"),
+            _model("v/smarter-older", intelligence=80, blended=5, release_date="2025-01-01"),
+        ]
+        ordered = auto_populate.sort_by_intelligence_descending(cands)
+        self.assertEqual([m["id"] for m in ordered],
+                         ["v/smarter-older", "v/newer", "v/older"])
+
+    def test_recency_tiebreak_cost(self):
+        # Equal cost → newer first; never reorders different cost.
+        cands = [
+            _model("v/older", intelligence=50, blended=2.0, release_date="2026-01-01"),
+            _model("v/newer", intelligence=50, blended=2.0, release_date="2026-06-01"),
+            _model("v/cheaper-older", intelligence=50, blended=1.0, release_date="2025-01-01"),
+        ]
+        ordered = auto_populate.sort_by_cost_ascending(cands)
+        self.assertEqual([m["id"] for m in ordered],
+                         ["v/cheaper-older", "v/newer", "v/older"])
+
+    def test_pareto_exact_tie_keeps_newer(self):
+        # Identical intelligence AND cost (e.g. opus-4.8 / opus-4.8-fast):
+        # the newer survives the frontier, the older is dominated out.
+        cands = [
+            _model("v/old", intelligence=61.4, blended=10, release_date="2026-05-01"),
+            _model("v/new", intelligence=61.4, blended=10, release_date="2026-05-28"),
+        ]
+        frontier = auto_populate.pareto_filter(cands)
+        self.assertEqual([m["id"] for m in frontier], ["v/new"])
+
+    def test_missing_release_date_sorts_oldest(self):
+        # A dateless model never displaces a dated one in the tiebreak.
+        cands = [
+            _model("v/dated", intelligence=70, blended=5, release_date="2026-06-01"),
+            _model("v/undated", intelligence=70, blended=5, release_date=None),
+        ]
+        ordered = auto_populate.sort_by_intelligence_descending(cands)
+        self.assertEqual([m["id"] for m in ordered], ["v/dated", "v/undated"])
 
 
 if __name__ == "__main__":

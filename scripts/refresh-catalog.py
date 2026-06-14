@@ -266,8 +266,11 @@ def normalize_openrouter_entry(entry: dict, family_rules: dict) -> dict:
             "output_per_m": output_per_m,
             "blended_per_m": blended,
         },
-        "aa_intelligence_index": None,    # filled in by AA pass when available
+        "aa_intelligence_index": None,    # measured AA score; filled by enrich pass
         "aa_blended_per_m": None,         # filled in by AA pass when available
+        "intelligence_score": None,       # Arena Elo (UI/reference; not a picker axis)
+        "intelligence_rank": None,        # Arena rank (UI/reference)
+        "release_date": None,             # recency (YYYY-MM-DD) — picker tiebreak
         "family_tier": family_tier,
         "size_bucket": size_bucket,
         "is_free": is_free,
@@ -275,22 +278,29 @@ def normalize_openrouter_entry(entry: dict, family_rules: dict) -> dict:
 
 
 def enrich_from_model_registry(catalog: list[dict], registry: dict) -> int:
-    """Copy ``aa_intelligence_index`` from the curated registry onto
-    matching catalog entries. Direct OpenRouter-id lookup — no fuzzy
-    matching needed because the registry is keyed by OpenRouter id.
+    """Project the curated registry's selection-relevant signals onto
+    matching catalog entries by direct OpenRouter-id lookup (the registry
+    is keyed by OpenRouter id, so no fuzzy matching is needed).
 
-    Returns the count of entries enriched (non-null aa_intelligence_index
-    applied). Catalog entries whose model isn't in the registry stay
-    with ``aa_intelligence_index = None``; auto-populate falls through
-    to cost-sort for those.
+    Copies, when present on the registry entry:
+      * ``aa_intelligence_index`` — the measured Artificial Analysis 0-100
+        score (the picker's only intelligence axis).
+      * ``intelligence_score`` / ``intelligence_rank`` — Arena Elo and its
+        rank. Carried for the UI / future use, but NOT used as an
+        intelligence fallback: Arena Elo correlates only weakly with the
+        AA benchmark (Pearson r≈0.44 over the 145 dual-scored models; the
+        highest-Elo model, gemini-2.5-pro at 1474, measures AA 34.6 while
+        opus-4.8 at Elo 1371 measures 61.4), so an Elo→AA estimate would
+        systematically mis-rank. An unbenchmarked model honestly has no
+        quality score and ranks accordingly.
+      * ``release_date`` — recency (YYYY-MM-DD). Powers the picker's
+        "newest wins among equals" tiebreak.
 
-    Schema contract (2026-05-20): the registry's
-    ``models[<or_id>].aa_intelligence_index`` field carries the same
-    0-100 scale auto-populate's algorithm was designed for. The
-    upstream value comes from Artificial Analysis's public /models
-    page (scraped, no API key) — sync_model_registry.py does the
-    extraction. When the registry is missing or empty, this function
-    returns 0 and the catalog ships unenriched.
+    Before this (2026-06-14) only ``aa_intelligence_index`` was copied, so
+    the catalog the picker reads carried no recency signal at all — one
+    reason the newest models couldn't be favoured. Returns the count of
+    entries that received a measured ``aa_intelligence_index``.
+    Missing/empty registry → 0, catalog ships unenriched.
     """
     models = (registry or {}).get("models") or {}
     if not models:
@@ -307,6 +317,11 @@ def enrich_from_model_registry(catalog: list[dict], registry: dict) -> int:
         if intelligence is not None:
             entry["aa_intelligence_index"] = intelligence
             enriched += 1
+        # Secondary signals — purely additive (recency tiebreak + UI).
+        for field in ("intelligence_score", "intelligence_rank", "release_date"):
+            val = reg.get(field)
+            if val is not None:
+                entry[field] = val
     return enriched
 
 
