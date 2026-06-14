@@ -532,34 +532,63 @@
   function _renderAPIsTab() {
     var api = (_dirty.external_apis || _settings.external_apis || {});
     var src = _settings.external_apis || {};
-    _appendField('Transcription provider',
+    // Top region: provider selectors on the left, the API-keys description
+    // in the otherwise-empty space on the right.
+    var top = document.createElement('div');
+    top.className = 'ora-settings-apis-top';
+
+    var topL = document.createElement('div');
+    topL.className = 'ora-settings-apis-top-left';
+    _fieldInto(topL, 'Transcription provider',
       _selectInput('external_apis.transcription_provider', [
         { id: 'whisper_local', label: 'Whisper (local)' },
         { id: 'assemblyai',    label: 'AssemblyAI' },
         { id: 'deepgram',      label: 'Deepgram' },
       ], api.transcription_provider || src.transcription_provider));
-    _appendField('Text-to-speech provider',
+    _fieldInto(topL, 'Text-to-speech provider',
       _selectInput('external_apis.tts_provider', [
         { id: 'openai',     label: 'OpenAI TTS' },
         { id: 'elevenlabs', label: 'ElevenLabs' },
       ], api.tts_provider || src.tts_provider));
-    _appendNote(
-      'Whisper / macOS say are free — pick a cloud provider above only to '
-      + 'override. Keys are stored in your OS keychain (Credential Manager on '
-      + 'Windows), never shown back. Click a name (↗) for its key page. '
-      + 'OpenRouter is the only essential key; a vendor’s own key routes direct, '
-      + 'skipping the ~5.5% markup.'
-    );
+    var lnote = document.createElement('p');
+    lnote.className = 'ora-settings-note ora-settings-apis-topnote';
+    lnote.textContent = 'Transcription & speech are an explicit choice — local '
+      + 'Whisper and macOS say are free; pick a cloud provider above only to '
+      + 'override (set its key below).';
+    topL.appendChild(lnote);
+    top.appendChild(topL);
 
-    // Dense two-column grid. The fine-grained categories are merged into a
-    // few sections so the headers + odd-sized groups don't waste the second
-    // column. Providers render in registry order within each section.
+    var topR = document.createElement('div');
+    topR.className = 'ora-settings-apis-top-right';
+    var rh = document.createElement('div');
+    rh.className = 'ora-settings-section-header ora-settings-apis-topheader';
+    rh.textContent = 'API keys';
+    topR.appendChild(rh);
+    var rdesc = document.createElement('p');
+    rdesc.className = 'ora-settings-note ora-settings-apis-topnote';
+    rdesc.innerHTML = 'Stored in your system keychain (Credential Manager on '
+      + 'Windows, Secret Service on Linux) — never shown back in the browser. '
+      + 'Click a provider’s name (<span class="ora-settings-apikey-extlink">↗</span>) '
+      + 'to open its key page; hover it for details. <strong>Save</strong> checks the '
+      + 'key with the provider and stores it only if it works. <strong>OpenRouter</strong> '
+      + 'is the only essential key — one key reaches hundreds of models; adding a '
+      + 'vendor’s own key routes that vendor directly, skipping OpenRouter’s ~5.5% '
+      + 'markup (same model, automatic fallback). Search & data keys turn on as '
+      + 'soon as they’re saved.';
+    topR.appendChild(rdesc);
+    top.appendChild(topR);
+
+    _tabContentEl.appendChild(top);
+
+    // Dense two-column grid. Categories are merged into a few sections so the
+    // headers + odd-sized groups don't waste the second column. Where a
+    // provider is located doesn't matter, so all direct vendors share one
+    // "AI providers" section.
     var SECTIONS = [
-      { label: 'Gateway',              cats: ['gateway'] },
-      { label: 'US AI providers',      cats: ['llm_us'] },
-      { label: 'Chinese AI providers', cats: ['llm_cn'] },
-      { label: 'Search & data',        cats: ['search', 'metadata', 'econ'] },
-      { label: 'Speech & image',       cats: ['transcription', 'tts', 'image'] },
+      { label: 'Gateway',        cats: ['gateway'] },
+      { label: 'AI providers',   cats: ['llm_us', 'llm_cn'] },
+      { label: 'Search & data',  cats: ['search', 'metadata', 'econ'] },
+      { label: 'Speech & image', cats: ['transcription', 'tts', 'image'] },
     ];
     var grid = document.createElement('div');
     grid.className = 'ora-settings-apikeys-grid';
@@ -756,6 +785,12 @@
   // ── input builders ───────────────────────────────────────────────────────
 
   function _appendField(labelText, inputEl) {
+    _fieldInto(_tabContentEl, labelText, inputEl);
+  }
+
+  // Like _appendField but appends to an explicit parent (used by the
+  // External APIs tab to place the selectors in a left-hand column).
+  function _fieldInto(parent, labelText, inputEl) {
     var wrap = document.createElement('div');
     wrap.className = 'ora-settings-field';
     var label = document.createElement('label');
@@ -763,7 +798,7 @@
     label.textContent = labelText;
     wrap.appendChild(label);
     wrap.appendChild(inputEl);
-    _tabContentEl.appendChild(wrap);
+    parent.appendChild(wrap);
   }
 
   function _appendNote(text) {
