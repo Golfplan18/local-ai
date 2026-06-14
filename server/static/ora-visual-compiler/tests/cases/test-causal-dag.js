@@ -171,6 +171,26 @@ const validCases = [
       'ora-visual__node--adjusted',
     ],
   },
+  {
+    // Regression: models sometimes emit the whole DAGitty DSL on a single
+    // physical line, with ";" statement separators and "//" section-header
+    // comments. The comment-strip used to consume the rest of the line —
+    // including the closing "}" — and the render failed E_DSL_PARSE.
+    label: 'single-line DSL with // comments + ; separators (regression)',
+    env: envelope({
+      dsl: 'dag { // confounders ; x [exposure] ; y [outcome] ; u [adjusted] ; ' +
+           '// causal paths ; x -> y // direct ; u -> x ; u -> y ; z [selected] }',
+      focal_exposure: 'x',
+      focal_outcome: 'y',
+    }),
+    expectNodes: 4,
+    expectClasses: [
+      'ora-visual__node--exposure',
+      'ora-visual__node--outcome',
+      'ora-visual__node--adjusted',
+      'ora-visual__node--selected',
+    ],
+  },
 ];
 
 const invalidCases = [
@@ -303,6 +323,20 @@ function unitParserAndCycle() {
     'unit(cycle): self-loop detected as cycle',
     Array.isArray(internals._hasCycle(self.nodes, self.edges)),
     'not detected'
+  );
+
+  // Single-line DSL: ";"-separated statements with "//" section comments and
+  // no newlines. Regression — the "//" comment used to run to end-of-line,
+  // and with no newline it swallowed the rest of the DSL including the
+  // closing "}", failing with "Expected } but got end-of-input".
+  const single = internals._parseDagitty(
+    'dag { // confounders ; x [exposure] ; y [outcome] ; u [adjusted] ; ' +
+    '// causal paths ; x -> y // direct ; u -> x ; u -> y ; z [selected] }'
+  );
+  report(
+    'unit(parser): single-line // comments + ; separators parse fully',
+    single.nodes.size === 4 && single.edges.length === 3,
+    'nodes=' + single.nodes.size + ' edges=' + single.edges.length
   );
 }
 
