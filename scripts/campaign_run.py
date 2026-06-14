@@ -1255,8 +1255,10 @@ def run_sweep(args) -> int:
 
     # Lane-parallel execution: each pipeline is a lane; lanes always run
     # concurrently (they hit disjoint providers); --concurrency adds
-    # workers WITHIN the API lanes. Subscription lanes stay at 1 worker —
-    # the rolling rate window is the bottleneck, and pacing handles it.
+    # workers WITHIN the API lanes. Subscription lanes default to 1 worker —
+    # the rolling rate window is the bottleneck, and pacing handles it — but
+    # --subscription-concurrency raises that for an attended burst on a
+    # high-tier account with window headroom.
     import queue as _queue
     import threading as _threading
 
@@ -1268,7 +1270,9 @@ def run_sweep(args) -> int:
         q: _queue.Queue = _queue.Queue()
         for t in items:
             q.put(t)
-        workers = 1 if p in subscription_lanes else max(1, args.concurrency)
+        workers = (max(1, getattr(args, "subscription_concurrency", 1))
+                   if p in subscription_lanes
+                   else max(1, args.concurrency))
         lanes[p] = (q, min(workers, len(items)))
 
     progress = {"done": 0, "failures": 0, "lock": _threading.Lock()}
@@ -1306,10 +1310,16 @@ def run_sweep(args) -> int:
 
 def _wait_for_subscription_window(max_wait_s: int = 86400) -> None:
     """Block until the Claude subscription accepts calls again. Probes
-    with a tiny Haiku completion; on a rate-limit reply, sleeps 15 min
+    with a tiny *Opus* completion; on a rate-limit reply, sleeps 15 min
     and re-probes (the 5-hour rolling windows and weekly caps mean a
     long sweep simply pauses instead of failing or falling back to the
-    metered API)."""
+    metered API).
+
+    Probe model = Opus, deliberately: Max plans cap Opus far tighter than
+    Haiku, so a Haiku probe reports the window 'open' while Opus is already
+    exhausted — the lane then starts captures that die on the Opus step and
+    fall back to a metered model. Probing the model the premium lane
+    actually depends on makes the pacing reflect real Opus availability."""
     import subprocess
     cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
     env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
@@ -1317,7 +1327,7 @@ def _wait_for_subscription_window(max_wait_s: int = 86400) -> None:
     while True:
         try:
             r = subprocess.run(
-                [cli, "-p", "--model", "claude-haiku-4-5",
+                [cli, "-p", "--model", "claude-opus-4-8",
                  "--output-format", "text", "--tools", ""],
                 input="Reply with exactly: OK", capture_output=True,
                 text=True, timeout=180, env=env)
@@ -1670,8 +1680,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--limit", type=int, default=0, help="cap runs this invocation")
     sp.add_argument("--concurrency", type=int, default=1,
                     help="workers WITHIN each API lane (lanes always run in "
-                         "parallel; subscription lanes stay at 1 — the rate "
+                         "parallel; subscription lanes default to 1 — the rate "
                          "window is their bottleneck).")
+    sp.add_argument("--subscription-concurrency", type=int, default=1,
+                    help="workers WITHIN subscription lanes (premium). Default "
+                         "1 — rate-window-safe for the unattended sweep. Raise "
+                         "for an ATTENDED burst on a high-tier account with "
+                         "window headroom: it saturates the available rate "
+                         "budget; a mid-call throttle just fails-and-retries "
+                         "through the existing pacing loop.")
     sp.add_argument("--force-rerun", action="store_true",
                     help="Ignore completed manifest entries for the selected "
                          "scope (re-capture after a config change).")
