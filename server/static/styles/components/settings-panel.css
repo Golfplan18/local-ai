@@ -183,6 +183,30 @@
   max-width: 772px;
 }
 
+/* ── External APIs top region (selectors left, key description right) ── */
+
+.ora-settings-apis-top {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+.ora-settings-apis-top-left,
+.ora-settings-apis-top-right { flex: 1 1 0; min-width: 0; }
+
+/* Selectors fill the left column; the input shouldn't blow past it. */
+.ora-settings-apis-top-left .ora-settings-field {
+  grid-template-columns: 150px minmax(0, 1fr);
+  margin: 4px 0;
+}
+
+.ora-settings-apis-topheader { margin: 0 0 2px; }
+.ora-settings-apis-topnote { margin: 6px 0 0; max-width: none; }
+
+@media (max-width: 1080px) {
+  .ora-settings-apis-top { flex-direction: column; gap: 6px; }
+}
+
 /* ── API key cards (dense two-column grid, aligned) ──────────────── */
 
 .ora-settings-apikeys-grid {
