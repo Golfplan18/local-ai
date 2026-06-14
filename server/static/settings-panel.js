@@ -560,12 +560,12 @@
     var keysHint = document.createElement('p');
     keysHint.className = 'ora-settings-note';
     keysHint.innerHTML = 'Keys are stored in your system keychain and never shown '
-      + 'back in the browser — to update one, type a new value and Save. Use '
-      + '<strong>Get key&nbsp;↗</strong> to open each provider’s signup / key '
-      + 'page. OpenRouter is the one essential key (one key, hundreds of models). '
-      + 'Adding a vendor’s own key below lets Ora call that vendor directly, '
-      + 'bypassing OpenRouter’s ~5.5% markup (same model; falls back to '
-      + 'OpenRouter automatically).';
+      + 'back in the browser — to update one, type a new value and Save. '
+      + 'Click a provider’s name (<span class="ora-settings-apikey-extlink">↗</span>) '
+      + 'to open its signup / key page; hover it for details. OpenRouter is the one '
+      + 'essential key (one key, hundreds of models). Adding a vendor’s own key lets '
+      + 'Ora call that vendor directly, bypassing OpenRouter’s ~5.5% markup (same '
+      + 'model; falls back to OpenRouter automatically).';
     _tabContentEl.appendChild(keysHint);
 
     // Two-column grid, grouped by category in the server-provided order.
@@ -673,75 +673,55 @@
     );
   }
 
-  function _badge(text, kind) {
-    var b = document.createElement('span');
-    b.className = 'ora-settings-apikey-badge ora-settings-apikey-badge--' + kind;
-    b.textContent = text;
-    return b;
-  }
-
-  // Compact provider card rendered into the two-column grid. Carries the
-  // signup/key link, status chip, key input with inline format hint, and
-  // Save / Verify / Remove. Tagged data-provider so open({highlight:<id>})
-  // can scroll-to + flash it.
+  // One provider per row, single line: name (links to its key page) ·
+  // key input · Save · Verify · status · Remove. The provider's one-line
+  // note + Required/Direct hints live in the name's tooltip so the row
+  // stays compact. A feedback line wraps underneath only when there's a
+  // validation hint or a Save/Verify result. Tagged data-provider so
+  // open({highlight:<id>}) can scroll-to + flash it.
   function _appendApiKeyCard(parent, row) {
     var card = document.createElement('div');
     card.className = 'ora-settings-apikey-card';
     if (row.provider) card.dataset.provider = row.provider;
 
-    // Header: label + badge + status chip
-    var head = document.createElement('div');
-    head.className = 'ora-settings-apikey-head';
-    var label = document.createElement('span');
-    label.className = 'ora-settings-apikey-label';
-    label.textContent = row.label;
-    head.appendChild(label);
-    if (row.essential) head.appendChild(_badge('Required', 'req'));
-    else if (row.direct) head.appendChild(_badge('Direct', 'direct'));
+    var line = document.createElement('div');
+    line.className = 'ora-settings-apikey-row1';
 
-    var status = document.createElement('span');
-    status.className = 'ora-settings-apikey-status '
-      + (row.present ? 'ora-settings-apikey-status--set'
-                     : 'ora-settings-apikey-status--unset');
-    status.textContent = row.present ? 'Set' : 'Not set';
-    head.appendChild(status);
-    card.appendChild(head);
-
-    // Meta: get/manage-key link + one-line note
-    var meta = document.createElement('div');
-    meta.className = 'ora-settings-apikey-meta';
+    // Provider name = link to its key page. Tooltip carries the note +
+    // Required / Direct hints we no longer spend a row on.
+    var tip = [];
+    if (row.essential) tip.push('Required');
+    if (row.direct) tip.push('Direct — bypasses OpenRouter markup');
+    if (row.note) tip.push(row.note);
+    var label;
     if (row.console_url) {
-      var link = document.createElement('a');
-      link.className = 'ora-settings-apikey-link';
-      link.href = row.console_url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = (row.present ? 'Manage key ↗' : 'Get key ↗');
-      meta.appendChild(link);
+      label = document.createElement('a');
+      label.href = row.console_url;
+      label.target = '_blank';
+      label.rel = 'noopener noreferrer';
+    } else {
+      label = document.createElement('span');
     }
-    if (row.note) {
-      var note = document.createElement('span');
-      note.className = 'ora-settings-apikey-cardnote';
-      note.textContent = row.note;
-      meta.appendChild(note);
+    label.className = 'ora-settings-apikey-label';
+    label.title = tip.join(' · ') || row.label;
+    label.appendChild(document.createTextNode(row.label));
+    if (row.console_url) {
+      var arrow = document.createElement('span');
+      arrow.className = 'ora-settings-apikey-extlink';
+      arrow.textContent = '↗';
+      label.appendChild(arrow);
     }
-    card.appendChild(meta);
+    line.appendChild(label);
 
-    // Inline message line (validation hint / save + verify feedback)
+    // Inline feedback line (validation hint / Save + Verify result).
     var msg = document.createElement('div');
     msg.className = 'ora-settings-apikey-msg';
 
-    // Input + actions
-    var inputRow = document.createElement('div');
-    inputRow.className = 'ora-settings-apikey-inputrow';
-
     var input = document.createElement('input');
     input.type = 'password';
-    input.placeholder = row.present ? '••••••••  (replace by typing new value)'
-                                     : 'paste API key here';
+    input.placeholder = row.present ? '•••••• replace' : 'paste API key';
     input.className = 'ora-settings-apikey-input';
     input.autocomplete = 'off';
-    // Non-blocking format hint as the user types.
     if (row.key_prefix) {
       input.addEventListener('input', function () {
         var v = input.value.trim();
@@ -755,11 +735,13 @@
         }
       });
     }
+    line.appendChild(input);
 
     var saveBtn = document.createElement('button');
     saveBtn.type = 'button';
     saveBtn.className = 'ora-settings-btn ora-settings-btn--small';
     saveBtn.textContent = 'Save';
+    line.appendChild(saveBtn);
 
     var verifyBtn = null;
     if (row.verifiable) {
@@ -771,13 +753,22 @@
       verifyBtn.addEventListener('click', function () {
         _verifyApiKey(row.provider, input.value, msg, verifyBtn);
       });
+      line.appendChild(verifyBtn);
     }
+
+    var status = document.createElement('span');
+    status.className = 'ora-settings-apikey-status '
+      + (row.present ? 'ora-settings-apikey-status--set'
+                     : 'ora-settings-apikey-status--unset');
+    status.textContent = row.present ? 'Set' : 'Not set';
+    line.appendChild(status);
 
     var removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--danger';
     removeBtn.textContent = 'Remove';
     removeBtn.disabled = !row.present;
+    line.appendChild(removeBtn);
 
     saveBtn.addEventListener('click', function () {
       _saveApiKey(row.provider, input.value, status, input, saveBtn, removeBtn, msg);
@@ -786,13 +777,8 @@
       _deleteApiKey(row.provider, status, input, saveBtn, removeBtn, msg);
     });
 
-    inputRow.appendChild(input);
-    inputRow.appendChild(saveBtn);
-    if (verifyBtn) inputRow.appendChild(verifyBtn);
-    inputRow.appendChild(removeBtn);
-    card.appendChild(inputRow);
+    card.appendChild(line);
     card.appendChild(msg);
-
     parent.appendChild(card);
   }
 
