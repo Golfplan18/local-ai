@@ -206,13 +206,14 @@ def _parse_mermaid_graph(mermaid: str) -> tuple[list[str], list[tuple[str, str]]
     # keeping the connector so labels stay attached to the right segment.
     arrow = re.compile(r"\s*[-.=]+(?:\|[^|]*\||\"[^\"]*\"|[^>\|\"\n]*?)?[-.=]*>\s*")
 
+    # Diagram-scaffolding lines to skip — matched as whole keywords at a word
+    # boundary, so a node id like ``endpoint`` or ``directionA`` is NOT dropped.
+    skip_kw = re.compile(
+        r"^(?:graph|flowchart|subgraph|end|classDef|class|style|linkStyle|"
+        r"direction)\b", re.IGNORECASE)
     for raw in (mermaid or "").splitlines():
         s = raw.strip()
-        low = s.lower()
-        if (not s or s.startswith("%%")
-                or low.startswith(("graph", "flowchart", "subgraph", "end",
-                                   "classdef", "class ", "style ", "linkstyle",
-                                   "direction"))):
+        if not s or s.startswith("%%") or skip_kw.match(s):
             continue
         if not arrow.search(s):
             # Bare node declaration (e.g. ``A[Label]`` or ``A``). Preserve it.
@@ -414,12 +415,17 @@ def _repair_quadrant(spec: dict) -> dict:
         subtype = "strategic_2x2"
     spec["subtype"] = subtype
 
-    # items into [0,1] — per-coordinate: a value already in [0,1] is left
-    # untouched; only an out-of-range value is rescaled by its own magnitude.
-    # A single global divisor would shrink a genuinely-normalized point
-    # (0.9) toward the origin when another item is on a 0-100 scale.
+    # items into [0,1]. Rescale only when SOMETHING is out of range, and then
+    # by ONE shared divisor across all coordinates so a uniform 0-10 / 0-100
+    # scale preserves relative position and ordering (a per-value divisor would
+    # collapse x=8 and x=80 both to 0.8). When everything is already in [0,1],
+    # leave it untouched (a genuine 0.9 stays 0.9).
     items = spec.get("items")
     if isinstance(items, list) and items:
+        vals = [it[c] for it in items if isinstance(it, dict)
+                for c in ("x", "y") if isinstance(it.get(c), (int, float))]
+        out_of_range = any(not (0.0 <= v <= 1.0) for v in vals)
+        div = _coerce_unit_interval(vals) if (vals and out_of_range) else 1.0
         fixed = []
         for it in items:
             if not isinstance(it, dict) or not (it.get("label") or "").strip():
@@ -429,10 +435,8 @@ def _repair_quadrant(spec: dict) -> dict:
                 v = it.get(c)
                 if not isinstance(v, (int, float)):
                     it[c] = 0.5
-                elif 0.0 <= v <= 1.0:
-                    it[c] = v
                 else:
-                    it[c] = max(0.0, min(1.0, v / _coerce_unit_interval([v])))
+                    it[c] = max(0.0, min(1.0, v / div if div else 0.0))
             fixed.append(it)
         spec["items"] = fixed
 
@@ -447,8 +451,37 @@ def _repair_quadrant(spec: dict) -> dict:
     return spec
 
 
+def _repair_causal_dag(spec: dict) -> dict:
+    """Normalize a causal_dag DSL and derive the schema-required
+    ``focal_exposure`` / ``focal_outcome`` from it when the model omitted them
+    (a source node and a sink node respectively), so a model envelope that's
+    otherwise sound isn't dropped for missing focal fields."""
+    spec = dict(spec)
+    dsl = spec.get("dsl")
+    if not isinstance(dsl, str) or not dsl.strip():
+        return spec
+    norm = normalize_dagitty(dsl)
+    spec["dsl"] = norm
+    nodes, edges = _dagitty_nodes_edges(norm)
+    if not (spec.get("focal_exposure") or "").strip():
+        exp = _dagitty_tag(norm, "exposure")
+        if not exp:
+            srcs = [a for a, _ in edges]
+            exp = next((n for n in nodes if n in srcs), nodes[0] if nodes else "x")
+        spec["focal_exposure"] = exp
+    if not (spec.get("focal_outcome") or "").strip():
+        out = _dagitty_tag(norm, "outcome")
+        if not out:
+            dsts = [b for _, b in edges]
+            out = next((n for n in reversed(nodes) if n in dsts),
+                       nodes[-1] if nodes else "y")
+        spec["focal_outcome"] = out
+    return spec
+
+
 _SPEC_REPAIRERS = {
     "quadrant_matrix": _repair_quadrant,
+    "causal_dag": _repair_causal_dag,
 }
 
 # QUANT family (mirror of visual_adversarial.QUANT_TYPES). Under a
@@ -478,16 +511,39 @@ def _ensure_quant_caption(env: dict, vtype: str) -> dict:
     return env
 
 
+_ENVELOPE_PROPS: frozenset | None = None
+
+
+def _envelope_prop_names() -> frozenset:
+    """Allowed top-level envelope property names (envelope.json declares
+    ``additionalProperties: false``), cached."""
+    global _ENVELOPE_PROPS
+    if _ENVELOPE_PROPS is None:
+        try:
+            schema = json.loads((SCHEMAS_ROOT / "envelope.json").read_text())
+            _ENVELOPE_PROPS = frozenset((schema.get("properties") or {}).keys())
+        except Exception:
+            _ENVELOPE_PROPS = frozenset()
+    return _ENVELOPE_PROPS
+
+
 def repair_spec(env: dict, vtype: str | None = None) -> dict:
     """Apply deterministic, content-preserving repairs to a model/synth
-    envelope's ``spec`` so recoverable shapes validate. Schema-guided pruning
-    (drop forbidden extra properties) runs for every type; per-type repairers
-    fill required fields the model commonly omits. Fail-open."""
+    envelope so recoverable shapes validate. Schema-guided pruning (drop
+    forbidden extra properties — at the envelope level AND inside the spec)
+    runs for every type; per-type repairers fill required fields the model
+    commonly omits. Fail-open."""
     try:
         env = dict(env)
         vtype = vtype or env.get("type")
         if not vtype:
             return env
+        # Drop forbidden top-level extras (e.g. a stray ``notes`` key) so a
+        # model envelope whose only fault is an extra property validates rather
+        # than being dropped.
+        allowed = _envelope_prop_names()
+        if allowed:
+            env = {k: v for k, v in env.items() if k in allowed}
         spec = env.get("spec")
         if isinstance(spec, dict):
             repairer = _SPEC_REPAIRERS.get(vtype)
@@ -572,29 +628,32 @@ def _model_envelope_candidates(text: str, mode: str | None):
 
 
 def _diagram_candidates(text: str, mode: str | None):
-    """Yield (source_kind, body, natural_kind, full_text) for DSL diagrams the
-    model drew (mermaid / DAGitty / Structurizr). ``full_text`` is the exact
-    substring (fence or brace-block) so it can be replaced verbatim."""
-    seen: set[str] = set()
+    """Yield (source_kind, body, natural_kind, full_text, is_fence) for DSL
+    diagrams the model drew. ``full_text`` is the exact substring; ``is_fence``
+    is True for fenced blocks (safe to replace in place) and False for an
+    UNfenced brace block sitting inside prose (append-only — replacing it
+    verbatim could land mid-sentence)."""
     for lang, body, full in find_fenced_blocks(text):
         if lang in ("mermaid", "mmd"):
             dialect = detect_mermaid_dialect(body)
             if dialect in MERMAID_NATIVE_KINDS:
-                yield ("mermaid", body, dialect, full)
-            seen.add(body)
+                yield ("mermaid", body, dialect, full, True)
         elif lang in ("dagitty", "dag"):
-            yield ("dagitty", body, "causal_dag", full)
-            seen.add(body)
+            yield ("dagitty", body, "causal_dag", full, True)
         elif lang in ("structurizr", "c4", "dsl") and "workspace" in body.lower():
-            yield ("structurizr", body, "c4", full)
-            seen.add(body)
-    # Unfenced DAGitty / Structurizr blocks in prose (brace-balanced extraction).
-    dag = _extract_brace_block(text or "", "dag")
-    if dag and dag not in seen:
-        yield ("dagitty", dag, "causal_dag", dag)
-    work = _extract_brace_block(text or "", "workspace")
-    if work and work not in seen:
-        yield ("structurizr", work, "c4", work)
+            yield ("structurizr", body, "c4", full, True)
+    # Unfenced DAGitty / Structurizr blocks in prose. Strip ALL fenced regions
+    # first so a ``dag {…}`` / ``workspace {…}`` that only exists INSIDE another
+    # fenced block (e.g. the spec.dsl string of an ora-visual JSON envelope) is
+    # never extracted as a standalone DSL — which would corrupt the JSON if the
+    # hook then replaced that substring.
+    prose = _FENCE_RE.sub("", text or "")
+    dag = _extract_brace_block(prose, "dag")
+    if dag:
+        yield ("dagitty", dag, "causal_dag", dag, False)
+    work = _extract_brace_block(prose, "workspace")
+    if work:
+        yield ("structurizr", work, "c4", work, False)
 
 
 def _build_kind(source_kind: str, body: str, natural_kind: str,
@@ -651,7 +710,7 @@ def recover_envelope(texts: list[str], target_kinds: list[str] | None,
             kinds = target_kinds
         else:
             seen, kinds = set(), []
-            for _s, _b, nat, _f in diagram_cands:
+            for _s, _b, nat, _f, _fc in diagram_cands:
                 if nat not in seen:
                     seen.add(nat); kinds.append(nat)
             for env, vt, _f in model_cands:
@@ -668,14 +727,15 @@ def recover_envelope(texts: list[str], target_kinds: list[str] | None,
                             "raw_block": (full if idx == 0 else None),
                             "via": "model_envelope"}
             # 2) A model-drawn DSL diagram convertible to this kind.
-            for source_kind, body, natural_kind, full in diagram_cands:
+            for source_kind, body, natural_kind, full, is_fence in diagram_cands:
                 env = _build_kind(source_kind, body, natural_kind, kind, mode)
                 if env is not None and _validate_ok(env, mode):
-                    # raw_block = the EXACT source substring so the hook can
-                    # replace it verbatim — only for a final-response (idx 0)
-                    # diagram; step recovery appends.
+                    # raw_block (for verbatim in-place replacement) only for a
+                    # FENCED diagram in the final response (idx 0). An unfenced
+                    # brace block embedded in prose appends instead of replacing,
+                    # so the splice can't land mid-sentence.
                     return {"envelope": env, "type": kind, "source_text_index": idx,
-                            "raw_block": (full if idx == 0 else None),
+                            "raw_block": (full if (idx == 0 and is_fence) else None),
                             "via": source_kind}
     return None
 

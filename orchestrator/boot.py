@@ -316,11 +316,11 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
         except Exception as _syn_exc:
             print(f"[visual synthesis] skipped: {_syn_exc}")
 
-    # Client-facing diagnostics: if recovery or synthesis produced a visual,
-    # don't alarm the user about the superseded failures; the trace keeps the
-    # full record.
-    repaired_ok = any((v.get("synthesized") or v.get("recovered")) and not v.get("blocked")
-                      for v in visuals)
+    # Client-facing diagnostics: if a visual was recovered, synthesized, or
+    # schema-repaired in place, don't alarm the user about the superseded
+    # failures; the trace keeps the full record.
+    repaired_ok = any((v.get("synthesized") or v.get("recovered") or v.get("repaired"))
+                      and not v.get("blocked") for v in visuals)
     client_visuals = [v for v in visuals if not v.get("blocked")] if repaired_ok else visuals
     if context_pkg is not None:
         context_pkg["visual_diagnostics"] = {"visuals": client_visuals}
