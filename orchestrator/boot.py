@@ -284,6 +284,29 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
         for v in visuals
     )
     if not rendered_ok and not only_redundant:
+        # Phase 1a — RECOVER the model's own diagram (faithful, deterministic,
+        # zero model calls). Converts a model-emitted mermaid / DAGitty /
+        # Structurizr block — or a malformed ``ora-visual`` envelope — into a
+        # valid envelope of the correct kind, scanning the final response AND
+        # the earlier pipeline steps (where the step-8 formatter hasn't yet
+        # rewritten the diagram into prose). Preferred over re-synthesis: it
+        # renders the diagram the model actually drew rather than re-deriving
+        # one. Zero model calls; the helper applies its own execution-context
+        # gate (interactive always; autonomous only when a visual is expected).
+        try:
+            spliced, rec_diag = _maybe_recover_visual(new_text, context_pkg, mode)
+            if rec_diag is not None:
+                visuals = visuals + [rec_diag]
+            if spliced is not None:
+                new_text = spliced
+                rendered_ok = True
+        except Exception as _rec_exc:
+            print(f"[visual recovery] skipped: {_rec_exc}")
+
+    if not rendered_ok and not only_redundant:
+        # Phase 1b — synthesize from prose (fallback; one extra model call,
+        # gated to interactive turns). Builds a fresh envelope when the model
+        # drew no recoverable diagram of its own.
         try:
             spliced, synth_diag = _maybe_synthesize_visual(new_text, context_pkg, mode)
             if synth_diag is not None:
@@ -293,10 +316,12 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
         except Exception as _syn_exc:
             print(f"[visual synthesis] skipped: {_syn_exc}")
 
-    # Client-facing diagnostics: if synthesis RECOVERED a visual, don't alarm
-    # the user about the superseded failures; the trace keeps the full record.
-    synthesized_ok = any(v.get("synthesized") and not v.get("blocked") for v in visuals)
-    client_visuals = [v for v in visuals if not v.get("blocked")] if synthesized_ok else visuals
+    # Client-facing diagnostics: if a visual was recovered, synthesized, or
+    # schema-repaired in place, don't alarm the user about the superseded
+    # failures; the trace keeps the full record.
+    repaired_ok = any((v.get("synthesized") or v.get("recovered") or v.get("repaired"))
+                      and not v.get("blocked") for v in visuals)
+    client_visuals = [v for v in visuals if not v.get("blocked")] if repaired_ok else visuals
     if context_pkg is not None:
         context_pkg["visual_diagnostics"] = {"visuals": client_visuals}
 
@@ -338,22 +363,37 @@ _KNOWN_VISUAL_TYPES = frozenset({
 })
 
 
-def _mode_target_types(mode: str | None) -> list[str]:
-    """Visual types a mode expects (from ``mode-to-visual.json``). Returns an
-    empty list for linguistically-native modes (``no_visual``), unconfigured
-    modes, or modes whose only types aren't synthesizable from prose."""
+def _mode_target_types(mode: str | None, preferred_kind: str | None = None) -> list[str]:
+    """Visual types a mode expects (from ``mode-to-visual.json``), in
+    preference order. Returns an empty list for linguistically-native modes
+    (``no_visual``), unconfigured modes, or modes whose only types aren't
+    synthesizable from prose.
+
+    ``preferred_kind`` — when the caller knows the specific visual the turn
+    should produce (the campaign threads the technique's target kind; a
+    multi-kind mode like decision-under-uncertainty otherwise resolves to its
+    first listed type only). When given and renderable, it is placed FIRST so
+    synthesis/recovery target it instead of ``visual_types[0]``. It is honored
+    even if the mode isn't configured, so a request that explicitly names a
+    visual kind still produces that kind."""
+    ordered: list[str] = []
+    if preferred_kind and preferred_kind in _KNOWN_VISUAL_TYPES:
+        ordered.append(preferred_kind)
     if not mode:
-        return []
+        return ordered
     try:
         from visual_adversarial import _load_mode_config
         cfg = _load_mode_config() or {}
         m = (cfg.get("modes") or {}).get(mode) or {}
-        if m.get("relation_to_prose_default") == "no_visual":
-            return []
-        types = [t for t in (m.get("visual_types") or []) if isinstance(t, str)]
-        return [t for t in types if t in _KNOWN_VISUAL_TYPES]
+        # A no_visual mode still honors an explicit preferred_kind (the caller
+        # asked for that diagram by name) but contributes no defaults of its own.
+        if m.get("relation_to_prose_default") != "no_visual":
+            for t in (m.get("visual_types") or []):
+                if isinstance(t, str) and t in _KNOWN_VISUAL_TYPES and t not in ordered:
+                    ordered.append(t)
     except Exception:
-        return []
+        pass
+    return ordered
 
 
 def _strip_visual_blocks_and_markers(text: str) -> str:
@@ -366,6 +406,17 @@ def _strip_visual_blocks_and_markers(text: str) -> str:
     t = re.sub(r"```ora-visual\s*\n.*?\n```", "", text, flags=re.DOTALL)
     t = re.sub(r"\[visual[^\]]*suppressed[^\]]*\]", "", t)
     return t.strip()
+
+
+def _strip_suppressed_markers(text: str) -> str:
+    """Remove only the ``[visual … suppressed …]`` failure markers, leaving any
+    valid ``ora-visual`` fenced blocks intact. Used when recovery supersedes a
+    suppressed visual: the marker is stale, but a real visual present elsewhere
+    in the text must survive."""
+    import re
+    if not text:
+        return text or ""
+    return re.sub(r"\[visual[^\]]*suppressed[^\]]*\]", "", text)
 
 
 def _resolve_synthesis_endpoint(config_name: str | None = None) -> dict | None:
@@ -403,13 +454,115 @@ def _resolve_synthesis_endpoint(config_name: str | None = None) -> dict | None:
         return None
 
 
+def _visual_recovery_texts(prose: str, context_pkg: dict | None) -> list[str]:
+    """Ordered candidate strings to mine for a model-drawn diagram: the final
+    response first, then the earlier Gear-4 step outputs (reviser → analyst →
+    consolidator) that ``run_gear4`` stashes on the context package. The
+    step-8 formatter routinely rewrites a model's mermaid/DSL diagram into
+    prose, so the surviving copy lives upstream."""
+    texts = [prose]
+    if isinstance(context_pkg, dict):
+        for t in (context_pkg.get("_pipeline_step_texts") or []):
+            if isinstance(t, str) and t.strip() and t != prose:
+                texts.append(t)
+    return texts
+
+
+def _maybe_recover_visual(prose: str, context_pkg: dict | None, mode: str | None):
+    """Phase 1a — recover the model's OWN diagram into a valid envelope.
+
+    Deterministic, no model call: converts a model-emitted mermaid / DAGitty /
+    Structurizr block, or a malformed ``ora-visual`` envelope, into a
+    schema-valid, adversarially-clean envelope of the correct kind. Searches
+    the final response plus the earlier pipeline steps. Returns
+    ``(spliced_text | None, diag | None)``.
+
+    Runs in any execution_context (it adds no cost) and even when the mode
+    declares no visual — if the model drew a compilable diagram, render it.
+    The kind is constrained to the mode's expected types (preferred kind
+    first); with no expected types it falls back to the diagram's natural
+    kind."""
+    preferred_kind = context_pkg.get("visual_kind") if isinstance(context_pkg, dict) else None
+    target_kinds = _mode_target_types(mode, preferred_kind)
+    # When a visual is genuinely EXPECTED (mode mapped or a kind threaded),
+    # recover in any execution context — that's the 22 visual techniques.
+    # When NO visual is expected (unmapped / no_visual mode), recovering a
+    # diagram the model happened to draw is the opt-in 'render any diagram'
+    # bias: interactive-only and gated behind ORA_VISUAL_RECOVER_ANY (default
+    # off) so daily-driver/autonomous prose turns get no surprise visual.
+    if not target_kinds:
+        exec_ctx = "interactive"
+        if isinstance(context_pkg, dict):
+            exec_ctx = (context_pkg.get("execution_context")
+                        or context_pkg.get("operational_context") or "interactive")
+        if exec_ctx != "interactive" or not _env_flag("ORA_VISUAL_RECOVER_ANY"):
+            return None, None
+    try:
+        from visual_recovery import recover_envelope
+    except Exception:
+        return None, None
+    texts = _visual_recovery_texts(prose, context_pkg)
+    result = recover_envelope(texts, target_kinds, mode)
+    if not result:
+        return None, None
+    env = result["envelope"]
+    # ensure_ascii=False keeps real unicode (→, —) readable in the block.
+    block = "```ora-visual\n" + json.dumps(env, indent=2, ensure_ascii=False) + "\n```"
+    raw_block = result.get("raw_block")
+    # Drop any superseded "[visual … suppressed …]" markers (marker-only —
+    # NOT _strip_visual_blocks_and_markers, which would also delete the
+    # freshly inserted ora-visual fence).
+    base = _strip_suppressed_markers(prose)
+    if raw_block and result.get("source_text_index") == 0 and raw_block in base:
+        # The model's diagram lives in the final response — replace that EXACT
+        # block (verbatim, literal) so the render sits where the model drew it
+        # and no duplicate raw diagram renders alongside.
+        spliced = base.replace(raw_block, block, 1)
+    else:
+        spliced = (base.rstrip() + "\n\n" + block) if base.strip() else block
+
+    if PIPELINE_TRACE_AVAILABLE:
+        try:
+            pipeline_trace.append_emission_record({
+                "conversation_id": (context_pkg or {}).get("conversation_id") if isinstance(context_pkg, dict) else None,
+                "source": "recovery",
+                "mode": mode,
+                "type": env.get("type"),
+                "via": result.get("via"),
+                "from_step_index": result.get("source_text_index"),
+                "succeeded": True,
+            })
+        except Exception:
+            pass
+
+    diag = {
+        "id": env.get("id"), "type": env.get("type"), "blocked": False,
+        "validator": {"valid": True, "errors": []},
+        "adversarial": {"blocks": []}, "recovered": True,
+        "recovery_via": result.get("via"),
+    }
+    return spliced, diag
+
+
 def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | None):
     """Phase 1 repair-on-miss. Returns ``(spliced_text | None, diag | None)``.
 
     Fires only when the mode expects a visual and we're in an interactive
     context (synthesis adds a model call; gated off in autonomous/agent runs to
     keep unattended cost bounded, matching the image-gen stance)."""
-    target_types = _mode_target_types(mode)
+    preferred_kind = context_pkg.get("visual_kind") if isinstance(context_pkg, dict) else None
+    native = _mode_target_types(mode, None)
+    pk = preferred_kind if (preferred_kind in _KNOWN_VISUAL_TYPES) else None
+    if pk:
+        # A specifically-requested kind that the mode produces natively is the
+        # ONLY synthesis target — never drift to a sibling tool's kind on
+        # failure (e.g. a pro_con request must not ship a tornado). A requested
+        # kind NOT native to the mode (e.g. c4 for the spatial-reasoning
+        # annotation mode) keeps the mode's natural fallback so the turn still
+        # yields a visual instead of nothing.
+        target_types = [pk] if pk in native else [pk] + native
+    else:
+        target_types = native
     if not target_types:
         return None, None
     exec_ctx = "interactive"
@@ -445,7 +598,8 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
                 "conversation_id": (context_pkg or {}).get("conversation_id") if isinstance(context_pkg, dict) else None,
                 "source": "synthesis",
                 "mode": mode,
-                "type": target_types[0],
+                "type": (env.get("type") if env else target_types[0]),
+                "requested_type": target_types[0],
                 "endpoint": endpoint.get("name") or endpoint.get("id"),
                 "rounds": len(attempts),
                 "succeeded": env is not None,
@@ -8156,6 +8310,9 @@ def run_pipeline(user_input: str, history: list = None,
     # --- Step 2: Context Package Assembly ---
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
                                              config_name=config_name)
+    # Carry execution context so the visual hook's interactive-vs-autonomous
+    # gate reads a real value rather than defaulting to 'interactive'.
+    context_pkg.setdefault("execution_context", execution_context)
     gear = context_pkg["gear"]
 
     # --- WP-4.2 — capability-conditional vision routing gate ---
@@ -11325,6 +11482,21 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     # Final pollution sweep before handing back to the user-facing layer.
     formatted = _strip_dispatch_noise(formatted)
+
+    # Stash the pre-formatter analyst/reviser outputs so the visual hook's
+    # diagram-recovery pass can find a model-drawn mermaid/DSL diagram that the
+    # step-8 formatter rewrote into prose. Reviser output first (most refined),
+    # then the raw analysts. Best-effort; the hook degrades to final-response-
+    # only recovery when this is absent (e.g. Gear 3).
+    try:
+        if isinstance(context_pkg, dict):
+            context_pkg["_pipeline_step_texts"] = [
+                t for t in (revised_depth, revised_breadth,
+                            depth_analysis, breadth_analysis)
+                if isinstance(t, str) and t.strip()
+            ]
+    except Exception:
+        pass
 
     # Emit step-health summary to stdout for observability. The chat handler
     # surfaces it as a developer log; oversight wires it into the event bus

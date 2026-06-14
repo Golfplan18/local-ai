@@ -3,6 +3,18 @@
   "_schema_version": "0.2",
   "_last_updated": "2026-06-13",
   "modes": {
+    "process-mapping": {
+      "visual_types": ["flowchart", "sequence", "state"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Added 2026-06-13: live mode for the flowchart / sequence-diagram / state-diagram tools. The analyst draws the diagram in Mermaid; the visual hook recovers it (dialect picks the exact kind) or synthesizes the threaded kind. Multi-kind: the technique's target kind is threaded so the right one is produced."
+    },
+    "information-density": {
+      "visual_types": ["comparison", "time_series", "distribution", "scatter", "heatmap"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Added 2026-06-13: live mode for the comparison / time-series / distribution / scatter / heatmap chart tools. Multi-kind QUANT family — the technique's target chart kind is threaded so synthesis builds that chart rather than visual_types[0]."
+    },
     "spatial-reasoning": {
       "visual_types": ["concept_map", "causal_loop_diagram", "flowchart", "custom_annotated_svg"],
       "relation_to_prose_default": "visually_native",

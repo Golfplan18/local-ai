@@ -941,6 +941,26 @@ def review_envelope(envelope: dict, mode: str | None = None) -> ReviewResult:
 # Composition helpers for boot.py
 # ---------------------------------------------------------------------------
 
+def _try_repair_envelope(envelope: dict, mode: str | None) -> dict | None:
+    """Deterministically repair a schema-invalid model envelope: fill the
+    mechanical fields, drop schema-forbidden extras, and apply per-type fixes
+    (quadrant axes/bounds, QUANT caption, …). Returns the repaired envelope
+    (caller re-validates) or ``None`` if it can't be attempted. Fail-open."""
+    try:
+        vtype = envelope.get("type")
+        if not isinstance(vtype, str) or not vtype:
+            return None
+        from visual_synthesis import autofill
+        from visual_recovery import repair_spec
+        env = autofill(dict(envelope),
+                       mode or envelope.get("mode_context") or "unknown", vtype)
+        if not (env.get("title") or "").strip():
+            env["title"] = vtype.replace("_", " ").title()
+        return repair_spec(env, vtype)
+    except Exception:
+        return None
+
+
 def process_response(response: str, mode: str | None = None) -> tuple[str, dict]:
     """Pipeline integration helper.
 
@@ -984,6 +1004,26 @@ def process_response(response: str, mode: str | None = None) -> tuple[str, dict]
         from visual_validator import validate_envelope
         vresult = validate_envelope(envelope)
         if not vresult.valid:
+            # Premium malformed-envelope path: before dropping a schema-invalid
+            # block, try a deterministic repair (fill mechanical fields, drop
+            # schema-forbidden extras, fix common per-type mistakes). If the
+            # repaired envelope passes BOTH schema and adversarial review, emit
+            # it instead of suppressing. Only fires on schema failures (never
+            # overrides an honesty/adversarial block); fully fail-open.
+            repaired = _try_repair_envelope(envelope, mode)
+            if repaired is not None:
+                rres = validate_envelope(repaired)
+                rreview = review_envelope(repaired, mode or repaired.get("mode_context"))
+                if rres.valid and not rreview.blocks:
+                    diagnostics["visuals"].append({
+                        "id": repaired.get("id"),
+                        "type": repaired.get("type"),
+                        "blocked": False,
+                        "repaired": True,
+                        "validator": rres.as_dict(),
+                        "adversarial": rreview.as_dict(),
+                    })
+                    return "```ora-visual\n" + json.dumps(repaired, indent=2, ensure_ascii=False) + "\n```"
             diagnostics["visuals"].append({
                 "id": envelope.get("id"),
                 "type": envelope.get("type"),
