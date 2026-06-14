@@ -215,6 +215,11 @@ def synthesize_envelope(prose: str, mode: str, target_types, call_fn, idx: int =
         all_attempts.extend(attempts)
         if env is not None:
             return env, all_attempts
+        # If this kind failed because the bound endpoint itself errored
+        # (transport/auth/quota), the next kind would hit the same dead
+        # endpoint — abort rather than burn another guaranteed failure.
+        if attempts and "call_fn error" in str(attempts[-1].get("reason", "")):
+            break
     return None, all_attempts
 
 

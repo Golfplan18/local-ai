@@ -408,6 +408,17 @@ def _strip_visual_blocks_and_markers(text: str) -> str:
     return t.strip()
 
 
+def _strip_suppressed_markers(text: str) -> str:
+    """Remove only the ``[visual … suppressed …]`` failure markers, leaving any
+    valid ``ora-visual`` fenced blocks intact. Used when recovery supersedes a
+    suppressed visual: the marker is stale, but a real visual present elsewhere
+    in the text must survive."""
+    import re
+    if not text:
+        return text or ""
+    return re.sub(r"\[visual[^\]]*suppressed[^\]]*\]", "", text)
+
+
 def _resolve_synthesis_endpoint(config_name: str | None = None) -> dict | None:
     """Resolve the endpoint used to synthesize/repair an envelope.
 
@@ -473,16 +484,19 @@ def _maybe_recover_visual(prose: str, context_pkg: dict | None, mode: str | None
     kind."""
     preferred_kind = context_pkg.get("visual_kind") if isinstance(context_pkg, dict) else None
     target_kinds = _mode_target_types(mode, preferred_kind)
-    # Interactive turns always recover (a human sees the visual). In
-    # autonomous/agent runs, only recover when a visual is genuinely expected
-    # (mode mapped or kind requested) — don't splice a surprise diagram into an
-    # unattended prose pipeline just because the model happened to draw one.
-    exec_ctx = "interactive"
-    if isinstance(context_pkg, dict):
-        exec_ctx = (context_pkg.get("execution_context")
-                    or context_pkg.get("operational_context") or "interactive")
-    if exec_ctx != "interactive" and not target_kinds:
-        return None, None
+    # When a visual is genuinely EXPECTED (mode mapped or a kind threaded),
+    # recover in any execution context — that's the 22 visual techniques.
+    # When NO visual is expected (unmapped / no_visual mode), recovering a
+    # diagram the model happened to draw is the opt-in 'render any diagram'
+    # bias: interactive-only and gated behind ORA_VISUAL_RECOVER_ANY (default
+    # off) so daily-driver/autonomous prose turns get no surprise visual.
+    if not target_kinds:
+        exec_ctx = "interactive"
+        if isinstance(context_pkg, dict):
+            exec_ctx = (context_pkg.get("execution_context")
+                        or context_pkg.get("operational_context") or "interactive")
+        if exec_ctx != "interactive" or not _env_flag("ORA_VISUAL_RECOVER_ANY"):
+            return None, None
     try:
         from visual_recovery import recover_envelope
     except Exception:
@@ -492,24 +506,20 @@ def _maybe_recover_visual(prose: str, context_pkg: dict | None, mode: str | None
     if not result:
         return None, None
     env = result["envelope"]
-    # ensure_ascii=False keeps real unicode (→, —) out of the rendered block as
-    # \uXXXX, and — critically — the replacement below uses a function so the
-    # envelope JSON is inserted literally (a string replacement would treat
-    # any backslash escape in the JSON as a regex group/escape and raise).
+    # ensure_ascii=False keeps real unicode (→, —) readable in the block.
     block = "```ora-visual\n" + json.dumps(env, indent=2, ensure_ascii=False) + "\n```"
     raw_block = result.get("raw_block")
-    if raw_block and result.get("source_text_index") == 0:
-        # The diagram lives in the final response — replace the model's raw
-        # mermaid fence in place so the rendered envelope sits exactly where
-        # the model drew it (and no duplicate raw diagram renders alongside).
-        import re as _re
-        spliced, n = _re.subn(r"```(?:mermaid|mmd)\s*\n.*?\n```", lambda _m: block,
-                              prose, count=1, flags=_re.DOTALL)
-        if not n:  # couldn't locate the fence; append instead
-            spliced = prose.rstrip() + "\n\n" + block
+    # Drop any superseded "[visual … suppressed …]" markers (marker-only —
+    # NOT _strip_visual_blocks_and_markers, which would also delete the
+    # freshly inserted ora-visual fence).
+    base = _strip_suppressed_markers(prose)
+    if raw_block and result.get("source_text_index") == 0 and raw_block in base:
+        # The model's diagram lives in the final response — replace that EXACT
+        # block (verbatim, literal) so the render sits where the model drew it
+        # and no duplicate raw diagram renders alongside.
+        spliced = base.replace(raw_block, block, 1)
     else:
-        clean = _strip_visual_blocks_and_markers(prose)
-        spliced = (clean.rstrip() + "\n\n" + block) if clean else block
+        spliced = (base.rstrip() + "\n\n" + block) if base.strip() else block
 
     if PIPELINE_TRACE_AVAILABLE:
         try:
@@ -541,7 +551,18 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
     context (synthesis adds a model call; gated off in autonomous/agent runs to
     keep unattended cost bounded, matching the image-gen stance)."""
     preferred_kind = context_pkg.get("visual_kind") if isinstance(context_pkg, dict) else None
-    target_types = _mode_target_types(mode, preferred_kind)
+    native = _mode_target_types(mode, None)
+    pk = preferred_kind if (preferred_kind in _KNOWN_VISUAL_TYPES) else None
+    if pk:
+        # A specifically-requested kind that the mode produces natively is the
+        # ONLY synthesis target — never drift to a sibling tool's kind on
+        # failure (e.g. a pro_con request must not ship a tornado). A requested
+        # kind NOT native to the mode (e.g. c4 for the spatial-reasoning
+        # annotation mode) keeps the mode's natural fallback so the turn still
+        # yields a visual instead of nothing.
+        target_types = [pk] if pk in native else [pk] + native
+    else:
+        target_types = native
     if not target_types:
         return None, None
     exec_ctx = "interactive"
@@ -8289,6 +8310,9 @@ def run_pipeline(user_input: str, history: list = None,
     # --- Step 2: Context Package Assembly ---
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
                                              config_name=config_name)
+    # Carry execution context so the visual hook's interactive-vs-autonomous
+    # gate reads a real value rather than defaulting to 'interactive'.
+    context_pkg.setdefault("execution_context", execution_context)
     gear = context_pkg["gear"]
 
     # --- WP-4.2 — capability-conditional vision routing gate ---

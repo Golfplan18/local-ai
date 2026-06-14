@@ -1983,6 +1983,10 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
     # already does this when given a trace_dir, but make it idempotent.
     if trace_dir and not context_pkg.get("trace_dir"):
         context_pkg["trace_dir"] = trace_dir
+    # Carry the execution context so the visual hook's recovery/synthesis gate
+    # (interactive vs autonomous/agent) reads a real value instead of always
+    # defaulting to 'interactive'.
+    context_pkg.setdefault("execution_context", execution_context)
 
     # WP-4.2: capability-conditional vision routing gate. If image_path is
     # present and the downstream model is text-only, select a vision-capable

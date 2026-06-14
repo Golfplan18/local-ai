@@ -47,24 +47,47 @@ MERMAID_NATIVE_KINDS = frozenset({"flowchart", "sequence", "state"})
 
 # Any fenced block language we treat as a diagram source.
 _FENCE_RE = re.compile(r"```([A-Za-z0-9_-]*)\s*\n(.*?)```", re.DOTALL)
-# DAGitty / Structurizr braces blocks that may appear UNfenced in prose.
-_DAGITTY_RE = re.compile(r"\bdag\s*\{.*?\}", re.DOTALL)
-_STRUCTURIZR_RE = re.compile(r"\bworkspace\s*\{.*\}", re.DOTALL)
+
+
+def _extract_brace_block(text: str, keyword: str) -> str | None:
+    """Return ``<keyword> { … }`` with BALANCED braces, starting at the first
+    ``<keyword> {`` in ``text``. Brace-balanced so a Structurizr
+    ``workspace { model { … } views { … } }`` (nested) isn't truncated at the
+    first inner ``}`` (which a lazy ``.*?`` would do) and trailing prose with a
+    stray ``}`` / ``${…}`` isn't swallowed (which a greedy ``.*`` would do)."""
+    m = re.search(r"\b" + re.escape(keyword) + r"\s*\{", text)
+    if not m:
+        return None
+    start = m.start()
+    depth = 0
+    i = m.end() - 1  # at the opening '{'
+    while i < len(text):
+        c = text[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+        i += 1
+    return None  # unbalanced — no reliable block
 
 
 # ---------------------------------------------------------------------------
 # Fenced-block + dialect detection
 # ---------------------------------------------------------------------------
 
-def find_fenced_blocks(text: str) -> list[tuple[str, str]]:
-    """Return ``(lang, body)`` for every fenced code block in ``text``."""
+def find_fenced_blocks(text: str) -> list[tuple[str, str, str]]:
+    """Return ``(lang, body, full)`` for every fenced code block — ``full`` is
+    the exact matched substring (fences included) so a recovered block can be
+    located and replaced verbatim in the source text."""
     if not text:
         return []
-    out: list[tuple[str, str]] = []
+    out: list[tuple[str, str, str]] = []
     for m in _FENCE_RE.finditer(text):
         lang = (m.group(1) or "").strip().lower()
         body = m.group(2).strip("\n")
-        out.append((lang, body))
+        out.append((lang, body, m.group(0)))
     return out
 
 
@@ -156,34 +179,61 @@ def _dagitty_tag(norm_dsl: str, tag: str) -> str | None:
     return m.group(1) if m else None
 
 
-def dagitty_from_mermaid(mermaid: str) -> str:
-    """Convert a Mermaid ``graph``/``flowchart`` into a DAGitty ``dag { … }``
-    by extracting directed edges. Node ids are taken from the left token of
-    each ``A --> B`` statement (bracket labels dropped)."""
-    edges: list[tuple[str, str]] = []
+def _mermaid_node_id(tok: str) -> str:
+    """Bare node id from a Mermaid token: strip shape decorations
+    ``A[Label]`` / ``B{Label}`` / ``C((Label))`` / ``D>Label]`` and any
+    leftover edge-label residue, then take the first whitespace token."""
+    tok = tok.strip()
+    # Drop a leading pipe-label residue ``|text|`` if one slipped through.
+    tok = re.sub(r"^\|[^|]*\|\s*", "", tok)
+    tok = re.split(r"[\[\({>]", tok, 1)[0].strip()
+    return tok.split()[0] if tok.split() else ""
+
+
+def _parse_mermaid_graph(mermaid: str) -> tuple[list[str], list[tuple[str, str]]]:
+    """Parse a Mermaid ``graph``/``flowchart`` into (ordered nodes, directed
+    edges). Handles ``A --> B``, ``A -- text --> B``, ``A -->|text| B``,
+    ``A ==> B``, ``A -.-> B``, chained single-line edges, and bare standalone
+    node declarations. Subgraph/loop scaffolding lines are ignored."""
     nodes: list[str] = []
+    edges: list[tuple[str, str]] = []
 
-    def _id(tok: str) -> str:
-        # Strip mermaid node-shape decorations: A[Label], B{Label}, C((Label)).
-        return re.split(r"[\[\({]", tok.strip(), 1)[0].strip()
+    def _add(n: str):
+        if n and n not in nodes:
+            nodes.append(n)
 
-    for line in (mermaid or "").splitlines():
-        s = line.strip()
-        if not s or s.startswith("%%") or s.lower().startswith(("graph", "flowchart", "subgraph", "end")):
+    # Split a chained line ``A --> B --> C`` into its arrow segments while
+    # keeping the connector so labels stay attached to the right segment.
+    arrow = re.compile(r"\s*[-.=]+(?:\|[^|]*\||\"[^\"]*\"|[^>\|\"\n]*?)?[-.=]*>\s*")
+
+    for raw in (mermaid or "").splitlines():
+        s = raw.strip()
+        low = s.lower()
+        if (not s or s.startswith("%%")
+                or low.startswith(("graph", "flowchart", "subgraph", "end",
+                                   "classdef", "class ", "style ", "linkstyle",
+                                   "direction"))):
             continue
-        # Edge forms: A --> B, A -- text --> B, A -->|text| B
-        m = re.search(r"^(.+?)\s*-[-.]*(?:\|[^|]*\||\s*\"[^\"]*\"\s*)?-*>\s*(.+)$", s)
-        if not m:
-            m = re.search(r"^(.+?)\s*--.*?-->\s*(.+)$", s)
-        if not m:
+        if not arrow.search(s):
+            # Bare node declaration (e.g. ``A[Label]`` or ``A``). Preserve it.
+            nid = _mermaid_node_id(s)
+            if nid:
+                _add(nid)
             continue
-        a, b = _id(m.group(1)), _id(m.group(2))
-        if not a or not b:
-            continue
-        for n in (a, b):
-            if n not in nodes:
-                nodes.append(n)
-        edges.append((a, b))
+        # Chain: collect the node tokens between successive arrows.
+        toks = [t for t in arrow.split(s) if t.strip() != ""]
+        ids = [_mermaid_node_id(t) for t in toks]
+        ids = [i for i in ids if i]
+        for n in ids:
+            _add(n)
+        for i in range(len(ids) - 1):
+            edges.append((ids[i], ids[i + 1]))
+    return nodes, edges
+
+
+def dagitty_from_mermaid(mermaid: str) -> str:
+    """Convert a Mermaid ``graph``/``flowchart`` into a DAGitty ``dag { … }``."""
+    nodes, edges = _parse_mermaid_graph(mermaid)
     stmts = [f"{n}" for n in nodes] + [f"{a} -> {b}" for a, b in edges]
     return "dag { " + " ; ".join(stmts) + " }"
 
@@ -232,17 +282,21 @@ def causal_dag_envelope(dsl: str, mode: str | None,
 def c4_envelope(dsl: str, mode: str | None, level: str | None = None) -> dict:
     """Wrap a Structurizr workspace DSL into a c4 envelope. Infers the level
     from the DSL when not given (container/component keyword presence)."""
-    low = dsl.lower()
+    # Detect container/component as Structurizr DSL KEYWORDS at a token
+    # boundary, not as a bare substring (else an identifier like
+    # ``thecontainer = …`` would false-positive the level).
+    has_container = bool(re.search(r"(?<![A-Za-z0-9_])container\b", dsl))
+    has_component = bool(re.search(r"(?<![A-Za-z0-9_])component\b", dsl))
     if not level:
-        if "component " in low:
+        if has_component:
             level = "component"
-        elif "container " in low:
+        elif has_container:
             level = "container"
         else:
             level = "context"
     # The validator forbids a 'container' keyword on a context-level diagram;
     # if the DSL references containers, promote the level so it validates.
-    if level == "context" and "container " in low:
+    if level == "context" and has_container:
         level = "container"
     env = _base_envelope("c4", mode)
     env["spec"] = {"level": level, "dsl": dsl.strip()}
@@ -360,12 +414,12 @@ def _repair_quadrant(spec: dict) -> dict:
         subtype = "strategic_2x2"
     spec["subtype"] = subtype
 
-    # items into [0,1]
+    # items into [0,1] — per-coordinate: a value already in [0,1] is left
+    # untouched; only an out-of-range value is rescaled by its own magnitude.
+    # A single global divisor would shrink a genuinely-normalized point
+    # (0.9) toward the origin when another item is on a 0-100 scale.
     items = spec.get("items")
     if isinstance(items, list) and items:
-        vals = [it[c] for it in items if isinstance(it, dict)
-                for c in ("x", "y") if isinstance(it.get(c), (int, float))]
-        div = _coerce_unit_interval(vals) if vals else 1.0
         fixed = []
         for it in items:
             if not isinstance(it, dict) or not (it.get("label") or "").strip():
@@ -373,10 +427,12 @@ def _repair_quadrant(spec: dict) -> dict:
             it = dict(it)
             for c in ("x", "y"):
                 v = it.get(c)
-                if isinstance(v, (int, float)):
-                    it[c] = max(0.0, min(1.0, v / div if div else 0.0))
-                else:
+                if not isinstance(v, (int, float)):
                     it[c] = 0.5
+                elif 0.0 <= v <= 1.0:
+                    it[c] = v
+                else:
+                    it[c] = max(0.0, min(1.0, v / _coerce_unit_interval([v])))
             fixed.append(it)
         spec["items"] = fixed
 
@@ -497,9 +553,10 @@ def _finalize(env: dict, mode: str | None, vtype: str) -> dict:
 
 
 def _model_envelope_candidates(text: str, mode: str | None):
-    """Yield (env, vtype) for every ``ora-visual`` fenced JSON block the model
-    emitted (parse → finalize/repair). Used for the malformed-envelope path."""
-    for lang, body in find_fenced_blocks(text):
+    """Yield (env, vtype, full_block) for every ``ora-visual`` fenced JSON
+    block the model emitted (parse → finalize/repair). ``full_block`` is the
+    exact fenced substring, for verbatim replacement."""
+    for lang, body, full in find_fenced_blocks(text):
         if lang != "ora-visual":
             continue
         try:
@@ -511,62 +568,53 @@ def _model_envelope_candidates(text: str, mode: str | None):
         vtype = obj.get("type")
         if not isinstance(vtype, str):
             continue
-        yield _finalize(obj, mode, vtype), vtype
+        yield _finalize(obj, mode, vtype), vtype, full
 
 
 def _diagram_candidates(text: str, mode: str | None):
-    """Yield (env, natural_kind) for DSL diagrams the model drew (mermaid /
-    DAGitty / Structurizr), each convertible to potentially several kinds."""
-    seen_dsls: set[str] = set()
-    for lang, body in find_fenced_blocks(text):
-        key = (lang, body[:80])
+    """Yield (source_kind, body, natural_kind, full_text) for DSL diagrams the
+    model drew (mermaid / DAGitty / Structurizr). ``full_text`` is the exact
+    substring (fence or brace-block) so it can be replaced verbatim."""
+    seen: set[str] = set()
+    for lang, body, full in find_fenced_blocks(text):
         if lang in ("mermaid", "mmd"):
             dialect = detect_mermaid_dialect(body)
             if dialect in MERMAID_NATIVE_KINDS:
-                yield ("mermaid", body, dialect)
-            seen_dsls.add(body)
+                yield ("mermaid", body, dialect, full)
+            seen.add(body)
         elif lang in ("dagitty", "dag"):
-            yield ("dagitty", body, "causal_dag")
-            seen_dsls.add(body)
+            yield ("dagitty", body, "causal_dag", full)
+            seen.add(body)
         elif lang in ("structurizr", "c4", "dsl") and "workspace" in body.lower():
-            yield ("structurizr", body, "c4")
-            seen_dsls.add(body)
-    # Unfenced DAGitty / Structurizr blocks in prose.
-    for m in _DAGITTY_RE.finditer(text or ""):
-        if m.group(0) not in seen_dsls:
-            yield ("dagitty", m.group(0), "causal_dag")
-    for m in _STRUCTURIZR_RE.finditer(text or ""):
-        if m.group(0) not in seen_dsls:
-            yield ("structurizr", m.group(0), "c4")
+            yield ("structurizr", body, "c4", full)
+            seen.add(body)
+    # Unfenced DAGitty / Structurizr blocks in prose (brace-balanced extraction).
+    dag = _extract_brace_block(text or "", "dag")
+    if dag and dag not in seen:
+        yield ("dagitty", dag, "causal_dag", dag)
+    work = _extract_brace_block(text or "", "workspace")
+    if work and work not in seen:
+        yield ("structurizr", work, "c4", work)
 
 
-def _build_for_target(source_kind: str, body: str, natural_kind: str,
-                      target_kinds: list[str], mode: str | None):
-    """Given one model diagram and the acceptable target kinds, build the best
-    matching envelope. Returns (env, vtype) or None.
-
-    Honors target ordering: a mermaid ``graph`` becomes a ``causal_dag`` when
-    that's the requested kind, a plain ``flowchart`` otherwise. When
-    ``target_kinds`` is empty (daily-driver / general use) the natural kind is
-    used — 'if the model drew a compilable diagram, render it'."""
-    wanted = target_kinds or [natural_kind]
-
-    for kind in wanted:
-        env = None
-        if source_kind == "mermaid":
-            if kind in MERMAID_NATIVE_KINDS and kind == natural_kind:
-                env = mermaid_envelope(body, kind, mode)
-            elif kind == "causal_dag" and natural_kind == "flowchart":
-                env = causal_dag_envelope(body, mode, from_mermaid=True)
-        elif source_kind == "dagitty":
-            if kind == "causal_dag":
-                env = causal_dag_envelope(body, mode, from_mermaid=False)
-        elif source_kind == "structurizr":
-            if kind == "c4":
-                env = c4_envelope(body, mode)
-        if env is not None:
-            return _finalize(env, mode, kind), kind
-    return None
+def _build_kind(source_kind: str, body: str, natural_kind: str,
+                kind: str, mode: str | None):
+    """Build an envelope of EXACTLY ``kind`` from one model diagram, or None.
+    A mermaid ``graph`` becomes ``causal_dag`` when that's the requested kind,
+    a plain ``flowchart`` otherwise."""
+    env = None
+    if source_kind == "mermaid":
+        if kind in MERMAID_NATIVE_KINDS and kind == natural_kind:
+            env = mermaid_envelope(body, kind, mode)
+        elif kind == "causal_dag" and natural_kind == "flowchart":
+            env = causal_dag_envelope(body, mode, from_mermaid=True)
+    elif source_kind == "dagitty":
+        if kind == "causal_dag":
+            env = causal_dag_envelope(body, mode, from_mermaid=False)
+    elif source_kind == "structurizr":
+        if kind == "c4":
+            env = c4_envelope(body, mode)
+    return _finalize(env, mode, kind) if env is not None else None
 
 
 def recover_envelope(texts: list[str], target_kinds: list[str] | None,
@@ -577,8 +625,10 @@ def recover_envelope(texts: list[str], target_kinds: list[str] | None,
         texts: candidate source strings in priority order (final response
             first, then earlier pipeline-step outputs where the formatter
             hasn't stripped the diagram).
-        target_kinds: acceptable ``type`` strings in preference order. Empty
-            / None ⇒ accept the diagram's natural kind (general capability).
+        target_kinds: acceptable ``type`` strings in PREFERENCE order — the
+            preferred kind wins even if a different-kind diagram appears earlier
+            in the text. Empty / None ⇒ accept each diagram's natural kind in
+            document order (general capability).
         mode: Ora mode name (for adversarial routing + mode_context).
 
     Returns:
@@ -591,30 +641,42 @@ def recover_envelope(texts: list[str], target_kinds: list[str] | None,
     for idx, text in enumerate(texts):
         if not text:
             continue
-        # 1) A model-emitted ora-visual envelope (possibly malformed) of a
-        #    wanted kind — repair + validate. This is the premium malformed
-        #    path: fix rather than drop.
-        for env, vtype in _model_envelope_candidates(text, mode):
-            if target_kinds and vtype not in target_kinds:
-                continue
-            if _validate_ok(env, mode):
-                return {"envelope": env, "type": vtype, "source_text_index": idx,
-                        "raw_block": None, "via": "model_envelope"}
-        # 2) A model-drawn DSL diagram (mermaid / DAGitty / Structurizr).
-        for source_kind, body, natural_kind in _diagram_candidates(text, mode):
-            built = _build_for_target(source_kind, body, natural_kind,
-                                      target_kinds, mode)
-            if built is None:
-                continue
-            env, vtype = built
-            if _validate_ok(env, mode):
-                raw = None
-                # Only flag for in-place replacement when the diagram lives in
-                # the FINAL response (index 0); step recovery is append-only.
-                if idx == 0 and source_kind == "mermaid":
-                    raw = body
-                return {"envelope": env, "type": vtype, "source_text_index": idx,
-                        "raw_block": raw, "via": source_kind}
+        model_cands = list(_model_envelope_candidates(text, mode))
+        diagram_cands = list(_diagram_candidates(text, mode))
+        # Resolve kinds in PRIORITY order: explicit targets first; otherwise the
+        # natural kinds present, in document order. Iterating kind-outer means a
+        # threaded preferred kind beats a different-kind diagram that happens to
+        # appear earlier in the text.
+        if target_kinds:
+            kinds = target_kinds
+        else:
+            seen, kinds = set(), []
+            for _s, _b, nat, _f in diagram_cands:
+                if nat not in seen:
+                    seen.add(nat); kinds.append(nat)
+            for env, vt, _f in model_cands:
+                if vt not in seen:
+                    seen.add(vt); kinds.append(vt)
+        for kind in kinds:
+            # 1) A model-emitted ora-visual envelope of this kind (repair +
+            #    validate) — the premium malformed path: fix rather than drop.
+            for env, vtype, full in model_cands:
+                if vtype != kind:
+                    continue
+                if _validate_ok(env, mode):
+                    return {"envelope": env, "type": vtype, "source_text_index": idx,
+                            "raw_block": (full if idx == 0 else None),
+                            "via": "model_envelope"}
+            # 2) A model-drawn DSL diagram convertible to this kind.
+            for source_kind, body, natural_kind, full in diagram_cands:
+                env = _build_kind(source_kind, body, natural_kind, kind, mode)
+                if env is not None and _validate_ok(env, mode):
+                    # raw_block = the EXACT source substring so the hook can
+                    # replace it verbatim — only for a final-response (idx 0)
+                    # diagram; step recovery appends.
+                    return {"envelope": env, "type": kind, "source_text_index": idx,
+                            "raw_block": (full if idx == 0 else None),
+                            "via": source_kind}
     return None
 
 
