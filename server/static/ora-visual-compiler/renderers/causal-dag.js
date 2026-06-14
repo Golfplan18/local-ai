@@ -93,6 +93,18 @@ window.OraVisualCompiler._renderers.causalDag = (function () {
   ]);
 
   function _tokenize(src) {
+    // A "//" comment runs to end-of-line. Models sometimes emit the whole
+    // DAGitty DSL on a single physical line, using ";" as the statement
+    // separator and "//" for section headers. With no newline to terminate
+    // them, the first "//" comment would swallow the rest of the line —
+    // including the closing "}" — and the parse fails with "Expected } but
+    // got end-of-input". When the source is a single line, promote ";" to a
+    // newline first so end-of-line comments terminate at the intended
+    // statement boundary. (Multi-line DSL is left untouched, so a ";" inside
+    // a legitimate comment is preserved.)
+    if (src.indexOf('\n') === -1) {
+      src = src.replace(/;/g, '\n');
+    }
     // Strip comments.
     const clean = src.replace(/\/\/[^\n]*/g, '');
     const tokens = [];
