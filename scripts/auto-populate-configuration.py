@@ -59,14 +59,37 @@ PRESETS_PATH = CONFIG_DIR / "configuration-presets.json"
 
 
 def intelligence_of(model: dict) -> float:
-    """Get the AA intelligence index; 0 if absent.
+    """Measured Artificial Analysis intelligence index (0-100); 0.0 if the
+    model has no AA benchmark.
 
-    Models without AA enrichment sort to the bottom — they're admissible
-    but not preferred. When the entire bucket lacks AA data the relative
-    ordering collapses and the algorithm falls back to cost-only sorting.
+    Deliberately single-source. Arena Elo is NOT used as a fallback: over
+    the 145 models carrying both scores it correlates only weakly with the
+    AA benchmark (Pearson r≈0.44), so an Elo-derived estimate would
+    systematically mis-rank — the top-Elo model (gemini-2.5-pro) measures
+    AA 34.6 while a lower-Elo model (opus-4.8) measures 61.4. An
+    unbenchmarked model therefore ranks at the bottom, which is honest: we
+    have no quality signal for it. The "newest and latest" preference is
+    served by the recency tiebreak (release_key) and by admitting
+    unclassified flagships into the large bucket — not by inventing a
+    quality score.
     """
     val = model.get("aa_intelligence_index")
     return float(val) if val is not None else 0.0
+
+
+# A model with no release_date sorts as oldest, so a missing date never
+# displaces a dated model in the recency tiebreak.
+_NO_DATE = ""
+
+
+def release_key(model: dict) -> str:
+    """Release date as a sortable string (YYYY-MM-DD), '' when unknown.
+
+    Used only as a SECONDARY tiebreak — it never reorders models that
+    differ on intelligence or cost, it only decides 'newest wins' among
+    otherwise-equal candidates, which is the literal 'newest and latest'
+    preference."""
+    return model.get("release_date") or _NO_DATE
 
 
 def cost_of(model: dict) -> float:
@@ -89,6 +112,7 @@ def pareto_filter(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
     for cand in candidates:
         c_int = intelligence_of(cand)
         c_cost = cost_fn(cand)
+        c_rel = release_key(cand)
         dominated = False
         for other in candidates:
             if other is cand:
@@ -98,6 +122,14 @@ def pareto_filter(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
             # other dominates cand if other is no worse on both
             # and strictly better on at least one
             if o_int >= c_int and o_cost <= c_cost and (o_int > c_int or o_cost < c_cost):
+                dominated = True
+                break
+            # Exact tie on both axes (e.g. opus-4.8 and opus-4.8-fast both
+            # 61.4 at the same cost): keep the NEWER. Without this the
+            # winner was arbitrary list order; recency is the documented
+            # "newest and latest" preference and only ever breaks an exact
+            # tie, never the frontier shape.
+            if o_int == c_int and o_cost == c_cost and release_key(other) > c_rel:
                 dominated = True
                 break
         if not dominated:
@@ -131,11 +163,33 @@ def apply_cost_ceiling(candidates: list[dict], ceiling: float | None, cost_fn=co
 
 
 def filter_by_size_bucket(candidates: list[dict], size_bucket: str | None) -> list[dict]:
-    """Restrict to a specific size_bucket. ``size_bucket=None`` skips
-    the filter — used by the Fast slot, which selects on tokens/sec
-    instead of parameter range."""
+    """Restrict to a specific size_bucket. ``size_bucket=None`` (the Fast
+    slot, which selects on tokens/sec) skips the filter entirely.
+
+    The ``large`` bucket ALSO admits a model whose own ``size_bucket`` is
+    ``None`` *when that model carries a measured intelligence score*
+    (2026-06-14). A closed/codenamed flagship that carries neither a
+    parameter count in its slug nor a matching family-classification rule
+    ships unclassified (``size_bucket=None``) — the normal state of a
+    brand-new top-tier model (e.g. claude-fable-5, the single
+    highest-intelligence model in the catalog, was excluded from every big
+    slot purely because no 'fable' rule existed yet). The
+    measured-intelligence guard is load-bearing: a null-bucket model is
+    doubly-unknown (unknown size AND, if also unbenchmarked, unknown
+    quality), so admitting an UNSCORED null model would let a 0.0 model
+    occupy a big slot and would suppress the free slot's soft-bucket
+    fallback that surfaces benchmarked midsize models. Admitting only
+    null-bucket models that ARE benchmarked keeps known-good unclassified
+    flagships (fable-5, hy3-preview, step-3.7-flash) competing while
+    leaving genuinely-unknown models out. Smaller buckets stay strict — a
+    None model must never be forced into a small/midsize slot."""
     if size_bucket is None:
         return candidates
+    if size_bucket == "large":
+        return [m for m in candidates
+                if m.get("size_bucket") == "large"
+                or (m.get("size_bucket") is None
+                    and m.get("aa_intelligence_index") is not None)]
     return [m for m in candidates if m.get("size_bucket") == size_bucket]
 
 
@@ -304,11 +358,22 @@ def filter_in_registry(candidates: list[dict], registry_ids: set[str]) -> list[d
 
 
 def sort_by_cost_ascending(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
-    return sorted(candidates, key=cost_fn)
+    # Primary: cost (asc). Secondary tiebreak: recency (newest first).
+    # Done as two stable passes — recency-descending first, then a stable
+    # cost-ascending sort that preserves recency order within equal-cost
+    # groups — because a single key tuple can't mix ascending cost with
+    # descending dates cleanly. Never reorders models of different cost.
+    by_recency = sorted(candidates, key=release_key, reverse=True)
+    return sorted(by_recency, key=cost_fn)
 
 
 def sort_by_intelligence_descending(candidates: list[dict]) -> list[dict]:
-    return sorted(candidates, key=intelligence_of, reverse=True)
+    # Primary: intelligence (desc). Secondary tiebreak: recency (newest
+    # first) — only decides ties, never displaces a higher-intelligence
+    # model. This is the "newest and latest" preference, scoped so it can
+    # never trade quality for freshness.
+    return sorted(candidates, key=lambda m: (intelligence_of(m), release_key(m)),
+                  reverse=True)
 
 
 def sort_by_tokens_per_sec_descending(candidates: list[dict], tps_map: dict[str, float]) -> list[dict]:
