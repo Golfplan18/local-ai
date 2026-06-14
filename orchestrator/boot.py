@@ -12122,6 +12122,14 @@ except Exception:
     _OR_PREFIX_MAP = {}
     _OPENAI_COMPAT_SERVICES = set()
 
+# Catalogue resolver — maps an OpenRouter vendor/model id to the vendor's own
+# native model id (or reports the model isn't offered directly) so prefer-direct
+# routes correctly instead of prefix-stripping and falling back. Optional.
+try:
+    import direct_catalog as _direct_catalog
+except Exception:
+    _direct_catalog = None
+
 
 def _prefer_direct_enabled() -> bool:
     v = (os.environ.get("ORA_PREFER_DIRECT", "1") or "").strip().lower()
@@ -12152,8 +12160,12 @@ def _resolve_direct_endpoint(model_id: str, base_endpoint: dict) -> dict | None:
     Returns a synthetic endpoint dict (copied from ``base_endpoint`` so cost
     attribution keeps the original id / tier) routed at the vendor's own
     API, or None when: prefer-direct is off, the id carries an OpenRouter
-    variant suffix (``:free`` / ``:nitro`` / …), the vendor is unknown, or
-    no key is stored for it.
+    variant suffix (``:free`` / ``:nitro`` / …), the vendor is unknown, no key
+    is stored for it, or the vendor's own catalogue confirms the model isn't
+    offered directly. The model id sent to the vendor is the catalogue-resolved
+    native id (e.g. OpenRouter ``anthropic/claude-opus-4.8`` → ``claude-opus-4-8``);
+    when the catalogue is unreachable we fall back to the bare remainder and let
+    the reactive OpenRouter fallback catch any mismatch.
     """
     if not _prefer_direct_enabled() or not _OR_PREFIX_MAP:
         return None
@@ -12164,10 +12176,23 @@ def _resolve_direct_endpoint(model_id: str, base_endpoint: dict) -> dict | None:
     entry = _OR_PREFIX_MAP.get(vendor)
     if not entry or not entry.get("dispatch") or not rest:
         return None
-    if not _provider_key(entry):
+    key = _provider_key(entry)
+    if not key:
         return None
+    # Resolve the OpenRouter remainder against the vendor's own model catalogue.
+    model_for_vendor = rest
+    if _direct_catalog is not None:
+        try:
+            decision, resolved = _direct_catalog.resolve(entry, rest, key)
+            if decision == "skip":
+                return None          # vendor doesn't list it → OpenRouter, no wasted call
+            if decision == "direct" and resolved:
+                model_for_vendor = resolved
+            # "unknown" → keep the bare remainder (optimistic; reactive fallback covers it)
+        except Exception:
+            pass
     ep = dict(base_endpoint)
-    ep["model"] = rest
+    ep["model"] = model_for_vendor
     ep["provider"] = entry["id"]
     ep["credential_key"] = f"ora/{entry['keyring_username']}"
     ep["_env_var"] = entry.get("env_var")
