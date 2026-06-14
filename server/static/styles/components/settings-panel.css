@@ -183,46 +183,43 @@
   max-width: 772px;
 }
 
-/* ── API key cards (two-column grouped grid) ───────────────────── */
+/* ── API key cards (dense two-column grid, aligned) ──────────────── */
 
 .ora-settings-apikeys-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 18px;
+  gap: 2px 26px;
   align-items: start;
-  margin: 8px 0 4px;
+  margin: 4px 0 2px;
 }
 
-/* Group headers (Gateway / US AI / Chinese AI / …) span both columns
-   and start a fresh row underneath. */
+/* Section headers span both columns. Thin, to keep the list compact. */
 .ora-settings-apikey-group {
   grid-column: 1 / -1;
-  margin: 12px 0 0;
-  font-size: 12px;
+  margin: 5px 0 0;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted, #A89F8A);
   border-bottom: 1px solid var(--background-modifier-border, #3A3022);
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 .ora-settings-apikey-group:first-child { margin-top: 0; }
 
 /* Collapse to one column on narrower viewports. */
-@media (max-width: 1100px) {
+@media (max-width: 1080px) {
   .ora-settings-apikeys-grid { grid-template-columns: 1fr; }
 }
 
-/* One provider per row. The card is a flex column so the optional
-   feedback line (validation / verify result) can wrap underneath, but
-   the normal resting state is a single line: name · key · Save · Verify
-   · status · Remove. */
+/* One provider per row. Flex column so the optional feedback line can wrap
+   underneath; resting state is a single line. */
 .ora-settings-apikey-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 3px 8px;
-  border-radius: 5px;
+  gap: 0;
+  padding: 1px 0;
+  border-radius: 4px;
   transition: background-color 0.3s ease-out, box-shadow 0.3s ease-out;
 }
 
@@ -241,16 +238,15 @@
 .ora-settings-apikey-row1 {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
 
-/* The provider name is the link to its key page. Truncates with an
-   ellipsis rather than wrapping, so the row stays one line. */
+/* Fixed label width → every key box starts at the same x (columns align).
+   The name is the link to its key page; truncates rather than wraps. */
 .ora-settings-apikey-label {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 180px;
-  font-size: 13px;
+  flex: 0 0 150px;
+  width: 150px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text-normal, #E8E0CC);
   text-decoration: none;
@@ -264,18 +260,27 @@ a.ora-settings-apikey-label:hover {
 }
 .ora-settings-apikey-label .ora-settings-apikey-extlink {
   font-weight: 400;
-  opacity: 0.65;
+  opacity: 0.6;
   margin-left: 2px;
 }
 
-/* Status chip sits right before Remove. */
-.ora-settings-apikey-row1 .ora-settings-apikey-status { flex: 0 0 auto; }
-.ora-settings-apikey-row1 .ora-settings-btn--small { flex: 0 0 auto; }
+/* Input fills the middle so the action cluster pins to the column's right
+   edge (Remove right-justified). Fixed-width action elements → Save /
+   Verify / status / Remove line up across every row. The Verify slot is
+   reserved (empty spacer) when a provider isn't verifiable so the columns
+   stay aligned, and the status chip reserves the width of "Not set". */
+.ora-settings-apikey-row1 .ora-settings-btn--small {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  font-size: 11px;
+}
+.ora-settings-apikey-vslot { flex: 0 0 54px; box-sizing: border-box; }
+.ora-settings-apikey-row1 .ora-settings-apikey-status { flex: 0 0 52px; }
 
 .ora-settings-apikey-msg {
   font-size: 11px;
-  line-height: 1.3;
-  padding-left: 2px;
+  line-height: 1.25;
+  padding: 0 0 1px 152px;
   color: var(--text-muted, #A89F8A);
 }
 .ora-settings-apikey-msg:empty { display: none; }
@@ -284,10 +289,10 @@ a.ora-settings-apikey-label:hover {
 .ora-settings-apikey-msg--err  { color: var(--text-error, #ff7777); }
 
 .ora-settings-apikey-status {
-  font-size: 11px;
+  font-size: 10.5px;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   text-align: center;
-  padding: 2px 6px;
+  padding: 2px 4px;
   border-radius: 3px;
 }
 
@@ -310,11 +315,11 @@ a.ora-settings-apikey-label:hover {
   font-size: 12px;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   outline: none;
-  /* Sized for the single row: grows to fill the gap between the name and
-     the action buttons, but never dominates. */
+  /* Fills the gap between the fixed name column and the fixed action
+     cluster, so every input is the same width and the cluster pins to the
+     column's right edge. */
   flex: 1 1 auto;
-  min-width: 70px;
-  max-width: 260px;
+  min-width: 60px;
 }
 
 .ora-settings-apikey-input:focus {
