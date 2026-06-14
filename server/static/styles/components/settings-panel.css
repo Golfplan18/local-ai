@@ -265,16 +265,14 @@ a.ora-settings-apikey-label:hover {
 }
 
 /* Input fills the middle so the action cluster pins to the column's right
-   edge (Remove right-justified). Fixed-width action elements → Save /
-   Verify / status / Remove line up across every row. The Verify slot is
-   reserved (empty spacer) when a provider isn't verifiable so the columns
-   stay aligned, and the status chip reserves the width of "Not set". */
+   edge (Remove right-justified). Save / status / Remove are fixed-width, so
+   they line up across every row; the status chip reserves the width of
+   "Not set" so Remove stays put whether a key is set or not. */
 .ora-settings-apikey-row1 .ora-settings-btn--small {
   flex: 0 0 auto;
   padding: 3px 7px;
   font-size: 11px;
 }
-.ora-settings-apikey-vslot { flex: 0 0 54px; box-sizing: border-box; }
 .ora-settings-apikey-row1 .ora-settings-apikey-status { flex: 0 0 52px; }
 
 .ora-settings-apikey-msg {

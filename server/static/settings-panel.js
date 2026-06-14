@@ -724,26 +724,8 @@
     saveBtn.type = 'button';
     saveBtn.className = 'ora-settings-btn ora-settings-btn--small';
     saveBtn.textContent = 'Save';
+    saveBtn.title = 'Checks the key with the provider, then stores it only if it works';
     line.appendChild(saveBtn);
-
-    var verifyBtn = null;
-    if (row.verifiable) {
-      verifyBtn = document.createElement('button');
-      verifyBtn.type = 'button';
-      verifyBtn.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--ghost ora-settings-apikey-vslot';
-      verifyBtn.textContent = 'Verify';
-      verifyBtn.title = 'Check the saved (or typed) key against the provider';
-      verifyBtn.addEventListener('click', function () {
-        _verifyApiKey(row.provider, input.value, msg, verifyBtn);
-      });
-      line.appendChild(verifyBtn);
-    } else {
-      // Reserve the Verify slot so status + Remove stay column-aligned.
-      var vspacer = document.createElement('span');
-      vspacer.className = 'ora-settings-apikey-vslot';
-      vspacer.setAttribute('aria-hidden', 'true');
-      line.appendChild(vspacer);
-    }
 
     var status = document.createElement('span');
     status.className = 'ora-settings-apikey-status '
@@ -760,7 +742,7 @@
     line.appendChild(removeBtn);
 
     saveBtn.addEventListener('click', function () {
-      _saveApiKey(row.provider, input.value, status, input, saveBtn, removeBtn, msg);
+      _saveApiKey(row.provider, row.label, input.value, status, input, saveBtn, removeBtn, msg);
     });
     removeBtn.addEventListener('click', function () {
       _deleteApiKey(row.provider, status, input, saveBtn, removeBtn, msg);
@@ -769,37 +751,6 @@
     card.appendChild(line);
     card.appendChild(msg);
     parent.appendChild(card);
-  }
-
-  function _verifyApiKey(provider, value, msgEl, btn) {
-    btn.disabled = true;
-    var prev = btn.textContent;
-    btn.textContent = 'Checking…';
-    msgEl.textContent = '';
-    msgEl.className = 'ora-settings-apikey-msg';
-    fetch('/api/settings/api-key/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: provider, value: (value || '').trim() }),
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (res) {
-        if (res.ok === true) {
-          msgEl.textContent = '✓ ' + (res.message || 'Key works.');
-          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--ok';
-        } else if (res.ok === false) {
-          msgEl.textContent = '✗ ' + (res.message || 'Key rejected.');
-          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
-        } else {
-          msgEl.textContent = (res.message || res.error || 'Could not verify.');
-          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--warn';
-        }
-      })
-      .catch(function (err) {
-        msgEl.textContent = 'Verify failed: ' + err.message;
-        msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
-      })
-      .then(function () { btn.disabled = false; btn.textContent = prev; });
   }
 
   // ── input builders ───────────────────────────────────────────────────────
@@ -975,7 +926,12 @@
       });
   }
 
-  function _saveApiKey(provider, value, statusEl, inputEl, saveBtn, removeBtn, msgEl) {
+  // Single-button flow: check the key with the provider, then store it ONLY
+  // if it isn't rejected. A confirmed rejection (the provider says the key is
+  // invalid) pops up a notice and stores nothing. A key that verifies — or
+  // one we can't check (no free validity probe for that provider, or a
+  // transient network error) — is stored, with the status noting which.
+  function _saveApiKey(provider, label, value, statusEl, inputEl, saveBtn, removeBtn, msgEl) {
     var v = (value || '').trim();
     if (!v) {
       if (msgEl) {
@@ -985,39 +941,74 @@
       return;
     }
     saveBtn.disabled = true;
-    fetch('/api/settings/api-key', {
+    var prevLabel = saveBtn.textContent;
+    saveBtn.textContent = 'Checking…';
+    if (msgEl) { msgEl.textContent = ''; msgEl.className = 'ora-settings-apikey-msg'; }
+
+    function _restore() { saveBtn.disabled = false; saveBtn.textContent = prevLabel; }
+
+    function _store(note) {
+      return fetch('/api/settings/api-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: provider, value: v }),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) { return { ok: r.ok, data: j }; });
+        })
+        .then(function (res) {
+          if (!res.ok) throw new Error((res.data && res.data.error) || 'save failed');
+          statusEl.textContent = 'Set';
+          statusEl.className = 'ora-settings-apikey-status ora-settings-apikey-status--set';
+          inputEl.value = '';
+          inputEl.placeholder = '•••••• replace';
+          removeBtn.disabled = false;
+          if (msgEl) {
+            msgEl.textContent = note;
+            msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--ok';
+          }
+          _apiKeys.forEach(function (row) {
+            if (row.provider === provider) row.present = true;
+          });
+        })
+        .catch(function (err) {
+          if (msgEl) {
+            msgEl.textContent = 'Save failed: ' + err.message;
+            msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
+          }
+        });
+    }
+
+    fetch('/api/settings/api-key/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ provider: provider, value: v }),
     })
-      .then(function (r) {
-        return r.json().then(function (j) { return { ok: r.ok, data: j }; });
-      })
+      .then(function (r) { return r.json(); })
       .then(function (res) {
-        if (!res.ok) {
-          throw new Error((res.data && res.data.error) || 'save failed');
+        if (res && res.ok === false) {
+          // Confirmed invalid — do NOT store it.
+          var why = res.message || 'The provider rejected this key.';
+          window.alert('“' + label + '” key not saved.\n\n' + why
+            + '\n\nNothing was stored — double-check the key and try again.');
+          if (msgEl) {
+            msgEl.textContent = '✗ Not saved — ' + why;
+            msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
+          }
+          _restore();
+          return;
         }
-        statusEl.textContent = 'Set';
-        statusEl.className = 'ora-settings-apikey-status ora-settings-apikey-status--set';
-        inputEl.value = '';
-        inputEl.placeholder = '••••••••  (replace by typing new value)';
-        removeBtn.disabled = false;
-        if (msgEl) {
-          msgEl.textContent = 'Saved ✓';
-          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--ok';
-        }
-        // Reflect in the cached state for any later open without refetch.
-        _apiKeys.forEach(function (row) {
-          if (row.provider === provider) row.present = true;
-        });
+        // Verified working, or no validity check available → store.
+        var note = (res && res.ok === true)
+          ? 'Saved ✓ — verified working.'
+          : 'Saved ✓ — couldn’t auto-verify this provider.';
+        return _store(note).then(_restore);
       })
-      .catch(function (err) {
-        if (msgEl) {
-          msgEl.textContent = 'Save failed: ' + err.message;
-          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
-        }
-      })
-      .then(function () { saveBtn.disabled = false; });
+      .catch(function () {
+        // The verify request itself failed (network) — can't confirm it's
+        // bad, so store it rather than block a possibly-good key.
+        _store('Saved ✓ — couldn’t reach the provider to verify.').then(_restore);
+      });
   }
 
   function _deleteApiKey(provider, statusEl, inputEl, saveBtn, removeBtn, msgEl) {
