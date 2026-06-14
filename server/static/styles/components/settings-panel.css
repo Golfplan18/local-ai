@@ -183,24 +183,51 @@
   max-width: 772px;
 }
 
-/* ── API key rows ──────────────────────────────────────────────── */
+/* ── API key cards (two-column grouped grid) ───────────────────── */
 
-.ora-settings-apikey-row {
+.ora-settings-apikeys-grid {
   display: grid;
-  grid-template-columns: 200px 60px 1fr auto auto;
-  gap: 8px;
-  align-items: center;
-  margin: 6px 0;
-  border-radius: 4px;
-  padding: 2px 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  align-items: start;
+  margin: 8px 0 4px;
+}
+
+/* Group headers (Gateway / US AI / Chinese AI / …) span both columns
+   and start a fresh row underneath. */
+.ora-settings-apikey-group {
+  grid-column: 1 / -1;
+  margin: 12px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted, #A89F8A);
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
+  padding-bottom: 4px;
+}
+.ora-settings-apikey-group:first-child { margin-top: 0; }
+
+/* Collapse to one column on narrower viewports. */
+@media (max-width: 1100px) {
+  .ora-settings-apikeys-grid { grid-template-columns: 1fr; }
+}
+
+.ora-settings-apikey-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  background: var(--background-primary-alt, rgba(255, 255, 255, 0.012));
   transition: background-color 0.3s ease-out, box-shadow 0.3s ease-out;
 }
 
 /* Applied by settings-panel.js when an `open-settings` CustomEvent
-   names a specific provider (deferrals row 52). The amber accent
-   matches Ora's "attention" tone elsewhere. Auto-cleared 3s after
-   application; transition handles the fade. */
-.ora-settings-apikey-row--highlight {
+   names a specific provider (deferrals row 52). Amber = Ora's
+   "attention" tone. Auto-cleared 3s after application. */
+.ora-settings-apikey-card--highlight {
   background: rgba(var(--color-orange-rgb, 201, 125, 85), 0.14);
   box-shadow: 0 0 0 1px rgba(255, 184, 108, 0.6);
   animation: ora-settings-apikey-highlight-pulse 1.4s ease-in-out 2;
@@ -211,10 +238,79 @@
   50%      { box-shadow: 0 0 0 2px rgba(255, 184, 108, 0.95); }
 }
 
+.ora-settings-apikey-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .ora-settings-apikey-label {
   font-size: 13px;
+  font-weight: 600;
   color: var(--text-normal, #E8E0CC);
 }
+
+/* Status chip floats to the right edge of the header. */
+.ora-settings-apikey-head .ora-settings-apikey-status {
+  margin-left: auto;
+}
+
+.ora-settings-apikey-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.ora-settings-apikey-badge--req {
+  background: rgba(var(--color-orange-rgb, 201, 125, 85), 0.18);
+  color: var(--color-orange, #C97D55);
+}
+.ora-settings-apikey-badge--direct {
+  background: rgba(var(--color-green-rgb, 135, 144, 91), 0.16);
+  color: var(--color-green, #87905B);
+}
+
+.ora-settings-apikey-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 11.5px;
+  color: var(--text-muted, #A89F8A);
+  line-height: 1.35;
+}
+
+.ora-settings-apikey-link {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--link-color, #A48055);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ora-settings-apikey-link:hover { text-decoration: underline; }
+
+.ora-settings-apikey-cardnote { flex: 1 1 auto; }
+
+.ora-settings-apikey-inputrow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.ora-settings-apikey-inputrow .ora-settings-apikey-input { flex: 1 1 auto; }
+.ora-settings-apikey-inputrow .ora-settings-btn--small { flex: 0 0 auto; }
+
+.ora-settings-apikey-msg {
+  font-size: 11px;
+  min-height: 0;
+  line-height: 1.35;
+  color: var(--text-muted, #A89F8A);
+}
+.ora-settings-apikey-msg:empty { display: none; }
+.ora-settings-apikey-msg--ok   { color: var(--color-green, #87905B); }
+.ora-settings-apikey-msg--warn { color: var(--color-orange, #C97D55); }
+.ora-settings-apikey-msg--err  { color: var(--text-error, #ff7777); }
 
 .ora-settings-apikey-status {
   font-size: 11px;

@@ -291,27 +291,41 @@ def _load_semantic_augment() -> tuple[bool, str]:
 
     Returns ``(enabled, provider_name)``. When enabled, a caller that
     opts in (``semantic_augment=True``) runs the keyword cascade AND a
-    provider-only semantic search, merging the two. Disabled-safe:
-    returns ``(False, "exa")`` if the block is absent, malformed, or the
-    config file is missing — so a clean install never augments until the
-    operator turns it on.
+    provider-only semantic search, merging the two.
+
+    Auto-activation: if the semantic provider (Exa) has a key configured,
+    semantic augmentation turns ON automatically — key-presence is the
+    enable signal, no separate toggle. An explicit ``enabled`` field in the
+    routing-config ``semantic_augment`` block still wins (set it ``false``
+    to suppress augmentation even with a key present). With no key and no
+    explicit config, it stays off — a clean install never augments and
+    never incurs a paid Exa call.
     """
     global _cached_semantic_augment
     if _cached_semantic_augment is not None:
         return _cached_semantic_augment
 
-    enabled, provider = False, _DEFAULT_SEMANTIC_PROVIDER
+    provider = _DEFAULT_SEMANTIC_PROVIDER
+    explicit = None
     try:
         with open(_ROUTING_CONFIG_PATH, "r", encoding="utf-8") as f:
             cfg = json.load(f)
         block = cfg.get("semantic_augment")
         if isinstance(block, dict):
-            enabled = bool(block.get("enabled", False))
+            if "enabled" in block:
+                explicit = bool(block.get("enabled"))
             prov = block.get("provider")
             if isinstance(prov, str) and prov in _PROVIDERS:
                 provider = prov
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
+
+    if explicit is not None:
+        enabled = explicit                       # explicit config wins
+    else:
+        # Auto-activate when the semantic provider's key is present.
+        env_var = _PROVIDERS.get(provider, (None, None))[0]
+        enabled = bool(env_var and os.environ.get(env_var, "").strip())
 
     _cached_semantic_augment = (enabled, provider)
     return _cached_semantic_augment

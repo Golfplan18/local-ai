@@ -1104,11 +1104,16 @@ def settings_get():
     try:
         settings = _user_settings.load_settings()
         api_keys = _user_settings.list_api_key_status()
+        try:
+            groups = _user_settings.group_order()
+        except Exception:
+            groups = []
     except Exception as e:
         return _json_response({"error": str(e)}, status=500)
     return _json_response({
         "settings": settings,
         "api_keys": api_keys,
+        "provider_groups": groups,
         "providers": list(_user_settings.PROVIDER_LABELS.keys()),
     })
 
@@ -1165,6 +1170,118 @@ def settings_delete_api_key(provider):
     except Exception as e:
         return _json_response({"error": str(e)}, status=500)
     return _json_response({"provider": provider, "deleted": True})
+
+
+def _verify_provider_key(entry: dict, key: str):
+    """Make the cheapest authenticated call that proves a key works.
+
+    Returns ``(ok, message)`` where ok ∈ {True, False, None} (None = couldn't
+    determine / not implemented). Uses urllib only (no new deps). Every call
+    is free or negligible (auth probes / model lists / a single search), so
+    Verify never lands a surprise charge — image / TTS providers (whose only
+    auth proof costs a generation) are marked non-verifiable in the registry.
+    """
+    import urllib.request
+    import urllib.error
+    import json as _json
+
+    pid = entry["id"]
+    dispatch = entry.get("dispatch")
+    base = (entry.get("base_url") or "").rstrip("/")
+
+    def _get(url, headers):
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        with urllib.request.urlopen(req, timeout=12) as r:
+            return r.status
+
+    def _post(url, headers, body):
+        h = dict(headers); h["Content-Type"] = "application/json"
+        req = urllib.request.Request(
+            url, data=_json.dumps(body).encode(), headers=h, method="POST")
+        with urllib.request.urlopen(req, timeout=12) as r:
+            return r.status
+
+    try:
+        if pid == "openrouter":
+            _get("https://openrouter.ai/api/v1/key", {"Authorization": f"Bearer {key}"})
+        elif pid == "anthropic":
+            _get("https://api.anthropic.com/v1/models",
+                 {"x-api-key": key, "anthropic-version": "2023-06-01"})
+        elif pid == "gemini":
+            # Key via header, not the query string, so it can never land in
+            # an exception/URL string that round-trips to the browser.
+            _get("https://generativelanguage.googleapis.com/v1beta/models",
+                 {"x-goog-api-key": key})
+        elif pid == "openai" or dispatch == "openai_compatible":
+            if not base:
+                return None, "No base URL configured for this provider."
+            _get(f"{base}/models", {"Authorization": f"Bearer {key}"})
+        elif pid == "tavily":
+            _post("https://api.tavily.com/search", {},
+                  {"api_key": key, "query": "ping", "max_results": 1, "search_depth": "basic"})
+        elif pid == "brave":
+            _get("https://api.search.brave.com/res/v1/web/search?q=ping&count=1",
+                 {"X-Subscription-Token": key, "Accept": "application/json"})
+        elif pid == "exa":
+            _post("https://api.exa.ai/search", {"x-api-key": key},
+                  {"query": "ping", "numResults": 1})
+        elif pid == "artificial_analysis":
+            _get("https://artificialanalysis.ai/api/v2/data/llms/models",
+                 {"Authorization": f"Bearer {key}"})
+        elif pid == "fred":
+            _get(f"https://api.stlouisfed.org/fred/series?series_id=GNPCA"
+                 f"&api_key={key}&file_type=json", {})
+        else:
+            return None, "Verification isn't available for this provider."
+        return True, "Key works."
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return False, "Key was rejected (auth failed). Check the key, and that billing is active."
+        if e.code == 429:
+            return True, "Key is valid but rate-limited / over quota — check billing."
+        if e.code == 400 and pid == "gemini":
+            return False, "Key was rejected by Google. Double-check you copied it correctly."
+        return False, f"Verification failed (HTTP {e.code})."
+    except Exception as e:
+        # Scrub the key from the message — some urllib/http exceptions
+        # (e.g. InvalidURL on a key with a stray space) embed the full URL,
+        # which for FRED contains the key in the query string. Never let a
+        # secret round-trip back into the browser.
+        msg = str(e).replace(key, "***") if key else str(e)
+        return None, f"Couldn't reach the provider: {msg}"
+
+
+@app.route("/api/settings/api-key/verify", methods=["POST"])
+def settings_verify_api_key():
+    if not _HAS_USER_SETTINGS or _user_settings is None:
+        return _json_response({"error": "settings module unavailable"}, status=503)
+    payload = request.get_json(silent=True) or {}
+    provider = (payload.get("provider") or "").strip()
+    value = (payload.get("value") or "").strip()
+    if not provider:
+        return _json_response({"error": "provider required"}, status=400)
+    try:
+        import provider_registry as _reg
+        entry = _reg.by_id(provider)
+    except Exception:
+        entry = None
+    if not entry:
+        return _json_response({"error": f"unknown provider {provider!r}"}, status=400)
+    if not entry.get("verifiable"):
+        return _json_response({"ok": None,
+                               "message": "Verification isn't available for this provider."})
+    # A pasted value wins (verify-before-save); otherwise the stored key.
+    key = value
+    if not key:
+        try:
+            import keyring
+            key = keyring.get_password("ora", entry["keyring_username"]) or ""
+        except Exception:
+            key = ""
+    if not key:
+        return _json_response({"ok": False, "message": "No key to verify — save one first."})
+    ok, message = _verify_provider_key(entry, key)
+    return _json_response({"ok": ok, "message": message})
 
 
 # ── Audio/Video Phase 5 — timeline state endpoints ───────────────────────────

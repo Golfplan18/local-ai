@@ -101,26 +101,34 @@ except ImportError as e:
     TOOLS_AVAILABLE = False
 
 
-# Search-API key bridge — keyring → env var. ``tools/web_search.py``
-# reads ``TAVILY_API_KEY`` / ``BRAVE_API_KEY`` / ``EXA_API_KEY`` from
-# ``os.environ``, but the Framework — API Key Setup flow stores
-# keys in the macOS keychain under the canonical convention
-# ``service="ora", username="<provider>-api-key"`` (also used by
-# ``scripts/sync_model_registry.py``). Export each key into the env at
-# module load so the cascade sees them. Pre-set env vars win (CI,
-# shell rc), so we only write keys not already present.
-def _export_search_keys_to_env() -> None:
+# Provider-key bridge — keyring → env var. Consumers read keys from
+# ``os.environ`` (``tools/web_search.py`` wants TAVILY/BRAVE/EXA_API_KEY;
+# the dispatch branches and vendor SDKs read ANTHROPIC/OPENAI/… _API_KEY),
+# but the settings panel + Framework — API Key Setup store keys in the
+# system keychain under ``service="ora", username="<provider>-api-key"``.
+# Mirror every registered provider's stored key into its conventional env
+# var at module load so all consumers see it without a restart-time lookup.
+# Pre-set env vars win (CI, shell rc, per-service ora.env), so we only
+# write keys not already present. The (env_var, keyring_username) pairs come
+# from provider_registry — adding a provider there auto-bridges its key.
+def _export_provider_keys_to_env() -> None:
     try:
         import keyring
     except ImportError:
         return
-    pairs = (
-        ("TAVILY_API_KEY", "tavily-api-key"),
-        ("BRAVE_API_KEY",  "brave-api-key"),
-        ("EXA_API_KEY",    "exa-api-key"),
-    )
+    try:
+        import provider_registry as _reg
+        pairs = _reg.env_bridge_pairs()
+    except Exception:
+        # Registry unavailable — fall back to the original search trio so
+        # the web-search cascade still works.
+        pairs = [
+            ("TAVILY_API_KEY", "tavily-api-key"),
+            ("BRAVE_API_KEY",  "brave-api-key"),
+            ("EXA_API_KEY",    "exa-api-key"),
+        ]
     for env_name, kr_key in pairs:
-        if os.environ.get(env_name, "").strip():
+        if not env_name or os.environ.get(env_name, "").strip():
             continue
         try:
             value = keyring.get_password("ora", kr_key)
@@ -130,7 +138,7 @@ def _export_search_keys_to_env() -> None:
             os.environ[env_name] = value
 
 
-_export_search_keys_to_env()
+_export_provider_keys_to_env()
 
 
 # RAG engine (Phase 8 + Phase 5.6 ranker) — optional, falls back to basic ChromaDB if unavailable
@@ -12077,6 +12085,87 @@ def _call_claude_code_subscription(messages: list, endpoint: dict) -> str:
     return text
 
 
+# ── Direct-vendor dispatch (registry-driven) ─────────────────────────────
+# Ora can reach frontier / open-weight vendors two ways: through OpenRouter
+# (one key, ~5.5% markup) or directly against the vendor's own
+# OpenAI-compatible API (no markup) when the user has stored that vendor's
+# key. provider_registry declares each vendor's base_url and the OpenRouter
+# vendor prefix that maps back to it. "Prefer-direct" intercepts an
+# OpenRouter dispatch and, when a matching direct key exists, reroutes to
+# the vendor (same model) — falling back to OpenRouter on ANY failure.
+# Gated by ORA_PREFER_DIRECT (default on; set 0/false to force OpenRouter,
+# e.g. on a server whose cost accounting depends on the OpenRouter channel).
+try:
+    import provider_registry as _provider_registry
+    _OR_PREFIX_MAP = _provider_registry.or_prefix_map()
+    _OPENAI_COMPAT_SERVICES = {
+        p["id"] for p in _provider_registry.PROVIDERS
+        if p.get("dispatch") == "openai_compatible"
+    }
+except Exception:
+    _provider_registry = None
+    _OR_PREFIX_MAP = {}
+    _OPENAI_COMPAT_SERVICES = set()
+
+
+def _prefer_direct_enabled() -> bool:
+    v = (os.environ.get("ORA_PREFER_DIRECT", "1") or "").strip().lower()
+    return v not in ("0", "false", "no", "off")
+
+
+def _keyring_lookup(service: str, username: str) -> str:
+    try:
+        import keyring
+        return keyring.get_password(service, username) or ""
+    except Exception:
+        return ""
+
+
+def _provider_key(entry: dict) -> str:
+    """Resolve a registered provider's key: env var first, then keyring."""
+    if not entry:
+        return ""
+    env_var = entry.get("env_var")
+    if env_var and os.environ.get(env_var, "").strip():
+        return os.environ[env_var].strip()
+    return _keyring_lookup("ora", entry.get("keyring_username", ""))
+
+
+def _resolve_direct_endpoint(model_id: str, base_endpoint: dict) -> dict | None:
+    """Map an OpenRouter ``vendor/model`` id to a direct-vendor endpoint.
+
+    Returns a synthetic endpoint dict (copied from ``base_endpoint`` so cost
+    attribution keeps the original id / tier) routed at the vendor's own
+    API, or None when: prefer-direct is off, the id carries an OpenRouter
+    variant suffix (``:free`` / ``:nitro`` / …), the vendor is unknown, or
+    no key is stored for it.
+    """
+    if not _prefer_direct_enabled() or not _OR_PREFIX_MAP:
+        return None
+    mid = (model_id or "").strip()
+    if "/" not in mid or ":" in mid:
+        return None
+    vendor, rest = mid.split("/", 1)
+    entry = _OR_PREFIX_MAP.get(vendor)
+    if not entry or not entry.get("dispatch") or not rest:
+        return None
+    if not _provider_key(entry):
+        return None
+    ep = dict(base_endpoint)
+    ep["model"] = rest
+    ep["provider"] = entry["id"]
+    ep["credential_key"] = f"ora/{entry['keyring_username']}"
+    ep["_env_var"] = entry.get("env_var")
+    ep["_prefer_direct_origin"] = mid
+    if entry.get("dispatch") == "native":
+        ep["service"] = entry["native_service"]
+        ep.pop("base_url", None)
+    else:  # openai_compatible
+        ep["service"] = entry["id"]
+        ep["base_url"] = entry["base_url"]
+    return ep
+
+
 def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None) -> str:
     service = endpoint.get("service", "")
     model = endpoint.get("model", "")
@@ -12294,6 +12383,29 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
         # bucket entry is a "<vendor>/<model>" id (e.g. "anthropic/claude-opus-4-7",
         # "xiaomi/mimo-v2-pro"). The dispatch is identical to the openai
         # branch above except for base_url and the auth key source.
+        #
+        # Prefer-direct: if the user has stored the underlying vendor's own
+        # key, call that vendor's API directly (same model, no OpenRouter
+        # markup). On ANY failure — auth, model-id mismatch, network — fall
+        # straight through to the OpenRouter path below so production never
+        # breaks. Disable with ORA_PREFER_DIRECT=0.
+        _direct_ep = _resolve_direct_endpoint(model, endpoint)
+        if _direct_ep is not None:
+            try:
+                _direct_result = _call_api_endpoint_inner(messages, _direct_ep, images)
+                if _direct_result and not _direct_result.startswith("[Error"):
+                    return _direct_result
+                print(
+                    f"[prefer-direct] {_direct_ep.get('service')} returned an error "
+                    f"for {model!r}; falling back to OpenRouter",
+                    flush=True,
+                )
+            except Exception as _pd_err:
+                print(
+                    f"[prefer-direct] direct call for {model!r} raised {_pd_err}; "
+                    f"falling back to OpenRouter",
+                    flush=True,
+                )
         try:
             from openai import OpenAI
             key = (
@@ -12372,6 +12484,76 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
             return _call_api_with_truncation_retry(_openrouter_call, "OpenRouter", endpoint)
         except Exception as e:
             return f"[Error calling OpenRouter API: {e}]"
+
+    elif service in _OPENAI_COMPAT_SERVICES or service == "openai_compatible":
+        # Generic direct dispatch for any OpenAI-compatible vendor API —
+        # xAI, Mistral, DeepSeek, Alibaba Qwen, MiniMax, Xiaomi, Moonshot
+        # (Kimi), Meta Llama, NVIDIA NIM, etc. The base_url + credential
+        # come from the endpoint (synthesised by the prefer-direct rewrite,
+        # or an explicit routing-config entry). Model id is the vendor's own
+        # (the prefer-direct rewrite already stripped the OpenRouter prefix).
+        try:
+            from openai import OpenAI
+            base_url = endpoint.get("base_url")
+            if not base_url and _provider_registry is not None:
+                _e = _provider_registry.by_id(service)
+                base_url = _e.get("base_url") if _e else None
+            if not base_url:
+                return f"[Error calling {service} API: no base_url configured]"
+            key = endpoint.get("api_key") or ""
+            if not key:
+                env_var = endpoint.get("_env_var")
+                if not env_var and _provider_registry is not None:
+                    _e = _provider_registry.by_id(service)
+                    env_var = _e.get("env_var") if _e else None
+                if env_var:
+                    key = os.environ.get(env_var, "") or ""
+            if not key:
+                cred = endpoint.get("credential_key") or f"ora/{service}-api-key"
+                if cred.startswith("ora/"):
+                    key = _keyring_lookup("ora", cred.split("/", 1)[1])
+            if not key:
+                return (
+                    f"[Error calling {service} API: No API key found. "
+                    f"Add it under Settings → External APIs.]"
+                )
+            client = OpenAI(api_key=key, base_url=base_url)
+            api_messages = messages
+            if images:
+                api_messages = _inject_images_into_messages(
+                    messages, images, api_format="openai"
+                )
+
+            def _compat_call(max_tokens):
+                model_name = model or ""
+                cap_kwarg = {_openai_max_tokens_param(model_name): max_tokens}
+                resp = client.chat.completions.create(
+                    model=model_name,
+                    messages=api_messages,
+                    **cap_kwarg,
+                )
+                text = (resp.choices[0].message.content if resp.choices else "") or ""
+                truncated = bool(resp.choices) and getattr(
+                    resp.choices[0], "finish_reason", None) == "length"
+                try:
+                    u = getattr(resp, "usage", None)
+                    if u is not None and resp.choices:
+                        _record_model_usage(
+                            endpoint,
+                            prompt_tokens=getattr(u, "prompt_tokens", None),
+                            completion_tokens=getattr(u, "completion_tokens", None),
+                            total_tokens=getattr(u, "total_tokens", None),
+                            finish_reason=getattr(
+                                resp.choices[0], "finish_reason", None,
+                            ),
+                        )
+                except Exception:
+                    pass
+                return text, truncated
+
+            return _call_api_with_truncation_retry(_compat_call, service, endpoint)
+        except Exception as e:
+            return f"[Error calling {service} API: {e}]"
 
     return f"[Error] Unsupported API service: {service}"
 
