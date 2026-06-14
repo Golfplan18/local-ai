@@ -3951,6 +3951,14 @@ def chat():
     # apply the framework-suppresses-prefilter rule.
     manual_mode_selection = (data.get("manual_mode_selection") or "").strip()
     framework_selected    = (data.get("framework_selected") or "").strip()
+    # Optional per-request target visual kind. When the caller knows exactly
+    # which diagram the turn should produce (the visual-tool campaign threads
+    # the technique's kind; a UI "draw a <kind>" affordance could too), it is
+    # placed first in the visual hook's target list so recovery/synthesis emit
+    # THAT kind instead of the routed mode's default first type — the fix for
+    # multi-kind modes (e.g. decision-under-uncertainty → tornado vs
+    # decision_tree). Lands on context_pkg as ``visual_kind`` via extra_context.
+    manual_visual_type    = (data.get("manual_visual_type") or "").strip()
     # Obsidian Plugin Design (2026-05-17) — optional per-request override
     # for the processed chunk's output folder. Validation + fallback live
     # in ``_resolve_chunk_destination``; the endpoint just propagates.
@@ -3987,7 +3995,9 @@ def chat():
     if text_parts:
         user_input = user_input + "\n\n" + "\n\n".join(text_parts)
 
+    extra_context = {"visual_kind": manual_visual_type} if manual_visual_type else None
     return _invoke_pipeline(user_input, history, panel_id, is_main, images=images,
+                             extra_context=extra_context,
                              tag=tag,
                              manual_mode_selection=manual_mode_selection,
                              framework_selected=framework_selected,

@@ -151,12 +151,43 @@ def _now_iso() -> str:
 # ─── Corpus parsing ───────────────────────────────────────────────────────
 
 
+# Visual-tool technique id → the ora-visual envelope ``type`` it should
+# produce. Threaded to the server as ``manual_visual_type`` so multi-kind
+# modes (decision-under-uncertainty, information-density, process-mapping)
+# emit the technique's specific kind instead of the mode's first listed type.
+VISUAL_TOOL_KINDS = {
+    "ach-matrix": "ach_matrix",
+    "bow-tie-diagram": "bow_tie",
+    "c4-architecture": "c4",
+    "causal-dag": "causal_dag",
+    "causal-loop-diagram": "causal_loop_diagram",
+    "comparison-chart": "comparison",
+    "concept-map": "concept_map",
+    "decision-tree": "decision_tree",
+    "distribution-plot": "distribution",
+    "fishbone-diagram": "fishbone",
+    "flowchart": "flowchart",
+    "heatmap": "heatmap",
+    "ibis-argument": "ibis",
+    "influence-diagram": "influence_diagram",
+    "pro-con-tree": "pro_con",
+    "quadrant-matrix": "quadrant_matrix",
+    "scatter-plot": "scatter",
+    "sequence-diagram": "sequence",
+    "state-diagram": "state",
+    "stock-and-flow": "stock_and_flow",
+    "time-series": "time_series",
+    "tornado-chart": "tornado",
+}
+
+
 @dataclass
 class Technique:
     id: str
     kind: str            # "mode" | "visual" | "lens"
     intended_mode: str
     prompt: str
+    target_visual: str | None = None   # ora-visual type for "visual" techniques
 
 
 _BACKTICK_ID = re.compile(r"`([^`]+)`")
@@ -189,7 +220,10 @@ def parse_corpus(path: Path) -> list[Technique]:
                 raise ValueError(
                     f"corpus entry `{entry_id}` is missing "
                     f"{'a mode line' if not entry_mode else 'prompt #1'}")
-            out.append(Technique(entry_id, entry_kind, entry_mode, entry_prompt))
+            target_visual = (VISUAL_TOOL_KINDS.get(entry_id)
+                             if entry_kind == "visual" else None)
+            out.append(Technique(entry_id, entry_kind, entry_mode, entry_prompt,
+                                 target_visual=target_visual))
         entry_id = entry_mode = entry_prompt = None
 
     for line in lines:
@@ -626,6 +660,10 @@ def run_ora_pipeline(server: str, config_name: str, technique: Technique,
         "history": [],
         "config_name": config_name,
         "manual_mode_selection": technique.intended_mode,
+        # Thread the technique's target visual kind so the server's visual hook
+        # emits THAT diagram (multi-kind modes otherwise default to their first
+        # listed type). Empty for non-visual techniques → no override.
+        "manual_visual_type": technique.target_visual or "",
     }
     req = urllib.request.Request(
         f"{server}/chat", data=json.dumps(payload).encode("utf-8"),

@@ -123,25 +123,24 @@ def _build_prompt(prose: str, mode: str, vtype: str,
     return "\n\n".join(parts)
 
 
-def synthesize_envelope(prose: str, mode: str, target_types, call_fn, idx: int = 1):
-    """Synthesize a valid ``ora-visual`` envelope from ``prose``.
+# How many acceptable kinds to attempt before giving up. The first is the
+# requested/preferred kind; the rest are the routed mode's fallbacks. Trying a
+# second kind lets a multi-kind mode degrade gracefully — e.g. if a 2x2 won't
+# build from constraint-mapping prose, a pro_con tree still ships; if a fresh
+# c4 won't build, a concept_map still ships — instead of returning no visual.
+MAX_TARGET_KINDS = 2
 
-    Args:
-        prose: the analyst's text to derive structure from.
-        mode: the Ora mode name (used for ``mode_context`` + adversarial routing).
-        target_types: ordered list of acceptable visual ``type`` strings; the
-            first is the synthesis target.
-        call_fn: ``call_fn(prompt: str) -> str`` — a bound model caller.
-        idx: figure index for the default ``id``.
 
-    Returns:
-        ``(envelope | None, attempts)`` where ``attempts`` is a list of
-        per-round ``{round, ok, reason?, errors?}`` dicts (telemetry).
-    """
+def _synthesize_one(prose: str, mode: str, vtype: str, call_fn, idx: int):
+    """Run the validate→repair loop for ONE target kind. Returns
+    ``(envelope | None, attempts)``."""
     from visual_validator import validate_envelope
     from visual_adversarial import review_envelope
+    try:
+        from visual_recovery import repair_spec
+    except Exception:
+        repair_spec = lambda e, t=None: e  # noqa: E731 — fail-open
 
-    vtype = (list(target_types) or ["concept_map"])[0]
     attempts: list[dict] = []
     errors: list[str] | None = None
     prior: dict | None = None
@@ -151,36 +150,72 @@ def synthesize_envelope(prose: str, mode: str, target_types, call_fn, idx: int =
         try:
             raw = call_fn(prompt)
         except Exception as exc:
-            attempts.append({"round": round_i, "ok": False, "reason": f"call_fn error: {exc}"})
+            attempts.append({"round": round_i, "ok": False, "kind": vtype,
+                             "reason": f"call_fn error: {exc}"})
             break
 
         env = _extract_json(raw)
         if env is None:
-            attempts.append({"round": round_i, "ok": False, "reason": "no JSON object in response"})
+            attempts.append({"round": round_i, "ok": False, "kind": vtype,
+                             "reason": "no JSON object in response"})
             errors = ["Your output was not parseable JSON. Emit ONLY a JSON object."]
             prior = None
             continue
 
         env = autofill(env, mode, vtype, idx=idx)
+        # Deterministic spec repair (drop schema-forbidden extras, fill required
+        # fields the model commonly omits — e.g. quadrant axes_independence_
+        # rationale, item bounds). Closes the gap between a structurally-sound
+        # answer and a schema-valid envelope without another model round-trip.
+        env = repair_spec(env, vtype)
 
         vres = validate_envelope(env)
         if not vres.valid:
             errs = [f"{e.get('code')}: {e.get('message')}" for e in vres.as_dict().get("errors", [])]
-            attempts.append({"round": round_i, "ok": False, "reason": "schema/structural invalid", "errors": errs})
+            attempts.append({"round": round_i, "ok": False, "kind": vtype,
+                             "reason": "schema/structural invalid", "errors": errs})
             errors, prior = errs, env
             continue
 
         review = review_envelope(env, mode)
         if review.blocks:
             errs = [f"{b.rule}: {b.message}" for b in review.blocks]
-            attempts.append({"round": round_i, "ok": False, "reason": "adversarial Critical", "errors": errs})
+            attempts.append({"round": round_i, "ok": False, "kind": vtype,
+                             "reason": "adversarial Critical", "errors": errs})
             errors, prior = errs, env
             continue
 
-        attempts.append({"round": round_i, "ok": True})
+        attempts.append({"round": round_i, "ok": True, "kind": vtype})
         return env, attempts
 
     return None, attempts
+
+
+def synthesize_envelope(prose: str, mode: str, target_types, call_fn, idx: int = 1):
+    """Synthesize a valid ``ora-visual`` envelope from ``prose``.
+
+    Args:
+        prose: the analyst's text to derive structure from.
+        mode: the Ora mode name (used for ``mode_context`` + adversarial routing).
+        target_types: ordered list of acceptable visual ``type`` strings; the
+            first is the preferred target. Up to ``MAX_TARGET_KINDS`` are tried
+            in order, so a multi-kind mode degrades to its next acceptable kind
+            rather than returning nothing.
+        call_fn: ``call_fn(prompt: str) -> str`` — a bound model caller.
+        idx: figure index for the default ``id``.
+
+    Returns:
+        ``(envelope | None, attempts)`` where ``attempts`` is a list of
+        per-round ``{round, kind, ok, reason?, errors?}`` dicts (telemetry).
+    """
+    kinds = list(target_types) or ["concept_map"]
+    all_attempts: list[dict] = []
+    for vtype in kinds[:MAX_TARGET_KINDS]:
+        env, attempts = _synthesize_one(prose, mode, vtype, call_fn, idx)
+        all_attempts.extend(attempts)
+        if env is not None:
+            return env, all_attempts
+    return None, all_attempts
 
 
 __all__ = ["synthesize_envelope", "autofill", "SCHEMA_VERSION", "MAX_REPAIR_ROUNDS"]
