@@ -1,7 +1,7 @@
 {
   "_comment": "Mode-to-visual configuration. Canonical source: vault/Reference — Mode-to-Visual Configuration.md. Keep in sync manually until generation is automated.",
   "_schema_version": "0.2",
-  "_last_updated": "2026-04-17",
+  "_last_updated": "2026-06-13",
   "modes": {
     "spatial-reasoning": {
       "visual_types": ["concept_map", "causal_loop_diagram", "flowchart", "custom_annotated_svg"],
@@ -13,6 +13,36 @@
       "visual_types": ["causal_loop_diagram", "stock_and_flow"],
       "relation_to_prose_default": "visually_native",
       "adversarial_strictness": "critical"
+    },
+    "systems-dynamics-causal": {
+      "visual_types": ["causal_loop_diagram"],
+      "relation_to_prose_default": "visually_native",
+      "adversarial_strictness": "critical",
+      "notes": "Added 2026-06-13: causal-loop side of the split legacy systems-dynamics mode. Restores the visual-synthesis gate for the causal-loop-diagram tool."
+    },
+    "systems-dynamics-structural": {
+      "visual_types": ["stock_and_flow"],
+      "relation_to_prose_default": "visually_native",
+      "adversarial_strictness": "critical",
+      "notes": "Added 2026-06-13: structural/stock-and-flow side of the split legacy systems-dynamics mode."
+    },
+    "causal-dag": {
+      "visual_types": ["causal_dag"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Added 2026-06-13: live mode for the causal-dag tool (lineage: relationship-mapping / consequences-and-sequel)."
+    },
+    "decision-architecture": {
+      "visual_types": ["influence_diagram"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "critical",
+      "notes": "Added 2026-06-13: live mode for the influence-diagram tool (lineage: decision-under-uncertainty / strategic-interaction)."
+    },
+    "fragility-antifragility-audit": {
+      "visual_types": ["bow_tie"],
+      "relation_to_prose_default": "integrated",
+      "adversarial_strictness": "standard",
+      "notes": "Added 2026-06-13: live mode for the bow-tie-diagram tool."
     },
     "competing-hypotheses": {
       "visual_types": ["ach_matrix"],
