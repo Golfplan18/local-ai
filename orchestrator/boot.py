@@ -12012,7 +12012,22 @@ def _call_claude_code_subscription(messages: list, endpoint: dict) -> str:
     cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
     workdir = os.path.expanduser("~/ora/data/claude-code-runs")
     os.makedirs(workdir, exist_ok=True)
-    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    # Scrub ANTHROPIC_API_KEY (so the CLI can never silently bill the metered
+    # API) AND the inherited Claude Code session / SDK-OAuth-refresh context.
+    # The server is a long-running process launched from a Claude Code session;
+    # if the spawned `claude -p` inherits that session's id plus the
+    # "SDK/host handles refresh" flags, it defers token refresh to the (now
+    # departed) parent session and the OAuth token goes stale after a few
+    # hours — Opus calls then fail `required_model_missing` while fresh
+    # processes (live keychain) keep working. Dropping these forces standalone
+    # local-keychain auth, which refreshes on its own. Verified: a scrubbed-env
+    # Opus call still serves claude-opus-4-8.
+    _scrub = {
+        "ANTHROPIC_API_KEY", "CLAUDE_CODE_SESSION_ID",
+        "CLAUDE_CODE_SDK_HAS_OAUTH_REFRESH",
+        "CLAUDE_CODE_SDK_HAS_HOST_AUTH_REFRESH", "CLAUDE_CODE_ENTRYPOINT",
+    }
+    env = {k: v for k, v in os.environ.items() if k not in _scrub}
     sys_file = None
     try:
         cmd = [cli, "-p", "--model", model,
