@@ -544,57 +544,40 @@
         { id: 'elevenlabs', label: 'ElevenLabs' },
       ], api.tts_provider || src.tts_provider));
     _appendNote(
-      'Transcription and text-to-speech are an explicit choice (local '
-      + 'Whisper / macOS say are free) — pick a cloud provider above and set '
-      + 'its key below. Everything else turns on automatically once its key '
-      + 'is present: search providers, model intelligence, economic data, and '
-      + 'direct model routing.'
+      'Whisper / macOS say are free — pick a cloud provider above only to '
+      + 'override. Keys are stored in your OS keychain (Credential Manager on '
+      + 'Windows), never shown back. Click a name (↗) for its key page. '
+      + 'OpenRouter is the only essential key; a vendor’s own key routes direct, '
+      + 'skipping the ~5.5% markup.'
     );
 
-    // ── API keys ───────────────────────────────────────────────────────
-    var keysHeader = document.createElement('h3');
-    keysHeader.className = 'ora-settings-section-header';
-    keysHeader.textContent = 'API keys';
-    _tabContentEl.appendChild(keysHeader);
-
-    var keysHint = document.createElement('p');
-    keysHint.className = 'ora-settings-note';
-    keysHint.innerHTML = 'Keys are stored in your system keychain and never shown '
-      + 'back in the browser — to update one, type a new value and Save. '
-      + 'Click a provider’s name (<span class="ora-settings-apikey-extlink">↗</span>) '
-      + 'to open its signup / key page; hover it for details. OpenRouter is the one '
-      + 'essential key (one key, hundreds of models). Adding a vendor’s own key lets '
-      + 'Ora call that vendor directly, bypassing OpenRouter’s ~5.5% markup (same '
-      + 'model; falls back to OpenRouter automatically).';
-    _tabContentEl.appendChild(keysHint);
-
-    // Two-column grid, grouped by category in the server-provided order.
+    // Dense two-column grid. The fine-grained categories are merged into a
+    // few sections so the headers + odd-sized groups don't waste the second
+    // column. Providers render in registry order within each section.
+    var SECTIONS = [
+      { label: 'Gateway',              cats: ['gateway'] },
+      { label: 'US AI providers',      cats: ['llm_us'] },
+      { label: 'Chinese AI providers', cats: ['llm_cn'] },
+      { label: 'Search & data',        cats: ['search', 'metadata', 'econ'] },
+      { label: 'Speech & image',       cats: ['transcription', 'tts', 'image'] },
+    ];
     var grid = document.createElement('div');
     grid.className = 'ora-settings-apikeys-grid';
     _tabContentEl.appendChild(grid);
 
-    var groups = _providerGroups.length
-      ? _providerGroups
-      : [[null, '']];  // fallback: one ungrouped bucket
     var placed = {};
-    groups.forEach(function (pair) {
-      var cat = pair[0], groupLabel = pair[1];
+    SECTIONS.forEach(function (sec) {
       var rows = _apiKeys.filter(function (r) {
-        return cat === null ? true : r.category === cat;
+        return sec.cats.indexOf(r.category) !== -1;
       });
       if (!rows.length) return;
-      if (groupLabel) {
-        var gh = document.createElement('div');
-        gh.className = 'ora-settings-apikey-group';
-        gh.textContent = groupLabel;
-        grid.appendChild(gh);
-      }
-      rows.forEach(function (r) {
-        placed[r.provider] = true;
-        _appendApiKeyCard(grid, r);
-      });
+      var gh = document.createElement('div');
+      gh.className = 'ora-settings-apikey-group';
+      gh.textContent = sec.label;
+      grid.appendChild(gh);
+      rows.forEach(function (r) { placed[r.provider] = true; _appendApiKeyCard(grid, r); });
     });
-    // Safety net: any provider not matched by a group still renders.
+    // Safety net: any provider whose category isn't in a section still renders.
     var orphans = _apiKeys.filter(function (r) { return !placed[r.provider]; });
     if (orphans.length) {
       var oh = document.createElement('div');
@@ -747,13 +730,19 @@
     if (row.verifiable) {
       verifyBtn = document.createElement('button');
       verifyBtn.type = 'button';
-      verifyBtn.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--ghost';
+      verifyBtn.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--ghost ora-settings-apikey-vslot';
       verifyBtn.textContent = 'Verify';
       verifyBtn.title = 'Check the saved (or typed) key against the provider';
       verifyBtn.addEventListener('click', function () {
         _verifyApiKey(row.provider, input.value, msg, verifyBtn);
       });
       line.appendChild(verifyBtn);
+    } else {
+      // Reserve the Verify slot so status + Remove stay column-aligned.
+      var vspacer = document.createElement('span');
+      vspacer.className = 'ora-settings-apikey-vslot';
+      vspacer.setAttribute('aria-hidden', 'true');
+      line.appendChild(vspacer);
     }
 
     var status = document.createElement('span');
