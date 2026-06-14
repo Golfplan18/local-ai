@@ -213,20 +213,19 @@
   .ora-settings-apikeys-grid { grid-template-columns: 1fr; }
 }
 
+/* One provider per row. The card is a flex column so the optional
+   feedback line (validation / verify result) can wrap underneath, but
+   the normal resting state is a single line: name · key · Save · Verify
+   · status · Remove. */
 .ora-settings-apikey-card {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 8px 10px;
-  border: 1px solid var(--background-modifier-border, #3A3022);
-  border-radius: 6px;
-  background: var(--background-primary-alt, rgba(255, 255, 255, 0.012));
+  gap: 2px;
+  padding: 3px 8px;
+  border-radius: 5px;
   transition: background-color 0.3s ease-out, box-shadow 0.3s ease-out;
 }
 
-/* Applied by settings-panel.js when an `open-settings` CustomEvent
-   names a specific provider (deferrals row 52). Amber = Ora's
-   "attention" tone. Auto-cleared 3s after application. */
 .ora-settings-apikey-card--highlight {
   background: rgba(var(--color-orange-rgb, 201, 125, 85), 0.14);
   box-shadow: 0 0 0 1px rgba(255, 184, 108, 0.6);
@@ -238,73 +237,45 @@
   50%      { box-shadow: 0 0 0 2px rgba(255, 184, 108, 0.95); }
 }
 
-.ora-settings-apikey-head {
+/* The single line. */
+.ora-settings-apikey-row1 {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 
+/* The provider name is the link to its key page. Truncates with an
+   ellipsis rather than wrapping, so the row stays one line. */
 .ora-settings-apikey-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 180px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-normal, #E8E0CC);
-}
-
-/* Status chip floats to the right edge of the header. */
-.ora-settings-apikey-head .ora-settings-apikey-status {
-  margin-left: auto;
-}
-
-.ora-settings-apikey-badge {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  padding: 1px 6px;
-  border-radius: 3px;
-}
-.ora-settings-apikey-badge--req {
-  background: rgba(var(--color-orange-rgb, 201, 125, 85), 0.18);
-  color: var(--color-orange, #C97D55);
-}
-.ora-settings-apikey-badge--direct {
-  background: rgba(var(--color-green-rgb, 135, 144, 91), 0.16);
-  color: var(--color-green, #87905B);
-}
-
-.ora-settings-apikey-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
-  font-size: 11.5px;
-  color: var(--text-muted, #A89F8A);
-  line-height: 1.35;
-}
-
-.ora-settings-apikey-link {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--link-color, #A48055);
   text-decoration: none;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.ora-settings-apikey-link:hover { text-decoration: underline; }
-
-.ora-settings-apikey-cardnote { flex: 1 1 auto; }
-
-.ora-settings-apikey-inputrow {
-  display: flex;
-  gap: 6px;
-  align-items: center;
+a.ora-settings-apikey-label:hover {
+  color: var(--link-color, #A48055);
+  text-decoration: underline;
 }
-.ora-settings-apikey-inputrow .ora-settings-apikey-input { flex: 1 1 auto; }
-.ora-settings-apikey-inputrow .ora-settings-btn--small { flex: 0 0 auto; }
+.ora-settings-apikey-label .ora-settings-apikey-extlink {
+  font-weight: 400;
+  opacity: 0.65;
+  margin-left: 2px;
+}
+
+/* Status chip sits right before Remove. */
+.ora-settings-apikey-row1 .ora-settings-apikey-status { flex: 0 0 auto; }
+.ora-settings-apikey-row1 .ora-settings-btn--small { flex: 0 0 auto; }
 
 .ora-settings-apikey-msg {
   font-size: 11px;
-  min-height: 0;
-  line-height: 1.35;
+  line-height: 1.3;
+  padding-left: 2px;
   color: var(--text-muted, #A89F8A);
 }
 .ora-settings-apikey-msg:empty { display: none; }
@@ -339,7 +310,11 @@
   font-size: 12px;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   outline: none;
-  width: 100%;
+  /* Sized for the single row: grows to fill the gap between the name and
+     the action buttons, but never dominates. */
+  flex: 1 1 auto;
+  min-width: 70px;
+  max-width: 260px;
 }
 
 .ora-settings-apikey-input:focus {

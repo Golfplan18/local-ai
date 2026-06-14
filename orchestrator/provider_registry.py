@@ -96,7 +96,7 @@ PROVIDERS: list[dict] = [
         "note": "Native Messages API (keeps prompt caching).",
     },
     {
-        "id": "openai", "label": "OpenAI (chat / vision / TTS)", "category": "llm_us",
+        "id": "openai", "label": "OpenAI", "category": "llm_us",
         "keyring_username": "openai-api-key", "env_var": "OPENAI_API_KEY",
         "signup_url": "https://platform.openai.com/signup",
         "console_url": "https://platform.openai.com/api-keys",
@@ -117,7 +117,7 @@ PROVIDERS: list[dict] = [
         "note": "Free tier available in Google AI Studio.",
     },
     {
-        "id": "xai", "label": "xAI (Grok)", "category": "llm_us",
+        "id": "xai", "label": "xAI Grok", "category": "llm_us",
         "keyring_username": "xai-api-key", "env_var": "XAI_API_KEY",
         "signup_url": "https://console.x.ai/",
         "console_url": "https://console.x.ai/team/default/api-keys",
@@ -127,7 +127,7 @@ PROVIDERS: list[dict] = [
         "note": "OpenAI-compatible.",
     },
     {
-        "id": "meta", "label": "Meta (Llama API)", "category": "llm_us",
+        "id": "meta", "label": "Meta Llama", "category": "llm_us",
         "keyring_username": "meta-api-key", "env_var": "LLAMA_API_KEY",
         "signup_url": "https://llama.developer.meta.com/",
         "console_url": "https://llama.developer.meta.com/api-keys",
@@ -169,7 +169,7 @@ PROVIDERS: list[dict] = [
         "verifiable": True, "note": "OpenAI-compatible.",
     },
     {
-        "id": "qwen", "label": "Alibaba Qwen (DashScope)", "category": "llm_cn",
+        "id": "qwen", "label": "Alibaba Qwen", "category": "llm_cn",
         "keyring_username": "qwen-api-key", "env_var": "DASHSCOPE_API_KEY",
         "signup_url": "https://www.alibabacloud.com/en/product/modelstudio",
         "console_url": "https://modelstudio.console.alibabacloud.com/?tab=playground#/api-key",
@@ -180,7 +180,7 @@ PROVIDERS: list[dict] = [
         "note": "International DashScope endpoint, OpenAI-compatible.",
     },
     {
-        "id": "moonshot", "label": "Moonshot AI (Kimi)", "category": "llm_cn",
+        "id": "moonshot", "label": "Moonshot Kimi", "category": "llm_cn",
         "keyring_username": "moonshot-api-key", "env_var": "MOONSHOT_API_KEY",
         "signup_url": "https://platform.kimi.ai",
         "console_url": "https://platform.kimi.ai/console/api-keys",
@@ -200,7 +200,7 @@ PROVIDERS: list[dict] = [
         "verifiable": True, "note": "International endpoint, OpenAI-compatible.",
     },
     {
-        "id": "xiaomi", "label": "Xiaomi (MiMo)", "category": "llm_cn",
+        "id": "xiaomi", "label": "Xiaomi MiMo", "category": "llm_cn",
         "keyring_username": "xiaomi-api-key", "env_var": "XIAOMI_MIMO_API_KEY",
         "signup_url": "https://platform.xiaomimimo.com/",
         "console_url": "https://platform.xiaomimimo.com/#/console/api-keys",
@@ -212,7 +212,7 @@ PROVIDERS: list[dict] = [
 
     # ── Web search (auto-activate via cascade) ───────────────────────────
     {
-        "id": "tavily", "label": "Tavily search", "category": "search",
+        "id": "tavily", "label": "Tavily", "category": "search",
         "keyring_username": "tavily-api-key", "env_var": "TAVILY_API_KEY",
         "signup_url": "https://app.tavily.com/",
         "console_url": "https://app.tavily.com/home",
@@ -221,7 +221,7 @@ PROVIDERS: list[dict] = [
         "verifiable": True, "note": "Cascade tier 1. Free ~1,000/mo.",
     },
     {
-        "id": "brave", "label": "Brave Search", "category": "search",
+        "id": "brave", "label": "Brave", "category": "search",
         "keyring_username": "brave-api-key", "env_var": "BRAVE_API_KEY",
         "signup_url": "https://api-dashboard.search.brave.com/register",
         "console_url": "https://api-dashboard.search.brave.com/app/keys",
@@ -230,7 +230,7 @@ PROVIDERS: list[dict] = [
         "verifiable": True, "note": "Cascade tier 2. Free ~2,000/mo (subscribe Free plan).",
     },
     {
-        "id": "exa", "label": "Exa neural search", "category": "search",
+        "id": "exa", "label": "Exa", "category": "search",
         "keyring_username": "exa-api-key", "env_var": "EXA_API_KEY",
         "signup_url": "https://dashboard.exa.ai/",
         "console_url": "https://dashboard.exa.ai/api-keys",
@@ -253,7 +253,7 @@ PROVIDERS: list[dict] = [
 
     # ── Economic data ────────────────────────────────────────────────────
     {
-        "id": "fred", "label": "FRED (St. Louis Fed)", "category": "econ",
+        "id": "fred", "label": "FRED", "category": "econ",
         "keyring_username": "fred-api-key", "env_var": "FRED_API_KEY",
         "signup_url": "https://fredaccount.stlouisfed.org/login/secure/",
         "console_url": "https://fredaccount.stlouisfed.org/apikeys",
@@ -264,7 +264,7 @@ PROVIDERS: list[dict] = [
 
     # ── Transcription (explicit provider choice; not silent default) ─────
     {
-        "id": "assemblyai", "label": "AssemblyAI (transcription)", "category": "transcription",
+        "id": "assemblyai", "label": "AssemblyAI", "category": "transcription",
         "keyring_username": "assemblyai-api-key", "env_var": "ASSEMBLYAI_API_KEY",
         "signup_url": "https://www.assemblyai.com/dashboard/signup",
         "console_url": "https://www.assemblyai.com/dashboard/api-keys",
@@ -273,7 +273,7 @@ PROVIDERS: list[dict] = [
         "verifiable": False, "note": "Select under Transcription to use.",
     },
     {
-        "id": "deepgram", "label": "Deepgram (transcription)", "category": "transcription",
+        "id": "deepgram", "label": "Deepgram", "category": "transcription",
         "keyring_username": "deepgram-api-key", "env_var": "DEEPGRAM_API_KEY",
         "signup_url": "https://console.deepgram.com/signup",
         "console_url": "https://console.deepgram.com/",
@@ -284,7 +284,7 @@ PROVIDERS: list[dict] = [
 
     # ── Text-to-speech ───────────────────────────────────────────────────
     {
-        "id": "elevenlabs", "label": "ElevenLabs (TTS)", "category": "tts",
+        "id": "elevenlabs", "label": "ElevenLabs", "category": "tts",
         "keyring_username": "elevenlabs-api-key", "env_var": "ELEVENLABS_API_KEY",
         "signup_url": "https://elevenlabs.io/sign-up",
         "console_url": "https://elevenlabs.io/app/settings/api-keys",
@@ -295,7 +295,7 @@ PROVIDERS: list[dict] = [
 
     # ── Image & video ────────────────────────────────────────────────────
     {
-        "id": "stability", "label": "Stability AI (image)", "category": "image",
+        "id": "stability", "label": "Stability AI", "category": "image",
         "keyring_username": "stability-api-key", "env_var": "STABILITY_API_KEY",
         "signup_url": "https://platform.stability.ai",
         "console_url": "https://platform.stability.ai/account/keys",
@@ -304,7 +304,7 @@ PROVIDERS: list[dict] = [
         "verifiable": False, "note": "Image fallback. Pay-per-image.",
     },
     {
-        "id": "replicate", "label": "Replicate (image / video)", "category": "image",
+        "id": "replicate", "label": "Replicate", "category": "image",
         "keyring_username": "replicate-api-key", "env_var": "REPLICATE_API_TOKEN",
         "signup_url": "https://replicate.com/signin",
         "console_url": "https://replicate.com/account/api-tokens",
@@ -313,7 +313,7 @@ PROVIDERS: list[dict] = [
         "verifiable": False, "note": "Long-tail image / video model host.",
     },
     {
-        "id": "tensorart", "label": "Tensor.Art (image)", "category": "image",
+        "id": "tensorart", "label": "Tensor.Art", "category": "image",
         "keyring_username": "tensorart-api-key", "env_var": "TENSORART_API_KEY",
         "signup_url": "https://tensor.art/",
         "console_url": "https://tams.tensor.art/apps",
