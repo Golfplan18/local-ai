@@ -38,6 +38,15 @@ import json
 import threading
 from pathlib import Path
 
+# Provider registry is the single source of truth for which providers
+# exist, their keyring usernames, labels, and signup/console metadata.
+# Imported defensively because user_settings is loaded both as a bare
+# module (orchestrator/ on sys.path) and as ``orchestrator.user_settings``.
+try:  # pragma: no cover - import shim
+    import provider_registry as _registry
+except ImportError:  # pragma: no cover
+    from orchestrator import provider_registry as _registry
+
 # ── paths ────────────────────────────────────────────────────────────────────
 
 _CONFIG_DIR = Path.home() / "ora" / "config"
@@ -81,35 +90,15 @@ DEFAULTS: dict = {
     },
 }
 
-# Whitelisted providers for keyring writes/reads.
-# Maps provider id → keyring username (under service "ora").
-PROVIDER_KEYRING_USERNAME = {
-    "anthropic": "anthropic-api-key",
-    "openai": "openai-api-key",
-    "gemini": "gemini-api-key",
-    "assemblyai": "assemblyai-api-key",
-    "deepgram": "deepgram-api-key",
-    "elevenlabs": "elevenlabs-api-key",
-    "stability": "stability-api-key",
-    "replicate": "replicate-api-key",
-    "tensorart": "tensorart-api-key",
-    "artificial_analysis": "aa-api-key",
-    # OpenAI TTS uses the same key as OpenAI.
-}
+# Whitelisted providers for keyring writes/reads — derived from the
+# provider registry (the single source of truth). Maps provider id →
+# keyring username (under service "ora"). Adding a provider is a one-entry
+# edit in provider_registry.py; this map and the labelled display order
+# update automatically. OpenAI TTS reuses the OpenAI key.
+PROVIDER_KEYRING_USERNAME = _registry.keyring_username_map()
 
-# Sub-set of providers whose keys are *labelled* in the UI (display order).
-PROVIDER_LABELS = {
-    "anthropic": "Anthropic (Claude)",
-    "openai": "OpenAI (chat / vision / TTS)",
-    "gemini": "Google Gemini",
-    "assemblyai": "AssemblyAI (transcription)",
-    "deepgram": "Deepgram (transcription)",
-    "elevenlabs": "ElevenLabs (TTS)",
-    "stability": "Stability AI (image generation)",
-    "replicate": "Replicate (image / video generation)",
-    "tensorart": "Tensor.Art (image generation)",
-    "artificial_analysis": "Artificial Analysis (model intelligence + pricing)",
-}
+# Providers whose keys are labelled in the UI, in registry (display) order.
+PROVIDER_LABELS = _registry.labels_map()
 
 _KEYRING_SERVICE = "ora"
 _lock = threading.Lock()
@@ -300,15 +289,35 @@ def api_key_present(provider: str) -> bool:
 
 
 def list_api_key_status() -> list[dict]:
-    """Return a per-provider list of ``{provider, label, present}`` rows."""
+    """Return enriched per-provider rows for the settings panel.
+
+    Each row carries the registry metadata (label, category, signup /
+    console URLs, key-format hint, essential / auto-activate / direct /
+    verifiable flags, note) plus the live ``present`` boolean. Secrets are
+    never included — only whether a key exists. The panel renders the
+    two-column grouped UI entirely from these rows.
+    """
     rows = []
-    for provider, label in PROVIDER_LABELS.items():
-        rows.append({
-            "provider": provider,
-            "label": label,
-            "present": api_key_present(provider),
-        })
+    for row in _registry.ui_rows():
+        row = dict(row)
+        row["present"] = api_key_present(row["provider"])
+        rows.append(row)
     return rows
+
+
+def group_order() -> list[list]:
+    """[[category, group_label], …] in render order, for the panel."""
+    return [list(pair) for pair in _registry.GROUP_ORDER]
+
+
+def aa_path_auto() -> str:
+    """Auto-derived AA data path: 'api' when an AA key is present, else 'scrape'.
+
+    Key-presence is the enable signal — no toggle. ``ORA_AA_PATH`` and the
+    sync script's ``--aa-path`` flag still override (see
+    scripts/sync_model_registry.py::_resolve_aa_path).
+    """
+    return "api" if api_key_present("artificial_analysis") else "scrape"
 
 
 __all__ = [
@@ -324,4 +333,6 @@ __all__ = [
     "delete_api_key",
     "api_key_present",
     "list_api_key_status",
+    "group_order",
+    "aa_path_auto",
 ]

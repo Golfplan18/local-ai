@@ -1729,7 +1729,7 @@ def _resolve_aa_path(args) -> str:
     env_path = (os.environ.get("ORA_AA_PATH") or "").strip().lower()
     if env_path in ("scrape", "api"):
         return env_path
-    # User-settings is the persistent surface the Settings panel writes.
+    # An explicit user-setting still overrides (legacy panels wrote one).
     # Import lazily so this script still runs in environments where
     # orchestrator/ isn't on the path (it normally is, via ORA_HOME).
     try:
@@ -1740,6 +1740,11 @@ def _resolve_aa_path(args) -> str:
             return stored
     except Exception:
         pass
+    # Auto-activate: if an AA key is configured (keyring 'ora/aa-api-key' or
+    # AA_API_KEY env) use the API path — having the key is the enable signal,
+    # no toggle. The CLI flag / ORA_AA_PATH / explicit user-setting override.
+    if _load_aa_api_key():
+        return "api"
     return "scrape"
 
 

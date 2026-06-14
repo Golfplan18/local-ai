@@ -28,6 +28,7 @@
   var _activeTab = 'models';
   var _settings = null;
   var _apiKeys = [];
+  var _providerGroups = [];   // [[category, group label], …] render order
   var _dirty = {};       // pending changes, applied on Save
 
   // Tabs declared in display order. The Buckets tab was retired with
@@ -542,21 +543,15 @@
         { id: 'openai',     label: 'OpenAI TTS' },
         { id: 'elevenlabs', label: 'ElevenLabs' },
       ], api.tts_provider || src.tts_provider));
-    _appendField('AA intelligence data source',
-      _selectInput('external_apis.aa_path', [
-        { id: 'scrape', label: 'Scrape — public page, no key needed (default)' },
-        { id: 'api',    label: 'API — resilient at scale, requires key (set below)' },
-      ], api.aa_path || src.aa_path));
     _appendNote(
-      'Selecting an external transcription / TTS provider also requires '
-      + 'setting that provider\'s API key below. The AA source toggle '
-      + 'controls how Ora pulls model intelligence + pricing data: scrape '
-      + 'reads the public page (works without a key but is fragile if AA '
-      + 'changes their site); API is documented and stable but needs an '
-      + 'AA API key in the Artificial Analysis row below.'
+      'Transcription and text-to-speech are an explicit choice (local '
+      + 'Whisper / macOS say are free) — pick a cloud provider above and set '
+      + 'its key below. Everything else turns on automatically once its key '
+      + 'is present: search providers, model intelligence, economic data, and '
+      + 'direct model routing.'
     );
 
-    // API key rows
+    // ── API keys ───────────────────────────────────────────────────────
     var keysHeader = document.createElement('h3');
     keysHeader.className = 'ora-settings-section-header';
     keysHeader.textContent = 'API keys';
@@ -564,14 +559,50 @@
 
     var keysHint = document.createElement('p');
     keysHint.className = 'ora-settings-note';
-    keysHint.textContent = 'Keys are stored in the macOS keychain. They are never '
-      + 'shown back in the browser; if you need to update one, type a new '
-      + 'value and click the Save button on that row.';
+    keysHint.innerHTML = 'Keys are stored in your system keychain and never shown '
+      + 'back in the browser — to update one, type a new value and Save. Use '
+      + '<strong>Get key&nbsp;↗</strong> to open each provider’s signup / key '
+      + 'page. OpenRouter is the one essential key (one key, hundreds of models). '
+      + 'Adding a vendor’s own key below lets Ora call that vendor directly, '
+      + 'bypassing OpenRouter’s ~5.5% markup (same model; falls back to '
+      + 'OpenRouter automatically).';
     _tabContentEl.appendChild(keysHint);
 
-    _apiKeys.forEach(function (row) {
-      _appendApiKeyRow(row);
+    // Two-column grid, grouped by category in the server-provided order.
+    var grid = document.createElement('div');
+    grid.className = 'ora-settings-apikeys-grid';
+    _tabContentEl.appendChild(grid);
+
+    var groups = _providerGroups.length
+      ? _providerGroups
+      : [[null, '']];  // fallback: one ungrouped bucket
+    var placed = {};
+    groups.forEach(function (pair) {
+      var cat = pair[0], groupLabel = pair[1];
+      var rows = _apiKeys.filter(function (r) {
+        return cat === null ? true : r.category === cat;
+      });
+      if (!rows.length) return;
+      if (groupLabel) {
+        var gh = document.createElement('div');
+        gh.className = 'ora-settings-apikey-group';
+        gh.textContent = groupLabel;
+        grid.appendChild(gh);
+      }
+      rows.forEach(function (r) {
+        placed[r.provider] = true;
+        _appendApiKeyCard(grid, r);
+      });
     });
+    // Safety net: any provider not matched by a group still renders.
+    var orphans = _apiKeys.filter(function (r) { return !placed[r.provider]; });
+    if (orphans.length) {
+      var oh = document.createElement('div');
+      oh.className = 'ora-settings-apikey-group';
+      oh.textContent = 'Other';
+      grid.appendChild(oh);
+      orphans.forEach(function (r) { _appendApiKeyCard(grid, r); });
+    }
 
     // If a previous open({highlight:...}) call queued a row to
     // emphasize (e.g., from the open-settings event listener wired
@@ -642,23 +673,67 @@
     );
   }
 
-  function _appendApiKeyRow(row) {
-    var wrap = document.createElement('div');
-    wrap.className = 'ora-settings-apikey-row';
-    // Tag with the provider id so `open({highlight: <id>})` can find
-    // the row to scroll-into-view + flash. Used by the `open-settings`
-    // CustomEvent listener wired at module load (deferrals row 52).
-    if (row.provider) wrap.dataset.provider = row.provider;
+  function _badge(text, kind) {
+    var b = document.createElement('span');
+    b.className = 'ora-settings-apikey-badge ora-settings-apikey-badge--' + kind;
+    b.textContent = text;
+    return b;
+  }
 
-    var label = document.createElement('label');
+  // Compact provider card rendered into the two-column grid. Carries the
+  // signup/key link, status chip, key input with inline format hint, and
+  // Save / Verify / Remove. Tagged data-provider so open({highlight:<id>})
+  // can scroll-to + flash it.
+  function _appendApiKeyCard(parent, row) {
+    var card = document.createElement('div');
+    card.className = 'ora-settings-apikey-card';
+    if (row.provider) card.dataset.provider = row.provider;
+
+    // Header: label + badge + status chip
+    var head = document.createElement('div');
+    head.className = 'ora-settings-apikey-head';
+    var label = document.createElement('span');
     label.className = 'ora-settings-apikey-label';
     label.textContent = row.label;
+    head.appendChild(label);
+    if (row.essential) head.appendChild(_badge('Required', 'req'));
+    else if (row.direct) head.appendChild(_badge('Direct', 'direct'));
 
     var status = document.createElement('span');
     status.className = 'ora-settings-apikey-status '
       + (row.present ? 'ora-settings-apikey-status--set'
                      : 'ora-settings-apikey-status--unset');
     status.textContent = row.present ? 'Set' : 'Not set';
+    head.appendChild(status);
+    card.appendChild(head);
+
+    // Meta: get/manage-key link + one-line note
+    var meta = document.createElement('div');
+    meta.className = 'ora-settings-apikey-meta';
+    if (row.console_url) {
+      var link = document.createElement('a');
+      link.className = 'ora-settings-apikey-link';
+      link.href = row.console_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = (row.present ? 'Manage key ↗' : 'Get key ↗');
+      meta.appendChild(link);
+    }
+    if (row.note) {
+      var note = document.createElement('span');
+      note.className = 'ora-settings-apikey-cardnote';
+      note.textContent = row.note;
+      meta.appendChild(note);
+    }
+    card.appendChild(meta);
+
+    // Inline message line (validation hint / save + verify feedback)
+    var msg = document.createElement('div');
+    msg.className = 'ora-settings-apikey-msg';
+
+    // Input + actions
+    var inputRow = document.createElement('div');
+    inputRow.className = 'ora-settings-apikey-inputrow';
 
     var input = document.createElement('input');
     input.type = 'password';
@@ -666,30 +741,90 @@
                                      : 'paste API key here';
     input.className = 'ora-settings-apikey-input';
     input.autocomplete = 'off';
+    // Non-blocking format hint as the user types.
+    if (row.key_prefix) {
+      input.addEventListener('input', function () {
+        var v = input.value.trim();
+        if (v.length > 6 && v.indexOf(row.key_prefix) !== 0) {
+          msg.textContent = 'Heads up: ' + row.label + ' keys usually start with “'
+            + row.key_prefix + '”.';
+          msg.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--warn';
+        } else if (msg.classList.contains('ora-settings-apikey-msg--warn')) {
+          msg.textContent = '';
+          msg.className = 'ora-settings-apikey-msg';
+        }
+      });
+    }
 
     var saveBtn = document.createElement('button');
     saveBtn.type = 'button';
     saveBtn.className = 'ora-settings-btn ora-settings-btn--small';
-    saveBtn.textContent = 'Save key';
-    saveBtn.addEventListener('click', function () {
-      _saveApiKey(row.provider, input.value, status, input, saveBtn, removeBtn);
-    });
+    saveBtn.textContent = 'Save';
+
+    var verifyBtn = null;
+    if (row.verifiable) {
+      verifyBtn = document.createElement('button');
+      verifyBtn.type = 'button';
+      verifyBtn.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--ghost';
+      verifyBtn.textContent = 'Verify';
+      verifyBtn.title = 'Check the saved (or typed) key against the provider';
+      verifyBtn.addEventListener('click', function () {
+        _verifyApiKey(row.provider, input.value, msg, verifyBtn);
+      });
+    }
 
     var removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--danger';
     removeBtn.textContent = 'Remove';
     removeBtn.disabled = !row.present;
+
+    saveBtn.addEventListener('click', function () {
+      _saveApiKey(row.provider, input.value, status, input, saveBtn, removeBtn, msg);
+    });
     removeBtn.addEventListener('click', function () {
-      _deleteApiKey(row.provider, status, input, saveBtn, removeBtn);
+      _deleteApiKey(row.provider, status, input, saveBtn, removeBtn, msg);
     });
 
-    wrap.appendChild(label);
-    wrap.appendChild(status);
-    wrap.appendChild(input);
-    wrap.appendChild(saveBtn);
-    wrap.appendChild(removeBtn);
-    _tabContentEl.appendChild(wrap);
+    inputRow.appendChild(input);
+    inputRow.appendChild(saveBtn);
+    if (verifyBtn) inputRow.appendChild(verifyBtn);
+    inputRow.appendChild(removeBtn);
+    card.appendChild(inputRow);
+    card.appendChild(msg);
+
+    parent.appendChild(card);
+  }
+
+  function _verifyApiKey(provider, value, msgEl, btn) {
+    btn.disabled = true;
+    var prev = btn.textContent;
+    btn.textContent = 'Checking…';
+    msgEl.textContent = '';
+    msgEl.className = 'ora-settings-apikey-msg';
+    fetch('/api/settings/api-key/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: provider, value: (value || '').trim() }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.ok === true) {
+          msgEl.textContent = '✓ ' + (res.message || 'Key works.');
+          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--ok';
+        } else if (res.ok === false) {
+          msgEl.textContent = '✗ ' + (res.message || 'Key rejected.');
+          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
+        } else {
+          msgEl.textContent = (res.message || res.error || 'Could not verify.');
+          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--warn';
+        }
+      })
+      .catch(function (err) {
+        msgEl.textContent = 'Verify failed: ' + err.message;
+        msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
+      })
+      .then(function () { btn.disabled = false; btn.textContent = prev; });
   }
 
   // ── input builders ───────────────────────────────────────────────────────
@@ -817,6 +952,7 @@
       .then(function (data) {
         _settings = data.settings || {};
         _apiKeys = data.api_keys || [];
+        _providerGroups = data.provider_groups || [];
         _dirty = {};
         _renderTabContent();
         _setStatus('');
@@ -864,10 +1000,13 @@
       });
   }
 
-  function _saveApiKey(provider, value, statusEl, inputEl, saveBtn, removeBtn) {
+  function _saveApiKey(provider, value, statusEl, inputEl, saveBtn, removeBtn, msgEl) {
     var v = (value || '').trim();
     if (!v) {
-      statusEl.textContent = 'Enter a value first.';
+      if (msgEl) {
+        msgEl.textContent = 'Enter a value first.';
+        msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--warn';
+      }
       return;
     }
     saveBtn.disabled = true;
@@ -888,18 +1027,25 @@
         inputEl.value = '';
         inputEl.placeholder = '••••••••  (replace by typing new value)';
         removeBtn.disabled = false;
+        if (msgEl) {
+          msgEl.textContent = 'Saved ✓';
+          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--ok';
+        }
         // Reflect in the cached state for any later open without refetch.
         _apiKeys.forEach(function (row) {
           if (row.provider === provider) row.present = true;
         });
       })
       .catch(function (err) {
-        statusEl.textContent = 'Save failed: ' + err.message;
+        if (msgEl) {
+          msgEl.textContent = 'Save failed: ' + err.message;
+          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
+        }
       })
       .then(function () { saveBtn.disabled = false; });
   }
 
-  function _deleteApiKey(provider, statusEl, inputEl, saveBtn, removeBtn) {
+  function _deleteApiKey(provider, statusEl, inputEl, saveBtn, removeBtn, msgEl) {
     if (!confirm('Remove the ' + provider + ' API key from this machine?\n'
                   + 'You can paste it back in later if you change your mind.')) return;
     removeBtn.disabled = true;
@@ -916,12 +1062,16 @@
         statusEl.textContent = 'Not set';
         statusEl.className = 'ora-settings-apikey-status ora-settings-apikey-status--unset';
         inputEl.placeholder = 'paste API key here';
+        if (msgEl) { msgEl.textContent = ''; msgEl.className = 'ora-settings-apikey-msg'; }
         _apiKeys.forEach(function (row) {
           if (row.provider === provider) row.present = false;
         });
       })
       .catch(function (err) {
-        statusEl.textContent = 'Delete failed: ' + err.message;
+        if (msgEl) {
+          msgEl.textContent = 'Delete failed: ' + err.message;
+          msgEl.className = 'ora-settings-apikey-msg ora-settings-apikey-msg--err';
+        }
         removeBtn.disabled = false;
       });
   }
@@ -935,8 +1085,12 @@
   // so "tensorart" wins before "anthropic" (no actual overlap today,
   // but defensive).
   var KNOWN_PROVIDERS = [
-    'anthropic', 'openai', 'gemini', 'stability', 'replicate',
-    'civitai', 'tensorart', 'assemblyai', 'deepgram', 'elevenlabs',
+    'openrouter', 'anthropic', 'openai', 'gemini',
+    'xai', 'meta', 'nvidia', 'mistral',
+    'deepseek', 'qwen', 'moonshot', 'minimax', 'xiaomi',
+    'tavily', 'brave', 'exa', 'artificial_analysis', 'fred',
+    'stability', 'replicate', 'tensorart',
+    'assemblyai', 'deepgram', 'elevenlabs',
   ];
 
   // Queued row id to highlight after the next _renderAPIsTab pass.
@@ -983,10 +1137,10 @@
   function _applyApiKeyHighlight(providerId) {
     if (!providerId || !_tabContentEl) return;
     var row = _tabContentEl.querySelector(
-      '.ora-settings-apikey-row[data-provider="' + providerId + '"]'
+      '.ora-settings-apikey-card[data-provider="' + providerId + '"]'
     );
     if (!row) return;
-    row.classList.add('ora-settings-apikey-row--highlight');
+    row.classList.add('ora-settings-apikey-card--highlight');
     try {
       row.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (_) {
@@ -995,21 +1149,23 @@
     // Auto-clear the highlight class after the animation completes so
     // the next render starts from a clean slate.
     setTimeout(function () {
-      row.classList.remove('ora-settings-apikey-row--highlight');
+      row.classList.remove('ora-settings-apikey-card--highlight');
     }, 3000);
   }
 
   // Heuristic provider extraction from a fix-path / error-message
   // pair. Used when an `open-settings` CustomEvent doesn't carry an
-  // explicit provider id. Walks KNOWN_PROVIDERS in order, returns the
-  // first substring hit. Returns null when no known provider name
-  // appears in either string — the listener then opens the External
-  // APIs tab with no highlight, and the user finds the row manually.
+  // explicit provider id. Returns the first whole-word match (longest id
+  // first, so specific ids win over short generic ones like 'meta' that
+  // would otherwise substring-match 'metadata'). Returns null when no
+  // known provider name appears — the listener then opens the External
+  // APIs tab with no highlight and the user finds the row manually.
   function _extractProviderFromHint(fixPath, message) {
     var corpus = (String(fixPath || '') + ' ' + String(message || '')).toLowerCase();
-    for (var i = 0; i < KNOWN_PROVIDERS.length; i++) {
-      if (corpus.indexOf(KNOWN_PROVIDERS[i]) !== -1) {
-        return KNOWN_PROVIDERS[i];
+    var ids = KNOWN_PROVIDERS.slice().sort(function (a, b) { return b.length - a.length; });
+    for (var i = 0; i < ids.length; i++) {
+      if (new RegExp('\\b' + ids[i] + '\\b').test(corpus)) {
+        return ids[i];
       }
     }
     return null;
