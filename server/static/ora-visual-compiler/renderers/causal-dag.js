@@ -287,6 +287,37 @@ window.OraVisualCompiler._renderers.causalDag = (function () {
 
       while (peek() && peek().kind === 'edge') {
         const op = eat();
+
+        // Group target: "A -> {B ; C ; D}" — one source fans out to a set of
+        // targets (a shorthand some models emit). Expand to one edge per
+        // member, then end the chain (a set is terminal — it can't be a link
+        // in a longer chain).
+        if (peek() && peek().kind === '{') {
+          eat(); // consume "{"
+          const members = [];
+          while (peek() && peek().kind !== '}') {
+            const mt = eat();
+            if (mt.kind === 'ident') {
+              members.push(mt.value);
+              getOrCreateNode(mt.value);
+            } else if (mt.kind === ';' || mt.kind === ',') {
+              // member separator — skip
+            } else {
+              throw new _ParseError(
+                'Expected node in group target after ' + op.value +
+                ', got ' + JSON.stringify(mt.value), mt.pos);
+            }
+          }
+          expect('}', '}');
+          for (const m of members) {
+            if (op.value === '<-') edges.push({ from: m, to: lhs, op: '->' });
+            else if (op.value === '<->') edges.push({ from: lhs, to: m, op: '<->' });
+            else if (op.value === '--') edges.push({ from: lhs, to: m, op: '--' });
+            else edges.push({ from: lhs, to: m, op: '->' });
+          }
+          break;
+        }
+
         const rhsTok = peek();
         if (!rhsTok || rhsTok.kind !== 'ident') {
           throw new _ParseError(

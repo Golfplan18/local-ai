@@ -183,6 +183,40 @@ const VALID = [
     expectMitControls: 0,
   },
   {
+    // Regression: long primary labels (hazard / threat / consequence) used to
+    // overflow their fixed-width chrome and trip the artifact reviewer's
+    // primary-label truncation gate (>1.5× container → Critical → render
+    // suppressed → empty SVG). The renderer now sizes the event box to the
+    // label and wraps long node labels, so the full text fits and the SVG is
+    // non-empty. The adversarial-gate assertions below confirm the SVG also
+    // survives the post-render review.
+    name: 'long-primary-labels-fit',
+    env: envelope({
+      hazard_event: { label: 'Severe Multi-Region Cyber and Business Continuity Failure' },
+      threats: [
+        { id: 'T1',
+          label: 'Coordinated Multi-Vector Phishing and Credential-Stuffing Campaign',
+          preventive_controls: [
+            { id: 'PC1', label: 'Decentralized Threat Intelligence', type: 'detect' },
+          ] },
+        { id: 'T2', label: 'Supply-Chain Ransomware', preventive_controls: [] },
+      ],
+      consequences: [
+        { id: 'C1',
+          label: 'Prolonged Operational Halt with Irreversible Data-State Corruption',
+          mitigative_controls: [
+            { id: 'MC1', label: 'Incident Response Framework', type: 'recover' },
+          ] },
+        { id: 'C2', label: 'Financial Loss', mitigative_controls: [] },
+      ],
+    }),
+    expectThreats: 2,
+    expectConseqs: 2,
+    expectPrevControls: 1,
+    expectMitControls: 1,
+    adversarialMustNotBlock: true,
+  },
+  {
     name: 'with-escalation-factors',
     env: envelope({
       hazard_event: { label: 'Cyber incident' },
@@ -385,6 +419,27 @@ function runCases(win, record) {
     }
     record('valid: ' + c.name + ' — structural', true,
       'svg ' + svg.length + ' chars');
+
+    // Adversarial gate: for fixtures with long primary labels, the post-render
+    // artifact reviewer must NOT block (no Critical truncation / overlap) and
+    // the SVG must stay non-empty. This is the regression for the bow-tie
+    // label-truncation suppression bug.
+    if (c.adversarialMustNotBlock) {
+      const aa = win.OraVisualCompiler && win.OraVisualCompiler.artifactAdversarial;
+      if (!aa || typeof aa.review !== 'function') {
+        record('valid: ' + c.name + ' — adversarial gate', false,
+          'artifact-adversarial.js not loaded into ctx');
+      } else {
+        const rev = aa.review(svg, c.env);
+        const crit = (rev.findings || []).filter((f) => f.severity === 'error');
+        const ok = !rev.blocks && svg.length > 0;
+        record('valid: ' + c.name + ' — adversarial gate', ok,
+          ok
+            ? ('no blocking findings; svg ' + svg.length + ' chars')
+            : ('blocked by: ' + crit.map((f) => f.code + ' (' +
+                (f.message || '').slice(0, 80) + ')').join('; ')));
+      }
+    }
 
     // Stable IDs: event
     if (svg.indexOf('id="bt-event"') === -1) {
@@ -595,12 +650,29 @@ function bootstrapOwnJsdom() {
     path.join(COMPILER_DIR, 'dispatcher.js'),
     path.join(COMPILER_DIR, 'index.js'),
     path.join(COMPILER_DIR, 'renderers', 'bow-tie.js'),
+    // Post-render reviewer — exercised by the long-label adversarial-gate
+    // regression assertion.
+    path.join(COMPILER_DIR, 'artifact-adversarial.js'),
   ];
   for (const f of coreFiles) {
     vm.runInContext(read(f), ctx, { filename: f });
   }
 
   return window;
+}
+
+// Lazy-load the artifact-adversarial reviewer into an already-bootstrapped
+// ctx.win if it isn't present (harness mode may not have loaded it). Safe
+// no-op if already registered.
+function ensureArtifactAdversarial(win) {
+  if (win.OraVisualCompiler && win.OraVisualCompiler.artifactAdversarial) return;
+  const SRC = path.join(COMPILER_DIR, 'artifact-adversarial.js');
+  const src = fs.readFileSync(SRC, 'utf-8');
+  if (typeof win.eval === 'function') {
+    win.eval(src);
+  } else {
+    vm.runInContext(src, win, { filename: SRC });
+  }
 }
 
 // Lazy-load the bow-tie renderer into an already-bootstrapped ctx.win if
@@ -630,6 +702,7 @@ module.exports = {
   run: async function run(ctx, record) {
     try {
       ensureBowTieRegistered(ctx.win);
+      ensureArtifactAdversarial(ctx.win);
     } catch (err) {
       record('bow-tie renderer load', false, err.message || String(err));
       return;

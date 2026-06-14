@@ -158,6 +158,39 @@ const INVALID_CASES = [
   },
 ];
 
+// ── Dense-layout regression case ─────────────────────────────────────────
+// A single stock with many auxiliaries used to collapse several aux boxes
+// onto the same point (the fixed ≤40px stagger could not separate them),
+// driving the artifact-adversarial overlap check past its 5% Critical
+// threshold (46–72% measured) and suppressing the entire render to 0 bytes.
+// The aux grid-packing layout must keep every aux bounding box clear.
+// Spec mirrors the cash-dynamics "premium" snapshot: 1 stock, 4 flows, 2
+// declared clouds, 3 chained feedback auxiliaries.
+const DENSE_SPEC = {
+  stocks: [{ id: 'cash', label: 'Cash on Hand', initial: 0, unit: '$' }],
+  flows: [
+    { id: 'revenue',     label: 'Revenue',              from: 'src',  to: 'cash', unit: '$/month' },
+    { id: 'fundraising', label: 'Fundraising proceeds', from: 'src',  to: 'cash', unit: '$' },
+    { id: 'payroll',     label: 'Payroll',              from: 'cash', to: 'sink', unit: '$/month' },
+    { id: 'opex',        label: 'OpEx',                 from: 'cash', to: 'sink', unit: '$/month' },
+  ],
+  clouds: [{ id: 'src' }, { id: 'sink' }],
+  auxiliaries: [
+    { id: 'headcount',           label: 'Headcount' },
+    { id: 'investor_confidence', label: 'Investor confidence' },
+    { id: 'fundraising_effort',  label: 'Fundraising effort' },
+  ],
+  info_links: [
+    { from: 'cash',                to: 'headcount' },
+    { from: 'headcount',           to: 'revenue' },
+    { from: 'headcount',           to: 'payroll' },
+    { from: 'revenue',             to: 'investor_confidence' },
+    { from: 'investor_confidence', to: 'fundraising' },
+    { from: 'cash',                to: 'fundraising_effort' },
+    { from: 'fundraising_effort',  to: 'fundraising' },
+  ],
+};
+
 // Dimensionally inconsistent units is a warning, NOT a blocking error.
 const WARNING_CASES = [
   {
@@ -359,6 +392,81 @@ module.exports = {
                    ' warnings=' + JSON.stringify(warnCodes)));
     } catch (err) {
       record('isolated stock emits W_STOCK_ISOLATED', false,
+        'threw: ' + (err.stack || err.message || err));
+    }
+
+    // ── Dense-layout regression: many auxiliaries must not overlap ──────
+    // Renders the dense single-stock / many-auxiliary spec and asserts (a)
+    // a non-empty SVG and (b) that the artifact-adversarial overlap check
+    // does NOT fire E_ARTIFACT_OVERLAP. The collision-free aux grid is what
+    // keeps this case from being suppressed to 0 bytes.
+    try {
+      const r = await render(envelope(DENSE_SPEC));
+      const nonEmpty = !!(r && r.svg && r.svg.length > 0) &&
+        (!r.errors || r.errors.length === 0);
+      record('dense: many-aux spec renders non-empty SVG', nonEmpty,
+        nonEmpty ? 'svg ' + r.svg.length + ' chars'
+                 : 'errors=' + JSON.stringify((r && r.errors) || []));
+
+      // Every auxiliary must be present in the output.
+      if (nonEmpty) {
+        const missingAux = DENSE_SPEC.auxiliaries
+          .map((a) => 'saf-aux-' + a.id)
+          .filter((id) => !hasId(r.svg, id));
+        record('dense: every auxiliary rendered', missingAux.length === 0,
+          missingAux.length ? 'missing: ' + missingAux.join(', ') : '');
+      }
+
+      // Run the real artifact-adversarial review (loaded into the harness
+      // window) over the rendered SVG and assert no Critical overlap.
+      const AA = OVC.artifactAdversarial;
+      if (nonEmpty && AA && typeof AA.review === 'function') {
+        const rev = AA.review(r.svg, envelope(DENSE_SPEC));
+        const overlaps = (rev.findings || [])
+          .filter((f) => f.code === 'E_ARTIFACT_OVERLAP');
+        const worst = (rev.findings || [])
+          .filter((f) => /OVERLAP/.test(f.code))
+          .reduce((m, f) => {
+            const pct = parseFloat((f.message.match(/([\d.]+)%/) || [])[1]) || 0;
+            return Math.max(m, pct);
+          }, 0);
+        const clean = !rev.blocks && overlaps.length === 0;
+        record('dense: no E_ARTIFACT_OVERLAP from adversarial review', clean,
+          clean ? 'worst overlap ' + worst.toFixed(1) + '% of smaller area'
+                : 'blocks=' + rev.blocks + ' overlaps=' +
+                  JSON.stringify(overlaps.map((f) => f.message)));
+      } else if (nonEmpty) {
+        record('dense: no E_ARTIFACT_OVERLAP from adversarial review', false,
+          'artifactAdversarial.review unavailable in harness window');
+      }
+    } catch (err) {
+      record('dense: many-aux spec renders non-empty SVG', false,
+        'threw: ' + (err.stack || err.message || err));
+    }
+
+    // Optionally exercise the on-disk "premium" snapshot if present — this
+    // is the exact envelope the campaign ships; the inline DENSE_SPEC above
+    // is a self-contained stand-in when the snapshot dir is absent.
+    try {
+      const snapPath = '/tmp/render-fix-cases/stock-and-flow__premium.json';
+      if (fs.existsSync(snapPath)) {
+        const snap = JSON.parse(fs.readFileSync(snapPath, 'utf-8'));
+        const r = await render(snap);
+        const nonEmpty = !!(r && r.svg && r.svg.length > 0) &&
+          (!r.errors || r.errors.length === 0);
+        const AA = OVC.artifactAdversarial;
+        let clean = nonEmpty;
+        if (nonEmpty && AA && typeof AA.review === 'function') {
+          const rev = AA.review(r.svg, snap);
+          clean = !rev.blocks &&
+            (rev.findings || []).every((f) => f.code !== 'E_ARTIFACT_OVERLAP');
+        }
+        record('dense: premium snapshot renders without overlap', nonEmpty && clean,
+          (nonEmpty && clean) ? 'svg ' + r.svg.length + ' chars'
+                              : 'nonEmpty=' + nonEmpty + ' clean=' + clean);
+      }
+    } catch (err) {
+      record('dense: premium snapshot renders without overlap', false,
         'threw: ' + (err.stack || err.message || err));
     }
 

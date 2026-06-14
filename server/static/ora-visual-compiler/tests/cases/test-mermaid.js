@@ -53,6 +53,36 @@ if (!window.requestAnimationFrame) {
   window.requestAnimationFrame = (cb) => setTimeout(cb, 16);
 }
 
+// jsdom doesn't implement SVG getBBox / getComputedTextLength / getPointAtLength.
+// Mermaid's render() (layout) needs them. Mirror the polyfills used by
+// tests/run.js and tools/render-envelope.js — including the minimum-size floor
+// (width >= 10) so zero-width nodes don't collapse edge geometry and trip the
+// "Could not find a suitable point for the given distance" layout error.
+if (window.SVGElement && !window.SVGElement.prototype.getBBox) {
+  window.SVGElement.prototype.getBBox = function () {
+    const text = (this.textContent || '').length;
+    return { x: 0, y: 0, width: Math.max(text * 6, 10), height: 14 };
+  };
+}
+if (window.SVGElement && !window.SVGElement.prototype.getComputedTextLength) {
+  window.SVGElement.prototype.getComputedTextLength = function () {
+    return Math.max((this.textContent || '').length * 6, 10);
+  };
+}
+if (window.SVGElement && !window.SVGElement.prototype.getScreenCTM) {
+  window.SVGElement.prototype.getScreenCTM = function () {
+    return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, inverse: function () { return this; } };
+  };
+}
+if (window.SVGPathElement && !window.SVGPathElement.prototype.getTotalLength) {
+  window.SVGPathElement.prototype.getTotalLength = function () { return 100; };
+}
+if (window.SVGPathElement && !window.SVGPathElement.prototype.getPointAtLength) {
+  window.SVGPathElement.prototype.getPointAtLength = function (dist) {
+    return { x: dist || 0, y: 0 };
+  };
+}
+
 // ── Load the compiler scripts into the jsdom window ────────────────────────
 const files = [
   path.join(COMPILER_DIR, 'errors.js'),
@@ -133,23 +163,52 @@ const validCases = [
     'stateDiagram-v2\n  [*] --> Off\n  Off --> On : power\n  On --> Off : power\n  On --> Error : fault\n  Error --> [*]'),
 ];
 
-// Parse-failure cases that the repair loop should fix.
+// Parse-failure cases that the repair loop should fix. These use DSL that
+// genuinely breaks the Mermaid 11.x parser (a `render()` after `parse()` would
+// throw), so the normalization pass must engage and emit W_DSL_REPAIRED.
 const repairableCases = [
   {
-    label: 'flowchart with reserved word "end" as label',
-    env: envelope('flowchart', 'flowchart TD\n  A[Start] --> B[end]\n  B --> C[Done]'),
+    // Parens inside an unquoted square-bracket label → lexical 'PS' error.
+    label: 'flowchart node label with parens (unquoted)',
+    env: envelope('flowchart',
+      'flowchart TD\n  A[Friction: Context-collapse (CS uses different UI)] --> B[End]'),
   },
   {
-    label: 'flowchart with unescaped < in label',
-    env: envelope('flowchart', 'flowchart TD\n  A[Count<10] --> B[Increment]\n  B --> A'),
+    // <br> + & + ':' + parens combined in one unquoted label.
+    label: 'flowchart node label with <br>, &, colon and parens',
+    env: envelope('flowchart',
+      'flowchart TD\n  D[Create channel & page<br>Friction: queue (waits compound)] --> E[Ack]'),
   },
   {
-    label: 'flowchart with malformed long arrow ---->',
-    env: envelope('flowchart', 'flowchart TD\n  A[Start] ----> B[End]'),
+    // Parens inside an unquoted diamond {..} decision node → parse error.
+    label: 'flowchart diamond decision node with parens (unquoted)',
+    env: envelope('flowchart',
+      'flowchart TD\n  A{Resolvable (on-call alone)?} --> B[Apply fix]'),
   },
   {
-    label: 'flowchart with label containing spaces (no quotes)',
-    env: envelope('flowchart', 'flowchart TD\n  A[Start of pipeline] --> B[End of pipeline]'),
+    // Parens + ':' inside an unquoted subroutine [[..]] node → parse error.
+    label: 'flowchart subroutine node with colon and parens (unquoted)',
+    env: envelope('flowchart',
+      'flowchart TD\n  A[[WAIT: gated (eng status)]] --> B[Next]'),
+  },
+  {
+    // Malformed inline edge label: 4+ leading dashes before a quoted label.
+    label: 'flowchart malformed inline edge label (X ---- "y" --> Z)',
+    env: envelope('flowchart',
+      'flowchart TD\n  CS2 ---- "Yes, system outage" --> CS3[Verify]'),
+  },
+  {
+    // Semicolon in a sequence message terminates the statement → parse error.
+    label: 'sequence message text containing a semicolon',
+    env: envelope('sequence',
+      'sequenceDiagram\n  AS->>User: Authenticate (skip if SSO session; MFA if policy)'),
+  },
+  {
+    // Hyphenated state ids are invalid Mermaid identifiers.
+    label: 'state diagram with hyphenated state ids (Past-Due, Won-Back)',
+    env: envelope('state',
+      'stateDiagram-v2\n  [*] --> Active\n  Active --> Past-Due : Payment Fail\n' +
+      '  Past-Due --> Active : Recovery\n  Active --> Won-Back : Revival'),
   },
 ];
 
@@ -320,6 +379,130 @@ function runMechanicalUnit() {
   }
 }
 
+// Unit coverage for the dialect-aware normalization helpers (no Mermaid needed).
+function runNormalizeUnit() {
+  const I = OVC._renderers.mermaid._internals;
+  const norm = I._normalizeDsl;
+  const quote = I._quoteNodeLabels;
+
+  const cases = [
+    // ── Flowchart: special-char node-label quoting ──────────────────────────
+    {
+      label: 'parens inside square label get quoted',
+      run: () => quote('  A[Friction (CS uses UI)] --> B[End]'),
+      check: (o) => /A\["Friction \(CS uses UI\)"\]/.test(o) && /B\["End"\]/.test(o),
+    },
+    {
+      label: '<br> in label is preserved (not HTML-escaped)',
+      run: () => quote('  D[Create channel<br>more] --> E[Ack]'),
+      check: (o) => /<br>/.test(o) && !/&lt;br&gt;/.test(o) && /D\["Create channel<br>more"\]/.test(o),
+    },
+    {
+      label: '& in label is preserved verbatim inside quotes',
+      run: () => quote('  D[page & escalate] --> E'),
+      check: (o) => /D\["page & escalate"\]/.test(o),
+    },
+    {
+      label: 'double-circle ((..)) label with colon gets quoted as one unit',
+      run: () => quote('  C --> Z((End: Resolved via SLA))'),
+      check: (o) => /Z\(\("End: Resolved via SLA"\)\)/.test(o),
+    },
+    {
+      label: 'arrow tokens and pipe edge labels are NOT touched',
+      run: () => quote('  B -->|No (P3/P4)| C[Route]'),
+      check: (o) => /B -->\|No \(P3\/P4\)\| C\["Route"\]/.test(o),
+    },
+    {
+      label: 'already-valid -- "label" --> edge form is left intact',
+      run: () => norm('flowchart TD\n  B -- "No (P3/P4)" --> C[X]', 'flowchart'),
+      check: (o) => /B -- "No \(P3\/P4\)" --> C\["X"\]/.test(o),
+    },
+    {
+      label: 'malformed X ---- "label" --> Y normalized to -- "label" -->',
+      run: () => norm('flowchart TD\n  CS2 ---- "Yes, outage" --> CS3[V]', 'flowchart'),
+      check: (o) => /CS2 -- "Yes, outage" --> CS3/.test(o) && !/----/.test(o),
+    },
+    {
+      label: 'subgraph title with spaces is quoted',
+      run: () => norm('flowchart TD\n  subgraph CS [Customer Support]\n    A --> B\n  end', 'flowchart'),
+      check: (o) => /subgraph CS \["Customer Support"\]/.test(o),
+    },
+    {
+      label: 'malformed trailing class ... displayName ... line is dropped',
+      run: () => norm('flowchart TD\n  A --> B\n  class OCE1N, OCE0 displayName exception', 'flowchart'),
+      check: (o) => !/displayName/.test(o),
+    },
+
+    // ── Sequence: semicolon → comma in message text ─────────────────────────
+    {
+      label: 'semicolon in message text becomes a comma',
+      run: () => norm('sequenceDiagram\n  AS->>User: skip if SSO; MFA if policy', 'sequence'),
+      check: (o) => /skip if SSO, MFA if policy/.test(o) && !/SSO;/.test(o),
+    },
+    {
+      label: 'parens and <br/> in sequence message are preserved',
+      run: () => norm('sequenceDiagram\n  C->>B: redirect (302)<br/>to /authorize', 'sequence'),
+      check: (o) => /\(302\)<br\/>/.test(o),
+    },
+
+    // ── State: hyphen/dot id sanitization + label-alias preservation ────────
+    {
+      label: 'hyphenated state id sanitized to underscore',
+      run: () => norm('stateDiagram-v2\n  Active --> Past-Due : Payment Fail', 'state'),
+      check: (o) => /Active --> Past_Due/.test(o) && !/--> Past-Due/.test(o),
+    },
+    {
+      label: 'space+dot+hyphen state id (1.3 Past-Due) sanitized to single id',
+      run: () => norm('stateDiagram-v2\n  Active --> 1.3 Past-Due : Payment Fail', 'state'),
+      check: (o) => /Active --> S_1_3_Past_Due : Payment Fail/.test(o) &&
+                    /state "1.3 Past-Due" as S_1_3_Past_Due/.test(o),
+    },
+    {
+      label: 'sanitized state emits alias decl preserving original display name',
+      run: () => norm('stateDiagram-v2\n  Active --> Past-Due : x\n  Past-Due --> Won-Back : y', 'state'),
+      check: (o) => /state "Past-Due" as Past_Due/.test(o) && /state "Won-Back" as Won_Back/.test(o),
+    },
+    {
+      label: 'state header (stateDiagram-v2), --> arrows and [*] are untouched',
+      run: () => norm('stateDiagram-v2\n  [*] --> Active\n  Active --> Past-Due : x', 'state'),
+      check: (o) => /^stateDiagram-v2/m.test(o) && /\[\*\] --> Active/.test(o) && /--> Past_Due/.test(o),
+    },
+  ];
+
+  for (const c of cases) {
+    let out, ok;
+    try { out = c.run(); ok = c.check(out); }
+    catch (e) { out = 'threw: ' + e; ok = false; }
+    report('unit(normalize): ' + c.label, ok, ok ? '' : 'got: ' + JSON.stringify(out));
+  }
+}
+
+// Render-level assertion: a sanitized state diagram must still SHOW the
+// original hyphenated label (via the `state "..." as ..."` alias), not the
+// underscore-mangled id.
+async function runStateLabelPreservation() {
+  const env = envelope('state',
+    'stateDiagram-v2\n  [*] --> Active\n  Active --> Past-Due : Payment Fail\n' +
+    '  Past-Due --> Won-Back : Revival');
+  const label = 'state label preservation (Past-Due rendered, not Past_Due)';
+  try {
+    const result = await OVC._renderers.mermaid.render(env);
+    if (!result || result.errors.length > 0) {
+      report(label, false, 'render errored: ' + JSON.stringify(result && result.errors.map((e) => e.code)));
+      return;
+    }
+    if (!looksLikeSvg(result.svg)) { report(label, false, 'no <svg> output'); return; }
+    const showsHyphen = /Past-Due/.test(result.svg) && /Won-Back/.test(result.svg);
+    if (!showsHyphen) {
+      report(label, false, 'expected hyphenated labels in rendered SVG');
+      return;
+    }
+    report(label, true);
+  } catch (err) {
+    report(label, false, 'threw: ' + (err && err.stack ? err.stack : err));
+  }
+}
+
 // ── Go ────────────────────────────────────────────────────────────────────
 (async function main() {
   console.log('test-mermaid.js — WP-1.2b');
@@ -327,8 +510,10 @@ function runMechanicalUnit() {
   console.log('----------------------------------------');
 
   runMechanicalUnit();
+  runNormalizeUnit();
   await runValid();
   await runRepairable();
+  await runStateLabelPreservation();
   await runUnfixable();
 
   console.log('----------------------------------------');

@@ -67,15 +67,19 @@ async function bootCompiler() {
   // jsdom doesn't implement SVG getBBox / getComputedTextLength. Mermaid and
   // any text-measuring SVG library needs these. Mock with character-width
   // heuristics — fine for structural tests, not for pixel layout checks.
+  // Minimum-size floor (width >= 10, height = 14): a real browser never measures
+  // a rendered node as zero-width, but the naive `length * 6` returns 0 for
+  // empty/whitespace textContent. Zero-width nodes collapse Mermaid's edge-label
+  // geometry and trip "Could not find a suitable point for the given distance".
   if (win.SVGElement && !win.SVGElement.prototype.getBBox) {
     win.SVGElement.prototype.getBBox = function () {
       const text = (this.textContent || '').length;
-      return { x: 0, y: 0, width: text * 6, height: 14 };
+      return { x: 0, y: 0, width: Math.max(text * 6, 10), height: 14 };
     };
   }
   if (win.SVGElement && !win.SVGElement.prototype.getComputedTextLength) {
     win.SVGElement.prototype.getComputedTextLength = function () {
-      return (this.textContent || '').length * 6;
+      return Math.max((this.textContent || '').length * 6, 10);
     };
   }
   if (win.SVGElement && !win.SVGElement.prototype.getScreenCTM) {

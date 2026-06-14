@@ -264,6 +264,44 @@ window.OraVisualCompiler._renderers.causalLoopDiagram = (function () {
     return { errors, warnings, varMap, adj, revAdj };
   }
 
+  // ── Node-box geometry (single source of truth). ─────────────────────────
+  // These constants govern both the rect emitted in _emitSvg AND the
+  // collision radius used by the force layout. They MUST agree: the
+  // adversarial review compares the rendered rect bounding boxes, so the
+  // layout has to reserve space for the real box, not a generic circle.
+  const NODE_HEIGHT  = 32;
+  const NODE_PADDING = 14;
+  const CHAR_WIDTH   = 7.5;  // conservative estimate; CSS overrides via theme
+
+  /**
+   * _nodeBox(label) → { w, h }
+   * The on-screen rectangle a node renders into. Mirrors the width formula
+   * in _emitSvg exactly; keep the two in lockstep.
+   */
+  function _nodeBox(label) {
+    const w = Math.max(48, label.length * CHAR_WIDTH + NODE_PADDING * 2);
+    return { w: w, h: NODE_HEIGHT };
+  }
+
+  /**
+   * _collideRadius(label) → number
+   * The radius of the smallest circle that fully circumscribes the node's
+   * rectangle (half the box diagonal) plus a separation margin. Because
+   * forceCollide keeps node *centres* at least (rA + rB) apart, and each
+   * rect is inscribed in its circumscribing circle, two non-touching
+   * circles guarantee two non-overlapping rects regardless of the angle
+   * between their centres. That is what drives artifact overlap to ~0 —
+   * the previous fixed radius(44) modelled every node as an 88px circle
+   * while wide labels render boxes 170–370px across, so wide nodes
+   * collided. The margin keeps a visible gutter (and room for the
+   * shrunken edge endpoints / polarity glyphs) between boxes.
+   */
+  const NODE_SEPARATION_MARGIN = 12;
+  function _collideRadius(label) {
+    const b = _nodeBox(label);
+    return Math.sqrt(b.w * b.w + b.h * b.h) / 2 + NODE_SEPARATION_MARGIN;
+  }
+
   // ── Force simulation. ────────────────────────────────────────────────────
   /**
    * _runLayout(varMap, links, width, height, seed)
@@ -272,9 +310,17 @@ window.OraVisualCompiler._renderers.causalLoopDiagram = (function () {
    * with forceLink, forceManyBody, forceCenter. Seeded via Math.random
    * override inside this function only; the outer Math is restored.
    *
-   * We tick for 300 iterations synchronously (simulation.tick() does not
-   * animate by default — alpha decays deterministically). On degenerate
-   * output (NaN, all-at-center) the caller falls back to a ring layout.
+   * The collision force uses a PER-NODE radius derived from each node's
+   * rendered box (see _collideRadius), and the canvas / link distance /
+   * charge are scaled to the node count and the largest box so the dense,
+   * wide-label graphs the campaign feeds in have room to settle without
+   * collisions. The `width`/`height` arguments seed the initial ring and a
+   * floor on the canvas; the effective layout box grows past them when the
+   * nodes demand it.
+   *
+   * We tick synchronously (simulation.tick() does not animate by default —
+   * alpha decays deterministically). On degenerate output (NaN, all-at-
+   * center) the caller falls back to a ring layout.
    */
   function _runLayout(varMap, links, width, height, seed) {
     const d3 = window.d3;
@@ -286,13 +332,30 @@ window.OraVisualCompiler._renderers.causalLoopDiagram = (function () {
     Math.random = rng;
 
     try {
-      // Build node objects. Seed initial positions on a ring so we never
-      // start at exactly (0,0) where forceManyBody produces NaN gradients.
       const ids = Array.from(varMap.keys());
       const n = ids.length;
-      const cx = width / 2;
-      const cy = height / 2;
-      const r0 = Math.min(width, height) * 0.3;
+
+      // Per-node collision radii from the real box geometry.
+      const radii = new Map();
+      for (const v of varMap.values()) {
+        radii.set(v.id, _collideRadius(v.label || v.id));
+      }
+      let rMax = 0, rSum = 0;
+      for (const r of radii.values()) { if (r > rMax) rMax = r; rSum += r; }
+      const rMean = n > 0 ? rSum / n : 44;
+
+      // Size the canvas to the node count and the largest box: a ring of n
+      // circles of radius rMax needs circumference ≈ n·(2·rMax), so a radius
+      // ~ n·rMax/π; we use a packing-style sqrt(n) growth with headroom and
+      // floor it at the caller-provided dimensions. This gives the force
+      // enough room that the per-node collide constraint is satisfiable.
+      const span = Math.max(width, height, rMax * 2 * Math.sqrt(Math.max(n, 1)) * 1.7);
+      const cx = span / 2;
+      const cy = span / 2;
+      const r0 = span * 0.3;
+
+      // Build node objects. Seed initial positions on a ring so we never
+      // start at exactly (0,0) where forceManyBody produces NaN gradients.
       const nodes = ids.map((id, i) => {
         const a = (i / n) * Math.PI * 2;
         return {
@@ -302,24 +365,34 @@ window.OraVisualCompiler._renderers.causalLoopDiagram = (function () {
           vx: 0, vy: 0,
         };
       });
-      const nodeById = new Map(nodes.map((n) => [n.id, n]));
+      const nodeById = new Map(nodes.map((node) => [node.id, node]));
       const linkData = links.map((l) => ({
         source: nodeById.get(l.from),
         target: nodeById.get(l.to),
       }));
 
+      // Link distance and charge scale with box size so big-box graphs
+      // spread proportionally rather than fighting the collide constraint.
+      const linkDist = Math.max(150, rMean * 2.4);
+      const chargeStrength = -Math.max(600, rMean * 18);
+
       const sim = d3.forceSimulation(nodes)
-        .force('link', d3.forceLink(linkData).id((d) => d.id).distance(120).strength(0.6))
-        .force('charge', d3.forceManyBody().strength(-400))
+        .force('link', d3.forceLink(linkData).id((d) => d.id)
+          .distance(linkDist).strength(0.4))
+        .force('charge', d3.forceManyBody().strength(chargeStrength))
         .force('center', d3.forceCenter(cx, cy))
-        .force('collide', d3.forceCollide().radius(44))
+        .force('collide', d3.forceCollide()
+          .radius((d) => radii.get(d.id) || rMean)
+          .strength(1).iterations(4))
         .stop();
 
       // Explicitly seed the alpha decay and initial velocity decay so
       // the iteration count maps to a predictable energy trajectory.
       sim.alpha(1).alphaMin(0.001).alphaDecay(0.02).velocityDecay(0.4);
 
-      for (let i = 0; i < 300; i++) sim.tick();
+      // More ticks than the legacy 300 so the stiff per-node collide force
+      // (iterations=4) fully resolves on dense graphs before alpha freezes.
+      for (let i = 0; i < 400; i++) sim.tick();
 
       const positions = new Map();
       let degenerate = false;
@@ -489,17 +562,16 @@ window.OraVisualCompiler._renderers.causalLoopDiagram = (function () {
     parts.push('</g>');
 
     // ── Nodes ─────────────────────────────────────────────────────────────
-    // Rect with label. Width estimated from label length; height fixed.
+    // Rect with label. Box geometry comes from the shared _nodeBox helper so
+    // the rendered rect and the layout's collision radius stay in lockstep.
     parts.push('<g class="ora-visual__nodes">');
-    const NODE_HEIGHT = 32;
-    const NODE_PADDING = 14;
-    const CHAR_WIDTH = 7.5;  // conservative estimate; CSS overrides via theme
     for (const v of varMap.values()) {
       const p = positions.get(v.id);
       if (!p) continue;
       const label = v.label || v.id;
-      const w = Math.max(48, label.length * CHAR_WIDTH + NODE_PADDING * 2);
-      const h = NODE_HEIGHT;
+      const box = _nodeBox(label);
+      const w = box.w;
+      const h = box.h;
       parts.push(
         '<g id="cld-node-' + _esc(v.id) + '" class="ora-visual__node" ' +
           'transform="translate(' + p.x.toFixed(2) + ',' + p.y.toFixed(2) + ')">' +
@@ -689,5 +761,7 @@ window.OraVisualCompiler._renderers.causalLoopDiagram = (function () {
     _emitSvg: _emitSvg,
     _seedFor: _seedFor,
     _seededRandom: _seededRandom,
+    _nodeBox: _nodeBox,
+    _collideRadius: _collideRadius,
   };
 }());
