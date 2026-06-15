@@ -80,6 +80,12 @@ def main() -> int:
         size_rules = (json.loads((CONFIG / "family-classification.json").read_text()).get("providers")) or {}
     except Exception:
         size_rules = {}
+    # OpenRouter-only models to KEEP for native vendors (gpt-oss, small Qwen…)
+    # in addition to the automatic :free rule.
+    try:
+        supplement_allow = (json.loads((CONFIG / "openrouter-supplement.json").read_text()).get("allow")) or []
+    except Exception:
+        supplement_allow = []
 
     vendor_catalogs: dict = {}
     skipped: dict = {}
@@ -95,7 +101,7 @@ def main() -> int:
         vendor_catalogs[p["id"]] = recs
 
     new_models, report = vcr.build_authoritative_registry(
-        base_models, vendor_catalogs, or_models, size_rules)
+        base_models, vendor_catalogs, or_models, size_rules, supplement_allow)
     aliases = vcr.build_alias_map(new_models)
 
     out = dict(base)
