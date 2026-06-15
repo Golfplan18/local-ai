@@ -135,7 +135,8 @@ PROVIDERS: list[dict] = [
         "key_prefix": "LLM|", "essential": False, "auto_activate": True,
         "dispatch": "openai_compatible", "native_service": None,
         "base_url": "https://api.llama.com/compat/v1/", "or_prefix": "meta-llama",
-        "verifiable": True, "note": "Llama API (OpenAI-compatible).",
+        "verifiable": True,
+        "note": "Llama API is a waitlisted free preview (no pay-as-you-go) — Llama models are served via OpenRouter.",
     },
     {
         "id": "nvidia", "label": "NVIDIA NIM", "category": "llm_us",
@@ -146,7 +147,8 @@ PROVIDERS: list[dict] = [
         "key_prefix": "nvapi-", "essential": False, "auto_activate": True,
         "dispatch": "openai_compatible", "native_service": None,
         "base_url": "https://integrate.api.nvidia.com/v1", "or_prefix": "nvidia",
-        "verifiable": True, "note": "Hosts many open-weight models, OpenAI-compatible.",
+        "verifiable": True,
+        "note": "Free dev key, but no individual pay-as-you-go — these models are served via OpenRouter.",
     },
     {
         "id": "mistral", "label": "Mistral AI", "category": "llm_us",

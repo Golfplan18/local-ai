@@ -8525,6 +8525,43 @@ def model_registry_get():
             "stats": {"loaded": False},
         }, status=500)
 
+    # Vendor-catalogue-authoritative inventory (flag-gated, default off): when on
+    # and the preview registry exists, serve each keyed vendor's OWN catalogue
+    # (native ids) instead of its OpenRouter entries. Native entries carry
+    # dispatch="direct" → surface direct_dispatch so the pane paints the DIRECT chip.
+    try:
+        from orchestrator import vendor_catalog_registry as _vcr
+        from pathlib import Path as _P
+        _va = _P(__file__).resolve().parent.parent / "config" / "model-registry.vendor-authoritative.json"
+        if _vcr.enabled() and _va.exists():
+            import json as _vaj
+            registry = _vaj.loads(_va.read_text())
+            _va_models = registry.get("models") or {}
+            for _m in _va_models.values():
+                if isinstance(_m, dict) and _m.get("dispatch") == "direct":
+                    _m["direct_dispatch"] = True
+                    _m.setdefault("direct_service", _m.get("service") or _m.get("vendor"))
+                    # It's in the vendor's live /models, fetched with the key — reachable.
+                    _m.setdefault("reachable", True)
+                    _m.setdefault("category", "chat")
+            # stats must describe the SWAPPED inventory, not the OpenRouter one.
+            _vt = sum(1 for _e in _va_models.values() if _e.get("vision_capable") is True)
+            _vf = sum(1 for _e in _va_models.values() if _e.get("vision_capable") is False)
+            stats = {
+                "registry_path": "vendor-authoritative",
+                "loaded": len(_va_models) > 0,
+                "model_count": len(_va_models),
+                "vision_capable_true": _vt,
+                "vision_capable_false": _vf,
+                "vision_capable_null": len(_va_models) - _vt - _vf,
+                "intelligence_score_count": sum(
+                    1 for _e in _va_models.values() if _e.get("intelligence_score") is not None),
+                "generated_at": registry.get("generated_at"),
+                "last_probe_at": registry.get("last_probe_at"),
+            }
+    except Exception as _va_err:
+        print(f"[model-registry] vendor-authoritative inventory skipped: {_va_err}", flush=True)
+
     raw = request.args.get("categories", "chat")
     if raw.strip().lower() in ("all", "*"):
         wanted = None  # no filter
