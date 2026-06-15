@@ -624,12 +624,13 @@ def pick_for_free_slot(
     return [], notes
 
 
-def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: str) -> str | None:
+def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: str,
+                           intelligence_first: bool = False) -> str | None:
     """Pick a vision-capable model from the configured size bucket.
 
-    For paid presets: lowest cost vision-capable in bucket.
-    For free preset: highest intelligence vision-capable in bucket
-    (cost is 0 for all candidates).
+    For the free preset, or any intelligence-first preset (Premium): highest
+    intelligence vision-capable in bucket — cost is no object / 0. For cost-first
+    paid presets (Optimum/Budget): lowest cost vision-capable in bucket.
     """
     # Same chat + text-output guards as the chat-slot pickers — vision
     # substitute is the image-input handler for chat output, so audio /
@@ -651,7 +652,7 @@ def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: s
     if not candidates:
         return None
     candidates = pareto_filter(candidates)
-    if preset_mode == "free_intelligence":
+    if preset_mode == "free_intelligence" or intelligence_first:
         candidates = sort_by_intelligence_descending(candidates)
     else:
         candidates = sort_by_cost_ascending(candidates)
@@ -716,6 +717,10 @@ def populate_configuration(
     if preset_name not in presets:
         raise ValueError(f"Unknown preset: {preset_name}. Known: {list(presets)}")
     preset = presets[preset_name]
+    # Intelligence-first preset (Premium): cost is no object, so even the
+    # specialized slots (Fast, Visual substitute) favor intelligence over
+    # cheap/fast picks. Cost-first presets (Optimum/Budget) keep the cheap picks.
+    intelligence_first = preset.get("sort_by") == "intelligence_desc"
 
     # Drop catalog entries no longer in the live registry before any pick —
     # otherwise a stale catalog injects models the Models pane flags
@@ -733,6 +738,7 @@ def populate_configuration(
         catalog,
         size_bucket=vision_spec.get("size_bucket", "large"),
         preset_mode=preset["mode"],
+        intelligence_first=intelligence_first,
     )
 
     cells: dict = {}
@@ -750,12 +756,19 @@ def populate_configuration(
         slot_sort_by = slot_spec.get("sort_by") or preset.get("sort_by", "cost_asc")
         slot_exclude_reasoning = slot_spec.get("exclude_reasoning_models", False)
         slot_size_bucket = slot_spec.get("size_bucket")
-        # A speed-optimized slot (Fast) should NOT inherit the preset's quality
-        # intelligence floor — that floors out the cheap, genuinely-fast models
+        # A speed-optimized slot (Fast) should NOT inherit a cost-first preset's
+        # quality floor — that floors out the cheap, genuinely-fast models
         # (flash-lite, step-flash) and leaves only expensive smart-fast flagships,
         # so an expensive model lands in a "fast" slot. slot_spec.floor_pct /
         # cost_ceiling_per_m override the preset's when present (explicit None/0 OK).
-        slot_floor = slot_spec["floor_pct"] if "floor_pct" in slot_spec else preset.get("floor_pct")
+        # An intelligence-first preset (Premium) instead uses
+        # floor_pct_if_intelligence_first so its fast slot stays high-intelligence.
+        if intelligence_first and "floor_pct_if_intelligence_first" in slot_spec:
+            slot_floor = slot_spec["floor_pct_if_intelligence_first"]
+        elif "floor_pct" in slot_spec:
+            slot_floor = slot_spec["floor_pct"]
+        else:
+            slot_floor = preset.get("floor_pct")
         slot_ceiling = (slot_spec["cost_ceiling_per_m"] if "cost_ceiling_per_m" in slot_spec
                         else preset.get("cost_ceiling_per_m"))
         for cell_name in slot_spec["cells"]:

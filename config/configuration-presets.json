@@ -73,7 +73,8 @@
    "sort_by": "tokens_per_sec_desc",
    "exclude_reasoning_models": true,
    "floor_pct": 30,
-   "_note": "Mid-tier speed-optimized slot. Primary \u2192 gear3.depth + utility.gear2_rag_lookup; secondary \u2192 gear3.breadth when adversarial diversity is on (mirrored from primary via post-bake when off). No size_bucket gate; sort_by tokens/sec handles selection. floor_pct=30 OVERRIDES the preset's quality floor: a speed slot must keep cheap fast models (flash-lite/step-flash ~33-43 intel) instead of inheriting Optimum's 80% floor, which would leave only expensive smart-fast flagships. Reasoning models excluded \u2014 their thinking-overhead defeats the speed purpose. top_n=4 \u2192 1 primary + 3 fallbacks per chain, mirror of analysis.gear4."
+   "floor_pct_if_intelligence_first": 80,
+   "_note": "Mid-tier speed-optimized slot. Primary \u2192 gear3.depth + utility.gear2_rag_lookup; secondary \u2192 gear3.breadth when adversarial diversity is on (mirrored from primary via post-bake when off). No size_bucket gate; sort_by tokens/sec handles selection. floor_pct=30 for COST-first presets (Optimum/Budget): a throughput slot keeps cheap fast models (flash-lite/step-flash ~33-43 intel) instead of inheriting an 80% floor that leaves only expensive smart-fast flagships. floor_pct_if_intelligence_first=80 for Premium (sort_by=intelligence_desc): cost is no object, so its fast slot stays high-intelligence (fastest model ABOVE the 80% bar, e.g. gemini-flash/gpt-5.4) rather than the cheapest fast model. Reasoning models excluded \u2014 their thinking-overhead defeats the speed purpose. top_n=4 \u2192 1 primary + 3 fallbacks per chain, mirror of analysis.gear4."
   },
   "post_analysis": {
    "size_bucket": "large",
