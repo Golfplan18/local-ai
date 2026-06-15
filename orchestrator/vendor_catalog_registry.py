@@ -282,7 +282,16 @@ def build_authoritative_registry(base_models: dict, vendor_catalogs: dict,
     return new, report
 
 
+def native_direct_entries(models: dict) -> list:
+    """The vendor-native direct entries in an authoritative registry
+    (``dispatch == "direct"`` with a ``native_model_id``)."""
+    return [e for e in (models or {}).values()
+            if isinstance(e, dict) and e.get("dispatch") == "direct"
+            and e.get("native_model_id")]
+
+
 __all__ = [
     "FLAG", "enabled", "is_chat_model", "merge_entry",
     "build_vendor_entries", "build_authoritative_registry",
+    "native_direct_entries",
 ]
