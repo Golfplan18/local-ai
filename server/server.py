@@ -9125,15 +9125,27 @@ def model_registry_refresh():
         # filter still guards picks until the next successful rebuild).
         if ok:
             if _run_refresh_step(summary, "catalog", "refresh-catalog.py", 120):
+                # Vendor-catalogue-authoritative build (PR-D, default on): fetch
+                # each keyed vendor's own /models and write the authoritative
+                # registry that both the endpoint sync (below) and the picker
+                # read. Must run after the catalog rebuild (it reads the
+                # OpenRouter+AA registry) and BEFORE the endpoint sync (which
+                # consumes its output). Gated so a flag-off install skips it.
+                try:
+                    from orchestrator import vendor_catalog_registry as _vcr_refresh
+                    _va_on = _vcr_refresh.enabled()
+                except Exception:
+                    _va_on = False
+                if _va_on:
+                    _run_refresh_step(
+                        summary, "vendor_authoritative",
+                        "build_vendor_authoritative_registry.py", 120)
                 # Register endpoints for every catalog model so the router
                 # can dispatch them (direct vendor API when the key exists,
-                # else OpenRouter). Before 2026-06-11 this script was
-                # manual-only, so newly cataloged models (e.g.
-                # anthropic/claude-opus-4.8) had no endpoint and silently
-                # fell through to fallbacks. Runs after the catalog rebuild
-                # because it reads the catalog; kept synchronous because the
-                # pane's immediate re-fetch paints DIRECT chips from the
-                # routing-config this writes.
+                # else OpenRouter). Runs after the catalog rebuild because it
+                # reads the catalog; kept synchronous because the pane's
+                # immediate re-fetch paints DIRECT chips from the routing-config
+                # this writes.
                 _run_refresh_step(
                     summary, "endpoints", "sync_endpoints_from_catalog.py", 60)
         # Force the in-process reader to re-read the new file

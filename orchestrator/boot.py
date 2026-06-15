@@ -12130,6 +12130,21 @@ try:
 except Exception:
     _direct_catalog = None
 
+# Vendor-catalogue-authoritative inversion (default on, PR-D). When active,
+# models are already native direct endpoints, so the runtime prefer-direct
+# rewrite below is dormant; prefer-direct stays as the inversion-OFF fallback.
+try:
+    import vendor_catalog_registry as _vendor_catalog_registry
+except Exception:
+    _vendor_catalog_registry = None
+
+
+def _vendor_catalog_authoritative() -> bool:
+    try:
+        return bool(_vendor_catalog_registry and _vendor_catalog_registry.enabled())
+    except Exception:
+        return False
+
 
 def _prefer_direct_enabled() -> bool:
     v = (os.environ.get("ORA_PREFER_DIRECT", "1") or "").strip().lower()
@@ -12429,7 +12444,14 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
         # markup). On ANY failure — auth, model-id mismatch, network — fall
         # straight through to the OpenRouter path below so production never
         # breaks. Disable with ORA_PREFER_DIRECT=0.
-        _direct_ep = _resolve_direct_endpoint(model, endpoint)
+        #
+        # Dormant when the vendor-catalogue-authoritative inversion is active
+        # (default): there, keyed-vendor models are already native direct
+        # endpoints, so this OpenRouter-id rewrite is unnecessary. It remains
+        # the fallback when the inversion is turned off.
+        _direct_ep = None
+        if not _vendor_catalog_authoritative():
+            _direct_ep = _resolve_direct_endpoint(model, endpoint)
         if _direct_ep is not None:
             try:
                 _direct_result = _call_api_endpoint_inner(messages, _direct_ep, images)
