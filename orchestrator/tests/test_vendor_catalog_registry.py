@@ -86,6 +86,7 @@ class TestMerge(unittest.TestCase):
         self.assertEqual(e["context_length"], 1000000)         # native wins
         self.assertEqual(e["_enrichment_source"]["context_length"], "native")
         self.assertEqual(e["intelligence_index"], 55)          # AA only
+        self.assertEqual(e["aa_intelligence_index"], 55)       # field the Models pane reads
         self.assertEqual(e["output_tokens_per_second"], 90)
         self.assertEqual(e["_enrichment_source"]["pricing"], "aa")
 
@@ -102,6 +103,18 @@ class TestMerge(unittest.TestCase):
         e = vcr.merge_entry("qwen", {"id": "qwen-plus"}, aa, {})
         self.assertIsNone(e["intelligence_index"])     # NOT 1325
         self.assertEqual(e["intelligence_score"], 1325.0)
+
+    def test_vision_capable_detection(self):
+        # native flag
+        self.assertTrue(vcr.merge_entry("moonshot", {"id": "kimi-k2-vision", "supports_image_in": True}, {}, {})["vision_capable"])
+        # AA enrichment
+        aa = {vcr._norm("gpt-5"): {"vision_capable": True}}
+        self.assertTrue(vcr.merge_entry("openai", {"id": "gpt-5"}, aa, {})["vision_capable"])
+        # id heuristic (vl / omni)
+        self.assertTrue(vcr.merge_entry("qwen", {"id": "qwen3-vl-plus"}, {}, {})["vision_capable"])
+        self.assertTrue(vcr.merge_entry("qwen", {"id": "qwen3-omni-flash"}, {}, {})["vision_capable"])
+        # unknown → None (text-only, no enrichment)
+        self.assertIsNone(vcr.merge_entry("deepseek", {"id": "deepseek-chat"}, {}, {})["vision_capable"])
 
     def test_unmatched_is_blank_not_broken(self):
         e = vcr.merge_entry("xiaomi", {"id": "mimo-v9"}, {}, {})

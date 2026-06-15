@@ -135,6 +135,57 @@ def _num(x):
         return None
 
 
+_PARAM_RE = re.compile(r"[-/](\d{1,4})b\b", re.I)  # …-235b, -27b, -3b, /480b
+
+
+def _size_from_id(mid: str):
+    """(size_bucket, parameters_b) from a parameter count in the id, else
+    (None, None). Native ids without a count (gpt-5, grok-4.3, qwen-plus) stay
+    unsized — the Models pane's include-unsized opt-in admits them."""
+    m = _PARAM_RE.search(mid or "")
+    if not m:
+        return None, None
+    p = int(m.group(1))
+    bucket = "small" if p < 12 else ("midsize" if p <= 50 else "large")
+    return bucket, p
+
+
+def _vision(nat: dict, aa: dict, orr: dict, nid: str):
+    """Best-effort vision_capable for a native entry: native capability flags →
+    AA/OpenRouter enrichment → id heuristic. None when genuinely unknown.
+
+    The Models pane's vision filter + VISUAL slot gate require ``vision_capable
+    === true``; without this, native multimodal models (qwen3-vl, gemini, gpt-5)
+    are wrongly hidden whenever vision-only is active (most presets ship it on).
+    """
+    caps = nat.get("capabilities") if isinstance(nat, dict) else None
+    if isinstance(nat, dict):
+        if nat.get("supports_image_in") is True:
+            return True
+        if isinstance(caps, dict):
+            for f in ("vision", "image_input", "image", "image_understanding"):
+                if caps.get(f) is True:
+                    return True
+        im = nat.get("input_modalities")
+        if isinstance(im, list) and any(str(x).lower() == "image" for x in im):
+            return True
+    if aa.get("vision_capable") is True:
+        return True
+    if orr.get("accepts_image") is True:
+        return True
+    im = orr.get("input_modalities")
+    if isinstance(im, list) and any(str(x).lower() == "image" for x in im):
+        return True
+    low = (nid or "").lower()
+    if any(t in low for t in ("-vl", "vl-", "-omni", "omni-", "vision", "multimodal")):
+        return True
+    if aa.get("vision_capable") is False:
+        return False
+    if isinstance(caps, dict) and caps.get("vision") is False:
+        return False
+    return None
+
+
 def _aa_intelligence(aa: dict):
     # ONLY the Artificial Analysis Intelligence Index (≈0–70). NOT
     # intelligence_score, which is an Arena Elo (≈1000–1500) — a different
@@ -206,6 +257,8 @@ def merge_entry(vendor_id: str, native_rec, aa_idx: dict, or_idx: dict) -> dict:
     reasoning = pick("reasoning_model",
                      ("native", nat.get("supports_reasoning")),
                      ("aa", aa.get("reasoning_model")))
+    size_bucket, params_b = _size_from_id(nid)
+    vision = _vision(nat, aa, orr, nid)
 
     return {
         "id": f"{vendor_id}/{nid}",            # registry key (uniform namespace)
@@ -215,12 +268,16 @@ def merge_entry(vendor_id: str, native_rec, aa_idx: dict, or_idx: dict) -> dict:
         "dispatch": "direct",
         "display_name": display,
         "context_length": context,
+        "aa_intelligence_index": intelligence,              # field the Models pane reads
         "intelligence_index": intelligence,                 # AA Index (≈0–70)
         "intelligence_score": aa.get("intelligence_score"),  # Arena Elo (≈1000–1500)
         "intelligence_rank": aa.get("intelligence_rank"),
         "output_tokens_per_second": tps,
         "pricing": pricing,
         "reasoning_model": reasoning,
+        "size_bucket": size_bucket,
+        "parameters_b": params_b,
+        "vision_capable": vision,
         "release_date": nat.get("created") or aa.get("release_date") or orr.get("created"),
         "_enrichment_source": src,
         "_enrichment_matched": bool(aa) or bool(orr),
