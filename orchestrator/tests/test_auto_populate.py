@@ -176,15 +176,20 @@ class TestPickForPaidSlot(unittest.TestCase):
         # configures it.
         # For now, just assert the algorithm runs and returns 3.
 
-    def test_dominated_model_excluded(self):
+    def test_dominated_model_kept_as_fallback(self):
+        # 2026-06-14: Pareto is no longer applied inside pick_for_paid_slot,
+        # so a Pareto-dominated model (e/dominated) is now ADMISSIBLE as a
+        # fallback — that's the point: cheap same-tier alternatives should
+        # populate the fallback chain rather than the picker climbing to
+        # pricey frontier models. The PRIMARY is still the best by the sort.
         catalog = _fixture_catalog()
         picks, _ = auto_populate.pick_for_paid_slot(
             catalog, size_bucket="large", top_n=10,
             floor_pct=None, cost_ceiling=None, loosening=False,
         )
         pick_ids = {p["id"] for p in picks}
-        # e/dominated should not appear (Pareto-pruned)
-        self.assertNotIn("e/dominated", pick_ids)
+        self.assertIn("e/dominated", pick_ids)        # no longer Pareto-pruned
+        self.assertNotEqual(picks[0]["id"], "e/dominated")  # never the primary
 
     def test_diversity_exclusion(self):
         catalog = _fixture_catalog()
@@ -753,6 +758,58 @@ class TestNewestModelSelection(unittest.TestCase):
         ]
         ordered = auto_populate.sort_by_intelligence_descending(cands)
         self.assertEqual([m["id"] for m in ordered], ["v/dated", "v/undated"])
+
+
+
+class TestPreviewAndFallbackRelaxation(unittest.TestCase):
+    """2026-06-14: exclude preview models from auto-pick; fallbacks are the
+    least-expensive models above the thresholds (no Pareto pruning)."""
+
+    def test_filter_exclude_preview(self):
+        cands = [
+            _model("google/gemini-3.1-pro-preview", intelligence=57),
+            _model("google/gemini-3.1-pro-preview-customtools", intelligence=57),
+            _model("anthropic/claude-opus-4.8", intelligence=61),
+            _model("x/preview-style-name", intelligence=40),  # delimited token
+            _model("x/previewed", intelligence=40),            # NOT a token → kept
+        ]
+        out = auto_populate.filter_exclude_preview(cands)
+        ids = {m["id"] for m in out}
+        self.assertNotIn("google/gemini-3.1-pro-preview", ids)
+        self.assertNotIn("google/gemini-3.1-pro-preview-customtools", ids)
+        self.assertNotIn("x/preview-style-name", ids)
+        self.assertIn("anthropic/claude-opus-4.8", ids)
+        self.assertIn("x/previewed", ids)  # substring, not a token
+
+    def test_fallbacks_include_cheap_dominated_models(self):
+        # minimax-m3 dominates qwen-plus (smarter AND cheaper). Old Pareto
+        # removed qwen-plus and the fallbacks climbed to the pricey frontier.
+        # Now qwen-plus (cheap, above floor) is a fallback.
+        catalog = [
+            _model("minimax/m3",   intelligence=54.7, blended=0.52, size="large", provider="minimax"),
+            _model("qwen/plus",    intelligence=53.3, blended=0.56, size="large", provider="qwen"),
+            _model("google/pro",   intelligence=57.2, blended=4.50, size="large", provider="google"),
+            _model("anthropic/op", intelligence=61.4, blended=10.0, size="large", provider="anthropic"),
+        ]
+        picks, _ = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=3, floor_pct=80,
+            cost_ceiling=None, loosening=False, sort_by="cost_asc")
+        ids = [p["id"] for p in picks]
+        self.assertEqual(ids[0], "minimax/m3")        # cheapest primary unchanged
+        self.assertIn("qwen/plus", ids)               # cheap dominated model now a fallback
+        # the pricey frontier models are NOT preferred over the cheap one
+        self.assertLess(ids.index("qwen/plus"),
+                        ids.index("google/pro") if "google/pro" in ids else 99)
+
+    def test_preview_excluded_from_paid_pick(self):
+        catalog = [
+            _model("google/gemini-3.1-pro-preview", intelligence=57, blended=4.5, size="large", provider="google"),
+            _model("minimax/m3", intelligence=54.7, blended=0.52, size="large", provider="minimax"),
+        ]
+        picks, _ = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=2, floor_pct=None,
+            cost_ceiling=None, loosening=False, sort_by="intelligence_desc")
+        self.assertNotIn("google/gemini-3.1-pro-preview", [p["id"] for p in picks])
 
 
 if __name__ == "__main__":

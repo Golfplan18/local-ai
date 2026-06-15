@@ -44,6 +44,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -199,6 +200,20 @@ def filter_exclude_reasoning(candidates: list[dict], reasoning_ids: set[str]) ->
     if not reasoning_ids:
         return candidates
     return [m for m in candidates if m.get("id") not in reasoning_ids]
+
+
+def filter_exclude_preview(candidates: list[dict]) -> list[dict]:
+    """Drop models with ``preview`` in their id from AUTO-PICK (2026-06-14,
+    user request). Vendors routinely debut a flagship at a steeply
+    discounted preview price, then raise it when the preview ends — and a
+    preset baked during the preview keeps the now-mispriced model. Excluding
+    preview models from the picker avoids that trap. They stay in the
+    inventory and remain manually selectable; only the autopicker skips
+    them. Matched as a delimited token so it can't false-match a model that
+    merely contains the letters."""
+    return [m for m in candidates
+            if not re.search(r'(?:^|[-/:_])preview(?:[-/:_.]|$)',
+                             (m.get("id") or ""), re.IGNORECASE)]
 
 
 _NON_CHAT_OUTPUT_MODALITIES = {"audio", "video", "music", "speech"}
@@ -457,6 +472,7 @@ def pick_for_paid_slot(
     # whose output isn't text. See filter_text_output.
     candidates = filter_text_output(candidates)
     candidates = filter_paid(candidates)
+    candidates = filter_exclude_preview(candidates)
     candidates = filter_by_size_bucket(candidates, size_bucket)
     candidates = filter_reachable(candidates, unreachable_ids or set())
     if exclude_reasoning_models and reasoning_model_ids:
@@ -466,11 +482,18 @@ def pick_for_paid_slot(
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
     candidates = _apply_vendor_diversity(candidates, excluded_vendors)
 
-    # Pareto-filter against (intelligence, cost). Skip for tokens_per_sec_desc
-    # selection — Pareto on intel/cost is the wrong frontier when speed is the
-    # axis, and leaves slow-but-Pareto-optimal models in the Fast fallback chain.
-    if sort_by != "tokens_per_sec_desc":
-        candidates = pareto_filter(candidates)
+    # NO Pareto filter (2026-06-14, user request). Pareto removes every
+    # model that is both less intelligent AND pricier than some other
+    # candidate — which is exactly the cheap same-tier alternatives a
+    # FALLBACK chain wants (e.g. qwen3.7-plus, "just barely beaten" by a
+    # marginally-cheaper-and-smarter minimax-m3). With Pareto on, the
+    # chain could only climb the price ladder to premium frontier models
+    # ($4.50 Gemini, $10 Opus) as fallbacks. The PRIMARY is unaffected:
+    # the cheapest model (cost_asc) and the smartest model (intel_desc)
+    # are each provably Pareto-optimal already, so dropping the filter
+    # changes only positions 2..N — making fallbacks the least-expensive
+    # models above the intelligence + size thresholds, as intended.
+    # (tokens_per_sec_desc never used Pareto either.)
 
     loosening_notes: list[str] = []
     current_floor = floor_pct
@@ -554,6 +577,7 @@ def pick_for_free_slot(
     base = filter_by_category(catalog, "chat")
     base = filter_text_output(base)
     base = filter_free(base)
+    base = filter_exclude_preview(base)
     base = filter_reachable(base, unreachable_ids or set())
     if exclude_reasoning_models and reasoning_model_ids:
         base = filter_exclude_reasoning(base, reasoning_model_ids)
@@ -584,9 +608,9 @@ def pick_for_free_slot(
             candidates = filter_vision(candidates)
         candidates = [m for m in candidates if m["id"] not in excluded_ids]
         candidates = _apply_vendor_diversity(candidates, excluded_vendors)
-        # Same reason as pick_for_paid_slot: skip Pareto when selecting on speed.
-        if sort_by != "tokens_per_sec_desc":
-            candidates = pareto_filter(candidates)
+        # No Pareto filter — same rationale as pick_for_paid_slot: it would
+        # prune the cheap same-tier alternatives a fallback chain wants and
+        # never changes the (Pareto-optimal) primary.
         if sort_by == "tokens_per_sec_desc":
             picks = sort_by_tokens_per_sec_descending(candidates, tokens_per_sec or {})[:top_n]
         else:
