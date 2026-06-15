@@ -8737,6 +8737,10 @@ def model_registry_get():
 
     return _json_response({
         "models": filtered,
+        # Pre-inversion id → current native id, so the pane resolves saved
+        # config/preset picks instead of falsely marking them DEPRECATED.
+        # Empty {} on the base (flag-off) registry — harmless.
+        "aliases": registry.get("aliases") or {},
         "generated_at": registry.get("generated_at"),
         "last_probe_at": registry.get("last_probe_at"),
         "aa_source": registry.get("aa_source"),

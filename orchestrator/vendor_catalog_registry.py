@@ -69,6 +69,16 @@ _NONCHAT_RE = re.compile(
     r"\btts\b|-tts|\baudio\b|speech|sambert|cosyvoice|-voice\b|\basr\b|transcrib|whisper|"
     r"\bocr\b|translation|-translate|livetranslate|qwen-mt[- ]|-mt-(?:flash|turbo|plus|lite|max)\b|"
     r"\bvideo\b|-video|tingwu|ccai|\bs2s\b|\bvc-|\bvd-|"
+    # OpenAI non-chat surfaces (bare /models records carry no type/caps, so the
+    # regex is load-bearing here): moderation, the Realtime audio API, the
+    # search tool endpoint, and the legacy completion engines. gpt-realtime is
+    # SCOPED to OpenAI — it must NOT match Qwen's omni-realtime multimodal-chat
+    # models. lyria = Google music generation (not chat).
+    r"\bmoderation\b|gpt-realtime|search-api|\bdavinci\b|\bbabbage\b|\blyria\b|"
+    # Google non-chat products: Veo (video), Nano Banana (image gen), AQA
+    # (attributed-QA retrieval), Robotics-ER, Deep Research + Antigravity
+    # (agentic products, not chat-completion models).
+    r"\bveo\b|nano-banana|\baqa\b|robotics|deep-research|antigravity|"
     r"nvclip|gliner|-reward\b|nemoretriever|nemotron-parse|\bdeplot\b)",
     re.I,
 )
@@ -90,29 +100,53 @@ def is_chat_model(vendor_id: str, record) -> bool:
 
 # ── id normalization for (benign) enrichment matching ────────────────────────
 _DATE = re.compile(r"-(?:v\d+-)?(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{4}|\d{3,8})(?:-preview)?$")
-# Only true serving-noise tails. NOT -instruct/-thinking/-reasoning/-chat/-it:
-# those distinguish genuinely different sibling models, so collapsing them would
-# attach one sibling's metadata to another.
-_VARIANT = re.compile(r"-(highspeed|fast|preview|latest)$", re.I)
+# Google appends a preview channel AFTER the date-less stem
+# (gemini-2.5-flash-preview-05-20, -preview, -exp); the OR/AA twin is the plain
+# stem, so this tail must peel for the match to land. Scoped to -preview[-MM-DD]
+# / -exp so it can't touch a real model suffix.
+_PREVIEW = re.compile(r"-(?:preview(?:-\d{2}-\d{2})?|exp|experimental)$", re.I)
+# Only a floating-pointer tail. NOT -fast/-highspeed (distinct serving tiers
+# with their OWN pricing — collapsing them attaches one's price to the other),
+# and NOT -instruct/-thinking/-reasoning/-chat/-it (genuinely different siblings).
+_VARIANT = re.compile(r"-(latest)$", re.I)
 
 
 def _norm(s: str) -> str:
+    """Loose normalization: collapse date / preview / -latest tails so a native
+    id matches its undated AA/OR twin. Used as the FALLBACK enrichment tier."""
     s = (s or "").lower()
     if s.startswith("models/"):
         s = s[7:]
     prev = None
-    while prev != s:  # peel repeated date / variant tails
+    while prev != s:  # peel repeated date / preview / variant tails
         prev = s
-        s = _VARIANT.sub("", _DATE.sub("", s))
+        s = _VARIANT.sub("", _PREVIEW.sub("", _DATE.sub("", s)))
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+def _norm_exact(s: str) -> str:
+    """Precise normalization: case + separator only, NO date/preview/variant
+    collapse. The primary enrichment tier — a dated or -fast/-highspeed sibling
+    matches its OWN metadata row, so first-wins can't misattach a different
+    model's price/intelligence/vision (e.g. claude-opus-4-8 vs -4.8-fast,
+    gpt-4o-2024-05-13 vs -2024-11-20, gemini-flash-lite vs its -preview)."""
+    s = (s or "").lower()
+    if s.startswith("models/"):
+        s = s[7:]
     return re.sub(r"[^a-z0-9]", "", s)
 
 
 def _enrich_index(vendor_id: str, items) -> dict:
     """{normalized native slug → enrichment record} from AA/OR entries whose key
     is ``<prefix>/<model>`` for this vendor's prefixes. ``items`` is an iterable
-    of (key, record)."""
+    of (key, record).
+
+    Holds BOTH tiers: precise keys (``_norm_exact``) added first so they win,
+    then loose keys (``_norm``) fill the gaps. merge_entry looks up precise-first
+    so a sibling matches its own row before falling back to the date-collapsed
+    twin — preventing the first-wins cross-attach across date/-fast siblings."""
     pfx = set(_prefixes(vendor_id))
-    idx: dict = {}
+    rows = []
     for key, rec in items:
         k = (key or "").lstrip("~")  # AA carries ~-prefixed alias rows
         if "/" not in k:
@@ -120,9 +154,16 @@ def _enrich_index(vendor_id: str, items) -> dict:
         head, rest = k.split("/", 1)
         if head not in pfx:
             continue
+        rows.append((rest, rec))
+    idx: dict = {}
+    for rest, rec in rows:           # precise tier wins
+        pe = _norm_exact(rest)
+        if pe:
+            idx.setdefault(pe, rec)
+    for rest, rec in rows:           # loose tier fills gaps only
         ns = _norm(rest)
-        if ns and ns not in idx:
-            idx[ns] = rec
+        if ns:
+            idx.setdefault(ns, rec)
     return idx
 
 
@@ -150,13 +191,102 @@ def _size_from_id(mid: str):
     return bucket, p
 
 
+def _classify_size(vendor_id: str, nid: str, size_rules):
+    """Fallback size_bucket from name-pattern rules (config/family-classification
+    .json) for flagship ids with no parameter count. ``size_rules`` is keyed by
+    the AA/OpenRouter vendor prefix (google, x-ai, moonshotai…), so we look up
+    via this vendor's prefix aliases. Rules are ordered most-specific-first
+    (flash-lite before flash). Returns None when unclassified."""
+    if not size_rules:
+        return None
+    low = (nid or "").lower()
+    for alias in _prefixes(vendor_id):
+        rules = size_rules.get(alias)
+        if not isinstance(rules, list):
+            continue
+        for rule in rules:
+            pat = (rule.get("pattern") or "").lower()
+            if pat and pat in low:
+                return rule.get("size_bucket")
+    return None
+
+
+def _legacy_ids(vendor_id: str, nid: str) -> list[str]:
+    """Pre-inversion id forms that should resolve to this entry. The inversion
+    changed the registry key namespace (google/→gemini/, x-ai/→xai/,
+    moonshotai/→moonshot/, minimax/minimax-m3→minimax/MiniMax-M3, dotted→hyphen
+    claude-opus-4.8→claude-opus-4-8, dated claude-opus-4-5-20251101). Saved
+    config/preset ids still use the old forms and would otherwise read as
+    DEPRECATED. Generated at build time where the full id is known, so the
+    mapping is deterministic and unambiguous (no fuzzy lookup needed)."""
+    canonical = f"{vendor_id}/{nid}"
+    leaves = {nid, nid.lower()}
+    # dotted <-> hyphen between digits: claude-opus-4-8 <-> claude-opus-4.8
+    leaves.add(re.sub(r"(\d)-(\d)", r"\1.\2", nid))
+    leaves.add(re.sub(r"(\d)\.(\d)", r"\1-\2", nid))
+    # undated stem (+ its dotted/lower forms): claude-opus-4-5-20251101 -> 4-5/4.5
+    undated = _DATE.sub("", nid)
+    if undated != nid:
+        leaves.add(undated)
+        leaves.add(undated.lower())
+        leaves.add(re.sub(r"(\d)-(\d)", r"\1.\2", undated))
+    # date format variants: -YYYY-MM-DD <-> -YYYYMMDD (config pins use either)
+    for lf in list(leaves):
+        leaves.add(re.sub(r"-(\d{4})-(\d{2})-(\d{2})\b", r"-\1\2\3", lf))   # hyphen → compact
+        leaves.add(re.sub(r"-(\d{4})(\d{2})(\d{2})\b", r"-\1-\2-\3", lf))   # compact → hyphen
+    prefixes = set(_prefixes(vendor_id)) | {vendor_id}
+    out = set()
+    for p in prefixes:
+        for lf in leaves:
+            cand = f"{p}/{lf}"
+            if cand != canonical:
+                out.add(cand)
+    return sorted(out)
+
+
+# Known vision-capable families, for ids-only native records with no caps dict
+# and no enrichment match (the common case). Negations (text-only siblings)
+# precede their family's positive rule and win. CONSERVATIVE on purpose: a false
+# True can be picked into the VISUAL slot and silently break image input, whereas
+# a None still SHOWS in the lenient inventory filter — so we only assert True for
+# families with well-established image input.
+_VISION_RULES = [
+    # text-only siblings / variants excluded up front (negations win)
+    (re.compile(r"claude-3[.-]5-haiku|claude-3-haiku", re.I), False),
+    (re.compile(r"-search-preview|-search\b", re.I), False),  # web-search variant, text-only
+    # OpenAI multimodal (4o / 4.1 / 4-turbo / 4-vision / chatgpt-4o / gpt-5.x).
+    # gpt-4[.-]1\b is anchored so it matches gpt-4.1 but NOT gpt-4-1106 (text-only).
+    (re.compile(r"gpt-4o|gpt-4[.-]1\b|gpt-4-turbo|gpt-4-vision|chatgpt-4o|gpt-5", re.I), True),
+    # Google Gemini 1.5+/2.x/3.x are all multimodal
+    (re.compile(r"gemini-(?:1[.-]5|2[.-]|3[.-])", re.I), True),
+    # Anthropic Claude 3 / 3.7 / 4.x (3.5/3-haiku handled above)
+    (re.compile(r"claude-3|claude-(?:opus|sonnet|haiku)-4|claude-4", re.I), True),
+    # Meta Llama vision
+    (re.compile(r"llama-3[.-]2-(?:11b|90b)|llama-4|maverick|scout", re.I), True),
+    # Mistral vision — Pixtral only (mistral-medium vision left to OR accepts_image
+    # enrichment, since the dated -2xxx snapshots span both text and vision lines)
+    (re.compile(r"pixtral", re.I), True),
+    # xAI Grok vision
+    (re.compile(r"grok-2-vision|grok-4|grok-vision", re.I), True),
+]
+
+
+def _vision_family(low: str):
+    for rx, val in _VISION_RULES:
+        if rx.search(low):
+            return val
+    return None
+
+
 def _vision(nat: dict, aa: dict, orr: dict, nid: str):
     """Best-effort vision_capable for a native entry: native capability flags →
-    AA/OpenRouter enrichment → id heuristic. None when genuinely unknown.
+    AA/OpenRouter enrichment → id heuristic → known-vision-family table. None
+    when genuinely unknown.
 
-    The Models pane's vision filter + VISUAL slot gate require ``vision_capable
-    === true``; without this, native multimodal models (qwen3-vl, gemini, gpt-5)
-    are wrongly hidden whenever vision-only is active (most presets ship it on).
+    The Models pane's VISUAL slot gate requires ``vision_capable === true``;
+    without this, native multimodal models (qwen3-vl, gemini, gpt-5) are wrongly
+    excluded from that slot. (The general inventory Vision chip is lenient and
+    shows None too — only definite False is hidden.)
     """
     caps = nat.get("capabilities") if isinstance(nat, dict) else None
     if isinstance(nat, dict):
@@ -176,9 +306,22 @@ def _vision(nat: dict, aa: dict, orr: dict, nid: str):
     im = orr.get("input_modalities")
     if isinstance(im, list) and any(str(x).lower() == "image" for x in im):
         return True
+    # AUTHORITATIVE NEGATIVE: OpenRouter accepts_image=False is reliable and must
+    # beat the family heuristic, so a non-vision variant in a vision family
+    # (e.g. gpt-4o-search-preview) isn't over-claimed. (AA's vision flag is less
+    # reliable — its False is checked AFTER the family table, below.)
+    if orr.get("accepts_image") is False:
+        return False
     low = (nid or "").lower()
-    if any(t in low for t in ("-vl", "vl-", "-omni", "omni-", "vision", "multimodal")):
+    # id heuristic — but NOT for moderation endpoints (omni-moderation matches
+    # 'omni-' yet is text classification, not vision).
+    if "moderation" not in low and any(
+        t in low for t in ("-vl", "vl-", "-omni", "omni-", "vision", "multimodal")
+    ):
         return True
+    fam = _vision_family(low)
+    if fam is not None:
+        return fam
     if aa.get("vision_capable") is False:
         return False
     if isinstance(caps, dict) and caps.get("vision") is False:
@@ -214,13 +357,22 @@ def _or_pricing(orr: dict):
     return None
 
 
-def merge_entry(vendor_id: str, native_rec, aa_idx: dict, or_idx: dict) -> dict:
+def merge_entry(vendor_id: str, native_rec, aa_idx: dict, or_idx: dict,
+                size_rules=None) -> dict:
     """Produce one inventory entry for a native model, native-first per field."""
     nid = (native_rec.get("id") if isinstance(native_rec, dict) else str(native_rec)) or ""
+    # Google's /models prefixes ids with 'models/'. Strip it so the registry key
+    # is single-prefixed (gemini/gemini-2.5-flash, not gemini/models/...) — the
+    # double prefix broke config-id matching and vendor grouping. Native dispatch
+    # is unaffected (the Gemini API accepts the bare id; direct_catalog also
+    # strips it).
+    if nid.startswith("models/"):
+        nid = nid[7:]
     nat = native_rec if isinstance(native_rec, dict) else {}
     ns = _norm(nid)
-    aa = aa_idx.get(ns) or {}
-    orr = or_idx.get(ns) or {}
+    pe = _norm_exact(nid)
+    aa = aa_idx.get(pe) or aa_idx.get(ns) or {}     # precise tier first, then loose
+    orr = or_idx.get(pe) or or_idx.get(ns) or {}
     src: dict = {}
 
     def pick(field, *cands):
@@ -258,11 +410,14 @@ def merge_entry(vendor_id: str, native_rec, aa_idx: dict, or_idx: dict) -> dict:
                      ("native", nat.get("supports_reasoning")),
                      ("aa", aa.get("reasoning_model")))
     size_bucket, params_b = _size_from_id(nid)
+    if size_bucket is None:                    # flagship ids carry no param count
+        size_bucket = _classify_size(vendor_id, nid, size_rules)
     vision = _vision(nat, aa, orr, nid)
 
     return {
         "id": f"{vendor_id}/{nid}",            # registry key (uniform namespace)
         "native_model_id": nid,                # the id actually dispatched
+        "also_known_as": _legacy_ids(vendor_id, nid),  # pre-inversion id forms → this entry
         "provider": vendor_id,
         "vendor": vendor_id,
         "dispatch": "direct",
@@ -284,7 +439,8 @@ def merge_entry(vendor_id: str, native_rec, aa_idx: dict, or_idx: dict) -> dict:
     }
 
 
-def build_vendor_entries(vendor_id: str, native_records: list, aa_idx: dict, or_idx: dict):
+def build_vendor_entries(vendor_id: str, native_records: list, aa_idx: dict, or_idx: dict,
+                         size_rules=None):
     """Return (chat entries, dropped non-chat ids) for one vendor's catalogue."""
     kept, dropped = [], []
     for r in native_records:
@@ -292,13 +448,13 @@ def build_vendor_entries(vendor_id: str, native_records: list, aa_idx: dict, or_
         if not rid:
             continue  # malformed record (no id) — skip, never abort the build
         (kept if is_chat_model(vendor_id, r) else dropped).append(r)
-    entries = [merge_entry(vendor_id, r, aa_idx, or_idx) for r in kept]
+    entries = [merge_entry(vendor_id, r, aa_idx, or_idx, size_rules) for r in kept]
     drop_ids = [(r.get("id") if isinstance(r, dict) else r) for r in dropped]
     return entries, drop_ids
 
 
 def build_authoritative_registry(base_models: dict, vendor_catalogs: dict,
-                                 or_models: list | None = None):
+                                 or_models: list | None = None, size_rules=None):
     """Transform the OpenRouter+AA registry into a vendor-authoritative one.
 
     base_models     : {orid → entry}, the AA-enriched registry (also the AA source)
@@ -322,7 +478,8 @@ def build_authoritative_registry(base_models: dict, vendor_catalogs: dict,
             new.pop(k, None)
         aa_idx = _enrich_index(vendor_id, base_models.items())
         or_idx = _enrich_index(vendor_id, ((m.get("id", ""), m) for m in or_models))
-        entries, dropped = build_vendor_entries(vendor_id, native_records, aa_idx, or_idx)
+        entries, dropped = build_vendor_entries(vendor_id, native_records, aa_idx, or_idx,
+                                                size_rules)
         for e in entries:
             new[e["id"]] = e
         n = len(entries) or 1
@@ -339,6 +496,41 @@ def build_authoritative_registry(base_models: dict, vendor_catalogs: dict,
     return new, report
 
 
+def _recency_key(cid: str) -> str:
+    """Sortable recency token from a canonical id's trailing date, so the NEWEST
+    snapshot wins when several claim one contested (undated) alias. Undated ids
+    (floating 'latest') sort highest. Within a model family the date format is
+    consistent, which is what the comparison relies on."""
+    m = re.search(r"(\d{4})-(\d{2})-(\d{2})$", cid)
+    if m:
+        return "".join(m.groups())
+    m = re.search(r"-(\d{4,8})$", cid)
+    if m:
+        return m.group(1).ljust(8, "0")
+    return "99999999"  # undated → newest
+
+
+def build_alias_map(models: dict) -> dict:
+    """{legacy_id → canonical_id} from every entry's ``also_known_as``.
+
+    Newest-wins on collision (a contested undated alias resolves to the most
+    recent snapshot, not insertion order) and NEVER maps a legacy form that is
+    itself a live registry key (so an alias can't shadow a real model). The
+    Models pane uses this to resolve pre-inversion config/preset ids instead of
+    marking them DEPRECATED — exact-then-alias, no fuzzy matching."""
+    aliases: dict = {}
+    ordered = sorted((models or {}).items(),
+                     key=lambda kv: _recency_key(kv[0]), reverse=True)
+    for cid, e in ordered:
+        if not isinstance(e, dict):
+            continue
+        for legacy in e.get("also_known_as") or []:
+            if legacy in models:
+                continue  # a real current id — never shadow it
+            aliases.setdefault(legacy, cid)  # newest-first iteration → newest wins
+    return aliases
+
+
 def native_direct_entries(models: dict) -> list:
     """The vendor-native direct entries in an authoritative registry
     (``dispatch == "direct"`` with a ``native_model_id``)."""
@@ -350,5 +542,5 @@ def native_direct_entries(models: dict) -> list:
 __all__ = [
     "FLAG", "enabled", "is_chat_model", "merge_entry",
     "build_vendor_entries", "build_authoritative_registry",
-    "native_direct_entries",
+    "build_alias_map", "native_direct_entries",
 ]

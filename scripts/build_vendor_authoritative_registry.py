@@ -74,6 +74,12 @@ def main() -> int:
         or_models = (json.loads((CONFIG / "openrouter-catalog.json").read_text()).get("models")) or []
     except Exception:
         or_models = []
+    # Name-pattern size rules for flagship ids with no parameter count
+    # (config/family-classification.json, keyed by OpenRouter vendor prefix).
+    try:
+        size_rules = (json.loads((CONFIG / "family-classification.json").read_text()).get("providers")) or {}
+    except Exception:
+        size_rules = {}
 
     vendor_catalogs: dict = {}
     skipped: dict = {}
@@ -88,10 +94,13 @@ def main() -> int:
             continue
         vendor_catalogs[p["id"]] = recs
 
-    new_models, report = vcr.build_authoritative_registry(base_models, vendor_catalogs, or_models)
+    new_models, report = vcr.build_authoritative_registry(
+        base_models, vendor_catalogs, or_models, size_rules)
+    aliases = vcr.build_alias_map(new_models)
 
     out = dict(base)
     out["models"] = new_models
+    out["aliases"] = aliases               # {pre-inversion id → current native id}
     out["_vendor_authoritative"] = True
     out["_authoritative_vendors"] = sorted(vendor_catalogs.keys())
     Path(args.out).write_text(json.dumps(out, indent=2))

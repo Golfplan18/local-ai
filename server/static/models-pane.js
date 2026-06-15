@@ -716,9 +716,8 @@
         + '</div>';
     }
     var isPick = _picksSet && _picksSet.has(modelId);
-    var registry = (_registry && _registry.models) || {};
-    var model = registry[modelId];
-    var isDeprecated = !model;  // referenced model isn't in the registry
+    var model = _resolveRegistryModel(modelId);  // honors the id-alias map
+    var isDeprecated = !model;  // not in the registry (and no alias) → retired
     if (isDeprecated) classes += ' ora-models-slot-row-deprecated';
     var meta = model ? _compactMetaHTML(model, opts) : '';
     // Display name preference: media models (aa-img/aa-edit/aa-vid keys)
@@ -840,11 +839,27 @@
   // cell that doesn't render anywhere on the card (e.g. utility's
   // classification cell, which fans out from SMALL but has no row
   // of its own).
+  // Resolve a config/preset model id to its registry entry, honoring the
+  // build-time alias map. The vendor-catalogue-authoritative inversion changed
+  // the id namespace (google/→gemini/, x-ai/→xai/, minimax/minimax-m3→
+  // minimax/MiniMax-M3, dotted→hyphen, dated forms), so saved picks reference
+  // ids the registry no longer keys by. The alias map (built from each entry's
+  // also_known_as, exact forms only — no fuzzy matching) maps those old ids to
+  // the current native entry. A genuinely-retired id (e.g. openai/gpt-oss-120b,
+  // dropped from OpenAI's catalogue) resolves to nothing and correctly stays
+  // DEPRECATED. Returns the model object or null.
+  function _resolveRegistryModel(id) {
+    var models = (_registry && _registry.models) || {};
+    if (models[id]) return models[id];
+    var aliases = (_registry && _registry.aliases) || {};
+    var canonical = aliases[id];
+    return canonical ? (models[canonical] || null) : null;
+  }
+
   function _deprecatedPrimaries(summary) {
     var all = (summary && summary.all_primaries) || [];
     if (!Array.isArray(all) || !all.length) return [];
-    var models = (_registry && _registry.models) || {};
-    return all.filter(function (id) { return !models[id]; });
+    return all.filter(function (id) { return !_resolveRegistryModel(id); });
   }
 
   // Tooltip text listing the deprecated primary ids on a yellow card,
@@ -2341,16 +2356,15 @@
   function _popoutSlotHTML(label, primary, fallbackList, configName, maxFallbacks) {
     fallbackList = fallbackList || [];
     if (typeof maxFallbacks !== 'number') maxFallbacks = fallbackList.length;
-    var registry = (_registry && _registry.models) || {};
     var rows = [];
     // First row: the section label IS the rank. Primary inline with label.
-    rows.push(_popoutRowHTML(primary, registry[primary], label.toUpperCase(),
+    rows.push(_popoutRowHTML(primary, _resolveRegistryModel(primary), label.toUpperCase(),
       {section: label, fallbackIndex: -1, configName: configName, sectionHeader: true}));
     // Fallback rows, capped at maxFallbacks. Empty positions render as
     // clickable placeholders so the user can pick into them in place.
     for (var i = 0; i < maxFallbacks; i++) {
       var fbId = fallbackList[i] || null;
-      rows.push(_popoutRowHTML(fbId, fbId ? registry[fbId] : null,
+      rows.push(_popoutRowHTML(fbId, fbId ? _resolveRegistryModel(fbId) : null,
         'fallback ' + (i + 1),
         {section: label, fallbackIndex: i, configName: configName}));
     }
