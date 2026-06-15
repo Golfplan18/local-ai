@@ -352,6 +352,43 @@
         "family_tier": "flagship",
         "size_bucket": "large"
       }
+    ],
+    "mistralai": [
+      {
+        "pattern": "ministral",
+        "family_tier": "fast",
+        "size_bucket": "small"
+      },
+      {
+        "pattern": "mistral-small",
+        "family_tier": "fast",
+        "size_bucket": "small"
+      },
+      {
+        "pattern": "codestral",
+        "family_tier": "mid",
+        "size_bucket": "midsize"
+      },
+      {
+        "pattern": "mistral-medium",
+        "family_tier": "mid",
+        "size_bucket": "midsize"
+      },
+      {
+        "pattern": "mistral-large",
+        "family_tier": "flagship",
+        "size_bucket": "large"
+      },
+      {
+        "pattern": "magistral",
+        "family_tier": "flagship",
+        "size_bucket": "large"
+      },
+      {
+        "pattern": "pixtral-large",
+        "family_tier": "flagship",
+        "size_bucket": "large"
+      }
     ]
   },
   "size_bucket_definitions": {
