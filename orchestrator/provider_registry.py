@@ -128,6 +128,7 @@ PROVIDERS: list[dict] = [
     },
     {
         "id": "meta", "label": "Meta Llama", "category": "llm_us",
+        "direct_payg": False,  # Llama API is a waitlisted free preview, no self-serve PAYG
         "keyring_username": "meta-api-key", "env_var": "LLAMA_API_KEY",
         "signup_url": "https://llama.developer.meta.com/",
         "console_url": "https://llama.developer.meta.com/api-keys",
@@ -138,6 +139,7 @@ PROVIDERS: list[dict] = [
     },
     {
         "id": "nvidia", "label": "NVIDIA NIM", "category": "llm_us",
+        "direct_payg": False,  # free key is trivial, but no individual pay-as-you-go path
         "keyring_username": "nvidia-api-key", "env_var": "NVIDIA_API_KEY",
         "signup_url": "https://build.nvidia.com/",
         "console_url": "https://build.nvidia.com/settings/api-keys",
@@ -359,6 +361,17 @@ def env_bridge_pairs() -> list[tuple[str, str]]:
 def direct_llm_providers() -> list[dict]:
     """Entries that can be called directly as an LLM (native or compat)."""
     return [p for p in PROVIDERS if p.get("dispatch")]
+
+
+def catalog_authoritative_providers() -> list[dict]:
+    """LLM providers whose own catalogue should be authoritative when keyed.
+
+    Excludes vendors with no real self-serve pay-as-you-go path (Meta's
+    waitlisted free preview, NVIDIA NIM's free-key-but-no-individual-PAYG) —
+    those stay served via OpenRouter. ``direct_payg`` defaults True.
+    """
+    return [p for p in PROVIDERS
+            if p.get("dispatch") and p.get("direct_payg", True)]
 
 
 def or_prefix_map() -> dict[str, dict]:
