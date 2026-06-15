@@ -403,3 +403,43 @@ class TestDetectChanges(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNameMarkerSizeClassification(unittest.TestCase):
+    """2026-06-14: a model that announces a smaller/speed tier in its name
+    is classified by that marker so the picker's large slots exclude it by
+    capability — even when it has no parameter count and no family rule."""
+
+    def test_small_markers(self):
+        for slug, expected in [
+            ("mistralai/mistral-small-2603", "small"),
+            ("microsoft/phi-4-mini-instruct", "small"),
+            ("openai/gpt-5.4-nano", "small"),
+            ("amazon/nova-lite-v1", "small"),
+            ("x/something-tiny", "small"),
+        ]:
+            self.assertEqual(
+                refresh_catalog.infer_size_from_name_markers(slug), expected,
+                f"{slug} should be small")
+
+    def test_flash_is_midsize(self):
+        self.assertEqual(
+            refresh_catalog.infer_size_from_name_markers("stepfun/step-3.7-flash"),
+            "midsize")
+
+    def test_marker_must_be_delimited_token(self):
+        # "mini" inside "gemini" must NOT match; codenames stay None.
+        self.assertIsNone(
+            refresh_catalog.infer_size_from_name_markers("google/gemini-3.1-pro"))
+        self.assertIsNone(
+            refresh_catalog.infer_size_from_name_markers("anthropic/claude-fable-5"))
+        self.assertIsNone(
+            refresh_catalog.infer_size_from_name_markers("x-ai/grok-4.3"))
+
+    def test_classification_order_params_win(self):
+        # A real param count (via normalize) takes precedence over a name
+        # marker — infer_size is only the last resort.
+        rules = {"providers": {}}
+        entry = {"id": "meta/llama-3-70b-mini", "pricing": {}, "architecture": {}}
+        out = refresh_catalog.normalize_openrouter_entry(entry, rules)
+        self.assertEqual(out["size_bucket"], "large")  # 70b wins over "mini"

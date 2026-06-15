@@ -198,6 +198,36 @@ def infer_parameters_b_from_slug(slug: str) -> float | None:
         return None
 
 
+# Size/speed markers a vendor puts in a model name to signal a smaller or
+# speed-optimised variant. Matched as DELIMITED tokens (bounded by
+# -/:_ or start/end) so "mini" never false-matches inside "gemini", etc.
+# small-class markers → "small"; "flash" is a speed tier that is capable
+# but not a flagship-large model → "midsize". Both exclude the model from
+# the picker's large/big slots by capability (2026-06-14): a model that
+# announces its size in its name must never qualify as a big model.
+_SMALL_NAME_MARKERS = ("small", "mini", "nano", "tiny", "micro", "lite")
+_MIDSIZE_NAME_MARKERS = ("flash",)
+_NAME_MARKER_RE = re.compile(
+    r'(?:^|[-/:_])(' + "|".join(_SMALL_NAME_MARKERS + _MIDSIZE_NAME_MARKERS)
+    + r')(?:[-/:_.]|$)',
+    re.IGNORECASE,
+)
+
+
+def infer_size_from_name_markers(slug: str) -> str | None:
+    """Last-resort size bucket from an explicit size/speed marker in the
+    model name. Returns 'small', 'midsize', or None (no marker). Only
+    consulted after parameter-count and family-classification both fail —
+    so a real param count or family rule always wins."""
+    if not slug:
+        return None
+    m = _NAME_MARKER_RE.search(slug)
+    if not m:
+        return None
+    marker = m.group(1).lower()
+    return "midsize" if marker in _MIDSIZE_NAME_MARKERS else "small"
+
+
 def blend_cost(input_per_m: float | None, output_per_m: float | None) -> float | None:
     """Blend input + output cost into a single $/M number.
 
@@ -247,6 +277,15 @@ def normalize_openrouter_entry(entry: dict, family_rules: dict) -> dict:
     family_tier: str | None = None
     if size_bucket is None:
         family_tier, size_bucket = classify_family(model_id, provider, family_rules)
+    if size_bucket is None:
+        # Last resort: an explicit size/speed marker in the name
+        # (mistral-SMALL, gpt-NANO, step-3.7-FLASH) classifies the model
+        # by capability so the picker's large slots exclude it. Leaving it
+        # None here would let the auto-populate null-bucket admission sweep
+        # a self-declared-small model into a big slot — the 2026-06-14
+        # budget regression. A genuine codename (claude-fable-5) has no
+        # marker and correctly stays None for that admission to catch.
+        size_bucket = infer_size_from_name_markers(model_id)
 
     # Free / paid: free models have output cost == 0.
     is_free = (output_per_m == 0.0 and input_per_m == 0.0)
