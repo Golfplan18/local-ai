@@ -10143,14 +10143,16 @@ def _vision_input_candidates() -> list:
 
     The image-reading backstop RE-RUNS the analyst's task with the image (it
     substitutes for a failed/blind analyst — it is not a captioner), so it needs
-    a CAPABLE model: candidates are vision-capable routing-config endpoints
-    ranked by intelligence and capped to the top tier (the long tail of weak
-    vision models would make a poor analyst and bloat the picker). The currently
-    configured preferred/fallback are always included so a saved choice never
-    drops off the list. Returns only endpoints the router can actually dispatch."""
+    a CAPABLE model. The list is limited to the models the system registered as
+    "picks" (the union of primary/fallback ids across the baked presets/configs)
+    that are vision-capable — a curated cross-section of the best vision models,
+    instead of every vision endpoint. The currently configured preferred/fallback
+    are always included so a saved choice never drops off; if picks can't be
+    computed, falls back to the top vision endpoints by intelligence. Returns only
+    endpoints the router can actually dispatch, ranked smartest-first."""
     from pathlib import Path as _P
     base = _P(__file__).resolve().parent.parent / "config"
-    TOP_N = 40
+    TOP_N = 40  # fallback cap when picks are unavailable
     try:
         rc = json.loads((base / "routing-config.json").read_text())
         eps = {e.get("id"): e for e in rc.get("endpoints", []) if isinstance(e, dict)}
@@ -10162,43 +10164,70 @@ def _vision_input_candidates() -> list:
         if isinstance(_vi.get("preferred"), str):
             configured.add(_vi["preferred"])
         configured.update(x for x in (_vi.get("fallback") or []) if isinstance(x, str))
-    reg = {}
-    for fn in ("model-registry.vendor-authoritative.json", "model-registry.json"):
+    reg, aliases = {}, {}
+    try:
+        _art = json.loads((base / "model-registry.vendor-authoritative.json").read_text())
+        reg = _art.get("models", {}) or {}
+        aliases = _art.get("aliases", {}) or {}
+    except Exception:
+        pass
+    if not reg:
         try:
-            reg = json.loads((base / fn).read_text()).get("models", {}) or {}
-            if reg:
-                break
+            reg = json.loads((base / "model-registry.json").read_text()).get("models", {}) or {}
         except Exception:
-            continue
-    cands = []
-    for eid, ep in eps.items():
-        if ep.get("type") != "api":
-            continue
-        r = reg.get(eid) or {}
-        vis = ep.get("vision_capable")
-        if vis is None:
-            vis = r.get("vision_capable")
-        if vis is not True:
-            continue
-        intel = r.get("aa_intelligence_index")
-        cands.append({
-            "provider_id": eid,
-            "display_name": ep.get("display_name") or r.get("display_name") or eid,
-            "available": True,
-            "reason": "",
-            "kind": "api",
-            "_intel": intel if intel is not None else -1.0,
-        })
-    cands.sort(key=lambda c: c["_intel"], reverse=True)
-    out = cands[:TOP_N]
-    have = {c["provider_id"] for c in out}
-    # always keep a configured pick visible even if it ranks below the cap
-    for c in cands[TOP_N:]:
-        if c["provider_id"] in configured and c["provider_id"] not in have:
-            out.append(c)
-    for c in out:
+            pass
+    # The system's PICKS, resolved to NATIVE registry ids. compute_picks
+    # harvests config-form ids (e.g. anthropic/claude-opus-4.5); the alias map
+    # maps those to the current native id. Sourcing candidates from the native
+    # registry (not the raw routing-config endpoints) keeps the list clean —
+    # routing-config still carries legacy/duplicate + subscription + image-gen
+    # endpoints that would otherwise double up or leak non-chat entries in.
+    pick_native = set()
+    try:
+        from orchestrator import model_registry as _mr
+        for p in (_mr.compute_picks().get("picks") or []):
+            if p in reg:
+                pick_native.add(p)
+            elif aliases.get(p) in reg:
+                pick_native.add(aliases[p])
+    except Exception as _pk_err:
+        print(f"[vision_input] picks unavailable ({_pk_err}); using top-by-intelligence", flush=True)
+
+    def _vision_models(restrict):
+        out = []
+        for nid, r in reg.items():
+            if restrict is not None and nid not in restrict:
+                continue
+            if r.get("vision_capable") is not True:
+                continue
+            if nid not in eps:               # must be a dispatchable endpoint
+                continue
+            intel = r.get("aa_intelligence_index")
+            out.append({
+                "provider_id": nid,
+                "display_name": (eps[nid].get("display_name")
+                                 or r.get("display_name") or nid),
+                "available": True,
+                "reason": "",
+                "kind": "api",
+                "_intel": intel if intel is not None else -1.0,
+            })
+        out.sort(key=lambda c: c["_intel"], reverse=True)
+        return out
+
+    configured_in_reg = {c for c in configured if c in reg}
+    if pick_native:
+        cands = _vision_models(pick_native | configured_in_reg)
+    else:
+        # No picks (compute failed) — fall back to the top vision models.
+        cands = _vision_models(None)[:TOP_N]
+        have = {c["provider_id"] for c in cands}
+        for c in _vision_models(configured_in_reg):
+            if c["provider_id"] not in have:
+                cands.append(c)
+    for c in cands:
         c.pop("_intel", None)
-    return out
+    return cands
 
 
 # ── WP-6.1 — Vault export ────────────────────────────────────────────────────

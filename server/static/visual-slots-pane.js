@@ -70,7 +70,10 @@
 
   var ADVANCED_SLOTS = [
     { id: 'vision_input',            label: 'Vision input (image reading)' },
-    { id: 'image_generates_cartoon', label: 'Editorial cartoons' },
+    // Editorial cartoons (image_generates_cartoon) is deliberately NOT exposed
+    // here — it's an MSI-specific capability, not something a general user
+    // configures. The slot still exists in routing-config and its pipeline runs;
+    // it's just not a UI control on this tab.
     { id: 'image_edits',             label: 'Image edits' },
     { id: 'image_outpaints',         label: 'Image outpaints' },
     { id: 'image_upscales',          label: 'Image upscales' },
