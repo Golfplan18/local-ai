@@ -28,13 +28,13 @@ FLAG = "ORA_VENDOR_CATALOG_AUTHORITATIVE"
 
 
 def enabled() -> bool:
-    """Whether the live system should treat vendor catalogues as authoritative.
+    """Whether the live system treats vendor catalogues as authoritative.
 
-    Defaults OFF. The build/diff tool runs regardless; this only gates live use
-    (added in a later PR).
+    Default ON (PR-D). Set ORA_VENDOR_CATALOG_AUTHORITATIVE=0 to fall back to the
+    OpenRouter-sourced inventory + the runtime prefer-direct rewrite.
     """
-    v = (os.environ.get(FLAG, "0") or "").strip().lower()
-    return v in ("1", "true", "yes", "on")
+    v = (os.environ.get(FLAG, "1") or "").strip().lower()
+    return v not in ("0", "false", "no", "off")
 
 
 # Our provider id → the vendor prefixes used in the AA registry / OpenRouter

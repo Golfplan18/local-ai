@@ -12,6 +12,18 @@ sys.path.insert(0, str(HERE.parent))
 import vendor_catalog_registry as vcr  # noqa: E402
 
 
+class TestEnabledFlag(unittest.TestCase):
+    def test_default_on(self):
+        import os
+        from unittest import mock
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("ORA_VENDOR_CATALOG_AUTHORITATIVE", None)
+            self.assertTrue(vcr.enabled())
+        for off in ("0", "false", "no", "off"):
+            with mock.patch.dict(os.environ, {"ORA_VENDOR_CATALOG_AUTHORITATIVE": off}):
+                self.assertFalse(vcr.enabled())
+
+
 class TestChatFilter(unittest.TestCase):
     def test_keeps_chat(self):
         self.assertTrue(vcr.is_chat_model("qwen", {"id": "qwen-plus"}))
