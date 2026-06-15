@@ -58,7 +58,7 @@
     sort_by: 'intelligence_desc',  // highest-intelligence first so the strongest models surface by default (Phase 5; was 'alpha_desc')
     category: 'chat',       // inventory category. Chat-only since 2026-06-11: image/video model selection lives on the Visual tab (routing-config slots chain), not in chat configurations.
     grouping: 'vendor',     // 'vendor' (default — vendor blocks, collapsible) or 'flat' (no grouping, one sorted list)
-    include_unsized: false, // during a sized slot pick, also admit models with no size_bucket (newly released / not yet classified). Opt-in via the pick banner.
+    include_unsized: true,  // during a sized slot pick, SHOW models with no size_bucket by default. 392/422 cloud flagships ship ids without a parameter count (gpt-5.4, claude-opus-4-8, gemini-3.5-flash), so a strict large/small gate would hide nearly the whole catalog — "unknown size" is not "wrong size". The banner notes when unsized models are shown; family classification fills real buckets going forward.
   };
 
   var CATEGORY_OPTIONS = [
@@ -1509,7 +1509,13 @@
     // to image_generation today (pricing-based, surfaced as $/1k imgs
     // on the row meta). The PICK chip and intelligence slider DO apply.
     var isMedia = (model.category && model.category !== 'chat');
-    if (!isMedia && _filters.vision && model.vision_capable !== true) return false;
+    // Vision chip is LENIENT: hide only models PROVEN text-only
+    // (vision_capable === false). Unknown/unenriched (null) passes —
+    // most native ids-only flagships are vision-capable but unclassified
+    // until enrichment/family rules land, and a strict !== true gate
+    // wrongly buried ~225 of them. The VISUAL slot gate below stays
+    // strict-true (a false positive there silently breaks image input).
+    if (!isMedia && _filters.vision && model.vision_capable === false) return false;
     var isFree = (model.id || '').endsWith(':free') || model.is_free === true;
     if (!isMedia && _filters.free_filter === 'only' && !isFree) return false;
     if (!isMedia && _filters.free_filter === 'hide' && isFree) return false;
