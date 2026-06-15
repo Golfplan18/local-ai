@@ -5,16 +5,16 @@
   "cells": {
     "utility": {
       "step1_cleanup": {
-        "primary": "google/gemini-3.1-flash-lite",
+        "primary": "gemini/gemini-3.1-flash-lite",
         "fallback": [
-          "mistralai/ministral-3b-2512",
+          "mistral/ministral-3b-2512",
           "openai/gpt-4.1-mini",
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
         "vision_substitute": "openai/gpt-5.4-image-2"
       },
       "classification": {
-        "primary": "google/gemini-3.1-flash-lite",
+        "primary": "gemini/gemini-3.1-flash-lite",
         "fallback": [
           "local-mlx-qwen3.5-9b-optiq",
           "local-mlx-qwen3.5-27b-opus",
@@ -23,7 +23,7 @@
         "vision_substitute": "openai/gpt-5.4-image-2"
       },
       "rag_planner": {
-        "primary": "google/gemini-3.1-flash-lite",
+        "primary": "gemini/gemini-3.1-flash-lite",
         "fallback": [
           "local-mlx-qwen3.5-27b-opus",
           "openrouter/free",
@@ -41,7 +41,7 @@
         "depth": {
           "primary": "qwen/qwen3.6-plus",
           "fallback": [
-            "moonshotai/kimi-k2.6",
+            "moonshot/kimi-k2.6",
             "qwen/qwen3-vl-235b-a22b-instruct",
             "qwen/qwen3.5-122b-a10b",
             "qwen/qwen3.5-397b-a17b",
@@ -50,9 +50,9 @@
           "vision_substitute": "openai/gpt-5.4-image-2"
         },
         "breadth": {
-          "primary": "moonshotai/kimi-k2.6",
+          "primary": "moonshot/kimi-k2.6",
           "fallback": [
-            "moonshotai/kimi-k2.6",
+            "moonshot/kimi-k2.6",
             "local-mlx-kimi-dev-72b",
             "local-mlx-hermes-4-70b",
             "qwen/qwen3.5-122b-a10b",
@@ -67,7 +67,7 @@
           "fallback": [
             "local-mlx-hermes-4-70b",
             "qwen/qwen3.6-plus",
-            "moonshotai/kimi-k2.6",
+            "moonshot/kimi-k2.6",
             "qwen/qwen3.5-122b-a10b",
             "nvidia/nemotron-3-super-120b-a12b:free"
           ],
@@ -83,7 +83,7 @@
       "consolidation": {
         "primary": "qwen/qwen3.6-plus",
         "fallback": [
-          "moonshotai/kimi-k2.6",
+          "moonshot/kimi-k2.6",
           "local-mlx-kimi-dev-72b",
           "local-mlx-hermes-4-70b",
           "qwen/qwen3.5-122b-a10b",
@@ -94,7 +94,7 @@
       "verification": {
         "primary": "qwen/qwen3.6-plus",
         "fallback": [
-          "moonshotai/kimi-k2.6",
+          "moonshot/kimi-k2.6",
           "local-mlx-kimi-dev-72b",
           "local-mlx-hermes-4-70b",
           "qwen/qwen3.5-122b-a10b",
@@ -105,7 +105,7 @@
       "formatter": {
         "primary": "qwen/qwen3.6-plus",
         "fallback": [
-          "moonshotai/kimi-k2.6",
+          "moonshot/kimi-k2.6",
           "local-mlx-kimi-dev-72b",
           "local-mlx-hermes-4-70b",
           "qwen/qwen3.5-122b-a10b",
