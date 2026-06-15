@@ -543,6 +543,11 @@
         _renderHeader();
         _renderPresets();
         _renderCustom();
+        // _renderPresets/_renderCustom parked the fallback popout at the pane
+        // root before rebuilding the cards; re-attach it to the active card so
+        // it doesn't sit orphaned at the root overlapping the inventory's right
+        // column. No-op (hides) when no popout is open.
+        _renderPopout();
         _renderInventory();
       });
     });
