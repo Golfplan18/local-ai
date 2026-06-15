@@ -10139,17 +10139,29 @@ def capability_providers_get():
 
 def _vision_input_candidates() -> list:
     """Vision-capable chat ENDPOINTS for the vision_input capability slot
-    (Settings → Visual → Advanced routing). The image-reading backstop is a chat
-    model dispatched like any other — so candidates are routing-config endpoints
-    that are vision-capable, ranked by intelligence (smartest first). Returns
-    only endpoints the router can actually dispatch."""
+    (Settings → Visual → Advanced routing).
+
+    The image-reading backstop RE-RUNS the analyst's task with the image (it
+    substitutes for a failed/blind analyst — it is not a captioner), so it needs
+    a CAPABLE model: candidates are vision-capable routing-config endpoints
+    ranked by intelligence and capped to the top tier (the long tail of weak
+    vision models would make a poor analyst and bloat the picker). The currently
+    configured preferred/fallback are always included so a saved choice never
+    drops off the list. Returns only endpoints the router can actually dispatch."""
     from pathlib import Path as _P
     base = _P(__file__).resolve().parent.parent / "config"
+    TOP_N = 40
     try:
         rc = json.loads((base / "routing-config.json").read_text())
         eps = {e.get("id"): e for e in rc.get("endpoints", []) if isinstance(e, dict)}
     except Exception:
-        eps = {}
+        rc, eps = {}, {}
+    _vi = (rc.get("slots") or {}).get("vision_input") or {}
+    configured = set()
+    if isinstance(_vi, dict):
+        if isinstance(_vi.get("preferred"), str):
+            configured.add(_vi["preferred"])
+        configured.update(x for x in (_vi.get("fallback") or []) if isinstance(x, str))
     reg = {}
     for fn in ("model-registry.vendor-authoritative.json", "model-registry.json"):
         try:
@@ -10178,9 +10190,15 @@ def _vision_input_candidates() -> list:
             "_intel": intel if intel is not None else -1.0,
         })
     cands.sort(key=lambda c: c["_intel"], reverse=True)
-    for c in cands:
+    out = cands[:TOP_N]
+    have = {c["provider_id"] for c in out}
+    # always keep a configured pick visible even if it ranks below the cap
+    for c in cands[TOP_N:]:
+        if c["provider_id"] in configured and c["provider_id"] not in have:
+            out.append(c)
+    for c in out:
         c.pop("_intel", None)
-    return cands
+    return out
 
 
 # ── WP-6.1 — Vault export ────────────────────────────────────────────────────
