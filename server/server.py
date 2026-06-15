@@ -9152,6 +9152,13 @@ def model_registry_refresh():
                 # this writes.
                 _run_refresh_step(
                     summary, "endpoints", "sync_endpoints_from_catalog.py", 60)
+                # De-duplicate to one canonical endpoint per model. sync_endpoints
+                # re-mints legacy/OpenRouter-form duplicates each run; this
+                # collapses them to the native canonical and repoints references
+                # (idempotent — a no-op once clean), so the cleanup is durable
+                # rather than reverted on the next refresh.
+                _run_refresh_step(
+                    summary, "dedupe", "dedupe_routing_endpoints.py", 60)
         # Force the in-process reader to re-read the new file
         try:
             from orchestrator import model_registry as mr
