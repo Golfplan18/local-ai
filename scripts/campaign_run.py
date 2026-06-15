@@ -1455,7 +1455,17 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
                     _wait_for_subscription_window()
                 except RuntimeError:
                     break
-            time.sleep(5)
+                time.sleep(5)
+            elif ("required_model_missing" in last_err
+                  and pipe in ctx["subscription_lanes"]):
+                # Opus is exhausted: the heavy gear-4 calls fail while the tiny
+                # window-probe still passes, so the lane would otherwise burn
+                # capture after capture producing nothing. Back off before
+                # retrying so a held subscription lane idles cheaply and
+                # auto-resumes once the allocation returns.
+                time.sleep(int(os.environ.get("ORA_SUBSCRIPTION_BACKOFF", "1800")))
+            else:
+                time.sleep(5)
     rec.update(status="failed", error=last_err,
                wall_seconds=round(time.time() - started, 1))
     append_manifest(rec)
