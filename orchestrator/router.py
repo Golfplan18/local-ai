@@ -825,39 +825,29 @@ class Router:
                 chain.append(fb)
         return chain
 
-    def _slot_vision_substitute(
-        self,
-        slot: str,
-        gear: int,
-        config_name: str | None = None,
-    ) -> str | None:
-        """Return the ``vision_substitute`` endpoint id declared on a slot's
-        cell, or None when absent.
+    def _vision_input_chain(self) -> list[str]:
+        """The GLOBAL vision-input backstop chain — endpoint ids (preferred
+        first) from ``routing-config.json::slots.vision_input``.
 
-        The vision_substitute is the cell's explicit text-to-vision backstop —
-        the vision-capable model to use when an image is present and the
-        configured primary/fallback chain would otherwise resolve to an
-        image-blind model. Mirrors ``get_slot_chain``'s cell walk.
+        This is the vision-capable model(s) used when an image is present and a
+        slot's configured primary/fallback chain would otherwise resolve to an
+        image-blind model. It is a single global capability (configured in
+        Settings → Visual → Advanced routing), NOT a per-analysis-config choice
+        — it superseded the former per-cell ``vision_substitute`` field
+        (2026-06-14). Empty list → no global slot configured; the caller falls
+        back to a best-effort walk of the slot's own chain.
         """
-        if not config_name:
-            return None
-        cfg = self._load_configuration(config_name)
-        if cfg is None:
-            return None
-        cell_path = self._slot_to_cell_path(slot, gear)
-        if cell_path is None:
-            return None
-        cur: object = cfg.get("cells", {})
-        for key in cell_path:
-            if not isinstance(cur, dict):
-                return None
-            cur = cur.get(key)
-            if cur is None:
-                return None
-        if not isinstance(cur, dict):
-            return None
-        sub = cur.get("vision_substitute")
-        return sub if isinstance(sub, str) and sub else None
+        slot = (self.config.get("slots") or {}).get("vision_input") or {}
+        if not isinstance(slot, dict):
+            return []
+        out: list[str] = []
+        pref = slot.get("preferred")
+        if isinstance(pref, str) and pref:
+            out.append(pref)
+        for fb in (slot.get("fallback") or []):
+            if isinstance(fb, str) and fb and fb not in out:
+                out.append(fb)
+        return out
 
     def resolve_vision_fallback(
         self,
@@ -902,22 +892,24 @@ class Router:
         falling back blind).
         """
         excluded = set(excluded_ids or set())
-        sub_id = self._slot_vision_substitute(slot, gear, config_name)
-        if sub_id:
-            # A vision_substitute is declared — it IS the vision fallback. Bind
-            # it across the chain and never advance into the generic fallback
-            # (whose entries may be vision-capable yet image-blind in delivery).
-            # When the substitute is the already-excluded (just-failed)
-            # endpoint, return None so the caller cleanly retries the sighted
-            # primary instead of dropping to a blind chain entry.
-            if (sub_id not in excluded
-                    and self.vision_capable_for_endpoint(sub_id)):
+        chain = self._vision_input_chain()
+        if chain:
+            # A global vision-input slot is configured — it IS the vision
+            # fallback. Try preferred then each fallback; never advance into the
+            # generic chain (whose entries may be vision-capable yet image-blind
+            # in delivery). An already-excluded (just-failed) or unavailable
+            # entry is skipped; when none are eligible, return None so the caller
+            # cleanly retries the sighted primary instead of dropping to a blind
+            # chain entry.
+            for sub_id in chain:
+                if sub_id in excluded or not self.vision_capable_for_endpoint(sub_id):
+                    continue
                 sub_ep = self._endpoints.get(sub_id)
                 if (sub_ep and sub_ep.get("enabled", False)
                         and sub_ep.get("status") == "active"):
                     return sub_ep
             return None
-        # Legacy cell with no vision_substitute — best-effort walk of the
+        # No global vision-input slot configured — best-effort walk of the
         # configured chain for the first vision-capable eligible entry. Each
         # non-vision hit is added to ``excluded`` so the next resolve_endpoint
         # call advances further down the chain; bounded so it cannot spin.

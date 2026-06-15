@@ -10125,7 +10125,62 @@ def capability_providers_get():
                 "kind": kind,
             })
         out[slot_name] = entries
+    # vision_input is special: the image-READING backstop is a vision-capable
+    # CHAT model (dispatched like any chat endpoint), not an image-gen provider,
+    # so its candidates come from the model registry + routing-config endpoints
+    # rather than the capability_registry's image integrations.
+    try:
+        out["vision_input"] = _vision_input_candidates()
+    except Exception as _vi_err:
+        print(f"[capability/providers] vision_input candidates skipped: {_vi_err}", flush=True)
+        out.setdefault("vision_input", [])
     return json.dumps({"slots": out})
+
+
+def _vision_input_candidates() -> list:
+    """Vision-capable chat ENDPOINTS for the vision_input capability slot
+    (Settings → Visual → Advanced routing). The image-reading backstop is a chat
+    model dispatched like any other — so candidates are routing-config endpoints
+    that are vision-capable, ranked by intelligence (smartest first). Returns
+    only endpoints the router can actually dispatch."""
+    from pathlib import Path as _P
+    base = _P(__file__).resolve().parent.parent / "config"
+    try:
+        rc = json.loads((base / "routing-config.json").read_text())
+        eps = {e.get("id"): e for e in rc.get("endpoints", []) if isinstance(e, dict)}
+    except Exception:
+        eps = {}
+    reg = {}
+    for fn in ("model-registry.vendor-authoritative.json", "model-registry.json"):
+        try:
+            reg = json.loads((base / fn).read_text()).get("models", {}) or {}
+            if reg:
+                break
+        except Exception:
+            continue
+    cands = []
+    for eid, ep in eps.items():
+        if ep.get("type") != "api":
+            continue
+        r = reg.get(eid) or {}
+        vis = ep.get("vision_capable")
+        if vis is None:
+            vis = r.get("vision_capable")
+        if vis is not True:
+            continue
+        intel = r.get("aa_intelligence_index")
+        cands.append({
+            "provider_id": eid,
+            "display_name": ep.get("display_name") or r.get("display_name") or eid,
+            "available": True,
+            "reason": "",
+            "kind": "api",
+            "_intel": intel if intel is not None else -1.0,
+        })
+    cands.sort(key=lambda c: c["_intel"], reverse=True)
+    for c in cands:
+        c.pop("_intel", None)
+    return cands
 
 
 # ── WP-6.1 — Vault export ────────────────────────────────────────────────────

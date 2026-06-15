@@ -731,15 +731,12 @@ def populate_configuration(
     # vision_only resolution: CLI override > preset default > False
     effective_vision_only = vision_only if vision_only is not None else preset.get("vision_only", False)
 
-    # Vision substitute (single id per configuration). Always vision-capable
-    # regardless of the toggle — it's the fallback for image input even when
-    # primary picks are vision-capable.
-    vision_substitute = pick_vision_substitute(
-        catalog,
-        size_bucket=vision_spec.get("size_bucket", "large"),
-        preset_mode=preset["mode"],
-        intelligence_first=intelligence_first,
-    )
+    # Vision input is no longer per-configuration (2026-06-14): the image-reading
+    # backstop is a single GLOBAL capability slot (routing-config slots.vision_input),
+    # edited in Settings → Visual → Advanced routing and read by the router's
+    # resolve_vision_fallback. So bakes no longer emit a per-cell vision_substitute.
+    # (pick_vision_substitute is retained for reference / any external caller.)
+    vision_substitute = None
 
     cells: dict = {}
     loosening_log: dict = {}
