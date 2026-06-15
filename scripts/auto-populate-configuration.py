@@ -750,6 +750,14 @@ def populate_configuration(
         slot_sort_by = slot_spec.get("sort_by") or preset.get("sort_by", "cost_asc")
         slot_exclude_reasoning = slot_spec.get("exclude_reasoning_models", False)
         slot_size_bucket = slot_spec.get("size_bucket")
+        # A speed-optimized slot (Fast) should NOT inherit the preset's quality
+        # intelligence floor — that floors out the cheap, genuinely-fast models
+        # (flash-lite, step-flash) and leaves only expensive smart-fast flagships,
+        # so an expensive model lands in a "fast" slot. slot_spec.floor_pct /
+        # cost_ceiling_per_m override the preset's when present (explicit None/0 OK).
+        slot_floor = slot_spec["floor_pct"] if "floor_pct" in slot_spec else preset.get("floor_pct")
+        slot_ceiling = (slot_spec["cost_ceiling_per_m"] if "cost_ceiling_per_m" in slot_spec
+                        else preset.get("cost_ceiling_per_m"))
         for cell_name in slot_spec["cells"]:
             notes: list = []
             if preset["mode"] == "free_intelligence":
@@ -772,8 +780,8 @@ def populate_configuration(
                     catalog,
                     size_bucket=slot_size_bucket,
                     top_n=slot_spec["top_n"],
-                    floor_pct=preset.get("floor_pct"),
-                    cost_ceiling=preset.get("cost_ceiling_per_m"),
+                    floor_pct=slot_floor,
+                    cost_ceiling=slot_ceiling,
                     loosening=preset.get("loosening", False),
                     excluded_ids=excluded_so_far if diversity else None,
                     excluded_vendors=excluded_vendors_so_far if diversity else None,

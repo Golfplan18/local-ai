@@ -357,7 +357,12 @@ def enrich_from_model_registry(catalog: list[dict], registry: dict) -> int:
             entry["aa_intelligence_index"] = intelligence
             enriched += 1
         # Secondary signals — purely additive (recency tiebreak + UI).
-        for field in ("intelligence_score", "intelligence_rank", "release_date"):
+        # output_tokens_per_second is the Fast slot's sort key: without it in the
+        # catalog the tokens_per_sec_desc sort is a no-op (every model sinks to
+        # -inf) and Fast falls back to catalog order — which is how a slow,
+        # expensive flagship can land in a speed slot. Carry it from the registry.
+        for field in ("intelligence_score", "intelligence_rank", "release_date",
+                      "output_tokens_per_second"):
             val = reg.get(field)
             if val is not None:
                 entry[field] = val

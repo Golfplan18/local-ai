@@ -72,7 +72,8 @@
    "diversity_excluded": true,
    "sort_by": "tokens_per_sec_desc",
    "exclude_reasoning_models": true,
-   "_note": "Mid-tier speed-optimized slot. Primary \u2192 gear3.depth + utility.gear2_rag_lookup; secondary \u2192 gear3.breadth when adversarial diversity is on (mirrored from primary via post-bake when off). No size_bucket gate; sort_by tokens/sec handles selection. Reasoning models excluded \u2014 their thinking-overhead defeats the speed purpose. top_n=4 \u2192 1 primary + 3 fallbacks per chain, mirror of analysis.gear4."
+   "floor_pct": 30,
+   "_note": "Mid-tier speed-optimized slot. Primary \u2192 gear3.depth + utility.gear2_rag_lookup; secondary \u2192 gear3.breadth when adversarial diversity is on (mirrored from primary via post-bake when off). No size_bucket gate; sort_by tokens/sec handles selection. floor_pct=30 OVERRIDES the preset's quality floor: a speed slot must keep cheap fast models (flash-lite/step-flash ~33-43 intel) instead of inheriting Optimum's 80% floor, which would leave only expensive smart-fast flagships. Reasoning models excluded \u2014 their thinking-overhead defeats the speed purpose. top_n=4 \u2192 1 primary + 3 fallbacks per chain, mirror of analysis.gear4."
   },
   "post_analysis": {
    "size_bucket": "large",
