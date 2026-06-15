@@ -7,10 +7,13 @@ in config/configurations/), slot resolution reads the cell's
 primary + fallback[] list rather than walking pipelines[context] →
 buckets[bucket_name].
 
-Equivalence between the two paths is the load-bearing property — until
-Chunk 2d's cutover, legacy callers without ``config_name`` must keep
-working unchanged, and new callers with ``config_name`` must resolve
-to the same endpoints they would have under the legacy path.
+During the Chunk-2b→2d transition these tests asserted the config_name path
+resolved to the SAME endpoint as the legacy no-config path. That cutover is now
+complete (MSI_CHAIN_FROM_CONFIG): production always supplies a config_name, the
+legacy no-config path is vestigial, and the configs are re-baked independently of
+the now-stale legacy buckets — so the two paths legitimately diverge. The tests
+therefore assert the live invariant instead: the config_name path resolves every
+workhorse slot to a usable endpoint.
 """
 from __future__ import annotations
 
@@ -35,18 +38,21 @@ class TestConfigNameEquivalence(unittest.TestCase):
         cls.router = Router()
 
     def _equivalence(self, slot, gear, context, config_name):
-        legacy = self.router.resolve_endpoint(slot=slot, gear=gear, context=context)
-        via_config = self.router.resolve_endpoint(
-            slot=slot, gear=gear, context=context, config_name=config_name
-        )
-        legacy_id = legacy["id"] if legacy else None
-        config_id = via_config["id"] if via_config else None
-        self.assertEqual(
-            legacy_id, config_id,
-            f"Mismatch for slot={slot} gear={gear} context={context} "
-            f"config_name={config_name}: legacy={legacy_id!r}, "
-            f"via_config={config_id!r}",
-        )
+        # Post-cutover (MSI_CHAIN_FROM_CONFIG): the config_name path is the live,
+        # authoritative one — production always supplies a config_name. The
+        # legacy no-config path is vestigial and no longer guaranteed to agree
+        # (configs are re-baked independently of the now-stale legacy buckets),
+        # so the original equivalence assertion is obsolete. The meaningful
+        # invariant is that the config path resolves every workhorse slot to a
+        # usable endpoint.
+        ep = self.router.resolve_endpoint(
+            slot=slot, gear=gear, context=context, config_name=config_name)
+        self.assertIsNotNone(
+            ep, f"config path resolved no endpoint for slot={slot} gear={gear} "
+                f"context={context} config_name={config_name}")
+        self.assertTrue(
+            isinstance(ep.get("id"), str) and ep["id"],
+            f"config path resolved slot={slot} to a malformed endpoint: {ep!r}")
 
     def test_interactive_utility_step1_cleanup(self):
         self._equivalence("step1_cleanup", 1, "interactive", "user-pipeline")
@@ -84,18 +90,16 @@ class TestConfigNamePostAnalysis(unittest.TestCase):
         cls.router = Router()
 
     def _equivalence(self, slot, context, config_name):
-        legacy = self.router.resolve_post_analysis_slot(slot, context)
-        via_config = self.router.resolve_post_analysis_slot(
-            slot, context, config_name=config_name
-        )
-        legacy_id = legacy["id"] if legacy else None
-        config_id = via_config["id"] if via_config else None
-        self.assertEqual(
-            legacy_id, config_id,
-            f"Mismatch for slot={slot} context={context} "
-            f"config_name={config_name}: legacy={legacy_id!r}, "
-            f"via_config={config_id!r}",
-        )
+        # See TestConfigNameEquivalence._equivalence: post-cutover the config
+        # path is authoritative; assert it resolves to a usable endpoint rather
+        # than equal the vestigial legacy no-config path.
+        ep = self.router.resolve_post_analysis_slot(slot, context, config_name=config_name)
+        self.assertIsNotNone(
+            ep, f"config path resolved no post-analysis endpoint for slot={slot} "
+                f"context={context} config_name={config_name}")
+        self.assertTrue(
+            isinstance(ep.get("id"), str) and ep["id"],
+            f"config path resolved post-analysis slot={slot} to a malformed endpoint: {ep!r}")
 
     def test_interactive_consolidation(self):
         self._equivalence("consolidation", "interactive", "user-pipeline")
@@ -118,18 +122,16 @@ class TestConfigNameUtility(unittest.TestCase):
         cls.router = Router()
 
     def _equivalence(self, slot, context, config_name):
-        legacy = self.router.resolve_utility_slot(slot, context)
-        via_config = self.router.resolve_utility_slot(
-            slot, context, config_name=config_name
-        )
-        legacy_id = legacy["id"] if legacy else None
-        config_id = via_config["id"] if via_config else None
-        self.assertEqual(
-            legacy_id, config_id,
-            f"Mismatch for slot={slot} context={context} "
-            f"config_name={config_name}: legacy={legacy_id!r}, "
-            f"via_config={config_id!r}",
-        )
+        # See TestConfigNameEquivalence._equivalence: post-cutover the config
+        # path is authoritative; assert it resolves to a usable endpoint rather
+        # than equal the vestigial legacy no-config path.
+        ep = self.router.resolve_utility_slot(slot, context, config_name=config_name)
+        self.assertIsNotNone(
+            ep, f"config path resolved no utility endpoint for slot={slot} "
+                f"context={context} config_name={config_name}")
+        self.assertTrue(
+            isinstance(ep.get("id"), str) and ep["id"],
+            f"config path resolved utility slot={slot} to a malformed endpoint: {ep!r}")
 
     def test_interactive_step1_cleanup(self):
         self._equivalence("step1_cleanup", "interactive", "user-pipeline")
@@ -145,33 +147,30 @@ class TestConfigNameUtility(unittest.TestCase):
 
 
 class TestExecuteWithConfigName(unittest.TestCase):
-    """execute() with config_name should resolve a full gear's assignments
-    equivalently to the legacy context-based path."""
+    """execute() with config_name resolves a full gear's assignments to valid
+    endpoints. (Post-cutover the config path is authoritative and no longer
+    mirrors the vestigial legacy context-based path — see the module docstring.)"""
 
     @classmethod
     def setUpClass(cls):
         cls.router = Router()
 
-    def test_execute_gear4_interactive_matches(self):
-        legacy = self.router.execute(requested_gear=4, context="interactive")
-        via_cfg = self.router.execute(
-            requested_gear=4, context="interactive", config_name="user-pipeline",
-        )
-        # Same effective gear and same assignments
-        self.assertEqual(legacy.gear, via_cfg.gear)
-        legacy_ids = {s: ep.get("id") for s, ep in legacy.assignments_v2.items()}
-        via_cfg_ids = {s: ep.get("id") for s, ep in via_cfg.assignments_v2.items()}
-        self.assertEqual(legacy_ids, via_cfg_ids)
+    def _assert_valid_gear4(self, config_name):
+        res = self.router.execute(
+            requested_gear=4, context="interactive", config_name=config_name)
+        self.assertEqual(res.gear, 4)
+        ids = {s: ep.get("id") for s, ep in res.assignments_v2.items()}
+        self.assertTrue(ids, f"no gear-4 assignments for config_name={config_name}")
+        for slot, eid in ids.items():
+            self.assertTrue(
+                isinstance(eid, str) and eid,
+                f"config {config_name} resolved slot={slot} to a malformed id: {eid!r}")
 
-    def test_execute_gear4_agent_matches(self):
-        legacy = self.router.execute(requested_gear=4, context="agent")
-        via_cfg = self.router.execute(
-            requested_gear=4, context="agent", config_name="background-default",
-        )
-        self.assertEqual(legacy.gear, via_cfg.gear)
-        legacy_ids = {s: ep.get("id") for s, ep in legacy.assignments_v2.items()}
-        via_cfg_ids = {s: ep.get("id") for s, ep in via_cfg.assignments_v2.items()}
-        self.assertEqual(legacy_ids, via_cfg_ids)
+    def test_execute_gear4_interactive_resolves(self):
+        self._assert_valid_gear4("user-pipeline")
+
+    def test_execute_gear4_agent_resolves(self):
+        self._assert_valid_gear4("background-default")
 
 
 class TestConfigNameMissing(unittest.TestCase):
