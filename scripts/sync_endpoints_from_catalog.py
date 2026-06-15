@@ -185,6 +185,35 @@ def build_direct_endpoint(entry: dict) -> dict:
     return ep
 
 
+def build_supplement_endpoint(entry: dict) -> dict:
+    """OpenRouter endpoint for a KEPT supplement model — a :free tier or an
+    allow-listed open model the native API doesn't serve. Dispatches via
+    OpenRouter using the full OR id (no direct key / markup applies; :free is
+    free). The inversion removed these, so they must be re-added."""
+    orid = entry["id"]
+    return {
+        "id": orid,
+        "type": "api",
+        "status": "active",
+        "enabled": True,
+        "provider": orid.split("/", 1)[0],
+        "display_name": entry.get("display_name") or orid,
+        "context_window": entry.get("context_length") or 0,
+        "vision_capable": bool(entry.get("vision_capable")),
+        "capabilities": {
+            "tool_access": True,
+            "file_system_access": False,
+            "web_access": True,
+            "retrieval_approach": "pre-assembled",
+        },
+        "tier": entry.get("tier") or "",
+        "is_free": bool(entry.get("is_free") or orid.endswith(":free")),
+        "model_id": orid,
+        "service": "openrouter",
+        "supplement": True,
+    }
+
+
 def _referenced_text(routing: dict) -> str:
     """Everything an endpoint id could be *referenced* from (slots,
     slot_assignments, configurations, …) — so a still-used OpenRouter endpoint
@@ -218,6 +247,12 @@ def apply_vendor_authoritative(by_id: dict, routing: dict) -> dict:
         return {"skipped": "artifact has no native direct entries"}
 
     native_eps = {e["id"]: build_direct_endpoint(e) for e in natives}
+    # Supplement = OpenRouter-only models kept for a native vendor (:free tiers +
+    # allow-listed open models). Keep their endpoints if present and ADD any the
+    # inversion previously removed, so they stay dispatchable via OpenRouter.
+    supplement_eps = {e["id"]: build_supplement_endpoint(e) for e in models.values()
+                      if isinstance(e, dict) and e.get("supplement") and e.get("id")}
+    supplement_ids = set(supplement_eps)
     auth_vendors = {e["vendor"] for e in natives}
     prefix_to_vendor = {}
     for vid in auth_vendors:
@@ -249,6 +284,8 @@ def apply_vendor_authoritative(by_id: dict, routing: dict) -> dict:
         if ep.get("type") != "api" or ep.get("service") != "openrouter":
             continue
         if _vendor_of(eid, ep) in auth_vendors:
+            if eid in supplement_ids:
+                continue                          # kept supplement — leave in place
             # Reference test on the WHOLE quoted JSON token, not a raw substring
             # — otherwise `minimax/minimax-m2` looks "referenced" merely because
             # `minimax/minimax-m2.5` is, and a dead endpoint survives the de-dup.
@@ -259,11 +296,22 @@ def apply_vendor_authoritative(by_id: dict, routing: dict) -> dict:
                 removed.append(eid)
     for eid, ep in native_eps.items():
         by_id[eid] = ep
+    added_supp = []
+    for eid, ep in supplement_eps.items():
+        existing = by_id.get(eid)
+        # add if missing (inversion dropped it), or fix a stale non-OpenRouter
+        # endpoint on a supplement id (a :free tier can't dispatch via a native
+        # service). Leave a correct existing openrouter endpoint untouched.
+        if existing is None or existing.get("service") != "openrouter":
+            by_id[eid] = ep
+            added_supp.append(eid)
 
     return {
         "authoritative_vendors": sorted(auth_vendors),
         "native_endpoints_added": len(native_eps),
         "openrouter_removed": len(removed),
+        "openrouter_supplement_total": len(supplement_ids),
+        "openrouter_supplement_added": len(added_supp),
         "kept_legacy_referenced": kept_legacy,
     }
 

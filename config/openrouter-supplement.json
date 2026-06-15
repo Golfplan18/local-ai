@@ -1,0 +1,9 @@
+{
+  "_note": "OpenRouter-only models kept for native (catalogue-authoritative) vendors. The vendor-catalogue-authoritative inversion otherwise drops EVERY OpenRouter entry for a vendor that has a direct pay-as-you-go key. These supplements stay AVAILABLE in the picker (dispatched via OpenRouter) for popular models the vendor's own /models API doesn't serve — e.g. OpenAI's open-weight gpt-oss, or a small Qwen the DashScope API omits.",
+  "_rules": "':free' tiers of native vendors are ALSO kept automatically (no need to list them) and are never auto-picked into paid presets (Budget/Optimum/Premium) — only the Free preset. The ids below are non-free open/popular models to keep; they remain eligible for auto-pick. List the OpenRouter id (e.g. 'openai/gpt-oss-120b'); a ':free' twin of a listed id is matched too.",
+  "allow": [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.5-9b"
+  ]
+}

@@ -329,5 +329,36 @@ class TestLegacyAliases(unittest.TestCase):
         self.assertNotIn("openai/gpt-4o", amap)  # live id never aliased away
 
 
+class TestSupplement(unittest.TestCase):
+    def test_is_supplement(self):
+        self.assertTrue(vcr.is_supplement("openai/gpt-oss-120b:free"))          # :free auto
+        self.assertTrue(vcr.is_supplement("openai/gpt-oss-120b", {"openai/gpt-oss-120b"}))
+        self.assertTrue(vcr.is_supplement("openai/gpt-oss-120b:free", {"openai/gpt-oss-120b"}))
+        self.assertFalse(vcr.is_supplement("openai/gpt-4o", {"openai/gpt-oss-120b"}))
+        self.assertFalse(vcr.is_supplement("openai/gpt-4o"))
+
+    def test_build_keeps_free_and_allowlisted_drops_rest(self):
+        base = {
+            "openai/gpt-4o": {"vendor": "openai"},               # native vendor → dropped
+            "openai/gpt-oss-120b:free": {"vendor": "openai"},    # :free → kept
+            "openai/gpt-oss-120b": {"vendor": "openai"},         # allow-listed → kept
+            "openai/gpt-3.5-turbo": {"vendor": "openai"},        # neither → dropped
+            "anthropic/claude-opus-4.8": {"vendor": "anthropic"},  # other vendor untouched
+        }
+        cats = {"openai": [{"id": "gpt-5.4"}]}
+        new, report = vcr.build_authoritative_registry(
+            base, cats, supplement_allow={"openai/gpt-oss-120b"})
+        self.assertNotIn("openai/gpt-4o", new)
+        self.assertNotIn("openai/gpt-3.5-turbo", new)
+        self.assertIn("openai/gpt-oss-120b:free", new)
+        self.assertTrue(new["openai/gpt-oss-120b:free"]["supplement"])
+        self.assertTrue(new["openai/gpt-oss-120b:free"]["is_free"])
+        self.assertIn("openai/gpt-oss-120b", new)
+        self.assertTrue(new["openai/gpt-oss-120b"]["supplement"])
+        self.assertIn("openai/gpt-5.4", new)                     # native added
+        self.assertIn("anthropic/claude-opus-4.8", new)          # untouched
+        self.assertEqual(report["openai"]["openrouter_supplement_kept"], 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

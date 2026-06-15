@@ -59,6 +59,22 @@ def _prefixes(vendor_id: str) -> list[str]:
     return _ENRICH_PREFIXES.get(vendor_id, [vendor_id])
 
 
+def is_supplement(orid: str, allow=None) -> bool:
+    """Whether an OpenRouter-only entry for a native vendor should be KEPT rather
+    than dropped by the inversion. True for ``:free`` tiers (kept automatically —
+    they're free and the auto-populate step never picks them into a PAID preset)
+    and for ids on the curated allow-list (matched as the full id or its
+    ``:free``-stripped base, so listing ``openai/gpt-oss-120b`` also keeps
+    ``openai/gpt-oss-120b:free``). Lets popular open/small models the vendor's own
+    API doesn't serve stay available, dispatched via OpenRouter."""
+    if not orid:
+        return False
+    if orid.endswith(":free"):
+        return True
+    allow = allow or set()
+    return orid in allow or (orid + ":free") in allow
+
+
 # ── chat-modality filter ─────────────────────────────────────────────────────
 # Non-chat surfaces a chat picker shouldn't list. Conservative: a model that
 # slips through just errors on use (recoverable); the build reports every drop
@@ -454,7 +470,8 @@ def build_vendor_entries(vendor_id: str, native_records: list, aa_idx: dict, or_
 
 
 def build_authoritative_registry(base_models: dict, vendor_catalogs: dict,
-                                 or_models: list | None = None, size_rules=None):
+                                 or_models: list | None = None, size_rules=None,
+                                 supplement_allow=None):
     """Transform the OpenRouter+AA registry into a vendor-authoritative one.
 
     base_models     : {orid → entry}, the AA-enriched registry (also the AA source)
@@ -463,17 +480,32 @@ def build_authoritative_registry(base_models: dict, vendor_catalogs: dict,
 
     Returns ``(new_models, report)``: for each vendor with a catalogue, its
     OpenRouter entries are removed and replaced by native chat entries; other
-    vendors pass through unchanged.
+    vendors pass through unchanged. ``supplement_allow`` is a set of OpenRouter
+    ids to KEEP rather than drop (in addition to the automatic ``:free`` rule) —
+    popular open/small models the vendor's own API doesn't serve, dispatched via
+    OpenRouter and tagged ``supplement``.
     """
     or_models = or_models or []
+    supplement_allow = set(supplement_allow or [])
     new = dict(base_models)
     report: dict = {}
     for vendor_id, native_records in vendor_catalogs.items():
         if not native_records:
             continue
         pfx = set(_prefixes(vendor_id))
-        removed = [k for k in list(new.keys())
-                   if "/" in k and k.split("/", 1)[0].lstrip("~") in pfx]
+        removed, kept_supp = [], []
+        for k in list(new.keys()):
+            if "/" not in k or k.split("/", 1)[0].lstrip("~") not in pfx:
+                continue
+            if is_supplement(k, supplement_allow):
+                ent = new[k]
+                if isinstance(ent, dict):
+                    ent["supplement"] = True          # OpenRouter-sourced, not native
+                    if k.endswith(":free"):
+                        ent["is_free"] = True
+                kept_supp.append(k)
+                continue
+            removed.append(k)
         for k in removed:
             new.pop(k, None)
         aa_idx = _enrich_index(vendor_id, base_models.items())
@@ -485,6 +517,7 @@ def build_authoritative_registry(base_models: dict, vendor_catalogs: dict,
         n = len(entries) or 1
         report[vendor_id] = {
             "openrouter_removed": len(removed),
+            "openrouter_supplement_kept": len(kept_supp),
             "native_chat_added": len(entries),
             "non_chat_dropped": len(dropped),
             "dropped_examples": dropped[:10],
@@ -540,7 +573,7 @@ def native_direct_entries(models: dict) -> list:
 
 
 __all__ = [
-    "FLAG", "enabled", "is_chat_model", "merge_entry",
+    "FLAG", "enabled", "is_chat_model", "is_supplement", "merge_entry",
     "build_vendor_entries", "build_authoritative_registry",
     "build_alias_map", "native_direct_entries",
 ]
