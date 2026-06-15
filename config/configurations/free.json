@@ -1,89 +1,105 @@
 {
   "name": "free",
-  "description": "Auto-populated from preset 'free' on 2026-06-12T20:24:21.037550+00:00.",
+  "description": "Auto-populated from preset 'free' on 2026-06-15T16:12:55.132993+00:00.",
   "preset_lineage": "free",
   "cells": {
     "utility": {
       "step1_cleanup": {
-        "primary": "meta-llama/llama-3.2-3b-instruct:free",
-        "fallback": [],
-        "vision_substitute": "google/gemma-4-31b-it:free"
+        "primary": "nvidia/nemotron-nano-9b-v2:free",
+        "fallback": [
+          "meta-llama/llama-3.2-3b-instruct:free",
+          "liquid/lfm-2.5-1.2b-thinking:free"
+        ]
       },
       "classification": {
-        "primary": "meta-llama/llama-3.2-3b-instruct:free",
-        "fallback": [],
-        "vision_substitute": "google/gemma-4-31b-it:free"
+        "primary": "nvidia/nemotron-nano-9b-v2:free",
+        "fallback": [
+          "meta-llama/llama-3.2-3b-instruct:free",
+          "liquid/lfm-2.5-1.2b-thinking:free"
+        ]
       },
       "rag_planner": {
-        "primary": "meta-llama/llama-3.2-3b-instruct:free",
-        "fallback": [],
-        "vision_substitute": "google/gemma-4-31b-it:free"
+        "primary": "nvidia/nemotron-nano-9b-v2:free",
+        "fallback": [
+          "meta-llama/llama-3.2-3b-instruct:free",
+          "liquid/lfm-2.5-1.2b-thinking:free"
+        ]
       },
       "gear2_rag_lookup": {
-        "primary": "nex-agi/nex-n2-pro:free",
+        "primary": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
         "fallback": [
-          "nvidia/nemotron-3.5-content-safety:free",
-          "openrouter/free",
-          "nvidia/nemotron-nano-12b-v2-vl:free"
-        ],
-        "vision_substitute": "google/gemma-4-31b-it:free"
+          "google/gemma-4-31b-it:free",
+          "google/gemma-4-26b-a4b-it:free",
+          "nex-agi/nex-n2-pro:free"
+        ]
       }
     },
     "analysis": {
       "gear4": {
         "depth": {
           "primary": "nvidia/nemotron-3-ultra-550b-a55b:free",
-          "fallback": [],
-          "vision_substitute": "google/gemma-4-31b-it:free"
+          "fallback": [
+            "nvidia/nemotron-3-super-120b-a12b:free",
+            "openai/gpt-oss-120b:free",
+            "qwen/qwen3-coder:free"
+          ]
         },
         "breadth": {
           "primary": "openai/gpt-oss-120b:free",
-          "fallback": [],
-          "vision_substitute": "google/gemma-4-31b-it:free"
+          "fallback": [
+            "qwen/qwen3-coder:free",
+            "qwen/qwen3-next-80b-a3b-instruct:free",
+            "nousresearch/hermes-3-llama-3.1-405b:free"
+          ]
         }
       },
       "gear3": {
         "depth": {
-          "primary": "nex-agi/nex-n2-pro:free",
+          "primary": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
           "fallback": [
-            "nvidia/nemotron-3.5-content-safety:free",
-            "openrouter/free",
-            "nvidia/nemotron-nano-12b-v2-vl:free"
-          ],
-          "vision_substitute": "google/gemma-4-31b-it:free"
+            "google/gemma-4-31b-it:free",
+            "google/gemma-4-26b-a4b-it:free",
+            "nex-agi/nex-n2-pro:free"
+          ]
         },
         "breadth": {
-          "primary": "nvidia/nemotron-3.5-content-safety:free",
+          "primary": "google/gemma-4-31b-it:free",
           "fallback": [
-            "openrouter/free",
-            "nvidia/nemotron-nano-12b-v2-vl:free"
-          ],
-          "vision_substitute": "google/gemma-4-31b-it:free"
+            "google/gemma-4-26b-a4b-it:free",
+            "nex-agi/nex-n2-pro:free",
+            "openrouter/free"
+          ]
         }
       }
     },
     "post_analysis": {
       "consolidation": {
         "primary": "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "fallback": [],
-        "vision_substitute": "google/gemma-4-31b-it:free"
+        "fallback": [
+          "nvidia/nemotron-3-super-120b-a12b:free",
+          "openai/gpt-oss-120b:free"
+        ]
       },
       "verification": {
         "primary": "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "fallback": [],
-        "vision_substitute": "google/gemma-4-31b-it:free"
+        "fallback": [
+          "nvidia/nemotron-3-super-120b-a12b:free",
+          "openai/gpt-oss-120b:free"
+        ]
       },
       "formatter": {
         "primary": "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "fallback": [],
-        "vision_substitute": "google/gemma-4-31b-it:free"
+        "fallback": [
+          "nvidia/nemotron-3-super-120b-a12b:free",
+          "openai/gpt-oss-120b:free"
+        ]
       }
     }
   },
   "_auto_populate_metadata": {
     "preset": "free",
     "vision_only": true,
-    "vision_substitute": "google/gemma-4-31b-it:free",
+    "vision_substitute": null,
     "loosening_log": {
       "utility.step1_cleanup": [
         "vision_only dropped: no eligible free vision-capable model for this cell (vision_substitute still handles image input; reachability gate stays strict)"
