@@ -597,6 +597,29 @@
       },
       "execution_pattern": "sync",
       "common_errors": []
+    },
+    "vision_input": {
+      "name": "vision_input",
+      "summary": "Reads an image as INPUT for the analysis chain — the vision-capable chat model used as a backstop when an analyst hits an image a text-only model can't see. Global (one setting for the whole system), not per analysis configuration. Distinct from image generation/editing: this model consumes an image, it does not produce one.",
+      "required_inputs": [
+        {
+          "name": "image",
+          "type": "image-ref",
+          "description": "The image the analyst needs to read."
+        },
+        {
+          "name": "prompt",
+          "type": "text",
+          "description": "The analysis question posed against the image."
+        }
+      ],
+      "optional_inputs": [],
+      "output": {
+        "type": "text",
+        "description": "The model's reading of the image in service of the prompt."
+      },
+      "execution_pattern": "sync",
+      "common_errors": []
     }
   }
 }

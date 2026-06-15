@@ -23,12 +23,11 @@ SPEC.loader.exec_module(auto_populate)
 
 
 def _model(id, *, intelligence=None, blended=None, size="large",
-           vision=False, is_free=False, provider="x", release_date=None):
+           vision=False, is_free=False, provider="x"):
     return {
         "id": id, "display_name": id, "provider": provider,
         "size_bucket": size, "vision_capable": vision, "is_free": is_free,
         "aa_intelligence_index": intelligence,
-        "release_date": release_date,
         "openrouter_pricing": {"input_per_m": None, "output_per_m": None, "blended_per_m": blended},
     }
 
@@ -176,20 +175,18 @@ class TestPickForPaidSlot(unittest.TestCase):
         # configures it.
         # For now, just assert the algorithm runs and returns 3.
 
-    def test_dominated_model_kept_as_fallback(self):
-        # 2026-06-14: Pareto is no longer applied inside pick_for_paid_slot,
-        # so a Pareto-dominated model (e/dominated) is now ADMISSIBLE as a
-        # fallback — that's the point: cheap same-tier alternatives should
-        # populate the fallback chain rather than the picker climbing to
-        # pricey frontier models. The PRIMARY is still the best by the sort.
+    def test_dominated_model_included_without_pareto(self):
+        # Pareto filtering was intentionally removed (2026-06-14, user request):
+        # it pruned the cheap same-tier alternatives a fallback chain wants. A
+        # strictly-dominated model is therefore no longer excluded — it just
+        # sorts lower. See the rationale in pick_for_paid_slot.
         catalog = _fixture_catalog()
         picks, _ = auto_populate.pick_for_paid_slot(
             catalog, size_bucket="large", top_n=10,
             floor_pct=None, cost_ceiling=None, loosening=False,
         )
         pick_ids = {p["id"] for p in picks}
-        self.assertIn("e/dominated", pick_ids)        # no longer Pareto-pruned
-        self.assertNotEqual(picks[0]["id"], "e/dominated")  # never the primary
+        self.assertIn("e/dominated", pick_ids)
 
     def test_diversity_exclusion(self):
         catalog = _fixture_catalog()
@@ -642,10 +639,11 @@ class TestPopulateConfiguration(unittest.TestCase):
             config["cells"]["analysis"]["gear4"]["depth"]["primary"],
             config["cells"]["analysis"]["gear4"]["breadth"]["primary"],
         )
-        # Vision substitute threaded into cells
+        # Vision input is a GLOBAL capability slot now (routing-config
+        # slots.vision_input), not a per-cell field — bakes no longer emit it.
         for cell_name in ["depth", "breadth"]:
             cell = config["cells"]["analysis"]["gear4"][cell_name]
-            self.assertIn("vision_substitute", cell)
+            self.assertNotIn("vision_substitute", cell)
 
     def test_free_end_to_end(self):
         catalog = _fixture_catalog()
@@ -667,149 +665,6 @@ class TestPopulateConfiguration(unittest.TestCase):
         presets = _fixture_presets()
         with self.assertRaises(ValueError):
             auto_populate.populate_configuration("nonexistent", catalog, presets)
-
-
-class TestNewestModelSelection(unittest.TestCase):
-    """2026-06-14 fix: the picker excluded the newest/best models via
-    (1) a hard size_bucket=None exclusion from big slots and (2) no
-    recency preference. These tests pin the corrected behavior."""
-
-    def test_intelligence_of_no_elo_fallback(self):
-        # Arena Elo is a poor AA proxy; an unbenchmarked model is 0.0,
-        # never an Elo-derived estimate.
-        self.assertEqual(auto_populate.intelligence_of(
-            {"aa_intelligence_index": 64.9}), 64.9)
-        self.assertEqual(auto_populate.intelligence_of(
-            {"aa_intelligence_index": None,
-             "intelligence_score": 1474, "aa_intelligence_est": 41.7}), 0.0)
-
-    def test_large_bucket_admits_benchmarked_null_bucket(self):
-        # The headline fix: a BENCHMARKED null-bucket model (closed/
-        # codenamed flagship) competes in the large pool; an UNSCORED
-        # null model does not (doubly-unknown); small/midsize stay strict.
-        cands = [
-            _model("v/codename-flagship", intelligence=90, blended=20, size=None),
-            _model("v/unscored-null", intelligence=None, blended=0.1, size=None),
-            _model("v/known-large", intelligence=80, blended=10, size="large"),
-            _model("v/small", intelligence=30, blended=0.1, size="small"),
-        ]
-        large = auto_populate.filter_by_size_bucket(cands, "large")
-        ids = {m["id"] for m in large}
-        self.assertIn("v/codename-flagship", ids)    # benchmarked null admitted
-        self.assertIn("v/known-large", ids)
-        self.assertNotIn("v/unscored-null", ids)     # unscored null NOT admitted
-        self.assertNotIn("v/small", ids)             # small stays out
-        small = auto_populate.filter_by_size_bucket(cands, "small")
-        self.assertEqual({m["id"] for m in small}, {"v/small"})  # null NOT in small
-
-    def test_null_bucket_flagship_gets_picked(self):
-        # End-to-end: the highest-intelligence model is null-bucket; it
-        # must win the premium big slot (the claude-fable-5 case).
-        catalog = [
-            _model("anthropic/fable", intelligence=64.9, blended=20, size=None,
-                   release_date="2026-06-09"),
-            _model("anthropic/opus", intelligence=61.4, blended=10, size="large",
-                   release_date="2026-05-28"),
-            _model("x/small-junk", intelligence=8, blended=0.1, size=None),  # null but tiny
-        ]
-        picks, _ = auto_populate.pick_for_paid_slot(
-            catalog, size_bucket="large", top_n=2, floor_pct=None,
-            cost_ceiling=None, loosening=False, sort_by="intelligence_desc")
-        self.assertEqual(picks[0]["id"], "anthropic/fable")  # null flagship wins
-        self.assertNotIn("x/small-junk", [p["id"] for p in picks])  # junk excluded
-
-    def test_recency_tiebreak_intelligence(self):
-        # Equal intelligence → newer first; never reorders different intel.
-        cands = [
-            _model("v/older", intelligence=70, blended=5, release_date="2026-01-01"),
-            _model("v/newer", intelligence=70, blended=5, release_date="2026-06-01"),
-            _model("v/smarter-older", intelligence=80, blended=5, release_date="2025-01-01"),
-        ]
-        ordered = auto_populate.sort_by_intelligence_descending(cands)
-        self.assertEqual([m["id"] for m in ordered],
-                         ["v/smarter-older", "v/newer", "v/older"])
-
-    def test_recency_tiebreak_cost(self):
-        # Equal cost → newer first; never reorders different cost.
-        cands = [
-            _model("v/older", intelligence=50, blended=2.0, release_date="2026-01-01"),
-            _model("v/newer", intelligence=50, blended=2.0, release_date="2026-06-01"),
-            _model("v/cheaper-older", intelligence=50, blended=1.0, release_date="2025-01-01"),
-        ]
-        ordered = auto_populate.sort_by_cost_ascending(cands)
-        self.assertEqual([m["id"] for m in ordered],
-                         ["v/cheaper-older", "v/newer", "v/older"])
-
-    def test_pareto_exact_tie_keeps_newer(self):
-        # Identical intelligence AND cost (e.g. opus-4.8 / opus-4.8-fast):
-        # the newer survives the frontier, the older is dominated out.
-        cands = [
-            _model("v/old", intelligence=61.4, blended=10, release_date="2026-05-01"),
-            _model("v/new", intelligence=61.4, blended=10, release_date="2026-05-28"),
-        ]
-        frontier = auto_populate.pareto_filter(cands)
-        self.assertEqual([m["id"] for m in frontier], ["v/new"])
-
-    def test_missing_release_date_sorts_oldest(self):
-        # A dateless model never displaces a dated one in the tiebreak.
-        cands = [
-            _model("v/dated", intelligence=70, blended=5, release_date="2026-06-01"),
-            _model("v/undated", intelligence=70, blended=5, release_date=None),
-        ]
-        ordered = auto_populate.sort_by_intelligence_descending(cands)
-        self.assertEqual([m["id"] for m in ordered], ["v/dated", "v/undated"])
-
-
-
-class TestPreviewAndFallbackRelaxation(unittest.TestCase):
-    """2026-06-14: exclude preview models from auto-pick; fallbacks are the
-    least-expensive models above the thresholds (no Pareto pruning)."""
-
-    def test_filter_exclude_preview(self):
-        cands = [
-            _model("google/gemini-3.1-pro-preview", intelligence=57),
-            _model("google/gemini-3.1-pro-preview-customtools", intelligence=57),
-            _model("anthropic/claude-opus-4.8", intelligence=61),
-            _model("x/preview-style-name", intelligence=40),  # delimited token
-            _model("x/previewed", intelligence=40),            # NOT a token → kept
-        ]
-        out = auto_populate.filter_exclude_preview(cands)
-        ids = {m["id"] for m in out}
-        self.assertNotIn("google/gemini-3.1-pro-preview", ids)
-        self.assertNotIn("google/gemini-3.1-pro-preview-customtools", ids)
-        self.assertNotIn("x/preview-style-name", ids)
-        self.assertIn("anthropic/claude-opus-4.8", ids)
-        self.assertIn("x/previewed", ids)  # substring, not a token
-
-    def test_fallbacks_include_cheap_dominated_models(self):
-        # minimax-m3 dominates qwen-plus (smarter AND cheaper). Old Pareto
-        # removed qwen-plus and the fallbacks climbed to the pricey frontier.
-        # Now qwen-plus (cheap, above floor) is a fallback.
-        catalog = [
-            _model("minimax/m3",   intelligence=54.7, blended=0.52, size="large", provider="minimax"),
-            _model("qwen/plus",    intelligence=53.3, blended=0.56, size="large", provider="qwen"),
-            _model("google/pro",   intelligence=57.2, blended=4.50, size="large", provider="google"),
-            _model("anthropic/op", intelligence=61.4, blended=10.0, size="large", provider="anthropic"),
-        ]
-        picks, _ = auto_populate.pick_for_paid_slot(
-            catalog, size_bucket="large", top_n=3, floor_pct=80,
-            cost_ceiling=None, loosening=False, sort_by="cost_asc")
-        ids = [p["id"] for p in picks]
-        self.assertEqual(ids[0], "minimax/m3")        # cheapest primary unchanged
-        self.assertIn("qwen/plus", ids)               # cheap dominated model now a fallback
-        # the pricey frontier models are NOT preferred over the cheap one
-        self.assertLess(ids.index("qwen/plus"),
-                        ids.index("google/pro") if "google/pro" in ids else 99)
-
-    def test_preview_excluded_from_paid_pick(self):
-        catalog = [
-            _model("google/gemini-3.1-pro-preview", intelligence=57, blended=4.5, size="large", provider="google"),
-            _model("minimax/m3", intelligence=54.7, blended=0.52, size="large", provider="minimax"),
-        ]
-        picks, _ = auto_populate.pick_for_paid_slot(
-            catalog, size_bucket="large", top_n=2, floor_pct=None,
-            cost_ceiling=None, loosening=False, sort_by="intelligence_desc")
-        self.assertNotIn("google/gemini-3.1-pro-preview", [p["id"] for p in picks])
 
 
 if __name__ == "__main__":

@@ -69,6 +69,7 @@
   ];
 
   var ADVANCED_SLOTS = [
+    { id: 'vision_input',            label: 'Vision input (image reading)' },
     { id: 'image_generates_cartoon', label: 'Editorial cartoons' },
     { id: 'image_edits',             label: 'Image edits' },
     { id: 'image_outpaints',         label: 'Image outpaints' },

@@ -634,15 +634,13 @@
       omitCost: !!(opts && opts.omitCost),
       isActive: !!(opts && opts.isActive),
     };
-    // 2026-05-22 reshape: visual + the three single-cell overrides
-    // the publisher specified. Order matches the four-row spec from
-    // the items 1-7 list ("visual model is right, but the others
-    // should be utility, Consolidate, and Verify"). Formatter is
-    // gone from the expand view — the pipeline still runs that step
-    // internally but always uses the inherited big-1 model.
+    // Single-cell overrides shown in the expand view. The vision/image-input
+    // model moved OUT of here (2026-06-14): it's a global capability now, edited
+    // in Settings → Visual → Advanced routing ("Vision input"), not a per-config
+    // row. Formatter is gone too — the pipeline still runs that step internally
+    // but always uses the inherited big-1 model.
     return ''
       + '<div class="ora-models-card-expand">'
-      +   _slotRowHTML('visual', summary.visual, c)
       +   _slotRowHTML('utility', summary.utility, c)
       +   _slotRowHTML('consolidate', summary.consolidate, c)
       +   _slotRowHTML('verify', summary.verify, c)
@@ -1450,9 +1448,7 @@
       } else if (sizeFilter && _filters.include_unsized) {
         activeFilters.push('including unknown-size models');
       }
-      if (_activeSlotPick.slotLabel === 'visual') {
-        activeFilters.push('vision-capable (required for this slot)');
-      } else if (_filters.vision) {
+      if (_filters.vision) {
         activeFilters.push('vision-capable');
         clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="vision">turn off Vision filter</button>');
       }
@@ -1565,15 +1561,9 @@
         return false;
       }
     }
-    // Slot-pick capability gate. The VISUAL slot is the vision
-    // substitute — the model that handles image input when the
-    // analyst chain can't see it directly. It must be vision-capable
-    // regardless of whether the Vision filter chip is on. Other
-    // slots have no per-slot capability requirement today.
-    if (_activeSlotPick && _activeSlotPick.slotLabel === 'visual'
-        && model.vision_capable !== true) {
-      return false;
-    }
+    // (The vision/image-input model is no longer a Models-tab slot — it moved
+    // to Settings → Visual → Advanced routing as the global "Vision input"
+    // capability. No per-slot capability gate remains here.)
     // Intelligence filter: when slider is at 0 (default), show all
     // including unranked. When > 0, drop everything not in the top X%.
     if (_filters.intelligence_pct > 0) {
@@ -1597,7 +1587,6 @@
     'big 1':       'large',
     'big 2':       'large',
     'small':       'small',
-    'visual':      'large',
     'utility':     'small',
     'consolidate': 'large',
     'verify':      'large',
