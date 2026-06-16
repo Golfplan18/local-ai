@@ -6,15 +6,15 @@
   "items": [
     {
       "id": "text-to-image",
-      "icon": "sparkles",
-      "label": "Text to image",
+      "icon": "image-plus",
+      "label": "Generate image",
       "shortcut": "Shift+G",
       "binding": "capability:image_generates"
     },
     {
       "id": "inpaint",
-      "icon": "wand-2",
-      "label": "Inpaint",
+      "icon": "wand-sparkles",
+      "label": "Fill selection",
       "binding": "capability:image_edits",
       "enabled_when": "image_present_and_mask"
     },

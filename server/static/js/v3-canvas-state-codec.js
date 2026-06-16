@@ -22,7 +22,7 @@
  *  ✗ group (children round-trip is delegated; nested shape-with-text groups
  *           survive because we serialize their Konva attrs, but custom
  *           constructors aren't reinstantiated)
- *  ✗ path  (freehand pen — captured as Konva.Line, no smoothing pass)
+ *  ✓ path  (freehand pen captured as Konva.Line with smoothing attrs)
  *
  * Layers
  * ------
@@ -66,12 +66,32 @@
     }
   }
 
+  function _isPenPathAttrs(attrs) {
+    if (!attrs) return false;
+    if (attrs.annotationKind === 'pen') return true;
+    var name = (typeof attrs.name === 'string') ? attrs.name : '';
+    return name.indexOf('vp-user-pen') >= 0 || name.indexOf('ora-visual__user-pen') >= 0;
+  }
+
+  function _applyPenPathSmoothing(attrs) {
+    if (!_isPenPathAttrs(attrs)) return attrs;
+    if (!Array.isArray(attrs.points) || attrs.points.length < 4) return attrs;
+    if (typeof attrs.lineCap === 'undefined') attrs.lineCap = 'round';
+    if (typeof attrs.lineJoin === 'undefined') attrs.lineJoin = 'round';
+    if (typeof attrs.perfectDrawEnabled === 'undefined') attrs.perfectDrawEnabled = false;
+    if (attrs.points.length >= 6 && !attrs.closed && typeof attrs.tension === 'undefined') {
+      attrs.tension = 0.35;
+    }
+    return attrs;
+  }
+
   // ── serialize ──────────────────────────────────────────────────────────
 
   function _nodeToObject(node, layerId, idx) {
     if (!node || typeof node.getClassName !== 'function') return null;
     var className = node.getClassName();
     var attrs = (typeof node.getAttrs === 'function') ? Object.assign({}, node.getAttrs()) : {};
+    _applyPenPathSmoothing(attrs);
 
     // Strip the Konva 'image' attr (HTMLImageElement) for Image nodes; we
     // re-derive image bytes via toDataURL into the typed image_data field.
@@ -111,7 +131,9 @@
     if (className === 'Text')           kind = 'text';
     else if (className === 'Image')     kind = 'image';
     else if (className === 'Group')     kind = 'group';
-    else if (className === 'Path' || className === 'Line') kind = (attrs.points && attrs.points.length > 4) ? 'path' : 'shape';
+    else if (className === 'Path' || className === 'Line') {
+      kind = (_isPenPathAttrs(attrs) || (attrs.points && attrs.points.length > 4)) ? 'path' : 'shape';
+    }
 
     var id = (typeof node.id === 'function' && node.id()) || attrs.id || _newId(kind);
 
@@ -286,6 +308,7 @@
     }
 
     var attrs = Object.assign({}, obj.attrs || {});
+    _applyPenPathSmoothing(attrs);
 
     // Top-level obj.id is the canonical identity; mirror into attrs.id so
     // Konva node.id() returns it after construction. Without this, calls

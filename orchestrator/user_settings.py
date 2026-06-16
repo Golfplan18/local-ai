@@ -87,6 +87,9 @@ DEFAULTS: dict = {
         # off, the helper restores native browser title attributes so
         # the user still sees something on hover (just OS-styled).
         "tooltips_enabled": True,
+        # Optional visual-pane help/menu affordance. Off by default to
+        # preserve the minimal canvas surface.
+        "visual_help_enabled": False,
     },
 }
 

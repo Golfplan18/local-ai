@@ -1,6 +1,6 @@
 /* ============================================================
    Input pane bottom-right toolbar — V3 Input Handling Phase 3
-   Three icons (mode picker, framework picker, attach) anchored
+   Three icons (framework picker, image generation toggle, attach) anchored
    to the bottom-right of `.input-pane`. Mirrors the visual
    pane's image/art toolbar pattern: pane-embedded, raised
    buttons, paired Ora shadow + highlight variables.
@@ -83,7 +83,7 @@
 .input-pane-attachments {
   position: absolute;
   left: 12px;
-  right: 120px;        /* clear the toolbar's bottom-right zone */
+  right: 158px;        /* clear the toolbar's bottom-right zone */
   bottom: 8px;
   display: flex;
   flex-wrap: wrap;

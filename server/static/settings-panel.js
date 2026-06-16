@@ -178,6 +178,41 @@
       + 'your operating system\'s default tooltip is used instead — same '
       + 'information, plain styling.'
     );
+
+    var visualHelp = iface.visual_help_enabled !== undefined
+      ? iface.visual_help_enabled
+      : (src.visual_help_enabled === true);
+    _appendField('Show visual pane help button',
+      _checkboxInput('interface.visual_help_enabled', visualHelp));
+    _appendNote(
+      'When on, a small help button appears inside the visual pane and opens '
+      + 'the specialty toolbar menu. Leave it off for the uncluttered canvas.'
+    );
+
+    var resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'ora-settings-btn';
+    resetBtn.textContent = 'Reset toolbar layout';
+    resetBtn.addEventListener('click', function () {
+      var Packs = window.OraV3PackToolbars;
+      if (!Packs || typeof Packs.resetLayout !== 'function') {
+        _setStatus('Visual toolbar reset is not available yet.', 'error');
+        return;
+      }
+      var panel = null;
+      try {
+        if (window.OraPanels && window.OraPanels.visual
+            && typeof window.OraPanels.visual._getActive === 'function') {
+          panel = window.OraPanels.visual._getActive();
+        } else if (window.OraCanvas && window.OraCanvas.panel) {
+          panel = window.OraCanvas.panel;
+        }
+      } catch (_) { panel = null; }
+      Packs.resetLayout(panel);
+      _setStatus('Visual toolbar layout reset.', 'success');
+      setTimeout(function () { _setStatus(''); }, 1400);
+    });
+    _appendField('Visual toolbar layout', resetBtn);
   }
 
   // ── Models tab ───────────────────────────────────────────────────────────

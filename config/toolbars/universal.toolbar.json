@@ -109,11 +109,18 @@
       "enabled_when": "selection_active"
     },
     {
-      "id": "ask-ora",
-      "icon": "sparkles",
-      "label": "Ask Ora",
-      "shortcut": "?",
-      "binding": "tool:ask_ora"
+      "id": "generate-image",
+      "icon": "image-plus",
+      "label": "Generate image",
+      "shortcut": "Shift+G",
+      "binding": "capability:image_generates"
+    },
+    {
+      "id": "fill-selection",
+      "icon": "wand-sparkles",
+      "label": "Fill selection",
+      "binding": "capability:image_edits",
+      "enabled_when": "image_present_and_mask"
     },
     {
       "id": "toolbar-selector",

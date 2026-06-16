@@ -335,7 +335,7 @@ async function testImageRefAndMaskUseContext() {
   var ctl = UI.init({
     hostEl: host,
     capabilities: capabilities,
-    slotName: 'image_edits',  // requires image + mask + prompt
+    slotName: 'image_edits',  // requires image + mask; prompt is optional
     contextProvider: function () { return ctxState; },
   });
   var btn = host.querySelector('.ora-cap-runbtn');
@@ -350,12 +350,43 @@ async function testImageRefAndMaskUseContext() {
   ctxState.canvasSelection = { id: 'img_42', kind: 'image' };
   ctxState.maskRef = { kind: 'rect', x: 10, y: 10, w: 100, h: 100 };
   ctl.setContextProvider(function () { return ctxState; });
+  await _flushFrames();
+  record('button enables after selection + mask without prompt',
+    btn && btn.disabled === false,
+    'disabled=' + (btn && btn.disabled));
+
+  var dispatchedBlank = null;
+  host.addEventListener('capability-dispatch', function onBlank(e) { dispatchedBlank = e.detail; }, { once: true });
+  ctl.submit();
+  record('dispatch can omit optional fill prompt',
+    dispatchedBlank
+    && dispatchedBlank.inputs.image === 'img_42'
+    && dispatchedBlank.inputs.mask
+    && dispatchedBlank.inputs.mask.kind === 'rect'
+    && !Object.prototype.hasOwnProperty.call(dispatchedBlank.inputs, 'prompt'),
+    dispatchedBlank ? JSON.stringify(dispatchedBlank.inputs) : 'no dispatch');
+
+  ctl.destroy();
+  host = _resetHost();
+  ctxState = {
+    canvasSelection: { id: 'img_42', kind: 'image' },
+    maskRef: { kind: 'rect', x: 10, y: 10, w: 100, h: 100 },
+  };
+  ctl = UI.init({
+    hostEl: host,
+    capabilities: capabilities,
+    slotName: 'image_edits',
+    contextProvider: function () { return ctxState; },
+  });
+  btn = host.querySelector('.ora-cap-runbtn');
+  await _flushFrames();
+
   // Type a prompt
   var promptInput = host.querySelector('textarea[name="prompt"], input[name="prompt"]');
   promptInput.value = 'Replace the masked area with a tree.';
   promptInput.dispatchEvent(new w.Event('input', { bubbles: true }));
   await _flushFrames();
-  record('button enables after selection + mask + prompt',
+  record('button stays enabled after optional prompt',
     btn && btn.disabled === false,
     'disabled=' + (btn && btn.disabled));
 

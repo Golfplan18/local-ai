@@ -241,6 +241,35 @@
   opacity: 1;
 }
 
+.visual-panel__help-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 28px;
+  height: 28px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.18));
+  border-radius: 6px;
+  background: var(--bg-panel, rgba(255, 255, 255, 0.88));
+  color: var(--text-secondary, #666);
+  font: 600 14px/1 var(--font-ui, system-ui, sans-serif);
+  cursor: pointer;
+  z-index: 22;
+}
+
+body.ora-show-visual-help .visual-panel__help-button {
+  display: flex;
+}
+
+.visual-panel__help-button:hover,
+.visual-panel__help-button:focus-visible {
+  color: var(--text-primary, #222);
+  border-color: var(--accent, #0072B2);
+  outline: none;
+}
+
 /* ── Fallback panel (data table / prose when compile fails) ────────────── */
 
 .visual-panel__fallback {
@@ -1412,5 +1441,4 @@ body.pane-mode-video .visual-panel {
     0 0 0 9999px rgba(0, 0, 0, 0.45);
   pointer-events: none;
 }
-
 

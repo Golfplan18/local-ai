@@ -42,9 +42,19 @@
       var on = payload.interface.tooltips_enabled !== false;
       if (on) window.OraTooltip.enable();
       else window.OraTooltip.disable();
+      var showVisualHelp = payload.interface.visual_help_enabled === true;
+      if (document.body) {
+        document.body.classList.toggle('ora-show-visual-help', showVisualHelp);
+      }
+      try {
+        document.dispatchEvent(new CustomEvent('ora:visual-help-setting', {
+          detail: { enabled: showVisualHelp },
+        }));
+      } catch (_) { /* old browser fallback — ignore */ }
     }
     fetch('/api/settings').then(function (r) { return r.json(); })
-      .then(_applySetting).catch(function () { /* keep default-on */ });
+      .then(function (data) { _applySetting((data && data.settings) || data); })
+      .catch(function () { /* keep default-on */ });
     document.addEventListener('ora:settings-saved', function (evt) {
       _applySetting(evt && evt.detail);
     });
@@ -442,12 +452,10 @@
            visual treatment is consistent regardless of file type. -->
       <div class="input-pane-attachments" id="inputPaneAttachments"
            aria-live="polite" aria-label="Attached files"></div>
-      <!-- V3 Input Handling Phase 3 — two-icon bottom-right toolbar:
-           framework picker, attach. Mode selection is intentionally absent;
-           the mode-selection process is being redesigned separately and
-           will land its own picker with that work.
-           Click handlers dispatch `ora:input-toolbar:{framework|attach}`
-           events; Phase 4 wires the actual framework picker dropdown. -->
+      <!-- V3 Input Handling Phase 3 — bottom-right toolbar:
+           framework picker, image-generation intent toggle, attach.
+           Click handlers dispatch `ora:input-toolbar:*` events; Phase 4
+           wires the framework picker dropdown. -->
       <div class="input-pane-toolbar" role="toolbar" aria-label="Input options">
         <button class="input-pane-toolbar__btn" type="button"
                 id="inputToolbarFramework"
@@ -457,6 +465,20 @@
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </button>
+        <button class="input-pane-toolbar__btn" type="button"
+                id="inputToolbarImageGenerate"
+                aria-label="Generate image from prompt"
+                aria-pressed="false"
+                data-input-toolbar="image-generate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 5h6"/>
+            <path d="M19 2v6"/>
+            <path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+            <circle cx="9" cy="9" r="2"/>
           </svg>
         </button>
         <button class="input-pane-toolbar__btn" type="button"
@@ -1379,6 +1401,15 @@
       }
     }
 
+    if (window.OraInputAttachments
+        && typeof window.OraInputAttachments.imageFiles === 'function') {
+      const imageFiles = window.OraInputAttachments.imageFiles();
+      if (imageFiles.length) {
+        const imageFile = imageFiles[0];
+        body.append('image', imageFile, imageFile.name || 'attached-image');
+      }
+    }
+
     // Clear the per-input framework selection now that the request is on
     // the wire. Done before the await so that if the user starts typing a
     // follow-up while waiting, the toolbar/bridge already reflect the
@@ -1635,6 +1666,47 @@
     return submitToMainPipeline(augmentedPrompt);
   };
 
+  let imageGenerateMode = false;
+  const _imageGenerateBtn = document.getElementById('inputToolbarImageGenerate');
+
+  const setImageGenerateMode = (on) => {
+    imageGenerateMode = !!on;
+    if (_imageGenerateBtn) {
+      _imageGenerateBtn.classList.toggle('is-active', imageGenerateMode);
+      _imageGenerateBtn.setAttribute('aria-pressed', imageGenerateMode ? 'true' : 'false');
+      _imageGenerateBtn.title = imageGenerateMode
+        ? 'Image generation is on for the next prompt'
+        : 'Generate image from prompt';
+    }
+  };
+
+  const _looksLikeImageGenerationRequest = (text) => {
+    const t = (text || '').trim().toLowerCase();
+    if (!t) return false;
+    return /\b(text[-\s]?to[-\s]?image|image of|picture of|photo of)\b/.test(t)
+        || /\b(generate|create|draw|make|render|illustrate|design)\b[\s\S]{0,120}\b(image|picture|photo|illustration|logo|icon|portrait|scene|artwork|drawing)\b/.test(t)
+        || /\b(image|picture|photo|illustration|logo|icon|portrait|scene|artwork|drawing)\b[\s\S]{0,80}\b(generate|create|draw|make|render|illustrate|design)\b/.test(t);
+  };
+
+  const submitImageGenerationPrompt = (text) => {
+    const prompt = (text || '').trim();
+    if (!prompt) {
+      if (leftInputArea) leftInputArea.focus();
+      return;
+    }
+    const evt = new CustomEvent('capability-dispatch', {
+      detail: {
+        slot: 'image_generates',
+        inputs: { prompt },
+        execution_pattern: 'sync',
+        source: 'input-pane',
+      },
+      bubbles: true,
+    });
+    document.body.dispatchEvent(evt);
+    renderAssistantTurn('[Generating image in the visual pane.]');
+  };
+
   // V3 Backlog 6 — Right-column scratchpad. Streams from /api/scratchpad
   // (local-fast, no save). Client-side autopurging history keeps the
   // last SCRATCHPAD_MAX_PAIRS query/answer pairs visible; older pairs
@@ -1776,6 +1848,11 @@
       return;
     }
     const leftContent = leftInputArea.value.trim();
+    const hasAttachedImages = !!(window.OraInputAttachments
+      && typeof window.OraInputAttachments.imageFiles === 'function'
+      && window.OraInputAttachments.imageFiles().length);
+    const routeAsImageGeneration = !!leftContent
+      && (imageGenerateMode || (!hasAttachedImages && _looksLikeImageGenerationRequest(leftContent)));
     // V3 Phase 7.2 — canvas content alone is a valid submission per
     // spec §1.8. Check whether the canvas has any drawn shapes so an
     // empty-text + canvas-only submission still fires the pipeline.
@@ -1791,6 +1868,11 @@
       renderUserTurn(leftContent);
     } else {
       renderUserTurn('[canvas content]');
+    }
+    if (routeAsImageGeneration) {
+      setImageGenerateMode(false);
+      submitImageGenerationPrompt(leftContent);
+      return;
     }
     // V3 Input Handling Phase 7 — route through the framework gap check.
     // When no framework is selected, the wrapper passes straight through
@@ -1946,7 +2028,10 @@
   document.querySelectorAll('.input-pane-toolbar__btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const action = btn.dataset.inputToolbar;
-      if (action === 'attach') {
+      if (action === 'image-generate') {
+        setImageGenerateMode(!imageGenerateMode);
+        if (leftInputArea) leftInputArea.focus();
+      } else if (action === 'attach') {
         const fileInput = document.getElementById('inputToolbarAttachFile');
         if (fileInput) fileInput.click();
       }
@@ -1993,13 +2078,94 @@
   const _pendingAttachments = [];
 
   const _addPendingAttachment = (file, kind, processingId) => {
-    _pendingAttachments.push({
+    const entry = {
       name: file.name,
       type: file.type || '',
       size: file.size || 0,
-      kind: kind,                  // 'audio' | 'video' | 'document'
+      kind: kind,                  // 'audio' | 'video' | 'document' | 'image'
       processing_id: processingId, // server-side id for status tracking
+      file: kind === 'image' ? file : null,
+    };
+    _pendingAttachments.push(entry);
+    return entry;
+  };
+
+  const _formatAttachmentBytes = (bytes) => {
+    const n = Number(bytes) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const _isImageFile = (file) => {
+    if (!file) return false;
+    const type = (file.type || '').toLowerCase();
+    const name = (file.name || '').toLowerCase();
+    return type.indexOf('image/') === 0
+      || /\.(png|jpe?g|gif|webp|bmp|tiff?|heic|heif|avif)$/.test(name);
+  };
+
+  const _renderImageAttachmentChip = (file, entry) => {
+    if (!_attachmentRow) return;
+    const chip = document.createElement('div');
+    chip.className = 'transcribe-chip';
+    chip.dataset.state = 'complete';
+
+    const icon = document.createElement('span');
+    icon.className = 'transcribe-chip__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', '3');
+    rect.setAttribute('y', '3');
+    rect.setAttribute('width', '18');
+    rect.setAttribute('height', '18');
+    rect.setAttribute('rx', '2');
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', '9');
+    circle.setAttribute('cy', '9');
+    circle.setAttribute('r', '2');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'm21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21');
+    svg.appendChild(rect);
+    svg.appendChild(circle);
+    svg.appendChild(path);
+    icon.appendChild(svg);
+
+    const body = document.createElement('div');
+    body.className = 'transcribe-chip__body';
+
+    const name = document.createElement('div');
+    name.className = 'transcribe-chip__name';
+    name.textContent = file.name || 'image';
+
+    const status = document.createElement('div');
+    status.className = 'transcribe-chip__status';
+    status.textContent = 'Image attached (' + _formatAttachmentBytes(file.size) + ')';
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'transcribe-chip__close';
+    close.setAttribute('aria-label', 'Remove image attachment');
+    close.textContent = '×';
+    close.addEventListener('click', () => {
+      const idx = _pendingAttachments.indexOf(entry);
+      if (idx >= 0) _pendingAttachments.splice(idx, 1);
+      chip.remove();
     });
+
+    body.appendChild(name);
+    body.appendChild(status);
+    chip.appendChild(icon);
+    chip.appendChild(body);
+    chip.appendChild(close);
+    _attachmentRow.appendChild(chip);
   };
 
   const _renderUnsupportedChip = (file) => {
@@ -2022,6 +2188,11 @@
     if (!file) return;
     const conv = currentConversationId();
     const tag  = currentTag();
+    if (_isImageFile(file)) {
+      const entry = _addPendingAttachment(file, 'image', null);
+      _renderImageAttachmentChip(file, entry);
+      return;
+    }
     if (window.OraTranscribeInput && window.OraTranscribeInput.isMediaFile(file)) {
       try {
         const tid = await window.OraTranscribeInput.acceptFile(file, _attachmentRow);
@@ -2091,6 +2262,9 @@
   // both reach this state without duplicating it.
   window.OraInputAttachments = {
     list:  () => _pendingAttachments.slice(),
+    imageFiles: () => _pendingAttachments
+      .filter(a => a && a.kind === 'image' && a.file)
+      .map(a => a.file),
     clear: () => { _pendingAttachments.length = 0; if (_attachmentRow) _attachmentRow.innerHTML = ''; },
   };
 

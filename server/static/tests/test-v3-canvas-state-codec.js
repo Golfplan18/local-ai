@@ -298,6 +298,34 @@ test('multiple layers serialize with correct kind tags', function () {
   assertEqual(byLayer.annotation, 'a1');
 });
 
+test('freehand pen paths round-trip with smoothing attrs', function () {
+  var panel = makePanelLocal();
+  panel.annotationLayer.add(new Konva.Line({
+    id: 'pen1',
+    annotationKind: 'pen',
+    points: [0, 0, 6, 10, 12, 4, 20, 14],
+    stroke: '#1a1a1a',
+    strokeWidth: 2,
+  }));
+
+  var state = codec.serializeFromPanel(panel);
+  assertEqual(state.objects.length, 1);
+  assertEqual(state.objects[0].kind, 'path');
+  assertEqual(state.objects[0].attrs.lineCap, 'round');
+  assertEqual(state.objects[0].attrs.lineJoin, 'round');
+  assertEqual(state.objects[0].attrs.tension, 0.35);
+  assertEqual(state.objects[0].attrs.perfectDrawEnabled, false);
+
+  var panel2 = makePanelLocal();
+  codec.deserializeIntoPanel(panel2, state);
+  var restored = panel2.annotationLayer.getChildren()[0];
+  assertTrue(restored, 'pen path survived round-trip');
+  assertEqual(restored.getAttrs().lineCap, 'round');
+  assertEqual(restored.getAttrs().lineJoin, 'round');
+  assertEqual(restored.getAttrs().tension, 0.35);
+  assertEqual(restored.getAttrs().perfectDrawEnabled, false);
+});
+
 test('deserialize on empty objects is a no-op (defensive)', function () {
   var panel = makePanelLocal();
   panel.userInputLayer.add(new Konva.Rect({ id: 'pre' }));
