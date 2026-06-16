@@ -47,9 +47,9 @@ class TestRegistryIntegrity(unittest.TestCase):
         for p in registry.PROVIDERS:
             self.assertIn(p["category"], known, f"{p['id']} unknown category")
 
-    def test_openrouter_is_the_only_essential(self):
+    def test_no_provider_is_install_required(self):
         essential = [p["id"] for p in registry.PROVIDERS if p.get("essential")]
-        self.assertEqual(essential, ["openrouter"])
+        self.assertEqual(essential, [])
 
     def test_direct_providers_have_dispatch_metadata(self):
         for p in registry.direct_llm_providers():
@@ -128,7 +128,7 @@ class TestUserSettingsIntegration(unittest.TestCase):
         self.assertEqual(len(rows), len(registry.PROVIDERS))
         oro = next(r for r in rows if r["provider"] == "openrouter")
         self.assertTrue(oro["present"])
-        self.assertTrue(oro["essential"])
+        self.assertFalse(oro["essential"])
         for field in ("category", "signup_url", "console_url", "verifiable", "direct"):
             self.assertIn(field, oro)
         ds = next(r for r in rows if r["provider"] == "deepseek")

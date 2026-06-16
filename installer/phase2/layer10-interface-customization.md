@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 10: INTERFACE CUSTOMIZATION FRAMEWORK
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Install a config-driven multi-panel workspace with selectable layout presets, theme options, and a natural language layout generator. This layer gives the reader a working environment that grows with their workflow rather than a fixed single-chat interface.
 
 **When to execute**: After Phase 2, Layer 9 (or after Layer 8 on Tier A and Tier B hardware, where Layer 9 is skipped). This layer runs on all tiers — the layouts available adapt to the reader's tier.
@@ -116,4 +118,3 @@ Tests: [PASS / FAIL]
 ```
 
 ---
-

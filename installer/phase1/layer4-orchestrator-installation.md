@@ -1,5 +1,7 @@
 ### PHASE 1, LAYER 4: ORCHESTRATOR INSTALLATION
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus:** Install the Python orchestrator that makes boot.md tool calls functional.
 
 ### Processing Instructions
@@ -89,4 +91,3 @@ Tool tests: [Pass / Fail with details]
 ```
 
 ---
-

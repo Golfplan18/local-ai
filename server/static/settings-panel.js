@@ -571,7 +571,7 @@
       + 'Click a provider’s name (<span class="ora-settings-apikey-extlink">↗</span>) '
       + 'to open its key page; hover it for details. <strong>Save</strong> checks the '
       + 'key with the provider and stores it only if it works. <strong>OpenRouter</strong> '
-      + 'is the only essential key — one key reaches hundreds of models; adding a '
+      + 'is the recommended gateway key — one key reaches hundreds of models; adding a '
       + 'vendor’s own key routes that vendor directly, skipping OpenRouter’s ~5.5% '
       + 'markup (same model, automatic fallback). Search & data keys turn on as '
       + 'soon as they’re saved.';
@@ -687,7 +687,7 @@
 
   // One provider per row, single line: name (links to its key page) ·
   // key input · Save · Verify · status · Remove. The provider's one-line
-  // note + Required/Direct hints live in the name's tooltip so the row
+  // note + install-critical/Direct hints live in the name's tooltip so the row
   // stays compact. A feedback line wraps underneath only when there's a
   // validation hint or a Save/Verify result. Tagged data-provider so
   // open({highlight:<id>}) can scroll-to + flash it.
@@ -700,9 +700,9 @@
     line.className = 'ora-settings-apikey-row1';
 
     // Provider name = link to its key page. Tooltip carries the note +
-    // Required / Direct hints we no longer spend a row on.
+    // Required-for-install / Direct hints we no longer spend a row on.
     var tip = [];
-    if (row.essential) tip.push('Required');
+    if (row.essential) tip.push('Required for install');
     if (row.direct) tip.push('Direct — bypasses OpenRouter markup');
     if (row.note) tip.push(row.note);
     var label;

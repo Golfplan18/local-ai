@@ -1,5 +1,7 @@
 ### PHASE 1, LAYER 6: UNIVERSAL CHAT SERVER
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus:** Install a browser-accessible chat interface with the agentic loop fully integrated, so every reader — including Tier 0 — can interact with the system through a browser rather than a terminal, with tool calls executing automatically.
 
 ### Why This Layer Exists
@@ -99,4 +101,3 @@ Desktop launcher: [generated / deferred to Phase 2]
 ```
 
 ---
-

@@ -1,5 +1,7 @@
 ### PHASE 1, LAYER 1: PYTHON ENVIRONMENT
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus:** Ensure Python 3 and pip are installed and functional, and that all required packages are importable.
 
 ### Processing Instructions
@@ -66,4 +68,3 @@ Verification: [Pass / Fail with details]
 ```
 
 ---
-

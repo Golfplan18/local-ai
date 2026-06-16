@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 12: CONVERSATION AUTO-SAVE + RAG INDEXING
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **When to execute**: After Phase 2, Layer 11 (or Layer 10 on non-macOS). Runs on all tiers.
 
 **Purpose**: Persist every user↔AI exchange immediately after delivery — raw audit log, processed chunk file, and ChromaDB index entry. All three steps are inline. There is no batch scheduler for routine session saving.
@@ -87,4 +89,3 @@ Confirm `default_endpoint` is set to `"local-[engine]"`. If a browser endpoint w
 ## CHAPTER 3: HOW FILE ACCESS ACTUALLY WORKS
 
 *This section provides conceptual grounding for what the boot framework installs and why the reader's workflow is what it is.*
-

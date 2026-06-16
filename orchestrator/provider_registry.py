@@ -59,7 +59,7 @@ GROUP_ORDER = [
 #   signup_url      where a new user creates an account
 #   console_url     exact page to create / manage the key
 #   key_prefix      literal key prefix for the inline format hint (None = opaque)
-#   essential       True for the one provider Ora effectively needs (OpenRouter)
+#   essential       True only for a provider that blocks install if missing
 #   auto_activate   True when key-presence alone engages the provider
 #   dispatch        None | "native" | "openai_compatible"  (LLM direct-call style)
 #   native_service  service id for the native branch in boot.py (when dispatch="native")
@@ -77,11 +77,11 @@ PROVIDERS: list[dict] = [
         "keyring_username": "openrouter-api-key", "env_var": "OPENROUTER_API_KEY",
         "signup_url": "https://openrouter.ai/",
         "console_url": "https://openrouter.ai/settings/keys",
-        "key_prefix": "sk-or-", "essential": True, "auto_activate": True,
+        "key_prefix": "sk-or-", "essential": False, "auto_activate": True,
         "dispatch": None, "native_service": None,
         "base_url": "https://openrouter.ai/api/v1", "or_prefix": None,
         "verifiable": True,
-        "note": "Required. One key → 300+ models. Direct-vendor keys below bypass its ~5.5% markup.",
+        "note": "Strongly recommended. One key → 300+ models; free models are rate-limited and sometimes unavailable. Direct-vendor keys below bypass its ~5.5% markup.",
     },
 
     # ── US AI providers (direct) ─────────────────────────────────────────

@@ -1,5 +1,12 @@
 # Your Local AI System
 
+This page describes a source install of Ora. The live installer is:
+
+```bash
+cd ~/ora
+python3 scripts/install.py --profile solo
+```
+
 ## Starting
 Double-click **Local AI.command** on your Desktop.
 Your browser will open to http://localhost:5000 — your AI chat interface.
@@ -31,7 +38,8 @@ broad knowledge, and complex tasks.
 - gpt-oss-20b (4-bit MLX, ~12 GB) — faster, lighter, good for quick tasks
 
 To switch models, tell your AI: "Switch to DeepSeek" or "Use the 20B model"
-(The AI will update endpoints.json and restart routing.)
+(The AI updates the active named configuration and routing settings. The old
+`config/endpoints.json` registry is retired.)
 
 ## Your System Files
 
@@ -46,7 +54,13 @@ To switch models, tell your AI: "Switch to DeepSeek" or "Use the 20B model"
 - **Frameworks** (~/ora/frameworks/): The framework library.
   Your AI can execute any framework by name.
 
-- **config/endpoints.json**: Lists your available AI connections.
+- **config/routing-config.json**: Stores runtime routing and user paths.
+
+- **config/model-registry.json** and **config/model-catalog.json**: Store model
+  capability metadata and available model inventory.
+
+- **config/configurations/**: Stores named routing presets such as Free, Budget,
+  Optimum, and Premium.
 
 ## Commercial AI Access
 
@@ -57,7 +71,8 @@ keys in the Settings panel's External APIs tab, or run
 ## If Something Goes Wrong
 
 - **Browser shows "connection refused"**: Server isn't running. Click the launcher.
-- **Browser shows "No AI endpoints configured"**: Run ~/ora/start.sh and check endpoints.json.
+- **Browser shows "No AI endpoints configured"**: Run `~/ora/start.sh`, then review
+  Settings -> Models and Settings -> External APIs.
 - **Tool calls not executing** (you see <tool_call> tags in responses): You may be connected
   directly to a commercial AI instead of localhost:5000. Always use the launcher.
 - **Garbled output from local model**: Run this framework again to re-check the chat template.
@@ -68,4 +83,4 @@ To update framework library when the repository is published:
   cd ~/ora/frameworks/book && git pull
 
 To add API keys:
-  Tell your AI: "Read and execute frameworks/api-key-setup.md"
+  Open Settings -> External APIs, or run `/framework api-key-setup` from chat.

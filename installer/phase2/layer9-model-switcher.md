@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 9: MODEL SWITCHER MODULE
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Install a UI panel that lets the user configure which model fills each role in the multi-model pipeline, with live RAM budget display and quick presets. This layer executes only on Tier C (Sovereign) hardware where multiple large models can run concurrently.
 
 **When to execute**: After Phase 2, Layer 8 (Documentation and Verification). Skip gracefully on Tier A and Tier B hardware with the note: "The Model Switcher is available on Tier C (64GB+ RAM). Your current hardware supports a single local model. This layer will activate automatically if you upgrade."
@@ -78,4 +80,3 @@ Switcher test: [PASS / FAIL]
 ```
 
 ---
-

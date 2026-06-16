@@ -1,5 +1,7 @@
 ### PHASE 1, LAYER 2: DIRECTORY STRUCTURE
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus:** Create the three-location directory structure used by all boot.md versions: the system folder, the conversations folder, and the vault.
 
 ### Processing Instructions
@@ -98,4 +100,3 @@ Routing config: [workspace]/config/routing-config.json written with paths, empty
 ```
 
 ---
-

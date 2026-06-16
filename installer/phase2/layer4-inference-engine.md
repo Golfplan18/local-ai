@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 4: INFERENCE ENGINE INSTALLATION
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Ensure the appropriate inference engine is installed, current, and functional. IF already installed, THEN verify and update if needed rather than reinstalling.
 
 **Input**: Hardware profile (specifically: APPLE_SILICON status, HAS_NVIDIA_GPU status, operating system).
@@ -48,4 +50,3 @@ Installation method: [pip / brew / curl / installer / pre-existing]
 Before proceeding: confirm inference engine type matches APPLE_SILICON status from Layer 1. Confirm model format from Layer 2 is compatible with the installed engine (MLX engine → safetensors format; Ollama engine → GGUF or Ollama format).
 
 ---
-

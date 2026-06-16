@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install Chunk 7 (Solo profile) — install.py smoke tests.
+"""Solo source-install profile — install.py smoke tests.
 
 Verifies the install script's structure and step contract. Live
 network calls are not exercised here (catalog refresh has its own
@@ -30,13 +30,13 @@ class TestDeploymentProfiles(unittest.TestCase):
     def test_solo_supported(self):
         self.assertTrue(install.DEPLOYMENT_PROFILES["solo"]["supported_now"])
 
-    def test_hybrid_supported_post_concurrency(self):
-        """Hybrid landed when the per-machine mutex layer landed (2026-05-19)."""
-        self.assertTrue(install.DEPLOYMENT_PROFILES["hybrid"]["supported_now"])
+    def test_hybrid_reserved_for_g127_network_validation(self):
+        """Hybrid is a future multi-machine profile, not a public install path."""
+        self.assertFalse(install.DEPLOYMENT_PROFILES["hybrid"]["supported_now"])
 
-    def test_organization_supported_post_concurrency(self):
-        """Organization landed when the per-machine mutex layer landed (2026-05-19)."""
-        self.assertTrue(install.DEPLOYMENT_PROFILES["organization"]["supported_now"])
+    def test_organization_reserved_for_future_concurrency_path(self):
+        """Organization is a future shared/API-pool profile, not a public install path."""
+        self.assertFalse(install.DEPLOYMENT_PROFILES["organization"]["supported_now"])
 
     def test_local_models_flag_present_per_profile(self):
         self.assertTrue(install.DEPLOYMENT_PROFILES["solo"]["local_models"])
@@ -47,11 +47,7 @@ class TestDeploymentProfiles(unittest.TestCase):
         for name, info in install.DEPLOYMENT_PROFILES.items():
             self.assertTrue(info.get("description"),
                             f"profile {name!r} missing description")
-            self.assertNotIn(
-                "blocked",
-                info["description"].lower(),
-                f"profile {name!r} description still references the retired 'blocked' state",
-            )
+            self.assertNotIn("blocked", info["description"].lower())
 
 
 class TestStateMachine(unittest.TestCase):
@@ -121,13 +117,13 @@ class TestProfileStep(unittest.TestCase):
         state = {"steps_completed": []}
         self.assertTrue(install.step_select_profile(state, "solo", dry_run=True))
 
-    def test_hybrid_profile_accepted_post_concurrency(self):
+    def test_hybrid_profile_rejected_until_network_validation(self):
         state = {"steps_completed": []}
-        self.assertTrue(install.step_select_profile(state, "hybrid", dry_run=True))
+        self.assertFalse(install.step_select_profile(state, "hybrid", dry_run=True))
 
-    def test_organization_profile_accepted_post_concurrency(self):
+    def test_organization_profile_rejected_until_concurrency_path(self):
         state = {"steps_completed": []}
-        self.assertTrue(install.step_select_profile(state, "organization", dry_run=True))
+        self.assertFalse(install.step_select_profile(state, "organization", dry_run=True))
 
     def test_unknown_profile_rejected(self):
         state = {"steps_completed": []}
@@ -139,6 +135,36 @@ class TestCompletionMarker(unittest.TestCase):
         # The test protocol in Working — Project — Ora Install Script Overhaul
         # specifies the exact grep target:
         self.assertEqual(install.COMPLETION_MARKER, "INSTALL_COMPLETE: 0 warnings, 0 errors")
+
+
+class TestSmokeHelpers(unittest.TestCase):
+    def test_extract_smoke_models_preserves_primary_then_fallbacks(self):
+        cfg = {
+            "cells": {
+                "analysis": {
+                    "gear4": {
+                        "depth": {
+                            "primary": "provider/primary:free",
+                            "fallback": ["provider/fallback:free", "provider/primary:free"],
+                        }
+                    }
+                }
+            }
+        }
+        self.assertEqual(
+            install._extract_smoke_models(cfg)[:3],
+            ["provider/primary:free", "provider/fallback:free", "openrouter/free"],
+        )
+
+
+class TestExternalApiWalkthrough(unittest.TestCase):
+    def test_recommended_minimal_package_present(self):
+        first_group = install.EXTERNAL_API_GROUPS[0]
+        self.assertEqual(first_group["title"], "Recommended minimal package")
+        self.assertEqual(
+            [p["name"] for p in first_group["providers"]],
+            ["OpenRouter", "Tavily", "Artificial Analysis"],
+        )
 
 
 if __name__ == "__main__":

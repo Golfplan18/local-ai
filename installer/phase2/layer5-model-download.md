@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 5: MODEL DOWNLOAD
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Download the validated model and all required companion files to the workspace. IF the model is already present locally, THEN skip re-downloading. Verify completeness of all required files after download.
 
 **Input**: Validated model selection from Layer 2 (including list of required companion files), workspace path from Layer 3, inference engine from Layer 4.
@@ -57,4 +59,3 @@ Model: [name]
 Before proceeding: confirm that the model can be loaded by the inference engine. For MLX, execute a minimal load test. For Ollama, execute `ollama show [model_name]`. Do not proceed to Phase 2, Layer 6 with an unloadable model.
 
 ---
-
