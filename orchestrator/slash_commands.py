@@ -48,6 +48,14 @@ import re
 import shlex
 from typing import Optional
 
+from slash_command_registry import (
+    categories as registry_categories,
+    commands_for_category,
+    find_command,
+    iter_visible_specs,
+    runtime_command_names,
+)
+
 
 VAULT_DIR = os.path.expanduser("~/Documents/vault/")
 ORA_DIR = os.path.expanduser("~/ora/")
@@ -55,13 +63,7 @@ DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
 DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
 
 
-KNOWN_COMMANDS = {"/instance", "/validate", "/render", "/queue", "/approve",
-                  "/deny", "/cleaning", "/news",
-                  # Project plugin convention (see Reference — Ora Project
-                  # Plugin Convention.md). These are project-agnostic:
-                  # nothing here knows about any specific project.
-                  "/project-tool", "/project-list",
-                  "/project-register", "/project-unregister"}
+KNOWN_COMMANDS = runtime_command_names()
 
 
 # ---------- Public API ----------
@@ -112,6 +114,8 @@ def run_runtime_command(user_input: str) -> str:
     args = argv[1:]
 
     handlers = {
+        "/help": _cmd_help,
+        "/commands": _cmd_help,
         "/instance": _cmd_instance,
         "/validate": _cmd_validate,
         "/render": _cmd_render,
@@ -120,10 +124,13 @@ def run_runtime_command(user_input: str) -> str:
         "/deny": _cmd_deny,
         "/cleaning": _cmd_cleaning,
         "/news": _cmd_news,
+        "/maintenance": _cmd_maintenance,
+        "/maint": _cmd_maintenance,
         "/project-tool": _cmd_project_tool,
         "/project-list": _cmd_project_list,
         "/project-register": _cmd_project_register,
         "/project-unregister": _cmd_project_unregister,
+        "/projects": _cmd_projects,
     }
     handler = handlers.get(cmd)
     if handler is None:
@@ -142,6 +149,123 @@ def run_runtime_command(user_input: str) -> str:
         return f"[Unexpected error in {cmd}: {exc}]"
 
 
+# ---------- Registry / discovery handlers ----------
+
+
+def _format_command_detail(spec) -> str:
+    lines = [
+        f"**{spec.command}**",
+        "",
+        spec.summary,
+        "",
+        f"- **Usage:** `{spec.usage}`",
+        f"- **Category:** {spec.category}",
+        f"- **Where it fires:** {spec.where}",
+        f"- **Keyboard-only viable:** {spec.keyboard_viable}",
+    ]
+    if spec.aliases:
+        lines.append(f"- **Aliases:** {', '.join(f'`{a}`' for a in spec.aliases)}")
+    if spec.mouse_path:
+        lines.append(f"- **Equivalent mouse path:** {spec.mouse_path}")
+    if spec.notes:
+        lines.append(f"- **Notes:** {spec.notes}")
+    return "\n".join(lines)
+
+
+def _cmd_help(args: list[str]) -> str:
+    """`/help [command-or-category]` — list commands or show detail."""
+    if args:
+        target = args[0].strip()
+        category_matches = [] if target.startswith("/") else commands_for_category(target)
+        if category_matches:
+            return _format_command_list(category_matches, title=f"{target.title()} commands")
+        spec = find_command(target)
+        if spec is not None:
+            return _format_command_detail(spec)
+        return (
+            f"[No slash command or category named `{target}`. "
+            f"Categories: {', '.join(registry_categories())}.]"
+        )
+
+    return _format_command_list(iter_visible_specs(), title="Ora slash commands")
+
+
+def _format_command_list(specs, title: str) -> str:
+    grouped: dict[str, list] = {}
+    for spec in specs:
+        grouped.setdefault(spec.category, []).append(spec)
+
+    lines = [f"**{title}**", ""]
+    for category in sorted(grouped):
+        lines.append(f"**{category}**")
+        for spec in sorted(grouped[category], key=lambda s: s.command):
+            suffix = ""
+            if spec.aliases:
+                suffix = " (aliases: " + ", ".join(f"`{a}`" for a in spec.aliases) + ")"
+            lines.append(f"- `{spec.command}` - {spec.summary}{suffix}")
+        lines.append("")
+    lines.append("Use `/help <command>` for details, e.g. `/help /framework`.")
+    return "\n".join(lines).rstrip()
+
+
+def _cmd_maintenance(args: list[str]) -> str:
+    """Grouped maintenance command aliases."""
+    if not args or args[0].lower() in ("help", "-h", "--help"):
+        return _cmd_help(["maintenance"])
+    sub = args[0].lower()
+    rest = args[1:]
+    if sub == "review":
+        if not rest:
+            return _cmd_queue([])
+        sub = rest[0].lower()
+        rest = rest[1:]
+    if sub in ("queue", "status"):
+        return _cmd_queue(rest)
+    if sub == "approve":
+        return _cmd_approve(rest)
+    if sub == "deny":
+        return _cmd_deny(rest)
+    if sub == "cleaning":
+        return _cmd_cleaning(rest)
+    if sub == "news":
+        return _cmd_news(rest)
+    return (
+        f"[Unknown maintenance command `{sub}`. "
+        "Use `/maintenance help` for options.]"
+    )
+
+
+def _cmd_projects(args: list[str]) -> str:
+    """Grouped project plugin command aliases."""
+    if not args:
+        return _cmd_project_list([])
+    sub = args[0].lower()
+    rest = args[1:]
+    if sub in ("help", "-h", "--help"):
+        return _cmd_help(["projects"])
+    if sub == "list":
+        return _cmd_project_list(rest)
+    if sub == "register":
+        return _cmd_project_register(rest)
+    if sub == "unregister":
+        return _cmd_project_unregister(rest)
+    if sub == "tool":
+        return _cmd_project_tool(rest)
+    return (
+        f"[Unknown projects command `{sub}`. "
+        "Use `/projects help` for options.]"
+    )
+
+
+def _project_registry():
+    try:
+        from orchestrator import project_registry as _pr
+        return _pr
+    except Exception:
+        import project_registry as _pr
+        return _pr
+
+
 # ---------- Project plugin command handlers (project-agnostic) ----------
 
 
@@ -154,7 +278,7 @@ def _cmd_project_tool(args: list[str]) -> str:
     (JSON) is rendered as a fenced code block.
     """
     import json as _json
-    from orchestrator import project_registry as _pr
+    _pr = _project_registry()
     if len(args) < 2:
         return ("Usage: /project-tool <nexus> <tool-name> [<args-or-stdin-json>]\n"
                 "Use /project-list to see registered projects and their tools.")
@@ -187,7 +311,7 @@ def _cmd_project_tool(args: list[str]) -> str:
 
 def _cmd_project_list(args: list[str]) -> str:
     """`/project-list` — list all registered projects."""
-    from orchestrator import project_registry as _pr
+    _pr = _project_registry()
     projects = _pr.list_projects()
     if not projects:
         return ("No projects registered. Use /project-register <path-to-project-root> "
@@ -205,7 +329,7 @@ def _cmd_project_list(args: list[str]) -> str:
 
 def _cmd_project_register(args: list[str]) -> str:
     """`/project-register <path-to-project-root>` — register a project."""
-    from orchestrator import project_registry as _pr
+    _pr = _project_registry()
     if len(args) != 1:
         return "Usage: /project-register <path-to-project-root>"
     try:
@@ -221,7 +345,7 @@ def _cmd_project_register(args: list[str]) -> str:
 
 def _cmd_project_unregister(args: list[str]) -> str:
     """`/project-unregister <nexus>` — drop a project's pointer file."""
-    from orchestrator import project_registry as _pr
+    _pr = _project_registry()
     if len(args) != 1:
         return "Usage: /project-unregister <nexus>"
     if _pr.unregister_project(args[0]):
@@ -240,7 +364,7 @@ def _try_project_slash_command(cmd: str, args: list[str]) -> Optional[str]:
         return None
     name = cmd[1:]
     try:
-        from orchestrator import project_registry as _pr
+        _pr = _project_registry()
         project = _pr.find_project_for_slash_command(name)
     except Exception as exc:
         return f"[/{name}: project-registry error: {exc}]"

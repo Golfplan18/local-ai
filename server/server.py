@@ -3053,6 +3053,17 @@ def frameworks_picker():
     return json.dumps({"frameworks": rows}), 200, {"Content-Type": "application/json"}
 
 
+@app.route("/api/slash-commands", methods=["GET"])
+def slash_commands_registry():
+    """Read-only registry of user-facing slash commands.
+
+    The registry includes server-dispatched commands, framework commands, and
+    browser-only UI commands so autocomplete/help surfaces can use one source.
+    """
+    from slash_command_registry import registry_payload
+    return json.dumps(registry_payload()), 200, {"Content-Type": "application/json"}
+
+
 @app.route("/api/analyses/picker", methods=["GET"])
 def analyses_picker():
     """V3 Analyses picker: executable modes only.

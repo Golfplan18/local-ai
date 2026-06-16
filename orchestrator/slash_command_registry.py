@@ -1,0 +1,313 @@
+"""User-facing slash-command registry for Ora.
+
+The dispatcher remains responsible for executing server-side commands. This
+module is the shared catalogue: command names, categories, aliases, where they
+fire, argument shapes, and discoverability metadata for help/docs/autocomplete.
+"""
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from typing import Iterable
+
+
+@dataclass(frozen=True)
+class SlashCommandSpec:
+    command: str
+    category: str
+    where: str
+    summary: str
+    usage: str
+    keyboard_viable: str
+    status: str = "active"
+    aliases: tuple[str, ...] = field(default_factory=tuple)
+    mouse_path: str = ""
+    notes: str = ""
+
+    def to_dict(self) -> dict:
+        data = asdict(self)
+        data["aliases"] = list(self.aliases)
+        return data
+
+
+COMMAND_SPECS: tuple[SlashCommandSpec, ...] = (
+    SlashCommandSpec(
+        command="/help",
+        aliases=("/commands",),
+        category="Discovery",
+        where="server",
+        summary="List slash commands or show detail for one command/category.",
+        usage="/help [command-or-category]",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/framework",
+        category="Frameworks",
+        where="framework executor",
+        summary="Run or start interactive elicitation for a user-invocable framework.",
+        usage="/framework <framework|alias> [--config <name>] [<mode>] [<input>]",
+        mouse_path="Framework picker for selection; no exact mouse path for one-shot execution",
+        keyboard_viable="Yes",
+        notes="Aliases include cff, pff, and off. Internal Gear 4 F-* stages are blocked.",
+    ),
+    SlashCommandSpec(
+        command="/instance",
+        category="Runtime",
+        where="server",
+        summary="Create a corpus instance from a template for a period.",
+        usage="/instance <template> <period> [<instance-dir>]",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/validate",
+        category="Runtime",
+        where="server",
+        summary="Validate a populated corpus instance against its template.",
+        usage="/validate <instance> [<template>]",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/render",
+        category="Runtime",
+        where="server",
+        summary="Render a corpus instance through an OFF spec.",
+        usage="/render <off-spec> <instance> [<output-dir>]",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/queue",
+        category="Maintenance",
+        where="server",
+        summary="List human-review queue entries.",
+        usage="/queue",
+        mouse_path="Sidebar > Automated Processes",
+        keyboard_viable="Yes",
+        notes="Also available as /maintenance queue.",
+    ),
+    SlashCommandSpec(
+        command="/approve",
+        category="Maintenance",
+        where="server",
+        summary="Approve a pending redefinition queue entry.",
+        usage="/approve <index> [<proposed-definition>]",
+        mouse_path="Sidebar review controls where available",
+        keyboard_viable="Yes",
+        notes="Also available as /maintenance approve.",
+    ),
+    SlashCommandSpec(
+        command="/deny",
+        category="Maintenance",
+        where="server",
+        summary="Deny a pending redefinition queue entry.",
+        usage="/deny <index> [<reason>]",
+        mouse_path="Sidebar review controls where available",
+        keyboard_viable="Yes",
+        notes="Also available as /maintenance deny.",
+    ),
+    SlashCommandSpec(
+        command="/cleaning",
+        category="Maintenance",
+        where="server",
+        summary="Run or inspect the Engram Cleaning queue.",
+        usage="/cleaning [status|detect|resolve|help] [options]",
+        mouse_path="None",
+        keyboard_viable="Yes",
+        notes="Also available as /maintenance cleaning.",
+    ),
+    SlashCommandSpec(
+        command="/news",
+        category="Maintenance",
+        where="server",
+        summary="Run or inspect the News Supersession queue.",
+        usage="/news [status|detect|resolve|help] [options]",
+        mouse_path="None",
+        keyboard_viable="Yes",
+        notes="Universal today; review whether this should become project-scoped.",
+    ),
+    SlashCommandSpec(
+        command="/maintenance",
+        aliases=("/maint",),
+        category="Maintenance",
+        where="server",
+        summary="Grouped access to queue, review, cleaning, and news maintenance commands.",
+        usage="/maintenance <queue|approve|deny|cleaning|news> [args...]",
+        mouse_path="Mixed; see child commands",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/project-list",
+        category="Projects",
+        where="server",
+        summary="List registered Ora projects and their tools/commands.",
+        usage="/project-list",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/project-register",
+        category="Projects",
+        where="server",
+        summary="Register a project plugin manifest by root path.",
+        usage="/project-register <path-to-project-root>",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/project-unregister",
+        category="Projects",
+        where="server",
+        summary="Remove a registered project's pointer file.",
+        usage="/project-unregister <nexus>",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/project-tool",
+        category="Projects",
+        where="server",
+        summary="Invoke a registered project tool.",
+        usage="/project-tool <nexus> <tool-name> [<args-or-stdin-json>]",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/projects",
+        category="Projects",
+        where="server",
+        summary="Grouped access to project plugin commands.",
+        usage="/projects <list|register|unregister|tool> [args...]",
+        mouse_path="None",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/new",
+        category="Navigation",
+        where="browser",
+        summary="Start a new conversation.",
+        usage="/new",
+        mouse_path="Spine plus button or sidebar New Thread",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/sidebar",
+        category="Navigation",
+        where="browser",
+        summary="Open, close, or toggle the conversation sidebar.",
+        usage="/sidebar [open|close|toggle]",
+        mouse_path="Spine sidebar toggle or A wordmark",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/frameworks",
+        category="Navigation",
+        where="browser",
+        summary="Open the framework picker.",
+        usage="/frameworks",
+        mouse_path="Input toolbar > Framework",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/modes",
+        aliases=("/analyses",),
+        category="Navigation",
+        where="browser",
+        summary="Open the analysis mode picker.",
+        usage="/modes",
+        mouse_path="Input toolbar > Analysis",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/settings",
+        category="Navigation",
+        where="browser",
+        summary="Open settings, optionally to a named tab.",
+        usage="/settings [models|visual|shortcuts|apis|interface|capture|export|transcription|speech]",
+        mouse_path="Spine settings button",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/visual",
+        aliases=("/canvas",),
+        category="Visual",
+        where="browser",
+        summary="Return the right pane to the visual canvas.",
+        usage="/visual",
+        mouse_path="Exit video pane mode, when active",
+        keyboard_viable="Partial",
+        notes="The current UI has a canvas/video pane-mode toggle, not a generic hide/show visual-pane toggle.",
+    ),
+    SlashCommandSpec(
+        command="/video",
+        category="Visual",
+        where="browser",
+        summary="Toggle video pane mode.",
+        usage="/video [on|off|toggle]",
+        mouse_path="Spine video button",
+        keyboard_viable="Yes",
+    ),
+    SlashCommandSpec(
+        command="/image",
+        aliases=("/generate-image",),
+        category="Visual",
+        where="browser",
+        summary="Generate an image from a prompt, or arm image generation for the next prompt.",
+        usage="/image [prompt]",
+        mouse_path="Input toolbar > Image generation toggle",
+        keyboard_viable="Yes",
+    ),
+)
+
+
+SERVER_COMMANDS = {
+    spec.command for spec in COMMAND_SPECS if spec.where == "server"
+}
+
+SERVER_ALIASES = {
+    alias: spec.command
+    for spec in COMMAND_SPECS
+    if spec.where == "server"
+    for alias in spec.aliases
+}
+
+
+def all_command_specs() -> tuple[SlashCommandSpec, ...]:
+    return COMMAND_SPECS
+
+
+def registry_payload() -> dict:
+    return {"commands": [spec.to_dict() for spec in COMMAND_SPECS]}
+
+
+def runtime_command_names() -> set[str]:
+    return set(SERVER_COMMANDS) | set(SERVER_ALIASES)
+
+
+def find_command(token: str) -> SlashCommandSpec | None:
+    name = (token or "").strip().lower()
+    if not name:
+        return None
+    if not name.startswith("/"):
+        name = "/" + name
+    for spec in COMMAND_SPECS:
+        if spec.command == name or name in spec.aliases:
+            return spec
+    return None
+
+
+def categories() -> list[str]:
+    return sorted({spec.category for spec in COMMAND_SPECS})
+
+
+def commands_for_category(category: str) -> list[SlashCommandSpec]:
+    wanted = (category or "").strip().lower()
+    return [
+        spec for spec in COMMAND_SPECS
+        if spec.category.lower() == wanted
+    ]
+
+
+def iter_visible_specs() -> Iterable[SlashCommandSpec]:
+    return (spec for spec in COMMAND_SPECS if spec.status != "hidden")

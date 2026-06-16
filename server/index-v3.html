@@ -285,11 +285,12 @@
      v3-conversation.js, whose renderTurn calls OraV3VisualDispatch. -->
 <script src="/static/js/v3-visual-dispatch.js" defer></script>
 <script src="/static/js/v3-conversation.js" defer></script>
-<!-- V3 Input Handling Phase 4/analysis picker — input-pane state container
-     and picker surfaces. input-state.js must load before the pickers so
-     commitSelection can write the staged selection. All are defer-loaded;
-     ordering follows declaration order. -->
+<!-- V3 Input Handling Phase 4/analysis picker — input-pane state container,
+     slash-command client, and picker surfaces. input-state.js must load
+     before the pickers so commitSelection can write the staged selection.
+     All are defer-loaded; ordering follows declaration order. -->
 <script src="/static/js/input-state.js" defer></script>
+<script src="/static/js/slash-command-client.js" defer></script>
 <script src="/static/js/framework-picker.js" defer></script>
 <script src="/static/js/analysis-picker.js" defer></script>
 <!-- V3 Input Handling Phase 7 — framework setup popup. Driven by the
@@ -1898,6 +1899,12 @@
   const submitInput = () => {
     const rightContent = rightInputArea.value.trim();
     if (rightContent) {
+      if (window.OraSlashCommands
+          && typeof window.OraSlashCommands.handleClientCommand === 'function'
+          && window.OraSlashCommands.handleClientCommand(rightContent)) {
+        rightInputArea.value = '';
+        return;
+      }
       rightInputArea.value = '';
       submitToScratchpad(rightContent);
       return;
@@ -1917,6 +1924,14 @@
       catch (e) { canvasHasContent = false; }
     }
     if (!leftContent && !canvasHasContent) return;
+
+    if (leftContent
+        && window.OraSlashCommands
+        && typeof window.OraSlashCommands.handleClientCommand === 'function'
+        && window.OraSlashCommands.handleClientCommand(leftContent)) {
+      leftInputArea.value = '';
+      return;
+    }
 
     leftInputArea.value = '';
     if (leftContent) {

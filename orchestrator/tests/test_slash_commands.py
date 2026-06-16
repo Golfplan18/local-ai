@@ -31,6 +31,11 @@ from slash_commands import (  # noqa: E402
     _resolve_input_path,
     _resolve_output_dir,
 )
+from slash_command_registry import (  # noqa: E402
+    find_command,
+    registry_payload,
+    runtime_command_names,
+)
 
 
 SAMPLE_TEMPLATE = dedent("""\
@@ -75,7 +80,10 @@ SAMPLE_OFF = dedent("""\
 class TestIsRuntimeCommand(unittest.TestCase):
 
     def test_recognizes_all_known_commands(self):
-        for cmd in ["/instance", "/validate", "/render", "/queue", "/approve", "/deny"]:
+        for cmd in [
+            "/instance", "/validate", "/render", "/queue", "/approve", "/deny",
+            "/help", "/commands", "/maintenance", "/projects",
+        ]:
             self.assertTrue(is_runtime_command(cmd), cmd)
             self.assertTrue(is_runtime_command(f"{cmd} foo bar"))
 
@@ -93,7 +101,10 @@ class TestIsRuntimeCommand(unittest.TestCase):
 
     def test_rejects_unknown_slash_commands(self):
         self.assertFalse(is_runtime_command("/foo"))
-        self.assertFalse(is_runtime_command("/help"))
+
+    def test_browser_only_commands_not_runtime_commands(self):
+        for cmd in ["/new", "/sidebar", "/frameworks", "/modes", "/settings", "/image"]:
+            self.assertFalse(is_runtime_command(cmd), cmd)
 
     def test_rejects_plain_text(self):
         self.assertFalse(is_runtime_command("hello world"))
@@ -395,6 +406,35 @@ class TestApproveDenyCommand(unittest.TestCase):
 
 class TestDispatcherBehavior(unittest.TestCase):
 
+    def test_help_lists_registered_commands(self):
+        out = run_runtime_command("/help")
+        self.assertIn("/framework", out)
+        self.assertIn("/maintenance", out)
+        self.assertIn("/settings", out)
+
+    def test_help_for_specific_command(self):
+        out = run_runtime_command("/commands /framework")
+        self.assertIn("**/framework**", out)
+        self.assertIn("cff", out)
+
+    def test_help_for_category(self):
+        out = run_runtime_command("/help maintenance")
+        self.assertIn("/queue", out)
+        self.assertIn("/cleaning", out)
+
+    def test_maintenance_group_alias_routes_to_queue(self):
+        with mock.patch("redefinition_handler.list_pending_escalations", return_value=[]):
+            out = run_runtime_command("/maintenance queue")
+        self.assertIn("Human queue is empty", out)
+
+    def test_maint_group_alias_routes_to_cleaning_help(self):
+        out = run_runtime_command("/maint cleaning help")
+        self.assertIn("Engram Cleaning Framework", out)
+
+    def test_projects_group_help_does_not_load_project_registry(self):
+        out = run_runtime_command("/projects help")
+        self.assertIn("/project-list", out)
+
     def test_unknown_slash_command_returns_string(self):
         # is_runtime_command should reject /unknown — but if we call
         # run_runtime_command directly with one, it should still return a
@@ -411,4 +451,27 @@ class TestDispatcherBehavior(unittest.TestCase):
         out = run_runtime_command('/deny 0 "unbalanced')
         self.assertIn("parse error", out.lower())
 
+
+class TestSlashCommandRegistry(unittest.TestCase):
+
+    def test_registry_payload_shape(self):
+        payload = registry_payload()
+        self.assertIn("commands", payload)
+        commands = {c["command"] for c in payload["commands"]}
+        self.assertIn("/framework", commands)
+        self.assertIn("/settings", commands)
+        self.assertIn("/maintenance", commands)
+
+    def test_runtime_names_include_server_aliases_only(self):
+        names = runtime_command_names()
+        self.assertIn("/help", names)
+        self.assertIn("/commands", names)
+        self.assertIn("/maintenance", names)
+        self.assertNotIn("/settings", names)
+        self.assertNotIn("/framework", names)
+
+    def test_find_command_resolves_alias(self):
+        spec = find_command("/commands")
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec.command, "/help")
 
