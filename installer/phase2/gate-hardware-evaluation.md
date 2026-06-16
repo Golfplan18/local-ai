@@ -1,5 +1,7 @@
 ### HARDWARE EVALUATION GATE
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 After Phase 1 completes, perform a brief hardware check to determine whether Phase 2 should execute.
 
 IF total RAM is less than 8 GB, THEN:
@@ -17,4 +19,3 @@ IF total RAM is 8 GB or greater AND available disk space is 5 GB or greater, THE
 *Phase 2 executes only if the reader's hardware supports local model execution (8GB+ RAM, 5GB+ disk). Phase 2 adds a local inference engine, a downloaded model, and registers the local model endpoint in the Phase 1 chat server. No new server is generated in Phase 2.*
 
 ---
-

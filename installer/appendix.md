@@ -1,3 +1,5 @@
+**Status as of 2026-06-16: legacy natural-language installer appendix, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Installer — Ora.md` and `docs/install-guide.md`. This appendix is retained as architecture/specification material until the G3.32 natural-language installer update.
+
 ### How File Access Actually Works
 
 - Boot-v1.md defines the tool protocol — what the model is allowed to request and the exact XML format for requesting it
@@ -33,7 +35,7 @@ Before finalizing, explicitly state:
 - Any verification test that was skipped and why.
 - Any known limitation of the installed configuration (e.g., "Your model is Tier 1 — it will handle basic questions well but may struggle with complex analysis or reliable tool calling").
 - Any companion file that was not found and where a default was applied (especially chat templates).
-- Whether the universal smoke test (one chat round-trip via OpenRouter free configuration) passed or failed, and its impact on basic functionality.
+- Whether the universal smoke test's configuration validation passed; if an OpenRouter key was present, whether the optional live chat round-trip passed or failed. Free models are rate-limited and sometimes unavailable, so a free-model outage is not automatically an install failure.
 
 A response that acknowledges limitations is always preferable to a response that implies the setup is more capable than it is.
 
@@ -44,7 +46,7 @@ A response that acknowledges limitations is always preferable to a response that
 IF any of the following unresolved issues remain:
 - Model could not be loaded (Phase 2, Layer 5 invariant check failed)
 - Chat template mismatch producing garbled output
-- Universal smoke test failed (no fallback AI access — OpenRouter unreachable or key invalid)
+- Universal smoke test failed because the configuration could not be produced, or because a supplied OpenRouter key was rejected
 - Chat server tool execution test failed
 - End-to-end test failed
 
@@ -93,8 +95,26 @@ PHASE 2 — ADDITIVE LOCAL CAPABILITY (hardware permitting)
 
 ## EXECUTION COMMANDS
 
+Use the live installer instead of executing this appendix:
+
+```bash
+cd ~/ora
+python3 scripts/install.py --profile solo
+```
+
+For headless Linux/API-only server installs:
+
+```bash
+cd ~/ora
+./scripts/install-server.sh
+```
+
+A coding agent is optional support, not a dependency. Claude Code, Codex, Copilot, OpenCode, Cursor, Continue, Cline, Aider, or another agent can help diagnose failures, but the installer is an ordinary script.
+
+The original natural-language execution prompt below is retained only for G3.32 reference.
+
 1. Confirm you have fully processed this framework.
-2. IF you are not running as a coding agent with terminal access on the user's local machine, THEN inform the user that this framework requires Claude Code or an equivalent tool and cannot execute in a standard chat interface.
+2. IF you are not running as a coding agent with terminal access on the user's local machine, THEN inform the user that this framework requires a terminal-capable coding agent and cannot execute in a standard chat interface.
 3. Before beginning Phase 1, Layer 1, present the following:
 
 ```
@@ -128,7 +148,7 @@ PHASE 1 (every reader):
 2. Create the workspace directory structure.
 3. Install the framework library from the book repository.
 4. Install the orchestrator (boot.py) with tool implementations.
-5. Configure API access (OpenRouter required; Artificial Analysis strongly recommended for the auto-populate engine; Anthropic / OpenAI / Google direct optional).
+5. Configure optional API access (OpenRouter strongly recommended; Tavily and Artificial Analysis recommended for search/model intelligence; direct providers optional for markup-bypass and fallback).
 6. Stage the API key framework for later use.
 7. Install the universal chat server at localhost:5000.
 
@@ -157,4 +177,4 @@ on key decisions. You can stop at any time.
 
 *This framework installs a universal browser chat interface for every reader in Phase 1, closing the Unmanned Chat Trap from earlier versions. Every reader, regardless of tier, interacts with AI through Python from their first session. Phase 2 adds local model capability without replacing the Phase 1 server — the local model registers as a new endpoint in the same chat server. The model is never directly accessible without the orchestrator in the loop.*
 
-*Note (install Chunk 1, 2026-05-18): the original Phase 1 design routed model calls through Playwright-driven browser automation against the user's logged-in subscription accounts (claude.ai, ChatGPT, Gemini). That dispatcher was retired in favor of direct API routing through OpenRouter (and optionally direct provider APIs) — the reliability and cost-management properties of APIs proved decisive over the "use what you already pay for" advantage of browser sessions. The localhost:5000 interface and the orchestrator's Python-in-the-loop contract are unchanged; only the path from orchestrator-to-model is different.*
+*Note (install Chunk 1, 2026-05-18; updated 2026-06-16): the original Phase 1 design routed model calls through Playwright-driven browser automation against the user's logged-in subscription accounts (claude.ai, ChatGPT, Gemini). That dispatcher was retired in favor of direct API routing through OpenRouter and optional direct provider APIs. OpenRouter is now strongly recommended rather than required; users can add keys later through Settings -> External APIs. The localhost:5000 interface and the orchestrator's Python-in-the-loop contract are unchanged; only the path from orchestrator-to-model is different.*

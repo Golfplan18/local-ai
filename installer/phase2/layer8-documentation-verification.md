@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 8: DOCUMENTATION AND VERIFICATION
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Generate documentation files and perform final end-to-end verification.
 
 **Input**: All outputs from Phase 1 and Phase 2 Layers 1–7.
@@ -211,4 +213,3 @@
    d. Do not claim the setup is complete.
 
 ---
-

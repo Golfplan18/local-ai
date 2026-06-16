@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 7: DESKTOP LAUNCHER CREATION
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Create a one-click launcher that starts the Phase 1 chat server and opens the browser interface.
 
 **Input**: Workspace path, server file path, port number, operating system.
@@ -48,4 +50,3 @@ Test result: [Pass / Fail]
 ```
 
 ---
-

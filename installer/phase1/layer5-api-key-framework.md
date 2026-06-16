@@ -1,5 +1,7 @@
 ### PHASE 1, LAYER 5: API KEY FRAMEWORK INSTALLATION
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus:** Install the API Key Setup Framework, then prompt the reader for the four free-tier enrichment keys that meaningfully improve Ora's default behavior. Commercial / paid API keys stay deferred until the reader chooses to wire them.
 
 ### Processing Instructions
@@ -31,4 +33,3 @@ For each model added:
 3. Set `enabled: true` and `status: "active"` — the user can disable from the UI.
 
 ---
-

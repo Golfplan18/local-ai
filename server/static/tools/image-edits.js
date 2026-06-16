@@ -533,7 +533,10 @@
     if (typeof e.preventDefault === 'function') e.preventDefault();
 
     var inputs = detail.inputs || {};
-    var prompt = (inputs.prompt || '').toString();
+    var prompt = (inputs.prompt || '').toString().trim();
+    if (!prompt) {
+      prompt = 'Fill the selected area naturally using the surrounding image context.';
+    }
 
     // Resolve the mask. Three lookup paths, in priority order:
     //   1. inputs.mask is already a usable envelope from the UI
@@ -552,14 +555,6 @@
         slot: 'image_edits',
         code: 'no_image_selected',
         message: 'No image is currently mounted on the canvas.'
-      });
-      return;
-    }
-    if (!prompt.trim()) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_edits',
-        code: 'missing_required_input',
-        message: 'A non-empty prompt is required.'
       });
       return;
     }

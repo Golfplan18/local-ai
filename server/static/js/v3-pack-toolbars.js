@@ -135,17 +135,14 @@
   function buildExtendedPredicateRegistry(panel) {
     return {
       'image_present': function () {
-        var layer = panel && panel.userInputLayer;
-        if (!layer || typeof layer.getChildren !== 'function') return { enabled: false, reason: 'No image' };
-        var has = false;
-        var kids = layer.getChildren();
-        for (var i = 0; i < kids.length; i++) {
-          var n = kids[i];
-          var name = (n && typeof n.getClassName === 'function') ? n.getClassName() : (n && n.className);
-          if (name === 'Image') { has = true; break; }
-        }
-        if (!has && panel._backgroundImageNode) has = true;
+        var has = _panelHasImage(panel);
         return { enabled: has, reason: has ? null : 'Add an image first' };
+      },
+      'image_present_and_mask': function () {
+        var hasImage = _panelHasImage(panel);
+        if (!hasImage) return { enabled: false, reason: 'Add an image first' };
+        var hasMask = _panelHasMask(panel);
+        return { enabled: hasMask, reason: hasMask ? null : 'Select an area to fill first' };
       },
       'history_has_undo': function () {
         var has = panel._historyCursor > 0;
@@ -169,6 +166,32 @@
         return { enabled: has, reason: has ? null : 'Canvas is empty' };
       }
     };
+  }
+
+  function _panelHasImage(panel) {
+    var layer = panel && panel.userInputLayer;
+    var has = false;
+    if (layer && typeof layer.getChildren === 'function') {
+      var kids = layer.getChildren();
+      for (var i = 0; i < kids.length; i++) {
+        var n = kids[i];
+        var name = (n && typeof n.getClassName === 'function') ? n.getClassName() : (n && n.className);
+        if (name === 'Image') { has = true; break; }
+      }
+    }
+    if (!has && panel && panel._backgroundImageNode) has = true;
+    return has;
+  }
+
+  function _panelHasMask(panel) {
+    try {
+      var Edits = window.OraImageEdits;
+      if (Edits && typeof Edits.makeContextProvider === 'function') {
+        var ctx = Edits.makeContextProvider(panel)();
+        return !!(ctx && (ctx.hasMask || ctx.maskRef));
+      }
+    } catch (e) { /* fall through */ }
+    return false;
   }
 
   // ── Pack toolbar mounting ─────────────────────────────────────────────
@@ -310,6 +333,23 @@
     ids.forEach(function (id) { mountPack(panel, id); });
   }
 
+  function resetLayout(panel) {
+    var ids = _readActivePackIds();
+    var removed = 0;
+    ids.forEach(function (id) {
+      if (panel && unmountPack(panel, id)) removed += 1;
+    });
+    _writeActivePackIds([]);
+    try {
+      if (window.localStorage) window.localStorage.removeItem(ACTIVE_STORAGE_KEY);
+    } catch (e) { /* quota / private mode — ignore */ }
+    try {
+      document.dispatchEvent(new CustomEvent('ora:pack-toolbar-reset',
+        { detail: { panel: panel || null, removed: removed } }));
+    } catch (e) {}
+    return removed;
+  }
+
   // ── Capability popover ────────────────────────────────────────────────
 
   function _ensurePopoverHost() {
@@ -367,6 +407,35 @@
     host.style.transform = '';
   }
 
+  function _buildCapabilityContextProvider(slotName, panel) {
+    return function () {
+      var base = { canvasSnapshot: null, canvasSelection: null };
+      var Serializer = window.OraCanvasSerializer;
+      if (Serializer && panel) {
+        try {
+          var snap = (typeof Serializer.captureFromPanel === 'function')
+            ? Serializer.captureFromPanel(panel)
+            : (panel.userInputLayer && Serializer.serialize ? Serializer.serialize(panel.userInputLayer) : null);
+          base.canvasSnapshot = snap || null;
+          base.canvasSelection = snap && snap._activeSelection ? snap._activeSelection : null;
+        } catch (e) {
+          base.canvasSnapshot = null;
+          base.canvasSelection = null;
+        }
+      }
+      if (slotName === 'image_edits') {
+        try {
+          var Edits = window.OraImageEdits;
+          if (Edits && typeof Edits.makeContextProvider === 'function') {
+            var editCtx = Edits.makeContextProvider(panel)() || {};
+            Object.keys(editCtx).forEach(function (k) { base[k] = editCtx[k]; });
+          }
+        } catch (e) { /* keep base context */ }
+      }
+      return base;
+    };
+  }
+
   function _openCapabilityPopover(slotName, anchorEl, panel) {
     _loadCapabilities().then(function (caps) {
       if (!caps || !caps.slots || !caps.slots[slotName]) {
@@ -378,6 +447,8 @@
       var host  = _ensurePopoverHost();
       var title = document.getElementById('ora-capability-popover-title');
       var body  = document.getElementById('ora-capability-popover-body');
+      host.classList.toggle('ora-capability-popover--large',
+        slotName === 'image_generates' || slotName === 'image_edits');
       title.textContent = caps.slots[slotName].label
         || slotName.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
       body.innerHTML = '';
@@ -388,21 +459,7 @@
         hostEl: body,
         capabilities: caps,
         slotName: slotName,
-        contextProvider: function () {
-          var Serializer = window.OraCanvasSerializer;
-          if (!Serializer || !panel) return { canvasSnapshot: null, canvasSelection: null };
-          try {
-            var snap = (typeof Serializer.captureFromPanel === 'function')
-              ? Serializer.captureFromPanel(panel)
-              : (panel.userInputLayer && Serializer.serialize ? Serializer.serialize(panel.userInputLayer) : null);
-            return {
-              canvasSnapshot:  snap,
-              canvasSelection: snap && snap._activeSelection ? snap._activeSelection : null
-            };
-          } catch (e) {
-            return { canvasSnapshot: null, canvasSelection: null };
-          }
-        },
+        contextProvider: _buildCapabilityContextProvider(slotName, panel),
         onDispatch: function (detail) {
           console.info('[v3-pack-toolbars] capability dispatched:', detail && detail.slot);
           setTimeout(_closeCapabilityPopover, 250);
@@ -446,11 +503,13 @@
     mountAll: mountAll,
     mountPack: mountPack,
     unmountPack: unmountPack,
+    resetLayout: resetLayout,
     isMounted: _isMounted,
     listAvailablePacks: listAvailablePacks,
     readActivePackIds: _readActivePackIds,
     buildExtendedRegistry: buildExtendedRegistry,
     buildExtendedPredicateRegistry: buildExtendedPredicateRegistry,
+    openCapabilityPopover: _openCapabilityPopover,
     _openCapabilityPopover: _openCapabilityPopover,
     _closeCapabilityPopover: _closeCapabilityPopover,
     _loadCapabilities: _loadCapabilities

@@ -18,11 +18,11 @@ Three environments cover the supported platforms:
 |---|---|---|
 | **Mac Mini A** | macOS, Apple Silicon | Primary clean-state testing |
 | **Mac Mini B** | macOS, Apple Silicon | Spare / parallel-cycle testing |
-| **Parallels Windows 11 VM** | Windows 11 ARM via Parallels | Windows fresh-install testing |
+| **Parallels Windows 11 VM** | Windows 11 ARM via Parallels | Windows native and WSL fresh-install testing |
 
-**Linux is out of the test matrix** but ships best-effort. Community contributions for Linux testing are welcome.
+Linux desktop is out of the desktop test matrix and ships best-effort. The Linux server/API-only path is tested separately with `scripts/install-server.sh`.
 
-Each environment exercises **each of the three deployment profiles** (Solo, Hybrid, Organization) once the profile is enabled in `install.py`. Today, only Solo is enabled — Hybrid and Organization are gated on the concurrency-architecture work landing.
+Each desktop environment exercises the **Solo** profile. Hybrid and Organization are reserved until G1.27 network discovery and later concurrency validation land.
 
 ---
 
@@ -87,14 +87,18 @@ git clone https://github.com/ora-commons/ora.git ~/ora
 cd ~/ora
 ```
 
-### 3. Verify API keys are exported
+### 3. Choose API-key posture
 
 ```bash
 echo "OpenRouter: ${OPENROUTER_API_KEY:+SET}"
-echo "AA:         ${AA_API_KEY:+SET}"
 ```
 
-Both should print `SET`. If either is empty, export them before continuing — re-running mid-cycle to fix a missing key invalidates the timing measurements.
+Two test modes are valid:
+
+- **No-key core install:** leave `OPENROUTER_API_KEY` unset. The installer must complete, skip the live OpenRouter round-trip, and tell the user to add keys later.
+- **Keyed install:** set `OPENROUTER_API_KEY`. The installer must attempt a tiny live chat round-trip. If the key is invalid, the test should fail. If free models are rate-limited or unavailable, the installer should report that and continue after configuration validation.
+
+Artificial Analysis is optional. Do not require `AA_API_KEY` for a clean install pass.
 
 ### 4. Run the bootstrap
 
@@ -119,15 +123,17 @@ Watch for:
 - **Unclear prompts** — note them. Friction points are install-quality bugs.
 - **Errors** — note the step, capture the stderr, screenshot if possible.
 - **Time per step** — the installer logs timestamps; eyeballing the gaps tells you which steps are slow.
-- **AA-warning behaviour** — if `AA_API_KEY` is unset, the installer should pause for Enter. Confirm this works as designed.
+- **API orientation clarity** — Step 7 should explain OpenRouter, Tavily, Artificial Analysis, search alternatives, direct providers, and speech/image providers without making them required.
 
 ### 6. Verify pass criteria
 
 A clean install means **all** of these are true:
 
-- [ ] Script completed without manual intervention beyond initial API-key prompts.
+- [ ] Script completed without manual intervention beyond profile selection and optional API-link prompts.
 - [ ] `~/ora/install.log` ends with `INSTALL_COMPLETE: 0 warnings, 0 errors`.
-- [ ] Smoke test passed (Step 6/6 for Mac, the `install_server_smoke.py` run for Linux).
+- [ ] Smoke test passed (Step 6/7 for desktop, the `install_server_smoke.py` run for Linux server).
+- [ ] No-key mode skips the live OpenRouter call and still completes.
+- [ ] Keyed mode fails on invalid OpenRouter auth but does not fail merely because free models are rate-limited/unavailable.
 - [ ] Browser opens to `localhost:5000` and the V3 UI renders (Mac install only — server install doesn't bind Flask publicly).
 - [ ] First conversation can be started within:
   - **30 seconds** of script completing — for cloud / API-only profiles
@@ -137,7 +143,7 @@ If any of these fail, the cycle is a fail. See Fail flow below.
 
 ### 7. End-to-end model call
 
-Final validation — an actual API round-trip:
+Final validation — an actual API round-trip when a valid key and paid/free capacity are available:
 
 ```bash
 cd ~/ora
@@ -165,7 +171,7 @@ print(invoke_chat(
 "
 ```
 
-Expected output: `Paris` or similar single-word response. Confirms slot routing → API → model → response works end-to-end.
+Expected output: `Paris` or similar single-word response. Confirms slot routing -> API -> model -> response works end-to-end. Skip this check in no-key mode and record that the core install passed without external keys.
 
 ---
 
@@ -176,11 +182,11 @@ When a cycle fails:
 1. **Capture the install log** in full.
 2. **Screenshot the failure state** — the terminal output at point of failure, and any UI state if relevant.
 3. **Note environment-specific details:** macOS / Windows version, Python version, free disk, free RAM, network conditions.
-4. **Share with the diagnostic session** — open a fresh Claude Code conversation, paste the log and screenshots, ask for triage.
+4. **Share with the diagnostic session** — open a fresh coding-agent conversation, paste the log and screenshots, ask for triage.
 5. **Apply the fix.**
 6. **Reset, pull, retest** — the cycle starts over from step 1.
 
-Cycle until all three environments pass with **zero glitches** under each of the three deployment profiles.
+Cycle until all enabled environments pass with **zero glitches** under the Solo profile.
 
 ---
 
@@ -191,7 +197,7 @@ The install script materializes whatever's on `main` at install time. You can co
 **Install bugs vs Ora-side bugs are distinguishable:**
 
 - **Install bugs** error during script execution. Failure shows up in `install.log`.
-- **Ora-side bugs** error during the smoke test (step 6/6) or first conversation. Failure shows up in chat-server stderr or the V3 UI.
+- **Ora-side bugs** error during the smoke test (step 6/7) or first conversation. Failure shows up in chat-server stderr or the V3 UI.
 
 When triaging a failed cycle, the location of the failure tells you which side to fix.
 
@@ -205,7 +211,7 @@ The install scripts are not shipped until **all three environments pass with zer
 - Mac Mini B, Solo profile — must pass
 - Parallels Windows 11, Solo profile — must pass
 
-When Hybrid and Organization profiles enable (gated on the concurrency-architecture work), the matrix expands to nine cells. Until then, three is enough.
+When Hybrid and Organization profiles enable, the matrix expands. Until then, Solo-only is the shipped desktop criterion.
 
 ---
 

@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 1: HARDWARE EVALUATION
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Discover the user's hardware capabilities and constraints. Make no assumptions — measure everything.
 
 **Input**: Access to the local operating system via terminal commands.
@@ -55,4 +57,3 @@ Available Model RAM (75% of total): [X] GB
 Before proceeding: confirm that all four hardware dimensions (OS, RAM, disk, processor) were measured, not assumed. Confirm that AVAILABLE_MODEL_RAM has been calculated as total RAM × 0.75. These values must persist accurately through all subsequent layers.
 
 ---
-

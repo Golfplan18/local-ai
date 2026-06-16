@@ -1,202 +1,180 @@
 # Ora Install Guide
 
-Step-by-step walkthrough for installing Ora. There are two installers depending on what you're running:
+This guide describes the current Ora install path. The public desktop install is a **source install** from this repository. Cloning the repo gives you the source tree; `scripts/install.py` prepares the working Solo profile.
 
-- **`scripts/install.py`** — Mac desktop install with local MLX models. Interactive, with hardware-tier detection and an optional HuggingFace download flow. This is the Solo deployment profile.
-- **`scripts/install-server.sh`** — Linux server install, API-only. Designed for cloud / headless use (Hetzner CX33, similar). No local models, no chat UI exposure.
+There is no packaged app installer yet.
 
-Pick the one that matches your hardware and read the corresponding section. If you're not sure, you almost certainly want the Mac installer.
+Companion docs:
 
-The companion docs:
-
-- **`install-recovery.md`** — what to do when something fails partway
-- **`install-manual.md`** — eight-command fallback for when the script itself is broken
-- **`install-testing.md`** — formal protocol for snapshot/restore test cycles
+- `install-recovery.md` — what to do when a script fails partway
+- `install-manual.md` — manual fallback when the script itself is broken
+- `install-testing.md` — clean-room test protocol
+- `cloud-ora-install.md` — headless Linux/API-only server install
 
 ---
 
-## Before you start (both installers)
+## Supported paths
 
-You'll need accounts at two services. The signups are free and take a couple of minutes each. Do them now and have the API keys ready — the installer will prompt for both.
+| Path | Status | Command |
+|---|---|---|
+| macOS desktop | Primary path, especially Apple Silicon | `python3 scripts/install.py --profile solo` |
+| Windows native | Intended, pending Parallels clean-install test | `py -3 scripts\install.py --profile solo` |
+| Windows WSL | Practical fallback for Linux-style tooling | `python3 scripts/install.py --profile solo` inside Ubuntu/WSL |
+| Linux desktop | Best effort/community | Source install may work; not the primary tested desktop path |
+| Linux server | Supported API-only/headless | `./scripts/install-server.sh` |
 
-### 1. OpenRouter (required)
-
-OpenRouter is a unified API for cloud-based AI models. Ora uses it as the primary path to OpenAI, Anthropic, Google, Mistral, Qwen, and dozens of others.
-
-- Sign up at <https://openrouter.ai>
-- **You do NOT need a credit card to start.** OpenRouter has a free tier with several models that work without payment. Add payment later if you want to use paid models (Sonnet, GPT-4o, etc.).
-- Grab your API key from the dashboard — it starts with `sk-or-`.
-- Export it in your shell before running the installer:
-  ```bash
-  export OPENROUTER_API_KEY=sk-or-xxxxxxxxxxxxxxxxxxxx
-  ```
-  Add it to `~/.zshrc` or `~/.bashrc` if you want it to persist.
-
-### 2. Artificial Analysis (strongly recommended)
-
-Artificial Analysis publishes the intelligence-index rankings Ora's auto-populate engine uses to rank models within their size bucket. Without it, every model scores the same on capability and the algorithm falls through to pure cost-sort — you'll get the cheapest model per slot regardless of how capable it actually is.
-
-- Sign up at <https://artificialanalysis.ai/>
-- Free tier is sufficient.
-- Grab your API key.
-- Export it:
-  ```bash
-  export AA_API_KEY=aa_xxxxxxxxxxxxxxxxxxxx
-  ```
-
-The installer will warn loudly and pause for confirmation if `AA_API_KEY` isn't set. You CAN proceed without it, but expect to add it later and re-run `scripts/refresh-catalog.py` + `scripts/auto-populate-configuration.py` to get sensible slot picks.
-
-### 3. Anthropic API (optional)
-
-Only needed if you want to call Anthropic models directly rather than via OpenRouter. The Mac install doesn't prompt for this; the server install asks for it as optional. MSI's article generator uses it via the `MSI_AUTHOR_MODEL` env var when configured to do so.
+Hybrid and Organization profiles are reserved for future network discovery and concurrency work. Today, use Solo for desktop installs.
 
 ---
 
-## Mac install (`scripts/install.py`)
+## Before you start
 
-### Prerequisites
+Required:
 
-- macOS 12+ on Apple Silicon (M1 / M2 / M3 / M4 / M5). The local MLX runtime is Apple-Silicon-only.
-- Python 3.11+ (macOS ships with 3.9; install 3.11+ via Homebrew: `brew install python@3.12`).
-- At least 5 GB free disk space (plus ~40-80 GB per local model if you opt into HuggingFace downloads).
-- Outbound HTTPS to `api.openrouter.ai`, `artificialanalysis.ai`, `huggingface.co`, `github.com`.
+- Git
+- Python 3.11+
+- At least 5 GB free disk for the source install
+- Internet access to GitHub, OpenRouter's catalog endpoint, and public model-metadata sources
 
-### Run the installer
+Optional but recommended:
+
+- OpenRouter API key for broad cloud-model access
+- Tavily API key for AI-oriented web search
+- Artificial Analysis API key for improved model-selector data
+- Direct provider keys if you already use Anthropic, OpenAI, Google, Mistral, DeepSeek, Qwen, or similar
+
+Keys are not required for the core script to complete. Add them during Step 7's orientation or later in **Settings -> External APIs**. Keys are stored in the system keychain by the settings UI, not in plaintext config files.
+
+OpenRouter is strongly recommended but optional. Free models are rate-limited and sometimes unavailable; paid models need credits/payment. Direct provider keys can skip OpenRouter's roughly 5.5% gateway markup for those providers' own models.
+
+Claude Code is not required. Claude Code, Codex, Copilot, OpenCode, Cursor, Continue, Cline, Aider, or another coding agent can help diagnose a failed install, but the script runs directly in a terminal.
+
+---
+
+## macOS desktop install
 
 ```bash
 git clone https://github.com/ora-commons/ora.git ~/ora
 cd ~/ora
-python3 scripts/install.py
-```
-
-The installer walks 6 steps. Each step is idempotent — re-running the installer skips work that's already done.
-
-#### Step 1/6 — Preflight checks
-
-Verifies Python version, disk space, OpenRouter API reachability, and write permissions in the repo directory. If anything fails, the installer prints the missing item and exits non-zero. Fix the issue and re-run.
-
-#### Step 2/6 — Deployment profile selection
-
-Three profiles: **Solo** (local + cloud, single-user, MLX-safe), **Hybrid** (local + API failover, small worker pool), **Organization** (pure API, scales to 20+ concurrent processes).
-
-For a desktop install, pick Solo. Hybrid and Organization are scaffolded but currently disabled — they're being landed in a separate work stream.
-
-Non-interactive: pass `--profile solo` to skip the prompt.
-
-#### Step 3/6 — OpenRouter API key setup
-
-Checks for `OPENROUTER_API_KEY` in env. If present, the step passes. If absent, the installer logs instructions and exits — you set the env var, then re-run.
-
-The installer also looks at `config/routing-config.json` for an existing OpenRouter endpoint — if one's configured from a prior install, the step passes without requiring the env var.
-
-#### Step 4/6 — Catalog refresh
-
-Fetches the OpenRouter model list (~357 models) and enriches with Artificial Analysis rankings (~229 enriched).
-
-If `AA_API_KEY` is not set, the installer prints a multi-line warning explaining the consequence (auto-populate falls through to cost-only sort) and **pauses for Enter to continue**. You can proceed without AA — but expect to re-run the catalog refresh + auto-populate once you have the key.
-
-Writes `config/model-catalog.json`. Also writes `data/model-catalog-changes.jsonl` recording new/retired models and free→paid transitions.
-
-Takes 5-15 seconds depending on network.
-
-#### Step 5/6 — Auto-populate user-pipeline configuration
-
-Runs `scripts/auto-populate-configuration.py optimum user-pipeline`. Uses the Pareto + percentage-floor + cost-sort algorithm to pick 3 models per workhorse slot and 2 per utility slot.
-
-Result lands in `config/configurations/user-pipeline.json`. You can re-run this anytime to refresh picks against a fresh catalog.
-
-Takes a few seconds.
-
-#### Step 6/6 — Smoke test
-
-Auto-populates a Free configuration, sends one test prompt through it, and verifies the response. Confirms end-to-end routing works.
-
-If this passes, the install is complete and the log ends with:
-```
-INSTALL_COMPLETE: 0 warnings, 0 errors
-```
-
-### After install
-
-Start the chat server:
-```bash
-cd ~/ora
+python3 scripts/install.py --profile solo
 ./start.sh
 ```
 
-Open <http://localhost:5000> in a browser. The V3 chat interface should render.
+Open <http://localhost:5000> after the launcher starts the server.
 
-### Hardware tier and local models (optional)
+### Optional local models
 
-The Solo profile defaults to API-only. If you want local MLX models:
+The core install does not download local model weights. To add local models later:
 
 ```bash
 python3 scripts/install.py models
 ```
 
-This re-enters the local-model flow. Detects your RAM tier (6-11, 12-23, 24-47, 48-95, 96+ GB) and presents matched options:
-
-| RAM tier | Recommendation |
-|---|---|
-| 6-11 GB | Single small utility model (3-7B, 4-bit quantization) |
-| 12-23 GB | Local Workhorse single 30B model OR Local Mid+Small pair |
-| 24-47 GB | Local Workhorse + Local Mid (~40 GB combined) |
-| 48-95 GB | Full Local achievable with 3-bit quantization (degradation warning) |
-| 96+ GB | Full Local + Adversarial Diversity (two 70B-class models in different families) |
-
-Downloads happen via the HuggingFace Hub. Expect 20-80 GB per model. The script asks for confirmation before downloading.
+The local-model flow detects RAM, recommends matching options, and asks before downloading. Expect tens of gigabytes per local model.
 
 ---
 
-## Linux server install (`scripts/install-server.sh`)
+## Windows install
 
-For headless cloud / server use. See `cloud-ora-install.md` for the full operator guide. The TL;DR:
+### Native PowerShell
+
+```powershell
+git clone https://github.com/ora-commons/ora.git $env:USERPROFILE\ora
+cd $env:USERPROFILE\ora
+py -3 scripts\install.py --profile solo
+```
+
+Use the Windows launcher when present. Until the Parallels test cycle completes, treat native Windows as intended but not fully verified.
+
+### WSL
+
+Install Ubuntu under WSL, then:
 
 ```bash
-# On the server, in the directory where ora should live:
-git clone https://github.com/ora-commons/ora.git
-cd ora
+git clone https://github.com/ora-commons/ora.git ~/ora
+cd ~/ora
+python3 scripts/install.py --profile solo
+./start.sh
+```
+
+WSL usually makes Python tooling simpler, but browser and file integration can feel less native than a Windows-native install.
+
+---
+
+## What `scripts/install.py` does
+
+The desktop source installer runs seven steps:
+
+1. **Preflight checks** — Python version, disk space, OpenRouter catalog reachability, and repo write permissions.
+2. **Deployment profile selection** — Solo is supported; Hybrid and Organization return a clear "not yet" message.
+3. **Catalog refresh** — fetches OpenRouter operational fields and writes `config/model-catalog.json`.
+4. **Model registry sync** — builds `config/model-registry.json` from OpenRouter, LiteLLM, Chatbot Arena, and optional probe data. Artificial Analysis is optional, not an install gate.
+5. **Auto-populate** — writes `config/configurations/user-pipeline.json` from the Optimum preset.
+6. **Smoke test** — generates a Free configuration. If an OpenRouter key is present, the script tries one tiny live chat round-trip. Without a key, it validates config and tells the user to add keys later. If a key is rejected, the install fails so the user can fix it.
+7. **External APIs orientation** — explains the optional provider set and offers official links.
+
+The script is idempotent and resumable:
+
+```bash
+python3 scripts/install.py --dry-run
+python3 scripts/install.py --resume
+python3 scripts/install.py --reset
+```
+
+`--reset` clears installer state. It does not delete the vault, conversations, or downloaded models.
+
+---
+
+## Optional External APIs
+
+Recommended starter package:
+
+- **OpenRouter** — broad model access; free models are rate-limited/sometimes unavailable; paid models need credits/payment.
+- **Tavily** — AI-oriented web search.
+- **Artificial Analysis** — independent model intelligence; useful for the model selector.
+
+Additional optional groups:
+
+- **Search** — Exa and Brave Search API.
+- **Direct model providers** — Anthropic, OpenAI, Google Gemini, Mistral, DeepSeek, Alibaba Qwen, and others. Direct keys can avoid OpenRouter's gateway markup and fall back to OpenRouter where configured.
+- **Speech/image/video** — AssemblyAI, Deepgram, ElevenLabs, Stability AI, Replicate, Tensor.Art.
+
+FRED is intentionally not part of the public install recommendation; it is for specialized economic-data workflows.
+
+---
+
+## Linux server install
+
+For headless/API-only server use:
+
+```bash
+git clone https://github.com/ora-commons/ora.git ~/ora
+cd ~/ora
 ./scripts/install-server.sh
 ```
 
-The script apt-installs Python deps, creates a venv, installs ollama for ChromaDB embeddings, rewrites `routing-config.json` to OpenRouter-only slot picks, prompts for `OPENROUTER_API_KEY` (and optionally Anthropic), and runs a smoke test.
+This path creates a Linux Python environment, configures API-only routing, stores server env keys in `~/.config/ora-server.env`, and runs a server smoke test. It does not download local MLX models or expose the Flask UI publicly.
 
-Differences from the Mac install:
-- **API-only.** No MLX, no HuggingFace downloads.
-- **One-key setup.** All slot picks are routed through OpenRouter so the server only needs `OPENROUTER_API_KEY`.
-- **Single-process.** No worker pool until the Organization profile lands.
-- **No public Flask exposure.** The chat UI isn't bound on the server; access is via Tailscale or local-only.
-- **No AA_API_KEY needed today.** The server uses hard-coded slot picks rather than the auto-populate engine.
+See `cloud-ora-install.md` for the full operator guide.
 
 ---
 
-## Friction points (honest list)
+## Common friction points
 
-Here's where users typically hit snags:
-
-| Friction | What to expect | Fix |
+| Friction | What to expect | Practical answer |
 |---|---|---|
-| **OpenRouter signup** | 2-5 minutes if you don't already have an account | Sign up at <https://openrouter.ai>. Free models work without a credit card. |
-| **Artificial Analysis signup** | 2-5 minutes. Easy to skip and regret later. | Sign up at <https://artificialanalysis.ai/>. The installer warns loudly if you skip; better to set it up now. |
-| **OS approval popups (Mac)** | 1-2 popups during install: ollama install, possibly Xcode CLI tools | Click Allow. They're for legitimate tools (ollama, Python build deps). |
-| **HuggingFace download size** | 20-80 GB per local model. Cancel anytime; not part of the critical install path. | If on a slow connection, skip the local models. API-only install is fully functional. |
-| **Python version** | macOS ships with 3.9, which lacks newer type-hint syntax | `brew install python@3.12` and ensure `python3 --version` shows 3.11+ before running the installer. |
-| **AA_API_KEY warning** | The installer pauses and waits for Enter | Read the warning; understand that skipping means cheapest-model picks. Then either set the key and re-run, or press Enter to proceed knowingly. |
-| **Tailscale (server install)** | Required for SSH access if you've closed port 22 | Set up Tailscale on both the local machine and the server before SSHing in. |
+| Running a terminal script | The current installer is not a double-click package | Copy the commands exactly; use a coding agent only if you want help |
+| OpenRouter signup | Optional but strongly recommended | Free models can work; paid use requires credits/payment |
+| Free model reliability | Free models may be rate-limited or unavailable | Add OpenRouter credits or direct provider keys for daily use |
+| API provider costs | Most providers vary by usage | Start with free tiers/credits where available; avoid fixed cost assumptions |
+| Python version | macOS and Windows may point to older Python | Install Python 3.11+ and run the installer with that binary |
+| Local model downloads | Large downloads and RAM-dependent fit | Skip at first; run `python3 scripts/install.py models` later |
 
 ---
-
-## Next steps after install
-
-- Read `~/ora/CLAUDE.md` for the repository overview.
-- Read the working doc `~/Documents/vault/Working — Project — Ora Install Script Overhaul.md` for the state of the install-script project (which chunks are done, which are pending).
-- If the install failed at any step, see `install-recovery.md`.
-- If you want to fall back to manual commands (because the script itself is broken), see `install-manual.md`.
-- If you're setting up a test environment for snapshot/restore cycles, see `install-testing.md`.
 
 ## Related documents
 
-- `cloud-ora-install.md` — full operator guide for the Linux server installer
 - `install-recovery.md` — recovery from partial install failures
 - `install-manual.md` — manual command fallback
-- `install-testing.md` — formal test protocol
+- `install-testing.md` — formal clean-install test protocol
+- `cloud-ora-install.md` — Linux server operator guide

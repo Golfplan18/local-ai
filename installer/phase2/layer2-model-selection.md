@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 2: MODEL SELECTION
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Help the user understand their options and select the right model — or select one automatically if the user prefers. Then validate the selection against hardware constraints, estimating RAM requirements from parameter count and quantization level (never from file size).
 
 **Input**: Hardware profile from Layer 1, plus any user-specified model from the Input Contract.
@@ -253,4 +255,3 @@ Display the selection to the user and wait for confirmation before proceeding.
 Before proceeding: confirm that the model's RAM estimate was calculated from parameter count and quantization level, not from file size. Confirm the model identifier, format, and list of required companion files are recorded for Layer 5.
 
 ---
-

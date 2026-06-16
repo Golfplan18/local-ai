@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 3: WORKSPACE SETUP
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Verify the workspace directory structure from Phase 1 is complete and available.
 
 The workspace directory was created in Phase 1, Layer 2. This layer verifies that the `models/` and `server/` directories exist and are accessible. It does not recreate the workspace.
@@ -21,4 +23,3 @@ server/: [present]
 ```
 
 ---
-

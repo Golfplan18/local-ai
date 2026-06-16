@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 11: APP BUNDLE + CUSTOM ICON
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **When to execute**: After Phase 2, Layer 10. macOS only. Skip on Linux and Windows — provide a plain shell script launcher instead.
 
 **Purpose**: Replace the generic `.command` shell script (which shows the default macOS script icon in the Dock) with a proper `.app` bundle named "ai" with a custom lettermark icon.
@@ -66,4 +68,3 @@ First launch: right-click → Open (bypasses Gatekeeper once)
 ```
 
 ---
-

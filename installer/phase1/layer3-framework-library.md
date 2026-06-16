@@ -1,5 +1,7 @@
 ### PHASE 1, LAYER 3: FRAMEWORK LIBRARY
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus:** Clone the book's framework repository into the frameworks directory, giving the reader every framework at once.
 
 ### Processing Instructions
@@ -43,4 +45,3 @@ Active boot.md: [workspace]/boot.md → [version]
 ```
 
 ---
-

@@ -9,8 +9,9 @@
   position: fixed;
   z-index: 99999;
   display: none;
-  min-width: 340px;
-  max-width: 520px;
+  width: min(520px, calc(100vw - 32px));
+  min-width: min(340px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   padding: 12px;
   background: var(--background-secondary, #282a36);
   color: var(--text-normal, #f8f8f2);
@@ -20,6 +21,10 @@
   font-family: var(--font-text, -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
   font-size: var(--font-ui-small, 13px);
   line-height: 1.4;
+}
+
+.ora-capability-popover--large {
+  width: min(680px, calc(100vw - 32px));
 }
 
 .ora-capability-popover[aria-hidden="false"] {
@@ -58,4 +63,114 @@
 .ora-capability-popover__close:focus-visible {
   outline: 2px solid var(--ora-vis-focus-ring, var(--accent, #0072B2));
   outline-offset: 1px;
+}
+
+.ora-cap-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ora-cap-title {
+  display: none;
+}
+
+.ora-cap-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ora-cap-label {
+  font-size: var(--font-ui-smaller, 12px);
+  color: var(--text-muted, #c8ccd8);
+}
+
+.ora-cap-required,
+.ora-cap-required-marker {
+  color: var(--text-accent, var(--accent, #8ab4ff));
+}
+
+.ora-cap-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--background-modifier-border, #44475a);
+  border-radius: 6px;
+  background: var(--background-primary, #1f2129);
+  color: var(--text-normal, #f8f8f2);
+  padding: 8px 9px;
+  font: inherit;
+}
+
+.ora-cap-input:focus {
+  outline: 2px solid var(--ora-vis-focus-ring, var(--accent, #0072B2));
+  outline-offset: 1px;
+}
+
+.ora-cap-input--textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.ora-capability-popover--large .ora-cap-input--textarea {
+  min-height: 150px;
+}
+
+.ora-cap-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ora-cap-btn,
+.ora-cap-runbtn,
+.ora-cap-image-ref__pick,
+.ora-cap-mask__refresh {
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border, #44475a);
+  background: var(--interactive-normal, #343746);
+  color: var(--text-normal, #f8f8f2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ora-cap-btn:hover,
+.ora-cap-runbtn:hover,
+.ora-cap-image-ref__pick:hover,
+.ora-cap-mask__refresh:hover {
+  background: var(--interactive-hover, #3c4052);
+}
+
+.ora-cap-btn[disabled],
+.ora-cap-runbtn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ora-cap-btn--primary,
+.ora-cap-runbtn {
+  border-color: var(--interactive-accent, var(--accent, #0072B2));
+  background: var(--interactive-accent, var(--accent, #0072B2));
+  color: var(--text-on-accent, #fff);
+}
+
+.ora-cap-hint,
+.ora-cap-error,
+.ora-cap-help,
+.ora-cap-summary,
+.ora-cap-status {
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.ora-cap-hint,
+.ora-cap-help,
+.ora-cap-summary,
+.ora-cap-status {
+  color: var(--text-muted, #c8ccd8);
+}
+
+.ora-cap-error {
+  color: var(--text-error, #ff6b6b);
 }

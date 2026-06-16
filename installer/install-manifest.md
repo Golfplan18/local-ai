@@ -1,12 +1,14 @@
 # Local AI First Boot — Installer Manifest
 
-*Orchestrated installer. Each layer is a separate file loaded and executed sequentially by the coding agent. Layers must execute in order within each phase. Phase 2 is conditional on the Hardware Evaluation Gate.*
+**Status as of 2026-06-16: legacy natural-language installer specification, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Installer — Ora.md` and `docs/install-guide.md`. This layer set is retained as architecture/specification material and is scheduled for a G3.32 reconciliation into a current natural-language installer.
 
-*Canonical source: ~/Documents/vault/Installer — Local AI First Boot.md*
+*Original shape: orchestrated installer. Each layer is a separate file loaded and executed sequentially by a coding agent. Layers must execute in order within each phase. Phase 2 is conditional on the Hardware Evaluation Gate.*
+
+*Current operational source: `scripts/install.py`; user-facing source: `~/Documents/vault/Installer — Ora.md`; architecture paper: `~/Documents/vault/Paper — Installer.md`.*
 
 ## How to Use
 
-Load this manifest into the coding agent. The agent reads each layer file in sequence, executes its instructions, verifies its output, and proceeds to the next layer only after verification passes. If a layer fails, the agent reports the failure and stops — it does not proceed to the next layer.
+Do not use this manifest to install Ora today. Use `python3 scripts/install.py --profile solo` for the desktop source install or `./scripts/install-server.sh` for a headless Linux/API-only server. This manifest is useful for understanding the intended layered architecture and for the future G3.32 natural-language installer update.
 
 Each layer file contains its own processing instructions, output format, and verification criteria.
 
@@ -31,9 +33,9 @@ Every reader executes Phase 1 regardless of hardware capability.
 | 5 | `phase1/layer5-api-key-framework.md` | API Key Framework | Install API key acquisition framework |
 | 6 | `phase1/layer6-universal-chat-server.md` | Universal Chat Server | Browser interface at localhost:5000 with agentic loop |
 
-**After Phase 1:** Reader has a working browser-based AI at localhost:5000 with tool execution. Cloud-API access (OpenRouter required; Anthropic / OpenAI / Google direct optional) is set up via API keys when the reader runs the API Key Setup Framework.
+**After Phase 1 in the original layered design:** Reader has a working browser-based AI at localhost:5000 with tool execution. In the live script, API keys are optional: OpenRouter is strongly recommended but not required, free models are rate-limited/sometimes unavailable, and direct provider APIs can be added later in Settings -> External APIs.
 
-**Deployment profiles (install Chunk 7):** the install script (`scripts/install.py`) prompts for a deployment profile at Step 2. **Solo** is the desktop single-user profile and is the only profile enabled today; **Hybrid** (MLX worker + small API worker pool) and **Organization** (pure API, scales to 20+ concurrent processes) are scaffolded but gated on the concurrency-architecture work landing. Server installs use a dedicated `scripts/install-server.sh` (API-only, single-process) as an interim path until the Organization profile lands.
+**Deployment profiles:** `scripts/install.py` reserves Solo, Hybrid, and Organization, but only **Solo** is supported today. **Hybrid** and **Organization** are future profiles gated on G1.27 network discovery and later concurrency validation. Server installs use a dedicated `scripts/install-server.sh` API-only path.
 
 ## Hardware Evaluation Gate
 

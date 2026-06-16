@@ -32,7 +32,7 @@ This is the **minimal viable** server install — it gets MSI's publication cycl
 
 This server installer uses **hard-coded slot picks** (set in `scripts/install_server_config.py`'s `SERVER_SLOT_ASSIGNMENTS`), so it does **not** require an Artificial Analysis API key — slot assignments are baked in rather than auto-populated.
 
-The Mac-side `scripts/install.py` does run the auto-populate engine and **does** need an `AA_API_KEY` to get sensible picks. Without it, the auto-populate algorithm falls through to pure cost-sort and picks the cheapest model per slot regardless of capability. If you ever switch this server install to auto-populate (e.g. when the full Chunk 7 Organization profile lands), you'll need to sign up at <https://artificialanalysis.ai/> and set `AA_API_KEY` in `~/.config/ora-server.env`.
+The desktop `scripts/install.py` also treats Artificial Analysis as optional. Its model-registry path uses public OpenRouter, LiteLLM, and Chatbot Arena data by default. An Artificial Analysis key can improve model-selector intelligence after install, but it is not an install gate. If you later switch this server install to auto-populate or a full Organization profile, treat AA as recommended rather than required unless the future script explicitly changes that contract.
 
 ## Install
 

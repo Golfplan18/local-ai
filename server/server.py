@@ -1104,11 +1104,16 @@ def settings_get():
     try:
         settings = _user_settings.load_settings()
         api_keys = _user_settings.list_api_key_status()
+        try:
+            groups = _user_settings.group_order()
+        except Exception:
+            groups = []
     except Exception as e:
         return _json_response({"error": str(e)}, status=500)
     return _json_response({
         "settings": settings,
         "api_keys": api_keys,
+        "provider_groups": groups,
         "providers": list(_user_settings.PROVIDER_LABELS.keys()),
     })
 
@@ -1165,6 +1170,118 @@ def settings_delete_api_key(provider):
     except Exception as e:
         return _json_response({"error": str(e)}, status=500)
     return _json_response({"provider": provider, "deleted": True})
+
+
+def _verify_provider_key(entry: dict, key: str):
+    """Make the cheapest authenticated call that proves a key works.
+
+    Returns ``(ok, message)`` where ok ∈ {True, False, None} (None = couldn't
+    determine / not implemented). Uses urllib only (no new deps). Every call
+    is free or negligible (auth probes / model lists / a single search), so
+    Verify never lands a surprise charge — image / TTS providers (whose only
+    auth proof costs a generation) are marked non-verifiable in the registry.
+    """
+    import urllib.request
+    import urllib.error
+    import json as _json
+
+    pid = entry["id"]
+    dispatch = entry.get("dispatch")
+    base = (entry.get("base_url") or "").rstrip("/")
+
+    def _get(url, headers):
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        with urllib.request.urlopen(req, timeout=12) as r:
+            return r.status
+
+    def _post(url, headers, body):
+        h = dict(headers); h["Content-Type"] = "application/json"
+        req = urllib.request.Request(
+            url, data=_json.dumps(body).encode(), headers=h, method="POST")
+        with urllib.request.urlopen(req, timeout=12) as r:
+            return r.status
+
+    try:
+        if pid == "openrouter":
+            _get("https://openrouter.ai/api/v1/key", {"Authorization": f"Bearer {key}"})
+        elif pid == "anthropic":
+            _get("https://api.anthropic.com/v1/models",
+                 {"x-api-key": key, "anthropic-version": "2023-06-01"})
+        elif pid == "gemini":
+            # Key via header, not the query string, so it can never land in
+            # an exception/URL string that round-trips to the browser.
+            _get("https://generativelanguage.googleapis.com/v1beta/models",
+                 {"x-goog-api-key": key})
+        elif pid == "openai" or dispatch == "openai_compatible":
+            if not base:
+                return None, "No base URL configured for this provider."
+            _get(f"{base}/models", {"Authorization": f"Bearer {key}"})
+        elif pid == "tavily":
+            _post("https://api.tavily.com/search", {},
+                  {"api_key": key, "query": "ping", "max_results": 1, "search_depth": "basic"})
+        elif pid == "brave":
+            _get("https://api.search.brave.com/res/v1/web/search?q=ping&count=1",
+                 {"X-Subscription-Token": key, "Accept": "application/json"})
+        elif pid == "exa":
+            _post("https://api.exa.ai/search", {"x-api-key": key},
+                  {"query": "ping", "numResults": 1})
+        elif pid == "artificial_analysis":
+            _get("https://artificialanalysis.ai/api/v2/data/llms/models",
+                 {"Authorization": f"Bearer {key}"})
+        elif pid == "fred":
+            _get(f"https://api.stlouisfed.org/fred/series?series_id=GNPCA"
+                 f"&api_key={key}&file_type=json", {})
+        else:
+            return None, "Verification isn't available for this provider."
+        return True, "Key works."
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return False, "Key was rejected (auth failed). Check the key, and that billing is active."
+        if e.code == 429:
+            return True, "Key is valid but rate-limited / over quota — check billing."
+        if e.code == 400 and pid == "gemini":
+            return False, "Key was rejected by Google. Double-check you copied it correctly."
+        return False, f"Verification failed (HTTP {e.code})."
+    except Exception as e:
+        # Scrub the key from the message — some urllib/http exceptions
+        # (e.g. InvalidURL on a key with a stray space) embed the full URL,
+        # which for FRED contains the key in the query string. Never let a
+        # secret round-trip back into the browser.
+        msg = str(e).replace(key, "***") if key else str(e)
+        return None, f"Couldn't reach the provider: {msg}"
+
+
+@app.route("/api/settings/api-key/verify", methods=["POST"])
+def settings_verify_api_key():
+    if not _HAS_USER_SETTINGS or _user_settings is None:
+        return _json_response({"error": "settings module unavailable"}, status=503)
+    payload = request.get_json(silent=True) or {}
+    provider = (payload.get("provider") or "").strip()
+    value = (payload.get("value") or "").strip()
+    if not provider:
+        return _json_response({"error": "provider required"}, status=400)
+    try:
+        import provider_registry as _reg
+        entry = _reg.by_id(provider)
+    except Exception:
+        entry = None
+    if not entry:
+        return _json_response({"error": f"unknown provider {provider!r}"}, status=400)
+    if not entry.get("verifiable"):
+        return _json_response({"ok": None,
+                               "message": "Verification isn't available for this provider."})
+    # A pasted value wins (verify-before-save); otherwise the stored key.
+    key = value
+    if not key:
+        try:
+            import keyring
+            key = keyring.get_password("ora", entry["keyring_username"]) or ""
+        except Exception:
+            key = ""
+    if not key:
+        return _json_response({"ok": False, "message": "No key to verify — save one first."})
+    ok, message = _verify_provider_key(entry, key)
+    return _json_response({"ok": ok, "message": message})
 
 
 # ── Audio/Video Phase 5 — timeline state endpoints ───────────────────────────
@@ -6643,7 +6760,7 @@ def capability_image_edits():
     """Dispatch the `image_edits` capability slot.
 
     Body JSON:
-      prompt (str), image_data_url (str), mask_data_url (str),
+      prompt (str | optional), image_data_url (str), mask_data_url (str),
       parent_image_id (str | optional), strength (float | optional),
       provider_override (str | optional).
 
@@ -6661,10 +6778,7 @@ def capability_image_edits():
 
     prompt = (data.get("prompt") or "").strip()
     if not prompt:
-        return Response(json.dumps({"error": {
-            "code": "missing_required_input",
-            "message": "image_edits requires a non-empty 'prompt'."
-        }}), status=400, mimetype="application/json")
+        prompt = "Fill the masked region naturally using the surrounding image context."
 
     try:
         image_bytes = _decode_data_url(data.get("image_data_url"), "image_data_url")
@@ -8408,6 +8522,43 @@ def model_registry_get():
             "stats": {"loaded": False},
         }, status=500)
 
+    # Vendor-catalogue-authoritative inventory (flag-gated, default off): when on
+    # and the preview registry exists, serve each keyed vendor's OWN catalogue
+    # (native ids) instead of its OpenRouter entries. Native entries carry
+    # dispatch="direct" → surface direct_dispatch so the pane paints the DIRECT chip.
+    try:
+        from orchestrator import vendor_catalog_registry as _vcr
+        from pathlib import Path as _P
+        _va = _P(__file__).resolve().parent.parent / "config" / "model-registry.vendor-authoritative.json"
+        if _vcr.enabled() and _va.exists():
+            import json as _vaj
+            registry = _vaj.loads(_va.read_text())
+            _va_models = registry.get("models") or {}
+            for _m in _va_models.values():
+                if isinstance(_m, dict) and _m.get("dispatch") == "direct":
+                    _m["direct_dispatch"] = True
+                    _m.setdefault("direct_service", _m.get("service") or _m.get("vendor"))
+                    # It's in the vendor's live /models, fetched with the key — reachable.
+                    _m.setdefault("reachable", True)
+                    _m.setdefault("category", "chat")
+            # stats must describe the SWAPPED inventory, not the OpenRouter one.
+            _vt = sum(1 for _e in _va_models.values() if _e.get("vision_capable") is True)
+            _vf = sum(1 for _e in _va_models.values() if _e.get("vision_capable") is False)
+            stats = {
+                "registry_path": "vendor-authoritative",
+                "loaded": len(_va_models) > 0,
+                "model_count": len(_va_models),
+                "vision_capable_true": _vt,
+                "vision_capable_false": _vf,
+                "vision_capable_null": len(_va_models) - _vt - _vf,
+                "intelligence_score_count": sum(
+                    1 for _e in _va_models.values() if _e.get("intelligence_score") is not None),
+                "generated_at": registry.get("generated_at"),
+                "last_probe_at": registry.get("last_probe_at"),
+            }
+    except Exception as _va_err:
+        print(f"[model-registry] vendor-authoritative inventory skipped: {_va_err}", flush=True)
+
     raw = request.args.get("categories", "chat")
     if raw.strip().lower() in ("all", "*"):
         wanted = None  # no filter
@@ -8583,6 +8734,10 @@ def model_registry_get():
 
     return _json_response({
         "models": filtered,
+        # Pre-inversion id → current native id, so the pane resolves saved
+        # config/preset picks instead of falsely marking them DEPRECATED.
+        # Empty {} on the base (flag-off) registry — harmless.
+        "aliases": registry.get("aliases") or {},
         "generated_at": registry.get("generated_at"),
         "last_probe_at": registry.get("last_probe_at"),
         "aa_source": registry.get("aa_source"),
@@ -8971,17 +9126,36 @@ def model_registry_refresh():
         # filter still guards picks until the next successful rebuild).
         if ok:
             if _run_refresh_step(summary, "catalog", "refresh-catalog.py", 120):
+                # Vendor-catalogue-authoritative build (PR-D, default on): fetch
+                # each keyed vendor's own /models and write the authoritative
+                # registry that both the endpoint sync (below) and the picker
+                # read. Must run after the catalog rebuild (it reads the
+                # OpenRouter+AA registry) and BEFORE the endpoint sync (which
+                # consumes its output). Gated so a flag-off install skips it.
+                try:
+                    from orchestrator import vendor_catalog_registry as _vcr_refresh
+                    _va_on = _vcr_refresh.enabled()
+                except Exception:
+                    _va_on = False
+                if _va_on:
+                    _run_refresh_step(
+                        summary, "vendor_authoritative",
+                        "build_vendor_authoritative_registry.py", 120)
                 # Register endpoints for every catalog model so the router
                 # can dispatch them (direct vendor API when the key exists,
-                # else OpenRouter). Before 2026-06-11 this script was
-                # manual-only, so newly cataloged models (e.g.
-                # anthropic/claude-opus-4.8) had no endpoint and silently
-                # fell through to fallbacks. Runs after the catalog rebuild
-                # because it reads the catalog; kept synchronous because the
-                # pane's immediate re-fetch paints DIRECT chips from the
-                # routing-config this writes.
+                # else OpenRouter). Runs after the catalog rebuild because it
+                # reads the catalog; kept synchronous because the pane's
+                # immediate re-fetch paints DIRECT chips from the routing-config
+                # this writes.
                 _run_refresh_step(
                     summary, "endpoints", "sync_endpoints_from_catalog.py", 60)
+                # De-duplicate to one canonical endpoint per model. sync_endpoints
+                # re-mints legacy/OpenRouter-form duplicates each run; this
+                # collapses them to the native canonical and repoints references
+                # (idempotent — a no-op once clean), so the cleanup is durable
+                # rather than reverted on the next refresh.
+                _run_refresh_step(
+                    summary, "dedupe", "dedupe_routing_endpoints.py", 60)
         # Force the in-process reader to re-read the new file
         try:
             from orchestrator import model_registry as mr
@@ -9955,7 +10129,109 @@ def capability_providers_get():
                 "kind": kind,
             })
         out[slot_name] = entries
+    # vision_input is special: the image-READING backstop is a vision-capable
+    # CHAT model (dispatched like any chat endpoint), not an image-gen provider,
+    # so its candidates come from the model registry + routing-config endpoints
+    # rather than the capability_registry's image integrations.
+    try:
+        out["vision_input"] = _vision_input_candidates()
+    except Exception as _vi_err:
+        print(f"[capability/providers] vision_input candidates skipped: {_vi_err}", flush=True)
+        out.setdefault("vision_input", [])
     return json.dumps({"slots": out})
+
+
+def _vision_input_candidates() -> list:
+    """Vision-capable chat ENDPOINTS for the vision_input capability slot
+    (Settings → Visual → Advanced routing).
+
+    The image-reading backstop RE-RUNS the analyst's task with the image (it
+    substitutes for a failed/blind analyst — it is not a captioner), so it needs
+    a CAPABLE model. The list is limited to the models the system registered as
+    "picks" (the union of primary/fallback ids across the baked presets/configs)
+    that are vision-capable — a curated cross-section of the best vision models,
+    instead of every vision endpoint. The currently configured preferred/fallback
+    are always included so a saved choice never drops off; if picks can't be
+    computed, falls back to the top vision endpoints by intelligence. Returns only
+    endpoints the router can actually dispatch, ranked smartest-first."""
+    from pathlib import Path as _P
+    base = _P(__file__).resolve().parent.parent / "config"
+    TOP_N = 40  # fallback cap when picks are unavailable
+    try:
+        rc = json.loads((base / "routing-config.json").read_text())
+        eps = {e.get("id"): e for e in rc.get("endpoints", []) if isinstance(e, dict)}
+    except Exception:
+        rc, eps = {}, {}
+    _vi = (rc.get("slots") or {}).get("vision_input") or {}
+    configured = set()
+    if isinstance(_vi, dict):
+        if isinstance(_vi.get("preferred"), str):
+            configured.add(_vi["preferred"])
+        configured.update(x for x in (_vi.get("fallback") or []) if isinstance(x, str))
+    reg, aliases = {}, {}
+    try:
+        _art = json.loads((base / "model-registry.vendor-authoritative.json").read_text())
+        reg = _art.get("models", {}) or {}
+        aliases = _art.get("aliases", {}) or {}
+    except Exception:
+        pass
+    if not reg:
+        try:
+            reg = json.loads((base / "model-registry.json").read_text()).get("models", {}) or {}
+        except Exception:
+            pass
+    # The system's PICKS, resolved to NATIVE registry ids. compute_picks
+    # harvests config-form ids (e.g. anthropic/claude-opus-4.5); the alias map
+    # maps those to the current native id. Sourcing candidates from the native
+    # registry (not the raw routing-config endpoints) keeps the list clean —
+    # routing-config still carries legacy/duplicate + subscription + image-gen
+    # endpoints that would otherwise double up or leak non-chat entries in.
+    pick_native = set()
+    try:
+        from orchestrator import model_registry as _mr
+        for p in (_mr.compute_picks().get("picks") or []):
+            if p in reg:
+                pick_native.add(p)
+            elif aliases.get(p) in reg:
+                pick_native.add(aliases[p])
+    except Exception as _pk_err:
+        print(f"[vision_input] picks unavailable ({_pk_err}); using top-by-intelligence", flush=True)
+
+    def _vision_models(restrict):
+        out = []
+        for nid, r in reg.items():
+            if restrict is not None and nid not in restrict:
+                continue
+            if r.get("vision_capable") is not True:
+                continue
+            if nid not in eps:               # must be a dispatchable endpoint
+                continue
+            intel = r.get("aa_intelligence_index")
+            out.append({
+                "provider_id": nid,
+                "display_name": (eps[nid].get("display_name")
+                                 or r.get("display_name") or nid),
+                "available": True,
+                "reason": "",
+                "kind": "api",
+                "_intel": intel if intel is not None else -1.0,
+            })
+        out.sort(key=lambda c: c["_intel"], reverse=True)
+        return out
+
+    configured_in_reg = {c for c in configured if c in reg}
+    if pick_native:
+        cands = _vision_models(pick_native | configured_in_reg)
+    else:
+        # No picks (compute failed) — fall back to the top vision models.
+        cands = _vision_models(None)[:TOP_N]
+        have = {c["provider_id"] for c in cands}
+        for c in _vision_models(configured_in_reg):
+            if c["provider_id"] not in have:
+                cands.append(c)
+    for c in cands:
+        c.pop("_intel", None)
+    return cands
 
 
 # ── WP-6.1 — Vault export ────────────────────────────────────────────────────

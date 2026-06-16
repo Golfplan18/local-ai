@@ -362,6 +362,7 @@
         '<div class="visual-panel__konva" id="vp-konva-' + id + '"></div>' +
         '<div class="visual-panel__drop-hint" id="vp-drop-hint-' + id + '" aria-hidden="true">Drop image to attach</div>' +
       '</div>' +
+      '<button type="button" class="visual-panel__help-button" id="vp-help-' + id + '" aria-label="Show visual pane tools" title="Show visual pane tools">?</button>' +
       '<div class="visual-panel__errorbar" id="vp-errorbar-' + id + '" hidden></div>' +
       '<div class="visual-panel__zoom-indicator" id="vp-zoom-' + id + '" aria-hidden="true">100%</div>' +
       '<div class="visual-panel__annotation-hint" id="vp-annot-hint-' + id + '" role="status" aria-live="polite" hidden></div>' +
@@ -378,6 +379,7 @@
     this._konvaEl     = this.el.querySelector('#vp-konva-' + id);
     this._errorBar    = this.el.querySelector('#vp-errorbar-' + id);
     this._zoomInd     = this.el.querySelector('#vp-zoom-' + id);
+    this._helpBtn     = this.el.querySelector('#vp-help-' + id);
     this._fallbackEl  = this.el.querySelector('#vp-fallback-' + id);
     this._annotHintEl = this.el.querySelector('#vp-annot-hint-' + id);
 
@@ -386,6 +388,18 @@
     this._cameraInputEl  = this.el.querySelector('#vp-camera-input-' + id);
     this._dropHintEl     = this.el.querySelector('#vp-drop-hint-' + id);
     this._imageIndicator = this.el.querySelector('#vp-image-indicator-' + id);
+    if (this._helpBtn) {
+      var helpPanel = this;
+      this._helpBtn.addEventListener('click', function (e) {
+        var Selector = window.OraV3ToolbarSelector;
+        if (Selector && typeof Selector.toggle === 'function') {
+          Selector.toggle(helpPanel._helpBtn, helpPanel);
+        } else if (helpPanel._showErrorBar) {
+          helpPanel._showErrorBar('Visual pane tools are still loading.');
+        }
+        e.stopPropagation();
+      });
+    }
 
     // Wire toolbar (event delegation on the toolbar root — one listener)
     var self = this;
@@ -2267,6 +2281,37 @@
     // Keeping the bindings here (instead of in OraVisualToolbar) keeps the
     // toolbar module reusable across panels with different action surfaces.
     var panel = this;
+    var openCapability = function (slot, e) {
+      var Packs = (typeof window !== 'undefined' && window.OraV3PackToolbars) || null;
+      if (!Packs || typeof Packs.openCapabilityPopover !== 'function') {
+        if (panel._showErrorBar) panel._showErrorBar('Image tools are still loading.');
+        return;
+      }
+      var anchor = (e && (e.currentTarget || e.target)) || null;
+      Packs.openCapabilityPopover(slot, anchor, panel);
+    };
+    var hasImage = function () {
+      var layer = panel && panel.userInputLayer;
+      if (layer && typeof layer.getChildren === 'function') {
+        var kids = layer.getChildren();
+        for (var i = 0; i < kids.length; i++) {
+          var n = kids[i];
+          var name = (n && typeof n.getClassName === 'function') ? n.getClassName() : (n && n.className);
+          if (name === 'Image') return true;
+        }
+      }
+      return !!(panel && panel._backgroundImageNode);
+    };
+    var hasMask = function () {
+      try {
+        var Edits = (typeof window !== 'undefined' && window.OraImageEdits) || null;
+        if (Edits && typeof Edits.makeContextProvider === 'function') {
+          var ctx = Edits.makeContextProvider(panel)();
+          return !!(ctx && (ctx.hasMask || ctx.maskRef));
+        }
+      } catch (e) { /* fall through */ }
+      return false;
+    };
     var actionRegistry = {
       'tool:select':            function () { panel.setActiveTool('select'); },
       'tool:pan':               function () { panel._spaceHeld = true; panel._applyCursor && panel._applyCursor(); },
@@ -2291,6 +2336,10 @@
       'tool:save':              function () { if (panel.saveCanvas) panel.saveCanvas(); },
       'tool:export':            function () { if (panel.exportCanvas) panel.exportCanvas(); },
       'tool:clear':             function () { if (panel.clearArtifact) panel.clearArtifact(); },
+      'capability:image_generates': function (item, ctx, e) { openCapability('image_generates', e); },
+      'capability:image_edits':     function (item, ctx, e) { openCapability('image_edits', e); },
+      'tool:generate_image':        function (item, ctx, e) { openCapability('image_generates', e); },
+      'tool:fill_selection':        function (item, ctx, e) { openCapability('image_edits', e); },
       // Resize / crop bindings: WP-7.1.1 stub-handler contract — clicking
       // surfaces "binding coming with WP-7.X.Y". Leaving them undefined here
       // routes through OraVisualToolbar's `onStub` callback.
@@ -2348,6 +2397,16 @@
                      (panel.userInputLayer && panel.userInputLayer.children &&
                       panel.userInputLayer.children.length > 0));
         return { enabled: has, reason: has ? null : 'Canvas is empty' };
+      },
+      'image_present': function () {
+        var has = hasImage();
+        return { enabled: has, reason: has ? null : 'Add an image first' };
+      },
+      'image_present_and_mask': function () {
+        var img = hasImage();
+        if (!img) return { enabled: false, reason: 'Add an image first' };
+        var mask = hasMask();
+        return { enabled: mask, reason: mask ? null : 'Select an area to fill first' };
       },
       // Phase 6 follow-up — enable the "send to media library" toolbar
       // button only when the canvas has a Konva.Image we can dispatch.

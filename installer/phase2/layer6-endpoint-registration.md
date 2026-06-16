@@ -1,5 +1,7 @@
 ### PHASE 2, LAYER 6: LOCAL ENDPOINT REGISTRATION AND ROUTING VERIFICATION
 
+**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+
 **Stage Focus**: Register the local model endpoint in the Phase 1 chat server and verify that the server routes to it correctly. The chat server (`[workspace]/server/server.py`) was installed in Phase 1, Layer 7. This layer does not regenerate it.
 
 ### Processing Instructions
@@ -54,4 +56,3 @@ Tool execution test: [PASS / FAIL]
 ```
 
 ---
-

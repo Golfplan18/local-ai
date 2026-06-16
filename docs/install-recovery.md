@@ -86,7 +86,7 @@ Network issue. Check:
 curl -I https://openrouter.ai/api/v1/models
 ```
 
-If that fails too, you've got a connectivity problem (DNS, firewall, VPN). Fix the network and re-run.
+If that fails too, you've got a connectivity problem (DNS, firewall, VPN). Fix the network and re-run. The catalog endpoint does not require an API key.
 
 #### "Write permission denied at /Users/.../ora"
 
@@ -103,68 +103,56 @@ chown -R "$USER:$USER" ~/ora               # Linux
 
 If you pass `--profile hybrid` or `--profile organization`, the installer exits with:
 
-> Unknown profile 'hybrid'; expected one of ['solo']
+> Profile 'hybrid' is reserved for future Ora installs, not supported today.
 
-Hybrid and Organization profiles are scaffolded in `DEPLOYMENT_PROFILES` but explicitly disabled pending the concurrency-architecture work landing. Use `--profile solo` for the Mac install. For server installs, use `scripts/install-server.sh` instead.
+Hybrid and Organization profiles are reserved in `DEPLOYMENT_PROFILES` but disabled pending network-discovery and concurrency validation. Use `--profile solo` for the desktop install. For server installs, use `scripts/install-server.sh` instead.
 
-### Step 3 — OpenRouter API key setup
+### Step 3 — Catalog refresh
 
-#### "Continuing without OpenRouter key — catalog refresh will fail at Step 4"
+#### "Catalog refresh failed"
 
-Set `OPENROUTER_API_KEY` in your environment and re-run:
+The desktop installer fetches the public OpenRouter model list. This step does not require `OPENROUTER_API_KEY`.
 
-```bash
-export OPENROUTER_API_KEY=sk-or-xxxxxxxxxxxxxxxxxxxx
-python3 scripts/install.py --profile solo
-```
+Common causes:
 
-Add the export to `~/.zshrc` or `~/.bashrc` so it persists across shells.
-
-### Step 4 — Catalog refresh
-
-#### "AA_API_KEY is NOT set in your environment"
-
-The installer pauses here. You have two choices:
-
-**Option A — set the key and re-run** (recommended):
-1. Ctrl-C to abort
-2. Sign up at <https://artificialanalysis.ai/>, grab a key
-3. `export AA_API_KEY=aa_xxxxxxxxxxxxxxxxxxxx`
-4. Re-run the installer
-
-**Option B — proceed without** (will need cleanup later):
-1. Press Enter at the pause prompt
-2. Install completes with auto-populate using cost-only ranking (cheapest models per slot)
-3. Later, get the AA key and run:
-   ```bash
-   export AA_API_KEY=aa_xxxxxxxxxxxxxxxxxxxx
-   python3 scripts/refresh-catalog.py
-   python3 scripts/auto-populate-configuration.py optimum user-pipeline
-   ```
-   This rebuilds the catalog with intelligence rankings and refreshes the slot picks.
+- OpenRouter catalog outage or rate limit. Wait a minute and re-run.
+- Network, DNS, firewall, or VPN issue. Confirm `curl -I https://openrouter.ai/api/v1/models` works.
+- A local Python dependency error. Read the stderr and install the missing package if one is named.
 
 #### "Catalog refresh failed (exit N)"
 
 The refresh subprocess errored. Look at the stderr in the installer output. Common causes:
 
-- **OpenRouter rate limit.** Wait 60 seconds and re-run.
+- **OpenRouter catalog rate limit.** Wait 60 seconds and re-run.
 - **Network blip.** Re-run.
-- **AA key invalid.** Re-export the key carefully (watch for trailing spaces, wrong key copied), then re-run.
+- **Python dependency/import error.** Install the missing dependency or use the same Python binary the installer uses.
 
 #### "Catalog refresh timed out after 120s"
 
-Slow network or AA endpoint hiccup. Re-run; if it times out twice in a row, run the refresh directly to see the actual error:
+Slow network or upstream catalog hiccup. Re-run; if it times out twice in a row, run the refresh directly to see the actual error:
 
 ```bash
 cd ~/ora
 python3 scripts/refresh-catalog.py
 ```
 
+### Step 4 — Model registry sync
+
+#### "Registry sync failed"
+
+Registry sync is non-fatal. The installer logs a warning and proceeds with routing-config capability fallback. Re-run later with:
+
+```bash
+python3 scripts/sync_model_registry.py sync
+```
+
+Artificial Analysis is optional. The install path uses public Chatbot Arena/OpenRouter/LiteLLM data by default; an AA key can improve model-selector data after install but is not required.
+
 ### Step 5 — Auto-populate
 
 #### "Auto-populate failed"
 
-The most common cause: the catalog from Step 4 is empty or malformed. Verify:
+The most common cause: the catalog from Step 3 is empty or malformed. Verify:
 
 ```bash
 python3 -c "import json; c = json.load(open('config/model-catalog.json')); print('models:', len(c.get('models', [])))"
@@ -188,7 +176,7 @@ cat config/configurations/user-pipeline.json
 
 #### "Smoke test failed"
 
-The installer auto-populates a Free configuration and sends one test prompt. Failure means routing isn't working end-to-end. Diagnose:
+The installer auto-populates a Free configuration. If an OpenRouter key is present in env or keyring, it sends one tiny live test prompt. Without a key, it validates the configuration and skips the live round-trip.
 
 ```bash
 cd ~/ora
@@ -206,6 +194,23 @@ print(invoke_chat(
 If that returns a string, slot routing works and the smoke-test failure was probably a one-off. Re-run the installer.
 
 If it errors, the error message points at the problem (missing model, invalid key, network).
+
+#### "OpenRouter rejected the key"
+
+The key exists but failed authentication. Update it in Settings -> External APIs or export a known-good key:
+
+```bash
+export OPENROUTER_API_KEY=sk-or-xxxxxxxxxxxxxxxxxxxx
+python3 scripts/install.py --profile solo --resume
+```
+
+#### "Free models are rate-limited and sometimes unavailable"
+
+That message is not an install failure. The configuration passed, but the live free-model test did not complete. Add OpenRouter credits/payment or direct provider keys for reliable daily model access.
+
+### Step 7 — External APIs orientation
+
+This step is informational. If a browser page fails to open automatically, copy the link from the log and paste it into your browser. You can also skip it and add keys later in Settings -> External APIs.
 
 ---
 
