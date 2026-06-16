@@ -11,7 +11,10 @@
     '/sidebar',
     '/frameworks',
     '/modes',
+    '/mode',
     '/analyses',
+    '/analysis',
+    '/review',
     '/settings',
     '/visual',
     '/canvas',
@@ -44,6 +47,8 @@
       models: 'models',
       shortcuts: 'shortcuts',
       shortcut: 'shortcuts',
+      project: 'projects',
+      projects: 'projects',
       keys: 'apis',
       visual: 'visual',
       interface: 'interface',
@@ -74,6 +79,53 @@
     return true;
   };
 
+  const _normaliseToken = (value) => (value || '')
+    .toLowerCase()
+    .replace(/\.md$/, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  const _frameworkAlias = (value) => {
+    const v = _normaliseToken(value);
+    const aliases = {
+      cff: 'corpus-formalization',
+      pff: 'process-formalization',
+      off: 'output-formalization',
+    };
+    return aliases[v] || v;
+  };
+
+  const _stageFramework = (target) => {
+    const wanted = _frameworkAlias(target);
+    if (!wanted) return _openFrameworks();
+    fetch('/api/frameworks/picker')
+      .then((res) => res.ok ? res.json() : { frameworks: [] })
+      .then((payload) => {
+        const rows = Array.isArray(payload && payload.frameworks)
+          ? payload.frameworks : [];
+        const match = rows.find((fw) => {
+          const id = _normaliseToken(fw.id);
+          const name = _normaliseToken(fw.display_name);
+          return id === wanted || name === wanted;
+        });
+        if (!match) {
+          window.alert(`No framework named "${target}".`);
+          _openFrameworks();
+          return;
+        }
+        if (window.OraInputState && typeof window.OraInputState.setFramework === 'function') {
+          window.OraInputState.setFramework(match);
+        }
+        if (window.OraFrameworkPicker && typeof window.OraFrameworkPicker.close === 'function') {
+          window.OraFrameworkPicker.close();
+        }
+      })
+      .catch(() => {
+        window.alert('Could not load frameworks.');
+      });
+    return true;
+  };
+
   const _openModes = () => {
     if (window.OraAnalysisPicker && typeof window.OraAnalysisPicker.open === 'function') {
       window.OraAnalysisPicker.open();
@@ -83,12 +135,56 @@
     return true;
   };
 
+  const _stageMode = (target) => {
+    const wanted = _normaliseToken(target);
+    if (!wanted) return _openModes();
+    fetch('/api/analyses/picker')
+      .then((res) => res.ok ? res.json() : { modes: [] })
+      .then((payload) => {
+        const rows = Array.isArray(payload && payload.modes) ? payload.modes : [];
+        const match = rows.find((mode) => {
+          const id = _normaliseToken(mode.id);
+          const name = _normaliseToken(mode.display_name);
+          const educational = _normaliseToken(mode.educational_name);
+          return id === wanted || name === wanted || educational === wanted;
+        });
+        if (!match) {
+          window.alert(`No analysis mode named "${target}".`);
+          _openModes();
+          return;
+        }
+        if (window.OraInputState && typeof window.OraInputState.setAnalysisMode === 'function') {
+          window.OraInputState.setAnalysisMode(match);
+        }
+        if (window.OraAnalysisPicker && typeof window.OraAnalysisPicker.close === 'function') {
+          window.OraAnalysisPicker.close();
+        }
+      })
+      .catch(() => {
+        window.alert('Could not load analysis modes.');
+      });
+    return true;
+  };
+
   const _openSettings = (tab) => {
     if (!window.OraSettingsPanel || typeof window.OraSettingsPanel.open !== 'function') {
       return false;
     }
     window.OraSettingsPanel.open({ tab: _tabAlias(tab) });
     return true;
+  };
+
+  const _openReviewQueue = () => {
+    if (window.OraReviewQueuePanel && typeof window.OraReviewQueuePanel.open === 'function') {
+      window.OraReviewQueuePanel.open({ tab: 'paused' });
+      return true;
+    }
+    const btn = document.getElementById('sidebarReviewQueueOpen');
+    if (btn) {
+      btn.click();
+      return true;
+    }
+    return false;
   };
 
   const _setVideo = (mode) => {
@@ -149,8 +245,12 @@
       return true;
     }
     if (parsed.command === '/sidebar') return _setSidebar(parsed.args[0]);
-    if (parsed.command === '/frameworks') return _openFrameworks();
-    if (parsed.command === '/modes' || parsed.command === '/analyses') return _openModes();
+    if (parsed.command === '/frameworks') return _stageFramework(parsed.rest);
+    if (parsed.command === '/modes' || parsed.command === '/mode'
+        || parsed.command === '/analyses' || parsed.command === '/analysis') {
+      return _stageMode(parsed.rest);
+    }
+    if (parsed.command === '/review') return _openReviewQueue();
     if (parsed.command === '/settings') return _openSettings(parsed.args[0]);
     if (parsed.command === '/visual' || parsed.command === '/canvas') return _showVisualCanvas();
     if (parsed.command === '/video') return _setVideo(parsed.args[0]);

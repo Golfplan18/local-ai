@@ -229,6 +229,7 @@
 
 <script src="/static/js/sidebar.js" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
+<script src="/static/js/review-queue-panel.js" defer></script>
 <script src="/static/js/v3-layout.js" defer></script>
 <script src="/static/js/tooltip.js" defer></script>
 <script src="/static/js/v3-bootstrap.js" defer></script>
@@ -410,6 +411,10 @@
                   data-count="0">0</span>
           </button>
           <div class="sidebar-supergroup-body">
+            <div class="sidebar-processes-toolbar">
+              <button class="sidebar-processes-open" id="sidebarReviewQueueOpen"
+                      type="button">Open review queue</button>
+            </div>
             <div class="sidebar-groups">
               <!-- Paused: queue entries waiting on user resolution. Mirrors
                    the Pinned/Unread/Active inner-group pattern used by

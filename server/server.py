@@ -3064,6 +3064,120 @@ def slash_commands_registry():
     return json.dumps(registry_payload()), 200, {"Content-Type": "application/json"}
 
 
+def _project_summary(project) -> dict:
+    """Serialize a project-registry Project for browser management UI."""
+    tools = [
+        {
+            "name": t.name,
+            "description": t.description,
+            "interface": t.interface,
+        }
+        for t in sorted((project.tools or {}).values(), key=lambda x: x.name)
+    ]
+    slash_commands = [
+        {
+            "name": c.name,
+            "command": "/" + c.name,
+            "description": c.description,
+            "interface": c.interface,
+        }
+        for c in sorted((project.slash_commands or {}).values(), key=lambda x: x.name)
+    ]
+    capability_slots = sorted((project.capability_slots or {}).keys())
+    themes = [
+        {"id": theme.id, "name": theme.name, "directory": theme.directory}
+        for theme in sorted((project.themes or {}).values(), key=lambda x: x.id)
+    ]
+    framework_configurations = [
+        {
+            "framework": fc.framework,
+            "profile_name": fc.profile_name,
+            "overlays": [
+                {
+                    "extension_point": ov.extension_point,
+                    "file": ov.file,
+                }
+                for ov in (fc.overlays or [])
+            ],
+        }
+        for fc in (project.framework_configurations or [])
+    ]
+    framework_configurations.sort(
+        key=lambda x: (x["framework"], x["profile_name"]),
+    )
+    return {
+        "nexus": project.nexus,
+        "name": project.name,
+        "version": project.version,
+        "description": project.description,
+        "root": str(project.root),
+        "tools": tools,
+        "slash_commands": slash_commands,
+        "frameworks": sorted(project.frameworks or []),
+        "peds": sorted(project.peds or []),
+        "workflow_specs": sorted(project.workflow_specs or []),
+        "chromadb_collections": sorted(project.chromadb_collections or []),
+        "capability_slots": capability_slots,
+        "themes": themes,
+        "framework_configurations": framework_configurations,
+        "counts": {
+            "tools": len(tools),
+            "slash_commands": len(slash_commands),
+            "frameworks": len(project.frameworks or []),
+            "peds": len(project.peds or []),
+            "workflow_specs": len(project.workflow_specs or []),
+            "chromadb_collections": len(project.chromadb_collections or []),
+            "capability_slots": len(capability_slots),
+            "themes": len(themes),
+            "framework_configurations": len(framework_configurations),
+        },
+    }
+
+
+@app.route("/api/projects", methods=["GET"])
+def api_projects_list():
+    """Return registered Ora project plugins and their exposed surfaces."""
+    try:
+        from orchestrator import project_registry as _pr
+        projects = _pr.list_projects()
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc), "projects": []}, 503)
+    return _json_response({
+        "ok": True,
+        "projects": [_project_summary(p) for p in projects],
+    })
+
+
+@app.route("/api/projects/register", methods=["POST"])
+def api_projects_register():
+    """Register a project plugin by root path. Body: {"root": "..."}."""
+    try:
+        from orchestrator import project_registry as _pr
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    root = (data.get("root") or data.get("path") or "").strip()
+    if not root:
+        return _json_response({"ok": False, "error": "root is required"}, 400)
+    try:
+        project = _pr.register_project(root)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
+    return _json_response({"ok": True, "project": _project_summary(project)})
+
+
+@app.route("/api/projects/<nexus>/unregister", methods=["POST", "DELETE"])
+def api_projects_unregister(nexus):
+    """Unregister a project plugin pointer by nexus."""
+    try:
+        from orchestrator import project_registry as _pr
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    if _pr.unregister_project(nexus):
+        return _json_response({"ok": True})
+    return _json_response({"ok": False, "error": "project not registered"}, 404)
+
+
 @app.route("/api/analyses/picker", methods=["GET"])
 def analyses_picker():
     """V3 Analyses picker: executable modes only.

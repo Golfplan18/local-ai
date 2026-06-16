@@ -41,6 +41,7 @@
   var TABS = [
     { id: 'models',         label: 'Models' },
     { id: 'visual',         label: 'Visual' },
+    { id: 'projects',       label: 'Projects' },
     { id: 'transcription',  label: 'Transcription' },
     { id: 'speech',         label: 'Speech' },
     { id: 'interface',      label: 'Interface' },
@@ -152,6 +153,7 @@
     // retired (see the TABS comment above).
     if (_activeTab === 'models')  { _renderModelsPane();      return; }
     if (_activeTab === 'visual')  { _renderVisualSlotsPane(); return; }
+    if (_activeTab === 'projects') { _renderProjectsTab();    return; }
     if (!_settings) {
       _tabContentEl.textContent = 'Loading…';
       return;
@@ -266,6 +268,255 @@
       host.textContent = 'Could not load visual routing: '
         + ((err && err.message) || 'unknown error');
     }
+  }
+
+  // ── Projects tab ────────────────────────────────────────────────────────
+  // Project plugins are discovered by project_registry through pointer files
+  // in ~/ora/data/projects/. The tab is a management surface over that
+  // existing runtime registry; it does not copy project files into Ora.
+
+  function _renderProjectsTab() {
+    _tabContentEl.innerHTML = '';
+
+    var pane = document.createElement('div');
+    pane.className = 'ora-settings-projects';
+    _tabContentEl.appendChild(pane);
+
+    var toolbar = document.createElement('div');
+    toolbar.className = 'ora-settings-projects-toolbar';
+    pane.appendChild(toolbar);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'ora-settings-projects-path';
+    input.placeholder = '~/path/to/project';
+    toolbar.appendChild(input);
+
+    var registerBtn = document.createElement('button');
+    registerBtn.type = 'button';
+    registerBtn.className = 'ora-settings-btn ora-settings-btn--primary';
+    registerBtn.textContent = 'Register';
+    toolbar.appendChild(registerBtn);
+
+    var refreshBtn = document.createElement('button');
+    refreshBtn.type = 'button';
+    refreshBtn.className = 'ora-settings-btn';
+    refreshBtn.textContent = 'Refresh';
+    toolbar.appendChild(refreshBtn);
+
+    var status = document.createElement('div');
+    status.className = 'ora-settings-projects-status';
+    pane.appendChild(status);
+
+    var list = document.createElement('div');
+    list.className = 'ora-settings-projects-list';
+    pane.appendChild(list);
+
+    function setLocalStatus(text, kind) {
+      status.textContent = text || '';
+      status.className = 'ora-settings-projects-status'
+        + (kind ? ' ora-settings-projects-status--' + kind : '');
+    }
+
+    function refreshProjects() {
+      list.textContent = 'Loading...';
+      setLocalStatus('');
+      return fetch('/api/projects')
+        .then(function (r) { return r.json().then(function (data) {
+          return { ok: r.ok, data: data };
+        }); })
+        .then(function (res) {
+          if (!res.ok || !res.data || res.data.ok === false) {
+            throw new Error((res.data && res.data.error) || 'Project list failed');
+          }
+          renderProjectList(list, res.data.projects || [], setLocalStatus, refreshProjects);
+        })
+        .catch(function (err) {
+          list.innerHTML = '';
+          setLocalStatus(err.message || String(err), 'error');
+        });
+    }
+
+    registerBtn.addEventListener('click', function () {
+      var root = (input.value || '').trim();
+      if (!root) {
+        setLocalStatus('Enter a project root path.', 'error');
+        return;
+      }
+      registerBtn.disabled = true;
+      setLocalStatus('Registering...');
+      fetch('/api/projects/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ root: root }),
+      })
+        .then(function (r) { return r.json().then(function (data) {
+          return { ok: r.ok, data: data };
+        }); })
+        .then(function (res) {
+          if (!res.ok || !res.data || res.data.ok === false) {
+            throw new Error((res.data && res.data.error) || 'Registration failed');
+          }
+          input.value = '';
+          setLocalStatus('Project registered.', 'success');
+          return refreshProjects();
+        })
+        .catch(function (err) {
+          setLocalStatus(err.message || String(err), 'error');
+        })
+        .finally(function () {
+          registerBtn.disabled = false;
+        });
+    });
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        registerBtn.click();
+      }
+    });
+    refreshBtn.addEventListener('click', refreshProjects);
+    refreshProjects();
+  }
+
+  function renderProjectList(container, projects, setLocalStatus, refreshProjects) {
+    container.innerHTML = '';
+    if (!projects.length) {
+      var empty = document.createElement('div');
+      empty.className = 'ora-settings-projects-empty';
+      empty.textContent = 'No projects registered.';
+      container.appendChild(empty);
+      return;
+    }
+    projects.forEach(function (project) {
+      container.appendChild(buildProjectCard(project, setLocalStatus, refreshProjects));
+    });
+  }
+
+  function buildProjectCard(project, setLocalStatus, refreshProjects) {
+    var card = document.createElement('section');
+    card.className = 'ora-settings-project-card';
+
+    var head = document.createElement('div');
+    head.className = 'ora-settings-project-head';
+    card.appendChild(head);
+
+    var titleWrap = document.createElement('div');
+    titleWrap.className = 'ora-settings-project-title-wrap';
+    head.appendChild(titleWrap);
+
+    var title = document.createElement('h3');
+    title.className = 'ora-settings-project-title';
+    title.textContent = project.name || project.nexus || 'Project';
+    titleWrap.appendChild(title);
+
+    var meta = document.createElement('div');
+    meta.className = 'ora-settings-project-meta';
+    meta.textContent = (project.nexus || '') + (project.version ? ' · v' + project.version : '');
+    titleWrap.appendChild(meta);
+
+    var unregisterBtn = document.createElement('button');
+    unregisterBtn.type = 'button';
+    unregisterBtn.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--danger';
+    unregisterBtn.textContent = 'Unregister';
+    unregisterBtn.addEventListener('click', function () {
+      if (!window.confirm('Unregister "' + (project.name || project.nexus) + '" from Ora?')) return;
+      unregisterBtn.disabled = true;
+      fetch('/api/projects/' + encodeURIComponent(project.nexus) + '/unregister', {
+        method: 'POST',
+      })
+        .then(function (r) { return r.json().then(function (data) {
+          return { ok: r.ok, data: data };
+        }); })
+        .then(function (res) {
+          if (!res.ok || !res.data || res.data.ok === false) {
+            throw new Error((res.data && res.data.error) || 'Unregister failed');
+          }
+          setLocalStatus('Project unregistered.', 'success');
+          return refreshProjects();
+        })
+        .catch(function (err) {
+          setLocalStatus(err.message || String(err), 'error');
+        })
+        .finally(function () {
+          unregisterBtn.disabled = false;
+        });
+    });
+    head.appendChild(unregisterBtn);
+
+    if (project.description) {
+      var desc = document.createElement('p');
+      desc.className = 'ora-settings-project-desc';
+      desc.textContent = project.description;
+      card.appendChild(desc);
+    }
+
+    var root = document.createElement('div');
+    root.className = 'ora-settings-project-root';
+    root.textContent = project.root || '';
+    card.appendChild(root);
+
+    var chips = document.createElement('div');
+    chips.className = 'ora-settings-project-chips';
+    var counts = project.counts || {};
+    [
+      ['Tools', counts.tools],
+      ['Commands', counts.slash_commands],
+      ['Frameworks', counts.frameworks],
+      ['PEDs', counts.peds],
+      ['Workflows', counts.workflow_specs],
+      ['Capabilities', counts.capability_slots],
+      ['Themes', counts.themes],
+      ['Configs', counts.framework_configurations],
+    ].forEach(function (pair) {
+      if (!pair[1]) return;
+      var chip = document.createElement('span');
+      chip.className = 'ora-settings-project-chip';
+      chip.textContent = pair[0] + ': ' + pair[1];
+      chips.appendChild(chip);
+    });
+    card.appendChild(chips);
+
+    appendProjectDetailGroup(card, 'Slash commands',
+      (project.slash_commands || []).map(function (c) {
+        return (c.command || '/' + c.name) + (c.description ? ' - ' + c.description : '');
+      }));
+    appendProjectDetailGroup(card, 'Tools',
+      (project.tools || []).map(function (t) {
+        return t.name + (t.description ? ' - ' + t.description : '');
+      }));
+    appendProjectDetailGroup(card, 'Framework configurations',
+      (project.framework_configurations || []).map(function (fc) {
+        return fc.framework + ' / ' + fc.profile_name;
+      }));
+    appendProjectDetailGroup(card, 'Collections',
+      project.chromadb_collections || []);
+
+    return card;
+  }
+
+  function appendProjectDetailGroup(card, labelText, items) {
+    if (!items || !items.length) return;
+    var group = document.createElement('div');
+    group.className = 'ora-settings-project-detail-group';
+    var label = document.createElement('div');
+    label.className = 'ora-settings-project-detail-label';
+    label.textContent = labelText;
+    group.appendChild(label);
+    var list = document.createElement('ul');
+    list.className = 'ora-settings-project-detail-list';
+    items.slice(0, 8).forEach(function (item) {
+      var li = document.createElement('li');
+      li.textContent = item;
+      list.appendChild(li);
+    });
+    if (items.length > 8) {
+      var liMore = document.createElement('li');
+      liMore.textContent = '+' + (items.length - 8) + ' more';
+      list.appendChild(liMore);
+    }
+    group.appendChild(list);
+    card.appendChild(group);
   }
 
   // ── tabs ─────────────────────────────────────────────────────────────────

@@ -103,7 +103,10 @@ class TestIsRuntimeCommand(unittest.TestCase):
         self.assertFalse(is_runtime_command("/foo"))
 
     def test_browser_only_commands_not_runtime_commands(self):
-        for cmd in ["/new", "/sidebar", "/frameworks", "/modes", "/settings", "/image"]:
+        for cmd in [
+            "/new", "/sidebar", "/frameworks", "/modes", "/mode",
+            "/settings", "/review", "/image",
+        ]:
             self.assertFalse(is_runtime_command(cmd), cmd)
 
     def test_rejects_plain_text(self):
@@ -461,6 +464,7 @@ class TestSlashCommandRegistry(unittest.TestCase):
         self.assertIn("/framework", commands)
         self.assertIn("/settings", commands)
         self.assertIn("/maintenance", commands)
+        self.assertIn("/review", commands)
 
     def test_runtime_names_include_server_aliases_only(self):
         names = runtime_command_names()
@@ -468,10 +472,10 @@ class TestSlashCommandRegistry(unittest.TestCase):
         self.assertIn("/commands", names)
         self.assertIn("/maintenance", names)
         self.assertNotIn("/settings", names)
+        self.assertNotIn("/review", names)
         self.assertNotIn("/framework", names)
 
     def test_find_command_resolves_alias(self):
         spec = find_command("/commands")
         self.assertIsNotNone(spec)
         self.assertEqual(spec.command, "/help")
-
