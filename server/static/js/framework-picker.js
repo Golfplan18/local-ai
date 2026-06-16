@@ -18,8 +18,9 @@
  * appear automatically when those provenance sources land. Empty groups
  * are hidden.
  *
- * Mode picker is intentionally absent. Mode selection is being redesigned
- * end-to-end and will land its own UI separately.
+ * Analysis/mode selection now lives in analysis-picker.js as a separate
+ * button and surface. Opening either picker closes the other; committing a
+ * framework clears any staged analysis mode through OraInputState.
  */
 (() => {
   const PICKER_SELECTOR = '#frameworkPicker';
@@ -28,7 +29,7 @@
   const TOOLBAR_BTN_SELECTOR = '#inputToolbarFramework';
 
   const CATEGORY_LABELS = {
-    'standard':      'Standard Ora',
+    'standard':      'Frameworks',
     'user-created':  'User-created',
     'one-off':       'One-offs',
   };
@@ -46,6 +47,9 @@
 
   function open() {
     if (!_picker) return;
+    if (window.OraAnalysisPicker && typeof window.OraAnalysisPicker.close === 'function') {
+      window.OraAnalysisPicker.close();
+    }
     _picker.hidden = false;
     if (_btn) _btn.setAttribute('aria-expanded', 'true');
 

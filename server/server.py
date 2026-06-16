@@ -38,6 +38,7 @@ from boot import (
     run_gear3, run_gear4, _run_model_with_tools, run_pipeline, parse_user_command,
     route_output, TOOLS_AVAILABLE, compare_intent_with_mode,
     list_pickable_frameworks, vision_capable_for_endpoint,
+    compose_dispatch_announcement, stage3_input_completeness_check,
 )
 from dispatcher import (
     dispatch as dispatcher_dispatch, set_permission_mode,
@@ -2362,6 +2363,55 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         yield _sse("response", text=text)
         return
 
+    # --- Manual analysis-mode clarification continuation ---
+    # V3 submits are plain JSON, not a live clarification panel. When a
+    # user explicitly picks an analysis and Stage 3 needs missing input,
+    # the previous turn saves the completeness question as the assistant
+    # reply and records the selected-mode state here. Treat the next user
+    # message in the same thread as the answer, append it to the original
+    # prompt, and run the already-selected mode instead of reclassifying.
+    manual_pending = _pending_clarification.get(panel_id)
+    if manual_pending and manual_pending.get("source") == "manual_mode_selection":
+        pending = _pending_clarification.pop(panel_id)
+        yield _sse("pipeline_stage", stage="analysis_mode_clarification",
+                   label="Continuing selected analysis…")
+        step1 = dict(pending["step1"])
+        original_prompt = step1.get("operational_notation") or pending.get("user_input") or ""
+        answered_prompt = (
+            f"{original_prompt}\n\n[User clarification]\n{user_input}"
+        ).strip()
+        step1["cleaned_prompt"] = answered_prompt
+        step1["operational_notation"] = answered_prompt
+        pr = dict(step1.get("pre_routing") or {})
+        pr["pending_clarification"] = None
+        pr["pending_clarification_stage"] = None
+        pr["completeness_gaps"] = []
+        pr["dispatch_announcement"] = compose_dispatch_announcement(
+            step1.get("mode") or "", answered_prompt,
+        )
+        pr["manual_clarification_answered"] = True
+        step1["pre_routing"] = pr
+        try:
+            yield from _run_pipeline_from_step2(
+                step1,
+                pending["config"],
+                history,
+                pending.get("user_input") or original_prompt,
+                images=pending.get("images"),
+                extra_context=pending.get("extra_context"),
+                trace_dir=trace_dir,
+                config_name=config_name,
+            )
+        finally:
+            if trace_dir:
+                try:
+                    from boot import compute_cost_summary as _ccs
+                    _ccs(trace_dir)
+                except Exception as _cs_exc:
+                    print(f"[cost-summary] post-stream computation failed: "
+                          f"{_cs_exc}", flush=True)
+        return
+
     # --- Framework slash-command short-circuit ---
     # Detect /framework <name> [<query>] and route to either the one-shot
     # milestone executor (when a query is supplied) or the interactive
@@ -2462,11 +2512,61 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         mode_file = os.path.join(WORKSPACE, "modes", f"{manual_mode_selection}.md")
         if os.path.isfile(mode_file):
             prior_mode = step1.get("mode")
+            prior_pre_routing = dict(step1.get("pre_routing") or {})
+            prior_stage1_output = prior_pre_routing.get("stage1_output") or {}
+            try:
+                with open(mode_file, "r", encoding="utf-8") as f:
+                    manual_mode_text = f.read()
+            except OSError:
+                manual_mode_text = ""
+            manual_territory = _extract_mode_field(manual_mode_text, "territory")
+            manual_prompt = step1.get("operational_notation") or user_input
+            manual_s3 = stage3_input_completeness_check(
+                manual_mode_selection,
+                manual_prompt,
+                extra_context or {},
+            )
+            pending_question = None
+            if not manual_s3.get("inputs_complete"):
+                pending_question = manual_s3.get("completeness_question")
+                if manual_s3.get("graceful_degradation_offer"):
+                    pending_question = (
+                        f"{pending_question}\n\n"
+                        f"{manual_s3['graceful_degradation_offer']}"
+                    )
             step1["mode"] = manual_mode_selection
+            step1["classification_confidence"] = "manual"
+            step1["classification_intent"] = "USER_SELECTED_ANALYSIS_MODE"
+            step1["detected_invocation"] = (
+                step1.get("detected_invocation") or manual_mode_selection
+            )
+            step1["classification_reasoning"] = (
+                f"User explicitly selected {manual_mode_selection}; "
+                f"automatic Stage 2 dispatch to {prior_mode} was bypassed."
+            )
             pr = step1.setdefault("pre_routing", {})
-            pr["dispatched_mode_id"] = manual_mode_selection
-            pr["manual_override_applied"] = True
-            pr["manual_override_prior_dispatch"] = prior_mode
+            pr.clear()
+            pr.update({
+                "dispatched_mode_id": manual_mode_selection,
+                "territory": manual_territory or None,
+                "bypass_to_direct_response": False,
+                "pending_clarification": pending_question,
+                "pending_clarification_stage": (
+                    "stage3" if pending_question else None
+                ),
+                "completeness_gaps": manual_s3.get("missing_fields", []),
+                "dispatch_announcement": (
+                    None if pending_question else compose_dispatch_announcement(
+                        manual_mode_selection, user_input,
+                    )
+                ),
+                "lighter_sibling_mode_id": manual_s3.get("lighter_sibling_mode_id"),
+                "confidence": "manual",
+                "stage1_match_count": len(prior_stage1_output.get("matches", [])),
+                "stage3_output": manual_s3,
+                "manual_override_applied": True,
+                "manual_override_prior_dispatch": prior_mode,
+            })
             print(f"[manual-mode-override] '{prior_mode}' → '{manual_mode_selection}' "
                   f"(Stage 2 dispatch superseded by explicit user pick)", flush=True)
             override_applied = True
@@ -2475,10 +2575,11 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                   f"(no {mode_file}); falling through to Stage 2 dispatch "
                   f"'{step1.get('mode')}'", flush=True)
 
-    # V3 Input Handling Phase 1 — alignment-prefilter comparison. Computed
-    # but not gated yet; the UI consumes the data once Phase 6 wires the
-    # popup. Storing on ``step1`` so the clarification-resume path
-    # (_pending_clarification) carries it along.
+    # V3 Input Handling Phase 1 / analysis picker — compare the user's
+    # explicit toolbar selection or detected invocation against the final
+    # mode. Manual analysis picks may already have overridden Step 1 above;
+    # frameworks still suppress the comparison because they own routing.
+    # Storing on ``step1`` keeps the data available on clarification resume.
     intent_comparison = compare_intent_with_mode(
         picked_mode=step1["mode"],
         manual_mode_selection=manual_mode_selection,
@@ -2509,6 +2610,24 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                completeness_gaps=pre_routing.get("completeness_gaps", []),
                pending_clarification_stage=pre_routing.get("pending_clarification_stage"),
                label=f"Mode: {step1['mode']}{conf_tag} | Tier {tier}")
+
+    if (pre_routing.get("manual_override_applied")
+        and pre_routing.get("pending_clarification")):
+        _pending_clarification[panel_id] = {
+            "source": "manual_mode_selection",
+            "step1": step1,
+            "config": config,
+            "history": history,
+            "user_input": user_input,
+            "images": images,
+            "extra_context": extra_context,
+            "pre_routing_stage": pre_routing.get("pending_clarification_stage"),
+        }
+        yield _sse("pipeline_stage", stage="analysis_mode_elicitation",
+                   mode=step1["mode"],
+                   label="Missing input for selected analysis")
+        yield _sse("response", text=pre_routing["pending_clarification"])
+        return
 
     # --- Phase 9 fall-through to direct stream for non-analytical prompts ---
     # Three cases where the analytical pipeline can't or shouldn't run, all
@@ -2749,10 +2868,11 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
     image_path) threaded into the pipeline path. Ignored by _direct_stream,
     which has no pipeline context_pkg to merge into.
 
-    V3 Input Handling Phase 1: ``manual_mode_selection`` / ``framework_selected``
-    threaded into ``_pipeline_stream`` for the alignment-prefilter comparison
-    after Step 1. ``_direct_stream`` ignores them — direct mode bypasses the
-    classifier entirely.
+    V3 Input Handling Phase 1 / analysis picker: ``manual_mode_selection`` /
+    ``framework_selected`` are threaded into ``_pipeline_stream`` so explicit
+    analysis picks can bypass automatic classification and framework picks can
+    suppress mode-intent comparison. ``_direct_stream`` ignores them — direct
+    mode bypasses the classifier entirely.
     """
     if use_pipeline:
         yield from _pipeline_stream(user_input, history, panel_id=panel_id,
@@ -2784,6 +2904,138 @@ def health():
     return json.dumps({"status":"ok","endpoint": endpoint.get("name") if endpoint else None})
 
 
+_ANALYSIS_TERRITORIES = {
+    "T0":  ("Default & General", 0),
+    "T1":  ("Argument Examination", 1),
+    "T2":  ("Interest & Power", 2),
+    "T3":  ("Decisions Under Uncertainty", 3),
+    "T4":  ("Causal Investigation", 4),
+    "T5":  ("Hypothesis Evaluation", 5),
+    "T6":  ("Future Exploration", 6),
+    "T7":  ("Risk & Failure", 7),
+    "T8":  ("Stakeholder Conflict", 8),
+    "T9":  ("Paradigm & Assumptions", 9),
+    "T10": ("Conceptual Clarification", 10),
+    "T11": ("Structural Relationships", 11),
+    "T12": ("Cross-Domain Synthesis", 12),
+    "T13": ("Negotiation & Conflict Resolution", 13),
+    "T14": ("Orientation in Unfamiliar Territory", 14),
+    "T15": ("Evaluation by Stance", 15),
+    "T16": ("Mechanism Understanding", 16),
+    "T17": ("Process & Systems", 17),
+    "T18": ("Strategic Interaction", 18),
+    "T19": ("Spatial Composition", 19),
+    "T20": ("Open Exploration", 20),
+    "T21": ("Project & Execution", 21),
+}
+
+_ANALYSIS_PICKER_EXCLUDED = {"INDEX", "modes-index", "simple"}
+
+
+def _extract_mode_field(text: str, field: str) -> str:
+    match = re.search(rf"^\s*{re.escape(field)}:\s*(.+?)\s*$", text, re.M)
+    if not match:
+        return ""
+    value = match.group(1).strip()
+    if value.startswith(("'", '"')) and value.endswith(("'", '"')) and len(value) >= 2:
+        value = value[1:-1]
+    return value.strip()
+
+
+def _extract_mode_list(text: str, field: str, limit: int = 8) -> list[str]:
+    lines = text.splitlines()
+    out: list[str] = []
+    for i, line in enumerate(lines):
+        if not re.match(rf"^\s*{re.escape(field)}:\s*$", line):
+            continue
+        base_indent = len(line) - len(line.lstrip())
+        for item_line in lines[i + 1:]:
+            stripped = item_line.strip()
+            if not stripped:
+                continue
+            indent = len(item_line) - len(item_line.lstrip())
+            if indent <= base_indent and re.match(r"^[A-Za-z0-9_-]+:", stripped):
+                break
+            match = re.match(r"^-\s+(.+)$", stripped)
+            if match:
+                value = match.group(1).strip()
+                if value.startswith(("'", '"')) and value.endswith(("'", '"')) and len(value) >= 2:
+                    value = value[1:-1]
+                out.append(value.strip())
+                if len(out) >= limit:
+                    return out
+        break
+    return out
+
+
+def _mode_picker_description(text: str, educational_name: str) -> str:
+    for field in ("user_situation_signals", "routes_to_this_mode_when",
+                  "prompt_shape_signals"):
+        items = _extract_mode_list(text, field, limit=1)
+        if items:
+            return items[0]
+    return educational_name
+
+
+def _analysis_territory_meta(raw_territory: str) -> tuple[str, str, int]:
+    match = re.search(r"\b(T\d+)\b", raw_territory or "")
+    code = match.group(1) if match else "T0"
+    name, order = _ANALYSIS_TERRITORIES.get(code, (raw_territory or "Other", 99))
+    return code, name, order
+
+
+def list_pickable_analysis_modes() -> list[dict]:
+    """Return mode rows for the V3 Analyses picker.
+
+    The source of truth is the runtime mode directory. Each mode file declares
+    its own canonical name, educational name, territory, and trigger signals in
+    the opening YAML-ish spec block; the picker reads those fields directly so
+    the UI tracks actual executable modes instead of older public-site rosters.
+    """
+    modes_dir = os.path.join(WORKSPACE, "modes")
+    if not os.path.isdir(modes_dir):
+        return []
+
+    rows: list[dict] = []
+    for entry in os.listdir(modes_dir):
+        if not entry.endswith(".md"):
+            continue
+        mode_id = entry[:-3]
+        if mode_id in _ANALYSIS_PICKER_EXCLUDED:
+            continue
+        path = os.path.join(modes_dir, entry)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            continue
+
+        display_name = _extract_mode_field(text, "canonical_name")
+        if not display_name:
+            h1 = re.search(r"^#\s+MODE:\s*(.+?)\s*$", text, re.M)
+            display_name = h1.group(1).strip() if h1 else mode_id
+        educational_name = _extract_mode_field(text, "educational_name")
+        raw_territory = _extract_mode_field(text, "territory")
+        territory_code, territory_name, territory_order = _analysis_territory_meta(raw_territory)
+        aliases = []
+        aliases.extend(_extract_mode_list(text, "prompt_shape_signals", limit=6))
+        aliases.extend(_extract_mode_list(text, "user_situation_signals", limit=4))
+
+        rows.append({
+            "id": mode_id,
+            "display_name": display_name,
+            "display_description": _mode_picker_description(text, educational_name),
+            "educational_name": educational_name,
+            "territory": territory_code,
+            "territory_name": territory_name,
+            "territory_order": territory_order,
+            "aliases": aliases,
+        })
+
+    rows.sort(key=lambda r: (r["territory_order"], r["display_name"].lower()))
+    return rows
+
+
 @app.route("/api/frameworks/picker", methods=["GET"])
 def frameworks_picker():
     """V3 Phase 2 — list of pickable frameworks for the input-box framework picker.
@@ -2799,6 +3051,16 @@ def frameworks_picker():
     """
     rows = list_pickable_frameworks()
     return json.dumps({"frameworks": rows}), 200, {"Content-Type": "application/json"}
+
+
+@app.route("/api/analyses/picker", methods=["GET"])
+def analyses_picker():
+    """V3 Analyses picker: executable modes only.
+
+    Lenses are deliberately absent from this first pass. A lens modifies a mode;
+    it does not independently answer which analytical operation should run.
+    """
+    return _json_response({"modes": list_pickable_analysis_modes()})
 
 
 @app.route("/api/document/process", methods=["POST"])

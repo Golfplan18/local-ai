@@ -176,3 +176,15 @@
 .framework-picker__confirm-btn--danger {
   color: var(--ora-status-error, #ff6e6e);
 }
+
+@media (max-width: 700px) {
+  .framework-picker {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    max-height: none;
+    z-index: 100000;
+  }
+}

@@ -285,12 +285,13 @@
      v3-conversation.js, whose renderTurn calls OraV3VisualDispatch. -->
 <script src="/static/js/v3-visual-dispatch.js" defer></script>
 <script src="/static/js/v3-conversation.js" defer></script>
-<!-- V3 Input Handling Phase 4 — input-pane state container + framework
-     picker. input-state.js must load before framework-picker.js so the
-     picker's commitSelection can call OraInputState.setFramework on row
-     click. Both are defer-loaded; ordering follows declaration order. -->
+<!-- V3 Input Handling Phase 4/analysis picker — input-pane state container
+     and picker surfaces. input-state.js must load before the pickers so
+     commitSelection can write the staged selection. All are defer-loaded;
+     ordering follows declaration order. -->
 <script src="/static/js/input-state.js" defer></script>
 <script src="/static/js/framework-picker.js" defer></script>
+<script src="/static/js/analysis-picker.js" defer></script>
 <!-- V3 Input Handling Phase 7 — framework setup popup. Driven by the
      submit-flow code in this file's inline script (Phase 7.E) when a
      framework is selected and the gap analyzer reports missing inputs. -->
@@ -453,18 +454,41 @@
       <div class="input-pane-attachments" id="inputPaneAttachments"
            aria-live="polite" aria-label="Attached files"></div>
       <!-- V3 Input Handling Phase 3 — bottom-right toolbar:
-           framework picker, image-generation intent toggle, attach.
-           Click handlers dispatch `ora:input-toolbar:*` events; Phase 4
-           wires the framework picker dropdown. -->
+           framework picker, analyses picker, image-generation intent toggle, attach.
+           Click handlers dispatch `ora:input-toolbar:*` events; picker modules
+           wire the framework and analysis dropdowns. -->
       <div class="input-pane-toolbar" role="toolbar" aria-label="Input options">
         <button class="input-pane-toolbar__btn" type="button"
                 id="inputToolbarFramework"
-                aria-label="Pick framework"
+                aria-label="Frameworks"
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                title="Frameworks"
                 data-input-toolbar="framework">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </button>
+        <button class="input-pane-toolbar__btn" type="button"
+                id="inputToolbarAnalysis"
+                aria-label="Analyses"
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                title="Analyses"
+                data-input-toolbar="analysis">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="21" y1="4" x2="14" y2="4"/>
+            <line x1="10" y1="4" x2="3" y2="4"/>
+            <line x1="21" y1="12" x2="12" y2="12"/>
+            <line x1="8" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="20" x2="16" y2="20"/>
+            <line x1="12" y1="20" x2="3" y2="20"/>
+            <line x1="14" y1="2" x2="14" y2="6"/>
+            <line x1="8" y1="10" x2="8" y2="14"/>
+            <line x1="16" y1="18" x2="16" y2="22"/>
           </svg>
         </button>
         <button class="input-pane-toolbar__btn" type="button"
@@ -496,9 +520,20 @@
     </div>
     <div class="bridge-strip" id="bridgeStrip" role="separator"
          aria-orientation="horizontal" aria-label="Resize input">
-      <!-- V3 Input Handling Phase 5 — left-justified framework label. Set
-           by the framework picker via the `ora:framework-changed` event;
-           empty when no framework is selected for the current input. -->
+      <!-- V3 Input Handling Phase 5 — left-justified input-selection label.
+           Set by framework / analysis picker events; empty when no explicit
+           selection is set for the current input. -->
+      <button class="bridge-selection-clear" id="bridgeSelectionClear"
+              type="button" hidden
+              aria-label="Clear selected framework or analysis"
+              title="Clear selection">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+          <line x1="6" y1="6" x2="18" y2="18"/>
+          <line x1="18" y1="6" x2="6" y2="18"/>
+        </svg>
+      </button>
       <span class="bridge-framework-label" id="bridgeFrameworkLabel"></span>
       <!-- Right-justified conversation-mode label (stealth/private),
            owned by V3 Item 5 / Phase 1.x. Mirrored on the right bridge
@@ -540,6 +575,19 @@
                  autocomplete="off" spellcheck="false">
         </div>
         <div class="framework-picker__list" id="frameworkPickerList"></div>
+      </div>
+
+      <div class="analysis-picker" id="analysisPicker" hidden
+           role="dialog" aria-label="Pick an analysis" aria-modal="false">
+        <div class="analysis-picker__search-row">
+          <input class="analysis-picker__search" id="analysisPickerSearch"
+                 type="text" placeholder="Search analyses…"
+                 autocomplete="off" spellcheck="false">
+        </div>
+        <div class="analysis-picker__body">
+          <div class="analysis-picker__territories" id="analysisPickerTerritories"></div>
+          <div class="analysis-picker__results" id="analysisPickerResults"></div>
+        </div>
       </div>
 
       <!-- V3 Input Handling Phase 7 — framework setup popup. Empty
@@ -1359,6 +1407,10 @@
       const fw = window.OraInputState.getFramework();
       if (fw && fw.id) body.append('framework_selected', fw.id);
     }
+    if (window.OraInputState && typeof window.OraInputState.getAnalysisMode === 'function') {
+      const mode = window.OraInputState.getAnalysisMode();
+      if (mode && mode.id) body.append('manual_mode_selection', mode.id);
+    }
 
     // V3 Phase 7.2 — include canvas content if any. captureFromPanel
     // returns null when the userInputLayer has no shapes, in which case
@@ -1416,6 +1468,9 @@
     // cleared state.
     if (window.OraInputState && typeof window.OraInputState.clearFramework === 'function') {
       window.OraInputState.clearFramework();
+    }
+    if (window.OraInputState && typeof window.OraInputState.clearAnalysisMode === 'function') {
+      window.OraInputState.clearAnalysisMode();
     }
     // V3 Input Handling Phase 8 — same per-input stickiness applies to
     // attachments. The document/audio jobs already submitted continue
@@ -2021,7 +2076,7 @@
   }
 
   // ─── V3 Input Handling Phase 3 — input-pane toolbar click handlers ───
-  // The mode and framework buttons emit a CustomEvent on document; Phase 4
+  // The analysis and framework buttons emit a CustomEvent on document; Phase 4
   // listens to those events to open the picker dropdowns. The attach button
   // opens the hidden file input directly so users can browse files now;
   // Phase 8 wires the file-drop dispatcher that consumes the chosen files.
@@ -2268,31 +2323,55 @@
     clear: () => { _pendingAttachments.length = 0; if (_attachmentRow) _attachmentRow.innerHTML = ''; },
   };
 
-  // ─── V3 Input Handling Phase 5 — bridge framework label ───────────────
-  // The framework picker fires `ora:framework-changed` whenever a
-  // framework is set or cleared (per-input stickiness clears it after
-  // submit). The left-justified bridge label mirrors that state so the
-  // user can see which framework will run when they hit Enter.
+  // ─── V3 Input Handling Phase 5 — bridge selection label ──────────────
+  // Frameworks and analyses are mutually exclusive in OraInputState. The
+  // left-justified bridge label mirrors whichever one is currently set so
+  // the user can see what will run when they hit Enter.
   const _bridgeFrameworkLabel = document.getElementById('bridgeFrameworkLabel');
+  const _bridgeSelectionClear = document.getElementById('bridgeSelectionClear');
   if (_bridgeFrameworkLabel) {
-    document.addEventListener('ora:framework-changed', (e) => {
-      const fw = e.detail && e.detail.framework;
+    const renderBridgeSelection = () => {
+      const fw = window.OraInputState && typeof window.OraInputState.getFramework === 'function'
+        ? window.OraInputState.getFramework() : null;
+      const mode = window.OraInputState && typeof window.OraInputState.getAnalysisMode === 'function'
+        ? window.OraInputState.getAnalysisMode() : null;
       if (fw && fw.display_name) {
-        _bridgeFrameworkLabel.textContent = fw.display_name;
+        _bridgeFrameworkLabel.textContent = `Framework: ${fw.display_name}`;
         _bridgeFrameworkLabel.classList.add('is-set');
+        if (_bridgeSelectionClear) _bridgeSelectionClear.hidden = false;
+      } else if (mode && mode.display_name) {
+        _bridgeFrameworkLabel.textContent = `Analysis: ${mode.display_name}`;
+        _bridgeFrameworkLabel.classList.add('is-set');
+        if (_bridgeSelectionClear) _bridgeSelectionClear.hidden = false;
       } else {
         _bridgeFrameworkLabel.textContent = '';
         _bridgeFrameworkLabel.classList.remove('is-set');
+        if (_bridgeSelectionClear) _bridgeSelectionClear.hidden = true;
       }
-    });
-    // Initial sync — restore if a framework is already set on page load.
-    if (window.OraInputState && typeof window.OraInputState.getFramework === 'function') {
-      const fw = window.OraInputState.getFramework();
-      if (fw && fw.display_name) {
-        _bridgeFrameworkLabel.textContent = fw.display_name;
-        _bridgeFrameworkLabel.classList.add('is-set');
-      }
+    };
+    document.addEventListener('ora:framework-changed', renderBridgeSelection);
+    document.addEventListener('ora:analysis-mode-changed', renderBridgeSelection);
+    if (_bridgeSelectionClear) {
+      _bridgeSelectionClear.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      _bridgeSelectionClear.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.OraInputState && typeof window.OraInputState.clearSelection === 'function') {
+          window.OraInputState.clearSelection();
+        } else if (window.OraInputState) {
+          if (typeof window.OraInputState.clearFramework === 'function') {
+            window.OraInputState.clearFramework();
+          }
+          if (typeof window.OraInputState.clearAnalysisMode === 'function') {
+            window.OraInputState.clearAnalysisMode();
+          }
+        }
+      });
     }
+    renderBridgeSelection();
   }
 })();
 </script>

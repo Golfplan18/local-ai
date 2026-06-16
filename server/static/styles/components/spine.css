@@ -73,19 +73,52 @@
   text-overflow: ellipsis;
 }
 
-/* V3 Input Handling Phase 5 — left-justified framework name on the left
-   bridge strip. Mirrors the mode label's positioning rules: percentage
-   width cap, ellipsis on overflow, hidden when empty. */
-.bridge-framework-label {
+/* V3 Input Handling Phase 5 — left-justified selected framework/analysis
+   on the left bridge strip. A tiny clear button lets the user back out of
+   an explicit pick before submitting. */
+.bridge-selection-clear {
   position: absolute;
   left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  z-index: 2;
+}
+.bridge-selection-clear[hidden] {
+  display: none;
+}
+.bridge-selection-clear:hover,
+.bridge-selection-clear:focus-visible {
+  color: var(--text-normal);
+  border-color: var(--icon-color-hover);
+  outline: none;
+}
+.bridge-selection-clear svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+}
+
+.bridge-framework-label {
+  position: absolute;
+  left: 30px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 0.04em;
   pointer-events: none;
-  max-width: 45%;
+  max-width: calc(45% - 24px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
