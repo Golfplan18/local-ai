@@ -174,9 +174,15 @@
     return true;
   };
 
-  const _openReviewQueue = () => {
+  const _reviewTab = (value) => {
+    const v = (value || '').toLowerCase();
+    if (v === 'operating' || v === 'active') return 'operating';
+    return 'paused';
+  };
+
+  const _openReviewQueue = (tab) => {
     if (window.OraReviewQueuePanel && typeof window.OraReviewQueuePanel.open === 'function') {
-      window.OraReviewQueuePanel.open({ tab: 'paused' });
+      window.OraReviewQueuePanel.open({ tab: _reviewTab(tab) });
       return true;
     }
     const btn = document.getElementById('sidebarReviewQueueOpen');
@@ -250,7 +256,7 @@
         || parsed.command === '/analyses' || parsed.command === '/analysis') {
       return _stageMode(parsed.rest);
     }
-    if (parsed.command === '/review') return _openReviewQueue();
+    if (parsed.command === '/review') return _openReviewQueue(parsed.args[0]);
     if (parsed.command === '/settings') return _openSettings(parsed.args[0]);
     if (parsed.command === '/visual' || parsed.command === '/canvas') return _showVisualCanvas();
     if (parsed.command === '/video') return _setVideo(parsed.args[0]);

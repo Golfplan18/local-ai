@@ -50,9 +50,9 @@ from typing import Optional
 
 from slash_command_registry import (
     categories as registry_categories,
-    commands_for_category,
     find_command,
     iter_visible_specs,
+    project_command_specs,
     runtime_command_names,
 )
 
@@ -163,6 +163,8 @@ def _format_command_detail(spec) -> str:
         f"- **Where it fires:** {spec.where}",
         f"- **Keyboard-only viable:** {spec.keyboard_viable}",
     ]
+    if getattr(spec, "status", "active") != "active":
+        lines.append(f"- **Status:** {spec.status}")
     if spec.aliases:
         lines.append(f"- **Aliases:** {', '.join(f'`{a}`' for a in spec.aliases)}")
     if spec.mouse_path:
@@ -175,19 +177,19 @@ def _format_command_detail(spec) -> str:
 def _cmd_help(args: list[str]) -> str:
     """`/help [command-or-category]` — list commands or show detail."""
     if args:
-        target = args[0].strip()
-        category_matches = [] if target.startswith("/") else commands_for_category(target)
+        target = " ".join(args).strip()
+        category_matches = [] if target.startswith("/") else _commands_for_category(target)
         if category_matches:
             return _format_command_list(category_matches, title=f"{target.title()} commands")
-        spec = find_command(target)
+        spec = _find_command(target)
         if spec is not None:
             return _format_command_detail(spec)
         return (
             f"[No slash command or category named `{target}`. "
-            f"Categories: {', '.join(registry_categories())}.]"
+            f"Categories: {', '.join(_registry_categories())}.]"
         )
 
-    return _format_command_list(iter_visible_specs(), title="Ora slash commands")
+    return _format_command_list(_iter_visible_specs(), title="Ora slash commands")
 
 
 def _format_command_list(specs, title: str) -> str:
@@ -206,6 +208,48 @@ def _format_command_list(specs, title: str) -> str:
         lines.append("")
     lines.append("Use `/help <command>` for details, e.g. `/help /framework`.")
     return "\n".join(lines).rstrip()
+
+
+def _project_command_specs() -> list:
+    try:
+        return project_command_specs(_project_registry().list_projects())
+    except Exception:
+        return []
+
+
+def _iter_visible_specs() -> list:
+    return list(iter_visible_specs()) + [
+        spec for spec in _project_command_specs()
+        if spec.status != "hidden"
+    ]
+
+
+def _commands_for_category(category: str) -> list:
+    wanted = (category or "").strip().lower()
+    return [
+        spec for spec in _iter_visible_specs()
+        if spec.category.lower() == wanted
+    ]
+
+
+def _find_command(token: str):
+    spec = find_command(token)
+    if spec is not None:
+        return spec
+    name = (token or "").strip().lower()
+    if name and not name.startswith("/"):
+        name = "/" + name
+    for project_spec in _project_command_specs():
+        if project_spec.command == name:
+            return project_spec
+    return None
+
+
+def _registry_categories() -> list[str]:
+    return sorted({
+        *registry_categories(),
+        *(spec.category for spec in _project_command_specs()),
+    })
 
 
 def _cmd_maintenance(args: list[str]) -> str:

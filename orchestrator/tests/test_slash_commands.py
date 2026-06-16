@@ -16,6 +16,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from textwrap import dedent
 from unittest import mock
 
@@ -33,6 +34,7 @@ from slash_commands import (  # noqa: E402
 )
 from slash_command_registry import (  # noqa: E402
     find_command,
+    project_command_specs,
     registry_payload,
     runtime_command_names,
 )
@@ -457,6 +459,18 @@ class TestDispatcherBehavior(unittest.TestCase):
 
 class TestSlashCommandRegistry(unittest.TestCase):
 
+    def _fake_project(self, command_name="publish-cycle"):
+        command = SimpleNamespace(
+            name=command_name,
+            description="Run a publication cycle",
+            interface="argv-stdout-json",
+        )
+        return SimpleNamespace(
+            nexus="main-street-independent",
+            name="Main Street Independent",
+            slash_commands={command_name: command},
+        )
+
     def test_registry_payload_shape(self):
         payload = registry_payload()
         self.assertIn("commands", payload)
@@ -479,3 +493,35 @@ class TestSlashCommandRegistry(unittest.TestCase):
         spec = find_command("/commands")
         self.assertIsNotNone(spec)
         self.assertEqual(spec.command, "/help")
+
+    def test_project_command_specs_are_project_specific(self):
+        specs = project_command_specs([self._fake_project()])
+        self.assertEqual(len(specs), 1)
+        self.assertEqual(specs[0].command, "/publish-cycle")
+        self.assertEqual(specs[0].category, "Project Commands")
+        self.assertEqual(specs[0].status, "project-specific")
+        self.assertIn("Main Street Independent", specs[0].notes)
+
+    def test_registry_payload_can_include_project_commands(self):
+        payload = registry_payload(projects=[self._fake_project()])
+        commands = {c["command"]: c for c in payload["commands"]}
+        self.assertIn("/publish-cycle", commands)
+        self.assertEqual(commands["/publish-cycle"]["category"], "Project Commands")
+
+    def test_project_command_help_is_dynamic(self):
+        fake_registry = SimpleNamespace(
+            list_projects=lambda: [self._fake_project()],
+        )
+        with mock.patch.object(slash_commands, "_project_registry", return_value=fake_registry):
+            out = run_runtime_command("/help /publish-cycle")
+        self.assertIn("**/publish-cycle**", out)
+        self.assertIn("Run a publication cycle", out)
+        self.assertIn("project-specific", out)
+
+    def test_project_command_category_help_is_dynamic(self):
+        fake_registry = SimpleNamespace(
+            list_projects=lambda: [self._fake_project()],
+        )
+        with mock.patch.object(slash_commands, "_project_registry", return_value=fake_registry):
+            out = run_runtime_command("/help Project Commands")
+        self.assertIn("/publish-cycle", out)

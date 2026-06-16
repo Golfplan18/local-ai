@@ -3061,7 +3061,13 @@ def slash_commands_registry():
     browser-only UI commands so autocomplete/help surfaces can use one source.
     """
     from slash_command_registry import registry_payload
-    return json.dumps(registry_payload()), 200, {"Content-Type": "application/json"}
+    projects = None
+    try:
+        from orchestrator import project_registry as _pr
+        projects = _pr.list_projects()
+    except Exception:
+        projects = None
+    return json.dumps(registry_payload(projects=projects)), 200, {"Content-Type": "application/json"}
 
 
 def _project_summary(project) -> dict:

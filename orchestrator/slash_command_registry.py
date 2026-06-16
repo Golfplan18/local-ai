@@ -142,7 +142,7 @@ COMMAND_SPECS: tuple[SlashCommandSpec, ...] = (
         category="Maintenance",
         where="browser",
         summary="Open the full review queue panel.",
-        usage="/review",
+        usage="/review [paused|operating]",
         mouse_path="Sidebar > Automated Processes > Open review queue",
         keyboard_viable="Yes",
     ),
@@ -234,7 +234,7 @@ COMMAND_SPECS: tuple[SlashCommandSpec, ...] = (
         category="Navigation",
         where="browser",
         summary="Open settings, optionally to a named tab.",
-        usage="/settings [models|visual|shortcuts|apis|interface|capture|export|transcription|speech]",
+        usage="/settings [models|visual|projects|shortcuts|apis|interface|capture|export|transcription|speech]",
         mouse_path="Spine settings button",
         keyboard_viable="Yes",
     ),
@@ -287,8 +287,54 @@ def all_command_specs() -> tuple[SlashCommandSpec, ...]:
     return COMMAND_SPECS
 
 
-def registry_payload() -> dict:
-    return {"commands": [spec.to_dict() for spec in COMMAND_SPECS]}
+def project_command_specs(projects: Iterable) -> list[SlashCommandSpec]:
+    """Build discovery specs for slash commands declared by projects.
+
+    Project commands are installation-specific. They are intentionally not
+    added to ``COMMAND_SPECS`` or ``runtime_command_names``; the dispatcher
+    resolves them dynamically through project_registry after core commands.
+    """
+    specs: list[SlashCommandSpec] = []
+    core_names = {spec.command for spec in COMMAND_SPECS}
+    core_aliases = {
+        alias for spec in COMMAND_SPECS for alias in spec.aliases
+    }
+    seen: dict[str, str] = {}
+    for project in projects or []:
+        nexus = getattr(project, "nexus", "") or ""
+        project_name = getattr(project, "name", "") or nexus or "Project"
+        commands = getattr(project, "slash_commands", {}) or {}
+        for cmd in sorted(commands.values(), key=lambda c: c.name):
+            name = "/" + cmd.name.lstrip("/")
+            notes = f"Declared by project {project_name} ({nexus})."
+            status = "project-specific"
+            if name in core_names or name in core_aliases:
+                status = "shadowed"
+                notes += " This name collides with a core command and will not fire as a project command."
+            elif name in seen:
+                status = "shadowed"
+                notes += f" This name is also declared by {seen[name]}; first project by registry order wins."
+            else:
+                seen[name] = nexus or project_name
+            specs.append(SlashCommandSpec(
+                command=name,
+                category="Project Commands",
+                where="server",
+                summary=cmd.description or f"Run {project_name} project command.",
+                usage=f"{name} [args...]",
+                mouse_path="None",
+                keyboard_viable="Yes",
+                status=status,
+                notes=notes,
+            ))
+    return specs
+
+
+def registry_payload(projects: Iterable | None = None) -> dict:
+    specs = list(COMMAND_SPECS)
+    if projects is not None:
+        specs.extend(project_command_specs(projects))
+    return {"commands": [spec.to_dict() for spec in specs]}
 
 
 def runtime_command_names() -> set[str]:
