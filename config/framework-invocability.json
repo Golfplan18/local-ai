@@ -1,0 +1,54 @@
+{
+  "_schema_version": 1,
+  "_note": "Curated boundary for user-facing framework exposure. A markdown file existing in frameworks/book/ is not enough to make it callable through /framework or visible in the framework picker. invocable_frameworks are runnable through the /framework milestone executor. pickable_frameworks may also include framework-selection scaffolds used by the normal pipeline UI.",
+  "invocable_frameworks": [
+    "api-key-setup.md",
+    "conversation-processing.md",
+    "corpus-formalization.md",
+    "deep-research-protocol.md",
+    "knowledge-artifact-coach.md",
+    "mindspec-interview.md",
+    "mission-objectives-milestones.md",
+    "output-formalization.md",
+    "problem-evolution.md",
+    "process-formalization.md",
+    "process-inference.md",
+    "terrain-mapping.md"
+  ],
+  "pickable_frameworks": [
+    "api-key-setup.md",
+    "conversation-processing.md",
+    "corpus-formalization.md",
+    "deep-research-protocol.md",
+    "document-processing.md",
+    "engram-cleaning.md",
+    "knowledge-artifact-coach.md",
+    "mindspec-interview.md",
+    "mission-objectives-milestones.md",
+    "news-supersession.md",
+    "output-formalization.md",
+    "periodic-maintenance.md",
+    "problem-evolution.md",
+    "process-formalization.md",
+    "process-inference.md",
+    "terrain-mapping.md",
+    "video-editing-suggestions.md"
+  ],
+  "aliases": {
+    "cff": "corpus-formalization.md",
+    "off": "output-formalization.md",
+    "pff": "process-formalization.md"
+  },
+  "internal_only_frameworks": [
+    "f-analysis-breadth.md",
+    "f-analysis-depth.md",
+    "f-consult.md",
+    "f-evaluate.md",
+    "f-revise.md",
+    "f-verify.md",
+    "f-consolidate.md",
+    "f-format.md",
+    "phase-a-prompt-cleanup.md",
+    "supplemental-rag-protocol.md"
+  ]
+}

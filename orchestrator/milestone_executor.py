@@ -42,6 +42,7 @@ from framework_parser import (
     parse_framework_file,
     FrameworkParseError,
 )
+from framework_invocability import resolve_user_invocable_framework
 from scratch import ScratchSession
 
 
@@ -839,8 +840,10 @@ def parse_framework_command(user_input: str) -> tuple[str, str, Optional[str]]:
     """Parse '/framework <name> [--config <ConfigName>] [<query>]' into
     (framework_filename, query, config_name).
 
-    framework_filename gets .md appended if not already present.
-    Raises ValueError if the framework name is missing.
+    framework_filename is resolved through the curated user-invocable
+    framework registry, which also handles aliases such as ``cff`` and rejects
+    pipeline-internal specs. Raises ValueError if the framework name is missing
+    or not user-invocable.
 
     An empty query is allowed and returned as "". The caller decides how to
     handle it: ``run_framework_command`` treats empty as an error (it expects
@@ -866,9 +869,7 @@ def parse_framework_command(user_input: str) -> tuple[str, str, Optional[str]]:
     parts = body.split(maxsplit=1)
     if not parts:
         raise ValueError("missing framework name; usage: /framework <name> [<query>]")
-    framework_name = parts[0]
-    if not framework_name.endswith(".md"):
-        framework_name += ".md"
+    framework_name = resolve_user_invocable_framework(parts[0])
     framework_query = parts[1] if len(parts) > 1 else ""
 
     # Strip optional --config <ConfigName> from the query body.

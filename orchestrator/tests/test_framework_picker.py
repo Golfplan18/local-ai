@@ -32,7 +32,8 @@ from boot import (
 
 PIPELINE_INTERNAL_IDS = {
     "f-analysis-breadth", "f-analysis-depth", "f-consolidate",
-    "f-evaluate", "f-revise", "f-verify", "phase-a-prompt-cleanup",
+    "f-consult", "f-evaluate", "f-format", "f-revise", "f-verify",
+    "phase-a-prompt-cleanup", "supplemental-rag-protocol",
 }
 
 EXPECTED_PICKABLE_COUNT = 17

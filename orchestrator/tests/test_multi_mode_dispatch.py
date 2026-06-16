@@ -382,6 +382,15 @@ class TestExecuteFrameworkMultiMode(unittest.TestCase):
         self.assertIn("mechanical", result.final_output.lower())
         self.assertIn("/instance", result.final_output)
 
+    def test_cff_alias_mechanical_mode_returns_runtime_redirect(self):
+        from milestone_executor import run_framework_command
+        text = run_framework_command(
+            "/framework cff C-Instance monthly-template 2026-06",
+            config={},
+        )
+        self.assertIn("/instance", text)
+        self.assertIn("mechanical", text.lower())
+
     def test_real_cff_parses_with_four_modes(self):
         # Smoke test: the canonical CFF file in ~/ora/frameworks/book/ now
         # parses and declares all four modes

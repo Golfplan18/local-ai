@@ -351,18 +351,58 @@ class TestParseFrameworkCommand(unittest.TestCase):
     def test_empty_query_now_allowed(self):
         from milestone_executor import parse_framework_command, framework_command_has_query
         name, query, config_name = parse_framework_command("/framework cff")
-        self.assertEqual(name, "cff.md")
+        self.assertEqual(name, "corpus-formalization.md")
         self.assertEqual(query, "")
         self.assertIsNone(config_name)
         self.assertFalse(framework_command_has_query("/framework cff"))
 
+    def test_framework_aliases_resolve_to_canonical_files(self):
+        from milestone_executor import parse_framework_command
+        cases = {
+            "/framework cff": "corpus-formalization.md",
+            "/framework pff": "process-formalization.md",
+            "/framework off": "output-formalization.md",
+        }
+        for command, expected_name in cases.items():
+            name, query, config_name = parse_framework_command(command)
+            self.assertEqual(name, expected_name)
+            self.assertEqual(query, "")
+            self.assertIsNone(config_name)
+
     def test_non_empty_query(self):
         from milestone_executor import parse_framework_command, framework_command_has_query
         name, query, config_name = parse_framework_command("/framework cff design a template for X")
-        self.assertEqual(name, "cff.md")
+        self.assertEqual(name, "corpus-formalization.md")
         self.assertEqual(query, "design a template for X")
         self.assertIsNone(config_name)
         self.assertTrue(framework_command_has_query("/framework cff design a template for X"))
+
+    def test_pff_mode_query_is_preserved(self):
+        from milestone_executor import parse_framework_command
+        name, query, config_name = parse_framework_command(
+            "/framework pff F-Design create a framework for onboarding"
+        )
+        self.assertEqual(name, "process-formalization.md")
+        self.assertEqual(query, "F-Design create a framework for onboarding")
+        self.assertIsNone(config_name)
+
+    def test_internal_f_stage_is_rejected(self):
+        from milestone_executor import parse_framework_command
+        with self.assertRaisesRegex(
+            ValueError,
+            "internal Gear 4 F-\\* pipeline stage spec",
+        ):
+            parse_framework_command("/framework f-evaluate check this")
+
+    def test_unregistered_framework_is_rejected(self):
+        from milestone_executor import parse_framework_command
+        with self.assertRaisesRegex(ValueError, "not registered"):
+            parse_framework_command("/framework invented-framework do work")
+
+    def test_pickable_non_milestone_framework_is_not_slash_invocable(self):
+        from milestone_executor import parse_framework_command
+        with self.assertRaisesRegex(ValueError, "not registered"):
+            parse_framework_command("/framework document-processing summarize this")
 
     def test_missing_framework_name_still_errors(self):
         from milestone_executor import parse_framework_command
@@ -375,7 +415,7 @@ class TestParseFrameworkCommand(unittest.TestCase):
         name, query, config_name = parse_framework_command(
             "/framework cff --config premium design a template for X"
         )
-        self.assertEqual(name, "cff.md")
+        self.assertEqual(name, "corpus-formalization.md")
         self.assertEqual(config_name, "premium")
         self.assertEqual(query, "design a template for X")
 
@@ -384,7 +424,7 @@ class TestParseFrameworkCommand(unittest.TestCase):
         name, query, config_name = parse_framework_command(
             "/framework cff design a template for X --config budget"
         )
-        self.assertEqual(name, "cff.md")
+        self.assertEqual(name, "corpus-formalization.md")
         self.assertEqual(config_name, "budget")
         self.assertEqual(query, "design a template for X")
 
@@ -394,7 +434,7 @@ class TestParseFrameworkCommand(unittest.TestCase):
         name, query, config_name = parse_framework_command(
             "/framework cff trailing --config"
         )
-        self.assertEqual(name, "cff.md")
+        self.assertEqual(name, "corpus-formalization.md")
         # No value to consume; --config stays in the query as a literal token
         self.assertIn("--config", query)
         self.assertIsNone(config_name)

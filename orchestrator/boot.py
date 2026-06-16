@@ -1463,8 +1463,8 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
 
     Reads ``frameworks/book/{framework_id}.md`` and extracts the values from the
     ``## Display Name`` and ``## Display Description`` sections. Returns ``None``
-    when either section is absent (pipeline-internal frameworks like F-* and
-    Phase A do not declare these and are silently excluded from the picker).
+    when the framework is not in the curated user-pickable registry or when
+    either display section is absent.
 
     Returns::
 
@@ -1481,6 +1481,11 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
     one-offs). The ``provenance`` field of a registry entry is the long-term
     source of truth; for now we tag everything in frameworks/book/ as standard.
     """
+    from framework_invocability import is_user_pickable_framework
+
+    if not is_user_pickable_framework(framework_id):
+        return None
+
     path = os.path.join(FRAMEWORKS_DIR, framework_id + ".md")
     try:
         with open(path, "r") as f:
@@ -1520,25 +1525,20 @@ def _first_paragraph(body: str) -> str:
 
 
 def list_pickable_frameworks() -> list[dict]:
-    """Scan frameworks/book/ and return picker-ready metadata for each
-    framework that declares Display Name and Display Description.
+    """Return picker-ready metadata for user-invocable frameworks.
 
-    Pipeline-internal frameworks (F-* and Phase A — Prompt Cleanup) do not
-    declare these sections and are automatically excluded. Sort order is
-    alphabetical by ``display_name`` within each category. The picker UI is
-    free to re-group; this function is the data source.
+    The curated framework-invocability registry is the source of truth for
+    which framework IDs may be shown. Framework files that merely exist in
+    frameworks/book/ are not picker-eligible unless registered. Sort order is
+    alphabetical by ``display_name`` within each category.
     """
     if not os.path.isdir(FRAMEWORKS_DIR):
         return []
 
+    from framework_invocability import user_pickable_framework_ids
+
     rows: list[dict] = []
-    for entry in os.listdir(FRAMEWORKS_DIR):
-        if not entry.endswith(".md") or entry.endswith(".bak.md"):
-            continue
-        # Skip .bak files conservatively (`.bak.YYYY-MM-DD.md` and similar).
-        if ".bak" in entry:
-            continue
-        framework_id = entry[:-3]  # strip .md
+    for framework_id in user_pickable_framework_ids():
         meta = parse_framework_picker_metadata(framework_id)
         if meta is not None:
             rows.append(meta)
