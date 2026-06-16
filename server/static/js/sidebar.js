@@ -499,18 +499,21 @@
     setExpanded(false);
   });
   document.addEventListener('keydown', (e) => {
+    const shortcuts = window.OraKeyboardShortcuts;
     const cmd = e.metaKey || e.ctrlKey;
     const k   = e.key.toLowerCase();
 
     // Cmd+K / Ctrl+K — open the conversation sidebar.
     // See Reference — Ora Keyboard Shortcuts (vault).
-    if (cmd && k === 'k' && !e.shiftKey && !e.altKey) {
+    if ((shortcuts && shortcuts.matches('app_open_sidebar', e))
+        || (!shortcuts && cmd && k === 'k' && !e.shiftKey && !e.altKey)) {
       e.preventDefault();
       setExpanded(true);
       return;
     }
     // Cmd+J / Ctrl+J — start a new conversation.
-    if (cmd && k === 'j' && !e.shiftKey && !e.altKey) {
+    if ((shortcuts && shortcuts.matches('app_new_conversation', e))
+        || (!shortcuts && cmd && k === 'j' && !e.shiftKey && !e.altKey)) {
       e.preventDefault();
       onNewThread();
       return;

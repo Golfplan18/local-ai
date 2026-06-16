@@ -1689,6 +1689,10 @@
     var self = this;
     this._onKeyDown = function (e) {
       var key = e.key;
+      var K = (typeof window !== 'undefined' && window.OraKeyboardShortcuts) || null;
+      var kmatch = function (id, opts) {
+        return K && typeof K.matches === 'function' && K.matches(id, e, opts);
+      };
 
       // ── WP-3.1 shortcuts ──────────────────────────────────────────────
       // Ignore shortcuts when focus is in a text input / textarea / the
@@ -1697,7 +1701,8 @@
       if (!self._isTypingTarget(e.target)) {
         // ── WP-7.4.4 — pan/zoom shortcuts ────────────────────────────────
         // Cmd+0 / Ctrl+0 → zoom to 100% (checked before plain shortcuts).
-        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && key === '0') {
+        if (kmatch('visual_zoom_100') ||
+            (!K && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && key === '0')) {
           e.preventDefault();
           self.zoomTo100();
           return;
@@ -1707,43 +1712,123 @@
         // zoom-to-extents when nothing is selected). Picked Cmd+Shift+F to
         // sit alongside plain F (zoom-to-fit, WP-7.4.4) without colliding
         // with Cmd+0 (100 %) or Cmd+Z / Cmd+Shift+Z (undo / redo).
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey &&
-            (key === 'f' || key === 'F')) {
+        if (kmatch('visual_zoom_selection') ||
+            (!K && (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey &&
+            (key === 'f' || key === 'F'))) {
           e.preventDefault();
           self.zoomToSelection();
           return;
+        }
+        if (kmatch('visual_save')) {
+          e.preventDefault();
+          if (self.saveCanvas) self.saveCanvas();
+          return;
+        }
+        if (kmatch('visual_new_canvas')) {
+          e.preventDefault();
+          if (window.OraV3TemplateGallery && window.OraV3TemplateGallery.open) {
+            window.OraV3TemplateGallery.open(self);
+          }
+          return;
+        }
+        if (K) {
+          if (kmatch('visual_zoom_in')) {
+            e.preventDefault();
+            self.zoomIn();
+            return;
+          }
+          if (kmatch('visual_zoom_out')) {
+            e.preventDefault();
+            self.zoomOut();
+            return;
+          }
+          if (kmatch('visual_zoom_fit')) {
+            e.preventDefault();
+            self.zoomToFit();
+            return;
+          }
+          var remapTools = [
+            ['visual_select_tool', 'select'],
+            ['visual_rect_tool', 'rect'],
+            ['visual_ellipse_tool', 'ellipse'],
+            ['visual_diamond_tool', 'diamond'],
+            ['visual_line_tool', 'line'],
+            ['visual_arrow_tool', 'arrow'],
+            ['visual_text_tool', 'text'],
+            ['visual_callout_tool', 'callout'],
+            ['visual_highlight_tool', 'highlight'],
+            ['visual_strike_tool', 'strikethrough'],
+            ['visual_sticky_tool', 'sticky'],
+            ['visual_pen_tool', 'pen'],
+          ];
+          for (var ri = 0; ri < remapTools.length; ri++) {
+            if (kmatch(remapTools[ri][0])) {
+              e.preventDefault();
+              self.setActiveTool(remapTools[ri][1]);
+              return;
+            }
+          }
+          if (kmatch('visual_delete_selected')) {
+            if (self._selectedShapeIds && self._selectedShapeIds.length > 0) {
+              e.preventDefault();
+              self.deleteSelected();
+              return;
+            }
+            if (self._selectedAnnotIds && self._selectedAnnotIds.length > 0) {
+              e.preventDefault();
+              self.deleteSelectedAnnotations();
+              return;
+            }
+          }
+          if (kmatch('visual_undo') || kmatch('visual_redo')) {
+            e.preventDefault();
+            if (kmatch('visual_redo')) self.redo(); else self.undo();
+            return;
+          }
+          if (kmatch('visual_generate_image')) {
+            e.preventDefault();
+            if (window.OraV3PackToolbars
+                && typeof window.OraV3PackToolbars.openCapabilityPopover === 'function') {
+              window.OraV3PackToolbars.openCapabilityPopover('image_generates', null, self);
+            }
+            return;
+          }
         }
         if (!e.ctrlKey && !e.metaKey && !e.altKey) {
           // Z → E zoom-to-extents sequence (CAD muscle memory). The first
           // key arms a 1500 ms window; the second key fires extents. Z is
           // not otherwise bound, so arming is non-destructive.
-          if (self._zKeyArmed && (key === 'e' || key === 'E')) {
+          var zoomSeqAllowed = !K || (
+            K.shortcutsFor
+            && K.shortcutsFor('visual_zoom_fit').indexOf(K.normalizeShortcut('Z E')) !== -1
+          );
+          if (zoomSeqAllowed && self._zKeyArmed && (key === 'e' || key === 'E')) {
             e.preventDefault();
             self._disarmZKey();
             self.zoomToFit();
             return;
           }
-          if (key === 'z' || key === 'Z') {
+          if (zoomSeqAllowed && (key === 'z' || key === 'Z')) {
             // Plain Z arms the sequence. Cmd+Z is undo (handled below).
             e.preventDefault();
             self._armZKey();
             return;
           }
           // Zoom in: + / =
-          if (key === '+' || key === '=') {
+          if (!K && (key === '+' || key === '=')) {
             e.preventDefault();
             self.zoomIn();
             return;
           }
           // Zoom out: - / _
-          if (key === '-' || key === '_') {
+          if (!K && (key === '-' || key === '_')) {
             e.preventDefault();
             self.zoomOut();
             return;
           }
           // F → zoom-to-fit (also the second key of Z → E above when armed,
           // but armed branch above wins).
-          if (key === 'f' || key === 'F') {
+          if (!K && (key === 'f' || key === 'F')) {
             e.preventDefault();
             self.zoomToFit();
             return;
@@ -1795,7 +1880,7 @@
           }
         }
         // Tool shortcuts (single-letter, no modifier except delete).
-        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!K && !e.ctrlKey && !e.metaKey && !e.altKey) {
           var toolByKey = {
             's': 'select', 'S': 'select',
             'r': 'rect',   'R': 'rect',
@@ -1804,16 +1889,16 @@
             'l': 'line',   'L': 'line',
             'a': 'arrow',  'A': 'arrow',
             't': 'text',   'T': 'text',
-            // WP-5.1 — annotation tool shortcuts
             'c': 'callout',       'C': 'callout',
             'h': 'highlight',     'H': 'highlight',
             'x': 'strikethrough', 'X': 'strikethrough',
             'n': 'sticky',        'N': 'sticky',
             'p': 'pen',           'P': 'pen',
           };
-          if (toolByKey[key]) {
+          var matchedTool = toolByKey[key] || null;
+          if (matchedTool) {
             e.preventDefault();
-            self.setActiveTool(toolByKey[key]);
+            self.setActiveTool(matchedTool);
             return;
           }
           if (key === 'Delete' || key === 'Backspace') {
@@ -1833,7 +1918,7 @@
           }
         }
         // Undo / Redo
-        if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        if (!K && (e.ctrlKey || e.metaKey) && !e.altKey) {
           if (key === 'z' || key === 'Z') {
             e.preventDefault();
             if (e.shiftKey) self.redo(); else self.undo();

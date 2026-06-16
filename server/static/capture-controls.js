@@ -749,6 +749,10 @@
   // browsers. As a safety net we also bind Cmd+Option+R / Ctrl+Alt+R
   // which are unclaimed.
   function _matchShortcut(e) {
+    var K = (typeof window !== 'undefined' && window.OraKeyboardShortcuts) || null;
+    if (K && typeof K.matches === 'function') {
+      return K.matches('video_toggle_capture', e);
+    }
     var key = (e.key || '').toLowerCase();
     if (key !== 'r') return false;
     var meta = e.metaKey || e.ctrlKey;

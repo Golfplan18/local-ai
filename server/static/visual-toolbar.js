@@ -181,7 +181,11 @@
 
   function _composeTooltip(item, enabled, reason) {
     var parts = [item.label];
-    if (item.shortcut) parts.push('(' + item.shortcut + ')');
+    var shortcut = item.shortcut;
+    if (root.OraKeyboardShortcuts && typeof root.OraKeyboardShortcuts.displayForBinding === 'function') {
+      shortcut = root.OraKeyboardShortcuts.displayForBinding(item.binding, item.shortcut);
+    }
+    if (shortcut) parts.push('(' + shortcut + ')');
     var base = parts.join(' ');
     if (enabled) return base;
     if (reason) return base + ' — ' + reason;
@@ -413,7 +417,11 @@
       btn.className = 'ora-toolbar__item';
       btn.setAttribute('data-item-id', item.id);
       btn.setAttribute('data-binding', item.binding);
-      if (item.shortcut) btn.setAttribute('data-shortcut', item.shortcut);
+      var shortcut = item.shortcut;
+      if (root.OraKeyboardShortcuts && typeof root.OraKeyboardShortcuts.displayForBinding === 'function') {
+        shortcut = root.OraKeyboardShortcuts.displayForBinding(item.binding, item.shortcut);
+      }
+      if (shortcut) btn.setAttribute('data-shortcut', shortcut);
       if (item.enabled_when) btn.setAttribute('data-enabled-when', item.enabled_when);
       btn.setAttribute('aria-label', item.label);
       // WP-7.7.4 — store tooltip text on a data attribute and let the shared

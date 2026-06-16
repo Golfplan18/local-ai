@@ -318,6 +318,17 @@
   }
 
   function _shortcutHandler(e) {
+    var K = window.OraKeyboardShortcuts;
+    if (K && typeof K.matches === 'function') {
+      if (!K.matches('visual_toolbar_selector', e)) return;
+      if (_shouldIgnoreShortcut(e)) return;
+      e.preventDefault();
+      var anchorK = document.querySelector('[data-binding="tool:toolbar_selector"]')
+                || document.querySelector('[data-toolbar-item-id="toolbar-selector"]')
+                || null;
+      toggle(anchorK, _activePanel());
+      return;
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (SHORTCUT_REQUIRES_SHIFT && !e.shiftKey) return;
     if ((e.key || '').toUpperCase() !== SHORTCUT_KEY) return;

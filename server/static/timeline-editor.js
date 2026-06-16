@@ -335,38 +335,43 @@
 
     var key = (e.key || '').toLowerCase();
     var meta = e.metaKey || e.ctrlKey;
+    var K = (typeof window !== 'undefined' && window.OraKeyboardShortcuts) || null;
+    var kmatch = function (id) {
+      return K && typeof K.matches === 'function' && K.matches(id, e);
+    };
 
     // V3 Backlog 2A Phase 5 close-out — undo / redo on Cmd+Z and Cmd+Shift+Z
     // (Ctrl+Z / Ctrl+Shift+Z on Windows/Linux). History is pushed on every
     // mutation via _scheduleSave; undo/redo walks the cursor.
-    if (meta && key === 'z') {
+    if (kmatch('timeline_undo') || kmatch('timeline_redo')
+        || (!K && meta && key === 'z')) {
       e.preventDefault();
-      if (e.shiftKey) _redo(); else _undo();
+      if (kmatch('timeline_redo') || (!K && e.shiftKey)) _redo(); else _undo();
       return;
     }
 
     // V3 Backlog 2A Phase 5 close-out — duplicate (Cmd+D) + copy/paste
     // (Cmd+C / Cmd+V). Operates on the currently-selected clip.
-    if (meta && key === 'd' && _selectedClipId) {
+    if ((kmatch('timeline_duplicate') || (!K && meta && key === 'd')) && _selectedClipId) {
       e.preventDefault();
       _duplicateSelected();
       return;
     }
-    if (meta && key === 'c' && _selectedClipId) {
+    if ((kmatch('timeline_copy') || (!K && meta && key === 'c')) && _selectedClipId) {
       e.preventDefault();
       _copySelected();
       return;
     }
-    if (meta && key === 'v') {
+    if (kmatch('timeline_paste') || (!K && meta && key === 'v')) {
       e.preventDefault();
       _pasteAtPlayhead();
       return;
     }
 
-    if (key === 's') {
+    if (kmatch('timeline_split') || (!K && key === 's')) {
       e.preventDefault();
       _splitSelectedAtPlayhead();
-    } else if (key === 'delete' || key === 'backspace') {
+    } else if (kmatch('timeline_delete') || (!K && (key === 'delete' || key === 'backspace'))) {
       if (_selectedClipId) {
         e.preventDefault();
         _deleteSelected();

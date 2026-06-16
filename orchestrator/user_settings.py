@@ -10,6 +10,7 @@ Sections
 * ``capture`` — default directory, frame rate, audio device, system-audio default, webcam default
 * ``whisper`` — model size, default language
 * ``export`` — default directory, default render preset, background-render threshold
+* ``keyboard`` — per-command shortcut overrides used by the browser UI
 * ``external_apis`` — provider enable flags + non-secret routing (the
   actual keys live in keyring; this section just records "do we want
   to attempt this provider at runtime")
@@ -90,6 +91,11 @@ DEFAULTS: dict = {
         # Optional visual-pane help/menu affordance. Off by default to
         # preserve the minimal canvas surface.
         "visual_help_enabled": False,
+    },
+    "keyboard": {
+        # command_id -> shortcut string. Missing / null / "" means "use
+        # the browser-side default from keyboard-shortcuts.js".
+        "shortcuts": {},
     },
 }
 
@@ -251,6 +257,10 @@ def _validate_updates(updates: dict) -> None:
         raise SettingsError(
             f"external_apis.aa_path must be 'scrape' or 'api' (got {ap['aa_path']!r})"
         )
+
+    kb = updates.get("keyboard") or {}
+    if "shortcuts" in kb and not isinstance(kb["shortcuts"], dict):
+        raise SettingsError("keyboard.shortcuts must be a dict")
 
 
 # ── API key handling (keyring) ──────────────────────────────────────────────

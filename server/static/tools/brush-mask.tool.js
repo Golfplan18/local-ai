@@ -375,6 +375,30 @@
       // Don't fire shortcuts while the user is typing into an input.
       var t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      var K = (typeof window !== 'undefined' && window.OraKeyboardShortcuts) || null;
+      if (K && typeof K.matches === 'function') {
+        if (K.matches('mask_brush_smaller', e)) {
+          e.preventDefault();
+          this._setBrushSize(this._brushSize - 4);
+          return;
+        }
+        if (K.matches('mask_brush_larger', e)) {
+          e.preventDefault();
+          this._setBrushSize(this._brushSize + 4);
+          return;
+        }
+        if (K.matches('mask_toggle_eraser', e)) {
+          e.preventDefault();
+          this._toggleEraser();
+          return;
+        }
+        if (K.matches('mask_clear', e, { allowTypingTarget: true })) {
+          e.preventDefault();
+          this._clearMask();
+          return;
+        }
+        return;
+      }
 
       if (e.key === '[') {
         e.preventDefault();

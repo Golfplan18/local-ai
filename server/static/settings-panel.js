@@ -30,6 +30,9 @@
   var _apiKeys = [];
   var _providerGroups = [];   // [[category, group label], …] render order
   var _dirty = {};       // pending changes, applied on Save
+  var _recordingShortcutId = null;
+  var _recordingShortcutButton = null;
+  var _globalShortcutHandlerInstalled = false;
 
   // Tabs declared in display order. The Buckets tab was retired with
   // install Chunk 10 step 2 — the bucket abstraction has been dissolved
@@ -45,6 +48,7 @@
     { id: 'transcription',  label: 'Transcription' },
     { id: 'speech',         label: 'Speech' },
     { id: 'interface',      label: 'Interface' },
+    { id: 'shortcuts',      label: 'Shortcuts' },
     { id: 'capture',        label: 'Capture' },
     { id: 'apis',           label: 'External APIs' },
     { id: 'export',         label: 'Export' },
@@ -160,6 +164,7 @@
     }
     if (_activeTab === 'capture') _renderCaptureTab();
     else if (_activeTab === 'interface') _renderInterfaceTab();
+    else if (_activeTab === 'shortcuts') _renderShortcutsTab();
     else if (_activeTab === 'transcription') _renderTranscriptionTab();
     else if (_activeTab === 'speech') _renderSpeechTab();
     else if (_activeTab === 'apis') _renderAPIsTab();
@@ -215,6 +220,294 @@
       setTimeout(function () { _setStatus(''); }, 1400);
     });
     _appendField('Visual toolbar layout', resetBtn);
+  }
+
+  // ── Shortcuts tab ────────────────────────────────────────────────────────
+
+  function _keyboardShortcuts() {
+    return (typeof window !== 'undefined' && window.OraKeyboardShortcuts) || null;
+  }
+
+  function _renderShortcutsTab() {
+    var K = _keyboardShortcuts();
+    if (!K) {
+      _tabContentEl.textContent =
+        'keyboard-shortcuts.js is not loaded. Reload the page or check the network tab.';
+      return;
+    }
+    K.refresh(_settings || {});
+    var audit = K.audit(_settings || {});
+
+    var wrap = document.createElement('div');
+    wrap.className = 'ora-shortcuts-panel';
+
+    var summary = document.createElement('div');
+    summary.className = 'ora-shortcuts-summary';
+    summary.innerHTML = ''
+      + '<div><strong>' + audit.total + '</strong><span>Total bindings</span></div>'
+      + '<div><strong>' + audit.editable + '</strong><span>Remappable</span></div>'
+      + '<div><strong>' + audit.fixed + '</strong><span>Fixed access keys</span></div>'
+      + '<div class="' + (audit.errors ? 'is-error' : '') + '"><strong>'
+      + audit.errors + '</strong><span>Blocking conflicts</span></div>'
+      + '<div class="' + (audit.warnings ? 'is-warn' : '') + '"><strong>'
+      + audit.warnings + '</strong><span>Warnings</span></div>';
+    wrap.appendChild(summary);
+
+    var controls = document.createElement('div');
+    controls.className = 'ora-shortcuts-controls';
+    var search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'ora-settings-input ora-shortcuts-search';
+    search.placeholder = 'Search shortcuts';
+    controls.appendChild(search);
+    var resetAll = document.createElement('button');
+    resetAll.type = 'button';
+    resetAll.className = 'ora-settings-btn ora-settings-btn--ghost';
+    resetAll.textContent = 'Reset all';
+    resetAll.addEventListener('click', function () {
+      if (!confirm('Reset every remappable shortcut to its default?')) return;
+      audit.rows.forEach(function (row) {
+        if (!row.editable) return;
+        _setShortcutOverride(row.id, null, false);
+      });
+      _renderShortcutsTab();
+      _setStatus('Shortcut defaults restored.', 'success');
+    });
+    controls.appendChild(resetAll);
+    wrap.appendChild(controls);
+
+    var list = document.createElement('div');
+    list.className = 'ora-shortcuts-list';
+    wrap.appendChild(list);
+
+    function renderRows() {
+      var q = (search.value || '').trim().toLowerCase();
+      list.innerHTML = '';
+      var groups = {};
+      audit.rows.forEach(function (row) {
+        var corpus = [
+          row.category, row.label, row.description, row.context,
+          row.currentDisplay, row.defaultDisplay
+        ].join(' ').toLowerCase();
+        if (q && corpus.indexOf(q) === -1) return;
+        if (!groups[row.category]) groups[row.category] = [];
+        groups[row.category].push(row);
+      });
+      Object.keys(groups).forEach(function (category) {
+        var h = document.createElement('div');
+        h.className = 'ora-shortcuts-category';
+        h.textContent = category;
+        list.appendChild(h);
+        groups[category].forEach(function (row) {
+          list.appendChild(_shortcutRow(row));
+        });
+      });
+      if (!list.childNodes.length) {
+        var empty = document.createElement('p');
+        empty.className = 'ora-settings-note';
+        empty.textContent = 'No shortcuts match that search.';
+        list.appendChild(empty);
+      }
+    }
+    search.addEventListener('input', renderRows);
+    renderRows();
+
+    var docs = document.createElement('details');
+    docs.className = 'ora-shortcuts-docs';
+    docs.innerHTML = ''
+      + '<summary>Built-in shortcut documentation</summary>'
+      + '<p>Ora now treats shortcuts as runtime settings. Command bindings are remappable; '
+      + 'accessibility and text-entry keys stay fixed so ordinary typing, focus movement, '
+      + 'and modal dismissal remain predictable.</p>'
+      + '<p>Conflict checking blocks overlapping Ora commands and high-risk browser or '
+      + 'system shortcuts. Lower-risk browser collisions are shown as warnings because '
+      + 'some contextual commands, such as canvas save, intentionally behave like desktop '
+      + 'application shortcuts when the canvas is focused.</p>';
+    wrap.appendChild(docs);
+
+    var fixed = document.createElement('details');
+    fixed.className = 'ora-shortcuts-docs';
+    fixed.innerHTML = '<summary>Fixed keyboard behavior</summary>';
+    var fixedList = document.createElement('div');
+    fixedList.className = 'ora-shortcuts-reserved-list';
+    audit.rows.filter(function (row) { return !row.editable; }).forEach(function (row) {
+      fixedList.appendChild(_shortcutStaticRow(row.currentDisplay, row.label, row.context));
+    });
+    fixed.appendChild(fixedList);
+    wrap.appendChild(fixed);
+
+    var reserved = document.createElement('details');
+    reserved.className = 'ora-shortcuts-docs';
+    reserved.innerHTML = '<summary>System and browser shortcuts to avoid</summary>';
+    var reservedList = document.createElement('div');
+    reservedList.className = 'ora-shortcuts-reserved-list';
+    K.reserved().forEach(function (row) {
+      var item = _shortcutStaticRow(
+        row.display,
+        row.label,
+        row.source + (row.severity === 'block' ? ' - blocked' : ' - warning')
+      );
+      if (row.severity === 'block') item.classList.add('is-error');
+      else item.classList.add('is-warn');
+      reservedList.appendChild(item);
+    });
+    reserved.appendChild(reservedList);
+    wrap.appendChild(reserved);
+
+    _tabContentEl.innerHTML = '';
+    _tabContentEl.appendChild(wrap);
+  }
+
+  function _shortcutRow(row) {
+    var r = document.createElement('div');
+    r.className = 'ora-shortcuts-row'
+      + (row.errors.length ? ' is-error' : '')
+      + (!row.errors.length && row.warnings.length ? ' is-warn' : '');
+    r.title = row.description;
+    var meta = document.createElement('div');
+    meta.className = 'ora-shortcuts-row-meta';
+    var title = document.createElement('div');
+    title.className = 'ora-shortcuts-row-title';
+    title.textContent = row.label;
+    var desc = document.createElement('div');
+    desc.className = 'ora-shortcuts-row-desc';
+    desc.textContent = row.description;
+    var ctx = document.createElement('div');
+    ctx.className = 'ora-shortcuts-row-context';
+    ctx.textContent = row.context;
+    meta.appendChild(title);
+    meta.appendChild(desc);
+    meta.appendChild(ctx);
+    r.appendChild(meta);
+
+    var binding = document.createElement('div');
+    binding.className = 'ora-shortcuts-binding';
+    var kbd = document.createElement('kbd');
+    kbd.textContent = row.currentDisplay;
+    binding.appendChild(kbd);
+    var def = document.createElement('span');
+    def.className = 'ora-shortcuts-default';
+    if (row.currentDisplay === row.defaultDisplay) {
+      def.className += ' ora-shortcuts-default--same';
+    }
+    def.textContent = 'Default: ' + row.defaultDisplay;
+    binding.appendChild(def);
+    r.appendChild(binding);
+
+    var actions = document.createElement('div');
+    actions.className = 'ora-shortcuts-actions';
+    if (row.editable) {
+      var record = document.createElement('button');
+      record.type = 'button';
+      record.className = 'ora-settings-btn ora-settings-btn--small';
+      record.textContent = 'Record';
+      record.addEventListener('click', function () {
+        _beginShortcutRecord(row.id, record);
+      });
+      actions.appendChild(record);
+
+      var reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--ghost';
+      reset.textContent = 'Reset';
+      reset.addEventListener('click', function () {
+        _setShortcutOverride(row.id, null, true);
+      });
+      actions.appendChild(reset);
+    } else {
+      var fixed = document.createElement('span');
+      fixed.className = 'ora-shortcuts-fixed';
+      fixed.textContent = 'Fixed';
+      actions.appendChild(fixed);
+    }
+    r.appendChild(actions);
+
+    if (row.errors.length || row.warnings.length) {
+      var issues = document.createElement('div');
+      issues.className = 'ora-shortcuts-issues';
+      row.errors.concat(row.warnings).forEach(function (msg) {
+        var line = document.createElement('div');
+        line.textContent = msg;
+        issues.appendChild(line);
+      });
+      r.appendChild(issues);
+    }
+    return r;
+  }
+
+  function _shortcutStaticRow(keys, label, note) {
+    var row = document.createElement('div');
+    row.className = 'ora-shortcuts-static-row';
+    var k = document.createElement('kbd');
+    k.textContent = keys;
+    row.appendChild(k);
+    var body = document.createElement('span');
+    body.textContent = label + (note ? ' - ' + note : '');
+    row.appendChild(body);
+    return row;
+  }
+
+  function _beginShortcutRecord(id, btn) {
+    _endShortcutRecord();
+    _recordingShortcutId = id;
+    _recordingShortcutButton = btn;
+    btn.textContent = 'Press keys...';
+    btn.classList.add('is-recording');
+    _setStatus('Press the new shortcut. Escape cancels recording.');
+    document.addEventListener('keydown', _captureShortcutKey, true);
+  }
+
+  function _endShortcutRecord() {
+    document.removeEventListener('keydown', _captureShortcutKey, true);
+    if (_recordingShortcutButton) {
+      _recordingShortcutButton.textContent = 'Record';
+      _recordingShortcutButton.classList.remove('is-recording');
+    }
+    _recordingShortcutId = null;
+    _recordingShortcutButton = null;
+  }
+
+  function _captureShortcutKey(e) {
+    var K = _keyboardShortcuts();
+    if (!_recordingShortcutId || !K) return;
+    var shortcut = K.eventToShortcut(e);
+    if (!shortcut) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (shortcut === 'Escape') {
+      _endShortcutRecord();
+      _setStatus('Shortcut recording cancelled.');
+      return;
+    }
+    var result = K.validateShortcut(_recordingShortcutId, shortcut, _settings || {});
+    if (!result.ok) {
+      _endShortcutRecord();
+      _setStatus('Shortcut not saved: ' + result.errors.join(' '), 'error');
+      return;
+    }
+    _setShortcutOverride(_recordingShortcutId, result.normalized, true);
+    if (result.warnings.length) {
+      _setStatus('Saved with warning: ' + result.warnings.join(' '), 'warn');
+    }
+    _endShortcutRecord();
+  }
+
+  function _setShortcutOverride(id, value, rerender) {
+    if (!_settings) _settings = {};
+    if (!_settings.keyboard || typeof _settings.keyboard !== 'object') {
+      _settings.keyboard = {};
+    }
+    if (!_settings.keyboard.shortcuts || typeof _settings.keyboard.shortcuts !== 'object') {
+      _settings.keyboard.shortcuts = {};
+    }
+    _settings.keyboard.shortcuts[id] = value;
+    var K = _keyboardShortcuts();
+    if (K) K.refresh(_settings);
+    _setDirty('keyboard.shortcuts.' + id, value);
+    if (rerender) {
+      _renderShortcutsTab();
+      _setStatus(value ? 'Shortcut saved.' : 'Shortcut reset to default.', 'success');
+    }
   }
 
   // ── Models tab ───────────────────────────────────────────────────────────
@@ -1489,6 +1782,15 @@
   function init() {
     // Build lazily on first open. Adding the gear button to the spine
     // is the caller's responsibility (see index-v3.html init block).
+    if (_globalShortcutHandlerInstalled) return;
+    _globalShortcutHandlerInstalled = true;
+    document.addEventListener('keydown', function (e) {
+      if (_recordingShortcutId) return;
+      var K = _keyboardShortcuts();
+      if (!K || !K.matches('app_show_shortcuts', e)) return;
+      e.preventDefault();
+      open({ tab: 'shortcuts' });
+    }, true);
   }
 
   // ── open-settings event handler (deferrals row 52) ───────────────────────

@@ -546,6 +546,15 @@
   // preset (or "standard" on first use).
   function _onKeydown(e) {
     if (!document.body.classList.contains('pane-mode-video')) return;
+    var K = (typeof window !== 'undefined' && window.OraKeyboardShortcuts) || null;
+    if (K && typeof K.matches === 'function') {
+      if (!K.matches('video_export', e)) return;
+      if (_activeRenderId) return;
+      e.preventDefault();
+      e.stopPropagation();
+      _startRender(_lastUsedPreset || 'standard');
+      return;
+    }
     var key = (e.key || '').toLowerCase();
     if (key !== 'e') return;
     var meta = e.metaKey || e.ctrlKey;
