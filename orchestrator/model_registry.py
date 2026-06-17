@@ -24,8 +24,20 @@ import threading
 from pathlib import Path
 from typing import Any
 
+try:
+    from . import runtime_paths as rp
+except ImportError:  # direct script-style import from sys.path
+    import runtime_paths as rp  # type: ignore
+
 ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
 REGISTRY_PATH = ORA_HOME / "config" / "model-registry.json"
+_DEFAULT_REGISTRY_PATH = REGISTRY_PATH
+
+
+def _registry_path() -> Path:
+    if REGISTRY_PATH != _DEFAULT_REGISTRY_PATH:
+        return Path(REGISTRY_PATH)
+    return rp.model_registry_path()
 
 # Cached registry — load once at startup, refreshed by `reload()`.
 # Read access is wrapped in a lock-free pattern: writes replace the
@@ -49,9 +61,10 @@ def load_registry(force: bool = False) -> dict:
         if _registry is not None and not force:
             return _registry
         registry = _empty_registry()
-        if REGISTRY_PATH.exists():
+        registry_path = _registry_path()
+        if registry_path.exists():
             try:
-                with open(REGISTRY_PATH) as f:
+                with open(registry_path) as f:
                     data = json.load(f)
                 if isinstance(data, dict) and isinstance(data.get("models"), dict):
                     registry = data
@@ -211,21 +224,34 @@ def compute_picks(configurations_dir: Path | None = None) -> dict:
       ``configurations_scanned``: filenames considered
       ``configurations_dir``: absolute path that was scanned
     """
+    configuration_files: list[Path] = []
     if configurations_dir is None:
-        configurations_dir = ORA_HOME / "config" / "configurations"
+        by_stem: dict[str, Path] = {}
+        for directory in rp.configuration_dirs_for_read():
+            if directory.exists():
+                for path in sorted(directory.glob("*.json")):
+                    by_stem[path.stem] = path
+        configuration_files = [by_stem[k] for k in sorted(by_stem)]
+        configurations_dir_label = " + ".join(
+            str(d) for d in rp.configuration_dirs_for_read() if d.exists()
+        )
+    else:
+        configurations_dir_label = str(configurations_dir)
+        if configurations_dir.exists():
+            configuration_files = sorted(configurations_dir.glob("*.json"))
 
     by_model: dict[str, dict] = {}
     scanned: list[str] = []
 
-    if not configurations_dir.exists():
+    if not configuration_files:
         return {
             "picks": [],
             "by_model": {},
             "configurations_scanned": [],
-            "configurations_dir": str(configurations_dir),
+            "configurations_dir": configurations_dir_label,
         }
 
-    for path in sorted(configurations_dir.glob("*.json")):
+    for path in configuration_files:
         try:
             with open(path) as f:
                 config = json.load(f)
@@ -252,7 +278,7 @@ def compute_picks(configurations_dir: Path | None = None) -> dict:
         "picks": sorted(by_model.keys()),
         "by_model": by_model,
         "configurations_scanned": scanned,
-        "configurations_dir": str(configurations_dir),
+        "configurations_dir": configurations_dir_label,
     }
 
 
@@ -299,7 +325,7 @@ def stats() -> dict:
     vc_null = total - vc_true - vc_false
     intel = sum(1 for m in models.values() if m.get("intelligence_score") is not None)
     return {
-        "registry_path": str(REGISTRY_PATH),
+        "registry_path": str(_registry_path()),
         "loaded": total > 0,
         "model_count": total,
         "vision_capable_true": vc_true,

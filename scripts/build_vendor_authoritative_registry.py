@@ -28,6 +28,14 @@ import direct_catalog as dc              # noqa: E402
 import vendor_catalog_registry as vcr    # noqa: E402
 
 CONFIG = ORA_HOME / "config"
+REGISTRY_PATH = Path(
+    os.environ.get("ORA_MODEL_REGISTRY_PATH")
+    or (CONFIG / "model-registry.json")
+)
+VENDOR_AUTH_PATH = Path(
+    os.environ.get("ORA_VENDOR_AUTH_REGISTRY_PATH")
+    or (CONFIG / "model-registry.vendor-authoritative.json")
+)
 
 
 def _key_for(entry: dict) -> str:
@@ -64,11 +72,11 @@ def _fetch_records(entry: dict, key: str) -> list:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(CONFIG / "model-registry.vendor-authoritative.json"))
+    ap.add_argument("--out", default=str(VENDOR_AUTH_PATH))
     ap.add_argument("--json", action="store_true", help="print the report as JSON")
     args = ap.parse_args()
 
-    base = json.loads((CONFIG / "model-registry.json").read_text())
+    base = json.loads(REGISTRY_PATH.read_text())
     base_models = base.get("models") or {}
     try:
         or_models = (json.loads((CONFIG / "openrouter-catalog.json").read_text()).get("models")) or []
@@ -109,7 +117,9 @@ def main() -> int:
     out["aliases"] = aliases               # {pre-inversion id → current native id}
     out["_vendor_authoritative"] = True
     out["_authoritative_vendors"] = sorted(vendor_catalogs.keys())
-    Path(args.out).write_text(json.dumps(out, indent=2))
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(out, indent=2))
 
     summary = {
         "base_model_count": len(base_models),

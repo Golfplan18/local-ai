@@ -57,10 +57,19 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = REPO_ROOT / "config"
 DATA_DIR = REPO_ROOT / "data"
 
-CATALOG_PATH = CONFIG_DIR / "model-catalog.json"
+CATALOG_PATH = Path(
+    os.environ.get("ORA_MODEL_CATALOG_PATH")
+    or (CONFIG_DIR / "model-catalog.json")
+)
 FAMILY_CLASS_PATH = CONFIG_DIR / "family-classification.json"
-CHANGES_PATH = DATA_DIR / "model-catalog-changes.jsonl"
-MODEL_REGISTRY_PATH = CONFIG_DIR / "model-registry.json"
+CHANGES_PATH = Path(
+    os.environ.get("ORA_MODEL_CATALOG_CHANGES_PATH")
+    or (DATA_DIR / "model-catalog-changes.jsonl")
+)
+MODEL_REGISTRY_PATH = Path(
+    os.environ.get("ORA_MODEL_REGISTRY_PATH")
+    or (CONFIG_DIR / "model-registry.json")
+)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/models"
 
@@ -478,7 +487,7 @@ def append_change_log(changes: dict, timestamp: str) -> None:
     """Append a refresh-summary line to data/model-catalog-changes.jsonl."""
     if not any(changes.values()):
         return
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    CHANGES_PATH.parent.mkdir(parents=True, exist_ok=True)
     record = {
         "refreshed_at": timestamp,
         **changes,
@@ -496,6 +505,13 @@ def load_existing_catalog() -> list[dict] | None:
         return data.get("models", [])
     except (json.JSONDecodeError, OSError):
         return None
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def main():
@@ -559,7 +575,7 @@ def main():
                 "model_count": len(or_models),
             },
             "model_registry": {
-                "path": str(MODEL_REGISTRY_PATH.relative_to(REPO_ROOT)),
+                "path": _display_path(MODEL_REGISTRY_PATH),
                 "enriched_count": aa_enriched_count,
                 "skipped": registry is None,
             },
@@ -579,7 +595,7 @@ def main():
         return
 
     # 7. Write atomically
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    CATALOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = CATALOG_PATH.with_suffix(".json.tmp")
     with open(tmp_path, "w") as f:
         json.dump(output, f, indent=2)

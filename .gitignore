@@ -133,6 +133,7 @@ config/configurations/campaign-*.json
 data/visual-emission-log.jsonl
 data/maintenance-state.json
 data/maintenance-results.jsonl
+data/runtime/
 
 # Generated preview artifact (PR-A vendor-authoritative registry build)
 config/model-registry.vendor-authoritative.json

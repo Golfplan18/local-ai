@@ -45,9 +45,12 @@ from pathlib import Path
 
 ORA = Path(os.environ.get("ORA_HOME") or (Path.home() / "ora"))
 CONFIG = ORA / "config"
-ROUTING = CONFIG / "routing-config.json"
-ARTIFACT = CONFIG / "model-registry.vendor-authoritative.json"
-CONFIGS_DIR = CONFIG / "configurations"
+ROUTING = Path(os.environ.get("ORA_ROUTING_CONFIG_PATH") or (CONFIG / "routing-config.json"))
+ARTIFACT = Path(
+    os.environ.get("ORA_VENDOR_AUTH_REGISTRY_PATH")
+    or (CONFIG / "model-registry.vendor-authoritative.json")
+)
+CONFIGS_DIR = Path(os.environ.get("ORA_CONFIGURATIONS_DIR") or (CONFIG / "configurations"))
 
 NATIVE_VENDORS = {"gemini", "openai", "anthropic", "mistral", "qwen",
                   "minimax", "moonshot", "xai", "deepseek", "xiaomi"}
@@ -289,6 +292,7 @@ def main() -> int:
     # atomic writes
     def _atomic(path: Path, text: str):
         tmp = path.with_suffix(path.suffix + ".tmp")
+        path.parent.mkdir(parents=True, exist_ok=True)
         tmp.write_text(text)
         os.replace(tmp, path)
 

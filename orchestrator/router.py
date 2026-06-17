@@ -28,9 +28,15 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+try:
+    from . import runtime_paths as rp
+except ImportError:  # direct script-style import from sys.path
+    import runtime_paths as rp  # type: ignore
+
 CONFIG_DIR = Path(__file__).parent.parent / "config"
 ROUTING_CONFIG_PATH = CONFIG_DIR / "routing-config.json"
 CONFIGURATIONS_DIR = CONFIG_DIR / "configurations"
+_DEFAULT_CONFIGURATIONS_DIR = CONFIGURATIONS_DIR
 
 DEFAULT_MACHINE_ID = "studio-128"
 
@@ -125,10 +131,12 @@ class Router:
         # Remember the path so reload() can re-read it. None means "no
         # file-backed source — reload is a no-op."
         self._config_path: Path | None = None
+        self._uses_default_config_path = False
         if config_dict:
             self.config = config_dict
         else:
-            self._config_path = Path(config_path) if config_path else ROUTING_CONFIG_PATH
+            self._uses_default_config_path = config_path is None
+            self._config_path = Path(config_path) if config_path else rp.routing_config_path()
             with open(self._config_path) as f:
                 self.config = json.load(f)
 
@@ -171,6 +179,8 @@ class Router:
         if self._config_path is None:
             return False
         try:
+            if self._uses_default_config_path:
+                self._config_path = rp.routing_config_path()
             with open(self._config_path) as f:
                 new_config = json.load(f)
         except Exception as exc:  # pragma: no cover — exercised in tests via missing file
@@ -732,7 +742,7 @@ class Router:
         if cached is not None:
             return cached
 
-        path = CONFIGURATIONS_DIR / f"{name}.json"
+        path = self._configuration_path(name)
         if not path.exists():
             print(f"[Router] configuration not found: {path}")
             return None
@@ -746,6 +756,13 @@ class Router:
 
         self._configurations[name] = cfg
         return cfg
+
+    def _configuration_path(self, name: str) -> Path:
+        if CONFIGURATIONS_DIR == _DEFAULT_CONFIGURATIONS_DIR and name in rp.PRESET_NAMES:
+            runtime = rp.configuration_runtime_path(name)
+            if runtime.exists():
+                return runtime
+        return CONFIGURATIONS_DIR / f"{name}.json"
 
     def _slot_to_cell_path(self, slot: str, gear: int) -> list | None:
         """Map a slot name (plus optional gear) to a cell path inside

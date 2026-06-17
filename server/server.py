@@ -31,6 +31,25 @@ sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
 # the launch.json invocation doesn't set either.
 sys.path.insert(0, WORKSPACE.rstrip("/"))
 
+import runtime_paths as rp
+
+
+def _routing_config_path() -> str:
+    return str(rp.routing_config_path())
+
+
+def _routing_config_write_path() -> str:
+    path = rp.routing_config_write_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path)
+
+
+def _model_refresh_env() -> dict:
+    rp.ensure_runtime_dirs()
+    env = os.environ.copy()
+    env.update(rp.runtime_refresh_env())
+    return env
+
 # Import all shared functions from orchestrator
 from boot import (
     load_boot_md, load_routing_config as load_config, get_active_endpoint as get_endpoint,
@@ -9216,8 +9235,7 @@ def model_registry_get():
     # dispatch="direct" → surface direct_dispatch so the pane paints the DIRECT chip.
     try:
         from orchestrator import vendor_catalog_registry as _vcr
-        from pathlib import Path as _P
-        _va = _P(__file__).resolve().parent.parent / "config" / "model-registry.vendor-authoritative.json"
+        _va = rp.vendor_authoritative_registry_path()
         if _vcr.enabled() and _va.exists():
             import json as _vaj
             registry = _vaj.loads(_va.read_text())
@@ -9269,9 +9287,8 @@ def model_registry_get():
     # itself doesn't currently carry these — they're computed by the
     # catalog-refresh pipeline. Cheap join: catalog is ~600 entries.
     try:
-        from pathlib import Path as _Path
         import json as _json
-        _catalog_path = _Path(__file__).resolve().parent.parent / "config" / "model-catalog.json"
+        _catalog_path = rp.model_catalog_path()
         if _catalog_path.exists():
             _catalog = _json.loads(_catalog_path.read_text())
             _by_id = {m.get("id"): m for m in (_catalog.get("models") or []) if m.get("id")}
@@ -9318,9 +9335,8 @@ def model_registry_get():
     # They go into the 'chat' category and group as the "Local" vendor.
     try:
         if wanted is None or "chat" in wanted:
-            from pathlib import Path as _Path2
             import json as _json2
-            _rc_path = _Path2(__file__).resolve().parent.parent / "config" / "routing-config.json"
+            _rc_path = rp.routing_config_path()
             if _rc_path.exists():
                 _rc = _json2.loads(_rc_path.read_text())
                 # The loop below adds and replaces entries in ``filtered``;
@@ -9730,6 +9746,7 @@ def _run_refresh_step(summary: dict, prefix: str, script_name: str,
         result = subprocess.run(
             [sys.executable, script],
             cwd=WORKSPACE, capture_output=True, text=True, timeout=timeout,
+            env=_model_refresh_env(),
         )
         summary[f"{prefix}_ok"] = (result.returncode == 0)
         summary[f"{prefix}_returncode"] = result.returncode
@@ -9793,6 +9810,7 @@ def model_registry_refresh():
         result = subprocess.run(
             [sys.executable, script, "sync", "--no-probe"],
             cwd=WORKSPACE, capture_output=True, text=True, timeout=120,
+            env=_model_refresh_env(),
         )
         ok = (result.returncode == 0)
         summary = {
@@ -9851,6 +9869,15 @@ def model_registry_refresh():
             summary["stats"] = mr.stats()
         except Exception as exc:
             summary["reload_warning"] = str(exc)
+        try:
+            from orchestrator import active_configuration as ac
+            summary["presets_rebaked"] = ac.bake_missing_presets(force=True)
+        except Exception as exc:
+            summary["preset_rebake_warning"] = str(exc)
+        try:
+            summary["router_reloaded"] = _reload_pipeline_router_after_config_change()
+        except Exception as exc:
+            summary["router_reload_warning"] = str(exc)
         # Kick the reachability probe in the background (stale + unprobed
         # models only — the probe's default selection). Auto-pick requires
         # a positive probe verdict since 2026-06-11, so refreshes must
@@ -9957,6 +9984,7 @@ def _spawn_reach_probe(revalidate: bool = False, only_unknown: bool = False,
                 cmd, cwd=WORKSPACE,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                 bufsize=1,
+                env=_model_refresh_env(),
             )
             reachable = rate_limited = unreachable = inconclusive = 0
             for line in proc.stdout:
@@ -10101,12 +10129,13 @@ def config_post():
         }), 400
 
     try:
-        with open(ROUTING_CONFIG) as f:
+        routing_path = _routing_config_path()
+        with open(routing_path) as f:
             cfg = json.load(f)
         cfg["slot_assignments"] = slot_assignments
         if gear4_overrides is not None:
             cfg["gear4_overrides"] = gear4_overrides
-        with open(ROUTING_CONFIG, "w") as f:
+        with open(_routing_config_write_path(), "w") as f:
             json.dump(cfg, f, indent=2)
         # Visible warning: slot_assignments writes are dead-letter under
         # Router-alive operation. Surface it server-side so operators see
@@ -10152,13 +10181,13 @@ PRESET_KEYS = ("pipelines", "buckets", "diversity")
 
 def _load_routing_config():
     try:
-        with open(ROUTING_CONFIG) as f:
+        with open(_routing_config_path()) as f:
             return json.load(f)
     except Exception:
         return {}
 
 def _save_routing_config(cfg):
-    with open(ROUTING_CONFIG, "w") as f:
+    with open(_routing_config_write_path(), "w") as f:
         json.dump(cfg, f, indent=2)
         f.write("\n")
 
@@ -10842,11 +10871,9 @@ def _vision_input_candidates() -> list:
     are always included so a saved choice never drops off; if picks can't be
     computed, falls back to the top vision endpoints by intelligence. Returns only
     endpoints the router can actually dispatch, ranked smartest-first."""
-    from pathlib import Path as _P
-    base = _P(__file__).resolve().parent.parent / "config"
     TOP_N = 40  # fallback cap when picks are unavailable
     try:
-        rc = json.loads((base / "routing-config.json").read_text())
+        rc = json.loads(rp.routing_config_path().read_text())
         eps = {e.get("id"): e for e in rc.get("endpoints", []) if isinstance(e, dict)}
     except Exception:
         rc, eps = {}, {}
@@ -10858,14 +10885,14 @@ def _vision_input_candidates() -> list:
         configured.update(x for x in (_vi.get("fallback") or []) if isinstance(x, str))
     reg, aliases = {}, {}
     try:
-        _art = json.loads((base / "model-registry.vendor-authoritative.json").read_text())
+        _art = json.loads(rp.vendor_authoritative_registry_path().read_text())
         reg = _art.get("models", {}) or {}
         aliases = _art.get("aliases", {}) or {}
     except Exception:
         pass
     if not reg:
         try:
-            reg = json.loads((base / "model-registry.json").read_text()).get("models", {}) or {}
+            reg = json.loads(rp.model_registry_path().read_text()).get("models", {}) or {}
         except Exception:
             pass
     # The system's PICKS, resolved to NATIVE registry ids. compute_picks

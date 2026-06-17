@@ -16,6 +16,14 @@ import contextvars
 from contextvars import ContextVar
 from datetime import datetime, timezone
 
+try:
+    from orchestrator import runtime_paths as _runtime_paths
+except Exception:
+    try:
+        import runtime_paths as _runtime_paths  # type: ignore
+    except Exception:
+        _runtime_paths = None
+
 
 def _submit_with_context(executor, fn, *args, **kwargs):
     """Submit ``fn(*args, **kwargs)`` to ``executor`` with a copy of the
@@ -70,6 +78,15 @@ MODES_DIR = os.path.join(WORKSPACE, "modes/")
 MODULES_DIR = os.path.join(WORKSPACE, "modules/")
 THINKING_TOOLS_MD = os.path.join(WORKSPACE, "modules/tools/thinking-tools.md")
 MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "knowledge/mental-models/")
+
+
+def _routing_config_json_path() -> str:
+    if _runtime_paths is not None:
+        try:
+            return str(_runtime_paths.routing_config_path())
+        except Exception:
+            pass
+    return ROUTING_CONFIG_JSON
 
 # Phase 9 — Pre-routing pipeline architecture files (~/ora/architecture/).
 # These nine files replace the retired Mode Classification Directory's
@@ -806,7 +823,7 @@ def load_routing_config() -> dict:
     in step 7.
     """
     try:
-        with open(ROUTING_CONFIG_JSON, "r") as f:
+        with open(_routing_config_json_path(), "r") as f:
             rc = json.load(f)
     except Exception:
         rc = {"endpoints": [], "default_endpoint": None}
@@ -831,10 +848,11 @@ def _get_router():
     """Get or create the singleton Router instance."""
     global _router_instance
     if _router_instance is None:
-        if os.path.exists(ROUTING_CONFIG_JSON):
+        routing_config_path = _routing_config_json_path()
+        if os.path.exists(routing_config_path):
             try:
                 from router import Router
-                _router_instance = Router(config_path=ROUTING_CONFIG_JSON)
+                _router_instance = Router()
             except Exception as e:
                 print(f"[Router] Failed to load routing-config.json: {e}. Falling back to v1.")
                 _router_instance = False  # Mark as failed, don't retry
@@ -1313,7 +1331,7 @@ def route_for_image_input(context_pkg: dict,
     # Load routing_config lazily so callers can pass None in tests.
     if routing_config is None:
         try:
-            with open(ROUTING_CONFIG_JSON, "r") as f:
+            with open(_routing_config_json_path(), "r") as f:
                 routing_config = json.load(f)
         except Exception as e:
             print(f"[visual-routing] routing-config load failed: {e}. Skipping vision gate.")
@@ -6266,7 +6284,7 @@ def _load_web_consultation_config() -> dict:
         },
     }
     try:
-        with open(ROUTING_CONFIG_JSON, "r") as f:
+        with open(_routing_config_json_path(), "r") as f:
             rc = json.load(f)
         section = rc.get("web_consultation") or {}
         # Shallow merge for top-level keys, deep merge for prompt_sanity.

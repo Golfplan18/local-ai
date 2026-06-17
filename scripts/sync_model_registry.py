@@ -56,8 +56,14 @@ from pathlib import Path
 # ──────────────────────────────────────────────────────────────────────────
 
 ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
-REGISTRY_PATH = ORA_HOME / "config" / "model-registry.json"
-DISCREPANCY_PATH = ORA_HOME / "data" / "model-registry-discrepancies.jsonl"
+REGISTRY_PATH = Path(
+    os.environ.get("ORA_MODEL_REGISTRY_PATH")
+    or (ORA_HOME / "config" / "model-registry.json")
+)
+DISCREPANCY_PATH = Path(
+    os.environ.get("ORA_MODEL_REGISTRY_DISCREPANCY_PATH")
+    or (ORA_HOME / "data" / "model-registry-discrepancies.jsonl")
+)
 PROBE_ASSETS = ORA_HOME / "scripts" / "probe_assets"
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
@@ -2079,6 +2085,7 @@ def _run_probe(args, mode: str) -> int:
         print(f"[probe] {i}/{len(targets)} {mid:50s} → {verdict_str}{marker}", flush=True)
         time.sleep(0.5)  # gentle on the API; not strictly necessary
     registry["last_probe_at"] = _now_iso()
+    REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w") as f:
         json.dump(registry, f, indent=2, sort_keys=False)
     print(
@@ -2279,6 +2286,7 @@ def _run_reach_probe(registry: dict, args) -> int:
             dm["reachable_probed_at"] = vrec.get("probed_at")
         disk["last_reach_probe_at"] = _now_iso()
         tmp_path = f"{REGISTRY_PATH}.tmp"
+        REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(tmp_path, "w") as f:
             json.dump(disk, f, indent=2, sort_keys=False)
         os.replace(tmp_path, REGISTRY_PATH)
@@ -2575,6 +2583,7 @@ def _run_vendor_audit(registry: dict, args) -> int:
             inconclusive += 1
 
     registry["last_vendor_audit_at"] = _now_iso()
+    REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w") as f:
         json.dump(registry, f, indent=2, sort_keys=False)
     print(

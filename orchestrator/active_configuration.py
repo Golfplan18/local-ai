@@ -25,11 +25,19 @@ import os
 import threading
 from pathlib import Path
 
+try:
+    from . import runtime_paths as rp
+except ImportError:  # direct script-style import from sys.path
+    import runtime_paths as rp  # type: ignore
+
 ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
 DATA_DIR = ORA_HOME / "data"
 ACTIVE_POINTER_PATH = DATA_DIR / "active-configuration.json"
 PRESET_TOGGLES_PATH = DATA_DIR / "preset-toggles.json"
 CONFIGURATIONS_DIR = ORA_HOME / "config" / "configurations"
+_DEFAULT_CONFIGURATIONS_DIR = CONFIGURATIONS_DIR
+RUNTIME_CONFIGURATIONS_DIR = rp.RUNTIME_CONFIGURATIONS_DIR
+_PRESET_NAMES = set(rp.PRESET_NAMES)
 
 # When the pointer file is missing entirely (fresh install), fall back
 # to this name. Matches the historic Router default for "interactive"
@@ -70,7 +78,7 @@ def set_active_name(name: str) -> None:
     if not isinstance(name, str) or not name.strip():
         raise ValueError("active configuration name must be a non-empty string")
     name = name.strip()
-    target = CONFIGURATIONS_DIR / f"{name}.json"
+    target = _config_path(name)
     if not target.exists():
         raise ValueError(
             f"no configuration named {name!r} at {target}; "
@@ -85,8 +93,35 @@ def set_active_name(name: str) -> None:
         os.replace(tmp, ACTIVE_POINTER_PATH)
 
 
-def _config_path(name: str) -> Path:
+def _runtime_overlay_active() -> bool:
+    return CONFIGURATIONS_DIR == _DEFAULT_CONFIGURATIONS_DIR
+
+
+def _config_path(name: str, *, for_write: bool = False) -> Path:
+    if _runtime_overlay_active() and name in _PRESET_NAMES:
+        runtime = RUNTIME_CONFIGURATIONS_DIR / f"{name}.json"
+        if for_write or runtime.exists():
+            return runtime
     return CONFIGURATIONS_DIR / f"{name}.json"
+
+
+def _configuration_dirs_for_read() -> list[Path]:
+    dirs = [CONFIGURATIONS_DIR]
+    if _runtime_overlay_active() and RUNTIME_CONFIGURATIONS_DIR.exists():
+        dirs.append(RUNTIME_CONFIGURATIONS_DIR)
+    return dirs
+
+
+def _catalog_path() -> Path:
+    if _runtime_overlay_active():
+        return rp.model_catalog_path()
+    return ORA_HOME / "config" / "model-catalog.json"
+
+
+def _registry_path() -> Path:
+    if _runtime_overlay_active():
+        return rp.model_registry_path()
+    return ORA_HOME / "config" / "model-registry.json"
 
 
 def _load_config(name: str) -> dict:
@@ -98,8 +133,9 @@ def _load_config(name: str) -> dict:
 
 
 def _save_config(name: str, config: dict) -> None:
-    path = _config_path(name)
+    path = _config_path(name, for_write=True)
     tmp = path.with_suffix(".json.tmp")
+    path.parent.mkdir(parents=True, exist_ok=True)
     with open(tmp, "w") as f:
         json.dump(config, f, indent=2)
         f.write("\n")
@@ -238,7 +274,7 @@ def bake_missing_presets(force: bool = False) -> list:
     set_preset_toggles to refresh picks after a toggle flip.
     """
     presets_path = ORA_HOME / "config" / "configuration-presets.json"
-    catalog_path = ORA_HOME / "config" / "model-catalog.json"
+    catalog_path = _catalog_path()
     if not presets_path.exists() or not catalog_path.exists():
         return []
 
@@ -276,7 +312,7 @@ def bake_missing_presets(force: bool = False) -> list:
     # unprobed models the CLI would have excluded.
     try:
         xref = ap_module.registry_crossref(
-            ORA_HOME / "config" / "model-registry.json")
+            _registry_path())
     except Exception:
         # registry_crossref is itself fail-soft; this only fires on a
         # version-skewed scripts/ copy lacking the function. Degrade to
@@ -288,11 +324,10 @@ def bake_missing_presets(force: bool = False) -> list:
     unreachable_ids: set = xref.get("unreachable_ids") or set()
 
     baked: list = []
-    CONFIGURATIONS_DIR.mkdir(parents=True, exist_ok=True)
     for preset_name in PRESET_ORDER:
         # Skip if a config file already claims this preset, unless
         # force-rebake is requested.
-        target_path = CONFIGURATIONS_DIR / f"{preset_name}.json"
+        target_path = _config_path(preset_name, for_write=True)
         already = target_path.exists() or _existing_for_lineage(preset_name)
         if already and not force:
             continue
@@ -343,16 +378,17 @@ def bake_missing_presets(force: bool = False) -> list:
 
 def _existing_for_lineage(lineage: str) -> bool:
     """True when any file in CONFIGURATIONS_DIR carries this preset_lineage."""
-    if not CONFIGURATIONS_DIR.exists():
-        return False
-    for path in CONFIGURATIONS_DIR.glob("*.json"):
-        try:
-            with open(path) as f:
-                d = json.load(f)
-            if isinstance(d, dict) and d.get("preset_lineage") == lineage:
-                return True
-        except (OSError, json.JSONDecodeError):
+    for directory in _configuration_dirs_for_read():
+        if not directory.exists():
             continue
+        for path in directory.glob("*.json"):
+            try:
+                with open(path) as f:
+                    d = json.load(f)
+                if isinstance(d, dict) and d.get("preset_lineage") == lineage:
+                    return True
+            except (OSError, json.JSONDecodeError):
+                continue
     return False
 
 
@@ -520,9 +556,10 @@ def _next_auto_name() -> str:
     """Pick the next available 'Configuration NN' name (zero-padded
     to 2 digits)."""
     existing = set()
-    if CONFIGURATIONS_DIR.exists():
-        for path in CONFIGURATIONS_DIR.glob("Configuration *.json"):
-            existing.add(path.stem)
+    for directory in _configuration_dirs_for_read():
+        if directory.exists():
+            for path in directory.glob("Configuration *.json"):
+                existing.add(path.stem)
     for n in range(1, 1000):
         candidate = f"Configuration {n:02d}"
         if candidate not in existing:
@@ -571,7 +608,8 @@ def list_configurations() -> dict:
     card: ``big1`` (gear4 depth primary), ``big2`` (gear4 breadth
     primary, may be null), ``small`` (utility step1_cleanup primary).
     """
-    if not CONFIGURATIONS_DIR.exists():
+    readable_dirs = [d for d in _configuration_dirs_for_read() if d.exists()]
+    if not readable_dirs:
         return {
             "presets": {p: None for p in PRESET_ORDER},
             "customs": [],
@@ -580,16 +618,19 @@ def list_configurations() -> dict:
         }
 
     # Load every configuration once. Skip malformed; the UI shows a
-    # diagnostic in the section that wanted it.
+    # diagnostic in the section that wanted it. Runtime preset files are
+    # loaded after seed files, so refreshed preset picks replace checked-in
+    # defaults without appearing as separate customs.
     loaded = {}
-    for path in sorted(CONFIGURATIONS_DIR.glob("*.json")):
-        try:
-            with open(path) as f:
-                config = json.load(f)
-        except (OSError, json.JSONDecodeError):
-            continue
-        if isinstance(config, dict):
-            loaded[path.stem] = config
+    for directory in readable_dirs:
+        for path in sorted(directory.glob("*.json")):
+            try:
+                with open(path) as f:
+                    config = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(config, dict):
+                loaded[path.stem] = config
 
     # Bucket presets vs customs.
     presets: dict = {p: None for p in PRESET_ORDER}

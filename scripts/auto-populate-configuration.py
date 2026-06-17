@@ -44,6 +44,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -51,8 +52,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = REPO_ROOT / "config"
-CONFIGURATIONS_DIR = CONFIG_DIR / "configurations"
-CATALOG_PATH = CONFIG_DIR / "model-catalog.json"
+CONFIGURATIONS_DIR = Path(
+    os.environ.get("ORA_CONFIGURATIONS_DIR")
+    or (CONFIG_DIR / "configurations")
+)
+CATALOG_PATH = Path(
+    os.environ.get("ORA_MODEL_CATALOG_PATH")
+    or (CONFIG_DIR / "model-catalog.json")
+)
 PRESETS_PATH = CONFIG_DIR / "configuration-presets.json"
 
 
@@ -309,7 +316,10 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
     the first probe tighten things up. Missing/unreadable registry →
     empty sets (no filtering), same as before.
     """
-    path = registry_path or (CONFIG_DIR / "model-registry.json")
+    path = registry_path or Path(
+        os.environ.get("ORA_MODEL_REGISTRY_PATH")
+        or (CONFIG_DIR / "model-registry.json")
+    )
     out = {
         "registry_ids": set(),
         "unreachable_ids": set(),

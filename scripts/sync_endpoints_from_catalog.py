@@ -23,10 +23,27 @@ import keyring
 
 
 ORA = Path(__file__).resolve().parent.parent
-CATALOG_PATH = ORA / "config" / "model-catalog.json"
-ROUTING_PATH = ORA / "config" / "routing-config.json"
-REGISTRY_PATH = ORA / "config" / "model-registry.json"
-VENDOR_AUTH_PATH = ORA / "config" / "model-registry.vendor-authoritative.json"
+CATALOG_PATH = Path(
+    os.environ.get("ORA_MODEL_CATALOG_PATH")
+    or (ORA / "config" / "model-catalog.json")
+)
+ROUTING_PATH = Path(
+    os.environ.get("ORA_ROUTING_CONFIG_PATH")
+    or (ORA / "config" / "routing-config.json")
+)
+ROUTING_SEED_PATH = ORA / "config" / "routing-config.json"
+REGISTRY_PATH = Path(
+    os.environ.get("ORA_MODEL_REGISTRY_PATH")
+    or (ORA / "config" / "model-registry.json")
+)
+VENDOR_AUTH_PATH = Path(
+    os.environ.get("ORA_VENDOR_AUTH_REGISTRY_PATH")
+    or (ORA / "config" / "model-registry.vendor-authoritative.json")
+)
+CONFIGURATIONS_DIR = Path(
+    os.environ.get("ORA_CONFIGURATIONS_DIR")
+    or (ORA / "config" / "configurations")
+)
 
 sys.path.insert(0, str(ORA / "orchestrator"))
 try:
@@ -136,6 +153,11 @@ def build_endpoint(model: dict, vendor_listed: dict | None = None) -> dict:
     return ep
 
 
+def _read_routing_config() -> dict:
+    path = ROUTING_PATH if ROUTING_PATH.exists() else ROUTING_SEED_PATH
+    return json.loads(path.read_text())
+
+
 # ── vendor-catalogue-authoritative path (flag-gated) ─────────────────────────
 
 def build_direct_endpoint(entry: dict) -> dict:
@@ -222,9 +244,8 @@ def _referenced_text(routing: dict) -> str:
     r = dict(routing)
     r.pop("endpoints", None)
     parts.append(json.dumps(r))
-    cfg = ORA / "config" / "configurations"
-    if cfg.is_dir():
-        for f in cfg.glob("*.json"):
+    if CONFIGURATIONS_DIR.is_dir():
+        for f in CONFIGURATIONS_DIR.glob("*.json"):
             try:
                 parts.append(f.read_text())
             except Exception:
@@ -323,7 +344,7 @@ def main() -> int:
     args = ap.parse_args()
 
     catalog = json.loads(CATALOG_PATH.read_text())
-    routing = json.loads(ROUTING_PATH.read_text())
+    routing = _read_routing_config()
 
     models = catalog.get("models", [])
     text_models = [
@@ -370,6 +391,7 @@ def main() -> int:
         # routing-config.json — a torn read of a half-written file must not be
         # possible. (Last-writer-wins races with /config POSTs remain; the
         # window is the subprocess's ~0.5s runtime.)
+        ROUTING_PATH.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = str(ROUTING_PATH) + ".tmp"
         Path(tmp_path).write_text(json.dumps(routing, indent=2) + "\n")
         os.replace(tmp_path, ROUTING_PATH)
