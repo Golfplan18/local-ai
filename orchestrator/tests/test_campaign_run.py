@@ -69,6 +69,12 @@ Some prose. 1. not a prompt (no entry open).
 
 1. Make me an ACH matrix on three hypotheses.
 
+### `shared-name`
+
+**Routes to:** `root-cause-analysis`
+
+1. Draw the visual version of the shared-name technique.
+
 ## Lenses
 
 ### T1-territory
@@ -80,6 +86,13 @@ Some prose. 1. not a prompt (no entry open).
 
 1. Audit the anchoring tactic in this ad.
 2. Ignored.
+
+#### `shared-name`
+
+**Foregrounds lens:** `shared-name`  ·  mental-model
+**Host mode:** `root-cause-analysis`
+
+1. Apply the lens version of the shared-name technique.
 """
 
 
@@ -93,7 +106,7 @@ class TestParseCorpus(unittest.TestCase):
 
     def test_counts_and_kinds(self):
         techs = campaign.parse_corpus(self.path)
-        self.assertEqual(len(techs), 4)
+        self.assertEqual(len(techs), 6)
         kinds = {t.id: t.kind for t in techs}
         self.assertEqual(kinds["argument-audit"], "mode")
         self.assertEqual(kinds["ach-matrix"], "visual")
@@ -118,11 +131,28 @@ class TestParseCorpus(unittest.TestCase):
 
     def test_select_all_some_and_ids(self):
         techs = campaign.parse_corpus(self.path)
-        self.assertEqual(len(campaign.select_techniques(techs, "all")), 4)
+        self.assertEqual(len(campaign.select_techniques(techs, "all")), 6)
         picked = campaign.select_techniques(techs, "cui-bono,anchoring")
         self.assertEqual([t.id for t in picked], ["cui-bono", "anchoring"])
         with self.assertRaises(SystemExit):
             campaign.select_techniques(techs, "no-such-technique")
+
+    def test_duplicate_ids_get_kind_qualified_keys(self):
+        techs = campaign.parse_corpus(self.path)
+        shared = [t for t in techs if t.id == "shared-name"]
+        self.assertEqual([t.key for t in shared],
+                         ["visual:shared-name", "lens:shared-name"])
+        self.assertEqual([t.capture_slug for t in shared],
+                         ["visual-shared-name", "lens-shared-name"])
+
+    def test_bare_duplicate_selection_is_rejected(self):
+        techs = campaign.parse_corpus(self.path)
+        with self.assertRaises(SystemExit) as cm:
+            campaign.select_techniques(techs, "shared-name")
+        self.assertIn("visual:shared-name", str(cm.exception))
+        picked = campaign.select_techniques(techs, "lens:shared-name")
+        self.assertEqual([(t.kind, t.id) for t in picked],
+                         [("lens", "shared-name")])
 
 
 class TestRealCorpus(unittest.TestCase):
@@ -141,6 +171,22 @@ class TestRealCorpus(unittest.TestCase):
         self.assertEqual(len(by_kind["visual"]), 22)
         self.assertEqual(len(by_kind["lens"]), 116)
         self.assertEqual(len(techs), 198)
+
+    def test_duplicate_public_ids_are_kind_qualified(self):
+        techs = campaign.parse_corpus(campaign.DEFAULT_CORPUS)
+        by_id: dict = {}
+        for tech in techs:
+            by_id.setdefault(tech.id, []).append(tech)
+        duplicates = {k: v for k, v in by_id.items() if len(v) > 1}
+        self.assertEqual(set(duplicates), {"causal-dag", "fishbone-diagram"})
+        self.assertEqual(
+            sorted(t.key for t in duplicates["causal-dag"]),
+            ["mode:causal-dag", "visual:causal-dag"],
+        )
+        self.assertEqual(
+            sorted(t.capture_slug for t in duplicates["fishbone-diagram"]),
+            ["lens-fishbone-diagram", "visual-fishbone-diagram"],
+        )
 
     def test_some_subset_resolves(self):
         techs = campaign.parse_corpus(campaign.DEFAULT_CORPUS)
@@ -163,15 +209,30 @@ class TestManifest(unittest.TestCase):
         campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH = self._orig
 
     def test_latest_record_wins_and_failed_reruns(self):
-        campaign.append_manifest({"technique": "a", "pipeline": "premium",
+        campaign.append_manifest({"technique": "a", "kind": "mode",
+                                  "pipeline": "premium",
                                   "status": "failed"})
-        campaign.append_manifest({"technique": "a", "pipeline": "premium",
+        campaign.append_manifest({"technique": "a", "kind": "mode",
+                                  "pipeline": "premium",
                                   "status": "ok"})
-        campaign.append_manifest({"technique": "b", "pipeline": "premium",
+        campaign.append_manifest({"technique": "b", "kind": "lens",
+                                  "pipeline": "premium",
                                   "status": "failed"})
         done = campaign.load_manifest()
-        self.assertEqual(done[("a", "premium")]["status"], "ok")
-        self.assertEqual(done[("b", "premium")]["status"], "failed")
+        self.assertEqual(done[("mode:a", "premium")]["status"], "ok")
+        self.assertEqual(done[("lens:b", "premium")]["status"], "failed")
+
+    def test_manifest_keeps_duplicate_ids_separate(self):
+        campaign.append_manifest({"technique": "shared", "kind": "visual",
+                                  "pipeline": "premium", "status": "ok"})
+        campaign.append_manifest({"technique": "shared", "kind": "lens",
+                                  "pipeline": "premium", "status": "failed"})
+        campaign.append_manifest({"technique": "shared",
+                                  "technique_key": "lens:shared",
+                                  "pipeline": "premium", "status": "ok"})
+        done = campaign.load_manifest()
+        self.assertEqual(done[("visual:shared", "premium")]["status"], "ok")
+        self.assertEqual(done[("lens:shared", "premium")]["status"], "ok")
 
     def test_malformed_lines_skipped(self):
         campaign.MANIFEST_PATH.write_text('not json\n{"technique":"a"}\n'

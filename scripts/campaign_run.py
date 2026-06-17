@@ -188,6 +188,8 @@ class Technique:
     intended_mode: str
     prompt: str
     target_visual: str | None = None   # ora-visual type for "visual" techniques
+    key: str = ""        # stable manifest key: "<kind>:<id>"
+    capture_slug: str = ""  # filesystem/conversation slug; kind-prefixed on collisions
 
 
 _BACKTICK_ID = re.compile(r"`([^`]+)`")
@@ -265,24 +267,85 @@ def parse_corpus(path: Path) -> list[Technique]:
         if entry_prompt is None and re.match(r"^1\.\s+", line):
             entry_prompt = re.sub(r"^1\.\s+", "", line).strip()
     _flush()
+    counts = {}
+    for tech in out:
+        counts[tech.id] = counts.get(tech.id, 0) + 1
+    for tech in out:
+        tech.key = f"{tech.kind}:{tech.id}"
+        tech.capture_slug = (
+            f"{tech.kind}-{tech.id}" if counts.get(tech.id, 0) > 1 else tech.id
+        )
     return out
 
 
 def select_techniques(all_techniques: list[Technique], spec: str) -> list[Technique]:
-    """Resolve --techniques: 'all' | 'some' | comma-separated ids."""
-    by_id = {t.id: t for t in all_techniques}
+    """Resolve --techniques: 'all' | 'some' | comma-separated ids.
+
+    Bare ids are accepted when unique. Colliding ids (e.g. a mode and a visual
+    tool with the same public name) must be selected as ``kind:id`` so a resume
+    run cannot silently pick the wrong corpus entry.
+    """
+    by_id: dict[str, list[Technique]] = {}
+    by_key = {t.key: t for t in all_techniques}
+    for tech in all_techniques:
+        by_id.setdefault(tech.id, []).append(tech)
     if spec == "all":
         return list(all_techniques)
     if spec == "some":
         wanted = SOME_SUBSET
     else:
         wanted = [s.strip() for s in spec.split(",") if s.strip()]
-    missing = [w for w in wanted if w not in by_id]
+    missing = [
+        w for w in wanted
+        if w not in by_key and (w not in by_id or len(by_id[w]) != 1)
+    ]
     if missing:
+        ambiguous = [
+            f"{w} ({', '.join(t.key for t in by_id[w])})"
+            for w in wanted if w in by_id and len(by_id[w]) > 1
+        ]
+        hint = f"; ambiguous id(s): {', '.join(ambiguous)}" if ambiguous else ""
         raise SystemExit(
             f"unknown technique id(s): {', '.join(missing)} — "
-            f"run `campaign_run.py list` for the full catalog")
-    return [by_id[w] for w in wanted]
+            f"run `campaign_run.py list` for the full catalog{hint}")
+    picked = []
+    for w in wanted:
+        if w in by_key:
+            picked.append(by_key[w])
+        else:
+            picked.append(by_id[w][0])
+    return picked
+
+
+def manifest_key_for_record(rec: dict) -> str:
+    """Return the stable technique key for old and new manifest rows."""
+    key = rec.get("technique_key")
+    if key:
+        return key
+    kind = rec.get("kind")
+    technique = rec.get("technique")
+    if kind and technique:
+        return f"{kind}:{technique}"
+    return technique or ""
+
+
+def capture_output_dir(tech: Technique, pipe: str) -> Path:
+    """Directory used for new captures."""
+    return CAPTURES_DIR / (tech.capture_slug or tech.id) / pipe
+
+
+def capture_read_dir(tech: Technique, pipe: str) -> Path:
+    """Directory used when reading captures, with legacy fallback.
+
+    Older captures for duplicate ids were written under ``captures/<id>/``.
+    New captures use ``captures/<kind>-<id>/`` for duplicate ids; keep the
+    reader backward-compatible so existing data remains usable.
+    """
+    primary = capture_output_dir(tech, pipe)
+    legacy = CAPTURES_DIR / tech.id / pipe
+    if primary != legacy and not primary.exists() and legacy.exists():
+        return legacy
+    return primary
 
 
 # ─── Configuration baking ────────────────────────────────────────────────
@@ -601,13 +664,13 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
 
 
 def load_manifest() -> dict:
-    """(technique, pipeline) → latest record."""
+    """(technique_key, pipeline) → latest record."""
     done: dict = {}
     if MANIFEST_PATH.exists():
         for line in MANIFEST_PATH.read_text().splitlines():
             try:
                 rec = json.loads(line)
-                done[(rec["technique"], rec["pipeline"])] = rec
+                done[(manifest_key_for_record(rec), rec["pipeline"])] = rec
             except (json.JSONDecodeError, KeyError):
                 continue
     return done
@@ -1252,7 +1315,7 @@ def run_sweep(args) -> int:
     done = load_manifest()
     force = bool(getattr(args, "force_rerun", False))
     todo = [(t, p) for t in techniques for p in pipelines
-            if force or (done.get((t.id, p)) or {}).get("status") != "ok"]
+            if force or (done.get((t.key, p)) or {}).get("status") != "ok"]
     total = len(techniques) * len(pipelines)
     print(f"[run] {len(techniques)} techniques × {len(pipelines)} pipelines = "
           f"{total} captures ({total - len(todo)} already complete, {len(todo)} to run)")
@@ -1368,13 +1431,15 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
     """One (technique, pipeline) capture: run, fidelity-gate, persist,
     manifest. Returns True on an accepted capture. Thread-safe (manifest
     writes locked; per-capture output dir is exclusive to this pair)."""
-    out_dir = CAPTURES_DIR / tech.id / pipe
+    out_dir = capture_output_dir(tech, pipe)
     out_dir.mkdir(parents=True, exist_ok=True)
-    tag = f"[{pipe}] {tech.id}"
+    tag = f"[{pipe}] {tech.key or tech.id}"
     print(f"{tag} …", flush=True)
     started = time.time()
-    rec = {"technique": tech.id, "kind": tech.kind, "mode": tech.intended_mode,
-           "pipeline": pipe, "at": _now_iso(), "attempts": 0}
+    rec = {"technique": tech.id, "technique_key": tech.key,
+           "capture_slug": tech.capture_slug, "kind": tech.kind,
+           "mode": tech.intended_mode, "pipeline": pipe,
+           "at": _now_iso(), "attempts": 0}
     last_err = None
     for attempt in (1, 2):  # one retry on transient failure
         rec["attempts"] = attempt
@@ -1400,7 +1465,7 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
                 if sp["via"] == "claude-code-subscription":
                     rec["cost_basis"] = "api_equivalent"
             else:
-                conv_id = f"campaign-{tech.id}-{pipe}"
+                conv_id = f"campaign-{tech.capture_slug or tech.id}-{pipe}"
                 res = run_ora_pipeline(args.server, ORA_PIPELINES[pipe],
                                        tech, conv_id, timeout=args.timeout)
                 # Fidelity gate BEFORE the capture counts: every model
@@ -1509,7 +1574,7 @@ def aggregate() -> dict:
             rate_map[spec["id"]] = dict(eq)
             rate_map[spec["model_id"]] = rate_map[spec["id"]]
     per: dict = {}
-    for (tech, pipe), rec in done.items():
+    for (tech_key, pipe), rec in done.items():
         if rec.get("status") != "ok":
             continue
         row = per.setdefault(pipe, {"runs": 0, "prompt_tokens": 0,
@@ -1644,7 +1709,7 @@ def render_doc(corpus_path: Path) -> Path:
              f"as PNG (SVG + envelope JSON sit alongside in captures/)._", ""]
     included = 0
     for tech in techniques:
-        recs = {p: done.get((tech.id, p)) for p, _ in DOC_PIPELINE_ORDER}
+        recs = {p: done.get((tech.key, p)) for p, _ in DOC_PIPELINE_ORDER}
         if not any((r or {}).get("status") == "ok" for r in recs.values()):
             continue
         included += 1
@@ -1662,7 +1727,7 @@ def render_doc(corpus_path: Path) -> Path:
                     + (f"${cost:.4f}" if cost is not None else "unpriced")
                     + f" · {rec.get('wall_seconds', 0):.0f}s")
             lines += [f"### {label}", "", f"_{meta}_", ""]
-            cap = CAPTURES_DIR / tech.id / pipe
+            cap = capture_read_dir(tech, pipe)
             answer = cap / "answer.md"
             if answer.exists():
                 lines += [answer.read_text().strip(), ""]
@@ -1749,13 +1814,16 @@ def build_parser() -> argparse.ArgumentParser:
 def cmd_list(args) -> int:
     techs = parse_corpus(Path(args.corpus))
     by_kind: dict = {}
+    id_counts: dict[str, int] = {}
     for t in techs:
-        by_kind.setdefault(t.kind, []).append(t.id)
+        by_kind.setdefault(t.kind, []).append(t)
+        id_counts[t.id] = id_counts.get(t.id, 0) + 1
     for kind in ("mode", "visual", "lens"):
-        ids = by_kind.get(kind, [])
-        print(f"{kind}: {len(ids)}")
-        for i in ids:
-            print(f"  {i}")
+        items = by_kind.get(kind, [])
+        print(f"{kind}: {len(items)}")
+        for tech in items:
+            suffix = f" [select as {tech.key}]" if id_counts.get(tech.id, 0) > 1 else ""
+            print(f"  {tech.id}{suffix}")
     print(f"total: {len(techs)}")
     missing_some = [s for s in SOME_SUBSET if s not in {t.id for t in techs}]
     if missing_some:
