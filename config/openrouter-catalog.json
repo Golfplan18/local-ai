@@ -1,8 +1,71 @@
 {
-  "fetched_at": "2026-05-26T17:43:30+00:00",
+  "fetched_at": "2026-06-15T04:19:14+00:00",
   "source": "https://openrouter.ai/api/v1/models",
-  "model_count": 437,
+  "model_count": 425,
   "models": [
+    {
+      "id": "sourceful/riverflow-v2.5-pro",
+      "vendor": "sourceful",
+      "display_name": "Sourceful: Riverflow V2.5 Pro",
+      "modality": "image",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 32768,
+      "max_completion": null,
+      "description": "Riverflow V2.5 Pro is the most powerful variant of Sourceful's Riverflow 2.5 lineup, best for top-tier control and quality-sensitive outputs. The Riverflow 2.5 series is a unified text-to-image and image-to-image...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1780584991
+    },
+    {
+      "id": "sourceful/riverflow-v2.5-fast",
+      "vendor": "sourceful",
+      "display_name": "Sourceful: Riverflow V2.5 Fast",
+      "modality": "image",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 32768,
+      "max_completion": null,
+      "description": "Riverflow V2.5 Fast is the speed-optimized variant of Sourceful's Riverflow 2.5 lineup, best for production deployments and latency-critical workflows. The Riverflow 2.5 series is a unified text-to-image and image-to-image family...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1780584983
+    },
+    {
+      "id": "microsoft/mai-image-2.5",
+      "vendor": "microsoft",
+      "display_name": "Microsoft: MAI-Image-2.5",
+      "modality": "image",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 4096,
+      "max_completion": 1024,
+      "description": "Microsoft's MAI-Image-2.5 is a high-quality image generation model available via Azure AI Foundry. It produces photorealistic and artistic images from text prompts with support for various aspect ratios.",
+      "pricing_per_million": {
+        "prompt": 5.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1780424896
+    },
     {
       "id": "x-ai/grok-imagine-image-quality",
       "vendor": "x-ai",
@@ -766,27 +829,6 @@
       "created": 1776702740
     },
     {
-      "id": "bytedance/seedance-2.0-fast",
-      "vendor": "bytedance",
-      "display_name": "ByteDance: Seedance 2.0 Fast",
-      "modality": "video",
-      "input_modalities": [
-        "text",
-        "image"
-      ],
-      "accepts_image": true,
-      "context_length": 0,
-      "max_completion": null,
-      "description": "Seedance 2.0 Fast is a video generation model from ByteDance. It supports text-to-video, image-to-video with first and last frame control, and multimodal reference-to-video. It prioritizes generation speed and lower cost...",
-      "pricing_per_million": {
-        "prompt": 0.0,
-        "completion": 0.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1776211362
-    },
-    {
       "id": "bytedance/seedance-2.0",
       "vendor": "bytedance",
       "display_name": "ByteDance: Seedance 2.0",
@@ -799,6 +841,27 @@
       "context_length": 0,
       "max_completion": null,
       "description": "Seedance 2.0 is a video generation model from ByteDance. It supports text-to-video, image-to-video with first and last frame control, and multimodal reference-to-video. It is particularly strong at preserving character consistency,...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1776211362
+    },
+    {
+      "id": "bytedance/seedance-2.0-fast",
+      "vendor": "bytedance",
+      "display_name": "ByteDance: Seedance 2.0 Fast",
+      "modality": "video",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 0,
+      "max_completion": null,
+      "description": "Seedance 2.0 Fast is a video generation model from ByteDance. It supports text-to-video, image-to-video with first and last frame control, and multimodal reference-to-video. It prioritizes generation speed and lower cost...",
       "pricing_per_million": {
         "prompt": 0.0,
         "completion": 0.0,
@@ -997,25 +1060,24 @@
       "created": 1768859419
     },
     {
-      "id": "openai/gpt-4o-audio-preview",
-      "vendor": "openai",
-      "display_name": "OpenAI: GPT-4o Audio",
-      "modality": "audio",
+      "id": "microsoft/mai-voice-2",
+      "vendor": "microsoft",
+      "display_name": "Microsoft: MAI-Voice-2",
+      "modality": "speech",
       "input_modalities": [
-        "audio",
         "text"
       ],
       "accepts_image": false,
-      "context_length": 128000,
-      "max_completion": 16384,
-      "description": "The gpt-4o-audio-preview model adds support for audio inputs as prompts. This enhancement allows the model to detect nuances within audio recordings and add depth to generated user experiences. Audio outputs...",
+      "context_length": 0,
+      "max_completion": null,
+      "description": "MAI-Voice-2 is a high-fidelity, expressive text-to-speech model from Microsoft, powered by Azure AI Speech. It synthesizes natural-sounding speech across 10+ languages with support for expressive SSML styles (cheerful, sad, excited,...",
       "pricing_per_million": {
-        "prompt": 2.5,
-        "completion": 10.0,
+        "prompt": 22.0,
+        "completion": 0.0,
         "image": null,
         "request": null
       },
-      "created": 1755233061
+      "created": 1780425097
     },
     {
       "id": "x-ai/grok-voice-tts-1.0",
@@ -1178,24 +1240,44 @@
       "created": 1776571337
     },
     {
-      "id": "openai/gpt-4o-mini-tts-2025-12-15",
-      "vendor": "openai",
-      "display_name": "OpenAI: GPT-4o Mini TTS",
-      "modality": "speech",
+      "id": "microsoft/mai-transcribe-1.5",
+      "vendor": "microsoft",
+      "display_name": "Microsoft: MAI-Transcribe 1.5",
+      "modality": "transcription",
       "input_modalities": [
-        "text"
+        "audio"
       ],
       "accepts_image": false,
-      "context_length": 4096,
+      "context_length": 0,
       "max_completion": null,
-      "description": "GPT-4o Mini TTS is OpenAI's cost-efficient text-to-speech model. It converts text input into natural-sounding audio output, supporting a variety of voices and tones.",
+      "description": "MAI-Transcribe 1.5 is Microsoft's fast transcription model powered by Azure AI Speech. It supports 100+ BCP-47 locales with automatic language detection, automatic punctuation, and duration-based per-second billing. Uses the Azure...",
       "pricing_per_million": {
-        "prompt": 0.6,
+        "prompt": 360000.0,
         "completion": 0.0,
         "image": null,
         "request": null
       },
-      "created": 1776552477
+      "created": 1780425095
+    },
+    {
+      "id": "nvidia/parakeet-tdt-0.6b-v3",
+      "vendor": "nvidia",
+      "display_name": "NVIDIA: Parakeet TDT 0.6B v3",
+      "modality": "transcription",
+      "input_modalities": [
+        "audio"
+      ],
+      "accepts_image": false,
+      "context_length": 0,
+      "max_completion": null,
+      "description": "Parakeet TDT 0.6B v3 is NVIDIA's 600M-parameter multilingual speech-to-text model built on the FastConformer-TDT architecture. Trained on the Granary dataset (670,000+ hours of audio), it supports automatic language detection across...",
+      "pricing_per_million": {
+        "prompt": 1500.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1779848335
     },
     {
       "id": "mistralai/voxtral-mini-transcribe",
@@ -1310,7 +1392,7 @@
       "max_completion": null,
       "description": "Whisper Large V3 is OpenAI's open-source automatic speech recognition model offering both audio transcription and translation. It supports 99+ languages and accepts common audio formats including mp3, mp4, wav, webm,...",
       "pricing_per_million": {
-        "prompt": 111000.0,
+        "prompt": 1500.0,
         "completion": 0.0,
         "image": null,
         "request": null
@@ -1356,6 +1438,27 @@
         "request": null
       },
       "created": 1777332895
+    },
+    {
+      "id": "nvidia/llama-nemotron-rerank-vl-1b-v2:free",
+      "vendor": "nvidia",
+      "display_name": "NVIDIA: Llama Nemotron Rerank VL 1B V2 (free)",
+      "modality": "rerank",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 10240,
+      "max_completion": null,
+      "description": "Llama Nemotron Rerank VL 1B V2 is a 1.7B multimodal reranking model from NVIDIA. It evaluates the relevance of document images and text against user queries, designed for vision RAG...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1781036054
     },
     {
       "id": "cohere/rerank-4-pro",
@@ -1416,6 +1519,30 @@
         "request": null
       },
       "created": 1775416158
+    },
+    {
+      "id": "google/gemini-embedding-2",
+      "vendor": "google",
+      "display_name": "Google: Gemini Embedding 2",
+      "modality": "embedding",
+      "input_modalities": [
+        "text",
+        "image",
+        "file",
+        "audio",
+        "video"
+      ],
+      "accepts_image": true,
+      "context_length": 8192,
+      "max_completion": null,
+      "description": "Gemini Embedding 2 is Google's first multimodal embedding model. We currently support mapping text and images into a unified vector space for semantic search and retrieval-augmented generation (RAG). It supports...",
+      "pricing_per_million": {
+        "prompt": 0.2,
+        "completion": 0.0,
+        "image": 0.45,
+        "request": null
+      },
+      "created": 1779290135
     },
     {
       "id": "google/gemini-embedding-2-preview",
@@ -1923,6 +2050,282 @@
       "created": 1761662922
     },
     {
+      "id": "openrouter/fusion",
+      "vendor": "openrouter",
+      "display_name": "OpenRouter: Fusion",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 128000,
+      "max_completion": null,
+      "description": "Fusion turns your prompt into a small multi-model deliberation. A panel of expert models (see below) analyzes your prompt in parallel with web search and web fetch enabled, then a...",
+      "pricing_per_million": {
+        "prompt": -1000000.0,
+        "completion": -1000000.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1781371647
+    },
+    {
+      "id": "moonshotai/kimi-k2.7-code",
+      "vendor": "moonshotai",
+      "display_name": "MoonshotAI: Kimi K2.7 Code",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 262144,
+      "max_completion": 262144,
+      "description": "MoonshotAI: Kimi K2.7 Code is a coding-focused model in Moonshot AI's Kimi K2 family, built to complete end-to-end programming tasks reliably over long contexts. It uses a native multimodal mixture-of-experts...",
+      "pricing_per_million": {
+        "prompt": 0.75,
+        "completion": 3.5,
+        "image": null,
+        "request": null
+      },
+      "created": 1781266361
+    },
+    {
+      "id": "~anthropic/claude-fable-latest",
+      "vendor": "~anthropic",
+      "display_name": "Anthropic: Claude Fable Latest",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image",
+        "file"
+      ],
+      "accepts_image": true,
+      "context_length": 1000000,
+      "max_completion": 128000,
+      "description": "This model always redirects to the latest model in the Claude Fable family.",
+      "pricing_per_million": {
+        "prompt": 10.0,
+        "completion": 50.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1781029944
+    },
+    {
+      "id": "anthropic/claude-fable-5",
+      "vendor": "anthropic",
+      "display_name": "Anthropic: Claude Fable 5",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image",
+        "file"
+      ],
+      "accepts_image": true,
+      "context_length": 1000000,
+      "max_completion": 128000,
+      "description": "Claude Fable 5 is a Mythos-class model from Anthropic, built for autonomous knowledge work and coding. It supports text, image, and file inputs with text output, with reasoning support and...",
+      "pricing_per_million": {
+        "prompt": 10.0,
+        "completion": 50.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1781007515
+    },
+    {
+      "id": "nex-agi/nex-n2-pro:free",
+      "vendor": "nex-agi",
+      "display_name": "Nex AGI: Nex-N2-Pro (free)",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 262144,
+      "max_completion": 262144,
+      "description": "Nex-N2-Pro is an agentic mixture-of-experts model from Nex AGI, with 17B active parameters out of 397B total. Built on the Qwen3.5 architecture, it accepts text and image input and produces...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1780937140
+    },
+    {
+      "id": "nvidia/nemotron-3.5-content-safety:free",
+      "vendor": "nvidia",
+      "display_name": "NVIDIA: Nemotron 3.5 Content Safety (free)",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 128000,
+      "max_completion": 8192,
+      "description": "NVIDIA Nemotron 3.5 Content Safety is a compact 4B-parameter multimodal guardrail model from NVIDIA, fine-tuned from Google Gemma-3-4B. It moderates both inputs to and responses from LLMs and VLMs, accepting...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1780581864
+    },
+    {
+      "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "vendor": "nvidia",
+      "display_name": "NVIDIA: Nemotron 3 Ultra (free)",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 1000000,
+      "max_completion": 65536,
+      "description": "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model from NVIDIA, with 55B active parameters out of 550B total (MoE). Built on a hybrid Transformer-Mamba mixture-of-experts architecture, it...",
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1780551208
+    },
+    {
+      "id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "vendor": "nvidia",
+      "display_name": "NVIDIA: Nemotron 3 Ultra",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 1000000,
+      "max_completion": 16384,
+      "description": "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model from NVIDIA, with 55B active parameters out of 550B total (MoE). Built on a hybrid Transformer-Mamba mixture-of-experts architecture, it...",
+      "pricing_per_million": {
+        "prompt": 0.5,
+        "completion": 2.5,
+        "image": null,
+        "request": null
+      },
+      "created": 1780551208
+    },
+    {
+      "id": "qwen/qwen3.7-plus",
+      "vendor": "qwen",
+      "display_name": "Qwen: Qwen3.7 Plus",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 1000000,
+      "max_completion": 65536,
+      "description": "Qwen3.7-Plus is a cost-effective model in Alibaba's Qwen3.7 series. It supports text and image input with text output, building on the series' text capabilities with a comprehensive upgrade to its...",
+      "pricing_per_million": {
+        "prompt": 0.32,
+        "completion": 1.28,
+        "image": null,
+        "request": null
+      },
+      "created": 1780491783
+    },
+    {
+      "id": "minimax/minimax-m3",
+      "vendor": "minimax",
+      "display_name": "MiniMax: MiniMax M3",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image",
+        "video"
+      ],
+      "accepts_image": true,
+      "context_length": 1048576,
+      "max_completion": 512000,
+      "description": "MiniMax-M3 is a multimodal foundation model from MiniMax. It supports text, image, and video inputs with text output, a 1M-token context window, and is suited for long-horizon agentic work, coding,...",
+      "pricing_per_million": {
+        "prompt": 0.3,
+        "completion": 1.2,
+        "image": null,
+        "request": null
+      },
+      "created": 1780245374
+    },
+    {
+      "id": "stepfun/step-3.7-flash",
+      "vendor": "stepfun",
+      "display_name": "StepFun: Step 3.7 Flash",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image",
+        "video"
+      ],
+      "accepts_image": true,
+      "context_length": 256000,
+      "max_completion": 256000,
+      "description": "Step 3.7 Flash is StepFun's latest high-efficiency multimodal Mixture-of-Experts model. It pairs a 196B-parameter language backbone with a vision encoder for native image and video understanding, activating roughly 11B parameters...",
+      "pricing_per_million": {
+        "prompt": 0.2,
+        "completion": 1.15,
+        "image": null,
+        "request": null
+      },
+      "created": 1779985069
+    },
+    {
+      "id": "anthropic/claude-opus-4.8-fast",
+      "vendor": "anthropic",
+      "display_name": "Anthropic: Claude Opus 4.8 (Fast)",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image",
+        "file"
+      ],
+      "accepts_image": true,
+      "context_length": 1000000,
+      "max_completion": 128000,
+      "description": "Fast-mode variant of [Opus 4.8](/anthropic/claude-opus-4.8) - identical capabilities with higher output speed at 2x pricing relative to regular Opus 4.8.\n\nLearn more in Anthropic's docs: https://platform.claude.com/docs/en/build-with-claude/fast-mode",
+      "pricing_per_million": {
+        "prompt": 10.0,
+        "completion": 50.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1779913703
+    },
+    {
+      "id": "anthropic/claude-opus-4.8",
+      "vendor": "anthropic",
+      "display_name": "Anthropic: Claude Opus 4.8",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image",
+        "file"
+      ],
+      "accepts_image": true,
+      "context_length": 1000000,
+      "max_completion": 128000,
+      "description": "Claude Opus 4.8 is Anthropic's most capable generally available model in the Opus family. It supports text, image, and file inputs with text output, with reasoning support and a 1M-token...",
+      "pricing_per_million": {
+        "prompt": 5.0,
+        "completion": 25.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1779905091
+    },
+    {
       "id": "qwen/qwen3.7-max",
       "vendor": "qwen",
       "display_name": "Qwen: Qwen3.7 Max",
@@ -1935,8 +2338,8 @@
       "max_completion": 65536,
       "description": "Qwen3.7-Max is the flagship model in Alibaba's Qwen3.7 series. It supports text input and output and is designed for agent-centric workloads, with particular strengths in coding, office and productivity tasks,...",
       "pricing_per_million": {
-        "prompt": 2.5,
-        "completion": 7.5,
+        "prompt": 1.25,
+        "completion": 3.75,
         "image": null,
         "request": null
       },
@@ -2076,26 +2479,6 @@
       "created": 1778168828
     },
     {
-      "id": "baidu/cobuddy:free",
-      "vendor": "baidu",
-      "display_name": "Baidu Qianfan: CoBuddy (free)",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 65536,
-      "description": "CoBuddy is a code generation model from Baidu, optimized for coding tasks and AI Agent workflows. It features high inference throughput and low end-to-end latency, with native support for tool...",
-      "pricing_per_million": {
-        "prompt": 0.0,
-        "completion": 0.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1778035480
-    },
-    {
       "id": "openai/gpt-chat-latest",
       "vendor": "openai",
       "display_name": "OpenAI: GPT Chat Latest",
@@ -2232,8 +2615,8 @@
         "text"
       ],
       "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 8192,
+      "context_length": 262144,
+      "max_completion": 32768,
       "description": "Laguna XS.2 is the second-generation model in the XS size class from [Poolside](https://poolside.ai), their efficient coding agent series. It combines tool calling and reasoning capabilities with a compact footprint, offering...",
       "pricing_per_million": {
         "prompt": 0.0,
@@ -2345,8 +2728,8 @@
       "max_completion": 262142,
       "description": "This model always redirects to the latest model in the MoonshotAI Kimi family.",
       "pricing_per_million": {
-        "prompt": 0.73,
-        "completion": 3.49,
+        "prompt": 0.68,
+        "completion": 3.41,
         "image": null,
         "request": null
       },
@@ -2476,7 +2859,7 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 262140,
+      "max_completion": 262144,
       "description": "Qwen3.6-35B-A3B is an open-weight multimodal model from Alibaba Cloud with 35 billion total parameters and 3 billion active parameters per token. It uses a hybrid sparse mixture-of-experts architecture combining Gated...",
       "pricing_per_million": {
         "prompt": 0.15,
@@ -2518,11 +2901,11 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 65536,
+      "max_completion": 262140,
       "description": "Qwen3.6 27B is a dense 27-billion-parameter language model from the Qwen Team at Alibaba, released in April 2026. It features hybrid multimodal capabilities \u2014 accepting text, image, and video inputs...",
       "pricing_per_million": {
-        "prompt": 0.3,
-        "completion": 2.0,
+        "prompt": 0.2885,
+        "completion": 3.17,
         "image": null,
         "request": null
       },
@@ -2593,26 +2976,6 @@
       "created": 1777000679
     },
     {
-      "id": "deepseek/deepseek-v4-flash:free",
-      "vendor": "deepseek",
-      "display_name": "DeepSeek: DeepSeek V4 Flash (free)",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 1048576,
-      "max_completion": 384000,
-      "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
-      "pricing_per_million": {
-        "prompt": 0.0,
-        "completion": 0.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1777000666
-    },
-    {
       "id": "deepseek/deepseek-v4-flash",
       "vendor": "deepseek",
       "display_name": "DeepSeek: DeepSeek V4 Flash",
@@ -2622,11 +2985,11 @@
       ],
       "accepts_image": false,
       "context_length": 1048576,
-      "max_completion": 16384,
+      "max_completion": 65536,
       "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
       "pricing_per_million": {
-        "prompt": 0.1,
-        "completion": 0.2,
+        "prompt": 0.09,
+        "completion": 0.18,
         "image": null,
         "request": null
       },
@@ -2662,11 +3025,11 @@
       ],
       "accepts_image": false,
       "context_length": 262144,
-      "max_completion": 262144,
+      "max_completion": null,
       "description": "Hy3 preview is a high-efficiency Mixture-of-Experts model from Tencent designed for agentic workflows and production use. It supports configurable reasoning levels across disabled, low, and high modes, allowing it to...",
       "pricing_per_million": {
-        "prompt": 0.066,
-        "completion": 0.26,
+        "prompt": 0.063,
+        "completion": 0.21,
         "image": null,
         "request": null
       },
@@ -2778,27 +3141,6 @@
       "created": 1776747900
     },
     {
-      "id": "baidu/qianfan-ocr-fast",
-      "vendor": "baidu",
-      "display_name": "Baidu: Qianfan-OCR-Fast",
-      "modality": "text",
-      "input_modalities": [
-        "image",
-        "text"
-      ],
-      "accepts_image": true,
-      "context_length": 65536,
-      "max_completion": 28672,
-      "description": "Qianfan-OCR-Fast is a domain-specific multimodal large model purpose-built for OCR. By leveraging specialized OCR training data while preserving versatile multimodal intelligence, it provides a powerful performance upgrade over Qianfan-OCR.",
-      "pricing_per_million": {
-        "prompt": 0.68,
-        "completion": 2.81,
-        "image": null,
-        "request": null
-      },
-      "created": 1776707472
-    },
-    {
       "id": "moonshotai/kimi-k2.6",
       "vendor": "moonshotai",
       "display_name": "MoonshotAI: Kimi K2.6",
@@ -2812,8 +3154,8 @@
       "max_completion": 262142,
       "description": "Kimi K2.6 is Moonshot AI's next-generation multimodal model, designed for long-horizon coding, coding-driven UI/UX generation, and multi-agent orchestration. It handles complex end-to-end coding tasks across Python, Rust, and Go, and...",
       "pricing_per_million": {
-        "prompt": 0.73,
-        "completion": 3.49,
+        "prompt": 0.68,
+        "completion": 3.41,
         "image": null,
         "request": null
       },
@@ -2961,11 +3303,11 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 16384,
+      "max_completion": 262144,
       "description": "Gemma 4 31B Instruct is Google DeepMind's 30.7B dense multimodal model supporting text and image input with text output. Features a 256K token context window, configurable thinking/reasoning mode, native function...",
       "pricing_per_million": {
         "prompt": 0.12,
-        "completion": 0.37,
+        "completion": 0.35,
         "image": null,
         "request": null
       },
@@ -2992,28 +3334,6 @@
         "request": null
       },
       "created": 1775133557
-    },
-    {
-      "id": "z-ai/glm-5v-turbo",
-      "vendor": "z-ai",
-      "display_name": "Z.ai: GLM 5V Turbo",
-      "modality": "text",
-      "input_modalities": [
-        "image",
-        "text",
-        "video"
-      ],
-      "accepts_image": true,
-      "context_length": 202752,
-      "max_completion": 131072,
-      "description": "GLM-5V-Turbo is Z.ai\u2019s first native multimodal agent foundation model, built for vision-based coding and agent-driven tasks. It natively handles image, video, and text inputs, excels at long-horizon planning, complex coding,...",
-      "pricing_per_million": {
-        "prompt": 1.2,
-        "completion": 4.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1775061458
     },
     {
       "id": "arcee-ai/trinity-large-thinking",
@@ -3122,49 +3442,6 @@
       "created": 1774026965
     },
     {
-      "id": "xiaomi/mimo-v2-omni",
-      "vendor": "xiaomi",
-      "display_name": "Xiaomi: MiMo-V2-Omni",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "audio",
-        "image",
-        "video"
-      ],
-      "accepts_image": true,
-      "context_length": 262144,
-      "max_completion": 65536,
-      "description": "MiMo-V2-Omni is a frontier omni-modal model that natively processes image, video, and audio inputs within a unified architecture. It combines strong multimodal perception with agentic capability - visual grounding, multi-step...",
-      "pricing_per_million": {
-        "prompt": 0.4,
-        "completion": 2.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1773863703
-    },
-    {
-      "id": "xiaomi/mimo-v2-pro",
-      "vendor": "xiaomi",
-      "display_name": "Xiaomi: MiMo-V2-Pro",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 1048576,
-      "max_completion": 131072,
-      "description": "MiMo-V2-Pro is Xiaomi's flagship foundation model, featuring over 1T total parameters and a 1M context length, deeply optimized for agentic scenarios. It is highly adaptable to general agent frameworks like...",
-      "pricing_per_million": {
-        "prompt": 1.0,
-        "completion": 3.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1773863643
-    },
-    {
       "id": "minimax/minimax-m2.7",
       "vendor": "minimax",
       "display_name": "MiniMax: MiniMax M2.7",
@@ -3177,8 +3454,8 @@
       "max_completion": 131072,
       "description": "MiniMax-M2.7 is a next-generation large language model designed for autonomous, real-world productivity and continuous improvement. Built to actively participate in its own evolution, M2.7 integrates advanced agentic capabilities through multi-agent...",
       "pricing_per_million": {
-        "prompt": 0.279,
-        "completion": 1.2,
+        "prompt": 0.25,
+        "completion": 1.0,
         "image": null,
         "request": null
       },
@@ -3258,7 +3535,7 @@
         "text"
       ],
       "accepts_image": false,
-      "context_length": 202752,
+      "context_length": 262144,
       "max_completion": 131072,
       "description": "GLM-5 Turbo is a new model from Z.ai designed for fast inference and strong performance in agent-driven environments such as OpenClaw scenarios. It is deeply optimized for real-world agent workflows...",
       "pricing_per_million": {
@@ -3343,10 +3620,10 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 81920,
+      "max_completion": 262144,
       "description": "Qwen3.5-9B is a multimodal foundation model from the Qwen3.5 family, designed to deliver strong reasoning, coding, and visual understanding in an efficient 9B-parameter architecture. It uses a unified vision-language design...",
       "pricing_per_million": {
-        "prompt": 0.04,
+        "prompt": 0.1,
         "completion": 0.15,
         "image": null,
         "request": null
@@ -3497,10 +3774,10 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": null,
+      "max_completion": 262144,
       "description": "The Qwen3.5 Series 35B-A3B is a native vision-language model designed with a hybrid architecture that integrates linear attention mechanisms and a sparse mixture-of-experts model, achieving higher inference efficiency. Its overall...",
       "pricing_per_million": {
-        "prompt": 0.139,
+        "prompt": 0.14,
         "completion": 1.0,
         "image": null,
         "request": null
@@ -3750,26 +4027,6 @@
       "created": 1771223018
     },
     {
-      "id": "minimax/minimax-m2.5:free",
-      "vendor": "minimax",
-      "display_name": "MiniMax: MiniMax M2.5 (free)",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 204800,
-      "max_completion": 8192,
-      "description": "MiniMax-M2.5 is a SOTA large language model designed for real-world productivity. Trained in a diverse range of complex real-world digital working environments, M2.5 builds upon the coding expertise of M2.1...",
-      "pricing_per_million": {
-        "prompt": 0.0,
-        "completion": 0.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1770908502
-    },
-    {
       "id": "minimax/minimax-m2.5",
       "vendor": "minimax",
       "display_name": "MiniMax: MiniMax M2.5",
@@ -3783,7 +4040,7 @@
       "description": "MiniMax-M2.5 is a SOTA large language model designed for real-world productivity. Trained in a diverse range of complex real-world digital working environments, M2.5 builds upon the coding expertise of M2.1...",
       "pricing_per_million": {
         "prompt": 0.15,
-        "completion": 1.15,
+        "completion": 0.9,
         "image": null,
         "request": null
       },
@@ -3923,11 +4180,11 @@
       ],
       "accepts_image": true,
       "context_length": 262144,
-      "max_completion": 262144,
+      "max_completion": null,
       "description": "Kimi K2.5 is Moonshot AI's native multimodal model, delivering state-of-the-art visual coding capability and a self-directed agent swarm paradigm. Built on Kimi K2 with continued pretraining over approximately 15T mixed...",
       "pricing_per_million": {
-        "prompt": 0.4,
-        "completion": 1.9,
+        "prompt": 0.375,
+        "completion": 2.025,
         "image": null,
         "request": null
       },
@@ -4254,7 +4511,7 @@
       ],
       "accepts_image": true,
       "context_length": 128000,
-      "max_completion": 32000,
+      "max_completion": 16384,
       "description": "GPT-5.2 Chat (AKA Instant) is the fast, lightweight member of the 5.2 family, optimized for low-latency chat while retaining strong general intelligence. It uses adaptive reasoning to selectively \u201cthink\u201d on...",
       "pricing_per_million": {
         "prompt": 1.75,
@@ -4361,7 +4618,7 @@
       ],
       "accepts_image": true,
       "context_length": 131072,
-      "max_completion": 24000,
+      "max_completion": 32768,
       "description": "GLM-4.6V is a large multimodal model designed for high-fidelity visual understanding and long-context reasoning across images, documents, and mixed media. It supports up to 128K tokens, processes complex page layouts...",
       "pricing_per_million": {
         "prompt": 0.3,
@@ -4370,26 +4627,6 @@
         "request": null
       },
       "created": 1765207462
-    },
-    {
-      "id": "nex-agi/deepseek-v3.1-nex-n1",
-      "vendor": "nex-agi",
-      "display_name": "Nex AGI: DeepSeek V3.1 Nex N1",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 163840,
-      "description": "DeepSeek V3.1 Nex-N1 is the flagship release of the Nex-N1 series \u2014 a post-trained model designed to highlight agent autonomy, tool use, and real-world productivity. Nex-N1 demonstrates competitive performance across...",
-      "pricing_per_million": {
-        "prompt": 0.135,
-        "completion": 0.5,
-        "image": null,
-        "request": null
-      },
-      "created": 1765204393
     },
     {
       "id": "essentialai/rnj-1-instruct",
@@ -4581,26 +4818,6 @@
       "created": 1764601720
     },
     {
-      "id": "deepseek/deepseek-v3.2-speciale",
-      "vendor": "deepseek",
-      "display_name": "DeepSeek: DeepSeek V3.2 Speciale",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 163840,
-      "max_completion": 163840,
-      "description": "DeepSeek-V3.2-Speciale is a high-compute variant of DeepSeek-V3.2 optimized for maximum reasoning and agentic performance. It builds on DeepSeek Sparse Attention (DSA) for efficient long-context processing, then scales post-training reinforcement learning...",
-      "pricing_per_million": {
-        "prompt": 0.287,
-        "completion": 0.431,
-        "image": null,
-        "request": null
-      },
-      "created": 1764594837
-    },
-    {
       "id": "deepseek/deepseek-v3.2",
       "vendor": "deepseek",
       "display_name": "DeepSeek: DeepSeek V3.2",
@@ -4610,11 +4827,11 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": 65536,
+      "max_completion": 64000,
       "description": "DeepSeek-V3.2 is a large language model designed to harmonize high computational efficiency with strong reasoning and agentic tool-use performance. It introduces DeepSeek Sparse Attention (DSA), a fine-grained sparse attention mechanism...",
       "pricing_per_million": {
-        "prompt": 0.252,
-        "completion": 0.378,
+        "prompt": 0.2288,
+        "completion": 0.3432,
         "image": null,
         "request": null
       },
@@ -4736,7 +4953,7 @@
       ],
       "accepts_image": true,
       "context_length": 128000,
-      "max_completion": 16384,
+      "max_completion": 32000,
       "description": "GPT-5.1 Chat (AKA Instant is the fast, lightweight member of the 5.1 family, optimized for low-latency chat while retaining strong general intelligence. It uses adaptive reasoning to selectively \u201cthink\u201d on...",
       "pricing_per_million": {
         "prompt": 1.25,
@@ -4778,7 +4995,7 @@
       ],
       "accepts_image": true,
       "context_length": 400000,
-      "max_completion": 128000,
+      "max_completion": 100000,
       "description": "GPT-5.1-Codex-Mini is a smaller and faster version of GPT-5.1-Codex",
       "pricing_per_million": {
         "prompt": 0.25,
@@ -5116,32 +5333,12 @@
       "max_completion": 16384,
       "description": "Llama-3.3-Nemotron-Super-49B-v1.5 is a 49B-parameter, English-centric reasoning/chat model derived from Meta\u2019s Llama-3.3-70B-Instruct with a 128K context. It\u2019s post-trained for agentic workflows (RAG, tool calling) via SFT across math, code, science, and...",
       "pricing_per_million": {
-        "prompt": 0.1,
+        "prompt": 0.4,
         "completion": 0.4,
         "image": null,
         "request": null
       },
       "created": 1760101395
-    },
-    {
-      "id": "baidu/ernie-4.5-21b-a3b-thinking",
-      "vendor": "baidu",
-      "display_name": "Baidu: ERNIE 4.5 21B A3B Thinking",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 65536,
-      "description": "ERNIE-4.5-21B-A3B-Thinking is Baidu's upgraded lightweight MoE model, refined to boost reasoning depth and quality for top-tier performance in logical puzzles, math, science, coding, text generation, and expert-level academic benchmarks.",
-      "pricing_per_million": {
-        "prompt": 0.07,
-        "completion": 0.28,
-        "image": null,
-        "request": null
-      },
-      "created": 1760048887
     },
     {
       "id": "qwen/qwen3-vl-30b-a3b-thinking",
@@ -5597,26 +5794,6 @@
       "created": 1757106807
     },
     {
-      "id": "nvidia/nemotron-nano-9b-v2",
-      "vendor": "nvidia",
-      "display_name": "NVIDIA: Nemotron Nano 9B V2",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 16384,
-      "description": "NVIDIA-Nemotron-Nano-9B-v2 is a large language model (LLM) trained from scratch by NVIDIA, and designed as a unified model for both reasoning and non-reasoning tasks. It responds to user queries and...",
-      "pricing_per_million": {
-        "prompt": 0.04,
-        "completion": 0.16,
-        "image": null,
-        "request": null
-      },
-      "created": 1757106807
-    },
-    {
       "id": "moonshotai/kimi-k2-0905",
       "vendor": "moonshotai",
       "display_name": "MoonshotAI: Kimi K2 0905",
@@ -5737,47 +5914,6 @@
         "request": null
       },
       "created": 1755095639
-    },
-    {
-      "id": "baidu/ernie-4.5-21b-a3b",
-      "vendor": "baidu",
-      "display_name": "Baidu: ERNIE 4.5 21B A3B",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 8000,
-      "description": "A sophisticated text-based Mixture-of-Experts (MoE) model featuring 21B total parameters with 3B activated per token, delivering exceptional multimodal understanding and generation through heterogeneous MoE structures and modality-isolated routing. Supporting an...",
-      "pricing_per_million": {
-        "prompt": 0.07,
-        "completion": 0.28,
-        "image": null,
-        "request": null
-      },
-      "created": 1755034167
-    },
-    {
-      "id": "baidu/ernie-4.5-vl-28b-a3b",
-      "vendor": "baidu",
-      "display_name": "Baidu: ERNIE 4.5 VL 28B A3B",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "image"
-      ],
-      "accepts_image": true,
-      "context_length": 131072,
-      "max_completion": 8000,
-      "description": "A powerful multimodal Mixture-of-Experts chat model featuring 28B total parameters with 3B activated per token, delivering exceptional text and vision understanding through its innovative heterogeneous MoE structure with modality-isolated routing....",
-      "pricing_per_million": {
-        "prompt": 0.14,
-        "completion": 0.56,
-        "image": null,
-        "request": null
-      },
-      "created": 1755032836
     },
     {
       "id": "z-ai/glm-4.5v",
@@ -5978,10 +6114,10 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": 131072,
+      "max_completion": null,
       "description": "gpt-oss-20b is an open-weight 21B parameter model released by OpenAI under the Apache 2.0 license. It uses a Mixture-of-Experts (MoE) architecture with 3.6B active parameters per forward pass, optimized for...",
       "pricing_per_million": {
-        "prompt": 0.03,
+        "prompt": 0.029,
         "completion": 0.14,
         "image": null,
         "request": null
@@ -6060,12 +6196,12 @@
         "text"
       ],
       "accepts_image": false,
-      "context_length": 262144,
-      "max_completion": 262144,
+      "context_length": 131072,
+      "max_completion": 32000,
       "description": "Qwen3-30B-A3B-Instruct-2507 is a 30.5B-parameter mixture-of-experts language model from Qwen, with 3.3B active parameters per inference. It operates in non-thinking mode and is designed for high-quality instruction following, multilingual understanding, and...",
       "pricing_per_million": {
-        "prompt": 0.09,
-        "completion": 0.3,
+        "prompt": 0.0481,
+        "completion": 0.193,
         "image": null,
         "request": null
       },
@@ -6092,26 +6228,6 @@
       "created": 1753471347
     },
     {
-      "id": "z-ai/glm-4.5-air:free",
-      "vendor": "z-ai",
-      "display_name": "Z.ai: GLM 4.5 Air (free)",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 96000,
-      "description": "GLM-4.5-Air is the lightweight variant of our latest flagship model family, also purpose-built for agent-centric applications. Like GLM-4.5, it adopts the Mixture-of-Experts (MoE) architecture but with a more compact parameter...",
-      "pricing_per_million": {
-        "prompt": 0.0,
-        "completion": 0.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1753471258
-    },
-    {
       "id": "z-ai/glm-4.5-air",
       "vendor": "z-ai",
       "display_name": "Z.ai: GLM 4.5 Air",
@@ -6121,10 +6237,10 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": 98304,
+      "max_completion": 131070,
       "description": "GLM-4.5-Air is the lightweight variant of our latest flagship model family, also purpose-built for agent-centric applications. Like GLM-4.5, it adopts the Mixture-of-Experts (MoE) architecture but with a more compact parameter...",
       "pricing_per_million": {
-        "prompt": 0.13,
+        "prompt": 0.125,
         "completion": 0.85,
         "image": null,
         "request": null
@@ -6141,35 +6257,15 @@
       ],
       "accepts_image": false,
       "context_length": 262144,
-      "max_completion": null,
+      "max_completion": 262144,
       "description": "Qwen3-235B-A22B-Thinking-2507 is a high-performance, open-weight Mixture-of-Experts (MoE) language model optimized for complex reasoning tasks. It activates 22B of its 235B parameters per forward pass and natively supports up to 262,144...",
-      "pricing_per_million": {
-        "prompt": 0.1495,
-        "completion": 1.495,
-        "image": null,
-        "request": null
-      },
-      "created": 1753449557
-    },
-    {
-      "id": "z-ai/glm-4-32b",
-      "vendor": "z-ai",
-      "display_name": "Z.ai: GLM 4 32B ",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 128000,
-      "max_completion": null,
-      "description": "GLM 4 32B is a cost-effective foundation language model. It can efficiently perform complex tasks and has significantly enhanced capabilities in tool use, online search, and code-related intelligent tasks. It...",
       "pricing_per_million": {
         "prompt": 0.1,
         "completion": 0.1,
         "image": null,
         "request": null
       },
-      "created": 1753376617
+      "created": 1753449557
     },
     {
       "id": "qwen/qwen3-coder:free",
@@ -6269,7 +6365,7 @@
       "max_completion": 16384,
       "description": "Qwen3-235B-A22B-Instruct-2507 is a multilingual, instruction-tuned mixture-of-experts language model based on the Qwen3-235B architecture, with 22B active parameters per forward pass. It is optimized for general-purpose text generation, including instruction following,...",
       "pricing_per_million": {
-        "prompt": 0.071,
+        "prompt": 0.09,
         "completion": 0.1,
         "image": null,
         "request": null
@@ -6315,48 +6411,6 @@
         "request": null
       },
       "created": 1752263252
-    },
-    {
-      "id": "mistralai/devstral-medium",
-      "vendor": "mistralai",
-      "display_name": "Mistral: Devstral Medium",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "file"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": null,
-      "description": "Devstral Medium is a high-performance code generation and agentic reasoning model developed jointly by Mistral AI and All Hands AI. Positioned as a step up from Devstral Small, it achieves...",
-      "pricing_per_million": {
-        "prompt": 0.4,
-        "completion": 2.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1752161321
-    },
-    {
-      "id": "mistralai/devstral-small",
-      "vendor": "mistralai",
-      "display_name": "Mistral: Devstral Small 1.1",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "file"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": null,
-      "description": "Devstral Small 1.1 is a 24B parameter open-weight language model for software engineering agents, developed by Mistral AI in collaboration with All Hands AI. Finetuned from Mistral Small 3.1 and...",
-      "pricing_per_million": {
-        "prompt": 0.1,
-        "completion": 0.3,
-        "image": null,
-        "request": null
-      },
-      "created": 1752160751
     },
     {
       "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
@@ -6458,26 +6512,6 @@
         "request": null
       },
       "created": 1751300903
-    },
-    {
-      "id": "baidu/ernie-4.5-300b-a47b",
-      "vendor": "baidu",
-      "display_name": "Baidu: ERNIE 4.5 300B A47B ",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 12000,
-      "description": "ERNIE-4.5-300B-A47B is a 300B parameter Mixture-of-Experts (MoE) language model developed by Baidu as part of the ERNIE 4.5 series. It activates 47B parameters per token and supports text generation in...",
-      "pricing_per_million": {
-        "prompt": 0.28,
-        "completion": 1.1,
-        "image": null,
-        "request": null
-      },
-      "created": 1751300139
     },
     {
       "id": "mistralai/mistral-small-3.2-24b-instruct",
@@ -6744,47 +6778,6 @@
       "created": 1746578513
     },
     {
-      "id": "arcee-ai/spotlight",
-      "vendor": "arcee-ai",
-      "display_name": "Arcee AI: Spotlight",
-      "modality": "text",
-      "input_modalities": [
-        "image",
-        "text"
-      ],
-      "accepts_image": true,
-      "context_length": 131072,
-      "max_completion": 65537,
-      "description": "Spotlight is a 7\u2011billion\u2011parameter vision\u2011language model derived from Qwen 2.5\u2011VL and fine\u2011tuned by Arcee AI for tight image\u2011text grounding tasks. It offers a 32 k\u2011token context window, enabling rich multimodal...",
-      "pricing_per_million": {
-        "prompt": 0.18,
-        "completion": 0.18,
-        "image": null,
-        "request": null
-      },
-      "created": 1746481552
-    },
-    {
-      "id": "arcee-ai/maestro-reasoning",
-      "vendor": "arcee-ai",
-      "display_name": "Arcee AI: Maestro Reasoning",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 32000,
-      "description": "Maestro Reasoning is Arcee's flagship analysis model: a 32 B\u2011parameter derivative of Qwen 2.5\u201132 B tuned with DPO and chain\u2011of\u2011thought RL for step\u2011by\u2011step logic. Compared to the earlier 7 B...",
-      "pricing_per_million": {
-        "prompt": 0.9,
-        "completion": 3.3,
-        "image": null,
-        "request": null
-      },
-      "created": 1746481269
-    },
-    {
       "id": "arcee-ai/virtuoso-large",
       "vendor": "arcee-ai",
       "display_name": "Arcee AI: Virtuoso Large",
@@ -6855,11 +6848,11 @@
       ],
       "accepts_image": false,
       "context_length": 131072,
-      "max_completion": 20000,
+      "max_completion": 16384,
       "description": "Qwen3, the latest generation in the Qwen large language model series, features both dense and mixture-of-experts (MoE) architectures to excel in reasoning, multilingual support, and advanced agent tasks. Its unique...",
       "pricing_per_million": {
-        "prompt": 0.09,
-        "completion": 0.45,
+        "prompt": 0.12,
+        "completion": 0.5,
         "image": null,
         "request": null
       },
@@ -7078,26 +7071,6 @@
       "created": 1744651369
     },
     {
-      "id": "alfredpros/codellama-7b-instruct-solidity",
-      "vendor": "alfredpros",
-      "display_name": "AlfredPros: CodeLLaMa 7B Instruct Solidity",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 4096,
-      "max_completion": 4096,
-      "description": "A finetuned 7 billion parameters Code LLaMA - Instruct model to generate Solidity smart contract using 4-bit QLoRA finetuning provided by PEFT library.",
-      "pricing_per_million": {
-        "prompt": 0.8,
-        "completion": 1.2,
-        "image": null,
-        "request": null
-      },
-      "created": 1744641874
-    },
-    {
       "id": "meta-llama/llama-4-maverick",
       "vendor": "meta-llama",
       "display_name": "Meta: Llama 4 Maverick",
@@ -7132,7 +7105,7 @@
       "max_completion": 16384,
       "description": "Llama 4 Scout 17B Instruct (16E) is a mixture-of-experts (MoE) language model developed by Meta, activating 17 billion parameters out of a total of 109B. It supports native multimodal input...",
       "pricing_per_million": {
-        "prompt": 0.08,
+        "prompt": 0.1,
         "completion": 0.3,
         "image": null,
         "request": null
@@ -7216,8 +7189,8 @@
       "max_completion": 16384,
       "description": "Gemma 3 introduces multimodality, supporting vision-language input and text outputs. It handles context windows up to 128k tokens, understands over 140 languages, and offers improved math, reasoning, and chat capabilities,...",
       "pricing_per_million": {
-        "prompt": 0.04,
-        "completion": 0.08,
+        "prompt": 0.05,
+        "completion": 0.1,
         "image": null,
         "request": null
       },
@@ -7237,8 +7210,8 @@
       "max_completion": 16384,
       "description": "Gemma 3 introduces multimodality, supporting vision-language input and text outputs. It handles context windows up to 128k tokens, understands over 140 languages, and offers improved math, reasoning, and chat capabilities,...",
       "pricing_per_million": {
-        "prompt": 0.04,
-        "completion": 0.13,
+        "prompt": 0.05,
+        "completion": 0.15,
         "image": null,
         "request": null
       },
@@ -7428,30 +7401,6 @@
       "created": 1741311246
     },
     {
-      "id": "google/gemini-2.0-flash-lite-001",
-      "vendor": "google",
-      "display_name": "Google: Gemini 2.0 Flash Lite",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "image",
-        "file",
-        "audio",
-        "video"
-      ],
-      "accepts_image": true,
-      "context_length": 1048576,
-      "max_completion": 8192,
-      "description": "Gemini 2.0 Flash Lite offers a significantly faster time to first token (TTFT) compared to [Gemini Flash 1.5](/google/gemini-flash-1.5), while maintaining quality on par with larger models like [Gemini Pro 1.5](/google/gemini-pro-1.5),...",
-      "pricing_per_million": {
-        "prompt": 0.075,
-        "completion": 0.3,
-        "image": 0.075,
-        "request": null
-      },
-      "created": 1740506212
-    },
-    {
       "id": "mistralai/mistral-saba",
       "vendor": "mistralai",
       "display_name": "Mistral: Saba",
@@ -7473,26 +7422,6 @@
       "created": 1739803239
     },
     {
-      "id": "meta-llama/llama-guard-3-8b",
-      "vendor": "meta-llama",
-      "display_name": "Llama Guard 3 8B",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 131072,
-      "description": "Llama Guard 3 is a Llama-3.1-8B pretrained model, fine-tuned for content safety classification. Similar to previous versions, it can be used to classify content in both LLM inputs (prompt classification)...",
-      "pricing_per_million": {
-        "prompt": 0.484,
-        "completion": 0.03,
-        "image": null,
-        "request": null
-      },
-      "created": 1739401318
-    },
-    {
       "id": "openai/o3-mini-high",
       "vendor": "openai",
       "display_name": "OpenAI: o3 Mini High",
@@ -7512,30 +7441,6 @@
         "request": null
       },
       "created": 1739372611
-    },
-    {
-      "id": "google/gemini-2.0-flash-001",
-      "vendor": "google",
-      "display_name": "Google: Gemini 2.0 Flash",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "image",
-        "file",
-        "audio",
-        "video"
-      ],
-      "accepts_image": true,
-      "context_length": 1000000,
-      "max_completion": 8192,
-      "description": "Gemini Flash 2.0 offers a significantly faster time to first token (TTFT) compared to [Gemini Flash 1.5](/google/gemini-flash-1.5), while maintaining quality on par with larger models like [Gemini Pro 1.5](/google/gemini-pro-1.5). It...",
-      "pricing_per_million": {
-        "prompt": 0.1,
-        "completion": 0.4,
-        "image": 0.1,
-        "request": null
-      },
-      "created": 1738769413
     },
     {
       "id": "aion-labs/aion-1.0",
@@ -7608,11 +7513,11 @@
       ],
       "accepts_image": true,
       "context_length": 131072,
-      "max_completion": null,
+      "max_completion": 128000,
       "description": "Qwen2.5-VL is proficient in recognizing common objects such as flowers, birds, fish, and insects. It is also highly capable of analyzing texts, charts, icons, graphics, and layouts within images.",
       "pricing_per_million": {
-        "prompt": 0.25,
-        "completion": 0.75,
+        "prompt": 0.8,
+        "completion": 1.0,
         "image": null,
         "request": null
       },
@@ -7729,11 +7634,11 @@
         "text"
       ],
       "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 16384,
+      "context_length": 128000,
+      "max_completion": 8192,
       "description": "DeepSeek R1 Distill Llama 70B is a distilled large language model based on [Llama-3.3-70B-Instruct](/meta-llama/llama-3.3-70b-instruct), using outputs from [DeepSeek R1](/deepseek/deepseek-r1). The model combines advanced distillation techniques to achieve high performance across...",
       "pricing_per_million": {
-        "prompt": 0.7,
+        "prompt": 0.8,
         "completion": 0.8,
         "image": null,
         "request": null
@@ -7834,8 +7739,8 @@
       "max_completion": 16000,
       "description": "DeepSeek-V3 is the latest model from the DeepSeek team, building upon the instruction following and coding abilities of the previous versions. Pre-trained on nearly 15 trillion tokens, the reported evaluations...",
       "pricing_per_million": {
-        "prompt": 0.2288,
-        "completion": 0.9144,
+        "prompt": 0.2002,
+        "completion": 0.8001,
         "image": null,
         "request": null
       },
@@ -8028,27 +7933,6 @@
       "created": 1732127594
     },
     {
-      "id": "mistralai/mistral-large-2411",
-      "vendor": "mistralai",
-      "display_name": "Mistral Large 2411",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "file"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": null,
-      "description": "Mistral Large 2 2411 is an update of [Mistral Large 2](/mistralai/mistral-large) released together with [Pixtral Large 2411](/mistralai/pixtral-large-2411) It provides a significant upgrade on the previous [Mistral Large 24.07](/mistralai/mistral-large-2407), with notable...",
-      "pricing_per_million": {
-        "prompt": 2.0,
-        "completion": 6.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1731978685
-    },
-    {
       "id": "mistralai/mistral-large-2407",
       "vendor": "mistralai",
       "display_name": "Mistral Large 2407",
@@ -8068,28 +7952,6 @@
         "request": null
       },
       "created": 1731978415
-    },
-    {
-      "id": "mistralai/pixtral-large-2411",
-      "vendor": "mistralai",
-      "display_name": "Mistral: Pixtral Large 2411",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "image",
-        "file"
-      ],
-      "accepts_image": true,
-      "context_length": 131072,
-      "max_completion": null,
-      "description": "Pixtral Large is a 124B parameter, open-weight, multimodal model built on top of [Mistral Large 2](/mistralai/mistral-large-2411). The model is able to understand documents, charts and natural images. The model is...",
-      "pricing_per_million": {
-        "prompt": 2.0,
-        "completion": 6.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1731977388
     },
     {
       "id": "qwen/qwen-2.5-coder-32b-instruct",
@@ -8253,47 +8115,6 @@
       "created": 1727654400
     },
     {
-      "id": "meta-llama/llama-3.2-11b-vision-instruct",
-      "vendor": "meta-llama",
-      "display_name": "Meta: Llama 3.2 11B Vision Instruct",
-      "modality": "text",
-      "input_modalities": [
-        "text",
-        "image"
-      ],
-      "accepts_image": true,
-      "context_length": 131072,
-      "max_completion": 16384,
-      "description": "Llama 3.2 11B Vision is a multimodal model with 11 billion parameters, designed to handle tasks combining visual and textual data. It excels in tasks such as image captioning and...",
-      "pricing_per_million": {
-        "prompt": 0.245,
-        "completion": 0.245,
-        "image": null,
-        "request": null
-      },
-      "created": 1727222400
-    },
-    {
-      "id": "meta-llama/llama-3.2-1b-instruct",
-      "vendor": "meta-llama",
-      "display_name": "Meta: Llama 3.2 1B Instruct",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 60000,
-      "description": "Llama 3.2 1B is a 1-billion-parameter language model focused on efficiently performing natural language tasks, such as summarization, dialogue, and multilingual text analysis. Its smaller size allows it to operate...",
-      "pricing_per_million": {
-        "prompt": 0.027,
-        "completion": 0.201,
-        "image": null,
-        "request": null
-      },
-      "created": 1727222400
-    },
-    {
       "id": "meta-llama/llama-3.2-3b-instruct:free",
       "vendor": "meta-llama",
       "display_name": "Meta: Llama 3.2 3B Instruct (free)",
@@ -8334,6 +8155,47 @@
       "created": 1727222400
     },
     {
+      "id": "meta-llama/llama-3.2-1b-instruct",
+      "vendor": "meta-llama",
+      "display_name": "Meta: Llama 3.2 1B Instruct",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 131072,
+      "max_completion": 60000,
+      "description": "Llama 3.2 1B is a 1-billion-parameter language model focused on efficiently performing natural language tasks, such as summarization, dialogue, and multilingual text analysis. Its smaller size allows it to operate...",
+      "pricing_per_million": {
+        "prompt": 0.027,
+        "completion": 0.201,
+        "image": null,
+        "request": null
+      },
+      "created": 1727222400
+    },
+    {
+      "id": "meta-llama/llama-3.2-11b-vision-instruct",
+      "vendor": "meta-llama",
+      "display_name": "Meta: Llama 3.2 11B Vision Instruct",
+      "modality": "text",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "accepts_image": true,
+      "context_length": 131072,
+      "max_completion": 16384,
+      "description": "Llama 3.2 11B Vision is a multimodal model with 11 billion parameters, designed to handle tasks combining visual and textual data. It excels in tasks such as image captioning and...",
+      "pricing_per_million": {
+        "prompt": 0.345,
+        "completion": 0.345,
+        "image": null,
+        "request": null
+      },
+      "created": 1727222400
+    },
+    {
       "id": "qwen/qwen-2.5-72b-instruct",
       "vendor": "qwen",
       "display_name": "Qwen2.5 72B Instruct",
@@ -8354,26 +8216,6 @@
       "created": 1726704000
     },
     {
-      "id": "cohere/command-r-08-2024",
-      "vendor": "cohere",
-      "display_name": "Cohere: Command R (08-2024)",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 128000,
-      "max_completion": 4000,
-      "description": "command-r-08-2024 is an update of the [Command R](/models/cohere/command-r) with improved performance for multilingual retrieval-augmented generation (RAG) and tool use. More broadly, it is better at math, code and reasoning and...",
-      "pricing_per_million": {
-        "prompt": 0.15,
-        "completion": 0.6,
-        "image": null,
-        "request": null
-      },
-      "created": 1724976000
-    },
-    {
       "id": "cohere/command-r-plus-08-2024",
       "vendor": "cohere",
       "display_name": "Cohere: Command R+ (08-2024)",
@@ -8388,6 +8230,26 @@
       "pricing_per_million": {
         "prompt": 2.5,
         "completion": 10.0,
+        "image": null,
+        "request": null
+      },
+      "created": 1724976000
+    },
+    {
+      "id": "cohere/command-r-08-2024",
+      "vendor": "cohere",
+      "display_name": "Cohere: Command R (08-2024)",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 128000,
+      "max_completion": 4000,
+      "description": "command-r-08-2024 is an update of the [Command R](/models/cohere/command-r) with improved performance for multilingual retrieval-augmented generation (RAG) and tool use. More broadly, it is better at math, code and reasoning and...",
+      "pricing_per_million": {
+        "prompt": 0.15,
+        "completion": 0.6,
         "image": null,
         "request": null
       },
@@ -8426,8 +8288,8 @@
       "max_completion": 16384,
       "description": "Hermes 3 is a generalist language model with many improvements over [Hermes 2](/models/nousresearch/nous-hermes-2-mistral-7b-dpo), including advanced agentic capabilities, much better roleplaying, reasoning, multi-turn conversation, long context coherence, and improvements across the...",
       "pricing_per_million": {
-        "prompt": 0.3,
-        "completion": 0.3,
+        "prompt": 0.7,
+        "completion": 0.7,
         "image": null,
         "request": null
       },
@@ -8516,6 +8378,26 @@
       "created": 1722902400
     },
     {
+      "id": "meta-llama/llama-3.1-8b-instruct",
+      "vendor": "meta-llama",
+      "display_name": "Meta: Llama 3.1 8B Instruct",
+      "modality": "text",
+      "input_modalities": [
+        "text"
+      ],
+      "accepts_image": false,
+      "context_length": 131072,
+      "max_completion": 16384,
+      "description": "Meta's latest class of model (Llama 3.1) launched with a variety of sizes & flavors. This 8B instruct-tuned version is fast and efficient. It has demonstrated strong performance compared to...",
+      "pricing_per_million": {
+        "prompt": 0.02,
+        "completion": 0.03,
+        "image": null,
+        "request": null
+      },
+      "created": 1721692800
+    },
+    {
       "id": "meta-llama/llama-3.1-70b-instruct",
       "vendor": "meta-llama",
       "display_name": "Meta: Llama 3.1 70B Instruct",
@@ -8530,26 +8412,6 @@
       "pricing_per_million": {
         "prompt": 0.4,
         "completion": 0.4,
-        "image": null,
-        "request": null
-      },
-      "created": 1721692800
-    },
-    {
-      "id": "meta-llama/llama-3.1-8b-instruct",
-      "vendor": "meta-llama",
-      "display_name": "Meta: Llama 3.1 8B Instruct",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 131072,
-      "max_completion": 16384,
-      "description": "Meta's latest class of model (Llama 3.1) launched with a variety of sizes & flavors. This 8B instruct-tuned version is fast and efficient. It has demonstrated strong performance compared to...",
-      "pricing_per_million": {
-        "prompt": 0.02,
-        "completion": 0.05,
         "image": null,
         "request": null
       },
@@ -8640,44 +8502,26 @@
       "created": 1720828800
     },
     {
-      "id": "sao10k/l3-euryale-70b",
-      "vendor": "sao10k",
-      "display_name": "Sao10k: Llama 3 Euryale 70B v2.1",
+      "id": "openai/gpt-4o-2024-05-13",
+      "vendor": "openai",
+      "display_name": "OpenAI: GPT-4o (2024-05-13)",
       "modality": "text",
       "input_modalities": [
-        "text"
+        "text",
+        "image",
+        "file"
       ],
-      "accepts_image": false,
-      "context_length": 8192,
-      "max_completion": 8192,
-      "description": "Euryale 70B v2.1 is a model focused on creative roleplay from [Sao10k](https://ko-fi.com/sao10k). - Better prompt adherence. - Better anatomy / spatial awareness. - Adapts much better to unique and custom...",
+      "accepts_image": true,
+      "context_length": 128000,
+      "max_completion": 4096,
+      "description": "GPT-4o (\"o\" for \"omni\") is OpenAI's latest AI model, supporting both text and image inputs with text outputs. It maintains the intelligence level of [GPT-4 Turbo](/models/openai/gpt-4-turbo) while being twice as...",
       "pricing_per_million": {
-        "prompt": 1.48,
-        "completion": 1.48,
+        "prompt": 5.0,
+        "completion": 15.0,
         "image": null,
         "request": null
       },
-      "created": 1718668800
-    },
-    {
-      "id": "nousresearch/hermes-2-pro-llama-3-8b",
-      "vendor": "nousresearch",
-      "display_name": "NousResearch: Hermes 2 Pro - Llama-3 8B",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 8192,
-      "max_completion": 8192,
-      "description": "Hermes 2 Pro is an upgraded, retrained version of Nous Hermes 2, consisting of an updated and cleaned version of the OpenHermes 2.5 Dataset, as well as a newly introduced...",
-      "pricing_per_million": {
-        "prompt": 0.14,
-        "completion": 0.14,
-        "image": null,
-        "request": null
-      },
-      "created": 1716768000
+      "created": 1715558400
     },
     {
       "id": "openai/gpt-4o",
@@ -8702,26 +8546,24 @@
       "created": 1715558400
     },
     {
-      "id": "openai/gpt-4o-2024-05-13",
-      "vendor": "openai",
-      "display_name": "OpenAI: GPT-4o (2024-05-13)",
+      "id": "meta-llama/llama-3-8b-instruct",
+      "vendor": "meta-llama",
+      "display_name": "Meta: Llama 3 8B Instruct",
       "modality": "text",
       "input_modalities": [
-        "text",
-        "image",
-        "file"
+        "text"
       ],
-      "accepts_image": true,
-      "context_length": 128000,
-      "max_completion": 4096,
-      "description": "GPT-4o (\"o\" for \"omni\") is OpenAI's latest AI model, supporting both text and image inputs with text outputs. It maintains the intelligence level of [GPT-4 Turbo](/models/openai/gpt-4-turbo) while being twice as...",
+      "accepts_image": false,
+      "context_length": 8192,
+      "max_completion": null,
+      "description": "Meta's latest class of model (Llama 3) launched with a variety of sizes & flavors. This 8B instruct-tuned version was optimized for high quality dialogue usecases. It has demonstrated strong...",
       "pricing_per_million": {
-        "prompt": 5.0,
-        "completion": 15.0,
+        "prompt": 0.14,
+        "completion": 0.14,
         "image": null,
         "request": null
       },
-      "created": 1715558400
+      "created": 1713398400
     },
     {
       "id": "meta-llama/llama-3-70b-instruct",
@@ -8738,26 +8580,6 @@
       "pricing_per_million": {
         "prompt": 0.51,
         "completion": 0.74,
-        "image": null,
-        "request": null
-      },
-      "created": 1713398400
-    },
-    {
-      "id": "meta-llama/llama-3-8b-instruct",
-      "vendor": "meta-llama",
-      "display_name": "Meta: Llama 3 8B Instruct",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 8192,
-      "max_completion": 8192,
-      "description": "Meta's latest class of model (Llama 3) launched with a variety of sizes & flavors. This 8B instruct-tuned version was optimized for high quality dialogue usecases. It has demonstrated strong...",
-      "pricing_per_million": {
-        "prompt": 0.04,
-        "completion": 0.04,
         "image": null,
         "request": null
       },
@@ -8868,26 +8690,6 @@
       "created": 1708905600
     },
     {
-      "id": "openai/gpt-3.5-turbo-0613",
-      "vendor": "openai",
-      "display_name": "OpenAI: GPT-3.5 Turbo (older v0613)",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 4095,
-      "max_completion": 4096,
-      "description": "GPT-3.5 Turbo is OpenAI's fastest model. It can understand and generate natural language or code, and is optimized for chat and traditional completion tasks.\n\nTraining data up to Sep 2021.",
-      "pricing_per_million": {
-        "prompt": 1.0,
-        "completion": 2.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1706140800
-    },
-    {
       "id": "openai/gpt-4-turbo-preview",
       "vendor": "openai",
       "display_name": "OpenAI: GPT-4 Turbo Preview",
@@ -8908,44 +8710,24 @@
       "created": 1706140800
     },
     {
-      "id": "openai/gpt-4-1106-preview",
+      "id": "openai/gpt-3.5-turbo-0613",
       "vendor": "openai",
-      "display_name": "OpenAI: GPT-4 Turbo (older v1106)",
+      "display_name": "OpenAI: GPT-3.5 Turbo (older v0613)",
       "modality": "text",
       "input_modalities": [
         "text"
       ],
       "accepts_image": false,
-      "context_length": 128000,
+      "context_length": 4095,
       "max_completion": 4096,
-      "description": "The latest GPT-4 Turbo model with vision capabilities. Vision requests can now use JSON mode and function calling.\n\nTraining data: up to April 2023.",
+      "description": "GPT-3.5 Turbo is OpenAI's fastest model. It can understand and generate natural language or code, and is optimized for chat and traditional completion tasks.\n\nTraining data up to Sep 2021.",
       "pricing_per_million": {
-        "prompt": 10.0,
-        "completion": 30.0,
+        "prompt": 1.0,
+        "completion": 2.0,
         "image": null,
         "request": null
       },
-      "created": 1699228800
-    },
-    {
-      "id": "mistralai/mistral-7b-instruct-v0.1",
-      "vendor": "mistralai",
-      "display_name": "Mistral: Mistral 7B Instruct v0.1",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 4096,
-      "max_completion": 2824,
-      "description": "A 7.3B parameter model that outperforms Llama 2 13B on all benchmarks, with optimizations for speed and context length.",
-      "pricing_per_million": {
-        "prompt": 0.11,
-        "completion": 0.19,
-        "image": null,
-        "request": null
-      },
-      "created": 1695859200
+      "created": 1706140800
     },
     {
       "id": "openai/gpt-3.5-turbo-instruct",
@@ -9048,9 +8830,9 @@
       "created": 1688256000
     },
     {
-      "id": "openai/gpt-4-0314",
+      "id": "openai/gpt-4",
       "vendor": "openai",
-      "display_name": "OpenAI: GPT-4 (older v0314)",
+      "display_name": "OpenAI: GPT-4",
       "modality": "text",
       "input_modalities": [
         "text"
@@ -9058,7 +8840,7 @@
       "accepts_image": false,
       "context_length": 8191,
       "max_completion": 4096,
-      "description": "GPT-4-0314 is the first version of GPT-4 released, with a context length of 8,192 tokens, and was supported until June 14. Training data: up to Sep 2021.",
+      "description": "OpenAI's flagship model, GPT-4 is a large-scale multimodal language model capable of solving difficult problems with greater accuracy than previous models due to its broader general knowledge and advanced reasoning...",
       "pricing_per_million": {
         "prompt": 30.0,
         "completion": 60.0,
@@ -9086,26 +8868,6 @@
         "request": null
       },
       "created": 1685232000
-    },
-    {
-      "id": "openai/gpt-4",
-      "vendor": "openai",
-      "display_name": "OpenAI: GPT-4",
-      "modality": "text",
-      "input_modalities": [
-        "text"
-      ],
-      "accepts_image": false,
-      "context_length": 8191,
-      "max_completion": 4096,
-      "description": "OpenAI's flagship model, GPT-4 is a large-scale multimodal language model capable of solving difficult problems with greater accuracy than previous models due to its broader general knowledge and advanced reasoning...",
-      "pricing_per_million": {
-        "prompt": 30.0,
-        "completion": 60.0,
-        "image": null,
-        "request": null
-      },
-      "created": 1685232000
     }
   ],
   "by_modality": {
@@ -9118,6 +8880,7 @@
       "google/gemini-2.5-flash-image",
       "google/gemini-3.1-flash-image-preview",
       "google/gemini-3-pro-image-preview",
+      "microsoft/mai-image-2.5",
       "openai/gpt-5-image",
       "openai/gpt-5-image-mini",
       "openai/gpt-5.4-image-2",
@@ -9138,6 +8901,8 @@
       "sourceful/riverflow-v2-max-preview",
       "sourceful/riverflow-v2-pro",
       "sourceful/riverflow-v2-standard-preview",
+      "sourceful/riverflow-v2.5-fast",
+      "sourceful/riverflow-v2.5-pro",
       "x-ai/grok-imagine-image-quality"
     ],
     "video": [
@@ -9160,15 +8925,14 @@
       "google/lyria-3-clip-preview",
       "google/lyria-3-pro-preview",
       "openai/gpt-audio",
-      "openai/gpt-audio-mini",
-      "openai/gpt-4o-audio-preview"
+      "openai/gpt-audio-mini"
     ],
     "speech": [
       "canopylabs/orpheus-3b-0.1-ft",
       "google/gemini-3.1-flash-tts-preview",
       "hexgrad/kokoro-82m",
+      "microsoft/mai-voice-2",
       "mistralai/voxtral-mini-tts-2603",
-      "openai/gpt-4o-mini-tts-2025-12-15",
       "sesame/csm-1b",
       "x-ai/grok-voice-tts-1.0",
       "zyphra/zonos-v0.1-hybrid",
@@ -9176,7 +8940,9 @@
     ],
     "transcription": [
       "google/chirp-3",
+      "microsoft/mai-transcribe-1.5",
       "mistralai/voxtral-mini-transcribe",
+      "nvidia/parakeet-tdt-0.6b-v3",
       "openai/gpt-4o-mini-transcribe",
       "openai/gpt-4o-transcribe",
       "openai/whisper-1",
@@ -9187,13 +8953,15 @@
     "rerank": [
       "cohere/rerank-4-fast",
       "cohere/rerank-4-pro",
-      "cohere/rerank-v3.5"
+      "cohere/rerank-v3.5",
+      "nvidia/llama-nemotron-rerank-vl-1b-v2:free"
     ],
     "embedding": [
       "baai/bge-base-en-v1.5",
       "baai/bge-large-en-v1.5",
       "baai/bge-m3",
       "google/gemini-embedding-001",
+      "google/gemini-embedding-2",
       "google/gemini-embedding-2-preview",
       "intfloat/e5-base-v2",
       "intfloat/e5-large-v2",
@@ -9222,7 +8990,6 @@
       "aion-labs/aion-1.0-mini",
       "aion-labs/aion-2.0",
       "aion-labs/aion-rp-llama-3.1-8b",
-      "alfredpros/codellama-7b-instruct-solidity",
       "allenai/olmo-3-32b-think",
       "amazon/nova-2-lite-v1",
       "amazon/nova-lite-v1",
@@ -9232,6 +8999,7 @@
       "anthracite-org/magnum-v4-72b",
       "anthropic/claude-3-haiku",
       "anthropic/claude-3.5-haiku",
+      "anthropic/claude-fable-5",
       "anthropic/claude-haiku-4.5",
       "anthropic/claude-opus-4",
       "anthropic/claude-opus-4.1",
@@ -9240,22 +9008,16 @@
       "anthropic/claude-opus-4.6-fast",
       "anthropic/claude-opus-4.7",
       "anthropic/claude-opus-4.7-fast",
+      "anthropic/claude-opus-4.8",
+      "anthropic/claude-opus-4.8-fast",
       "anthropic/claude-sonnet-4",
       "anthropic/claude-sonnet-4.5",
       "anthropic/claude-sonnet-4.6",
       "arcee-ai/coder-large",
-      "arcee-ai/maestro-reasoning",
-      "arcee-ai/spotlight",
       "arcee-ai/trinity-large-thinking",
       "arcee-ai/trinity-mini",
       "arcee-ai/virtuoso-large",
-      "baidu/cobuddy:free",
-      "baidu/ernie-4.5-21b-a3b",
-      "baidu/ernie-4.5-21b-a3b-thinking",
-      "baidu/ernie-4.5-300b-a47b",
-      "baidu/ernie-4.5-vl-28b-a3b",
       "baidu/ernie-4.5-vl-424b-a47b",
-      "baidu/qianfan-ocr-fast",
       "bytedance/ui-tars-1.5-7b",
       "bytedance-seed/seed-1.6",
       "bytedance-seed/seed-1.6-flash",
@@ -9273,17 +9035,13 @@
       "deepseek/deepseek-v3.1-terminus",
       "deepseek/deepseek-v3.2",
       "deepseek/deepseek-v3.2-exp",
-      "deepseek/deepseek-v3.2-speciale",
       "deepseek/deepseek-v4-flash",
-      "deepseek/deepseek-v4-flash:free",
       "deepseek/deepseek-v4-pro",
       "deepseek/deepseek-r1",
       "deepseek/deepseek-r1-0528",
       "deepseek/deepseek-r1-distill-llama-70b",
       "deepseek/deepseek-r1-distill-qwen-32b",
       "essentialai/rnj-1-instruct",
-      "google/gemini-2.0-flash-001",
-      "google/gemini-2.0-flash-lite-001",
       "google/gemini-2.5-flash",
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -9319,7 +9077,6 @@
       "liquid/lfm-2.5-1.2b-instruct:free",
       "liquid/lfm-2.5-1.2b-thinking:free",
       "mancer/weaver",
-      "meta-llama/llama-guard-3-8b",
       "meta-llama/llama-3-70b-instruct",
       "meta-llama/llama-3-8b-instruct",
       "meta-llama/llama-3.1-70b-instruct",
@@ -9341,20 +9098,16 @@
       "minimax/minimax-m2-her",
       "minimax/minimax-m2.1",
       "minimax/minimax-m2.5",
-      "minimax/minimax-m2.5:free",
       "minimax/minimax-m2.7",
+      "minimax/minimax-m3",
       "minimax/minimax-01",
       "mistralai/mistral-large",
       "mistralai/mistral-large-2407",
-      "mistralai/mistral-large-2411",
       "mistralai/codestral-2508",
       "mistralai/devstral-2512",
-      "mistralai/devstral-medium",
-      "mistralai/devstral-small",
       "mistralai/ministral-14b-2512",
       "mistralai/ministral-3b-2512",
       "mistralai/ministral-8b-2512",
-      "mistralai/mistral-7b-instruct-v0.1",
       "mistralai/mistral-large-2512",
       "mistralai/mistral-medium-3",
       "mistralai/mistral-medium-3.1",
@@ -9365,7 +9118,6 @@
       "mistralai/mistral-small-3.2-24b-instruct",
       "mistralai/mistral-small-2603",
       "mistralai/mixtral-8x22b-instruct",
-      "mistralai/pixtral-large-2411",
       "mistralai/mistral-saba",
       "mistralai/voxtral-small-24b-2507",
       "moonshotai/kimi-k2",
@@ -9373,23 +9125,25 @@
       "moonshotai/kimi-k2-thinking",
       "moonshotai/kimi-k2.5",
       "moonshotai/kimi-k2.6",
+      "moonshotai/kimi-k2.7-code",
       "morph/morph-v3-fast",
       "morph/morph-v3-large",
-      "nex-agi/deepseek-v3.1-nex-n1",
+      "nex-agi/nex-n2-pro:free",
       "nousresearch/hermes-3-llama-3.1-405b",
       "nousresearch/hermes-3-llama-3.1-405b:free",
       "nousresearch/hermes-3-llama-3.1-70b",
       "nousresearch/hermes-4-405b",
       "nousresearch/hermes-4-70b",
-      "nousresearch/hermes-2-pro-llama-3-8b",
       "nvidia/llama-3.3-nemotron-super-49b-v1.5",
       "nvidia/nemotron-3-nano-30b-a3b",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "nvidia/nemotron-3-super-120b-a12b",
       "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-ultra-550b-a55b",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "nvidia/nemotron-3.5-content-safety:free",
       "nvidia/nemotron-nano-12b-v2-vl:free",
-      "nvidia/nemotron-nano-9b-v2",
       "nvidia/nemotron-nano-9b-v2:free",
       "openai/gpt-chat-latest",
       "openai/gpt-3.5-turbo",
@@ -9397,9 +9151,7 @@
       "openai/gpt-3.5-turbo-16k",
       "openai/gpt-3.5-turbo-instruct",
       "openai/gpt-4",
-      "openai/gpt-4-0314",
       "openai/gpt-4-turbo",
-      "openai/gpt-4-1106-preview",
       "openai/gpt-4-turbo-preview",
       "openai/gpt-4.1",
       "openai/gpt-4.1-mini",
@@ -9452,6 +9204,7 @@
       "openai/o4-mini-high",
       "openrouter/bodybuilder",
       "openrouter/free",
+      "openrouter/fusion",
       "openrouter/owl-alpha",
       "openrouter/pareto-code",
       "perceptron/perceptron-mk1",
@@ -9511,16 +9264,17 @@
       "qwen/qwen3.6-max-preview",
       "qwen/qwen3.6-plus",
       "qwen/qwen3.7-max",
+      "qwen/qwen3.7-plus",
       "rekaai/reka-edge",
       "rekaai/reka-flash-3",
       "relace/relace-apply-3",
       "relace/relace-search",
       "sao10k/l3-lunaris-8b",
-      "sao10k/l3-euryale-70b",
       "sao10k/l3.1-70b-hanami-x1",
       "sao10k/l3.1-euryale-70b",
       "sao10k/l3.3-euryale-70b",
       "stepfun/step-3.5-flash",
+      "stepfun/step-3.7-flash",
       "switchpoint/router",
       "tencent/hunyuan-a13b-instruct",
       "tencent/hy3-preview",
@@ -9536,14 +9290,10 @@
       "x-ai/grok-4.3",
       "x-ai/grok-build-0.1",
       "xiaomi/mimo-v2-flash",
-      "xiaomi/mimo-v2-omni",
-      "xiaomi/mimo-v2-pro",
       "xiaomi/mimo-v2.5",
       "xiaomi/mimo-v2.5-pro",
-      "z-ai/glm-4-32b",
       "z-ai/glm-4.5",
       "z-ai/glm-4.5-air",
-      "z-ai/glm-4.5-air:free",
       "z-ai/glm-4.5v",
       "z-ai/glm-4.6",
       "z-ai/glm-4.6v",
@@ -9552,9 +9302,9 @@
       "z-ai/glm-5",
       "z-ai/glm-5-turbo",
       "z-ai/glm-5.1",
-      "z-ai/glm-5v-turbo",
       "~anthropic/claude-haiku-latest",
       "~anthropic/claude-sonnet-latest",
+      "~anthropic/claude-fable-latest",
       "~anthropic/claude-opus-latest",
       "~google/gemini-flash-latest",
       "~google/gemini-pro-latest",
@@ -9564,6 +9314,23 @@
     ]
   },
   "by_vendor": {
+    "sourceful": [
+      "sourceful/riverflow-v2-fast",
+      "sourceful/riverflow-v2-fast-preview",
+      "sourceful/riverflow-v2-max-preview",
+      "sourceful/riverflow-v2-pro",
+      "sourceful/riverflow-v2-standard-preview",
+      "sourceful/riverflow-v2.5-fast",
+      "sourceful/riverflow-v2.5-pro"
+    ],
+    "microsoft": [
+      "microsoft/mai-image-2.5",
+      "microsoft/mai-transcribe-1.5",
+      "microsoft/mai-voice-2",
+      "microsoft/phi-4",
+      "microsoft/phi-4-mini-instruct",
+      "microsoft/wizardlm-2-8x22b"
+    ],
     "x-ai": [
       "x-ai/grok-4.20",
       "x-ai/grok-4.20-multi-agent",
@@ -9595,9 +9362,7 @@
       "openai/gpt-3.5-turbo-16k",
       "openai/gpt-3.5-turbo-instruct",
       "openai/gpt-4",
-      "openai/gpt-4-0314",
       "openai/gpt-4-turbo",
-      "openai/gpt-4-1106-preview",
       "openai/gpt-4-turbo-preview",
       "openai/gpt-4.1",
       "openai/gpt-4.1-mini",
@@ -9606,9 +9371,7 @@
       "openai/gpt-4o-2024-05-13",
       "openai/gpt-4o-2024-08-06",
       "openai/gpt-4o-2024-11-20",
-      "openai/gpt-4o-audio-preview",
       "openai/gpt-4o-mini-transcribe",
-      "openai/gpt-4o-mini-tts-2025-12-15",
       "openai/gpt-4o-search-preview",
       "openai/gpt-4o-transcribe",
       "openai/gpt-4o-mini",
@@ -9665,8 +9428,6 @@
     ],
     "google": [
       "google/chirp-3",
-      "google/gemini-2.0-flash-001",
-      "google/gemini-2.0-flash-lite-001",
       "google/gemini-2.5-flash",
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -9681,6 +9442,7 @@
       "google/gemini-3.1-pro-preview-customtools",
       "google/gemini-3.5-flash",
       "google/gemini-embedding-001",
+      "google/gemini-embedding-2",
       "google/gemini-embedding-2-preview",
       "google/gemma-2-27b-it",
       "google/gemma-3-12b-it",
@@ -9700,13 +9462,6 @@
       "google/veo-3.1-fast",
       "google/veo-3.1-lite"
     ],
-    "sourceful": [
-      "sourceful/riverflow-v2-fast",
-      "sourceful/riverflow-v2-fast-preview",
-      "sourceful/riverflow-v2-max-preview",
-      "sourceful/riverflow-v2-pro",
-      "sourceful/riverflow-v2-standard-preview"
-    ],
     "black-forest-labs": [
       "black-forest-labs/flux.2-flex",
       "black-forest-labs/flux.2-klein-4b",
@@ -9724,6 +9479,7 @@
       "openrouter/auto",
       "openrouter/bodybuilder",
       "openrouter/free",
+      "openrouter/fusion",
       "openrouter/owl-alpha",
       "openrouter/pareto-code"
     ],
@@ -9739,8 +9495,8 @@
       "minimax/minimax-m2-her",
       "minimax/minimax-m2.1",
       "minimax/minimax-m2.5",
-      "minimax/minimax-m2.5:free",
       "minimax/minimax-m2.7",
+      "minimax/minimax-m3",
       "minimax/minimax-01"
     ],
     "bytedance": [
@@ -9769,16 +9525,12 @@
     "mistralai": [
       "mistralai/mistral-large",
       "mistralai/mistral-large-2407",
-      "mistralai/mistral-large-2411",
       "mistralai/codestral-2508",
       "mistralai/codestral-embed-2505",
       "mistralai/devstral-2512",
-      "mistralai/devstral-medium",
-      "mistralai/devstral-small",
       "mistralai/ministral-14b-2512",
       "mistralai/ministral-3b-2512",
       "mistralai/ministral-8b-2512",
-      "mistralai/mistral-7b-instruct-v0.1",
       "mistralai/mistral-embed-2312",
       "mistralai/mistral-large-2512",
       "mistralai/mistral-medium-3",
@@ -9790,11 +9542,26 @@
       "mistralai/mistral-small-3.2-24b-instruct",
       "mistralai/mistral-small-2603",
       "mistralai/mixtral-8x22b-instruct",
-      "mistralai/pixtral-large-2411",
       "mistralai/mistral-saba",
       "mistralai/voxtral-mini-transcribe",
       "mistralai/voxtral-mini-tts-2603",
       "mistralai/voxtral-small-24b-2507"
+    ],
+    "nvidia": [
+      "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+      "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      "nvidia/llama-nemotron-rerank-vl-1b-v2:free",
+      "nvidia/nemotron-3-nano-30b-a3b",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "nvidia/nemotron-3-super-120b-a12b",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-ultra-550b-a55b",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "nvidia/nemotron-3.5-content-safety:free",
+      "nvidia/nemotron-nano-12b-v2-vl:free",
+      "nvidia/nemotron-nano-9b-v2:free",
+      "nvidia/parakeet-tdt-0.6b-v3"
     ],
     "qwen": [
       "qwen/qwen-2.5-72b-instruct",
@@ -9847,7 +9614,8 @@
       "qwen/qwen3.6-flash",
       "qwen/qwen3.6-max-preview",
       "qwen/qwen3.6-plus",
-      "qwen/qwen3.7-max"
+      "qwen/qwen3.7-max",
+      "qwen/qwen3.7-plus"
     ],
     "cohere": [
       "cohere/command-a",
@@ -9866,18 +9634,6 @@
       "perplexity/sonar-pro",
       "perplexity/sonar-pro-search",
       "perplexity/sonar-reasoning-pro"
-    ],
-    "nvidia": [
-      "nvidia/llama-3.3-nemotron-super-49b-v1.5",
-      "nvidia/llama-nemotron-embed-vl-1b-v2:free",
-      "nvidia/nemotron-3-nano-30b-a3b",
-      "nvidia/nemotron-3-nano-30b-a3b:free",
-      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-      "nvidia/nemotron-3-super-120b-a12b",
-      "nvidia/nemotron-3-super-120b-a12b:free",
-      "nvidia/nemotron-nano-12b-v2-vl:free",
-      "nvidia/nemotron-nano-9b-v2",
-      "nvidia/nemotron-nano-9b-v2:free"
     ],
     "thenlper": [
       "thenlper/gte-base",
@@ -9900,9 +9656,24 @@
       "baai/bge-large-en-v1.5",
       "baai/bge-m3"
     ],
+    "moonshotai": [
+      "moonshotai/kimi-k2",
+      "moonshotai/kimi-k2-0905",
+      "moonshotai/kimi-k2-thinking",
+      "moonshotai/kimi-k2.5",
+      "moonshotai/kimi-k2.6",
+      "moonshotai/kimi-k2.7-code"
+    ],
+    "~anthropic": [
+      "~anthropic/claude-haiku-latest",
+      "~anthropic/claude-sonnet-latest",
+      "~anthropic/claude-fable-latest",
+      "~anthropic/claude-opus-latest"
+    ],
     "anthropic": [
       "anthropic/claude-3-haiku",
       "anthropic/claude-3.5-haiku",
+      "anthropic/claude-fable-5",
       "anthropic/claude-haiku-4.5",
       "anthropic/claude-opus-4",
       "anthropic/claude-opus-4.1",
@@ -9911,9 +9682,18 @@
       "anthropic/claude-opus-4.6-fast",
       "anthropic/claude-opus-4.7",
       "anthropic/claude-opus-4.7-fast",
+      "anthropic/claude-opus-4.8",
+      "anthropic/claude-opus-4.8-fast",
       "anthropic/claude-sonnet-4",
       "anthropic/claude-sonnet-4.5",
       "anthropic/claude-sonnet-4.6"
+    ],
+    "nex-agi": [
+      "nex-agi/nex-n2-pro:free"
+    ],
+    "stepfun": [
+      "stepfun/step-3.5-flash",
+      "stepfun/step-3.7-flash"
     ],
     "perceptron": [
       "perceptron/perceptron-mk1"
@@ -9923,15 +9703,6 @@
       "inclusionai/ling-2.6-flash",
       "inclusionai/ring-2.6-1t"
     ],
-    "baidu": [
-      "baidu/cobuddy:free",
-      "baidu/ernie-4.5-21b-a3b",
-      "baidu/ernie-4.5-21b-a3b-thinking",
-      "baidu/ernie-4.5-300b-a47b",
-      "baidu/ernie-4.5-vl-28b-a3b",
-      "baidu/ernie-4.5-vl-424b-a47b",
-      "baidu/qianfan-ocr-fast"
-    ],
     "ibm-granite": [
       "ibm-granite/granite-4.0-h-micro",
       "ibm-granite/granite-4.1-8b"
@@ -9939,11 +9710,6 @@
     "poolside": [
       "poolside/laguna-m.1:free",
       "poolside/laguna-xs.2:free"
-    ],
-    "~anthropic": [
-      "~anthropic/claude-haiku-latest",
-      "~anthropic/claude-sonnet-latest",
-      "~anthropic/claude-opus-latest"
     ],
     "~openai": [
       "~openai/gpt-latest",
@@ -9963,9 +9729,7 @@
       "deepseek/deepseek-v3.1-terminus",
       "deepseek/deepseek-v3.2",
       "deepseek/deepseek-v3.2-exp",
-      "deepseek/deepseek-v3.2-speciale",
       "deepseek/deepseek-v4-flash",
-      "deepseek/deepseek-v4-flash:free",
       "deepseek/deepseek-v4-pro",
       "deepseek/deepseek-r1",
       "deepseek/deepseek-r1-0528",
@@ -9978,23 +9742,12 @@
     ],
     "xiaomi": [
       "xiaomi/mimo-v2-flash",
-      "xiaomi/mimo-v2-omni",
-      "xiaomi/mimo-v2-pro",
       "xiaomi/mimo-v2.5",
       "xiaomi/mimo-v2.5-pro"
     ],
-    "moonshotai": [
-      "moonshotai/kimi-k2",
-      "moonshotai/kimi-k2-0905",
-      "moonshotai/kimi-k2-thinking",
-      "moonshotai/kimi-k2.5",
-      "moonshotai/kimi-k2.6"
-    ],
     "z-ai": [
-      "z-ai/glm-4-32b",
       "z-ai/glm-4.5",
       "z-ai/glm-4.5-air",
-      "z-ai/glm-4.5-air:free",
       "z-ai/glm-4.5v",
       "z-ai/glm-4.6",
       "z-ai/glm-4.6v",
@@ -10002,13 +9755,10 @@
       "z-ai/glm-4.7-flash",
       "z-ai/glm-5",
       "z-ai/glm-5-turbo",
-      "z-ai/glm-5.1",
-      "z-ai/glm-5v-turbo"
+      "z-ai/glm-5.1"
     ],
     "arcee-ai": [
       "arcee-ai/coder-large",
-      "arcee-ai/maestro-reasoning",
-      "arcee-ai/spotlight",
       "arcee-ai/trinity-large-thinking",
       "arcee-ai/trinity-mini",
       "arcee-ai/virtuoso-large"
@@ -10034,9 +9784,6 @@
       "aion-labs/aion-2.0",
       "aion-labs/aion-rp-llama-3.1-8b"
     ],
-    "stepfun": [
-      "stepfun/step-3.5-flash"
-    ],
     "upstage": [
       "upstage/solar-pro-3"
     ],
@@ -10046,9 +9793,6 @@
     "relace": [
       "relace/relace-apply-3",
       "relace/relace-search"
-    ],
-    "nex-agi": [
-      "nex-agi/deepseek-v3.1-nex-n1"
     ],
     "essentialai": [
       "essentialai/rnj-1-instruct"
@@ -10069,11 +9813,6 @@
     "deepcogito": [
       "deepcogito/cogito-v2.1-671b"
     ],
-    "microsoft": [
-      "microsoft/phi-4",
-      "microsoft/phi-4-mini-instruct",
-      "microsoft/wizardlm-2-8x22b"
-    ],
     "thedrummer": [
       "thedrummer/cydonia-24b-v4.1",
       "thedrummer/rocinante-12b",
@@ -10085,8 +9824,7 @@
       "nousresearch/hermes-3-llama-3.1-405b:free",
       "nousresearch/hermes-3-llama-3.1-70b",
       "nousresearch/hermes-4-405b",
-      "nousresearch/hermes-4-70b",
-      "nousresearch/hermes-2-pro-llama-3-8b"
+      "nousresearch/hermes-4-70b"
     ],
     "ai21": [
       "ai21/jamba-large-1.7"
@@ -10101,8 +9839,10 @@
       "morph/morph-v3-fast",
       "morph/morph-v3-large"
     ],
+    "baidu": [
+      "baidu/ernie-4.5-vl-424b-a47b"
+    ],
     "meta-llama": [
-      "meta-llama/llama-guard-3-8b",
       "meta-llama/llama-3-70b-instruct",
       "meta-llama/llama-3-8b-instruct",
       "meta-llama/llama-3.1-70b-instruct",
@@ -10117,12 +9857,8 @@
       "meta-llama/llama-4-scout",
       "meta-llama/llama-guard-4-12b"
     ],
-    "alfredpros": [
-      "alfredpros/codellama-7b-instruct-solidity"
-    ],
     "sao10k": [
       "sao10k/l3-lunaris-8b",
-      "sao10k/l3-euryale-70b",
       "sao10k/l3.1-70b-hanami-x1",
       "sao10k/l3.1-euryale-70b",
       "sao10k/l3.3-euryale-70b"
@@ -10151,7 +9887,6 @@
       "aion-labs/aion-1.0-mini",
       "aion-labs/aion-2.0",
       "aion-labs/aion-rp-llama-3.1-8b",
-      "alfredpros/codellama-7b-instruct-solidity",
       "alibaba/wan-2.6",
       "alibaba/wan-2.7",
       "allenai/olmo-3-32b-think",
@@ -10163,6 +9898,7 @@
       "anthracite-org/magnum-v4-72b",
       "anthropic/claude-3-haiku",
       "anthropic/claude-3.5-haiku",
+      "anthropic/claude-fable-5",
       "anthropic/claude-haiku-4.5",
       "anthropic/claude-opus-4",
       "anthropic/claude-opus-4.1",
@@ -10171,25 +9907,19 @@
       "anthropic/claude-opus-4.6-fast",
       "anthropic/claude-opus-4.7",
       "anthropic/claude-opus-4.7-fast",
+      "anthropic/claude-opus-4.8",
+      "anthropic/claude-opus-4.8-fast",
       "anthropic/claude-sonnet-4",
       "anthropic/claude-sonnet-4.5",
       "anthropic/claude-sonnet-4.6",
       "arcee-ai/coder-large",
-      "arcee-ai/maestro-reasoning",
-      "arcee-ai/spotlight",
       "arcee-ai/trinity-large-thinking",
       "arcee-ai/trinity-mini",
       "arcee-ai/virtuoso-large",
       "baai/bge-base-en-v1.5",
       "baai/bge-large-en-v1.5",
       "baai/bge-m3",
-      "baidu/cobuddy:free",
-      "baidu/ernie-4.5-21b-a3b",
-      "baidu/ernie-4.5-21b-a3b-thinking",
-      "baidu/ernie-4.5-300b-a47b",
-      "baidu/ernie-4.5-vl-28b-a3b",
       "baidu/ernie-4.5-vl-424b-a47b",
-      "baidu/qianfan-ocr-fast",
       "black-forest-labs/flux.2-flex",
       "black-forest-labs/flux.2-klein-4b",
       "black-forest-labs/flux.2-max",
@@ -10219,17 +9949,13 @@
       "deepseek/deepseek-v3.1-terminus",
       "deepseek/deepseek-v3.2",
       "deepseek/deepseek-v3.2-exp",
-      "deepseek/deepseek-v3.2-speciale",
       "deepseek/deepseek-v4-flash",
-      "deepseek/deepseek-v4-flash:free",
       "deepseek/deepseek-v4-pro",
       "deepseek/deepseek-r1",
       "deepseek/deepseek-r1-0528",
       "deepseek/deepseek-r1-distill-llama-70b",
       "deepseek/deepseek-r1-distill-qwen-32b",
       "essentialai/rnj-1-instruct",
-      "google/gemini-2.0-flash-001",
-      "google/gemini-2.0-flash-lite-001",
       "google/gemini-2.5-flash",
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -10244,6 +9970,7 @@
       "google/gemini-3.1-pro-preview-customtools",
       "google/gemini-3.5-flash",
       "google/gemini-embedding-001",
+      "google/gemini-embedding-2",
       "google/gemini-embedding-2-preview",
       "google/gemma-2-27b-it",
       "google/gemma-3-12b-it",
@@ -10283,7 +10010,6 @@
       "liquid/lfm-2.5-1.2b-instruct:free",
       "liquid/lfm-2.5-1.2b-thinking:free",
       "mancer/weaver",
-      "meta-llama/llama-guard-3-8b",
       "meta-llama/llama-3-70b-instruct",
       "meta-llama/llama-3-8b-instruct",
       "meta-llama/llama-3.1-70b-instruct",
@@ -10297,6 +10023,8 @@
       "meta-llama/llama-4-maverick",
       "meta-llama/llama-4-scout",
       "meta-llama/llama-guard-4-12b",
+      "microsoft/mai-image-2.5",
+      "microsoft/mai-voice-2",
       "microsoft/phi-4",
       "microsoft/phi-4-mini-instruct",
       "microsoft/wizardlm-2-8x22b",
@@ -10306,21 +10034,17 @@
       "minimax/minimax-m2-her",
       "minimax/minimax-m2.1",
       "minimax/minimax-m2.5",
-      "minimax/minimax-m2.5:free",
       "minimax/minimax-m2.7",
+      "minimax/minimax-m3",
       "minimax/minimax-01",
       "mistralai/mistral-large",
       "mistralai/mistral-large-2407",
-      "mistralai/mistral-large-2411",
       "mistralai/codestral-2508",
       "mistralai/codestral-embed-2505",
       "mistralai/devstral-2512",
-      "mistralai/devstral-medium",
-      "mistralai/devstral-small",
       "mistralai/ministral-14b-2512",
       "mistralai/ministral-3b-2512",
       "mistralai/ministral-8b-2512",
-      "mistralai/mistral-7b-instruct-v0.1",
       "mistralai/mistral-embed-2312",
       "mistralai/mistral-large-2512",
       "mistralai/mistral-medium-3",
@@ -10332,7 +10056,6 @@
       "mistralai/mistral-small-3.2-24b-instruct",
       "mistralai/mistral-small-2603",
       "mistralai/mixtral-8x22b-instruct",
-      "mistralai/pixtral-large-2411",
       "mistralai/mistral-saba",
       "mistralai/voxtral-mini-tts-2603",
       "mistralai/voxtral-small-24b-2507",
@@ -10341,24 +10064,27 @@
       "moonshotai/kimi-k2-thinking",
       "moonshotai/kimi-k2.5",
       "moonshotai/kimi-k2.6",
+      "moonshotai/kimi-k2.7-code",
       "morph/morph-v3-fast",
       "morph/morph-v3-large",
-      "nex-agi/deepseek-v3.1-nex-n1",
+      "nex-agi/nex-n2-pro:free",
       "nousresearch/hermes-3-llama-3.1-405b",
       "nousresearch/hermes-3-llama-3.1-405b:free",
       "nousresearch/hermes-3-llama-3.1-70b",
       "nousresearch/hermes-4-405b",
       "nousresearch/hermes-4-70b",
-      "nousresearch/hermes-2-pro-llama-3-8b",
       "nvidia/llama-3.3-nemotron-super-49b-v1.5",
       "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      "nvidia/llama-nemotron-rerank-vl-1b-v2:free",
       "nvidia/nemotron-3-nano-30b-a3b",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "nvidia/nemotron-3-super-120b-a12b",
       "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-ultra-550b-a55b",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "nvidia/nemotron-3.5-content-safety:free",
       "nvidia/nemotron-nano-12b-v2-vl:free",
-      "nvidia/nemotron-nano-9b-v2",
       "nvidia/nemotron-nano-9b-v2:free",
       "openai/gpt-audio",
       "openai/gpt-audio-mini",
@@ -10368,9 +10094,7 @@
       "openai/gpt-3.5-turbo-16k",
       "openai/gpt-3.5-turbo-instruct",
       "openai/gpt-4",
-      "openai/gpt-4-0314",
       "openai/gpt-4-turbo",
-      "openai/gpt-4-1106-preview",
       "openai/gpt-4-turbo-preview",
       "openai/gpt-4.1",
       "openai/gpt-4.1-mini",
@@ -10379,8 +10103,6 @@
       "openai/gpt-4o-2024-05-13",
       "openai/gpt-4o-2024-08-06",
       "openai/gpt-4o-2024-11-20",
-      "openai/gpt-4o-audio-preview",
-      "openai/gpt-4o-mini-tts-2025-12-15",
       "openai/gpt-4o-search-preview",
       "openai/gpt-4o-mini",
       "openai/gpt-4o-mini-2024-07-18",
@@ -10433,6 +10155,7 @@
       "openrouter/auto",
       "openrouter/bodybuilder",
       "openrouter/free",
+      "openrouter/fusion",
       "openrouter/owl-alpha",
       "openrouter/pareto-code",
       "perceptron/perceptron-mk1",
@@ -10496,6 +10219,7 @@
       "qwen/qwen3.6-max-preview",
       "qwen/qwen3.6-plus",
       "qwen/qwen3.7-max",
+      "qwen/qwen3.7-plus",
       "recraft/recraft-v3",
       "recraft/recraft-v4",
       "recraft/recraft-v4-pro",
@@ -10512,7 +10236,6 @@
       "relace/relace-apply-3",
       "relace/relace-search",
       "sao10k/l3-lunaris-8b",
-      "sao10k/l3-euryale-70b",
       "sao10k/l3.1-70b-hanami-x1",
       "sao10k/l3.1-euryale-70b",
       "sao10k/l3.3-euryale-70b",
@@ -10527,7 +10250,10 @@
       "sourceful/riverflow-v2-max-preview",
       "sourceful/riverflow-v2-pro",
       "sourceful/riverflow-v2-standard-preview",
+      "sourceful/riverflow-v2.5-fast",
+      "sourceful/riverflow-v2.5-pro",
       "stepfun/step-3.5-flash",
+      "stepfun/step-3.7-flash",
       "switchpoint/router",
       "tencent/hunyuan-a13b-instruct",
       "tencent/hy3-preview",
@@ -10548,14 +10274,10 @@
       "x-ai/grok-imagine-video",
       "x-ai/grok-voice-tts-1.0",
       "xiaomi/mimo-v2-flash",
-      "xiaomi/mimo-v2-omni",
-      "xiaomi/mimo-v2-pro",
       "xiaomi/mimo-v2.5",
       "xiaomi/mimo-v2.5-pro",
-      "z-ai/glm-4-32b",
       "z-ai/glm-4.5",
       "z-ai/glm-4.5-air",
-      "z-ai/glm-4.5-air:free",
       "z-ai/glm-4.5v",
       "z-ai/glm-4.6",
       "z-ai/glm-4.6v",
@@ -10564,11 +10286,11 @@
       "z-ai/glm-5",
       "z-ai/glm-5-turbo",
       "z-ai/glm-5.1",
-      "z-ai/glm-5v-turbo",
       "zyphra/zonos-v0.1-hybrid",
       "zyphra/zonos-v0.1-transformer",
       "~anthropic/claude-haiku-latest",
       "~anthropic/claude-sonnet-latest",
+      "~anthropic/claude-fable-latest",
       "~anthropic/claude-opus-latest",
       "~google/gemini-flash-latest",
       "~google/gemini-pro-latest",
@@ -10585,6 +10307,7 @@
       "amazon/nova-pro-v1",
       "anthropic/claude-3-haiku",
       "anthropic/claude-3.5-haiku",
+      "anthropic/claude-fable-5",
       "anthropic/claude-haiku-4.5",
       "anthropic/claude-opus-4",
       "anthropic/claude-opus-4.1",
@@ -10593,13 +10316,12 @@
       "anthropic/claude-opus-4.6-fast",
       "anthropic/claude-opus-4.7",
       "anthropic/claude-opus-4.7-fast",
+      "anthropic/claude-opus-4.8",
+      "anthropic/claude-opus-4.8-fast",
       "anthropic/claude-sonnet-4",
       "anthropic/claude-sonnet-4.5",
       "anthropic/claude-sonnet-4.6",
-      "arcee-ai/spotlight",
-      "baidu/ernie-4.5-vl-28b-a3b",
       "baidu/ernie-4.5-vl-424b-a47b",
-      "baidu/qianfan-ocr-fast",
       "black-forest-labs/flux.2-flex",
       "black-forest-labs/flux.2-klein-4b",
       "black-forest-labs/flux.2-max",
@@ -10613,8 +10335,6 @@
       "bytedance-seed/seed-2.0-lite",
       "bytedance-seed/seed-2.0-mini",
       "bytedance-seed/seedream-4.5",
-      "google/gemini-2.0-flash-001",
-      "google/gemini-2.0-flash-lite-001",
       "google/gemini-2.5-flash",
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -10627,6 +10347,7 @@
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
       "google/gemini-3.5-flash",
+      "google/gemini-embedding-2",
       "google/gemini-embedding-2-preview",
       "google/gemma-3-12b-it",
       "google/gemma-3-27b-it",
@@ -10650,7 +10371,9 @@
       "meta-llama/llama-4-maverick",
       "meta-llama/llama-4-scout",
       "meta-llama/llama-guard-4-12b",
+      "microsoft/mai-image-2.5",
       "minimax/hailuo-2.3",
+      "minimax/minimax-m3",
       "minimax/minimax-01",
       "mistralai/ministral-14b-2512",
       "mistralai/ministral-3b-2512",
@@ -10662,11 +10385,14 @@
       "mistralai/mistral-small-3.1-24b-instruct",
       "mistralai/mistral-small-3.2-24b-instruct",
       "mistralai/mistral-small-2603",
-      "mistralai/pixtral-large-2411",
       "moonshotai/kimi-k2.5",
       "moonshotai/kimi-k2.6",
+      "moonshotai/kimi-k2.7-code",
+      "nex-agi/nex-n2-pro:free",
       "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      "nvidia/llama-nemotron-rerank-vl-1b-v2:free",
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "nvidia/nemotron-3.5-content-safety:free",
       "nvidia/nemotron-nano-12b-v2-vl:free",
       "openai/gpt-chat-latest",
       "openai/gpt-4-turbo",
@@ -10741,6 +10467,7 @@
       "qwen/qwen3.6-35b-a3b",
       "qwen/qwen3.6-flash",
       "qwen/qwen3.6-plus",
+      "qwen/qwen3.7-plus",
       "recraft/recraft-v3",
       "recraft/recraft-v4",
       "recraft/recraft-v4-pro",
@@ -10758,19 +10485,21 @@
       "sourceful/riverflow-v2-max-preview",
       "sourceful/riverflow-v2-pro",
       "sourceful/riverflow-v2-standard-preview",
+      "sourceful/riverflow-v2.5-fast",
+      "sourceful/riverflow-v2.5-pro",
+      "stepfun/step-3.7-flash",
       "x-ai/grok-4.20",
       "x-ai/grok-4.20-multi-agent",
       "x-ai/grok-4.3",
       "x-ai/grok-build-0.1",
       "x-ai/grok-imagine-image-quality",
       "x-ai/grok-imagine-video",
-      "xiaomi/mimo-v2-omni",
       "xiaomi/mimo-v2.5",
       "z-ai/glm-4.5v",
       "z-ai/glm-4.6v",
-      "z-ai/glm-5v-turbo",
       "~anthropic/claude-haiku-latest",
       "~anthropic/claude-sonnet-latest",
+      "~anthropic/claude-fable-latest",
       "~anthropic/claude-opus-latest",
       "~google/gemini-flash-latest",
       "~google/gemini-pro-latest",
@@ -10780,6 +10509,7 @@
     ],
     "file": [
       "amazon/nova-2-lite-v1",
+      "anthropic/claude-fable-5",
       "anthropic/claude-haiku-4.5",
       "anthropic/claude-opus-4",
       "anthropic/claude-opus-4.1",
@@ -10788,11 +10518,11 @@
       "anthropic/claude-opus-4.6-fast",
       "anthropic/claude-opus-4.7",
       "anthropic/claude-opus-4.7-fast",
+      "anthropic/claude-opus-4.8",
+      "anthropic/claude-opus-4.8-fast",
       "anthropic/claude-sonnet-4",
       "anthropic/claude-sonnet-4.5",
       "anthropic/claude-sonnet-4.6",
-      "google/gemini-2.0-flash-001",
-      "google/gemini-2.0-flash-lite-001",
       "google/gemini-2.5-flash",
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -10805,20 +10535,17 @@
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
       "google/gemini-3.5-flash",
+      "google/gemini-embedding-2",
       "google/gemini-embedding-2-preview",
       "mistralai/mistral-large",
       "mistralai/mistral-large-2407",
-      "mistralai/mistral-large-2411",
       "mistralai/codestral-2508",
       "mistralai/devstral-2512",
-      "mistralai/devstral-medium",
-      "mistralai/devstral-small",
       "mistralai/mistral-large-2512",
       "mistralai/mistral-medium-3",
       "mistralai/mistral-medium-3.1",
       "mistralai/mistral-medium-3-5",
       "mistralai/mixtral-8x22b-instruct",
-      "mistralai/pixtral-large-2411",
       "mistralai/mistral-saba",
       "mistralai/voxtral-small-24b-2507",
       "openai/gpt-chat-latest",
@@ -10867,6 +10594,7 @@
       "x-ai/grok-4.20-multi-agent",
       "~anthropic/claude-haiku-latest",
       "~anthropic/claude-sonnet-latest",
+      "~anthropic/claude-fable-latest",
       "~anthropic/claude-opus-latest",
       "~google/gemini-flash-latest",
       "~google/gemini-pro-latest",
@@ -10875,8 +10603,6 @@
     ],
     "audio": [
       "google/chirp-3",
-      "google/gemini-2.0-flash-001",
-      "google/gemini-2.0-flash-lite-001",
       "google/gemini-2.5-flash",
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -10889,13 +10615,15 @@
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
       "google/gemini-3.5-flash",
+      "google/gemini-embedding-2",
       "google/gemini-embedding-2-preview",
+      "microsoft/mai-transcribe-1.5",
       "mistralai/voxtral-mini-transcribe",
       "mistralai/voxtral-small-24b-2507",
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "nvidia/parakeet-tdt-0.6b-v3",
       "openai/gpt-audio",
       "openai/gpt-audio-mini",
-      "openai/gpt-4o-audio-preview",
       "openai/gpt-4o-mini-transcribe",
       "openai/gpt-4o-transcribe",
       "openai/whisper-1",
@@ -10903,7 +10631,6 @@
       "openai/whisper-large-v3-turbo",
       "openrouter/auto",
       "qwen/qwen3-asr-flash-2026-02-10",
-      "xiaomi/mimo-v2-omni",
       "xiaomi/mimo-v2.5",
       "~google/gemini-flash-latest",
       "~google/gemini-pro-latest"
@@ -10914,8 +10641,6 @@
       "bytedance-seed/seed-1.6-flash",
       "bytedance-seed/seed-2.0-lite",
       "bytedance-seed/seed-2.0-mini",
-      "google/gemini-2.0-flash-001",
-      "google/gemini-2.0-flash-lite-001",
       "google/gemini-2.5-flash",
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -10927,11 +10652,13 @@
       "google/gemini-3.1-pro-preview",
       "google/gemini-3.1-pro-preview-customtools",
       "google/gemini-3.5-flash",
+      "google/gemini-embedding-2",
       "google/gemini-embedding-2-preview",
       "google/gemma-4-26b-a4b-it",
       "google/gemma-4-26b-a4b-it:free",
       "google/gemma-4-31b-it",
       "google/gemma-4-31b-it:free",
+      "minimax/minimax-m3",
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "nvidia/nemotron-nano-12b-v2-vl:free",
       "openrouter/auto",
@@ -10949,10 +10676,9 @@
       "qwen/qwen3.6-flash",
       "qwen/qwen3.6-plus",
       "rekaai/reka-edge",
-      "xiaomi/mimo-v2-omni",
+      "stepfun/step-3.7-flash",
       "xiaomi/mimo-v2.5",
       "z-ai/glm-4.6v",
-      "z-ai/glm-5v-turbo",
       "~google/gemini-flash-latest",
       "~google/gemini-pro-latest"
     ]

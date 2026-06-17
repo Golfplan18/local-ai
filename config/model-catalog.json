@@ -1,6 +1,6 @@
 {
   "_schema_version": 1,
-  "_refreshed_at": "2026-06-12T21:32:33.450079+00:00",
+  "_refreshed_at": "2026-06-15T23:54:36.369075+00:00",
   "_sources": {
     "openrouter": {
       "url": "https://openrouter.ai/api/v1/models",
@@ -14,6 +14,34 @@
   },
   "models": [
     {
+      "id": "openrouter/fusion",
+      "display_name": "OpenRouter: Fusion",
+      "provider": "openrouter",
+      "openrouter_slug": "openrouter/fusion",
+      "vision_capable": false,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "context_window": 1000000,
+      "parameters_b": null,
+      "openrouter_pricing": {
+        "input_per_m": -1000000.0,
+        "output_per_m": -1000000.0,
+        "blended_per_m": -1000000.0
+      },
+      "aa_intelligence_index": null,
+      "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
+      "family_tier": null,
+      "size_bucket": null,
+      "is_free": false
+    },
+    {
       "id": "moonshotai/kimi-k2.7-code",
       "display_name": "MoonshotAI: Kimi K2.7 Code",
       "provider": "moonshotai",
@@ -21,8 +49,7 @@
       "vision_capable": true,
       "input_modalities": [
         "text",
-        "image",
-        "video"
+        "image"
       ],
       "output_modalities": [
         "text"
@@ -30,12 +57,15 @@
       "context_window": 262144,
       "parameters_b": null,
       "openrouter_pricing": {
-        "input_per_m": 0.95,
-        "output_per_m": 4.0,
-        "blended_per_m": 1.7125
+        "input_per_m": 0.75,
+        "output_per_m": 3.5,
+        "blended_per_m": 1.4375
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1374.0,
+      "intelligence_rank": 12,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -63,6 +93,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -90,9 +123,13 @@
       },
       "aa_intelligence_index": 64.9,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-06-09",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 80.337
     },
     {
       "id": "nex-agi/nex-n2-pro:free",
@@ -116,6 +153,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": true
@@ -142,6 +182,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": true
@@ -167,9 +210,13 @@
       },
       "aa_intelligence_index": 47.7,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-06-04",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 170.457
     },
     {
       "id": "nvidia/nemotron-3-ultra-550b-a55b",
@@ -192,9 +239,13 @@
       },
       "aa_intelligence_index": 47.7,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-06-04",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 170.457
     },
     {
       "id": "qwen/qwen3.7-plus",
@@ -218,9 +269,13 @@
       },
       "aa_intelligence_index": 53.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1325.0,
+      "intelligence_rank": 34,
+      "release_date": "2026-06-01",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 52.434
     },
     {
       "id": "minimax/minimax-m3",
@@ -245,9 +300,13 @@
       },
       "aa_intelligence_index": 54.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1364.0,
+      "intelligence_rank": 15,
+      "release_date": "2026-06-01",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 59.157
     },
     {
       "id": "stepfun/step-3.7-flash",
@@ -272,9 +331,13 @@
       },
       "aa_intelligence_index": 42.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-05-29",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 400.845
     },
     {
       "id": "anthropic/claude-opus-4.8-fast",
@@ -297,11 +360,15 @@
         "output_per_m": 50.0,
         "blended_per_m": 20.0
       },
-      "aa_intelligence_index": 61.4409265512178,
+      "aa_intelligence_index": 61.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2026-05-28",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 66.874
     },
     {
       "id": "anthropic/claude-opus-4.8",
@@ -326,9 +393,13 @@
       },
       "aa_intelligence_index": 61.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2026-05-28",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 66.874
     },
     {
       "id": "qwen/qwen3.7-max",
@@ -351,9 +422,13 @@
       },
       "aa_intelligence_index": 56.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1278.0,
+      "intelligence_rank": 68,
+      "release_date": "2026-05-19",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 197.252
     },
     {
       "id": "x-ai/grok-build-0.1",
@@ -377,6 +452,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -406,9 +484,13 @@
       },
       "aa_intelligence_index": 55.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1417.0,
+      "intelligence_rank": 6,
+      "release_date": "2026-05-19",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 215.281
     },
     {
       "id": "anthropic/claude-opus-4.7-fast",
@@ -431,36 +513,15 @@
         "output_per_m": 150.0,
         "blended_per_m": 60.0
       },
-      "aa_intelligence_index": 57.277499136068,
+      "aa_intelligence_index": 57.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2026-04-16",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
-    },
-    {
-      "id": "openrouter/fusion",
-      "display_name": "OpenRouter: Fusion",
-      "provider": "openrouter",
-      "openrouter_slug": "openrouter/fusion",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 128000,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": -1000000.0,
-        "output_per_m": -1000000.0,
-        "blended_per_m": -1000000.0
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 58.283
     },
     {
       "id": "perceptron/perceptron-mk1",
@@ -485,6 +546,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -510,9 +574,13 @@
       },
       "aa_intelligence_index": 38.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-05-08",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 133.494
     },
     {
       "id": "google/gemini-3.1-flash-lite",
@@ -537,11 +605,15 @@
         "output_per_m": 1.5,
         "blended_per_m": 0.5625
       },
-      "aa_intelligence_index": 33.5180974406105,
+      "aa_intelligence_index": 33.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-03",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 312.075
     },
     {
       "id": "openai/gpt-chat-latest",
@@ -566,6 +638,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1429.0,
+      "intelligence_rank": 4,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -592,9 +667,13 @@
       },
       "aa_intelligence_index": 53.2,
       "aa_blended_per_m": null,
+      "intelligence_score": 1443.0,
+      "intelligence_rank": 2,
+      "release_date": "2026-04-30",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 170.577
     },
     {
       "id": "ibm-granite/granite-4.1-8b",
@@ -617,9 +696,13 @@
       },
       "aa_intelligence_index": 12.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1158.0,
+      "intelligence_rank": 135,
+      "release_date": "2026-04-29",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 127.205
     },
     {
       "id": "mistralai/mistral-medium-3-5",
@@ -644,9 +727,13 @@
       },
       "aa_intelligence_index": 39.2,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "intelligence_score": 1372.0,
+      "intelligence_rank": 14,
+      "release_date": "2026-04-29",
+      "family_tier": "mid",
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 147.622
     },
     {
       "id": "openrouter/owl-alpha",
@@ -669,6 +756,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": true
@@ -697,9 +787,13 @@
       },
       "aa_intelligence_index": 21.4,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-29",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 298.374
     },
     {
       "id": "poolside/laguna-xs.2:free",
@@ -722,6 +816,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": true
@@ -747,6 +844,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": true
@@ -774,6 +874,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -801,8 +904,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "small",
       "is_free": false
     },
     {
@@ -830,6 +936,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -856,6 +965,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -885,8 +997,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "midsize",
       "is_free": false
     },
     {
@@ -912,6 +1027,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -939,6 +1057,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -964,11 +1085,15 @@
         "output_per_m": 1.7999999999999998,
         "blended_per_m": 0.6749999999999999
       },
-      "aa_intelligence_index": 38.6333183791893,
+      "aa_intelligence_index": 38.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1297.0,
+      "intelligence_rank": 53,
+      "release_date": "2026-03-30",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 54.354
     },
     {
       "id": "qwen/qwen3.6-flash",
@@ -993,8 +1118,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "midsize",
       "is_free": false
     },
     {
@@ -1020,9 +1148,13 @@
       },
       "aa_intelligence_index": 43.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2026-04-16",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 165.633
     },
     {
       "id": "qwen/qwen3.6-max-preview",
@@ -1045,9 +1177,13 @@
       },
       "aa_intelligence_index": 51.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1278.0,
+      "intelligence_rank": 68,
+      "release_date": "2026-04-20",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 47.212
     },
     {
       "id": "qwen/qwen3.6-27b",
@@ -1072,9 +1208,13 @@
       },
       "aa_intelligence_index": 45.8,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-22",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 62.019
     },
     {
       "id": "openai/gpt-5.5-pro",
@@ -1099,9 +1239,13 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2026-04-23",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "openai/gpt-5.5",
@@ -1126,9 +1270,13 @@
       },
       "aa_intelligence_index": 60.2,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2026-04-23",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 69.0
     },
     {
       "id": "deepseek/deepseek-v4-pro",
@@ -1151,9 +1299,13 @@
       },
       "aa_intelligence_index": 51.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1382.0,
+      "intelligence_rank": 12,
+      "release_date": "2026-04-24",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 86.697
     },
     {
       "id": "deepseek/deepseek-v4-flash",
@@ -1176,9 +1328,13 @@
       },
       "aa_intelligence_index": 46.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1382.0,
+      "intelligence_rank": 12,
+      "release_date": "2026-04-24",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 111.834
     },
     {
       "id": "inclusionai/ling-2.6-1t",
@@ -1201,9 +1357,13 @@
       },
       "aa_intelligence_index": 33.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-23",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "tencent/hy3-preview",
@@ -1226,9 +1386,13 @@
       },
       "aa_intelligence_index": 41.9,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-23",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 127.243
     },
     {
       "id": "xiaomi/mimo-v2.5-pro",
@@ -1251,9 +1415,13 @@
       },
       "aa_intelligence_index": 53.8,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-22",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 44.821
     },
     {
       "id": "xiaomi/mimo-v2.5",
@@ -1279,9 +1447,13 @@
       },
       "aa_intelligence_index": 49.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-22",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 79.538
     },
     {
       "id": "openai/gpt-5.4-image-2",
@@ -1307,6 +1479,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -1332,9 +1507,13 @@
       },
       "aa_intelligence_index": 26.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-21",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "~anthropic/claude-opus-latest",
@@ -1359,6 +1538,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -1384,6 +1566,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -1410,9 +1595,13 @@
       },
       "aa_intelligence_index": 53.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1374.0,
+      "intelligence_rank": 12,
+      "release_date": "2026-04-20",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 41.133
     },
     {
       "id": "anthropic/claude-opus-4.7",
@@ -1437,9 +1626,13 @@
       },
       "aa_intelligence_index": 57.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2026-04-16",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 58.283
     },
     {
       "id": "anthropic/claude-opus-4.6-fast",
@@ -1462,11 +1655,15 @@
         "output_per_m": 150.0,
         "blended_per_m": 60.0
       },
-      "aa_intelligence_index": 46.4610675227052,
+      "aa_intelligence_index": 46.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2026-02-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 54.902
     },
     {
       "id": "z-ai/glm-5.1",
@@ -1489,9 +1686,13 @@
       },
       "aa_intelligence_index": 51.4,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-07",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 79.241
     },
     {
       "id": "google/gemma-4-26b-a4b-it:free",
@@ -1516,9 +1717,13 @@
       },
       "aa_intelligence_index": 31.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-02",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "google/gemma-4-26b-a4b-it",
@@ -1543,9 +1748,13 @@
       },
       "aa_intelligence_index": 31.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-02",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "google/gemma-4-31b-it:free",
@@ -1570,9 +1779,13 @@
       },
       "aa_intelligence_index": 39.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-02",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 34.956
     },
     {
       "id": "google/gemma-4-31b-it",
@@ -1597,9 +1810,13 @@
       },
       "aa_intelligence_index": 39.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-02",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 34.956
     },
     {
       "id": "qwen/qwen3.6-plus",
@@ -1624,9 +1841,13 @@
       },
       "aa_intelligence_index": 50.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1325.0,
+      "intelligence_rank": 34,
+      "release_date": "2026-04-02",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 51.681
     },
     {
       "id": "arcee-ai/trinity-large-thinking",
@@ -1649,9 +1870,13 @@
       },
       "aa_intelligence_index": 31.9,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-01",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 190.059
     },
     {
       "id": "x-ai/grok-4.20-multi-agent",
@@ -1670,12 +1895,15 @@
       "context_window": 2000000,
       "parameters_b": null,
       "openrouter_pricing": {
-        "input_per_m": 2.0,
-        "output_per_m": 6.0,
-        "blended_per_m": 3.0
+        "input_per_m": 1.25,
+        "output_per_m": 2.5,
+        "blended_per_m": 1.5625
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -1703,9 +1931,13 @@
       },
       "aa_intelligence_index": 49.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1443.0,
+      "intelligence_rank": 2,
+      "release_date": "2026-04-07",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 185.958
     },
     {
       "id": "google/lyria-3-pro-preview",
@@ -1730,6 +1962,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": true
@@ -1757,6 +1992,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": true
@@ -1782,9 +2020,13 @@
       },
       "aa_intelligence_index": 43.8,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-27",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 116.419
     },
     {
       "id": "rekaai/reka-edge",
@@ -1809,6 +2051,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -1834,9 +2079,13 @@
       },
       "aa_intelligence_index": 49.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-18",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 41.901
     },
     {
       "id": "openai/gpt-5.4-nano",
@@ -1861,9 +2110,13 @@
       },
       "aa_intelligence_index": 44.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2026-03-17",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 157.563
     },
     {
       "id": "openai/gpt-5.4-mini",
@@ -1888,9 +2141,13 @@
       },
       "aa_intelligence_index": 48.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2026-03-17",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 196.639
     },
     {
       "id": "mistralai/mistral-small-2603",
@@ -1914,9 +2171,13 @@
       },
       "aa_intelligence_index": 27.8,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "intelligence_score": 1335.0,
+      "intelligence_rank": 31,
+      "release_date": "2024-09-17",
+      "family_tier": "fast",
+      "size_bucket": "small",
+      "is_free": false,
+      "output_tokens_per_second": 182.168
     },
     {
       "id": "z-ai/glm-5-turbo",
@@ -1939,9 +2200,13 @@
       },
       "aa_intelligence_index": 46.8,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-15",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "nvidia/nemotron-3-super-120b-a12b:free",
@@ -1964,9 +2229,13 @@
       },
       "aa_intelligence_index": 36.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-11",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 146.386
     },
     {
       "id": "nvidia/nemotron-3-super-120b-a12b",
@@ -1989,9 +2258,13 @@
       },
       "aa_intelligence_index": 36.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-11",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 146.386
     },
     {
       "id": "bytedance-seed/seed-2.0-lite",
@@ -2016,8 +2289,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "small",
       "is_free": false
     },
     {
@@ -2043,9 +2319,13 @@
       },
       "aa_intelligence_index": 32.4,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-02",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 65.386
     },
     {
       "id": "openai/gpt-5.4-pro",
@@ -2070,9 +2350,13 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2026-03-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "openai/gpt-5.4",
@@ -2097,9 +2381,13 @@
       },
       "aa_intelligence_index": 56.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2026-03-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 200.003
     },
     {
       "id": "inception/mercury-2",
@@ -2122,9 +2410,13 @@
       },
       "aa_intelligence_index": 32.8,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-20",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 1158.356
     },
     {
       "id": "openai/gpt-5.3-chat",
@@ -2149,6 +2441,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1121.0,
+      "intelligence_rank": 152,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -2178,9 +2473,13 @@
       },
       "aa_intelligence_index": 33.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-03",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 312.075
     },
     {
       "id": "bytedance-seed/seed-2.0-mini",
@@ -2205,8 +2504,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "small",
       "is_free": false
     },
     {
@@ -2232,6 +2534,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": "mid",
       "size_bucket": "midsize",
       "is_free": false
@@ -2259,9 +2564,13 @@
       },
       "aa_intelligence_index": 37.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2026-02-24",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 166.394
     },
     {
       "id": "qwen/qwen3.5-27b",
@@ -2286,9 +2595,13 @@
       },
       "aa_intelligence_index": 42.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-24",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 84.267
     },
     {
       "id": "qwen/qwen3.5-122b-a10b",
@@ -2313,9 +2626,13 @@
       },
       "aa_intelligence_index": 41.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-24",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 146.592
     },
     {
       "id": "qwen/qwen3.5-flash-02-23",
@@ -2338,11 +2655,15 @@
         "output_per_m": 0.26,
         "blended_per_m": 0.11375
       },
-      "aa_intelligence_index": 25.869341375641,
+      "aa_intelligence_index": 25.9,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-03-30",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 272.486
     },
     {
       "id": "liquid/lfm-2-24b-a2b",
@@ -2365,9 +2686,13 @@
       },
       "aa_intelligence_index": 10.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-25",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 132.548
     },
     {
       "id": "google/gemini-3.1-pro-preview-customtools",
@@ -2392,11 +2717,15 @@
         "output_per_m": 12.0,
         "blended_per_m": 4.5
       },
-      "aa_intelligence_index": 57.1754980007686,
+      "aa_intelligence_index": 57.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-19",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 138.248
     },
     {
       "id": "openai/gpt-5.3-codex",
@@ -2421,9 +2750,13 @@
       },
       "aa_intelligence_index": 53.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1121.0,
+      "intelligence_rank": 152,
+      "release_date": "2026-02-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 104.916
     },
     {
       "id": "aion-labs/aion-2.0",
@@ -2446,6 +2779,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -2475,9 +2811,13 @@
       },
       "aa_intelligence_index": 57.2,
       "aa_blended_per_m": null,
+      "intelligence_score": 1317.0,
+      "intelligence_rank": 42,
+      "release_date": "2026-02-19",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 138.248
     },
     {
       "id": "anthropic/claude-sonnet-4.6",
@@ -2502,9 +2842,13 @@
       },
       "aa_intelligence_index": 51.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1351.0,
+      "intelligence_rank": 26,
+      "release_date": "2026-02-17",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 57.406
     },
     {
       "id": "qwen/qwen3.5-plus-02-15",
@@ -2527,11 +2871,15 @@
         "output_per_m": 1.56,
         "blended_per_m": 0.585
       },
-      "aa_intelligence_index": 38.6333183791893,
+      "aa_intelligence_index": 38.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1297.0,
+      "intelligence_rank": 53,
+      "release_date": "2026-03-30",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 54.354
     },
     {
       "id": "qwen/qwen3.5-397b-a17b",
@@ -2556,9 +2904,13 @@
       },
       "aa_intelligence_index": 45.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-16",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 50.903
     },
     {
       "id": "minimax/minimax-m2.5",
@@ -2581,9 +2933,13 @@
       },
       "aa_intelligence_index": 41.9,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-12",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 231.394
     },
     {
       "id": "z-ai/glm-5",
@@ -2606,9 +2962,13 @@
       },
       "aa_intelligence_index": 49.8,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-11",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 80.337
     },
     {
       "id": "qwen/qwen3-max-thinking",
@@ -2631,9 +2991,13 @@
       },
       "aa_intelligence_index": 39.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1278.0,
+      "intelligence_rank": 68,
+      "release_date": "2026-01-26",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "anthropic/claude-opus-4.6",
@@ -2658,9 +3022,13 @@
       },
       "aa_intelligence_index": 52.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2026-02-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 54.902
     },
     {
       "id": "qwen/qwen3-coder-next",
@@ -2683,9 +3051,13 @@
       },
       "aa_intelligence_index": 28.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-02-03",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 94.466
     },
     {
       "id": "openrouter/free",
@@ -2709,6 +3081,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": true
@@ -2734,9 +3109,13 @@
       },
       "aa_intelligence_index": 38.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-02",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 173.413
     },
     {
       "id": "moonshotai/kimi-k2.5",
@@ -2754,15 +3133,19 @@
       "context_window": 262144,
       "parameters_b": null,
       "openrouter_pricing": {
-        "input_per_m": 0.39999999999999997,
-        "output_per_m": 1.9,
-        "blended_per_m": 0.7749999999999999
+        "input_per_m": 0.375,
+        "output_per_m": 2.025,
+        "blended_per_m": 0.7875
       },
       "aa_intelligence_index": 46.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1374.0,
+      "intelligence_rank": 12,
+      "release_date": "2026-01-27",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 42.316
     },
     {
       "id": "upstage/solar-pro-3",
@@ -2785,9 +3168,13 @@
       },
       "aa_intelligence_index": 25.9,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-06",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "minimax/minimax-m2-her",
@@ -2808,11 +3195,15 @@
         "output_per_m": 1.2,
         "blended_per_m": 0.5249999999999999
       },
-      "aa_intelligence_index": 36.0872956018061,
+      "aa_intelligence_index": 36.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-10-26",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 139.233
     },
     {
       "id": "writer/palmyra-x5",
@@ -2835,6 +3226,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -2860,9 +3254,13 @@
       },
       "aa_intelligence_index": 8.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-01-20",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "liquid/lfm-2.5-1.2b-instruct:free",
@@ -2885,9 +3283,13 @@
       },
       "aa_intelligence_index": 8.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-01-20",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "openai/gpt-audio",
@@ -2912,6 +3314,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -2939,6 +3344,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1287.0,
+      "intelligence_rank": 61,
+      "release_date": null,
       "family_tier": "fast",
       "size_bucket": "small",
       "is_free": false
@@ -2964,9 +3372,13 @@
       },
       "aa_intelligence_index": 30.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-01-19",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 82.336
     },
     {
       "id": "openai/gpt-5.2-codex",
@@ -2990,9 +3402,13 @@
       },
       "aa_intelligence_index": 49.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-12-11",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 145.97
     },
     {
       "id": "bytedance-seed/seed-1.6-flash",
@@ -3017,8 +3433,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "midsize",
       "is_free": false
     },
     {
@@ -3044,6 +3463,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -3069,9 +3491,13 @@
       },
       "aa_intelligence_index": 39.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1364.0,
+      "intelligence_rank": 15,
+      "release_date": "2025-12-23",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 233.594
     },
     {
       "id": "z-ai/glm-4.7",
@@ -3094,9 +3520,13 @@
       },
       "aa_intelligence_index": 42.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-12-22",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 93.961
     },
     {
       "id": "google/gemini-3-flash-preview",
@@ -3123,9 +3553,13 @@
       },
       "aa_intelligence_index": 46.4,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-12-17",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 204.337
     },
     {
       "id": "xiaomi/mimo-v2-flash",
@@ -3148,9 +3582,13 @@
       },
       "aa_intelligence_index": 41.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-12-16",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 159.097
     },
     {
       "id": "nvidia/nemotron-3-nano-30b-a3b:free",
@@ -3173,9 +3611,13 @@
       },
       "aa_intelligence_index": 24.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-29",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 298.374
     },
     {
       "id": "nvidia/nemotron-3-nano-30b-a3b",
@@ -3198,9 +3640,13 @@
       },
       "aa_intelligence_index": 24.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2026-04-29",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 298.374
     },
     {
       "id": "openai/gpt-5.2-chat",
@@ -3223,11 +3669,15 @@
         "output_per_m": 14.0,
         "blended_per_m": 4.8125
       },
-      "aa_intelligence_index": 51.2765852164605,
+      "aa_intelligence_index": 51.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-12-11",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 81.829
     },
     {
       "id": "openai/gpt-5.2-pro",
@@ -3250,11 +3700,15 @@
         "output_per_m": 168.0,
         "blended_per_m": 57.75
       },
-      "aa_intelligence_index": 51.2765852164605,
+      "aa_intelligence_index": 51.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-12-11",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 81.829
     },
     {
       "id": "openai/gpt-5.2",
@@ -3279,9 +3733,13 @@
       },
       "aa_intelligence_index": 51.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2025-12-11",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 81.829
     },
     {
       "id": "mistralai/devstral-2512",
@@ -3305,6 +3763,9 @@
       },
       "aa_intelligence_index": 22.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -3330,6 +3791,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -3357,9 +3821,13 @@
       },
       "aa_intelligence_index": 23.4,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-12-08",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 80.813
     },
     {
       "id": "essentialai/rnj-1-instruct",
@@ -3382,6 +3850,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -3407,6 +3878,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -3431,11 +3905,15 @@
         "output_per_m": 10.0,
         "blended_per_m": 3.4375
       },
-      "aa_intelligence_index": 43.11451870754,
+      "aa_intelligence_index": 43.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-11-13",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 217.547
     },
     {
       "id": "amazon/nova-2-lite-v1",
@@ -3461,9 +3939,13 @@
       },
       "aa_intelligence_index": 29.7,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-10-29",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "small",
+      "is_free": false,
+      "output_tokens_per_second": 233.634
     },
     {
       "id": "mistralai/ministral-14b-2512",
@@ -3487,6 +3969,9 @@
       },
       "aa_intelligence_index": 16.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -3513,6 +3998,9 @@
       },
       "aa_intelligence_index": 14.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1197.0,
+      "intelligence_rank": 119,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "small",
       "is_free": false
@@ -3539,6 +4027,9 @@
       },
       "aa_intelligence_index": 11.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "small",
       "is_free": false
@@ -3566,9 +4057,13 @@
       },
       "aa_intelligence_index": 22.8,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "intelligence_score": 1267.0,
+      "intelligence_rank": 84,
+      "release_date": "2024-07-24",
+      "family_tier": "flagship",
+      "size_bucket": "large",
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "arcee-ai/trinity-mini",
@@ -3591,8 +4086,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "small",
       "is_free": false
     },
     {
@@ -3616,9 +4114,13 @@
       },
       "aa_intelligence_index": 41.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1382.0,
+      "intelligence_rank": 12,
+      "release_date": "2025-12-01",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "prime-intellect/intellect-3",
@@ -3641,9 +4143,13 @@
       },
       "aa_intelligence_index": 22.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-11-27",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "anthropic/claude-opus-4.5",
@@ -3668,9 +4174,13 @@
       },
       "aa_intelligence_index": 49.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2025-11-24",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 70.473
     },
     {
       "id": "allenai/olmo-3-32b-think",
@@ -3693,9 +4203,13 @@
       },
       "aa_intelligence_index": 12.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-11-20",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "google/gemini-3-pro-image-preview",
@@ -3718,11 +4232,15 @@
         "output_per_m": 12.0,
         "blended_per_m": 4.5
       },
-      "aa_intelligence_index": 48.3935232384404,
+      "aa_intelligence_index": 48.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1126.0,
+      "intelligence_rank": 150,
+      "release_date": "2025-11-18",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "deepcogito/cogito-v2.1-671b",
@@ -3745,6 +4263,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "large",
       "is_free": false
@@ -3772,9 +4293,13 @@
       },
       "aa_intelligence_index": 47.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2025-11-13",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 127.631
     },
     {
       "id": "openai/gpt-5.1-chat",
@@ -3797,11 +4322,15 @@
         "output_per_m": 10.0,
         "blended_per_m": 3.4375
       },
-      "aa_intelligence_index": 47.6963633708892,
+      "aa_intelligence_index": 47.7,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-11-13",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 127.631
     },
     {
       "id": "openai/gpt-5.1-codex",
@@ -3825,9 +4354,13 @@
       },
       "aa_intelligence_index": 43.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-11-13",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 217.547
     },
     {
       "id": "openai/gpt-5.1-codex-mini",
@@ -3851,9 +4384,13 @@
       },
       "aa_intelligence_index": 38.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1337.0,
+      "intelligence_rank": 31,
+      "release_date": "2025-11-13",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 219.093
     },
     {
       "id": "moonshotai/kimi-k2-thinking",
@@ -3876,9 +4413,13 @@
       },
       "aa_intelligence_index": 40.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1374.0,
+      "intelligence_rank": 12,
+      "release_date": "2025-11-06",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 116.14
     },
     {
       "id": "amazon/nova-premier-v1",
@@ -3902,9 +4443,13 @@
       },
       "aa_intelligence_index": 19.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-04-30",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 79.95
     },
     {
       "id": "perplexity/sonar-pro-search",
@@ -3928,6 +4473,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -3955,6 +4503,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1233.0,
+      "intelligence_rank": 100,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -3978,11 +4529,15 @@
         "output_per_m": 0.3,
         "blended_per_m": 0.13124999999999998
       },
-      "aa_intelligence_index": 24.4695665241005,
+      "aa_intelligence_index": 24.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-05",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 241.504
     },
     {
       "id": "nvidia/nemotron-nano-12b-v2-vl:free",
@@ -4007,6 +4562,9 @@
       },
       "aa_intelligence_index": 14.9,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": true
@@ -4032,9 +4590,13 @@
       },
       "aa_intelligence_index": 36.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1364.0,
+      "intelligence_rank": 15,
+      "release_date": "2025-10-26",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 139.233
     },
     {
       "id": "qwen/qwen3-vl-32b-instruct",
@@ -4058,9 +4620,13 @@
       },
       "aa_intelligence_index": 24.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1344.0,
+      "intelligence_rank": 29,
+      "release_date": "2025-10-21",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 74.569
     },
     {
       "id": "ibm-granite/granite-4.0-h-micro",
@@ -4083,9 +4649,13 @@
       },
       "aa_intelligence_index": 7.7,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-09-22",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "small",
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "microsoft/phi-4-mini-instruct",
@@ -4108,9 +4678,13 @@
       },
       "aa_intelligence_index": 8.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1221.0,
+      "intelligence_rank": 108,
+      "release_date": "2024-02-26",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "small",
+      "is_free": false,
+      "output_tokens_per_second": 23.501
     },
     {
       "id": "openai/gpt-5-image-mini",
@@ -4134,11 +4708,15 @@
         "output_per_m": 2.0,
         "blended_per_m": 2.375
       },
-      "aa_intelligence_index": 41.1707793926904,
+      "aa_intelligence_index": 41.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-07",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 95.924
     },
     {
       "id": "anthropic/claude-haiku-4.5",
@@ -4163,9 +4741,13 @@
       },
       "aa_intelligence_index": 37.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1254.0,
+      "intelligence_rank": 94,
+      "release_date": "2025-10-15",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 135.455
     },
     {
       "id": "qwen/qwen3-vl-8b-thinking",
@@ -4189,9 +4771,13 @@
       },
       "aa_intelligence_index": 16.7,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-10-14",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 145.077
     },
     {
       "id": "qwen/qwen3-vl-8b-instruct",
@@ -4215,9 +4801,13 @@
       },
       "aa_intelligence_index": 14.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-10-14",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 145.077
     },
     {
       "id": "openai/gpt-5-image",
@@ -4243,6 +4833,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -4270,6 +4863,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1428.0,
+      "intelligence_rank": 4,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -4297,6 +4893,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1363.0,
+      "intelligence_rank": 17,
+      "release_date": null,
       "family_tier": "fast",
       "size_bucket": "small",
       "is_free": false
@@ -4322,9 +4921,13 @@
       },
       "aa_intelligence_index": 18.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1312.0,
+      "intelligence_rank": 40,
+      "release_date": "2025-07-25",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 49.999
     },
     {
       "id": "google/gemini-2.5-flash-image",
@@ -4347,11 +4950,15 @@
         "output_per_m": 2.5,
         "blended_per_m": 0.85
       },
-      "aa_intelligence_index": 20.5636858644241,
+      "aa_intelligence_index": 20.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1417.0,
+      "intelligence_rank": 6,
+      "release_date": "2025-05-20",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 203.989
     },
     {
       "id": "qwen/qwen3-vl-30b-a3b-thinking",
@@ -4375,9 +4982,13 @@
       },
       "aa_intelligence_index": 19.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-10-03",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 123.194
     },
     {
       "id": "qwen/qwen3-vl-30b-a3b-instruct",
@@ -4401,9 +5012,13 @@
       },
       "aa_intelligence_index": 16.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-10-03",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 123.194
     },
     {
       "id": "openai/gpt-5-pro",
@@ -4428,9 +5043,13 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2026-04-23",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "z-ai/glm-4.6",
@@ -4453,9 +5072,13 @@
       },
       "aa_intelligence_index": 32.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-09-30",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 61.449
     },
     {
       "id": "anthropic/claude-sonnet-4.5",
@@ -4480,9 +5103,13 @@
       },
       "aa_intelligence_index": 43.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1351.0,
+      "intelligence_rank": 26,
+      "release_date": "2025-09-29",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 58.041
     },
     {
       "id": "deepseek/deepseek-v3.2-exp",
@@ -4505,9 +5132,13 @@
       },
       "aa_intelligence_index": 32.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1382.0,
+      "intelligence_rank": 12,
+      "release_date": "2025-12-01",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "thedrummer/cydonia-24b-v4.1",
@@ -4530,6 +5161,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -4555,6 +5189,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -4584,9 +5221,13 @@
       },
       "aa_intelligence_index": 21.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1417.0,
+      "intelligence_rank": 6,
+      "release_date": "2025-09-25",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "qwen/qwen3-vl-235b-a22b-thinking",
@@ -4610,9 +5251,13 @@
       },
       "aa_intelligence_index": 27.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1367.0,
+      "intelligence_rank": 15,
+      "release_date": "2025-09-23",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 47.658
     },
     {
       "id": "qwen/qwen3-vl-235b-a22b-instruct",
@@ -4636,9 +5281,13 @@
       },
       "aa_intelligence_index": 20.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1367.0,
+      "intelligence_rank": 15,
+      "release_date": "2025-09-23",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 47.658
     },
     {
       "id": "qwen/qwen3-max",
@@ -4661,9 +5310,13 @@
       },
       "aa_intelligence_index": 31.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1278.0,
+      "intelligence_rank": 68,
+      "release_date": "2025-09-23",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 59.32
     },
     {
       "id": "qwen/qwen3-coder-plus",
@@ -4686,6 +5339,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1325.0,
+      "intelligence_rank": 34,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -4712,9 +5368,13 @@
       },
       "aa_intelligence_index": 44.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2025-09-23",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 180.976
     },
     {
       "id": "deepseek/deepseek-v3.1-terminus",
@@ -4737,9 +5397,13 @@
       },
       "aa_intelligence_index": 33.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1424.0,
+      "intelligence_rank": 4,
+      "release_date": "2025-09-22",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "qwen/qwen3-coder-flash",
@@ -4762,8 +5426,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "midsize",
       "is_free": false
     },
     {
@@ -4787,9 +5454,13 @@
       },
       "aa_intelligence_index": 26.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-09-11",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 168.143
     },
     {
       "id": "qwen/qwen3-next-80b-a3b-instruct:free",
@@ -4812,9 +5483,13 @@
       },
       "aa_intelligence_index": 20.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-09-11",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 168.143
     },
     {
       "id": "qwen/qwen3-next-80b-a3b-instruct",
@@ -4837,9 +5512,13 @@
       },
       "aa_intelligence_index": 20.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-09-11",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 168.143
     },
     {
       "id": "qwen/qwen-plus-2025-07-28:thinking",
@@ -4862,6 +5541,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1325.0,
+      "intelligence_rank": 34,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -4887,6 +5569,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1325.0,
+      "intelligence_rank": 34,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -4912,6 +5597,9 @@
       },
       "aa_intelligence_index": 14.8,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "small",
       "is_free": true
@@ -4937,9 +5625,13 @@
       },
       "aa_intelligence_index": 30.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1374.0,
+      "intelligence_rank": 12,
+      "release_date": "2025-09-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 25.121
     },
     {
       "id": "qwen/qwen3-30b-a3b-thinking-2507",
@@ -4962,9 +5654,13 @@
       },
       "aa_intelligence_index": 22.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-07-29",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 160.926
     },
     {
       "id": "nousresearch/hermes-4-70b",
@@ -4987,6 +5683,9 @@
       },
       "aa_intelligence_index": 16.0,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "large",
       "is_free": false
@@ -5012,6 +5711,9 @@
       },
       "aa_intelligence_index": 18.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "large",
       "is_free": false
@@ -5037,6 +5739,9 @@
       },
       "aa_intelligence_index": 28.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1424.0,
+      "intelligence_rank": 4,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -5064,9 +5769,13 @@
       },
       "aa_intelligence_index": 21.3,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "intelligence_score": 1372.0,
+      "intelligence_rank": 14,
+      "release_date": "2025-08-12",
+      "family_tier": "mid",
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 76.269
     },
     {
       "id": "z-ai/glm-4.5v",
@@ -5090,9 +5799,13 @@
       },
       "aa_intelligence_index": 15.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-11",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 22.26
     },
     {
       "id": "ai21/jamba-large-1.7",
@@ -5115,9 +5828,13 @@
       },
       "aa_intelligence_index": 10.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1237.0,
+      "intelligence_rank": 99,
+      "release_date": "2025-07-07",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 56.579
     },
     {
       "id": "openai/gpt-5-chat",
@@ -5142,6 +5859,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -5169,9 +5889,13 @@
       },
       "aa_intelligence_index": 44.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2025-08-07",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 117.439
     },
     {
       "id": "openai/gpt-5-mini",
@@ -5196,9 +5920,13 @@
       },
       "aa_intelligence_index": 41.2,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2025-08-07",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 95.924
     },
     {
       "id": "openai/gpt-5-nano",
@@ -5223,9 +5951,13 @@
       },
       "aa_intelligence_index": 26.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1413.0,
+      "intelligence_rank": 8,
+      "release_date": "2025-08-07",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 172.484
     },
     {
       "id": "openai/gpt-oss-120b:free",
@@ -5248,9 +5980,13 @@
       },
       "aa_intelligence_index": 33.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-05",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 352.612
     },
     {
       "id": "openai/gpt-oss-120b",
@@ -5273,9 +6009,13 @@
       },
       "aa_intelligence_index": 33.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-05",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 352.612
     },
     {
       "id": "openai/gpt-oss-20b:free",
@@ -5298,9 +6038,13 @@
       },
       "aa_intelligence_index": 24.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-05",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 241.504
     },
     {
       "id": "openai/gpt-oss-20b",
@@ -5323,9 +6067,13 @@
       },
       "aa_intelligence_index": 24.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-05",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 241.504
     },
     {
       "id": "anthropic/claude-opus-4.1",
@@ -5350,9 +6098,13 @@
       },
       "aa_intelligence_index": 42.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2025-08-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 43.384
     },
     {
       "id": "mistralai/codestral-2508",
@@ -5376,8 +6128,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
+      "family_tier": "mid",
+      "size_bucket": "midsize",
       "is_free": false
     },
     {
@@ -5401,9 +6156,13 @@
       },
       "aa_intelligence_index": 20.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-07-31",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 111.11
     },
     {
       "id": "qwen/qwen3-30b-a3b-instruct-2507",
@@ -5426,9 +6185,13 @@
       },
       "aa_intelligence_index": 15.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-07-29",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 160.926
     },
     {
       "id": "z-ai/glm-4.5",
@@ -5451,9 +6214,13 @@
       },
       "aa_intelligence_index": 26.4,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-07-28",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 58.003
     },
     {
       "id": "z-ai/glm-4.5-air",
@@ -5476,9 +6243,13 @@
       },
       "aa_intelligence_index": 23.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-07-28",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 79.353
     },
     {
       "id": "qwen/qwen3-235b-a22b-thinking-2507",
@@ -5501,9 +6272,13 @@
       },
       "aa_intelligence_index": 29.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1367.0,
+      "intelligence_rank": 15,
+      "release_date": "2025-07-21",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 71.382
     },
     {
       "id": "qwen/qwen3-coder:free",
@@ -5526,9 +6301,13 @@
       },
       "aa_intelligence_index": 24.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1344.0,
+      "intelligence_rank": 29,
+      "release_date": "2026-02-03",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 94.466
     },
     {
       "id": "qwen/qwen3-coder",
@@ -5551,9 +6330,13 @@
       },
       "aa_intelligence_index": 24.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1344.0,
+      "intelligence_rank": 29,
+      "release_date": "2026-02-03",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 94.466
     },
     {
       "id": "bytedance/ui-tars-1.5-7b",
@@ -5577,6 +6360,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "small",
       "is_free": false
@@ -5606,9 +6392,13 @@
       },
       "aa_intelligence_index": 17.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1417.0,
+      "intelligence_rank": 6,
+      "release_date": "2025-06-17",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 272.67
     },
     {
       "id": "qwen/qwen3-235b-a22b-2507",
@@ -5631,9 +6421,13 @@
       },
       "aa_intelligence_index": 25.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1367.0,
+      "intelligence_rank": 15,
+      "release_date": "2025-07-21",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 71.382
     },
     {
       "id": "switchpoint/router",
@@ -5656,6 +6450,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -5681,9 +6478,13 @@
       },
       "aa_intelligence_index": 26.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1374.0,
+      "intelligence_rank": 12,
+      "release_date": "2025-07-11",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 25.528
     },
     {
       "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
@@ -5706,6 +6507,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": true
@@ -5731,6 +6535,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -5756,6 +6563,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -5781,6 +6591,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -5807,6 +6620,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "large",
       "is_free": false
@@ -5831,11 +6647,15 @@
         "output_per_m": 0.19999999999999998,
         "blended_per_m": 0.10624999999999998
       },
-      "aa_intelligence_index": 15.0667012782728,
+      "aa_intelligence_index": 15.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1268.0,
+      "intelligence_rank": 78,
+      "release_date": "2025-06-20",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 142.107
     },
     {
       "id": "minimax/minimax-m1",
@@ -5858,9 +6678,13 @@
       },
       "aa_intelligence_index": 24.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1364.0,
+      "intelligence_rank": 15,
+      "release_date": "2025-12-23",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 233.594
     },
     {
       "id": "google/gemini-2.5-flash",
@@ -5887,9 +6711,13 @@
       },
       "aa_intelligence_index": 27.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1417.0,
+      "intelligence_rank": 6,
+      "release_date": "2025-05-20",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 203.989
     },
     {
       "id": "google/gemini-2.5-pro",
@@ -5916,9 +6744,13 @@
       },
       "aa_intelligence_index": 34.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1474.0,
+      "intelligence_rank": 1,
+      "release_date": "2025-06-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 142.147
     },
     {
       "id": "openai/o3-pro",
@@ -5941,11 +6773,15 @@
         "output_per_m": 80.0,
         "blended_per_m": 35.0
       },
-      "aa_intelligence_index": 40.6899019734784,
+      "aa_intelligence_index": 40.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1428.0,
+      "intelligence_rank": 4,
+      "release_date": "2025-06-10",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 32.097
     },
     {
       "id": "google/gemini-2.5-pro-preview",
@@ -5969,11 +6805,15 @@
         "output_per_m": 10.0,
         "blended_per_m": 3.4375
       },
-      "aa_intelligence_index": 34.6276323579138,
+      "aa_intelligence_index": 34.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1474.0,
+      "intelligence_rank": 1,
+      "release_date": "2025-06-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 142.147
     },
     {
       "id": "deepseek/deepseek-r1-0528",
@@ -5996,9 +6836,13 @@
       },
       "aa_intelligence_index": 27.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1424.0,
+      "intelligence_rank": 4,
+      "release_date": "2025-05-28",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "anthropic/claude-opus-4",
@@ -6023,9 +6867,13 @@
       },
       "aa_intelligence_index": 39.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1371.0,
+      "intelligence_rank": 14,
+      "release_date": "2025-05-22",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 44.475
     },
     {
       "id": "anthropic/claude-sonnet-4",
@@ -6050,9 +6898,13 @@
       },
       "aa_intelligence_index": 38.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1351.0,
+      "intelligence_rank": 26,
+      "release_date": "2025-05-22",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 61.716
     },
     {
       "id": "google/gemma-3n-e4b-it",
@@ -6075,9 +6927,13 @@
       },
       "aa_intelligence_index": 6.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1305.0,
+      "intelligence_rank": 49,
+      "release_date": "2025-05-20",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "mistralai/mistral-medium-3",
@@ -6102,9 +6958,13 @@
       },
       "aa_intelligence_index": 18.8,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "intelligence_score": 1372.0,
+      "intelligence_rank": 14,
+      "release_date": "2025-05-07",
+      "family_tier": "mid",
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 46.163
     },
     {
       "id": "google/gemini-2.5-pro-preview-05-06",
@@ -6129,11 +6989,15 @@
         "output_per_m": 10.0,
         "blended_per_m": 3.4375
       },
-      "aa_intelligence_index": 34.6276323579138,
+      "aa_intelligence_index": 34.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1474.0,
+      "intelligence_rank": 1,
+      "release_date": "2025-06-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 142.147
     },
     {
       "id": "arcee-ai/virtuoso-large",
@@ -6156,6 +7020,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -6181,6 +7048,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -6207,6 +7077,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -6232,9 +7105,13 @@
       },
       "aa_intelligence_index": 15.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1321.0,
+      "intelligence_rank": 39,
+      "release_date": "2025-07-29",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 160.926
     },
     {
       "id": "qwen/qwen3-8b",
@@ -6257,9 +7134,13 @@
       },
       "aa_intelligence_index": 13.2,
       "aa_blended_per_m": null,
+      "intelligence_score": 1344.0,
+      "intelligence_rank": 29,
+      "release_date": "2025-04-28",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 63.389
     },
     {
       "id": "qwen/qwen3-14b",
@@ -6282,9 +7163,13 @@
       },
       "aa_intelligence_index": 16.2,
       "aa_blended_per_m": null,
+      "intelligence_score": 1344.0,
+      "intelligence_rank": 29,
+      "release_date": "2025-04-28",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 62.794
     },
     {
       "id": "qwen/qwen3-32b",
@@ -6307,9 +7192,13 @@
       },
       "aa_intelligence_index": 16.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1344.0,
+      "intelligence_rank": 29,
+      "release_date": "2025-04-28",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 99.818
     },
     {
       "id": "qwen/qwen3-235b-a22b",
@@ -6332,9 +7221,13 @@
       },
       "aa_intelligence_index": 19.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1367.0,
+      "intelligence_rank": 15,
+      "release_date": "2025-07-21",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 71.382
     },
     {
       "id": "openai/o4-mini-high",
@@ -6357,11 +7250,15 @@
         "output_per_m": 4.4,
         "blended_per_m": 1.9250000000000003
       },
-      "aa_intelligence_index": 33.0616656649597,
+      "aa_intelligence_index": 33.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1363.0,
+      "intelligence_rank": 17,
+      "release_date": "2025-04-16",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 194.832
     },
     {
       "id": "openai/o3",
@@ -6386,9 +7283,13 @@
       },
       "aa_intelligence_index": 38.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1428.0,
+      "intelligence_rank": 4,
+      "release_date": "2025-04-16",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 164.479
     },
     {
       "id": "openai/o4-mini",
@@ -6413,9 +7314,13 @@
       },
       "aa_intelligence_index": 33.1,
       "aa_blended_per_m": null,
+      "intelligence_score": 1363.0,
+      "intelligence_rank": 17,
+      "release_date": "2025-04-16",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 194.832
     },
     {
       "id": "openai/gpt-4.1",
@@ -6440,9 +7345,13 @@
       },
       "aa_intelligence_index": 26.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1384.0,
+      "intelligence_rank": 11,
+      "release_date": "2025-04-14",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 140.383
     },
     {
       "id": "openai/gpt-4.1-mini",
@@ -6467,9 +7376,13 @@
       },
       "aa_intelligence_index": 22.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1337.0,
+      "intelligence_rank": 31,
+      "release_date": "2025-04-14",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 99.033
     },
     {
       "id": "openai/gpt-4.1-nano",
@@ -6494,9 +7407,13 @@
       },
       "aa_intelligence_index": 13.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1287.0,
+      "intelligence_rank": 60,
+      "release_date": "2025-04-14",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 163.984
     },
     {
       "id": "meta-llama/llama-4-maverick",
@@ -6520,9 +7437,13 @@
       },
       "aa_intelligence_index": 18.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1292.0,
+      "intelligence_rank": 59,
+      "release_date": "2025-04-05",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 94.099
     },
     {
       "id": "meta-llama/llama-4-scout",
@@ -6546,9 +7467,13 @@
       },
       "aa_intelligence_index": 13.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1279.0,
+      "intelligence_rank": 66,
+      "release_date": "2025-04-05",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 115.993
     },
     {
       "id": "deepseek/deepseek-chat-v3-0324",
@@ -6571,6 +7496,9 @@
       },
       "aa_intelligence_index": 22.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1382.0,
+      "intelligence_rank": 12,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -6596,11 +7524,15 @@
         "output_per_m": 600.0,
         "blended_per_m": 262.5
       },
-      "aa_intelligence_index": 25.7608256642146,
+      "aa_intelligence_index": 25.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1365.0,
+      "intelligence_rank": 17,
+      "release_date": "2025-03-19",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "mistralai/mistral-small-3.1-24b-instruct",
@@ -6622,11 +7554,15 @@
         "output_per_m": 0.5549999999999999,
         "blended_per_m": 0.40199999999999997
       },
-      "aa_intelligence_index": 14.4821683759619,
+      "aa_intelligence_index": 14.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1268.0,
+      "intelligence_rank": 78,
+      "release_date": "2025-03-17",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 166.27
     },
     {
       "id": "google/gemma-3-4b-it",
@@ -6650,9 +7586,13 @@
       },
       "aa_intelligence_index": 6.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1291.0,
+      "intelligence_rank": 54,
+      "release_date": "2025-03-12",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "google/gemma-3-12b-it",
@@ -6676,9 +7616,13 @@
       },
       "aa_intelligence_index": 8.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1337.0,
+      "intelligence_rank": 31,
+      "release_date": "2025-03-12",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "cohere/command-a",
@@ -6699,11 +7643,15 @@
         "output_per_m": 10.0,
         "blended_per_m": 4.375
       },
-      "aa_intelligence_index": 13.4788553928352,
+      "aa_intelligence_index": 13.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1327.0,
+      "intelligence_rank": 35,
+      "release_date": "2025-03-13",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 76.022
     },
     {
       "id": "openai/gpt-4o-mini-search-preview",
@@ -6724,11 +7672,15 @@
         "output_per_m": 0.6,
         "blended_per_m": 0.26249999999999996
       },
-      "aa_intelligence_index": 12.6473365344862,
+      "aa_intelligence_index": 12.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1287.0,
+      "intelligence_rank": 61,
+      "release_date": "2024-07-18",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 72.952
     },
     {
       "id": "openai/gpt-4o-search-preview",
@@ -6751,6 +7703,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1300.0,
+      "intelligence_rank": 53,
+      "release_date": null,
       "family_tier": "mid",
       "size_bucket": "midsize",
       "is_free": false
@@ -6776,9 +7731,13 @@
       },
       "aa_intelligence_index": 9.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-03-10",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "midsize",
+      "is_free": false,
+      "output_tokens_per_second": 91.811
     },
     {
       "id": "google/gemma-3-27b-it",
@@ -6802,9 +7761,13 @@
       },
       "aa_intelligence_index": 10.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1359.0,
+      "intelligence_rank": 21,
+      "release_date": "2025-03-12",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "thedrummer/skyfall-36b-v2",
@@ -6827,6 +7790,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -6851,11 +7817,15 @@
         "output_per_m": 8.0,
         "blended_per_m": 3.5
       },
-      "aa_intelligence_index": 24.6211210836844,
+      "aa_intelligence_index": 24.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-01-28",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "perplexity/sonar-pro",
@@ -6877,11 +7847,15 @@
         "output_per_m": 15.0,
         "blended_per_m": 6.0
       },
-      "aa_intelligence_index": 15.2259667891928,
+      "aa_intelligence_index": 15.2,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-01-21",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "perplexity/sonar-deep-research",
@@ -6904,6 +7878,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -6928,11 +7905,15 @@
         "output_per_m": 0.6,
         "blended_per_m": 0.3
       },
-      "aa_intelligence_index": 12.1289835244553,
+      "aa_intelligence_index": 12.1,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-02-17",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "openai/o3-mini-high",
@@ -6956,9 +7937,13 @@
       },
       "aa_intelligence_index": 25.2,
       "aa_blended_per_m": null,
+      "intelligence_score": 1340.0,
+      "intelligence_rank": 31,
+      "release_date": "2025-01-31",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 231.698
     },
     {
       "id": "aion-labs/aion-1.0",
@@ -6981,6 +7966,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -7006,8 +7994,11 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
-      "size_bucket": null,
+      "size_bucket": "small",
       "is_free": false
     },
     {
@@ -7031,6 +8022,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "small",
       "is_free": false
@@ -7055,11 +8049,15 @@
         "output_per_m": 1.0,
         "blended_per_m": 0.85
       },
-      "aa_intelligence_index": 15.5577662757909,
+      "aa_intelligence_index": 15.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1272.0,
+      "intelligence_rank": 78,
+      "release_date": "2024-09-19",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "qwen/qwen-plus",
@@ -7082,6 +8080,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1325.0,
+      "intelligence_rank": 34,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -7106,11 +8107,15 @@
         "output_per_m": 4.4,
         "blended_per_m": 1.9250000000000003
       },
-      "aa_intelligence_index": 25.8632480686936,
+      "aa_intelligence_index": 25.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1318.0,
+      "intelligence_rank": 41,
+      "release_date": "2025-01-31",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 224.044
     },
     {
       "id": "mistralai/mistral-small-24b-instruct-2501",
@@ -7133,6 +8138,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1233.0,
+      "intelligence_rank": 100,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -7156,11 +8164,15 @@
         "output_per_m": 0.29,
         "blended_per_m": 0.29
       },
-      "aa_intelligence_index": 17.1667141909866,
+      "aa_intelligence_index": 17.2,
       "aa_blended_per_m": null,
+      "intelligence_score": 1424.0,
+      "intelligence_rank": 4,
+      "release_date": "2025-01-20",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "perplexity/sonar",
@@ -7182,11 +8194,15 @@
         "output_per_m": 1.0,
         "blended_per_m": 1.0
       },
-      "aa_intelligence_index": 15.4927702671561,
+      "aa_intelligence_index": 15.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-01-21",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "deepseek/deepseek-r1-distill-llama-70b",
@@ -7207,11 +8223,15 @@
         "output_per_m": 0.7999999999999999,
         "blended_per_m": 0.7999999999999999
       },
-      "aa_intelligence_index": 15.9501774235852,
+      "aa_intelligence_index": 16.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1424.0,
+      "intelligence_rank": 4,
+      "release_date": "2025-01-20",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 39.227
     },
     {
       "id": "deepseek/deepseek-r1",
@@ -7234,9 +8254,13 @@
       },
       "aa_intelligence_index": 18.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1424.0,
+      "intelligence_rank": 4,
+      "release_date": "2025-05-28",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "minimax/minimax-01",
@@ -7260,6 +8284,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -7285,9 +8312,13 @@
       },
       "aa_intelligence_index": 10.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1221.0,
+      "intelligence_rank": 108,
+      "release_date": "2024-12-12",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 36.033
     },
     {
       "id": "sao10k/l3.1-70b-hanami-x1",
@@ -7310,6 +8341,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "large",
       "is_free": false
@@ -7335,6 +8369,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1382.0,
+      "intelligence_rank": 12,
+      "release_date": null,
       "family_tier": "mid",
       "size_bucket": "midsize",
       "is_free": false
@@ -7360,6 +8397,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "large",
       "is_free": false
@@ -7387,9 +8427,13 @@
       },
       "aa_intelligence_index": 30.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1365.0,
+      "intelligence_rank": 17,
+      "release_date": "2024-12-05",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 124.193
     },
     {
       "id": "cohere/command-r7b-12-2024",
@@ -7412,6 +8456,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": "mid",
       "size_bucket": "midsize",
       "is_free": false
@@ -7437,9 +8484,13 @@
       },
       "aa_intelligence_index": 14.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1273.0,
+      "intelligence_rank": 78,
+      "release_date": "2024-12-06",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 97.203
     },
     {
       "id": "meta-llama/llama-3.3-70b-instruct",
@@ -7462,9 +8513,13 @@
       },
       "aa_intelligence_index": 14.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1273.0,
+      "intelligence_rank": 78,
+      "release_date": "2024-12-06",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 97.203
     },
     {
       "id": "amazon/nova-lite-v1",
@@ -7488,9 +8543,13 @@
       },
       "aa_intelligence_index": 12.7,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2024-12-03",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "small",
+      "is_free": false,
+      "output_tokens_per_second": 189.168
     },
     {
       "id": "amazon/nova-micro-v1",
@@ -7513,9 +8572,13 @@
       },
       "aa_intelligence_index": 10.3,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2024-12-03",
       "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "size_bucket": "small",
+      "is_free": false,
+      "output_tokens_per_second": 305.486
     },
     {
       "id": "amazon/nova-pro-v1",
@@ -7539,9 +8602,13 @@
       },
       "aa_intelligence_index": 13.5,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2024-12-03",
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "openai/gpt-4o-2024-11-20",
@@ -7566,9 +8633,13 @@
       },
       "aa_intelligence_index": 17.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1300.0,
+      "intelligence_rank": 53,
+      "release_date": "2024-08-06",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 130.119
     },
     {
       "id": "mistralai/mistral-large-2407",
@@ -7592,9 +8663,13 @@
       },
       "aa_intelligence_index": 15.1,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "intelligence_score": 1267.0,
+      "intelligence_rank": 84,
+      "release_date": "2024-07-24",
+      "family_tier": "flagship",
+      "size_bucket": "large",
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "qwen/qwen-2.5-coder-32b-instruct",
@@ -7615,11 +8690,15 @@
         "output_per_m": 1.0,
         "blended_per_m": 0.745
       },
-      "aa_intelligence_index": 12.8655682100571,
+      "aa_intelligence_index": 12.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1232.0,
+      "intelligence_rank": 100,
+      "release_date": "2024-11-11",
       "family_tier": null,
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "thedrummer/unslopnemo-12b",
@@ -7642,6 +8721,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -7668,9 +8750,13 @@
       },
       "aa_intelligence_index": 18.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1254.0,
+      "intelligence_rank": 94,
+      "release_date": "2024-10-22",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "anthracite-org/magnum-v4-72b",
@@ -7693,6 +8779,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "large",
       "is_free": false
@@ -7716,11 +8805,15 @@
         "output_per_m": 0.09999999999999999,
         "blended_per_m": 0.05499999999999999
       },
-      "aa_intelligence_index": 9.98246709864816,
+      "aa_intelligence_index": 10.0,
       "aa_blended_per_m": null,
+      "intelligence_score": 1363.0,
+      "intelligence_rank": 17,
+      "release_date": "2024-09-19",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "inflection/inflection-3-productivity",
@@ -7743,6 +8836,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -7768,6 +8864,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": "mid",
       "size_bucket": "midsize",
       "is_free": false
@@ -7793,6 +8892,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -7816,11 +8918,15 @@
         "output_per_m": 0.0,
         "blended_per_m": 0.0
       },
-      "aa_intelligence_index": 9.70217736952704,
+      "aa_intelligence_index": 9.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1118.0,
+      "intelligence_rank": 152,
+      "release_date": "2024-09-25",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 51.124
     },
     {
       "id": "meta-llama/llama-3.2-3b-instruct",
@@ -7841,11 +8947,15 @@
         "output_per_m": 0.335,
         "blended_per_m": 0.121925
       },
-      "aa_intelligence_index": 9.70217736952704,
+      "aa_intelligence_index": 9.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1118.0,
+      "intelligence_rank": 152,
+      "release_date": "2024-09-25",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 51.124
     },
     {
       "id": "meta-llama/llama-3.2-1b-instruct",
@@ -7868,9 +8978,13 @@
       },
       "aa_intelligence_index": 6.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1069.0,
+      "intelligence_rank": 180,
+      "release_date": "2024-09-25",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 86.504
     },
     {
       "id": "meta-llama/llama-3.2-11b-vision-instruct",
@@ -7894,9 +9008,13 @@
       },
       "aa_intelligence_index": 8.7,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2024-09-25",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 87.466
     },
     {
       "id": "qwen/qwen-2.5-72b-instruct",
@@ -7917,11 +9035,15 @@
         "output_per_m": 0.39999999999999997,
         "blended_per_m": 0.37
       },
-      "aa_intelligence_index": 15.5577662757909,
+      "aa_intelligence_index": 15.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1272.0,
+      "intelligence_rank": 78,
+      "release_date": "2024-09-19",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "cohere/command-r-plus-08-2024",
@@ -7944,6 +9066,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1230.0,
+      "intelligence_rank": 100,
+      "release_date": null,
       "family_tier": "flagship",
       "size_bucket": "large",
       "is_free": false
@@ -7969,6 +9094,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1230.0,
+      "intelligence_rank": 100,
+      "release_date": null,
       "family_tier": "mid",
       "size_bucket": "midsize",
       "is_free": false
@@ -7994,6 +9122,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "large",
       "is_free": false
@@ -8019,9 +9150,13 @@
       },
       "aa_intelligence_index": 12.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2024-08-15",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 30.517
     },
     {
       "id": "nousresearch/hermes-3-llama-3.1-405b:free",
@@ -8044,9 +9179,13 @@
       },
       "aa_intelligence_index": 17.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-27",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": true
+      "is_free": true,
+      "output_tokens_per_second": 40.958
     },
     {
       "id": "nousresearch/hermes-3-llama-3.1-405b",
@@ -8069,9 +9208,13 @@
       },
       "aa_intelligence_index": 17.6,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": "2025-08-27",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 40.958
     },
     {
       "id": "sao10k/l3-lunaris-8b",
@@ -8094,6 +9237,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "small",
       "is_free": false
@@ -8121,9 +9267,13 @@
       },
       "aa_intelligence_index": 18.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1300.0,
+      "intelligence_rank": 53,
+      "release_date": "2024-08-06",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 130.119
     },
     {
       "id": "meta-llama/llama-3.1-8b-instruct",
@@ -8146,9 +9296,13 @@
       },
       "aa_intelligence_index": 11.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1191.0,
+      "intelligence_rank": 123,
+      "release_date": "2024-07-23",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 202.537
     },
     {
       "id": "meta-llama/llama-3.1-70b-instruct",
@@ -8171,9 +9325,13 @@
       },
       "aa_intelligence_index": 12.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1263.0,
+      "intelligence_rank": 85,
+      "release_date": "2024-07-23",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 32.044
     },
     {
       "id": "mistralai/mistral-nemo",
@@ -8196,6 +9354,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -8221,11 +9382,15 @@
         "output_per_m": 0.6,
         "blended_per_m": 0.26249999999999996
       },
-      "aa_intelligence_index": 12.6473365344862,
+      "aa_intelligence_index": 12.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1287.0,
+      "intelligence_rank": 61,
+      "release_date": "2024-07-18",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 72.952
     },
     {
       "id": "openai/gpt-4o-mini",
@@ -8248,11 +9413,15 @@
         "output_per_m": 0.6,
         "blended_per_m": 0.26249999999999996
       },
-      "aa_intelligence_index": 12.6473365344862,
+      "aa_intelligence_index": 12.6,
       "aa_blended_per_m": null,
+      "intelligence_score": 1287.0,
+      "intelligence_rank": 61,
+      "release_date": "2024-07-18",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 72.952
     },
     {
       "id": "google/gemma-2-27b-it",
@@ -8275,6 +9444,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1235.0,
+      "intelligence_rank": 100,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -8300,11 +9472,15 @@
         "output_per_m": 15.0,
         "blended_per_m": 7.5
       },
-      "aa_intelligence_index": 14.4985290424792,
+      "aa_intelligence_index": 14.5,
       "aa_blended_per_m": null,
+      "intelligence_score": 1300.0,
+      "intelligence_rank": 53,
+      "release_date": "2024-05-13",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 108.974
     },
     {
       "id": "openai/gpt-4o",
@@ -8327,11 +9503,15 @@
         "output_per_m": 10.0,
         "blended_per_m": 4.375
       },
-      "aa_intelligence_index": 17.3233195008758,
+      "aa_intelligence_index": 17.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1300.0,
+      "intelligence_rank": 53,
+      "release_date": "2024-11-20",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 200.927
     },
     {
       "id": "meta-llama/llama-3-8b-instruct",
@@ -8354,9 +9534,13 @@
       },
       "aa_intelligence_index": 6.4,
       "aa_blended_per_m": null,
+      "intelligence_score": 1167.0,
+      "intelligence_rank": 134,
+      "release_date": "2024-04-18",
       "family_tier": null,
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 80.824
     },
     {
       "id": "meta-llama/llama-3-70b-instruct",
@@ -8379,9 +9563,13 @@
       },
       "aa_intelligence_index": 8.9,
       "aa_blended_per_m": null,
+      "intelligence_score": 1273.0,
+      "intelligence_rank": 78,
+      "release_date": "2024-12-06",
       "family_tier": null,
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 97.203
     },
     {
       "id": "mistralai/mixtral-8x22b-instruct",
@@ -8405,6 +9593,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -8430,6 +9621,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1074.0,
+      "intelligence_rank": 177,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -8454,11 +9648,15 @@
         "output_per_m": 30.0,
         "blended_per_m": 15.0
       },
-      "aa_intelligence_index": 13.7153013700591,
+      "aa_intelligence_index": 13.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1271.0,
+      "intelligence_rank": 78,
+      "release_date": "2023-11-06",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 34.042
     },
     {
       "id": "anthropic/claude-3-haiku",
@@ -8482,9 +9680,13 @@
       },
       "aa_intelligence_index": 12.3,
       "aa_blended_per_m": null,
+      "intelligence_score": 1194.0,
+      "intelligence_rank": 122,
+      "release_date": "2024-03-04",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "mistralai/mistral-large",
@@ -8506,11 +9708,15 @@
         "output_per_m": 6.0,
         "blended_per_m": 3.0
       },
-      "aa_intelligence_index": 9.90917085347575,
+      "aa_intelligence_index": 9.9,
       "aa_blended_per_m": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
+      "intelligence_score": 1267.0,
+      "intelligence_rank": 84,
+      "release_date": "2024-02-26",
+      "family_tier": "flagship",
+      "size_bucket": "large",
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "openai/gpt-4-turbo-preview",
@@ -8531,11 +9737,15 @@
         "output_per_m": 30.0,
         "blended_per_m": 15.0
       },
-      "aa_intelligence_index": 13.7153013700591,
+      "aa_intelligence_index": 13.7,
       "aa_blended_per_m": null,
+      "intelligence_score": 1271.0,
+      "intelligence_rank": 78,
+      "release_date": "2023-11-06",
       "family_tier": "mid",
       "size_bucket": "midsize",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 34.042
     },
     {
       "id": "openai/gpt-3.5-turbo-0613",
@@ -8558,9 +9768,13 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1121.0,
+      "intelligence_rank": 152,
+      "release_date": "2023-06-13",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "openrouter/auto",
@@ -8588,6 +9802,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -8613,9 +9830,13 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1121.0,
+      "intelligence_rank": 152,
+      "release_date": "2023-06-13",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "openai/gpt-3.5-turbo-16k",
@@ -8638,9 +9859,13 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1121.0,
+      "intelligence_rank": 152,
+      "release_date": "2023-06-13",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     },
     {
       "id": "mancer/weaver",
@@ -8663,6 +9888,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
@@ -8688,6 +9916,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -8713,6 +9944,9 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": null,
+      "intelligence_rank": null,
+      "release_date": null,
       "family_tier": null,
       "size_bucket": "midsize",
       "is_free": false
@@ -8736,11 +9970,15 @@
         "output_per_m": 60.0,
         "blended_per_m": 37.5
       },
-      "aa_intelligence_index": 12.7543071132383,
+      "aa_intelligence_index": 12.8,
       "aa_blended_per_m": null,
+      "intelligence_score": 1265.0,
+      "intelligence_rank": 85,
+      "release_date": "2023-03-14",
       "family_tier": "flagship",
       "size_bucket": "large",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 35.996
     },
     {
       "id": "openai/gpt-3.5-turbo",
@@ -8763,9 +10001,13 @@
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
+      "intelligence_score": 1121.0,
+      "intelligence_rank": 152,
+      "release_date": "2023-06-13",
       "family_tier": "fast",
       "size_bucket": "small",
-      "is_free": false
+      "is_free": false,
+      "output_tokens_per_second": 0.0
     }
   ]
 }
