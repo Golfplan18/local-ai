@@ -8,6 +8,7 @@ filename, body preserved, staging archived) and the batch helper.
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -60,13 +61,15 @@ class TestStagingNoteToEngram(unittest.TestCase):
 
     def test_type_becomes_engram(self):
         r = self._promote()
-        body = open(r["dest"], encoding="utf-8").read()
+        with open(r["dest"], encoding="utf-8") as f:
+            body = f.read()
         self.assertIn("type: engram", body)
         self.assertNotIn("type: working", body)
 
     def test_subtype_folded_into_tags(self):
         r = self._promote()
-        body = open(r["dest"], encoding="utf-8").read()
+        with open(r["dest"], encoding="utf-8") as f:
+            body = f.read()
         self.assertIn("- atomic", body)
         self.assertIn("- fact", body)        # subtype folded in
         self.assertNotIn("subtype:", body)   # subtype field removed
@@ -79,14 +82,16 @@ class TestStagingNoteToEngram(unittest.TestCase):
 
     def test_body_and_relationships_preserved(self):
         r = self._promote()
-        body = open(r["dest"], encoding="utf-8").read()
+        with open(r["dest"], encoding="utf-8") as f:
+            body = f.read()
         self.assertIn("A vetted claim about something", body)
         self.assertIn("extracted from session abc123", body)
         self.assertIn("2026-03-20_some-other-note", body)   # relationship target kept
 
     def test_provenance_marker(self):
         r = self._promote()
-        body = open(r["dest"], encoding="utf-8").read()
+        with open(r["dest"], encoding="utf-8") as f:
+            body = f.read()
         self.assertIn("source_platform: ora-local", body)
 
     def test_staging_archived(self):
@@ -126,6 +131,58 @@ class TestPromoteStagingDir(unittest.TestCase):
         self.assertEqual(res["promoted"], 3)
         self.assertEqual(len([f for f in os.listdir(vault) if f.endswith(".md")]), 3)
         self.assertEqual(len([f for f in os.listdir(staging) if f.endswith(".md")]), 0)
+
+    def test_autocommit_commits_and_pushes_promoted_files(self):
+        tmp = tempfile.mkdtemp()
+        repo = os.path.join(tmp, "vault")
+        remote = os.path.join(tmp, "remote.git")
+        staging = os.path.join(tmp, "staging")
+        vault = os.path.join(repo, "Engrams")
+        promoted = os.path.join(tmp, "promoted")
+        os.makedirs(repo)
+        os.makedirs(staging)
+        os.makedirs(vault)
+
+        def git(args, cwd=repo):
+            return subprocess.run(
+                ["git", *args], cwd=cwd, check=True, text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        git(["init"])
+        git(["config", "user.email", "ora-test@example.com"])
+        git(["config", "user.name", "Ora Test"])
+        git(["config", "commit.gpgsign", "false"])
+        git(["init", "--bare", remote], cwd=tmp)
+        git(["remote", "add", "origin", remote])
+        with open(os.path.join(repo, "README.md"), "w", encoding="utf-8") as f:
+            f.write("test vault\n")
+        git(["add", "README.md"])
+        git(["commit", "-m", "Initial"])
+        git(["branch", "-M", "main"])
+        git(["push", "-u", "origin", "main"])
+
+        with open(os.path.join(staging, "claim.md"), "w", encoding="utf-8") as f:
+            f.write(STAGED)
+
+        old = os.environ.get("ORA_RUNTIME_ENGRAM_AUTOCOMMIT")
+        os.environ["ORA_RUNTIME_ENGRAM_AUTOCOMMIT"] = "1"
+        try:
+            res = ep.promote_staging_dir(
+                staging_dir=staging, vault_engrams=vault,
+                promoted_dir=promoted, index=False)
+        finally:
+            if old is None:
+                os.environ.pop("ORA_RUNTIME_ENGRAM_AUTOCOMMIT", None)
+            else:
+                os.environ["ORA_RUNTIME_ENGRAM_AUTOCOMMIT"] = old
+
+        self.assertEqual(res["promoted"], 1)
+        self.assertTrue(res["autocommit"]["committed"])
+        self.assertTrue(res["autocommit"]["pushed"])
+        status = git(["status", "--short"]).stdout
+        self.assertEqual(status, "")
+        latest = git(["log", "--oneline", "-1", "origin/main"]).stdout
+        self.assertIn("Add runtime engram", latest)
 
 
 if __name__ == "__main__":

@@ -43,6 +43,9 @@ def main() -> int:
         else:
             print(f"[{i}] -> Engrams/{os.path.basename(r['dest'])}"
                   f"{'' if r.get('indexed') else '  (index skipped)'}")
+    auto = res.get("autocommit") or {}
+    if auto.get("enabled"):
+        print(f"\nautocommit: {auto.get('message', 'unknown')}")
     print(f"\n{'previewed' if a.dry_run else 'promoted'} {res['promoted']} notes")
     return 0
 

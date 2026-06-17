@@ -10,8 +10,8 @@ engrams directly).
 This module performs that final step: flip a staged note to ``type: engram``,
 fold its ``subtype`` into ``tags`` (the engram note-type convention), give it the
 canonical ``YYYY-MM-DD_<slug>.md`` filename, write it into the vault Engrams/
-folder, index it into ChromaDB, and archive the staged copy so it isn't
-re-promoted. Used by:
+folder, index it into ChromaDB, archive the staged copy so it isn't
+re-promoted, and optionally commit/push the new vault files. Used by:
   - ``runtime_pipeline`` (final step, behind ORA_RUNTIME_ENGRAM_PROMOTION) —
     closes the loop for every future session;
   - ``scripts/promote_staging_to_engrams.py`` — one-time backlog promotion.
@@ -25,6 +25,7 @@ from __future__ import annotations
 import datetime
 import os
 import shutil
+import subprocess
 import sys
 
 import yaml
@@ -36,6 +37,7 @@ if ORA_HOME not in sys.path:
 STAGING_DIR = os.path.expanduser("~/ora/data/extraction-staging/")
 PROMOTED_DIR = os.path.expanduser("~/ora/data/extraction-promoted/")
 VAULT_ENGRAMS = os.path.expanduser("~/Documents/vault/Engrams/")
+TRUTHY = ("1", "on", "true", "yes")
 
 
 def _slug(text: str) -> str:
@@ -93,6 +95,101 @@ def _dest_path(title: str, date_str: str, dest_dir: str) -> str:
     return path
 
 
+def _env_truthy(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in TRUTHY
+
+
+def _git(repo: str, args: list[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", repo, *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+
+def _repo_root_for(path: str) -> tuple[str | None, str]:
+    probe_dir = path if os.path.isdir(path) else os.path.dirname(path)
+    cp = _git(probe_dir, ["rev-parse", "--show-toplevel"])
+    if cp.returncode != 0:
+        return None, (cp.stderr or cp.stdout or "not a git repository").strip()
+    return cp.stdout.strip(), ""
+
+
+def _autocommit_promoted(results: list[dict], vault_engrams: str,
+                         *, dry_run: bool = False) -> dict:
+    """Commit/push only the engram files written by this promotion batch."""
+    status = {
+        "enabled": _env_truthy("ORA_RUNTIME_ENGRAM_AUTOCOMMIT"),
+        "attempted": False,
+        "committed": False,
+        "pushed": False,
+        "files": [],
+        "message": "",
+    }
+    if not status["enabled"]:
+        status["message"] = "disabled"
+        return status
+    if dry_run:
+        status["message"] = "dry-run"
+        return status
+
+    files = [
+        os.path.realpath(r["dest"])
+        for r in results
+        if r.get("dest") and not r.get("preview") and os.path.exists(r["dest"])
+    ]
+    status["files"] = files
+    if not files:
+        status["message"] = "no promoted files"
+        return status
+
+    repo_root, err = _repo_root_for(vault_engrams)
+    if not repo_root:
+        status["message"] = f"git repo not found: {err}"
+        return status
+    repo_root = os.path.realpath(repo_root)
+
+    rels = []
+    for path in files:
+        if not (path == repo_root or path.startswith(repo_root + os.sep)):
+            status["message"] = f"promoted file outside repo: {path}"
+            return status
+        rels.append(os.path.relpath(path, repo_root))
+
+    pre_staged = _git(repo_root, ["diff", "--cached", "--name-only"])
+    if pre_staged.returncode != 0:
+        status["message"] = f"git staged-check failed: {pre_staged.stderr.strip()}"
+        return status
+    if pre_staged.stdout.strip():
+        status["message"] = "skipped: pre-existing staged changes"
+        return status
+
+    status["attempted"] = True
+    add = _git(repo_root, ["add", "--", *rels])
+    if add.returncode != 0:
+        status["message"] = f"git add failed: {add.stderr.strip()}"
+        return status
+
+    today = datetime.date.today().isoformat()
+    noun = "engram" if len(rels) == 1 else "engrams"
+    commit = _git(repo_root, ["commit", "-m", f"Add runtime {noun} {today}"])
+    if commit.returncode != 0:
+        _git(repo_root, ["reset", "--quiet", "--", *rels])
+        status["message"] = f"git commit failed: {(commit.stderr or commit.stdout).strip()}"
+        return status
+    status["committed"] = True
+
+    push = _git(repo_root, ["push"])
+    if push.returncode != 0:
+        status["message"] = f"git push failed: {(push.stderr or push.stdout).strip()}"
+        return status
+    status["pushed"] = True
+    status["message"] = "committed and pushed"
+    return status
+
+
 def staging_note_to_engram(staging_path: str, *, vault_engrams: str = VAULT_ENGRAMS,
                            promoted_dir: str = PROMOTED_DIR, index: bool = True,
                            dry_run: bool = False) -> dict:
@@ -135,12 +232,13 @@ def promote_staging_dir(staging_dir: str = STAGING_DIR, *,
                         index: bool = True, dry_run: bool = False,
                         limit: int = 0) -> dict:
     """Promote every staged note in ``staging_dir`` to a vault engram. Returns
-    ``{"promoted": n, "results": [...]}``. A note that fails is logged and
-    skipped (never aborts the batch). Dest dirs default to the module constants
-    but are overridable (used by tests)."""
-    if not os.path.isdir(staging_dir):
-        return {"promoted": 0, "results": []}
+    ``{"promoted": n, "results": [...], "autocommit": {...}}``. A note that
+    fails is logged and skipped (never aborts the batch). Dest dirs default to
+    the module constants but are overridable (used by tests)."""
     vault_engrams = vault_engrams or VAULT_ENGRAMS
+    if not os.path.isdir(staging_dir):
+        return {"promoted": 0, "results": [],
+                "autocommit": _autocommit_promoted([], vault_engrams, dry_run=dry_run)}
     promoted_dir = promoted_dir or PROMOTED_DIR
     files = sorted(f for f in os.listdir(staging_dir) if f.endswith(".md"))
     if limit:
@@ -156,7 +254,8 @@ def promote_staging_dir(staging_dir: str = STAGING_DIR, *,
         except Exception as exc:  # noqa: BLE001 — one bad note must not abort the batch
             print(f"[engram_promotion] promote failed for {name}: "
                   f"{type(exc).__name__}: {exc}", file=sys.stderr)
-    return {"promoted": len(results), "results": results}
+    return {"promoted": len(results), "results": results,
+            "autocommit": _autocommit_promoted(results, vault_engrams, dry_run=dry_run)}
 
 
 __all__ = ["staging_note_to_engram", "promote_staging_dir",

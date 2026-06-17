@@ -31,6 +31,12 @@ export ORA_WEB_EXTRACTION=1
 # Sources and Provenance Rework 2026-06-05 §7. Enabled 2026-06-05.
 export ORA_RUNTIME_ENGRAM_PROMOTION=1
 
+# Runtime engram persistence: when promotion writes new Engrams into the vault,
+# stage exactly those generated files, commit them, and push the vault repo.
+# This keeps the conversation→engram loop from leaving approved notes as
+# untracked git files. Enabled 2026-06-17.
+export ORA_RUNTIME_ENGRAM_AUTOCOMMIT=1
+
 # Deliverable scrub (Step 8.5): after the gear-4 formatter writes the final
 # answer, a deterministic zero-model pass strips any leaked internal pipeline
 # scaffolding (stray contract headings, VERDICT: lines, provider/truncation

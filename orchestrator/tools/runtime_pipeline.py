@@ -18,6 +18,7 @@ Runtime steps:
   11. Entity extraction for co-occurrence
   12. Pass 2 relationship discovery (semantic neighbors for new notes)
   13. Convergence check (flag notes with ≥5 arrival_history entries)
+  14. Engram promotion (and optional git autocommit/push)
 
 Performance budget: 3-10 minutes total, runs asynchronously after output delivery.
 
@@ -77,6 +78,7 @@ class RuntimeResult:
     notes_approved: int = 0
     notes_review: int = 0
     notes_promoted: int = 0
+    engram_autocommit: dict = field(default_factory=dict)
     relationships_found: int = 0
     pass2_relationships: int = 0
     convergence_flags: list[str] = field(default_factory=list)
@@ -209,14 +211,15 @@ class RuntimePipeline:
         # Step 14: Promote staged notes into the vault as engrams — the
         # previously-missing final step that closes the conversation→engram loop.
         # Runs last so promoted engrams carry the relationships/enrichment added
-        # by steps 8/12. Behind ORA_RUNTIME_ENGRAM_PROMOTION (off by default) so
-        # merging this changes nothing until the flag is set.
+        # by steps 8/12. ORA_RUNTIME_ENGRAM_PROMOTION controls vault writes;
+        # ORA_RUNTIME_ENGRAM_AUTOCOMMIT controls the optional git commit/push.
         try:
             if os.environ.get("ORA_RUNTIME_ENGRAM_PROMOTION", "").strip().lower() in (
                     "1", "on", "true", "yes"):
                 from orchestrator.tools.engram_promotion import promote_staging_dir
                 promo = promote_staging_dir(index=True)
                 result.notes_promoted = promo.get("promoted", 0)
+                result.engram_autocommit = promo.get("autocommit", {})
                 result.steps_completed.append("engram_promotion")
         except Exception as e:
             result.steps_failed.append(f"engram_promotion: {e}")
@@ -746,6 +749,8 @@ class RuntimePipeline:
             "notes_extracted": result.notes_extracted,
             "notes_approved": result.notes_approved,
             "notes_review": result.notes_review,
+            "notes_promoted": result.notes_promoted,
+            "engram_autocommit": result.engram_autocommit,
             "relationships_found": result.relationships_found,
             "pass2_relationships": result.pass2_relationships,
             "convergence_flags": result.convergence_flags,
@@ -775,6 +780,7 @@ if __name__ == "__main__":
     print("  11. Entity extraction for co-occurrence")
     print("  12. Pass 2 relationships (semantic neighbors for new notes)")
     print("  13. Convergence check (engram promotion flags)")
+    print("  14. Engram promotion (optional git autocommit/push)")
     print()
     print("Runs asynchronously — user can start new session immediately")
     print(f"Session logs: {SESSION_LOG_DIR}")
