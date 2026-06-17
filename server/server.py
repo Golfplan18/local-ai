@@ -1969,9 +1969,17 @@ def _build_visual_diagnostics_frame(context_pkg: dict | None) -> dict | None:
 @app.route("/api/visual/regenerate", methods=["POST"])
 def visual_regenerate():
     """Phase 1 — on-demand envelope synthesis for the visual pane's
-    'Regenerate visual' button. Body: ``{prose, mode}``. Runs the same
-    synthesize→validate→repair loop the pipeline uses on a miss, and returns
-    a ready-to-render ora-visual block. Returns ``{ok, block?, type?, reason}``.
+    'Regenerate visual' button. Body: ``{prose, mode, manual_visual_type?}``.
+    Runs the same synthesize→validate→repair loop the pipeline uses on a miss,
+    and returns a ready-to-render ora-visual block. Returns
+    ``{ok, block?, type?, reason}``.
+
+    ``manual_visual_type`` (alias ``visual_kind``): the specific ora-visual
+    kind to build. When supplied, it is threaded as the preferred kind so a
+    regenerate on a multi-kind mode (e.g. root-cause-analysis →
+    fishbone | causal_loop_diagram) targets the requested diagram FIRST and
+    never silently advances to the sibling — the same threading the pipeline
+    uses. Without it the mode's default list applies (legacy behaviour).
     """
     try:
         data = request.get_json(force=True, silent=True) or {}
@@ -1979,6 +1987,8 @@ def visual_regenerate():
         data = {}
     prose = (data.get("prose") or "").strip()
     mode = data.get("mode") or ""
+    preferred_kind = (data.get("manual_visual_type")
+                      or data.get("visual_kind") or "").strip() or None
     if not prose:
         return jsonify({"ok": False, "reason": "no prose supplied"}), 400
     try:
@@ -1987,7 +1997,7 @@ def visual_regenerate():
         from visual_synthesis import synthesize_envelope, SYSTEM_PROMPT
     except Exception as exc:
         return jsonify({"ok": False, "reason": f"synthesis unavailable: {exc}"}), 500
-    target_types = _mode_target_types(mode) or ["concept_map"]
+    target_types = _mode_target_types(mode, preferred_kind) or ["concept_map"]
     endpoint = _resolve_synthesis_endpoint()
     if not endpoint:
         return jsonify({"ok": False, "reason": "no synthesis endpoint resolved"}), 503

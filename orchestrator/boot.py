@@ -8244,7 +8244,8 @@ def run_pipeline(user_input: str, history: list = None,
                  conversation_id: str | None = None,
                  ambiguity_mode: str = "assume",
                  stealth: bool = False,
-                 config_name: str | None = None) -> str:
+                 config_name: str | None = None,
+                 extra_context: dict | None = None) -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
     For Gear 1-2: Single model with context package.
@@ -8273,6 +8274,13 @@ def run_pipeline(user_input: str, history: list = None,
     stealth conversation_id, in case this flag is ever bypassed by a
     bug. Default False to preserve diagnostic coverage for normal
     conversations.
+
+    extra_context: optional dict of extra keys merged onto the assembled
+    ``context_pkg`` before the gear runs and before ``_run_visual_hook``
+    reads it — parity with the server's ``_run_pipeline_from_step2`` merge.
+    Carries the threaded ``visual_kind`` (the specific ora-visual type a
+    multi-kind mode should produce), ``spatial_representation``,
+    ``image_path``, etc. ``None``-valued entries are skipped. Default None.
     """
     config = load_routing_config()
 
@@ -8355,6 +8363,20 @@ def run_pipeline(user_input: str, history: list = None,
     # --- Step 2: Context Package Assembly ---
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
                                              config_name=config_name)
+    # WP-3.3 parity with the server's _run_pipeline_from_step2 merge: thread
+    # caller-supplied extras (the threaded visual_kind, spatial_representation,
+    # image_path, …) onto the context package BEFORE the visual hook reads it.
+    # Without this, run_pipeline's tail-of-function _run_visual_hook always saw
+    # visual_kind absent, so _maybe_synthesize_visual fell back to the mode's
+    # full target list and could advance to a sibling kind (e.g. a fishbone
+    # request shipping causal_loop_diagram on a weak model). The server /chat
+    # path already merged; this closes the same drop point on the CLI / Router /
+    # run_agentic_loop fallback path so the threaded kind reaches synthesis
+    # there too. Same null-skipping semantics as the server merge.
+    if extra_context:
+        for k, v in extra_context.items():
+            if v is not None:
+                context_pkg[k] = v
     # Carry execution context so the visual hook's interactive-vs-autonomous
     # gate reads a real value rather than defaulting to 'interactive'.
     context_pkg.setdefault("execution_context", execution_context)
@@ -12970,7 +12992,8 @@ def strip_tool_calls(text: str) -> str:
 
 def run_agentic_loop(user_input: str, history: list = None,
                      use_pipeline: bool = True,
-                     output_target: str = "screen") -> str:
+                     output_target: str = "screen",
+                     extra_context: dict | None = None) -> str:
     """Main entry point: routes through the full pipeline or direct model call.
 
     Args:
@@ -12979,9 +13002,14 @@ def run_agentic_loop(user_input: str, history: list = None,
         use_pipeline: If True, run Step 1 + Step 2 + gear-appropriate execution.
                       If False, bypass pipeline (legacy single-model mode).
         output_target: "screen", "file:/path", or "both:/path"
+        extra_context: optional dict threaded onto the pipeline's context
+                      package (e.g. a requested ``visual_kind``); forwarded to
+                      ``run_pipeline`` so the threaded kind reaches the visual
+                      hook on this fallback path too.
     """
     if use_pipeline:
-        return run_pipeline(user_input, history, output_target)
+        return run_pipeline(user_input, history, output_target,
+                            extra_context=extra_context)
 
     # Legacy direct mode — bypass pipeline
     config = load_routing_config()

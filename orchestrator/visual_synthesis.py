@@ -75,13 +75,23 @@ def autofill(env: dict, mode: str, vtype: str, idx: int = 1) -> dict:
     """Fill the mechanical envelope fields the model shouldn't have to author,
     and guarantee a minimal ``semantic_description`` so accessibility is never
     the thing that blocks a render. Never overwrites authored content.
+
+    The envelope ``type`` is FORCED to ``vtype`` — the kind this synthesis
+    round was explicitly told to build — rather than trusting whatever label
+    the model emitted. A weak model asked for a ``fishbone`` will sometimes
+    relabel its output (e.g. ``causal_loop_diagram``); honoring that label
+    silently shipped the wrong sibling kind. By stamping the requested type,
+    a genuine structure/type mismatch is caught downstream by the schema
+    validator (which rejects fields that don't belong to the stamped kind)
+    instead of slipping through as a correctly-validated wrong diagram. Belt
+    to the visual_kind-threading fix: the kind the caller requested is the
+    kind that ships, or the round fails — never a relabeled substitute.
     """
     env = dict(env)
     env.setdefault("schema_version", SCHEMA_VERSION)
     env.setdefault("id", f"fig-{idx}")
     env.setdefault("mode_context", mode or "unknown")
-    if not env.get("type"):
-        env["type"] = vtype
+    env["type"] = vtype
     env.setdefault("relation_to_prose", "integrated")
 
     sd = env.get("semantic_description")
