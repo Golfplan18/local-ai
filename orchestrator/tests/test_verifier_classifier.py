@@ -25,6 +25,7 @@ for p in (HERE, WORKTREE_ROOT):
 from boot import (
     _PROVIDER_TRANSPORT_ERROR_MARKERS,
     _verifier_broken,
+    _verifier_passed,
 )
 
 
@@ -142,6 +143,7 @@ class TestRealVerdictsDoNotClassifyAsBroken(unittest.TestCase):
             "VERDICT: PASS"
         )
         self.assertFalse(_verifier_broken(output))
+        self.assertTrue(_verifier_passed(output))
 
     def test_structured_verdict_fail_is_not_broken(self):
         # FAIL is a real analyst-side verdict, NOT verifier-broken.
@@ -150,6 +152,19 @@ class TestRealVerdictsDoNotClassifyAsBroken(unittest.TestCase):
             "Claim 5 contradicts the source.\n\nVERDICT: FAIL"
         )
         self.assertFalse(_verifier_broken(output))
+
+    def test_structured_pass_with_rate_limit_text_is_not_broken(self):
+        # A verifier can legitimately approve code or prose that contains
+        # generic outage phrases. Those phrases must not override an
+        # anchored real verdict unless they appear as explicit wrapper
+        # errors.
+        output = (
+            "## Verification Status\n\nThe React error branch correctly "
+            "renders the user-facing string 'Rate limit exceeded'.\n\n"
+            "VERDICT: PASS"
+        )
+        self.assertFalse(_verifier_broken(output))
+        self.assertTrue(_verifier_passed(output))
 
     def test_legacy_verified_form_is_not_broken(self):
         output = (

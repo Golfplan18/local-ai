@@ -8824,7 +8824,7 @@ _PROVIDER_TRANSPORT_ERROR_MARKERS = (
 )
 
 
-_VERIFIER_BROKEN_MARKERS = (
+_VERIFIER_EXPLICIT_BROKEN_LINE_PREFIXES = (
     # Verifier-specific exception substitutions emitted by run_gear3 / run_gear4
     "verifier_exception:",
     "[verification error",
@@ -8835,13 +8835,45 @@ _VERIFIER_BROKEN_MARKERS = (
     # cycle attempted re-revision against what was actually transport noise.
     # Added 2026-05-20 alongside the Chunk A verifier-retry wrapping.
     "[verifier retry error",
+    # Dispatch-wrapper substitutions emitted by ``call_api_endpoint`` /
+    # ``call_local_endpoint`` when a provider call raises. Match these as
+    # line prefixes so a real verifier verdict is not defeated by a quoted
+    # code string or prose example containing a generic outage phrase.
+    "[error calling claude api",
+    "[error calling openai api",
+    "[error calling gemini api",
+    "[error calling openrouter api",
+    "[error calling local model",
+    "[error calling mlx model",
+)
+
+_VERIFIER_GENERIC_BROKEN_MARKERS = (
     # Auth / quota / rate-limit (the shared transport list below covers the
     # OpenAI/Anthropic-specific idioms; these are the generic forms).
     "session expired",
     "rate_limit_exceeded",
     "rate limit exceeded",
     "too many requests",
-) + _PROVIDER_TRANSPORT_ERROR_MARKERS
+) + tuple(
+    m for m in _PROVIDER_TRANSPORT_ERROR_MARKERS
+    if not m.startswith("error calling ")
+)
+
+_VERIFIER_BROKEN_MARKERS = (
+    _VERIFIER_EXPLICIT_BROKEN_LINE_PREFIXES
+    + _VERIFIER_GENERIC_BROKEN_MARKERS
+)
+
+
+def _has_explicit_verifier_broken_line(text: str) -> bool:
+    for line in text.splitlines():
+        lower = line.strip().lower()
+        if any(
+            lower.startswith(m)
+            for m in _VERIFIER_EXPLICIT_BROKEN_LINE_PREFIXES
+        ):
+            return True
+    return False
 
 
 def _verifier_broken(verifier_output: str) -> bool:
@@ -8877,10 +8909,10 @@ def _verifier_broken(verifier_output: str) -> bool:
     txt = verifier_output.strip()
     lower = txt.lower()
 
-    # Known broken markers — these win over verdict tokens because the
+    # Explicit broken markers — these win over verdict tokens because the
     # legacy auto-pass-on-exception path substituted strings that
     # contained the word "VERIFIED" wrapped around an error message.
-    if any(m in lower for m in _VERIFIER_BROKEN_MARKERS):
+    if _has_explicit_verifier_broken_line(txt):
         return True
 
     # New structured-verdict contract: the verifier itself can declare
@@ -8890,6 +8922,13 @@ def _verifier_broken(verifier_output: str) -> bool:
         return True
     if structured in ("PASS", "FAIL"):
         return False
+
+    # Generic provider/quota markers only classify as BROKEN when no real
+    # structured verdict exists. This prevents valid verifier output from
+    # being marked broken merely because it verifies code or prose that
+    # legitimately contains text such as "Rate limit exceeded".
+    if any(m in lower for m in _VERIFIER_GENERIC_BROKEN_MARKERS):
+        return True
 
     # If a real verdict token is present (legacy free-form), the verifier
     # produced a substantive verdict and is not broken — even when the
