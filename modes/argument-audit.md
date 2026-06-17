@@ -135,9 +135,9 @@ failure_modes:
 # 7. LENS DEPENDENCIES
 lens_dependencies:
   required:
-    - walton-argumentation-schemes
+    - walton-schemes-and-critical-questions
   optional:
-    - lakoff-framing
+    - lakoff-conceptual-metaphor
     - shackel-motte-and-bailey (when motte-and-bailey is in play; carries Debate D2)
   foundational:
     - kahneman-tversky-bias-catalog

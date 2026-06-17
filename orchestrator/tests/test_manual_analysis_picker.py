@@ -201,6 +201,59 @@ class TestManualAnalysisPicker(unittest.TestCase):
         self.assertIsNone(pr["pending_clarification"])
         self.assertTrue(pr["manual_override_applied"])
 
+    def test_selected_lens_is_threaded_into_pipeline_context(self):
+        captured = {}
+
+        def fake_from_step2(step1, config, history, user_input, **kwargs):
+            captured["extra_context"] = kwargs.get("extra_context")
+            yield server._sse("response", text="ok")
+
+        complete = {
+            "inputs_complete": True,
+            "validated_inputs": {"situation_or_artifact": "present"},
+            "missing_fields": [],
+            "completeness_question": None,
+            "graceful_degradation_offer": None,
+            "lighter_sibling_mode_id": None,
+            "stage3_status": "complete",
+        }
+        patches = self._common_patches() + [
+            mock.patch.object(server, "run_step1_cleanup", return_value=_base_step1()),
+            mock.patch.object(server, "stage3_input_completeness_check",
+                              return_value=complete),
+            mock.patch.object(server, "compose_dispatch_announcement",
+                              return_value="manual announcement"),
+            mock.patch.object(server, "_run_pipeline_from_step2",
+                              side_effect=fake_from_step2),
+            mock.patch.object(server, "_direct_stream",
+                              side_effect=AssertionError("should not direct-stream")),
+        ]
+        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
+            chunks = list(server._pipeline_stream(
+                "Who benefits from the zoning amendment text pasted here?",
+                [],
+                panel_id="manual-lens",
+                manual_mode_selection="cui-bono",
+                manual_lens_selection="ulrich-csh-boundary-categories",
+            ))
+
+        events = _events(chunks)
+        self.assertEqual(events[-1]["text"], "ok")
+        self.assertEqual(
+            captured["extra_context"]["selected_lens_id"],
+            "ulrich-csh-boundary-categories",
+        )
+
+    def test_lens_owned_applicability_remains_valid_for_mode(self):
+        self.assertTrue(
+            server._lens_available_for_mode("root-cause-analysis", "inversion")
+        )
+        rows = server.list_pickable_analysis_modes()
+        root_cause = next(row for row in rows if row["id"] == "root-cause-analysis")
+        lenses = {lens["id"]: lens for lens in root_cause["lenses"]}
+        self.assertIn("inversion", lenses)
+        self.assertEqual(lenses["inversion"]["category"], "related")
+
 
 if __name__ == "__main__":
     unittest.main()

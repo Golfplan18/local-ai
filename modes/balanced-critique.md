@@ -128,7 +128,7 @@ lens_dependencies:
   required: []
   optional:
     - rumelt-strategy-kernel (when artifact is a strategy document)
-    - de-bono-pmi (Plus-Minus-Interesting as light scaffolding)
+    - debono-pmi (Plus-Minus-Interesting as light scaffolding)
     - ulrich-csh-boundary-categories (when boundary-critique surfaces in the perspective-dependent section)
   foundational:
     - kahneman-tversky-bias-catalog

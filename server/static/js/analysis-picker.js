@@ -1,8 +1,8 @@
 /* V3 Analyses picker — executable mode selection.
  *
  * The picker is intentionally separate from the framework picker. Modes
- * answer "what analytical operation should run"; lenses will later refine a
- * selected mode, so they do not appear in this first-pass chooser.
+ * answer "what analytical operation should run"; lenses refine a selected
+ * mode, so they appear only as a second pass under that mode.
  */
 (() => {
   const PICKER_SELECTOR = '#analysisPicker';
@@ -11,6 +11,12 @@
   const RESULTS_SELECTOR = '#analysisPickerResults';
   const TOOLBAR_BTN_SELECTOR = '#inputToolbarAnalysis';
   const OVERVIEW_TERRITORY = '__overview__';
+  const LENS_GROUPS = [
+    ['required', 'Core lenses'],
+    ['optional', 'Optional lenses'],
+    ['foundational', 'Foundational lenses'],
+    ['related', 'Related lenses'],
+  ];
 
   let _picker = null;
   let _search = null;
@@ -19,6 +25,7 @@
   let _btn = null;
   let _modes = [];
   let _activeTerritory = OVERVIEW_TERRITORY;
+  let _lensStepModeId = null;
   let _outsideHandler = null;
   let _escapeHandler = null;
 
@@ -35,7 +42,12 @@
       .then(payload => {
         _modes = Array.isArray(payload && payload.modes) ? payload.modes : [];
         ensureActiveTerritory();
-        render('');
+        const selected = freshSelectedMode();
+        if (selected && lensesForMode(selected).length) {
+          renderLensStep(selected);
+        } else {
+          render('');
+        }
       })
       .catch(err => {
         console.warn('[analysis-picker] fetch failed:', err);
@@ -101,6 +113,23 @@
     return window.OraInputState.getAnalysisMode();
   }
 
+  function selectedLens() {
+    if (!window.OraInputState || typeof window.OraInputState.getAnalysisLens !== 'function') {
+      return null;
+    }
+    return window.OraInputState.getAnalysisLens();
+  }
+
+  function lensesForMode(mode) {
+    return Array.isArray(mode && mode.lenses) ? mode.lenses : [];
+  }
+
+  function freshSelectedMode() {
+    const selected = selectedMode();
+    if (!selected || !selected.id) return null;
+    return _modes.find(mode => mode.id === selected.id) || selected;
+  }
+
   function searchText(mode) {
     return [
       mode.id,
@@ -109,6 +138,11 @@
       mode.educational_name,
       mode.territory_name,
       ...(Array.isArray(mode.aliases) ? mode.aliases : []),
+      ...lensesForMode(mode).flatMap(lens => [
+        lens.id,
+        lens.display_name,
+        lens.display_description,
+      ]),
     ].join(' ').toLowerCase();
   }
 
@@ -135,6 +169,7 @@
 
   function render(query) {
     if (!_territories || !_results) return;
+    _lensStepModeId = null;
     const q = (query || '').trim().toLowerCase();
     renderTerritories(q);
     renderResults(q);
@@ -337,7 +372,7 @@
     desc.textContent = mode.display_description || mode.educational_name || '';
     btn.appendChild(desc);
 
-    btn.addEventListener('click', () => commitSelection(mode));
+    btn.addEventListener('click', () => commitModeSelection(mode));
     return btn;
   }
 
@@ -351,13 +386,141 @@
     _results.appendChild(empty);
   }
 
-  function commitSelection(mode) {
+  function renderLensStep(mode) {
+    if (!_territories || !_results || !mode) return;
+    _lensStepModeId = mode.id;
+    _activeTerritory = mode.territory || OVERVIEW_TERRITORY;
+    renderTerritories('');
+    _results.innerHTML = '';
+
+    const lenses = lensesForMode(mode);
+    const header = document.createElement('div');
+    header.className = 'analysis-picker__results-header';
+    const h = document.createElement('div');
+    h.className = 'analysis-picker__results-title';
+    h.textContent = mode.display_name || mode.id;
+    header.appendChild(h);
+    const count = document.createElement('div');
+    count.className = 'analysis-picker__results-count';
+    count.textContent = `${lenses.length} lenses`;
+    header.appendChild(count);
+    _results.appendChild(header);
+
+    const selected = document.createElement('div');
+    selected.className = 'analysis-picker__selected-card';
+    const selectedTitle = document.createElement('div');
+    selectedTitle.className = 'analysis-picker__selected-title';
+    selectedTitle.textContent = 'Analysis selected';
+    selected.appendChild(selectedTitle);
+    const selectedDesc = document.createElement('div');
+    selectedDesc.className = 'analysis-picker__row-desc';
+    selectedDesc.textContent = mode.display_description || mode.educational_name || '';
+    selected.appendChild(selectedDesc);
+    _results.appendChild(selected);
+
+    const actions = document.createElement('div');
+    actions.className = 'analysis-picker__lens-actions';
+    const currentLens = selectedLens();
+    if (currentLens) {
+      actions.appendChild(buildLensAction('Use without lens', () => {
+        if (window.OraInputState && typeof window.OraInputState.clearAnalysisLens === 'function') {
+          window.OraInputState.clearAnalysisLens();
+        }
+        close();
+      }, true));
+      actions.appendChild(buildLensAction('Keep lens', () => close(), false));
+    } else {
+      actions.appendChild(buildLensAction('Use as-is', () => close(), true));
+    }
+    actions.appendChild(buildLensAction('Change analysis', () => {
+      if (_search) _search.value = '';
+      render('');
+    }, false));
+    _results.appendChild(actions);
+
+    if (!lenses.length) return;
+
+    for (const group of LENS_GROUPS) {
+      const category = group[0];
+      const label = group[1];
+      const groupRows = lenses.filter(lens => lens.category === category);
+      if (!groupRows.length) continue;
+
+      const block = document.createElement('div');
+      block.className = 'analysis-picker__lens-group';
+      const groupLabel = document.createElement('div');
+      groupLabel.className = 'analysis-picker__lens-group-label';
+      groupLabel.textContent = label;
+      block.appendChild(groupLabel);
+      for (const lens of groupRows) {
+        block.appendChild(buildLensRow(mode, lens));
+      }
+      _results.appendChild(block);
+    }
+  }
+
+  function buildLensAction(label, onClick, primary) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'analysis-picker__lens-action';
+    if (primary) btn.classList.add('is-primary');
+    btn.textContent = label;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  function buildLensRow(mode, lens) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'analysis-picker__lens-row';
+    btn.dataset.lensId = lens.id;
+    const current = selectedLens();
+    if (current && current.id === lens.id) {
+      btn.classList.add('is-selected');
+    }
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'analysis-picker__row-title-row';
+    const title = document.createElement('div');
+    title.className = 'analysis-picker__row-title';
+    title.textContent = lens.display_name || lens.id;
+    titleRow.appendChild(title);
+    btn.appendChild(titleRow);
+
+    const desc = document.createElement('div');
+    desc.className = 'analysis-picker__row-desc';
+    desc.textContent = lens.display_description || lens.dependency_note || '';
+    btn.appendChild(desc);
+
+    btn.addEventListener('click', () => commitLensSelection(mode, lens));
+    return btn;
+  }
+
+  function commitModeSelection(mode) {
     if (window.OraInputState && typeof window.OraInputState.setAnalysisMode === 'function') {
       window.OraInputState.setAnalysisMode(mode);
     }
     _activeTerritory = mode.territory || OVERVIEW_TERRITORY;
     document.dispatchEvent(new CustomEvent('ora:analysis-mode-selected', {
       detail: { mode },
+    }));
+    if (lensesForMode(mode).length) {
+      if (_search) _search.value = '';
+      renderLensStep(mode);
+      return;
+    }
+    close();
+  }
+
+  function commitLensSelection(mode, lens) {
+    if (window.OraInputState && typeof window.OraInputState.setAnalysisMode === 'function') {
+      window.OraInputState.setAnalysisMode(mode);
+    }
+    if (window.OraInputState && typeof window.OraInputState.setAnalysisLens === 'function') {
+      window.OraInputState.setAnalysisLens(lens);
+    }
+    document.dispatchEvent(new CustomEvent('ora:analysis-lens-selected', {
+      detail: { mode, lens },
     }));
     close();
   }
@@ -383,6 +546,14 @@
     document.addEventListener('ora:input-toolbar:analysis', () => toggle());
     document.addEventListener('ora:analysis-mode-changed', (e) => {
       syncToolbarState(e.detail && e.detail.mode);
+      if (_picker && !_picker.hidden && _lensStepModeId && !(e.detail && e.detail.mode)) {
+        render('');
+      }
+    });
+    document.addEventListener('ora:analysis-lens-changed', () => {
+      if (!_picker || _picker.hidden || !_lensStepModeId) return;
+      const mode = _modes.find(row => row.id === _lensStepModeId);
+      if (mode) renderLensStep(mode);
     });
 
     if (window.OraInputState && typeof window.OraInputState.getAnalysisMode === 'function') {

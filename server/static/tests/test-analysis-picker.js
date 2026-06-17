@@ -7,6 +7,7 @@
  *   - drills into a territory
  *   - searches globally
  *   - commits the selected analysis mode into OraInputState
+ *   - offers mode-scoped lenses as the second pass
  *
  * Run:
  *   node ~/ora/server/static/tests/test-analysis-picker.js
@@ -59,6 +60,26 @@ var modes = [
     territory_name: 'Interest & Power',
     territory_order: 2,
     aliases: ['cui bono', 'who benefits'],
+    lenses: [
+      {
+        id: 'ulrich-csh-boundary-categories',
+        display_name: 'Ulrich CSH Boundary Categories',
+        display_description: 'clarifies stakeholders and boundary judgments',
+        category: 'optional',
+      },
+      {
+        id: 'public-choice-theory',
+        display_name: 'Public Choice Theory',
+        display_description: 'looks for institutional incentives',
+        category: 'foundational',
+      },
+      {
+        id: 'principal-agent-problem',
+        display_name: 'Principal-Agent Problem',
+        display_description: 'checks delegated incentive conflict',
+        category: 'related',
+      },
+    ],
   },
   {
     id: 'causal-dag',
@@ -141,7 +162,9 @@ function text(selector) {
 
 async function run() {
   record('OraInputState registered',
-    !!w.OraInputState && typeof w.OraInputState.getAnalysisMode === 'function');
+    !!w.OraInputState
+      && typeof w.OraInputState.getAnalysisMode === 'function'
+      && typeof w.OraInputState.getAnalysisLens === 'function');
   record('OraAnalysisPicker registered',
     !!w.OraAnalysisPicker && typeof w.OraAnalysisPicker.open === 'function');
 
@@ -193,7 +216,18 @@ async function run() {
     JSON.stringify(w.OraInputState.getAnalysisMode()));
   record('selecting analysis clears staged framework',
     w.OraInputState.getFramework() === null);
-  record('selecting analysis closes picker',
+  record('mode with lenses opens lens pass',
+    w.document.getElementById('analysisPicker').hidden === false
+      && text('.analysis-picker__results-title') === 'Cui Bono',
+    text('.analysis-picker__results-title'));
+  record('lens pass renders selectable lenses',
+    w.document.querySelectorAll('.analysis-picker__lens-row').length === 3);
+
+  w.document.querySelector('.analysis-picker__lens-row[data-lens-id="ulrich-csh-boundary-categories"]').click();
+  record('selecting lens stores lens in input state',
+    w.OraInputState.getAnalysisLens().id === 'ulrich-csh-boundary-categories',
+    JSON.stringify(w.OraInputState.getAnalysisLens()));
+  record('selecting lens closes picker',
     w.document.getElementById('analysisPicker').hidden === true);
   record('toolbar active state follows selected analysis',
     w.document.getElementById('inputToolbarAnalysis').classList.contains('is-active'));
@@ -201,6 +235,8 @@ async function run() {
   w.OraInputState.clearSelection();
   record('clearSelection clears selected analysis',
     w.OraInputState.getAnalysisMode() === null);
+  record('clearSelection clears selected lens',
+    w.OraInputState.getAnalysisLens() === null);
   record('clearSelection clears active toolbar state',
     !w.document.getElementById('inputToolbarAnalysis').classList.contains('is-active'));
 

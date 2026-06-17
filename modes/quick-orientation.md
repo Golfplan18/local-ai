@@ -118,7 +118,7 @@ failure_modes:
 lens_dependencies:
   required: []
   optional:
-    - kuhn-paradigm-structure (when domain has competing paradigms)
+    - kuhn-paradigm-incommensurability (when domain has competing paradigms)
   foundational:
     - kahneman-tversky-bias-catalog
 

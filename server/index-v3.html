@@ -1418,6 +1418,10 @@
       const mode = window.OraInputState.getAnalysisMode();
       if (mode && mode.id) body.append('manual_mode_selection', mode.id);
     }
+    if (window.OraInputState && typeof window.OraInputState.getAnalysisLens === 'function') {
+      const lens = window.OraInputState.getAnalysisLens();
+      if (lens && lens.id) body.append('manual_lens_selection', lens.id);
+    }
 
     // V3 Phase 7.2 — include canvas content if any. captureFromPanel
     // returns null when the userInputLayer has no shapes, in which case
@@ -2356,12 +2360,16 @@
         ? window.OraInputState.getFramework() : null;
       const mode = window.OraInputState && typeof window.OraInputState.getAnalysisMode === 'function'
         ? window.OraInputState.getAnalysisMode() : null;
+      const lens = window.OraInputState && typeof window.OraInputState.getAnalysisLens === 'function'
+        ? window.OraInputState.getAnalysisLens() : null;
       if (fw && fw.display_name) {
         _bridgeFrameworkLabel.textContent = `Framework: ${fw.display_name}`;
         _bridgeFrameworkLabel.classList.add('is-set');
         if (_bridgeSelectionClear) _bridgeSelectionClear.hidden = false;
       } else if (mode && mode.display_name) {
-        _bridgeFrameworkLabel.textContent = `Analysis: ${mode.display_name}`;
+        _bridgeFrameworkLabel.textContent = lens && lens.display_name
+          ? `Analysis: ${mode.display_name} · Lens: ${lens.display_name}`
+          : `Analysis: ${mode.display_name}`;
         _bridgeFrameworkLabel.classList.add('is-set');
         if (_bridgeSelectionClear) _bridgeSelectionClear.hidden = false;
       } else {
@@ -2372,6 +2380,7 @@
     };
     document.addEventListener('ora:framework-changed', renderBridgeSelection);
     document.addEventListener('ora:analysis-mode-changed', renderBridgeSelection);
+    document.addEventListener('ora:analysis-lens-changed', renderBridgeSelection);
     if (_bridgeSelectionClear) {
       _bridgeSelectionClear.addEventListener('mousedown', (e) => {
         e.preventDefault();

@@ -116,7 +116,7 @@ lens_dependencies:
     - tversky-spatial-correspondence-principles
   optional:
     - structural-pattern-libraries (hub-and-spoke, chain, cycle, star, cluster bridge, orphan)
-    - systems-archetypes (when causal structure present)
+    - senge-system-archetypes (when causal structure present)
     - larkin-simon-diagram-literacy
   foundational:
     - kahneman-tversky-bias-catalog

@@ -140,7 +140,9 @@ lens_dependencies:
     - itten-seven-contrasts (when color contrast is central)
     - albers-interaction-of-color (when color-field interactions and figure-ground reversal via color are central)
     - hambidge-dynamic-symmetry (as proportional vocabulary; treat as tool, not warrant — empirical evidence weak)
-    - tufte-data-ink-bertin-visual-variables-cleveland-mcgill-elementary-tasks (when input is an information graphic; cite per Wave 3 reserved-mode threshold)
+    - tufte-data-ink-chartjunk (when input is an information graphic; cite per Wave 3 reserved-mode threshold)
+    - bertin-visual-variables (when input is an information graphic; cite per Wave 3 reserved-mode threshold)
+    - cleveland-mcgill-perceptual-tasks (when input is an information graphic; cite per Wave 3 reserved-mode threshold)
     - bordwell-poetics-of-cinema (when input is a film still and mise-en-scène is in scope)
   foundational:
     - kahneman-tversky-bias-catalog

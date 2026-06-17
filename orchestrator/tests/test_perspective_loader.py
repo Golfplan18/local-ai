@@ -215,5 +215,30 @@ class CuiBonoEndToEndTests(unittest.TestCase):
         self.assertIn("Schelling", resolved)
 
 
+class UserSelectedLensPromptTests(unittest.TestCase):
+    def setUp(self):
+        boot._reset_perspective_caches()
+
+    def test_selected_lens_is_foregrounded_in_breadth_prompt(self):
+        path = os.path.expanduser("~/ora/modes/cui-bono.md")
+        with open(path, "r", encoding="utf-8") as f:
+            mode_text = f.read()
+        prompt = boot.build_system_prompt_for_gear(
+            {
+                "mode_text": mode_text,
+                "mode_name": "cui-bono",
+                "conversation_rag": "",
+                "concept_rag": "",
+                "relationship_rag": "",
+                "selected_lens_id": "ulrich-csh-boundary-categories",
+            },
+            slot="breadth",
+            step="analyst",
+        )
+        self.assertIn("## USER-SELECTED LENS — cui-bono", prompt)
+        self.assertIn("Ulrich CSH Boundary Categories", prompt)
+        self.assertIn("do not replace the mode's purpose", prompt)
+
+
 if __name__ == "__main__":
     unittest.main()

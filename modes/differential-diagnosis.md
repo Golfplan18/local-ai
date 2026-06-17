@@ -118,8 +118,8 @@ lens_dependencies:
   required:
     - differential-diagnosis-schema
   optional:
-    - heuer-ach (when escalating to full ACH)
-    - bayesian-base-rate (when prior probabilities are available)
+    - heuer-ach-methodology (when escalating to full ACH)
+    - bayesian-reasoning (when prior probabilities are available)
   foundational:
     - kahneman-tversky-bias-catalog
 

@@ -115,7 +115,7 @@ lens_dependencies:
   required:
     - lakatos-hard-core-protective-belt
   optional:
-    - kuhn-anomaly-and-paradigm-revision
+    - kuhn-paradigm-incommensurability
     - hermeneutic-circle
   foundational:
     - kahneman-tversky-bias-catalog

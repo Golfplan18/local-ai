@@ -116,7 +116,7 @@ lens_dependencies:
   optional:
     - debono-ago (aims, goals, objectives)
     - debono-fip (first important priorities)
-    - domain-specific frameworks per deliverable type
+    - domain-specific-frameworks-per-deliverable-type
   foundational:
     - kahneman-tversky-bias-catalog
 

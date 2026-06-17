@@ -21,6 +21,7 @@ MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
 INTERFACE_JSON = os.path.join(WORKSPACE, "config/interface.json")
 LAYOUTS_DIR  = os.path.join(WORKSPACE, "config/layouts/")
 THEMES_DIR   = os.path.join(WORKSPACE, "config/themes/")
+MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "knowledge/mental-models/")
 MAX_ITERATIONS = 10
 
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/tools/"))
@@ -2229,7 +2230,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
 
 
 def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_context=None,
-                       manual_mode_selection="", framework_selected="", config_name=None):
+                       manual_mode_selection="", manual_lens_selection="",
+                       framework_selected="", config_name=None):
     """Generator: run the full pipeline with SSE stage events.
 
     Yields SSE events for each pipeline stage so the browser can display progress.
@@ -2244,6 +2246,23 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     the pipeline continues regardless. The UI consumes the comparison data
     once Phase 3-6 land.
     """
+    manual_mode_selection = (manual_mode_selection or "").strip()
+    manual_lens_selection = (manual_lens_selection or "").strip()
+    framework_selected = (framework_selected or "").strip()
+    if manual_lens_selection and not _lens_available_for_mode(
+        manual_mode_selection, manual_lens_selection,
+    ):
+        print(
+            f"[manual-lens-selection] ignored unavailable lens "
+            f"'{manual_lens_selection}' for mode "
+            f"'{manual_mode_selection or '(none)'}'",
+            flush=True,
+        )
+        manual_lens_selection = ""
+    if manual_lens_selection:
+        extra_context = dict(extra_context or {})
+        extra_context["selected_lens_id"] = manual_lens_selection
+
     # --- Stealth context + forensic trace setup (TURN HEAD) ---
     # Must run before any short-circuit so the stealth thread-local is set
     # and the trace dir opened (or suppressed) for every code path the
@@ -2602,6 +2621,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                confidence=confidence,
                detected_invocation=step1.get("detected_invocation", ""),
                manual_mode_selection=manual_mode_selection,
+               manual_lens_selection=manual_lens_selection,
                framework_selected=framework_selected,
                intent_comparison=intent_comparison,
                territory=pre_routing.get("territory"),
@@ -2861,7 +2881,8 @@ def _direct_stream(user_input, history, images=None):
 
 
 def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main", images=None, extra_context=None,
-                          manual_mode_selection="", framework_selected="", config_name=None):
+                          manual_mode_selection="", manual_lens_selection="",
+                          framework_selected="", config_name=None):
     """Route to pipeline or direct stream based on mode.
 
     ``extra_context`` (WP-3.3): optional merged-input dict (spatial_representation,
@@ -2869,15 +2890,17 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
     which has no pipeline context_pkg to merge into.
 
     V3 Input Handling Phase 1 / analysis picker: ``manual_mode_selection`` /
-    ``framework_selected`` are threaded into ``_pipeline_stream`` so explicit
-    analysis picks can bypass automatic classification and framework picks can
-    suppress mode-intent comparison. ``_direct_stream`` ignores them — direct
-    mode bypasses the classifier entirely.
+    ``manual_lens_selection`` / ``framework_selected`` are threaded into
+    ``_pipeline_stream`` so explicit analysis picks can bypass automatic
+    classification, lenses can foreground a selected mental model, and
+    framework picks can suppress mode-intent comparison. ``_direct_stream``
+    ignores them — direct mode bypasses the classifier entirely.
     """
     if use_pipeline:
         yield from _pipeline_stream(user_input, history, panel_id=panel_id,
                                     images=images, extra_context=extra_context,
                                     manual_mode_selection=manual_mode_selection,
+                                    manual_lens_selection=manual_lens_selection,
                                     framework_selected=framework_selected,
                                     config_name=config_name)
     else:
@@ -2977,6 +3000,263 @@ def _mode_picker_description(text: str, educational_name: str) -> str:
     return educational_name
 
 
+def _strip_lens_dependency_note(raw_value: str) -> str:
+    """Normalize a ``lens_dependencies`` bullet to its mental-model file id."""
+    value = (raw_value or "").strip()
+    if value.startswith(("'", '"')) and value.endswith(("'", '"')) and len(value) >= 2:
+        value = value[1:-1].strip()
+    # Mode specs sometimes annotate applicability inline:
+    # ``reason-swiss-cheese-model (when failure crosses layers)``.
+    value = re.sub(r"\s+\([^)]*\)\s*$", "", value).strip()
+    return value
+
+
+def _extract_lens_dependencies(text: str) -> list[dict]:
+    """Parse the opening mode spec's ``lens_dependencies`` block.
+
+    The mode files use a small YAML-ish subset, but we avoid pulling in a
+    full YAML dependency in the server hot path. Only three buckets are
+    user-facing here: required, optional, and foundational.
+    """
+    lines = text.splitlines()
+    start = None
+    base_indent = 0
+    for idx, line in enumerate(lines):
+        if re.match(r"^\s*lens_dependencies:\s*$", line):
+            start = idx + 1
+            base_indent = len(line) - len(line.lstrip())
+            break
+    if start is None:
+        return []
+
+    rows: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    category = ""
+    categories = {"required", "optional", "foundational"}
+    for line in lines[start:]:
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        if indent <= base_indent and not stripped.startswith("-"):
+            break
+
+        header = re.match(r"^(required|optional|foundational):(?:\s*\[\])?\s*$", stripped)
+        if header:
+            category = header.group(1)
+            continue
+        if not category or category not in categories:
+            continue
+
+        bullet = re.match(r"^-\s+(.+?)\s*$", stripped)
+        if not bullet:
+            continue
+        raw = bullet.group(1).strip()
+        lens_id = _strip_lens_dependency_note(raw)
+        if not lens_id:
+            continue
+        key = (category, lens_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append({
+            "id": lens_id,
+            "category": category,
+            "dependency_note": raw if raw != lens_id else "",
+        })
+    return rows
+
+
+def _strip_markdown_frontmatter(text: str) -> str:
+    if text.startswith("---\n"):
+        end = text.find("\n---\n", 4)
+        if end != -1:
+            return text[end + 5:].lstrip()
+    return text
+
+
+def _extract_lens_field(text: str, field: str) -> str:
+    match = re.search(rf"^\s*{re.escape(field)}:\s*(.+?)\s*$", text, re.M)
+    if not match:
+        return ""
+    value = match.group(1).strip()
+    if value.startswith(("'", '"')) and value.endswith(("'", '"')) and len(value) >= 2:
+        value = value[1:-1]
+    return value.strip()
+
+
+def _extract_lens_applicability(text: str) -> list[str]:
+    inline = re.search(r"^applicability:\s*\[(.*?)\]\s*$", text, re.M)
+    if inline:
+        return [
+            item.strip().strip("'\"")
+            for item in inline.group(1).split(",")
+            if item.strip()
+        ]
+
+    block = re.search(r"^applicability:\s*\n((?:\s+-\s+.+\n?)+)", text, re.M)
+    if not block:
+        return []
+    return [
+        re.sub(r"^\s+-\s+", "", line).strip().strip("'\"")
+        for line in block.group(1).splitlines()
+        if line.strip()
+    ]
+
+
+def _lens_picker_description(text: str) -> str:
+    body = _strip_markdown_frontmatter(text)
+    trigger = re.search(r"^## Trigger\s*\n(.*?)(?=\n## |\Z)", body, re.M | re.S)
+    if not trigger:
+        return ""
+    desc = " ".join(trigger.group(1).strip().split())
+    if len(desc) <= 220:
+        return desc
+    trimmed = desc[:217].rsplit(" ", 1)[0].rstrip(".,;:")
+    return f"{trimmed}..."
+
+
+def _lens_picker_base_row(lens_id: str, text: str) -> dict:
+    display_name = _extract_lens_field(text, "name")
+    if not display_name:
+        body = _strip_markdown_frontmatter(text)
+        h1 = re.search(r"^#\s+(.+?)\s*$", body, re.M)
+        display_name = h1.group(1).strip() if h1 else lens_id.replace("-", " ").title()
+    return {
+        "id": lens_id,
+        "display_name": display_name,
+        "display_description": _lens_picker_description(text),
+    }
+
+
+def _lens_picker_row_with_category(base_row: dict, category: str, dependency_note: str = "") -> dict:
+    row = dict(base_row)
+    row.update({
+        "category": category,
+        "dependency_note": dependency_note,
+    })
+    return row
+
+
+def _read_lens_picker_row(lens_id: str, category: str, dependency_note: str = "") -> dict | None:
+    """Return a picker row only when the lens exists at runtime."""
+    safe_id = os.path.basename(lens_id)
+    if safe_id != lens_id:
+        return None
+    path = os.path.join(MENTAL_MODELS_DIR, f"{lens_id}.md")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return None
+    return _lens_picker_row_with_category(
+        _lens_picker_base_row(lens_id, text),
+        category,
+        dependency_note,
+    )
+
+
+def _build_lens_picker_index() -> dict:
+    rows_by_id: dict[str, dict] = {}
+    applicable_by_mode: dict[str, list[str]] = {}
+    if not os.path.isdir(MENTAL_MODELS_DIR):
+        return {
+            "rows_by_id": rows_by_id,
+            "applicable_by_mode": applicable_by_mode,
+        }
+    for entry in sorted(os.listdir(MENTAL_MODELS_DIR)):
+        if not entry.endswith(".md"):
+            continue
+        lens_id = entry[:-3]
+        if os.path.basename(lens_id) != lens_id:
+            continue
+        path = os.path.join(MENTAL_MODELS_DIR, entry)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            continue
+        rows_by_id[lens_id] = _lens_picker_base_row(lens_id, text)
+        for mode_id in _extract_lens_applicability(text):
+            applicable_by_mode.setdefault(mode_id, []).append(lens_id)
+    return {
+        "rows_by_id": rows_by_id,
+        "applicable_by_mode": applicable_by_mode,
+    }
+
+
+def _applicable_lens_picker_rows(
+    mode_id: str,
+    existing_ids: set[str],
+    lens_index: dict | None = None,
+) -> list[dict]:
+    rows: list[dict] = []
+    index = lens_index or _build_lens_picker_index()
+    rows_by_id = index.get("rows_by_id", {})
+    applicable_by_mode = index.get("applicable_by_mode", {})
+    for lens_id in sorted(applicable_by_mode.get(mode_id, [])):
+        if lens_id in existing_ids:
+            continue
+        base_row = rows_by_id.get(lens_id)
+        if base_row:
+            rows.append(_lens_picker_row_with_category(base_row, "related"))
+            existing_ids.add(lens_id)
+    return rows
+
+
+def _mode_lens_picker_rows(
+    mode_id: str,
+    mode_text: str,
+    lens_index: dict | None = None,
+) -> tuple[list[dict], list[str]]:
+    rows: list[dict] = []
+    unavailable: list[str] = []
+    existing_ids: set[str] = set()
+    index = lens_index or _build_lens_picker_index()
+    rows_by_id = index.get("rows_by_id", {})
+    for dep in _extract_lens_dependencies(mode_text):
+        base_row = rows_by_id.get(dep["id"])
+        if base_row:
+            row = _lens_picker_row_with_category(
+                base_row,
+                dep["category"],
+                dep.get("dependency_note", ""),
+            )
+            rows.append(row)
+            existing_ids.add(dep["id"])
+        else:
+            unavailable.append(dep["id"])
+    rows.extend(_applicable_lens_picker_rows(mode_id, existing_ids, index))
+    return rows, unavailable
+
+
+def _lens_available_for_mode(mode_id: str, lens_id: str) -> bool:
+    safe_mode_id = os.path.basename(mode_id or "")
+    safe_lens_id = os.path.basename(lens_id or "")
+    if not safe_mode_id or safe_mode_id != mode_id:
+        return False
+    if not safe_lens_id or safe_lens_id != lens_id:
+        return False
+    mode_path = os.path.join(WORKSPACE, "modes", f"{mode_id}.md")
+    if not os.path.isfile(mode_path):
+        return False
+    try:
+        with open(mode_path, "r", encoding="utf-8") as f:
+            mode_text = f.read()
+    except OSError:
+        return False
+    index = _build_lens_picker_index()
+    rows_by_id = index.get("rows_by_id", {})
+    for dep in _extract_lens_dependencies(mode_text):
+        if dep["id"] == lens_id:
+            return lens_id in rows_by_id
+    if lens_id not in rows_by_id:
+        return False
+    return lens_id in set(index.get("applicable_by_mode", {}).get(mode_id, []))
+
+
 def _analysis_territory_meta(raw_territory: str) -> tuple[str, str, int]:
     match = re.search(r"\b(T\d+)\b", raw_territory or "")
     code = match.group(1) if match else "T0"
@@ -2997,6 +3277,7 @@ def list_pickable_analysis_modes() -> list[dict]:
         return []
 
     rows: list[dict] = []
+    lens_index = _build_lens_picker_index()
     for entry in os.listdir(modes_dir):
         if not entry.endswith(".md"):
             continue
@@ -3020,6 +3301,7 @@ def list_pickable_analysis_modes() -> list[dict]:
         aliases = []
         aliases.extend(_extract_mode_list(text, "prompt_shape_signals", limit=6))
         aliases.extend(_extract_mode_list(text, "user_situation_signals", limit=4))
+        lenses, unavailable_lenses = _mode_lens_picker_rows(mode_id, text, lens_index)
 
         rows.append({
             "id": mode_id,
@@ -3030,6 +3312,8 @@ def list_pickable_analysis_modes() -> list[dict]:
             "territory_name": territory_name,
             "territory_order": territory_order,
             "aliases": aliases,
+            "lenses": lenses,
+            "unavailable_lenses": unavailable_lenses,
         })
 
     rows.sort(key=lambda r: (r["territory_order"], r["display_name"].lower()))
@@ -3186,10 +3470,11 @@ def api_projects_unregister(nexus):
 
 @app.route("/api/analyses/picker", methods=["GET"])
 def analyses_picker():
-    """V3 Analyses picker: executable modes only.
+    """V3 Analyses picker: executable modes plus mode-scoped lenses.
 
-    Lenses are deliberately absent from this first pass. A lens modifies a mode;
-    it does not independently answer which analytical operation should run.
+    Lenses are exposed only as a second pass under a selected mode. The
+    endpoint resolves lens ids against the runtime mental-model directory so
+    renamed or missing lenses are not offered as clickable choices.
     """
     return _json_response({"modes": list_pickable_analysis_modes()})
 
@@ -4165,8 +4450,9 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
 
 
 def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
-                      manual_mode_selection="", framework_selected="", submission_id="",
-                      output_destination="", config_name=None):
+                      manual_mode_selection="", manual_lens_selection="",
+                      framework_selected="", submission_id="", output_destination="",
+                      config_name=None):
     """Shared pipeline helper — runs the pipeline synchronously, persists the
     chunk file, and returns a plain JSON reply.
 
@@ -4203,7 +4489,8 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
     on first save only.
 
     V3 Input Handling Phase 1: ``manual_mode_selection`` and
-    ``framework_selected`` carry the user's input-box-toolbar choices.
+    ``manual_lens_selection`` and ``framework_selected`` carry the user's
+    input-box-toolbar choices.
     """
     if not user_input:
         return json.dumps({"error": "empty message"}), 400
@@ -4251,6 +4538,7 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                     panel_id=panel_id, images=images,
                     extra_context=extra_context,
                     manual_mode_selection=manual_mode_selection,
+                    manual_lens_selection=manual_lens_selection,
                     framework_selected=framework_selected,
                     config_name=config_name):
                 try:
@@ -4464,6 +4752,7 @@ def chat():
     # server treats them independently and lets ``compare_intent_with_mode``
     # apply the framework-suppresses-prefilter rule.
     manual_mode_selection = (data.get("manual_mode_selection") or "").strip()
+    manual_lens_selection = (data.get("manual_lens_selection") or "").strip()
     framework_selected    = (data.get("framework_selected") or "").strip()
     # Optional per-request target visual kind. When the caller knows exactly
     # which diagram the turn should produce (the visual-tool campaign threads
@@ -4498,6 +4787,7 @@ def chat():
         "user_input":            user_input,
         "history":               history,
         "manual_mode_selection": manual_mode_selection,
+        "manual_lens_selection": manual_lens_selection,
         "framework_selected":    framework_selected,
         "output_destination":    output_destination,
         "attachments":           data.get("attachments", []),
@@ -4514,6 +4804,7 @@ def chat():
                              extra_context=extra_context,
                              tag=tag,
                              manual_mode_selection=manual_mode_selection,
+                             manual_lens_selection=manual_lens_selection,
                              framework_selected=framework_selected,
                              submission_id=submission_id,
                              output_destination=output_destination,
@@ -4617,6 +4908,7 @@ def chat_multipart():
     tag = _normalize_tag(form.get("tag", ""))
     # V3 Phase 1 — same alignment-prefilter inputs as /chat. See chat() above.
     manual_mode_selection = (form.get("manual_mode_selection") or "").strip()
+    manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
     # Obsidian Plugin Design (2026-05-17) — same override field as /chat.
     output_destination    = (form.get("output_destination") or "").strip()
@@ -4667,6 +4959,7 @@ def chat_multipart():
         "user_input":            user_input,
         "history_raw":           history_raw_str,
         "manual_mode_selection": manual_mode_selection,
+        "manual_lens_selection": manual_lens_selection,
         "framework_selected":    framework_selected,
         "output_destination":    output_destination,
         "spatial_raw":           spatial_raw,
@@ -4781,6 +5074,7 @@ def chat_multipart():
           f"spatial_rep={'yes' if spatial_rep else 'no'} "
           f"image={'yes' if image_path else 'no'} "
           f"annotations={annot_count} "
+          f"manual_lens={manual_lens_selection or 'none'} "
           f"prior_spatial={'yes' if extra_context.get('prior_spatial_representation') else 'no'}")
 
     return _invoke_pipeline(
@@ -4789,6 +5083,7 @@ def chat_multipart():
         extra_context=extra_context or None,
         tag=tag,
         manual_mode_selection=manual_mode_selection,
+        manual_lens_selection=manual_lens_selection,
         framework_selected=framework_selected,
         submission_id=submission_id,
         output_destination=output_destination,

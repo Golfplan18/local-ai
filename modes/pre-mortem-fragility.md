@@ -123,8 +123,8 @@ lens_dependencies:
   required:
     - klein-pre-mortem
   optional:
-    - taleb-fragile-robust-antifragile (when Talebian framing fits)
-    - perrow-normal-accidents (when system is tightly coupled)
+    - taleb-fragility-antifragility (when Talebian framing fits)
+    - normal-accident-theory (when system is tightly coupled)
   foundational:
     - kahneman-tversky-bias-catalog
     - knightian-risk-uncertainty-ambiguity

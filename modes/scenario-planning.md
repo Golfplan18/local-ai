@@ -134,7 +134,7 @@ lens_dependencies:
   optional:
     - tetlock-superforecasting
     - schwartz-art-of-the-long-view
-    - STEEP-framework
+    - steep-framework
     - klein-pre-mortem
   foundational:
     - kahneman-tversky-bias-catalog

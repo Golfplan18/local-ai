@@ -126,9 +126,9 @@ lens_dependencies:
   required:
     - heuer-ach-methodology
   optional:
-    - bayesian-base-rate-reasoning
+    - bayesian-reasoning
     - counter-deception-frameworks
-    - falsifiability-popper
+    - falsifiability
   foundational:
     - kahneman-tversky-bias-catalog
     - knightian-risk-uncertainty-ambiguity

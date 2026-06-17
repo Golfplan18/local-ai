@@ -226,6 +226,89 @@
   font-size: var(--font-ui-smaller);
 }
 
+.analysis-picker__selected-card {
+  margin: 10px 14px 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+}
+
+.analysis-picker__selected-title {
+  margin-bottom: 3px;
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.analysis-picker__lens-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0 14px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.analysis-picker__lens-action {
+  min-height: 28px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: var(--font-ui-smaller);
+  line-height: 1.2;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.analysis-picker__lens-action:hover,
+.analysis-picker__lens-action:focus-visible {
+  background: var(--background-modifier-hover);
+  outline: none;
+}
+.analysis-picker__lens-action.is-primary {
+  border-color: var(--icon-color-hover);
+  color: var(--icon-color-hover);
+}
+
+.analysis-picker__lens-group {
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.analysis-picker__lens-group:last-child {
+  border-bottom: none;
+}
+
+.analysis-picker__lens-group-label {
+  padding: 0 14px 5px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.analysis-picker__lens-row {
+  width: 100%;
+  display: block;
+  border: none;
+  background: transparent;
+  color: var(--text-normal);
+  text-align: left;
+  padding: 8px 14px 9px;
+  cursor: pointer;
+}
+.analysis-picker__lens-row:hover,
+.analysis-picker__lens-row:focus-visible {
+  background: var(--background-modifier-hover);
+  outline: none;
+}
+.analysis-picker__lens-row.is-selected {
+  background: var(--background-modifier-form-field);
+  color: var(--icon-color-hover);
+}
+
 @media (max-width: 700px) {
   .analysis-picker {
     position: fixed;

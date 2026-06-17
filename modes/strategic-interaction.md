@@ -126,7 +126,7 @@ lens_dependencies:
     - mechanism-design-foundations (when designing rather than playing the game)
   foundational:
     - kahneman-tversky-bias-catalog
-    - bounded-rationality-simon
+    - bounded-rationality
 
 # 8. RUNTIME AND DEPTH
 default_depth_tier: 2

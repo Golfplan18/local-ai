@@ -7833,10 +7833,29 @@ def build_system_prompt_for_gear(
             perspectives_section = _extract_section(
                 mode_text, "ANALYTICAL PERSPECTIVES",
             )
+            selected_lens_id = (context_package.get("selected_lens_id") or "").strip()
+            if selected_lens_id:
+                selected_resolved = _resolve_analytical_perspectives(
+                    [], [selected_lens_id],
+                )
+                if selected_resolved:
+                    parts.append(
+                        f"\n## USER-SELECTED LENS — {mode_name}\n\n"
+                        "The user explicitly selected this mental-model lens. "
+                        "Foreground it inside the selected mode's analytical "
+                        "contract; do not replace the mode's purpose, output "
+                        "shape, or verification criteria.\n\n"
+                        f"{selected_resolved}"
+                    )
             if perspectives_section:
                 tool_ids, model_ids = _parse_analytical_perspectives(
                     perspectives_section,
                 )
+                if selected_lens_id:
+                    model_ids = [
+                        model_id for model_id in model_ids
+                        if model_id != selected_lens_id
+                    ]
                 resolved = _resolve_analytical_perspectives(
                     tool_ids, model_ids,
                 )

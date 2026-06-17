@@ -123,10 +123,10 @@ failure_modes:
 # 7. LENS DEPENDENCIES
 lens_dependencies:
   required:
-    - ishikawa-fishbone-frameworks
-    - five-whys-protocol
+    - fishbone-diagram
+    - five-whys
   optional:
-    - reason-swiss-cheese-model (when failure crosses multiple defensive layers)
+    - swiss-cheese-model (when failure crosses multiple defensive layers)
     - dekker-just-culture (when human-error terminal needs process re-framing)
   foundational:
     - kahneman-tversky-bias-catalog
