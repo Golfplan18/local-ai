@@ -241,6 +241,96 @@ class TestManifest(unittest.TestCase):
         self.assertEqual(list(done.keys()), [("a", "x")])
 
 
+class TestCampaignAudit(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.corpus_path = self.root / "mini-corpus.md"
+        self.corpus_path.write_text(MINI_CORPUS)
+        self._orig = (campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH)
+        campaign.CAMPAIGN_DIR = self.root / "campaign"
+        campaign.MANIFEST_PATH = campaign.CAMPAIGN_DIR / "campaign-manifest.jsonl"
+        campaign.CAMPAIGN_DIR.mkdir()
+        self.addCleanup(self._restore)
+
+    def _restore(self):
+        campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH = self._orig
+
+    def _trace(self, name, contingencies):
+        trace = self.root / name
+        trace.mkdir()
+        (trace / "step-health.json").write_text(json.dumps({
+            "contingencies_fired": contingencies,
+        }))
+        return str(trace)
+
+    def test_audit_completeness_and_trace_health(self):
+        clean = self._trace("trace-clean", [])
+        broken = self._trace("trace-broken", [
+            "step6-cycle1-depth-verifier-BROKEN-not-verified",
+        ])
+        campaign.append_manifest({
+            "technique": "argument-audit", "kind": "mode",
+            "pipeline": "premium", "status": "failed",
+        })
+        campaign.append_manifest({
+            "technique": "argument-audit", "kind": "mode",
+            "technique_key": "mode:argument-audit",
+            "pipeline": "premium", "status": "ok",
+            "trace_dir": clean,
+        })
+        campaign.append_manifest({
+            "technique": "cui-bono", "kind": "mode",
+            "pipeline": "premium", "status": "ok",
+            "trace_dir": broken,
+        })
+        campaign.append_manifest({
+            "technique": "cui-bono", "kind": "mode",
+            "pipeline": "single-pass", "status": "ok",
+        })
+        campaign.append_manifest({
+            "technique": "anchoring", "kind": "lens",
+            "pipeline": "premium", "status": "failed",
+            "error": "model quota exhausted",
+        })
+        campaign.append_manifest({
+            "technique": "old-tech", "kind": "mode",
+            "pipeline": "premium", "status": "ok",
+        })
+
+        summary = campaign.audit_campaign(
+            self.corpus_path, pipelines=["premium", "single-pass"])
+        self.assertEqual(summary["corpus"]["entries"], 6)
+        self.assertEqual(summary["corpus"]["duplicate_public_ids"], {
+            "shared-name": ["visual:shared-name", "lens:shared-name"],
+        })
+        self.assertEqual(
+            summary["completeness"]["per_pipeline"]["premium"],
+            {"ok": 2, "failed": 1, "missing": 3, "total": 6},
+        )
+        self.assertEqual(summary["completeness"]["complete_selected"], 1)
+        health = summary["accepted_trace_health"]
+        self.assertEqual(health["accepted_trace_count"], 2)
+        self.assertEqual(health["severity_counts"]["clean"], 1)
+        self.assertEqual(health["severity_counts"]["verification_gap"], 1)
+        self.assertEqual(health["category_counts"]["verification_gap"], 1)
+        self.assertEqual(summary["stale_manifest_keys"], ["mode:old-tech"])
+
+    def test_write_campaign_audit_outputs_json_and_markdown(self):
+        campaign.append_manifest({
+            "technique": "argument-audit", "kind": "mode",
+            "pipeline": "premium", "status": "ok",
+            "trace_dir": self._trace("trace-clean", []),
+        })
+        summary = campaign.audit_campaign(self.corpus_path, pipelines=["premium"])
+        json_path, md_path = campaign.write_campaign_audit(summary)
+        self.assertTrue(json_path.exists())
+        self.assertTrue(md_path.exists())
+        self.assertIn("Premium Resume Selector", md_path.read_text())
+        self.assertEqual(json.loads(json_path.read_text())["corpus"]["entries"], 6)
+
+
 class TestVisualExtraction(unittest.TestCase):
     def test_fence_extracted_and_placeholder_left(self):
         text = ("Intro prose.\n\n```ora-visual\n{\"type\": \"concept_map\"}\n```\n\n"

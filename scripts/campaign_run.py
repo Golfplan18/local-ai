@@ -88,6 +88,7 @@ ORA_PIPELINES = {
     "optimum-plus": "campaign-optimum-plus",
 }
 ALL_PIPELINES = ["premium", "qwen9b", "optimum", "optimum-plus", "single-pass"]
+MAIN_PIPELINES = ["premium", "qwen9b", "optimum", "single-pass"]
 
 # Same pattern orchestrator/visual_adversarial.py uses to find envelopes.
 VISUAL_FENCE = re.compile(r"```ora-visual\s*\n(.*?)\n```", re.DOTALL)
@@ -346,6 +347,75 @@ def capture_read_dir(tech: Technique, pipe: str) -> Path:
     if primary != legacy and not primary.exists() and legacy.exists():
         return legacy
     return primary
+
+
+_SEVERITY_RANK = {
+    "clean": 0,
+    "info": 1,
+    "review": 2,
+    "verification_gap": 3,
+    "critical": 4,
+}
+
+
+def classify_contingency(name: str) -> dict:
+    """Classify a step-health contingency for campaign audit triage."""
+    if "both-analysts-degraded" in name or "cross-eval-on-error-string" in name:
+        return {
+            "severity": "critical",
+            "category": "analysis_degraded",
+            "meaning": "A primary analysis stream degraded; inspect before publishing.",
+        }
+    if "scrub-fellback-to-consolidated-corpus" in name:
+        return {
+            "severity": "critical",
+            "category": "deliverable_fallback",
+            "meaning": "The formatted deliverable was unusable and fell back.",
+        }
+    if "consolidator-degraded" in name or "formatter-degraded" in name:
+        return {
+            "severity": "critical",
+            "category": "post_analysis_degraded",
+            "meaning": "A load-bearing post-analysis step degraded.",
+        }
+    if "verifier-BROKEN" in name:
+        return {
+            "severity": "verification_gap",
+            "category": "verification_gap",
+            "meaning": "The verifier broke; structural checks may have unblocked the cycle, but real verification did not happen.",
+        }
+    if "rejected-revised-again" in name:
+        return {
+            "severity": "info",
+            "category": "normal_correction_cycle",
+            "meaning": "The verifier rejected a draft and the pipeline revised again.",
+        }
+    if "reviser-degraded" in name or "evaluator-degraded" in name:
+        return {
+            "severity": "review",
+            "category": "recoverable_step_degradation",
+            "meaning": "A step degraded and the reliability layer substituted a recoverable fallback.",
+        }
+    if "deliverable-scrub-stripped-leak" in name or "formatter-leak-relabelled" in name:
+        return {
+            "severity": "review",
+            "category": "surface_scrub",
+            "meaning": "The final surface was cleaned by the scrubber; inspect for formatter prompt drift.",
+        }
+    return {
+        "severity": "review",
+        "category": "unclassified",
+        "meaning": "Unrecognized contingency; inspect and classify.",
+    }
+
+
+def _max_severity(labels: list[str]) -> str:
+    severity = "clean"
+    for label in labels:
+        classified = classify_contingency(label)["severity"]
+        if _SEVERITY_RANK[classified] > _SEVERITY_RANK[severity]:
+            severity = classified
+    return severity
 
 
 # ─── Configuration baking ────────────────────────────────────────────────
@@ -1688,6 +1758,244 @@ def aggregate() -> dict:
     return summary
 
 
+# ─── Campaign audit: completeness + accepted-trace health ────────────────
+
+
+def _read_step_health(trace_dir: str | None) -> dict | None:
+    if not trace_dir:
+        return None
+    path = Path(trace_dir) / "step-health.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return {"_parse_error": str(path)}
+
+
+def audit_campaign(corpus_path: Path,
+                   pipelines: list[str] | None = None) -> dict:
+    """Read corpus + latest manifest records and summarize campaign state.
+
+    The audit intentionally looks at the latest accepted manifest record per
+    ``technique_key × pipeline``. Old failed attempts remain in the append-only
+    manifest for history, but they do not count against a pair once a later
+    accepted capture exists.
+    """
+    selected_pipelines = pipelines or ALL_PIPELINES
+    techs = parse_corpus(corpus_path)
+    done = load_manifest()
+    corpus_keys = {t.key for t in techs}
+
+    duplicates: dict[str, list[str]] = {}
+    by_public_id: dict[str, list[Technique]] = {}
+    for tech in techs:
+        by_public_id.setdefault(tech.id, []).append(tech)
+    for public_id, rows in by_public_id.items():
+        if len(rows) > 1:
+            duplicates[public_id] = [t.key for t in rows]
+
+    per_pipeline: dict[str, dict] = {}
+    missing_by_pipeline: dict[str, list[str]] = {}
+    failed_latest_by_pipeline: dict[str, list[dict]] = {}
+    for pipe in selected_pipelines:
+        pipe_rows = {"ok": 0, "failed": 0, "missing": 0, "total": len(techs)}
+        missing: list[str] = []
+        failed: list[dict] = []
+        for tech in techs:
+            rec = done.get((tech.key, pipe))
+            status = (rec or {}).get("status")
+            if status == "ok":
+                pipe_rows["ok"] += 1
+            elif status == "failed":
+                pipe_rows["failed"] += 1
+                failed.append({
+                    "technique_key": tech.key,
+                    "error": str((rec or {}).get("error") or "")[:240],
+                    "at": (rec or {}).get("at"),
+                })
+            else:
+                pipe_rows["missing"] += 1
+                missing.append(tech.key)
+        per_pipeline[pipe] = pipe_rows
+        missing_by_pipeline[pipe] = missing
+        failed_latest_by_pipeline[pipe] = failed
+
+    complete_main4 = sum(
+        1 for tech in techs
+        if all((done.get((tech.key, p)) or {}).get("status") == "ok"
+               for p in MAIN_PIPELINES)
+    )
+    complete_selected = sum(
+        1 for tech in techs
+        if all((done.get((tech.key, p)) or {}).get("status") == "ok"
+               for p in selected_pipelines)
+    )
+
+    label_counts: dict[str, int] = {}
+    category_counts: dict[str, int] = {}
+    severity_counts: dict[str, int] = {k: 0 for k in _SEVERITY_RANK}
+    traces_with_contingencies: list[dict] = []
+    accepted_trace_count = 0
+    accepted_trace_missing_health: list[dict] = []
+
+    for tech in techs:
+        for pipe in selected_pipelines:
+            rec = done.get((tech.key, pipe)) or {}
+            if rec.get("status") != "ok":
+                continue
+            # Single-pass controls have no Ora pipeline trace.
+            if pipe == "single-pass":
+                continue
+            accepted_trace_count += 1
+            health = _read_step_health(rec.get("trace_dir"))
+            if health is None:
+                accepted_trace_missing_health.append({
+                    "technique_key": tech.key,
+                    "pipeline": pipe,
+                    "trace_dir": rec.get("trace_dir"),
+                })
+                continue
+            labels = list(health.get("contingencies_fired") or [])
+            if not labels:
+                severity_counts["clean"] += 1
+                continue
+            severity = _max_severity(labels)
+            severity_counts[severity] += 1
+            for label in labels:
+                label_counts[label] = label_counts.get(label, 0) + 1
+                category = classify_contingency(label)["category"]
+                category_counts[category] = category_counts.get(category, 0) + 1
+            traces_with_contingencies.append({
+                "technique_key": tech.key,
+                "pipeline": pipe,
+                "severity": severity,
+                "contingencies": labels,
+                "trace_dir": rec.get("trace_dir"),
+            })
+
+    stale_manifest_keys = sorted({
+        key for key, _pipe in done.keys()
+        if key and key not in corpus_keys
+    })
+
+    return {
+        "generated_at": _now_iso(),
+        "corpus": {
+            "entries": len(techs),
+            "unique_keys": len(corpus_keys),
+            "by_kind": {
+                kind: sum(1 for t in techs if t.kind == kind)
+                for kind in ("mode", "visual", "lens")
+            },
+            "duplicate_public_ids": duplicates,
+        },
+        "pipelines": selected_pipelines,
+        "completeness": {
+            "complete_main4": complete_main4,
+            "complete_selected": complete_selected,
+            "per_pipeline": per_pipeline,
+            "missing_by_pipeline": missing_by_pipeline,
+            "failed_latest_by_pipeline": failed_latest_by_pipeline,
+        },
+        "accepted_trace_health": {
+            "accepted_trace_count": accepted_trace_count,
+            "accepted_trace_missing_health": accepted_trace_missing_health,
+            "severity_counts": severity_counts,
+            "category_counts": category_counts,
+            "contingency_label_counts": label_counts,
+            "traces_with_contingencies": traces_with_contingencies,
+        },
+        "stale_manifest_keys": stale_manifest_keys,
+    }
+
+
+def write_campaign_audit(summary: dict) -> tuple[Path, Path]:
+    CAMPAIGN_DIR.mkdir(parents=True, exist_ok=True)
+    json_path = CAMPAIGN_DIR / "campaign-audit.json"
+    md_path = CAMPAIGN_DIR / "campaign-audit.md"
+    json_path.write_text(json.dumps(summary, indent=2) + "\n")
+
+    comp = summary["completeness"]
+    health = summary["accepted_trace_health"]
+    lines = [
+        "# Campaign Audit",
+        "",
+        f"_Generated {summary['generated_at']}_",
+        "",
+        "## Corpus",
+        "",
+        f"- Entries: {summary['corpus']['entries']}",
+        f"- Unique keys: {summary['corpus']['unique_keys']}",
+        f"- By kind: {summary['corpus']['by_kind']}",
+        f"- Duplicate public ids: {summary['corpus']['duplicate_public_ids'] or 'none'}",
+        "",
+        "## Completeness",
+        "",
+        f"- Complete main four lanes: {comp['complete_main4']} / {summary['corpus']['entries']}",
+        f"- Complete selected lanes: {comp['complete_selected']} / {summary['corpus']['entries']}",
+        "",
+        "| pipeline | ok | failed latest | missing | total |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for pipe, row in comp["per_pipeline"].items():
+        lines.append(
+            f"| {pipe} | {row['ok']} | {row['failed']} | {row['missing']} | {row['total']} |"
+        )
+    premium_missing = comp["missing_by_pipeline"].get("premium") or []
+    premium_failed = [
+        r["technique_key"] for r in comp["failed_latest_by_pipeline"].get("premium", [])
+    ]
+    premium_resume = sorted(set(premium_missing + premium_failed))
+    if premium_resume:
+        lines += [
+            "",
+            "### Premium Resume Selector",
+            "",
+            "Use this after deciding to continue the subscription-paced lane:",
+            "",
+            "```text",
+            ",".join(premium_resume),
+            "```",
+        ]
+
+    lines += [
+        "",
+        "## Accepted Trace Health",
+        "",
+        f"- Accepted Ora traces audited: {health['accepted_trace_count']}",
+        f"- Accepted traces missing step-health: {len(health['accepted_trace_missing_health'])}",
+        f"- Traces with contingencies: {len(health['traces_with_contingencies'])}",
+        f"- Severity counts: {health['severity_counts']}",
+        "",
+        "### Contingency Categories",
+        "",
+    ]
+    for category, count in sorted(health["category_counts"].items(),
+                                  key=lambda kv: (-kv[1], kv[0])):
+        lines.append(f"- {category}: {count}")
+    lines += ["", "### Top Contingency Labels", ""]
+    for label, count in sorted(health["contingency_label_counts"].items(),
+                               key=lambda kv: (-kv[1], kv[0]))[:20]:
+        info = classify_contingency(label)
+        lines.append(f"- {count} x `{label}` - {info['severity']} / {info['category']}")
+    lines += ["", "### Highest-Severity Trace Samples", ""]
+    for item in sorted(
+        health["traces_with_contingencies"],
+        key=lambda r: (-_SEVERITY_RANK.get(r["severity"], 0), r["technique_key"], r["pipeline"]),
+    )[:40]:
+        lines.append(
+            f"- {item['severity']}: `{item['technique_key']}` / `{item['pipeline']}` - "
+            + "; ".join(f"`{c}`" for c in item["contingencies"])
+        )
+    if summary["stale_manifest_keys"]:
+        lines += ["", "## Stale Manifest Keys", ""]
+        for key in summary["stale_manifest_keys"][:80]:
+            lines.append(f"- `{key}`")
+    md_path.write_text("\n".join(lines) + "\n")
+    return json_path, md_path
+
+
 # ─── Capture document ────────────────────────────────────────────────────
 
 DOC_PIPELINE_ORDER = [
@@ -1792,6 +2100,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("aggregate", help="Cost tables from the manifest.")
     sp.set_defaults(func=lambda a: (aggregate(), 0)[1])
 
+    sp = sub.add_parser("audit", help="Audit campaign completeness and trace health.")
+    sp.add_argument("--corpus", default=str(DEFAULT_CORPUS))
+    sp.add_argument("--pipelines", default=",".join(ALL_PIPELINES))
+    sp.add_argument("--no-write", action="store_true",
+                    help="Print the summary without writing data/campaign/campaign-audit.*")
+    sp.set_defaults(func=cmd_audit)
+
     sp = sub.add_parser("render-doc", help="Assemble the capture document.")
     sp.add_argument("--corpus", default=str(DEFAULT_CORPUS))
     sp.set_defaults(func=lambda a: (render_doc(Path(a.corpus)), 0)[1])
@@ -1828,6 +2143,37 @@ def cmd_list(args) -> int:
     missing_some = [s for s in SOME_SUBSET if s not in {t.id for t in techs}]
     if missing_some:
         print(f"WARNING: 'some' subset ids not in corpus: {missing_some}")
+    return 0
+
+
+def cmd_audit(args) -> int:
+    pipelines = [p.strip() for p in args.pipelines.split(",") if p.strip()]
+    unknown = [p for p in pipelines if p not in ALL_PIPELINES]
+    if unknown:
+        raise SystemExit(f"unknown pipeline(s): {unknown}; choose from {ALL_PIPELINES}")
+    summary = audit_campaign(Path(args.corpus), pipelines=pipelines)
+    comp = summary["completeness"]
+    health = summary["accepted_trace_health"]
+    print(
+        f"[audit] entries={summary['corpus']['entries']} "
+        f"complete_main4={comp['complete_main4']} "
+        f"complete_selected={comp['complete_selected']}"
+    )
+    for pipe, row in comp["per_pipeline"].items():
+        print(
+            f"[audit] {pipe}: ok={row['ok']} failed={row['failed']} "
+            f"missing={row['missing']} total={row['total']}"
+        )
+    print(
+        f"[audit] accepted_traces={health['accepted_trace_count']} "
+        f"with_contingencies={len(health['traces_with_contingencies'])} "
+        f"missing_health={len(health['accepted_trace_missing_health'])}"
+    )
+    print(f"[audit] severity_counts={health['severity_counts']}")
+    if not args.no_write:
+        json_path, md_path = write_campaign_audit(summary)
+        print(f"[audit] wrote {json_path}")
+        print(f"[audit] wrote {md_path}")
     return 0
 
 
