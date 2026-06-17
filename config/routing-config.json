@@ -1727,7 +1727,7 @@
         "output_per_token": 2.08e-06
       },
       "intelligence_index": 41.6,
-      "tokens_per_second": 147.187
+      "tokens_per_second": 146.592
     },
     {
       "id": "qwen/qwen3.6-35b-a3b",
@@ -1756,7 +1756,7 @@
         "output_per_token": 1e-06
       },
       "intelligence_index": 43.5,
-      "tokens_per_second": 157.973
+      "tokens_per_second": 165.633
     },
     {
       "id": "qwen/qwen3.6-plus",
@@ -1785,7 +1785,7 @@
         "output_per_token": 1.95e-06
       },
       "intelligence_index": 50.0,
-      "tokens_per_second": 52.967
+      "tokens_per_second": 51.681
     },
     {
       "id": "openai/gpt-5.1-codex-mini",
@@ -1813,7 +1813,7 @@
         "output_per_token": 2e-06
       },
       "intelligence_index": 38.6,
-      "tokens_per_second": 219.392
+      "tokens_per_second": 219.093
     },
     {
       "id": "nvidia/nemotron-3-super-120b-a12b:free",
@@ -1920,7 +1920,7 @@
         "output_per_token": 3.75e-06
       },
       "intelligence_index": 56.6,
-      "tokens_per_second": 198.719
+      "tokens_per_second": 197.252
     },
     {
       "id": "perceptron/perceptron-mk1",
@@ -2184,7 +2184,7 @@
         "output_per_token": 6.24e-06
       },
       "intelligence_index": 51.8,
-      "tokens_per_second": 45.755
+      "tokens_per_second": 47.212
     },
     {
       "id": "qwen/qwen3.6-27b",
@@ -2268,7 +2268,7 @@
         "output_per_token": 3e-05
       },
       "intelligence_index": 60.2,
-      "tokens_per_second": 74.771
+      "tokens_per_second": 69.0
     },
     {
       "id": "deepseek/deepseek-v4-pro",
@@ -2297,7 +2297,7 @@
         "output_per_token": 8.7e-07
       },
       "intelligence_index": 51.5,
-      "tokens_per_second": 88.679
+      "tokens_per_second": 86.697
     },
     {
       "id": "deepseek/deepseek-v4-flash",
@@ -2322,11 +2322,11 @@
       "service": "deepseek",
       "base_url": "https://api.deepseek.com/v1",
       "vendor_pricing": {
-        "input_per_token": 9e-08,
-        "output_per_token": 1.8e-07
+        "input_per_token": 9.8e-08,
+        "output_per_token": 1.96e-07
       },
       "intelligence_index": 46.5,
-      "tokens_per_second": 113.672
+      "tokens_per_second": 111.834
     },
     {
       "id": "inclusionai/ling-2.6-1t",
@@ -2407,7 +2407,7 @@
         "output_per_token": 8.7e-07
       },
       "intelligence_index": 53.8,
-      "tokens_per_second": 47.102
+      "tokens_per_second": 44.821
     },
     {
       "id": "xiaomi/mimo-v2.5",
@@ -2436,7 +2436,7 @@
         "output_per_token": 2.8e-07
       },
       "intelligence_index": 49.0,
-      "tokens_per_second": 82.233
+      "tokens_per_second": 79.538
     },
     {
       "id": "openai/gpt-5.4-image-2",
@@ -2843,7 +2843,7 @@
         "output_per_token": 1.25e-06
       },
       "intelligence_index": 44.0,
-      "tokens_per_second": 157.52
+      "tokens_per_second": 157.563
     },
     {
       "id": "openai/gpt-5.4-mini",
@@ -2871,7 +2871,7 @@
         "output_per_token": 4.5e-06
       },
       "intelligence_index": 48.9,
-      "tokens_per_second": 186.205
+      "tokens_per_second": 196.639
     },
     {
       "id": "z-ai/glm-5-turbo",
@@ -3030,7 +3030,7 @@
         "output_per_token": 1.5e-05
       },
       "intelligence_index": 56.8,
-      "tokens_per_second": 203.214
+      "tokens_per_second": 200.003
     },
     {
       "id": "inception/mercury-2",
@@ -3165,7 +3165,7 @@
         "output_per_token": 1e-06
       },
       "intelligence_index": 37.1,
-      "tokens_per_second": 153.788
+      "tokens_per_second": 166.394
     },
     {
       "id": "qwen/qwen3.5-27b",
@@ -3194,7 +3194,7 @@
         "output_per_token": 1.56e-06
       },
       "intelligence_index": 42.1,
-      "tokens_per_second": 84.204
+      "tokens_per_second": 84.267
     },
     {
       "id": "liquid/lfm-2-24b-a2b",
@@ -3248,7 +3248,7 @@
         "output_per_token": 1.4e-05
       },
       "intelligence_index": 53.6,
-      "tokens_per_second": 118.238
+      "tokens_per_second": 104.916
     },
     {
       "id": "aion-labs/aion-2.0",
@@ -3329,7 +3329,7 @@
         "output_per_token": 2.34e-06
       },
       "intelligence_index": 45.0,
-      "tokens_per_second": 49.65
+      "tokens_per_second": 50.903
     },
     {
       "id": "z-ai/glm-5",
@@ -3384,7 +3384,7 @@
         "output_per_token": 8e-07
       },
       "intelligence_index": 28.3,
-      "tokens_per_second": 91.119
+      "tokens_per_second": 94.466
     },
     {
       "id": "stepfun/step-3.5-flash",
@@ -3622,7 +3622,7 @@
         "output_per_token": 1.4e-05
       },
       "intelligence_index": 49.0,
-      "tokens_per_second": 148.442
+      "tokens_per_second": 145.97
     },
     {
       "id": "bytedance-seed/seed-1.6-flash",
@@ -3729,7 +3729,7 @@
         "output_per_token": 3e-07
       },
       "intelligence_index": 41.5,
-      "tokens_per_second": 162.587
+      "tokens_per_second": 159.097
     },
     {
       "id": "nvidia/nemotron-3-nano-30b-a3b:free",
@@ -3836,7 +3836,7 @@
         "output_per_token": 0.000168
       },
       "intelligence_index": 51.3,
-      "tokens_per_second": 88.331
+      "tokens_per_second": 81.829
     },
     {
       "id": "openai/gpt-5.2",
@@ -3864,7 +3864,7 @@
         "output_per_token": 1.4e-05
       },
       "intelligence_index": 51.3,
-      "tokens_per_second": 88.331
+      "tokens_per_second": 81.829
     },
     {
       "id": "relace/relace-search",
@@ -4022,7 +4022,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 43.1,
-      "tokens_per_second": 219.171
+      "tokens_per_second": 217.547
     },
     {
       "id": "amazon/nova-2-lite-v1",
@@ -4234,7 +4234,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 47.7,
-      "tokens_per_second": 138.676
+      "tokens_per_second": 127.631
     },
     {
       "id": "openai/gpt-5.1-chat",
@@ -4289,7 +4289,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 43.1,
-      "tokens_per_second": 219.171
+      "tokens_per_second": 217.547
     },
     {
       "id": "amazon/nova-premier-v1",
@@ -4738,7 +4738,7 @@
         "output_per_token": 2.6e-06
       },
       "intelligence_index": 27.6,
-      "tokens_per_second": 51.561
+      "tokens_per_second": 47.658
     },
     {
       "id": "qwen/qwen3-vl-235b-a22b-instruct",
@@ -4767,7 +4767,7 @@
         "output_per_token": 8.8e-07
       },
       "intelligence_index": 20.8,
-      "tokens_per_second": 51.561
+      "tokens_per_second": 47.658
     },
     {
       "id": "qwen/qwen3-max",
@@ -4796,7 +4796,7 @@
         "output_per_token": 3.9e-06
       },
       "intelligence_index": 31.4,
-      "tokens_per_second": 57.681
+      "tokens_per_second": 59.32
     },
     {
       "id": "qwen/qwen3-coder-plus",
@@ -4851,7 +4851,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 44.6,
-      "tokens_per_second": 191.33
+      "tokens_per_second": 180.976
     },
     {
       "id": "qwen/qwen3-coder-flash",
@@ -5043,7 +5043,7 @@
         "output_per_token": 4e-07
       },
       "intelligence_index": 22.4,
-      "tokens_per_second": 156.273
+      "tokens_per_second": 160.926
     },
     {
       "id": "nousresearch/hermes-4-70b",
@@ -5281,7 +5281,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 44.6,
-      "tokens_per_second": 124.34
+      "tokens_per_second": 117.439
     },
     {
       "id": "openai/gpt-5-mini",
@@ -5309,7 +5309,7 @@
         "output_per_token": 2e-06
       },
       "intelligence_index": 41.2,
-      "tokens_per_second": 94.045
+      "tokens_per_second": 95.924
     },
     {
       "id": "openai/gpt-5-nano",
@@ -5337,7 +5337,7 @@
         "output_per_token": 4e-07
       },
       "intelligence_index": 26.8,
-      "tokens_per_second": 152.582
+      "tokens_per_second": 172.484
     },
     {
       "id": "openai/gpt-oss-120b:free",
@@ -5419,7 +5419,7 @@
         "output_per_token": 1.9305e-07
       },
       "intelligence_index": 15.0,
-      "tokens_per_second": 156.273
+      "tokens_per_second": 160.926
     },
     {
       "id": "z-ai/glm-4.5",
@@ -5526,7 +5526,7 @@
         "output_per_token": 1e-07
       },
       "intelligence_index": 29.5,
-      "tokens_per_second": 67.988
+      "tokens_per_second": 71.382
     },
     {
       "id": "z-ai/glm-4-32b",
@@ -6026,7 +6026,7 @@
         "output_per_token": 5e-07
       },
       "intelligence_index": 15.3,
-      "tokens_per_second": 156.273
+      "tokens_per_second": 160.926
     },
     {
       "id": "qwen/qwen3-8b",
@@ -6084,7 +6084,7 @@
         "output_per_token": 2.4e-07
       },
       "intelligence_index": 16.2,
-      "tokens_per_second": 62.553
+      "tokens_per_second": 62.794
     },
     {
       "id": "qwen/qwen3-32b",
@@ -6113,7 +6113,7 @@
         "output_per_token": 2.8e-07
       },
       "intelligence_index": 16.5,
-      "tokens_per_second": 100.935
+      "tokens_per_second": 99.818
     },
     {
       "id": "qwen/qwen3-235b-a22b",
@@ -6142,7 +6142,7 @@
         "output_per_token": 1.82e-06
       },
       "intelligence_index": 19.8,
-      "tokens_per_second": 67.988
+      "tokens_per_second": 71.382
     },
     {
       "id": "openai/o3",
@@ -6170,7 +6170,7 @@
         "output_per_token": 8e-06
       },
       "intelligence_index": 38.4,
-      "tokens_per_second": 158.288
+      "tokens_per_second": 164.479
     },
     {
       "id": "openai/o4-mini",
@@ -6198,7 +6198,7 @@
         "output_per_token": 4.4e-06
       },
       "intelligence_index": 33.1,
-      "tokens_per_second": 179.819
+      "tokens_per_second": 194.832
     },
     {
       "id": "openai/gpt-4.1",
@@ -6226,7 +6226,7 @@
         "output_per_token": 8e-06
       },
       "intelligence_index": 26.3,
-      "tokens_per_second": 149.011
+      "tokens_per_second": 140.383
     },
     {
       "id": "openai/gpt-4.1-mini",
@@ -6254,7 +6254,7 @@
         "output_per_token": 1.6e-06
       },
       "intelligence_index": 22.9,
-      "tokens_per_second": 101.426
+      "tokens_per_second": 99.033
     },
     {
       "id": "openai/gpt-4.1-nano",
@@ -6282,7 +6282,7 @@
         "output_per_token": 4e-07
       },
       "intelligence_index": 13.0,
-      "tokens_per_second": 148.277
+      "tokens_per_second": 163.984
     },
     {
       "id": "alfredpros/codellama-7b-instruct-solidity",
@@ -6442,7 +6442,7 @@
         "output_per_token": 6e-07
       },
       "intelligence_index": 12.6,
-      "tokens_per_second": 62.374
+      "tokens_per_second": 72.952
     },
     {
       "id": "openai/gpt-4o-search-preview",
@@ -6757,7 +6757,7 @@
         "output_per_token": 4.4e-06
       },
       "intelligence_index": 25.9,
-      "tokens_per_second": 216.555
+      "tokens_per_second": 224.044
     },
     {
       "id": "perplexity/sonar",
@@ -6889,7 +6889,7 @@
         "output_per_token": 6e-05
       },
       "intelligence_index": 30.7,
-      "tokens_per_second": 127.055
+      "tokens_per_second": 124.193
     },
     {
       "id": "cohere/command-r7b-12-2024",
@@ -7047,7 +7047,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 17.3,
-      "tokens_per_second": 119.236
+      "tokens_per_second": 130.119
     },
     {
       "id": "thedrummer/unslopnemo-12b",
@@ -7491,7 +7491,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 18.6,
-      "tokens_per_second": 119.236
+      "tokens_per_second": 130.119
     },
     {
       "id": "meta-llama/llama-3.1-70b-instruct",
@@ -7571,7 +7571,7 @@
         "output_per_token": 6e-07
       },
       "intelligence_index": 12.6,
-      "tokens_per_second": 62.374
+      "tokens_per_second": 72.952
     },
     {
       "id": "openai/gpt-4o-mini",
@@ -7599,7 +7599,7 @@
         "output_per_token": 6e-07
       },
       "intelligence_index": 12.6,
-      "tokens_per_second": 62.374
+      "tokens_per_second": 72.952
     },
     {
       "id": "sao10k/l3-euryale-70b",
@@ -7679,7 +7679,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 17.3,
-      "tokens_per_second": 193.314
+      "tokens_per_second": 200.927
     },
     {
       "id": "openai/gpt-4o-2024-05-13",
@@ -7707,7 +7707,7 @@
         "output_per_token": 1.5e-05
       },
       "intelligence_index": 14.5,
-      "tokens_per_second": 111.453
+      "tokens_per_second": 108.974
     },
     {
       "id": "meta-llama/llama-3-70b-instruct",
@@ -7813,7 +7813,7 @@
         "output_per_token": 3e-05
       },
       "intelligence_index": 13.7,
-      "tokens_per_second": 33.121
+      "tokens_per_second": 34.042
     },
     {
       "id": "openrouter/auto",
@@ -8080,7 +8080,7 @@
         "output_per_token": 6e-05
       },
       "intelligence_index": 12.8,
-      "tokens_per_second": 36.775
+      "tokens_per_second": 35.996
     },
     {
       "id": "anthropic-api-claude-opus-4-8",
@@ -8152,7 +8152,7 @@
         "output_per_token": 5e-05
       },
       "intelligence_index": 64.9,
-      "tokens_per_second": 78.854
+      "tokens_per_second": 80.337
     },
     {
       "id": "nex-agi/nex-n2-pro:free",
@@ -8285,7 +8285,7 @@
         "output_per_token": 1.28e-06
       },
       "intelligence_index": 53.3,
-      "tokens_per_second": 53.402
+      "tokens_per_second": 52.434
     },
     {
       "id": "stepfun/step-3.7-flash",
@@ -8346,7 +8346,7 @@
       "enabled": true,
       "provider": "openrouter",
       "display_name": "OpenRouter: Fusion",
-      "context_window": 128000,
+      "context_window": 1000000,
       "vision_capable": false,
       "capabilities": {
         "tool_access": true,
@@ -8431,7 +8431,7 @@
         "output_per_token": 2.5e-05
       },
       "intelligence_index": 61.4,
-      "tokens_per_second": 63.223,
+      "tokens_per_second": 66.874,
       "openrouter_fallback_model_id": "anthropic/claude-opus-4.8"
     },
     {
@@ -8460,7 +8460,7 @@
         "output_per_token": 2.5e-05
       },
       "intelligence_index": 57.3,
-      "tokens_per_second": 57.078,
+      "tokens_per_second": 58.283,
       "openrouter_fallback_model_id": "anthropic/claude-opus-4.7"
     },
     {
@@ -8489,7 +8489,7 @@
         "output_per_token": 1.5e-05
       },
       "intelligence_index": 51.7,
-      "tokens_per_second": 56.09,
+      "tokens_per_second": 57.406,
       "openrouter_fallback_model_id": "anthropic/claude-sonnet-4.6"
     },
     {
@@ -8518,7 +8518,7 @@
         "output_per_token": 2.5e-05
       },
       "intelligence_index": 52.9,
-      "tokens_per_second": 60.838,
+      "tokens_per_second": 54.902,
       "openrouter_fallback_model_id": "anthropic/claude-opus-4.6"
     },
     {
@@ -8547,7 +8547,7 @@
         "output_per_token": 2.5e-05
       },
       "intelligence_index": 49.7,
-      "tokens_per_second": 65.459
+      "tokens_per_second": 70.473
     },
     {
       "id": "anthropic/claude-haiku-4-5-20251001",
@@ -8575,7 +8575,7 @@
         "output_per_token": 5e-06
       },
       "intelligence_index": 37.1,
-      "tokens_per_second": 124.653
+      "tokens_per_second": 135.455
     },
     {
       "id": "anthropic/claude-sonnet-4-5-20250929",
@@ -8603,7 +8603,7 @@
         "output_per_token": 1.5e-05
       },
       "intelligence_index": 43.0,
-      "tokens_per_second": 58.757
+      "tokens_per_second": 58.041
     },
     {
       "id": "anthropic/claude-opus-4-1-20250805",
@@ -8631,7 +8631,7 @@
         "output_per_token": 7.5e-05
       },
       "intelligence_index": 42.0,
-      "tokens_per_second": 43.017
+      "tokens_per_second": 43.384
     },
     {
       "id": "anthropic/claude-opus-4-20250514",
@@ -8715,7 +8715,7 @@
         "output_per_token": 6e-05
       },
       "intelligence_index": 12.8,
-      "tokens_per_second": 36.775
+      "tokens_per_second": 35.996
     },
     {
       "id": "openai/davinci-002",
@@ -8868,7 +8868,7 @@
         "output_per_token": 3e-05
       },
       "intelligence_index": 13.7,
-      "tokens_per_second": 33.121
+      "tokens_per_second": 34.042
     },
     {
       "id": "openai/omni-moderation-latest",
@@ -8940,7 +8940,7 @@
         "output_per_token": 6e-05
       },
       "intelligence_index": 30.7,
-      "tokens_per_second": 127.055
+      "tokens_per_second": 124.193
     },
     {
       "id": "openai/o3-mini-2025-01-31",
@@ -8968,7 +8968,7 @@
         "output_per_token": 4.4e-06
       },
       "intelligence_index": 25.9,
-      "tokens_per_second": 216.555
+      "tokens_per_second": 224.044
     },
     {
       "id": "openai/gpt-4o-mini-search-preview-2025-03-11",
@@ -8996,7 +8996,7 @@
         "output_per_token": 6e-07
       },
       "intelligence_index": 12.6,
-      "tokens_per_second": 62.374
+      "tokens_per_second": 72.952
     },
     {
       "id": "openai/o1-pro-2025-03-19",
@@ -9052,7 +9052,7 @@
         "output_per_token": 8e-06
       },
       "intelligence_index": 38.4,
-      "tokens_per_second": 158.288
+      "tokens_per_second": 164.479
     },
     {
       "id": "openai/o4-mini-2025-04-16",
@@ -9080,7 +9080,7 @@
         "output_per_token": 4.4e-06
       },
       "intelligence_index": 33.1,
-      "tokens_per_second": 179.819
+      "tokens_per_second": 194.832
     },
     {
       "id": "openai/gpt-4.1-2025-04-14",
@@ -9108,7 +9108,7 @@
         "output_per_token": 8e-06
       },
       "intelligence_index": 26.3,
-      "tokens_per_second": 149.011
+      "tokens_per_second": 140.383
     },
     {
       "id": "openai/gpt-4.1-mini-2025-04-14",
@@ -9136,7 +9136,7 @@
         "output_per_token": 1.6e-06
       },
       "intelligence_index": 22.9,
-      "tokens_per_second": 101.426
+      "tokens_per_second": 99.033
     },
     {
       "id": "openai/gpt-4.1-nano-2025-04-14",
@@ -9164,7 +9164,7 @@
         "output_per_token": 4e-07
       },
       "intelligence_index": 13.0,
-      "tokens_per_second": 148.277
+      "tokens_per_second": 163.984
     },
     {
       "id": "openai/gpt-5-chat-latest",
@@ -9218,7 +9218,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 44.6,
-      "tokens_per_second": 124.34
+      "tokens_per_second": 117.439
     },
     {
       "id": "openai/gpt-5-mini-2025-08-07",
@@ -9246,7 +9246,7 @@
         "output_per_token": 2e-06
       },
       "intelligence_index": 41.2,
-      "tokens_per_second": 94.045
+      "tokens_per_second": 95.924
     },
     {
       "id": "openai/gpt-5-nano-2025-08-07",
@@ -9274,7 +9274,7 @@
         "output_per_token": 4e-07
       },
       "intelligence_index": 26.8,
-      "tokens_per_second": 152.582
+      "tokens_per_second": 172.484
     },
     {
       "id": "openai/gpt-realtime",
@@ -9461,7 +9461,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 47.7,
-      "tokens_per_second": 138.676
+      "tokens_per_second": 127.631
     },
     {
       "id": "openai/gpt-5.1-2025-11-13",
@@ -9489,7 +9489,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 47.7,
-      "tokens_per_second": 138.676
+      "tokens_per_second": 127.631
     },
     {
       "id": "openai/gpt-5.2-2025-12-11",
@@ -9517,7 +9517,7 @@
         "output_per_token": 1.4e-05
       },
       "intelligence_index": 51.3,
-      "tokens_per_second": 88.331
+      "tokens_per_second": 81.829
     },
     {
       "id": "openai/gpt-5.2-pro-2025-12-11",
@@ -9545,7 +9545,7 @@
         "output_per_token": 0.000168
       },
       "intelligence_index": 51.3,
-      "tokens_per_second": 88.331
+      "tokens_per_second": 81.829
     },
     {
       "id": "openai/gpt-5.2-chat-latest",
@@ -9573,7 +9573,7 @@
         "output_per_token": 1.4e-05
       },
       "intelligence_index": 51.3,
-      "tokens_per_second": 88.331
+      "tokens_per_second": 81.829
     },
     {
       "id": "openai/gpt-realtime-mini-2025-12-15",
@@ -9697,7 +9697,7 @@
         "output_per_token": 1.5e-05
       },
       "intelligence_index": 56.8,
-      "tokens_per_second": 203.214
+      "tokens_per_second": 200.003
     },
     {
       "id": "openai/gpt-5.4-pro-2026-03-05",
@@ -9752,7 +9752,7 @@
         "output_per_token": 1.25e-06
       },
       "intelligence_index": 44.0,
-      "tokens_per_second": 157.52
+      "tokens_per_second": 157.563
     },
     {
       "id": "openai/gpt-5.4-mini-2026-03-17",
@@ -9780,7 +9780,7 @@
         "output_per_token": 4.5e-06
       },
       "intelligence_index": 48.9,
-      "tokens_per_second": 186.205
+      "tokens_per_second": 196.639
     },
     {
       "id": "openai/gpt-5.5-2026-04-23",
@@ -9808,7 +9808,7 @@
         "output_per_token": 3e-05
       },
       "intelligence_index": 60.2,
-      "tokens_per_second": 74.771
+      "tokens_per_second": 69.0
     },
     {
       "id": "openai/gpt-5.5-pro-2026-04-23",
@@ -10280,8 +10280,8 @@
       "service": "xai",
       "base_url": "https://api.x.ai/v1",
       "vendor_pricing": {
-        "input_per_token": 2e-06,
-        "output_per_token": 6e-06
+        "input_per_token": 1.25e-06,
+        "output_per_token": 2.5e-06
       }
     },
     {
@@ -10311,8 +10311,7 @@
         "output_per_token": 2.5e-06
       },
       "intelligence_index": 53.2,
-      "tokens_per_second": 171.139,
-      "openrouter_fallback_model_id": "x-ai/grok-4.3"
+      "tokens_per_second": 170.577
     },
     {
       "id": "xai/grok-build-0.1",
@@ -10708,7 +10707,7 @@
         "output_per_token": 6e-07
       },
       "intelligence_index": 27.8,
-      "tokens_per_second": 160.916
+      "tokens_per_second": 182.168
     },
     {
       "id": "mistral/mistral-small-latest",
@@ -10737,7 +10736,7 @@
         "output_per_token": 6e-07
       },
       "intelligence_index": 27.8,
-      "tokens_per_second": 160.916
+      "tokens_per_second": 182.168
     },
     {
       "id": "mistral/mistral-vibe-cli-fast",
@@ -10984,8 +10983,7 @@
         "input_per_token": 1e-07,
         "output_per_token": 1e-07
       },
-      "intelligence_index": 11.2,
-      "openrouter_fallback_model_id": "mistralai/ministral-3b-2512"
+      "intelligence_index": 11.2
     },
     {
       "id": "mistral/ministral-3b-latest",
@@ -11200,7 +11198,7 @@
         "output_per_token": 7.5e-06
       },
       "intelligence_index": 39.2,
-      "tokens_per_second": 105.092
+      "tokens_per_second": 147.622
     },
     {
       "id": "mistral/mistral-medium-3",
@@ -11229,7 +11227,7 @@
         "output_per_token": 2e-06
       },
       "intelligence_index": 18.8,
-      "tokens_per_second": 45.909
+      "tokens_per_second": 46.163
     },
     {
       "id": "mistral/mistral-medium-2604",
@@ -11396,7 +11394,7 @@
         "output_per_token": 6e-07
       },
       "intelligence_index": 27.8,
-      "tokens_per_second": 160.916
+      "tokens_per_second": 182.168
     },
     {
       "id": "qwen/qwen3.7-max-2026-06-08",
@@ -11425,7 +11423,7 @@
         "output_per_token": 3.75e-06
       },
       "intelligence_index": 56.6,
-      "tokens_per_second": 198.719
+      "tokens_per_second": 197.252
     },
     {
       "id": "qwen/qwen3.7-plus-2026-05-26",
@@ -11454,7 +11452,7 @@
         "output_per_token": 1.28e-06
       },
       "intelligence_index": 53.3,
-      "tokens_per_second": 53.402
+      "tokens_per_second": 52.434
     },
     {
       "id": "qwen/glm-5.1",
@@ -11507,7 +11505,7 @@
         "output_per_token": 3.75e-06
       },
       "intelligence_index": 56.6,
-      "tokens_per_second": 198.719
+      "tokens_per_second": 197.252
     },
     {
       "id": "qwen/qwen3.7-max-preview",
@@ -11536,7 +11534,7 @@
         "output_per_token": 3.75e-06
       },
       "intelligence_index": 56.6,
-      "tokens_per_second": 198.719
+      "tokens_per_second": 197.252
     },
     {
       "id": "qwen/qwen3.7-max-2026-05-20",
@@ -11565,7 +11563,7 @@
         "output_per_token": 3.75e-06
       },
       "intelligence_index": 56.6,
-      "tokens_per_second": 198.719
+      "tokens_per_second": 197.252
     },
     {
       "id": "qwen/qwen3.5-plus-2026-04-20",
@@ -11594,8 +11592,7 @@
         "output_per_token": 1.8e-06
       },
       "intelligence_index": 38.6,
-      "tokens_per_second": 54.758,
-      "openrouter_fallback_model_id": "qwen/qwen3.5-plus-20260420"
+      "tokens_per_second": 54.354
     },
     {
       "id": "qwen/qwen3.6-flash-2026-04-16",
@@ -11835,7 +11832,7 @@
         "output_per_token": 1.95e-06
       },
       "intelligence_index": 50.0,
-      "tokens_per_second": 52.967
+      "tokens_per_second": 51.681
     },
     {
       "id": "qwen/deepseek-v3.2",
@@ -11858,8 +11855,7 @@
       "dispatch": "direct",
       "credential_key": "ora/qwen-api-key",
       "service": "qwen",
-      "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-      "openrouter_fallback_model_id": "deepseek/deepseek-v3.2"
+      "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     },
     {
       "id": "qwen/qwen3.5-flash-2026-02-23",
@@ -11934,7 +11930,7 @@
         "output_per_token": 1.8e-06
       },
       "intelligence_index": 38.6,
-      "tokens_per_second": 54.758
+      "tokens_per_second": 54.354
     },
     {
       "id": "qwen/qwen3.5-plus",
@@ -11963,7 +11959,7 @@
         "output_per_token": 1.8e-06
       },
       "intelligence_index": 38.6,
-      "tokens_per_second": 54.758
+      "tokens_per_second": 54.354
     },
     {
       "id": "qwen/qwen3-vl-flash-2026-01-22",
@@ -12015,7 +12011,7 @@
         "output_per_token": 3.9e-06
       },
       "intelligence_index": 31.4,
-      "tokens_per_second": 57.681
+      "tokens_per_second": 59.32
     },
     {
       "id": "qwen/qwen-plus-character",
@@ -12689,7 +12685,7 @@
         "output_per_token": 3.9e-06
       },
       "intelligence_index": 31.4,
-      "tokens_per_second": 57.681
+      "tokens_per_second": 59.32
     },
     {
       "id": "qwen/qwen3-vl-plus",
@@ -12841,7 +12837,7 @@
         "output_per_token": 3.9e-06
       },
       "intelligence_index": 31.4,
-      "tokens_per_second": 57.681
+      "tokens_per_second": 59.32
     },
     {
       "id": "qwen/qwen2-7b-instruct",
@@ -12939,7 +12935,7 @@
         "output_per_token": 2.025e-06
       },
       "intelligence_index": 46.8,
-      "tokens_per_second": 42.354
+      "tokens_per_second": 42.316
     },
     {
       "id": "moonshot/kimi-k2.7-code",
@@ -13110,8 +13106,7 @@
         "output_per_token": 3.41e-06
       },
       "intelligence_index": 53.9,
-      "tokens_per_second": 40.165,
-      "openrouter_fallback_model_id": "moonshotai/kimi-k2.6"
+      "tokens_per_second": 41.133
     },
     {
       "id": "moonshot/moonshot-v1-8k",
@@ -13186,8 +13181,7 @@
         "output_per_token": 1.2e-06
       },
       "intelligence_index": 54.7,
-      "tokens_per_second": 59.058,
-      "openrouter_fallback_model_id": "minimax/minimax-m3"
+      "tokens_per_second": 59.157
     },
     {
       "id": "minimax/MiniMax-M2.7",
@@ -13216,7 +13210,7 @@
         "output_per_token": 1e-06
       },
       "intelligence_index": 49.6,
-      "tokens_per_second": 52.844
+      "tokens_per_second": 41.901
     },
     {
       "id": "minimax/MiniMax-M2.7-highspeed",
@@ -13268,8 +13262,7 @@
         "output_per_token": 9e-07
       },
       "intelligence_index": 41.9,
-      "tokens_per_second": 216.022,
-      "openrouter_fallback_model_id": "minimax/minimax-m2.5"
+      "tokens_per_second": 231.394
     },
     {
       "id": "minimax/MiniMax-M2.5-highspeed",
@@ -13321,8 +13314,7 @@
         "output_per_token": 9.5e-07
       },
       "intelligence_index": 39.4,
-      "tokens_per_second": 243.364,
-      "openrouter_fallback_model_id": "minimax/minimax-m2.1"
+      "tokens_per_second": 233.594
     },
     {
       "id": "minimax/MiniMax-M2.1-highspeed",
@@ -13374,7 +13366,7 @@
         "output_per_token": 1e-06
       },
       "intelligence_index": 36.1,
-      "tokens_per_second": 131.502
+      "tokens_per_second": 139.233
     },
     {
       "id": "openai/gpt-oss-120b",
@@ -13454,7 +13446,7 @@
         "output_per_token": 2.5e-06
       },
       "intelligence_index": 27.0,
-      "tokens_per_second": 203.86,
+      "tokens_per_second": 203.989,
       "openrouter_fallback_model_id": "google/gemini-2.5-flash"
     },
     {
@@ -13483,7 +13475,7 @@
         "output_per_token": 1e-05
       },
       "intelligence_index": 34.6,
-      "tokens_per_second": 148.078,
+      "tokens_per_second": 142.147,
       "openrouter_fallback_model_id": "google/gemini-2.5-pro"
     },
     {
@@ -13528,8 +13520,7 @@
       "model_id": "gemini-2.0-flash-001",
       "dispatch": "direct",
       "credential_key": "ora/gemini-api-key",
-      "service": "gemini",
-      "openrouter_fallback_model_id": "google/gemini-2.0-flash-001"
+      "service": "gemini"
     },
     {
       "id": "gemini/gemini-2.0-flash-lite-001",
@@ -13551,8 +13542,7 @@
       "model_id": "gemini-2.0-flash-lite-001",
       "dispatch": "direct",
       "credential_key": "ora/gemini-api-key",
-      "service": "gemini",
-      "openrouter_fallback_model_id": "google/gemini-2.0-flash-lite-001"
+      "service": "gemini"
     },
     {
       "id": "gemini/gemini-2.0-flash-lite",
@@ -13631,7 +13621,7 @@
         "output_per_token": 3.5e-07
       },
       "intelligence_index": 39.2,
-      "tokens_per_second": 35.298,
+      "tokens_per_second": 34.956,
       "openrouter_fallback_model_id": "google/gemma-4-31b-it"
     },
     {
@@ -13734,7 +13724,7 @@
         "output_per_token": 4e-07
       },
       "intelligence_index": 17.6,
-      "tokens_per_second": 259.516,
+      "tokens_per_second": 272.67,
       "openrouter_fallback_model_id": "google/gemini-2.5-flash-lite"
     },
     {
@@ -13785,7 +13775,7 @@
         "output_per_token": 3e-06
       },
       "intelligence_index": 46.4,
-      "tokens_per_second": 221.841,
+      "tokens_per_second": 204.337,
       "openrouter_fallback_model_id": "google/gemini-3-flash-preview"
     },
     {
@@ -13814,7 +13804,7 @@
         "output_per_token": 1.2e-05
       },
       "intelligence_index": 57.2,
-      "tokens_per_second": 139.447,
+      "tokens_per_second": 138.248,
       "openrouter_fallback_model_id": "google/gemini-3.1-pro-preview"
     },
     {
@@ -13843,7 +13833,7 @@
         "output_per_token": 1.2e-05
       },
       "intelligence_index": 57.2,
-      "tokens_per_second": 139.447,
+      "tokens_per_second": 138.248,
       "openrouter_fallback_model_id": "google/gemini-3.1-pro-preview-customtools"
     },
     {
@@ -13872,7 +13862,7 @@
         "output_per_token": 1.5e-06
       },
       "intelligence_index": 33.5,
-      "tokens_per_second": 335.118,
+      "tokens_per_second": 312.075,
       "openrouter_fallback_model_id": "google/gemini-3.1-flash-lite-preview"
     },
     {
@@ -13901,7 +13891,7 @@
         "output_per_token": 1.5e-06
       },
       "intelligence_index": 33.5,
-      "tokens_per_second": 335.118,
+      "tokens_per_second": 312.075,
       "openrouter_fallback_model_id": "google/gemini-3.1-flash-lite"
     },
     {
@@ -13930,7 +13920,7 @@
         "output_per_token": 9e-06
       },
       "intelligence_index": 55.3,
-      "tokens_per_second": 220.857,
+      "tokens_per_second": 215.281,
       "openrouter_fallback_model_id": "google/gemini-3.5-flash"
     },
     {
@@ -14002,6 +13992,29 @@
       "service": "openrouter",
       "model_id": "openai/gpt-oss-20b",
       "dispatch": "openrouter"
+    },
+    {
+      "id": "moonshot/kimi-k2.7-code-highspeed",
+      "type": "api",
+      "status": "active",
+      "enabled": true,
+      "provider": "moonshot",
+      "display_name": "kimi-k2.7-code-highspeed",
+      "context_window": 262144,
+      "vision_capable": true,
+      "capabilities": {
+        "tool_access": true,
+        "file_system_access": false,
+        "web_access": true,
+        "retrieval_approach": "pre-assembled"
+      },
+      "tier": "",
+      "is_free": false,
+      "model_id": "kimi-k2.7-code-highspeed",
+      "dispatch": "direct",
+      "credential_key": "ora/moonshot-api-key",
+      "service": "moonshot",
+      "base_url": "https://api.moonshot.ai/v1"
     }
   ],
   "buckets": {
