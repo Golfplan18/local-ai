@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """campaign_run.py — Comparative Evaluation Campaign runner (2026-06-12).
 
-Reproducible capture harness for the 198-technique campaign described in
+Reproducible capture harness for the 198-entry campaign described in
 the vault doc "Working — Campaign Run Plan 2026-06-06" and published on
-ora-ai.app. For each selected technique it takes prompt #1 (the prime)
-and runs it through four pipelines, capturing text, visual artifact,
+ora-ai.app. For each selected campaign entry it takes prompt #1 (the prime)
+and runs it through five lanes, capturing text, visual artifact,
 token usage, and cost:
 
   premium      — Ora server, campaign-premium configuration (gear 4)
@@ -24,17 +24,18 @@ Subcommands
 -----------
   bake-configs   Re-bake the premium/optimum presets with the live picker
                  algorithm, copy them to campaign-premium / campaign-optimum,
-                 generate campaign-qwen9b, stamp rag_isolation=web_only on
-                 all three, and snapshot per-model pricing.
+                 generate campaign-qwen9b and campaign-optimum-plus, stamp
+                 rag_isolation=web_only on the Ora lanes, and snapshot
+                 per-model pricing.
   list           Parse the corpus; print counts + technique ids.
   run            Execute the sweep. --techniques all | some | id[,id...]
-                 --pipelines premium,qwen9b,optimum,single-pass
+                 --pipelines premium,qwen9b,optimum,optimum-plus,single-pass
                  Resumable: completed (technique, pipeline) pairs are
                  skipped on re-run via the manifest.
   aggregate      Build cost tables (per pipeline + grand total) from the
                  manifest → cost-summary.md / cost-summary.json.
   render-doc     Assemble the long capture document (one section per
-                 technique: prompt, then the four answers + visuals).
+                 campaign entry: prompt, then the five answers + visuals).
   all            bake-configs → run → aggregate → render-doc.
 
 Reproducibility notes for third parties
@@ -2012,8 +2013,8 @@ def render_doc(corpus_path: Path) -> Path:
     done = load_manifest()
     kind_label = {"mode": "Analysis mode", "visual": "Visual tool", "lens": "Lens"}
     lines = ["# Comparative Evaluation Campaign — captures", "",
-             f"_Assembled {_now_iso()}. One section per technique: the prime "
-             f"prompt, then the four pipeline answers. Visuals are embedded "
+             f"_Assembled {_now_iso()}. One section per campaign entry: the prime "
+             f"prompt, then the five lane answers. Visuals are embedded "
              f"as PNG (SVG + envelope JSON sit alongside in captures/)._", ""]
     included = 0
     for tech in techniques:

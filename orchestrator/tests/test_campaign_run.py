@@ -34,7 +34,7 @@ MINI_CORPUS = """\
 
 ## Comparative Evaluation Campaign
 
-### The four configurations
+### The five campaign lanes
 
 Some prose. 1. not a prompt (no entry open).
 
@@ -127,7 +127,7 @@ class TestParseCorpus(unittest.TestCase):
 
     def test_campaign_section_does_not_leak_entries(self):
         techs = campaign.parse_corpus(self.path)
-        self.assertNotIn("The four configurations", [t.id for t in techs])
+        self.assertNotIn("The five campaign lanes", [t.id for t in techs])
 
     def test_select_all_some_and_ids(self):
         techs = campaign.parse_corpus(self.path)

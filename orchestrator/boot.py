@@ -7702,7 +7702,7 @@ def _model_tool_selection_enabled() -> bool:
     whose analyst slots run tool-capable models — weak local models (e.g. the
     9B that drives the $1K-hardware demo) emit malformed tool calls. Leave OFF
     during the G1.11 comparative evaluation so captures stay reproducible
-    (model-chosen tools would confound the four-config comparison). Model-
+    (model-chosen tools would confound the five-lane campaign comparison). Model-
     initiated calls are audited by the dispatcher's _log_dispatch like any other.
     Capability gating is by this flag plus operator discipline; an automatic
     per-endpoint gate (a `tool_capable` flag) was considered and dropped
