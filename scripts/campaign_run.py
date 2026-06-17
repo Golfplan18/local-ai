@@ -912,6 +912,25 @@ def _keyring_get(name: str) -> str | None:
         return None
 
 
+def _claude_code_env() -> dict:
+    """Environment for standalone Claude Code subscription calls.
+
+    The campaign runner may be launched from a long-lived Claude Code session.
+    Do not inherit that session's refresh context into child ``claude -p``
+    processes; force the CLI to use its own local auth refresh. Also drop
+    ANTHROPIC_API_KEY so a subscription lane can never silently bill the
+    metered API.
+    """
+    scrub = {
+        "ANTHROPIC_API_KEY",
+        "CLAUDE_CODE_SESSION_ID",
+        "CLAUDE_CODE_SDK_HAS_OAUTH_REFRESH",
+        "CLAUDE_CODE_SDK_HAS_HOST_AUTH_REFRESH",
+        "CLAUDE_CODE_ENTRYPOINT",
+    }
+    return {k: v for k, v in os.environ.items() if k not in scrub}
+
+
 def resolve_flagship_endpoint(flagship_id: str) -> dict:
     """Find the routing-config endpoint for the flagship id (registered by
     the endpoint sync; dispatch=direct when the vendor key exists)."""
@@ -932,7 +951,7 @@ def _single_pass_claude_code(endpoint: dict, prompt: str,
     verified."""
     import subprocess
     model_id = endpoint.get("model_id") or "claude-opus-4-8"
-    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    env = _claude_code_env()
     cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
     r = subprocess.run(
         [cli, "-p", "--model", model_id, "--output-format", "json",
@@ -1322,7 +1341,7 @@ def _wait_for_subscription_window(max_wait_s: int = 86400) -> None:
     actually depends on makes the pacing reflect real Opus availability."""
     import subprocess
     cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
-    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    env = _claude_code_env()
     waited = 0
     while True:
         try:
