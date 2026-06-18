@@ -88,7 +88,8 @@ ORA_PIPELINES = {
     "optimum": "campaign-optimum",
     "optimum-plus": "campaign-optimum-plus",
 }
-ALL_PIPELINES = ["premium", "qwen9b", "optimum", "optimum-plus", "single-pass"]
+ALL_PIPELINES = ["premium", "qwen9b", "optimum", "optimum-plus",
+                 "single-pass", "single-pass-9b"]
 MAIN_PIPELINES = ["premium", "qwen9b", "optimum", "single-pass"]
 
 # Same pattern orchestrator/visual_adversarial.py uses to find envelopes.
@@ -121,6 +122,13 @@ QWEN9B_CELL_PATHS = [
     ("post_analysis", "formatter"),
 ]
 QWEN9B_MODEL = "qwen/qwen3.5-9b"
+
+# single-pass-9b — the BARE control twin of the qwen9b harness lane: ONE
+# unharnessed OpenRouter call to the same 9B model (no framework/system
+# injection, no tools, text only). Quantifies, within our own rubric, how much
+# the harness lifts the 9B; its cost.json is the same FLAT one-model record the
+# single-pass flagship lane writes (not the per-model harness shape).
+SINGLE_PASS_9B_MODEL = QWEN9B_MODEL
 
 RAG_NOTE = ("CAMPAIGN-RAG-BYPASS — campaign configurations run with "
             "rag_isolation=web_only so captures reflect a clean install "
@@ -1172,9 +1180,13 @@ def single_pass_call(endpoint: dict, prompt: str, max_tokens: int = 16000,
     choice = (d.get("choices") or [{}])[0]
     usage = d.get("usage") or {}
     served = d.get("model") or slug
-    if served not in (slug, slug.split(":", 1)[0]):
-        # Fidelity: OpenRouter must serve the requested slug, not a
-        # router-substituted sibling.
+    base = slug.split(":", 1)[0]
+    # Fidelity: OpenRouter must serve the requested slug, not a
+    # router-substituted sibling. A dated snapshot of the requested model
+    # (e.g. qwen/qwen3.5-9b-20260310) IS the requested model — accept it,
+    # matching the Anthropic branch's startswith semantics; a genuinely
+    # different model still fails.
+    if not (served == base or served.startswith(base)):
         raise RuntimeError(f"single-pass fidelity: requested {slug}, "
                            f"served {served}")
     return {"text": (choice.get("message") or {}).get("content") or "",
@@ -1334,6 +1346,20 @@ def run_sweep(args) -> int:
     flagship_pricing = (snapshot.get("single_pass_flagship") or {}).get("pricing")
     flagship_ep = resolve_flagship_endpoint(flagship) if "single-pass" in pipelines else None
 
+    # single-pass-9b: a constructed endpoint (NOT resolved from routing-config)
+    # so the bare control call ALWAYS goes through OpenRouter under the canonical
+    # 9B slug — the same transport the qwen9b lane's cells use. Pricing is the
+    # snapshot's 9B rate (any config that carries it).
+    sp9b_pricing = None
+    for _c in (snapshot.get("configs") or {}).values():
+        _pr = (_c.get("pricing") or {}).get(SINGLE_PASS_9B_MODEL)
+        if _pr:
+            sp9b_pricing = _pr
+            break
+    sp9b_ep = ({"id": SINGLE_PASS_9B_MODEL, "service": "openrouter",
+                "openrouter_fallback_model_id": SINGLE_PASS_9B_MODEL}
+               if "single-pass-9b" in pipelines else None)
+
     # Preflight: server reachable + campaign configs present.
     if any(p in ORA_PIPELINES for p in pipelines):
         try:
@@ -1401,6 +1427,8 @@ def run_sweep(args) -> int:
     ctx = {
         "flagship_ep": flagship_ep,
         "flagship_pricing": flagship_pricing,
+        "sp9b_ep": sp9b_ep,
+        "sp9b_pricing": sp9b_pricing,
         "expected_primaries": expected_primaries,
         "rate_map": rate_map,
         "subscription_lanes": subscription_lanes,
@@ -1535,6 +1563,31 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
                            executed_models={sp["served_model"]: 1})
                 if sp["via"] == "claude-code-subscription":
                     rec["cost_basis"] = "api_equivalent"
+            elif pipe == "single-pass-9b":
+                # Bare 9B control: same capture shape as single-pass, but a
+                # metered OpenRouter call to qwen3.5-9b (real $, not subscription).
+                # qwen3.5-9b is a reasoning model — its hidden chain-of-thought
+                # burns completion tokens before the visible answer, so give it
+                # generous headroom (env-overridable) to avoid truncating the
+                # bare model's real single-pass output. OpenRouter clamps to the
+                # model's own max if this is higher.
+                sp = single_pass_call(
+                    ctx["sp9b_ep"], tech.prompt,
+                    max_tokens=int(os.environ.get(
+                        "ORA_SINGLE_PASS_9B_MAX_TOKENS", "64000")))
+                cost = price_single_pass(sp, ctx["sp9b_pricing"])
+                (out_dir / "answer.md").write_text(sp["text"])
+                (out_dir / "cost.json").write_text(json.dumps({
+                    "model_id": sp["model_id"], "via": sp["via"],
+                    "prompt_tokens": sp["prompt_tokens"],
+                    "completion_tokens": sp["completion_tokens"],
+                    "pricing_per_million": ctx["sp9b_pricing"],
+                    "total_cost_usd": cost}, indent=2))
+                rec.update(status="ok", cost_usd=cost,
+                           prompt_tokens=sp["prompt_tokens"],
+                           completion_tokens=sp["completion_tokens"],
+                           visuals=0, via=sp["via"],
+                           executed_models={sp["served_model"]: 1})
             else:
                 conv_id = f"campaign-{tech.capture_slug or tech.id}-{pipe}"
                 res = run_ora_pipeline(args.server, ORA_PIPELINES[pipe],
@@ -2005,6 +2058,7 @@ DOC_PIPELINE_ORDER = [
     ("optimum", "Optimum (Ora, gear 4)"),
     ("optimum-plus", "Optimum+ (Ora, gear 4 — flagship consolidator)"),
     ("single-pass", "Single-pass flagship (bare model, no harness)"),
+    ("single-pass-9b", "Single-pass 9B (bare qwen3.5-9b, no harness)"),
 ]
 
 
