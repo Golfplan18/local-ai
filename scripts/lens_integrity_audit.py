@@ -23,6 +23,23 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 MODE_DIR = ROOT / "modes"
 LENS_DIR = ROOT / "knowledge" / "mental-models"
+REQUIRED_LENS_FIELDS = (
+    "lens_id",
+    "name",
+    "lens_type",
+    "applicability",
+    "foundational",
+    "source",
+)
+REQUIRED_LENS_SECTIONS = (
+    "Trigger",
+    "Core Structure",
+    "Application Steps",
+    "Detection Signals",
+    "Critical Questions",
+    "Common Failure Modes",
+    "Source Citations",
+)
 
 
 def _strip_dependency_note(raw_value: str) -> str:
@@ -92,12 +109,47 @@ def _extract_lens_applicability(text: str) -> list[str]:
     ]
 
 
+def _extract_markdown_section(text: str, heading: str) -> str:
+    match = re.search(
+        rf"^##\s+{re.escape(heading)}\s*\n(.*?)(?=\n##\s+|\Z)",
+        text,
+        re.M | re.S,
+    )
+    if not match:
+        return ""
+    return match.group(1).strip()
+
+
+def _lens_structure_issue(lens_id: str, text: str) -> dict[str, Any] | None:
+    missing_fields = [
+        field for field in REQUIRED_LENS_FIELDS
+        if not re.search(rf"^{re.escape(field)}\s*:", text, re.M)
+    ]
+    missing_sections = [
+        section for section in REQUIRED_LENS_SECTIONS
+        if not _extract_markdown_section(text, section)
+    ]
+    if not missing_fields and not missing_sections:
+        return None
+    return {
+        "id": lens_id,
+        "missing_fields": missing_fields,
+        "missing_sections": missing_sections,
+    }
+
+
 def _mode_files(root: Path) -> list[Path]:
-    return sorted((root / "modes").glob("*.md"))
+    return sorted(
+        path for path in (root / "modes").glob("*.md")
+        if path.name != "INDEX.md"
+    )
 
 
 def _lens_files(root: Path) -> list[Path]:
-    return sorted((root / "knowledge" / "mental-models").glob("*.md"))
+    return sorted(
+        path for path in (root / "knowledge" / "mental-models").glob("*.md")
+        if path.name != "INDEX.md"
+    )
 
 
 def build_report(root: Path = ROOT) -> dict[str, Any]:
@@ -108,8 +160,12 @@ def build_report(root: Path = ROOT) -> dict[str, Any]:
 
     inverse_by_mode: dict[str, list[str]] = defaultdict(list)
     nonmode_applicability: list[dict[str, str]] = []
+    lens_structure_issues: list[dict[str, Any]] = []
     for path in lens_paths:
         text = path.read_text(encoding="utf-8")
+        issue = _lens_structure_issue(path.stem, text)
+        if issue:
+            lens_structure_issues.append(issue)
         for target in _extract_lens_applicability(text):
             if target in mode_ids:
                 inverse_by_mode[target].append(path.stem)
@@ -187,12 +243,18 @@ def build_report(root: Path = ROOT) -> dict[str, Any]:
         "unique_unresolved_ids": len(unresolved_counter),
         "modes_with_unresolved": sum(1 for row in mode_rows if row["unresolved"]),
         "nonmode_applicability_entries": len(nonmode_applicability),
+        "lenses_with_structure_issues": len(lens_structure_issues),
+        "lenses_missing_picker_description": sum(
+            1 for issue in lens_structure_issues
+            if "Trigger" in issue["missing_sections"]
+        ),
     }
     return {
         "summary": summary,
         "unresolved_by_id": unresolved_by_id,
         "modes": mode_rows,
         "nonmode_applicability": nonmode_applicability,
+        "lens_structure_issues": lens_structure_issues,
     }
 
 
@@ -211,6 +273,8 @@ def _print_text(report: dict[str, Any], top: int) -> None:
         "unique_unresolved_ids",
         "modes_with_unresolved",
         "nonmode_applicability_entries",
+        "lenses_with_structure_issues",
+        "lenses_missing_picker_description",
     ):
         print(f"{key}: {summary[key]}")
 

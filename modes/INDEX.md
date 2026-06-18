@@ -7,17 +7,18 @@ tags:
   - index
   - modes
 date created: 2026-05-04
-date modified: 2026-05-04
+date modified: 2026-06-17
 
 ---
 
 # Modes — Index
 
-*Per-mode index for the analytical mode files in `Modes/`. 60 mode files currently. One-line description per mode, organized by home territory per the post-2026-05-01 architecture.*
+*Per-mode index for the mode files in `Modes/`. The runtime folder currently has 64 content mode files: 60 resident public/campaign analysis modes plus 4 utility/bypass modes listed separately below. One-line description per mode, organized by home territory for the resident analysis modes.*
 
 *Authoritative source for mode-id, suffix, gradation position, and depth tier:* `Registry — Mode Registry.md`.
 *Authoritative source for territory boundaries and resident-mode mapping:* `Reference — Analytical Territories.md`.
 *Mode specification template (the structure each mode file follows):* `Reference — Mode Specification Template.md`.
+*Runtime configuration surfaces and mode-file runtime fields:* `Reference — Ora Runtime Configuration.md` and `Reference — Mode Specification Template.md`.
 *Lens dependencies cross-reference:* `Reference — Lens Library Specification.md` and `Lenses/INDEX.md`.
 
 ---
@@ -118,6 +119,7 @@ date modified: 2026-05-04
 
 ## T18 — Future Exploration
 
+- **`pre-mortem-action.md`** — Klein prospective-hindsight pre-mortem for an action plan before commitment; parsed sibling of `pre-mortem-fragility.md`.
 - **`consequences-and-sequel.md`** — Sequel-of-sequel analysis: what follows from this decision over multiple time horizons.
 
 ## T19 — Spatial Composition
@@ -143,6 +145,15 @@ date modified: 2026-05-04
 - **`benefits-analysis.md`** — Yellow Hat benefits-and-opportunities surfacing. Used inside Gear 4 Breadth and various territory frameworks.
 - **`constraint-mapping.md`** — Surface constraints (Hard / Soft / Working Assumption) for a problem context. Invoked by MOM and PEF.
 
+## Runtime utility / bypass modes
+
+These files are runtime modes, but they are not part of the 60 resident public/campaign analysis-mode roster.
+
+- **`factual-lookup.md`** — Retrieval-only factual lookup when no judgment or analysis is needed.
+- **`general-inquiry.md`** — Catch-all analytical inquiry when judgment is required but no specific analytical mode cleanly fits.
+- **`subjective-inquiry.md`** — Opinion, preference, taste, and aesthetic questions without objective criteria.
+- **`simple.md`** — Direct bypass response for greetings, system-meta requests, and other non-analytical prompts.
+
 ---
 
 ## Conventions
@@ -155,7 +166,7 @@ date modified: 2026-05-04
 
 - `Registry — Mode Registry.md` — authoritative per-mode catalog with mode_id, suffix, gradation position, depth tier, lens dependencies.
 - `Reference — Mode Specification Template.md` — the section template every mode spec follows.
-- `Reference — Mode Runtime Configuration.md` — runtime mechanics (gear, expected_runtime, type_filter, RAG_profile, per-stage instructions) per `mode_id`.
+- `Reference — Ora Runtime Configuration.md` — live runtime-configurable surfaces; mode-specific gear, RAG profile, and stage guidance now live in each mode file per `Reference — Mode Specification Template.md`.
 - `Reference — Within-Territory Disambiguation Trees.md` — selects among resident modes once a territory has been chosen.
 - `Reference — Cross-Territory Adjacency.md` — disambiguating questions for adjacent territory pairs.
 - `Reference — Disambiguation Style Guide.md` — naming, suffix, parenthesization conventions.

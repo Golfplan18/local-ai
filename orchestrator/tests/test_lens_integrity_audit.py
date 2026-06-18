@@ -31,6 +31,23 @@ class LensIntegrityAuditTests(unittest.TestCase):
     def _mode_row(self, mode_id: str) -> dict:
         return next(row for row in self.report["modes"] if row["mode"] == mode_id)
 
+    def test_counts_exclude_index_files(self):
+        summary = self.report["summary"]
+        self.assertEqual(summary["mode_count"], 64)
+        self.assertEqual(summary["lens_count"], 240)
+
+    def test_all_lenses_have_picker_descriptions(self):
+        summary = self.report["summary"]
+        self.assertEqual(summary["lenses_missing_picker_description"], 0)
+
+    def test_all_lenses_have_required_structure(self):
+        summary = self.report["summary"]
+        self.assertEqual(
+            summary["lenses_with_structure_issues"],
+            0,
+            self.report["lens_structure_issues"][:5],
+        )
+
     def test_high_impact_foundational_lenses_resolve(self):
         unresolved = self._unresolved_ids()
         self.assertNotIn("kahneman-tversky-bias-catalog", unresolved)

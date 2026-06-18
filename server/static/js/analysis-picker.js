@@ -12,10 +12,10 @@
   const TOOLBAR_BTN_SELECTOR = '#inputToolbarAnalysis';
   const OVERVIEW_TERRITORY = '__overview__';
   const LENS_GROUPS = [
-    ['required', 'Core lenses'],
-    ['optional', 'Optional lenses'],
-    ['foundational', 'Foundational lenses'],
-    ['related', 'Related lenses'],
+    ['required', 'Built into this analysis'],
+    ['optional', 'Optional foreground lenses'],
+    ['foundational', 'Foundational checks'],
+    ['related', 'Also compatible'],
   ];
 
   let _picker = null;

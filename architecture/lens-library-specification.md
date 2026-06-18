@@ -1,13 +1,13 @@
 
 # Reference — Lens Library Specification
 
-*This file specifies the uniform structure all lens artifacts follow, with type-specific inner content. Lenses are not modes — they don't dispatch; they're invoked from within modes. The lens library is built (Phase 5) per this specification. Comprehensive scope per Decision F: ~120–140 lens artifacts (17 foundational lenses + ~20 mode-specific lenses + ~100 existing prose-style mental-model lenses converted to uniform structure). Locked per the 15 architectural decisions of 2026-05-01.*
+*This file specifies the uniform structure all lens artifacts follow, with type-specific inner content. Lenses are not modes — they don't dispatch; they're invoked from within modes. Current active scope is 240 content lens artifacts in `Lenses/` mirrored to `~/ora/knowledge/mental-models/`; `Lenses/INDEX.md` is an index, not a lens. The public comparison campaign uses a smaller 116-lens injectable subset. The original Phase 5 estimate of ~120–140 artifacts is historical and has been superseded by the expanded runtime library.*
 
 ---
 
 ## 1. Lens-Type Taxonomy
 
-A lens is a named pattern, framework, mental model, or scheme that one or more modes draws on to structure its analysis. Every lens declares one of nine `lens_type` values. The type determines the inner format of `## Core Structure` (Section 3) but does not change the outer structure (Section 2).
+A lens is a named pattern, framework, mental model, or scheme that one or more modes draws on to structure its analysis. Every lens declares a `lens_type` value. The original 2026-05-01 taxonomy defined nine structural types; the expanded library also contains narrower descriptive types created during the drift-repair and public-explainer work. Runtime does not dispatch on `lens_type`; the value is descriptive metadata for authors, audits, and explainer pages.
 
 | `lens_type` | Inner-content shape | Canonical example |
 |---|---|---|
@@ -21,13 +21,13 @@ A lens is a named pattern, framework, mental model, or scheme that one or more m
 | `aesthetic-tradition` | Tradition-stance template: foundational text(s), operational principle, output contract, contrast cases, evaluative axes | Japanese-aesthetics lens (T19); other tradition-bound aesthetic frameworks |
 | `environmental-framework` | Feature-pattern catalog with predicted experiential/functional consequence per pattern | Alexander pattern language; Appleton prospect-refuge theory |
 
-The taxonomy is closed in this version. New lens types require an architectural amendment, not ad-hoc addition.
+These nine structural types remain the preferred vocabulary for new lenses. The active library also recognizes the following existing expanded values: `analytical-framework`, `argument-pattern`, `conceptual-framework`, `evidence-pattern`, `framing-lens`, `linguistic-lens`, `mapping-framework`, `optional-lens`, `perceptual-lens`, and `taxonomy`. Do not invent new values silently; if a new value is genuinely needed, update this specification and the relevant audit before using it.
 
 ---
 
 ## 2. Uniform Outer Structure
 
-Every lens file in `/Users/oracle/Documents/vault/Lenses/` carries the same YAML frontmatter and the same seven top-level `##` sections, regardless of `lens_type`. Type-specific variation lives only inside `## Core Structure`.
+Every content lens file in `/Users/oracle/Documents/vault/Lenses/` carries the same YAML frontmatter and the same seven top-level `##` sections, regardless of `lens_type`. `Lenses/INDEX.md` is exempt because it is the human-readable index. Type-specific variation lives only inside `## Core Structure`.
 
 ### 2.1 YAML Frontmatter (locked)
 
@@ -35,7 +35,7 @@ Every lens file in `/Users/oracle/Documents/vault/Lenses/` carries the same YAML
 ---
 lens_id: <kebab-case>                              # filename without .md extension
 name: <Display Name>                               # title-case
-lens_type: argumentation-scheme | causal-framework | rubric | catalog | protocol | mental-model | strategic-framework | aesthetic-tradition | environmental-framework
+lens_type: <active lens_type from Section 1>
 applicability: [<mode_ids that use this lens>]     # by mode_id, matches Lenses-to-Modes index
 foundational: true | false                         # foundational lenses are globally available; non-foundational are mode-specific
 source: "<canonical source citation, including year>"
@@ -96,7 +96,11 @@ originating text(s); converted mental-model lenses cite the canonical
 source plus any major commentaries.]
 ```
 
-The outer structure is locked: all seven `##` sections appear in every lens file in this exact order, even when a section is brief. Empty sections are not permitted; if a section has no content the lens is not yet ready for the library.
+The outer structure is locked: all seven `##` sections appear in every content lens file in this exact order, even when a section is brief. Empty sections are not permitted; if a section has no content the lens is not yet ready for the library.
+
+### Picker Summary Contract
+
+The analysis picker derives each lens's brief user-facing explanation from `## Trigger`, trimmed to a compact summary. This means the Trigger paragraph is both runtime documentation and UI copy: it must state what the lens helps the user see, what host situation calls for it, and what structure the lens contributes. Do not leave Trigger empty and do not bury the explanation only in Core Structure.
 
 ---
 
@@ -311,7 +315,7 @@ An analysis operating in this tradition must (1) name what the work refuses to p
 
 All lens files live in `/Users/oracle/Documents/vault/Lenses/`. The filename is `<lens-id>.md`, where `<lens-id>` is the kebab-case identifier declared in the YAML frontmatter and matches the value of `lens_id`. There are no subdirectories — the directory is flat. The flat structure permits simple referencing from mode files (a single relative path) and simple verification (one directory listing covers the entire library).
 
-Existing prose lenses already living in `/Users/oracle/Documents/vault/Lenses/` (100 files as of 2026-05-01) use a legacy frontmatter format (`title`, `nexus: mental-model`, `type: engram`, `domain`, `triggers`) and a four-section body (`## Core Principle`, `## When to Apply`, `## How to Apply`, `## Example`). These migrate to the uniform structure during Phase 5. The migration mapping is straightforward:
+Historical prose lenses originally living in `/Users/oracle/Documents/vault/Lenses/` used a legacy frontmatter format (`title`, `nexus: mental-model`, `type: engram`, `domain`, `triggers`) and a four-section body (`## Core Principle`, `## When to Apply`, `## How to Apply`, `## Example`). The active library now expects the uniform structure for every content lens. The legacy migration mapping remains here for repair work:
 
 - `title` → `name`
 - `nexus: mental-model` → `lens_type: mental-model` (most cases) or reclassified per Section 1
@@ -322,7 +326,7 @@ Existing prose lenses already living in `/Users/oracle/Documents/vault/Lenses/` 
 - `## How to Apply` → `## Application Steps`
 - `## Example` → folded into `## Core Structure` (worked-example sketch)
 
-New lenses (the 17 foundational and ~20 mode-specific not yet in the library) are built directly to the uniform structure during Phase 5.
+New lenses are built directly to the uniform structure.
 
 ---
 
@@ -336,16 +340,16 @@ Modes reference lenses through the `lens_dependencies` block in the mode YAML fr
 
 - **`foundational`** — lens_ids of foundational lenses (those with `foundational: true`) that the mode draws on. Foundational lenses are globally available; this list is for transparency, not gating. Every mode that does cross-mode bias-checking lists `kahneman-tversky-bias-catalog` here.
 
-The `lens_id` value matches the filename in `/Users/oracle/Documents/vault/Lenses/` without the `.md` extension. The verification script checks: every `lens_id` referenced in any mode's `lens_dependencies` exists as a file in `Lenses/`; conversely, every lens file in `Lenses/` is referenced by at least one mode's `applicability` field (orphan lenses are flagged).
+The `lens_id` value matches the filename in `/Users/oracle/Documents/vault/Lenses/` without the `.md` extension. The verification script checks that every `lens_id` referenced in any mode's `lens_dependencies` exists as a content lens file and that every content lens has the required structure needed for picker explanations.
 
 ### Cross-reference: `applicability` (in lens) vs. `lens_dependencies` (in mode)
 
-The reference is bidirectional and must be consistent:
+The references are complementary:
 
-- A lens declares which modes use it: `applicability: [<mode_ids>]` in its YAML.
-- A mode declares which lenses it uses: `lens_dependencies.{required, optional, foundational}: [<lens_ids>]` in its YAML.
+- A mode declares the lenses it directly uses: `lens_dependencies.{required, optional, foundational}: [<lens_ids>]` in its YAML. This is the authoritative source for required/foundational/optional picker groups and runtime dependency checks.
+- A lens may declare modes that can use it: `applicability: [<mode_ids>]` in its YAML. When an applicability value matches a runtime mode id and the mode did not already list the lens directly, the picker exposes that lens as a `related` option.
 
-The verification script enforces: for every `(mode_id, lens_id)` pair, both directions of the reference exist or both are absent. One-sided references are flagged.
+The verification script enforces direct dependency resolution and reports inverse applicability that does not match a runtime mode id. It does not require every direct mode dependency to be repeated in lens YAML, and it does not require every lens to be directly listed by a mode.
 
 ---
 
@@ -375,7 +379,7 @@ These five operations share three properties that disqualify them as modes: (1) 
 
 ## 7. Phase 5 Build Plan Cross-Reference
 
-Phase 5 (per `Reference — Implementation Plan` Phases 1–7) builds the lens library in this order:
+Phase 5 (per `Reference — Implementation Plan` Phases 1–7) originally planned the lens library in this order:
 
 1. **Foundational lenses (17 files).** The lenses in research report §12.1 (Walton schemes, Toulmin model, Pearl ladder, Heuer ACH, Tetlock ten commandments, Meadows leverage points, Senge archetypes, Rittel-Webber wicked characteristics, Ulrich CSH, Lakoff frames, Stanley propaganda, Rumelt kernel, Fisher/Ury principles, Taleb fragility, Kahneman-Tversky bias catalog, Knightian risk/uncertainty/ambiguity, Gallie essentially contested concepts). Each built directly to the uniform structure with its appropriate `lens_type`.
 
@@ -385,9 +389,9 @@ Phase 5 (per `Reference — Implementation Plan` Phases 1–7) builds the lens l
 
 4. **Existing prose-lens conversions (~100 files).** The 100 lenses already in `Lenses/` migrate from legacy mental-model prose format to the uniform structure per the migration mapping in Section 4. Most retain `lens_type: mental-model`; a minority reclassify (e.g., `decision-trees.md` may move to `protocol` if conversion surfaces that the procedural framing dominates).
 
-Total Phase 5 scope: ~120–140 lens artifacts (17 foundational + ~20 mode-specific + 2 new "do not build" + ~100 conversions).
+Historical Phase 5 scope estimate: ~120–140 lens artifacts (17 foundational + ~20 mode-specific + 2 new "do not build" + ~100 conversions). Current active library scope is 240 content lens artifacts.
 
-The verification script run at the end of Phase 5 enforces: every lens file conforms to the uniform structure (frontmatter + 7 sections); every `lens_id` referenced by any mode exists; every lens file is referenced by at least one mode's `applicability` field; no `lens_type` value is outside the closed taxonomy in Section 1.
+The verification script now enforces: every content lens file conforms to the uniform structure needed by the picker; every `lens_id` referenced by any mode exists; and the runtime-visible direct/inverse mode-to-lens surface is countable and auditable.
 
 ---
 

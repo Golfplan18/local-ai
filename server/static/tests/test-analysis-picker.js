@@ -222,6 +222,10 @@ async function run() {
     text('.analysis-picker__results-title'));
   record('lens pass renders selectable lenses',
     w.document.querySelectorAll('.analysis-picker__lens-row').length === 3);
+  record('lens row renders explanation',
+    text('.analysis-picker__lens-row[data-lens-id="ulrich-csh-boundary-categories"] .analysis-picker__row-desc')
+      === 'clarifies stakeholders and boundary judgments',
+    text('.analysis-picker__lens-row[data-lens-id="ulrich-csh-boundary-categories"] .analysis-picker__row-desc'));
 
   w.document.querySelector('.analysis-picker__lens-row[data-lens-id="ulrich-csh-boundary-categories"]').click();
   record('selecting lens stores lens in input state',
