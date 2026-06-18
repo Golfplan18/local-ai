@@ -124,13 +124,21 @@
     return Array.isArray(mode && mode.lenses) ? mode.lenses : [];
   }
 
+  function normalizeSearchText(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function freshSelectedMode() {
     const selected = selectedMode();
     if (!selected || !selected.id) return null;
     return _modes.find(mode => mode.id === selected.id) || selected;
   }
 
-  function searchText(mode) {
+  function modeSearchText(mode) {
     return [
       mode.id,
       mode.display_name,
@@ -138,12 +146,37 @@
       mode.educational_name,
       mode.territory_name,
       ...(Array.isArray(mode.aliases) ? mode.aliases : []),
-      ...lensesForMode(mode).flatMap(lens => [
-        lens.id,
-        lens.display_name,
-        lens.display_description,
-      ]),
-    ].join(' ').toLowerCase();
+    ].join(' ');
+  }
+
+  function lensSearchText(mode, lens) {
+    return [
+      lens.id,
+      lens.display_name,
+      lens.display_description,
+      lens.dependency_note,
+      lens.category,
+      mode.id,
+      mode.display_name,
+      mode.territory_name,
+    ].join(' ');
+  }
+
+  function lensSearchRows(query) {
+    const rows = [];
+    for (const mode of _modes) {
+      for (const lens of lensesForMode(mode)) {
+        if (normalizeSearchText(lensSearchText(mode, lens)).includes(query)) {
+          rows.push({ mode, lens });
+        }
+      }
+    }
+    return rows.sort((a, b) => {
+      const aName = a.lens.display_name || a.lens.id;
+      const bName = b.lens.display_name || b.lens.id;
+      return aName.localeCompare(bName)
+        || (a.mode.display_name || a.mode.id).localeCompare(b.mode.display_name || b.mode.id);
+    });
   }
 
   function territoryRows() {
@@ -170,7 +203,7 @@
   function render(query) {
     if (!_territories || !_results) return;
     _lensStepModeId = null;
-    const q = (query || '').trim().toLowerCase();
+    const q = normalizeSearchText(query);
     renderTerritories(q);
     renderResults(q);
   }
@@ -235,9 +268,11 @@
   function renderResults(query) {
     _results.innerHTML = '';
     let rows;
+    let lensRows;
     let title;
     if (query) {
-      rows = _modes.filter(mode => searchText(mode).includes(query));
+      rows = _modes.filter(mode => normalizeSearchText(modeSearchText(mode)).includes(query));
+      lensRows = lensSearchRows(query);
       title = 'Search results';
     } else if (_activeTerritory === OVERVIEW_TERRITORY) {
       renderOverview();
@@ -256,11 +291,11 @@
     header.appendChild(h);
     const count = document.createElement('div');
     count.className = 'analysis-picker__results-count';
-    count.textContent = `${rows.length}`;
+    count.textContent = query ? `${rows.length + lensRows.length}` : `${rows.length}`;
     header.appendChild(count);
     _results.appendChild(header);
 
-    if (!rows.length) {
+    if (!rows.length && !(lensRows && lensRows.length)) {
       const empty = document.createElement('div');
       empty.className = 'analysis-picker__empty';
       empty.textContent = query ? `No analyses match "${_search.value}".` : 'No analyses available.';
@@ -270,8 +305,22 @@
 
     const list = document.createElement('div');
     list.className = 'analysis-picker__list';
-    for (const mode of rows) list.appendChild(buildRow(mode, Boolean(query)));
+    if (rows.length) {
+      if (query && lensRows.length) list.appendChild(buildSectionLabel('Analyses'));
+      for (const mode of rows) list.appendChild(buildRow(mode, Boolean(query)));
+    }
+    if (lensRows && lensRows.length) {
+      list.appendChild(buildSectionLabel('Lens matches'));
+      for (const row of lensRows) list.appendChild(buildLensSearchRow(row.mode, row.lens));
+    }
     _results.appendChild(list);
+  }
+
+  function buildSectionLabel(label) {
+    const el = document.createElement('div');
+    el.className = 'analysis-picker__section-label';
+    el.textContent = label;
+    return el;
   }
 
   function renderOverview() {
@@ -485,6 +534,40 @@
     title.className = 'analysis-picker__row-title';
     title.textContent = lens.display_name || lens.id;
     titleRow.appendChild(title);
+    btn.appendChild(titleRow);
+
+    const desc = document.createElement('div');
+    desc.className = 'analysis-picker__row-desc';
+    desc.textContent = lens.display_description || lens.dependency_note || '';
+    btn.appendChild(desc);
+
+    btn.addEventListener('click', () => commitLensSelection(mode, lens));
+    return btn;
+  }
+
+  function buildLensSearchRow(mode, lens) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'analysis-picker__lens-match';
+    btn.dataset.modeId = mode.id;
+    btn.dataset.lensId = lens.id;
+    const current = selectedLens();
+    const selected = selectedMode();
+    if (current && current.id === lens.id && selected && selected.id === mode.id) {
+      btn.classList.add('is-selected');
+    }
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'analysis-picker__row-title-row';
+    const title = document.createElement('div');
+    title.className = 'analysis-picker__row-title';
+    title.textContent = lens.display_name || lens.id;
+    titleRow.appendChild(title);
+
+    const badge = document.createElement('span');
+    badge.className = 'analysis-picker__badge';
+    badge.textContent = mode.display_name ? `with ${mode.display_name}` : `with ${mode.id}`;
+    titleRow.appendChild(badge);
     btn.appendChild(titleRow);
 
     const desc = document.createElement('div');

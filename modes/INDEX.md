@@ -7,7 +7,7 @@ tags:
   - index
   - modes
 date created: 2026-05-04
-date modified: 2026-06-17
+date modified: 2026-06-18
 
 ---
 
@@ -25,125 +25,126 @@ date modified: 2026-06-17
 
 ## T1 — Argumentative Artifact Examination
 
-- **`argument-audit.md`** — Heaviest depth-molecular operation in T1. Combines Frame Audit + Coherence Audit + cross-cutting integration. Compose-of-composes.
-- **`coherence-audit.md`** — Toulmin reconstruction + fallacy taxonomy on the inferential moves connecting premises to conclusions. Symmetry guardrails required.
-- **`frame-audit.md`** — Lakoff/Goffman/Entman frame-surfacing pass on framing and rhetorical structure. Symmetry guardrails required.
-- **`propaganda-audit.md`** — Detects propaganda machinery (loaded terms, false equivalence, episodic vs. thematic framing) in argumentative artifacts.
+- **`coherence-audit.md`** — Surfaces internal contradictions, unstated premises, and reasoning-step gaps in a single argumentative artifact.
+- **`frame-audit.md`** — Surfaces the frame an argument relies on without yet comparing it to other frames.
+- **`propaganda-audit.md`** — Detects propagandistic structure (in the Jason Stanley sense) within a stated position.
+- **`argument-audit.md`** — Composes Coherence + Frame + (optionally) Propaganda passes into a full audit deliverable.
 
-## T2 — Conceptual Clarification (and Open Exploration sibling)
+## T2 — Interest and Power Analysis
 
-- **`conceptual-engineering.md`** — Cappelen-Plunkett-style examination + revision of contested concepts.
-- **`deep-clarification.md`** — Surface and resolve definitional ambiguity in a contested term or position.
-- **`paradigm-suspension.md`** — Hold a paradigm's commitments in abeyance to examine alternatives. Linguistically native.
-- **`passion-exploration.md`** — Open-ended exploration without a fixed convergence target. Sibling to T2 conceptual work.
+- **`cui-bono.md`** — Traces who benefits from a position, claim, or status quo.
+- **`boundary-critique.md`** — Applies Critical Systems Heuristics' twelve boundary questions to surface whose interests are excluded from the framing.
+- **`wicked-problems.md`** — Produces wicked-problems analysis composed around the Decision Clarity framework (created Phase 2 from `Framework — Decision Clarity Analysis.md`).
+- **`decision-clarity.md`** — Produces a Decision Clarity Document for a third-party decision-maker, paired with the restructured `Framework — Decision Clarity Analysis.md` (renamed from the retired Wicked Problems Framework, 2026-05-01).
 
-## T3 — Mechanism Understanding (singleton territory)
+## T3 — Decision-Making Under Uncertainty
 
-- **`mechanism-understanding.md`** — Explain how parts produce the whole's behavior at the principle level.
+- **`constraint-mapping.md`** — Maps success conditions, failure conditions, gains, and forfeitures across alternatives in a known environment.
+- **`decision-under-uncertainty.md`** — Frames choice under uncertainty with probability, value-of-information, and conditional recommendation.
+- **`multi-criteria-decision.md`** — Applies MCDA-style weighted-criteria scoring to choices with multiple incommensurable axes.
+- **`decision-architecture.md`** — Composes constraint, uncertainty, and multi-criteria passes into a single decision-architecture deliverable.
 
 ## T4 — Causal Investigation
 
-- **`root-cause-analysis.md`** — Trace backward from outcome to causes via Five Whys, fishbone, and structural decomposition.
-- **`process-tracing.md`** — Bennett-Checkel process-tracing tests applied to a sequence of events to identify the causal mechanism.
-- **`causal-dag.md`** — Pearl-style causal graph construction; identifies do-calculus interventions vs. confounders.
+- **`root-cause-analysis.md`** — Traces a symptom backward through at least three causal levels to a root cause and recommends corrective action.
+- **`systems-dynamics-causal.md`** — Applies feedback-loop analysis to identify reinforcing/balancing structures generating an outcome (parsed from Systems Dynamics per Decision D).
+- **`causal-dag.md`** — Builds an explicit causal directed-acyclic graph and applies do-calculus / backdoor reasoning.
+- **`process-tracing.md`** — Applies hoop / smoking-gun / doubly-decisive evidence tests to trace a causal mechanism through a single historical event.
 
 ## T5 — Hypothesis Evaluation
 
-- **`competing-hypotheses.md`** — Heuer ACH matrix: rate each hypothesis against each piece of evidence; surface the least-disconfirmed.
-- **`differential-diagnosis.md`** — Medical-style ranked hypothesis comparison with diagnostic-test prioritization.
-- **`bayesian-hypothesis-network.md`** — Probabilistic posterior over competing hypotheses with explicit priors, likelihoods, and conditional dependencies.
+- **`differential-diagnosis.md`** — Generates and ranks competing explanations for an ambiguous presentation; suitable when a quick discriminating-evidence pass is enough.
+- **`competing-hypotheses.md`** — Applies Heuer's ACH matrix (consistent / inconsistent / N/A) with diagnosticity weighting to elimination-based conclusions.
+- **`bayesian-hypothesis-network.md`** — Builds an explicit Bayesian network over hypotheses and evidence, propagating posteriors quantitatively.
 
-## T6 — Risk and Failure Analysis
+## T6 — Future Exploration
 
-- **`pre-mortem-fragility.md`** — Klein pre-mortem applied to the fragility/structural-weakness side. Parsed pair with `pre-mortem-action.md`.
-- **`fragility-antifragility-audit.md`** — Taleb-style assessment: where is the system fragile, where antifragile, where merely robust.
+- **`consequences-and-sequel.md`** — Traces second- and third-order effects forward from a specific action.
+- **`probabilistic-forecasting.md`** — Produces calibrated probability estimates with reference-class reasoning and resolution criteria.
+- **`scenario-planning.md`** — Identifies critical uncertainties and produces 2–4 scenario narratives with leading indicators.
+- **`pre-mortem-action.md`** — Applies Klein's pre-mortem stance to an action plan: assume failure, generate causes (parsed from Pre-Mortem per Decision D; shares `klein-pre-mortem` lens with `pre-mortem-fragility`).
+- **`wicked-future.md`** — Composes future-exploration passes for futures whose constituting questions remain unsettled.
 
-## T7 — Interest, Power, and Strategic Interaction
+## T7 — Risk and Failure Analysis
 
-- **`cui-bono.md`** — "Who benefits." Maps beneficiaries of an arrangement; surfaces hidden interests.
-- **`interest-mapping.md`** — Stakeholder interests and incentive structures behind a contested situation.
-- **`stakeholder-mapping.md`** — Stakeholder positions in a conflict; tradeoffs surfaced.
-- **`strategic-interaction.md`** — Game-theoretic analysis of competition / coordination / signaling among self-interested actors.
-- **`mechanism-design.md`** — "Mechanism and Incentive Analysis." Hidden-information / hidden-action / incentive situations and mechanism design: adverse selection, moral hazard, winner's curse, signaling, principal-agent. Complexity sibling of `strategic-interaction` (canonical territory T18). Added 2026-06-01.
+- **`pre-mortem-fragility.md`** — Applies Klein's pre-mortem stance to a system or design: assume structural failure, surface fragilities (parsed from Pre-Mortem per Decision D; shares `klein-pre-mortem` lens with `pre-mortem-action`).
+- **`fragility-antifragility-audit.md`** — Applies Talebian asymmetry-of-payoff reasoning to identify fragile, robust, and antifragile structural features.
 
-## T8 — Process and System Analysis
+## T8 — Stakeholder Conflict
 
-- **`process-mapping.md`** — Map a process: stages, inputs, outputs, decision points, failure modes.
-- **`systems-dynamics-causal.md`** — Causal-loop and stock-and-flow modeling. Parsed pair with `systems-dynamics-structural.md`.
-- **`systems-dynamics-structural.md`** — Structural decomposition of a system's components and their interactions. Parsed pair with `systems-dynamics-causal.md`.
-- **`market-dynamics.md`** — Descriptive analysis of how a market or economy behaves: supply & demand, equilibrium, selection (Gresham's law), network effects / critical mass, diminishing returns, creative destruction, Red Queen. Market-specialized sibling of `systems-dynamics-structural` (canonical territory T17). Added 2026-06-01.
+- **`stakeholder-mapping.md`** — Enumerates parties, interests, positions, and power asymmetries; foundational input for T13 negotiation work.
 
-## T9 — Decision-Making Under Uncertainty
+## T9 — Paradigm and Assumption Examination
 
-- **`decision-under-uncertainty.md`** — Structured guidance for choice given alternatives/criteria/constraints/uncertainty.
-- **`multi-criteria-decision.md`** — MCDM methods (weighted criteria, Pareto-optimal sets) for trade-laden choices.
-- **`decision-architecture.md`** — Decision Architecture Document with constraints, probability-weighted outcomes, stakeholder impacts, failure pathways.
-- **`probabilistic-forecasting.md`** — Tetlock-style superforecasting protocol for probability estimates with calibration tracking.
-- **`scenario-planning.md`** — Structured scenarios spanning the relevant uncertainty space; consequence analysis per scenario.
+- **`paradigm-suspension.md`** — Suspends the assumed frame to test whether unspoken paradigm commitments are doing load-bearing work.
+- **`frame-comparison.md`** — Compares two or more frames a problem can be cast in, surfacing what each frame includes and excludes.
+- **`worldview-cartography.md`** — Maps the worldviews in tension across a debate, locating each on shared and divergent commitments.
 
-## T10 — Orientation in Unfamiliar Territory
+## T10 — Conceptual Clarification
 
-- **`quick-orientation.md`** — Produce a navigable initial map of an unfamiliar domain or situation.
-- **`domain-induction.md`** — Domain Induction Document: what's here / what's connected / what to learn next, sequenced by genuine dependency.
-- **`terrain-mapping.md`** — TMF execution mode (also referenced by the `Framework — Terrain Mapping.md`). Closes knowledge gaps blocking a project's next concrete milestone.
+- **`deep-clarification.md`** — Pushes a concept past first-level explanation through ordinary-language analysis to mechanistic clarity at depth.
+- **`conceptual-engineering.md`** — Evaluates whether a concept ought to be replaced or revised on ameliorative grounds.
 
 ## T11 — Structural Relationship Mapping
 
-- **`relationship-mapping.md`** — Map inter-element structural relationships from text or diagrammatic input.
-- **`spatial-reasoning.md`** — Visual-input-primary mode: gap detection and fog-clearing on user-provided diagrams. Re-homed from old T19 to T11.
+- **`relationship-mapping.md`** — Extracts entities and typed connections from prose and renders them as a relationship graph.
+- **`spatial-reasoning.md`** — Performs gap detection and missing-relation surfacing on a user-provided diagram (re-homed from old T19 to T11 per Decision G; the operation is T11 work on visual-medium input).
+
+## T12 — Cross-Domain and Knowledge Synthesis
+
+- **`synthesis.md`** — Holds two or more frameworks in productive tension and extracts emergent insight where structural parallels are genuine.
+- **`dialectical-analysis.md`** — Argues thesis and antithesis with genuine commitment, then sublates or articulates irreducibility.
 
 ## T13 — Negotiation and Conflict Resolution
 
-- **`principled-negotiation.md`** — Fisher-Ury BATNA + interests-not-positions framework.
-- **`third-side.md`** — Ury "third side" framework: the role of the surrounding community in transforming a conflict.
+- **`interest-mapping.md`** — Maps positions to underlying interests across parties (Fisher-Ury short form).
+- **`principled-negotiation.md`** — Applies the full Fisher-Ury principled-negotiation framework with BATNA, integrative-option generation, and objective-criteria selection.
+- **`third-side.md`** — Applies William Ury's Third Side framework: surface what the surrounding community can do to contain and resolve a conflict.
 
-## T14 — Reserved (no resident modes currently)
+## T14 — Orientation in Unfamiliar Territory
+
+- **`quick-orientation.md`** — Produces a fast orientation sketch with entry points and predictable wrong impressions; sub-five-minute output.
+- **`terrain-mapping.md`** — Maps known / contested / open territory in an unfamiliar domain with cross-links and prerequisite chains.
+- **`domain-induction.md`** — Produces a structured induction into a domain over multiple sessions, layering terrain + mechanism + competing-position passes.
 
 ## T15 — Artifact Evaluation by Stance
 
-- **`steelman-construction.md`** — Build the strongest version of an opposing argument before critique. Re-homed from T1 to T15.
-- **`balanced-critique.md`** — Evaluate an artifact under defender / critic / neutral stances and synthesize.
-- **`red-team-advocate.md`** — Adversarial advocate against an artifact's claims.
-- **`red-team-assessment.md`** — Red Team assessment of a plan / system / claim from the attacker's perspective.
+- **`steelman-construction.md`** — Constructs the strongest possible version of a position before any critique. **Re-homed to T15 per Decision G / research report §10.1; carries cross-reference into T1 when the artifact under steelmanning is itself an argument.**
+- **`benefits-analysis.md`** — Applies de Bono's PMI (Plus / Minus / Interesting) with stress-tested claims and second-order effects.
+- **`balanced-critique.md`** — Produces a neutral evaluation that explicitly weighs both supporting and undermining considerations.
+- **`red-team-assessment.md`** — Models an adversarial actor attacking the artifact and ranks vulnerabilities by severity for the user's own fix-prioritisation. Default red-team mode when ambiguous. **Parsed from `red-team` per Decision D, 2026-05-01.**
+- **`red-team-advocate.md`** — Builds an argument brief against the artifact for an external audience, ranking attacks by persuasive force with suggested phrasing. Requires explicit advocate-stance signal. **Parsed from `red-team` per Decision D, 2026-05-01.**
 
-## T16 — Cross-Domain and Knowledge Synthesis
+## T16 — Mechanism Understanding
 
-- **`synthesis.md`** — Synthesize across domains; integrate disparate knowledge bodies; hold thesis/antithesis in productive tension.
-- **`dialectical-analysis.md`** — Dialectical method: thesis → antithesis → synthesis as iterated procedure.
+- **`mechanism-understanding.md`** — Explains how parts of a phenomenon produce its observed behaviour at the principle level.
 
-## T17 — Paradigm and Assumption Examination
+## T17 — Process and System Analysis
 
-- **`worldview-cartography.md`** — Chart worldview structures and their interaction with downstream commitments.
-- **`frame-comparison.md`** — Compare two or more frames on the same content; surface what each frame foregrounds and obscures.
-- **`boundary-critique.md`** — Ulrich Critical Systems Heuristics: examine the boundary judgments embedded in a problem framing.
+- **`process-mapping.md`** — Maps a workflow or process as it currently is — components, flows, bottlenecks, dependencies.
+- **`systems-dynamics-structural.md`** — Applies feedback-loop analysis to a system's structural composition rather than its causal trajectory (parsed from Systems Dynamics per Decision D).
+- **`market-dynamics.md`** — Applies supply-demand, competitive-selection, network-effects, and creative-destruction lenses to explain how a market or economy behaves over time (added 2026-06-01).
 
-## T18 — Future Exploration
+## T18 — Strategic Interaction
 
-- **`pre-mortem-action.md`** — Klein prospective-hindsight pre-mortem for an action plan before commitment; parsed sibling of `pre-mortem-fragility.md`.
-- **`consequences-and-sequel.md`** — Sequel-of-sequel analysis: what follows from this decision over multiple time horizons.
+- **`strategic-interaction.md`** — Models the situation as a game between rational agents and analyses likely play, equilibria, signalling, and credible commitment.
+- **`mechanism-design.md`** — Applies adverse-selection, moral-hazard, principal-agent, and auction-design frameworks to information-asymmetry market failures and incentive-structure design problems (promoted from deferred 2026-06-01).
 
 ## T19 — Spatial Composition
 
-- **`compositional-dynamics.md`** — Universal-principle / descriptive analysis of spatial composition (forces, balance, hierarchy).
-- **`ma-reading.md`** — Japanese-aesthetics void-foregrounding analysis. What does the empty space do.
-- **`place-reading-genius-loci.md`** — "Spirit of place" analysis. Norberg-Schulz tradition.
-- **`information-density.md`** — Tufte-style data-ink and information-density analysis of an information graphic.
+- **`ma-reading.md`** — Reads negative space, interval, and presence-of-absence in compositions through the Ma + Yūgen + Wabi-sabi + Mu Japanese-aesthetics tradition.
+- **`compositional-dynamics.md`** — Applies Gestalt + Arnheim + Itten + Albers principles to the perceptual dynamics of a composition.
+- **`place-reading-genius-loci.md`** — Reads the spirit, affordances, and structure of a place using Alexander + Norberg-Schulz + Lynch + Bachelard + Appleton + Kaplan.
+- **`information-density.md`** — Applies Tufte + Bertin + Cleveland-McGill + Bringhurst + Lupton to the information density and visual hierarchy of an artifact.
 
-## T20 — Wicked Problems / Wicked Future
+## T20 — Open Exploration (Generative)
 
-- **`wicked-problems.md`** — Recognize and structure a wicked problem (contested definition, irreducible value conflicts, no objective stopping condition).
-- **`decision-clarity.md`** — Produce a Decision Clarity Document making wicked-problem structure legible to decision-makers. Renamed from Wicked Problems framework 2026-05-01.
-- **`wicked-future.md`** — Wicked-future variant: tracks wicked problems whose contested definitions project into the future.
+- **`passion-exploration.md`** — Wanders an open territory with the user, surfacing questions, connections, and potential project nodes without driving toward resolution. Output is generative (no `Analysis` suffix per Decision L).
 
-## T21 — Execution and Project Mode (non-analytical)
+## T21 — Execution / Project Mode (Non-Analytical)
 
-- **`project-mode.md`** — Project execution mode: walks the user through executing a defined project. Sits outside the analytical routing tree.
-- **`structured-output.md`** — Format material under a structural template. Non-analytical.
-
-## Cross-territory utility
-
-- **`benefits-analysis.md`** — Yellow Hat benefits-and-opportunities surfacing. Used inside Gear 4 Breadth and various territory frameworks.
-- **`constraint-mapping.md`** — Surface constraints (Hard / Soft / Working Assumption) for a problem context. Invoked by MOM and PEF.
+- **`project-mode.md`** — Walks the user through executing a defined project; produces deliverable + decisions log + acknowledged limitations.
+- **`structured-output.md`** — Renders existing content into a requested document format faithfully; produces deliverable + gap report + format notes.
 
 ## Runtime utility / bypass modes
 
@@ -153,9 +154,6 @@ These files are runtime modes, but they are not part of the 60 resident public/c
 - **`general-inquiry.md`** — Catch-all analytical inquiry when judgment is required but no specific analytical mode cleanly fits.
 - **`subjective-inquiry.md`** — Opinion, preference, taste, and aesthetic questions without objective criteria.
 - **`simple.md`** — Direct bypass response for greetings, system-meta requests, and other non-analytical prompts.
-
----
-
 ## Conventions
 
 - **Filenames:** lowercase-hyphenated (kebab-case). The mode_id matches the filename minus `.md`.

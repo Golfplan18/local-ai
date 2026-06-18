@@ -236,6 +236,29 @@ async function run() {
   record('toolbar active state follows selected analysis',
     w.document.getElementById('inputToolbarAnalysis').classList.contains('is-active'));
 
+  w.OraAnalysisPicker.open();
+  await flush();
+  await flush();
+  search = w.document.getElementById('analysisPickerSearch');
+  search.value = 'principal agent';
+  search.dispatchEvent(new w.Event('input', { bubbles: true }));
+  record('lens search shows lens matches separately',
+    text('.analysis-picker__section-label') === 'Lens matches',
+    text('.analysis-picker__section-label'));
+  record('lens search finds compatible host analysis',
+    w.document.querySelectorAll('.analysis-picker__lens-match').length === 1
+      && w.document.querySelector('.analysis-picker__lens-match').dataset.modeId === 'cui-bono'
+      && w.document.querySelector('.analysis-picker__lens-match').dataset.lensId === 'principal-agent-problem');
+  w.document.querySelector('.analysis-picker__lens-match[data-lens-id="principal-agent-problem"]').click();
+  record('lens search click stores host mode',
+    w.OraInputState.getAnalysisMode().id === 'cui-bono',
+    JSON.stringify(w.OraInputState.getAnalysisMode()));
+  record('lens search click stores matched lens',
+    w.OraInputState.getAnalysisLens().id === 'principal-agent-problem',
+    JSON.stringify(w.OraInputState.getAnalysisLens()));
+  record('lens search click closes picker',
+    w.document.getElementById('analysisPicker').hidden === true);
+
   w.OraInputState.clearSelection();
   record('clearSelection clears selected analysis',
     w.OraInputState.getAnalysisMode() === null);

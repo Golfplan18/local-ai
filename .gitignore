@@ -134,6 +134,7 @@ data/visual-emission-log.jsonl
 data/maintenance-state.json
 data/maintenance-results.jsonl
 data/runtime/
+data/claude-code-runs/
 
 # Generated preview artifact (PR-A vendor-authoritative registry build)
 config/model-registry.vendor-authoritative.json
