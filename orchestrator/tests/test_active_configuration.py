@@ -428,8 +428,8 @@ class TestFastSlot(_Fixture):
       - SLOT_LABEL_TO_PATHS schema: fast 1 fans out to gear3.depth +
         utility.gear2_rag_lookup; fast 2 writes only to gear3.breadth.
       - set_slot_primary respects the fan-out.
-      - _is_baseline_complete now requires fast 1 (and fast 2 when
-        adversarial diversity is on).
+      - _is_baseline_complete requires fast 1; fast 2 is an internal
+        fallback/breadth path, not a card-visible baseline.
     """
 
     # ─── Schema ──────────────────────────────────────────────────────────
@@ -521,11 +521,11 @@ class TestFastSlot(_Fixture):
         config = self._full_baseline(fast1="f1", fast2=None, adversarial=False)
         self.assertTrue(self.module._is_baseline_complete(config))
 
-    def test_baseline_incomplete_when_fast2_missing_and_adversarial_on(self):
+    def test_baseline_complete_when_fast2_missing_and_adversarial_on(self):
         config = self._full_baseline(fast1="f1", fast2=None, adversarial=True)
-        self.assertFalse(self.module._is_baseline_complete(config))
+        self.assertTrue(self.module._is_baseline_complete(config))
 
-    def test_baseline_complete_with_fast1_and_fast2_when_adversarial_on(self):
+    def test_baseline_complete_with_fast2_present_and_adversarial_on(self):
         config = self._full_baseline(fast1="f1", fast2="f2", adversarial=True)
         self.assertTrue(self.module._is_baseline_complete(config))
 

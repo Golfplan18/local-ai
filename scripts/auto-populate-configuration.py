@@ -281,6 +281,21 @@ def filter_vision(candidates: list[dict]) -> list[dict]:
     return [m for m in candidates if m.get("vision_capable", False)]
 
 
+def filter_verified_vision(candidates: list[dict],
+                           vision_verified_ids: set[str] | None = None) -> list[dict]:
+    """Restrict to models that can read images.
+
+    Prefer the live registry's ``vision_verified_by`` marker when present. If an
+    older or fresh registry has not recorded those markers yet, fall back to the
+    catalog's existing ``vision_capable`` flag so the picker still produces a
+    usable configuration.
+    """
+    verified = vision_verified_ids or set()
+    if verified:
+        return [m for m in candidates if m.get("id") in verified]
+    return filter_vision(candidates)
+
+
 def filter_reachable(candidates: list[dict], unreachable_ids: set[str]) -> list[dict]:
     """Drop models in the reachability exclusion set.
 
@@ -306,6 +321,7 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
       ``unreachable_ids``     — reachability exclusion set (see below)
       ``tokens_per_sec``      — Fast-slot sort key map
       ``reasoning_model_ids`` — Fast-slot exclusion set
+      ``vision_verified_ids`` — chat ids with confirmed vision support
 
     Reachability policy (2026-06-11): a chat model is pick-eligible only
     when the probe POSITIVELY verified it (``reachable`` is True), so the
@@ -325,6 +341,7 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
         "unreachable_ids": set(),
         "tokens_per_sec": {},
         "reasoning_model_ids": set(),
+        "vision_verified_ids": set(),
     }
     if not Path(path).exists():
         return out
@@ -343,6 +360,10 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
                     out["unreachable_ids"].add(mid)
             if m.get("reasoning_model") is True:
                 out["reasoning_model_ids"].add(mid)
+            if ((m.get("category") or "chat") == "chat"
+                    and m.get("vision_capable") is True
+                    and m.get("vision_verified_by")):
+                out["vision_verified_ids"].add(mid)
             tps = m.get("output_tokens_per_second")
             if tps is not None:
                 out["tokens_per_sec"][mid] = float(tps)
@@ -360,6 +381,7 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
             "unreachable_ids": set(),
             "tokens_per_sec": {},
             "reasoning_model_ids": set(),
+            "vision_verified_ids": set(),
         }
     return out
 
@@ -458,6 +480,7 @@ def pick_for_paid_slot(
     tokens_per_sec: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
     exclude_reasoning_models: bool = False,
+    vision_verified_ids: set[str] | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N models for a paid slot.
 
@@ -488,7 +511,7 @@ def pick_for_paid_slot(
     if exclude_reasoning_models and reasoning_model_ids:
         candidates = filter_exclude_reasoning(candidates, reasoning_model_ids)
     if vision_only:
-        candidates = filter_vision(candidates)
+        candidates = filter_verified_vision(candidates, vision_verified_ids)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
     candidates = _apply_vendor_diversity(candidates, excluded_vendors)
 
@@ -554,6 +577,8 @@ def pick_for_free_slot(
     tokens_per_sec: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
     exclude_reasoning_models: bool = False,
+    vision_verified_ids: set[str] | None = None,
+    vision_required: bool = False,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N free models. No cost math.
 
@@ -594,13 +619,13 @@ def pick_for_free_slot(
 
     # (apply_vision, apply_bucket, note-on-entering-this-tier)
     tiers: list[tuple] = [(vision_only, True, None)]
-    if vision_only:
+    if vision_only and not vision_required:
         tiers.append((False, True,
                       "vision_only dropped: no eligible free vision-capable "
                       "model for this cell (vision_substitute still handles "
                       "image input; reachability gate stays strict)"))
     if size_bucket:
-        tiers.append((False, False,
+        tiers.append((vision_only if vision_required else False, False,
                       f"size_bucket '{size_bucket}' dropped: free pool "
                       f"exhausted within the bucket"))
 
@@ -615,7 +640,7 @@ def pick_for_free_slot(
             if bucketed:
                 candidates = bucketed
         if tier_vision:
-            candidates = filter_vision(candidates)
+            candidates = filter_verified_vision(candidates, vision_verified_ids)
         candidates = [m for m in candidates if m["id"] not in excluded_ids]
         candidates = _apply_vendor_diversity(candidates, excluded_vendors)
         # No Pareto filter — same rationale as pick_for_paid_slot: it would
@@ -628,9 +653,14 @@ def pick_for_free_slot(
         if picks:
             return picks, notes
 
-    notes.append(
-        "free pool exhausted even after dropping vision_only and size_bucket; "
-        "cell left empty (reachability gate never loosened)")
+    if vision_required:
+        notes.append(
+            "free pool exhausted for a vision-required cell; cell left empty "
+            "(vision and reachability gates were not loosened)")
+    else:
+        notes.append(
+            "free pool exhausted even after dropping vision_only and size_bucket; "
+            "cell left empty (reachability gate never loosened)")
     return [], notes
 
 
@@ -697,6 +727,7 @@ def populate_configuration(
     tokens_per_sec: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
     registry_ids: set[str] | None = None,
+    vision_verified_ids: set[str] | None = None,
 ) -> dict:
     """Compute the full configuration dict for a given preset.
 
@@ -763,6 +794,7 @@ def populate_configuration(
         slot_sort_by = slot_spec.get("sort_by") or preset.get("sort_by", "cost_asc")
         slot_exclude_reasoning = slot_spec.get("exclude_reasoning_models", False)
         slot_size_bucket = slot_spec.get("size_bucket")
+        slot_vision_required = bool(slot_spec.get("vision_required", False))
         # A speed-optimized slot (Fast) should NOT inherit a cost-first preset's
         # quality floor — that floors out the cheap, genuinely-fast models
         # (flash-lite, step-flash) and leaves only expensive smart-fast flagships,
@@ -780,6 +812,7 @@ def populate_configuration(
                         else preset.get("cost_ceiling_per_m"))
         for cell_name in slot_spec["cells"]:
             notes: list = []
+            cell_vision_only = bool(effective_vision_only or slot_vision_required)
             if preset["mode"] == "free_intelligence":
                 picks, notes = pick_for_free_slot(
                     catalog,
@@ -787,12 +820,14 @@ def populate_configuration(
                     top_n=slot_spec["top_n"],
                     excluded_ids=excluded_so_far if diversity else None,
                     excluded_vendors=excluded_vendors_so_far if diversity else None,
-                    vision_only=effective_vision_only,
+                    vision_only=cell_vision_only,
                     unreachable_ids=unreachable_ids,
                     sort_by=slot_sort_by,
                     tokens_per_sec=tokens_per_sec,
                     reasoning_model_ids=reasoning_model_ids,
                     exclude_reasoning_models=slot_exclude_reasoning,
+                    vision_verified_ids=vision_verified_ids,
+                    vision_required=slot_vision_required,
                 )
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
             else:
@@ -805,12 +840,13 @@ def populate_configuration(
                     loosening=preset.get("loosening", False),
                     excluded_ids=excluded_so_far if diversity else None,
                     excluded_vendors=excluded_vendors_so_far if diversity else None,
-                    vision_only=effective_vision_only,
+                    vision_only=cell_vision_only,
                     sort_by=slot_sort_by,
                     unreachable_ids=unreachable_ids,
                     tokens_per_sec=tokens_per_sec,
                     reasoning_model_ids=reasoning_model_ids,
                     exclude_reasoning_models=slot_exclude_reasoning,
+                    vision_verified_ids=vision_verified_ids,
                 )
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
             if notes:
@@ -920,10 +956,13 @@ def main():
     reasoning_model_ids = xref["reasoning_model_ids"]
     tokens_per_sec = xref["tokens_per_sec"]
     registry_ids = xref["registry_ids"]
+    vision_verified_ids = xref.get("vision_verified_ids") or set()
     if unreachable_ids:
         print(f"[auto-populate] excluding {len(unreachable_ids)} models without a positive reachability verdict (strict gate; see registry_crossref).")
     if reasoning_model_ids:
         print(f"[auto-populate] {len(reasoning_model_ids)} reasoning models available for exclusion (Fast slot).")
+    if vision_verified_ids:
+        print(f"[auto-populate] {len(vision_verified_ids)} vision-verified models available for required-vision slots.")
 
     config = populate_configuration(
         args.preset, catalog, presets_config,
@@ -932,6 +971,7 @@ def main():
         tokens_per_sec=tokens_per_sec,
         reasoning_model_ids=reasoning_model_ids,
         registry_ids=registry_ids,
+        vision_verified_ids=vision_verified_ids,
     )
     config["name"] = args.config_name
 

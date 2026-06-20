@@ -11,6 +11,43 @@
 /* ── Panel root ─────────────────────────────────────────────────────────── */
 
 .visual-panel {
+  /* Keep generated artifacts on the light paper palette even when the
+     surrounding Ora chrome follows a dark user theme. */
+  --ora-vis-bg:               #FCFCFA;
+  --ora-vis-surface:          #FFFFFF;
+  --ora-vis-text:             #1A1E24;
+  --ora-vis-text-secondary:   #4A5058;
+  --ora-vis-gridline:         #8F9399;
+  --ora-vis-axis:             #3A3F47;
+  --ora-vis-rule:             #C5C8CD;
+  --ora-vis-cat-1:            #0072B2;
+  --ora-vis-cat-2:            #D55E00;
+  --ora-vis-cat-3:            #009E73;
+  --ora-vis-cat-4:            #B857A0;
+  --ora-vis-cat-5:            #B87200;
+  --ora-vis-cat-6:            #2E8DC4;
+  --ora-vis-cat-7:            #B8860B;
+  --ora-vis-cat-8:            #000000;
+  --ora-vis-highlight:        #C5362F;
+  --ora-vis-muted:            #7A7F87;
+  --ora-vis-positive:         #009E73;
+  --ora-vis-negative:         #C5362F;
+  --ora-vis-neutral:          #7A7F87;
+  --ora-vis-ibis-question:    #0072B2;
+  --ora-vis-ibis-idea:        #B87200;
+  --ora-vis-ibis-pro:         #009E73;
+  --ora-vis-ibis-con:         #C5362F;
+  --ora-vis-dag-exposure:     #0072B2;
+  --ora-vis-dag-outcome:      #D55E00;
+  --ora-vis-dag-latent:       #7A7F87;
+  --ora-vis-c4-person:        #0072B2;
+  --ora-vis-c4-system:        #1A1E24;
+  --ora-vis-c4-container:     #4A5058;
+  --ora-vis-c4-external:      #7A7F87;
+  --ora-vis-stub-bg:          #F2F1EE;
+  --ora-vis-stub-border:      #8F9399;
+  --ora-vis-stub-text:        #4A5058;
+  --ora-vis-focus-ring:       #0072B2;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1441,4 +1478,3 @@ body.pane-mode-video .visual-panel {
     0 0 0 9999px rgba(0, 0, 0, 0.45);
   pointer-events: none;
 }
-

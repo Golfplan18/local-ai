@@ -1257,7 +1257,7 @@ def render_visuals_browser(server: str, envelopes: list[str],
     svg_n = png_n = 0
     with sync_playwright() as p:
         b = p.chromium.launch()
-        page = b.new_page(device_scale_factor=2, color_scheme="dark",
+        page = b.new_page(device_scale_factor=2, color_scheme="light",
                           viewport={"width": width + 120, "height": 1400})
         page.goto(f"{server}/", wait_until="networkidle", timeout=60000)
         page.wait_for_function(
@@ -1265,9 +1265,9 @@ def render_visuals_browser(server: str, envelopes: list[str],
             timeout=30000)
         # The app page doesn't link the compiler's theme stylesheet (the
         # visual pane styles artifacts through its own layer), so inject
-        # it — without it every SVG fill defaults to black. color_scheme
-        # 'dark' above activates the theme's dark-mode variable block, so
-        # rasters match Ora's dark UI.
+        # it — without it every SVG fill defaults to black. Force light mode
+        # here so artifact captures stay readable even when Ora's chrome is
+        # running in a dark user theme.
         page.evaluate(
             """(css) => {
                 const s = document.createElement('style');
@@ -1307,7 +1307,7 @@ def render_visuals_browser(server: str, envelopes: list[str],
                         host.id = 'campaign-raster-host';
                         host.style.cssText =
                             'position:fixed;left:0;top:0;z-index:999999;' +
-                            'background:var(--ora-vis-bg, #1A1E24);' +
+                            'background:var(--ora-vis-bg, #FCFCFA);' +
                             'padding:24px;width:max-content;';
                         document.body.appendChild(host);
                     }

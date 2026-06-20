@@ -557,6 +557,164 @@
   var TEXT_TRUNC_CRIT_THRESHOLD  = 1.50;   // > 150% of container when primary label
   var WCAG_TEXT_MIN              = 4.5;    // SC 1.4.3 body text / normal size
   var WCAG_GRAPHICAL_MIN         = 3.0;    // SC 1.4.11 graphical objects
+  var ASPECT_RATIO_WARN_MAX      = 12.0;
+  var ASPECT_RATIO_WARN_MIN      = 0.08;
+
+  function _normType(s) {
+    return String(s || '').trim().toLowerCase().replace(/[_\s]+/g, '-');
+  }
+
+  function _expectedType(envelope) {
+    if (!envelope || typeof envelope !== 'object') return '';
+    return envelope.expected_type || envelope.expectedType ||
+      envelope._expected_type || envelope._expectedType || '';
+  }
+
+  function _svgSize(root) {
+    if (!root || !root.getAttribute) return null;
+    var vb = root.getAttribute('viewBox');
+    if (vb) {
+      var parts = vb.trim().split(/[\s,]+/).map(parseFloat);
+      if (parts.length >= 4 && isFinite(parts[2]) && isFinite(parts[3]) &&
+          parts[2] > 0 && parts[3] > 0) {
+        return { width: parts[2], height: parts[3] };
+      }
+    }
+    function dim(attr) {
+      var raw = root.getAttribute(attr);
+      if (!raw) return 0;
+      var n = parseFloat(String(raw).replace(/px$/, ''));
+      return isFinite(n) ? n : 0;
+    }
+    var w = dim('width'), h = dim('height');
+    return (w > 0 && h > 0) ? { width: w, height: h } : null;
+  }
+
+  function _isInNonRenderedTree(el) {
+    var cur = el;
+    while (cur && cur.nodeType === 1) {
+      var tag = (cur.tagName || '').toLowerCase();
+      if (tag === 'defs' || tag === 'marker' || tag === 'clipPath' ||
+          tag === 'mask' || tag === 'pattern' || tag === 'style' ||
+          tag === 'script') return true;
+      cur = cur.parentNode;
+    }
+    return false;
+  }
+
+  function _drawableTag(el) {
+    var tag = (el && el.tagName || '').toLowerCase();
+    return tag === 'path' || tag === 'rect' || tag === 'circle' ||
+      tag === 'ellipse' || tag === 'line' || tag === 'polygon' ||
+      tag === 'polyline' || tag === 'text';
+  }
+
+  function _decorativeClass(el) {
+    var cls = (el.getAttribute && el.getAttribute('class')) || '';
+    return /\b(?:ora-visual__decoration|ora-visual__background|ora-visual__frame|ora-visual__gridline|ora-visual__axis(?:-tick|-line|-arrow)?|background|gridline|axis)\b/i.test(cls);
+  }
+
+  function _isRenderableMark(el) {
+    if (!el || !el.getAttribute || !_drawableTag(el)) return false;
+    if (_isInNonRenderedTree(el)) return false;
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.getAttribute('display') === 'none' || el.getAttribute('visibility') === 'hidden') return false;
+    var opacity = el.getAttribute('opacity');
+    if (opacity != null && parseFloat(opacity) === 0) return false;
+    if (_decorativeClass(el)) return false;
+    if ((el.tagName || '').toLowerCase() === 'text') {
+      return !!(el.textContent || '').trim();
+    }
+    var box = _bbox(el);
+    return !!(box && box.width >= 0 && box.height >= 0 &&
+      (box.width > 0 || box.height > 0));
+  }
+
+  function _styleValue(el, prop) {
+    var style = el.getAttribute && el.getAttribute('style');
+    if (!style) return '';
+    var re = new RegExp(prop + '\\s*:\\s*([^;]+)', 'i');
+    var m = re.exec(style);
+    return m ? m[1].trim() : '';
+  }
+
+  function _explicitPaint(el, prop) {
+    var raw = (el.getAttribute && el.getAttribute(prop)) || _styleValue(el, prop);
+    if (!raw || raw === 'none' || /^url\(/i.test(raw)) return null;
+    return _parseColor(raw);
+  }
+
+  function _sameColor(a, b) {
+    if (!a || !b) return false;
+    return Math.abs(a.r - b.r) <= 1 &&
+      Math.abs(a.g - b.g) <= 1 &&
+      Math.abs(a.b - b.b) <= 1;
+  }
+
+  function _paintOpacity(el, prop) {
+    var raw = (el.getAttribute && el.getAttribute(prop + '-opacity')) ||
+      _styleValue(el, prop + '-opacity') ||
+      (el.getAttribute && el.getAttribute('opacity')) ||
+      _styleValue(el, 'opacity');
+    if (raw == null || raw === '') return 1;
+    var n = parseFloat(raw);
+    return isFinite(n) ? n : 1;
+  }
+
+  function _backgroundCollision(el, bg) {
+    if (!_isRenderableMark(el)) return false;
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'rect' && el.parentNode && _semanticClassOf(el.parentNode) &&
+        (el.parentNode.textContent || '').trim()) {
+      return false;
+    }
+    var paints = [];
+    if (tag === 'text') {
+      paints.push({ color: _explicitPaint(el, 'fill'), opacity: _paintOpacity(el, 'fill') });
+    } else {
+      paints.push({ color: _explicitPaint(el, 'fill'), opacity: _paintOpacity(el, 'fill') });
+      paints.push({ color: _explicitPaint(el, 'stroke'), opacity: _paintOpacity(el, 'stroke') });
+    }
+    var explicit = paints.filter(function (p) { return p.color && p.opacity > 0; });
+    if (!explicit.length) return false;
+    return explicit.every(function (p) { return _sameColor(p.color, bg); });
+  }
+
+  function _declaresEdges(envelope) {
+    var spec = envelope && envelope.spec;
+    if (!spec || typeof spec !== 'object') return false;
+    var edgeKeys = ['edges', 'links', 'relationships', 'connections', 'messages',
+      'flows', 'influences', 'arrows', 'causes', 'controls'];
+    for (var i = 0; i < edgeKeys.length; i++) {
+      var v = spec[edgeKeys[i]];
+      if (Array.isArray(v) && v.length > 0) return true;
+    }
+    return false;
+  }
+
+  function _renderedEdgeCount(root) {
+    var all = root.getElementsByTagName ? root.getElementsByTagName('*') : [];
+    var count = 0;
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      if (!el || !el.getAttribute) continue;
+      var cls = el.getAttribute('class') || '';
+      if (!/\bora-visual__(?:edge|flow|message|bone|link|info-link|dt-edge)\b/i.test(cls)) continue;
+      if (!_isRenderableMark(el)) {
+        var descendants = el.getElementsByTagName ? el.getElementsByTagName('*') : [];
+        var hasMark = false;
+        for (var j = 0; j < descendants.length; j++) {
+          if (_isRenderableMark(descendants[j])) {
+            hasMark = true;
+            break;
+          }
+        }
+        if (!hasMark) continue;
+      }
+      count++;
+    }
+    return count;
+  }
 
   function review(svg, envelope) {
     var findings = [];
@@ -570,10 +728,73 @@
       return { findings: findings, blocks: false };
     }
     var root = doc.documentElement;
+    var all = root.getElementsByTagName ? root.getElementsByTagName('*') : [];
+
+    // ── 0. Basic render sanity ─────────────────────────────────────────
+    var expected = _expectedType(envelope);
+    if (expected && envelope && envelope.type &&
+        _normType(expected) !== _normType(envelope.type)) {
+      findings.push(_make(
+        'E_ARTIFACT_EXPECTED_TYPE_MISMATCH',
+        'Visual type mismatch: expected "' + expected + '" but rendered envelope type "' +
+        envelope.type + '".',
+        'type',
+        null
+      ));
+    }
+
+    var size = _svgSize(root);
+    if (size) {
+      var ar = size.width / size.height;
+      if (ar > ASPECT_RATIO_WARN_MAX || ar < ASPECT_RATIO_WARN_MIN) {
+        findings.push(_make(
+          'W_ARTIFACT_ASPECT_RATIO',
+          'Rendered SVG aspect ratio is extreme (' +
+          size.width.toFixed(0) + '×' + size.height.toFixed(0) +
+          ', ratio ' + ar.toFixed(2) + ').',
+          null,
+          null
+        ));
+      }
+    }
+
+    var renderableMarks = 0;
+    for (var ri = 0; ri < all.length; ri++) {
+      if (_isRenderableMark(all[ri])) renderableMarks++;
+    }
+    if (renderableMarks === 0) {
+      findings.push(_make(
+        'E_ARTIFACT_EMPTY_RENDER',
+        'Rendered SVG contains no visible marks or text.',
+        null,
+        null
+      ));
+    }
+
+    var bg0 = _resolveBackground(root);
+    for (var bi = 0; bi < all.length; bi++) {
+      var bel = all[bi];
+      if (!_backgroundCollision(bel, bg0)) continue;
+      findings.push(_make(
+        'E_ARTIFACT_BACKGROUND_COLLISION',
+        'A visible mark is painted the same color as the artifact background.',
+        null,
+        bel.getAttribute('id') || null
+      ));
+      break;
+    }
+
+    if (_declaresEdges(envelope) && _renderedEdgeCount(root) === 0) {
+      findings.push(_make(
+        'E_ARTIFACT_NO_EDGES',
+        'The visual spec declares relationships/edges, but the rendered SVG has no visible edge marks.',
+        null,
+        null
+      ));
+    }
 
     // ── 1. Overlap detection ────────────────────────────────────────────
     var semElems = [];
-    var all = root.getElementsByTagName ? root.getElementsByTagName('*') : [];
     for (var i = 0; i < all.length; i++) {
       var el = all[i];
       if (!el || !el.getAttribute) continue;

@@ -53,6 +53,11 @@ window.OraVisualCompiler.errors = (function () {
     W_ARTIFACT_LABEL_OVERLAP:      'W_ARTIFACT_LABEL_OVERLAP',      // unclassed data-label <text> marks overlap each other (e.g. Vega text marks); renders anyway
     E_ARTIFACT_CONTRAST:           'E_ARTIFACT_CONTRAST',           // WCAG 2.1 SC 1.4.3 text contrast < 4.5:1 (blocks render)
     W_ARTIFACT_CONTRAST_GRAPHICAL: 'W_ARTIFACT_CONTRAST_GRAPHICAL', // WCAG 2.1 SC 1.4.11 graphical contrast < 3:1 (warning)
+    E_ARTIFACT_EMPTY_RENDER:       'E_ARTIFACT_EMPTY_RENDER',       // SVG contains no visible marks/text after render
+    E_ARTIFACT_EXPECTED_TYPE_MISMATCH: 'E_ARTIFACT_EXPECTED_TYPE_MISMATCH', // renderer envelope type differs from caller's expected type
+    E_ARTIFACT_NO_EDGES:           'E_ARTIFACT_NO_EDGES',           // graph-like spec declares edges but rendered SVG has no visible edge marks
+    E_ARTIFACT_BACKGROUND_COLLISION: 'E_ARTIFACT_BACKGROUND_COLLISION', // data/semantic mark is painted the same color as the artifact background
+    W_ARTIFACT_ASPECT_RATIO:       'W_ARTIFACT_ASPECT_RATIO',       // rendered SVG aspect ratio is extreme enough to be hard to use
   };
 
   /**

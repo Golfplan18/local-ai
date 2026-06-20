@@ -652,6 +652,312 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
     return spliced, diag
 
 
+def _extract_first_visual_envelope(text: str):
+    if not text or "ora-visual" not in text:
+        return None, None
+    m = re.search(r"```ora-visual\s*\n(.*?)\n```", text, re.DOTALL)
+    if not m:
+        return None, None
+    try:
+        env = json.loads(m.group(1))
+        return (env if isinstance(env, dict) else None), m.group(0)
+    except Exception:
+        return None, m.group(0)
+
+
+def _splice_visual_envelope(text: str, old_block: str, env: dict) -> str:
+    block = "```ora-visual\n" + json.dumps(env, indent=2, ensure_ascii=False) + "\n```"
+    return text.replace(old_block, block, 1) if old_block in text else text.rstrip() + "\n\n" + block
+
+
+def _render_visual_svg(env: dict) -> tuple[str | None, str | None]:
+    try:
+        import subprocess
+        from pathlib import Path
+        cli = Path(WORKSPACE) / "server/static/ora-visual-compiler/tools/render-envelope.js"
+        if not cli.exists():
+            return None, "render CLI missing"
+        r = subprocess.run(
+            ["node", str(cli)],
+            input=json.dumps(env, ensure_ascii=False),
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        if r.returncode == 0 and r.stdout.strip().startswith("<"):
+            return r.stdout, None
+        return None, (r.stderr or r.stdout or "render failed")[:500]
+    except Exception as exc:
+        return None, str(exc)
+
+
+def _rasterize_svg_light(svg: str) -> tuple[bytes | None, str | None]:
+    try:
+        from pathlib import Path
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        return None, f"playwright unavailable: {exc}"
+    try:
+        theme_path = Path(WORKSPACE) / "server/static/ora-visual-compiler/ora-visual-theme.css"
+        theme_css = theme_path.read_text() if theme_path.exists() else ""
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            try:
+                page = browser.new_page(
+                    device_scale_factor=2,
+                    color_scheme="light",
+                    viewport={"width": 1500, "height": 1200},
+                )
+                page.set_content(
+                    "<!doctype html><html><head><style>" + theme_css + "</style>"
+                    "<style>body{margin:0;background:#FCFCFA;}#host{display:inline-block;background:#FCFCFA;padding:24px;width:max-content;}#host svg{display:block;}</style>"
+                    "</head><body><div id='host'></div></body></html>"
+                )
+                page.locator("#host").evaluate(
+                    """(el, markup) => {
+                        el.innerHTML = markup;
+                        const svg = el.querySelector('svg');
+                        if (!svg) return false;
+                        let w = parseFloat(svg.getAttribute('width'));
+                        let h = parseFloat(svg.getAttribute('height'));
+                        if ((!w || !h) && svg.viewBox && svg.viewBox.baseVal) {
+                            w = svg.viewBox.baseVal.width || w;
+                            h = svg.viewBox.baseVal.height || h;
+                        }
+                        w = Math.max(240, Math.min(1400, w || 960));
+                        h = Math.max(160, Math.min(1000, h || Math.round(w * 0.5625)));
+                        svg.style.width = w + 'px';
+                        svg.style.height = h + 'px';
+                        return true;
+                    }""",
+                    svg,
+                )
+                page.wait_for_function(
+                    """() => {
+                        const host = document.getElementById('host');
+                        if (!host) return false;
+                        const r = host.getBoundingClientRect();
+                        return r.width > 100 && r.height > 100;
+                    }""",
+                    timeout=5000,
+                )
+                png = page.locator("#host").screenshot(type="png")
+                return png, None
+            finally:
+                browser.close()
+    except Exception as exc:
+        return None, str(exc)
+
+
+def _slot_endpoint_from_chain(config: dict, slot_name: str):
+    slots = (config or {}).get("slots") or {}
+    slot = slots.get(slot_name) or {}
+    chain: list[str] = []
+    if isinstance(slot, dict):
+        preferred = slot.get("preferred")
+        if isinstance(preferred, str) and preferred.strip():
+            chain.append(preferred.strip())
+        chain.extend(x.strip() for x in (slot.get("fallback") or [])
+                     if isinstance(x, str) and x.strip())
+    endpoints = {e.get("id"): e for e in (config.get("endpoints") or [])
+                 if isinstance(e, dict) and e.get("id")}
+    for mid in chain:
+        variants = [mid]
+        variants.append(mid.split(":", 1)[1] if mid.startswith("openrouter:") else "openrouter:" + mid)
+        for vid in variants:
+            ep = endpoints.get(vid)
+            if (ep and ep.get("enabled", False)
+                    and ep.get("status") in ("active", None)
+                    and vision_capable_for_endpoint(ep)):
+                return ep
+    return None
+
+
+def _resolve_visual_critique_endpoint(config: dict):
+    return (_slot_endpoint_from_chain(config, "image_critique")
+            or _slot_endpoint_from_chain(config, "vision_input"))
+
+
+def _parse_visual_critique(raw: str) -> dict:
+    if not isinstance(raw, str):
+        raw = "" if raw is None else str(raw)
+    m = re.search(r"```json\s*(\{.*?\})\s*```", raw, flags=re.DOTALL | re.IGNORECASE)
+    candidates = [m.group(1)] if m else []
+    if "{" in raw and "}" in raw:
+        candidates.append(raw[raw.find("{"): raw.rfind("}") + 1])
+    for c in candidates:
+        try:
+            obj = json.loads(c)
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            pass
+    low = raw.lower()
+    status = "revise" if any(w in low for w in ("fail", "revise", "unreadable", "wrong")) else "pass"
+    return {"status": status, "issues": [raw.strip()[:500]] if raw.strip() else []}
+
+
+def _critique_rendered_visual(env: dict, png: bytes, config: dict,
+                              context_pkg: dict | None, stage: str):
+    endpoint = _resolve_visual_critique_endpoint(config)
+    if not endpoint:
+        return None, "no image_critique vision endpoint configured"
+    import base64
+    user_question = ""
+    if isinstance(context_pkg, dict):
+        user_question = context_pkg.get("cleaned_prompt") or context_pkg.get("raw_input") or ""
+    rubric = (
+        "Return JSON with keys status, issues, faithful_reading, revision_guidance. "
+        "status must be pass or revise. Choose revise only if the visual is wrong type, "
+        "blank, unreadable, missing important edges/marks, or visibly fails to answer the user's question."
+    )
+    messages = [
+        {"role": "system", "content": (
+            "You are checking a rendered Ora visual. Judge the actual image, not the intent. "
+            "Be strict about blank output, wrong diagram type, missing edges, unreadable labels, "
+            "and visuals that do not answer the user's question."
+        )},
+        {"role": "user", "content": (
+            f"Pipeline stage: {stage}\n\n"
+            f"User question:\n{user_question[:2000]}\n\n"
+            f"Visual type: {env.get('type')}\n\n"
+            f"{rubric}\n\n"
+            "Return only the JSON object."
+        )},
+    ]
+    images = [{
+        "name": "ora-rendered-visual.png",
+        "mime": "image/png",
+        "base64": base64.b64encode(png).decode("ascii"),
+    }]
+    raw = call_model(messages, endpoint, images=images)
+    return _parse_visual_critique(raw), None
+
+
+def _revise_visual_envelope(env: dict, critique: dict, context_pkg: dict | None,
+                            config_name: str | None):
+    endpoint = _resolve_synthesis_endpoint(config_name)
+    if not endpoint:
+        return None, "no synthesis endpoint configured"
+    prompt = (
+        "Revise this ora-visual JSON envelope so the rendered visual passes the critique. "
+        "Keep the same visual type unless the critique says the type is wrong. "
+        "Return exactly one JSON object and no markdown.\n\n"
+        "CRITIQUE:\n" + json.dumps(critique, indent=2, ensure_ascii=False) + "\n\n"
+        "CURRENT ENVELOPE:\n" + json.dumps(env, indent=2, ensure_ascii=False)
+    )
+    raw = call_model(
+        [{"role": "system", "content": "You are a precise JSON-emitting compiler. Output only JSON."},
+         {"role": "user", "content": prompt}],
+        endpoint,
+    )
+    try:
+        candidate = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
+    except Exception as exc:
+        return None, f"revision JSON parse failed: {exc}"
+    try:
+        from visual_recovery import repair_spec
+        from visual_validator import validate_envelope
+        from visual_adversarial import review_envelope
+        candidate = repair_spec(candidate, candidate.get("type") or env.get("type"))
+        vres = validate_envelope(candidate)
+        if not vres.valid:
+            return None, "revision failed schema validation"
+        mode = (context_pkg or {}).get("mode_name") if isinstance(context_pkg, dict) else None
+        review = review_envelope(candidate, mode)
+        if review.blocks:
+            return None, "revision failed spec review"
+    except Exception as exc:
+        return None, f"revision validation failed: {exc}"
+    return candidate, None
+
+
+def _maybe_review_and_refine_visual(text: str, context_pkg: dict | None,
+                                    config: dict, config_name: str | None,
+                                    stage: str) -> str:
+    env, raw_block = _extract_first_visual_envelope(text)
+    if not env or not raw_block:
+        return text
+    trace_dir = (context_pkg or {}).get("trace_dir") if isinstance(context_pkg, dict) else None
+    diag = {"stage": stage, "type": env.get("type"), "status": "skipped"}
+    try:
+        svg, render_err = _render_visual_svg(env)
+        if not svg:
+            diag.update({"status": "render_failed", "reason": render_err})
+            return text
+        png, raster_err = _rasterize_svg_light(svg)
+        if not png:
+            diag.update({"status": "raster_failed", "reason": raster_err})
+            return text
+        critique, critique_err = _critique_rendered_visual(env, png, config, context_pkg, stage)
+        if critique_err:
+            diag.update({"status": "critique_skipped", "reason": critique_err})
+            return text
+        diag["critique"] = critique
+        if str((critique or {}).get("status", "pass")).lower() != "revise":
+            diag["status"] = "passed"
+            return text
+        revised, rev_err = _revise_visual_envelope(env, critique or {}, context_pkg, config_name)
+        if not revised:
+            diag.update({"status": "revision_failed", "reason": rev_err})
+            return text
+        svg2, render2_err = _render_visual_svg(revised)
+        if not svg2:
+            diag.update({"status": "revision_render_failed", "reason": render2_err})
+            return text
+        diag["status"] = "revised"
+        return _splice_visual_envelope(text, raw_block, revised)
+    except Exception as exc:
+        diag.update({"status": "exception", "reason": str(exc)})
+        return text
+    finally:
+        if isinstance(context_pkg, dict):
+            context_pkg.setdefault("visual_render_reviews", []).append(diag)
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            try:
+                pipeline_trace.append_jsonl(trace_dir, "visual-render-review.jsonl", diag)
+            except Exception:
+                pass
+
+
+def _visual_expected_kind(context_pkg: dict | None, mode: str | None) -> str | None:
+    preferred = context_pkg.get("visual_kind") if isinstance(context_pkg, dict) else None
+    if preferred:
+        return preferred
+    kinds = _mode_target_types(mode, None)
+    return kinds[0] if kinds else None
+
+
+def _append_visual_type_preflight(text: str, context_pkg: dict | None,
+                                  mode: str | None, stage: str) -> str:
+    env, _raw = _extract_first_visual_envelope(text)
+    if not env:
+        return text
+    expected = _visual_expected_kind(context_pkg, mode)
+    actual = env.get("type")
+    if not expected or not actual:
+        return text
+    if str(expected).replace("_", "-") == str(actual).replace("_", "-"):
+        return text
+    note = (
+        f"\n\n[visual preflight at {stage}: expected visual type `{expected}`, "
+        f"but this draft emitted `{actual}`. The next revision must correct the "
+        f"visual type before final output.]"
+    )
+    trace_dir = (context_pkg or {}).get("trace_dir") if isinstance(context_pkg, dict) else None
+    if PIPELINE_TRACE_AVAILABLE and trace_dir:
+        try:
+            pipeline_trace.append_jsonl(trace_dir, "visual-preflight.jsonl", {
+                "stage": stage,
+                "expected": expected,
+                "actual": actual,
+                "status": "type_mismatch",
+            })
+        except Exception:
+            pass
+    return text + note
+
+
 def _log_visual_emissions_for_turn(trace_dir: str | None, context_pkg: dict | None) -> None:
     """Phase 0 — observe-only ora-visual emission telemetry.
 
@@ -10816,6 +11122,11 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     if not eval_b_ok:
         depth_eval_of_breadth = "[no evaluator feedback this cycle — eval stream degraded]"
         contingencies_fired.append("step4-eval-of-breadth-degraded-no-feedback")
+    mode_name_for_visual = context_pkg.get("mode_name") if isinstance(context_pkg, dict) else None
+    breadth_eval_of_depth = _append_visual_type_preflight(
+        breadth_eval_of_depth, context_pkg, mode_name_for_visual, "f-evaluate-depth")
+    depth_eval_of_breadth = _append_visual_type_preflight(
+        depth_eval_of_breadth, context_pkg, mode_name_for_visual, "f-evaluate-breadth")
 
     # --- Step 4.5: Claim verification pre-flight (Gear 4 — per-stream) ---
     # Two pre-flights run, one per evaluation, because each reviser sees
@@ -11405,6 +11716,26 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # preamble ("Good—", "Let me integrate this", "Here is the analysis…"),
     # we discard everything before the first markdown heading.
     consolidated = _strip_consolidator_preamble(consolidated)
+    if "ora-visual" not in consolidated:
+        try:
+            _vis_spliced, _vis_diag = _maybe_synthesize_visual(
+                consolidated, context_pkg, mode_name_for_visual)
+            if _vis_spliced:
+                consolidated = _vis_spliced
+                if isinstance(context_pkg, dict) and _vis_diag:
+                    context_pkg.setdefault("visual_diagnostics", {}).setdefault("visuals", []).append(_vis_diag)
+        except Exception as exc:
+            if PIPELINE_TRACE_AVAILABLE and trace_dir:
+                try:
+                    pipeline_trace.append_jsonl(trace_dir, "visual-render-review.jsonl", {
+                        "stage": "f-consolidate",
+                        "status": "synthesis_exception",
+                        "reason": str(exc),
+                    })
+                except Exception:
+                    pass
+    consolidated = _maybe_review_and_refine_visual(
+        consolidated, context_pkg, config, config_name, "f-consolidate")
 
     # --- Step 8: Format. Place the step-7 consolidated corpus into the
     # mode's prescribed deliverable form per the mode's
@@ -11448,7 +11779,9 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "the analytical voice; NEVER drop it and NEVER emit a process-"
         "labelled heading such as `## Corpus material not captured by the "
         "prescribed format` (that leaks pipeline machinery and is "
-        "forbidden). Do not call any tool — write the deliverable inline."
+        "forbidden). If the consolidated corpus contains an `ora-visual` "
+        "fenced JSON block, preserve that block exactly once in the final "
+        "deliverable. Do not call any tool — write the deliverable inline."
     )
     format_messages = [
         {"role": "system", "content": format_system},
@@ -11541,6 +11874,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 + consolidated
             )
             contingencies_fired.append("step8_5-scrub-fellback-to-consolidated-corpus")
+    formatted = _maybe_review_and_refine_visual(
+        formatted, context_pkg, config, config_name, "f-format")
 
     _trace_step("step8-formatted", {
         "system_prompt": format_system,
