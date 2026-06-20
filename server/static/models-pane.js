@@ -608,9 +608,6 @@
         ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name, isActive: editable})
         : '')
       +     _slotRowHTML('fast 1', summary.fast1, {omitCost: omitCost, configName: summary.name, isActive: editable})
-      +     (adversarial
-        ? _slotRowHTML('fast 2', summary.fast2, {omitCost: omitCost, configName: summary.name, isActive: editable})
-        : '')
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name, isActive: editable})
       +     _expandSlotsHTML(summary, {omitCost: omitCost, isActive: editable})
       +     _looseningFootnoteHTML(summary)
@@ -1294,9 +1291,6 @@
         ? _slotRowHTML('big 2', summary.big2, {configName: summary.name, isActive: editable})
         : '')
       +     _slotRowHTML('fast 1', summary.fast1, {configName: summary.name, isActive: editable})
-      +     (adversarial
-        ? _slotRowHTML('fast 2', summary.fast2, {configName: summary.name, isActive: editable})
-        : '')
       +     _slotRowHTML('small', summary.small, {configName: summary.name, isActive: editable})
       +     _expandSlotsHTML(summary, {isActive: editable})
       +   '</div>'
@@ -1450,7 +1444,12 @@
       }
       if (_filters.vision) {
         activeFilters.push('vision-capable');
-        clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="vision">turn off Vision filter</button>');
+        if (!_activeSlotPickRequiresVision()) {
+          clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="vision">turn off Vision filter</button>');
+        }
+      }
+      if (_activeSlotPickRequiresVision()) {
+        activeFilters.push('vision required');
       }
       if (_filters.free_filter === 'only') {
         activeFilters.push('free only');
@@ -1525,6 +1524,7 @@
     // to image_generation today (pricing-based, surfaced as $/1k imgs
     // on the row meta). The PICK chip and intelligence slider DO apply.
     var isMedia = (model.category && model.category !== 'chat');
+    if (!isMedia && _activeSlotPickRequiresVision() && model.vision_capable !== true) return false;
     // Vision chip is LENIENT: hide only models PROVEN text-only
     // (vision_capable === false). Unknown/unenriched (null) passes —
     // most native ids-only flagships are vision-capable but unclassified
@@ -1578,6 +1578,13 @@
     return true;
   }
 
+  function _activeSlotPickRequiresVision() {
+    if (!_activeSlotPick) return false;
+    if (_activeSlotPick.slotLabel === 'fast 1') return true;
+    return _activeSlotPick.popoutSection === 'fast'
+      && _activeSlotPick.fallbackIndex === 0;
+  }
+
   // Each card-visible slot maps to an expected size bucket. When a slot
   // is in picking mode, the inventory restricts to that bucket so the
   // user doesn't see small models as candidates for a big-1 slot or
@@ -1596,6 +1603,7 @@
     // bucket → would otherwise be hidden). See _matchesFilters.
     'fast 1':      'midsize',
     'fast 2':      'midsize',
+    'fast':        'midsize',
     // Popout fallback-section labels — same bucket as the primary
     // they fall back from, so a SMALL fallback chain only sees small
     // models and a LARGE chain only sees large ones.
@@ -2214,7 +2222,7 @@
     }
 
     // Three sections, fixed shape regardless of adversarial toggle.
-    // Each section's first row uses the section label (LARGE / SMALL)
+    // Each section's first row uses the section label (LARGE / FAST / SMALL)
     // as the rank, displaying the primary inline with the label
     // — no separate h4. Remaining rows are FALLBACK N. Each section is
     // capped: large gets at most 2 fallbacks (3 rows), small gets 1
@@ -2222,6 +2230,7 @@
     // placeholders so the user can fill them in place.
     var sections = [
       _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name, 3),
+      _popoutSlotHTML('fast', summary.fast1, summary.fast1_fallback, summary.name, 2),
       _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name, 2),
     ];
 
@@ -2273,6 +2282,9 @@
               popoutSection: section,        // identifies fallback intent
               fallbackIndex: index,
             };
+            if (section === 'fast') {
+              _filters.sort_by = 'speed_desc';
+            }
           }
           _renderHeader();
           _renderPopout();

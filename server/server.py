@@ -8342,40 +8342,75 @@ def capability_image_critique():
 def _pick_critique_vision_endpoint():
     """Locate a vision-capable analytical endpoint.
 
-    Walks the routing config's bucket system in preference order:
-    `local-premium` → `local-mid` → `commercial` → any active endpoint with
-    ``vision_capable: true``. Returns None if none reachable so the caller
-    can fall back to the mock path.
+    Prefer the explicit ``slots.image_critique`` chain. If that slot has not
+    been configured yet, reuse ``slots.vision_input`` as the nearest
+    vision-language fallback, then walk the old bucket order as a final
+    compatibility path. Returns None if none reachable so the caller can fall
+    back to the mock path.
     """
     try:
         config = load_config()
     except Exception:
         return None
     endpoints = config.get("endpoints", []) or []
+    by_id = {ep.get("id"): ep for ep in endpoints if ep.get("id")}
+
+    for slot_name in ("image_critique", "vision_input"):
+        for ep_id in _chat_slot_chain(config, slot_name):
+            ep = _lookup_endpoint_variant(by_id, ep_id)
+            if _endpoint_ready_for_vision(ep):
+                return ep
+
     # First pass: walk preferred buckets if defined.
     buckets = config.get("buckets", {}) or {}
     bucket_order = ["local-premium", "local-mid", "commercial", "local-fast"]
-    by_id = {ep.get("id"): ep for ep in endpoints if ep.get("id")}
     for bname in bucket_order:
         for ep_id in buckets.get(bname, []) or []:
-            ep = by_id.get(ep_id)
-            if not ep:
-                continue
-            if not ep.get("enabled", False):
-                continue
-            if ep.get("status") not in ("active", None):
-                # Treat missing status as active (older configs); missing
-                # vision_capable is False by default below.
-                continue
-            if vision_capable_for_endpoint(ep):
+            ep = _lookup_endpoint_variant(by_id, ep_id)
+            if _endpoint_ready_for_vision(ep):
                 return ep
     # Second pass: scan flat endpoint list for any vision-capable active.
     for ep in endpoints:
-        if (ep.get("enabled", False)
-                and vision_capable_for_endpoint(ep)
-                and ep.get("status") in ("active", None)):
+        if _endpoint_ready_for_vision(ep):
             return ep
     return None
+
+
+def _chat_slot_chain(config, slot_name):
+    slot = (config.get("slots") or {}).get(slot_name) or {}
+    chain = []
+    if isinstance(slot, dict):
+        preferred = slot.get("preferred")
+        if isinstance(preferred, str) and preferred.strip():
+            chain.append(preferred.strip())
+        for item in slot.get("fallback") or []:
+            if isinstance(item, str) and item.strip():
+                chain.append(item.strip())
+    return chain
+
+
+def _lookup_endpoint_variant(by_id, endpoint_id):
+    if not endpoint_id:
+        return None
+    candidates = [endpoint_id]
+    if endpoint_id.startswith("openrouter:"):
+        candidates.append(endpoint_id.split(":", 1)[1])
+    else:
+        candidates.append("openrouter:" + endpoint_id)
+    for cid in candidates:
+        ep = by_id.get(cid)
+        if ep:
+            return ep
+    return None
+
+
+def _endpoint_ready_for_vision(ep):
+    return bool(
+        ep
+        and ep.get("enabled", False)
+        and ep.get("status") in ("active", None)
+        and vision_capable_for_endpoint(ep)
+    )
 
 
 def _find_endpoint_by_id(endpoint_id):
@@ -8383,10 +8418,8 @@ def _find_endpoint_by_id(endpoint_id):
         config = load_config()
     except Exception:
         return None
-    for ep in config.get("endpoints", []) or []:
-        if ep.get("id") == endpoint_id:
-            return ep
-    return None
+    by_id = {ep.get("id"): ep for ep in config.get("endpoints", []) or [] if ep.get("id")}
+    return _lookup_endpoint_variant(by_id, endpoint_id)
 
 
 def _build_critique_prompts(rubric, genre, depth):
@@ -8406,16 +8439,18 @@ def _build_critique_prompts(rubric, genre, depth):
     }.get(depth, "Aim for a balanced critique.")
 
     system_prompt = (
-        "You are an experienced visual-arts critic. Given an image, a rubric, "
-        "and an optional genre, return a structured critique with per-criterion "
-        "numeric scores (0–10), a short comment per criterion, and a prose "
-        "discussion of the work as a whole. You always return your answer in "
-        "two fenced blocks: a ```json``` block with the rubric_scores object, "
-        "and a ```prose``` block with the discussion."
+        "You are a diagram and data-visualization reviewer. Given a rendered "
+        "visual artifact, a rubric, and an optional genre, judge whether the "
+        "image is readable, faithful to the requested visual purpose, and free "
+        "of obvious rendering failures. Return per-criterion numeric scores "
+        "(0-10), a short comment per criterion, and a concise prose explanation. "
+        "You always return your answer in two fenced blocks: a ```json``` block "
+        "with the rubric_scores object, and a ```prose``` block with the "
+        "discussion."
     )
 
     user_prompt = (
-        f"Critique the attached image.\n"
+        f"Review the attached rendered visual.\n"
         f"\n"
         f"Rubric criteria (comma-separated): {criteria_hint}\n"
         f"Genre: {genre_hint}\n"
@@ -9552,7 +9587,7 @@ def configurations_set_slot(name):
 def configurations_set_fallback(name):
     """Replace one position in a popout-section's fallback chain.
 
-    Body: ``{"section": "large" | "small" | "image",
+    Body: ``{"section": "large" | "fast" | "small" | "image",
               "index": <0-based int>, "model_id": "..."}``.
 
     Single-cell write (no fan-out). Pass an empty model_id to delete
