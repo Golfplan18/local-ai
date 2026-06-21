@@ -49,6 +49,7 @@
   let browserSearch = null;
   let browserRows = null;
   let browserStatus = null;
+  let browserResizeObserver = null;
 
   const setExpanded = (on) => {
     sidebar.classList.toggle('expanded', !!on);
@@ -484,23 +485,59 @@
         closeBrowser();
       }
     });
-    browserOverlay.addEventListener('click', (e) => {
-      if (e.target === browserOverlay) closeBrowser();
-    });
     return browserOverlay;
+  };
+
+  const positionBrowser = () => {
+    if (!browserOverlay || !browserOverlay.classList.contains('is-open')) return;
+    const shell = document.querySelector('.ora-shell');
+    const inputPane = document.querySelector('.input-pane');
+    if (!shell || !inputPane) return;
+    const shellRect = shell.getBoundingClientRect();
+    const inputRect = inputPane.getBoundingClientRect();
+    const pad = 8;
+    const top = Math.max(shellRect.top + pad, inputRect.top + pad);
+    const bottom = Math.max(top + 64, inputRect.bottom - pad);
+    browserOverlay.style.setProperty('--conversation-browser-left', `${shellRect.left + pad}px`);
+    browserOverlay.style.setProperty('--conversation-browser-top', `${top}px`);
+    browserOverlay.style.setProperty('--conversation-browser-width', `${Math.max(240, shellRect.width - pad * 2)}px`);
+    browserOverlay.style.setProperty('--conversation-browser-height', `${Math.max(64, bottom - top)}px`);
+  };
+
+  const startBrowserPositioning = () => {
+    window.addEventListener('resize', positionBrowser);
+    if (!browserResizeObserver && 'ResizeObserver' in window) {
+      browserResizeObserver = new ResizeObserver(positionBrowser);
+      const shell = document.querySelector('.ora-shell');
+      const inputPane = document.querySelector('.input-pane');
+      if (shell) browserResizeObserver.observe(shell);
+      if (inputPane) browserResizeObserver.observe(inputPane);
+    }
+    positionBrowser();
+  };
+
+  const stopBrowserPositioning = () => {
+    window.removeEventListener('resize', positionBrowser);
+    if (browserResizeObserver) {
+      browserResizeObserver.disconnect();
+      browserResizeObserver = null;
+    }
   };
 
   const openBrowser = () => {
     ensureBrowser();
     browserOverlay.classList.add('is-open');
+    startBrowserPositioning();
     fetchBrowser('');
     setTimeout(() => {
+      positionBrowser();
       try { browserSearch.focus(); } catch (e) {}
     }, 0);
   };
 
   const closeBrowser = () => {
     if (browserOverlay) browserOverlay.classList.remove('is-open');
+    stopBrowserPositioning();
   };
 
   const fetchBrowser = async (query) => {
@@ -611,7 +648,7 @@
       },
     }));
     fetchList();
-    closeBrowser();
+    positionBrowser();
   };
 
   // ── Wire-up ─────────────────────────────────────────────────────────
@@ -627,6 +664,7 @@
     [...sidebar.querySelectorAll('.sidebar-row')].forEach(el => {
       el.classList.remove('is-active');
     });
+    closeBrowser();
     if (!isPinned()) setExpanded(false);
   });
 

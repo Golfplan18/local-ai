@@ -74,10 +74,14 @@
 
 .conversation-browser-overlay {
   position: fixed;
-  inset: 0;
   z-index: 12000;
   display: none;
-  background: rgba(0, 0, 0, 0.24);
+  left: var(--conversation-browser-left, 0);
+  top: var(--conversation-browser-top, 0);
+  width: var(--conversation-browser-width, 100vw);
+  height: var(--conversation-browser-height, 160px);
+  background: transparent;
+  pointer-events: none;
 }
 
 .conversation-browser-overlay.is-open {
@@ -85,11 +89,10 @@
 }
 
 .conversation-browser-panel {
-  position: absolute;
-  left: calc(var(--ora-sidebar-collapsed-w, 40px) + 12px);
-  right: 24px;
-  top: 92px;
-  max-height: min(70vh, 720px);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -98,6 +101,7 @@
   border: 1px solid var(--background-modifier-border);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   padding: 8px;
+  pointer-events: auto;
 }
 
 .conversation-browser-top {
@@ -151,17 +155,17 @@
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
-  min-height: 120px;
+  min-height: 0;
 }
 
 .conversation-browser-row {
   display: grid;
   grid-template-columns: 20px minmax(320px, 0.85fr) minmax(360px, 1.35fr) auto auto;
   gap: 8px;
-  align-items: center;
-  min-height: 30px;
+  align-items: start;
+  min-height: 42px;
   border-radius: 4px;
-  padding: 2px 4px;
+  padding: 4px;
   cursor: pointer;
 }
 
@@ -189,16 +193,22 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 13px;
 }
 
 .conversation-browser-title {
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .conversation-browser-snippet {
   color: var(--text-muted);
+  display: -webkit-box;
+  line-height: 1.25;
+  max-height: 2.5em;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* Body class set by sidebar.js when pinned. Reserved for any layout
