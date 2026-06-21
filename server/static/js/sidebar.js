@@ -491,17 +491,23 @@
   const positionBrowser = () => {
     if (!browserOverlay || !browserOverlay.classList.contains('is-open')) return;
     const shell = document.querySelector('.ora-shell');
+    const leftColumn = document.querySelector('.left-column');
+    const rightColumn = document.querySelector('.right-column');
     const inputPane = document.querySelector('.input-pane');
     if (!shell || !inputPane) return;
     const shellRect = shell.getBoundingClientRect();
+    const leftRect = leftColumn ? leftColumn.getBoundingClientRect() : shellRect;
+    const rightRect = rightColumn ? rightColumn.getBoundingClientRect() : shellRect;
     const inputRect = inputPane.getBoundingClientRect();
     const pad = 8;
     const top = Math.max(shellRect.top + pad, inputRect.top + pad);
-    const bottom = Math.max(top + 64, inputRect.bottom - pad);
-    browserOverlay.style.setProperty('--conversation-browser-left', `${shellRect.left + pad}px`);
+    const height = Math.max(24, inputRect.bottom - pad - top);
+    const left = leftRect.left + pad;
+    const right = Math.max(left + 240, rightRect.right - pad);
+    browserOverlay.style.setProperty('--conversation-browser-left', `${left}px`);
     browserOverlay.style.setProperty('--conversation-browser-top', `${top}px`);
-    browserOverlay.style.setProperty('--conversation-browser-width', `${Math.max(240, shellRect.width - pad * 2)}px`);
-    browserOverlay.style.setProperty('--conversation-browser-height', `${Math.max(64, bottom - top)}px`);
+    browserOverlay.style.setProperty('--conversation-browser-width', `${Math.max(240, right - left)}px`);
+    browserOverlay.style.setProperty('--conversation-browser-height', `${height}px`);
   };
 
   const startBrowserPositioning = () => {
@@ -509,8 +515,12 @@
     if (!browserResizeObserver && 'ResizeObserver' in window) {
       browserResizeObserver = new ResizeObserver(positionBrowser);
       const shell = document.querySelector('.ora-shell');
+      const leftColumn = document.querySelector('.left-column');
+      const rightColumn = document.querySelector('.right-column');
       const inputPane = document.querySelector('.input-pane');
       if (shell) browserResizeObserver.observe(shell);
+      if (leftColumn) browserResizeObserver.observe(leftColumn);
+      if (rightColumn) browserResizeObserver.observe(rightColumn);
       if (inputPane) browserResizeObserver.observe(inputPane);
     }
     positionBrowser();
