@@ -5541,7 +5541,9 @@ def _fallback_conversation_browser_snippet(messages: list, title: str) -> tuple[
 
 def _conversation_search_snippet(data: dict, query: str) -> dict:
     messages = data.get("messages") if isinstance(data.get("messages"), list) else []
-    terms = [t.lower() for t in re.findall(r"\w+", query or "") if len(t) > 1]
+    terms = _browser_terms(query) if "_browser_terms" in globals() else [
+        t.lower() for t in re.findall(r"\w+", query or "") if len(t) > 2
+    ]
     title = data.get("display_name") if isinstance(data.get("display_name"), str) else ""
     if not title:
         for msg in messages:
@@ -5600,25 +5602,417 @@ def _conversation_search_snippet(data: dict, query: str) -> dict:
     return best
 
 
-@app.route("/api/conversations/browser", methods=["GET"])
-def conversations_browser():
-    """Search or browse all conversations, including closed rows."""
-    query = (request.args.get("q") or "").strip()
-    try:
-        limit = int(request.args.get("limit") or 100)
-    except (TypeError, ValueError):
-        limit = 100
-    limit = max(1, min(limit, 500))
+_BROWSER_SEARCH_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+    "how", "in", "is", "it", "of", "on", "or", "that", "the", "this",
+    "to", "was", "were", "what", "when", "where", "which", "who", "why",
+    "with",
+}
 
+
+def _browser_terms(query: str) -> list[str]:
+    return [
+        t.lower()
+        for t in re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]*", query or "")
+        if len(t) > 2 and t.lower() not in _BROWSER_SEARCH_STOPWORDS
+    ]
+
+
+def _browser_encode_source_id(prefix: str, value: str) -> str:
+    import base64
+    raw = str(value or "").encode("utf-8")
+    encoded = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+    return f"{prefix}:{encoded}"
+
+
+def _browser_decode_source_id(prefix: str, value: str) -> str | None:
+    import base64
+    value = str(value or "")
+    marker = f"{prefix}:"
+    if not value.startswith(marker):
+        return None
+    payload = value[len(marker):]
+    payload += "=" * (-len(payload) % 4)
+    try:
+        return base64.urlsafe_b64decode(payload.encode("ascii")).decode("utf-8")
+    except Exception:
+        return None
+
+
+def _browser_resolve_path(path: str | None) -> str:
+    if not path:
+        return ""
+    return os.path.abspath(os.path.expanduser(str(path)))
+
+
+def _browser_source_title(meta: dict, doc: str = "") -> str:
+    doc = str(doc or "")
+    match = re.search(r"Conversation ['\"](.+?)['\"] on ", doc)
+    if match:
+        return _clean_conversation_browser_text(match.group(1))[:180]
+    heading = re.search(r"^#\s+(.+)$", doc, flags=re.M)
+    if heading:
+        return _clean_conversation_browser_text(heading.group(1))[:180]
+    for key in ("conversation_title", "title", "source"):
+        value = meta.get(key)
+        if isinstance(value, str) and value.strip():
+            cleaned = _clean_conversation_browser_text(value)
+            if cleaned:
+                return cleaned[:180]
+    for key in ("raw_path", "chunk_path", "obsidian_path", "path"):
+        value = meta.get(key)
+        if isinstance(value, str) and value.strip():
+            return os.path.splitext(os.path.basename(_browser_resolve_path(value)))[0][:180]
+    return "(untitled)"
+
+
+def _browser_snippet_from_text(text: str, query: str, *, limit: int = 420) -> str:
+    cleaned = _clean_conversation_browser_text(text)
+    if not cleaned:
+        return ""
+    terms = _browser_terms(query)
+    haystack = cleaned.lower()
+    start = 0
+    for term in terms:
+        pos = haystack.find(term)
+        if pos >= 0:
+            start = max(0, pos - 90)
+            break
+    snippet = cleaned[start:start + limit].strip()
+    if start > 0:
+        snippet = "..." + snippet
+    if start + limit < len(cleaned):
+        snippet += "..."
+    return snippet
+
+
+def _browser_metadata_for_row(cur, row_id: int) -> dict:
+    meta: dict = {}
+    for key, s_val, i_val, f_val, b_val in cur.execute(
+        """
+        SELECT key, string_value, int_value, float_value, bool_value
+        FROM embedding_metadata
+        WHERE id = ?
+        """,
+        (row_id,),
+    ).fetchall():
+        if s_val is not None:
+            value = s_val
+        elif i_val is not None:
+            value = int(i_val)
+        elif f_val is not None:
+            value = float(f_val)
+        elif b_val is not None:
+            value = bool(b_val)
+        else:
+            value = None
+        meta[key] = value
+    return meta
+
+
+def _browser_chromadb_path() -> str:
+    return os.path.join(WORKSPACE, "chromadb")
+
+
+def _browser_physical_collection(logical: str) -> str:
+    try:
+        from orchestrator.embedding import resolve_collection
+        return resolve_collection(logical)
+    except Exception:
+        defaults = {
+            "knowledge": "knowledge",
+            "conversations": "conversations",
+            "atomics": "atomic_dedup",
+        }
+        try:
+            cfg_path = os.path.join(WORKSPACE, "config", "chromadb.json")
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            return (cfg.get("collections") or {}).get(logical) or defaults.get(logical, logical)
+        except Exception:
+            return defaults.get(logical, logical)
+
+
+def _browser_row_from_chroma_hit(
+    *,
+    logical_collection: str,
+    embedding_id: str,
+    document: str,
+    metadata: dict,
+    query: str,
+    score: float,
+) -> dict | None:
+    doc = document or metadata.get("chroma:document") or ""
+    if logical_collection == "conversations":
+        source_id = (
+            metadata.get("conversation_id")
+            or metadata.get("raw_path")
+            or metadata.get("chunk_path")
+            or embedding_id
+        )
+        if not source_id:
+            return None
+        pair_num = metadata.get("pair_num")
+        try:
+            matched_turn = max(0, int(pair_num) - 1) if pair_num is not None else None
+        except (TypeError, ValueError):
+            matched_turn = None
+        row_id = _browser_encode_source_id("archive", str(source_id))
+        return {
+            "conversation_id": row_id,
+            "source_conversation_id": source_id,
+            "result_type": "archive_conversation",
+            "source_kind": "archive",
+            "tag": metadata.get("tag") or "",
+            "title": _browser_source_title(metadata, doc),
+            "snippet": _browser_snippet_from_text(doc, query),
+            "matched_turn_index": matched_turn,
+            "matched_message_index": None,
+            "matched_chunk_id": embedding_id,
+            "pair_num": pair_num,
+            "total_turns": metadata.get("total_turns"),
+            "score": score,
+            "last_activity_at": (
+                metadata.get("timestamp_utc")
+                or metadata.get("timestamp")
+                or metadata.get("date")
+                or ""
+            ),
+            "raw_path": metadata.get("raw_path") or "",
+            "chunk_path": metadata.get("chunk_path") or metadata.get("obsidian_path") or "",
+            "closed": False,
+        }
+
+    if logical_collection == "knowledge":
+        if metadata.get("type") not in ("engram", "chat"):
+            return None
+        source_path = metadata.get("path") or metadata.get("obsidian_path")
+        if not source_path:
+            source = metadata.get("source")
+            if source:
+                source_path = os.path.join(os.path.expanduser("~/Documents/vault/Engrams"), source)
+        source_id = source_path or embedding_id
+        row_id = _browser_encode_source_id("engram", str(source_id))
+        return {
+            "conversation_id": row_id,
+            "source_conversation_id": source_id,
+            "result_type": "engram",
+            "source_kind": "engram",
+            "tag": metadata.get("tags") or "",
+            "title": _browser_source_title(metadata, doc),
+            "snippet": _browser_snippet_from_text(doc, query),
+            "matched_turn_index": 0,
+            "matched_message_index": 0,
+            "matched_chunk_id": embedding_id,
+            "score": score,
+            "last_activity_at": metadata.get("date modified") or metadata.get("date") or "",
+            "path": source_path or "",
+            "closed": False,
+        }
+    return None
+
+
+def _browser_merge_best(rows_by_id: dict, row: dict | None) -> None:
+    if not row or not row.get("conversation_id"):
+        return
+    existing = rows_by_id.get(row["conversation_id"])
+    if existing is None or float(row.get("score") or 0) > float(existing.get("score") or 0):
+        rows_by_id[row["conversation_id"]] = row
+
+
+def _browser_chroma_exact_rows(
+    query: str,
+    *,
+    logical_collection: str,
+    limit: int,
+) -> list[dict]:
+    terms = _browser_terms(query)
+    if not terms:
+        return []
+    physical = _browser_physical_collection(logical_collection)
+    fts_queries: list[tuple[str, float]] = []
+    clean_query = re.sub(r'"', " ", query or "").strip()
+    if len(clean_query) >= 8:
+        fts_queries.append((f'"{clean_query}"', 180.0))
+    if terms:
+        fts_queries.append((" ".join(terms), 140.0))
+    if len(terms) > 1:
+        fts_queries.append((" OR ".join(terms), 95.0))
+
+    out: dict[str, dict] = {}
+    try:
+        import sqlite3
+        con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+        cur = con.cursor()
+        seen_row_ids: set[int] = set()
+        for fts_query, boost in fts_queries:
+            try:
+                matches = cur.execute(
+                    """
+                    SELECT embedding_fulltext_search.rowid,
+                           embeddings.embedding_id,
+                           embedding_fulltext_search.string_value,
+                           bm25(embedding_fulltext_search) AS rank
+                    FROM embedding_fulltext_search
+                    JOIN embeddings ON embeddings.id = embedding_fulltext_search.rowid
+                    JOIN segments ON segments.id = embeddings.segment_id
+                    JOIN collections ON collections.id = segments.collection
+                    WHERE collections.name = ?
+                      AND embedding_fulltext_search.string_value MATCH ?
+                    ORDER BY rank
+                    LIMIT ?
+                    """,
+                    (physical, fts_query, max(limit, 20)),
+                ).fetchall()
+            except Exception:
+                continue
+            for row_id, embedding_id, fts_text, rank in matches:
+                if row_id in seen_row_ids:
+                    continue
+                seen_row_ids.add(row_id)
+                meta = _browser_metadata_for_row(cur, row_id)
+                if logical_collection == "knowledge" and meta.get("type") != "engram":
+                    continue
+                doc = meta.get("chroma:document") or fts_text or ""
+                term_hits = sum(1 for term in terms if term in doc.lower())
+                score = boost + (term_hits * 4.0) - min(abs(float(rank or 0)), 50.0) / 20.0
+                _browser_merge_best(
+                    out,
+                    _browser_row_from_chroma_hit(
+                        logical_collection=logical_collection,
+                        embedding_id=embedding_id,
+                        document=doc,
+                        metadata=meta,
+                        query=query,
+                        score=score,
+                    ),
+                )
+        con.close()
+    except Exception as exc:
+        print(f"[conversation-browser] exact {logical_collection} search failed: {exc}", file=sys.stderr)
+    return sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)[:limit]
+
+
+def _browser_chroma_semantic_rows(
+    query: str,
+    *,
+    logical_collection: str,
+    limit: int,
+) -> list[dict]:
+    if not (query or "").strip():
+        return []
+    out: dict[str, dict] = {}
+    try:
+        import chromadb
+        from orchestrator.embedding import get_collection
+        client = chromadb.PersistentClient(path=_browser_chromadb_path())
+        col = get_collection(client, logical_collection)
+        count = col.count()
+        if count <= 0:
+            return []
+        kwargs: dict = {
+            "query_texts": [query],
+            "n_results": min(max(limit, 5), count),
+        }
+        if logical_collection == "knowledge":
+            kwargs["where"] = {"type": "engram"}
+        results = col.query(**kwargs)
+        ids = (results.get("ids") or [[]])[0]
+        docs = (results.get("documents") or [[]])[0]
+        metas = (results.get("metadatas") or [[]])[0]
+        dists = (results.get("distances") or [[]])[0]
+        for embedding_id, doc, meta, dist in zip(ids, docs, metas, dists):
+            similarity = 1.0 - float(dist if dist is not None else 1.0)
+            score = 70.0 + (similarity * 40.0)
+            _browser_merge_best(
+                out,
+                _browser_row_from_chroma_hit(
+                    logical_collection=logical_collection,
+                    embedding_id=embedding_id,
+                    document=doc or "",
+                    metadata=meta or {},
+                    query=query,
+                    score=score,
+                ),
+            )
+    except Exception as exc:
+        print(f"[conversation-browser] semantic {logical_collection} search failed: {exc}", file=sys.stderr)
+    return sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)[:limit]
+
+
+def _browser_latest_archive_rows(limit: int) -> list[dict]:
+    physical = _browser_physical_collection("conversations")
+    rows: list[dict] = []
+    try:
+        import sqlite3
+        con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+        cur = con.cursor()
+        matches = cur.execute(
+            """
+            SELECT cid.string_value AS source_id,
+                   MAX(COALESCE(ts.string_value, stamp.string_value, d.string_value, '')) AS last_seen,
+                   MAX(embeddings.id) AS sample_row_id,
+                   MAX(COALESCE(pair.int_value, 0)) AS pair_seen
+            FROM embeddings
+            JOIN segments ON segments.id = embeddings.segment_id
+            JOIN collections ON collections.id = segments.collection
+            JOIN embedding_metadata cid
+              ON cid.id = embeddings.id AND cid.key = 'conversation_id'
+            LEFT JOIN embedding_metadata ts
+              ON ts.id = embeddings.id AND ts.key = 'timestamp_utc'
+            LEFT JOIN embedding_metadata stamp
+              ON stamp.id = embeddings.id AND stamp.key = 'timestamp'
+            LEFT JOIN embedding_metadata d
+              ON d.id = embeddings.id AND d.key = 'date'
+            LEFT JOIN embedding_metadata pair
+              ON pair.id = embeddings.id AND pair.key = 'pair_num'
+            WHERE collections.name = ?
+              AND cid.string_value IS NOT NULL
+              AND cid.string_value != ''
+            GROUP BY cid.string_value
+            ORDER BY last_seen DESC
+            LIMIT ?
+            """,
+            (physical, max(limit, 1)),
+        ).fetchall()
+        for source_id, last_seen, sample_row_id, _pair_seen in matches:
+            meta = _browser_metadata_for_row(cur, sample_row_id)
+            doc = meta.get("chroma:document") or ""
+            row = _browser_row_from_chroma_hit(
+                logical_collection="conversations",
+                embedding_id=meta.get("chunk_id") or str(sample_row_id),
+                document=doc,
+                metadata={**meta, "conversation_id": source_id, "timestamp_utc": last_seen},
+                query="",
+                score=0.5,
+            )
+            if row:
+                rows.append(row)
+        con.close()
+    except Exception as exc:
+        print(f"[conversation-browser] latest archive scan failed: {exc}", file=sys.stderr)
+    return rows
+
+
+def _browser_source_counts(rows: list[dict]) -> dict:
+    counts = {"live": 0, "archive": 0, "engram": 0}
+    for row in rows:
+        kind = row.get("source_kind") or "live"
+        if kind in counts:
+            counts[kind] += 1
+    return counts
+
+
+def _browser_live_rows(query: str) -> list[dict]:
     try:
         from conversation_memory import iter_conversations, load_conversation_json
     except Exception as e:
-        return _json_response({"error": f"conversation browser import failed: {e}"}, status=500)
+        raise RuntimeError(f"conversation browser import failed: {e}") from e
 
     try:
         summaries = iter_conversations(include_closed=True)
     except Exception as e:
-        return _json_response({"error": f"conversation list failed: {e}"}, status=500)
+        raise RuntimeError(f"conversation list failed: {e}") from e
 
     rows: list[dict] = []
     for row in summaries:
@@ -5631,13 +6025,227 @@ def conversations_browser():
             continue
         out = dict(row)
         out.update({
+            "result_type": "live_conversation",
+            "source_kind": "live",
             "snippet": match.get("snippet") or "",
             "matched_message_index": match.get("matched_message_index"),
             "matched_turn_index": match.get("matched_turn_index"),
-            "score": match.get("score", 0),
+            "score": (float(match.get("score", 0)) + (25.0 if query else 1.0)),
         })
         rows.append(out)
+    return rows
 
+
+def _browser_parse_pair_markdown(text: str) -> tuple[str, str]:
+    text = str(text or "")
+    user_match = re.search(
+        r"\*\*User:\*\*\s*(.*?)(?=\n\*\*Assistant:\*\*|\Z)",
+        text,
+        flags=re.S,
+    )
+    assistant_match = re.search(
+        r"\*\*Assistant:\*\*\s*(.*)",
+        text,
+        flags=re.S,
+    )
+    if user_match or assistant_match:
+        user = user_match.group(1).strip() if user_match else ""
+        assistant = assistant_match.group(1).strip() if assistant_match else ""
+        return user, assistant
+    body = re.sub(r"^---\s*.*?\s*---\s*", "", text, flags=re.S).strip()
+    return "", body
+
+
+def _browser_archive_chunk_metadata(source_id: str) -> list[dict]:
+    physical = _browser_physical_collection("conversations")
+    try:
+        import sqlite3
+        con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+        cur = con.cursor()
+        rows = cur.execute(
+            """
+            SELECT embeddings.id
+            FROM embeddings
+            JOIN segments ON segments.id = embeddings.segment_id
+            JOIN collections ON collections.id = segments.collection
+            JOIN embedding_metadata cid
+              ON cid.id = embeddings.id AND cid.key = 'conversation_id'
+            LEFT JOIN embedding_metadata pair
+              ON pair.id = embeddings.id AND pair.key = 'pair_num'
+            WHERE collections.name = ?
+              AND cid.string_value = ?
+            ORDER BY COALESCE(pair.int_value, 0), embeddings.embedding_id
+            """,
+            (physical, source_id),
+        ).fetchall()
+        items: list[dict] = []
+        for (row_id,) in rows:
+            meta = _browser_metadata_for_row(cur, row_id)
+            meta["_row_id"] = row_id
+            items.append(meta)
+        con.close()
+        return items
+    except Exception as exc:
+        print(f"[conversation-browser] archive load failed: {exc}", file=sys.stderr)
+        return []
+
+
+def _browser_read_chunk_text(meta: dict) -> str:
+    for key in ("chunk_path", "obsidian_path", "path"):
+        path = _browser_resolve_path(meta.get(key))
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except OSError:
+                pass
+    return str(meta.get("chroma:document") or "")
+
+
+def _browser_archive_envelope(conversation_id: str) -> dict | None:
+    source_id = _browser_decode_source_id("archive", conversation_id)
+    if not source_id:
+        return None
+    chunks = _browser_archive_chunk_metadata(source_id)
+    if not chunks:
+        return None
+
+    messages: list[dict] = []
+    first_doc = chunks[0].get("chroma:document") or ""
+    title = _browser_source_title(chunks[0], first_doc)
+    created = chunks[0].get("timestamp") or chunks[0].get("timestamp_utc") or chunks[0].get("date")
+    last_activity = created
+    for idx, meta in enumerate(chunks):
+        text = _browser_read_chunk_text(meta)
+        user_text, assistant_text = _browser_parse_pair_markdown(text)
+        ts = meta.get("timestamp") or meta.get("timestamp_utc") or meta.get("date") or created
+        if ts:
+            last_activity = ts
+        pair_num = meta.get("pair_num")
+        chunk_id = meta.get("chunk_id") or meta.get("_row_id")
+        if user_text:
+            messages.append({
+                "role": "user",
+                "content": user_text,
+                "timestamp": ts,
+                "archive_pair_num": pair_num,
+                "archive_chunk_id": chunk_id,
+            })
+        if assistant_text:
+            messages.append({
+                "role": "assistant",
+                "content": assistant_text,
+                "timestamp": ts,
+                "archive_pair_num": pair_num,
+                "archive_chunk_id": chunk_id,
+            })
+        if not user_text and not assistant_text and text.strip():
+            messages.append({
+                "role": "assistant",
+                "content": text.strip(),
+                "timestamp": ts,
+                "archive_pair_num": pair_num or idx + 1,
+                "archive_chunk_id": chunk_id,
+            })
+
+    return {
+        "conversation_id": conversation_id,
+        "source_conversation_id": source_id,
+        "display_name": title,
+        "tag": chunks[0].get("tag") or "",
+        "created": created,
+        "last_activity_at": last_activity,
+        "archived_source": True,
+        "messages": messages,
+    }
+
+
+def _browser_engram_envelope(conversation_id: str) -> dict | None:
+    source_id = _browser_decode_source_id("engram", conversation_id)
+    if not source_id:
+        return None
+    path = _browser_resolve_path(source_id)
+    content = ""
+    if path and os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except OSError:
+            content = ""
+    if not content:
+        return None
+    body = re.sub(r"^---\s*.*?\s*---\s*", "", content, flags=re.S).strip()
+    heading = re.search(r"^#\s+(.+)$", body, flags=re.M)
+    title = (
+        heading.group(1).strip()
+        if heading
+        else (os.path.splitext(os.path.basename(path))[0] if path else "Engram")
+    )
+    title = title.replace("-", " ")[:180]
+    return {
+        "conversation_id": conversation_id,
+        "source_conversation_id": source_id,
+        "display_name": title,
+        "tag": "",
+        "created": None,
+        "last_activity_at": None,
+        "archived_source": True,
+        "result_type": "engram",
+        "messages": [{
+            "role": "assistant",
+            "content": body or content,
+            "timestamp": None,
+        }],
+    }
+
+
+def _browser_memory_envelope(conversation_id: str) -> dict | None:
+    return (
+        _browser_archive_envelope(conversation_id)
+        or _browser_engram_envelope(conversation_id)
+    )
+
+
+@app.route("/api/conversations/browser", methods=["GET"])
+def conversations_browser():
+    """Search or browse live sessions plus archived conversation memory."""
+    query = (request.args.get("q") or "").strip()
+    try:
+        limit = int(request.args.get("limit") or 100)
+    except (TypeError, ValueError):
+        limit = 100
+    limit = max(1, min(limit, 500))
+
+    try:
+        live_rows = _browser_live_rows(query)
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+
+    live_ids = {r.get("conversation_id") for r in live_rows}
+    rows_by_id: dict[str, dict] = {}
+    for row in live_rows:
+        _browser_merge_best(rows_by_id, row)
+
+    archive_rows: list[dict] = []
+    engram_rows: list[dict] = []
+    if query:
+        archive_rows.extend(_browser_chroma_exact_rows(
+            query, logical_collection="conversations", limit=120))
+        archive_rows.extend(_browser_chroma_semantic_rows(
+            query, logical_collection="conversations", limit=80))
+        engram_rows.extend(_browser_chroma_exact_rows(
+            query, logical_collection="knowledge", limit=80))
+        engram_rows.extend(_browser_chroma_semantic_rows(
+            query, logical_collection="knowledge", limit=60))
+    else:
+        archive_rows.extend(_browser_latest_archive_rows(limit=limit))
+
+    for row in archive_rows + engram_rows:
+        if row.get("source_conversation_id") in live_ids:
+            continue
+        _browser_merge_best(rows_by_id, row)
+
+    rows = list(rows_by_id.values())
     rows.sort(
         key=lambda r: (
             float(r.get("score") or 0),
@@ -5649,6 +6257,7 @@ def conversations_browser():
         "query": query,
         "rows": rows[:limit],
         "total": len(rows),
+        "source_counts": _browser_source_counts(rows),
     })
 
 
@@ -5737,6 +6346,8 @@ def conversations_fetch(conversation_id):
         return json.dumps({"error": f"load_conversation_json import failed: {e}"}), 500
 
     data = load_conversation_json(conversation_id)
+    if data is None:
+        data = _browser_memory_envelope(conversation_id)
     if data is None:
         return json.dumps({"error": "conversation not found", "conversation_id": conversation_id}), 404
 

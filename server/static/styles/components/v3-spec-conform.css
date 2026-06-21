@@ -145,6 +145,16 @@
   border-color: var(--interactive-accent);
 }
 
+.conversation-browser-related:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.conversation-browser-related:disabled:hover {
+  background: transparent;
+  border-color: var(--background-modifier-border);
+}
+
 .conversation-browser-status {
   min-height: 18px;
   color: var(--text-muted);

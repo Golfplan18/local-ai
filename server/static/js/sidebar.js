@@ -561,9 +561,14 @@
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       renderBrowserRows(data.rows || [], data.query || '');
+      const counts = data.source_counts || {};
+      const parts = [];
+      if (counts.live) parts.push(`${counts.live} live`);
+      if (counts.archive) parts.push(`${counts.archive} archived`);
+      if (counts.engram) parts.push(`${counts.engram} engram${counts.engram === 1 ? '' : 's'}`);
       browserStatus.textContent = data.total
-        ? `${data.total} conversation${data.total === 1 ? '' : 's'}`
-        : 'No matching conversations';
+        ? `${data.total} result${data.total === 1 ? '' : 's'}${parts.length ? ` (${parts.join(', ')})` : ''}`
+        : 'No matching conversations or engrams';
     } catch (e) {
       browserStatus.textContent = 'Search failed: ' + (e.message || e);
       browserRows.innerHTML = '';
@@ -577,7 +582,9 @@
       item.className = 'conversation-browser-row';
       if (row.conversation_id === activeConvId) item.classList.add('is-active');
       if (row.closed) item.classList.add('is-closed');
+      if (row.source_kind) item.classList.add(`is-${row.source_kind}`);
       item.dataset.conversationId = row.conversation_id;
+      item.dataset.sourceKind = row.source_kind || 'live';
 
       const check = document.createElement('input');
       check.type = 'checkbox';
@@ -602,16 +609,23 @@
       related.type = 'button';
       related.className = 'conversation-browser-related';
       related.textContent = 'Related';
-      related.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fetchRelated(row.conversation_id);
-      });
+      if (row.source_kind && row.source_kind !== 'live') {
+        related.disabled = true;
+        related.title = 'Related lookup is available for live threads';
+      } else {
+        related.addEventListener('click', (e) => {
+          e.stopPropagation();
+          fetchRelated(row.conversation_id);
+        });
+      }
       item.appendChild(related);
 
       const action = document.createElement('button');
       action.type = 'button';
       action.className = 'conversation-browser-action';
-      action.textContent = row.closed ? 'Make active' : 'Open';
+      action.textContent = row.closed && (!row.source_kind || row.source_kind === 'live')
+        ? 'Make active'
+        : 'Open';
       action.addEventListener('click', (e) => {
         e.stopPropagation();
         activateBrowserRow(row);
@@ -641,7 +655,7 @@
 
   const activateBrowserRow = async (row) => {
     if (!row || !row.conversation_id) return;
-    if (row.closed) {
+    if (row.closed && (!row.source_kind || row.source_kind === 'live')) {
       try {
         await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/restore`, {
           method: 'POST',
@@ -654,6 +668,10 @@
         conversation_id: row.conversation_id,
         tag: row.tag,
         title: row.title,
+        source_kind: row.source_kind,
+        result_type: row.result_type,
+        source_conversation_id: row.source_conversation_id,
+        matched_chunk_id: row.matched_chunk_id,
         matched_turn_index: row.matched_turn_index,
       },
     }));
