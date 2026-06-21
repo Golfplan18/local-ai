@@ -676,6 +676,14 @@ except Exception as _e:  # pragma: no cover — defensive
     _HAS_USER_SETTINGS = False
     print(f"[server] user_settings unavailable: {_e}")
 
+try:
+    import retrieval_config as _retrieval_config
+    _HAS_RETRIEVAL_CONFIG = True
+except Exception as _e:  # pragma: no cover — defensive
+    _retrieval_config = None
+    _HAS_RETRIEVAL_CONFIG = False
+    print(f"[server] retrieval_config unavailable: {_e}")
+
 
 _MEDIA_LIBRARY_STAGING_DIR = os.path.expanduser("~/ora/staging/media-library/")
 os.makedirs(_MEDIA_LIBRARY_STAGING_DIR, exist_ok=True)
@@ -1154,6 +1162,60 @@ def settings_post():
     except Exception as e:
         return _json_response({"error": str(e)}, status=500)
     return _json_response({"settings": merged})
+
+
+@app.route("/api/retrieval/config", methods=["GET"])
+def retrieval_config_get():
+    if not _HAS_RETRIEVAL_CONFIG or _retrieval_config is None:
+        return _json_response({"error": "retrieval config unavailable"}, status=503)
+    try:
+        return _json_response({"retrieval": _retrieval_config.snapshot()})
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+
+
+@app.route("/api/retrieval/config", methods=["POST"])
+def retrieval_config_post():
+    if not _HAS_RETRIEVAL_CONFIG or _retrieval_config is None:
+        return _json_response({"error": "retrieval config unavailable"}, status=503)
+    payload = request.get_json(silent=True) or {}
+    result: dict = {}
+    try:
+        reranker_id = (payload.get("reranker_id") or "").strip()
+        if reranker_id:
+            opt = _retrieval_config.option_by_id(
+                _retrieval_config.list_reranker_options(), reranker_id
+            )
+            if opt is None:
+                return _json_response({"error": "unknown reranker"}, status=400)
+            _retrieval_config.update_active_reranker(opt)
+            result["reranker_saved"] = reranker_id
+
+        embedding_id = (payload.get("embedding_profile_id") or "").strip()
+        if embedding_id:
+            opt = _retrieval_config.option_by_id(
+                _retrieval_config.list_embedding_options(), embedding_id
+            )
+            if opt is None:
+                return _json_response({"error": "unknown embedding profile"}, status=400)
+            target_collections = _retrieval_config.target_collections_for_profile(embedding_id)
+            if payload.get("activate_embedding"):
+                _retrieval_config.update_active_embedding_profile(
+                    opt,
+                    collection_names=payload.get("collection_names") or target_collections,
+                )
+                result["embedding_activated"] = embedding_id
+            else:
+                result["embedding_staged"] = {
+                    "profile": opt,
+                    "requires_rebuild": True,
+                    "target_collections": target_collections,
+                }
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+
+    result["retrieval"] = _retrieval_config.snapshot()
+    return _json_response(result)
 
 
 @app.route("/api/settings/api-key", methods=["POST"])
@@ -2051,7 +2113,11 @@ def _persist_vision_retry_queue(conversation_id: str, entries: list[dict]) -> No
         print(f"[vision-retry-queue] persist failed for {conversation_id}: {e}")
 
 
-def _run_pipeline_from_step2(step1, config, history, user_input, clarification_text="", images=None, execution_context="interactive", extra_context=None, trace_dir=None, config_name=None):
+def _run_pipeline_from_step2(step1, config, history, user_input,
+                             clarification_text="", images=None,
+                             execution_context="interactive",
+                             extra_context=None, trace_dir=None,
+                             config_name=None, conversation_tag=""):
     """Resume pipeline from Step 2 onward, optionally enriched with clarification answers.
 
     ``extra_context`` (WP-3.3): an optional dict of extra keys to merge into the
@@ -2109,7 +2175,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
                 print(f"[pre-routing] resume re-route failed: {exc}")
 
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
-                                             config_name=config_name)
+                                             config_name=config_name,
+                                             conversation_tag=conversation_tag)
     # WP-3.3: thread merged-input extras (spatial_representation, image_path,
     # …) into the context package for build_system_prompt_for_gear.
     if extra_context:
@@ -2250,7 +2317,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input, clarification_t
 
 def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_context=None,
                        manual_mode_selection="", manual_lens_selection="",
-                       framework_selected="", config_name=None):
+                       framework_selected="", config_name=None, conversation_tag=""):
     """Generator: run the full pipeline with SSE stage events.
 
     Yields SSE events for each pipeline stage so the browser can display progress.
@@ -2439,6 +2506,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                 extra_context=pending.get("extra_context"),
                 trace_dir=trace_dir,
                 config_name=config_name,
+                conversation_tag=pending.get("conversation_tag") or conversation_tag,
             )
         finally:
             if trace_dir:
@@ -2660,6 +2728,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             "user_input": user_input,
             "images": images,
             "extra_context": extra_context,
+            "conversation_tag": conversation_tag,
             "pre_routing_stage": pre_routing.get("pending_clarification_stage"),
         }
         yield _sse("pipeline_stage", stage="analysis_mode_elicitation",
@@ -2728,6 +2797,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             "user_input": user_input,
             "images": images,
             "extra_context": extra_context,
+            "conversation_tag": conversation_tag,
             "pre_routing_stage": pending_stage,
         }
 
@@ -2764,6 +2834,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             "user_input": user_input,
             "images": images,
             "extra_context": extra_context,
+            "conversation_tag": conversation_tag,
         }
 
         yield _sse("clarification_needed",
@@ -2786,7 +2857,9 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     try:
         yield from _run_pipeline_from_step2(step1, config, history, user_input,
                                             images=images, extra_context=extra_context,
-                                            trace_dir=trace_dir, config_name=config_name)
+                                            trace_dir=trace_dir,
+                                            config_name=config_name,
+                                            conversation_tag=conversation_tag)
     finally:
         # 2026-05-28: aggregate per-turn token usage into cost-summary.json.
         # Runs even when the SSE consumer disconnects mid-stream (GeneratorExit)
@@ -2901,7 +2974,8 @@ def _direct_stream(user_input, history, images=None):
 
 def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main", images=None, extra_context=None,
                           manual_mode_selection="", manual_lens_selection="",
-                          framework_selected="", config_name=None):
+                          framework_selected="", config_name=None,
+                          conversation_tag=""):
     """Route to pipeline or direct stream based on mode.
 
     ``extra_context`` (WP-3.3): optional merged-input dict (spatial_representation,
@@ -2921,7 +2995,8 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                                     manual_mode_selection=manual_mode_selection,
                                     manual_lens_selection=manual_lens_selection,
                                     framework_selected=framework_selected,
-                                    config_name=config_name)
+                                    config_name=config_name,
+                                    conversation_tag=conversation_tag)
     else:
         yield from _direct_stream(user_input, history, images=images)
 
@@ -4559,7 +4634,8 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                     manual_mode_selection=manual_mode_selection,
                     manual_lens_selection=manual_lens_selection,
                     framework_selected=framework_selected,
-                    config_name=config_name):
+                    config_name=config_name,
+                    conversation_tag=tag):
                 try:
                     d = json.loads(chunk[6:])
                 except Exception:
@@ -5411,6 +5487,181 @@ def conversations_list():
         "pending": pending,
         "unread":  unread,
         "active":  active,
+    })
+
+
+def _conversation_search_snippet(data: dict, query: str) -> dict:
+    messages = data.get("messages") if isinstance(data.get("messages"), list) else []
+    terms = [t.lower() for t in re.findall(r"\w+", query or "") if len(t) > 1]
+    title = data.get("display_name") if isinstance(data.get("display_name"), str) else ""
+    if not title:
+        for msg in messages:
+            if isinstance(msg, dict) and msg.get("role") == "user":
+                title = str(msg.get("content") or "").strip().replace("\n", " ")[:80]
+                break
+    title_l = title.lower()
+    best = {
+        "score": 0,
+        "snippet": "",
+        "matched_message_index": None,
+        "matched_turn_index": None,
+    }
+    if terms and title_l:
+        hits = sum(1 for t in terms if t in title_l)
+        if hits:
+            best.update({"score": hits * 4, "snippet": title[:220]})
+
+    last_text = ""
+    turn_idx = -1
+    for idx, msg in enumerate(messages):
+        if not isinstance(msg, dict):
+            continue
+        if msg.get("role") == "user":
+            turn_idx += 1
+        text = str(msg.get("content") or "").replace("\n", " ").strip()
+        if text:
+            last_text = text
+        haystack = text.lower()
+        if not terms:
+            continue
+        hits = sum(1 for t in terms if t in haystack)
+        if hits and hits * 3 + min(len(text), 800) / 800 > best["score"]:
+            start = 0
+            for t in terms:
+                pos = haystack.find(t)
+                if pos >= 0:
+                    start = max(0, pos - 80)
+                    break
+            snippet = text[start:start + 260]
+            best.update({
+                "score": hits * 3 + min(len(text), 800) / 800,
+                "snippet": snippet,
+                "matched_message_index": idx,
+                "matched_turn_index": max(0, turn_idx),
+            })
+
+    if not terms:
+        best["score"] = 1
+        best["snippet"] = (last_text or title or "").strip()[:260]
+    return best
+
+
+@app.route("/api/conversations/browser", methods=["GET"])
+def conversations_browser():
+    """Search or browse all conversations, including closed rows."""
+    query = (request.args.get("q") or "").strip()
+    try:
+        limit = int(request.args.get("limit") or 100)
+    except (TypeError, ValueError):
+        limit = 100
+    limit = max(1, min(limit, 500))
+
+    try:
+        from conversation_memory import iter_conversations, load_conversation_json
+    except Exception as e:
+        return _json_response({"error": f"conversation browser import failed: {e}"}, status=500)
+
+    try:
+        summaries = iter_conversations(include_closed=True)
+    except Exception as e:
+        return _json_response({"error": f"conversation list failed: {e}"}, status=500)
+
+    rows: list[dict] = []
+    for row in summaries:
+        cid = row.get("conversation_id")
+        if not cid:
+            continue
+        data = load_conversation_json(cid) or {}
+        match = _conversation_search_snippet(data, query)
+        if query and match.get("score", 0) <= 0:
+            continue
+        out = dict(row)
+        out.update({
+            "snippet": match.get("snippet") or "",
+            "matched_message_index": match.get("matched_message_index"),
+            "matched_turn_index": match.get("matched_turn_index"),
+            "score": match.get("score", 0),
+        })
+        rows.append(out)
+
+    rows.sort(
+        key=lambda r: (
+            float(r.get("score") or 0),
+            r.get("last_activity_at") or "",
+        ),
+        reverse=True,
+    )
+    return _json_response({
+        "query": query,
+        "rows": rows[:limit],
+        "total": len(rows),
+    })
+
+
+@app.route("/api/conversation/<conversation_id>/restore", methods=["POST"])
+def conversations_restore(conversation_id):
+    """Make a closed conversation visible in the active sidebar again."""
+    conversation_id = (conversation_id or "").strip()
+    if not conversation_id:
+        return _json_response({"error": "conversation_id is required"}, status=400)
+    try:
+        from conversation_memory import set_conversation_closed, load_conversation_json
+    except Exception as e:
+        return _json_response({"error": f"conversation restore import failed: {e}"}, status=500)
+    path = set_conversation_closed(conversation_id, False)
+    if path is None:
+        return _json_response({"error": "conversation not found", "conversation_id": conversation_id}, status=404)
+    data = load_conversation_json(conversation_id) or {}
+    return _json_response({
+        "ok": True,
+        "conversation_id": conversation_id,
+        "conversation": data,
+    })
+
+
+@app.route("/api/conversation/<conversation_id>/related", methods=["GET"])
+def conversations_related(conversation_id):
+    """Return parent, child, and sibling conversation rows for a thread."""
+    conversation_id = (conversation_id or "").strip()
+    if not conversation_id:
+        return _json_response({"error": "conversation_id is required"}, status=400)
+    try:
+        from conversation_memory import iter_conversations, load_conversation_json
+    except Exception as e:
+        return _json_response({"error": f"conversation related import failed: {e}"}, status=500)
+    rows = iter_conversations(include_closed=True)
+    by_id = {r.get("conversation_id"): r for r in rows}
+    current = by_id.get(conversation_id)
+    if current is None:
+        return _json_response({"error": "conversation not found", "conversation_id": conversation_id}, status=404)
+    parent_id = current.get("parent_conversation_id")
+    related: list[dict] = []
+
+    def add(row: dict | None, relation: str) -> None:
+        if not row:
+            return
+        item = dict(row)
+        item["relation"] = relation
+        data = load_conversation_json(item["conversation_id"]) or {}
+        item["snippet"] = _conversation_search_snippet(data, "").get("snippet") or ""
+        related.append(item)
+
+    add(current, "self")
+    if parent_id:
+        add(by_id.get(parent_id), "parent")
+    for row in rows:
+        cid = row.get("conversation_id")
+        if cid == conversation_id:
+            continue
+        if row.get("parent_conversation_id") == conversation_id:
+            add(row, "fork")
+        elif parent_id and row.get("parent_conversation_id") == parent_id:
+            add(row, "sibling")
+
+    related.sort(key=lambda r: (r.get("relation") != "self", r.get("last_activity_at") or ""), reverse=False)
+    return _json_response({
+        "conversation_id": conversation_id,
+        "rows": related,
     })
 
 
@@ -7012,7 +7263,8 @@ def clarification_respond():
         for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
                                               images=pending.get("images"),
                                               extra_context=pending.get("extra_context"),
-                                              trace_dir=_resume_trace_dir):
+                                              trace_dir=_resume_trace_dir,
+                                              conversation_tag=pending.get("conversation_tag") or _resume_tag):
             yield chunk
             try:
                 d = json.loads(chunk[6:])
@@ -7093,7 +7345,8 @@ def clarification_skip():
         for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
                                               images=pending.get("images"),
                                               extra_context=pending.get("extra_context"),
-                                              trace_dir=_skip_trace_dir):
+                                              trace_dir=_skip_trace_dir,
+                                              conversation_tag=pending.get("conversation_tag") or _skip_tag):
             yield chunk
             try:
                 d = json.loads(chunk[6:])

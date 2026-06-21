@@ -25,6 +25,22 @@
   margin-bottom: 0;
 }
 
+.sidebar-browse-cmd {
+  flex-shrink: 0;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-normal);
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sidebar-browse-cmd:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
 .sidebar-pin-toggle {
   flex-shrink: 0;
   width: 32px;
@@ -50,6 +66,137 @@
   background: var(--background-modifier-active-hover, var(--background-modifier-hover));
   color: var(--interactive-accent);
   border-color: var(--interactive-accent);
+}
+
+/* ── Conversation browser overlay ─────────────────────────── */
+
+.conversation-browser-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: none;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.conversation-browser-overlay.is-open {
+  display: block;
+}
+
+.conversation-browser-panel {
+  position: absolute;
+  left: calc(var(--ora-sidebar-collapsed-w, 40px) + 12px);
+  right: 24px;
+  top: 92px;
+  max-height: min(70vh, 720px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  padding: 8px;
+}
+
+.conversation-browser-top {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.conversation-browser-search {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.conversation-browser-search-btn,
+.conversation-browser-close,
+.conversation-browser-related,
+.conversation-browser-action {
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-normal);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.conversation-browser-search-btn:hover,
+.conversation-browser-close:hover,
+.conversation-browser-related:hover,
+.conversation-browser-action:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.conversation-browser-status {
+  min-height: 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.conversation-browser-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  min-height: 120px;
+}
+
+.conversation-browser-row {
+  display: grid;
+  grid-template-columns: 20px minmax(180px, 260px) minmax(220px, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+  min-height: 30px;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.conversation-browser-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.conversation-browser-row.is-active {
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  border-left: 2px solid var(--interactive-accent);
+}
+
+.conversation-browser-row.is-closed {
+  color: var(--text-muted);
+}
+
+.conversation-browser-check {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.conversation-browser-title,
+.conversation-browser-snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.conversation-browser-title {
+  font-weight: 600;
+}
+
+.conversation-browser-snippet {
+  color: var(--text-muted);
 }
 
 /* Body class set by sidebar.js when pinned. Reserved for any layout

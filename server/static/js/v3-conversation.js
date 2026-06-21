@@ -278,7 +278,7 @@
   };
 
   // ── Conversation loading (Backlog 2B) ──────────────────────────────────
-  const load = async (conversation_id) => {
+  const load = async (conversation_id, opts = {}) => {
     if (!conversation_id) return;
     refreshDOMRefs();
 
@@ -302,6 +302,11 @@
     state.messages             = (envelope && envelope.messages) || [];
     state.turns                = groupTurns(state.messages);
     state.currentTurnIndex     = Math.max(0, state.turns.length - 1);
+    if (Number.isInteger(opts.turnIndex)
+        && opts.turnIndex >= 0
+        && opts.turnIndex < state.turns.length) {
+      state.currentTurnIndex = opts.turnIndex;
+    }
 
     // Title derivation. The /api/conversation/<id> endpoint returns the
     // raw envelope without a derived title, so we derive it here:
@@ -634,7 +639,8 @@
     // this loads the actual content.
     document.addEventListener('ora:conversation-selected', (e) => {
       const id = e.detail && e.detail.conversation_id;
-      if (id) load(id);
+      const turnIndex = e.detail && e.detail.matched_turn_index;
+      if (id) load(id, { turnIndex });
     });
 
     // Re-render header on mode-change so the mode icon updates when the

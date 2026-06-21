@@ -33,6 +33,7 @@
   const dashPending  = sidebar.querySelector('#sidebarDashPending');
 
   const newThreadCmd = sidebar.querySelector('.sidebar-new-thread-cmd');
+  const browseCmd    = sidebar.querySelector('.sidebar-browse-cmd');
   const groupPinned  = sidebar.querySelector('[data-group="pinned"]  .sidebar-group-rows');
   const groupPinnedShell = sidebar.querySelector('[data-group="pinned"]');
   const groupErrored = sidebar.querySelector('[data-group="errored"] .sidebar-group-rows');
@@ -43,6 +44,10 @@
 
   let lastSnapshot = { pinned: [], errored: [], pending: [], unread: [], active: [] };
   let activeConvId = null;
+  let browserOverlay = null;
+  let browserSearch = null;
+  let browserRows = null;
+  let browserStatus = null;
 
   const setExpanded = (on) => {
     sidebar.classList.toggle('expanded', !!on);
@@ -439,10 +444,172 @@
     document.dispatchEvent(new CustomEvent('ora:new-thread-requested'));
   };
 
+  const ensureBrowser = () => {
+    if (browserOverlay) return browserOverlay;
+    browserOverlay = document.createElement('div');
+    browserOverlay.className = 'conversation-browser-overlay';
+    browserOverlay.setAttribute('role', 'dialog');
+    browserOverlay.setAttribute('aria-modal', 'false');
+    browserOverlay.innerHTML = `
+      <div class="conversation-browser-panel">
+        <div class="conversation-browser-top">
+          <input class="conversation-browser-search" type="text"
+                 placeholder="Search conversations..." />
+          <button class="conversation-browser-search-btn" type="button">Search</button>
+          <button class="conversation-browser-close" type="button" aria-label="Close browser">×</button>
+        </div>
+        <div class="conversation-browser-status"></div>
+        <div class="conversation-browser-rows"></div>
+      </div>`;
+    document.body.appendChild(browserOverlay);
+    browserSearch = browserOverlay.querySelector('.conversation-browser-search');
+    browserRows = browserOverlay.querySelector('.conversation-browser-rows');
+    browserStatus = browserOverlay.querySelector('.conversation-browser-status');
+    browserOverlay.querySelector('.conversation-browser-close')
+      .addEventListener('click', closeBrowser);
+    browserOverlay.querySelector('.conversation-browser-search-btn')
+      .addEventListener('click', () => fetchBrowser(browserSearch.value));
+    browserSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        fetchBrowser(browserSearch.value);
+      } else if (e.key === 'Escape') {
+        closeBrowser();
+      }
+    });
+    browserOverlay.addEventListener('click', (e) => {
+      if (e.target === browserOverlay) closeBrowser();
+    });
+    return browserOverlay;
+  };
+
+  const openBrowser = () => {
+    ensureBrowser();
+    browserOverlay.classList.add('is-open');
+    fetchBrowser('');
+    setTimeout(() => {
+      try { browserSearch.focus(); } catch (e) {}
+    }, 0);
+  };
+
+  const closeBrowser = () => {
+    if (browserOverlay) browserOverlay.classList.remove('is-open');
+  };
+
+  const fetchBrowser = async (query) => {
+    ensureBrowser();
+    browserStatus.textContent = 'Loading...';
+    try {
+      const params = new URLSearchParams();
+      if ((query || '').trim()) params.set('q', query.trim());
+      params.set('limit', '200');
+      const r = await fetch('/api/conversations/browser?' + params.toString());
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      renderBrowserRows(data.rows || [], data.query || '');
+      browserStatus.textContent = data.total
+        ? `${data.total} conversation${data.total === 1 ? '' : 's'}`
+        : 'No matching conversations';
+    } catch (e) {
+      browserStatus.textContent = 'Search failed: ' + (e.message || e);
+      browserRows.innerHTML = '';
+    }
+  };
+
+  const renderBrowserRows = (rows, query) => {
+    browserRows.innerHTML = '';
+    rows.forEach((row) => {
+      const item = document.createElement('div');
+      item.className = 'conversation-browser-row';
+      if (row.conversation_id === activeConvId) item.classList.add('is-active');
+      if (row.closed) item.classList.add('is-closed');
+      item.dataset.conversationId = row.conversation_id;
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'conversation-browser-check';
+      check.checked = false;
+      check.addEventListener('click', (e) => e.stopPropagation());
+      item.appendChild(check);
+
+      const title = document.createElement('div');
+      title.className = 'conversation-browser-title';
+      title.textContent = row.title || row.conversation_id || '(untitled)';
+      item.appendChild(title);
+
+      const snippet = document.createElement('div');
+      snippet.className = 'conversation-browser-snippet';
+      snippet.textContent = row.snippet || '';
+      item.appendChild(snippet);
+
+      const related = document.createElement('button');
+      related.type = 'button';
+      related.className = 'conversation-browser-related';
+      related.textContent = 'Related';
+      related.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fetchRelated(row.conversation_id);
+      });
+      item.appendChild(related);
+
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.className = 'conversation-browser-action';
+      action.textContent = row.closed ? 'Make active' : 'Open';
+      action.addEventListener('click', (e) => {
+        e.stopPropagation();
+        activateBrowserRow(row);
+      });
+      item.appendChild(action);
+
+      item.addEventListener('click', () => activateBrowserRow(row));
+      browserRows.appendChild(item);
+    });
+  };
+
+  const fetchRelated = async (conversationId) => {
+    if (!conversationId) return;
+    browserStatus.textContent = 'Loading related conversations...';
+    try {
+      const r = await fetch(`/api/conversation/${encodeURIComponent(conversationId)}/related`);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      renderBrowserRows(data.rows || [], '');
+      browserStatus.textContent = (data.rows || []).length
+        ? 'Related conversations'
+        : 'No related conversations';
+    } catch (e) {
+      browserStatus.textContent = 'Related lookup failed: ' + (e.message || e);
+    }
+  };
+
+  const activateBrowserRow = async (row) => {
+    if (!row || !row.conversation_id) return;
+    if (row.closed) {
+      try {
+        await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/restore`, {
+          method: 'POST',
+        });
+      } catch (e) {}
+    }
+    activeConvId = row.conversation_id;
+    document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+      detail: {
+        conversation_id: row.conversation_id,
+        tag: row.tag,
+        title: row.title,
+        matched_turn_index: row.matched_turn_index,
+      },
+    }));
+    fetchList();
+    closeBrowser();
+  };
+
   // ── Wire-up ─────────────────────────────────────────────────────────
   if (expandIcon)  expandIcon.addEventListener('click',  () => setExpanded(true));
   if (newChatIcon) newChatIcon.addEventListener('click', onNewThread);
   if (newThreadCmd) newThreadCmd.addEventListener('click', onNewThread);
+  if (browseCmd) browseCmd.addEventListener('click', openBrowser);
 
   // Backlog 3E — pin-in-place button at the top of the expanded panel.
   sidebarPinBtn = sidebar.querySelector('#sidebarPinToggle');

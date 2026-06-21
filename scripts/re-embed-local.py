@@ -2,17 +2,25 @@
 """Parallel-collection re-embed for Ora's ChromaDB.
 
 Reads documents from existing (v1) collections, re-embeds them via a new
-embedder model (e.g. bge-m3) using Ollama's batch /api/embed endpoint, and
-writes the resulting vectors + docs + metadata into new (v2) collections in
-the same ChromaDB instance. The v1 collections stay untouched and keep
-serving queries until the orchestrator cuts over.
+embedder model using Ora's active embedding adapter (Ollama locally or
+OpenRouter by API), and writes the resulting vectors + docs + metadata into
+new collections in the same ChromaDB instance. The source collections stay
+untouched and keep serving queries until the orchestrator cuts over.
 
 Usage:
     re-embed-local.py \\
+        --target-provider ollama \\
         --target-embedder bge-m3 \\
         --target-dim 1024 \\
         --suffix _v2 \\
         --collections knowledge,conversations,atomics,conversations_incognito
+
+    re-embed-local.py \\
+        --target-provider openrouter \\
+        --target-embedder qwen/qwen3-embedding-8b \\
+        --target-dim 4096 \\
+        --target-profile-id openrouter:qwen/qwen3-embedding-8b \\
+        --activate-on-success
 
     --dry-run                   Report doc counts per collection, don't write
     --resume-from COLLECTION    Resume after a crash for one specific collection
@@ -20,12 +28,13 @@ Usage:
     --fetch-size 1000           Docs per ChromaDB.get() page (default 1000)
     --checkpoint-every 1000     Docs between checkpoint writes (default 1000)
 
-Cutover sequence:
+Manual cutover sequence:
     1. ollama pull <target-embedder>
-    2. Run this script. v1 collections still active.
-    3. Verify v2 counts match v1 counts.
-    4. Edit ~/ora/config/chromadb.json: switch embedder + collection physical
-       names to the v2 set. Restart orchestrator. Live on new embedder.
+    2. Run this script. Source collections still active.
+    3. Verify target counts match source counts.
+    4. Switch ~/ora/config/chromadb.json to the new profile/collections, or
+       pass --activate-on-success to let the script do that only after a
+       successful count check. Restart orchestrator.
 """
 
 from __future__ import annotations
@@ -44,7 +53,13 @@ from typing import Any
 # collection translation. Logical names are used throughout this script.
 sys.path.insert(0, os.path.expanduser("~/ora"))
 
-from orchestrator.embedding import COLLECTIONS, resolve_collection  # noqa: E402
+from orchestrator.embedding import (  # noqa: E402
+    COLLECTIONS,
+    embed_texts,
+    get_embedding_function,
+    resolve_collection,
+)
+from orchestrator import retrieval_config  # noqa: E402
 
 DEFAULT_CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
@@ -97,7 +112,39 @@ def ollama_embed_batch(
     raise last_err
 
 
-def assert_target_embedder_available(model: str, url: str) -> None:
+def assert_target_embedder_available(
+    provider: str,
+    model: str,
+    *,
+    url: str,
+    base_url: str,
+    target_dim: int,
+) -> None:
+    """Verify the target embedder is reachable before the long rebuild."""
+    if provider == "openrouter":
+        if not retrieval_config.openrouter_key_present():
+            raise SystemExit(
+                "FATAL: OpenRouter API key is not set.\n"
+                "Add it in Settings -> External APIs before rebuilding."
+            )
+        try:
+            probe = embed_texts(
+                ["Ora embedding rebuild probe"],
+                provider="openrouter",
+                model_name=model,
+                base_url=base_url,
+                timeout=45,
+                attempts=1,
+            )[0]
+        except Exception as e:
+            raise SystemExit(f"FATAL: OpenRouter embedder probe failed: {e}")
+        if len(probe) != target_dim:
+            raise SystemExit(
+                f"FATAL: OpenRouter returned vector dim {len(probe)}, "
+                f"expected {target_dim} for {model}"
+            )
+        return
+
     """Verify Ollama is up and the target embedder has been pulled."""
     try:
         with urllib.request.urlopen(f"{url}/api/tags", timeout=5) as resp:
@@ -149,17 +196,17 @@ def reembed_collection(
     logical_name: str,
     source_physical: str,
     target_physical: str,
+    target_provider: str,
     target_model: str,
     target_dim: int,
     ollama_url: str,
+    target_base_url: str,
     batch_size: int,
     fetch_size: int,
     checkpoint_file: str,
     resume_from_idx: int | None,
 ) -> dict:
     """Re-embed one collection. Returns a per-collection report dict."""
-    from chromadb.utils import embedding_functions
-
     print(f"\n=== {logical_name}: {source_physical}  ->  {target_physical} ===", file=sys.stderr, flush=True)
 
     # Open source. embedding_function is None — we only call .get(), which
@@ -189,10 +236,14 @@ def reembed_collection(
     print(f"  source count: {source_count}", file=sys.stderr, flush=True)
 
     # Open or create target. Bind the new embedding_function so post-cutover
-    # query_texts() calls embed through bge-m3.
-    target_embed_fn = embedding_functions.OllamaEmbeddingFunction(
-        url=ollama_url,
+    # query_texts() calls embed through the same provider/model.
+    target_embed_fn = get_embedding_function(
+        provider=target_provider,
         model_name=target_model,
+        url=ollama_url,
+        base_url=target_base_url,
+        timeout=120,
+        dim=target_dim,
     )
     try:
         target = client.get_collection(
@@ -258,13 +309,17 @@ def reembed_collection(
         all_embeddings: list[list[float]] = []
         for sub_start in range(0, len(keep_docs), batch_size):
             sub = keep_docs[sub_start : sub_start + batch_size]
-            sub_embeddings = ollama_embed_batch(
-                sub, model=target_model, url=ollama_url
+            sub_embeddings = embed_texts(
+                sub,
+                provider=target_provider,
+                model_name=target_model,
+                url=ollama_url,
+                base_url=target_base_url,
             )
             for vec in sub_embeddings:
                 if len(vec) != target_dim:
                     raise SystemExit(
-                        f"FATAL: Ollama returned vector of dim {len(vec)}, "
+                        f"FATAL: {target_provider} returned vector of dim {len(vec)}, "
                         f"expected {target_dim} for model {target_model}"
                     )
             all_embeddings.extend(sub_embeddings)
@@ -289,6 +344,7 @@ def reembed_collection(
                 "last_id_idx": idx,
                 "total_ids": len(all_ids),
                 "target_physical": target_physical,
+                "target_provider": target_provider,
                 "target_model": target_model,
                 "updated_at": time.time(),
             }
@@ -340,9 +396,19 @@ def main() -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--target-embedder", required=True, help="Target Ollama embedding model (e.g. bge-m3)")
+    p.add_argument(
+        "--target-provider",
+        default="ollama",
+        choices=("ollama", "openrouter"),
+        help="Embedding provider for the target collection (default ollama)",
+    )
+    p.add_argument("--target-embedder", required=True, help="Target embedding model (e.g. bge-m3 or qwen/qwen3-embedding-8b)")
     p.add_argument("--target-dim", type=int, required=True, help="Expected vector dimension for the target embedder (e.g. 1024)")
-    p.add_argument("--suffix", default="_v2", help="Appended to physical collection names for the target (default _v2)")
+    p.add_argument("--suffix", default=None, help="Appended to physical collection names for the target (default _v2 unless --target-profile-id is set)")
+    p.add_argument(
+        "--target-profile-id",
+        help="Known retrieval profile id; uses that profile's stable target collection names",
+    )
     p.add_argument(
         "--collections",
         default=",".join(COLLECTIONS.keys()),
@@ -352,7 +418,13 @@ def main() -> int:
     p.add_argument("--fetch-size", type=int, default=1000, help="Docs per ChromaDB get() page")
     p.add_argument("--chromadb-path", default=DEFAULT_CHROMADB_PATH)
     p.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL)
+    p.add_argument("--target-base-url", help="Target API base URL (defaults by provider)")
     p.add_argument("--checkpoint-file", default=DEFAULT_CHECKPOINT_FILE)
+    p.add_argument(
+        "--activate-on-success",
+        action="store_true",
+        help="After all counts match, update config/chromadb.json to use the target profile and collections",
+    )
     p.add_argument(
         "--resume-from",
         help="<logical_name>[,<start_idx>] — resume one collection from the given id index (default: read from checkpoint file)",
@@ -366,9 +438,44 @@ def main() -> int:
         print("FATAL: chromadb not installed. Run: pip3 install chromadb", file=sys.stderr)
         return 1
 
+    target_base_url = args.target_base_url or (
+        "https://openrouter.ai/api/v1"
+        if args.target_provider == "openrouter"
+        else args.ollama_url
+    )
+
+    profile_options = retrieval_config.list_embedding_options()
+    target_profile = None
+    target_collection_map = None
+    if args.target_profile_id:
+        target_profile = retrieval_config.option_by_id(
+            profile_options, args.target_profile_id
+        )
+        if target_profile is None:
+            target_profile = {
+                "id": args.target_profile_id,
+                "label": args.target_profile_id,
+                "provider": args.target_provider,
+                "model": args.target_embedder,
+                "dimensions": args.target_dim,
+                "base_url": target_base_url,
+            }
+        target_collection_map = retrieval_config.target_collections_for_profile(
+            args.target_profile_id
+        )
+    suffix = args.suffix
+    if suffix is None:
+        suffix = "_v2" if not args.target_profile_id else None
+
     # Validate target embedder is reachable + pulled.
     if not args.dry_run:
-        assert_target_embedder_available(args.target_embedder, args.ollama_url)
+        assert_target_embedder_available(
+            args.target_provider,
+            args.target_embedder,
+            url=args.ollama_url,
+            base_url=target_base_url,
+            target_dim=args.target_dim,
+        )
 
     requested_logical = [c.strip() for c in args.collections.split(",") if c.strip()]
     for logical in requested_logical:
@@ -382,7 +489,10 @@ def main() -> int:
         total = 0
         for logical in requested_logical:
             phys_src = resolve_collection(logical)
-            phys_tgt = f"{phys_src}{args.suffix}"
+            phys_tgt = (
+                target_collection_map.get(logical, f"{phys_src}_{retrieval_config.profile_collection_suffix(args.target_profile_id)}")
+                if target_collection_map else f"{phys_src}{suffix}"
+            )
             try:
                 src = client.get_collection(name=phys_src)
                 count = src.count()
@@ -411,7 +521,10 @@ def main() -> int:
     reports: list[dict] = []
     for logical in requested_logical:
         phys_src = resolve_collection(logical)
-        phys_tgt = f"{phys_src}{args.suffix}"
+        phys_tgt = (
+            target_collection_map.get(logical, f"{phys_src}_{retrieval_config.profile_collection_suffix(args.target_profile_id)}")
+            if target_collection_map else f"{phys_src}{suffix}"
+        )
         # Auto-resume if checkpoint exists for this collection and no explicit resume_from passed.
         auto_resume_idx: int | None = None
         if args.resume_from is None:
@@ -428,9 +541,11 @@ def main() -> int:
                 logical_name=logical,
                 source_physical=phys_src,
                 target_physical=phys_tgt,
+                target_provider=args.target_provider,
                 target_model=args.target_embedder,
                 target_dim=args.target_dim,
                 ollama_url=args.ollama_url,
+                target_base_url=target_base_url,
                 batch_size=args.batch_size,
                 fetch_size=args.fetch_size,
                 checkpoint_file=args.checkpoint_file,
@@ -448,6 +563,31 @@ def main() -> int:
     print(json.dumps(reports, indent=2))
     all_match = all(r["match"] for r in reports)
     print(f"\nAll collections match: {all_match}")
+    if all_match and args.activate_on_success:
+        if not target_profile:
+            target_profile = {
+                "id": f"{args.target_provider}:{args.target_embedder}",
+                "label": f"{args.target_embedder} ({args.target_provider})",
+                "provider": args.target_provider,
+                "model": args.target_embedder,
+                "dimensions": args.target_dim,
+                "base_url": target_base_url,
+            }
+        collection_names = {
+            r["logical_name"]: r["target_physical"]
+            for r in reports
+            if not r.get("skipped")
+        }
+        if target_collection_map:
+            collection_names = {
+                **target_collection_map,
+                **collection_names,
+            }
+        retrieval_config.update_active_embedding_profile(
+            target_profile,
+            collection_names=collection_names,
+        )
+        print("Activated target embedding profile in config/chromadb.json")
     return 0 if all_match else 3
 
 

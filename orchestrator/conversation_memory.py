@@ -501,6 +501,8 @@ def _last_activity_at(messages: list) -> str | None:
 
 def iter_conversations(
     sessions_root: Path | None = None,
+    *,
+    include_closed: bool = False,
 ) -> list[dict[str, Any]]:
     """Enumerate conversations under ``sessions_root`` and return summary
     dicts.
@@ -537,7 +539,8 @@ def iter_conversations(
             continue
         if not isinstance(data, dict):
             continue
-        if data.get("closed") is True:
+        is_closed = data.get("closed") is True
+        if is_closed and not include_closed:
             continue
         messages = data.get("messages") or []
         tag = data.get("tag", "")
@@ -572,6 +575,15 @@ def iter_conversations(
             "pinned": user_pinned,
             "last_status": last_status,
             "last_error_summary": last_error_summary,
+            "closed": is_closed,
+            "parent_conversation_id": (
+                data.get("parent_conversation_id")
+                if isinstance(data.get("parent_conversation_id"), str) else None
+            ),
+            "fork_point_chunk_id": (
+                data.get("fork_point_chunk_id")
+                if isinstance(data.get("fork_point_chunk_id"), str) else None
+            ),
         })
     return summaries
 

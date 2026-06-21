@@ -6837,7 +6837,8 @@ def _build_web_extraction(config: dict, config_name: str | None = None) -> dict:
 
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None,
-                               config_name: str | None = None) -> dict:
+                               config_name: str | None = None,
+                               conversation_tag: str = "") -> dict:
     """Step 2: Assemble context package for pipeline stages.
 
     Python loads the mode file, performs RAG queries, and builds the complete
@@ -6861,41 +6862,21 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     gear = extract_default_gear(mode_text)
 
     # Phase A produces three forms of the prompt:
-    #   - raw_prompt: what the user actually typed (source of truth)
-    #   - cleaned_prompt: natural-language version with Phase A's
-    #     disambiguations and inferred items
-    #   - operational_notation: compact function-call form
+    #   - raw_prompt: what the user actually typed (kept for audit/fallback)
+    #   - cleaned_prompt: natural-language prompt after Phase A's typo
+    #     cleanup, antecedent replacement, disambiguation, and inferred items
+    #   - operational_notation: compact function-call form for trace/debug
     #
-    # Pre-2026-05-16 design used operational_notation as the cleaned_prompt
-    # passed downstream. That had two failure modes: (a) underscore-tokenized
-    # function-call syntax doesn't substring-match the natural-language
-    # signal-vocabulary registry (fixed in commit d6b7df7 by routing
-    # pre-routing through raw_prompt), and (b) downstream analyst /
-    # evaluator / verifier user messages got the operational form labelled
-    # as "ORIGINAL QUERY", which is misleading (the operational form is
-    # Phase A's interpretation, not the user's actual words) and stripped
-    # of nuance ("become as capable", "Short list, no preamble").
-    #
-    # Fix: the cleaned_prompt that flows downstream now combines the raw
-    # prompt (so evaluators see what the user actually asked) with Phase A's
-    # natural-language clarified interpretation (so they can see what was
-    # inferred and check the analyst against those inferences). The
-    # operational notation is dropped from user-facing portions of analyst
-    # prompts entirely — it was a model-readable optimisation that became a
-    # clarity tax. RAG queries use raw_prompt for embedding similarity
-    # (most faithful to user intent).
+    # The downstream pipeline must prefer the cleaned natural-language prompt.
+    # Raw text is retained separately so traces can show what changed, but
+    # RAG and model-facing prompts should not keep reintroducing typos,
+    # ambiguous pronouns, or mistaken words after Phase A already repaired
+    # them. If Phase A fails to produce a cleaned prompt, raw remains the
+    # last-resort fallback so a turn is not blanked.
     raw_prompt = step1_result.get("raw_prompt", "") or ""
     cleaned_nl = step1_result.get("cleaned_prompt", "") or ""
-    if raw_prompt and cleaned_nl and raw_prompt.strip() != cleaned_nl.strip():
-        cleaned_prompt = (
-            f"{raw_prompt}\n\n"
-            f"_Phase A clarified interpretation (includes inferred items "
-            f"not explicit in original):_\n\n"
-            f"{cleaned_nl}"
-        )
-    else:
-        cleaned_prompt = raw_prompt or cleaned_nl
-    rag_query = raw_prompt or cleaned_nl
+    cleaned_prompt = cleaned_nl or raw_prompt
+    rag_query = cleaned_prompt
 
     # CAMPAIGN-RAG-BYPASS-2026-05-26 (REMOVE WHEN PHASE 5 CAPTURES COMPLETE) {{{
     # Temporary bypass for the Comparative Evaluation Campaign documented in
@@ -6939,6 +6920,10 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     if _rag_isolation_value is None:
         _rag_isolation_value = config.get("rag_isolation")
     _RAG_ISOLATION_WEB_ONLY = _rag_isolation_value == "web_only"
+    include_private_rag = conversation_tag == "private"
+    legacy_rag_query = (
+        f"{rag_query} include:private" if include_private_rag else rag_query
+    )
     # Propagate the resolved flag to the tool dispatcher so the
     # knowledge_search tool (and any future vault-touching tool) refuses
     # when the model tries to call it mid-pipeline. ContextVar — per-thread,
@@ -6987,6 +6972,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 similarity_floor=_sel_floor,
                 fit_gate=_sel_gate,
                 dedup=_sel_dedup,
+                include_private=include_private_rag,
             )
             conv_rag_path = "rag_engine.assemble_ranked_context"
         except Exception as e:
@@ -6998,14 +6984,14 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 )
     elif TOOLS_AVAILABLE:
         try:
-            conv_rag = knowledge_search(rag_query, "conversations", 3)
+            conv_rag = knowledge_search(legacy_rag_query, "conversations", 3)
             conv_rag_path = "legacy_knowledge_search"
         except Exception as e:
             conv_rag = ""
             conv_rag_path = "legacy_knowledge_search_failed"
             if PIPELINE_TRACE_AVAILABLE:
                 pipeline_trace.record_rag_failure(
-                    trace_dir, "conversation-rag-legacy", rag_query, e
+                    trace_dir, "conversation-rag-legacy", legacy_rag_query, e
                 )
 
     # Concept RAG (vault knowledge) — only for Gear 2+
@@ -7027,6 +7013,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     similarity_floor=_sel_floor,
                     fit_gate=_sel_gate,
                     dedup=_sel_dedup,
+                    include_private=include_private_rag,
                 )
                 concept_rag_path = "rag_engine.assemble_ranked_context"
             except Exception as e:
@@ -7038,14 +7025,14 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                     )
         elif TOOLS_AVAILABLE:
             try:
-                concept_rag = knowledge_search(rag_query, "knowledge", 5)
+                concept_rag = knowledge_search(legacy_rag_query, "knowledge", 5)
                 concept_rag_path = "legacy_knowledge_search"
             except Exception as e:
                 concept_rag = ""
                 concept_rag_path = "legacy_knowledge_search_failed"
                 if PIPELINE_TRACE_AVAILABLE:
                     pipeline_trace.record_rag_failure(
-                        trace_dir, "concept-rag-legacy", rag_query, e
+                        trace_dir, "concept-rag-legacy", legacy_rag_query, e
                     )
 
     # Relationship RAG (Phase 7/8) — enrichment via graph traversal
@@ -7126,7 +7113,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 _wx = _build_web_extraction(config, config_name=config_name)
                 try:
                     wc_result = assemble_consultation_package(
-                        user_prompt=raw_prompt or cleaned_nl or cleaned_prompt,
+                        user_prompt=cleaned_prompt or cleaned_nl or raw_prompt,
                         call_model=call_model,
                         fast_endpoint=fast_ep,
                         conversation_context=(
@@ -7195,7 +7182,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         try:
             from tool_selector import run_deterministic_tools as _run_det_tools
             _tsel = _run_det_tools(
-                mode_text, raw_prompt or cleaned_nl or cleaned_prompt,
+                mode_text, cleaned_prompt or cleaned_nl or raw_prompt,
             )
             tool_results = _tsel.get("body", "") or ""
             tool_selection_trace = _tsel.get("trace") or tool_selection_trace
@@ -7312,6 +7299,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             "hardware_tier": hardware_tier,
             "rag_engine_available": RAG_ENGINE_AVAILABLE,
             "tools_available": TOOLS_AVAILABLE,
+            "include_private_rag": include_private_rag,
             "pre_routing_summary": {
                 "territory": territory,
                 "dispatched_mode_id": pre_routing.get("dispatched_mode_id"),
@@ -7409,20 +7397,17 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             ))
 
     return {
-        # `cleaned_prompt` is the composite raw + Phase-A-clarified form used
-        # as the "ORIGINAL QUERY" body in every downstream user message
-        # (analyst, evaluator, reviser, verifier, consolidator, formatter).
-        # The operational notation is no longer in the user-facing portion
-        # of any analyst prompt; it remains accessible via Phase A's trace
-        # for debugging and observability.
+        # `cleaned_prompt` is Phase A's repaired natural-language prompt.
+        # It is the prompt the downstream pipeline sees after typo cleanup,
+        # antecedent replacement, and disambiguation. Raw text is audit-only
+        # unless Phase A produced no cleaned prompt.
         "cleaned_prompt": cleaned_prompt,
         # `raw_prompt` is the user's actual sentence, no Phase A inference.
-        # Use this when you need the user's actual words (e.g. signal
-        # vocabulary matching, vector-similarity RAG queries).
+        # Keep this for trace/audit and last-resort fallback only.
         "raw_prompt": raw_prompt,
         # `natural_language_prompt` is Phase A's clarified natural-language
-        # form (without the raw + composite framing). Kept separate for
-        # callers that want Phase A's interpretation only.
+        # form. Kept separate for callers that want Phase A's interpretation
+        # under a more explicit key.
         "natural_language_prompt": step1_result["cleaned_prompt"],
         "mode_name": mode_name,
         "mode_text": mode_text,
@@ -8550,7 +8535,8 @@ def run_pipeline(user_input: str, history: list = None,
                  conversation_id: str | None = None,
                  ambiguity_mode: str = "assume",
                  stealth: bool = False,
-                 config_name: str | None = None) -> str:
+                 config_name: str | None = None,
+                 conversation_tag: str = "") -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
     For Gear 1-2: Single model with context package.
@@ -8660,7 +8646,8 @@ def run_pipeline(user_input: str, history: list = None,
 
     # --- Step 2: Context Package Assembly ---
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
-                                             config_name=config_name)
+                                             config_name=config_name,
+                                             conversation_tag=conversation_tag)
     # Carry execution context so the visual hook's interactive-vs-autonomous
     # gate reads a real value rather than defaulting to 'interactive'.
     context_pkg.setdefault("execution_context", execution_context)

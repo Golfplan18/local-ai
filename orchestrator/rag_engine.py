@@ -56,6 +56,13 @@ import provenance  # noqa: E402
 from tools import cluster_recency, web_corroboration  # noqa: E402
 from tools import knowledge_search as _knowledge_search  # noqa: E402
 
+try:  # noqa: E402
+    import reranker as _reranker
+    RERANKER_AVAILABLE = True
+except Exception:  # pragma: no cover - optional retrieval layer
+    _reranker = None
+    RERANKER_AVAILABLE = False
+
 
 # ---------------------------------------------------------------------------
 # 8D.9  Budget Signal System
@@ -674,6 +681,40 @@ def _sink_record(
     }
 
 
+def _annotate_sink_with_rerank(
+    candidate_sink: Optional[list[dict[str, Any]]],
+    ranked: list[dict[str, Any]],
+) -> None:
+    """Add rerank metadata to existing candidate trace records.
+
+    The trace records are created by ``rank_vault_chunks`` before reranking.
+    They intentionally keep the original provenance-ranker fields, then this
+    helper adds final rank and reranker score/provider when a reranker ran.
+    """
+    if not candidate_sink:
+        return
+    by_source_preview: dict[tuple[str, str], dict[str, Any]] = {}
+    for final_rank, chunk in enumerate(ranked, start=1):
+        by_source_preview[(
+            str(_chunk_source(chunk)),
+            str(_candidate_preview(chunk)),
+        )] = {
+            "rerank_final_rank": final_rank,
+            "rerank_score": chunk.get("rerank_score"),
+            "rerank_provider": chunk.get("rerank_provider"),
+            "rerank_model": chunk.get("rerank_model"),
+        }
+    for record in candidate_sink:
+        if record.get("status") != "kept":
+            continue
+        info = by_source_preview.get((
+            str(record.get("source") or ""),
+            str(record.get("preview") or ""),
+        ))
+        if info:
+            record.update(info)
+
+
 def rank_vault_chunks(
     chunks: list[dict[str, Any]],
     *,
@@ -999,4 +1040,7 @@ def assemble_ranked_context(
     ranked = rank_vault_chunks(
         chunks, candidate_sink=candidate_sink,
         similarity_floor=similarity_floor, dedup=dedup)
+    if RERANKER_AVAILABLE and ranked:
+        ranked, _rerank_trace = _reranker.rerank_chunks(query, ranked)
+        _annotate_sink_with_rerank(candidate_sink, ranked)
     return format_context_with_provenance(ranked, max_chars=max_chars)

@@ -27,6 +27,7 @@
   var _statusEl = null;
   var _activeTab = 'models';
   var _settings = null;
+  var _retrieval = null;
   var _apiKeys = [];
   var _providerGroups = [];   // [[category, group label], …] render order
   var _dirty = {};       // pending changes, applied on Save
@@ -43,6 +44,7 @@
   // — the classic ConfigPanel embed was retired with install Chunk 11.
   var TABS = [
     { id: 'models',         label: 'Models' },
+    { id: 'retrieval',      label: 'Retrieval' },
     { id: 'visual',         label: 'Visual' },
     { id: 'projects',       label: 'Projects' },
     { id: 'transcription',  label: 'Transcription' },
@@ -156,6 +158,7 @@
     // tab hosts OraVisualSlotsPane (install Chunk 11). Buckets was
     // retired (see the TABS comment above).
     if (_activeTab === 'models')  { _renderModelsPane();      return; }
+    if (_activeTab === 'retrieval') { _renderRetrievalTab();   return; }
     if (_activeTab === 'visual')  { _renderVisualSlotsPane(); return; }
     if (_activeTab === 'projects') { _renderProjectsTab();    return; }
     if (!_settings) {
@@ -1060,6 +1063,131 @@
       .catch(function () {
         sel.innerHTML = '<option value="">(catalog fetch failed)</option>';
       });
+  }
+
+  function _retrievalOptionLabel(opt, retrieval) {
+    var label = opt.label || opt.id || opt.model || '';
+    var bits = [];
+    if (opt.dimensions) bits.push(opt.dimensions + ' dimensions');
+    if (opt.provider === 'openrouter') bits.push('OpenRouter');
+    if (opt.native) bits.push('local');
+    if (opt.requires_api_key && !(retrieval && retrieval.openrouter_key_present)) {
+      bits.push('key needed');
+    }
+    return bits.length ? (label + ' - ' + bits.join(' / ')) : label;
+  }
+
+  function _renderRetrievalTab() {
+    _tabContentEl.innerHTML = '';
+    var loading = document.createElement('p');
+    loading.className = 'ora-settings-note';
+    loading.textContent = 'Loading retrieval settings...';
+    _tabContentEl.appendChild(loading);
+
+    fetch('/api/retrieval/config')
+      .then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, data: j }; });
+      })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error((res.data && res.data.error) || 'load failed');
+        }
+        _retrieval = res.data.retrieval || {};
+        _drawRetrievalTab();
+      })
+      .catch(function (err) {
+        _tabContentEl.innerHTML = '';
+        _appendNote('Could not load retrieval settings: ' + err.message);
+      });
+  }
+
+  function _drawRetrievalTab() {
+    var retrieval = _retrieval || {};
+    _tabContentEl.innerHTML = '';
+
+    var activeEmbedding = retrieval.active_embedding || {};
+    var embeddingOptions = retrieval.embedding_options || [];
+    var embeddingSel = document.createElement('select');
+    embeddingSel.className = 'ora-settings-input';
+    embeddingOptions.forEach(function (opt) {
+      var o = document.createElement('option');
+      o.value = String(opt.id);
+      o.textContent = _retrievalOptionLabel(opt, retrieval);
+      if (String(opt.id) === String(activeEmbedding.id)) o.selected = true;
+      embeddingSel.appendChild(o);
+    });
+    _appendField('Embedding model', embeddingSel);
+
+    var embeddingNote = document.createElement('p');
+    embeddingNote.className = 'ora-settings-note';
+    embeddingNote.textContent = 'Active: ' + (activeEmbedding.label || activeEmbedding.id || 'unknown')
+      + '. Changing this requires rebuilding the memory database before activation.';
+    _tabContentEl.appendChild(embeddingNote);
+
+    embeddingSel.addEventListener('change', function () {
+      var selected = embeddingSel.value;
+      _setStatus('Embedding selection staged. Rebuild required before activation.', 'success');
+      fetch('/api/retrieval/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embedding_profile_id: selected }),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) { return { ok: r.ok, data: j }; });
+        })
+        .then(function (res) {
+          if (!res.ok) throw new Error((res.data && res.data.error) || 'save failed');
+          var staged = res.data.embedding_staged || {};
+          var profile = staged.profile || {};
+          embeddingNote.textContent = 'Staged: ' + (profile.label || selected)
+            + '. Rebuild required before activation.';
+        })
+        .catch(function (err) {
+          _setStatus('Embedding selection failed: ' + err.message, 'error');
+        });
+    });
+
+    var activeReranker = retrieval.active_reranker || {};
+    var rerankerOptions = retrieval.reranker_options || [];
+    var rerankerSel = document.createElement('select');
+    rerankerSel.className = 'ora-settings-input';
+    rerankerOptions.forEach(function (opt) {
+      var o = document.createElement('option');
+      o.value = String(opt.id);
+      o.textContent = _retrievalOptionLabel(opt, retrieval);
+      if (String(opt.id) === String(activeReranker.id)) o.selected = true;
+      rerankerSel.appendChild(o);
+    });
+    _appendField('Reranker', rerankerSel);
+    _appendNote('Reranker changes take effect immediately. Auto uses Cohere Pro through OpenRouter first, then the local Qwen fallback when available.');
+
+    rerankerSel.addEventListener('change', function () {
+      _setStatus('Saving reranker...');
+      fetch('/api/retrieval/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reranker_id: rerankerSel.value }),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) { return { ok: r.ok, data: j }; });
+        })
+        .then(function (res) {
+          if (!res.ok) throw new Error((res.data && res.data.error) || 'save failed');
+          _retrieval = res.data.retrieval || retrieval;
+          _setStatus('Reranker saved', 'success');
+          setTimeout(function () { _setStatus(''); }, 1400);
+        })
+        .catch(function (err) {
+          _setStatus('Reranker save failed: ' + err.message, 'error');
+        });
+    });
+
+    var keyNote = document.createElement('p');
+    keyNote.className = 'ora-settings-note';
+    keyNote.textContent = retrieval.openrouter_key_present
+      ? 'OpenRouter key detected.'
+      : 'OpenRouter key not detected. OpenRouter embedding and reranking choices need a key.';
+    _tabContentEl.appendChild(keyNote);
   }
 
   // Populate the OpenRouter transcription-model dropdown from the
