@@ -33,6 +33,7 @@
   const dashPending  = sidebar.querySelector('#sidebarDashPending');
 
   const newThreadCmd = sidebar.querySelector('.sidebar-new-thread-cmd');
+  const forkThreadCmd = sidebar.querySelector('.sidebar-fork-thread-cmd');
   const browseCmd    = sidebar.querySelector('.sidebar-browse-cmd');
   const groupPinned  = sidebar.querySelector('[data-group="pinned"]  .sidebar-group-rows');
   const groupPinnedShell = sidebar.querySelector('[data-group="pinned"]');
@@ -439,9 +440,15 @@
   };
 
   const onNewThread = () => {
-    // Phase 6 wires this through to /api/bootstrap. For now it just emits
-    // a custom event so the input area or a bootstrap modal can hook in.
-    document.dispatchEvent(new CustomEvent('ora:new-thread-requested'));
+    document.dispatchEvent(new CustomEvent('ora:new-thread-requested', {
+      detail: { source: 'sidebar' },
+    }));
+  };
+
+  const onForkThread = () => {
+    document.dispatchEvent(new CustomEvent('ora:fork-conversation-requested', {
+      detail: { source: 'sidebar' },
+    }));
   };
 
   const ensureBrowser = () => {
@@ -535,11 +542,13 @@
       const title = document.createElement('div');
       title.className = 'conversation-browser-title';
       title.textContent = row.title || row.conversation_id || '(untitled)';
+      title.title = title.textContent;
       item.appendChild(title);
 
       const snippet = document.createElement('div');
       snippet.className = 'conversation-browser-snippet';
       snippet.textContent = row.snippet || '';
+      snippet.title = snippet.textContent;
       item.appendChild(snippet);
 
       const related = document.createElement('button');
@@ -609,7 +618,17 @@
   if (expandIcon)  expandIcon.addEventListener('click',  () => setExpanded(true));
   if (newChatIcon) newChatIcon.addEventListener('click', onNewThread);
   if (newThreadCmd) newThreadCmd.addEventListener('click', onNewThread);
+  if (forkThreadCmd) forkThreadCmd.addEventListener('click', onForkThread);
   if (browseCmd) browseCmd.addEventListener('click', openBrowser);
+
+  document.addEventListener('ora:fresh-conversation-started', (e) => {
+    const id = e.detail && e.detail.conversation_id;
+    activeConvId = id || null;
+    [...sidebar.querySelectorAll('.sidebar-row')].forEach(el => {
+      el.classList.remove('is-active');
+    });
+    if (!isPinned()) setExpanded(false);
+  });
 
   // Backlog 3E — pin-in-place button at the top of the expanded panel.
   sidebarPinBtn = sidebar.querySelector('#sidebarPinToggle');

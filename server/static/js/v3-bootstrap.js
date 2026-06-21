@@ -1,11 +1,8 @@
 /* V3 Phase 6.2 — New-thread bootstrap flow.
  *
- * Listens for `ora:new-thread-requested` (dispatched by sidebar.js when
- * the user clicks Plus on the spine, the new-thread command at the top
- * of the expanded sidebar, or the new-chat icon on the collapsed
- * dashboard). Opens a topic-prompt modal; on submit, POSTs the topic to
- * /api/bootstrap and renders the assembled summary into the output pane
- * with a "Context assembled for this thread" header per spec §6.1.
+ * Opens only for explicit bootstrap/search flows. Plain "new thread"
+ * clicks now create a blank conversation and focus the main input; they
+ * should not show this modal.
  *
  * Spec references:
  *   §6.1 — bootstrapping flow steps 1–6
@@ -154,7 +151,12 @@
   };
 
   // ── Wire the entry point ───────────────────────────────────────────────
-  document.addEventListener('ora:new-thread-requested', openModal);
+  document.addEventListener('ora:new-thread-requested', (e) => {
+    const detail = e && e.detail || {};
+    if (detail.bootstrap === true || detail.dossier === true) {
+      openModal();
+    }
+  });
 
   // Public API for tests / programmatic invocation.
   window.OraBootstrap = {

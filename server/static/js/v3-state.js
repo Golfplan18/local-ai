@@ -184,6 +184,7 @@
   // Save on sidebar / mode / collapse / bootstrap events fired by sibling modules.
   ['ora:sidebar-state-changed',
    'ora:conversation-selected',
+   'ora:fresh-conversation-started',
    'ora:thread-bootstrapped'].forEach(name => {
     document.addEventListener(name, queueSave);
   });

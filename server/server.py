@@ -5490,6 +5490,55 @@ def conversations_list():
     })
 
 
+_LOW_VALUE_BROWSER_SNIPPET_PATTERNS = (
+    "meta-layer oversight: simulated",
+    "oversight is running in simulated mode",
+    "pipeline-execution warning",
+    "prompt cleanup couldn't parse",
+    "the pipeline ran against the model's narrative response",
+)
+
+
+def _clean_conversation_browser_text(text: str) -> str:
+    text = str(text or "").replace("\n", " ").strip()
+    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"^[\s>•*-]*[⚠️ℹ️✅❌]\s*", "", text)
+    text = re.sub(
+        r"^\*\*(?:Meta-layer oversight: simulated|Pipeline-execution warning)\*\*\s*[-–—>]*\s*",
+        "",
+        text,
+        flags=re.I,
+    )
+    return text.strip()
+
+
+def _is_low_value_browser_snippet(text: str) -> bool:
+    low = _clean_conversation_browser_text(text).lower()
+    return any(p in low for p in _LOW_VALUE_BROWSER_SNIPPET_PATTERNS)
+
+
+def _fallback_conversation_browser_snippet(messages: list, title: str) -> tuple[str, int | None, int | None]:
+    """Pick a useful one-line browse clip when there is no search query."""
+    turn_idx = -1
+    indexed: list[tuple[int, int, dict]] = []
+    for idx, msg in enumerate(messages):
+        if not isinstance(msg, dict):
+            continue
+        if msg.get("role") == "user":
+            turn_idx += 1
+        indexed.append((idx, max(0, turn_idx), msg))
+
+    title_l = _clean_conversation_browser_text(title).lower()
+    for idx, t_idx, msg in reversed(indexed):
+        text = _clean_conversation_browser_text(msg.get("content") or "")
+        if not text or _is_low_value_browser_snippet(text):
+            continue
+        if title_l and text.lower() == title_l:
+            continue
+        return text[:420], idx, t_idx
+    return (_clean_conversation_browser_text(title)[:420], None, None)
+
+
 def _conversation_search_snippet(data: dict, query: str) -> dict:
     messages = data.get("messages") if isinstance(data.get("messages"), list) else []
     terms = [t.lower() for t in re.findall(r"\w+", query or "") if len(t) > 1]
@@ -5518,9 +5567,11 @@ def _conversation_search_snippet(data: dict, query: str) -> dict:
             continue
         if msg.get("role") == "user":
             turn_idx += 1
-        text = str(msg.get("content") or "").replace("\n", " ").strip()
+        text = _clean_conversation_browser_text(msg.get("content") or "")
         if text:
             last_text = text
+        if _is_low_value_browser_snippet(text):
+            continue
         haystack = text.lower()
         if not terms:
             continue
@@ -5541,8 +5592,11 @@ def _conversation_search_snippet(data: dict, query: str) -> dict:
             })
 
     if not terms:
+        snippet, msg_idx, fallback_turn_idx = _fallback_conversation_browser_snippet(messages, title)
         best["score"] = 1
-        best["snippet"] = (last_text or title or "").strip()[:260]
+        best["snippet"] = snippet or (last_text or title or "").strip()[:420]
+        best["matched_message_index"] = msg_idx
+        best["matched_turn_index"] = fallback_turn_idx
     return best
 
 

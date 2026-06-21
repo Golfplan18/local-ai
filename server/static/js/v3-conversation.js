@@ -236,8 +236,11 @@
     if (!t) {
       const empty = document.createElement('div');
       empty.className = 'output-turn output-turn-empty';
-      empty.textContent = '(no content yet)';
+      empty.textContent = '';
       outputContent.appendChild(empty);
+      if (window.OraPromptOverlay && typeof window.OraPromptOverlay.setPrompt === 'function') {
+        window.OraPromptOverlay.setPrompt('');
+      }
       return;
     }
 
@@ -275,6 +278,132 @@
     if (outputPane) outputPane.classList.remove('has-content');
     renderHeader();
     renderTurn();
+  };
+
+  const activeTagFromBody = () => {
+    if (document.body.classList.contains('stealth-mode')) return 'stealth';
+    if (document.body.classList.contains('private-mode')) return 'private';
+    return '';
+  };
+
+  const makeConversationId = () => {
+    const stamp = new Date().toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d+Z$/, 'Z')
+      .replace('T', '-')
+      .replace('Z', '');
+    const rand = Math.random().toString(36).slice(2, 8);
+    return `thread-${stamp}-${rand}`;
+  };
+
+  const clearVisualPane = () => {
+    try {
+      const panel = (window.OraPanels && window.OraPanels.visual
+                      && typeof window.OraPanels.visual._getActive === 'function')
+                    ? window.OraPanels.visual._getActive()
+                    : null;
+      if (panel && typeof panel.loadCanvasState === 'function') {
+        panel.loadCanvasState({ objects: [] });
+      }
+    } catch (e) {
+      console.warn('[v3-conversation] visual clear failed:', e);
+    }
+  };
+
+  const clearInputAddOns = () => {
+    try {
+      if (window.OraInputState) {
+        if (typeof window.OraInputState.clearSelection === 'function') {
+          window.OraInputState.clearSelection();
+        } else {
+          if (typeof window.OraInputState.clearFramework === 'function') {
+            window.OraInputState.clearFramework();
+          }
+          if (typeof window.OraInputState.clearAnalysisMode === 'function') {
+            window.OraInputState.clearAnalysisMode();
+          }
+        }
+      }
+      if (window.OraInputAttachments && typeof window.OraInputAttachments.clear === 'function') {
+        window.OraInputAttachments.clear();
+      }
+    } catch (e) {
+      console.warn('[v3-conversation] input reset failed:', e);
+    }
+  };
+
+  const focusMainInput = () => {
+    refreshDOMRefs();
+    if (!leftInput) return;
+    setTimeout(() => {
+      try {
+        leftInput.focus();
+        const len = leftInput.value.length;
+        leftInput.setSelectionRange(len, len);
+      } catch (e) {}
+    }, 0);
+  };
+
+  const startFresh = (detail = {}) => {
+    if (detail.bootstrap === true || detail.dossier === true) return;
+    refreshDOMRefs();
+
+    if (state.activeConversationId && leftInput) {
+      saveDraft(state.activeConversationId, leftInput.value);
+    }
+
+    const id = detail.conversation_id || makeConversationId();
+    const tag = detail.tag || activeTagFromBody();
+    state.activeConversationId = id;
+    state.activeTag = tag;
+    state.activeTitle = 'New conversation';
+    state.messages = [];
+    state.turns = [];
+    state.currentTurnIndex = 0;
+    window._oraLatestCanvasBytes = null;
+
+    if (leftInput) leftInput.value = '';
+    clearInputAddOns();
+    clearVisualPane();
+    renderAll();
+    document.dispatchEvent(new CustomEvent('ora:fresh-conversation-started', {
+      detail: { conversation_id: id, tag, title: state.activeTitle },
+    }));
+    focusMainInput();
+  };
+
+  const forkActive = async (detail = {}) => {
+    const parentId = state.activeConversationId;
+    if (!parentId) {
+      alert('Open a conversation before forking it.');
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/conversation/${encodeURIComponent(parentId)}/fork`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      let data = null;
+      try { data = await resp.json(); } catch (e) {}
+      if (!resp.ok || !data || !data.new_conversation_id) {
+        throw new Error((data && data.error) || `HTTP ${resp.status}`);
+      }
+      document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+        detail: {
+          conversation_id: data.new_conversation_id,
+          tag: data.tag || detail.tag || state.activeTag || '',
+          title: data.new_conversation_id,
+          source: detail.source || 'fork',
+        },
+      }));
+      if (window.OraSidebar && typeof window.OraSidebar.refresh === 'function') {
+        window.OraSidebar.refresh();
+      }
+      focusMainInput();
+    } catch (e) {
+      alert('Fork failed: ' + (e.message || e));
+    }
   };
 
   // ── Conversation loading (Backlog 2B) ──────────────────────────────────
@@ -634,6 +763,13 @@
       leftInput.addEventListener('input', queueDraftSave);
     }
 
+    document.addEventListener('ora:new-thread-requested', (e) => {
+      startFresh((e && e.detail) || {});
+    });
+    document.addEventListener('ora:fork-conversation-requested', (e) => {
+      forkActive((e && e.detail) || {});
+    });
+
     // Listen for conversation selections from the sidebar. Mode UI is
     // already activated by the existing handler in the inline script;
     // this loads the actual content.
@@ -670,6 +806,8 @@
     showTurn,
     appendUser,
     appendAssistant,
+    startFresh,
+    forkActive,
     saveDraft,
     loadDraft,
     clearDraft,

@@ -25,6 +25,7 @@
   margin-bottom: 0;
 }
 
+.sidebar-fork-thread-cmd,
 .sidebar-browse-cmd {
   flex-shrink: 0;
   border: 1px solid var(--background-modifier-border);
@@ -36,6 +37,7 @@
   cursor: pointer;
 }
 
+.sidebar-fork-thread-cmd:hover,
 .sidebar-browse-cmd:hover {
   background: var(--background-modifier-hover);
   border-color: var(--interactive-accent);
@@ -154,8 +156,8 @@
 
 .conversation-browser-row {
   display: grid;
-  grid-template-columns: 20px minmax(180px, 260px) minmax(220px, 1fr) auto auto;
-  gap: 6px;
+  grid-template-columns: 20px minmax(320px, 0.85fr) minmax(360px, 1.35fr) auto auto;
+  gap: 8px;
   align-items: center;
   min-height: 30px;
   border-radius: 4px;
