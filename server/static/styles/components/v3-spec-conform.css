@@ -131,7 +131,6 @@
 .conversation-browser-search-btn,
 .conversation-browser-close,
 .conversation-browser-related,
-.conversation-browser-action,
 .conversation-browser-dismiss {
   border: 1px solid var(--background-modifier-border);
   background: transparent;
@@ -146,7 +145,6 @@
 .conversation-browser-search-btn:hover,
 .conversation-browser-close:hover,
 .conversation-browser-related:hover,
-.conversation-browser-action:hover,
 .conversation-browser-dismiss:hover {
   background: var(--background-modifier-hover);
   border-color: var(--interactive-accent);
@@ -178,7 +176,7 @@
 
 .conversation-browser-row {
   display: grid;
-  grid-template-columns: 20px minmax(320px, 0.85fr) minmax(360px, 1.35fr) auto auto auto;
+  grid-template-columns: 20px minmax(320px, 0.85fr) minmax(360px, 1.35fr) auto auto;
   gap: 8px;
   align-items: start;
   min-height: 42px;
@@ -210,12 +208,8 @@
   grid-column: 4;
 }
 
-.conversation-browser-action {
-  grid-column: 5;
-}
-
 .conversation-browser-dismiss {
-  grid-column: 6;
+  grid-column: 5;
   min-width: 28px;
   color: var(--text-muted);
   font-size: 14px;

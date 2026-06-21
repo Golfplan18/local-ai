@@ -663,18 +663,6 @@
       });
       item.appendChild(related);
 
-      if (row.closed && (!row.source_kind || row.source_kind === 'live')) {
-        const action = document.createElement('button');
-        action.type = 'button';
-        action.className = 'conversation-browser-action';
-        action.textContent = 'Make active';
-        action.addEventListener('click', (e) => {
-          e.stopPropagation();
-          activateBrowserRow(row, { makeActive: true });
-        });
-        item.appendChild(action);
-      }
-
       const dismiss = document.createElement('button');
       dismiss.type = 'button';
       dismiss.className = 'conversation-browser-dismiss';
@@ -710,15 +698,8 @@
     }
   };
 
-  const activateBrowserRow = async (row, opts = {}) => {
+  const activateBrowserRow = async (row) => {
     if (!row || !row.conversation_id) return;
-    if (opts.makeActive && row.closed && (!row.source_kind || row.source_kind === 'live')) {
-      try {
-        await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/restore`, {
-          method: 'POST',
-        });
-      } catch (e) {}
-    }
     activeConvId = row.conversation_id;
     document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
       detail: {
