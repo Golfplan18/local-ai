@@ -20,11 +20,9 @@
  *   returns a Promise<{ svg, errors, warnings }>. dispatcher.js is left
  *   untouched; WP-2.3 panel wiring must `await` the result of dispatch().
  *
- * Semantic CSS only: no inline styles. Vega injects many computed
- * fill/stroke/font-* attributes on its SVG output — we strip them so WP-1.4
- * ora-visual-theme.css owns appearance. The stripping uses DOMParser where
- * available (jsdom in tests, browser in production), with a conservative
- * regex fallback for environments without DOMParser. See _postProcessSvg.
+ * Vega's SVG owns its data-driven appearance. The post-processor annotates
+ * the root with Ora classes and accessibility metadata, but it preserves the
+ * computed mark fills/strokes/fonts because those carry the chart encoding.
  */
 
 window.OraVisualCompiler = window.OraVisualCompiler || {};
@@ -130,12 +128,53 @@ window.OraVisualCompiler._renderers.vegaLite = (function () {
     return out;
   }
 
+  // ── Encoding normalization (fix common author omissions) ────────────────────
+  /**
+   * Two omissions the models routinely make that raw Vega-Lite then renders
+   * badly: (1) a discrete x/y axis with NO sort → Vega-Lite sorts string
+   * domains LEXICALLY ("week_1, week_10, week_11, week_2...") instead of the
+   * data's own order; we set sort:null to honour input order. (2) a terse
+   * field code ("r","c","v","t") used as a field with no title → the bare
+   * code leaks as the axis/legend title; we hide the title when the field
+   * name is <=2 chars. Deep-clones first so the source envelope spec is never
+   * mutated; only fills missing props.
+   */
+  function _normalizeEncodings(vlSpec) {
+    if (!vlSpec || typeof vlSpec !== 'object') return vlSpec;
+    let out;
+    try { out = JSON.parse(JSON.stringify(vlSpec)); } catch (_) { return vlSpec; }
+    const encs = [];
+    if (out.encoding) encs.push(out.encoding);
+    if (Array.isArray(out.layer)) {
+      for (let i = 0; i < out.layer.length; i++) {
+        if (out.layer[i] && out.layer[i].encoding) encs.push(out.layer[i].encoding);
+      }
+    }
+    const POS = { x: 1, y: 1, row: 1, column: 1 };
+    for (let e = 0; e < encs.length; e++) {
+      const enc = encs[e];
+      const channels = Object.keys(enc);
+      for (let c = 0; c < channels.length; c++) {
+        const ch = channels[c];
+        const def = enc[ch];
+        if (!def || typeof def !== 'object' || !def.field) continue;
+        const discrete = def.type === 'nominal' || def.type === 'ordinal';
+        if (discrete && POS[ch] && !('sort' in def)) def.sort = null;
+        if (!('title' in def) && String(def.field).length <= 2) def.title = null;
+      }
+    }
+    return out;
+  }
+
   // ── SVG post-processing ─────────────────────────────────────────────────────
   /**
-   * Strip inline appearance attributes from a Vega-produced SVG string and
-   * add our semantic classes. Vega sets style/fill/stroke/font-family/etc.
-   * on nearly every element — we want CSS in ora-visual-theme.css to own
-   * these (WP-1.4).
+   * Add our semantic classes + ARIA/title to a Vega-produced SVG, WITHOUT
+   * stripping its inline appearance.
+   *
+   * Vega marks carry data encoding in computed fill/stroke attributes. Removing
+   * those attributes produces valid-but-empty charts because the generic theme
+   * cannot reconstruct per-cell/point/bar color from class names alone. Preserve
+   * the engine output and only annotate the root.
    *
    * Approach: prefer DOMParser (jsdom in tests, browser in production) for
    * proper XML handling. Fall back to a conservative regex strip if the
@@ -145,12 +184,7 @@ window.OraVisualCompiler._renderers.vegaLite = (function () {
    * in attribute values; we accept this because Vega does not emit such
    * values in practice. DOMParser is exercised by the test harness.
    */
-  const STRIP_ATTRS = [
-    'style', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray',
-    'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
-    'font-family', 'font-size', 'font-weight', 'font-style',
-    'opacity', 'fill-opacity', 'stroke-opacity',
-  ];
+  const STRIP_ATTRS = [];
 
   function _stripInlineStyles(svgString, envelope) {
     const title    = (envelope.title && String(envelope.title)) || '';
@@ -345,6 +379,7 @@ window.OraVisualCompiler._renderers.vegaLite = (function () {
       vlSpec = (type === 'tornado')
         ? _tornadoToVegaLite(envelope.spec)
         : _withDefaultSize(envelope.spec);
+      vlSpec = _normalizeEncodings(vlSpec);
     } catch (err) {
       return Promise.resolve({
         svg: '',

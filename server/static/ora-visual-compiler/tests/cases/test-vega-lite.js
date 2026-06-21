@@ -279,6 +279,30 @@ function parseFailureFixture() {
   });
 }
 
+function heatmapRegressionFixture() {
+  return envelope('heatmap', {
+    $schema: VL_SCHEMA,
+    data: { values: [
+      {r:'row_a', c:'week_1',  v:1},
+      {r:'row_a', c:'week_2',  v:2},
+      {r:'row_a', c:'week_10', v:10},
+      {r:'row_b', c:'week_1',  v:3},
+      {r:'row_b', c:'week_2',  v:4},
+      {r:'row_b', c:'week_10', v:11},
+    ] },
+    mark: { type: 'rect' },
+    encoding: {
+      x: { field:'c', type:'nominal' },
+      y: { field:'r', type:'nominal' },
+      color: { field:'v', type:'quantitative' },
+    },
+    caption: { source:'test', period:'2026-Q1', n:6, units:'units' },
+  }, {
+    id: 'fig-heatmap-render-regression',
+    title: 'Weekly heatmap regression',
+  });
+}
+
 // ── Assertions ───────────────────────────────────────────────────────────────
 function assertStructuralSvg(svg, type) {
   if (!svg || svg.length === 0) return 'empty svg';
@@ -360,6 +384,35 @@ module.exports = {
       }
     } catch (err) {
       record('vega-lite malformed input → clean rejection', false, 'threw: ' + (err.message || err));
+    }
+
+    // Regression: the renderer must preserve Vega's data-driven fill/stroke,
+    // keep insertion order for discrete week labels, and hide terse field-code
+    // titles ("r", "c", "v") when the model omits real titles.
+    try {
+      let result = win.OraVisualCompiler.compile(heatmapRegressionFixture());
+      if (result && typeof result.then === 'function') result = await result;
+      const errs = (result.errors || []).filter((e) => e.code && e.code.startsWith('E_'));
+      const svg = result.svg || '';
+      if (errs.length || !svg) {
+        record('vega-lite heatmap regression: renders', false,
+          'errors=' + errs.map((e) => e.code + ':' + e.message).join('; '));
+      } else {
+        record('vega-lite heatmap regression: preserves mark paint',
+          (svg.match(/\sfill="/g) || []).length > 0,
+          'fillCount=' + ((svg.match(/\sfill="/g) || []).length));
+        const w1 = svg.indexOf('>week_1<');
+        const w2 = svg.indexOf('>week_2<');
+        const w10 = svg.indexOf('>week_10<');
+        record('vega-lite heatmap regression: week labels keep input order',
+          w1 !== -1 && w2 !== -1 && w10 !== -1 && w1 < w2 && w2 < w10,
+          'positions=' + JSON.stringify({ week_1: w1, week_2: w2, week_10: w10 }));
+        record('vega-lite heatmap regression: terse field titles hidden',
+          !/>[rcv]</.test(svg),
+          'found terse title in SVG');
+      }
+    } catch (err) {
+      record('vega-lite heatmap regression: renders', false, 'threw: ' + (err.message || err));
     }
   },
 };

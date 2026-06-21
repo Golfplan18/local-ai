@@ -611,13 +611,19 @@ window.OraVisualCompiler._renderers.causalDag = (function () {
       return { svg: '', errors, warnings };
     }
 
-    const dsl = spec.dsl;
+    let dsl = spec.dsl;
     if (typeof dsl !== 'string' || dsl.length === 0) {
       errors.push(make(CODES.E_DSL_PARSE,
         'causal_dag renderer: spec.dsl must be a non-empty string',
         'spec.dsl'));
       return { svg: '', errors, warnings };
     }
+
+    // DAGitty graph-level layout attributes (for example bb="0,0,5,5") are
+    // non-structural exports from dagitty.net. This parser does not model
+    // them; left in place, they appear as an invalid statement before the DAG
+    // nodes/edges. Drop them before parsing.
+    dsl = dsl.replace(/(\bdag\s*\{)\s*([a-zA-Z_]+\s*=\s*"[^"]*"\s*;?\s*)+/i, '$1 ');
 
     // 1. Parse the DAGitty DSL.
     let parsed;

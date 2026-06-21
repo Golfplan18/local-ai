@@ -81,13 +81,11 @@ window.OraVisualCompiler._dotEngine = (function () {
    * _stripInlineStyles(svg) → svg
    *
    * Graphviz emits hard-coded style / fill / stroke / font-family / font-size
-   * attributes on generated elements. Semantic CSS must be able to override
-   * them without !important, so we strip them before returning.
+   * attributes on generated elements. Those attributes carry the engine's
+   * actual node/edge/background paint, so the cleanup now preserves them.
    *
    * We preserve geometry (points, d, x, y, width, height, cx, cy, r, etc.)
-   * and anything inside xml/text namespaces. Attributes removed:
-   *   fill, stroke, stroke-width, font-family, font-size, font-weight,
-   *   font-style, style, color.
+   * and anything inside xml/text namespaces.
    *
    * The root <svg> gets the `ora-visual` class (renderer appends the
    * type-specific class outside this function).
@@ -95,11 +93,7 @@ window.OraVisualCompiler._dotEngine = (function () {
   function _stripInlineStyles(svg) {
     if (typeof svg !== 'string' || svg.length === 0) return svg;
 
-    const STRIP_ATTRS = [
-      'fill', 'stroke', 'stroke-width', 'stroke-dasharray',
-      'font-family', 'font-size', 'font-weight', 'font-style',
-      'style', 'color',
-    ];
+    const STRIP_ATTRS = [];
 
     let out = svg;
 

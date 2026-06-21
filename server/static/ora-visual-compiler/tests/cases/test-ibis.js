@@ -30,7 +30,7 @@
  *       polygon point counts or shape attributes survived)
  *     - stable ids: ibis-q-<id>, ibis-i-<id>, ibis-pro-<id>, ibis-con-<id>,
  *       ibis-edge-<from>-<to>
- *     - inline fill/stroke/style/font-family stripped
+ *     - Graphviz-native fill/stroke/style/font-family preserved
  *     - all declared edges appear (one <g class="...edge..."> per relation)
  *
  * Also exports { label, run(ctx, record) } for the run.js harness.
@@ -346,7 +346,7 @@ const hasClass     = (s, c) =>
   new RegExp('class="[^"]*\\b' + c.replace(/-/g, '\\-') + '\\b').test(s);
 const hasAriaImg   = (s) => /role="img"/.test(s);
 const hasAriaLabel = (s) => /aria-label="[^"]+"/.test(s);
-const hasInlineStyle = (s) =>
+const hasNativePaint = (s) =>
   /\sstyle="/.test(s) || /\sfill="/.test(s) ||
   /\sstroke="/.test(s) || /\sfont-family="/.test(s);
 const hasId = (s, id) => new RegExp('id="' + id.replace(/-/g, '\\-') + '"').test(s);
@@ -442,8 +442,8 @@ async function runSuite(OVC, report) {
       if (!hasAriaImg(result.svg) || !hasAriaLabel(result.svg)) {
         report(label, false, 'missing role="img" / aria-label'); continue;
       }
-      if (hasInlineStyle(result.svg)) {
-        report(label, false, 'inline style/fill/stroke/font-family not stripped');
+      if (!hasNativePaint(result.svg)) {
+        report(label, false, 'Graphviz native styling was not preserved');
         continue;
       }
       // Stable IDs present for every declared node + edge we expect.

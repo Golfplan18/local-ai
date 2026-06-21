@@ -670,7 +670,153 @@ def _splice_visual_envelope(text: str, old_block: str, env: dict) -> str:
     return text.replace(old_block, block, 1) if old_block in text else text.rstrip() + "\n\n" + block
 
 
-def _render_visual_svg(env: dict) -> tuple[str | None, str | None]:
+def _render_visual_svg_browser(env: dict) -> tuple[str | None, str | None]:
+    try:
+        from pathlib import Path
+        from urllib.parse import unquote, urlparse
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        return None, f"playwright unavailable: {exc}"
+
+    try:
+        root = Path(WORKSPACE)
+        static_root = root / "server/static"
+        compiler_root = static_root / "ora-visual-compiler"
+        schema_root = root / "config/visual-schemas"
+        if not compiler_root.exists():
+            return None, "visual compiler missing"
+        if not schema_root.exists():
+            return None, "visual schemas missing"
+
+        scripts = [
+            "ora-visual-compiler/errors.js",
+            "ora-visual-compiler/validator.js",
+            "ora-visual-compiler/renderers/stub.js",
+            "ora-visual-compiler/dispatcher.js",
+            "ora-visual-compiler/index.js",
+            "ora-visual-compiler/vendor/ajv/ajv2020.bundle.min.js",
+            "ora-visual-compiler/vendor/vega/vega.min.js",
+            "ora-visual-compiler/vendor/vega-lite/vega-lite.min.js",
+            "ora-visual-compiler/vendor/mermaid/mermaid.min.js",
+            "ora-visual-compiler/vendor/viz-js/viz-standalone.js",
+            "ora-visual-compiler/vendor/d3/d3.min.js",
+            "ora-visual-compiler/vendor/dagre/dagre.min.js",
+            "ora-visual-compiler/vendor/structurizr-mini/parser.js",
+            "ora-visual-compiler/vendor/structurizr-mini/renderer.js",
+            "ora-visual-compiler/palettes.js",
+            "ora-visual-compiler/dot-engine.js",
+            "ora-visual-compiler/ajv-init.js",
+            "ora-visual-compiler/renderers/vega-lite.js",
+            "ora-visual-compiler/renderers/mermaid.js",
+            "ora-visual-compiler/renderers/causal-dag.js",
+            "ora-visual-compiler/renderers/c4.js",
+            "ora-visual-compiler/renderers/causal-loop-diagram.js",
+            "ora-visual-compiler/renderers/stock-and-flow.js",
+            "ora-visual-compiler/renderers/fishbone.js",
+            "ora-visual-compiler/renderers/decision-tree.js",
+            "ora-visual-compiler/renderers/influence-diagram.js",
+            "ora-visual-compiler/renderers/ach-matrix.js",
+            "ora-visual-compiler/renderers/quadrant-matrix.js",
+            "ora-visual-compiler/renderers/bow-tie.js",
+            "ora-visual-compiler/renderers/ibis.js",
+            "ora-visual-compiler/renderers/pro-con.js",
+            "ora-visual-compiler/renderers/concept-map.js",
+            "ora-visual-compiler/alt-text-generator.js",
+            "ora-visual-compiler/aria-annotator.js",
+            "ora-visual-compiler/keyboard-nav.js",
+            "ora-visual-compiler/artifact-adversarial.js",
+        ]
+        html = (
+            "<!doctype html><html><head><meta charset='utf-8'></head><body>"
+            + "".join(f"<script src='/static/{src}'></script>" for src in scripts)
+            + "</body></html>"
+        )
+
+        def mime_for(path: Path) -> str:
+            if path.suffix == ".js":
+                return "application/javascript"
+            if path.suffix == ".json":
+                return "application/json"
+            if path.suffix == ".css":
+                return "text/css"
+            if path.suffix == ".wasm":
+                return "application/wasm"
+            return "text/plain"
+
+        def route_request(route):
+            parsed = urlparse(route.request.url)
+            req_path = unquote(parsed.path)
+            if req_path == "/visual-renderer":
+                route.fulfill(status=200, content_type="text/html", body=html)
+                return
+            if req_path.startswith("/static/visual-schemas/"):
+                rel = req_path[len("/static/visual-schemas/"):]
+                target = (schema_root / rel).resolve()
+                base = schema_root.resolve()
+            elif req_path.startswith("/static/"):
+                rel = req_path[len("/static/"):]
+                target = (static_root / rel).resolve()
+                base = static_root.resolve()
+            else:
+                route.fulfill(status=404, body="not found")
+                return
+            if base not in target.parents and target != base:
+                route.fulfill(status=403, body="forbidden")
+                return
+            if not target.exists() or not target.is_file():
+                route.fulfill(status=404, body="not found")
+                return
+            route.fulfill(
+                status=200,
+                content_type=mime_for(target),
+                body=target.read_bytes(),
+            )
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            try:
+                page = browser.new_page(
+                    device_scale_factor=2,
+                    color_scheme="light",
+                    viewport={"width": 1500, "height": 1200},
+                )
+                page.route("http://ora.local/**", route_request)
+                page.goto("http://ora.local/visual-renderer", wait_until="load", timeout=90000)
+                boot = page.evaluate(
+                    """async () => {
+                        if (!window.OraVisualCompiler || !window.OraVisualCompiler.bootstrapAjv) {
+                            return { ok: false, reason: 'compiler did not boot' };
+                        }
+                        return await window.OraVisualCompiler.bootstrapAjv({
+                            schemaRoot: '/static/visual-schemas/'
+                        });
+                    }"""
+                )
+                if not boot or not boot.get("ok"):
+                    return None, "browser compiler Ajv boot failed: " + str((boot or {}).get("reason") or "unknown")
+                result = page.evaluate(
+                    """async (env) => {
+                        const r = await window.OraVisualCompiler.compileWithNav(env);
+                        return {
+                            svg: (r && r.svg) || '',
+                            errors: (r && r.errors) || [],
+                            warnings: (r && r.warnings) || []
+                        };
+                    }""",
+                    env,
+                )
+                svg = (result or {}).get("svg") or ""
+                if svg.strip().startswith("<"):
+                    return svg, None
+                errors = (result or {}).get("errors") or []
+                return None, json.dumps(errors, ensure_ascii=False)[:500] or "browser render failed"
+            finally:
+                browser.close()
+    except Exception as exc:
+        return None, str(exc)
+
+
+def _render_visual_svg_cli(env: dict) -> tuple[str | None, str | None]:
     try:
         import subprocess
         from pathlib import Path
@@ -689,6 +835,18 @@ def _render_visual_svg(env: dict) -> tuple[str | None, str | None]:
         return None, (r.stderr or r.stdout or "render failed")[:500]
     except Exception as exc:
         return None, str(exc)
+
+
+def _render_visual_svg(env: dict) -> tuple[str | None, str | None]:
+    svg, err = _render_visual_svg_browser(env)
+    if svg:
+        return svg, None
+    fallback_svg, fallback_err = _render_visual_svg_cli(env)
+    if fallback_svg:
+        return fallback_svg, None
+    if fallback_err:
+        return None, f"browser render failed: {err}; cli fallback failed: {fallback_err}"
+    return None, f"browser render failed: {err}"
 
 
 def _rasterize_svg_light(svg: str) -> tuple[bytes | None, str | None]:
