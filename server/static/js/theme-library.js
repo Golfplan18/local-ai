@@ -102,6 +102,7 @@
             ${m.version ? `<div class="theme-card-meta">v${escapeHtml(m.version)}</div>` : ''}
             <div class="theme-card-actions">
               ${!isActive ? `<button data-action="activate" type="button">Activate</button>` : '<span class="theme-card-active-note">In use</span>'}
+              <button data-action="export" type="button">Export</button>
               ${theme.bundled ? '<span class="theme-card-bundled">Bundled</span>' : `<button data-action="delete" class="theme-card-danger" type="button">Delete</button>`}
             </div>
           </div>
@@ -118,6 +119,13 @@
             e.stopPropagation();
             await window.OraThemeLoader.applyTheme(themeId);
             renderInstalled(content);
+          });
+        }
+        const exportBtn = card.querySelector('[data-action="export"]');
+        if (exportBtn) {
+          exportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.OraThemeLoader.exportTheme(themeId);
           });
         }
         const deleteBtn = card.querySelector('[data-action="delete"]');
@@ -330,21 +338,21 @@
     content.innerHTML = `
       <div class="theme-library-import">
         <h3>Install from GitHub</h3>
-        <p>Paste a GitHub repo (e.g. <code>github.com/dracula/obsidian</code>). Ora fetches manifest.json and theme.css from the repo.</p>
+        <p>Paste a GitHub repo (e.g. <code>github.com/dracula/obsidian</code>). Ora converts manifest.json and theme.css into an Ora theme.</p>
         <div class="theme-library-import-row">
           <input type="text" data-field="github-repo" placeholder="github.com/user/repo" />
           <button type="button" data-action="install-github">Install</button>
         </div>
         <div class="theme-install-status" data-status="github"></div>
 
-        <h3>Upload .css file</h3>
-        <p>Pick a theme.css file or drag one into the area below. Optionally set a custom name.</p>
+        <h3>Upload theme file</h3>
+        <p>Pick an Ora theme zip or an Obsidian theme.css file. Loose CSS is converted into an Ora theme.</p>
         <div class="theme-library-import-row">
           <input type="text" data-field="upload-name" placeholder="Theme name (optional)" />
-          <input type="file" data-field="upload-file" accept=".css,text/css" />
+          <input type="file" data-field="upload-file" accept=".zip,.css,application/zip,text/css" />
         </div>
         <div class="theme-library-dropzone">
-          <div class="theme-library-dropzone-text">Drop a .css file here</div>
+          <div class="theme-library-dropzone-text">Drop a .zip or .css file here</div>
         </div>
         <button type="button" data-action="install-upload">Install from file</button>
         <div class="theme-install-status" data-status="upload"></div>
@@ -383,13 +391,15 @@
     const dropzone = content.querySelector('.theme-library-dropzone');
 
     const installFromFile = async (file) => {
-      const name = nameInput.value.trim() || file.name.replace(/\.css$/i, '');
+      const name = nameInput.value.trim() || file.name.replace(/\.(css|zip)$/i, '');
       upBtn.disabled = true;
       upBtn.textContent = 'Installing…';
       setStatus(upStatus, '', false);
       try {
-        const css = await file.text();
-        const result = await window.OraThemeLoader.installFromCSS(name, css);
+        const isZip = file.name.toLowerCase().endsWith('.zip') || file.type === 'application/zip';
+        const result = isZip
+          ? await window.OraThemeLoader.installFromZip(file, name)
+          : await window.OraThemeLoader.installFromCSS(name, await file.text());
         if (result.error) throw new Error(result.error);
         upBtn.textContent = 'Installed ✓';
         setStatus(upStatus, `Installed "${result.name}" as id "${result.id}".`, false);
@@ -403,7 +413,7 @@
       }
     };
 
-    // Drag-drop a .css file onto the dropzone
+    // Drag-drop a .zip or .css file onto the dropzone
     ['dragenter', 'dragover'].forEach(evt =>
       dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); }));
     ['dragleave', 'dragend'].forEach(evt =>
@@ -412,9 +422,12 @@
       e.preventDefault();
       dropzone.classList.remove('dragover');
       const files = [...e.dataTransfer.files].filter(f =>
-        f.name.toLowerCase().endsWith('.css') || f.type === 'text/css');
+        f.name.toLowerCase().endsWith('.css') ||
+        f.name.toLowerCase().endsWith('.zip') ||
+        f.type === 'text/css' ||
+        f.type === 'application/zip');
       if (files.length === 0) {
-        setStatus(upStatus, 'Drop only .css files.', true);
+        setStatus(upStatus, 'Drop only .zip or .css files.', true);
         return;
       }
       await installFromFile(files[0]);
@@ -424,7 +437,7 @@
       e.stopPropagation();
       const file = fileInput.files[0];
       if (!file) {
-        setStatus(upStatus, 'Pick a .css file or drop one above.', true);
+        setStatus(upStatus, 'Pick a .zip or .css file, or drop one above.', true);
         return;
       }
       await installFromFile(file);

@@ -230,6 +230,8 @@
   let elementOverlay = null;
   let currentTarget  = null;   // re-rendered when preview changes
   let savedMode      = null;   // actual mode preserved across customizer session
+  let copyOnWritePromise = null;
+  let saveToThemeTimer = null;
 
   // ─── Storage ───────────────────────────────────
   // Customizations are persisted per active theme. Each theme has its own
@@ -251,20 +253,27 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
   };
 
-  const loadCustomizations = () => {
+  const loadCustomizationsForTheme = (themeId) => {
     const all = loadAllCustomizations();
-    return all[getActiveThemeId()] || {};
+    return all[themeId] || {};
+  };
+
+  const loadCustomizations = () => {
+    return loadCustomizationsForTheme(getActiveThemeId());
+  };
+
+  const saveCustomizationsForTheme = (themeId, customs) => {
+    const all = loadAllCustomizations();
+    if (Object.keys(customs).length === 0) {
+      delete all[themeId];
+    } else {
+      all[themeId] = customs;
+    }
+    saveAllCustomizations(all);
   };
 
   const saveCustomizations = (customs) => {
-    const all = loadAllCustomizations();
-    const id = getActiveThemeId();
-    if (Object.keys(customs).length === 0) {
-      delete all[id];
-    } else {
-      all[id] = customs;
-    }
-    saveAllCustomizations(all);
+    saveCustomizationsForTheme(getActiveThemeId(), customs);
   };
 
   const migrateLegacyCustomizations = () => {
@@ -283,6 +292,83 @@
       }
     } catch {}
     localStorage.removeItem(LEGACY_STORAGE_KEY);
+  };
+
+  const getThemeInfo = async (themeId) => {
+    if (!window.OraThemeLoader) return null;
+    let info = window.OraThemeLoader.getThemeInfo
+      ? window.OraThemeLoader.getThemeInfo(themeId)
+      : null;
+    if (!info && window.OraThemeLoader.listInstalled) {
+      try {
+        const result = await window.OraThemeLoader.listInstalled();
+        info = (result.themes || []).find(t => t.id === themeId) || null;
+      } catch (err) {
+        console.warn('[Ora] Could not refresh theme list:', err);
+      }
+    }
+    return info;
+  };
+
+  const themeNeedsCopyBeforeEdit = async (themeId) => {
+    if (themeId === 'default') return true;
+    const info = await getThemeInfo(themeId);
+    if (!info) return false;
+    if (info.bundled) return true;
+    return Boolean(info.origin && String(info.origin).startsWith('project:'));
+  };
+
+  const ensureEditableTheme = async () => {
+    const themeId = getActiveThemeId();
+    if (!window.OraThemeLoader || !window.OraThemeLoader.duplicateTheme) return themeId;
+    if (!(await themeNeedsCopyBeforeEdit(themeId))) return themeId;
+    if (copyOnWritePromise) return await copyOnWritePromise;
+
+    copyOnWritePromise = (async () => {
+      const info = await getThemeInfo(themeId);
+      const manifest = (info && info.manifest) || {};
+      const baseName = manifest.name || (info && info.name) || themeId;
+      const existing = loadCustomizationsForTheme(themeId);
+      const copyName = `${baseName} Customized`;
+      const result = await window.OraThemeLoader.duplicateTheme(themeId, copyName, existing);
+      if (!result || result.error) {
+        throw new Error((result && result.error) || 'Could not create customized theme');
+      }
+
+      const all = loadAllCustomizations();
+      delete all[themeId];
+      if (Object.keys(existing).length > 0) {
+        all[result.id] = existing;
+      }
+      saveAllCustomizations(all);
+
+      await window.OraThemeLoader.applyTheme(result.id, result.theme_css_url);
+      applyCustomizations();
+      return result.id;
+    })();
+
+    try {
+      return await copyOnWritePromise;
+    } finally {
+      copyOnWritePromise = null;
+    }
+  };
+
+  const persistCustomizationsToTheme = async (themeId, customs) => {
+    if (!window.OraThemeLoader || !window.OraThemeLoader.saveCustomizations) return;
+    if (await themeNeedsCopyBeforeEdit(themeId)) return;
+    clearTimeout(saveToThemeTimer);
+    const snapshot = { ...(customs || {}) };
+    saveToThemeTimer = setTimeout(async () => {
+      try {
+        const result = await window.OraThemeLoader.saveCustomizations(themeId, snapshot);
+        if (result && result.error) {
+          console.warn('[Ora] Theme customization save failed:', result.error);
+        }
+      } catch (err) {
+        console.warn('[Ora] Theme customization save failed:', err);
+      }
+    }, 250);
   };
 
   // ─── Apply user customizations as a layered stylesheet ─────────────
@@ -315,18 +401,34 @@
     userStyle.textContent = css;
   };
 
-  const setVariable = (variable, value) => {
-    const customs = loadCustomizations();
+  const setVariable = async (variable, value) => {
+    let themeId = getActiveThemeId();
+    try {
+      themeId = await ensureEditableTheme();
+    } catch (err) {
+      console.error('[Ora] Could not create customized theme:', err);
+      return;
+    }
+    const customs = loadCustomizationsForTheme(themeId);
     customs[variable] = value;
-    saveCustomizations(customs);
+    saveCustomizationsForTheme(themeId, customs);
     applyCustomizations();
+    persistCustomizationsToTheme(themeId, customs);
   };
 
-  const resetVariable = (variable) => {
-    const customs = loadCustomizations();
+  const resetVariable = async (variable) => {
+    let themeId = getActiveThemeId();
+    try {
+      themeId = await ensureEditableTheme();
+    } catch (err) {
+      console.error('[Ora] Could not create customized theme:', err);
+      return;
+    }
+    const customs = loadCustomizationsForTheme(themeId);
     delete customs[variable];
-    saveCustomizations(customs);
+    saveCustomizationsForTheme(themeId, customs);
     applyCustomizations();
+    persistCustomizationsToTheme(themeId, customs);
   };
 
   // ─── Tag/untag customizable elements ───────────────────
@@ -590,7 +692,7 @@
     });
 
     // Global reset — clears all customizations for the active theme.
-    starterOverlay.querySelector('.customizer-reset-all').addEventListener('click', (e) => {
+    starterOverlay.querySelector('.customizer-reset-all').addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = getActiveThemeId();
       if (!confirm(`Reset all customizations for "${id}"?\n\nThis cannot be undone.`)) return;
@@ -598,6 +700,7 @@
       delete all[id];
       saveAllCustomizations(all);
       applyCustomizations();
+      persistCustomizationsToTheme(id, {});
       // Refresh the open element overlay so its controls reflect the defaults
       if (elementOverlay && currentTarget) showElementOverlay(currentTarget);
     });
@@ -646,9 +749,9 @@
     reset.type = 'button';
     reset.className = 'customizer-overlay-reset';
     reset.textContent = 'Reset to default';
-    reset.addEventListener('click', (e) => {
+    reset.addEventListener('click', async (e) => {
       e.stopPropagation();
-      axes.forEach(axis => resetVariable(axis.var));
+      await Promise.all(axes.map(axis => resetVariable(axis.var)));
       showElementOverlay(el);
     });
     elementOverlay.appendChild(reset);

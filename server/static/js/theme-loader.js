@@ -16,6 +16,7 @@
 
   const getActive = () => localStorage.getItem(STORAGE_KEY) || 'default';
   const getActiveCachedUrl = () => localStorage.getItem(URL_CACHE_KEY) || null;
+  const getThemeInfo = (themeId) => themesIndex[themeId] || null;
 
   // In-memory cache of the last /api/v3-themes/list response, indexed
   // by theme id. Populated on init() and refreshed whenever
@@ -123,6 +124,49 @@
     return await resp.json();
   };
 
+  const installFromZip = async (file, name) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (name) form.append('name', name);
+    const resp = await fetch('/api/v3-themes/install-zip', {
+      method: 'POST',
+      body: form,
+    });
+    return await resp.json();
+  };
+
+  const duplicateTheme = async (themeId, name, customizations) => {
+    const resp = await fetch(`/api/v3-themes/${themeId}/duplicate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, customizations: customizations || {} }),
+    });
+    const result = await resp.json();
+    if (result && result.ok && result.id) {
+      themesIndex[result.id] = {
+        id: result.id,
+        name: result.name,
+        directory: result.id,
+        bundled: false,
+        theme_css_url: result.theme_css_url || `/static/themes/${result.id}/theme.css`,
+      };
+    }
+    return result;
+  };
+
+  const saveCustomizations = async (themeId, customizations) => {
+    const resp = await fetch(`/api/v3-themes/${themeId}/save-customizations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customizations: customizations || {} }),
+    });
+    return await resp.json();
+  };
+
+  const exportTheme = (themeId) => {
+    window.location.href = `/api/v3-themes/${themeId}/export`;
+  };
+
   const deleteTheme = async (themeId) => {
     if (themeId === 'default') throw new Error('Cannot delete default');
     const resp = await fetch(`/api/v3-themes/${themeId}`, { method: 'DELETE' });
@@ -167,10 +211,15 @@
 
   window.OraThemeLoader = {
     getActive,
+    getThemeInfo,
     applyTheme,
     listInstalled,
     installFromGitHub,
     installFromCSS,
+    installFromZip,
+    duplicateTheme,
+    saveCustomizations,
+    exportTheme,
     deleteTheme,
     fetchCommunityDirectory,
     fetchCommunityStats,

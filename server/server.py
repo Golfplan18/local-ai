@@ -8,7 +8,7 @@ Model-calling, tool execution, and pipeline logic live in orchestrator/boot.py.
 This file handles Flask routing, SSE streaming, conversation persistence, and UI APIs.
 """
 
-import os, sys, json, re, threading, time, uuid, shutil
+import os, sys, json, re, threading, time, uuid, shutil, io, zipfile
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 import requests
@@ -7889,6 +7889,520 @@ def themes_list():
 V3_THEMES_DIR = os.path.join(WORKSPACE, "server/static/themes/")
 V3_THEMES_INDEX = os.path.join(V3_THEMES_DIR, "index.json")
 COMMUNITY_DIRECTORY_URL = "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-css-themes.json"
+V3_ORA_THEME_FORMAT = "ora-theme/v1"
+V3_CUSTOMIZATIONS_START = "/* ora-customizations:start */"
+V3_CUSTOMIZATIONS_END = "/* ora-customizations:end */"
+V3_CSS_VAR_RE = re.compile(r'(--[A-Za-z0-9_-]+)\s*:\s*([^;{}]+);?')
+V3_VALID_CSS_VAR_RE = re.compile(r'^--[A-Za-z0-9_-]+$')
+_V3_DEFAULT_THEME_VARS_CACHE = None
+
+V3_DEFAULT_THEME_SOURCE_FILES = [
+    "server/static/styles/tokens/foundations.css",
+    "server/static/styles/tokens/dark.css",
+    "server/static/styles/tokens/light.css",
+    "server/static/styles/tokens/ora-extensions.css",
+    "server/static/ora-visual-compiler/ora-visual-theme.css",
+]
+
+V3_BODY_VAR_CANDIDATES = {
+    "--font-text": ["--font-text", "--font-interface"],
+    "--font-monospace": ["--font-monospace"],
+    "--ora-font-body": ["--ora-font-body", "--font-text", "--font-interface"],
+    "--ora-font-mono": ["--ora-font-mono", "--font-monospace"],
+}
+
+V3_SCOPE_VAR_CANDIDATES = {
+    "--background-primary": ["--background-primary"],
+    "--background-secondary": ["--background-secondary", "--background-primary-alt"],
+    "--background-modifier-form-field": [
+        "--background-modifier-form-field",
+        "--background-secondary",
+        "--background-secondary-alt",
+    ],
+    "--background-modifier-border": [
+        "--background-modifier-border",
+        "--background-modifier-border-hover",
+    ],
+    "--background-modifier-border-focus": [
+        "--background-modifier-border-focus",
+        "--interactive-accent",
+        "--color-accent",
+    ],
+    "--background-modifier-hover": [
+        "--background-modifier-hover",
+        "--interactive-hover",
+        "--background-secondary-alt",
+    ],
+    "--interactive-normal": [
+        "--interactive-normal",
+        "--background-secondary",
+    ],
+    "--interactive-hover": [
+        "--interactive-hover",
+        "--background-modifier-hover",
+        "--background-secondary-alt",
+    ],
+    "--interactive-accent": [
+        "--interactive-accent",
+        "--color-accent",
+        "--link-color",
+        "--text-accent",
+    ],
+    "--interactive-accent-hover": [
+        "--interactive-accent-hover",
+        "--color-accent",
+        "--link-color-hover",
+        "--text-accent-hover",
+    ],
+    "--interactive-accent-faint": [
+        "--interactive-accent-faint",
+        "--color-accent",
+        "--link-color",
+    ],
+    "--icon-color": [
+        "--icon-color",
+        "--text-muted",
+    ],
+    "--icon-color-hover": [
+        "--icon-color-hover",
+        "--text-normal",
+    ],
+    "--text-normal": ["--text-normal"],
+    "--text-muted": ["--text-muted"],
+    "--text-faint": ["--text-faint"],
+    "--text-on-accent": [
+        "--text-on-accent",
+        "--background-primary",
+    ],
+    "--text-error": [
+        "--text-error",
+        "--color-red",
+        "--color-warning",
+    ],
+    "--text-warning": [
+        "--text-warning",
+        "--color-orange",
+        "--color-warning",
+    ],
+    "--link-color": [
+        "--link-color",
+        "--text-accent",
+        "--interactive-accent",
+        "--color-accent",
+    ],
+    "--link-color-hover": [
+        "--link-color-hover",
+        "--text-accent-hover",
+        "--interactive-accent-hover",
+        "--color-accent",
+    ],
+    "--color-accent": [
+        "--color-accent",
+        "--interactive-accent",
+        "--link-color",
+        "--text-accent",
+    ],
+}
+
+V3_HEADING_COLOR_CANDIDATES = {
+    "--h1-color": ["--h1-color", "--color-purple", "--color-accent"],
+    "--h2-color": ["--h2-color", "--color-green"],
+    "--h3-color": ["--h3-color", "--color-yellow"],
+    "--h4-color": ["--h4-color", "--color-red"],
+    "--h5-color": ["--h5-color", "--link-color", "--color-orange"],
+    "--h6-color": ["--h6-color", "--color-orange"],
+}
+
+V3_COLOR_RGB_PAIRS = [
+    "--color-red",
+    "--color-orange",
+    "--color-yellow",
+    "--color-green",
+    "--color-blue",
+    "--color-cyan",
+    "--color-purple",
+    "--color-pink",
+    "--color-active",
+    "--color-warning",
+    "--color-accent",
+]
+
+
+def _v3_empty_var_scopes():
+    return {"root": {}, "body": {}, "light": {}, "dark": {}}
+
+
+def _v3_clean_css_value(value):
+    value = str(value or "").strip().rstrip(";").strip()
+    if not value or "{" in value or "}" in value:
+        return None
+    return value
+
+
+def _v3_extract_css_vars(css):
+    """Extract CSS custom properties into broad theme scopes.
+
+    Ora imports Obsidian themes as a variable source, not as executable
+    selector CSS. This deliberately keeps only custom-property declarations
+    found in root/body/light/dark-ish blocks and discards raw app selectors.
+    """
+    scopes = _v3_empty_var_scopes()
+    cleaned = re.sub(r'/\*.*?\*/', '', css or '', flags=re.S)
+    for selector, body in re.findall(r'([^{}]+)\{([^{}]*)\}', cleaned, flags=re.S):
+        declarations = {}
+        for match in V3_CSS_VAR_RE.finditer(body):
+            value = _v3_clean_css_value(match.group(2))
+            if value:
+                declarations[match.group(1)] = value
+        if not declarations:
+            continue
+
+        lower = selector.lower()
+        targets = []
+        if ".theme-light" in lower:
+            targets.append("light")
+        if ".theme-dark" in lower:
+            targets.append("dark")
+        if ":root" in lower or re.search(r'(^|[,\s])html($|[,\s.#:])', lower):
+            targets.append("root")
+        if not targets and re.search(r'(^|[,\s])body($|[,\s.#:])', lower):
+            targets.append("body")
+        if not targets:
+            # Some themes put variables on app wrappers. Lift the variables,
+            # but not the selectors, so Ora still receives a usable palette.
+            targets.append("root")
+
+        for target in dict.fromkeys(targets):
+            scopes[target].update(declarations)
+    return scopes
+
+
+def _v3_merge_var_scopes(target, source):
+    for scope, values in (source or {}).items():
+        target.setdefault(scope, {}).update(values or {})
+
+
+def _v3_default_theme_vars():
+    global _V3_DEFAULT_THEME_VARS_CACHE
+    if _V3_DEFAULT_THEME_VARS_CACHE is not None:
+        return {
+            scope: dict(values)
+            for scope, values in _V3_DEFAULT_THEME_VARS_CACHE.items()
+        }
+
+    merged = _v3_empty_var_scopes()
+    for rel_path in V3_DEFAULT_THEME_SOURCE_FILES:
+        path = os.path.join(WORKSPACE, rel_path)
+        try:
+            with open(path, encoding="utf-8") as f:
+                _v3_merge_var_scopes(merged, _v3_extract_css_vars(f.read()))
+        except Exception:
+            continue
+
+    merged["body"].setdefault("--ora-font-body", "var(--font-text)")
+    merged["body"].setdefault("--ora-font-mono", "var(--font-monospace)")
+    _V3_DEFAULT_THEME_VARS_CACHE = {
+        scope: dict(values)
+        for scope, values in merged.items()
+    }
+    return _v3_default_theme_vars()
+
+
+def _v3_lookup_var(scopes, scope, name):
+    search_order = [scope]
+    if scope in ("light", "dark"):
+        search_order.extend(["body", "root"])
+    elif scope == "body":
+        search_order.append("root")
+    for candidate_scope in search_order:
+        value = (scopes.get(candidate_scope) or {}).get(name)
+        if value:
+            return value
+    return None
+
+
+def _v3_choose_var(source, out, scope, candidates, fallback=None):
+    for name in candidates:
+        value = _v3_lookup_var(source, scope, name)
+        if value:
+            return value
+    for name in candidates:
+        value = _v3_lookup_var(out, scope, name)
+        if value:
+            return value
+    return fallback
+
+
+def _v3_rgb_from_color(value):
+    value = (value or "").strip()
+    hex_match = re.match(r'^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$', value)
+    if hex_match:
+        raw = hex_match.group(1)
+        if len(raw) == 3:
+            raw = ''.join(ch + ch for ch in raw)
+        return ", ".join(str(int(raw[i:i + 2], 16)) for i in (0, 2, 4))
+
+    rgb_match = re.match(
+        r'^rgba?\(\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)',
+        value,
+        flags=re.I,
+    )
+    if rgb_match:
+        return ", ".join(str(int(float(rgb_match.group(i)))) for i in (1, 2, 3))
+    return None
+
+
+def _v3_set_rgb_pair(scope_vars, color_name):
+    rgb_name = f"{color_name}-rgb"
+    if scope_vars.get(rgb_name):
+        return
+    rgb = _v3_rgb_from_color(scope_vars.get(color_name))
+    if rgb:
+        scope_vars[rgb_name] = rgb
+
+
+def _v3_apply_scope_derivations(source, out, scope):
+    vars_for_scope = out[scope]
+
+    for dest, candidates in V3_SCOPE_VAR_CANDIDATES.items():
+        fallback = vars_for_scope.get(dest)
+        chosen = _v3_choose_var(source, out, scope, candidates, fallback)
+        if chosen:
+            vars_for_scope[dest] = chosen
+
+    for color_name in V3_COLOR_RGB_PAIRS:
+        rgb_name = f"{color_name}-rgb"
+        color_value = _v3_lookup_var(source, scope, color_name)
+        rgb_value = _v3_lookup_var(source, scope, rgb_name)
+        if color_value:
+            vars_for_scope[color_name] = color_value
+            if not rgb_value:
+                vars_for_scope.pop(rgb_name, None)
+        if rgb_value:
+            vars_for_scope[rgb_name] = rgb_value
+
+    semantic_colors = {
+        "--color-accent": ["--color-accent", "--interactive-accent", "--link-color"],
+        "--color-active": ["--color-active", "--interactive-accent", "--color-green"],
+        "--color-warning": ["--color-warning", "--text-error", "--color-red"],
+    }
+    for dest, candidates in semantic_colors.items():
+        chosen = _v3_choose_var(source, out, scope, candidates, vars_for_scope.get(dest))
+        if chosen:
+            vars_for_scope[dest] = chosen
+            vars_for_scope.pop(f"{dest}-rgb", None)
+
+    for dest, candidates in V3_HEADING_COLOR_CANDIDATES.items():
+        chosen = _v3_choose_var(source, out, scope, candidates, vars_for_scope.get(dest))
+        if chosen:
+            vars_for_scope[dest] = chosen
+
+    border = vars_for_scope.get("--background-modifier-border")
+    text = vars_for_scope.get("--text-normal")
+    muted = vars_for_scope.get("--text-muted")
+    faint = vars_for_scope.get("--text-faint")
+    link = vars_for_scope.get("--link-color")
+    hover = vars_for_scope.get("--link-color-hover") or link
+    form = vars_for_scope.get("--background-modifier-form-field")
+    secondary = vars_for_scope.get("--background-secondary")
+    primary = vars_for_scope.get("--background-primary")
+    red = vars_for_scope.get("--color-red")
+    orange = vars_for_scope.get("--color-orange")
+    yellow = vars_for_scope.get("--color-yellow")
+    green = vars_for_scope.get("--color-green")
+    blue = vars_for_scope.get("--color-blue")
+    cyan = vars_for_scope.get("--color-cyan")
+    purple = vars_for_scope.get("--color-purple")
+    pink = vars_for_scope.get("--color-pink")
+    warning = vars_for_scope.get("--color-warning") or red
+    accent = vars_for_scope.get("--interactive-accent") or link
+
+    derived = {
+        "--ora-button-border": border,
+        "--ora-wordmark-base": muted,
+        "--ora-wordmark-bright": faint or muted,
+        "--ora-wordmark-hover": text,
+        "--ora-line-dot-color": border,
+        "--ora-input-pane-border": border,
+        "--ora-output-pane-border": border,
+        "--ora-visual-canvas-border": border,
+        "--ora-visual-canvas-bg": secondary,
+        "--ora-mode-private-pane-border": green,
+        "--ora-mode-private-button-border": green,
+        "--ora-mode-private-button-icon": green,
+        "--ora-mode-private-label": green,
+        "--ora-mode-stealth-pane-border": red,
+        "--ora-mode-stealth-button-border": red,
+        "--ora-mode-stealth-button-icon": red,
+        "--ora-mode-stealth-label": red,
+        "--text-primary": text,
+        "--text-secondary": muted,
+        "--border": border,
+        "--accent": accent,
+        "--accent-hover": hover,
+        "--accent-muted": vars_for_scope.get("--background-modifier-hover") or form,
+        "--accent-text": vars_for_scope.get("--text-on-accent") or primary,
+        "--bg-panel": "transparent",
+        "--bg-toolbar": secondary,
+        "--bg-hover": vars_for_scope.get("--background-modifier-hover") or form,
+        "--bg-canvas-a": border,
+        "--ora-status-ok": green,
+        "--ora-status-error": warning,
+        "--ora-status-warning": orange or yellow,
+        "--ora-bg-1": primary,
+        "--ora-bg-2": secondary,
+        "--ora-fg": text,
+        "--ora-border": border,
+        "--ora-accent": accent,
+        "--ora-vis-bg": primary,
+        "--ora-vis-surface": form or secondary,
+        "--ora-vis-text": text,
+        "--ora-vis-text-secondary": muted,
+        "--ora-vis-gridline": border,
+        "--ora-vis-axis": muted or text,
+        "--ora-vis-rule": border,
+        "--ora-vis-cat-1": blue or accent,
+        "--ora-vis-cat-2": orange or red,
+        "--ora-vis-cat-3": green,
+        "--ora-vis-cat-4": purple or pink,
+        "--ora-vis-cat-5": yellow or orange,
+        "--ora-vis-cat-6": cyan or blue,
+        "--ora-vis-cat-7": yellow,
+        "--ora-vis-cat-8": text,
+        "--ora-vis-highlight": warning,
+        "--ora-vis-muted": muted,
+        "--ora-vis-positive": green,
+        "--ora-vis-negative": warning,
+        "--ora-vis-neutral": muted,
+        "--ora-vis-ibis-question": blue or accent,
+        "--ora-vis-ibis-idea": yellow or orange,
+        "--ora-vis-ibis-pro": green,
+        "--ora-vis-ibis-con": warning,
+        "--ora-vis-dag-exposure": blue or accent,
+        "--ora-vis-dag-outcome": orange or red,
+        "--ora-vis-dag-latent": muted,
+        "--ora-vis-c4-person": blue or accent,
+        "--ora-vis-c4-system": text,
+        "--ora-vis-c4-container": muted,
+        "--ora-vis-c4-external": faint or muted,
+        "--ora-vis-stub-bg": secondary,
+        "--ora-vis-stub-border": border,
+        "--ora-vis-stub-text": muted,
+        "--ora-vis-focus-ring": accent,
+    }
+
+    if "--ora-bridge-handle" not in vars_for_scope:
+        vars_for_scope["--ora-bridge-handle"] = (
+            "rgba(1, 1, 1, 0.18)"
+            if scope == "light"
+            else "rgba(255, 255, 255, 0.18)"
+        )
+
+    for name, value in derived.items():
+        source_value = _v3_lookup_var(source, scope, name)
+        if source_value:
+            vars_for_scope[name] = source_value
+        elif value:
+            vars_for_scope[name] = value
+
+    for color_name in V3_COLOR_RGB_PAIRS:
+        _v3_set_rgb_pair(vars_for_scope, color_name)
+
+
+def _v3_convert_obsidian_theme(css, manifest=None):
+    source = _v3_extract_css_vars(css)
+    out = _v3_default_theme_vars()
+
+    for scope, vars_for_scope in out.items():
+        for var_name in list(vars_for_scope.keys()):
+            source_value = _v3_lookup_var(source, scope, var_name)
+            if source_value:
+                vars_for_scope[var_name] = source_value
+
+    for dest, candidates in V3_BODY_VAR_CANDIDATES.items():
+        fallback = out["body"].get(dest)
+        chosen = _v3_choose_var(source, out, "body", candidates, fallback)
+        if chosen:
+            out["body"][dest] = chosen
+
+    for scope in ("light", "dark"):
+        _v3_apply_scope_derivations(source, out, scope)
+
+    name = (manifest or {}).get("name") or "Imported Obsidian Theme"
+    return _v3_render_theme_vars_css(
+        out,
+        [
+            f"Converted from Obsidian CSS for Ora: {name}",
+            "Raw selectors were discarded; missing Ora variables were derived",
+            "from matching Obsidian variables and Ora's default theme.",
+        ],
+    )
+
+
+def _v3_render_theme_vars_css(scopes, header_lines=None):
+    blocks = []
+    if header_lines:
+        blocks.append("/*")
+        for line in header_lines:
+            blocks.append(f"   {line}")
+        blocks.append("*/")
+
+    selector_for_scope = {
+        "root": ":root",
+        "body": "body",
+        "light": ".theme-light",
+        "dark": ".theme-dark",
+    }
+    for scope in ("root", "body", "light", "dark"):
+        vars_for_scope = scopes.get(scope) or {}
+        if not vars_for_scope:
+            continue
+        blocks.append(f"{selector_for_scope[scope]} {{")
+        for name, value in vars_for_scope.items():
+            cleaned = _v3_clean_css_value(value)
+            if V3_VALID_CSS_VAR_RE.match(name) and cleaned:
+                blocks.append(f"  {name}: {cleaned};")
+        blocks.append("}")
+        blocks.append("")
+    return "\n".join(blocks).rstrip() + "\n"
+
+
+def _v3_customizations_to_css(customizations):
+    customizations = customizations or {}
+    lines = []
+    for name, value in customizations.items():
+        cleaned = _v3_clean_css_value(value)
+        if V3_VALID_CSS_VAR_RE.match(str(name)) and cleaned:
+            lines.append(f"  {name}: {cleaned};")
+    if not lines:
+        return ""
+    return (
+        f"{V3_CUSTOMIZATIONS_START}\n"
+        ":root, body, body.theme-dark, body.theme-light {\n"
+        + "\n".join(lines)
+        + "\n}\n"
+        f"{V3_CUSTOMIZATIONS_END}\n"
+    )
+
+
+def _v3_replace_customizations(css, customizations):
+    pattern = re.compile(
+        re.escape(V3_CUSTOMIZATIONS_START)
+        + r'.*?'
+        + re.escape(V3_CUSTOMIZATIONS_END)
+        + r'\n?',
+        flags=re.S,
+    )
+    base = pattern.sub("", css or "").rstrip()
+    section = _v3_customizations_to_css(customizations)
+    if not section:
+        return base + ("\n" if base else "")
+    return base + "\n\n" + section
+
+
+def _v3_manifest_is_ora(manifest):
+    fmt = (manifest or {}).get("oraThemeFormat") or (manifest or {}).get("ora_theme_format")
+    return fmt == V3_ORA_THEME_FORMAT
 
 def _v3_slugify(text):
     slug = re.sub(r'[^a-z0-9]+', '-', (text or '').lower()).strip('-')
@@ -8000,6 +8514,78 @@ def _v3_theme_css_url_for(entry):
         return f"/themes/project/{entry['project_nexus']}/theme.css"
     return f"/static/themes/{entry['id']}/theme.css"
 
+def _v3_project_theme_asset_path(entry, filename):
+    from orchestrator import project_registry as _pr
+    project = _pr.get_project(entry["project_nexus"])
+    if project is None:
+        return None
+    asset_dir = (project.root / entry["directory"]).resolve()
+    target = (asset_dir / filename).resolve()
+    try:
+        target.relative_to(asset_dir)
+    except ValueError:
+        return None
+    return target if target.is_file() else None
+
+
+def _v3_find_theme_entry(theme_id):
+    for entry in _v3_aggregate_themes():
+        if entry.get("id") == theme_id:
+            return entry
+    return None
+
+
+def _v3_read_theme_asset(theme_id, filename):
+    entry = _v3_find_theme_entry(theme_id)
+    if not entry:
+        raise FileNotFoundError(f"Theme not found: {theme_id}")
+    if entry.get("origin", "").startswith("project:"):
+        path = _v3_project_theme_asset_path(entry, filename)
+    else:
+        path = os.path.join(V3_THEMES_DIR, theme_id, filename)
+    if not path or not os.path.isfile(path):
+        raise FileNotFoundError(f"Theme asset not found: {theme_id}/{filename}")
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def _v3_read_theme_manifest(theme_id):
+    try:
+        return json.loads(_v3_read_theme_asset(theme_id, "manifest.json"))
+    except Exception:
+        return {}
+
+
+def _v3_existing_theme_ids():
+    ids = set()
+    for entry in _v3_read_index().get("themes", []):
+        if entry.get("id"):
+            ids.add(entry["id"])
+    for entry in _v3_list_project_themes():
+        if entry.get("id"):
+            ids.add(entry["id"])
+    try:
+        for name in os.listdir(V3_THEMES_DIR):
+            if re.match(r'^[a-z0-9_-]+$', name):
+                ids.add(name)
+    except Exception:
+        pass
+    return ids
+
+
+def _v3_unique_theme_id(base_id):
+    base = _v3_slugify(base_id)
+    if base == "default":
+        base = "ora-default-copy"
+    existing = _v3_existing_theme_ids()
+    candidate = base
+    counter = 2
+    while candidate in existing:
+        candidate = f"{base}-{counter}"
+        counter += 1
+    return candidate
+
+
 def _v3_write_index(data):
     os.makedirs(V3_THEMES_DIR, exist_ok=True)
     with open(V3_THEMES_INDEX, "w") as f:
@@ -8010,7 +8596,12 @@ def _v3_theme_dir(theme_id):
         raise ValueError(f"Invalid theme id: {theme_id}")
     return os.path.join(V3_THEMES_DIR, theme_id)
 
-def _v3_install(theme_id, name, manifest, css):
+def _v3_install(theme_id, name, manifest, css, overwrite=False):
+    theme_id = _v3_slugify(theme_id)
+    if theme_id == "default":
+        raise ValueError("Cannot overwrite default theme")
+    if not overwrite:
+        theme_id = _v3_unique_theme_id(theme_id)
     theme_dir = _v3_theme_dir(theme_id)
     os.makedirs(theme_dir, exist_ok=True)
     manifest = dict(manifest or {})
@@ -8021,14 +8612,24 @@ def _v3_install(theme_id, name, manifest, css):
     with open(os.path.join(theme_dir, "theme.css"), "w") as f:
         f.write(css)
     index = _v3_read_index()
-    if not any(t.get("id") == theme_id for t in index.get("themes", [])):
+    updated = False
+    for entry in index.get("themes", []):
+        if entry.get("id") == theme_id:
+            entry.update({
+                "name": name,
+                "directory": theme_id,
+                "bundled": False,
+            })
+            updated = True
+            break
+    if not updated:
         index.setdefault("themes", []).append({
             "id": theme_id,
             "name": name,
             "directory": theme_id,
             "bundled": False,
         })
-        _v3_write_index(index)
+    _v3_write_index(index)
     return {"ok": True, "id": theme_id, "name": name}
 
 @app.route("/api/v3-themes/list")
@@ -8141,7 +8742,7 @@ def v3_themes_project_asset(nexus, filename):
 @app.route("/api/v3-themes/install", methods=["POST"])
 def v3_themes_install_api():
     data = request.get_json(force=True) or {}
-    manifest = data.get("manifest") or {}
+    manifest = dict(data.get("manifest") or {})
     name = data.get("name") or manifest.get("name")
     css = data.get("css")
     if not name or not css:
@@ -8150,7 +8751,123 @@ def v3_themes_install_api():
     if theme_id == "default":
         return json.dumps({"error": "Cannot overwrite default theme"}), 400
     try:
-        return json.dumps(_v3_install(theme_id, name, manifest, css))
+        if not _v3_manifest_is_ora(manifest):
+            css = _v3_convert_obsidian_theme(css, manifest)
+            manifest["sourceFormat"] = "obsidian-css"
+        manifest["oraThemeFormat"] = V3_ORA_THEME_FORMAT
+        manifest["oraImportedAt"] = datetime.now(timezone.utc).isoformat()
+        result = _v3_install(theme_id, name, manifest, css)
+        result["theme_css_url"] = f"/static/themes/{result['id']}/theme.css"
+        return json.dumps(result)
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
+
+def _v3_zip_read_theme_file(zf, basename):
+    candidates = []
+    for name in zf.namelist():
+        if name.endswith("/") or name.startswith("__MACOSX/"):
+            continue
+        if name.split("/")[-1] == basename:
+            candidates.append(name)
+    if not candidates:
+        raise FileNotFoundError(f"{basename} not found in theme zip")
+    preferred = sorted(candidates, key=lambda n: (n.count("/"), n))[0]
+    return zf.read(preferred).decode("utf-8")
+
+
+@app.route("/api/v3-themes/install-zip", methods=["POST"])
+def v3_themes_install_zip_api():
+    upload = request.files.get("file") if request.files else None
+    if not upload:
+        return json.dumps({"error": "Missing theme zip"}), 400
+    try:
+        with zipfile.ZipFile(io.BytesIO(upload.read())) as zf:
+            manifest = json.loads(_v3_zip_read_theme_file(zf, "manifest.json"))
+            css = _v3_zip_read_theme_file(zf, "theme.css")
+        name = request.form.get("name") or manifest.get("name")
+        if not name:
+            name = os.path.splitext(upload.filename or "theme")[0]
+        theme_id = _v3_slugify(name)
+        if theme_id == "default":
+            return json.dumps({"error": "Cannot overwrite default theme"}), 400
+        if _v3_manifest_is_ora(manifest):
+            manifest["oraThemeFormat"] = V3_ORA_THEME_FORMAT
+        else:
+            css = _v3_convert_obsidian_theme(css, manifest)
+            manifest["sourceFormat"] = "obsidian-zip"
+            manifest["oraThemeFormat"] = V3_ORA_THEME_FORMAT
+        manifest["oraImportedAt"] = datetime.now(timezone.utc).isoformat()
+        result = _v3_install(theme_id, name, manifest, css)
+        result["theme_css_url"] = f"/static/themes/{result['id']}/theme.css"
+        return json.dumps(result)
+    except zipfile.BadZipFile:
+        return json.dumps({"error": "Invalid zip file"}), 400
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
+
+@app.route("/api/v3-themes/<theme_id>/duplicate", methods=["POST"])
+def v3_themes_duplicate_api(theme_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        entry = _v3_find_theme_entry(theme_id)
+        if not entry:
+            return json.dumps({"error": "Theme not found"}), 404
+        base_manifest = _v3_read_theme_manifest(theme_id)
+        base_name = base_manifest.get("name") or entry.get("name") or theme_id
+        name = data.get("name") or f"{base_name} Customized"
+        customizations = data.get("customizations") or {}
+        css = _v3_read_theme_asset(theme_id, "theme.css")
+        css = _v3_replace_customizations(css, customizations)
+
+        manifest = dict(base_manifest)
+        manifest["name"] = name
+        manifest.setdefault("version", "1.0.0")
+        manifest["oraThemeFormat"] = V3_ORA_THEME_FORMAT
+        manifest["oraThemeSource"] = {
+            "kind": "derived",
+            "parentId": theme_id,
+            "parentName": base_name,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+        }
+
+        result = _v3_install(_v3_slugify(name), name, manifest, css)
+        result["theme_css_url"] = f"/static/themes/{result['id']}/theme.css"
+        return json.dumps(result)
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
+
+@app.route("/api/v3-themes/<theme_id>/save-customizations", methods=["POST"])
+def v3_themes_save_customizations_api(theme_id):
+    data = request.get_json(force=True) or {}
+    try:
+        entry = _v3_find_theme_entry(theme_id)
+        if not entry:
+            return json.dumps({"error": "Theme not found"}), 404
+        if theme_id == "default" or entry.get("bundled") or entry.get("origin", "").startswith("project:"):
+            return json.dumps({"error": "Duplicate this theme before customizing it"}), 409
+
+        theme_dir = _v3_theme_dir(theme_id)
+        css_path = os.path.join(theme_dir, "theme.css")
+        with open(css_path, encoding="utf-8") as f:
+            css = f.read()
+        css = _v3_replace_customizations(css, data.get("customizations") or {})
+        with open(css_path, "w", encoding="utf-8") as f:
+            f.write(css)
+
+        manifest_path = os.path.join(theme_dir, "manifest.json")
+        try:
+            with open(manifest_path, encoding="utf-8") as f:
+                manifest = json.load(f)
+        except Exception:
+            manifest = {}
+        manifest["oraThemeFormat"] = V3_ORA_THEME_FORMAT
+        manifest["oraCustomizedAt"] = datetime.now(timezone.utc).isoformat()
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, indent=2)
+        return json.dumps({"ok": True, "id": theme_id})
     except Exception as e:
         return json.dumps({"error": str(e)}), 500
 
@@ -8166,6 +8883,31 @@ def v3_themes_delete_api(theme_id):
         index["themes"] = [t for t in index.get("themes", []) if t.get("id") != theme_id]
         _v3_write_index(index)
         return json.dumps({"ok": True})
+    except Exception as e:
+        return json.dumps({"error": str(e)}), 500
+
+
+@app.route("/api/v3-themes/<theme_id>/export")
+def v3_themes_export_api(theme_id):
+    try:
+        manifest = _v3_read_theme_manifest(theme_id)
+        css = _v3_read_theme_asset(theme_id, "theme.css")
+        manifest.setdefault("name", theme_id)
+        manifest["oraThemeFormat"] = V3_ORA_THEME_FORMAT
+        manifest["oraExportedAt"] = datetime.now(timezone.utc).isoformat()
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+            zf.writestr("theme.css", css)
+        filename = f"{_v3_slugify(manifest.get('name') or theme_id)}.ora-theme.zip"
+        return Response(
+            buf.getvalue(),
+            mimetype="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except FileNotFoundError:
+        return json.dumps({"error": "Theme not found"}), 404
     except Exception as e:
         return json.dumps({"error": str(e)}), 500
 
@@ -8242,7 +8984,14 @@ def v3_themes_install_from_github_api():
         theme_id = _v3_slugify(name)
         if theme_id == "default":
             return json.dumps({"error": "Cannot overwrite default theme"}), 400
-        return json.dumps(_v3_install(theme_id, name, manifest, css))
+        css = _v3_convert_obsidian_theme(css, manifest)
+        manifest["sourceFormat"] = "obsidian-github"
+        manifest["sourceRepo"] = repo
+        manifest["oraThemeFormat"] = V3_ORA_THEME_FORMAT
+        manifest["oraImportedAt"] = datetime.now(timezone.utc).isoformat()
+        result = _v3_install(theme_id, name, manifest, css)
+        result["theme_css_url"] = f"/static/themes/{result['id']}/theme.css"
+        return json.dumps(result)
     except Exception as e:
         return json.dumps({"error": str(e)}), 500
 
