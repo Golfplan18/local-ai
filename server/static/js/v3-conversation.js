@@ -483,74 +483,14 @@
     // Restore draft for the new conversation.
     if (leftInput) leftInput.value = loadDraft(conversation_id);
 
-    // V3 Input Handling Phase 9 + V3 Backlog 2A canvas inverse — restore
-    // the latest turn's canvas snapshot on conversation re-open. The
-    // save side writes per-turn .ora-canvas files to
-    // ~/ora/sessions/<id>/canvas/ + a stable latest.ora-canvas mirror.
-    // Here we fetch the latest, decompress + parse via OraCanvasFileFormat,
-    // and rehydrate the active visual panel via the panel.loadCanvasState
-    // method patched in by v3-canvas-state-codec.js.
-    //
-    // Constraints from the design (Item 12 Q4):
-    //   * Saved literal values are honored — colors / sizes / positions
-    //     are restored exactly as captured. Theme changes do NOT
-    //     retroactively repaint prior turns.
-    //   * Always go through v3-canvas-state-codec (its deserialize
-    //     handles Phase 7 shape types: bubbles, panel grids,
-    //     shape-with-text). The older one-way canvas-serializer.js is
-    //     left alone.
-    //   * Same layer membership as save time (background / annotation /
-    //     userInput) — the codec preserves this via the per-object
-    //     ``layer`` field.
-    //   * Re-hydrate ONLY on conversation load, not on turn navigation.
-    //     The visual pane is a continuous workspace; turn arrows in the
-    //     output pane do not pull canvas state.
-    //   * Selection state is transient (the codec deliberately skips
-    //     the selection layer on save), so the canvas opens with no
-    //     active selection. Drawn shapes round-trip with full fidelity.
+    // The visual pane must track the turn being shown. Clear stale state
+    // first, render the text turn, then load that turn's saved canvas if it
+    // exists. If it does not, loadTurnCanvas blanks the visual pane unless
+    // the assistant text itself contains an ora-visual block.
     window._oraLatestCanvasBytes = null;
-    try {
-      const canvasResp = await fetch(
-        `/api/canvas/load/${encodeURIComponent(conversation_id)}`,
-      );
-      if (canvasResp.ok) {
-        const buf = await canvasResp.arrayBuffer();
-        window._oraLatestCanvasBytes = new Uint8Array(buf);
-        // Parse + rehydrate. Both steps are best-effort; on any failure
-        // the canvas opens clean and model-emitted envelopes still
-        // render normally.
-        if (window.OraCanvasFileFormat
-            && typeof window.OraCanvasFileFormat.read === 'function') {
-          try {
-            const state = await window.OraCanvasFileFormat.read(
-              window._oraLatestCanvasBytes,
-            );
-            const panel = (window.OraPanels && window.OraPanels.visual
-                            && typeof window.OraPanels.visual._getActive === 'function')
-                          ? window.OraPanels.visual._getActive()
-                          : null;
-            if (panel && typeof panel.loadCanvasState === 'function') {
-              panel.loadCanvasState(state);
-              console.info(
-                `[v3-conversation] canvas rehydrated for ${conversation_id} `
-                + `(${(state.objects || []).length} object(s))`,
-              );
-            } else {
-              console.info(
-                `[v3-conversation] canvas snapshot for ${conversation_id} `
-                + `parsed but no active panel/loadCanvasState yet; bytes parked on window._oraLatestCanvasBytes`,
-              );
-            }
-          } catch (e) {
-            console.warn('[v3-conversation] canvas rehydrate failed:', e);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[v3-conversation] canvas-load fetch failed:', e);
-    }
-
+    clearVisualPane();
     renderAll();
+    loadTurnCanvas(state.currentTurnIndex);
 
     // Mark as read (best effort).
     if (envelope) {
@@ -575,28 +515,32 @@
   // timestamped .ora-canvas snapshot at submit time; the N-th snapshot
   // (sorted chronologically) corresponds to the N-th turn. The server's
   // /api/canvas/load endpoint resolves index → file when given ?turn=.
+  const currentTurnHasVisualBlock = () => {
+    const turn = state.turns[state.currentTurnIndex];
+    const content = turn && turn.assistant && turn.assistant.content;
+    return typeof content === 'string' && content.indexOf('ora-visual') !== -1;
+  };
+
   const loadTurnCanvas = async (turnIndex) => {
     if (!state.activeConversationId) return;
+    const requestedConversationId = state.activeConversationId;
     try {
-      const url = `/api/canvas/load/${encodeURIComponent(state.activeConversationId)}?turn=${turnIndex}`;
+      const url = `/api/canvas/load/${encodeURIComponent(requestedConversationId)}?turn=${turnIndex}`;
       const resp = await fetch(url);
+      if (requestedConversationId !== state.activeConversationId) return;
       if (!resp.ok) {
-        // No canvas for that turn — clear to a blank canvas instead of
-        // leaving the prior turn's content. Use the format's read-empty
-        // pattern: an empty objects array.
-        const panel = (window.OraPanels && window.OraPanels.visual
-                        && typeof window.OraPanels.visual._getActive === 'function')
-                      ? window.OraPanels.visual._getActive()
-                      : null;
-        if (panel && typeof panel.loadCanvasState === 'function') {
-          try { panel.loadCanvasState({ objects: [] }); } catch (e) { /* non-fatal */ }
+        window._oraLatestCanvasBytes = null;
+        if (!currentTurnHasVisualBlock()) {
+          clearVisualPane();
         }
         return;
       }
       const buf = await resp.arrayBuffer();
+      if (requestedConversationId !== state.activeConversationId) return;
+      window._oraLatestCanvasBytes = new Uint8Array(buf);
       if (window.OraCanvasFileFormat
           && typeof window.OraCanvasFileFormat.read === 'function') {
-        const cs = await window.OraCanvasFileFormat.read(new Uint8Array(buf));
+        const cs = await window.OraCanvasFileFormat.read(window._oraLatestCanvasBytes);
         const panel = (window.OraPanels && window.OraPanels.visual
                         && typeof window.OraPanels.visual._getActive === 'function')
                       ? window.OraPanels.visual._getActive()
@@ -607,6 +551,9 @@
       }
     } catch (e) {
       console.warn('[v3-conversation] turn-canvas load failed:', e);
+      if (!currentTurnHasVisualBlock()) {
+        clearVisualPane();
+      }
     }
   };
 

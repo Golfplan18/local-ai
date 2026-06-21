@@ -5609,6 +5609,8 @@ _BROWSER_SEARCH_STOPWORDS = {
     "with",
 }
 
+_BROWSER_KNOWLEDGE_TYPES = {"engram", "chat", "resource", "working"}
+
 
 def _browser_terms(query: str) -> list[str]:
     return [
@@ -5616,6 +5618,26 @@ def _browser_terms(query: str) -> list[str]:
         for t in re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]*", query or "")
         if len(t) > 2 and t.lower() not in _BROWSER_SEARCH_STOPWORDS
     ]
+
+
+def _browser_match_terms(query: str) -> list[str]:
+    terms: list[str] = []
+    seen: set[str] = set()
+    for term in _browser_terms(query):
+        candidates = [term]
+        candidates.extend(
+            part for part in re.split(r"[-_]+", term)
+            if len(part) > 2 and part not in _BROWSER_SEARCH_STOPWORDS
+        )
+        for candidate in candidates:
+            if candidate not in seen:
+                seen.add(candidate)
+                terms.append(candidate)
+    return terms
+
+
+def _browser_is_knowledge_note(meta: dict) -> bool:
+    return str((meta or {}).get("type") or "").lower() in _BROWSER_KNOWLEDGE_TYPES
 
 
 def _browser_encode_source_id(prefix: str, value: str) -> str:
@@ -5687,17 +5709,46 @@ def _browser_snippet_from_text(text: str, query: str, *, limit: int = 420) -> st
 
 
 def _browser_match_score(query: str, title: str = "", text: str = "") -> float:
-    terms = _browser_terms(query)
+    terms = _browser_match_terms(query)
     if not terms:
         return 0.0
+    import difflib
     clean_query = _clean_conversation_browser_text(query).lower()
     title_l = str(title or "").lower()
     text_l = str(text or "").lower()
     haystack = f"{title_l}\n{text_l}"
-    term_hits = sum(1 for term in terms if term in haystack)
-    title_hits = sum(1 for term in terms if term in title_l)
-    score = (term_hits / max(len(terms), 1)) * 100.0
-    score += title_hits * 10.0
+
+    def candidates(value: str) -> set[str]:
+        raw = set(re.findall(r"[a-z0-9][a-z0-9_-]{2,}", value or ""))
+        split = {
+            part
+            for token in raw
+            for part in re.split(r"[-_]+", token)
+            if len(part) > 2
+        }
+        return raw | split
+
+    haystack_words = candidates(haystack)
+    title_words = candidates(title_l)
+
+    def strength(term: str, value: str, words: set[str]) -> float:
+        if term in value:
+            return 1.0
+        if len(term) < 6:
+            return 0.0
+        best = 0.0
+        for word in words:
+            if abs(len(word) - len(term)) > max(2, int(len(term) * 0.35)):
+                continue
+            ratio = difflib.SequenceMatcher(None, term, word).ratio()
+            if ratio > best:
+                best = ratio
+        return best if best >= 0.82 else 0.0
+
+    term_strengths = [strength(term, haystack, haystack_words) for term in terms]
+    title_strengths = [strength(term, title_l, title_words) for term in terms]
+    score = (sum(term_strengths) / max(len(terms), 1)) * 100.0
+    score += sum(title_strengths) * 10.0
     if clean_query and clean_query in text_l:
         score += 65.0
     if clean_query and clean_query in title_l:
@@ -5806,7 +5857,7 @@ def _browser_row_from_chroma_hit(
         }
 
     if logical_collection == "knowledge":
-        if metadata.get("type") not in ("engram", "chat"):
+        if not _browser_is_knowledge_note(metadata):
             return None
         source_path = metadata.get("path") or metadata.get("obsidian_path")
         if not source_path:
@@ -5820,7 +5871,7 @@ def _browser_row_from_chroma_hit(
         return {
             "conversation_id": row_id,
             "source_conversation_id": source_id,
-            "result_type": "engram",
+            "result_type": "engram" if str(metadata.get("type") or "").lower() in ("engram", "chat") else "knowledge_note",
             "source_kind": "engram",
             "tag": metadata.get("tags") or "",
             "title": title,
@@ -5902,7 +5953,7 @@ def _browser_chroma_exact_rows(
                     continue
                 seen_row_ids.add(row_id)
                 meta = _browser_metadata_for_row(cur, row_id)
-                if logical_collection == "knowledge" and meta.get("type") != "engram":
+                if logical_collection == "knowledge" and not _browser_is_knowledge_note(meta):
                     continue
                 doc = meta.get("chroma:document") or fts_text or ""
                 term_hits = sum(1 for term in terms if term in doc.lower())
@@ -5922,6 +5973,177 @@ def _browser_chroma_exact_rows(
     except Exception as exc:
         print(f"[conversation-browser] exact {logical_collection} search failed: {exc}", file=sys.stderr)
     return sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)[:limit]
+
+
+def _browser_fuzzy_fts_query(query: str) -> str:
+    grams: list[str] = []
+    seen: set[str] = set()
+    for term in _browser_match_terms(query):
+        variants = {
+            term,
+            re.sub(r"[^a-z0-9]+", "", term.lower()),
+        }
+        for variant in variants:
+            if len(variant) < 6:
+                continue
+            for idx in range(0, len(variant) - 2):
+                gram = variant[idx:idx + 3]
+                if len(gram) == 3 and gram not in seen:
+                    seen.add(gram)
+                    grams.append(gram)
+                if len(grams) >= 80:
+                    break
+            if len(grams) >= 80:
+                break
+        if len(grams) >= 80:
+            break
+    return " OR ".join(f'"{gram}"' for gram in grams)
+
+
+def _browser_chroma_fuzzy_rows(
+    query: str,
+    *,
+    logical_collection: str,
+    limit: int,
+) -> list[dict]:
+    fts_query = _browser_fuzzy_fts_query(query)
+    if not fts_query:
+        return []
+    physical = _browser_physical_collection(logical_collection)
+    out: dict[str, dict] = {}
+    try:
+        import sqlite3
+        con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+        cur = con.cursor()
+        matches = cur.execute(
+            """
+            SELECT embedding_fulltext_search.rowid,
+                   embeddings.embedding_id,
+                   embedding_fulltext_search.string_value,
+                   bm25(embedding_fulltext_search) AS rank
+            FROM embedding_fulltext_search
+            JOIN embeddings ON embeddings.id = embedding_fulltext_search.rowid
+            JOIN segments ON segments.id = embeddings.segment_id
+            JOIN collections ON collections.id = segments.collection
+            WHERE collections.name = ?
+              AND embedding_fulltext_search.string_value MATCH ?
+            ORDER BY rank
+            LIMIT ?
+            """,
+            (physical, fts_query, max(limit * 4, 80)),
+        ).fetchall()
+        for row_id, embedding_id, fts_text, rank in matches:
+            meta = _browser_metadata_for_row(cur, row_id)
+            if logical_collection == "knowledge" and not _browser_is_knowledge_note(meta):
+                continue
+            doc = meta.get("chroma:document") or fts_text or ""
+            title = _browser_source_title(meta, doc)
+            relevance = _browser_match_score(query, title, doc)
+            if relevance < 58.0:
+                continue
+            score = 80.0 + relevance - min(abs(float(rank or 0)), 50.0) / 20.0
+            _browser_merge_best(
+                out,
+                _browser_row_from_chroma_hit(
+                    logical_collection=logical_collection,
+                    embedding_id=embedding_id,
+                    document=doc,
+                    metadata=meta,
+                    query=query,
+                    score=score,
+                ),
+            )
+        con.close()
+    except Exception as exc:
+        print(f"[conversation-browser] fuzzy {logical_collection} search failed: {exc}", file=sys.stderr)
+    return _browser_sort_rows(list(out.values()), "relevance")[:limit]
+
+
+def _browser_vault_markdown_rows(query: str, limit: int = 40) -> list[dict]:
+    if not (query or "").strip():
+        return []
+    vault_root = os.path.expanduser("~/Documents/vault")
+    if not os.path.isdir(vault_root):
+        return []
+    terms = _browser_match_terms(query)
+    query_grams: set[str] = set()
+    for term in terms:
+        compact = re.sub(r"[^a-z0-9]+", "", term)
+        if len(compact) >= 6:
+            query_grams.update(
+                compact[idx:idx + 3]
+                for idx in range(0, len(compact) - 2)
+            )
+
+    def plausible_title(title: str) -> bool:
+        title_l = title.lower()
+        if any(term in title_l for term in terms):
+            return True
+        compact = re.sub(r"[^a-z0-9]+", "", title_l)
+        if len(compact) < 6 or not query_grams:
+            return False
+        title_grams = {
+            compact[idx:idx + 3]
+            for idx in range(0, len(compact) - 2)
+        }
+        return len(query_grams & title_grams) >= 4
+
+    rows: list[dict] = []
+    skipped_dirs = {".git", ".obsidian", ".trash", "node_modules", "__pycache__"}
+    try:
+        for root, dirs, files in os.walk(vault_root):
+            dirs[:] = [d for d in dirs if d not in skipped_dirs and not d.startswith(".")]
+            for name in files:
+                if not name.lower().endswith(".md"):
+                    continue
+                path = os.path.join(root, name)
+                title = os.path.splitext(name)[0]
+                if not plausible_title(title):
+                    continue
+                filename_score = _browser_match_score(query, title, title)
+                if filename_score < 48.0:
+                    continue
+                content = ""
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        content = f.read(40000)
+                except OSError:
+                    pass
+                content_l = content.lower()
+                content_hits = sum(
+                    1 for term in _browser_match_terms(query)
+                    if term in content_l
+                )
+                score = filename_score + min(content_hits * 8.0, 40.0)
+                if score < 58.0:
+                    continue
+                try:
+                    modified = datetime.fromtimestamp(
+                        os.path.getmtime(path),
+                        tz=timezone.utc,
+                    ).isoformat()
+                except OSError:
+                    modified = ""
+                rows.append({
+                    "conversation_id": _browser_encode_source_id("engram", path),
+                    "source_conversation_id": path,
+                    "result_type": "vault_note",
+                    "source_kind": "engram",
+                    "tag": "",
+                    "title": _browser_source_title({"path": path}, content) or title,
+                    "snippet": _browser_snippet_from_text(content or title, query),
+                    "matched_turn_index": 0,
+                    "matched_message_index": 0,
+                    "matched_chunk_id": path,
+                    "score": 70.0 + score,
+                    "search_relevance": score,
+                    "last_activity_at": modified,
+                    "path": path,
+                    "closed": False,
+                })
+    except Exception as exc:
+        print(f"[conversation-browser] vault markdown fallback failed: {exc}", file=sys.stderr)
+    return _browser_sort_rows(rows, "relevance")[:limit]
 
 
 def _browser_chroma_semantic_rows(
@@ -5946,13 +6168,21 @@ def _browser_chroma_semantic_rows(
             "n_results": min(max(limit, 5), count),
         }
         if logical_collection == "knowledge":
-            kwargs["where"] = {"type": "engram"}
-        results = col.query(**kwargs)
+            kwargs["where"] = {"type": {"$in": sorted(_BROWSER_KNOWLEDGE_TYPES)}}
+        try:
+            results = col.query(**kwargs)
+        except Exception:
+            if logical_collection != "knowledge" or "where" not in kwargs:
+                raise
+            kwargs.pop("where", None)
+            results = col.query(**kwargs)
         ids = (results.get("ids") or [[]])[0]
         docs = (results.get("documents") or [[]])[0]
         metas = (results.get("metadatas") or [[]])[0]
         dists = (results.get("distances") or [[]])[0]
         for embedding_id, doc, meta, dist in zip(ids, docs, metas, dists):
+            if logical_collection == "knowledge" and not _browser_is_knowledge_note(meta or {}):
+                continue
             similarity = 1.0 - float(dist if dist is not None else 1.0)
             score = 70.0 + (similarity * 40.0)
             _browser_merge_best(
@@ -6420,12 +6650,26 @@ def conversations_browser():
     if query:
         archive_rows.extend(_browser_chroma_exact_rows(
             query, logical_collection="conversations", limit=120))
-        archive_rows.extend(_browser_chroma_semantic_rows(
+        archive_rows.extend(_browser_chroma_fuzzy_rows(
             query, logical_collection="conversations", limit=80))
         engram_rows.extend(_browser_chroma_exact_rows(
             query, logical_collection="knowledge", limit=80))
-        engram_rows.extend(_browser_chroma_semantic_rows(
-            query, logical_collection="knowledge", limit=60))
+        engram_rows.extend(_browser_chroma_fuzzy_rows(
+            query, logical_collection="knowledge", limit=80))
+        engram_rows.extend(_browser_vault_markdown_rows(query, limit=40))
+        local_rows = archive_rows + engram_rows
+        local_best = max(
+            (
+                float(row.get("search_relevance") if row.get("search_relevance") is not None else row.get("score") or 0)
+                for row in local_rows
+            ),
+            default=0.0,
+        )
+        if len(local_rows) < 30 or local_best < 90.0:
+            archive_rows.extend(_browser_chroma_semantic_rows(
+                query, logical_collection="conversations", limit=80))
+            engram_rows.extend(_browser_chroma_semantic_rows(
+                query, logical_collection="knowledge", limit=60))
     else:
         archive_rows.extend(_browser_latest_archive_rows(limit=limit))
 

@@ -466,7 +466,11 @@
       <div class="conversation-browser-panel">
         <div class="conversation-browser-top">
           <input class="conversation-browser-search" type="text"
-                 placeholder="Search conversations..." />
+                 placeholder="Search conversations..."
+                 spellcheck="true"
+                 autocorrect="on"
+                 autocapitalize="sentences"
+                 autocomplete="off" />
           <select class="conversation-browser-sort" aria-label="Sort results">
             <option value="relevance">Relevance</option>
             <option value="recency">Recency</option>
