@@ -115,7 +115,7 @@ def is_chat_model(vendor_id: str, record) -> bool:
 
 
 # ── id normalization for (benign) enrichment matching ────────────────────────
-_DATE = re.compile(r"-(?:v\d+-)?(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{4}|\d{3,8})(?:-preview)?$")
+_DATE = re.compile(r"-(?:v\d+-)?(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{4}|\d{2}-\d{2}|\d{3,8})(?:-preview)?$")
 # Google appends a preview channel AFTER the date-less stem
 # (gemini-2.5-flash-preview-05-20, -preview, -exp); the OR/AA twin is the plain
 # stem, so this tail must peel for the match to land. Scoped to -preview[-MM-DD]
@@ -246,10 +246,14 @@ def _legacy_ids(vendor_id: str, nid: str) -> list[str]:
         leaves.add(undated)
         leaves.add(undated.lower())
         leaves.add(re.sub(r"(\d)-(\d)", r"\1.\2", undated))
-    # date format variants: -YYYY-MM-DD <-> -YYYYMMDD (config pins use either)
+    # date format variants:
+    #   -YYYY-MM-DD <-> -YYYYMMDD (config pins use either)
+    #   -YYYY-MM-DD -> -MM-DD (some OpenRouter ids omit the year while the
+    #     native vendor catalogue includes it; Qwen3.5 Flash is one example)
     for lf in list(leaves):
         leaves.add(re.sub(r"-(\d{4})-(\d{2})-(\d{2})\b", r"-\1\2\3", lf))   # hyphen → compact
         leaves.add(re.sub(r"-(\d{4})(\d{2})(\d{2})\b", r"-\1-\2-\3", lf))   # compact → hyphen
+        leaves.add(re.sub(r"-(\d{4})-(\d{2})-(\d{2})\b", r"-\2-\3", lf))     # full → short
     prefixes = set(_prefixes(vendor_id)) | {vendor_id}
     out = set()
     for p in prefixes:
@@ -557,7 +561,12 @@ def build_alias_map(models: dict) -> dict:
     for cid, e in ordered:
         if not isinstance(e, dict):
             continue
-        for legacy in e.get("also_known_as") or []:
+        legacy_ids = set(e.get("also_known_as") or [])
+        vendor_id = e.get("vendor")
+        native_id = e.get("native_model_id")
+        if vendor_id and native_id:
+            legacy_ids.update(_legacy_ids(str(vendor_id), str(native_id)))
+        for legacy in sorted(legacy_ids):
             if legacy in models:
                 continue  # a real current id — never shadow it
             aliases.setdefault(legacy, cid)  # newest-first iteration → newest wins

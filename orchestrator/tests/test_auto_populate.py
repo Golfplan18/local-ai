@@ -65,8 +65,35 @@ def _fixture_presets():
     return {
         "presets": {
             "premium":  {"mode": "paid_intelligence", "floor_pct": None, "cost_ceiling_per_m": None, "loosening": False},
-            "optimum":  {"mode": "paid_intelligence", "floor_pct": 80,   "cost_ceiling_per_m": None, "loosening": False},
-            "budget":   {"mode": "paid_intelligence", "floor_pct": 50,   "cost_ceiling_per_m": 1.0,  "loosening": True},
+            "optimum":  {
+                "mode": "paid_intelligence",
+                "floor_pct": 70,
+                "cost_ceiling_per_m": None,
+                "adaptive_cost_ceiling": {
+                    "enabled": True,
+                    "peak_fraction": 0.3,
+                    "outlier_median_multiple": 3.0,
+                },
+                "loosening": True,
+                "loosening_strategy": "paired",
+                "floor_step_pct": 5,
+                "ceiling_growth_factor": 1.25,
+                "min_floor_pct": 50,
+            },
+            "budget":   {
+                "mode": "paid_intelligence",
+                "floor_pct": 70,
+                "cost_ceiling_per_m": None,
+                "reference_cost_ceiling": {
+                    "enabled": True,
+                    "preset": "optimum",
+                    "buffer_per_m": 0.01,
+                },
+                "loosening": True,
+                "floor_step_pct": 5,
+                "ceiling_growth_factor": 1.25,
+                "min_floor_pct": 55,
+            },
             "free":     {"mode": "free_intelligence", "floor_pct": None, "cost_ceiling_per_m": None, "loosening": False},
         },
         "slot_specs": {
@@ -133,6 +160,28 @@ class TestFloor(unittest.TestCase):
         self.assertEqual(len(kept), 2)
 
 
+class TestAdaptiveCostCeiling(unittest.TestCase):
+    def test_uses_trimmed_peak_not_price_outlier(self):
+        models = [
+            _model("value/a", intelligence=45, blended=0.55),
+            _model("value/b", intelligence=44, blended=0.75),
+            _model("normal/peak", intelligence=54, blended=11.25),
+            _model("openai/pro-price-outlier", intelligence=52, blended=57.75),
+            _model("legacy/extreme-outlier", intelligence=40, blended=262.50),
+        ]
+        ceiling, meta = auto_populate.adaptive_cost_ceiling_for(
+            models,
+            floor_pct=70,
+            spec={
+                "enabled": True,
+                "peak_fraction": 0.3,
+                "outlier_median_multiple": 3.0,
+            },
+        )
+        self.assertAlmostEqual(meta["adaptive_peak_per_m"], 11.25)
+        self.assertAlmostEqual(ceiling, 3.375)
+
+
 class TestPickForPaidSlot(unittest.TestCase):
     def test_optimum_picks_cheapest_in_top_80(self):
         catalog = _fixture_catalog()
@@ -140,15 +189,12 @@ class TestPickForPaidSlot(unittest.TestCase):
             catalog, size_bucket="large", top_n=3,
             floor_pct=80, cost_ceiling=None, loosening=False,
         )
-        # Large bucket has 80, 75, 72, 70 (e dominated, dropped),
+        # Large bucket has 80, 75, 72, 70,
         # 55, 40 intelligence (vision models too: 78, 70).
-        # Pareto-filtered: a/flagship(80,20), a/vision-flagship(78,15),
-        #   a/value(75,4), b/strong(72,3), b/vision-value(70,5),
-        #   c/cheap(55,1.5), d/weak(40,0.5)
         # Floor 80% of 80 = 64. Survivors: a/flagship(80), a/vision-flagship(78),
-        #   a/value(75), b/strong(72), b/vision-value(70)
+        #   a/value(75), b/strong(72), b/vision-value(70), e/dominated(70).
         # Sort by cost ascending: b/strong($3), a/value($4), b/vision-value($5),
-        #   a/vision-flagship($15), a/flagship($20)
+        #   e/dominated($10), a/vision-flagship($15), a/flagship($20).
         # Top 3: b/strong, a/value, b/vision-value
         pick_ids = [p["id"] for p in picks]
         self.assertEqual(len(picks), 3)
@@ -162,7 +208,7 @@ class TestPickForPaidSlot(unittest.TestCase):
             catalog, size_bucket="large", top_n=3,
             floor_pct=None, cost_ceiling=None, loosening=False,
         )
-        # No floor — all Pareto-filtered candidates available.
+        # No floor — all candidates available.
         # Sort by cost ascending → cheapest first
         pick_ids = [p["id"] for p in picks]
         self.assertEqual(len(picks), 3)
@@ -202,6 +248,40 @@ class TestPickForPaidSlot(unittest.TestCase):
         )
         self.assertNotEqual(picks_second[0]["id"], first_primary)
 
+    def test_adaptive_ceiling_blocks_expensive_optimum_pick(self):
+        catalog = [
+            _model("value/a", intelligence=45, blended=0.55, size="large"),
+            _model("value/b", intelligence=44, blended=0.75, size="large"),
+            _model("normal/peak", intelligence=54, blended=11.25, size="large"),
+            _model("openai/pro-price-outlier", intelligence=52, blended=57.75, size="large"),
+            _model("legacy/extreme-outlier", intelligence=40, blended=262.50, size="large"),
+        ]
+        picks, notes = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=3,
+            floor_pct=70, cost_ceiling=None, loosening=False,
+            adaptive_cost_ceiling={
+                "enabled": True,
+                "peak_fraction": 0.3,
+                "outlier_median_multiple": 3.0,
+            },
+        )
+        self.assertEqual([p["id"] for p in picks], ["value/a", "value/b"])
+        self.assertEqual(notes, [])
+
+    def test_min_tokens_per_second_excludes_slow_and_unknown(self):
+        catalog = [
+            _model("fast/smart", intelligence=70, blended=1.0, size=None, vision=True),
+            _model("slow/smarter", intelligence=80, blended=0.2, size=None, vision=True),
+            _model("unknown/cheap", intelligence=90, blended=0.1, size=None, vision=True),
+        ]
+        picks, notes = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket=None, top_n=2,
+            floor_pct=None, cost_ceiling=None, loosening=False,
+            min_tokens_per_second=80,
+            tokens_per_sec={"fast/smart": 120, "slow/smarter": 40},
+        )
+        self.assertEqual([p["id"] for p in picks], ["fast/smart"])
+        self.assertEqual(notes, [])
 
 class TestVendorKey(unittest.TestCase):
     def test_prefers_provider_when_specific(self):
@@ -659,6 +739,40 @@ class TestPopulateConfiguration(unittest.TestCase):
         config = auto_populate.populate_configuration("budget", catalog, presets)
         # Budget should have triggered loosening somewhere
         self.assertIn("loosening_log", config["_auto_populate_metadata"])
+
+    def test_budget_ceiling_tracks_optimum_lane(self):
+        catalog = _fixture_catalog()
+        presets = _fixture_presets()
+        config = auto_populate.populate_configuration("budget", catalog, presets)
+        log = config["_auto_populate_metadata"]["loosening_log"]
+        self.assertIn("analysis.gear4.depth", log)
+        self.assertTrue(
+            any("ceiling set below optimum" in note
+                for note in log["analysis.gear4.depth"]),
+            log["analysis.gear4.depth"],
+        )
+
+    def test_budget_large_primaries_do_not_exceed_cheapest_optimum_large(self):
+        catalog = _fixture_catalog()
+        presets = _fixture_presets()
+        budget = auto_populate.populate_configuration("budget", catalog, presets)
+        optimum = auto_populate.populate_configuration("optimum", catalog, presets)
+
+        def large_primaries(config):
+            cells = config["cells"]
+            analysis = cells.get("analysis") or {}
+            gear4 = analysis.get("gear4") or {}
+            return [
+                cell["primary"]
+                for cell in [gear4.get("depth"), gear4.get("breadth")]
+                if isinstance(cell, dict) and cell.get("primary")
+            ]
+
+        by_id = {m["id"]: m for m in catalog}
+        optimum_floor = min(auto_populate.cost_of(by_id[mid])
+                            for mid in large_primaries(optimum))
+        for mid in large_primaries(budget):
+            self.assertLessEqual(auto_populate.cost_of(by_id[mid]), optimum_floor)
 
     def test_unknown_preset_raises(self):
         catalog = _fixture_catalog()

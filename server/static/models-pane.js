@@ -46,6 +46,7 @@
     optimum: 'Optimum',
     premium: 'Premium',
   };
+  var FAST_MIN_TOKENS_PER_SECOND = 80;
 
   // Inventory filter + sort state. Persists across renders within a
   // single mount; reset to defaults on every fresh init().
@@ -86,6 +87,15 @@
   // the state. Escape or clicking the slot again cancels.
   var _activeSlotPick = null;
 
+  function _setActiveSlotPick(pick) {
+    _activeSlotPick = pick;
+    // Open Local once when a pick starts so installed local models are
+    // discoverable. After that, respect the user's collapse click.
+    if (pick && _slotPickInventoryCategory(pick) === 'chat') {
+      _expandedVendors.add('Local');
+    }
+  }
+
   // Right-side fallback popout state. ▸ More click on any card sets
   // _fallbackPopoutFor = <configName>. Close button or Escape clears.
   var _fallbackPopoutFor = null;
@@ -112,7 +122,7 @@
       _renderPresets();
       _renderCustom();
     } else if (_activeSlotPick) {
-      _activeSlotPick = null;
+      _setActiveSlotPick(null);
       _renderHeader();
       _renderPresets();
       _renderCustom();
@@ -162,7 +172,7 @@
       category: 'chat', grouping: 'vendor', include_unsized: false,
     };
     _expandedVendors = new Set();
-    _activeSlotPick = null;
+    _setActiveSlotPick(null);
     _fallbackPopoutFor = null;
     _hardware = null;
   }
@@ -170,6 +180,7 @@
   // ── data load ───────────────────────────────────────────────────────────
 
   function _loadAll() {
+    var scrollState = _capturePaneScroll();
     // categories=all is kept for forward-compat: the registry is
     // chat-only today (media entries left 2026-06-11 with the
     // image_generation slot), and the inventory renders whatever
@@ -209,6 +220,7 @@
       _renderHardware();
       _renderMaintenance();
       _renderRemainingSkeleton();
+      _restorePaneScroll(scrollState);
       _maybeAutoRefresh();
     }).catch(function (err) {
       _showHeaderError(err);
@@ -220,16 +232,65 @@
   // active-card switch. Hardware re-render included because the
   // IN USE BY ACTIVE / IN ACTIVE CONFIG calc walks active_name.
   function _refreshActive() {
+    var scrollState = _capturePaneScroll();
     fetch('/api/configurations').then(_json).then(function (configs) {
       _configs = configs || _configs;
       _renderHeader();
       _renderPresets();
       _renderCustom();
       _renderHardware();
+      _restorePaneScroll(scrollState);
     });
   }
 
   function _json(r) { return r.json(); }
+
+  function _scrollParentForModelsPane() {
+    if (!_hostEl) return null;
+    var el = _hostEl.parentElement;
+    while (el && el !== document.body && el !== document.documentElement) {
+      var style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      var overflowY = style ? style.overflowY : '';
+      if ((overflowY === 'auto' || overflowY === 'scroll')
+          && el.scrollHeight > el.clientHeight) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function _capturePaneScroll() {
+    var scrollEl = _scrollParentForModelsPane();
+    var customRow = _hostEl && _hostEl.querySelector('.ora-models-custom-row');
+    return {
+      scrollEl: scrollEl,
+      scrollTop: scrollEl ? scrollEl.scrollTop : null,
+      customScrollTop: customRow ? customRow.scrollTop : null,
+    };
+  }
+
+  function _restorePaneScroll(state) {
+    if (!state) return;
+    if (state.scrollEl && state.scrollTop != null) {
+      state.scrollEl.scrollTop = state.scrollTop;
+    }
+    var customRow = _hostEl && _hostEl.querySelector('.ora-models-custom-row');
+    if (customRow && state.customScrollTop != null) {
+      customRow.scrollTop = state.customScrollTop;
+    }
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () {
+        if (state.scrollEl && state.scrollTop != null) {
+          state.scrollEl.scrollTop = state.scrollTop;
+        }
+        var row = _hostEl && _hostEl.querySelector('.ora-models-custom-row');
+        if (row && state.customScrollTop != null) {
+          row.scrollTop = state.customScrollTop;
+        }
+      });
+    }
+  }
 
   function _showHeaderError(err) {
     var header = _hostEl && _hostEl.querySelector('[data-section="header"]');
@@ -465,6 +526,7 @@
       var moreBtn = card.querySelector('[data-action="more"]');
       if (moreBtn) {
         moreBtn.addEventListener('click', function () {
+          var scrollState = _capturePaneScroll();
           // Toggle: click ▸ More opens; click ▾ Less closes.
           _fallbackPopoutFor = (_fallbackPopoutFor === configName) ? null : configName;
           // Re-render cards so the More/Less label flips and the
@@ -472,6 +534,7 @@
           _renderPresets();
           _renderCustom();
           _renderPopout();
+          _restorePaneScroll(scrollState);
         });
       }
       var looseningBtn = card.querySelector('[data-action="loosening"]');
@@ -524,18 +587,19 @@
       row.addEventListener('click', function (evt) {
         if (evt.target.closest('button')) return;
         evt.stopPropagation();
+        var scrollState = _capturePaneScroll();
         var slotLabel = row.dataset.pickSlot;
         var configName = row.dataset.pickConfig;
         if (_activeSlotPick
             && _activeSlotPick.configName === configName
             && _activeSlotPick.slotLabel === slotLabel) {
-          _activeSlotPick = null;
+          _setActiveSlotPick(null);
         } else {
-          _activeSlotPick = {configName: configName, slotLabel: slotLabel};
+          _setActiveSlotPick({configName: configName, slotLabel: slotLabel});
           // Fast slot activates the speed sort so the actually-fast
-          // candidates surface first. Doesn't auto-revert — the user
-          // can change the sort manually if they want a different
-          // axis. Inventory remembers the last sort across picks.
+          // candidates surface first. The filter below also requires
+          // measured throughput, so unknown-speed models do not masquerade
+          // as fast picks.
           if (slotLabel === 'fast 1' || slotLabel === 'fast 2') {
             _filters.sort_by = 'speed_desc';
           }
@@ -549,6 +613,7 @@
         // column. No-op (hides) when no popout is open.
         _renderPopout();
         _renderInventory();
+        _restorePaneScroll(scrollState);
       });
     });
   }
@@ -574,7 +639,6 @@
 
     var isActive = (summary.name === activeName);
     var chips = _toggleChips(summary.toggles);
-    var adversarial = !!(summary.toggles && summary.toggles.adversarial_diversity);
     // Free preset's slots always cost $0 — drop the cost component
     // from the slot meta so the line stays tight.
     var omitCost = (presetName === 'free');
@@ -598,24 +662,24 @@
       +   ' data-config-name="' + _esc(summary.name) + '">'
       +   '<header class="ora-models-card-header">'
       +     '<span class="ora-models-card-title">' + _esc(label) + '</span>'
-      +     chips
       +     (isActive ? '<span class="ora-models-card-active-flag">active</span>'
                       : '<span class="ora-models-card-active-flag" aria-hidden="true"></span>')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
       +     _slotRowHTML('big 1', summary.big1, {omitCost: omitCost, configName: summary.name, isActive: editable})
-      +     (adversarial
-        ? _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name, isActive: editable})
-        : '')
-      +     _slotRowHTML('fast 1', summary.fast1, {omitCost: omitCost, configName: summary.name, isActive: editable})
+      +     _slotRowHTML('big 2', summary.big2, {omitCost: omitCost, configName: summary.name, isActive: editable})
+      +     _slotRowHTML('fast 1', summary.fast1, {omitCost: omitCost, configName: summary.name, isActive: editable, displayLabel: 'fast'})
       +     _slotRowHTML('small', summary.small, {omitCost: omitCost, configName: summary.name, isActive: editable})
       +     _expandSlotsHTML(summary, {omitCost: omitCost, isActive: editable})
       +     _looseningFootnoteHTML(summary)
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
-      +     '<button type="button" class="ora-models-card-btn" data-action="more">'
-      +       _moreLabelFor(summary.name) + '</button>'
-      +     '<button type="button" class="ora-models-card-btn" data-action="customize">Customize</button>'
+      +     '<span class="ora-models-card-action-buttons">'
+      +       '<button type="button" class="ora-models-card-btn" data-action="more">'
+      +         _moreLabelFor(summary.name) + '</button>'
+      +       '<button type="button" class="ora-models-card-btn" data-action="customize">Customize</button>'
+      +     '</span>'
+      +     chips
       +   '</div>'
       + '</div>';
   }
@@ -684,6 +748,7 @@
   function _slotRowHTML(label, modelId, opts) {
     opts = opts || {};
     var configName = opts.configName || '';
+    var displayLabel = opts.displayLabel || label;
     var isActiveSlot = _activeSlotPick
       && _activeSlotPick.configName === configName
       && _activeSlotPick.slotLabel === label;
@@ -711,7 +776,7 @@
                          ' data-pick-config="' + _esc(configName) + '"' : '')
         + (clickable ? '' : ' data-pick-disabled="true"')
         + '>'
-        + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
+        + '<span class="ora-models-slot-label">' + _esc(displayLabel) + '</span>'
         + '<span class="ora-models-slot-value">—</span>'
         + '</div>';
     }
@@ -736,6 +801,7 @@
       capChip = '<span class="ora-models-cap-chip ora-models-cap-image">IMAGE EDIT</span>';
     else if (model && model.category === 'text_to_video')
       capChip = '<span class="ora-models-cap-chip ora-models-cap-video">VIDEO</span>';
+    var titleText = modelId + (meta ? ' — ' + meta : '');
     return '<div class="' + classes + '"'
       + (rowEditable ? ' data-pick-slot="' + _esc(label) + '"' +
                        ' data-pick-config="' + _esc(configName) + '"' : '')
@@ -743,9 +809,9 @@
       + (isDeprecated ? ' title="This model is no longer in the registry. '
                        + 'Pick a replacement."' : '')
       + '>'
-      + '<span class="ora-models-slot-label">' + _esc(label) + '</span>'
-      + '<span class="ora-models-slot-value" title="' + _esc(modelId) + '">'
-      +   _esc(rowValue)
+      + '<span class="ora-models-slot-label">' + _esc(displayLabel) + '</span>'
+      + '<span class="ora-models-slot-value" title="' + _esc(titleText) + '">'
+      +   '<span class="ora-models-slot-model-name">' + _esc(rowValue) + '</span>'
       +   capChip
       +   (isPick ? '<span class="ora-models-pick-chip">PICK</span>' : '')
       +   (isDeprecated ? '<span class="ora-models-deprecated-chip">DEPRECATED</span>' : '')
@@ -756,7 +822,7 @@
 
   // Compact meta line used in BOTH card slot rows and inventory rows.
   // Format: X% peak · $Y/M · Z t/s — parts dropped when underlying
-  // data is null/absent. Intelligence shown as a percentage of the
+  // data is null/absent. Intelligence is shown as a percentage of the
   // top-rated model in the same category (chat-max for chat models,
   // image-arena-Elo-max for image models, etc.) so users get a
   // relative valuation rather than a raw score on a scale they
@@ -767,6 +833,9 @@
     var parts = [];
     var isMedia = (model.category && model.category !== 'chat');
     var pct = _intelligencePeakPercent(model);
+    var speedText = model.output_tokens_per_second != null
+      ? model.output_tokens_per_second.toFixed(0) + ' t/s'
+      : null;
     if (pct != null) parts.push(pct + '% peak');
     if (isMedia) {
       if (!opts.omitCost) {
@@ -785,9 +854,7 @@
         parts.push('$' + blended.toFixed(2) + '/M');
       }
     }
-    if (model.output_tokens_per_second != null) {
-      parts.push(model.output_tokens_per_second.toFixed(0) + ' t/s');
-    }
+    if (speedText) parts.push(speedText);
     return parts.join(' · ');
   }
 
@@ -988,11 +1055,8 @@
     var bits = [];
     if (toggles.adversarial_diversity) bits.push('Adversarial');
     if (toggles.vision_only) bits.push('Vision-only');
-    // Empty span (no "—" placeholder) when neither toggle is on, so
-    // the header's center column collapses and the title / active
-    // flag space without competing with a visible dash.
-    if (!bits.length) return '<span class="ora-models-card-header-chips"></span>';
-    return '<span class="ora-models-card-header-chips ora-models-toggle-chip">'
+    if (!bits.length) return '';
+    return '<span class="ora-models-card-action-status ora-models-toggle-chip">'
       + bits.join(' · ')
       + '</span>';
   }
@@ -1130,7 +1194,7 @@
   function _commitSlotPick(modelId) {
     if (!_activeSlotPick || !modelId) return;
     var pick = _activeSlotPick;
-    _activeSlotPick = null;
+    _setActiveSlotPick(null);
     // Popout fallback edit → write to the cell's fallback[index]
     // (single-cell, no fan-out). Primary picks continue to use the
     // legacy /slot endpoint with SLOT_LABEL_TO_PATHS fan-out.
@@ -1187,6 +1251,7 @@
     _parkPopoutAtPaneRoot();
     var customs = (_configs && _configs.customs) || [];
     var activeName = (_configs && _configs.active_name) || '';
+    var scrollState = _capturePaneScroll();
 
     // "+ New configuration" now lives as a button in the section
     // header (was previously a tile in the first column of the row,
@@ -1212,6 +1277,7 @@
       +     'No saved configurations yet. Use “+ New configuration” above or '
       +     '“Customize” on any preset card to start one.</p>')
       + '</div>';
+    _restorePaneScroll(scrollState);
 
     // Wire interactions for the grid cards.
     Array.from(section.querySelectorAll('.ora-models-card-custom')).forEach(function (card) {
@@ -1234,6 +1300,7 @@
       var moreBtn = card.querySelector('[data-action="more"]');
       if (moreBtn) {
         moreBtn.addEventListener('click', function () {
+          var scrollState = _capturePaneScroll();
           // Toggle: click ▸ More opens; click ▾ Less closes.
           _fallbackPopoutFor = (_fallbackPopoutFor === configName) ? null : configName;
           // Re-render cards so the More/Less label flips and the
@@ -1241,6 +1308,7 @@
           _renderPresets();
           _renderCustom();
           _renderPopout();
+          _restorePaneScroll(scrollState);
         });
       }
       var deleteBtn = card.querySelector('[data-action="delete"]');
@@ -1256,7 +1324,6 @@
   }
 
   function _customCardHTML(summary, isActive) {
-    var adversarial = !!(summary.toggles && summary.toggles.adversarial_diversity);
     // Read the incomplete flag straight from the summary — set by the
     // backend when create_blank_configuration runs (via + New) and
     // cleared the moment the four baselines all fill. Legacy customs
@@ -1281,26 +1348,26 @@
       +   ' data-config-name="' + _esc(summary.name) + '">'
       +   '<header class="ora-models-card-header">'
       +     '<span class="ora-models-card-title">' + _esc(summary.name) + '</span>'
-      +     _toggleChips(summary.toggles)
       +     (isActive ? '<span class="ora-models-card-active-flag">active</span>'
                       : '<span class="ora-models-card-active-flag" aria-hidden="true"></span>')
       +   '</header>'
       +   '<div class="ora-models-card-body">'
       +     _slotRowHTML('big 1', summary.big1, {configName: summary.name, isActive: editable})
-      +     (adversarial
-        ? _slotRowHTML('big 2', summary.big2, {configName: summary.name, isActive: editable})
-        : '')
-      +     _slotRowHTML('fast 1', summary.fast1, {configName: summary.name, isActive: editable})
+      +     _slotRowHTML('big 2', summary.big2, {configName: summary.name, isActive: editable})
+      +     _slotRowHTML('fast 1', summary.fast1, {configName: summary.name, isActive: editable, displayLabel: 'fast'})
       +     _slotRowHTML('small', summary.small, {configName: summary.name, isActive: editable})
       +     _expandSlotsHTML(summary, {isActive: editable})
       +   '</div>'
       +   '<div class="ora-models-card-actions">'
-      +     '<button type="button" class="ora-models-card-btn" data-action="more">'
-      +       _moreLabelFor(summary.name) + '</button>'
-      +     '<button type="button" class="ora-models-card-btn" data-action="customize">'
-      +       'Customize</button>'
-      +     '<button type="button" class="ora-models-card-btn ora-models-card-btn-danger"'
-      +       ' data-action="delete" title="Delete">×</button>'
+      +     '<span class="ora-models-card-action-buttons">'
+      +       '<button type="button" class="ora-models-card-btn" data-action="more">'
+      +         _moreLabelFor(summary.name) + '</button>'
+      +       '<button type="button" class="ora-models-card-btn" data-action="customize">'
+      +         'Customize</button>'
+      +       '<button type="button" class="ora-models-card-btn ora-models-card-btn-danger"'
+      +         ' data-action="delete" title="Delete">×</button>'
+      +     '</span>'
+      +     _toggleChips(summary.toggles)
       +   '</div>'
       + '</div>';
   }
@@ -1324,10 +1391,6 @@
     var wantCategory = (slotPickLabel && SLOT_TO_CATEGORY[slotPickLabel])
       || _filters.category
       || 'chat';
-    // Image-gen slot picks don't surface locals; scope to chat picks.
-    if (_activeSlotPick && wantCategory === 'chat') {
-      _expandedVendors.add('Local');
-    }
     var allModels = Object.values(models).filter(function (m) {
       var c = (m && m.category) || 'chat';
       if (c !== wantCategory) return false;
@@ -1451,6 +1514,9 @@
       if (_activeSlotPickRequiresVision()) {
         activeFilters.push('vision required');
       }
+      if (_activeSlotPickIsFast()) {
+        activeFilters.push(FAST_MIN_TOKENS_PER_SECOND + '+ t/s');
+      }
       if (_filters.free_filter === 'only') {
         activeFilters.push('free only');
         clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="free_filter">reset cost filter</button>');
@@ -1561,6 +1627,10 @@
         return false;
       }
     }
+    if (_activeSlotPickIsFast()) {
+      var tps = model.output_tokens_per_second;
+      if (tps == null || tps < FAST_MIN_TOKENS_PER_SECOND) return false;
+    }
     // (The vision/image-input model is no longer a Models-tab slot — it moved
     // to Settings → Visual → Advanced routing as the global "Vision input"
     // capability. No per-slot capability gate remains here.)
@@ -1585,6 +1655,14 @@
       && _activeSlotPick.fallbackIndex === 0;
   }
 
+  function _activeSlotPickIsFast() {
+    if (!_activeSlotPick) return false;
+    return _activeSlotPick.slotLabel === 'fast 1'
+      || _activeSlotPick.slotLabel === 'fast 2'
+      || _activeSlotPick.slotLabel === 'fast'
+      || _activeSlotPick.popoutSection === 'fast';
+  }
+
   // Each card-visible slot maps to an expected size bucket. When a slot
   // is in picking mode, the inventory restricts to that bucket so the
   // user doesn't see small models as candidates for a big-1 slot or
@@ -1597,13 +1675,6 @@
     'utility':     'small',
     'consolidate': 'large',
     'verify':      'large',
-    // Fast: speed-tier slot. 'midsize' is the formal bucket, but the
-    // matcher treats it permissively — null-bucket models also admit
-    // (most cloud fast models have undisclosed parameters_b → null
-    // bucket → would otherwise be hidden). See _matchesFilters.
-    'fast 1':      'midsize',
-    'fast 2':      'midsize',
-    'fast':        'midsize',
     // Popout fallback-section labels — same bucket as the primary
     // they fall back from, so a SMALL fallback chain only sees small
     // models and a LARGE chain only sees large ones.
@@ -1616,6 +1687,14 @@
   // so no slot pick swaps the inventory away from chat. Kept as a
   // table so a future media slot can re-register here.
   var SLOT_TO_CATEGORY = {};
+
+  function _slotPickInventoryCategory(pick) {
+    pick = pick || _activeSlotPick;
+    var label = pick ? pick.slotLabel : null;
+    return (label && SLOT_TO_CATEGORY[label])
+      || _filters.category
+      || 'chat';
+  }
 
   function _activeSlotPickSizeBucket() {
     if (!_activeSlotPick) return null;
@@ -2225,11 +2304,12 @@
     // Each section's first row uses the section label (LARGE / FAST / SMALL)
     // as the rank, displaying the primary inline with the label
     // — no separate h4. Remaining rows are FALLBACK N. Each section is
-    // capped: large gets at most 2 fallbacks (3 rows), small gets 1
-    // fallback (2 rows). Empty fallback positions render as clickable
-    // placeholders so the user can fill them in place.
+    // capped: large/fast/small each show at most 2 fallbacks in the UI.
+    // Extra saved fallback data can still exist behind the scenes. Empty
+    // fallback positions render as clickable placeholders so the user can
+    // fill them in place.
     var sections = [
-      _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name, 3),
+      _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name, 2),
       _popoutSlotHTML('fast', summary.fast1, summary.fast1_fallback, summary.name, 2),
       _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name, 2),
     ];
@@ -2274,14 +2354,14 @@
               && _activeSlotPick.popoutSection === section
               && _activeSlotPick.fallbackIndex === index
               && _activeSlotPick.configName === configName) {
-            _activeSlotPick = null;
+            _setActiveSlotPick(null);
           } else {
-            _activeSlotPick = {
+            _setActiveSlotPick({
               configName: configName,
               slotLabel: section,            // category dispatch uses this
               popoutSection: section,        // identifies fallback intent
               fallbackIndex: index,
-            };
+            });
             if (section === 'fast') {
               _filters.sort_by = 'speed_desc';
             }
@@ -2481,6 +2561,7 @@
       +       '<span class="ora-models-hw-value' + (headroom < 0 ? ' ora-models-hw-headroom-low' : '') + '">'
       +         _esc(headroom.toFixed(0)) + ' GB</span></div>'
       +   '</div>'
+      +   '<p class="ora-models-hw-note">Select local models from Model Inventory above.</p>'
       +   (locals.length
         ? '<ul class="ora-models-hw-list">' + rows.join('') + '</ul>'
         : '<p class="ora-models-placeholder">No local models installed.</p>')

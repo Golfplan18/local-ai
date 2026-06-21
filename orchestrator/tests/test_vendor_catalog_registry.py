@@ -60,6 +60,8 @@ class TestNormalize(unittest.TestCase):
         self.assertEqual(vcr._norm("models/gemini-2.5-flash"), vcr._norm("gemini-2.5-flash"))
         self.assertEqual(vcr._norm("MiniMax-M2.7"), "minimaxm27")
         self.assertEqual(vcr._norm("qwen3.7-max-2026-06-08"), vcr._norm("qwen3.7-max"))
+        self.assertEqual(vcr._norm("qwen3.5-flash-2026-02-23"),
+                         vcr._norm("qwen3.5-flash-02-23"))
         self.assertEqual(vcr._norm("mistral-large-2411"), vcr._norm("mistral-large"))
 
     def test_sibling_variants_stay_distinct(self):
@@ -101,6 +103,21 @@ class TestMerge(unittest.TestCase):
         self.assertEqual(e["aa_intelligence_index"], 55)       # field the Models pane reads
         self.assertEqual(e["output_tokens_per_second"], 90)
         self.assertEqual(e["_enrichment_source"]["pricing"], "aa")
+
+    def test_short_date_aa_row_enriches_full_date_native_id(self):
+        aa = vcr._enrich_index("qwen", [("qwen/qwen3.5-flash-02-23", {
+            "display_name": "Qwen3.5-Flash",
+            "aa_intelligence_index": 25.9,
+            "output_tokens_per_second": 272.486,
+            "pricing": {"input_per_token": 6.5e-8, "output_per_token": 2.6e-7},
+            "vision_capable": True,
+        })])
+        e = vcr.merge_entry("qwen", {"id": "qwen3.5-flash-2026-02-23"}, aa, {})
+        self.assertTrue(e["_enrichment_matched"])
+        self.assertEqual(e["aa_intelligence_index"], 25.9)
+        self.assertEqual(e["output_tokens_per_second"], 272.486)
+        self.assertEqual(e["pricing"]["input_per_token"], 6.5e-8)
+        self.assertTrue(e["vision_capable"])
 
     def test_openrouter_price_fallback_per_million_to_per_token(self):
         orr = {vcr._norm("minimax-m2"): {"pricing_per_million": {"prompt": 0.3, "completion": 1.2}}}
@@ -308,6 +325,7 @@ class TestLegacyAliases(unittest.TestCase):
             ("anthropic", "claude-opus-4-8", "anthropic/claude-opus-4.8"),
             ("anthropic", "claude-opus-4-5-20251101", "anthropic/claude-opus-4.5"),
             ("qwen", "qwen3.5-plus-2026-04-20", "qwen/qwen3.5-plus-20260420"),
+            ("qwen", "qwen3.5-flash-2026-02-23", "qwen/qwen3.5-flash-02-23"),
         ]
         for vid, nid, legacy in cases:
             self.assertIn(legacy, vcr._legacy_ids(vid, nid), f"{vid}/{nid} → {legacy}")
@@ -327,6 +345,21 @@ class TestLegacyAliases(unittest.TestCase):
         amap = vcr.build_alias_map(models)
         self.assertEqual(amap["anthropic/claude-opus-4.8"], "anthropic/claude-opus-4-8")
         self.assertNotIn("openai/gpt-4o", amap)  # live id never aliased away
+
+    def test_alias_map_derives_short_date_forms_from_native_id(self):
+        models = {
+            "qwen/qwen3.5-flash-2026-02-23": {
+                "id": "qwen/qwen3.5-flash-2026-02-23",
+                "vendor": "qwen",
+                "native_model_id": "qwen3.5-flash-2026-02-23",
+                "also_known_as": [],
+            },
+        }
+        amap = vcr.build_alias_map(models)
+        self.assertEqual(
+            amap["qwen/qwen3.5-flash-02-23"],
+            "qwen/qwen3.5-flash-2026-02-23",
+        )
 
 
 class TestSupplement(unittest.TestCase):

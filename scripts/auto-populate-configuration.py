@@ -3,18 +3,19 @@
 
 Algorithm (per the install plan):
   Per slot, against its size bucket:
-    1. Pareto pass — remove strictly dominated models (worse on both cost and
-       intelligence than another model in the same bucket).
-    2. Percentage floor — keep models scoring at least floor_pct% of the
-       top intelligence in the (post-Pareto) bucket.
-    3. Cost ceiling (Budget preset) — drop models above the ceiling.
+    1. Percentage floor — keep models scoring at least floor_pct% of the
+       top intelligence in the bucket.
+    2. Cost ceiling — fixed, adaptive (Optimum), or referenced to another
+       preset's lane (Budget tracks just below Optimum). The adaptive ceiling
+       trims obvious price outliers from picker math.
     4. Sort by cost ascending.
     5. Return top N (3 for workhorse slots, 2 for utility).
 
   Budget preset has a loosening rule: if fewer than top-N pass both bounds,
   loosen the floor by 10pp at a time, then loosen the ceiling 2x, until
-  top-N pass or the bucket is exhausted. Loosening events surface in
-  output metadata.
+  top-N pass or the bucket is exhausted. Optimum can use paired loosening:
+  lower the floor and raise the adaptive ceiling together, in smaller steps.
+  Loosening events surface in output metadata.
 
   Free preset operates over a parallel free-models list — no cost math,
   sort by intelligence descending, return top N. Free models are never
@@ -163,11 +164,87 @@ def apply_floor(candidates: list[dict], floor_pct: float | None) -> list[dict]:
 def apply_cost_ceiling(candidates: list[dict], ceiling: float | None, cost_fn=cost_of) -> list[dict]:
     """Drop models with cost above the ceiling.
 
-    ceiling=None disables (Premium / Optimum / Free).
+    ceiling=None disables (Premium / Free).
     """
     if ceiling is None:
         return candidates
     return [m for m in candidates if cost_fn(m) <= ceiling]
+
+
+def _median(vals: list[float]) -> float | None:
+    if not vals:
+        return None
+    ordered = sorted(vals)
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[mid]
+    return (ordered[mid - 1] + ordered[mid]) / 2.0
+
+
+def _normal_price_peak(
+    candidates: list[dict],
+    *,
+    outlier_median_multiple: float = 3.0,
+    cost_fn=cost_of,
+) -> float | None:
+    """Highest normal cost in the current candidate pool.
+
+    Source catalogs sometimes carry extreme prices (GPT-Pro / o1-Pro style
+    rows). Those prices should still be displayed, but they should not define
+    what Optimum considers the current high-end market. Trim any price above
+    ``median * outlier_median_multiple`` and use the largest remaining price.
+    If trimming would remove everything, fall back to the raw max.
+    """
+    costs = []
+    for model in candidates:
+        cost = cost_fn(model)
+        if math.isfinite(cost) and cost > 0:
+            costs.append(cost)
+    if not costs:
+        return None
+    med = _median(costs)
+    if med is None or med <= 0:
+        return max(costs)
+    normal = [c for c in costs if c <= med * outlier_median_multiple]
+    return max(normal or costs)
+
+
+def adaptive_cost_ceiling_for(
+    candidates: list[dict],
+    floor_pct: float | None,
+    spec: dict | None,
+    *,
+    cost_fn=cost_of,
+) -> tuple[float | None, dict]:
+    """Compute a moving Optimum price ceiling.
+
+    The ceiling is ``peak_fraction`` of the current normal high-end price.
+    The peak is computed after applying the quality floor, so a weak cheap
+    tail cannot pull the anchor downward.
+    """
+    if not spec or not spec.get("enabled", False):
+        return None, {}
+    floored = apply_floor(candidates, floor_pct)
+    anchor_pool = floored or candidates
+    fraction = float(spec.get("peak_fraction", 0.3))
+    outlier_multiple = float(spec.get("outlier_median_multiple", 3.0))
+    peak = _normal_price_peak(
+        anchor_pool,
+        outlier_median_multiple=outlier_multiple,
+        cost_fn=cost_fn,
+    )
+    if peak is None:
+        return None, {}
+    ceiling = peak * fraction
+    if spec.get("min_ceiling_per_m") is not None:
+        ceiling = max(ceiling, float(spec["min_ceiling_per_m"]))
+    if spec.get("max_ceiling_per_m") is not None:
+        ceiling = min(ceiling, float(spec["max_ceiling_per_m"]))
+    return ceiling, {
+        "adaptive_peak_per_m": peak,
+        "adaptive_ceiling_per_m": ceiling,
+        "adaptive_peak_fraction": fraction,
+    }
 
 
 def filter_by_size_bucket(candidates: list[dict], size_bucket: str | None) -> list[dict]:
@@ -429,9 +506,31 @@ def sort_by_tokens_per_sec_descending(candidates: list[dict], tps_map: dict[str,
     independent of intelligence ranking."""
     return sorted(
         candidates,
-        key=lambda m: tps_map.get(m.get("id", ""), -math.inf),
+        key=lambda m: tokens_per_second_of(m, tps_map) or -math.inf,
         reverse=True,
     )
+
+
+def tokens_per_second_of(model: dict, tps_map: dict[str, float] | None = None) -> float | None:
+    """Measured output tokens/sec, preferring the live registry map."""
+    tps_map = tps_map or {}
+    val = tps_map.get(model.get("id", ""), model.get("output_tokens_per_second"))
+    return float(val) if val is not None else None
+
+
+def filter_min_tokens_per_second(
+    candidates: list[dict],
+    min_tokens_per_second: float | None,
+    tps_map: dict[str, float] | None = None,
+) -> list[dict]:
+    """Require measured throughput for speed-sensitive slots."""
+    if min_tokens_per_second is None:
+        return candidates
+    return [
+        m for m in candidates
+        if (tokens_per_second_of(m, tps_map) is not None
+            and tokens_per_second_of(m, tps_map) >= min_tokens_per_second)
+    ]
 
 
 def _vendor_key(model: dict) -> str:
@@ -472,6 +571,13 @@ def pick_for_paid_slot(
     floor_pct: float | None,
     cost_ceiling: float | None,
     loosening: bool,
+    adaptive_cost_ceiling: dict | None = None,
+    max_cost_ceiling: float | None = None,
+    loosening_strategy: str = "floor_then_ceiling",
+    floor_step_pct: float = 10.0,
+    ceiling_growth_factor: float = 2.0,
+    min_floor_pct: float = 10.0,
+    min_tokens_per_second: float | None = None,
     excluded_ids: set | None = None,
     excluded_vendors: set | None = None,
     vision_only: bool = False,
@@ -487,10 +593,21 @@ def pick_for_paid_slot(
     ``sort_by`` controls the final selection order after filtering:
       "cost_asc"             — cheapest first (default; used by Optimum/Budget)
       "intelligence_desc"    — smartest first (used by Premium for Big)
-      "tokens_per_sec_desc"  — fastest first (used by Fast slot)
+      "tokens_per_sec_desc"  — fastest first (available for speed-first slots)
 
     ``exclude_reasoning_models``: when True, drop entries flagged
-    ``reasoning_model=True`` in the registry. Fast slot uses this.
+    ``reasoning_model=True`` in the registry. Kept for older preset rules;
+    Fast now uses ``min_tokens_per_second`` instead.
+
+    ``adaptive_cost_ceiling``: optional Optimum rule. Computes a moving
+    ceiling from the current candidate pool while ignoring price outliers.
+
+    ``max_cost_ceiling``: optional upper bound for ceiling loosening.
+    Budget uses this to start below Optimum, then allow equality only
+    when needed.
+
+    ``min_tokens_per_second``: optional hard throughput floor. Candidates
+    missing speed data do not pass this gate.
 
     Returns (picks, loosening_notes).
     """
@@ -512,6 +629,8 @@ def pick_for_paid_slot(
         candidates = filter_exclude_reasoning(candidates, reasoning_model_ids)
     if vision_only:
         candidates = filter_verified_vision(candidates, vision_verified_ids)
+    candidates = filter_min_tokens_per_second(
+        candidates, min_tokens_per_second, tokens_per_sec)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
     candidates = _apply_vendor_diversity(candidates, excluded_vendors)
 
@@ -528,6 +647,13 @@ def pick_for_paid_slot(
     # models above the intelligence + size thresholds, as intended.
     # (tokens_per_sec_desc never used Pareto either.)
 
+    adaptive_ceiling, _adaptive_meta = adaptive_cost_ceiling_for(
+        candidates, floor_pct, adaptive_cost_ceiling)
+    if adaptive_ceiling is not None:
+        cost_ceiling = adaptive_ceiling if cost_ceiling is None else min(cost_ceiling, adaptive_ceiling)
+    if max_cost_ceiling is not None:
+        cost_ceiling = max_cost_ceiling if cost_ceiling is None else min(cost_ceiling, max_cost_ceiling)
+
     loosening_notes: list[str] = []
     current_floor = floor_pct
     current_ceiling = cost_ceiling
@@ -539,7 +665,7 @@ def pick_for_paid_slot(
     else:
         sort_fn = sort_by_cost_ascending
 
-    for attempt in range(10):  # bound the loosening loop
+    for attempt in range(20):  # bound the loosening loop
         floored = apply_floor(candidates, current_floor)
         ceilinged = apply_cost_ceiling(floored, current_ceiling)
         picks = sort_fn(ceilinged)[:top_n]
@@ -547,16 +673,39 @@ def pick_for_paid_slot(
         if len(picks) >= top_n or not loosening:
             return picks, loosening_notes
 
-        # Budget loosening: floor first (by 10pp), then ceiling (2x)
-        if current_floor is not None and current_floor > 10:
-            current_floor -= 10
+        if loosening_strategy == "paired":
+            changed = False
+            if current_floor is not None and current_floor > min_floor_pct:
+                current_floor = max(min_floor_pct, current_floor - floor_step_pct)
+                loosening_notes.append(
+                    f"floor loosened to {current_floor:.0f}% (attempt {attempt + 1})")
+                changed = True
+            if current_ceiling is not None:
+                next_ceiling = current_ceiling * ceiling_growth_factor
+                if max_cost_ceiling is not None:
+                    next_ceiling = min(next_ceiling, max_cost_ceiling)
+                if next_ceiling > current_ceiling:
+                    current_ceiling = next_ceiling
+                    loosening_notes.append(
+                        f"ceiling loosened to ${current_ceiling:.2f}/M (attempt {attempt + 1})")
+                    changed = True
+            if changed:
+                continue
+
+        # Budget default: floor first, then ceiling.
+        if current_floor is not None and current_floor > min_floor_pct:
+            current_floor = max(min_floor_pct, current_floor - floor_step_pct)
             loosening_notes.append(f"floor loosened to {current_floor:.0f}% (attempt {attempt + 1})")
             continue
 
         if current_ceiling is not None:
-            current_ceiling *= 2
-            loosening_notes.append(f"ceiling loosened to ${current_ceiling:.2f}/M (attempt {attempt + 1})")
-            continue
+            next_ceiling = current_ceiling * 2
+            if max_cost_ceiling is not None:
+                next_ceiling = min(next_ceiling, max_cost_ceiling)
+            if next_ceiling > current_ceiling:
+                current_ceiling = next_ceiling
+                loosening_notes.append(f"ceiling loosened to ${current_ceiling:.2f}/M (attempt {attempt + 1})")
+                continue
 
         # Both bounds at their limits — return what we have
         loosening_notes.append("bounds exhausted; returning fewer than top-N")
@@ -577,6 +726,7 @@ def pick_for_free_slot(
     tokens_per_sec: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
     exclude_reasoning_models: bool = False,
+    min_tokens_per_second: float | None = None,
     vision_verified_ids: set[str] | None = None,
     vision_required: bool = False,
 ) -> tuple[list[dict], list[str]]:
@@ -641,6 +791,8 @@ def pick_for_free_slot(
                 candidates = bucketed
         if tier_vision:
             candidates = filter_verified_vision(candidates, vision_verified_ids)
+        candidates = filter_min_tokens_per_second(
+            candidates, min_tokens_per_second, tokens_per_sec)
         candidates = [m for m in candidates if m["id"] not in excluded_ids]
         candidates = _apply_vendor_diversity(candidates, excluded_vendors)
         # No Pareto filter — same rationale as pick_for_paid_slot: it would
@@ -782,6 +934,109 @@ def populate_configuration(
     cells: dict = {}
     loosening_log: dict = {}
 
+    def _slot_settings(preset_obj: dict, slot_spec: dict) -> dict:
+        preset_intelligence_first = preset_obj.get("sort_by") == "intelligence_desc"
+        if preset_intelligence_first and "floor_pct_if_intelligence_first" in slot_spec:
+            floor = slot_spec["floor_pct_if_intelligence_first"]
+        elif "floor_pct" in slot_spec:
+            floor = slot_spec["floor_pct"]
+        else:
+            floor = preset_obj.get("floor_pct")
+        ceiling = (slot_spec["cost_ceiling_per_m"] if "cost_ceiling_per_m" in slot_spec
+                   else preset_obj.get("cost_ceiling_per_m"))
+        return {
+            "sort_by": slot_spec.get("sort_by") or preset_obj.get("sort_by", "cost_asc"),
+            "exclude_reasoning": slot_spec.get("exclude_reasoning_models", False),
+            "floor": floor,
+            "ceiling": ceiling,
+            "adaptive_ceiling": (
+                slot_spec["adaptive_cost_ceiling"] if "adaptive_cost_ceiling" in slot_spec
+                else preset_obj.get("adaptive_cost_ceiling")
+            ),
+            "loosening_strategy": slot_spec.get(
+                "loosening_strategy", preset_obj.get("loosening_strategy", "floor_then_ceiling")),
+            "floor_step": float(slot_spec.get(
+                "floor_step_pct", preset_obj.get("floor_step_pct", 10))),
+            "ceiling_growth": float(slot_spec.get(
+                "ceiling_growth_factor", preset_obj.get("ceiling_growth_factor", 2.0))),
+            "min_floor": float(slot_spec.get(
+                "min_floor_pct", preset_obj.get("min_floor_pct", 10))),
+            "min_tokens_per_second": (
+                slot_spec["min_tokens_per_second"] if "min_tokens_per_second" in slot_spec
+                else preset_obj.get("min_tokens_per_second")
+            ),
+        }
+
+    def _reference_section_ceiling(
+        ref_spec: dict | None,
+        slot_spec: dict,
+        cell_vision_only: bool,
+    ) -> tuple[float | None, float | None, str | None]:
+        """Budget helper: price just below the matching Optimum lane.
+
+        The reference section is picked independently using the referenced
+        preset's own diversity order. Budget starts below the cheapest
+        referenced pick, but ceiling loosening may rise to that reference price
+        when equality is the better value than paying more for an older model.
+        """
+        if not ref_spec or not ref_spec.get("enabled", False):
+            return None, None, None
+        ref_name = ref_spec.get("preset")
+        if not ref_name or ref_name == preset_name or ref_name not in presets:
+            return None, None, None
+        ref_preset = presets[ref_name]
+        if ref_preset.get("mode") != "paid_intelligence":
+            return None, None, None
+        ref_settings = _slot_settings(ref_preset, slot_spec)
+        ref_diversity = slot_spec.get("diversity_excluded", False)
+        ref_excluded_ids: set = set()
+        ref_excluded_vendors: set = set()
+        ref_picks_all: list[dict] = []
+        for _cell_name in slot_spec["cells"]:
+            ref_picks, _notes = pick_for_paid_slot(
+                catalog,
+                size_bucket=slot_spec.get("size_bucket"),
+                top_n=slot_spec["top_n"],
+                floor_pct=ref_settings["floor"],
+                cost_ceiling=ref_settings["ceiling"],
+                loosening=ref_preset.get("loosening", False),
+                adaptive_cost_ceiling=ref_settings["adaptive_ceiling"],
+                loosening_strategy=ref_settings["loosening_strategy"],
+                floor_step_pct=ref_settings["floor_step"],
+                ceiling_growth_factor=ref_settings["ceiling_growth"],
+                min_floor_pct=ref_settings["min_floor"],
+                min_tokens_per_second=ref_settings["min_tokens_per_second"],
+                excluded_ids=ref_excluded_ids if ref_diversity else None,
+                excluded_vendors=ref_excluded_vendors if ref_diversity else None,
+                vision_only=cell_vision_only,
+                sort_by=ref_settings["sort_by"],
+                unreachable_ids=unreachable_ids,
+                tokens_per_sec=tokens_per_sec,
+                reasoning_model_ids=reasoning_model_ids,
+                exclude_reasoning_models=ref_settings["exclude_reasoning"],
+                vision_verified_ids=vision_verified_ids,
+            )
+            ref_picks_all.extend(ref_picks)
+            if ref_diversity and ref_picks:
+                ref_excluded_ids.add(ref_picks[0]["id"])
+                ref_excluded_vendors.add(_vendor_key(ref_picks[0]))
+        ref_costs = []
+        for model in ref_picks_all:
+            cost = cost_of(model)
+            if math.isfinite(cost) and cost > 0:
+                ref_costs.append(cost)
+        if not ref_costs:
+            return None, None, None
+        buffer = float(ref_spec.get("buffer_per_m", 0.01))
+        ref_min = min(ref_costs)
+        ref_floor = max(0.0, ref_min - buffer)
+        return (
+            ref_floor,
+            ref_min,
+            f"ceiling set below {ref_name}: ${ref_floor:.2f}/M "
+            f"(${ref_min:.2f}/M - ${buffer:.2f}); may loosen to ${ref_min:.2f}/M",
+        )
+
     def _pick(slot_section: str, slot_spec: dict) -> dict:
         section: dict = {}
         diversity = slot_spec.get("diversity_excluded", False)
@@ -791,30 +1046,34 @@ def populate_configuration(
         # to force tokens_per_sec_desc across every preset. Same story for
         # exclude_reasoning_models. size_bucket is optional; None means
         # no parameter-bucket filter (Fast uses tps to bubble fast tier).
-        slot_sort_by = slot_spec.get("sort_by") or preset.get("sort_by", "cost_asc")
-        slot_exclude_reasoning = slot_spec.get("exclude_reasoning_models", False)
+        slot_settings = _slot_settings(preset, slot_spec)
+        slot_sort_by = slot_settings["sort_by"]
+        slot_exclude_reasoning = slot_settings["exclude_reasoning"]
         slot_size_bucket = slot_spec.get("size_bucket")
         slot_vision_required = bool(slot_spec.get("vision_required", False))
-        # A speed-optimized slot (Fast) should NOT inherit a cost-first preset's
-        # quality floor — that floors out the cheap, genuinely-fast models
-        # (flash-lite, step-flash) and leaves only expensive smart-fast flagships,
-        # so an expensive model lands in a "fast" slot. slot_spec.floor_pct /
-        # cost_ceiling_per_m override the preset's when present (explicit None/0 OK).
-        # An intelligence-first preset (Premium) instead uses
-        # floor_pct_if_intelligence_first so its fast slot stays high-intelligence.
-        if intelligence_first and "floor_pct_if_intelligence_first" in slot_spec:
-            slot_floor = slot_spec["floor_pct_if_intelligence_first"]
-        elif "floor_pct" in slot_spec:
-            slot_floor = slot_spec["floor_pct"]
-        else:
-            slot_floor = preset.get("floor_pct")
-        slot_ceiling = (slot_spec["cost_ceiling_per_m"] if "cost_ceiling_per_m" in slot_spec
-                        else preset.get("cost_ceiling_per_m"))
+        slot_floor = slot_settings["floor"]
+        slot_ceiling = slot_settings["ceiling"]
+        slot_adaptive_ceiling = slot_settings["adaptive_ceiling"]
+        slot_loosening_strategy = slot_settings["loosening_strategy"]
+        slot_floor_step = slot_settings["floor_step"]
+        slot_ceiling_growth = slot_settings["ceiling_growth"]
+        slot_min_floor = slot_settings["min_floor"]
+        slot_min_tps = slot_settings["min_tokens_per_second"]
+        section_vision_only = bool(effective_vision_only or slot_vision_required)
+        ref_spec = slot_spec.get("reference_cost_ceiling") or preset.get("reference_cost_ceiling")
+        reference_ceiling, reference_max_ceiling, reference_note = _reference_section_ceiling(
+            ref_spec, slot_spec, section_vision_only)
         for cell_name in slot_spec["cells"]:
             notes: list = []
-            cell_vision_only = bool(effective_vision_only or slot_vision_required)
+            cell_vision_only = section_vision_only
+            cell_ceiling = slot_ceiling
+            if reference_ceiling is not None:
+                cell_ceiling = (reference_ceiling if cell_ceiling is None
+                                else min(cell_ceiling, reference_ceiling))
+                if reference_note:
+                    notes.append(reference_note)
             if preset["mode"] == "free_intelligence":
-                picks, notes = pick_for_free_slot(
+                picks, pick_notes = pick_for_free_slot(
                     catalog,
                     size_bucket=slot_size_bucket,
                     top_n=slot_spec["top_n"],
@@ -826,18 +1085,27 @@ def populate_configuration(
                     tokens_per_sec=tokens_per_sec,
                     reasoning_model_ids=reasoning_model_ids,
                     exclude_reasoning_models=slot_exclude_reasoning,
+                    min_tokens_per_second=slot_min_tps,
                     vision_verified_ids=vision_verified_ids,
                     vision_required=slot_vision_required,
                 )
+                notes.extend(pick_notes)
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
             else:
-                picks, notes = pick_for_paid_slot(
+                picks, pick_notes = pick_for_paid_slot(
                     catalog,
                     size_bucket=slot_size_bucket,
                     top_n=slot_spec["top_n"],
                     floor_pct=slot_floor,
-                    cost_ceiling=slot_ceiling,
+                    cost_ceiling=cell_ceiling,
                     loosening=preset.get("loosening", False),
+                    adaptive_cost_ceiling=slot_adaptive_ceiling,
+                    max_cost_ceiling=reference_max_ceiling,
+                    loosening_strategy=slot_loosening_strategy,
+                    floor_step_pct=slot_floor_step,
+                    ceiling_growth_factor=slot_ceiling_growth,
+                    min_floor_pct=slot_min_floor,
+                    min_tokens_per_second=slot_min_tps,
                     excluded_ids=excluded_so_far if diversity else None,
                     excluded_vendors=excluded_vendors_so_far if diversity else None,
                     vision_only=cell_vision_only,
@@ -848,6 +1116,7 @@ def populate_configuration(
                     exclude_reasoning_models=slot_exclude_reasoning,
                     vision_verified_ids=vision_verified_ids,
                 )
+                notes.extend(pick_notes)
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
             if notes:
                 loosening_log[f"{slot_section}.{cell_name}"] = notes

@@ -150,6 +150,7 @@ class Router:
         paths honest about which fields the Router caches in memory.
         """
         self._endpoints = {ep["id"]: ep for ep in self.config.get("endpoints", [])}
+        self._merge_models_json_local_endpoints()
         self._machines = {m["id"]: m for m in self.config.get("machines", [])}
         self._buckets = self.config.get("buckets", {})
         self._diversity = (self.config.get("diversity") or {}).get("enabled", False)
@@ -159,6 +160,85 @@ class Router:
         # models.json vision_capable lookup cache (Chunk 2e). Cleared on
         # reload so edits to models.json also take effect immediately.
         self._vision_lookup_cache = None
+
+    def _merge_models_json_local_endpoints(self) -> None:
+        """Expose discovered local models as runtime endpoints.
+
+        The Models pane and hardware panel read discovered local models from
+        config/models.json, while older routing-config endpoints can drift
+        behind that list. Merge the discovered entries into the in-memory
+        endpoint lookup so picking one in a configuration actually resolves at
+        dispatch time. This is intentionally runtime-only; discovery remains
+        the source of truth for the installed local set.
+        """
+        try:
+            models_path = rp.overlay_path("config", "models.json")
+            if not models_path.exists():
+                return
+            with open(models_path) as f:
+                data = json.load(f)
+        except Exception as exc:
+            print(f"[Router] models.json local endpoint merge failed: {exc}")
+            return
+
+        for model in data.get("local_models", []) or []:
+            model_id = model.get("id")
+            if not model_id:
+                continue
+            model_path = model.get("path") or model.get("model_path") or ""
+            ram_gb = model.get("ram_gb") or 0
+            endpoint = dict(self._endpoints.get(model_id) or {})
+            endpoint.update({
+                "id": model_id,
+                "type": "local",
+                "engine": endpoint.get("engine") or "mlx",
+                "machine": endpoint.get("machine") or DEFAULT_MACHINE_ID,
+                "model_path": model_path,
+                "display_name": model.get("display_name") or endpoint.get("display_name") or model_id,
+                "provider": endpoint.get("provider") or "local",
+                "tier": endpoint.get("tier") or self._local_tier_for_models_json_entry(model),
+                "status": "active" if model_path and Path(model_path).exists() else "inactive",
+                "enabled": bool(model_path and Path(model_path).exists()),
+                "ram_resident_gb": ram_gb,
+                "ram_overhead_gb": endpoint.get("ram_overhead_gb") or 0,
+                "context_window": endpoint.get("context_window") or 32768,
+                "parameters_b": model.get("parameters_b") or model.get("active_params_per_token"),
+                "capabilities": endpoint.get("capabilities") or {
+                    "tool_access": True,
+                    "file_system_access": True,
+                    "web_access": False,
+                    "retrieval_approach": "agentic",
+                },
+                "vision_capable": bool(model.get("vision_capable", endpoint.get("vision_capable", False))),
+                "_installed_local_model": True,
+            })
+            self._endpoints[model_id] = endpoint
+
+    @staticmethod
+    def _local_tier_for_models_json_entry(model: dict) -> str:
+        roles = set(model.get("recommended_roles") or [])
+        if roles.intersection({"breadth", "depth", "evaluator", "consolidator"}):
+            return "local-premium"
+        ram = model.get("ram_gb")
+        params = model.get("parameters_b")
+        if params is None:
+            params = model.get("active_params_per_token")
+        try:
+            params = float(params) if params is not None else None
+        except (TypeError, ValueError):
+            params = None
+        if params is not None:
+            if params <= 12 and (ram is None or ram <= 8):
+                return "local-fast"
+            if params <= 50:
+                return "local-mid"
+            return "local-premium"
+        if ram is not None:
+            if ram <= 8:
+                return "local-fast"
+            if ram <= 32:
+                return "local-mid"
+        return "local-premium"
 
     def reload(self) -> bool:
         """Re-read the routing-config file and rebuild lookup tables.

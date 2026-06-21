@@ -667,8 +667,8 @@ a.ora-settings-apikey-label:hover {
 .ora-models-pane {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 4px 2px 16px;
+  gap: 8px;
+  padding: 2px 2px 12px;
 }
 
 .ora-models-pane section {
@@ -794,7 +794,7 @@ a.ora-settings-apikey-label:hover {
   flex-direction: row;
   align-items: baseline;
   gap: 10px;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-bottom: 1px solid var(--background-modifier-border, #3A3022);
 }
 
@@ -825,8 +825,8 @@ a.ora-settings-apikey-label:hover {
 .ora-models-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 6px;
+  padding: 5px 8px;
 }
 .ora-models-row > .ora-models-card {
   flex: 1 1 340px;
@@ -882,8 +882,8 @@ a.ora-settings-apikey-label:hover {
      incomplete states override border-color (and bump width) below. */
   border: 1px solid var(--background-modifier-border, #3A3022);
   border-radius: 5px;
-  padding: 6px 8px;
-  gap: 4px;
+  padding: 4px 7px;
+  gap: 3px;
   cursor: pointer;
   transition: border-color 0.12s ease, border-width 0.12s ease, background 0.12s ease;
   min-height: 0;
@@ -897,7 +897,7 @@ a.ora-settings-apikey-label:hover {
   border-color: var(--color-active, #5FA86E);
   border-width: 2px;
   /* Pull padding in by 1px so the thicker border doesn't shift layout */
-  padding: 5px 7px;
+  padding: 3px 6px;
 }
 
 .ora-models-card-empty {
@@ -912,25 +912,22 @@ a.ora-settings-apikey-label:hover {
 }
 
 .ora-models-card-header {
-  /* Three-column grid so the toggle chips (when present) sit
-     visually centered between the title (left) and the ACTIVE flag
-     (right), regardless of which of the side cells is occupied.
-     The 1fr·auto·1fr template lets the middle cell shrink to its
-     content while the side cells expand to push it to center. */
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
 }
 
 .ora-models-card-title { justify-self: start; }
-.ora-models-card-header-chips { justify-self: center; }
 .ora-models-card-active-flag { justify-self: end; }
 
 .ora-models-card-title {
   font-weight: 600;
   font-size: 12px;
+  line-height: 1.15;
   color: var(--text-normal, #E8E0CC);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .ora-models-card-active-flag {
@@ -944,7 +941,7 @@ a.ora-settings-apikey-label:hover {
 .ora-models-card-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   flex: 1;
 }
 
@@ -957,8 +954,8 @@ a.ora-settings-apikey-label:hover {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  line-height: 1.35;
-  min-height: 18px;
+  line-height: 1.25;
+  min-height: 16px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -991,12 +988,21 @@ a.ora-settings-apikey-label:hover {
   min-width: 0;
 }
 
+.ora-models-slot-model-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
 .ora-models-slot-meta {
   color: var(--text-muted, #A89F8A);
   font-family: var(--font-monospace, ui-monospace, 'SF Mono', Menlo, monospace);
   font-size: 10px;
   margin-left: auto;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .ora-models-slot-empty .ora-models-slot-value {
@@ -1013,14 +1019,32 @@ a.ora-settings-apikey-label:hover {
   border-radius: 2px;
   letter-spacing: 0.04em;
   vertical-align: middle;
+  flex: 0 0 auto;
 }
 
 .ora-models-card-actions {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding-top: 1px;
+  min-width: 0;
+}
+
+.ora-models-card-action-buttons {
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
-  padding-top: 2px;
+  flex: 0 0 auto;
+}
+
+.ora-models-card-action-status {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ora-models-card-btn {
@@ -1028,7 +1052,7 @@ a.ora-settings-apikey-label:hover {
   color: var(--text-muted, #A89F8A);
   border: 1px solid var(--background-modifier-border, #3A3022);
   border-radius: 3px;
-  padding: 1px 6px;
+  padding: 1px 5px;
   font-size: 10px;
   cursor: pointer;
   transition: color 0.12s ease, border-color 0.12s ease;
@@ -1076,10 +1100,10 @@ a.ora-settings-apikey-label:hover {
 .ora-models-custom-row:not(.ora-models-row--popout-open) {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  /* Cap to ~2 rows; vertical scroll past that. The exact value tracks
-     the card's natural height so a partial row never peeks at the cut. */
-  max-height: 240px;
+  gap: 6px;
+  /* Cap to one compact row; scroll inside this strip when saved
+     configurations grow beyond four. */
+  max-height: 125px;
   overflow-y: auto;
 }
 
@@ -1131,7 +1155,7 @@ a.ora-settings-apikey-label:hover {
   /* Bump width so the red enclosure stands out against the new 1px
      default border. Matches the active card's 2px treatment. */
   border-width: 2px;
-  padding: 5px 7px;
+  padding: 3px 6px;
 }
 
 /* Yellow ring for configurations that reference a deprecated model.
@@ -1259,8 +1283,8 @@ a.ora-settings-apikey-label:hover {
   color: var(--color-red, #C77958);
   border-color: var(--color-red, #C77958);
   opacity: 0.65;
-  padding: 3px 7px;
-  min-width: 24px;
+  padding: 1px 6px;
+  min-width: 22px;
 }
 
 .ora-models-card-btn-danger:hover {
@@ -1308,8 +1332,8 @@ a.ora-settings-apikey-label:hover {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16px;
-  padding: 8px;
+  gap: 10px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--background-modifier-border, #3A3022);
   flex-wrap: wrap;
 }
@@ -1888,7 +1912,7 @@ a.ora-settings-apikey-label:hover {
   gap: 6px;
   /* Header matches a slot row's vertical footprint: same padding +
      line-height so the popout reads as one continuous compact strip. */
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-bottom: 1px solid var(--background-modifier-border, #3A3022);
   background: var(--background-secondary, #1F1A0F);
 }
@@ -1938,9 +1962,9 @@ a.ora-settings-apikey-label:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 4px;
+  padding: 2px 4px;
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.25;
   border-radius: 3px;
 }
 
@@ -2021,8 +2045,8 @@ a.ora-settings-apikey-label:hover {
  * big1/big2/small rows by a thin divider so the user can see the
  * default-vs-override boundary at a glance. */
 .ora-models-card-expand {
-  margin-top: 4px;
-  padding-top: 4px;
+  margin-top: 3px;
+  padding-top: 3px;
   border-top: 1px dashed var(--background-modifier-border, #3A3022);
   display: flex;
   flex-direction: column;
@@ -2077,6 +2101,13 @@ a.ora-settings-apikey-label:hover {
   padding: 4px 0 8px;
   border-bottom: 1px solid var(--background-modifier-border, #3A3022);
   margin-bottom: 6px;
+}
+
+.ora-models-hw-note {
+  margin: 0 0 6px;
+  color: var(--text-muted, #A89F8A);
+  font-size: 11px;
+  font-style: italic;
 }
 
 .ora-models-hw-totals > div {

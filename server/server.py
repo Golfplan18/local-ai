@@ -9448,6 +9448,7 @@ def model_registry_get():
                         "display_name": ep.get("display_name") or eid,
                         "provider": ep.get("provider") or "local",
                         "vendor": "Local",
+                        "local": True,
                         "category": "chat",
                         "vision_capable": ep.get("vision_capable", False),
                         "vision_verified_by": "endpoint_config",
@@ -9468,6 +9469,70 @@ def model_registry_get():
                         "vendor_listed": None,  # no vendor audit applies
                         "_local_endpoint": True,
                     }
+                _models_path = rp.overlay_path("config", "models.json")
+                if _models_path.exists():
+                    _models_cfg = _json2.loads(_models_path.read_text())
+
+                    def _local_size_bucket(m):
+                        roles = set(m.get("recommended_roles") or [])
+                        if roles.intersection({"breadth", "depth", "evaluator", "consolidator"}):
+                            return "large"
+                        ram = m.get("ram_gb")
+                        params = m.get("parameters_b")
+                        if params is None:
+                            params = m.get("active_params_per_token")
+                        try:
+                            params = float(params) if params is not None else None
+                        except (TypeError, ValueError):
+                            params = None
+                        if params is not None:
+                            if params <= 12 and (ram is None or ram <= 8):
+                                return "small"
+                            if params <= 50:
+                                return "midsize"
+                            return "large"
+                        if ram is not None:
+                            if ram <= 8:
+                                return "small"
+                            if ram <= 32:
+                                return "midsize"
+                            return "large"
+                        return None
+
+                    for lm in (_models_cfg.get("local_models") or []):
+                        eid = lm.get("id")
+                        if not eid:
+                            continue
+                        path = lm.get("path") or lm.get("model_path")
+                        installed = bool(path and os.path.exists(path))
+                        ram_gb = lm.get("ram_gb")
+                        params = lm.get("parameters_b")
+                        if params is None:
+                            params = lm.get("active_params_per_token")
+                        existing = dict(filtered.get(eid) or {})
+                        existing.update({
+                            "id": eid,
+                            "display_name": lm.get("display_name") or existing.get("display_name") or eid,
+                            "provider": existing.get("provider") or "local",
+                            "vendor": "Local",
+                            "local": True,
+                            "category": "chat",
+                            "vision_capable": bool(lm.get("vision_capable", existing.get("vision_capable", False))),
+                            "vision_verified_by": "models_json",
+                            "pricing": existing.get("pricing") or {"input_per_token": 0, "output_per_token": 0, "blended_per_m": 0},
+                            "is_free": True,
+                            "size_bucket": existing.get("size_bucket") or _local_size_bucket(lm),
+                            "parameters_b": params,
+                            "ram_resident_gb": ram_gb,
+                            "ram_overhead_gb": 0,
+                            "ram_total_gb": ram_gb,
+                            "reachable": installed,
+                            "reachable_rate_limited": False,
+                            "vendor_listed": None,
+                            "_local_endpoint": True,
+                            "_installed_local_model": True,
+                        })
+                        filtered[eid] = existing
     except Exception as _local_err:
         print(f"[model-registry] local-endpoint merge skipped: {_local_err}", flush=True)
 
