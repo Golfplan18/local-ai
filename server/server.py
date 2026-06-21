@@ -6163,19 +6163,15 @@ def _browser_chroma_semantic_rows(
         count = col.count()
         if count <= 0:
             return []
-        kwargs: dict = {
-            "query_texts": [query],
-            "n_results": min(max(limit, 5), count),
-        }
+        n_results = min(max(limit, 5), count)
         if logical_collection == "knowledge":
-            kwargs["where"] = {"type": {"$in": sorted(_BROWSER_KNOWLEDGE_TYPES)}}
-        try:
-            results = col.query(**kwargs)
-        except Exception:
-            if logical_collection != "knowledge" or "where" not in kwargs:
-                raise
-            kwargs.pop("where", None)
-            results = col.query(**kwargs)
+            # Chroma metadata filters are much slower on large local knowledge
+            # collections. Overfetch, then apply Ora's type filter below.
+            n_results = min(max(limit * 4, 80), count)
+        results = col.query(
+            query_texts=[query],
+            n_results=n_results,
+        )
         ids = (results.get("ids") or [[]])[0]
         docs = (results.get("documents") or [[]])[0]
         metas = (results.get("metadatas") or [[]])[0]

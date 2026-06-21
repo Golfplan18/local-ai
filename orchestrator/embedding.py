@@ -89,6 +89,7 @@ EMBEDDING_BASE_URL = (
 )
 # Backward-compatible alias used by older local-only call sites.
 OLLAMA_URL = EMBEDDING_BASE_URL if EMBEDDING_PROVIDER == "ollama" else _DEFAULT_OLLAMA_URL
+EMBEDDING_FUNCTION_NAME = (_embedder_cfg.get("function_name") or "").strip() or None
 
 COLLECTIONS = {**_DEFAULT_COLLECTIONS, **(_CONFIG.get("collections") or {})}
 
@@ -309,6 +310,76 @@ def _make_openrouter_embedding_function(
     return _OpenRouterEmbeddingFunction()
 
 
+def _make_ollama_embedding_function(
+    *,
+    model_name: str,
+    url: str,
+    timeout: int,
+    dim: int,
+    function_name: str | None = None,
+):
+    """Build a Chroma-compatible Ollama embedding function.
+
+    ``function_name`` lets a proven-compatible local model attach to a
+    collection that was originally created by another provider. Chroma stores
+    the embedding function name in collection metadata and rejects a normal
+    Ollama function named ``ollama`` when the existing collection was created
+    by Ora's OpenRouter adapter.
+    """
+    from chromadb.api.types import Documents, EmbeddingFunction
+
+    class _OllamaEmbeddingFunction(EmbeddingFunction[Documents]):
+        def __init__(self):
+            self.model_name = model_name
+            self.url = url
+            self.timeout = timeout
+            self.dim = int(dim)
+            self.function_name = function_name or "ollama"
+
+        def name(self) -> str:
+            return self.function_name
+
+        def __call__(self, input):  # noqa: A002 - chromadb interface
+            items = input if isinstance(input, (list, tuple)) else [input]
+            vectors = embed_texts(
+                [str(item or "") for item in items],
+                provider="ollama",
+                model_name=self.model_name,
+                url=self.url,
+                timeout=self.timeout,
+            )
+            if self.dim:
+                for vec in vectors:
+                    if len(vec) != self.dim:
+                        raise RuntimeError(
+                            f"Ollama returned vector dim {len(vec)}, "
+                            f"expected {self.dim} for {self.model_name}"
+                        )
+            return vectors
+
+        @classmethod
+        def build_from_config(cls, config):
+            return cls()
+
+        def get_config(self):
+            return {
+                "model_name": self.model_name,
+                "url": self.url,
+                "timeout": self.timeout,
+                "dim": self.dim,
+                "function_name": self.function_name,
+            }
+
+        def default_space(self):
+            return "cosine"
+
+        @staticmethod
+        def is_legacy() -> bool:
+            return False
+
+    return _OllamaEmbeddingFunction()
+
+
 # ---------------------------------------------------------------------------
 # Embedding function factory
 # ---------------------------------------------------------------------------
@@ -322,6 +393,7 @@ def get_embedding_function(
     base_url: str = EMBEDDING_BASE_URL,
     timeout: int = 60,
     dim: int = EMBEDDING_DIM,
+    function_name: str | None = EMBEDDING_FUNCTION_NAME,
 ):
     """Return a Chroma-compatible EmbeddingFunction.
 
@@ -338,12 +410,20 @@ def get_embedding_function(
             dim=dim,
         )
 
-    from chromadb.utils import embedding_functions
+    if function_name:
+        return _make_ollama_embedding_function(
+            model_name=model_name,
+            url=url,
+            timeout=timeout,
+            dim=dim,
+            function_name=function_name,
+        )
 
-    return embedding_functions.OllamaEmbeddingFunction(
-        url=url,
+    return _make_ollama_embedding_function(
         model_name=model_name,
+        url=url,
         timeout=timeout,
+        dim=dim,
     )
 
 
