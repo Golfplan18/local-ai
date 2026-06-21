@@ -470,8 +470,9 @@ window.OraVisualCompiler._renderers.mermaid = (function () {
   }
 
   // ── SVG post-processing ─────────────────────────────────────────────────────
-  // Strip Mermaid-injected style= attrs, <style> elements, and hardcoded
-  // fill=/stroke= colors. Add ora-visual classes and ARIA attributes.
+  // Preserve Mermaid's own style block/attributes and add Ora classes + ARIA.
+  // Mermaid's native classes carry the visual paint; the Ora theme does not
+  // reconstruct them.
   function _postProcessSvg(rawSvg, envelope) {
     const Parser = (typeof DOMParser !== 'undefined') ? DOMParser : null;
     if (!Parser) {
@@ -484,28 +485,6 @@ window.OraVisualCompiler._renderers.mermaid = (function () {
     if (!svgEl || svgEl.nodeName.toLowerCase() !== 'svg') {
       return rawSvg;
     }
-
-    const styleTags = svgEl.getElementsByTagName('style');
-    for (let i = styleTags.length - 1; i >= 0; i--) {
-      const node = styleTags[i];
-      if (node.parentNode) node.parentNode.removeChild(node);
-    }
-
-    function walk(el) {
-      if (!el || el.nodeType !== 1) return;
-      if (el.removeAttribute) {
-        el.removeAttribute('style');
-        const fill = el.getAttribute && el.getAttribute('fill');
-        if (fill && fill !== 'none') el.removeAttribute('fill');
-        const stroke = el.getAttribute && el.getAttribute('stroke');
-        if (stroke && stroke !== 'none') el.removeAttribute('stroke');
-      }
-      const children = el.childNodes;
-      if (children) {
-        for (let i = 0; i < children.length; i++) walk(children[i]);
-      }
-    }
-    walk(svgEl);
 
     const typeClass = 'ora-visual--' + (envelope.type || 'unknown');
     svgEl.setAttribute('class', ('ora-visual ' + typeClass).trim());

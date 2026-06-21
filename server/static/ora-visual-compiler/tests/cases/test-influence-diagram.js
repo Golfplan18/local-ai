@@ -222,7 +222,7 @@ const hasClass     = (s, c) => new RegExp('class="[^"]*\\b' + c.replace(/-/g, '\
 const hasAriaImg   = (s) => /role="img"/.test(s);
 const hasAriaLabel = (s) => /aria-label="[^"]+"/.test(s);
 const hasId        = (s, id) => new RegExp('id="' + id.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '"').test(s);
-const hasInlineStyle = (s) => /\sstyle="/.test(s) || /\sfill="/.test(s) ||
+const hasNativePaint = (s) => /\sstyle="/.test(s) || /\sfill="/.test(s) ||
                               /\sstroke="/.test(s) || /\sfont-family="/.test(s);
 const countMatches = (s, re) => {
   const m = s.match(re);
@@ -397,8 +397,8 @@ async function runSuite(ctx, record) {
         record(label, false, 'missing role="img" / aria-label on root');
         continue;
       }
-      if (hasInlineStyle(result.svg)) {
-        record(label, false, 'inline styles (fill/stroke/style/font-family) not stripped');
+      if (!hasNativePaint(result.svg)) {
+        record(label, false, 'Graphviz native styling was not preserved');
         continue;
       }
 

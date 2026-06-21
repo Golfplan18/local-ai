@@ -344,7 +344,7 @@ const countMatches = (s, re) => {
   return m ? m.length : 0;
 };
 const hasConceptId = (s, id) => new RegExp('id="cm\\-concept\\-' + id + '"').test(s);
-const hasInlineStyle = (s) => /\sstyle="/.test(s) || /\sfill="/.test(s) ||
+const hasNativePaint = (s) => /\sstyle="/.test(s) || /\sfill="/.test(s) ||
                               /\sstroke="/.test(s) || /\sfont-family="/.test(s);
 
 // ── Unit tests: internal helpers ──────────────────────────────────────────
@@ -462,8 +462,8 @@ async function runValid() {
         report(label, false, 'missing role="img" / aria-label on root');
         continue;
       }
-      if (hasInlineStyle(result.svg)) {
-        report(label, false, 'inline fill/stroke/style/font-family not stripped');
+      if (!hasNativePaint(result.svg)) {
+        report(label, false, 'Graphviz native styling was not preserved');
         continue;
       }
 

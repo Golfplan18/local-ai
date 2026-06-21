@@ -118,6 +118,16 @@ function envelope(spec, overrides) {
 // Five hand-written valid DAGs covering the canonical graph shapes.
 const validCases = [
   {
+    label: 'DAGitty bb layout hint stripped before parse',
+    env: envelope({
+      dsl: 'dag { bb="0,0,5,5"; x [exposure]; y [outcome]; x -> y }',
+      focal_exposure: 'x',
+      focal_outcome: 'y',
+    }),
+    expectNodes: 2,
+    expectClasses: ['ora-visual__node--exposure', 'ora-visual__node--outcome'],
+  },
+  {
     label: 'simple X → Y',
     env: envelope({
       dsl: 'dag { x [exposure]; y [outcome]; x -> y }',
@@ -248,7 +258,7 @@ const countMatches = (s, re) => {
   return m ? m.length : 0;
 };
 const hasNodeId = (s, id) => new RegExp('id="node_' + id + '"').test(s);
-const hasInlineStyle = (s) => /\sstyle="/.test(s) || /\sfill="/.test(s) ||
+const hasNativePaint = (s) => /\sstyle="/.test(s) || /\sfill="/.test(s) ||
                               /\sstroke="/.test(s) || /\sfont-family="/.test(s);
 
 // ── Internal unit tests: parser + cycle detector ──────────────────────────
@@ -363,8 +373,8 @@ async function runValid() {
         report(label, false, 'missing role="img" / aria-label on root');
         continue;
       }
-      if (hasInlineStyle(result.svg)) {
-        report(label, false, 'inline fill/stroke/style/font-family not stripped');
+      if (!hasNativePaint(result.svg)) {
+        report(label, false, 'Graphviz native styling was not preserved');
         continue;
       }
 
@@ -444,7 +454,7 @@ async function runInvalid() {
 
 // ── dot-engine direct-call sanity test ────────────────────────────────────
 async function runDotEngineSanity() {
-  const label = 'dot-engine: basic DOT renders and styles are stripped';
+  const label = 'dot-engine: basic DOT renders and preserves native styles';
   try {
     const { svg, errors, warnings } =
       await OVC._dotEngine.dotToSvg('digraph G { a -> b; b -> c }');
@@ -460,8 +470,8 @@ async function runDotEngineSanity() {
       report(label, false, 'ora-visual class not added to root');
       return;
     }
-    if (hasInlineStyle(svg)) {
-      report(label, false, 'inline styles not stripped');
+    if (!hasNativePaint(svg)) {
+      report(label, false, 'Graphviz native styling was not preserved');
       return;
     }
     report(label, true);

@@ -486,19 +486,18 @@ window.OraVisualCompiler._renderers.achMatrix = (function () {
   /**
    * _postProcessSvg(rawSvg, envelope, spec, scoring, nondiagnosticEvidenceIds)
    *
-   * Strip Vega's inline styles, apply ora-visual classes, add stable IDs
+   * Preserve Vega's inline styling, apply ora-visual classes, add stable IDs
    * to every cell and every axis tick, and highlight the leading hypothesis
    * + non-diagnostic evidence rows.
    *
    * Strategy: use DOMParser (jsdom in tests, browser in production). Fall
    * back to a conservative regex strip if DOMParser is unavailable.
    */
-  const STRIP_ATTRS = [
-    'style', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray',
-    'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
-    'font-family', 'font-size', 'font-weight', 'font-style',
-    'opacity', 'fill-opacity', 'stroke-opacity',
-  ];
+  // ACH is a Vega heatmap wrapper. Its per-cell consistency ramp is encoded
+  // as SVG fill attributes, so stripping renderer styling makes the matrix
+  // unreadable. Keep the walker as a no-op so root annotation/cell tagging stay
+  // intact while the visual paint survives.
+  const STRIP_ATTRS = [];
 
   function _postProcessSvg(rawSvg, envelope, spec, scoring, nondiagnosticEvidenceIds) {
     const title     = (envelope.title && String(envelope.title)) || '';

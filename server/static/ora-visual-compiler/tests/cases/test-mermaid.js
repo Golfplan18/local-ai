@@ -247,9 +247,9 @@ function hasOraClass(svg, type) {
       && new RegExp('class="[^"]*\\bora-visual--' + type + '\\b[^"]*"').test(svg);
 }
 
-function hasInlineStyle(svg) {
-  // Our post-processor should strip style="..." attributes.
-  return /\sstyle="/.test(svg);
+function hasNativePaint(svg) {
+  return /<style\b/i.test(svg) || /\sstyle="/.test(svg) ||
+         /\sfill="/.test(svg) || /\sstroke="/.test(svg);
 }
 
 async function runValid() {
@@ -269,8 +269,8 @@ async function runValid() {
         report(label, false, 'missing ora-visual / ora-visual--' + env.type + ' class on root');
         continue;
       }
-      if (hasInlineStyle(result.svg)) {
-        report(label, false, 'inline style= attribute not stripped');
+      if (!hasNativePaint(result.svg)) {
+        report(label, false, 'Mermaid native styling was not preserved');
         continue;
       }
       if (result.warnings.length > 0) {
