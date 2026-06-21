@@ -5686,6 +5686,25 @@ def _browser_snippet_from_text(text: str, query: str, *, limit: int = 420) -> st
     return snippet
 
 
+def _browser_match_score(query: str, title: str = "", text: str = "") -> float:
+    terms = _browser_terms(query)
+    if not terms:
+        return 0.0
+    clean_query = _clean_conversation_browser_text(query).lower()
+    title_l = str(title or "").lower()
+    text_l = str(text or "").lower()
+    haystack = f"{title_l}\n{text_l}"
+    term_hits = sum(1 for term in terms if term in haystack)
+    title_hits = sum(1 for term in terms if term in title_l)
+    score = (term_hits / max(len(terms), 1)) * 100.0
+    score += title_hits * 10.0
+    if clean_query and clean_query in text_l:
+        score += 65.0
+    if clean_query and clean_query in title_l:
+        score += 90.0
+    return score
+
+
 def _browser_metadata_for_row(cur, row_id: int) -> dict:
     meta: dict = {}
     for key, s_val, i_val, f_val, b_val in cur.execute(
@@ -5758,20 +5777,23 @@ def _browser_row_from_chroma_hit(
         except (TypeError, ValueError):
             matched_turn = None
         row_id = _browser_encode_source_id("archive", str(source_id))
+        title = _browser_source_title(metadata, doc)
+        snippet = _browser_snippet_from_text(doc, query)
         return {
             "conversation_id": row_id,
             "source_conversation_id": source_id,
             "result_type": "archive_conversation",
             "source_kind": "archive",
             "tag": metadata.get("tag") or "",
-            "title": _browser_source_title(metadata, doc),
-            "snippet": _browser_snippet_from_text(doc, query),
+            "title": title,
+            "snippet": snippet,
             "matched_turn_index": matched_turn,
             "matched_message_index": None,
             "matched_chunk_id": embedding_id,
             "pair_num": pair_num,
             "total_turns": metadata.get("total_turns"),
             "score": score,
+            "search_relevance": _browser_match_score(query, title, doc) if query else None,
             "last_activity_at": (
                 metadata.get("timestamp_utc")
                 or metadata.get("timestamp")
@@ -5793,18 +5815,21 @@ def _browser_row_from_chroma_hit(
                 source_path = os.path.join(os.path.expanduser("~/Documents/vault/Engrams"), source)
         source_id = source_path or embedding_id
         row_id = _browser_encode_source_id("engram", str(source_id))
+        title = _browser_source_title(metadata, doc)
+        snippet = _browser_snippet_from_text(doc, query)
         return {
             "conversation_id": row_id,
             "source_conversation_id": source_id,
             "result_type": "engram",
             "source_kind": "engram",
             "tag": metadata.get("tags") or "",
-            "title": _browser_source_title(metadata, doc),
-            "snippet": _browser_snippet_from_text(doc, query),
+            "title": title,
+            "snippet": snippet,
             "matched_turn_index": 0,
             "matched_message_index": 0,
             "matched_chunk_id": embedding_id,
             "score": score,
+            "search_relevance": _browser_match_score(query, title, doc) if query else None,
             "last_activity_at": metadata.get("date modified") or metadata.get("date") or "",
             "path": source_path or "",
             "closed": False,
@@ -5816,7 +5841,13 @@ def _browser_merge_best(rows_by_id: dict, row: dict | None) -> None:
     if not row or not row.get("conversation_id"):
         return
     existing = rows_by_id.get(row["conversation_id"])
-    if existing is None or float(row.get("score") or 0) > float(existing.get("score") or 0):
+
+    def rank(item: dict) -> tuple[float, float]:
+        relevance = item.get("search_relevance")
+        primary = relevance if relevance is not None else item.get("score")
+        return (float(primary or 0), float(item.get("score") or 0))
+
+    if existing is None or rank(row) > rank(existing):
         rows_by_id[row["conversation_id"]] = row
 
 
@@ -6003,6 +6034,24 @@ def _browser_source_counts(rows: list[dict]) -> dict:
     return counts
 
 
+def _browser_sort_rows(rows: list[dict], sort_mode: str) -> list[dict]:
+    if sort_mode == "recency":
+        return sorted(
+            rows,
+            key=lambda r: (r.get("last_activity_at") or "", float(r.get("score") or 0)),
+            reverse=True,
+        )
+    return sorted(
+        rows,
+        key=lambda r: (
+            float(r.get("search_relevance") if r.get("search_relevance") is not None else r.get("score") or 0),
+            float(r.get("score") or 0),
+            r.get("last_activity_at") or "",
+        ),
+        reverse=True,
+    )
+
+
 def _browser_live_rows(query: str) -> list[dict]:
     try:
         from conversation_memory import iter_conversations, load_conversation_json
@@ -6024,13 +6073,16 @@ def _browser_live_rows(query: str) -> list[dict]:
         if query and match.get("score", 0) <= 0:
             continue
         out = dict(row)
+        title = out.get("display_name") or out.get("title") or out.get("conversation_id") or ""
+        snippet = match.get("snippet") or ""
         out.update({
             "result_type": "live_conversation",
             "source_kind": "live",
-            "snippet": match.get("snippet") or "",
+            "snippet": snippet,
             "matched_message_index": match.get("matched_message_index"),
             "matched_turn_index": match.get("matched_turn_index"),
             "score": (float(match.get("score", 0)) + (25.0 if query else 1.0)),
+            "search_relevance": _browser_match_score(query, title, snippet) if query else None,
         })
         rows.append(out)
     return rows
@@ -6206,10 +6258,147 @@ def _browser_memory_envelope(conversation_id: str) -> dict | None:
     )
 
 
+def _browser_archive_related_rows(conversation_id: str, limit: int = 100) -> list[dict]:
+    source_id = _browser_decode_source_id("archive", conversation_id)
+    if not source_id:
+        return []
+    chunks = _browser_archive_chunk_metadata(source_id)
+    if not chunks:
+        return []
+
+    chain_ids = sorted({
+        str(meta.get("chain_id"))
+        for meta in chunks
+        if meta.get("chain_id")
+    })
+    chain_labels = sorted({
+        str(meta.get("chain_label"))
+        for meta in chunks
+        if meta.get("chain_label")
+    })
+    thread_ids = sorted({
+        str(meta.get("thread_id"))
+        for meta in chunks
+        if meta.get("thread_id")
+    })
+
+    rows_by_id: dict[str, dict] = {}
+    physical = _browser_physical_collection("conversations")
+    clauses: list[str] = []
+    params: list = [physical, source_id]
+    if chain_ids:
+        clauses.append("chain.string_value IN (%s)" % ",".join(["?"] * len(chain_ids)))
+        params.extend(chain_ids)
+    if chain_labels:
+        clauses.append("label.string_value IN (%s)" % ",".join(["?"] * len(chain_labels)))
+        params.extend(chain_labels)
+    if thread_ids:
+        clauses.append("thread.string_value IN (%s)" % ",".join(["?"] * len(thread_ids)))
+        params.extend(thread_ids)
+
+    if clauses:
+        try:
+            import sqlite3
+            con = sqlite3.connect(os.path.join(_browser_chromadb_path(), "chroma.sqlite3"))
+            cur = con.cursor()
+            matches = cur.execute(
+                f"""
+                SELECT embeddings.id, embeddings.embedding_id
+                FROM embeddings
+                JOIN segments ON segments.id = embeddings.segment_id
+                JOIN collections ON collections.id = segments.collection
+                JOIN embedding_metadata cid
+                  ON cid.id = embeddings.id AND cid.key = 'conversation_id'
+                LEFT JOIN embedding_metadata chain
+                  ON chain.id = embeddings.id AND chain.key = 'chain_id'
+                LEFT JOIN embedding_metadata label
+                  ON label.id = embeddings.id AND label.key = 'chain_label'
+                LEFT JOIN embedding_metadata thread
+                  ON thread.id = embeddings.id AND thread.key = 'thread_id'
+                LEFT JOIN embedding_metadata stamp
+                  ON stamp.id = embeddings.id AND stamp.key = 'timestamp_utc'
+                WHERE collections.name = ?
+                  AND cid.string_value != ?
+                  AND ({' OR '.join(clauses)})
+                ORDER BY COALESCE(stamp.string_value, '') DESC
+                LIMIT ?
+                """,
+                (*params, max(limit * 4, 40)),
+            ).fetchall()
+            for row_id, embedding_id in matches:
+                meta = _browser_metadata_for_row(cur, row_id)
+                doc = meta.get("chroma:document") or ""
+                related_score = 60.0
+                if meta.get("chain_id") in chain_ids:
+                    related_score += 30.0
+                if meta.get("chain_label") in chain_labels:
+                    related_score += 10.0
+                if meta.get("thread_id") in thread_ids:
+                    related_score += 5.0
+                row = _browser_row_from_chroma_hit(
+                    logical_collection="conversations",
+                    embedding_id=embedding_id,
+                    document=doc,
+                    metadata=meta,
+                    query="",
+                    score=related_score,
+                )
+                if row:
+                    row["relation"] = "related"
+                _browser_merge_best(rows_by_id, row)
+            con.close()
+        except Exception as exc:
+            print(f"[conversation-browser] archive related lookup failed: {exc}", file=sys.stderr)
+
+    if len(rows_by_id) < limit:
+        title = _browser_source_title(chunks[0], chunks[0].get("chroma:document") or "")
+        for row in _browser_chroma_semantic_rows(
+            title, logical_collection="conversations", limit=max(20, limit - len(rows_by_id))
+        ):
+            if row.get("source_conversation_id") == source_id:
+                continue
+            row["relation"] = row.get("relation") or "semantic"
+            _browser_merge_best(rows_by_id, row)
+
+    return _browser_sort_rows(list(rows_by_id.values()), "relevance")[:limit]
+
+
+def _browser_engram_related_rows(conversation_id: str, limit: int = 100) -> list[dict]:
+    source_id = _browser_decode_source_id("engram", conversation_id)
+    if not source_id:
+        return []
+    envelope = _browser_engram_envelope(conversation_id)
+    if not envelope:
+        return []
+    message = (envelope.get("messages") or [{}])[0]
+    content = message.get("content") if isinstance(message, dict) else ""
+    heading = re.search(r"^#\s+(.+)$", str(content or ""), flags=re.M)
+    query = heading.group(1).strip() if heading else envelope.get("display_name") or str(content or "")[:240]
+
+    rows_by_id: dict[str, dict] = {}
+    for row in _browser_chroma_exact_rows(query, logical_collection="knowledge", limit=max(20, limit // 2)):
+        if row.get("conversation_id") == conversation_id:
+            continue
+        row["relation"] = "related"
+        _browser_merge_best(rows_by_id, row)
+    for row in _browser_chroma_semantic_rows(query, logical_collection="knowledge", limit=max(20, limit // 2)):
+        if row.get("conversation_id") == conversation_id:
+            continue
+        row["relation"] = row.get("relation") or "semantic"
+        _browser_merge_best(rows_by_id, row)
+    for row in _browser_chroma_semantic_rows(query, logical_collection="conversations", limit=max(20, limit // 2)):
+        row["relation"] = row.get("relation") or "conversation"
+        _browser_merge_best(rows_by_id, row)
+    return _browser_sort_rows(list(rows_by_id.values()), "relevance")[:limit]
+
+
 @app.route("/api/conversations/browser", methods=["GET"])
 def conversations_browser():
     """Search or browse live sessions plus archived conversation memory."""
     query = (request.args.get("q") or "").strip()
+    sort_mode = (request.args.get("sort") or ("relevance" if query else "recency")).strip().lower()
+    if sort_mode not in {"relevance", "recency"}:
+        sort_mode = "relevance" if query else "recency"
     try:
         limit = int(request.args.get("limit") or 100)
     except (TypeError, ValueError):
@@ -6245,16 +6434,10 @@ def conversations_browser():
             continue
         _browser_merge_best(rows_by_id, row)
 
-    rows = list(rows_by_id.values())
-    rows.sort(
-        key=lambda r: (
-            float(r.get("score") or 0),
-            r.get("last_activity_at") or "",
-        ),
-        reverse=True,
-    )
+    rows = _browser_sort_rows(list(rows_by_id.values()), sort_mode)
     return _json_response({
         "query": query,
+        "sort": sort_mode,
         "rows": rows[:limit],
         "total": len(rows),
         "source_counts": _browser_source_counts(rows),
@@ -6288,6 +6471,18 @@ def conversations_related(conversation_id):
     conversation_id = (conversation_id or "").strip()
     if not conversation_id:
         return _json_response({"error": "conversation_id is required"}, status=400)
+    if conversation_id.startswith("archive:"):
+        rows = _browser_archive_related_rows(conversation_id)
+        return _json_response({
+            "conversation_id": conversation_id,
+            "rows": rows,
+        })
+    if conversation_id.startswith("engram:"):
+        rows = _browser_engram_related_rows(conversation_id)
+        return _json_response({
+            "conversation_id": conversation_id,
+            "rows": rows,
+        })
     try:
         from conversation_memory import iter_conversations, load_conversation_json
     except Exception as e:

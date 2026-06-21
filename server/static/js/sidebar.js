@@ -47,9 +47,13 @@
   let activeConvId = null;
   let browserOverlay = null;
   let browserSearch = null;
+  let browserSort = null;
   let browserRows = null;
   let browserStatus = null;
   let browserResizeObserver = null;
+  let browserDismissedIds = new Set();
+  let browserRowsCache = [];
+  let browserLastData = null;
 
   const setExpanded = (on) => {
     sidebar.classList.toggle('expanded', !!on);
@@ -463,6 +467,10 @@
         <div class="conversation-browser-top">
           <input class="conversation-browser-search" type="text"
                  placeholder="Search conversations..." />
+          <select class="conversation-browser-sort" aria-label="Sort results">
+            <option value="relevance">Relevance</option>
+            <option value="recency">Recency</option>
+          </select>
           <button class="conversation-browser-search-btn" type="button">Search</button>
           <button class="conversation-browser-close" type="button" aria-label="Close browser">×</button>
         </div>
@@ -471,12 +479,16 @@
       </div>`;
     document.body.appendChild(browserOverlay);
     browserSearch = browserOverlay.querySelector('.conversation-browser-search');
+    browserSort = browserOverlay.querySelector('.conversation-browser-sort');
     browserRows = browserOverlay.querySelector('.conversation-browser-rows');
     browserStatus = browserOverlay.querySelector('.conversation-browser-status');
     browserOverlay.querySelector('.conversation-browser-close')
       .addEventListener('click', closeBrowser);
     browserOverlay.querySelector('.conversation-browser-search-btn')
       .addEventListener('click', () => fetchBrowser(browserSearch.value));
+    if (browserSort) {
+      browserSort.addEventListener('change', () => fetchBrowser(browserSearch.value));
+    }
     browserSearch.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -536,6 +548,9 @@
 
   const openBrowser = () => {
     ensureBrowser();
+    if (!browserOverlay.classList.contains('is-open')) {
+      browserDismissedIds = new Set();
+    }
     browserOverlay.classList.add('is-open');
     startBrowserPositioning();
     fetchBrowser('');
@@ -556,28 +571,61 @@
     try {
       const params = new URLSearchParams();
       if ((query || '').trim()) params.set('q', query.trim());
+      if (browserSort && browserSort.value) params.set('sort', browserSort.value);
       params.set('limit', '200');
       const r = await fetch('/api/conversations/browser?' + params.toString());
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
-      renderBrowserRows(data.rows || [], data.query || '');
-      const counts = data.source_counts || {};
-      const parts = [];
-      if (counts.live) parts.push(`${counts.live} live`);
-      if (counts.archive) parts.push(`${counts.archive} archived`);
-      if (counts.engram) parts.push(`${counts.engram} engram${counts.engram === 1 ? '' : 's'}`);
-      browserStatus.textContent = data.total
-        ? `${data.total} result${data.total === 1 ? '' : 's'}${parts.length ? ` (${parts.join(', ')})` : ''}`
-        : 'No matching conversations or engrams';
+      browserLastData = data;
+      browserRowsCache = data.rows || [];
+      renderBrowserRows(browserRowsCache, data.query || '');
+      updateBrowserStatus();
     } catch (e) {
       browserStatus.textContent = 'Search failed: ' + (e.message || e);
       browserRows.innerHTML = '';
     }
   };
 
+  const browserVisibleRows = () => (
+    (browserRowsCache || []).filter(row => !browserDismissedIds.has(row.conversation_id))
+  );
+
+  const browserVisibleCounts = (rows) => {
+    const counts = { live: 0, archive: 0, engram: 0 };
+    (rows || []).forEach((row) => {
+      const kind = row.source_kind || 'live';
+      if (counts[kind] !== undefined) counts[kind] += 1;
+    });
+    return counts;
+  };
+
+  const updateBrowserStatus = () => {
+    if (!browserStatus) return;
+    const visible = browserVisibleRows();
+    const counts = browserVisibleCounts(visible);
+    const parts = [];
+    if (counts.live) parts.push(`${counts.live} live`);
+    if (counts.archive) parts.push(`${counts.archive} archived`);
+    if (counts.engram) parts.push(`${counts.engram} engram${counts.engram === 1 ? '' : 's'}`);
+    const removed = Math.max(0, (browserRowsCache || []).length - visible.length);
+    const total = browserLastData && browserLastData.total;
+    if (visible.length) {
+      const shown = total && total !== visible.length
+        ? `${visible.length} shown of ${total}`
+        : `${visible.length}`;
+      browserStatus.textContent = `${shown} result${visible.length === 1 ? '' : 's'}`
+        + `${parts.length ? ` (${parts.join(', ')})` : ''}`
+        + `${removed ? `, ${removed} removed` : ''}`;
+    } else {
+      browserStatus.textContent = removed
+        ? `No visible results, ${removed} removed`
+        : 'No matching conversations or engrams';
+    }
+  };
+
   const renderBrowserRows = (rows, query) => {
     browserRows.innerHTML = '';
-    rows.forEach((row) => {
+    browserVisibleRows().forEach((row) => {
       const item = document.createElement('div');
       item.className = 'conversation-browser-row';
       if (row.conversation_id === activeConvId) item.classList.add('is-active');
@@ -609,28 +657,37 @@
       related.type = 'button';
       related.className = 'conversation-browser-related';
       related.textContent = 'Related';
-      if (row.source_kind && row.source_kind !== 'live') {
-        related.disabled = true;
-        related.title = 'Related lookup is available for live threads';
-      } else {
-        related.addEventListener('click', (e) => {
-          e.stopPropagation();
-          fetchRelated(row.conversation_id);
-        });
-      }
+      related.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fetchRelated(row.conversation_id);
+      });
       item.appendChild(related);
 
-      const action = document.createElement('button');
-      action.type = 'button';
-      action.className = 'conversation-browser-action';
-      action.textContent = row.closed && (!row.source_kind || row.source_kind === 'live')
-        ? 'Make active'
-        : 'Open';
-      action.addEventListener('click', (e) => {
+      if (row.closed && (!row.source_kind || row.source_kind === 'live')) {
+        const action = document.createElement('button');
+        action.type = 'button';
+        action.className = 'conversation-browser-action';
+        action.textContent = 'Make active';
+        action.addEventListener('click', (e) => {
+          e.stopPropagation();
+          activateBrowserRow(row, { makeActive: true });
+        });
+        item.appendChild(action);
+      }
+
+      const dismiss = document.createElement('button');
+      dismiss.type = 'button';
+      dismiss.className = 'conversation-browser-dismiss';
+      dismiss.textContent = '×';
+      dismiss.title = 'Remove from these results';
+      dismiss.setAttribute('aria-label', 'Remove from these results');
+      dismiss.addEventListener('click', (e) => {
         e.stopPropagation();
-        activateBrowserRow(row);
+        browserDismissedIds.add(row.conversation_id);
+        renderBrowserRows(browserRowsCache, query);
+        updateBrowserStatus();
       });
-      item.appendChild(action);
+      item.appendChild(dismiss);
 
       item.addEventListener('click', () => activateBrowserRow(row));
       browserRows.appendChild(item);
@@ -644,18 +701,18 @@
       const r = await fetch(`/api/conversation/${encodeURIComponent(conversationId)}/related`);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
-      renderBrowserRows(data.rows || [], '');
-      browserStatus.textContent = (data.rows || []).length
-        ? 'Related conversations'
-        : 'No related conversations';
+      browserLastData = data;
+      browserRowsCache = data.rows || [];
+      renderBrowserRows(browserRowsCache, '');
+      updateBrowserStatus();
     } catch (e) {
       browserStatus.textContent = 'Related lookup failed: ' + (e.message || e);
     }
   };
 
-  const activateBrowserRow = async (row) => {
+  const activateBrowserRow = async (row, opts = {}) => {
     if (!row || !row.conversation_id) return;
-    if (row.closed && (!row.source_kind || row.source_kind === 'live')) {
+    if (opts.makeActive && row.closed && (!row.source_kind || row.source_kind === 'live')) {
       try {
         await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/restore`, {
           method: 'POST',
