@@ -25,22 +25,34 @@ class _Fixture(unittest.TestCase):
         self.tmpdir = tempfile.mkdtemp()
         self.data_dir = Path(self.tmpdir) / "data"
         self.config_dir = Path(self.tmpdir) / "config" / "configurations"
+        self.runtime_config_dir = (
+            Path(self.tmpdir) / "data" / "runtime" / "config" / "configurations")
         self.data_dir.mkdir(parents=True)
         self.config_dir.mkdir(parents=True)
         self._orig_data = ac.DATA_DIR
         self._orig_pointer = ac.ACTIVE_POINTER_PATH
         self._orig_config = ac.CONFIGURATIONS_DIR
+        self._orig_default_config = ac._DEFAULT_CONFIGURATIONS_DIR
+        self._orig_runtime_config = ac.RUNTIME_CONFIGURATIONS_DIR
         ac.DATA_DIR = self.data_dir
         ac.ACTIVE_POINTER_PATH = self.data_dir / "active-configuration.json"
         ac.CONFIGURATIONS_DIR = self.config_dir
+        ac.RUNTIME_CONFIGURATIONS_DIR = self.runtime_config_dir
 
     def tearDown(self):
         self.module.DATA_DIR = self._orig_data
         self.module.ACTIVE_POINTER_PATH = self._orig_pointer
         self.module.CONFIGURATIONS_DIR = self._orig_config
+        self.module._DEFAULT_CONFIGURATIONS_DIR = self._orig_default_config
+        self.module.RUNTIME_CONFIGURATIONS_DIR = self._orig_runtime_config
 
     def _write_config(self, name, payload):
         with open(self.config_dir / f"{name}.json", "w") as f:
+            json.dump(payload, f)
+
+    def _write_runtime_config(self, name, payload):
+        self.runtime_config_dir.mkdir(parents=True, exist_ok=True)
+        with open(self.runtime_config_dir / f"{name}.json", "w") as f:
             json.dump(payload, f)
 
 
@@ -151,6 +163,53 @@ class TestToggles(_Fixture):
     def test_get_toggles_raises_for_missing_config(self):
         with self.assertRaises(FileNotFoundError):
             self.module.get_toggles("ghost")
+
+
+class TestRuntimeOverlayConfigurations(_Fixture):
+    """Default user-pipeline settings are seeds; live edits belong in runtime."""
+
+    def setUp(self):
+        super().setUp()
+        self.module._DEFAULT_CONFIGURATIONS_DIR = self.config_dir
+
+    def test_user_pipeline_reads_seed_when_no_runtime_overlay_exists(self):
+        self._write_config("user-pipeline", {
+            "cells": {},
+            "toggles": {"vision_only": False, "adversarial_diversity": False},
+        })
+        t = self.module.get_toggles("user-pipeline")
+        self.assertFalse(t["vision_only"])
+        self.assertFalse(t["adversarial_diversity"])
+        self.assertFalse((self.runtime_config_dir / "user-pipeline.json").exists())
+
+    def test_user_pipeline_runtime_overlay_overrides_seed(self):
+        self._write_config("user-pipeline", {
+            "cells": {},
+            "toggles": {"vision_only": False, "adversarial_diversity": False},
+        })
+        self._write_runtime_config("user-pipeline", {
+            "cells": {},
+            "toggles": {"vision_only": True, "adversarial_diversity": True},
+        })
+        t = self.module.get_toggles("user-pipeline")
+        self.assertTrue(t["vision_only"])
+        self.assertTrue(t["adversarial_diversity"])
+
+    def test_user_pipeline_toggle_write_creates_runtime_overlay(self):
+        self._write_config("user-pipeline", {
+            "cells": {},
+            "toggles": {"vision_only": False, "adversarial_diversity": False},
+        })
+        out = self.module.set_toggles("user-pipeline", {"vision_only": True})
+        self.assertTrue(out["vision_only"])
+
+        with open(self.config_dir / "user-pipeline.json") as f:
+            seed = json.load(f)
+        with open(self.runtime_config_dir / "user-pipeline.json") as f:
+            runtime = json.load(f)
+        self.assertFalse(seed["toggles"]["vision_only"])
+        self.assertTrue(runtime["toggles"]["vision_only"])
+        self.assertFalse(runtime["toggles"]["adversarial_diversity"])
 
 
 class TestListConfigurations(_Fixture):

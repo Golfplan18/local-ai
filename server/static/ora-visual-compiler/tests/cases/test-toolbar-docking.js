@@ -16,7 +16,7 @@
  *   7. Footprint computation: an empty edge yields zero, a non-empty one
  *      yields a positive estimate.
  *   8. Drawable region shrinks when toolbars dock and grows when they
- *      undock (move to floating).
+ *      undock (move to floating); drawing tools are edge-only.
  *   9. Konva stage resizes when a second toolbar docks to a perpendicular
  *      edge (drives the auto-resize contract from §13.1).
  *  10. Reorder via setArrangement keeps both toolbars on the same edge in
@@ -224,17 +224,29 @@ module.exports = {
           leftIds2[2] === 'ora-drawing-tools',
         'leftIds2=' + JSON.stringify(leftIds2));
 
-      // 8b) Drag a toolbar to floating (undock) — drawable canvas grows.
+      // 8b) Drag floatable toolbars to floating (undock) — drawable canvas grows.
+      panel.setDrawingToolbarVisible(false);
+      dock.setArrangement({
+        'ora-universal':  { edge: 'floating', position: 0 },
+        'test-left-2':    { edge: 'floating', position: 1 },
+        'test-bottom':    { edge: 'floating', position: 2 },
+      });
+      const fp4 = dock.getFootprints();
+      record('docking: floatable-toolbar arrangement zeros every edge footprint',
+        fp4.top === 0 && fp4.bottom === 0 && fp4.left === 0 && fp4.right === 0,
+        JSON.stringify(fp4));
+
+      panel.setDrawingToolbarVisible(true);
       dock.setArrangement({
         'ora-universal':  { edge: 'floating', position: 0 },
         'test-left-2':    { edge: 'floating', position: 1 },
         'test-bottom':    { edge: 'floating', position: 2 },
         'ora-drawing-tools': { edge: 'floating', position: 3 },
       });
-      const fp4 = dock.getFootprints();
-      record('docking: all-floating arrangement zeros every edge footprint',
-        fp4.top === 0 && fp4.bottom === 0 && fp4.left === 0 && fp4.right === 0,
-        JSON.stringify(fp4));
+      const drawingForced = dock.getArrangement()['ora-drawing-tools'];
+      record('docking: drawing toolbar cannot be arranged as floating',
+        drawingForced && drawingForced.edge === 'left',
+        JSON.stringify(drawingForced));
 
       // 11) Hit-test contract.
       // jsdom's getBoundingClientRect returns zeros, but the dock manager
@@ -312,6 +324,7 @@ module.exports = {
       // 'ora.visualPane.dockArrangement.v1' on create().
       win.localStorage.setItem('ora.visualPane.dockArrangement.v1', JSON.stringify({
         'ora-universal': { edge: 'right', position: 0 },
+        'ora-drawing-tools': { edge: 'floating', position: 0 },
       }));
       const div = mkDiv(win);
       const panel = new win.VisualPanel(div, { id: 'dock-2' });
@@ -321,12 +334,13 @@ module.exports = {
       const wrapperEdge = wrapper && wrapper.getAttribute('data-edge');
       const drawingEdge = drawingWrapper && drawingWrapper.getAttribute('data-edge');
       const inRightDock = !!div.querySelector('.ora-dock--right .ora-toolbar-wrap');
+      const drawingInLeft = !!div.querySelector('.ora-dock--left .ora-toolbar-wrap[data-toolbar-id="ora-drawing-tools"]');
       record('docking: persisted arrangement overrides default_dock',
         wrapperEdge === 'right' && inRightDock,
         'edge=' + wrapperEdge + ' inRight=' + inRightDock);
-      record('docking: drawing toolbar still defaults left when not persisted',
-        drawingEdge === 'left',
-        'drawingEdge=' + drawingEdge);
+      record('docking: persisted floating drawing toolbar is normalized left',
+        drawingEdge === 'left' && drawingInLeft,
+        'drawingEdge=' + drawingEdge + ' drawingInLeft=' + drawingInLeft);
       panel.destroy();
       win.document.body.removeChild(div);
       win.localStorage.removeItem('ora.visualPane.dockArrangement.v1');

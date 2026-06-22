@@ -2253,6 +2253,7 @@
 
     this.stage.on('mousedown touchstart', function (e) {
       // WP-7.4.4 — Space held forces pan over any target.
+      if (self._activeTool !== 'select' && !self._spaceHeld) return;
       if (!self._spaceHeld) {
         // Only pan when the click wasn't on a Konva listening target.
         if (e.target !== self.stage) {
@@ -2652,6 +2653,7 @@
       id: DRAWING_TOOLBAR_ID,
       label: 'Drawing tools',
       defaultEdge: 'left',
+      allowFloating: false,
     });
     return true;
   };
@@ -3038,6 +3040,7 @@
   };
 
   VisualPanel.prototype._onStageDown = function (e) {
+    if (this._spaceHeld) return;
     if (this._activeTool === 'select') {
       this._onSelectDown(e);
       return;

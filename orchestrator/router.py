@@ -838,7 +838,9 @@ class Router:
         return cfg
 
     def _configuration_path(self, name: str) -> Path:
-        if CONFIGURATIONS_DIR == _DEFAULT_CONFIGURATIONS_DIR and name in rp.PRESET_NAMES:
+        overlay_names = getattr(
+            rp, "RUNTIME_OVERLAY_CONFIGURATION_NAMES", rp.PRESET_NAMES)
+        if CONFIGURATIONS_DIR == _DEFAULT_CONFIGURATIONS_DIR and name in overlay_names:
             runtime = rp.configuration_runtime_path(name)
             if runtime.exists():
                 return runtime

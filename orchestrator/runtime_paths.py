@@ -18,6 +18,7 @@ RUNTIME_DATA_DIR = RUNTIME_ROOT / "data"
 RUNTIME_CONFIGURATIONS_DIR = RUNTIME_CONFIG_DIR / "configurations"
 
 PRESET_NAMES = ("free", "budget", "optimum", "premium")
+RUNTIME_OVERLAY_CONFIGURATION_NAMES = PRESET_NAMES + ("user-pipeline",)
 
 
 def seed_path(*parts: str) -> Path:
@@ -89,7 +90,7 @@ def configuration_runtime_path(name: str) -> Path:
 
 
 def configuration_path(name: str, *, for_write: bool = False) -> Path:
-    if name in PRESET_NAMES:
+    if name in RUNTIME_OVERLAY_CONFIGURATION_NAMES:
         runtime = configuration_runtime_path(name)
         if for_write or runtime.exists():
             return runtime
