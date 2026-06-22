@@ -20,6 +20,8 @@
  *   3.  setActiveTool('callout') updates active tool + ARIA.
  *   4.  Keyboard shortcuts — C, H, X, N, P each set the corresponding tool.
  *   5.  Shortcuts suppressed inside typing targets (textarea).
+ *   5b. Inline callout/sticky text inputs are not hijacked by fallback
+ *       shortcuts when the shortcut registry is unavailable.
  *   6.  _createUserAnnotation('callout') attaches to annotationLayer with
  *       full attr convention (annotationSource='user', annotationKind,
  *       userAnnotationId, targetId, text).
@@ -34,6 +36,7 @@
  *   14. Strikethrough on non-edge target → no-op + inline hint.
  *   15. Monotonic unique userAnnotationIds across all 5 kinds.
  *   16. Select mode — clicking a user annotation selects it.
+ *   16b. Double-clicking a callout/sticky opens an inline text editor.
  *   17. Del/Backspace deletes the selected annotation via keyboard.
  *   18. deleteSelectedAnnotations deletes every selected annotation.
  *   19. Undo of create removes the annotation.
@@ -217,6 +220,52 @@ module.exports = {
       win.document.body.removeChild(div);
     } catch (err) {
       record('annotation-tools: shortcut suppressed', false, 'threw: ' + (err.stack || err.message || err));
+    }
+
+    // ── 5b. Inline annotation input is not hijacked by shortcuts ───────────
+    var prevShortcuts5b = win.OraKeyboardShortcuts;
+    try {
+      const div = mkDiv(win);
+      win.OraKeyboardShortcuts = null;
+      const panel = new win.VisualPanel(div, { id: 'at-5b' });
+      panel.init();
+      panel.setActiveTool('callout');
+      let pointer = { x: 30, y: 35 };
+      panel.stage.getPointerPosition = function () { return pointer; };
+      panel.stage.fire('mousedown', {
+        target: panel.stage,
+        evt: { preventDefault: function () {} },
+      });
+      const input = div.querySelector('.vp-annotation-input');
+      if (input) {
+        input.dispatchEvent(new win.KeyboardEvent('keydown', {
+          key: 'c',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      record('annotation-tools: typing c in callout input does not dismiss input',
+        !!input && !!div.querySelector('.vp-annotation-input'),
+        'input=' + !!input + ' stillThere=' + !!div.querySelector('.vp-annotation-input'));
+      if (input) {
+        input.value = 'callout text';
+        input.dispatchEvent(new win.KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      const annotations = panel.getUserAnnotations();
+      record('annotation-tools: callout input commits after ordinary typing',
+        annotations.length === 1 && annotations[0].text === 'callout text',
+        'annotations=' + annotations.length + ' text=' + (annotations[0] && annotations[0].text));
+      panel.destroy();
+      win.document.body.removeChild(div);
+    } catch (err) {
+      record('annotation-tools: inline annotation typing target', false,
+        'threw: ' + (err.stack || err.message || err));
+    } finally {
+      win.OraKeyboardShortcuts = prevShortcuts5b;
     }
 
     // ── 6. _createUserAnnotation('callout') attr convention ────────────────
@@ -486,6 +535,57 @@ module.exports = {
       win.document.body.removeChild(div);
     } catch (err) {
       record('annotation-tools: select annotation', false, 'threw: ' + (err.stack || err.message || err));
+    }
+
+    // ── 16b. Double-click editor for callout/sticky text ───────────────────
+    var prevShortcuts16b = win.OraKeyboardShortcuts;
+    try {
+      const div = mkDiv(win);
+      win.OraKeyboardShortcuts = null;
+      const panel = new win.VisualPanel(div, { id: 'at-16b' });
+      panel.init();
+      const n = panel._createUserAnnotation('callout', {
+        text: 'old',
+        targetId: null,
+        position: { x: 50, y: 50 },
+      });
+      n.fire('dblclick', { target: n, evt: {} });
+      const input = div.querySelector('.vp-annotation-input');
+      if (input) {
+        input.dispatchEvent(new win.KeyboardEvent('keydown', {
+          key: 'c',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      const stillEditing = !!div.querySelector('.vp-annotation-input');
+      if (input) {
+        input.value = 'edited';
+        input.dispatchEvent(new win.KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      const edited = panel.getUserAnnotations()[0];
+      record('annotation-tools: double-click callout opens editable text input',
+        !!input && stillEditing && edited && edited.text === 'edited',
+        'input=' + !!input + ' stillEditing=' + stillEditing +
+          ' text=' + (edited && edited.text));
+      panel.undo();
+      const undoText = panel.getUserAnnotations()[0] && panel.getUserAnnotations()[0].text;
+      panel.redo();
+      const redoText = panel.getUserAnnotations()[0] && panel.getUserAnnotations()[0].text;
+      record('annotation-tools: callout text edit is undoable/redoable',
+        undoText === 'old' && redoText === 'edited',
+        'undo=' + undoText + ' redo=' + redoText);
+      panel.destroy();
+      win.document.body.removeChild(div);
+    } catch (err) {
+      record('annotation-tools: callout text editor', false,
+        'threw: ' + (err.stack || err.message || err));
+    } finally {
+      win.OraKeyboardShortcuts = prevShortcuts16b;
     }
 
     // ── 17. Del/Backspace deletes the selected annotation via keyboard ─────
