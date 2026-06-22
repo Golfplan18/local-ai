@@ -106,6 +106,7 @@
   var ALL   = EDGES.concat([FLOAT]);
 
   var DEFAULT_STORAGE_KEY = 'ora.visualPane.dockArrangement.v1';
+  var DEFAULT_CORNER_SAFE_PX = 44;
 
   // WP-7.1.3 — per-toolbar thickness in px keyed off data-icon-size. See
   // _estimateDockSize for the derivation (CSS --ora-toolbar-item-size + 10px
@@ -159,6 +160,9 @@
     var defaultEdges = options.defaultEdges || {};
     var onChange = (typeof options.onArrangementChanged === 'function')
                  ? options.onArrangementChanged : null;
+    var cornerSafePx = (typeof options.cornerSafePx === 'number' && options.cornerSafePx >= 0)
+      ? options.cornerSafePx
+      : DEFAULT_CORNER_SAFE_PX;
 
     // ---- registry -----------------------------------------------------------
 
@@ -176,6 +180,9 @@
     // ---- DOM scaffolding ----------------------------------------------------
 
     host.classList.add('ora-dock-host');
+    if (host.style && typeof host.style.setProperty === 'function') {
+      host.style.setProperty('--ora-dock-corner-safe', cornerSafePx + 'px');
+    }
 
     // Move every existing host child into the centre dock-content container.
     var center = doc.createElement('div');
@@ -647,10 +654,14 @@
      * as "float" — the toolbar moves to the floating layer).
      *
      * Hit zones:
-     *   - Top edge:    pointer y within EDGE_THICKNESS px of host top.
-     *   - Bottom edge: pointer y within EDGE_THICKNESS px of host bottom.
-     *   - Left edge:   pointer x within EDGE_THICKNESS px of host left.
-     *   - Right edge:  pointer x within EDGE_THICKNESS px of host right.
+     *   - Top edge:    pointer y within EDGE_THICKNESS px of host top,
+     *                  outside the protected corner gutters.
+     *   - Bottom edge: pointer y within EDGE_THICKNESS px of host bottom,
+     *                  outside the protected corner gutters.
+     *   - Left edge:   pointer x within EDGE_THICKNESS px of host left,
+     *                  outside the protected corner gutters.
+     *   - Right edge:  pointer x within EDGE_THICKNESS px of host right,
+     *                  outside the protected corner gutters.
      *
      * Inside an edge, the position is determined by which existing toolbar
      * the pointer is nearest to (above/below for vertical edges, left/right
@@ -673,6 +684,17 @@
       if (!inside) {
         return { edge: 'floating', position: slots.floating.length };
       }
+
+      var guard = Math.max(0, Math.min(cornerSafePx || 0, Math.floor(Math.min(w, h) / 2)));
+      var inTop = y <= guard;
+      var inBottom = (h - y) <= guard;
+      var inLeft = x <= guard;
+      var inRight = (w - x) <= guard;
+      if ((inTop && inLeft) || (inTop && inRight) ||
+          (inBottom && inLeft) || (inBottom && inRight)) {
+        return { edge: 'floating', position: slots.floating.length };
+      }
+
       var edge = null;
       // Distances to each edge.
       var dT = y, dB = h - y, dL = x, dR = w - x;

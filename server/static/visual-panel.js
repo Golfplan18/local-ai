@@ -202,6 +202,11 @@
   // Undo/redo stack depth cap — bounds memory in long sessions.
   var HISTORY_CAP = 50;
 
+  // Built-in drawing toolbar: the original WP-3.1 tool strip now participates
+  // in the WP-7.1 dock surface so it can be moved, hidden, and restored.
+  var DRAWING_TOOLBAR_ID = 'ora-drawing-tools';
+  var DRAWING_TOOLBAR_STORAGE_KEY = 'ora.visualPane.drawingToolbar.visible.v1';
+
   // ── WP-4.1 constants ──────────────────────────────────────────────────────
   // Max image upload size — configurable. Chosen to align with typical
   // vision-model input limits and avoid memory pressure when the data URL is
@@ -302,6 +307,9 @@
     // reacts to "arrangement_changed" by resizing the Konva stage.
     this._dockController       = null;   // OraVisualDock instance (null if dock module absent)
     this._universalToolbarCtl  = null;   // OraVisualToolbar render() controller
+    this._drawingToolbarCtl    = null;   // controller facade for the built-in drawing toolbar
+    this._drawingToolbarVisible = true;  // persisted via DRAWING_TOOLBAR_STORAGE_KEY
+    this._drawingToolbarParkingEl = null; // hidden parent used while toolbar is toggled off
   }
 
   // ── init / destroy ────────────────────────────────────────────────────────
@@ -327,7 +335,7 @@
       : '';
 
     this.el.innerHTML =
-      '<div class="visual-panel__toolbar" id="vp-toolbar-' + id + '" role="toolbar" aria-label="Drawing tools">' +
+      '<div class="visual-panel__toolbar" id="vp-toolbar-' + id + '" data-toolbar-id="' + DRAWING_TOOLBAR_ID + '" data-default-dock="left" role="toolbar" aria-label="Drawing tools">' +
         '<button class="vp-tool-btn" data-tool="select"   aria-pressed="true"  aria-label="Select (S)"   title="Select (S)">\u2316</button>' +
         '<button class="vp-tool-btn" data-tool="rect"     aria-pressed="false" aria-label="Rectangle (R)" title="Rectangle (R)">\u25AD</button>' +
         '<button class="vp-tool-btn" data-tool="ellipse"  aria-pressed="false" aria-label="Ellipse (E)"   title="Ellipse (E)">\u25EF</button>' +
@@ -382,6 +390,8 @@
     this._helpBtn     = this.el.querySelector('#vp-help-' + id);
     this._fallbackEl  = this.el.querySelector('#vp-fallback-' + id);
     this._annotHintEl = this.el.querySelector('#vp-annot-hint-' + id);
+    this._drawingToolbarVisible = this._readDrawingToolbarVisible();
+    if (this._toolbarEl) this._toolbarEl.hidden = !this._drawingToolbarVisible;
 
     // WP-4.1 — image upload hooks
     this._fileInputEl    = this.el.querySelector('#vp-file-input-' + id);
@@ -502,6 +512,8 @@
       try { this._universalToolbarCtl.destroy(); } catch (e) { /* ignore */ }
       this._universalToolbarCtl = null;
     }
+    this._drawingToolbarCtl = null;
+    this._drawingToolbarParkingEl = null;
     if (this._dockController && typeof this._dockController.destroy === 'function') {
       try { this._dockController.destroy(); } catch (e) { /* ignore */ }
       this._dockController = null;
@@ -2337,6 +2349,7 @@
   VisualPanel.prototype._mountUniversalToolbar = function () {
     var Toolbar = (typeof window !== 'undefined' && window.OraVisualToolbar) || null;
     var Dock    = (typeof window !== 'undefined' && window.OraVisualDock)    || null;
+    if (this._dockController) return;
     if (!Toolbar || !Dock) {
       // Either dependency missing: leave the legacy toolbar in place.
       return;
@@ -2534,8 +2547,10 @@
     // (viewport, error bar, indicators, etc.) into a centre dock-content
     // container; from this point onwards, "the canvas" lives at
     // host > .ora-dock--middle > .ora-dock-content > .visual-panel__viewport.
+    var defaultEdges = { 'ora-universal': def.default_dock || 'top' };
+    defaultEdges[DRAWING_TOOLBAR_ID] = 'left';
     var dock = Dock.create(this.el, {
-      defaultEdges: { 'ora-universal': def.default_dock || 'top' },
+      defaultEdges: defaultEdges,
       onArrangementChanged: function (footprints /*, arrangement */) {
         panel._resyncStageFromDock(footprints);
       },
@@ -2552,6 +2567,8 @@
     // picker (S / M / L / XL). Persist selection to localStorage, restore
     // on next panel init.
     try { this._wireIconSizePicker(dock); } catch (e) { /* silent */ }
+
+    this._mountDrawingToolbarInDock(dock);
 
     dock.mount(ctl, {
       id: def.id || 'ora-universal',
@@ -2576,6 +2593,114 @@
     if (typeof ctl.refreshEnabled === 'function') {
       try { ctl.refreshEnabled(); } catch (e) { /* ignore */ }
     }
+  };
+
+  VisualPanel.prototype._readDrawingToolbarVisible = function () {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return true;
+      var raw = window.localStorage.getItem(DRAWING_TOOLBAR_STORAGE_KEY);
+      if (raw == null) return true;
+      return !(raw === '0' || raw === 'false');
+    } catch (e) { return true; }
+  };
+
+  VisualPanel.prototype._writeDrawingToolbarVisible = function (visible) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(DRAWING_TOOLBAR_STORAGE_KEY, visible ? '1' : '0');
+      }
+    } catch (e) { /* quota / disabled storage */ }
+  };
+
+  VisualPanel.prototype._makeDrawingToolbarController = function () {
+    if (!this._toolbarEl) return null;
+    if (!this._drawingToolbarCtl) {
+      this._drawingToolbarCtl = {
+        id: DRAWING_TOOLBAR_ID,
+        definition: {
+          id: DRAWING_TOOLBAR_ID,
+          label: 'Drawing tools',
+          default_dock: 'left',
+        },
+        el: this._toolbarEl,
+        destroy: function () { /* visual-panel owns the legacy toolbar */ },
+      };
+    }
+    return this._drawingToolbarCtl;
+  };
+
+  VisualPanel.prototype._ensureDrawingToolbarParking = function () {
+    if (this._drawingToolbarParkingEl) return this._drawingToolbarParkingEl;
+    var doc = (this.el && this.el.ownerDocument) ||
+              (typeof document !== 'undefined' ? document : null);
+    if (!doc || !this.el) return null;
+    var parking = doc.createElement('div');
+    parking.className = 'visual-panel__toolbar-parking';
+    parking.hidden = true;
+    var parent = this.el.querySelector && this.el.querySelector('.ora-dock-content');
+    (parent || this.el).appendChild(parking);
+    this._drawingToolbarParkingEl = parking;
+    return parking;
+  };
+
+  VisualPanel.prototype._mountDrawingToolbarInDock = function (dock) {
+    if (!dock || !this._toolbarEl || !this._drawingToolbarVisible) return false;
+    var ctl = this._makeDrawingToolbarController();
+    if (!ctl) return false;
+    this._toolbarEl.hidden = false;
+    dock.mount(ctl, {
+      id: DRAWING_TOOLBAR_ID,
+      label: 'Drawing tools',
+      defaultEdge: 'left',
+    });
+    return true;
+  };
+
+  VisualPanel.prototype.listBuiltInToolbars = function () {
+    return [{
+      id: DRAWING_TOOLBAR_ID,
+      label: 'Drawing tools',
+      default_dock: 'left',
+    }];
+  };
+
+  VisualPanel.prototype.isDrawingToolbarVisible = function () {
+    if (!this._toolbarEl) return false;
+    if (this._dockController && typeof this._dockController.getArrangement === 'function') {
+      var arr = this._dockController.getArrangement() || {};
+      return !!arr[DRAWING_TOOLBAR_ID];
+    }
+    return !this._toolbarEl.hidden;
+  };
+
+  VisualPanel.prototype.setDrawingToolbarVisible = function (visible) {
+    visible = visible !== false;
+    this._drawingToolbarVisible = visible;
+    this._writeDrawingToolbarVisible(visible);
+    if (!this._toolbarEl) return false;
+
+    if (visible) {
+      this._toolbarEl.hidden = false;
+      if (this._dockController) {
+        this._mountDrawingToolbarInDock(this._dockController);
+      }
+    } else {
+      if (this._dockController && typeof this._dockController.unmount === 'function') {
+        this._dockController.unmount(DRAWING_TOOLBAR_ID);
+      }
+      var parking = this._ensureDrawingToolbarParking();
+      if (parking) parking.appendChild(this._toolbarEl);
+      this._toolbarEl.hidden = true;
+    }
+
+    try {
+      if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+        document.dispatchEvent(new CustomEvent('ora:visual-toolbar-changed', {
+          detail: { panel: this, id: DRAWING_TOOLBAR_ID, mounted: visible }
+        }));
+      }
+    } catch (e) { /* event is best-effort */ }
+    return true;
   };
 
   /**

@@ -7,34 +7,36 @@
  * so we call the public testing methods directly where a drag would be
  * required):
  *
- *   1. Toolbar markup exists with every WP-3.1 tool button.
- *   2. Default active tool is 'select'; ARIA-pressed reflects it.
- *   3. setActiveTool('rect') flips active state + ARIA.
- *   4. Keyboard shortcut 'R' sets rect; 'S' sets select; 'T' sets text.
- *   5. Keyboard shortcut is ignored when focus is in a TEXTAREA.
- *   6. _createShape('rect') appends a user-shape to userInputLayer with
+ *   - Toolbar markup exists with every WP-3.1 tool button.
+ *   - Default active tool is 'select'; ARIA-pressed reflects it.
+ *   - setActiveTool('rect') flips active state + ARIA.
+ *   - Toolbar button clicks route through the delegated handler and the
+ *     selected drawing tool can create a shape through the stage handlers.
+ *   - Keyboard shortcut 'R' sets rect; 'S' sets select; 'T' sets text.
+ *   - Keyboard shortcut is ignored when focus is in a TEXTAREA.
+ *   - _createShape('rect') appends a user-shape to userInputLayer with
  *      all required attrs (userShapeType, userShapeId, userLabel,
  *      userCluster, connEndpointStart, connEndpointEnd).
- *   7. _createShape yields unique, monotonic userShapeIds.
- *   8. _createShape('line') with explicit endpoints preserves connEndpoint*.
- *   9. _createShape('text') with a label preserves it in userLabel.
- *  10. _deleteShape removes node + drops selection; line/arrow endpoint
+ *   - _createShape yields unique, monotonic userShapeIds.
+ *   - _createShape('line') with explicit endpoints preserves connEndpoint*.
+ *   - _createShape('text') with a label preserves it in userLabel.
+ *   - _deleteShape removes node + drops selection; line/arrow endpoint
  *      anchors pointing at the deleted shape are nulled.
- *  11. Undo after create restores shape count to prior state.
- *  12. Redo after undo re-adds the shape.
- *  13. Undo/redo cursor moves correctly.
- *  14. Undo after delete restores the shape AND its inbound anchor refs.
- *  15. History depth is capped at HISTORY_CAP (50).
- *  16. clearUserInput empties userInputLayer only; backgroundLayer +
+ *   - Undo after create restores shape count to prior state.
+ *   - Redo after undo re-adds the shape.
+ *   - Undo/redo cursor moves correctly.
+ *   - Undo after delete restores the shape AND its inbound anchor refs.
+ *   - History depth is capped at HISTORY_CAP (50).
+ *   - clearUserInput empties userInputLayer only; backgroundLayer +
  *      annotationLayer preserved.
- *  17. clearUserInput is undoable.
- *  18. Ctrl+Z triggers undo; Ctrl+Shift+Z triggers redo.
- *  19. _moveShape updates position and is undoable.
- *  20. Konva.Node.toJSON() on userInputLayer round-trips the attr
+ *   - clearUserInput is undoable.
+ *   - Ctrl+Z triggers undo; Ctrl+Shift+Z triggers redo.
+ *   - _moveShape updates position and is undoable.
+ *   - Konva.Node.toJSON() on userInputLayer round-trips the attr
  *      convention (what WP-3.2's serializer will consume).
- *  21. setActiveTool to unknown name is a no-op.
- *  22. OraPanels.visual.setActiveTool/undo/redo route to active instance.
- *  23. deleteSelected deletes all selected shapes.
+ *   - setActiveTool to unknown name is a no-op.
+ *   - OraPanels.visual.setActiveTool/undo/redo route to active instance.
+ *   - deleteSelected deletes all selected shapes.
  */
 
 'use strict';
@@ -126,6 +128,36 @@ module.exports = {
       win.document.body.removeChild(div);
     } catch (err) {
       record('shape-tools: setActiveTool', false, 'threw: ' + (err.stack || err.message || err));
+    }
+
+    // ── 3b. Toolbar click delegation ───────────────────────────────────────
+    try {
+      const div = mkDiv(win);
+      const panel = new win.VisualPanel(div, { id: 'st-3b' });
+      panel.init();
+      const rectBtn = div.querySelector('.vp-tool-btn[data-tool="rect"]');
+      const selectBtn = div.querySelector('.vp-tool-btn[data-tool="select"]');
+      rectBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      record('shape-tools: toolbar click sets active tool to rect',
+        panel.getActiveTool() === 'rect',
+        'active=' + panel.getActiveTool());
+      let pointer = { x: 20, y: 20 };
+      panel.stage.getPointerPosition = function () { return pointer; };
+      panel._onStageDown({ target: panel.stage });
+      pointer = { x: 90, y: 70 };
+      panel._onStageMove({});
+      panel._onStageUp({});
+      record('shape-tools: toolbar-selected rect tool draws a shape',
+        countUserShapes(panel) === 1,
+        'count=' + countUserShapes(panel));
+      selectBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      record('shape-tools: toolbar click returns active tool to select',
+        panel.getActiveTool() === 'select',
+        'active=' + panel.getActiveTool());
+      panel.destroy();
+      win.document.body.removeChild(div);
+    } catch (err) {
+      record('shape-tools: toolbar click delegation', false, 'threw: ' + (err.stack || err.message || err));
     }
 
     // ── 4. Keyboard shortcuts R/S/T ────────────────────────────────────────

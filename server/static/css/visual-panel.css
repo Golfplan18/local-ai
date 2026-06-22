@@ -1035,6 +1035,11 @@ body.ora-show-visual-help .visual-panel__help-button {
   flex-direction: row;
   width: 100%;
   min-height: 0;
+  box-sizing: border-box;
+  padding-left: var(--ora-dock-corner-safe, 44px);
+  padding-right: var(--ora-dock-corner-safe, 44px);
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 .ora-dock--top    { border-bottom: 1px solid var(--border, #e0e0d8); }
 .ora-dock--bottom { border-top:    1px solid var(--border, #e0e0d8); }
@@ -1050,6 +1055,11 @@ body.ora-show-visual-help .visual-panel__help-button {
 .ora-dock--right {
   flex-direction: column;
   min-width: 0;
+  box-sizing: border-box;
+  padding-top: var(--ora-dock-corner-safe, 44px);
+  padding-bottom: var(--ora-dock-corner-safe, 44px);
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .ora-dock--left  { border-right: 1px solid var(--border, #e0e0d8); }
 .ora-dock--right { border-left:  1px solid var(--border, #e0e0d8); }
@@ -1086,8 +1096,8 @@ body.ora-show-visual-help .visual-panel__help-button {
 .ora-dock--floating .ora-toolbar-wrap {
   pointer-events: auto;
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: var(--ora-dock-corner-safe, 44px);
+  left: var(--ora-dock-corner-safe, 44px);
   box-shadow: 0 2px 8px rgba(0,0,0,.18);
   background: var(--ora-vis-surface, var(--bg-toolbar, var(--bg-panel, #fafaf7)));
   border: 1px solid var(--border, #e0e0d8);
@@ -1107,6 +1117,9 @@ body.ora-show-visual-help .visual-panel__help-button {
 }
 .ora-toolbar-wrap > .ora-toolbar {
   flex: 1 1 auto;
+}
+.ora-toolbar-wrap > .visual-panel__toolbar {
+  border-bottom: 0;
 }
 
 /* Drag handle — small grippable area. Six dots laid out in a 2x3 grid via
@@ -1189,6 +1202,22 @@ body.ora-show-visual-help .visual-panel__help-button {
  * so we need to swap when its wrapper says vertical. */
 .ora-toolbar-wrap[data-orientation="vertical"] .ora-toolbar {
   flex-direction: column;
+}
+.ora-toolbar-wrap[data-orientation="vertical"] .visual-panel__toolbar {
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 6px;
+}
+.ora-toolbar-wrap[data-orientation="vertical"] .visual-panel__toolbar .vp-tool-divider {
+  width: 18px;
+  height: 1px;
+  margin: 2px 0;
+}
+.ora-toolbar-wrap[data-orientation="vertical"] .visual-panel__toolbar .vp-tool-spacer {
+  flex: 0 0 6px;
+}
+.ora-toolbar-wrap[data-orientation="horizontal"] .visual-panel__toolbar .vp-tool-spacer {
+  flex: 1 1 auto;
 }
 
 /* ── Audio/Video Phase 1 — capture controls toolbar ────────────────────────
