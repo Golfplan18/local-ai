@@ -9,8 +9,9 @@
  *   • mountPack / unmountPack toggle the dock arrangement.
  *   • Active set persists to localStorage across calls.
  *   • mountAll re-mounts only the previously-active set on reboot.
- *   • The selector popover renders one row per available pack with the
- *     correct active checkmark, and clicking a row toggles dock state.
+ *   • The selector popover renders the built-in Drawing tools row plus one
+ *     row per available pack with the correct active checkmark, and clicking
+ *     a row toggles dock state.
  *   • Outside-click / Escape close the popover.
  *   • Shift+T toggles; plain T does not; Shift+T inside an INPUT does not.
  *
@@ -258,7 +259,21 @@ function makePanel() {
     return { left: 600, top: 100, right: 1200, bottom: 700,
              width: 600, height: 600, x: 600, y: 100 };
   };
-  return { _dockController: makeDock(), el: paneEl };
+  return {
+    _dockController: makeDock(),
+    el: paneEl,
+    _drawingToolbarVisible: true,
+    listBuiltInToolbars: function () {
+      return [{ id: 'ora-drawing-tools', label: 'Drawing tools', default_dock: 'left' }];
+    },
+    isDrawingToolbarVisible: function () {
+      return this._drawingToolbarVisible;
+    },
+    setDrawingToolbarVisible: function (visible) {
+      this._drawingToolbarVisible = visible !== false;
+      return true;
+    }
+  };
 }
 
 // ── localStorage mock ─────────────────────────────────────────────────────
@@ -489,7 +504,7 @@ test('mountAll on a fresh user (empty localStorage) docks nothing', function () 
 
 // ── Selector popover ──────────────────────────────────────────────────────
 
-test('open() shows popover with one row per available pack', function () {
+test('open() shows popover with built-in drawing toolbar plus one row per available pack', function () {
   var b = boot();
   var panel = makePanel();
   b.setActivePanel(panel);
@@ -500,7 +515,9 @@ test('open() shows popover with one row per available pack', function () {
   var host = b.doc.getElementById('ora-toolbar-selector-popover');
   assertTrue(host !== null);
   var bodyEl = host.querySelector('.ora-toolbar-selector-body');
-  assertEqual(bodyEl.children.length, 4, 'should render 4 pack rows');
+  assertEqual(bodyEl.children.length, 5, 'should render drawing toolbar + 4 pack rows');
+  assertEqual(bodyEl.children[0].getAttribute('data-toolbar-id'), 'ora-drawing-tools');
+  assertEqual(bodyEl.children[0].getAttribute('aria-pressed'), 'true');
 });
 
 test('popover is appended INSIDE the visual pane element (scoping rule)', function () {
@@ -548,6 +565,28 @@ test('row click on inactive pack mounts it and updates the row', function () {
     return r.getAttribute('data-pack-id') === 'cartoon-studio';
   })[0];
   assertEqual(refreshed.getAttribute('aria-pressed'), 'true');
+});
+
+test('row click on active built-in drawing toolbar hides it and updates the row', function () {
+  var b = boot();
+  var panel = makePanel();
+  b.setActivePanel(panel);
+  b.Selector.open(b.spineBtn, panel);
+
+  var host = b.doc.getElementById('ora-toolbar-selector-popover');
+  var bodyEl = host.querySelector('.ora-toolbar-selector-body');
+  var drawingRow = bodyEl.children.filter(function (r) {
+    return r.getAttribute('data-toolbar-id') === 'ora-drawing-tools';
+  })[0];
+  assertEqual(drawingRow.getAttribute('aria-pressed'), 'true');
+
+  drawingRow.click();
+  assertFalse(panel.isDrawingToolbarVisible(), 'drawing toolbar should be hidden after click');
+
+  var refreshed = bodyEl.children.filter(function (r) {
+    return r.getAttribute('data-toolbar-id') === 'ora-drawing-tools';
+  })[0];
+  assertEqual(refreshed.getAttribute('aria-pressed'), 'false');
 });
 
 test('row click on an already-active pack unmounts it', function () {

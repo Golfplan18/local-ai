@@ -1,10 +1,11 @@
 /* v3-toolbar-selector.js — V3 specialty-pack toolbar launcher (2026-05-01)
  *
- * Small popover that lists every registered specialty-pack toolbar (Diagram
- * Thinking, Photo Editor, Mood Board, Cartoon Studio, …) and lets the user
- * dock or undock each one. Replaces the earlier behavior where every loaded
- * pack auto-docked on V3 boot (which jammed the left edge with four toolbars
- * the user mostly didn't want visible at once).
+ * Small popover that lists built-in visual-pane toolbars plus every
+ * registered specialty-pack toolbar (Diagram Thinking, Photo Editor, Mood
+ * Board, Cartoon Studio, …) and lets the user dock or undock each one.
+ * Replaces the earlier behavior where every loaded pack auto-docked on V3
+ * boot (which jammed the left edge with four toolbars the user mostly didn't
+ * want visible at once).
  *
  * Wires:
  *   • Spine button "spineToolbarSelector" (Position 8) → toggle popover.
@@ -17,12 +18,15 @@
  *   toggle(anchorEl) — open/close convenience for the spine button.
  *
  * Behavior
+ *   • Reads built-ins from panel.listBuiltInToolbars().
  *   • Reads pack list from OraV3PackToolbars.listAvailablePacks().
+ *   • Built-in activation goes through panel.setDrawingToolbarVisible().
  *   • Activation goes through OraV3PackToolbars.mountPack(panel, id).
  *   • Deactivation goes through OraV3PackToolbars.unmountPack(panel, id).
  *   • The active set persists in localStorage via mountPack/unmountPack.
- *   • Listens on `ora:pack-toolbar-changed` to keep the popover in sync if
- *     a pack toggles while the popover is open (e.g., another module mounts).
+ *   • Listens on `ora:pack-toolbar-changed` and
+ *     `ora:visual-toolbar-changed` to keep the popover in sync if a toolbar
+ *     toggles while the popover is open (e.g., another module mounts).
  *
  * Styling is inline so the module is fully self-contained and theme-safe.
  */
@@ -108,11 +112,14 @@
 
   // ── Row rendering ──────────────────────────────────────────────────────
 
-  function _makeRow(pack, isActive, panel) {
+  function _makeRow(entry, isActive, panel, kind) {
+    kind = kind || 'pack';
     var row = document.createElement('button');
     row.type = 'button';
     row.className = 'ora-toolbar-selector-row';
-    row.setAttribute('data-pack-id', pack.id);
+    row.setAttribute('data-toolbar-kind', kind);
+    row.setAttribute('data-toolbar-id', entry.id);
+    if (kind === 'pack') row.setAttribute('data-pack-id', entry.id);
     row.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     row.style.cssText = [
       'display:flex', 'align-items:center', 'gap:8px',
@@ -130,11 +137,11 @@
       'display:inline-block;width:14px;text-align:center;font-weight:700;color:var(--ora-accent, #50fa7b);';
 
     var label = document.createElement('span');
-    label.textContent = pack.label || pack.id;
+    label.textContent = entry.label || entry.id;
     label.style.cssText = 'flex:1;';
 
     var dock = document.createElement('span');
-    dock.textContent = pack.default_dock || 'left';
+    dock.textContent = entry.default_dock || 'left';
     dock.style.cssText =
       'font-size:11px;opacity:0.5;font-family:var(--ora-font-mono, ui-monospace, monospace);';
 
@@ -154,16 +161,24 @@
     });
 
     row.addEventListener('click', function () {
-      var Packs = window.OraV3PackToolbars;
-      if (!Packs) return;
       var p = panel || _activePanel();
       if (!p) {
         console.warn('[v3-toolbar-selector] no active visual panel');
         return;
       }
       var nowActive = (row.getAttribute('aria-pressed') === 'true');
-      if (nowActive) Packs.unmountPack(p, pack.id);
-      else           Packs.mountPack(p, pack.id);
+      if (kind === 'builtin') {
+        if (typeof p.setDrawingToolbarVisible === 'function') {
+          p.setDrawingToolbarVisible(!nowActive);
+          _renderRows();
+        }
+        return;
+      }
+
+      var Packs = window.OraV3PackToolbars;
+      if (!Packs) return;
+      if (nowActive) Packs.unmountPack(p, entry.id);
+      else           Packs.mountPack(p, entry.id);
       // Re-render to reflect new state. mountPack/unmountPack also fire
       // ora:pack-toolbar-changed which our listener picks up.
     });
@@ -174,20 +189,35 @@
   function _renderRows() {
     if (!_popover) return;
     var Packs = window.OraV3PackToolbars;
-    if (!Packs || typeof Packs.listAvailablePacks !== 'function') return;
 
-    var panel = _activePanel();
-    var packs = Packs.listAvailablePacks();
+    var panel = (_popover && _popover.panel) || _activePanel();
+    var packs = (Packs && typeof Packs.listAvailablePacks === 'function')
+      ? Packs.listAvailablePacks()
+      : [];
+    var builtins = [];
+    if (panel && typeof panel.listBuiltInToolbars === 'function') {
+      try { builtins = panel.listBuiltInToolbars() || []; }
+      catch (e) { builtins = []; }
+    }
     var body = _popover.body;
     body.innerHTML = '';
 
-    if (!packs.length) {
+    if (!builtins.length && !packs.length) {
       var empty = document.createElement('div');
-      empty.textContent = 'No specialty packs registered.';
+      empty.textContent = 'No toolbars registered.';
       empty.style.cssText = 'opacity:0.6;padding:8px 6px;font-style:italic;';
       body.appendChild(empty);
       return;
     }
+
+    builtins.forEach(function (t) {
+      var active = false;
+      if (t.id === 'ora-drawing-tools' && panel &&
+          typeof panel.isDrawingToolbarVisible === 'function') {
+        active = panel.isDrawingToolbarVisible();
+      }
+      body.appendChild(_makeRow(t, active, panel, 'builtin'));
+    });
 
     packs.forEach(function (p) {
       var active = panel ? Packs.isMounted(panel, p.id) : false;
@@ -264,6 +294,7 @@
     document.addEventListener('mousedown', _outsideClickHandler, true);
     document.addEventListener('keydown', _escHandler);
     document.addEventListener('ora:pack-toolbar-changed', _packChangedHandler);
+    document.addEventListener('ora:visual-toolbar-changed', _packChangedHandler);
     _docListenersAttached = true;
   }
 
@@ -272,6 +303,7 @@
     document.removeEventListener('mousedown', _outsideClickHandler, true);
     document.removeEventListener('keydown', _escHandler);
     document.removeEventListener('ora:pack-toolbar-changed', _packChangedHandler);
+    document.removeEventListener('ora:visual-toolbar-changed', _packChangedHandler);
     _docListenersAttached = false;
   }
 

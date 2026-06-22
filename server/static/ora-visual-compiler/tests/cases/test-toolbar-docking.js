@@ -8,8 +8,9 @@
  *   2. Universal toolbar pre-registers in run.js (so panel mount finds it).
  *   3. VisualPanel.init() with both deps available builds the dock skeleton:
  *      ora-dock-host class, four edge containers, centre dock-content,
- *      and the universal toolbar wrapper appended to .ora-dock--top.
- *   4. The drag handle (.ora-toolbar-handle) is present on the wrapper.
+ *      the universal toolbar wrapper appended to .ora-dock--top, and the
+ *      built-in drawing toolbar wrapper appended to .ora-dock--left.
+ *   4. Drag handles (.ora-toolbar-handle) are present on both wrappers.
  *   5. setArrangement() moves the toolbar to a new edge — DOM follows.
  *   6. Dock manager honours an initial arrangement override via panel mount.
  *   7. Footprint computation: an empty edge yields zero, a non-empty one
@@ -20,8 +21,9 @@
  *      edge (drives the auto-resize contract from §13.1).
  *  10. Reorder via setArrangement keeps both toolbars on the same edge in
  *      the correct order.
- *  11. _hitTestDrop returns top/bottom/left/right within EDGE_THICK and
- *      'floating' when pointer is in the canvas interior.
+ *  11. _hitTestDrop returns top/bottom/left/right within EDGE_THICK,
+ *      'floating' when pointer is in the canvas interior, and 'floating'
+ *      inside the protected corner gutters.
  *  12. Persistence round-trip: setArrangement → getArrangement returns the
  *      same shape (write-then-read).
  *  13. Destroying the panel tears down the dock manager (no leaked DOM).
@@ -96,9 +98,12 @@ module.exports = {
       const dockContent  = div.querySelector('.ora-dock-content');
       const floatingDock = div.querySelector('.ora-dock--floating');
       const wrapper      = div.querySelector('.ora-toolbar-wrap[data-toolbar-id="ora-universal"]');
+      const drawingWrap  = div.querySelector('.ora-toolbar-wrap[data-toolbar-id="ora-drawing-tools"]');
       const wrapperEdge  = wrapper ? wrapper.getAttribute('data-edge') : null;
+      const drawingEdge  = drawingWrap ? drawingWrap.getAttribute('data-edge') : null;
       const toolbarRoot  = wrapper && wrapper.querySelector('.ora-toolbar');
       const inTopDock    = topDock && topDock.contains(wrapper);
+      const drawingInLeft = leftDock && leftDock.contains(drawingWrap);
 
       record('docking: host gets ora-dock-host class',
         hasHostClass, 'classList=' + div.className);
@@ -113,22 +118,32 @@ module.exports = {
       record('docking: universal toolbar wrapper docked at top by default',
         wrapperEdge === 'top' && inTopDock,
         'edge=' + wrapperEdge + ' inTop=' + !!inTopDock);
+      record('docking: drawing toolbar wrapper docked at left by default',
+        drawingEdge === 'left' && drawingInLeft,
+        'edge=' + drawingEdge + ' inLeft=' + !!drawingInLeft);
       record('docking: rendered toolbar root present inside wrapper',
         !!toolbarRoot, '');
 
       // 4) Drag handle present.
       const handle = wrapper && wrapper.querySelector('.ora-toolbar-handle');
+      const drawingHandle = drawingWrap && drawingWrap.querySelector('.ora-toolbar-handle');
       record('docking: drag handle present on wrapper',
         !!handle && handle.getAttribute('data-handle-for') === 'ora-universal',
         handle ? 'data-handle-for=' + handle.getAttribute('data-handle-for') : 'no handle');
+      record('docking: drag handle present on drawing toolbar',
+        !!drawingHandle && drawingHandle.getAttribute('data-handle-for') === 'ora-drawing-tools',
+        drawingHandle ? 'data-handle-for=' + drawingHandle.getAttribute('data-handle-for') : 'no handle');
 
       // 7) Footprint check — top edge has a toolbar (estimated 36px),
-      //     other edges are empty (zero footprint).
+      //     left edge has the built-in drawing toolbar, and bottom/right
+      //     are empty (zero footprint).
       const fp1 = panel._dockController.getFootprints();
       record('docking: top footprint > 0 with toolbar',
         fp1.top > 0, JSON.stringify(fp1));
-      record('docking: empty edges have zero footprint',
-        fp1.bottom === 0 && fp1.left === 0 && fp1.right === 0,
+      record('docking: left footprint > 0 with drawing toolbar',
+        fp1.left > 0, JSON.stringify(fp1));
+      record('docking: empty bottom/right edges have zero footprint',
+        fp1.bottom === 0 && fp1.right === 0,
         JSON.stringify(fp1));
 
       // 5) setArrangement to move ora-universal to left.
@@ -183,16 +198,19 @@ module.exports = {
       );
       dock.mount(tb3, { id: 'test-left-2', label: 'Left2', defaultEdge: 'left' });
       const arr1 = dock.getArrangement();
-      // Both ora-universal and test-left-2 should be on left (positions 0/1).
+      // Built-in drawing tools, ora-universal, and test-left-2 should be on left.
       const leftIds1 = Object.keys(arr1)
         .filter(function (id) { return arr1[id].edge === 'left'; })
         .sort(function (a, b) { return arr1[a].position - arr1[b].position; });
-      record('docking: two toolbars stack on the same edge',
-        leftIds1.length === 2 && leftIds1[0] === 'ora-universal' && leftIds1[1] === 'test-left-2',
+      record('docking: drawing/universal/test toolbars stack on the same edge',
+        leftIds1.indexOf('ora-drawing-tools') >= 0 &&
+          leftIds1.indexOf('ora-universal') >= 0 &&
+          leftIds1.indexOf('test-left-2') >= 0,
         'leftIds1=' + JSON.stringify(leftIds1));
       // Reorder: put test-left-2 first.
       dock.setArrangement({
         'ora-universal':  { edge: 'left',   position: 1 },
+        'ora-drawing-tools': { edge: 'left', position: 2 },
         'test-left-2':    { edge: 'left',   position: 0 },
         'test-bottom':    { edge: 'bottom', position: 0 },
       });
@@ -201,7 +219,9 @@ module.exports = {
         .filter(function (id) { return arr2[id].edge === 'left'; })
         .sort(function (a, b) { return arr2[a].position - arr2[b].position; });
       record('docking: setArrangement reorders toolbars on the same edge',
-        leftIds2[0] === 'test-left-2' && leftIds2[1] === 'ora-universal',
+        leftIds2[0] === 'test-left-2' &&
+          leftIds2[1] === 'ora-universal' &&
+          leftIds2[2] === 'ora-drawing-tools',
         'leftIds2=' + JSON.stringify(leftIds2));
 
       // 8b) Drag a toolbar to floating (undock) — drawable canvas grows.
@@ -209,6 +229,7 @@ module.exports = {
         'ora-universal':  { edge: 'floating', position: 0 },
         'test-left-2':    { edge: 'floating', position: 1 },
         'test-bottom':    { edge: 'floating', position: 2 },
+        'ora-drawing-tools': { edge: 'floating', position: 3 },
       });
       const fp4 = dock.getFootprints();
       record('docking: all-floating arrangement zeros every edge footprint',
@@ -227,6 +248,7 @@ module.exports = {
       const hit_left   = dock._hitTestDrop(5, 250);
       const hit_right  = dock._hitTestDrop(795, 250);
       const hit_mid    = dock._hitTestDrop(400, 250);
+      const hit_corner = dock._hitTestDrop(5, 5);
       record('docking: hit-test top within EDGE_THICK',
         hit_top && hit_top.edge === 'top',
         JSON.stringify(hit_top));
@@ -242,12 +264,16 @@ module.exports = {
       record('docking: hit-test interior canvas yields floating',
         hit_mid && hit_mid.edge === 'floating',
         JSON.stringify(hit_mid));
+      record('docking: hit-test protected corner yields floating',
+        hit_corner && hit_corner.edge === 'floating',
+        JSON.stringify(hit_corner));
 
       // 12) Persistence round-trip.
       const desired = {
         'ora-universal':  { edge: 'right',  position: 0 },
         'test-left-2':    { edge: 'top',    position: 0 },
         'test-bottom':    { edge: 'top',    position: 1 },
+        'ora-drawing-tools': { edge: 'left', position: 0 },
       };
       dock.setArrangement(desired);
       const got = dock.getArrangement();
@@ -291,11 +317,16 @@ module.exports = {
       const panel = new win.VisualPanel(div, { id: 'dock-2' });
       panel.init();
       const wrapper = div.querySelector('.ora-toolbar-wrap[data-toolbar-id="ora-universal"]');
+      const drawingWrapper = div.querySelector('.ora-toolbar-wrap[data-toolbar-id="ora-drawing-tools"]');
       const wrapperEdge = wrapper && wrapper.getAttribute('data-edge');
+      const drawingEdge = drawingWrapper && drawingWrapper.getAttribute('data-edge');
       const inRightDock = !!div.querySelector('.ora-dock--right .ora-toolbar-wrap');
       record('docking: persisted arrangement overrides default_dock',
         wrapperEdge === 'right' && inRightDock,
         'edge=' + wrapperEdge + ' inRight=' + inRightDock);
+      record('docking: drawing toolbar still defaults left when not persisted',
+        drawingEdge === 'left',
+        'drawingEdge=' + drawingEdge);
       panel.destroy();
       win.document.body.removeChild(div);
       win.localStorage.removeItem('ora.visualPane.dockArrangement.v1');
