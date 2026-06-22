@@ -14,6 +14,8 @@
  *     selected drawing tool can create a shape through the stage handlers.
  *   - Toolbar-selected line/text tools work through real stage events without
  *     being intercepted by empty-canvas pan.
+ *   - Typing inside inline text inputs is not hijacked by fallback tool
+ *     shortcuts when the shortcut registry is unavailable.
  *   - Keyboard shortcut 'R' sets rect; 'S' sets select; 'T' sets text.
  *   - Keyboard shortcut is ignored when focus is in a TEXTAREA.
  *   - _createShape('rect') appends a user-shape to userInputLayer with
@@ -29,8 +31,8 @@
  *   - Undo/redo cursor moves correctly.
  *   - Undo after delete restores the shape AND its inbound anchor refs.
  *   - History depth is capped at HISTORY_CAP (50).
- *   - clearUserInput empties userInputLayer only; backgroundLayer +
- *      annotationLayer preserved.
+ *   - clearUserInput empties userInputLayer + user annotations while
+ *      preserving model annotations.
  *   - clearUserInput is undoable.
  *   - Ctrl+Z triggers undo; Ctrl+Shift+Z triggers redo.
  *   - _moveShape updates position and is undoable.
@@ -238,6 +240,52 @@ module.exports = {
     } catch (err) {
       record('shape-tools: live stage-event drawing path', false,
         'threw: ' + (err.stack || err.message || err));
+    }
+
+    // ── 3d. Inline text typing is not hijacked by fallback shortcuts ────────
+    var prevShortcuts3d = win.OraKeyboardShortcuts;
+    try {
+      const div = mkDiv(win);
+      win.OraKeyboardShortcuts = null;
+      const panel = new win.VisualPanel(div, { id: 'st-3d' });
+      panel.init();
+      panel.setActiveTool('text');
+      let pointer = { x: 65, y: 45 };
+      panel.stage.getPointerPosition = function () { return pointer; };
+      panel.stage.fire('mousedown', {
+        target: panel.stage,
+        evt: { preventDefault: function () {} },
+      });
+      const input = div.querySelector('.vp-text-input');
+      if (input) {
+        input.dispatchEvent(new win.KeyboardEvent('keydown', {
+          key: 't',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      record('shape-tools: typing t in text input does not dismiss input',
+        !!input && !!div.querySelector('.vp-text-input'),
+        'input=' + !!input + ' stillThere=' + !!div.querySelector('.vp-text-input'));
+      if (input) {
+        input.value = 'typed text';
+        input.dispatchEvent(new win.KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      const texts = userShapesOfType(panel, 'text');
+      record('shape-tools: text input commits after ordinary typing',
+        texts.length === 1 && texts[0].getAttr('userLabel') === 'typed text',
+        'texts=' + texts.length + ' label=' + (texts[0] && texts[0].getAttr('userLabel')));
+      panel.destroy();
+      win.document.body.removeChild(div);
+    } catch (err) {
+      record('shape-tools: inline text typing target', false,
+        'threw: ' + (err.stack || err.message || err));
+    } finally {
+      win.OraKeyboardShortcuts = prevShortcuts3d;
     }
 
     // ── 4. Keyboard shortcuts R/S/T ────────────────────────────────────────
@@ -491,26 +539,40 @@ module.exports = {
       const div = mkDiv(win);
       const panel = new win.VisualPanel(div, { id: 'st-16' });
       panel.init();
-      // Seed a Konva node on backgroundLayer + annotationLayer so we can
-      // verify they are untouched.
-      panel.annotationLayer.add(new win.Konva.Rect({ x: 1, y: 1, width: 2, height: 2, name: 'annot-seed' }));
+      // Seed a model annotation so we can verify clearUserInput removes only
+      // user-authored annotations from annotationLayer.
+      panel.annotationLayer.add(new win.Konva.Rect({
+        x: 1, y: 1, width: 2, height: 2,
+        annotationSource: 'model',
+        name: 'annot-seed',
+      }));
+      panel._createUserAnnotation('callout', {
+        text: 'clear me',
+        targetId: null,
+        position: { x: 20, y: 20 },
+      });
       panel._createShape('rect', { x: 0, y: 0, width: 30, height: 30 });
       panel._createShape('ellipse', { x: 50, y: 50, radiusX: 20, radiusY: 20 });
       const userBefore = countUserShapes(panel);
       const annotBefore = panel.annotationLayer.getChildren().length;
+      const userAnnotBefore = panel.getUserAnnotations().length;
       panel.clearUserInput();
       const userAfter = countUserShapes(panel);
       const annotAfter = panel.annotationLayer.getChildren().length;
+      const userAnnotAfter = panel.getUserAnnotations().length;
       record('shape-tools: clearUserInput empties userInputLayer',
         userBefore === 2 && userAfter === 0,
         'user before=' + userBefore + ' after=' + userAfter);
-      record('shape-tools: clearUserInput leaves annotationLayer intact',
-        annotBefore === annotAfter && annotAfter === 1,
-        'annot before=' + annotBefore + ' after=' + annotAfter);
+      record('shape-tools: clearUserInput removes user annotations only',
+        annotBefore === 2 && userAnnotBefore === 1 &&
+          annotAfter === 1 && userAnnotAfter === 0,
+        'annot before=' + annotBefore + ' userAnnotBefore=' + userAnnotBefore +
+          ' annot after=' + annotAfter + ' userAnnotAfter=' + userAnnotAfter);
       panel.undo();
       record('shape-tools: clearUserInput is undoable',
-        countUserShapes(panel) === 2,
-        'after undo=' + countUserShapes(panel));
+        countUserShapes(panel) === 2 && panel.getUserAnnotations().length === 1,
+        'after undo shapes=' + countUserShapes(panel) +
+          ' annotations=' + panel.getUserAnnotations().length);
       panel.destroy();
       win.document.body.removeChild(div);
     } catch (err) {

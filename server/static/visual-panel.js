@@ -1710,6 +1710,7 @@
       // Ignore shortcuts when focus is in a text input / textarea / the
       // chat composer / our own inline text-tool input. Shortcuts should
       // never hijack typing in form fields.
+      if (self._isTypingTarget(e.target)) return;
       if (!self._isTypingTarget(e.target)) {
         // ── WP-7.4.4 — pan/zoom shortcuts ────────────────────────────────
         // Cmd+0 / Ctrl+0 → zoom to 100% (checked before plain shortcuts).
@@ -3241,7 +3242,7 @@
         connEndpointEnd:   endAnchor,
       });
     }
-    this.userInputLayer.draw();
+    if (this.userInputLayer) this.userInputLayer.draw();
   };
 
   /**
@@ -4063,37 +4064,84 @@
   // ── clear-user-input ─────────────────────────────────────────────────────
 
   /**
-   * Wipe userInputLayer only. backgroundLayer + annotationLayer +
-   * selectionLayer (semantic highlights) are preserved. Pushes a single
-   * undo frame that restores the entire layer.
+   * Wipe user-authored canvas material: shapes/text on userInputLayer and
+   * user annotations on annotationLayer. backgroundLayer + model-emitted
+   * annotations + semantic selection are preserved. Pushes a single undo
+   * frame that restores user shapes and annotations.
    */
   VisualPanel.prototype.clearUserInput = function () {
-    if (!this.userInputLayer) return;
+    if (!this.userInputLayer && !this.annotationLayer) return;
     // WP-4.1 — also release any pending image. Rationale: the Clear User
     // Drawings affordance is the user's explicit "reset my attachments"
     // gesture; we don't want a stale image from an earlier draft to ride
     // along on the next message.
     this.clearPendingImage();
 
-    var shapes = this.userInputLayer.find('.user-shape');
-    if (shapes.length === 0) return;
-    var snapshots = [];
-    for (var i = 0; i < shapes.length; i++) snapshots.push(shapes[i].toJSON());
-    for (var j = 0; j < shapes.length; j++) shapes[j].destroy();
+    var shapes = this.userInputLayer ? this.userInputLayer.find('.user-shape') : [];
+    var annotations = [];
+    if (this.annotationLayer) {
+      var children = this.annotationLayer.getChildren();
+      for (var ai = 0; ai < children.length; ai++) {
+        if (children[ai].getAttr && children[ai].getAttr('annotationSource') === 'user') {
+          annotations.push(children[ai]);
+        }
+      }
+    }
+    if (shapes.length === 0 && annotations.length === 0) return;
+
+    var shapeSnapshots = [];
+    var annotationSnapshots = [];
+    for (var i = 0; i < shapes.length; i++) shapeSnapshots.push(shapes[i].toJSON());
+    for (var j = 0; j < annotations.length; j++) annotationSnapshots.push(annotations[j].toJSON());
+    for (var si = 0; si < shapes.length; si++) shapes[si].destroy();
+    for (var aj = 0; aj < annotations.length; aj++) {
+      try {
+        if (annotations[aj]._vpAnimation && annotations[aj]._vpAnimation.stop) {
+          annotations[aj]._vpAnimation.stop();
+        }
+      } catch (e) { /* ignore */ }
+      annotations[aj].destroy();
+    }
     this._selectedShapeIds = [];
+    this._selectedAnnotIds = [];
     this._redrawSelection();
+    this._redrawAnnotationSelection();
     this.userInputLayer.draw();
+    if (this.annotationLayer) this.annotationLayer.draw();
 
     var self = this;
     this._pushHistory({
       label: 'clear-user-input',
       undoFn: function () {
-        for (var k = 0; k < snapshots.length; k++) self._reinsertShapeJSON(snapshots[k]);
+        for (var k = 0; k < shapeSnapshots.length; k++) self._reinsertShapeJSON(shapeSnapshots[k]);
+        for (var ak = 0; ak < annotationSnapshots.length; ak++) {
+          self._reinsertAnnotationJSON(annotationSnapshots[ak]);
+        }
       },
       redoFn: function () {
-        var all = self.userInputLayer.find('.user-shape');
-        for (var k = 0; k < all.length; k++) all[k].destroy();
-        self.userInputLayer.draw();
+        if (self.userInputLayer) {
+          var all = self.userInputLayer.find('.user-shape');
+          for (var k = 0; k < all.length; k++) all[k].destroy();
+          self.userInputLayer.draw();
+        }
+        if (self.annotationLayer) {
+          var anns = self.annotationLayer.getChildren();
+          for (var ak = anns.length - 1; ak >= 0; ak--) {
+            if (anns[ak].getAttr && anns[ak].getAttr('annotationSource') === 'user') {
+              try {
+                if (anns[ak]._vpAnimation && anns[ak]._vpAnimation.stop) {
+                  anns[ak]._vpAnimation.stop();
+                }
+              } catch (e) { /* ignore */ }
+              anns[ak].destroy();
+            }
+          }
+          self.annotationLayer.draw();
+        }
+        self._selectedShapeIds = [];
+        self._selectedAnnotIds = [];
+        self._redrawSelection();
+        self._redrawAnnotationSelection();
       },
     });
   };
@@ -5242,6 +5290,165 @@
     this._annotInputEl = null;
   };
 
+  VisualPanel.prototype._wireAnnotationTextEditor = function (node) {
+    if (!node || !node.getAttr || typeof node.on !== 'function') return;
+    var kind = node.getAttr('annotationKind');
+    if (kind !== 'callout' && kind !== 'sticky') return;
+    var self = this;
+    try { if (typeof node.off === 'function') node.off('dblclick.vp5edit dbltap.vp5edit'); }
+    catch (e) { /* ignore */ }
+    node.on('dblclick.vp5edit dbltap.vp5edit', function (ev) {
+      if (ev && typeof ev.cancelBubble !== 'undefined') ev.cancelBubble = true;
+      self._openAnnotationTextEditor(node);
+    });
+  };
+
+  VisualPanel.prototype._openAnnotationTextEditor = function (node) {
+    if (!this._viewportEl || !node || !node.getAttr) return;
+    var kind = node.getAttr('annotationKind');
+    if (kind !== 'callout' && kind !== 'sticky') return;
+    this._dismissTextInput();
+    this._dismissAnnotationInput();
+
+    var doc = this.el.ownerDocument || document;
+    var input = doc.createElement('input');
+    input.type = 'text';
+    input.className = 'vp-annotation-input';
+    input.id = 'vp-annotation-input-' + this.panelId;
+    input.value = node.getAttr('text') || '';
+
+    var box;
+    try { box = node.getClientRect({ relativeTo: this.stage }); }
+    catch (err) { box = { x: node.x ? node.x() : 0, y: node.y ? node.y() : 0, width: 160, height: 24 }; }
+    if (!box) box = { x: 0, y: 0, width: 160, height: 24 };
+    var t = this._transform || { x: 0, y: 0, scale: 1 };
+    var inputW = Math.max(120, Math.min((box.width || 160) * (t.scale || 1), 320));
+    input.style.position = 'absolute';
+    input.style.left = ((box.x * (t.scale || 1) + t.x)) + 'px';
+    input.style.top  = ((box.y * (t.scale || 1) + t.y)) + 'px';
+    input.style.width = inputW + 'px';
+    this._viewportEl.appendChild(input);
+    this._annotInputEl = input;
+
+    var self = this;
+    var prevText = node.getAttr('text') || '';
+    var committed = false;
+    var commit = function () {
+      if (committed) return;
+      committed = true;
+      var value = (self._annotInputEl && self._annotInputEl.value) || '';
+      self._dismissAnnotationInput();
+      if (value === prevText) return;
+      self._setAnnotationText(node, value, prevText);
+    };
+    input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+      else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        committed = true;
+        self._dismissAnnotationInput();
+      }
+    });
+    input.addEventListener('blur', commit);
+    setTimeout(function () {
+      try { input.focus(); input.select(); } catch (err) { /* ignore */ }
+    }, 0);
+  };
+
+  VisualPanel.prototype._setAnnotationText = function (node, text, prevText) {
+    if (!node || !node.getAttr) return;
+    var kind = node.getAttr('annotationKind');
+    if (kind !== 'callout' && kind !== 'sticky') return;
+    text = text || '';
+    if (typeof prevText !== 'string') prevText = node.getAttr('text') || '';
+    this._applyAnnotationTextInternal(node, text);
+    if (this._suppressHistory || prevText === text) return;
+    var id = node.getAttr('userAnnotationId');
+    var self = this;
+    this._pushHistory({
+      label: 'annot-edit-text',
+      undoFn: function () {
+        var n = self._findAnnotationById(id);
+        if (n) self._applyAnnotationTextInternal(n, prevText);
+      },
+      redoFn: function () {
+        var n = self._findAnnotationById(id);
+        if (n) self._applyAnnotationTextInternal(n, text);
+      },
+    });
+  };
+
+  VisualPanel.prototype._applyAnnotationTextInternal = function (node, text) {
+    if (!node || !node.getAttr) return;
+    text = text || '';
+    node.setAttrs({ text: text });
+    node.attrs.text = text;
+    var textNode = this._findAnnotationTextNode(node);
+    if (textNode && typeof textNode.text === 'function') textNode.text(text);
+    this._resizeTextAnnotation(node);
+    var layer = node.getLayer && node.getLayer();
+    if (layer) layer.draw();
+  };
+
+  VisualPanel.prototype._findAnnotationTextNode = function (node) {
+    if (!node || typeof node.getChildren !== 'function') return null;
+    var children = node.getChildren();
+    var firstText = null;
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      var cls = (child.getClassName && child.getClassName()) || '';
+      if (cls !== 'Text') continue;
+      if (!firstText) firstText = child;
+      var name = (child.name && child.name()) || '';
+      if (/user-(callout|sticky)-text/.test(name)) return child;
+    }
+    return firstText;
+  };
+
+  VisualPanel.prototype._findAnnotationChildByClass = function (node, className) {
+    if (!node || typeof node.getChildren !== 'function') return null;
+    var children = node.getChildren();
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].getClassName && children[i].getClassName() === className) {
+        return children[i];
+      }
+    }
+    return null;
+  };
+
+  VisualPanel.prototype._resizeTextAnnotation = function (node) {
+    if (!node || !node.getAttr) return;
+    var kind = node.getAttr('annotationKind');
+    var text = node.getAttr('text') || '';
+    var textNode = this._findAnnotationTextNode(node);
+    var rect = this._findAnnotationChildByClass(node, 'Rect');
+    if (!textNode || !rect) return;
+    if (kind === 'callout') {
+      var cPad = 6;
+      var cW = Math.max(60, Math.min(320, text.length * 7 + cPad * 2));
+      var cH = Math.max(22, Math.ceil(Math.max(text.length, 1) / 34) * 14 + cPad * 2);
+      rect.width(cW);
+      rect.height(cH);
+      textNode.setAttrs({ x: cPad, y: cPad, width: cW - cPad * 2 });
+      if (typeof textNode.height === 'function') textNode.height(cH - cPad * 2);
+      var children = node.getChildren && node.getChildren();
+      if (children) {
+        for (var i = 0; i < children.length; i++) {
+          if (children[i].getClassName && children[i].getClassName() === 'Line') {
+            var pts = children[i].points ? children[i].points().slice() : [];
+            if (pts.length >= 4) children[i].points([0, cH, pts[2], pts[3]]);
+          }
+        }
+      }
+    } else if (kind === 'sticky') {
+      var sW = Math.max(100, Math.min(240, text.length * 7 + 20));
+      var sH = Math.max(60, Math.ceil(Math.max(text.length, 1) / 24) * 16 + 24);
+      rect.width(sW);
+      rect.height(sH);
+      textNode.setAttrs({ x: 8, y: 8, width: sW - 16 });
+    }
+  };
+
   /**
    * Show a non-blocking inline hint (e.g. "Highlight targets must be on a
    * diagram element."). Auto-hides after ANNOTATION_HINT_AUTOHIDE_MS.
@@ -5353,6 +5560,7 @@
         node._vpPrevPos = curr;
       });
     }
+    this._wireAnnotationTextEditor(node);
 
     if (!this._suppressHistory) {
       var serialized = node.toJSON();
@@ -5631,6 +5839,7 @@
         if (anim.start) anim.start();
       } catch (e) { /* ignore */ }
     }
+    this._wireAnnotationTextEditor(node);
     this.annotationLayer.draw();
     return node;
   };
