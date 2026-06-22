@@ -12,6 +12,8 @@
  *   - setActiveTool('rect') flips active state + ARIA.
  *   - Toolbar button clicks route through the delegated handler and the
  *     selected drawing tool can create a shape through the stage handlers.
+ *   - Toolbar-selected line/text tools work through real stage events without
+ *     being intercepted by empty-canvas pan.
  *   - Keyboard shortcut 'R' sets rect; 'S' sets select; 'T' sets text.
  *   - Keyboard shortcut is ignored when focus is in a TEXTAREA.
  *   - _createShape('rect') appends a user-shape to userInputLayer with
@@ -52,6 +54,16 @@ function mkDiv(win) {
 function countUserShapes(panel) {
   if (!panel.userInputLayer) return 0;
   return panel.userInputLayer.find('.user-shape').length;
+}
+
+function userShapesOfType(panel, type) {
+  if (!panel.userInputLayer) return [];
+  var nodes = panel.userInputLayer.find('.user-shape');
+  var out = [];
+  for (var i = 0; i < nodes.length; i++) {
+    if (nodes[i].getAttr('userShapeType') === type) out.push(nodes[i]);
+  }
+  return out;
 }
 
 module.exports = {
@@ -158,6 +170,74 @@ module.exports = {
       win.document.body.removeChild(div);
     } catch (err) {
       record('shape-tools: toolbar click delegation', false, 'threw: ' + (err.stack || err.message || err));
+    }
+
+    // ── 3c. Live stage-event path does not get swallowed by pan ─────────────
+    try {
+      const div = mkDiv(win);
+      const panel = new win.VisualPanel(div, { id: 'st-3c' });
+      panel.init();
+      const lineBtn = div.querySelector('.vp-tool-btn[data-tool="line"]');
+      const textBtn = div.querySelector('.vp-tool-btn[data-tool="text"]');
+      const selectBtn = div.querySelector('.vp-tool-btn[data-tool="select"]');
+      let pointer = { x: 30, y: 30 };
+      panel.stage.getPointerPosition = function () { return pointer; };
+
+      lineBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      panel.stage.fire('mousedown', {
+        target: panel.stage,
+        evt: { preventDefault: function () {} },
+      });
+      const lineStartedPan = panel._panning;
+      pointer = { x: 140, y: 85 };
+      panel.stage.fire('mousemove', { target: panel.stage, evt: {} });
+      panel.stage.fire('mouseup', { target: panel.stage, evt: {} });
+      const lines = userShapesOfType(panel, 'line');
+      record('shape-tools: toolbar-selected line draws via live stage events',
+        !lineStartedPan && lines.length === 1,
+        'panning=' + lineStartedPan + ' lines=' + lines.length);
+
+      textBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      pointer = { x: 80, y: 55 };
+      panel.stage.fire('mousedown', {
+        target: panel.stage,
+        evt: { preventDefault: function () {} },
+      });
+      const textStartedPan = panel._panning;
+      const input = div.querySelector('.vp-text-input');
+      if (input) {
+        input.value = 'Live text';
+        input.dispatchEvent(new win.KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      const texts = userShapesOfType(panel, 'text');
+      record('shape-tools: toolbar-selected text inserts via live stage events',
+        !textStartedPan && !!input && texts.length === 1 &&
+          texts[0].getAttr('userLabel') === 'Live text',
+        'panning=' + textStartedPan + ' input=' + !!input + ' texts=' + texts.length);
+
+      selectBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      pointer = { x: 20, y: 20 };
+      panel.stage.fire('mousedown', {
+        target: panel.stage,
+        evt: { preventDefault: function () {} },
+      });
+      const selectStartedPan = panel._panning;
+      pointer = { x: 45, y: 35 };
+      panel.stage.fire('mousemove', { target: panel.stage, evt: {} });
+      panel.stage.fire('mouseup', { target: panel.stage, evt: {} });
+      record('shape-tools: select tool still pans empty canvas',
+        selectStartedPan && panel._panning === false,
+        'started=' + selectStartedPan + ' ended=' + panel._panning);
+
+      panel.destroy();
+      win.document.body.removeChild(div);
+    } catch (err) {
+      record('shape-tools: live stage-event drawing path', false,
+        'threw: ' + (err.stack || err.message || err));
     }
 
     // ── 4. Keyboard shortcuts R/S/T ────────────────────────────────────────

@@ -49,6 +49,7 @@
  *                          controller.definition.label or controller.id).
  *       options.defaultEdge — edge used when no persisted/option arrangement
  *                          exists.
+ *       options.allowFloating — false keeps the toolbar on edge docks only.
  *       Returns the wrapper element (.ora-toolbar-wrap).
  *
  *     unmount(id)
@@ -166,7 +167,7 @@
 
     // ---- registry -----------------------------------------------------------
 
-    var toolbars = Object.create(null);  // { id: { id, controller, wrapper, label, defaultEdge } }
+    var toolbars = Object.create(null);  // { id: { id, controller, wrapper, label, defaultEdge, allowFloating } }
     // Edge → ordered list of toolbar ids.
     var slots = { top: [], bottom: [], left: [], right: [], floating: [] };
     // Initial arrangement from persistence + options.initialArrangement.
@@ -480,7 +481,12 @@
         if (!toolbars[id]) return;
         var entry = arrangement[id];
         if (!_isObj(entry)) return;
+        var t = toolbars[id];
         var edge = _normEdge(entry.edge);
+        if (edge === FLOAT && t && t.allowFloating === false) {
+          edge = _normEdge(t.defaultEdge);
+          if (edge === FLOAT) edge = 'left';
+        }
         var pos = (typeof entry.position === 'number') ? entry.position : 0;
         perEdge[edge].push({ id: id, position: pos });
       });
@@ -517,26 +523,31 @@
       var defLabel = (toolbarController.definition && toolbarController.definition.label) ||
                      toolbarController.id || id;
       var label = mountOpts.label || defLabel;
+      var allowFloating = mountOpts.allowFloating !== false;
 
-      var defaultEdge = _resolveSeedEdge(id,
+      var homeEdge = _normEdge(
         mountOpts.defaultEdge ||
         (toolbarController.el.getAttribute('data-default-dock')) ||
         'top'
       );
+      var initialEdge = _resolveSeedEdge(id, homeEdge);
+      if (!allowFloating && initialEdge === FLOAT) initialEdge = homeEdge;
       var seedPos = _resolveSeedPos(id);
 
       // Build the wrapper: handle + toolbar root.
       var wrap = doc.createElement('div');
       wrap.className = 'ora-toolbar-wrap';
       wrap.setAttribute('data-toolbar-id', id);
-      wrap.setAttribute('data-edge', defaultEdge);
-      wrap.setAttribute('data-orientation', _orientationFor(defaultEdge));
+      wrap.setAttribute('data-edge', initialEdge);
+      wrap.setAttribute('data-orientation', _orientationFor(initialEdge));
 
       var handle = doc.createElement('button');
       handle.type = 'button';
       handle.className = 'ora-toolbar-handle';
       handle.setAttribute('aria-label', 'Drag to dock ' + label);
-      handle.setAttribute('title', 'Drag to dock ' + label + ' (or drag away to float)');
+      handle.setAttribute('title', allowFloating
+        ? 'Drag to dock ' + label + ' (or drag away to float)'
+        : 'Drag to dock ' + label);
       handle.setAttribute('data-handle-for', id);
       handle.innerHTML = '<span class="ora-toolbar-handle__grip" aria-hidden="true"></span>';
 
@@ -564,10 +575,11 @@
         wrapper: wrap,
         handle: handle,
         label: label,
-        defaultEdge: defaultEdge,
+        defaultEdge: homeEdge,
+        allowFloating: allowFloating,
       };
 
-      _placeInSlot(id, defaultEdge, seedPos);
+      _placeInSlot(id, initialEdge, seedPos);
       _wireDrag(toolbars[id]);
       _emitChange();
       return wrap;
@@ -616,7 +628,8 @@
       };
       var onPointerUp = function (e) {
         if (!_dragState) return;
-        var target = _hitTestDrop(e.clientX, e.clientY);
+        var target = _normalizeTargetForToolbar(
+          _dragState.id, _hitTestDrop(e.clientX, e.clientY));
         host.classList.remove('ora-dock-host--dragging');
         _clearDropPreview();
         doc.removeEventListener('pointermove', onPointerMove);
@@ -710,7 +723,8 @@
       }
       // Determine insertion position by walking the existing toolbars on
       // that edge and finding the slot whose midpoint the pointer is past.
-      var ids = slots[edge].filter(function (id) { return id !== _dragState.id; });
+      var draggingId = _dragState && _dragState.id;
+      var ids = slots[edge].filter(function (id) { return id !== draggingId; });
       var pos = ids.length;  // default: end
       var dockEl = dockEls[edge];
       if (dockEl && ids.length) {
@@ -731,9 +745,20 @@
       return { edge: edge, position: pos };
     }
 
+    function _normalizeTargetForToolbar(id, target) {
+      if (!target) return null;
+      var t = toolbars[id];
+      if (target.edge !== FLOAT || !t || t.allowFloating !== false) return target;
+      var edge = _normEdge(t.defaultEdge);
+      if (edge === FLOAT) edge = 'left';
+      var ids = slots[edge].filter(function (existingId) { return existingId !== id; });
+      return { edge: edge, position: ids.length };
+    }
+
     function _showDropPreview(clientX, clientY) {
       _clearDropPreview();
-      var target = _hitTestDrop(clientX, clientY);
+      var target = _normalizeTargetForToolbar(
+        _dragState && _dragState.id, _hitTestDrop(clientX, clientY));
       if (!target) return;
       var dockEl = dockEls[target.edge];
       if (!dockEl) return;

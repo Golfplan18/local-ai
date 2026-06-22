@@ -133,6 +133,7 @@ config/configurations/campaign-*.json
 data/visual-emission-log.jsonl
 data/maintenance-state.json
 data/maintenance-results.jsonl
+# Live runtime overlays, including user-pipeline configuration edits.
 data/runtime/
 data/claude-code-runs/
 

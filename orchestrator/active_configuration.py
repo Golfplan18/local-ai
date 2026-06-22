@@ -37,7 +37,8 @@ PRESET_TOGGLES_PATH = DATA_DIR / "preset-toggles.json"
 CONFIGURATIONS_DIR = ORA_HOME / "config" / "configurations"
 _DEFAULT_CONFIGURATIONS_DIR = CONFIGURATIONS_DIR
 RUNTIME_CONFIGURATIONS_DIR = rp.RUNTIME_CONFIGURATIONS_DIR
-_PRESET_NAMES = set(rp.PRESET_NAMES)
+_RUNTIME_OVERLAY_CONFIG_NAMES = set(getattr(
+    rp, "RUNTIME_OVERLAY_CONFIGURATION_NAMES", rp.PRESET_NAMES))
 
 # When the pointer file is missing entirely (fresh install), fall back
 # to this name. Matches the historic Router default for "interactive"
@@ -98,7 +99,7 @@ def _runtime_overlay_active() -> bool:
 
 
 def _config_path(name: str, *, for_write: bool = False) -> Path:
-    if _runtime_overlay_active() and name in _PRESET_NAMES:
+    if _runtime_overlay_active() and name in _RUNTIME_OVERLAY_CONFIG_NAMES:
         runtime = RUNTIME_CONFIGURATIONS_DIR / f"{name}.json"
         if for_write or runtime.exists():
             return runtime
