@@ -110,6 +110,8 @@ class TestV3ThemeApi(unittest.TestCase):
         self.assertIn("--ora-wordmark-base: #555555;", converted)
         self.assertIn("--ora-mode-private-pane-border: #008000;", converted)
         self.assertIn("--ora-vis-bg: #ffffff;", converted)
+        self.assertIn("--ora-visual-toolbar-bg: #eeeeee;", converted)
+        self.assertIn("--ora-visual-toolbar-border: #cccccc;", converted)
         self.assertNotIn(".workspace-tabs", converted)
 
     def test_install_converts_and_keeps_existing_theme(self):

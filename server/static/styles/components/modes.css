@@ -375,7 +375,7 @@ body.stealth-mode .bridge-mode-label {
    any) keep their original styling. */
 .right-pane.visual-panel {
   --bg-panel:           transparent;
-  --bg-toolbar:         var(--background-secondary, transparent);
+  --bg-toolbar:         var(--ora-visual-toolbar-bg, var(--background-secondary, transparent));
   --text-primary:       var(--text-normal);
   --text-secondary:     var(--text-muted);
   --border:             var(--background-modifier-border);
@@ -397,44 +397,58 @@ body.stealth-mode .bridge-mode-label {
   box-shadow: 0 0 0 2px var(--interactive-accent-faint, rgba(80, 250, 123, 0.2));
 }
 
-/* V3 Backlog polish 2026-04-30 — toolbar as floating overlay so the
+/* V3 Backlog polish 2026-04-30 — toolbars as floating overlays so the
    canvas takes the full panel area. The OraVisualDock system wraps
-   the toolbar in .ora-dock--top, which by default is a flex child
-   that consumes ~37px of vertical space at the top of the panel.
-   Lifting .ora-dock--top out of the flow lets the middle dock (the
-   viewport) fill the full panel height; the toolbar overlays the
-   top edge as a floating chip. */
-.right-pane.visual-panel .ora-dock--top {
+   toolbars in edge docks, which by default are flex children that consume
+   canvas space. Lifting top/bottom out of the flow lets the viewport fill
+   the panel while the toolbar overlays its edge as a floating chip. */
+.right-pane.visual-panel .ora-dock--top,
+.right-pane.visual-panel .ora-dock--bottom {
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
   z-index: 10;
-  border-bottom: none;
   background: transparent;
   pointer-events: none;
 }
-.right-pane.visual-panel .ora-dock--top > * {
+.right-pane.visual-panel .ora-dock--top {
+  top: 0;
+  border-bottom: none;
+}
+.right-pane.visual-panel .ora-dock--bottom {
+  bottom: 0;
+  border-top: none;
+}
+.right-pane.visual-panel .ora-dock--top > *,
+.right-pane.visual-panel .ora-dock--bottom > * {
   pointer-events: auto;
 }
 
-/* V3 Backlog polish 2026-04-30 follow-up — same treatment for the LEFT
+/* V3 Backlog polish 2026-04-30 follow-up — same treatment for side
    dock that holds category toolbars (annotation, shapes, ai-generate,
    image, etc.). Without this, every active category toolbar carves
    a vertical strip out of the canvas. The floating overlay keeps the
    toolbar reachable while the full canvas remains usable. */
-.right-pane.visual-panel .ora-dock--left {
+.right-pane.visual-panel .ora-dock--left,
+.right-pane.visual-panel .ora-dock--right {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
   z-index: 10;
-  border-right: none;
   background: transparent;
   pointer-events: none;
   width: auto;
 }
-.right-pane.visual-panel .ora-dock--left > * {
+.right-pane.visual-panel .ora-dock--left {
+  left: 0;
+  border-right: none;
+}
+.right-pane.visual-panel .ora-dock--right {
+  right: 0;
+  border-left: none;
+}
+.right-pane.visual-panel .ora-dock--left > *,
+.right-pane.visual-panel .ora-dock--right > * {
   pointer-events: auto;
 }
 
@@ -456,11 +470,11 @@ body.stealth-mode .bridge-mode-label {
   margin: 4px;
   border-radius: 6px;
   padding: 2px 4px;
-  background: var(--background-secondary, rgba(40, 42, 54, 0.88));
+  background: var(--ora-visual-toolbar-bg, var(--background-secondary, rgba(40, 42, 54, 0.88)));
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--background-modifier-border, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--ora-visual-toolbar-border, var(--background-modifier-border, rgba(255, 255, 255, 0.06)));
   flex-wrap: wrap;
 }
 

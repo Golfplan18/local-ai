@@ -157,6 +157,10 @@
               :            '--ora-output-pane-border',
             type: 'color',
           },
+          ...(isCanvas ? [
+            { label: 'Toolbar background', var: '--ora-visual-toolbar-bg', type: 'color' },
+            { label: 'Toolbar border', var: '--ora-visual-toolbar-border', type: 'color' },
+          ] : []),
         ];
       },
     },

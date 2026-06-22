@@ -8227,6 +8227,8 @@ def _v3_apply_scope_derivations(source, out, scope):
         "--ora-output-pane-border": border,
         "--ora-visual-canvas-border": border,
         "--ora-visual-canvas-bg": secondary,
+        "--ora-visual-toolbar-bg": secondary,
+        "--ora-visual-toolbar-border": border,
         "--ora-mode-private-pane-border": green,
         "--ora-mode-private-button-border": green,
         "--ora-mode-private-button-icon": green,

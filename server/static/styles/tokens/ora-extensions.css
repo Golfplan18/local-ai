@@ -27,6 +27,8 @@ body {
   /* Visual canvas background — separate from text output panes so the
      visual area can be themed independently (default unchanged). */
   --ora-visual-canvas-bg: var(--background-secondary);
+  --ora-visual-toolbar-bg: var(--background-secondary);
+  --ora-visual-toolbar-border: var(--background-modifier-border);
 }
 
 /* ============================================================
