@@ -106,8 +106,22 @@ window.OraVisualCompiler._vendor.structurizrMini.renderer = (function () {
   }
 
   function synthesizeView(ast, level) {
-    // Use the first softwareSystem as default scope.
-    const scope = ast.model.softwareSystems[0];
+    // Choose the scope system deliberately rather than blindly taking [0].
+    // External systems are commonly declared FIRST in a DSL, so [0] would scope
+    // a container view to a system with no containers (→ an empty diagram) and a
+    // context view to a peripheral external. Prefer the right subject:
+    //   container → a system that actually HAS containers;
+    //   context   → the first non-external (internal) system.
+    const systems = ast.model.softwareSystems || [];
+    let scope;
+    if (level === 'container') {
+      scope = systems.filter(function (s) {
+        return s.containers && s.containers.length > 0;
+      })[0];
+    } else {
+      scope = systems.filter(function (s) { return !s.external; })[0];
+    }
+    if (!scope) scope = systems[0];
     if (!scope) return null;
     return {
       kind: level === 'context' ? 'systemContext' : 'container',
@@ -283,7 +297,10 @@ window.OraVisualCompiler._vendor.structurizrMini.renderer = (function () {
     const edges = ast.model.relationships
       .filter(function (r) { return elSet.has(r.fromId) && elSet.has(r.toId); });
 
-    return { elements: elements, edges: edges, view: view };
+    // The container view sits inside ONE software system; C4 draws that system
+    // as a dashed boundary enclosing its containers (drawn in toSvg).
+    return { elements: elements, edges: edges, view: view,
+             boundaryLabel: scope && scope.name ? scope.name : '' };
   }
 
   // ── Column / row placement ────────────────────────────────────────────────
@@ -409,6 +426,36 @@ window.OraVisualCompiler._vendor.structurizrMini.renderer = (function () {
       '</marker>' +
       '</defs>');
 
+    // System boundary (container view): a dashed enclosure around the system's
+    // containers with a corner label — the C4 convention that says "everything
+    // inside is one software system." Drawn first so it sits behind shapes.
+    if (level === 'container' && pipeline.boundaryLabel) {
+      const conts = elements.filter(function (el) { return el.kind === 'container'; });
+      if (conts.length) {
+        let bx = Infinity, by = Infinity, bX = 0, bY = 0;
+        conts.forEach(function (el) {
+          if (el.x < bx) bx = el.x;
+          if (el.y < by) by = el.y;
+          if (el.x + el.w > bX) bX = el.x + el.w;
+          if (el.y + el.h > bY) bY = el.y + el.h;
+        });
+        const m = 18;                       // padding around the containers
+        const lblPad = 16;                  // room for the corner label
+        parts.push(
+          '  <g class="ora-visual__c4-boundary-group">' +
+          '<rect class="ora-visual__c4-boundary" ' +
+          'x="' + (bx - m).toFixed(1) + '" y="' + (by - m - lblPad).toFixed(1) + '" ' +
+          'width="' + (bX - bx + 2 * m).toFixed(1) + '" ' +
+          'height="' + (bY - by + 2 * m + lblPad).toFixed(1) + '" ' +
+          'rx="8" ry="8" />' +
+          '<text class="ora-visual__c4-boundary-label" ' +
+          'x="' + (bx - m + 10).toFixed(1) + '" y="' + (by - m - 4).toFixed(1) + '" ' +
+          'text-anchor="start">' + esc(pipeline.boundaryLabel) +
+          ' [System]</text>' +
+          '</g>');
+      }
+    }
+
     // Edges first (behind shapes). Build quick element lookup.
     const byId = {};
     elements.forEach(function (el) { byId[el.id] = el; });
@@ -454,25 +501,32 @@ window.OraVisualCompiler._vendor.structurizrMini.renderer = (function () {
       return personSvg(id, el);
     }
     if (el.kind === 'container') {
-      return boxSvg(id, el, 'container', false);
+      // C4 hallmark: the metatype line folds in the technology — "[Container:
+      // Go]" — which is exactly what distinguishes a container box from a bare
+      // node. Falls back to "[Container]" when no technology was declared.
+      const meta = el.technology
+        ? '[Container: ' + el.technology + ']'
+        : '[Container]';
+      return boxSvg(id, el, 'container', false, meta);
     }
-    // system (may be external)
-    return boxSvg(id, el, 'system', el.external);
+    // system (may be external) — the metatype names the C4 element kind, the
+    // single most important cue that this is a C4 diagram and not a generic
+    // box-and-arrow graph.
+    const meta = el.external ? '[Software System — External]' : '[Software System]';
+    return boxSvg(id, el, 'system', el.external, meta);
   }
 
-  function boxSvg(id, el, kind, external) {
+  function boxSvg(id, el, kind, external, metatype) {
     const rx = 6;
     const cls = 'ora-visual__c4-' + kind +
       (external ? ' ora-visual__c4-system--external' : '');
     const labelLines = wrapLabel(el.name, 20, 2);
-    const techLines = el.technology
-      ? wrapLabel('[' + el.technology + ']', 22, 1)
-      : [];
+    const metaLines = metatype ? wrapLabel(metatype, 24, 1) : [];
     const descLines = el.description
       ? wrapLabel(el.description, 26, 2)
       : [];
     const cx = el.x + el.w / 2;
-    let y = el.y + 26;
+    let y = el.y + 24;
     const textParts = [];
 
     labelLines.forEach(function (ln, i) {
@@ -480,13 +534,13 @@ window.OraVisualCompiler._vendor.structurizrMini.renderer = (function () {
         'x="' + cx + '" y="' + (y + i * 16) + '" ' +
         'text-anchor="middle">' + esc(ln) + '</text>');
     });
-    y += labelLines.length * 16 + 6;
-    techLines.forEach(function (ln, i) {
-      textParts.push('<text class="ora-visual__c4-technology" ' +
+    y += labelLines.length * 16 + 2;
+    metaLines.forEach(function (ln, i) {
+      textParts.push('<text class="ora-visual__c4-metatype" ' +
         'x="' + cx + '" y="' + (y + i * 14) + '" ' +
         'text-anchor="middle">' + esc(ln) + '</text>');
     });
-    y += techLines.length * 14 + 2;
+    y += metaLines.length * 14 + 4;
     descLines.forEach(function (ln, i) {
       textParts.push('<text class="ora-visual__c4-description" ' +
         'x="' + cx + '" y="' + (y + i * 13) + '" ' +
@@ -513,14 +567,18 @@ window.OraVisualCompiler._vendor.structurizrMini.renderer = (function () {
     const bodyX = el.x + 10;
     const labelLines = wrapLabel(el.name, 18, 2);
     const descLines = el.description ? wrapLabel(el.description, 22, 2) : [];
-    const textY0 = bodyY + 20;
+    const textY0 = bodyY + 18;
     const textParts = [];
     labelLines.forEach(function (ln, i) {
       textParts.push('<text class="ora-visual__c4-label" ' +
         'x="' + cx + '" y="' + (textY0 + i * 14) + '" ' +
         'text-anchor="middle">' + esc(ln) + '</text>');
     });
-    const descY = textY0 + labelLines.length * 14 + 2;
+    // C4 metatype line — marks this as a Person, not a generic node.
+    const metaY = textY0 + labelLines.length * 14 + 1;
+    textParts.push('<text class="ora-visual__c4-metatype" ' +
+      'x="' + cx + '" y="' + metaY + '" text-anchor="middle">[Person]</text>');
+    const descY = metaY + 14;
     descLines.forEach(function (ln, i) {
       textParts.push('<text class="ora-visual__c4-description" ' +
         'x="' + cx + '" y="' + (descY + i * 12) + '" ' +
