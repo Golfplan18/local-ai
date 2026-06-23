@@ -1,0 +1,170 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-arr-by-product-line-q1",
+  "type": "comparison",
+  "mode_context": "information-density",
+  "relation_to_prose": "integrated",
+  "title": "New ARR by product line, Q1 2024 vs Q1 2025 vs Q1 2026",
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "title": "New ARR by product line (Q1, USD millions)",
+    "data": {
+      "values": [
+        {
+          "product_line": "Core Platform",
+          "period": "Q1 2024",
+          "new_arr": 18.4
+        },
+        {
+          "product_line": "Core Platform",
+          "period": "Q1 2025",
+          "new_arr": 21.1
+        },
+        {
+          "product_line": "Core Platform",
+          "period": "Q1 2026",
+          "new_arr": 22
+        },
+        {
+          "product_line": "Analytics Cloud",
+          "period": "Q1 2024",
+          "new_arr": 6.2
+        },
+        {
+          "product_line": "Analytics Cloud",
+          "period": "Q1 2025",
+          "new_arr": 11.8
+        },
+        {
+          "product_line": "Analytics Cloud",
+          "period": "Q1 2026",
+          "new_arr": 19.7
+        },
+        {
+          "product_line": "Security Suite",
+          "period": "Q1 2024",
+          "new_arr": 9
+        },
+        {
+          "product_line": "Security Suite",
+          "period": "Q1 2025",
+          "new_arr": 10.3
+        },
+        {
+          "product_line": "Security Suite",
+          "period": "Q1 2026",
+          "new_arr": 12.6
+        },
+        {
+          "product_line": "Embedded API",
+          "period": "Q1 2024",
+          "new_arr": 2.1
+        },
+        {
+          "product_line": "Embedded API",
+          "period": "Q1 2025",
+          "new_arr": 4.4
+        },
+        {
+          "product_line": "Embedded API",
+          "period": "Q1 2026",
+          "new_arr": 8.9
+        }
+      ]
+    },
+    "mark": {
+      "type": "bar"
+    },
+    "encoding": {
+      "x": {
+        "field": "product_line",
+        "type": "nominal",
+        "title": "Product line",
+        "sort": [
+          "Core Platform",
+          "Analytics Cloud",
+          "Security Suite",
+          "Embedded API"
+        ],
+        "axis": {
+          "labelAngle": 0
+        }
+      },
+      "xOffset": {
+        "field": "period",
+        "type": "nominal",
+        "sort": [
+          "Q1 2024",
+          "Q1 2025",
+          "Q1 2026"
+        ]
+      },
+      "y": {
+        "field": "new_arr",
+        "type": "quantitative",
+        "title": "New ARR (USD millions)",
+        "scale": {
+          "zero": true
+        },
+        "axis": {
+          "format": "$,.0f",
+          "tickCount": 6
+        }
+      },
+      "color": {
+        "field": "period",
+        "type": "nominal",
+        "title": "Period",
+        "sort": [
+          "Q1 2024",
+          "Q1 2025",
+          "Q1 2026"
+        ],
+        "scale": {
+          "range": [
+            "#9ecae1",
+            "#4292c6",
+            "#08519c"
+          ]
+        },
+        "legend": {
+          "orient": "top-right"
+        }
+      },
+      "tooltip": [
+        {
+          "field": "product_line",
+          "type": "nominal",
+          "title": "Product line"
+        },
+        {
+          "field": "period",
+          "type": "nominal",
+          "title": "Period"
+        },
+        {
+          "field": "new_arr",
+          "type": "quantitative",
+          "title": "New ARR ($M)",
+          "format": "$,.1f"
+        }
+      ]
+    },
+    "width": 520,
+    "height": 320,
+    "caption": {
+      "source": "FY24-FY26 bookings ledger, RevOps system of record",
+      "period": "Q1 2024 - Q1 2026 (first-quarter snapshots)",
+      "n": 12,
+      "units": "USD millions of new annual recurring revenue"
+    }
+  },
+  "semantic_description": {
+    "level_1_elemental": "Grouped (clustered) vertical bar chart. The x-axis lists four product lines; within each cluster, three side-by-side bars compare new ARR for Q1 2024, Q1 2025, and Q1 2026, shaded light-to-dark blue. The y-axis is new ARR in USD millions on a zero baseline, $0 to ~$22M.",
+    "level_2_statistical": "Largest single bar: Core Platform Q1 2026 at $22.0M. Fastest growth: Analytics Cloud roughly tripled ($6.2M to $19.7M, +218%) and Embedded API more than quadrupled ($2.1M to $8.9M, +324%). Core Platform grew most slowly (+20%). Across all four lines every period-over-period change is positive; total Q1 new ARR rose from $35.7M (2024) to $63.2M (2026).",
+    "level_3_perceptual": "Each cluster's three bars rise left-to-right, so growth reads as a consistent upward staircase everywhere. Core Platform is tall but nearly flat across periods, while Analytics Cloud and Embedded API show steep widening gaps between their light and dark bars \u2014 the visual contrast makes the emerging lines' acceleration obvious against the maturing flagship.",
+    "level_4_contextual": "The chart supports a reallocation argument: the flagship Core Platform is plateauing while two newer lines are compounding fast, suggesting incremental investment should favor Analytics Cloud and Embedded API.",
+    "short_alt": "Grouped bar chart: new ARR across four product lines over three Q1 snapshots; all grew, Core Platform largest.",
+    "data_table_fallback": null
+  }
+}

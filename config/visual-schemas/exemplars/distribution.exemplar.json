@@ -1,0 +1,223 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-api-latency-distribution",
+  "type": "distribution",
+  "mode_context": "information-density",
+  "relation_to_prose": "integrated",
+  "title": "API gateway response latency, p50 \u2248 82 ms with a long right tail past 2 s",
+  "caption": "Source: edge gateway access logs; period 2026-06-15/2026-06-21; n=48,210 requests; units milliseconds.",
+  "integrity_declarations": {
+    "log_scale_base": 10,
+    "non_zero_baseline_justified": false
+  },
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "title": "Response latency distribution (log-binned)",
+    "width": 560,
+    "height": 300,
+    "data": {
+      "values": [
+        {
+          "latency_ms": 14
+        },
+        {
+          "latency_ms": 19
+        },
+        {
+          "latency_ms": 22
+        },
+        {
+          "latency_ms": 28
+        },
+        {
+          "latency_ms": 31
+        },
+        {
+          "latency_ms": 37
+        },
+        {
+          "latency_ms": 41
+        },
+        {
+          "latency_ms": 44
+        },
+        {
+          "latency_ms": 52
+        },
+        {
+          "latency_ms": 58
+        },
+        {
+          "latency_ms": 63
+        },
+        {
+          "latency_ms": 69
+        },
+        {
+          "latency_ms": 74
+        },
+        {
+          "latency_ms": 79
+        },
+        {
+          "latency_ms": 82
+        },
+        {
+          "latency_ms": 85
+        },
+        {
+          "latency_ms": 88
+        },
+        {
+          "latency_ms": 91
+        },
+        {
+          "latency_ms": 96
+        },
+        {
+          "latency_ms": 103
+        },
+        {
+          "latency_ms": 112
+        },
+        {
+          "latency_ms": 121
+        },
+        {
+          "latency_ms": 134
+        },
+        {
+          "latency_ms": 148
+        },
+        {
+          "latency_ms": 163
+        },
+        {
+          "latency_ms": 181
+        },
+        {
+          "latency_ms": 205
+        },
+        {
+          "latency_ms": 232
+        },
+        {
+          "latency_ms": 268
+        },
+        {
+          "latency_ms": 312
+        },
+        {
+          "latency_ms": 366
+        },
+        {
+          "latency_ms": 421
+        },
+        {
+          "latency_ms": 498
+        },
+        {
+          "latency_ms": 587
+        },
+        {
+          "latency_ms": 712
+        },
+        {
+          "latency_ms": 884
+        },
+        {
+          "latency_ms": 1103
+        },
+        {
+          "latency_ms": 1421
+        },
+        {
+          "latency_ms": 1890
+        },
+        {
+          "latency_ms": 2340
+        },
+        {
+          "latency_ms": 2980
+        },
+        {
+          "latency_ms": 3760
+        },
+        {
+          "latency_ms": 4820
+        }
+      ]
+    },
+    "mark": {
+      "type": "bar",
+      "tooltip": true
+    },
+    "encoding": {
+      "x": {
+        "field": "latency_ms",
+        "type": "quantitative",
+        "scale": {
+          "type": "log",
+          "base": 10
+        },
+        "bin": {
+          "maxbins": 24
+        },
+        "title": "Response latency (ms, log\u2081\u2080 scale)"
+      },
+      "y": {
+        "aggregate": "count",
+        "type": "quantitative",
+        "scale": {
+          "zero": true
+        },
+        "title": "Number of requests"
+      }
+    },
+    "caption": {
+      "source": "Edge gateway access logs",
+      "period": "2026-06-15/2026-06-21",
+      "n": 48210,
+      "units": "ms"
+    }
+  },
+  "semantic_description": {
+    "level_1_elemental": "Histogram of API gateway response latency. Value axis (x) is request latency in milliseconds on a base-10 log scale spanning ~10 ms to ~5,000 ms, binned into ~24 log-width bins; the y axis is the count of requests per bin, zero-baselined.",
+    "level_2_statistical": "Strongly right-skewed, unimodal distribution. The mode and median sit near 80\u2013100 ms (p50 \u2248 82 ms); the bulk of mass falls between 30 and 200 ms. A long thin tail extends past 1 s, with p95 \u2248 600 ms and p99 \u2248 2.3 s; the slowest requests reach ~4.8 s.",
+    "level_3_perceptual": "A dense body cluster in the low-hundreds-of-ms collapses smoothly into a thinning high-latency tail on the log axis \u2014 there is no second bump, so the slow requests are a continuous tail rather than a distinct bimodal slow cohort. On a linear axis this tail would be invisibly compressed against the right edge.",
+    "level_4_contextual": null,
+    "short_alt": "Log-x histogram of 48,210 API latencies, where most cluster near 82 ms but a long tail runs past 2 seconds.",
+    "data_table_fallback": {
+      "columns": [
+        "latency bin (ms)",
+        "approx requests"
+      ],
+      "rows": [
+        [
+          "10\u201330",
+          6100
+        ],
+        [
+          "30\u2013100",
+          21800
+        ],
+        [
+          "100\u2013300",
+          13200
+        ],
+        [
+          "300\u20131000",
+          4900
+        ],
+        [
+          "1000\u20133000",
+          1700
+        ],
+        [
+          "3000\u20135000",
+          510
+        ]
+      ]
+    }
+  }
+}

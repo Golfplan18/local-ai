@@ -1,0 +1,11 @@
+STRUCTURAL DEF. A comparison chart ranks/contrasts a quantitative value across a SMALL set of discrete categories on a COMMON scale, length-encoded (bar/column) or position-encoded (dot/lollipop, slope). It answers "which is bigger / how do these stack up." If TWO categorical dimensions exist (e.g. product × period), the second MUST be preserved as a grouped/clustered series (`encoding.color` + `xOffset` or `column` facet), never collapsed. Vega-Lite, QUANT family, Path A.
+
+WHEN THIS vs SIBLINGS. Use comparison when x is NOMINAL/ORDINAL categories. If x is a continuous date axis and the task is trend-over-time → `time_series`. If you'd show one variable's shape/spread → `distribution`. Disambiguating cue: discrete labeled categories on the cross-axis + a "rank/contrast" verb in prose ⇒ comparison.
+
+JUDGE FAILURES TO DEFEAT (comparison-chart lane):
+1. STACKED BAR (optimum-plus 4.3): stacking hides cross-series comparison — bottom segments share a baseline, others float. NEVER stack when the task is cross-series contrast. Use grouped bars (side-by-side via `xOffset`).
+2. FLAT/UNGROUPED bar of all N values (optimum 4.5): dumping product×year as 12 interleaved bars destroys the grouping the analysis recommends. Cluster by one dimension, color the other.
+3. DEGENERATE single-series + placeholder data (qwen 2.2): dropping the year dimension entirely → 4 bars, lost comparison. Keep ALL data rows.
+RULE THAT PREVENTS ALL THREE: encode BOTH dimensions — `x` = group, `xOffset` = series, `color` = series; keep every datum.
+
+LAYOUT/LABELING. Zero baseline MANDATORY for bar/area (§3.1) — omit `integrity_declarations.non_zero_baseline_justified` so scale starts at 0. Sort categories by value desc (or meaningful order, e.g. chronological for periods) — never alphabetical accidentally. Required `caption.{source,period,n,units}` and an axis `title` carrying units. Provide a `legend` (color title) for the series. Keep ≤ ~6 categories × ≤ ~5 series for legibility; beyond that, facet small-multiples (`column`). CVD-safe palette. Don't ship library defaults (§7.5) — author scale/axis/legend.
