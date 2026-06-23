@@ -1,0 +1,135 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-churn-ach",
+  "type": "ach_matrix",
+  "mode_context": "competing-hypotheses",
+  "relation_to_prose": "integrated",
+  "title": "Why is Northwind's renewal at risk? Competing hypotheses",
+  "caption": "ACH matrix, Heuer inconsistency tally. Evidence E1\u2013E6 from Q2 account review; E6 non-diagnostic (neutral against all). n=5 hypotheses x 6 evidence.",
+  "spec": {
+    "scoring_method": "heuer_tally",
+    "hypotheses": [
+      {
+        "id": "H1",
+        "label": "Price sensitivity",
+        "description": "Northwind balks at the 18% renewal uplift and is shopping on cost."
+      },
+      {
+        "id": "H2",
+        "label": "Product gaps",
+        "description": "Missing SSO/SCIM and reporting features block their expansion use case."
+      },
+      {
+        "id": "H3",
+        "label": "Champion left",
+        "description": "Their executive sponsor departed in March; no internal advocate remains."
+      },
+      {
+        "id": "H4",
+        "label": "Competitor displacement",
+        "description": "A rival vendor ran an active POC inside the account."
+      },
+      {
+        "id": "H5",
+        "label": "Low adoption",
+        "description": "Seats were under-utilized; the product never reached daily-active critical mass."
+      }
+    ],
+    "evidence": [
+      {
+        "id": "E1",
+        "text": "Procurement requested a line-item discount and a multi-year cost schedule.",
+        "credibility": "H",
+        "relevance": "H",
+        "source": "CRM email thread, Apr 14"
+      },
+      {
+        "id": "E2",
+        "text": "Three support tickets cite missing SCIM provisioning and custom report exports.",
+        "credibility": "H",
+        "relevance": "H",
+        "source": "Zendesk Q1-Q2"
+      },
+      {
+        "id": "E3",
+        "text": "Sponsor (VP Ops) LinkedIn shows a role change to a different company in March.",
+        "credibility": "M",
+        "relevance": "H",
+        "source": "LinkedIn / SDR note"
+      },
+      {
+        "id": "E4",
+        "text": "Weekly active users fell from 140 to 38 over two quarters.",
+        "credibility": "H",
+        "relevance": "H",
+        "source": "Product telemetry"
+      },
+      {
+        "id": "E5",
+        "text": "A competitor's logo appeared on a shared screen during a recent QBR.",
+        "credibility": "L",
+        "relevance": "M",
+        "source": "AE meeting recap"
+      },
+      {
+        "id": "E6",
+        "text": "Northwind's overall headcount grew 12% year over year.",
+        "credibility": "H",
+        "relevance": "L",
+        "source": "Public filings"
+      }
+    ],
+    "cells": {
+      "E1": {
+        "H1": "CC",
+        "H2": "C",
+        "H3": "N",
+        "H4": "C",
+        "H5": "N"
+      },
+      "E2": {
+        "H1": "N",
+        "H2": "CC",
+        "H3": "N",
+        "H4": "C",
+        "H5": "C"
+      },
+      "E3": {
+        "H1": "N",
+        "H2": "N",
+        "H3": "CC",
+        "H4": "C",
+        "H5": "C"
+      },
+      "E4": {
+        "H1": "II",
+        "H2": "C",
+        "H3": "C",
+        "H4": "C",
+        "H5": "CC"
+      },
+      "E5": {
+        "H1": "N",
+        "H2": "N",
+        "H3": "N",
+        "H4": "CC",
+        "H5": "NA"
+      },
+      "E6": {
+        "H1": "N",
+        "H2": "N",
+        "H3": "N",
+        "H4": "N",
+        "H5": "N"
+      }
+    }
+  },
+  "semantic_description": {
+    "level_1_elemental": "A 6-row by 5-column ACH grid. Rows are evidence items E1-E6; columns are five competing hypotheses H1-H5 for why the Northwind renewal is at risk. Each cell holds a consistency code from CC, C, N, I, II, or NA. Each evidence row carries credibility and relevance ratings (H/M/L); E6 (headcount growth) is non-diagnostic, neutral against every hypothesis.",
+    "level_2_statistical": "Heuer inconsistency tally weights I and II marks against each hypothesis. H1 carries the only inconsistency, a strong one (E4 = II, the usage collapse strongly contradicts simple price-shopping); H2, H3, H4, H5 carry zero inconsistencies. By the discriminating-disconfirmation logic of ACH, H1 is the weakest and the other four survive.",
+    "level_3_perceptual": "The strong-consistent (CC) cells fall on a near-diagonal: each surviving hypothesis owns one anchor evidence row (E2->H2, E3->H3, E5->H4, E4->H5). E4 (usage collapse) reads hot across the row, consistent-or-stronger for four hypotheses but strongly inconsistent for H1, the matrix's one decisive disconfirmation. The all-neutral E6 row and the single NA cell read as flat gaps rather than support.",
+    "level_4_contextual": "No hypothesis is fully eliminated, but H1 (pure price sensitivity) is effectively ruled out; the survivors point to product gaps plus a lost champion driving low adoption rather than cost alone.",
+    "short_alt": "ACH grid, 6 evidence x 5 renewal hypotheses; usage-collapse strongly contradicts price-sensitivity, leaving product-gaps and lost-champion.",
+    "data_table_fallback": null
+  }
+}

@@ -1,0 +1,220 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-cac-ltv-by-region",
+  "type": "scatter",
+  "mode_context": "information-density",
+  "relation_to_prose": "integrated",
+  "title": "First-year LTV vs. acquisition cost, by sales region",
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "title": "First-year LTV vs. acquisition cost, by sales region (FY2025 cohort)",
+    "width": 440,
+    "height": 320,
+    "data": {
+      "values": [
+        {
+          "cac": 1180,
+          "ltv": 5200,
+          "region": "West"
+        },
+        {
+          "cac": 1420,
+          "ltv": 6100,
+          "region": "West"
+        },
+        {
+          "cac": 1610,
+          "ltv": 7400,
+          "region": "West"
+        },
+        {
+          "cac": 980,
+          "ltv": 4300,
+          "region": "West"
+        },
+        {
+          "cac": 1850,
+          "ltv": 8200,
+          "region": "West"
+        },
+        {
+          "cac": 1340,
+          "ltv": 5900,
+          "region": "West"
+        },
+        {
+          "cac": 2100,
+          "ltv": 9100,
+          "region": "Midwest"
+        },
+        {
+          "cac": 1760,
+          "ltv": 7000,
+          "region": "Midwest"
+        },
+        {
+          "cac": 1490,
+          "ltv": 6300,
+          "region": "Midwest"
+        },
+        {
+          "cac": 2380,
+          "ltv": 9800,
+          "region": "Midwest"
+        },
+        {
+          "cac": 1920,
+          "ltv": 7600,
+          "region": "Midwest"
+        },
+        {
+          "cac": 2640,
+          "ltv": 6900,
+          "region": "South"
+        },
+        {
+          "cac": 2210,
+          "ltv": 6200,
+          "region": "South"
+        },
+        {
+          "cac": 1980,
+          "ltv": 5400,
+          "region": "South"
+        },
+        {
+          "cac": 3050,
+          "ltv": 7300,
+          "region": "South"
+        },
+        {
+          "cac": 2470,
+          "ltv": 5800,
+          "region": "South"
+        },
+        {
+          "cac": 2820,
+          "ltv": 6600,
+          "region": "South"
+        },
+        {
+          "cac": 3680,
+          "ltv": 5100,
+          "region": "Northeast"
+        },
+        {
+          "cac": 4120,
+          "ltv": 5600,
+          "region": "Northeast"
+        },
+        {
+          "cac": 3340,
+          "ltv": 4700,
+          "region": "Northeast"
+        },
+        {
+          "cac": 4450,
+          "ltv": 6000,
+          "region": "Northeast"
+        },
+        {
+          "cac": 3910,
+          "ltv": 4900,
+          "region": "Northeast"
+        },
+        {
+          "cac": 4780,
+          "ltv": 5300,
+          "region": "Northeast"
+        },
+        {
+          "cac": 3520,
+          "ltv": 4400,
+          "region": "Northeast"
+        }
+      ]
+    },
+    "mark": {
+      "type": "point",
+      "filled": true,
+      "size": 70,
+      "opacity": 0.8
+    },
+    "encoding": {
+      "x": {
+        "field": "cac",
+        "type": "quantitative",
+        "title": "Customer acquisition cost (USD)",
+        "scale": {
+          "zero": true
+        },
+        "axis": {
+          "format": "$,.0f"
+        }
+      },
+      "y": {
+        "field": "ltv",
+        "type": "quantitative",
+        "title": "First-year lifetime value (USD)",
+        "scale": {
+          "zero": true
+        },
+        "axis": {
+          "format": "$,.0f"
+        }
+      },
+      "color": {
+        "field": "region",
+        "type": "nominal",
+        "title": "Sales region",
+        "scale": {
+          "domain": [
+            "West",
+            "Midwest",
+            "South",
+            "Northeast"
+          ],
+          "range": [
+            "#2c7fb8",
+            "#41ab5d",
+            "#feb24c",
+            "#de2d26"
+          ]
+        }
+      },
+      "tooltip": [
+        {
+          "field": "region",
+          "type": "nominal",
+          "title": "Region"
+        },
+        {
+          "field": "cac",
+          "type": "quantitative",
+          "title": "CAC (USD)",
+          "format": "$,.0f"
+        },
+        {
+          "field": "ltv",
+          "type": "quantitative",
+          "title": "LTV (USD)",
+          "format": "$,.0f"
+        }
+      ]
+    },
+    "caption": {
+      "source": "RevOps account ledger, deal-level join with billing system",
+      "period": "FY2025 acquisition cohort (Jan\u2013Dec 2025)",
+      "n": 24,
+      "units": "USD per account"
+    }
+  },
+  "semantic_description": {
+    "level_1_elemental": "Scatter of 24 customer accounts: x = acquisition cost in dollars (roughly $980\u2013$4,780), y = first-year lifetime value in dollars (roughly $4,300\u2013$9,800), each point colored by one of four sales regions (West, Midwest, South, Northeast).",
+    "level_2_statistical": "The LTV/CAC relationship is weak-to-negative: the cheapest-to-acquire West and Midwest accounts return the highest LTV (LTV/CAC roughly 4\u20135x), while the costliest Northeast accounts return the lowest LTV (near or below break-even at ~1.3x). A least-squares fit of LTV on CAC would slope gently downward, pulled by the Northeast cluster.",
+    "level_3_perceptual": "Four color bands separate cleanly left-to-right along the x-axis: West (cheap, high-value) sits upper-left, Midwest just right of it, South in the middle, and the red Northeast cluster isolated in the lower-right \u2014 high cost, low value. The eye reads the Northeast as an outlier band that drags the relationship negative.",
+    "level_4_contextual": "If acquisition spend tracked returns, costlier regions should yield higher LTV; the Northeast inverts this, signaling that incremental spend there is buying unprofitable accounts and should be reallocated toward the West/Midwest motion.",
+    "short_alt": "Scatter of acquisition cost vs first-year value by region; the costly Northeast cluster returns the lowest value.",
+    "data_table_fallback": null
+  }
+}

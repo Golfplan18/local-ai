@@ -1,0 +1,143 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-payment-rail-bowtie",
+  "type": "bow_tie",
+  "mode_context": "fragility-antifragility-audit",
+  "relation_to_prose": "integrated",
+  "title": "Bow-tie: catastrophic loss of the customer payment rail",
+  "caption": "Fragility-antifragility audit of the checkout payment pipeline. Center = top event; left = threat pathways with preventive barriers; right = consequences with mitigative barriers. Effectiveness H/M/L per barrier.",
+  "spec": {
+    "hazard_event": {
+      "label": "Checkout payment rail unavailable",
+      "description": "The top event: customers cannot complete a purchase because the payment-authorization pipeline is down or rejecting all transactions."
+    },
+    "threats": [
+      {
+        "id": "T1",
+        "label": "Primary payment processor outage",
+        "pathway": "Sole-provider dependency on Stripe authorization API",
+        "preventive_controls": [
+          {
+            "id": "PC1",
+            "label": "Dual-processor active-active routing",
+            "type": "eliminate",
+            "effectiveness": "M"
+          },
+          {
+            "id": "PC2",
+            "label": "Real-time processor health probes + auto-failover",
+            "type": "detect",
+            "effectiveness": "H"
+          }
+        ]
+      },
+      {
+        "id": "T2",
+        "label": "Expired TLS / API credential",
+        "pathway": "Unrotated secret blocks all auth calls at expiry",
+        "preventive_controls": [
+          {
+            "id": "PC3",
+            "label": "Automated cert + key rotation (90-day)",
+            "type": "eliminate",
+            "effectiveness": "H"
+          },
+          {
+            "id": "PC4",
+            "label": "Expiry dashboard with 30/7/1-day alerts",
+            "type": "detect",
+            "effectiveness": "M"
+          }
+        ]
+      },
+      {
+        "id": "T3",
+        "label": "Fraud-rule misconfiguration declines all cards",
+        "pathway": "Over-broad risk rule deployed to production rejects legitimate traffic",
+        "preventive_controls": [
+          {
+            "id": "PC5",
+            "label": "Staged rollout + decline-rate canary gate",
+            "type": "reduce",
+            "effectiveness": "M"
+          },
+          {
+            "id": "PC6",
+            "label": "Anomalous decline-rate alarm (>3 sigma)",
+            "type": "detect",
+            "effectiveness": "H"
+          }
+        ]
+      }
+    ],
+    "consequences": [
+      {
+        "id": "C1",
+        "label": "Lost revenue during outage window",
+        "severity": "H",
+        "mitigative_controls": [
+          {
+            "id": "MC1",
+            "label": "Deferred-capture queue replays orders on recovery",
+            "type": "recover",
+            "effectiveness": "M"
+          },
+          {
+            "id": "MC2",
+            "label": "Cash/invoice fallback for high-value carts",
+            "type": "reduce",
+            "effectiveness": "L"
+          }
+        ]
+      },
+      {
+        "id": "C2",
+        "label": "Customer trust and churn",
+        "severity": "M",
+        "mitigative_controls": [
+          {
+            "id": "MC3",
+            "label": "Status page + proactive incident comms",
+            "type": "contain",
+            "effectiveness": "H"
+          },
+          {
+            "id": "MC4",
+            "label": "Goodwill credit + retry-email to abandoned carts",
+            "type": "recover",
+            "effectiveness": "M"
+          }
+        ]
+      },
+      {
+        "id": "C3",
+        "label": "Regulatory / PCI reporting exposure",
+        "severity": "M",
+        "mitigative_controls": [
+          {
+            "id": "MC5",
+            "label": "Incident runbook with 72h breach-report clock",
+            "type": "contain",
+            "effectiveness": "H"
+          }
+        ]
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Bow-tie risk diagram. Center red knot is the top event 'Checkout payment rail unavailable'. Three threat nodes on the left, each linked to the knot through preventive barrier bars; three consequence nodes on the right, each linked from the knot through mitigative barrier bars. Barriers are typed (eliminate/reduce/detect on left; reduce/recover/contain on right) and tagged H/M/L effectiveness.",
+    "level_2_statistical": "3 threats, 3 consequences, 11 barriers total (6 preventive, 5 mitigative). Preventive effectiveness skews high (3 H, 2 M, 1 reduce-M); mitigative side is weaker on revenue (C1 has only M and L barriers). One escalation factor degrades the highest-rated preventive barrier PC2.",
+    "level_3_perceptual": "Roughly symmetric left-right structure, but the revenue consequence (C1) is the thin spot: its strongest mitigation is only medium and depends on post-incident replay, so residual risk concentrates on the consequence side even though threats are well-controlled. The failover barrier's hidden DNS dependency is the single point that could collapse the left-side defenses.",
+    "level_4_contextual": "Fragility audit reading: the system is robust against initiating threats but fragile in consequence recovery for revenue, and the escalation factor reveals correlated failure (failover and DNS share a provider). Antifragile move: decouple DNS and add an independent capture path.",
+    "short_alt": "Bow-tie: payment-rail outage as center event, 3 threats with preventive barriers left, 3 consequences with mitigative barriers right.",
+    "data_table_fallback": null,
+    "type_specific": {
+      "hazard_event": "Checkout payment rail unavailable",
+      "threat_count": 3,
+      "consequence_count": 3,
+      "preventive_control_count": 6,
+      "mitigative_control_count": 5,
+      "escalation_factor_count": 1
+    }
+  }
+}

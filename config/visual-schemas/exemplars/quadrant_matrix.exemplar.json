@@ -1,0 +1,103 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-payments-scenarios-2030",
+  "type": "quadrant_matrix",
+  "mode_context": "scenario-planning",
+  "relation_to_prose": "integrated",
+  "title": "Cross-Border Payments in 2030: Four Strategic Scenarios",
+  "caption": "Scenario set for the treasury platform's 2026-2030 product roadmap. Two driving uncertainties, four named futures, current rivals positioned by their present-day bet.",
+  "spec": {
+    "subtype": "scenario_planning",
+    "x_axis": {
+      "label": "Regulatory harmonization across jurisdictions",
+      "low_label": "Fragmented (per-country rails, conflicting KYC)",
+      "high_label": "Harmonized (interoperable standards, mutual recognition)",
+      "description": "Whether the major economic blocs converge on shared settlement and identity standards or defend incompatible national regimes."
+    },
+    "y_axis": {
+      "label": "Pace of stablecoin / tokenized-money adoption",
+      "low_label": "Slow (bank rails dominant)",
+      "high_label": "Fast (tokenized settlement mainstream)",
+      "description": "How quickly regulated tokenized money displaces correspondent-bank settlement for cross-border value transfer."
+    },
+    "quadrants": {
+      "TL": {
+        "name": "Walled Tokens",
+        "narrative": "Tokenized money goes mainstream fast, but each bloc enforces its own incompatible token standard and identity regime. Liquidity is deep inside borders and thin across them; bridging is where the margin and the compliance risk both concentrate.",
+        "action": "Build best-in-class per-jurisdiction token connectors and a compliant bridging layer; do not bet on a single global standard.",
+        "indicators": [
+          "Divergent CBDC technical standards published by US/EU/CN",
+          "Stablecoin volumes rising while cross-bloc settlement stalls"
+        ]
+      },
+      "TR": {
+        "name": "Open Rails",
+        "narrative": "Tokenized settlement is mainstream and standards interoperate across blocs. Cross-border transfer becomes near-instant and cheap; the defensible value moves up the stack to treasury orchestration, FX, and working-capital products.",
+        "action": "Race to an orchestration and FX layer on top of commoditized rails; treat settlement itself as a thin margin utility.",
+        "indicators": [
+          "Mutual-recognition agreements signed between major regulators",
+          "Interoperable tokenized-money pilots clearing at scale"
+        ]
+      },
+      "BL": {
+        "name": "Trench Warfare",
+        "narrative": "Bank rails still dominate and jurisdictions stay fragmented. Correspondent banking, conflicting KYC, and slow settlement persist. Growth is grinding and incumbency, licenses, and compliance moats decide who wins.",
+        "action": "Defend the licensed-corridor business and compete on compliance depth and reliability, not speed; expect organic, not explosive, growth.",
+        "indicators": [
+          "Stablecoin regulation stalled in major markets",
+          "Correspondent-banking de-risking continues to shrink corridors"
+        ]
+      },
+      "BR": {
+        "name": "Smooth Legacy",
+        "narrative": "Standards harmonize but money stays on bank rails rather than tokens. Cross-border transfer gets meaningfully faster and cheaper through harmonized messaging and instant-payment links, without a tokenization leap.",
+        "action": "Invest in instant-payment-link connectivity and ISO-20022-native products; capture the harmonization dividend without a token bet.",
+        "indicators": [
+          "Cross-border instant-payment links going live between blocs",
+          "ISO-20022 fully adopted while tokenized volumes stay marginal"
+        ]
+      }
+    },
+    "items": [
+      {
+        "label": "Our platform (today)",
+        "x": 0.34,
+        "y": 0.41,
+        "note": "Bank-rail core with an early tokenization pilot; lightly hedged toward fragmentation."
+      },
+      {
+        "label": "Incumbent correspondent banks",
+        "x": 0.18,
+        "y": 0.14,
+        "note": "Deeply invested in the fragmented bank-rail status quo."
+      },
+      {
+        "label": "Card-network entrant",
+        "x": 0.74,
+        "y": 0.58,
+        "note": "Pushing interoperable standards and selective tokenization."
+      },
+      {
+        "label": "Stablecoin-native challenger",
+        "x": 0.4,
+        "y": 0.86,
+        "note": "All-in on fast tokenization, agnostic on harmonization."
+      },
+      {
+        "label": "Big-tech wallet",
+        "x": 0.82,
+        "y": 0.8,
+        "note": "Betting on the Open Rails future: harmonized standards plus mainstream tokens."
+      }
+    ],
+    "axes_independence_rationale": "Regulatory harmonization and the pace of tokenized-money adoption are driven by different forces and have decoupled historically. Harmonization is a function of cross-border political negotiation, mutual-recognition treaties, and standards bodies, and can advance (as ISO-20022 messaging did) on bank rails with no tokenization. Adoption pace is driven by technology readiness, settlement-cost economics, and private issuer incentives, and can surge inside a single fragmented jurisdiction with no cross-border harmonization at all. Neither axis is a proxy for the other: fast tokenization is fully compatible with either fragmented or harmonized standards, which is precisely why all four corners describe coherent, distinct futures."
+  },
+  "semantic_description": {
+    "level_1_elemental": "A 2x2 scenario-planning matrix. The horizontal axis runs from fragmented to harmonized cross-border regulation; the vertical axis runs from slow bank-rail dominance to fast tokenized-money adoption. The four quadrants are named Walled Tokens (top-left), Open Rails (top-right), Trench Warfare (bottom-left), and Smooth Legacy (bottom-right). Five competitor markers are plotted: our platform, incumbent correspondent banks, a card-network entrant, a stablecoin-native challenger, and a big-tech wallet.",
+    "level_2_statistical": "Five items span all four quadrants. Incumbent banks sit deepest in Trench Warfare (0.18, 0.14); the big-tech wallet sits deepest in Open Rails (0.82, 0.80). The stablecoin-native challenger is high on adoption (y=0.86) but only mid on harmonization (x=0.40), landing in Walled Tokens. Our platform (0.34, 0.41) is near the center, slightly into Trench Warfare. No two markers share a row or column, so none overlap.",
+    "level_3_perceptual": "The markers fan out diagonally from the fragmented-slow corner toward the harmonized-fast corner, with one off-diagonal outlier: the stablecoin-native challenger pulled up the left side. The cluster of momentum sits in the upper-right (Open Rails), while the incumbents are isolated in the lower-left.",
+    "level_4_contextual": "The spread implies the market is migrating toward Open Rails, but the off-diagonal challenger warns that fast tokenization could arrive before harmonization does, stranding value in the Walled Tokens quadrant.",
+    "short_alt": "2x2 scenario matrix of 2030 cross-border payments; five rivals plotted across Walled Tokens, Open Rails, Trench Warfare, Smooth Legacy.",
+    "data_table_fallback": null
+  }
+}

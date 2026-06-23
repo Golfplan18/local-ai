@@ -1,0 +1,13 @@
+**Structural definition.** ACH (Analysis of Competing Hypotheses, Heuer) = a *complete* matrix: rows = evidence, columns = hypotheses, every (evidence x hypothesis) cell scored from a fixed vocabulary `CC|C|N|I|II|NA` (strongly-consistent / consistent / neutral / inconsistent / strongly-inconsistent / not-applicable). The compiler renders it as a colored heatmap with foot/side tallies. DECISION family, `mode_context:"competing-hypotheses"`.
+
+**Required spec fields** (`additionalProperties:false` everywhere — NO extra keys): `hypotheses[]` (>=2; each `{id,label,description?}`), `evidence[]` (>=1; each `{id,text,credibility,relevance,source?}` with credibility/relevance in `H|M|L`), `cells` (map `evidence_id -> {hypothesis_id -> code}`), `scoring_method` in `heuer_tally|bayesian|weighted`.
+
+**THIS type vs siblings.** Not a `quadrant_matrix` (2x2 narrative scenarios) and not a generic `heatmap` (continuous values, no hypothesis logic). ACH's whole point is *disconfirmation*: you favor the hypothesis with the FEWEST inconsistencies, not the most consistencies. Build the tally and verdict on `I`/`II` counts.
+
+**Cell completeness (hard rule).** `_check_ach_matrix` emits `E_UNRESOLVED_REF` for any missing row or any missing `(evidence,hypothesis)` pair. Populate EVERY cell. Use `NA` for a genuine coverage gap, never to skip work.
+
+**Non-diagnostic flagging (the invariant most models fake).** There is NO `non_diagnostic` field — adding one fails the schema. Non-diagnostic is *detected*: a row whose cells are ALL EQUAL triggers `W_ACH_NONDIAGNOSTIC`. So to "flag non-diagnostic evidence" you must include at least one evidence row that genuinely does not discriminate (e.g. all `N`), typically a low-relevance item. State in `semantic_description` that this row is neutral against all hypotheses.
+
+**Layout/labeling.** Give each surviving hypothesis a distinct CC anchor row so the strong-consistent marks read as a near-diagonal. Make one evidence row "hot" (consistent across many) to demonstrate it is the least diagnostic positive signal, and put the decisive `II` there for the eliminated hypothesis. Tally in `level_2_statistical` MUST match the verdict in `level_4_contextual` (judge hard-fails mismatches).
+
+**semantic_description.** All three of level_1_elemental/level_2_statistical/level_3_perceptual present and ACH-specific; `short_alt` <=150 chars describing THIS matrix (never "bar chart"). Set unused fields to `null`, not omit-with-extra-keys.

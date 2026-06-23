@@ -1,0 +1,21 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-checkout-payment-auth-sequence",
+  "type": "sequence",
+  "mode_context": "process-mapping",
+  "relation_to_prose": "integrated",
+  "title": "Checkout payment authorization: where a declined card is retried vs. abandoned",
+  "caption": "Reconstructed from API gateway + PSP webhook logs, Q2 2026; n=48,200 checkout attempts, 6.1% soft-decline rate.",
+  "spec": {
+    "dialect": "sequence",
+    "dsl": "sequenceDiagram\n  autonumber\n  actor Shopper\n  participant SPA as Checkout SPA\n  participant API as Order API\n  participant PSP as Payment Gateway\n  participant Bank as Issuing Bank\n\n  Shopper->>SPA: Submit card + place order\n  SPA->>API: POST /orders (cart, payment token)\n  API->>API: Validate cart + reserve inventory\n  API->>PSP: Authorize charge ($148.00)\n  PSP->>Bank: Auth request\n  Bank-->>PSP: Decision\n\n  alt Approved\n    PSP-->>API: auth_ok (txn_id)\n    API-->>SPA: 201 Created (order confirmed)\n    SPA-->>Shopper: Show confirmation\n  else Soft decline (insufficient funds)\n    PSP-->>API: soft_decline (retryable)\n    API-->>SPA: 402 retry_allowed\n    SPA-->>Shopper: Prompt for another card\n    opt Shopper retries within 15 min\n      Shopper->>SPA: Submit new card\n      SPA->>API: POST /orders (retry)\n      Note right of API: Reuses inventory reservation;<br/>no double hold\n    end\n  else Hard decline (fraud / lost card)\n    PSP-->>API: hard_decline (final)\n    API->>API: Release inventory reservation\n    API-->>SPA: 402 final\n    SPA-->>Shopper: Decline; suggest support\n  end\n\n  Note over PSP,Bank: 3-D Secure step-up omitted;<br/>handled in a separate flow"
+  },
+  "semantic_description": {
+    "level_1_elemental": "A UML sequence diagram of a checkout payment authorization across five lifelines: the Shopper actor, the Checkout SPA, the Order API, the Payment Gateway, and the Issuing Bank. Autonumbered messages run top to bottom from order submission through the bank's authorization decision, then split into three branches.",
+    "level_2_statistical": "Five lifelines and roughly fifteen numbered messages; one self-message (cart validation/inventory reserve), dashed return arrows for responses, and a three-way alt fragment (Approved / Soft decline / Hard decline) with a nested opt fragment for the retry path.",
+    "level_3_perceptual": "The diagram reads as a single shared trunk down to the bank decision, then visibly forks into three stacked alternative compartments; only the soft-decline compartment loops back upward to the Shopper, making the retry the one branch that re-enters the flow rather than terminating.",
+    "level_4_contextual": "The soft-decline retry path is the only branch that can still convert; the hard-decline branch explicitly releases the inventory hold, isolating where abandoned-cart inventory is freed versus held for a retry.",
+    "short_alt": "Five-lifeline checkout auth sequence; bank decision forks into approved, soft-decline-with-retry, and hard-decline branches.",
+    "data_table_fallback": null
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-acquire-vs-build-helpdesk",
+  "type": "pro_con",
+  "mode_context": "constraint-mapping",
+  "relation_to_prose": "integrated",
+  "title": "Acquire the Zendesk-style helpdesk vendor vs. build in-house",
+  "caption": "Constraint mapping for the Q3 buy-vs-build decision; weights 1-5 reflect committee scoring, n=6 stakeholders.",
+  "spec": {
+    "claim": "Acquire HelpStack rather than build our own support platform in-house",
+    "pros": [
+      {
+        "text": "Live in 6 weeks instead of an 18-month build",
+        "weight": 5,
+        "children": [
+          {
+            "text": "SOC 2 and HIPAA controls already certified"
+          },
+          {
+            "text": "Captures the Q4 enterprise renewal window"
+          }
+        ]
+      },
+      {
+        "text": "Buys a 40-person team that already knows the domain",
+        "weight": 4,
+        "children": [
+          {
+            "text": "Tribal knowledge of ticket-routing edge cases"
+          }
+        ]
+      },
+      {
+        "text": "Removes a competitor from the mid-market",
+        "weight": 3
+      }
+    ],
+    "cons": [
+      {
+        "text": "$210M price is 9x trailing revenue",
+        "weight": 5,
+        "children": [
+          {
+            "text": "Drains the cash reserved for two planned hires"
+          },
+          {
+            "text": "Earn-out clause locks founders in for 24 months"
+          }
+        ]
+      },
+      {
+        "text": "Their stack is a Rails monolith we must re-platform",
+        "weight": 4,
+        "children": [
+          {
+            "text": "No Kubernetes; runs on bare EC2"
+          }
+        ]
+      },
+      {
+        "text": "Culture clash risks attrition of senior engineers",
+        "weight": 3
+      }
+    ],
+    "decision": "Proceed to a 30-day exclusive diligence period before committing; do not sign the LOI until the re-platform cost is bounded."
+  },
+  "semantic_description": {
+    "level_1_elemental": "Two-column pro-con argument tree under one claim (acquire HelpStack vs. build in-house). Left column: 3 weighted pros; right column: 3 weighted cons; each top argument carries a 1-5 weight badge, and the heaviest item on each side expands into nested sub-points.",
+    "level_2_statistical": "Pros sum to weight 12 (5+4+3); cons sum to weight 12 (5+4+3) - perfectly balanced totals. Each side has one weight-5 anchor (speed-to-market vs. the $210M price). 4 of 6 top arguments carry sub-branches; max nesting depth is 2.",
+    "level_3_perceptual": "The visual tension is symmetric: the strongest pro (6-week launch) and strongest con (9x-revenue price) both score 5, so neither side dominates on weight alone. The con sub-branches cluster around money and re-platform cost, while pro sub-branches cluster around speed and certification - the decision turns on whether the re-platform risk can be bounded, which is exactly what the footer defers.",
+    "level_4_contextual": null,
+    "short_alt": "Pro-con tree on acquiring HelpStack: 3 pros and 3 cons, both totaling weight 12; top pro (6-week launch) and top con ($210M price) both score 5.",
+    "data_table_fallback": {
+      "columns": [
+        "Side",
+        "Argument",
+        "Weight"
+      ],
+      "rows": [
+        [
+          "Pro",
+          "Live in 6 weeks instead of an 18-month build",
+          5
+        ],
+        [
+          "Pro",
+          "Buys a 40-person team that already knows the domain",
+          4
+        ],
+        [
+          "Pro",
+          "Removes a competitor from the mid-market",
+          3
+        ],
+        [
+          "Con",
+          "$210M price is 9x trailing revenue",
+          5
+        ],
+        [
+          "Con",
+          "Their stack is a Rails monolith we must re-platform",
+          4
+        ],
+        [
+          "Con",
+          "Culture clash risks attrition of senior engineers",
+          3
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-dtc-warehouse-expansion-influence",
+  "type": "influence_diagram",
+  "mode_context": "decision-architecture",
+  "relation_to_prose": "integrated",
+  "title": "Should we open a second fulfillment center? Decision architecture",
+  "caption": "Howard-Matheson influence diagram for a direct-to-consumer brand's 18-month capacity decision. Decisions are rectangles, uncertainties ovals, the deterministic margin node a rounded rectangle, and 24-month net contribution the value node.",
+  "spec": {
+    "nodes": [
+      {
+        "id": "D1",
+        "label": "Site & lease (Q3)",
+        "kind": "decision",
+        "description": "Whether and where to sign an 18-month lease on a second fulfillment center: East hub, West hub, or defer."
+      },
+      {
+        "id": "D2",
+        "label": "Pick & pack capacity (Q1 next yr)",
+        "kind": "decision",
+        "description": "After the holiday peak is observed, how many automated pick lines to staff at the chosen site."
+      },
+      {
+        "id": "C1",
+        "label": "Holiday demand surge",
+        "kind": "chance",
+        "description": "Peak-season order volume vs. forecast: below, on, or above plan."
+      },
+      {
+        "id": "C2",
+        "label": "Regional split (East vs West)",
+        "kind": "chance",
+        "description": "Share of orders shipping to each coast, which determines transit savings from a second hub."
+      },
+      {
+        "id": "C3",
+        "label": "Carrier rate change",
+        "kind": "chance",
+        "description": "Parcel-carrier contract repricing at renewal: cut, flat, or surcharge."
+      },
+      {
+        "id": "C4",
+        "label": "Labor availability at site",
+        "kind": "chance",
+        "description": "Whether the local labor market fills the staffed pick lines at planned wage."
+      },
+      {
+        "id": "T1",
+        "label": "Per-order fulfillment margin",
+        "kind": "deterministic",
+        "description": "Computed margin per order given site, staffed lines, regional split, and carrier rate."
+      },
+      {
+        "id": "V1",
+        "label": "24-month net contribution",
+        "kind": "value",
+        "description": "Total contribution over the lease horizon: order margin times volume, less lease and automation cost."
+      }
+    ],
+    "arcs": [
+      {
+        "from": "C2",
+        "to": "D1",
+        "type": "informational",
+        "note": "Trailing regional shipping mix is known before the site is chosen."
+      },
+      {
+        "from": "D1",
+        "to": "D2",
+        "type": "informational",
+        "note": "Site is fixed before capacity is staffed (no-forgetting)."
+      },
+      {
+        "from": "C1",
+        "to": "D2",
+        "type": "informational",
+        "note": "Holiday surge is observed before the capacity decision."
+      },
+      {
+        "from": "D1",
+        "to": "T1",
+        "type": "functional",
+        "note": "Chosen site sets baseline handling cost."
+      },
+      {
+        "from": "D2",
+        "to": "T1",
+        "type": "functional",
+        "note": "Staffed pick lines set throughput and labor cost."
+      },
+      {
+        "from": "C2",
+        "to": "T1",
+        "type": "functional",
+        "note": "Regional split drives transit savings from the second hub."
+      },
+      {
+        "from": "C3",
+        "to": "T1",
+        "type": "functional",
+        "note": "Carrier rate scales parcel cost per order."
+      },
+      {
+        "from": "C4",
+        "to": "T1",
+        "type": "relevance",
+        "note": "Labor shortfall degrades realized throughput vs. staffed plan."
+      },
+      {
+        "from": "T1",
+        "to": "V1",
+        "type": "functional",
+        "note": "Per-order margin aggregates into contribution."
+      },
+      {
+        "from": "C1",
+        "to": "V1",
+        "type": "functional",
+        "note": "Order volume scales total contribution."
+      },
+      {
+        "from": "D1",
+        "to": "V1",
+        "type": "functional",
+        "note": "Lease commitment is a fixed cost over the horizon."
+      },
+      {
+        "from": "D2",
+        "to": "V1",
+        "type": "functional",
+        "note": "Automation capex is a fixed cost over the horizon."
+      }
+    ],
+    "temporal_order": [
+      "C2",
+      "D1",
+      "C1",
+      "D2"
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Howard-Matheson influence diagram with eight nodes: two rectangle decision nodes (site & lease D1, pick-pack capacity D2), four oval chance nodes (holiday demand, regional split, carrier rate, labor availability), one rounded-rectangle deterministic node (per-order margin), and one hexagonal value node (24-month net contribution). Dashed arcs are informational (what is known at each decision); solid arcs are functional or relevance influences.",
+    "level_2_statistical": "Twelve arcs. The value node V1 has three functional parents (per-order margin T1, holiday demand C1, site D1) plus D2; the deterministic margin node T1 has five parents (D1, D2, regional split C2, carrier rate C3, labor C4). Temporal order C2 < D1 < C1 < D2 gives two sequential decisions with three pre-decision observations.",
+    "level_3_perceptual": "Information flows left to right toward a single value node on the right. The diagram reads as a two-stage decision: choose the site after seeing the regional shipping mix, then size capacity after the holiday surge is observed. All uncertainty funnels through the per-order margin node, while demand volume and the two fixed-cost commitments reach the value node directly.",
+    "level_4_contextual": "Separating the irreversible lease (D1) from the deferrable, information-richer capacity decision (D2) is the core of the architecture: the option value lives in waiting to staff lines until peak demand is observed.",
+    "short_alt": "Influence diagram: two decisions (site, capacity) feed per-order margin and 24-month net contribution under demand and cost uncertainty.",
+    "data_table_fallback": null
+  }
+}

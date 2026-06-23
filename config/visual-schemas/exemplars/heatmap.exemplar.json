@@ -1,0 +1,404 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-cohort-retention-heatmap",
+  "type": "heatmap",
+  "mode_context": "information-density",
+  "relation_to_prose": "integrated",
+  "title": "Weekly retention decays fastest for paid-search cohorts",
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "title": "B2B SaaS retention by signup cohort, weeks 0\u201311",
+    "width": 560,
+    "height": 220,
+    "data": {
+      "values": [
+        {
+          "cohort": "Organic",
+          "week": 0,
+          "retention": 100
+        },
+        {
+          "cohort": "Organic",
+          "week": 1,
+          "retention": 82
+        },
+        {
+          "cohort": "Organic",
+          "week": 2,
+          "retention": 74
+        },
+        {
+          "cohort": "Organic",
+          "week": 3,
+          "retention": 69
+        },
+        {
+          "cohort": "Organic",
+          "week": 4,
+          "retention": 65
+        },
+        {
+          "cohort": "Organic",
+          "week": 5,
+          "retention": 62
+        },
+        {
+          "cohort": "Organic",
+          "week": 6,
+          "retention": 60
+        },
+        {
+          "cohort": "Organic",
+          "week": 7,
+          "retention": 58
+        },
+        {
+          "cohort": "Organic",
+          "week": 8,
+          "retention": 56
+        },
+        {
+          "cohort": "Organic",
+          "week": 9,
+          "retention": 55
+        },
+        {
+          "cohort": "Organic",
+          "week": 10,
+          "retention": 54
+        },
+        {
+          "cohort": "Organic",
+          "week": 11,
+          "retention": 53
+        },
+        {
+          "cohort": "Referral",
+          "week": 0,
+          "retention": 100
+        },
+        {
+          "cohort": "Referral",
+          "week": 1,
+          "retention": 88
+        },
+        {
+          "cohort": "Referral",
+          "week": 2,
+          "retention": 81
+        },
+        {
+          "cohort": "Referral",
+          "week": 3,
+          "retention": 77
+        },
+        {
+          "cohort": "Referral",
+          "week": 4,
+          "retention": 74
+        },
+        {
+          "cohort": "Referral",
+          "week": 5,
+          "retention": 72
+        },
+        {
+          "cohort": "Referral",
+          "week": 6,
+          "retention": 70
+        },
+        {
+          "cohort": "Referral",
+          "week": 7,
+          "retention": 69
+        },
+        {
+          "cohort": "Referral",
+          "week": 8,
+          "retention": 67
+        },
+        {
+          "cohort": "Referral",
+          "week": 9,
+          "retention": 66
+        },
+        {
+          "cohort": "Referral",
+          "week": 10,
+          "retention": 65
+        },
+        {
+          "cohort": "Referral",
+          "week": 11,
+          "retention": 64
+        },
+        {
+          "cohort": "Content",
+          "week": 0,
+          "retention": 100
+        },
+        {
+          "cohort": "Content",
+          "week": 1,
+          "retention": 71
+        },
+        {
+          "cohort": "Content",
+          "week": 2,
+          "retention": 58
+        },
+        {
+          "cohort": "Content",
+          "week": 3,
+          "retention": 50
+        },
+        {
+          "cohort": "Content",
+          "week": 4,
+          "retention": 45
+        },
+        {
+          "cohort": "Content",
+          "week": 5,
+          "retention": 41
+        },
+        {
+          "cohort": "Content",
+          "week": 6,
+          "retention": 38
+        },
+        {
+          "cohort": "Content",
+          "week": 7,
+          "retention": 36
+        },
+        {
+          "cohort": "Content",
+          "week": 8,
+          "retention": 34
+        },
+        {
+          "cohort": "Content",
+          "week": 9,
+          "retention": 33
+        },
+        {
+          "cohort": "Content",
+          "week": 10,
+          "retention": 32
+        },
+        {
+          "cohort": "Content",
+          "week": 11,
+          "retention": 31
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 0,
+          "retention": 100
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 1,
+          "retention": 58
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 2,
+          "retention": 42
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 3,
+          "retention": 33
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 4,
+          "retention": 28
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 5,
+          "retention": 24
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 6,
+          "retention": 22
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 7,
+          "retention": 20
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 8,
+          "retention": 18
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 9,
+          "retention": 17
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 10,
+          "retention": 16
+        },
+        {
+          "cohort": "Paid Search",
+          "week": 11,
+          "retention": 15
+        }
+      ]
+    },
+    "mark": "rect",
+    "encoding": {
+      "x": {
+        "field": "week",
+        "type": "ordinal",
+        "title": "Weeks since signup",
+        "axis": {
+          "labelAngle": 0
+        }
+      },
+      "y": {
+        "field": "cohort",
+        "type": "nominal",
+        "title": "Acquisition channel",
+        "sort": [
+          "Referral",
+          "Organic",
+          "Content",
+          "Paid Search"
+        ]
+      },
+      "color": {
+        "field": "retention",
+        "type": "quantitative",
+        "title": "% of week-0 users retained",
+        "scale": {
+          "scheme": "blues",
+          "domain": [
+            0,
+            100
+          ]
+        },
+        "legend": {
+          "format": ".0f"
+        }
+      },
+      "tooltip": [
+        {
+          "field": "cohort",
+          "type": "nominal",
+          "title": "Channel"
+        },
+        {
+          "field": "week",
+          "type": "ordinal",
+          "title": "Week"
+        },
+        {
+          "field": "retention",
+          "type": "quantitative",
+          "title": "Retention %"
+        }
+      ]
+    },
+    "caption": {
+      "source": "Product analytics warehouse (Amplitude export)",
+      "period": "2025 signup cohorts, tracked Jan\u2013Dec 2025",
+      "n": 48,
+      "units": "% of week-0 users still active"
+    }
+  },
+  "semantic_description": {
+    "level_1_elemental": "Heatmap with 4 rows (acquisition channels: Referral, Organic, Content, Paid Search) and 12 columns (weeks 0\u201311 since signup). Cell color encodes weekly retention as a percent of week-0 users, on a single-hue sequential blue ramp from 0 (palest) to 100 (darkest).",
+    "level_2_statistical": "Week 0 is 100% for all rows by construction. By week 11, Referral retains 64%, Organic 53%, Content 31%, and Paid Search 15%. The steepest single-week drop is Paid Search week 0\u21921 (100\u219258, a 42-point fall); Referral's first-week drop is smallest (100\u219288).",
+    "level_3_perceptual": "Color darkens top-to-bottom and lightens left-to-right, forming a clear gradient: the top two rows (Referral, Organic) stay mid-to-dark blue across all weeks while the bottom row (Paid Search) fades to near-white by mid-period. The decay is front-loaded \u2014 most of the lightening happens in weeks 1\u20133, then each row flattens into a slowly-declining plateau.",
+    "level_4_contextual": "Channels acquiring intent-driven users (referral, organic) retain roughly 3\u20134\u00d7 better at week 11 than paid search, suggesting paid-search spend buys low-commitment signups that churn before activation.",
+    "short_alt": "Retention heatmap, 4 channels \u00d7 12 weeks: Paid Search fades to 15% by week 11 while Referral holds 64%.",
+    "data_table_fallback": {
+      "columns": [
+        "Channel",
+        "Wk0",
+        "Wk1",
+        "Wk2",
+        "Wk3",
+        "Wk4",
+        "Wk5",
+        "Wk6",
+        "Wk7",
+        "Wk8",
+        "Wk9",
+        "Wk10",
+        "Wk11"
+      ],
+      "rows": [
+        [
+          "Referral",
+          100,
+          88,
+          81,
+          77,
+          74,
+          72,
+          70,
+          69,
+          67,
+          66,
+          65,
+          64
+        ],
+        [
+          "Organic",
+          100,
+          82,
+          74,
+          69,
+          65,
+          62,
+          60,
+          58,
+          56,
+          55,
+          54,
+          53
+        ],
+        [
+          "Content",
+          100,
+          71,
+          58,
+          50,
+          45,
+          41,
+          38,
+          36,
+          34,
+          33,
+          32,
+          31
+        ],
+        [
+          "Paid Search",
+          100,
+          58,
+          42,
+          33,
+          28,
+          24,
+          22,
+          20,
+          18,
+          17,
+          16,
+          15
+        ]
+      ]
+    }
+  }
+}

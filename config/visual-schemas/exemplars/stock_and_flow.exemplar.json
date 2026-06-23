@@ -1,0 +1,185 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-saas-cash-runway",
+  "type": "stock_and_flow",
+  "mode_context": "systems-dynamics-structural",
+  "relation_to_prose": "visually_native",
+  "title": "SaaS cash runway: what fills and drains the bank balance",
+  "caption": "Structural model of a Series-A SaaS company's monthly cash dynamics; rates illustrative, USD/month.",
+  "spec": {
+    "stocks": [
+      {
+        "id": "cash",
+        "label": "Cash Position",
+        "initial": 4200000,
+        "unit": "USD"
+      },
+      {
+        "id": "customers",
+        "label": "Active Customers",
+        "initial": 850,
+        "unit": "accounts"
+      }
+    ],
+    "flows": [
+      {
+        "id": "collections",
+        "label": "Revenue Collected",
+        "from": "revenue_src",
+        "to": "cash",
+        "rate": "active_customers * arpa",
+        "unit": "USD/month"
+      },
+      {
+        "id": "burn",
+        "label": "Operating Spend",
+        "from": "cash",
+        "to": "expense_sink",
+        "rate": "headcount_cost + sales_marketing",
+        "unit": "USD/month"
+      },
+      {
+        "id": "wins",
+        "label": "New Wins",
+        "from": "prospect_pool",
+        "to": "customers",
+        "rate": "leads * win_rate",
+        "unit": "accounts/month"
+      },
+      {
+        "id": "churn",
+        "label": "Churned",
+        "from": "customers",
+        "to": "lost_pool",
+        "rate": "active_customers * churn_rate",
+        "unit": "accounts/month"
+      }
+    ],
+    "clouds": [
+      {
+        "id": "revenue_src"
+      },
+      {
+        "id": "expense_sink"
+      },
+      {
+        "id": "prospect_pool"
+      },
+      {
+        "id": "lost_pool"
+      }
+    ],
+    "auxiliaries": [
+      {
+        "id": "arpa",
+        "label": "ARPA",
+        "expression": "1450"
+      },
+      {
+        "id": "churn_rate",
+        "label": "Monthly Churn Rate",
+        "expression": "0.02"
+      },
+      {
+        "id": "win_rate",
+        "label": "Win Rate",
+        "expression": "0.18"
+      },
+      {
+        "id": "leads",
+        "label": "Qualified Leads",
+        "expression": "sales_marketing / cac"
+      },
+      {
+        "id": "cac",
+        "label": "CAC",
+        "expression": "1900"
+      },
+      {
+        "id": "sales_marketing",
+        "label": "Sales & Marketing Spend",
+        "expression": "320000"
+      },
+      {
+        "id": "headcount_cost",
+        "label": "Headcount Cost",
+        "expression": "610000"
+      },
+      {
+        "id": "runway",
+        "label": "Runway (months)",
+        "expression": "cash / (headcount_cost + sales_marketing - active_customers*arpa)"
+      }
+    ],
+    "info_links": [
+      {
+        "from": "customers",
+        "to": "collections"
+      },
+      {
+        "from": "arpa",
+        "to": "collections"
+      },
+      {
+        "from": "headcount_cost",
+        "to": "burn"
+      },
+      {
+        "from": "sales_marketing",
+        "to": "burn"
+      },
+      {
+        "from": "leads",
+        "to": "wins"
+      },
+      {
+        "from": "win_rate",
+        "to": "wins"
+      },
+      {
+        "from": "customers",
+        "to": "churn"
+      },
+      {
+        "from": "churn_rate",
+        "to": "churn"
+      },
+      {
+        "from": "sales_marketing",
+        "to": "leads"
+      },
+      {
+        "from": "cac",
+        "to": "leads"
+      },
+      {
+        "from": "cash",
+        "to": "runway"
+      },
+      {
+        "from": "headcount_cost",
+        "to": "runway"
+      },
+      {
+        "from": "sales_marketing",
+        "to": "runway"
+      },
+      {
+        "from": "customers",
+        "to": "runway"
+      },
+      {
+        "from": "arpa",
+        "to": "runway"
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "A stock-and-flow diagram with two stocks: Cash Position (rectangle, initial 4.2M USD) and Active Customers (850 accounts). Cash is filled by the Revenue Collected inflow from a source cloud and drained by the Operating Spend outflow to a sink cloud. Active Customers is filled by New Wins from a prospect cloud and drained by Churned to a lost cloud. Eight dashed information links feed auxiliaries (ARPA, churn rate, win rate, qualified leads, CAC, S&M spend, headcount cost, runway) into the flow valves.",
+    "level_2_statistical": "Inflow rate = active_customers * ARPA = 850 * 1450 = 1.2325M USD/month. Outflow rate = headcount (610k) + S&M (320k) = 930k USD/month. Net cash change is +303k/month at the initial point, so the runway auxiliary is positive (not burning) at t0; the model tips to burn only if customers fall below ~641 or ARPA drops.",
+    "level_3_perceptual": "Two parallel conveyor structures stacked vertically: a money loop on top and a customer loop below, linked because Active Customers drives the Revenue Collected valve. The auxiliary cloud on the right (S&M spend) fans out to three valves at once, making it the highest-leverage control point.",
+    "level_4_contextual": "The structure shows why cutting S&M to extend runway is self-defeating: it simultaneously starves the lead engine that feeds New Wins, shrinking the customer base that drives Revenue Collected.",
+    "short_alt": "Stock-and-flow model: Cash filled by revenue, drained by spend; Customers filled by wins, drained by churn; spend drives both.",
+    "data_table_fallback": null
+  }
+}
