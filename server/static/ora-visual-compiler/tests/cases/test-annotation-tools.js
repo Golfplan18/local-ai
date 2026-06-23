@@ -268,6 +268,41 @@ module.exports = {
       win.OraKeyboardShortcuts = prevShortcuts5b;
     }
 
+    // ── 5c. Built-in toolbar click arms callout placement ───────────────────
+    try {
+      const div = mkDiv(win);
+      const panel = new win.VisualPanel(div, { id: 'at-5c' });
+      panel.init();
+      const btn = div.querySelector('.vp-tool-btn[data-tool="callout"]');
+      btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      let pointer = { x: 44, y: 52 };
+      panel.stage.getPointerPosition = function () { return pointer; };
+      panel.stage.fire('mousedown', {
+        target: panel.stage,
+        evt: { preventDefault: function () {} },
+      });
+      const input = div.querySelector('.vp-annotation-input');
+      if (input) {
+        input.value = 'toolbar callout';
+        input.dispatchEvent(new win.KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      const annotations = panel.getUserAnnotations();
+      record('annotation-tools: built-in toolbar callout button creates editable callout',
+        panel.getActiveTool() === 'callout' && !!input &&
+          annotations.length === 1 && annotations[0].text === 'toolbar callout',
+        'active=' + panel.getActiveTool() + ' input=' + !!input +
+          ' count=' + annotations.length);
+      panel.destroy();
+      win.document.body.removeChild(div);
+    } catch (err) {
+      record('annotation-tools: built-in toolbar callout button', false,
+        'threw: ' + (err.stack || err.message || err));
+    }
+
     // ── 6. _createUserAnnotation('callout') attr convention ────────────────
     try {
       const div = mkDiv(win);

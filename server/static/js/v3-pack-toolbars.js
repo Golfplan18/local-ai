@@ -34,6 +34,7 @@
     'video_generates', 'style_trains'
   ];
   var DRAWING_TOOLS = ['rect', 'ellipse', 'diamond', 'line', 'arrow', 'text'];
+  var ANNOTATION_TOOLS = ['callout', 'highlight', 'strikethrough', 'sticky', 'pen'];
 
   var _capabilitiesPromise = null;
   var _activePopover = null;
@@ -63,11 +64,73 @@
     _openCapabilityPopover(slotName, anchorEl, panel);
   }
 
+  function _showPanelMessage(panel, message) {
+    if (!message) return;
+    if (panel && typeof panel._showErrorBar === 'function') panel._showErrorBar(message);
+    else console.warn('[v3-pack-toolbars] ' + message);
+  }
+
+  function _openNewCanvas(panel) {
+    if (window.OraV3TemplateGallery && typeof window.OraV3TemplateGallery.open === 'function') {
+      window.OraV3TemplateGallery.open(panel);
+      return;
+    }
+    if (panel && typeof panel.clearUserInput === 'function') panel.clearUserInput();
+    if (panel && typeof panel.clearArtifact === 'function') panel.clearArtifact();
+  }
+
+  function _openResizeCanvas(panel) {
+    var Resize = window.OraResizeCanvas;
+    if (Resize && typeof Resize.open === 'function') {
+      Resize.open(panel).catch(function (err) {
+        _showPanelMessage(panel, (err && err.message) || 'Resize canvas failed.');
+      });
+    } else {
+      _showPanelMessage(panel, 'Resize canvas is still loading.');
+    }
+  }
+
+  function _cropToContent(panel) {
+    var Crop = window.OraCropToContent;
+    if (!Crop || typeof Crop.apply !== 'function') {
+      _showPanelMessage(panel, 'Crop to content is still loading.');
+      return;
+    }
+    try {
+      Crop.apply(panel);
+      if (panel && typeof panel.zoomToExtents === 'function') panel.zoomToExtents();
+    } catch (err) {
+      _showPanelMessage(panel, (err && err.message) || 'Nothing to crop.');
+    }
+  }
+
+  function _cropToSelection(panel) {
+    var Crop = window.OraCropToSelection;
+    if (!Crop || typeof Crop.apply !== 'function') {
+      _showPanelMessage(panel, 'Crop to selection is still loading.');
+      return;
+    }
+    try {
+      Crop.apply(panel, {
+        confirmFn: function (count) {
+          if (typeof window.confirm !== 'function') return true;
+          return window.confirm('Crop will discard ' + count + ' object(s). Continue?');
+        }
+      });
+      if (panel && typeof panel.zoomToExtents === 'function') panel.zoomToExtents();
+    } catch (err) {
+      _showPanelMessage(panel, (err && err.message) || 'Select an area before cropping.');
+    }
+  }
+
   function buildExtendedRegistry(panel) {
     var reg = {};
 
     // Drawing tools — visual-panel.setActiveTool accepts these.
     DRAWING_TOOLS.forEach(function (t) {
+      reg['tool:' + t] = function () { panel.setActiveTool(t); };
+    });
+    ANNOTATION_TOOLS.forEach(function (t) {
       reg['tool:' + t] = function () { panel.setActiveTool(t); };
     });
 
@@ -107,8 +170,9 @@
 
     // Mirror universal-toolbar bindings so pack toolbars that include
     // them (Ask Ora, undo/redo, etc.) work uniformly.
+    reg['tool:new_canvas'] = function () { _openNewCanvas(panel); };
     reg['tool:select']   = function () { panel.setActiveTool('select'); };
-    reg['tool:pan']      = function () { panel._spaceHeld = true; panel._applyCursor && panel._applyCursor(); };
+    reg['tool:pan']      = function () { panel.setActiveTool('pan'); };
     reg['tool:zoom_in']  = function () { if (panel.zoomIn) panel.zoomIn(); else if (panel._zoomBy) panel._zoomBy(1.2); };
     reg['tool:zoom_out'] = function () { if (panel.zoomOut) panel.zoomOut(); else if (panel._zoomBy) panel._zoomBy(1 / 1.2); };
     reg['tool:zoom_100'] = function () { if (panel.zoomTo100) panel.zoomTo100(); else if (panel.resetView) panel.resetView(); };
@@ -117,7 +181,18 @@
     reg['tool:redo']     = function () { if (panel.redo) panel.redo(); };
     reg['tool:save']     = function () { if (panel.saveCanvas) panel.saveCanvas(); };
     reg['tool:export']   = function () { if (panel.exportCanvas) panel.exportCanvas(); };
-    reg['tool:clear']    = function () { if (panel.clearArtifact) panel.clearArtifact(); };
+    reg['tool:clear']    = function () { if (panel.clearUserInput) panel.clearUserInput(); };
+    reg['tool:resize_canvas']     = function () { _openResizeCanvas(panel); };
+    reg['tool:crop_to_content']   = function () { _cropToContent(panel); };
+    reg['tool:crop_to_selection'] = function () { _cropToSelection(panel); };
+    reg['tool:generate_image']    = function (item, ctx, e) {
+      var anchor = (e && (e.currentTarget || e.target)) || null;
+      _onCapability('image_generates', anchor, panel);
+    };
+    reg['tool:fill_selection']    = function (item, ctx, e) {
+      var anchor = (e && (e.currentTarget || e.target)) || null;
+      _onCapability('image_edits', anchor, panel);
+    };
 
     // Ask Ora — mirror the visual-toolbar-bindings attach pattern by
     // letting it overwrite this stub if available.

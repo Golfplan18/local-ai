@@ -236,6 +236,8 @@ async function bootCompiler() {
   // WP-7.4.1 — Resize canvas command. Required by lazy-expansion.js
   // (which calls OraResizeCanvas.apply / .getCurrentSize / .computeBoundingBox).
   loadScript(path.join(COMPILER_DIR, '..', 'commands', 'resize-canvas.js'));
+  loadScript(path.join(COMPILER_DIR, '..', 'commands', 'crop-to-content.js'));
+  loadScript(path.join(COMPILER_DIR, '..', 'commands', 'crop-to-selection.js'));
 
   // WP-7.4.6 — Lazy canvas expansion. Prototype-patches VisualPanel so
   // newly-placed objects near a canvas edge silently grow the canvas.

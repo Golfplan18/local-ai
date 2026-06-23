@@ -180,6 +180,7 @@ module.exports = {
       const panel = new win.VisualPanel(div, { id: 'st-3c' });
       panel.init();
       const lineBtn = div.querySelector('.vp-tool-btn[data-tool="line"]');
+      const arrowBtn = div.querySelector('.vp-tool-btn[data-tool="arrow"]');
       const textBtn = div.querySelector('.vp-tool-btn[data-tool="text"]');
       const selectBtn = div.querySelector('.vp-tool-btn[data-tool="select"]');
       let pointer = { x: 30, y: 30 };
@@ -198,6 +199,21 @@ module.exports = {
       record('shape-tools: toolbar-selected line draws via live stage events',
         !lineStartedPan && lines.length === 1,
         'panning=' + lineStartedPan + ' lines=' + lines.length);
+
+      arrowBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      pointer = { x: 150, y: 35 };
+      panel.stage.fire('mousedown', {
+        target: panel.stage,
+        evt: { preventDefault: function () {} },
+      });
+      const arrowStartedPan = panel._panning;
+      pointer = { x: 210, y: 95 };
+      panel.stage.fire('mousemove', { target: panel.stage, evt: {} });
+      panel.stage.fire('mouseup', { target: panel.stage, evt: {} });
+      const arrows = userShapesOfType(panel, 'arrow');
+      record('shape-tools: toolbar-selected arrow draws via live stage events',
+        !arrowStartedPan && arrows.length === 1,
+        'panning=' + arrowStartedPan + ' arrows=' + arrows.length);
 
       textBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
       pointer = { x: 80, y: 55 };
@@ -228,12 +244,32 @@ module.exports = {
         evt: { preventDefault: function () {} },
       });
       const selectStartedPan = panel._panning;
-      pointer = { x: 45, y: 35 };
+      const selectDragStarted = !!panel._selectionDrag;
+      pointer = { x: 160, y: 100 };
       panel.stage.fire('mousemove', { target: panel.stage, evt: {} });
       panel.stage.fire('mouseup', { target: panel.stage, evt: {} });
-      record('shape-tools: select tool still pans empty canvas',
-        selectStartedPan && panel._panning === false,
-        'started=' + selectStartedPan + ' ended=' + panel._panning);
+      record('shape-tools: select tool draws marquee instead of panning empty canvas',
+        !selectStartedPan && selectDragStarted && panel._panning === false &&
+          panel.getSelectedShapeIds().length >= 1 &&
+          panel._cropToSelectionRect && panel._cropToSelectionRect.width > 0,
+        'panning=' + selectStartedPan + ' drag=' + selectDragStarted +
+          ' selected=' + panel.getSelectedShapeIds().join(',') +
+          ' cropRect=' + JSON.stringify(panel._cropToSelectionRect));
+
+      panel.setActiveTool('pan');
+      pointer = { x: 20, y: 20 };
+      panel.stage.fire('mousedown', {
+        target: panel.stage,
+        evt: { preventDefault: function () {} },
+      });
+      const panStarted = panel._panning;
+      pointer = { x: 45, y: 35 };
+      panel.stage.fire('mousemove', { target: panel.stage, evt: {} });
+      const panMoved = panel._transform.x !== 0 || panel._transform.y !== 0;
+      panel.stage.fire('mouseup', { target: panel.stage, evt: {} });
+      record('shape-tools: pan tool pans empty canvas',
+        panStarted && panMoved && panel._panning === false,
+        'started=' + panStarted + ' moved=' + panMoved + ' ended=' + panel._panning);
 
       panel.destroy();
       win.document.body.removeChild(div);

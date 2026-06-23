@@ -176,8 +176,11 @@
 
   // ── WP-3.1 constants ──────────────────────────────────────────────────────
 
-  // Shape tool types. 'select' and 'delete'/'undo'/'redo'/'clear-user-input'
-  // are commands, not shape types.
+  // Mode tools. Select manipulates objects; pan moves the viewport.
+  var MODE_TOOLS = { select: 1, pan: 1 };
+
+  // Shape tool types. 'select' / 'pan' and delete/undo/redo/clear-user-input
+  // are commands or modes, not shape types.
   var SHAPE_TOOLS = { rect: 1, ellipse: 1, diamond: 1, line: 1, arrow: 1, text: 1 };
 
   // WP-5.1 — annotation tool types. Each is a mode that overrides the
@@ -258,6 +261,7 @@
     this._history           = [];           // action frames: {undoFn, redoFn, label}
     this._historyCursor     = 0;            // next-write index (== length when at tip)
     this._drawContext       = null;         // in-flight draw: {type, start, preview}
+    this._selectionDrag     = null;         // in-flight select marquee
     this._selectedShapeIds  = [];           // currently selected user-shape ids
     this._textInputEl       = null;         // inline <input> for text tool
     this._suppressHistory   = false;        // true during undo/redo replays
@@ -283,6 +287,7 @@
     this._chromeHidden        = false;     // current hidden state (mirror of .chrome-hidden class)
     this._chromeHideTimeout   = null;      // 200 ms grace timer
     this._panning             = false;     // mirror of mouse-pan state for guard
+    this._panDragNode         = null;      // draggable node temporarily suppressed during pan
     this._onChromeMouseEnter  = null;
     this._onChromeMouseLeave  = null;
     this._onChromeFocusIn     = null;
@@ -1189,6 +1194,15 @@
     if (this.annotationLayer && this.annotationLayer.getChildren().length > 0) {
       try { addRect(this.annotationLayer.getClientRect({ skipTransform: true })); } catch (e) { /* ignore */ }
     }
+    // Uploaded raster image — mounted on backgroundLayer as a Konva.Image.
+    if (this._backgroundImageNode) {
+      try {
+        addRect(this._backgroundImageNode.getClientRect({
+          skipTransform: true,
+          relativeTo: this.backgroundLayer || undefined,
+        }));
+      } catch (e2) { /* ignore */ }
+    }
     // backgroundLayer — SVG artifact via host element. Sentinel-only when
     // no artifact present, so guard on the SVG host having children.
     if (this._svgHost && this._svgHost.children && this._svgHost.children.length > 0) {
@@ -1881,6 +1895,7 @@
           if (key === 'Escape' || key === 'Esc') {
             var didCancel = false;
             if (self._drawContext) { self._cancelDraw(); didCancel = true; }
+            if (self._selectionDrag) { self._cancelSelectionDrag(); didCancel = true; }
             if (self._penContext)  { self._cancelPenStroke(); didCancel = true; }
             self._dismissTextInput();
             self._dismissAnnotationInput();
@@ -2246,7 +2261,7 @@
       self._applyTransform();
     });
 
-    // Drag pan on empty space
+    // Drag pan via the Pan tool or the held Space modifier.
     // WP-7.1.4 — `self._panning` mirrors the local flag so _isInteracting()
     // can include in-flight pans in the hide-on-blur guard.
     var panStart = { x: 0, y: 0 };
@@ -2254,16 +2269,22 @@
 
     this.stage.on('mousedown touchstart', function (e) {
       // WP-7.4.4 — Space held forces pan over any target.
-      if (self._activeTool !== 'select' && !self._spaceHeld) return;
-      if (!self._spaceHeld) {
-        // Only pan when the click wasn't on a Konva listening target.
-        if (e.target !== self.stage) {
-          var name = e.target.name && e.target.name();
-          if (name && name.indexOf('vp-selection-') !== 0) return;
-        }
-      } else if (e.evt && e.evt.preventDefault) {
-        // Space-pan: prevent drawing tool from also engaging.
+      if (self._activeTool !== 'pan' && !self._spaceHeld) return;
+      if (e.evt && e.evt.preventDefault) {
+        // Space-pan / Pan tool: prevent drawing or selection from also engaging.
         e.evt.preventDefault();
+      }
+      if (typeof e.cancelBubble !== 'undefined') e.cancelBubble = true;
+      if (self._activeTool === 'pan' && e.target && e.target !== self.stage) {
+        var cursor = e.target;
+        while (cursor && cursor !== self.stage) {
+          if (typeof cursor.draggable === 'function' && cursor.draggable()) {
+            self._panDragNode = cursor;
+            cursor.draggable(false);
+            break;
+          }
+          cursor = cursor.getParent && cursor.getParent();
+        }
       }
       var p = self.stage.getPointerPosition() || { x: 0, y: 0 };
       self._panning = true;
@@ -2281,6 +2302,10 @@
 
     this.stage.on('mouseup touchend mouseleave', function () {
       self._panning = false;
+      if (self._panDragNode && typeof self._panDragNode.draggable === 'function') {
+        try { self._panDragNode.draggable(true); } catch (e) { /* ignore */ }
+      }
+      self._panDragNode = null;
     });
   };
 
@@ -2390,6 +2415,59 @@
       var anchor = (e && (e.currentTarget || e.target)) || null;
       Packs.openCapabilityPopover(slot, anchor, panel);
     };
+    var showCommandError = function (message) {
+      if (!message) return;
+      if (panel._showErrorBar) panel._showErrorBar(message);
+    };
+    var openNewCanvas = function () {
+      if (window.OraV3TemplateGallery && window.OraV3TemplateGallery.open) {
+        window.OraV3TemplateGallery.open(panel);
+        return;
+      }
+      if (panel.clearUserInput) panel.clearUserInput();
+      if (panel.clearArtifact) panel.clearArtifact();
+    };
+    var openResizeCanvas = function () {
+      var Resize = (typeof window !== 'undefined' && window.OraResizeCanvas) || null;
+      if (Resize && typeof Resize.open === 'function') {
+        Resize.open(panel).catch(function (err) {
+          showCommandError((err && err.message) || 'Resize canvas failed.');
+        });
+      } else {
+        showCommandError('Resize canvas is still loading.');
+      }
+    };
+    var cropToContent = function () {
+      var Crop = (typeof window !== 'undefined' && window.OraCropToContent) || null;
+      if (!Crop || typeof Crop.apply !== 'function') {
+        showCommandError('Crop to content is still loading.');
+        return;
+      }
+      try {
+        Crop.apply(panel);
+        if (panel.zoomToExtents) panel.zoomToExtents();
+      } catch (err) {
+        showCommandError((err && err.message) || 'Nothing to crop.');
+      }
+    };
+    var cropToSelection = function () {
+      var Crop = (typeof window !== 'undefined' && window.OraCropToSelection) || null;
+      if (!Crop || typeof Crop.apply !== 'function') {
+        showCommandError('Crop to selection is still loading.');
+        return;
+      }
+      try {
+        Crop.apply(panel, {
+          confirmFn: function (count) {
+            if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
+            return window.confirm('Crop will discard ' + count + ' object(s). Continue?');
+          },
+        });
+        if (panel.zoomToExtents) panel.zoomToExtents();
+      } catch (err) {
+        showCommandError((err && err.message) || 'Select an area before cropping.');
+      }
+    };
     var hasImage = function () {
       var layer = panel && panel.userInputLayer;
       if (layer && typeof layer.getChildren === 'function') {
@@ -2413,8 +2491,9 @@
       return false;
     };
     var actionRegistry = {
+      'tool:new_canvas':        openNewCanvas,
       'tool:select':            function () { panel.setActiveTool('select'); },
-      'tool:pan':               function () { panel._spaceHeld = true; panel._applyCursor && panel._applyCursor(); },
+      'tool:pan':               function () { panel.setActiveTool('pan'); },
       'tool:zoom_in':           function () {
         if (panel.zoomIn) panel.zoomIn();
         else if (panel._zoomBy) panel._zoomBy(1.2);
@@ -2435,14 +2514,14 @@
       'tool:redo':              function () { if (panel.redo) panel.redo(); },
       'tool:save':              function () { if (panel.saveCanvas) panel.saveCanvas(); },
       'tool:export':            function () { if (panel.exportCanvas) panel.exportCanvas(); },
-      'tool:clear':             function () { if (panel.clearArtifact) panel.clearArtifact(); },
+      'tool:clear':             function () { if (panel.clearUserInput) panel.clearUserInput(); },
+      'tool:resize_canvas':     openResizeCanvas,
+      'tool:crop_to_content':   cropToContent,
+      'tool:crop_to_selection': cropToSelection,
       'capability:image_generates': function (item, ctx, e) { openCapability('image_generates', e); },
       'capability:image_edits':     function (item, ctx, e) { openCapability('image_edits', e); },
       'tool:generate_image':        function (item, ctx, e) { openCapability('image_generates', e); },
       'tool:fill_selection':        function (item, ctx, e) { openCapability('image_edits', e); },
-      // Resize / crop bindings: WP-7.1.1 stub-handler contract — clicking
-      // surfaces "binding coming with WP-7.X.Y". Leaving them undefined here
-      // routes through OraVisualToolbar's `onStub` callback.
       'tool:ask_ora':           function () { /* WP-7.1.5 wires this */ },
       // Specialty-pack toolbar selector. The handler resolves the launcher
       // button DOM node by id ("ora-toolbar-item-toolbar-selector" — set
@@ -2929,8 +3008,8 @@
     // WP-4.1 — image upload pickers
     if (tool === 'upload-image')      { this._openFilePicker('file');  return; }
     if (tool === 'camera')            { this._openFilePicker('camera');return; }
-    // Mode tools: select + every SHAPE_TOOLS + ANNOTATION_TOOLS entry.
-    if (tool === 'select' || SHAPE_TOOLS[tool] || ANNOTATION_TOOLS[tool]) {
+    // Mode tools: select / pan + every SHAPE_TOOLS + ANNOTATION_TOOLS entry.
+    if (MODE_TOOLS[tool] || SHAPE_TOOLS[tool] || ANNOTATION_TOOLS[tool]) {
       this.setActiveTool(tool);
       return;
     }
@@ -2942,13 +3021,19 @@
    * unrecognized.
    */
   VisualPanel.prototype.setActiveTool = function (tool) {
-    if (tool !== 'select' && !SHAPE_TOOLS[tool] && !ANNOTATION_TOOLS[tool]) return;
+    if (!MODE_TOOLS[tool] && !SHAPE_TOOLS[tool] && !ANNOTATION_TOOLS[tool]) return;
     this._activeTool = tool;
     // Cancel any in-flight draw / text input when the tool changes.
     this._cancelDraw();
+    this._cancelSelectionDrag();
     this._dismissTextInput();
     this._dismissAnnotationInput();
     this._cancelPenStroke();
+    this._panning = false;
+    if (this._panDragNode && typeof this._panDragNode.draggable === 'function') {
+      try { this._panDragNode.draggable(true); } catch (e) { /* ignore */ }
+    }
+    this._panDragNode = null;
     // Clearing the annotation hint on tool change matches user expectation:
     // the last hint targeted the prior tool and no longer applies.
     this._hideAnnotationHint();
@@ -2957,7 +3042,7 @@
       var btns = this._toolbarEl.querySelectorAll('.vp-tool-btn[data-tool]');
       for (var i = 0; i < btns.length; i++) {
         var t = btns[i].dataset.tool;
-        if (t === 'select' || SHAPE_TOOLS[t] || ANNOTATION_TOOLS[t]) {
+        if (MODE_TOOLS[t] || SHAPE_TOOLS[t] || ANNOTATION_TOOLS[t]) {
           btns[i].setAttribute('aria-pressed', t === tool ? 'true' : 'false');
         }
       }
@@ -2974,12 +3059,14 @@
   VisualPanel.prototype._applyCursor = function () {
     if (!this._konvaEl) return;
     this._konvaEl.classList.remove(
-      'vp-cursor-select', 'vp-cursor-draw', 'vp-cursor-text',
+      'vp-cursor-select', 'vp-cursor-pan', 'vp-cursor-draw', 'vp-cursor-text',
       'vp-cursor-callout', 'vp-cursor-highlight', 'vp-cursor-strikethrough',
       'vp-cursor-sticky', 'vp-cursor-pen'
     );
     if (this._activeTool === 'select') {
       this._konvaEl.classList.add('vp-cursor-select');
+    } else if (this._activeTool === 'pan') {
+      this._konvaEl.classList.add('vp-cursor-pan');
     } else if (this._activeTool === 'text') {
       this._konvaEl.classList.add('vp-cursor-text');
     } else if (ANNOTATION_TOOLS[this._activeTool]) {
@@ -2992,9 +3079,8 @@
   // ── Drawing handlers (Konva pointer events on the stage) ─────────────────
 
   /**
-   * Wire pointer handlers on the stage for drawing + selection. When the
-   * active tool is 'select', the existing pan handlers (wired in
-   * _wireMouse) take over on empty space; shape-click is handled below.
+   * Wire pointer handlers on the stage for drawing + selection. Select has
+   * its own marquee on empty-space drags; pan is a separate active tool.
    */
   VisualPanel.prototype._wireDrawing = function () {
     if (!this.stage) return;
@@ -3042,6 +3128,7 @@
 
   VisualPanel.prototype._onStageDown = function (e) {
     if (this._spaceHeld) return;
+    if (this._activeTool === 'pan') return;
     if (this._activeTool === 'select') {
       this._onSelectDown(e);
       return;
@@ -3074,6 +3161,10 @@
   };
 
   VisualPanel.prototype._onStageMove = function (e) {
+    if (this._selectionDrag) {
+      this._updateSelectionDrag();
+      return;
+    }
     if (this._drawContext) {
       var end = this._stagePoint();
       this._updateDrawPreview(end);
@@ -3087,6 +3178,10 @@
   };
 
   VisualPanel.prototype._onStageUp = function (e) {
+    if (this._selectionDrag) {
+      this._finalizeSelectionDrag();
+      return;
+    }
     if (this._drawContext) {
       var end = this._stagePoint();
       this._finalizeDraw(end);
@@ -3958,11 +4053,9 @@
     }
 
     if (!shapeNode) {
-      // Empty space click in select mode — clear both selection sets.
-      this._selectedShapeIds = [];
-      this._selectedAnnotIds = [];
-      this._redrawSelection();
-      this._redrawAnnotationSelection();
+      // Empty space in select mode starts a marquee. A click-sized marquee
+      // clears selection on pointer-up; a real drag selects intersecting items.
+      this._beginSelectionDrag(e);
       return;
     }
     var id = shapeNode.getAttr('userShapeId');
@@ -3978,6 +4071,146 @@
     }
     this._redrawSelection();
     this._redrawAnnotationSelection();
+  };
+
+  VisualPanel.prototype._normaliseRect = function (a, b) {
+    if (!a || !b) return null;
+    var x = Math.min(a.x, b.x);
+    var y = Math.min(a.y, b.y);
+    return {
+      x: x,
+      y: y,
+      width: Math.abs(b.x - a.x),
+      height: Math.abs(b.y - a.y),
+    };
+  };
+
+  VisualPanel.prototype._rectsIntersect = function (a, b) {
+    if (!a || !b) return false;
+    return a.x <= b.x + b.width && a.x + a.width >= b.x &&
+           a.y <= b.y + b.height && a.y + a.height >= b.y;
+  };
+
+  VisualPanel.prototype._beginSelectionDrag = function (e) {
+    this._cancelSelectionDrag();
+    var start = this._stagePoint();
+    var additive = !!(e && e.evt && (e.evt.shiftKey || e.evt.metaKey));
+    var preview = null;
+    if (typeof Konva !== 'undefined' && this.selectionLayer) {
+      preview = new Konva.Rect({
+        x: start.x,
+        y: start.y,
+        width: 0,
+        height: 0,
+        stroke: '#0072B2',
+        strokeWidth: 1,
+        dash: [4, 3],
+        fill: 'rgba(0,114,178,0.08)',
+        listening: false,
+        name: 'vp-selection-marquee',
+      });
+      this.selectionLayer.add(preview);
+      this.selectionLayer.batchDraw();
+    }
+    this._selectionDrag = {
+      start: start,
+      preview: preview,
+      additive: additive,
+    };
+  };
+
+  VisualPanel.prototype._updateSelectionDrag = function () {
+    var drag = this._selectionDrag;
+    if (!drag) return;
+    var rect = this._normaliseRect(drag.start, this._stagePoint());
+    if (drag.preview && rect) {
+      drag.preview.setAttrs(rect);
+      if (this.selectionLayer) this.selectionLayer.batchDraw();
+    }
+  };
+
+  VisualPanel.prototype._finalizeSelectionDrag = function () {
+    var drag = this._selectionDrag;
+    if (!drag) return;
+    this._selectionDrag = null;
+    var rect = this._normaliseRect(drag.start, this._stagePoint());
+    if (drag.preview) {
+      try { drag.preview.destroy(); } catch (err) { /* ignore */ }
+    }
+    var clickSized = !rect || (rect.width < 4 && rect.height < 4);
+    if (clickSized) {
+      if (!drag.additive) {
+        this._selectedShapeIds = [];
+        this._selectedAnnotIds = [];
+        this._cropToSelectionRect = null;
+      }
+      this._redrawSelection();
+      this._redrawAnnotationSelection();
+      return;
+    }
+
+    this._cropToSelectionRect = {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+    };
+    var shapeIds = this._findShapesIntersectingRect(rect);
+    var annotIds = this._findAnnotationsIntersectingRect(rect);
+    if (drag.additive) {
+      for (var si = 0; si < shapeIds.length; si++) {
+        if (this._selectedShapeIds.indexOf(shapeIds[si]) < 0) this._selectedShapeIds.push(shapeIds[si]);
+      }
+      for (var ai = 0; ai < annotIds.length; ai++) {
+        if (this._selectedAnnotIds.indexOf(annotIds[ai]) < 0) this._selectedAnnotIds.push(annotIds[ai]);
+      }
+    } else {
+      this._selectedShapeIds = shapeIds;
+      this._selectedAnnotIds = annotIds;
+    }
+    this._redrawSelection();
+    this._redrawAnnotationSelection();
+  };
+
+  VisualPanel.prototype._cancelSelectionDrag = function () {
+    if (this._selectionDrag && this._selectionDrag.preview) {
+      try { this._selectionDrag.preview.destroy(); } catch (err) { /* ignore */ }
+      if (this.selectionLayer) this.selectionLayer.draw();
+    }
+    this._selectionDrag = null;
+  };
+
+  VisualPanel.prototype._findShapesIntersectingRect = function (rect) {
+    var out = [];
+    if (!rect || !this.userInputLayer) return out;
+    var shapes = this.userInputLayer.find('.user-shape');
+    for (var i = 0; i < shapes.length; i++) {
+      var node = shapes[i];
+      var id = node.getAttr && node.getAttr('userShapeId');
+      if (!id) continue;
+      var box = null;
+      try { box = node.getClientRect({ relativeTo: this.userInputLayer }); }
+      catch (err) { box = null; }
+      if (this._rectsIntersect(rect, box)) out.push(id);
+    }
+    return out;
+  };
+
+  VisualPanel.prototype._findAnnotationsIntersectingRect = function (rect) {
+    var out = [];
+    if (!rect || !this.annotationLayer) return out;
+    var nodes = this.annotationLayer.getChildren();
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (!node.getAttr || node.getAttr('annotationSource') !== 'user') continue;
+      var id = node.getAttr('userAnnotationId');
+      if (!id) continue;
+      var box = null;
+      try { box = node.getClientRect({ relativeTo: this.annotationLayer }); }
+      catch (err) { box = null; }
+      if (this._rectsIntersect(rect, box)) out.push(id);
+    }
+    return out;
   };
 
   VisualPanel.prototype._redrawSelection = function () {
@@ -4071,6 +4304,11 @@
    */
   VisualPanel.prototype.clearUserInput = function () {
     if (!this.userInputLayer && !this.annotationLayer) return;
+    this._cancelDraw();
+    this._cancelSelectionDrag();
+    this._dismissTextInput();
+    this._dismissAnnotationInput();
+    this._cancelPenStroke();
     // WP-4.1 — also release any pending image. Rationale: the Clear User
     // Drawings affordance is the user's explicit "reset my attachments"
     // gesture; we don't want a stale image from an earlier draft to ride

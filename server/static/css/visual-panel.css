@@ -142,6 +142,8 @@
 /* ── Stage cursors (WP-3.1 + WP-5.1) ────────────────────────────────────── */
 
 .visual-panel__konva.vp-cursor-select { cursor: default; }
+.visual-panel__konva.vp-cursor-pan    { cursor: grab; }
+.visual-panel__konva.vp-cursor-grab   { cursor: grab; }
 .visual-panel__konva.vp-cursor-draw   { cursor: crosshair; }
 .visual-panel__konva.vp-cursor-text   { cursor: text; }
 /* WP-5.1 annotation-tool cursors. Each targets a slightly different
