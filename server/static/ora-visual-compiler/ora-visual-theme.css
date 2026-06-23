@@ -535,6 +535,34 @@
   fill: var(--ora-vis-text);
 }
 
+/* Box + label styling. Without these, the group rules above set `fill` on the
+ * <g>, which cascades to BOTH the box <rect> and its <text> — rendering every
+ * effect/category box as a dark fill with same-colour (invisible) text. The
+ * effect "head" is dark with light text; each category box takes its CVD-safe
+ * palette colour with light text. WCAG: white on cat-1..8 / text all clear AA. */
+.ora-visual--fishbone .ora-visual__fb-effect-box {
+  fill: var(--ora-vis-text);
+  stroke: none;
+}
+.ora-visual--fishbone .ora-visual__fb-effect-text {
+  fill: var(--ora-vis-bg);
+}
+.ora-visual--fishbone .ora-visual__fb-category-box {
+  stroke: none;
+  fill: var(--ora-vis-cat-1);
+}
+.ora-visual--fishbone .ora-visual__fb-category-text {
+  fill: var(--ora-vis-bg);
+}
+.ora-visual--fishbone .ora-visual__fb-category--cat-1 .ora-visual__fb-category-box { fill: var(--ora-vis-cat-1); }
+.ora-visual--fishbone .ora-visual__fb-category--cat-2 .ora-visual__fb-category-box { fill: var(--ora-vis-cat-2); }
+.ora-visual--fishbone .ora-visual__fb-category--cat-3 .ora-visual__fb-category-box { fill: var(--ora-vis-cat-3); }
+.ora-visual--fishbone .ora-visual__fb-category--cat-4 .ora-visual__fb-category-box { fill: var(--ora-vis-cat-4); }
+.ora-visual--fishbone .ora-visual__fb-category--cat-5 .ora-visual__fb-category-box { fill: var(--ora-vis-cat-5); }
+.ora-visual--fishbone .ora-visual__fb-category--cat-6 .ora-visual__fb-category-box { fill: var(--ora-vis-cat-6); }
+.ora-visual--fishbone .ora-visual__fb-category--cat-7 .ora-visual__fb-category-box { fill: var(--ora-vis-cat-7); }
+.ora-visual--fishbone .ora-visual__fb-category--cat-8 .ora-visual__fb-category-box { fill: var(--ora-vis-cat-8); }
+
 /* --------------------------------------------------------------------------
  * DECISION family
  * -------------------------------------------------------------------------- */

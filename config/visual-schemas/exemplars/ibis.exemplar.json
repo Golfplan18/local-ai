@@ -1,0 +1,158 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-warehouse-automation-ibis",
+  "type": "ibis",
+  "mode_context": "dialectical-analysis",
+  "relation_to_prose": "integrated",
+  "title": "How should the Dayton DC meet peak-season throughput?",
+  "caption": "IBIS deliberation map of the 2027 peak-capacity decision; 3 competing positions plus one framing sub-issue.",
+  "spec": {
+    "nodes": [
+      {
+        "id": "Q1",
+        "type": "question",
+        "text": "How should the Dayton DC meet 2027 peak throughput?"
+      },
+      {
+        "id": "Q2",
+        "type": "question",
+        "text": "Is peak demand structural or a one-year spike?"
+      },
+      {
+        "id": "I1",
+        "type": "idea",
+        "text": "Deploy goods-to-person robotics (AS/RS)"
+      },
+      {
+        "id": "I2",
+        "type": "idea",
+        "text": "Add a second shift with temp labor"
+      },
+      {
+        "id": "I3",
+        "type": "idea",
+        "text": "Offload overflow to a 3PL partner"
+      },
+      {
+        "id": "P1a",
+        "type": "pro",
+        "text": "Cuts pick cost per unit ~40%"
+      },
+      {
+        "id": "P1b",
+        "type": "pro",
+        "text": "Scales without a tight labor market"
+      },
+      {
+        "id": "C1a",
+        "type": "con",
+        "text": "$14M capex, 18-month payback"
+      },
+      {
+        "id": "C1b",
+        "type": "con",
+        "text": "Wrong bet if demand is a one-year spike"
+      },
+      {
+        "id": "P2a",
+        "type": "pro",
+        "text": "Low upfront cost, reversible"
+      },
+      {
+        "id": "C2a",
+        "type": "con",
+        "text": "Temp hiring scarce at peak"
+      },
+      {
+        "id": "C2b",
+        "type": "con",
+        "text": "Quality and safety dip with churn"
+      },
+      {
+        "id": "P3a",
+        "type": "pro",
+        "text": "Converts fixed cost to variable"
+      },
+      {
+        "id": "C3a",
+        "type": "con",
+        "text": "Cedes control of customer SLA"
+      }
+    ],
+    "edges": [
+      {
+        "from": "I1",
+        "to": "Q1",
+        "type": "responds_to"
+      },
+      {
+        "from": "I2",
+        "to": "Q1",
+        "type": "responds_to"
+      },
+      {
+        "from": "I3",
+        "to": "Q1",
+        "type": "responds_to"
+      },
+      {
+        "from": "Q2",
+        "to": "Q1",
+        "type": "questions"
+      },
+      {
+        "from": "P1a",
+        "to": "I1",
+        "type": "supports"
+      },
+      {
+        "from": "P1b",
+        "to": "I1",
+        "type": "supports"
+      },
+      {
+        "from": "C1a",
+        "to": "I1",
+        "type": "objects_to"
+      },
+      {
+        "from": "C1b",
+        "to": "I1",
+        "type": "objects_to"
+      },
+      {
+        "from": "P2a",
+        "to": "I2",
+        "type": "supports"
+      },
+      {
+        "from": "C2a",
+        "to": "I2",
+        "type": "objects_to"
+      },
+      {
+        "from": "C2b",
+        "to": "I2",
+        "type": "objects_to"
+      },
+      {
+        "from": "P3a",
+        "to": "I3",
+        "type": "supports"
+      },
+      {
+        "from": "C3a",
+        "to": "I3",
+        "type": "objects_to"
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "An IBIS argument map: one root issue diamond, three competing position boxes, and one framing sub-issue, with pro and con argument nodes hanging off each position.",
+    "level_2_statistical": "14 nodes (2 questions, 3 ideas, 5 pros, 6 cons) and 13 typed edges. Each of the 3 positions carries at least one supporting and one objecting argument; the robotics position is the most contested (2 pros, 2 cons).",
+    "level_3_perceptual": "The map reads as a balanced three-way deliberation rather than a settled answer: no position is argument-free, and the structural-vs-spike sub-issue branching off the root signals that the whole choice hinges on an unresolved framing question.",
+    "level_4_contextual": "Surfaces that the capital-intensive robotics bet (I1) is only rational if peak demand is structural (Q2); the cheaper, reversible options (I2, I3) hedge the framing risk but trade away cost efficiency or SLA control.",
+    "short_alt": "IBIS map: meeting 2027 peak DC throughput \u2014 three positions (robotics, second shift, 3PL) with pros and cons.",
+    "data_table_fallback": null
+  }
+}

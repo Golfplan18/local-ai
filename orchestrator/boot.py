@@ -509,6 +509,21 @@ def _maybe_recover_visual(prose: str, context_pkg: dict | None, mode: str | None
     kind."""
     preferred_kind = context_pkg.get("visual_kind") if isinstance(context_pkg, dict) else None
     target_kinds = _mode_target_types(mode, preferred_kind)
+    # Routing fix (root-cause A): when a SPECIFIC kind is explicitly requested
+    # (threaded as ``visual_kind`` — the visual-tool campaign, or a UI "draw a
+    # <kind>" affordance), that kind is EXCLUSIVE for recovery. Otherwise
+    # recovery renders whatever ACCEPTED SIBLING the analyst happened to draw —
+    # e.g. a decision_tree for a `tornado` request (decision-under-uncertainty
+    # accepts both), or a causal_loop for a `fishbone` request — which marks the
+    # turn rendered_ok and SHORT-CIRCUITS synthesis of the kind that was actually
+    # asked for. Restricting recovery to the requested kind lets it recover that
+    # kind if the model drew it, else fall through to synthesis which builds it.
+    # Only fires when a kind is explicitly threaded (daily-driver turns thread
+    # none, so they are unaffected); ORA_VISUAL_RECOVER_SIBLINGS=1 restores the
+    # old accept-any-sibling behavior.
+    if (preferred_kind and preferred_kind in _KNOWN_VISUAL_TYPES
+            and not _env_flag("ORA_VISUAL_RECOVER_SIBLINGS")):
+        target_kinds = [preferred_kind]
     # When a visual is genuinely EXPECTED (mode mapped or a kind threaded),
     # recover in any execution context — that's the 22 visual techniques.
     # When NO visual is expected (unmapped / no_visual mode), recovering a

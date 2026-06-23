@@ -98,16 +98,68 @@ window.OraVisualCompiler._renderers.fishbone = (function () {
   ];
 
   // ── Geometry constants ─────────────────────────────────────────────────
-  const VIEW_W  = 960;
-  const VIEW_H  = 540;
+  // VIEW_W / VIEW_H (and the SPINE_Y / SPINE_X1 derived from them) are sized to
+  // CONTENT at render time by _sizeViewport(): a fixed 960×540 canvas could not
+  // fit more than ~1 cause per category before the diagonal branch+label boxes
+  // collided, and the artifact-overlap rule (>5% of smaller area) then
+  // suppressed the whole render — the dominant reason populated fishbones came
+  // back blank. The spine lengthens and the canvas grows with the category and
+  // cause counts so a realistic 6M fishbone (4–6 categories, 2–3 causes each)
+  // lays out without overlap. Defaults preserve the legacy size for the minimal
+  // case. Mutated only at the top of the single synchronous render() entrypoint.
+  let VIEW_W  = 960;
+  let VIEW_H  = 540;
   const PAD_X   = 40;
   const PAD_Y   = 40;
-  const SPINE_Y = VIEW_H / 2;
+  let SPINE_Y = VIEW_H / 2;
 
-  const SPINE_X0 = PAD_X + 120;                  // leave room for a possible left pad note
+  let SPINE_X0 = PAD_X + 120;                    // leave room for a possible left pad note
   const EFFECT_W = 180;
   const EFFECT_H = 70;
-  const SPINE_X1 = VIEW_W - PAD_X - EFFECT_W;    // spine meets the effect box
+  let SPINE_X1 = VIEW_W - PAD_X - EFFECT_W;       // spine meets the effect box
+
+  // Size the canvas to the diagram's content so diagonal category branches and
+  // their label boxes never collide (which would trip the overlap suppressor).
+  // Horizontal room scales with category count (attach points spread along the
+  // spine); vertical room scales with per-side category count and the longest
+  // branch (more causes ⇒ longer branch ⇒ taller reach off the spine).
+  function _sizeViewport(categories) {
+    // Always reset first: VIEW_* are module-level `let`s that persist between
+    // render() calls, so a previous large diagram must not leak its size into a
+    // later small one.
+    VIEW_W = 960; VIEW_H = 540; SPINE_X0 = PAD_X + 120;
+    const n = Array.isArray(categories) ? categories.length : 0;
+    if (n > 2) {
+      let maxCauses = 1, maxCauseChars = 0;
+      for (const c of categories) {
+        const cz = c && Array.isArray(c.causes) ? c.causes : [];
+        if (cz.length > maxCauses) maxCauses = cz.length;
+        for (const ca of cz) {
+          const L = ca && typeof ca.text === 'string' ? ca.text.length : 0;
+          if (L > maxCauseChars) maxCauseChars = L;
+        }
+      }
+      const perSide = Math.ceil(n / 2);
+      // A category group's bounding box includes its cause-label stubs, so wide
+      // labels widen the group and can collide with the neighbour. Spread
+      // categories further apart as labels get longer (~6px/char) so the
+      // overlap suppressor doesn't fire on legitimate, fully-labelled fishbones.
+      const labelRoom = Math.min(maxCauseChars, 48) * 6;
+      // The leftmost category's cause labels are right-anchored and extend LEFT
+      // past the spine start; give that side room so they don't clip at x<0.
+      SPINE_X0 = PAD_X + 120 + labelRoom;
+      // Same-side categories sit 2*step apart along the spine; each category's
+      // group bbox spans its label box (130) PLUS its cause-label stubs (which
+      // reach ~labelRoom wide). So per-category spine room must exceed that, or
+      // adjacent same-side groups overlap. Budget generously per category and
+      // add the 140px effect-box reservation + effect width on the right.
+      const perCat = 150 + maxCauses * 30 + Math.round(labelRoom * 0.9);
+      VIEW_W = Math.max(960, SPINE_X0 + 360 + n * perCat);
+      VIEW_H = Math.max(540, 260 + perSide * 190 + maxCauses * 34);
+    }
+    SPINE_Y = VIEW_H / 2;
+    SPINE_X1 = VIEW_W - PAD_X - EFFECT_W;
+  }
 
   const CATEGORY_BOX_W = 130;
   const CATEGORY_BOX_H = 28;
@@ -259,11 +311,13 @@ window.OraVisualCompiler._renderers.fishbone = (function () {
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
 
-    // Distribute attach points along the spine. Reserve ~10% on the left
-    // (near SPINE_X0) and stop ~12% short of SPINE_X1 so the last branch
-    // never overlaps the effect box.
+    // Distribute attach points along the spine. Reserve room on the left (near
+    // SPINE_X0) and a generous gap before SPINE_X1 so the rightmost category —
+    // whose label box and causes sit nearest the effect "head" — never collides
+    // with it (the effect-vs-category overlap that otherwise trips the >5%
+    // suppressor on dense 6M fishbones). 140px clears a 180px-wide effect box.
     const spineStart = SPINE_X0 + 30;
-    const spineEnd   = SPINE_X1 - 30;
+    const spineEnd   = SPINE_X1 - 140;
     const spineSpan  = spineEnd - spineStart;
     const step       = n === 1 ? 0 : spineSpan / (n - 1);
 
@@ -621,6 +675,7 @@ window.OraVisualCompiler._renderers.fishbone = (function () {
     // Layout + emit. Defensive try/catch — contract forbids throwing.
     let svg;
     try {
+      _sizeViewport(spec.categories);            // grow canvas to fit content
       const layout = _layoutCategories(spec.categories);
       svg = _emitSvg(envelope, spec, layout);
     } catch (err) {

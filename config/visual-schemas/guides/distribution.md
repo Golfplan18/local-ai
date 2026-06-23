@@ -1,0 +1,10 @@
+STRUCTURAL DEF: a distribution shows the SHAPE of ONE variable's values across many observations — density/frequency over a value axis, exposing center, spread, skew, modality, tails. The value variable is QUANTITATIVE on x; the count/density axis is on y (histogram/area) OR the variable is on y with no count axis (boxplot/strip). It is NOT category-vs-magnitude (that is `comparison`) and NOT value-over-time (that is `time_series`).
+
+DISAMBIGUATION CUE — build THIS when the question is "what does the spread/tail/shape look like?" Pick the MARK by what the prose argues:
+- `bar` + `transform:[{bin}]`+aggregate count = histogram. Default choice for skew/tail/multimodality.
+- `point`/`area` over a sorted cumulative field = ECDF. Use when prose talks percentiles/SLA thresholds.
+- `boxplot` ONLY when prose wants quartile summary AND explicitly NOT the full shape. DO NOT emit boxplot when prose says "ECDF" or "histogram" — that is the #1 judge failure (sibling trap). The mark must MATCH the prose's prescribed encoding.
+
+JUDGE FAILURES DEFEATED: (1) box-plot-when-text-says-ECDF/histogram → mark mirrors prose; (2) linear-axis-histogram-when-log-mandated → for heavy right-skew (latency, income, file sizes) use `"scale":{"type":"log"}` on the value axis AND set `integrity_declarations.log_scale_base`; T8 requires base disclosure. (3) blank frame → `data.values` MUST be a non-empty inline array of real objects, never empty/placeholder.
+
+LAYOUT/LABELING: every `encoding` channel needs `field`+`type`+`title` with units (no library-default passthrough — T7/§7.5). Count/density axis MUST be zero-baselined (T2). Bin the value axis explicitly (`transform` bin or `bin:{maxbins}`) — don't ship default bins. Caption REQUIRES source/period/n/units (all minLength≥1; n≥0 integer). Provide a real `title`. semantic_description MUST describe a distribution (shape/center/spread/skew/tail/percentiles) — never copy a bar-chart placeholder; `short_alt` ≤150 chars in "[chart type] of [data], where [takeaway]" form.

@@ -40,14 +40,43 @@ SYSTEM_PROMPT = (
 
 
 def _load_example(vtype: str) -> dict | None:
-    """Load the known-good example fixture for ``vtype`` (anchors the shape)."""
+    """Load the worked example that anchors the shape for ``vtype``.
+
+    Prefers a rich, hand-verified ``exemplars/{vtype}.exemplar.json`` (fully
+    populated, correct ``semantic_description`` + ``caption``) over the minimal
+    ``examples/{vtype}.valid.json`` fixture. The minimal fixtures are degenerate
+    teaching material: several carry a copy-pasted placeholder
+    ``semantic_description`` ("Bar chart of four categories…") and the QUANT ones
+    omit the ``caption`` the adversarial review requires — telling the model to
+    "match its shape exactly" actively misleads. Falls back to the valid fixture
+    so untouched types are unaffected."""
+    for rel in (f"exemplars/{vtype}.exemplar.json", f"examples/{vtype}.valid.json"):
+        try:
+            p = SCHEMAS_ROOT / rel
+            if p.exists():
+                return json.loads(p.read_text())
+        except Exception:
+            continue
+    return None
+
+
+def _load_guide(vtype: str) -> tuple[str | None, str | None]:
+    """Per-type construction guide + anti-pattern, if one exists. Returns
+    ``(guide_md, anti_pattern)`` — either may be None. Hard-injected into the
+    synthesis prompt to compensate for diagram types under-represented in model
+    training data (Lever 3). Absent guide ⇒ the thin prompt is used unchanged,
+    so this is safe to ship before guides exist for all 22 types."""
+    guide = anti = None
     try:
-        p = SCHEMAS_ROOT / "examples" / f"{vtype}.valid.json"
-        if p.exists():
-            return json.loads(p.read_text())
+        g = SCHEMAS_ROOT / "guides" / f"{vtype}.md"
+        if g.exists():
+            guide = g.read_text().strip() or None
+        a = SCHEMAS_ROOT / "guides" / f"{vtype}.anti.txt"
+        if a.exists():
+            anti = a.read_text().strip() or None
     except Exception:
         pass
-    return None
+    return guide, anti
 
 
 def _extract_json(text: str) -> dict | None:
@@ -105,9 +134,24 @@ def _build_prompt(prose: str, mode: str, vtype: str,
         f"envelope of type `{vtype}`.",
         "Output ONLY the JSON object.",
     ]
+    # Lever 3 — per-type construction guidance (structure, sibling-disambiguation,
+    # the specific failure modes it defeats, layout/labeling rules). Hard-injected
+    # keyed on vtype; absent ⇒ thin prompt unchanged (fail-open).
+    guide, anti = _load_guide(vtype)
+    if guide:
+        parts.append(f"## How to construct a correct `{vtype}` (read before you build)")
+        parts.append(guide)
+    if anti:
+        parts.append("## Anti-pattern — do NOT produce this")
+        parts.append(anti)
     example = _load_example(vtype)
     if example is not None:
-        parts.append("VALID example of this exact type — match its shape exactly:")
+        label = ("WORKED EXAMPLE — a correct, well-built instance of this type "
+                 "(match this depth and shape, incl. a real semantic_description "
+                 "and, for charts, a caption; adapt the content to the prose — do "
+                 "NOT copy its values):") if guide else \
+                "VALID example of this exact type — match its shape exactly:"
+        parts.append(label)
         parts.append(json.dumps(example, indent=2))
     parts.append("ANALYST PROSE (extract the structure from this):")
     parts.append((prose or "")[:6000])

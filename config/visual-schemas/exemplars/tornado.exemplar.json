@@ -1,0 +1,139 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-saas-npv-tornado",
+  "type": "tornado",
+  "mode_context": "decision-under-uncertainty",
+  "relation_to_prose": "integrated",
+  "title": "NPV sensitivity of the Helios platform expansion",
+  "caption": "Source: FP&A 5-year DCF model v3.2; each input swung to its P10/P90 with all others held at base; outcome = unlevered NPV, USD millions.",
+  "spec": {
+    "base_case_label": "Base-case NPV",
+    "base_case_value": 46,
+    "outcome_variable": "Project NPV",
+    "outcome_units": "USD millions",
+    "sort_by": "swing",
+    "parameters": [
+      {
+        "label": "Annual logo churn",
+        "low_value": 3,
+        "high_value": 8,
+        "low_label": "3% (P10)",
+        "high_label": "8% (P90)",
+        "outcome_at_low": 82.4,
+        "outcome_at_high": 10.8
+      },
+      {
+        "label": "Net-new ARR growth",
+        "low_value": 12,
+        "high_value": 34,
+        "low_label": "12% (P10)",
+        "high_label": "34% (P90)",
+        "outcome_at_low": 18.5,
+        "outcome_at_high": 78.2
+      },
+      {
+        "label": "Gross margin",
+        "low_value": 68,
+        "high_value": 82,
+        "low_label": "68% (P10)",
+        "high_label": "82% (P90)",
+        "outcome_at_low": 22.6,
+        "outcome_at_high": 70.1
+      },
+      {
+        "label": "CAC payback period",
+        "low_value": 11,
+        "high_value": 24,
+        "low_label": "11 mo (P10)",
+        "high_label": "24 mo (P90)",
+        "outcome_at_low": 60.3,
+        "outcome_at_high": 32.4
+      },
+      {
+        "label": "Discount rate (WACC)",
+        "low_value": 9,
+        "high_value": 14,
+        "low_label": "9% (P10)",
+        "high_label": "14% (P90)",
+        "outcome_at_low": 58.9,
+        "outcome_at_high": 36.7
+      },
+      {
+        "label": "Contract ramp time",
+        "low_value": 2,
+        "high_value": 6,
+        "low_label": "2 mo (P10)",
+        "high_label": "6 mo (P90)",
+        "outcome_at_low": 49.1,
+        "outcome_at_high": 41
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Horizontal tornado (sensitivity) chart. X-axis is project NPV in USD millions, roughly 10 to 82. A vertical reference line marks the base-case NPV of 46. Six bars, one per input, each spanning the NPV reached when that input is swung from its P10 to its P90 with all other inputs held at base. Bars are sorted widest-on-top.",
+    "level_2_statistical": "Swings (|NPV_high - NPV_low|): annual logo churn 71.6 (82.4 down to 10.8), net-new ARR growth 59.7 (18.5 up to 78.2), gross margin 47.5 (22.6 up to 70.1), CAC payback 27.9 (60.3 down to 32.4), discount rate 22.2 (58.9 down to 36.7), contract ramp time 8.1 (49.1 down to 41.0). Top three inputs account for about 78% of total swing range.",
+    "level_3_perceptual": "A clear funnel: churn, ARR growth, and gross margin dominate while ramp time is nearly negligible. Churn and ARR growth alone can flip NPV from marginal to very strong. Churn and ARR growth point in opposite directions (churn-low and growth-high both lift NPV), so the bars cross the base line on opposite sides; the bottom three bars cluster tightly around the base, signaling low leverage.",
+    "level_4_contextual": "Retention and demand-generation discipline, not cost of capital or onboarding speed, are the decision-relevant uncertainties; diligence and contingency planning should concentrate on the top three drivers.",
+    "short_alt": "Tornado chart of Helios NPV sensitivity, where annual logo churn is by far the largest driver (71.6M swing).",
+    "data_table_fallback": {
+      "columns": [
+        "Input",
+        "Low value",
+        "High value",
+        "NPV at low (USD M)",
+        "NPV at high (USD M)",
+        "Swing (USD M)"
+      ],
+      "rows": [
+        [
+          "Annual logo churn",
+          "3%",
+          "8%",
+          82.4,
+          10.8,
+          71.6
+        ],
+        [
+          "Net-new ARR growth",
+          "12%",
+          "34%",
+          18.5,
+          78.2,
+          59.7
+        ],
+        [
+          "Gross margin",
+          "68%",
+          "82%",
+          22.6,
+          70.1,
+          47.5
+        ],
+        [
+          "CAC payback period",
+          "11 mo",
+          "24 mo",
+          60.3,
+          32.4,
+          27.9
+        ],
+        [
+          "Discount rate (WACC)",
+          "9%",
+          "14%",
+          58.9,
+          36.7,
+          22.2
+        ],
+        [
+          "Contract ramp time",
+          "2 mo",
+          "6 mo",
+          49.1,
+          41,
+          8.1
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-rca-checkout-cart-abandon",
+  "type": "fishbone",
+  "mode_context": "root-cause-analysis",
+  "relation_to_prose": "integrated",
+  "title": "Why checkout cart-abandonment spiked to 71%",
+  "caption": "Root-cause analysis, 6M framework. Source: Q2 funnel + session-replay audit, n=2,140 abandoned sessions.",
+  "spec": {
+    "effect": "Checkout cart-abandonment spiked 58%\u219271% in Q2",
+    "framework": "6M",
+    "categories": [
+      {
+        "name": "Method",
+        "causes": [
+          {
+            "text": "New 3-field address step"
+          },
+          {
+            "text": "Coupon box invites exits"
+          }
+        ]
+      },
+      {
+        "name": "Machine",
+        "causes": [
+          {
+            "text": "Payment API p95 1.8s on mobile"
+          },
+          {
+            "text": "3DS callback retry storms"
+          }
+        ]
+      },
+      {
+        "name": "Material",
+        "causes": [
+          {
+            "text": "Shipping cost shown only at end"
+          },
+          {
+            "text": "Stock-out flagged post card-entry"
+          }
+        ]
+      },
+      {
+        "name": "Man",
+        "causes": [
+          {
+            "text": "No checkout-funnel owner"
+          },
+          {
+            "text": "Defect reports lost in backlog"
+          }
+        ]
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Fishbone (Ishikawa) cause-and-effect diagram using the 6M framework. The fish head states the effect 'checkout cart-abandonment spiked from 58% to 71% in Q2'; six diagonal category ribs (Method, Machine, Material, Measurement, Manpower, Environment) branch off a central horizontal spine, each carrying 1-2 contributing causes with selected 5-whys sub-causes.",
+    "level_2_statistical": "Six categories hold 11 first-level causes total; Method, Machine, and Material are the densest (2 causes plus a drilled sub-cause each). Tree depth reaches 3 (category to cause to sub-cause). The diagram is acyclic with no feedback edges.",
+    "level_3_perceptual": "Causes cluster around a single mechanism: friction and cost surprises late in the flow (Method) compounded by a latency regression and stale-inventory errors (Machine, Material) that fail buyers at the payment step. Measurement gaps explain why the spike went undetected. Environment causes are external and not directly fixable.",
+    "level_4_contextual": "The actionable cluster is the synchronous fraud-scoring call and the forced account creation; both are reversible engineering changes, unlike the competitor promo and the Safari autofill deprecation.",
+    "short_alt": "Fishbone (6M) of a checkout abandonment spike to 71%, with late-flow friction and a payment-latency regression as densest causes.",
+    "data_table_fallback": null
+  }
+}

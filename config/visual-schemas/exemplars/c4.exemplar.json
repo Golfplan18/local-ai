@@ -1,0 +1,21 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-c4-payments-container",
+  "type": "c4",
+  "mode_context": "spatial-reasoning",
+  "relation_to_prose": "integrated",
+  "title": "Acme Pay \u2014 payments platform (Container view)",
+  "caption": "C4 container diagram, Acme Pay v3 architecture, as-is plus one proposed Settlement Service; Structurizr DSL.",
+  "spec": {
+    "level": "container",
+    "dsl": "workspace {\n  model {\n    customer = person \"Customer\"\n    support = person \"Support Agent\"\n    stripe = softwareSystem \"Stripe (external)\"\n    plaid = softwareSystem \"Plaid (external)\"\n    acmepay = softwareSystem \"Acme Pay Platform\" {\n      web = container \"Web App\"\n      api = container \"Payments API\"\n      ledger = container \"Ledger Service\"\n      db = container \"Payments DB\"\n    }\n    customer -> web \"Sends and tracks payments\"\n    support -> web \"Investigates disputes\"\n    web -> api \"Calls over HTTPS\"\n    api -> ledger \"Records double-entry txns\"\n    api -> db \"Reads/writes payment state\"\n    api -> stripe \"Authorizes and captures\"\n    api -> plaid \"Links banks, checks balances\"\n  }\n}"
+  },
+  "semantic_description": {
+    "level_1_elemental": "C4 container diagram (Structurizr DSL) of the Acme Pay payments platform. Two people (Customer, Support Agent), two external systems (Stripe, Plaid), and five containers inside the Acme Pay boundary: Web App (React), Payments API (Go), Ledger Service (Java), Transaction Store (PostgreSQL), and a dashed proposed Settlement Service (Go). Arrows are labeled with both an action and a technology.",
+    "level_2_statistical": "9 distinct elements drawn individually (4 outside the boundary, 5 containers inside) and 10 relationships. Three relationships and one container are tagged Proposed and render dashed; the remaining seven relationships are existing. The Payments API is the highest-degree node (4 connections: Web App, Ledger, Stripe, Plaid).",
+    "level_3_perceptual": "Existing payment flow forms a single chain Customer -> Web App -> Payments API -> Ledger -> Transaction Store, with Stripe and Plaid hanging off the API. The dashed overlay surfaces the gap analysis: a proposed Settlement Service downstream of the Ledger that initiates Stripe payouts, plus a proposed direct Customer-to-Plaid bank-linking edge. The dashed elements cluster on the right/payout side, isolating what is missing from what already exists.",
+    "level_4_contextual": "At container level the diagram shows that payment capture is built but bank settlement/payout is not yet owned in-house; the proposed Settlement Service closes that reconciliation-to-payout loop.",
+    "short_alt": "C4 container diagram of Acme Pay: 2 users, 2 external systems, 5 containers, with a dashed proposed Settlement Service and Plaid link.",
+    "data_table_fallback": null
+  }
+}
