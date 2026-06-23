@@ -909,45 +909,73 @@
  * SPATIAL family (Structurizr renderer, WP-1.2d)
  * -------------------------------------------------------------------------- */
 
-.ora-visual--c4 .ora-visual__node--person {
+/* C4 boxes are filled per element TYPE following the canonical C4 scheme
+ * (person/system/container, external muted). These rules target the classes
+ * the structurizr-mini renderer actually emits (c4-person/c4-system/
+ * c4-container/c4-shape) — the previous rules pointed at __node--* classes the
+ * renderer never produced, so every box rendered fill-less (white-on-white,
+ * effectively blank). White labels sit on the coloured fills (verified AA on
+ * person/system/container; external is a muted grey by C4 convention). */
+.ora-visual--c4 .ora-visual__c4-person .ora-visual__c4-person-head,
+.ora-visual--c4 .ora-visual__c4-person .ora-visual__c4-person-body {
   fill: var(--ora-vis-c4-person);
   stroke: var(--ora-vis-c4-person);
 }
-
-.ora-visual--c4 .ora-visual__node--person text {
-  fill: var(--ora-vis-bg);
-  font-weight: 600;
-}
-
-.ora-visual--c4 .ora-visual__node--system {
+.ora-visual--c4 .ora-visual__c4-system .ora-visual__c4-shape {
   fill: var(--ora-vis-c4-system);
   stroke: var(--ora-vis-c4-system);
 }
-
-.ora-visual--c4 .ora-visual__node--system text {
-  fill: var(--ora-vis-bg);
-  font-weight: 600;
-}
-
-.ora-visual--c4 .ora-visual__node--container {
+.ora-visual--c4 .ora-visual__c4-container .ora-visual__c4-shape {
   fill: var(--ora-vis-c4-container);
   stroke: var(--ora-vis-c4-container);
 }
-
-.ora-visual--c4 .ora-visual__node--container text {
-  fill: var(--ora-vis-bg);
-}
-
-.ora-visual--c4 .ora-visual__node--external {
-  fill: var(--ora-vis-bg);
+.ora-visual--c4 .ora-visual__c4-system--external .ora-visual__c4-shape {
+  fill: var(--ora-vis-c4-external);
   stroke: var(--ora-vis-c4-external);
-  stroke-width: var(--ora-vis-stroke-medium);
-  stroke-dasharray: 4 3;
 }
 
+/* Labels: name bold-white, metatype/technology/description lighter-white. */
+.ora-visual--c4 .ora-visual__c4-label {
+  fill: var(--ora-vis-bg);
+  font-weight: 600;
+}
+.ora-visual--c4 .ora-visual__c4-metatype,
+.ora-visual--c4 .ora-visual__c4-technology {
+  fill: var(--ora-vis-bg);
+  font-size: var(--ora-vis-fontsize-axis);
+  font-style: italic;
+  opacity: 0.92;
+}
+.ora-visual--c4 .ora-visual__c4-description {
+  fill: var(--ora-vis-bg);
+  font-size: var(--ora-vis-fontsize-axis);
+  opacity: 0.85;
+}
+
+/* System boundary (container view): dashed enclosure + corner label. */
+.ora-visual--c4 .ora-visual__c4-boundary {
+  fill: none;
+  stroke: var(--ora-vis-c4-system);
+  stroke-width: var(--ora-vis-stroke-medium);
+  stroke-dasharray: 6 4;
+}
+.ora-visual--c4 .ora-visual__c4-boundary-label {
+  fill: var(--ora-vis-text-secondary);
+  font-weight: 600;
+  font-size: var(--ora-vis-fontsize-label);
+}
+
+/* Relationships: solid arrow + label. */
+.ora-visual--c4 .ora-visual__c4-relationship-line,
 .ora-visual--c4 .ora-visual__edge {
   stroke: var(--ora-vis-axis);
   stroke-width: var(--ora-vis-stroke-medium);
+  fill: none;
+}
+.ora-visual--c4 .ora-visual__c4-arrowhead path { fill: var(--ora-vis-axis); }
+.ora-visual--c4 .ora-visual__c4-relationship-label {
+  fill: var(--ora-vis-text-secondary);
+  font-size: var(--ora-vis-fontsize-axis);
 }
 
 /* ==========================================================================
@@ -1062,9 +1090,6 @@
      needs to become dark-on-light where we use paler category fills. */
   .ora-visual--causal_dag .ora-visual__node--exposure text,
   .ora-visual--causal_dag .ora-visual__node--outcome text,
-  .ora-visual--c4 .ora-visual__node--person text,
-  .ora-visual--c4 .ora-visual__node--system text,
-  .ora-visual--c4 .ora-visual__node--container text,
   .ora-visual--influence_diagram .ora-visual__node--value text,
   .ora-visual--bow_tie .ora-visual__hazard text,
   .ora-visual--flowchart .ora-visual__node--start text,
