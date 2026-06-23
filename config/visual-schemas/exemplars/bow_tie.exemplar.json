@@ -122,6 +122,16 @@
           }
         ]
       }
+    ],
+    "escalation_factors": [
+      {
+        "from_control_id": "PC2",
+        "label": "Failover itself depends on the shared DNS provider",
+        "escalation_control": {
+          "id": "EC1",
+          "label": "Secondary DNS + pre-pinned IP runbook"
+        }
+      }
     ]
   },
   "semantic_description": {

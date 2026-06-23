@@ -819,6 +819,21 @@
     // overlaps in the adversarial sense — they are the intended layout.
     // The render-as-fallback branch is for TRUE layout bugs (two
     // independent nodes colliding) not for design nesting / tiling.
+    // Connector/annotation-link classes denote EDGES, not independent nodes:
+    // a flow (pipe + valve + arrowhead), a sequence message arrow, a bow-tie
+    // pathway, or an escalation link. Their rendered geometry is a line/curve,
+    // so the group's bounding box spans the diagram and necessarily abuts (or
+    // crosses) the nodes it connects — that is the intended layout, not a
+    // "two independent NODES collided" bug. Including them in the bbox-overlap
+    // suppressor produced false positives that blanked otherwise-correct
+    // diagrams (a flow valve/arrow touching its target stock → 6.6%; an
+    // escalation line crossing a threat → 45%). Node↔node collision detection
+    // (the suppressor's actual purpose) is unaffected.
+    function _isConnectorClass(cls) {
+      return cls === 'ora-visual__flow' || cls === 'ora-visual__message' ||
+        cls === 'ora-visual__pathway' || cls === 'ora-visual__escalation';
+    }
+
     function _isNestingPair(clsA, clsB) {
       // Quadrant/item nesting.
       if ((clsA === 'ora-visual__quadrant' && clsB === 'ora-visual__quadrant-item') ||
@@ -862,6 +877,7 @@
       for (var b = a + 1; b < semElems.length; b++) {
         var A = semElems[a], B = semElems[b];
         if (_isAncestor(A.el, B.el) || _isAncestor(B.el, A.el)) continue;
+        if (_isConnectorClass(A.cls) || _isConnectorClass(B.cls)) continue;
         if (_isNestingPair(A.cls, B.cls)) continue;
         var inter = _intersectArea(A.bbox, B.bbox);
         if (inter <= 0) continue;
