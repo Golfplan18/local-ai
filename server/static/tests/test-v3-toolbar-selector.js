@@ -403,6 +403,51 @@ test('listAvailablePacks carries label + default_dock', function () {
   assertEqual(cartoon.default_dock, 'left');
 });
 
+test('extended registry wires drawing, annotation, and canvas commands', function () {
+  var b = boot();
+  var panel = makePanel();
+  var calls = [];
+  panel.setActiveTool = function (tool) { calls.push('tool:' + tool); };
+  panel.clearUserInput = function () { calls.push('clearUserInput'); };
+  panel.zoomToExtents = function () { calls.push('zoomToExtents'); };
+  panel._showErrorBar = function (msg) { calls.push('error:' + msg); };
+  b.sandbox.window.OraResizeCanvas = {
+    open: function (p) {
+      calls.push('resize:' + (p === panel));
+      return Promise.resolve({ status: 'cancelled' });
+    }
+  };
+  b.sandbox.window.OraCropToContent = {
+    apply: function (p) { calls.push('cropContent:' + (p === panel)); }
+  };
+  b.sandbox.window.OraCropToSelection = {
+    apply: function (p, opts) {
+      calls.push('cropSelection:' + (p === panel) + ':' + (typeof opts.confirmFn === 'function'));
+    }
+  };
+  var reg = b.Packs.buildExtendedRegistry(panel);
+  reg['tool:arrow']();
+  reg['tool:text']();
+  reg['tool:callout']();
+  reg['tool:pan']();
+  reg['tool:clear']();
+  reg['tool:resize_canvas']();
+  reg['tool:crop_to_content']();
+  reg['tool:crop_to_selection']();
+  assertEqual(calls, [
+    'tool:arrow',
+    'tool:text',
+    'tool:callout',
+    'tool:pan',
+    'clearUserInput',
+    'resize:true',
+    'cropContent:true',
+    'zoomToExtents',
+    'cropSelection:true:true',
+    'zoomToExtents'
+  ]);
+});
+
 test('mountPack docks a pack toolbar to its default edge', function () {
   var b = boot();
   var panel = makePanel();

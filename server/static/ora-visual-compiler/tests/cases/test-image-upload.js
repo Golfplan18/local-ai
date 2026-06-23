@@ -218,6 +218,14 @@ module.exports = {
       record('image-upload: Konva.Image named "vp-background-image" on backgroundLayer',
         imgs.length === 1,
         'count=' + imgs.length);
+      const bb = panel._computeContentBBox();
+      record('image-upload: zoom/content bounds include background image',
+        !!bb && bb.width > 0 && bb.height > 0,
+        'bbox=' + JSON.stringify(bb));
+      panel.zoomToExtents();
+      record('image-upload: zoomToExtents fits uploaded image without drawings',
+        panel._transform.scale !== 1 || panel._transform.x !== 0 || panel._transform.y !== 0,
+        'transform=' + JSON.stringify(panel._transform));
       panel.destroy();
       win.document.body.removeChild(div);
     } catch (err) {

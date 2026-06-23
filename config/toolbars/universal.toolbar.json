@@ -15,14 +15,14 @@
       "id": "select",
       "icon": "mouse-pointer",
       "label": "Select",
-      "shortcut": "V",
+      "shortcut": "S",
       "binding": "tool:select"
     },
     {
       "id": "pan",
       "icon": "hand",
       "label": "Pan",
-      "shortcut": "H",
+      "shortcut": "Space",
       "binding": "tool:pan"
     },
     {
