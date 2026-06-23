@@ -1,0 +1,160 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-churn-concept-map",
+  "type": "concept_map",
+  "mode_context": "synthesis",
+  "relation_to_prose": "integrated",
+  "title": "What drives B2B SaaS net revenue retention",
+  "spec": {
+    "focus_question": "How do product, support, and pricing forces combine to drive net revenue retention?",
+    "concepts": [
+      {
+        "id": "nrr",
+        "label": "Net revenue retention",
+        "hierarchy_level": 0
+      },
+      {
+        "id": "churn",
+        "label": "Logo churn",
+        "hierarchy_level": 1
+      },
+      {
+        "id": "expansion",
+        "label": "Expansion revenue",
+        "hierarchy_level": 1
+      },
+      {
+        "id": "value",
+        "label": "Realized customer value",
+        "hierarchy_level": 2
+      },
+      {
+        "id": "onboarding",
+        "label": "Onboarding quality",
+        "hierarchy_level": 3
+      },
+      {
+        "id": "support",
+        "label": "Support responsiveness",
+        "hierarchy_level": 3
+      },
+      {
+        "id": "pricing",
+        "label": "Pricing fit",
+        "hierarchy_level": 3
+      },
+      {
+        "id": "adoption",
+        "label": "Feature adoption depth",
+        "hierarchy_level": 3
+      }
+    ],
+    "linking_phrases": [
+      {
+        "id": "p_reduces",
+        "text": "is reduced by"
+      },
+      {
+        "id": "p_lifts",
+        "text": "is lifted by"
+      },
+      {
+        "id": "p_increases",
+        "text": "increases"
+      },
+      {
+        "id": "p_drives",
+        "text": "drives"
+      },
+      {
+        "id": "p_signals",
+        "text": "signals readiness for"
+      },
+      {
+        "id": "p_accelerates",
+        "text": "accelerates"
+      },
+      {
+        "id": "p_erodes",
+        "text": "erodes"
+      },
+      {
+        "id": "p_unlocks",
+        "text": "unlocks deeper"
+      },
+      {
+        "id": "p_constrains",
+        "text": "constrains willingness to pay for"
+      }
+    ],
+    "propositions": [
+      {
+        "from_concept": "churn",
+        "via_phrase": "p_reduces",
+        "to_concept": "nrr"
+      },
+      {
+        "from_concept": "expansion",
+        "via_phrase": "p_lifts",
+        "to_concept": "nrr"
+      },
+      {
+        "from_concept": "value",
+        "via_phrase": "p_drives",
+        "to_concept": "expansion"
+      },
+      {
+        "from_concept": "value",
+        "via_phrase": "p_erodes",
+        "to_concept": "churn",
+        "is_cross_link": true
+      },
+      {
+        "from_concept": "onboarding",
+        "via_phrase": "p_accelerates",
+        "to_concept": "value"
+      },
+      {
+        "from_concept": "support",
+        "via_phrase": "p_increases",
+        "to_concept": "value"
+      },
+      {
+        "from_concept": "adoption",
+        "via_phrase": "p_drives",
+        "to_concept": "value"
+      },
+      {
+        "from_concept": "pricing",
+        "via_phrase": "p_lifts",
+        "to_concept": "expansion"
+      },
+      {
+        "from_concept": "onboarding",
+        "via_phrase": "p_unlocks",
+        "to_concept": "adoption",
+        "is_cross_link": true
+      },
+      {
+        "from_concept": "value",
+        "via_phrase": "p_signals",
+        "to_concept": "expansion",
+        "is_cross_link": true
+      },
+      {
+        "from_concept": "pricing",
+        "via_phrase": "p_constrains",
+        "to_concept": "adoption",
+        "is_cross_link": true
+      }
+    ]
+  },
+  "semantic_description": {
+    "level_1_elemental": "Top-down concept map answering how product, support, and pricing forces combine to drive net revenue retention. Eight labeled concept nodes across four hierarchy levels; root 'Net revenue retention' at top, two mediating outcomes (Logo churn, Expansion revenue) below it, 'Realized customer value' in the middle, and four operational drivers (Onboarding quality, Support responsiveness, Pricing fit, Feature adoption depth) at the base. Eleven directed edges, each carrying a distinct linking phrase; four are dashed cross-links.",
+    "level_2_statistical": "11 propositions over 8 concepts and 9 distinct linking phrases. 'Realized customer value' is the most connected node (4 edges), routing three drivers up into both churn and expansion. Each of the four base drivers participates in at least one proposition; none is an orphan. Four edges are cross-links spanning hierarchy levels (value->churn, onboarding->adoption, value->expansion, pricing->adoption).",
+    "level_3_perceptual": "Two upward pathways converge on retention: a value-creation spine (onboarding/support/adoption -> realized value -> churn down and expansion up) and a commercial path (pricing fit -> expansion). The dashed cross-links reveal the non-obvious tensions the prose argues: pricing fit constrains adoption, and realized value both reduces churn and signals expansion readiness, so a single lever moves two outcomes at once.",
+    "level_4_contextual": null,
+    "short_alt": "Concept map: onboarding, support, adoption and pricing feed realized value, which cuts churn and drives expansion to lift retention.",
+    "data_table_fallback": null
+  }
+}

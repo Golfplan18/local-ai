@@ -1,0 +1,21 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-invoice-approval-swimlane",
+  "type": "flowchart",
+  "mode_context": "process-mapping",
+  "relation_to_prose": "integrated",
+  "title": "Invoice approval flow: where the 9-day delay lives",
+  "caption": "Reconstructed from AP system logs, Apr-Jun 2026; n=2,140 invoices, median cycle 11 days.",
+  "spec": {
+    "dialect": "flowchart",
+    "dsl": "flowchart TD\n  subgraph SUP[Supplier]\n    A([Invoice received])\n  end\n  subgraph AP[Accounts Payable]\n    B[Log in ERP]\n    C{PO match?}\n    D[Manual research]\n    E[Queue for approval]\n  end\n  subgraph MGR[Cost-center manager]\n    F{Amount > $5k?}\n    G[Auto-approve]\n    H[Await sign-off]\n    I{Approved?}\n  end\n  subgraph FIN[Finance / payment]\n    J[Schedule payment]\n    K([Paid])\n    L([Rejected])\n  end\n  A --> B\n  B --> C\n  C -->|matched| E\n  C -->|no match| D\n  D --> E\n  E --> F\n  F -->|under threshold| G\n  F -->|over threshold| H\n  G --> J\n  H --> I\n  I -->|yes| J\n  I -->|no| L\n  J --> K\n  H:::bottleneck\n  classDef bottleneck fill:#fee2e2,stroke:#dc2626,stroke-width:2px;"
+  },
+  "semantic_description": {
+    "level_1_elemental": "A four-lane swimlane flowchart (Supplier, Accounts Payable, Cost-center manager, Finance) tracing an invoice from receipt to paid or rejected, with three decision diamonds: PO match, amount over $5k, and manager approval.",
+    "level_2_statistical": "12 process nodes and 3 decision points; the longest path traverses all four lanes via manual research and managerial sign-off; one node (Await sign-off) is flagged red as the bottleneck.",
+    "level_3_perceptual": "Flow runs top-to-bottom; most branches converge on Schedule payment, but the 'over threshold' branch detours into the red Await sign-off node before reaching it, visually isolating where the delay accumulates.",
+    "level_4_contextual": "The over-$5k manager sign-off step concentrates the cycle-time delay; sub-threshold invoices auto-approve and clear quickly.",
+    "short_alt": "Four-lane invoice approval flowchart; the over-$5k manager sign-off node is marked red as the delay bottleneck.",
+    "data_table_fallback": null
+  }
+}

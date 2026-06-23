@@ -1,0 +1,14 @@
+**Structural definition.** A CLD is a directed graph of `variables` (nodes) joined by signed `links` (edges), with named feedback `loops` overlaid on closed cycles. It models circular causality — feedback — NOT a one-way causal chain. Routed mode: `systems-dynamics-causal`; render path = specialized CAUSAL compiler (semantic JSON → SVG).
+
+**THIS vs siblings it gets confused with.** vs `causal_dag`: a DAG is ACYCLIC (Pearl exposure→outcome, no feedback) — if your story has loops, it is a CLD. vs `stock_and_flow`: stock-flow distinguishes accumulations (stocks) from rates (flows) with conservation/units — CLD has none of that, only signed influence. vs `influence_diagram`: that has decision/chance/value node KINDS for choices under uncertainty; CLD nodes are untyped quantities. If you find yourself wanting one value node or a decision, you picked the wrong type.
+
+**Hard invariants (integrity checker auto-blocks, not JSON Schema):**
+- Every `link` has `polarity` "+" or "-". Missing polarity = Critical block.
+- Every declared `loop.members` set must be a GENUINE closed cycle in the link graph — there must be a directed link between each consecutive pair AND back to the first. List members in traversal order.
+- `loop.type` must match the sign-product: count "-" links around the cycle — EVEN (incl. 0) → "R" (reinforcing); ODD → "B" (balancing). `loop.id` prefix must match `type` (R1/R2 vs B1/B2).
+- `variables.id` all unique; reference ids (not labels) in links/loops/members.
+- NO orphan nodes unless `allow_isolated: true`. Every variable must touch ≥1 link.
+
+**Failure modes from judge notes to defeat.** The 2.8-scoring render had "roughly half the declared variables float as orphaned, arrow-less boxes" — caused by declaring variables that no link references, or by over-stuffing nodes so layout breaks. RULE: 6–9 variables, every one wired into a loop. The 5.8 render had "member chains don't close cleanly and parity claims don't match the listed edges" — RULE: hand-trace each loop's member list against actual links and recount negatives before asserting R/B. Other notes: "edge labels clip off canvas / edges cross" and "polarity signs tiny" — RULE: keep `note` short, prefer compact connected topology, let shared hub variables (one node in two loops) create overlap rather than spaghetti.
+
+**Layout/labeling.** Build 2–3 loops that SHARE a variable (a hub) so the diagram coheres into a system, not islands. Give every loop a `label` (short noun phrase) and a `narrative` that states the negative-count → R/B reasoning explicitly. Mark genuine lags with `delay: true`. semantic_description: all three levels + `short_alt` ≤150 chars describing THIS system (loops + hub), never "bar chart" boilerplate.

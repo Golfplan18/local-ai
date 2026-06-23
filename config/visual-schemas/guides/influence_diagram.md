@@ -1,0 +1,11 @@
+**Structural definition.** A Howard-Matheson influence diagram: a DAG of typed `nodes` (`kind`: `decision` rectangle, `chance` oval, `deterministic` rounded-rect, `value` hexagon) joined by typed `arcs` (`informational` = dashed, what's KNOWN at a decision; `functional`/`relevance` = solid, conditional dependence). It compresses a decision problem into its conditional-independence skeleton — what trees cannot show.
+
+**THIS type vs siblings.** Not a `decision_tree` (no enumerated branches/probabilities/payoffs — IDs encode structure, not scenarios). Not a `causal_dag` (has decision + value nodes and an objective; arcs are typed for information vs influence, not just causation). If there is no single objective node and no agent choosing, it is a `causal_dag`, not this.
+
+**Judge-named failure modes to defeat (mean fidelity 6.28):**
+1. *Impoverished / catch-all chance nodes* — the worst output collapsed to two giant ovals. Emit 3-5 DISTINCT, specifically-named chance nodes drawn from the real uncertainties, not failure-narrative grab-bags.
+2. *Single decision node when the problem is sequential* — premium-tier output had TWO real decisions (site, then capacity) with a D1→D2 informational arc and a `temporal_order`. If the prose promises multiple decisions, MODEL them.
+3. *Invisible value-node label* — the recurring rendering blemish. Keep the value label SHORT (`24-month net contribution`, ~3 words), no degenerate stretching; one and only one `kind:"value"`.
+4. *Reversed/ambiguous arrowheads* — every arc is directed parent→child INTO the value/margin node; never point an arc out of the value node.
+
+**Layout + labeling rules.** Left-to-right toward the single value node on the right. Route uncertainty through a `deterministic` node (e.g. per-order margin) that fans into `value` — gives the "all uncertainty funnels here" reading. Labels ≤ ~4 words; put detail in `description`. INVARIANTS (integrity checker, not JSON Schema): exactly one `value`; functional-arc subgraph acyclic; with `temporal_order` no arc from a later node INTO an earlier `decision`; `informational` arcs land on decisions only. `semantic_description` needs level_1/2/3 + short_alt ≤150 chars describing THIS diagram.

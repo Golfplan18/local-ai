@@ -1,0 +1,21 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-subscription-billing-fsm",
+  "type": "state",
+  "mode_context": "process-mapping",
+  "relation_to_prose": "integrated",
+  "title": "Subscription billing lifecycle: how a paid account moves between active, dunning, and churned",
+  "caption": "State machine reconstructed from the billing service's transition logs, Q1\u2013Q2 2026 (n=48,210 accounts). Events shown are the system signals that fire each transition.",
+  "spec": {
+    "dialect": "state",
+    "dsl": "stateDiagram-v2\n  direction LR\n  [*] --> Trialing : sign_up\n  Trialing --> Active : trial_ends [payment_method valid]\n  Trialing --> Churned : trial_ends [no payment_method]\n  Active --> PastDue : renewal_charge fails\n  Active --> Canceled : user_cancels\n  PastDue --> Active : dunning_retry succeeds\n  PastDue --> Canceled : cure_window elapsed [>14 days]\n  Canceled --> Active : reactivates [payment_method valid]\n  Canceled --> Churned : grace_period elapsed [>30 days]\n  Churned --> [*]"
+  },
+  "semantic_description": {
+    "level_1_elemental": "A state machine with an initial marker, five named states (Trialing, Active, PastDue, Canceled, Churned), and a terminal marker, connected by ten event-labeled transition arrows.",
+    "level_2_statistical": "Active is the most connected state (two inbound from PastDue and Canceled, two outbound to PastDue and Canceled). Churned is the only true sink, reached from both Trialing and Canceled. Three transitions carry explicit guards (payment validity, a 14-day cure window, a 30-day grace period).",
+    "level_3_perceptual": "The diagram reads left-to-right as a funnel with two recovery loops bending backward: PastDue can climb back to Active, and Canceled can reactivate to Active, so churn is not reached until both the cure and grace windows expire.",
+    "level_4_contextual": "The two backward edges are the revenue-recovery paths the dunning system is built to exploit; everything to the right of Canceled is unrecoverable churn.",
+    "short_alt": "Subscription billing state machine: Trialing to Active to PastDue/Canceled, with recovery loops back to Active before reaching terminal Churned.",
+    "data_table_fallback": null
+  }
+}

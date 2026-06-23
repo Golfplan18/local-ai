@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-onboarding-churn-dag",
+  "type": "causal_dag",
+  "mode_context": "causal-dag",
+  "relation_to_prose": "integrated",
+  "title": "Does the guided onboarding program reduce 12-month churn?",
+  "caption": "Causal DAG for the onboarding-to-churn question; n=18,400 B2B SaaS accounts, FY2025 cohort. Latent account health is unmeasured.",
+  "spec": {
+    "dsl": "dag { Onboarding [exposure]; Churn [outcome]; AccountHealth [latent]; FirmSize; SalesTier; FeatureAdoption; SupportTickets; Onboarding -> FeatureAdoption; FeatureAdoption -> Churn; Onboarding -> Churn; FirmSize -> Onboarding; FirmSize -> Churn; SalesTier -> Onboarding; SalesTier -> FeatureAdoption; AccountHealth -> Onboarding; AccountHealth -> Churn; AccountHealth -> SupportTickets; SupportTickets -> Churn }",
+    "focal_exposure": "Onboarding",
+    "focal_outcome": "Churn"
+  },
+  "semantic_description": {
+    "level_1_elemental": "A directed acyclic graph with seven nodes. The exposure node Onboarding (guided onboarding program) and the outcome node Churn (12-month account cancellation) are the focal pair. AccountHealth is a latent (unmeasured) node drawn dashed. FirmSize, SalesTier, FeatureAdoption, and SupportTickets are observed covariates. Directed arrows: Onboarding to FeatureAdoption, FeatureAdoption to Churn, Onboarding to Churn, FirmSize to Onboarding, FirmSize to Churn, SalesTier to Onboarding, SalesTier to FeatureAdoption, AccountHealth to Onboarding, AccountHealth to Churn, AccountHealth to SupportTickets, SupportTickets to Churn.",
+    "level_2_statistical": "Onboarding has two paths to Churn: a direct edge and a mediated path through FeatureAdoption. FirmSize, SalesTier, and the latent AccountHealth are common causes of both Onboarding and Churn, so they confound the total effect. SupportTickets is a child of AccountHealth and a cause of Churn but not of Onboarding. There are no cycles.",
+    "level_3_perceptual": "The eye reads left-to-right from Onboarding to Churn along the causal spine, with confounders fanning in from above into both ends and the mediator FeatureAdoption sitting on the spine. The dashed latent node is visibly distinct from the solid measured nodes.",
+    "level_4_contextual": "To estimate the causal effect of guided onboarding on churn, adjust for FirmSize and SalesTier; AccountHealth is unmeasured, so the back-door path through it cannot be closed and the estimate carries residual confounding. Do not adjust for FeatureAdoption if the total effect is wanted, since it is a mediator.",
+    "short_alt": "Causal DAG: guided Onboarding to 12-month Churn, mediated by FeatureAdoption, confounded by FirmSize, SalesTier and latent AccountHealth.",
+    "data_table_fallback": null
+  }
+}

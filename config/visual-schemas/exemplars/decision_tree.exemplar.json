@@ -1,0 +1,201 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-dt-fraud-platform",
+  "type": "decision_tree",
+  "mode_context": "decision-under-uncertainty",
+  "relation_to_prose": "integrated",
+  "title": "Fraud-detection platform: build in-house, buy a vendor, or run a paid pilot first",
+  "caption": "Expected-value rollback over a 3-year horizon; payoffs are net present value in thousands of USD. Probabilities are the risk team's calibrated estimates.",
+  "spec": {
+    "mode": "decision",
+    "utility_units": "USD thousands (3-yr NPV)",
+    "root": {
+      "kind": "decision",
+      "label": "Fraud platform strategy",
+      "children": [
+        {
+          "edge_label": "Build in-house",
+          "node": {
+            "kind": "chance",
+            "label": "Engineering delivery",
+            "children": [
+              {
+                "edge_label": "Ships on time, hits accuracy target (p=0.45)",
+                "probability": 0.45,
+                "node": {
+                  "kind": "terminal",
+                  "label": "Owned IP, low run cost",
+                  "payoff": 2100
+                }
+              },
+              {
+                "edge_label": "Slips, partial accuracy (p=0.40)",
+                "probability": 0.4,
+                "node": {
+                  "kind": "terminal",
+                  "label": "Late, rework needed",
+                  "payoff": 400
+                }
+              },
+              {
+                "edge_label": "Fails accuracy target (p=0.15)",
+                "probability": 0.15,
+                "node": {
+                  "kind": "terminal",
+                  "label": "Write-off, fall back to vendor",
+                  "payoff": -900
+                }
+              }
+            ]
+          }
+        },
+        {
+          "edge_label": "Buy vendor now",
+          "node": {
+            "kind": "chance",
+            "label": "Vendor fit at our fraud volume",
+            "children": [
+              {
+                "edge_label": "Strong fit, low false positives (p=0.55)",
+                "probability": 0.55,
+                "node": {
+                  "kind": "terminal",
+                  "label": "Fast value, license cost",
+                  "payoff": 1300
+                }
+              },
+              {
+                "edge_label": "Weak fit, tuning drag (p=0.45)",
+                "probability": 0.45,
+                "node": {
+                  "kind": "terminal",
+                  "label": "Underperforms, locked in",
+                  "payoff": 150
+                }
+              }
+            ]
+          }
+        },
+        {
+          "edge_label": "Run 90-day paid pilot first",
+          "node": {
+            "kind": "chance",
+            "label": "Pilot signal",
+            "children": [
+              {
+                "edge_label": "Pilot looks promising (p=0.60)",
+                "probability": 0.6,
+                "node": {
+                  "kind": "decision",
+                  "label": "After promising pilot",
+                  "children": [
+                    {
+                      "edge_label": "Scale the pilot vendor",
+                      "node": {
+                        "kind": "chance",
+                        "label": "Scaled performance",
+                        "children": [
+                          {
+                            "edge_label": "Holds up at full volume (p=0.70)",
+                            "probability": 0.7,
+                            "node": {
+                              "kind": "terminal",
+                              "label": "De-risked rollout",
+                              "payoff": 1700
+                            }
+                          },
+                          {
+                            "edge_label": "Degrades at scale (p=0.30)",
+                            "probability": 0.3,
+                            "node": {
+                              "kind": "terminal",
+                              "label": "Costly mid-stream switch",
+                              "payoff": 200
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "edge_label": "Build in-house using pilot learnings",
+                      "node": {
+                        "kind": "terminal",
+                        "label": "Informed build, time lost",
+                        "payoff": 1450
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "edge_label": "Pilot disappoints (p=0.40)",
+                "probability": 0.4,
+                "node": {
+                  "kind": "decision",
+                  "label": "After weak pilot",
+                  "children": [
+                    {
+                      "edge_label": "Abandon, keep manual review",
+                      "node": {
+                        "kind": "terminal",
+                        "label": "Sunk pilot cost only",
+                        "payoff": -250
+                      }
+                    },
+                    {
+                      "edge_label": "Switch to a second vendor",
+                      "node": {
+                        "kind": "chance",
+                        "label": "Second vendor fit",
+                        "children": [
+                          {
+                            "edge_label": "Better fit (p=0.50)",
+                            "probability": 0.5,
+                            "node": {
+                              "kind": "terminal",
+                              "label": "Recovered, delayed value",
+                              "payoff": 700
+                            }
+                          },
+                          {
+                            "edge_label": "Also weak (p=0.50)",
+                            "probability": 0.5,
+                            "node": {
+                              "kind": "terminal",
+                              "label": "Double sunk cost",
+                              "payoff": -500
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "semantic_description": {
+    "level_1_elemental": "Left-to-right decision tree with one root decision node (square) offering three strategies, chance nodes (circles) for uncertain outcomes, two second-stage decision nodes inside the Pilot branch, and terminal leaves (triangles) each carrying a 3-year NPV payoff in USD thousands.",
+    "level_2_statistical": "Rollback EV: Build = 0.45*2100 + 0.40*400 + 0.15*(-900) = 970; Buy now = 0.55*1300 + 0.45*150 = 782.5. In the Pilot branch the promising sub-decision picks informed Build (1450) over Scale (EV 1250), and the weak sub-decision picks the second vendor (EV 100) over Abandon (-250), so Pilot = 0.60*1450 + 0.40*100 = 910.",
+    "level_3_perceptual": "Three top strategies cluster close in value (Build 970, Pilot 910, Buy-now 782), so the choice is sensitive: Build leads but carries the only large downside (-900), while the Pilot path converts that tail risk into a cheap option whose optimal continuation is an informed in-house build.",
+    "level_4_contextual": null,
+    "short_alt": "Decision tree comparing build, buy, and pilot-first for a fraud platform; Build leads at EV 970 but Pilot (910) caps downside risk.",
+    "data_table_fallback": null,
+    "type_specific": {
+      "optimal_path": "Build in-house",
+      "root_ev_by_branch": {
+        "Build in-house": 970,
+        "Buy vendor now": 782.5,
+        "Run 90-day paid pilot first": 910
+      },
+      "second_stage_choices": {
+        "After promising pilot": "Build in-house using pilot learnings (1450)",
+        "After weak pilot": "Switch to a second vendor (EV 100)"
+      }
+    }
+  }
+}

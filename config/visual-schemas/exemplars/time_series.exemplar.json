@@ -1,0 +1,403 @@
+{
+  "schema_version": "0.2",
+  "id": "fig-saas-net-new-arr-deceleration",
+  "type": "time_series",
+  "mode_context": "information-density",
+  "relation_to_prose": "integrated",
+  "title": "Net-new ARR growth is decelerating, not declining \u2014 and the Q4 forecast band stays positive",
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "width": 720,
+    "height": 270,
+    "title": "Monthly net-new ARR (real 2025 USD), Jan 2024 \u2013 Dec 2025 forecast",
+    "data": {
+      "values": [
+        {
+          "t": "2024-01-01",
+          "arr": 512000,
+          "ma3": null,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-02-01",
+          "arr": 548000,
+          "ma3": null,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-03-01",
+          "arr": 601000,
+          "ma3": 553667,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-04-01",
+          "arr": 663000,
+          "ma3": 604000,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-05-01",
+          "arr": 742000,
+          "ma3": 668667,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-06-01",
+          "arr": 818000,
+          "ma3": 741000,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-07-01",
+          "arr": 884000,
+          "ma3": 814667,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-08-01",
+          "arr": 951000,
+          "ma3": 884333,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-09-01",
+          "arr": 1003000,
+          "ma3": 946000,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-10-01",
+          "arr": 1048000,
+          "ma3": 1000667,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-11-01",
+          "arr": 1086000,
+          "ma3": 1045667,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2024-12-01",
+          "arr": 1112000,
+          "ma3": 1082000,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-01-01",
+          "arr": 1141000,
+          "ma3": 1113000,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-02-01",
+          "arr": 1158000,
+          "ma3": 1137000,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-03-01",
+          "arr": 1179000,
+          "ma3": 1159333,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-04-01",
+          "arr": 1191000,
+          "ma3": 1176000,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-05-01",
+          "arr": 1204000,
+          "ma3": 1191333,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-06-01",
+          "arr": 1213000,
+          "ma3": 1202667,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-07-01",
+          "arr": 1219000,
+          "ma3": 1212000,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-08-01",
+          "arr": 1224000,
+          "ma3": 1218667,
+          "lo": null,
+          "hi": null,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-09-01",
+          "arr": 1228000,
+          "ma3": 1223667,
+          "lo": 1228000,
+          "hi": 1228000,
+          "kind": "actual"
+        },
+        {
+          "t": "2025-10-01",
+          "arr": 1231000,
+          "ma3": 1227667,
+          "lo": 1208000,
+          "hi": 1254000,
+          "kind": "forecast"
+        },
+        {
+          "t": "2025-11-01",
+          "arr": 1233000,
+          "ma3": 1230667,
+          "lo": 1196000,
+          "hi": 1271000,
+          "kind": "forecast"
+        },
+        {
+          "t": "2025-12-01",
+          "arr": 1234500,
+          "ma3": 1232833,
+          "lo": 1184000,
+          "hi": 1287000,
+          "kind": "forecast"
+        }
+      ]
+    },
+    "mark": {
+      "type": "line"
+    },
+    "encoding": {
+      "x": {
+        "field": "t",
+        "type": "temporal",
+        "title": "Month"
+      },
+      "y": {
+        "field": "arr",
+        "type": "quantitative",
+        "title": "Net-new ARR (real 2025 USD)",
+        "scale": {
+          "domain": [
+            0,
+            1300000
+          ]
+        }
+      }
+    },
+    "layer": [
+      {
+        "mark": {
+          "type": "errorband",
+          "opacity": 0.25,
+          "color": "#4C78A8"
+        },
+        "encoding": {
+          "x": {
+            "field": "t",
+            "type": "temporal"
+          },
+          "y": {
+            "field": "lo",
+            "type": "quantitative"
+          },
+          "y2": {
+            "field": "hi"
+          }
+        }
+      },
+      {
+        "mark": {
+          "type": "rule",
+          "color": "#888888",
+          "strokeDash": [
+            4,
+            3
+          ]
+        },
+        "data": {
+          "values": [
+            {
+              "t": "2025-03-01"
+            }
+          ]
+        },
+        "encoding": {
+          "x": {
+            "field": "t",
+            "type": "temporal"
+          }
+        }
+      },
+      {
+        "mark": {
+          "type": "text",
+          "align": "left",
+          "dx": 5,
+          "dy": -120,
+          "fontSize": 11,
+          "color": "#555555"
+        },
+        "data": {
+          "values": [
+            {
+              "t": "2025-03-01",
+              "label": "Q1-2025: pricing change \u2192 growth inflects"
+            }
+          ]
+        },
+        "encoding": {
+          "x": {
+            "field": "t",
+            "type": "temporal"
+          },
+          "text": {
+            "field": "label"
+          }
+        }
+      },
+      {
+        "mark": {
+          "type": "line",
+          "color": "#4C78A8",
+          "strokeWidth": 1.5,
+          "opacity": 0.55,
+          "point": false
+        },
+        "encoding": {
+          "x": {
+            "field": "t",
+            "type": "temporal",
+            "title": "Month"
+          },
+          "y": {
+            "field": "arr",
+            "type": "quantitative",
+            "title": "Net-new ARR (real 2025 USD)",
+            "scale": {
+              "domain": [
+                0,
+                1300000
+              ]
+            }
+          },
+          "strokeDash": {
+            "field": "kind",
+            "type": "nominal",
+            "scale": {
+              "domain": [
+                "actual",
+                "forecast"
+              ],
+              "range": [
+                [
+                  1,
+                  0
+                ],
+                [
+                  5,
+                  4
+                ]
+              ]
+            },
+            "legend": {
+              "title": "Series"
+            }
+          }
+        }
+      },
+      {
+        "mark": {
+          "type": "line",
+          "color": "#E45756",
+          "strokeWidth": 2.5
+        },
+        "encoding": {
+          "x": {
+            "field": "t",
+            "type": "temporal"
+          },
+          "y": {
+            "field": "ma3",
+            "type": "quantitative"
+          }
+        }
+      }
+    ],
+    "caption": {
+      "source": "Company billing system + Finance forecast model (P10\u2013P90 band)",
+      "period": "2024-01 to 2025-12 (last 3 months forecast)",
+      "n": 24,
+      "units": "Net-new ARR, real 2025 USD"
+    },
+    "config": {
+      "view": {
+        "stroke": null
+      },
+      "axis": {
+        "grid": true,
+        "gridColor": "#EEEEEE"
+      }
+    }
+  },
+  "render_hints": {
+    "preferred_engine": "vega-lite",
+    "aspect_ratio": "2.67"
+  },
+  "integrity_declarations": {
+    "non_zero_baseline_justified": false
+  },
+  "semantic_description": {
+    "level_1_elemental": "Line chart of monthly net-new ARR in real 2025 US dollars from January 2024 to December 2025. Thin blue line is the raw monthly series (solid for actuals, dashed for the final three forecast months); thick red line is the 3-month moving average. A shaded blue band around the forecast tail is the P10\u2013P90 uncertainty range; a dashed vertical rule at March 2025 marks a pricing change.",
+    "level_2_statistical": "ARR rises from 512k in Jan 2024 to a forecast 1.235M by Dec 2025, an n=24 monthly series. Month-over-month gains shrink from ~70k early to under 2k by the forecast tail; the second difference is negative throughout 2025 (deceleration). The forecast P10\u2013P90 band widens from +/-23k in Oct to +/-52k in Dec and stays entirely above 1.18M \u2014 positive net-new ARR in every scenario.",
+    "level_3_perceptual": "A concave-down curve that climbs steeply then flattens into a near-plateau, not a downturn: the slope approaches zero but never goes negative. The moving-average line sits just inside the raw line and removes the late-series jitter, making the bend at the Q1-2025 marker the visual focal point.",
+    "level_4_contextual": "Distinguishes deceleration (slowing growth) from decline (shrinking base) \u2014 the level keeps rising while the rate falls, and the forecast band confirms continued positive additions through year-end.",
+    "short_alt": "Monthly net-new ARR climbs from 512k to ~1.235M then flattens; growth decelerates but stays positive through the forecast band.",
+    "data_table_fallback": null
+  },
+  "fallback": {
+    "type": "prose_only"
+  }
+}
