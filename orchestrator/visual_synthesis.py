@@ -118,11 +118,25 @@ def autofill(env: dict, mode: str, vtype: str, idx: int = 1) -> dict:
     title = (env.get("title") or pretty)
     if not isinstance(sd, dict):
         sd = {}
-    if not (sd.get("short_alt") or "").strip():
-        sd["short_alt"] = f"{pretty}: {title}"
+    # short_alt is a mechanical accessibility field with a hard 150-char schema
+    # cap. Models (esp. small/fast synthesis slots) routinely overshoot it and
+    # then re-overshoot on every repair round, burning the loop on a purely
+    # mechanical violation. Clamp it deterministically instead of failing.
+    sa = (sd.get("short_alt") or "").strip()
+    if not sa:
+        sa = f"{pretty}: {title}"
+    if len(sa) > 150:
+        sa = sa[:149].rstrip() + "…"
+    sd["short_alt"] = sa
     sd.setdefault("level_1_elemental", f"A {pretty} titled '{title}'.")
     sd.setdefault("level_2_statistical", "See surrounding prose.")
     sd.setdefault("level_3_perceptual", "See surrounding prose.")
+    # Drop any keys the model invented (e.g. 'level_3_perceptual_alt') — the
+    # semantic_description schema is additionalProperties:false, so one stray key
+    # hard-fails an otherwise-valid envelope. Mechanical; preserves all content.
+    _SD_KEYS = {"level_1_elemental", "level_2_statistical", "level_3_perceptual",
+                "level_4_contextual", "short_alt", "data_table_fallback", "type_specific"}
+    sd = {k: v for k, v in sd.items() if k in _SD_KEYS}
     env["semantic_description"] = sd
     return env
 

@@ -479,9 +479,55 @@ def _repair_causal_dag(spec: dict) -> dict:
     return spec
 
 
+def _repair_causal_loop(spec: dict) -> dict:
+    """Correct each declared loop ``type`` (R/B) to the parity of '-' polarities
+    on its member edges — the single most common CLD synthesis error (the model
+    asserts the right loop and the right edges but mislabels reinforcing vs
+    balancing). The relationship is deterministic: an even number of negative
+    edges → Reinforcing (R), odd → Balancing (B) — exactly what the validator
+    checks, so computing it here turns a hard-block into a clean render. The id's
+    leading R/B letter is flipped to match so the rendered badge stays honest.
+    Non-content: variables, links, and members are untouched."""
+    try:
+        links = spec.get("links") or []
+        # edge polarity map: (from,to) -> polarity string
+        pol = {}
+        for lk in links:
+            if isinstance(lk, dict):
+                pol[(lk.get("from"), lk.get("to"))] = lk.get("polarity", "+")
+        for loop in (spec.get("loops") or []):
+            if not isinstance(loop, dict):
+                continue
+            members = loop.get("members") or []
+            n = len(members)
+            if n < 2:
+                continue
+            minus = 0
+            ok = True
+            for j in range(n):
+                src, dst = members[j], members[(j + 1) % n]
+                p = pol.get((src, dst))
+                if p is None:
+                    ok = False
+                    break
+                if "-" in str(p):
+                    minus += 1
+            if not ok:
+                continue
+            expected = "B" if (minus % 2 == 1) else "R"
+            loop["type"] = expected
+            lid = loop.get("id")
+            if isinstance(lid, str) and lid[:1] in ("R", "B") and lid[:1] != expected:
+                loop["id"] = expected + lid[1:]
+    except Exception:
+        pass
+    return spec
+
+
 _SPEC_REPAIRERS = {
     "quadrant_matrix": _repair_quadrant,
     "causal_dag": _repair_causal_dag,
+    "causal_loop_diagram": _repair_causal_loop,
 }
 
 # QUANT family (mirror of visual_adversarial.QUANT_TYPES). Under a
