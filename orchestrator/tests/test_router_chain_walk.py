@@ -176,6 +176,17 @@ class TestChainWalkConfiguration(unittest.TestCase):
 
         self.assertEqual(ep["id"], "openrouter-claude")
 
+    def test_case_equivalent_catalog_id_resolves_endpoint(self):
+        router = self._router_with_chain(
+            "minimax/minimax-m3", [],
+            [_api("minimax/MiniMax-M3", service="minimax")],
+        )
+
+        ep = router.resolve_endpoint("depth", gear=4, context="interactive",
+                                     config_name="user-pipeline")
+
+        self.assertEqual(ep["id"], "minimax/MiniMax-M3")
+
     def test_mutex_check_false_returns_busy_local_directly(self):
         router = self._router_with_chain(
             "hermes-70b", ["openrouter-free"],

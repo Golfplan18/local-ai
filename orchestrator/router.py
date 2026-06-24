@@ -151,6 +151,7 @@ class Router:
         """
         self._endpoints = {ep["id"]: ep for ep in self.config.get("endpoints", [])}
         self._merge_models_json_local_endpoints()
+        self._endpoint_aliases = self._build_endpoint_aliases()
         self._machines = {m["id"]: m for m in self.config.get("machines", [])}
         self._buckets = self.config.get("buckets", {})
         self._diversity = (self.config.get("diversity") or {}).get("enabled", False)
@@ -213,6 +214,27 @@ class Router:
                 "_installed_local_model": True,
             })
             self._endpoints[model_id] = endpoint
+
+    def _build_endpoint_aliases(self) -> dict[str, str]:
+        """Return case-insensitive endpoint aliases for exact routing ids.
+
+        The model catalog and provider endpoints do not always use the same
+        spelling. MiniMax is the sharp edge: OpenRouter/catalog ids are
+        ``minimax/minimax-m3`` while the direct provider endpoint is registered as
+        ``minimax/MiniMax-M3``. Named configurations are edited from both sides,
+        so a case-equivalent catalog id should resolve instead of silently
+        falling through the chain.
+        """
+        aliases: dict[str, str] = {}
+        for ep_id in self._endpoints:
+            if isinstance(ep_id, str):
+                aliases.setdefault(ep_id.lower(), ep_id)
+        return aliases
+
+    def _resolve_endpoint_id(self, ep_id: str) -> str:
+        if ep_id in self._endpoints:
+            return ep_id
+        return self._endpoint_aliases.get(ep_id.lower(), ep_id)
 
     @staticmethod
     def _local_tier_for_models_json_entry(model: dict) -> str:
@@ -1080,7 +1102,8 @@ class Router:
         for ep_id in candidates:
             if not ep_id:
                 continue
-            ep = self._endpoints.get(ep_id)
+            resolved_ep_id = self._resolve_endpoint_id(ep_id)
+            ep = self._endpoints.get(resolved_ep_id)
             if not ep:
                 # Configured id has no matching endpoint in routing-config.
                 # Continue the cascade (this is the publisher's chain — try
@@ -1100,7 +1123,7 @@ class Router:
                 continue
             if ep.get("status") != "active":
                 continue
-            if ep_id in excluded_ids:
+            if ep_id in excluded_ids or resolved_ep_id in excluded_ids:
                 continue
             if same_machine_block and ep.get("type") == "local":
                 if ep.get("machine") == same_machine_block:
@@ -1122,7 +1145,7 @@ class Router:
                 import endpoint_health
             except ImportError:
                 from orchestrator import endpoint_health
-            if endpoint_health.is_in_cooldown(ep_id):
+            if endpoint_health.is_in_cooldown(resolved_ep_id):
                 continue
 
             return ep
