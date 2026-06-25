@@ -31,24 +31,26 @@
     "analysis": {
       "gear4": {
         "depth": {
-          "primary": "minimax/MiniMax-M3",
+          "primary": "xiaomi/mimo-v2.5-pro",
           "fallback": [
-            "deepseek/deepseek-v4-pro",
-            "xiaomi/mimo-v2.5-pro",
-            "deepseek/deepseek-v4-flash"
+            "qwen/qwen3.7-plus",
+            "deepseek/deepseek-v4-flash",
+            "minimax/MiniMax-M3",
+            "deepseek/deepseek-v4-pro"
           ],
           "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-          "_note": "gear-4 publication cascade DEPTH = MiniMax M3; breadth = Qwen 3.7 Plus. Strict 1M-context lineup only: MiniMax M3 + Qwen 3.7 Plus as the two big lanes, then DeepSeek V4 Pro, MiMo V2.5 Pro, DeepSeek V4 Flash as fallbacks. MiniMax M2.7 and Kimi K2.5 excluded for sub-1M context."
+          "_note": "gear-4 publication cascade DEPTH = MiMo V2.5 Pro; breadth = Qwen 3.7 Plus. Strict 1M-context lineup only: MiMo V2.5 Pro + Qwen 3.7 Plus as the live two-lane pair, with DeepSeek V4 Flash, MiniMax M3, and DeepSeek V4 Pro as fallbacks. MiniMax M3 demoted because 2026-06-24 Analyzer traces show it can write strong analyst drafts but fails the universal reviser envelope; DeepSeek V4 Pro last because current calls return 402 insufficient balance. MiniMax M2.7 and Kimi K2.5 excluded for sub-1M context."
         },
         "breadth": {
           "primary": "qwen/qwen3.7-plus",
           "fallback": [
             "xiaomi/mimo-v2.5-pro",
-            "deepseek/deepseek-v4-pro",
-            "deepseek/deepseek-v4-flash"
+            "deepseek/deepseek-v4-flash",
+            "minimax/MiniMax-M3",
+            "deepseek/deepseek-v4-pro"
           ],
           "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-          "_note": "gear-4 publication cascade BREADTH = Qwen 3.7 Plus; depth = MiniMax M3. Strict 1M-context lineup only: MiniMax M3 + Qwen 3.7 Plus as the two big lanes, then DeepSeek V4 Pro, MiMo V2.5 Pro, DeepSeek V4 Flash as fallbacks. MiniMax M2.7 and Kimi K2.5 excluded for sub-1M context."
+          "_note": "gear-4 publication cascade BREADTH = Qwen 3.7 Plus; depth = MiMo V2.5 Pro. Strict 1M-context lineup only: MiMo V2.5 Pro + Qwen 3.7 Plus as the live two-lane pair, with DeepSeek V4 Flash, MiniMax M3, and DeepSeek V4 Pro as fallbacks. MiniMax M3 demoted because 2026-06-24 Analyzer traces show it can write strong analyst drafts but fails the universal reviser envelope; DeepSeek V4 Pro last because current calls return 402 insufficient balance. MiniMax M2.7 and Kimi K2.5 excluded for sub-1M context."
         }
       },
       "gear3": {
@@ -76,37 +78,37 @@
     },
     "post_analysis": {
       "consolidation": {
-        "primary": "minimax/MiniMax-M3",
+        "primary": "qwen/qwen3.7-plus",
         "fallback": [
-          "qwen/qwen3.7-plus",
-          "deepseek/deepseek-v4-pro",
           "xiaomi/mimo-v2.5-pro",
-          "deepseek/deepseek-v4-flash"
+          "deepseek/deepseek-v4-flash",
+          "minimax/MiniMax-M3",
+          "deepseek/deepseek-v4-pro"
         ],
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-        "_note": "PUBLISHER 2026-06-24: post-analysis publication chain is 1M-only. MiniMax M3 + Qwen 3.7 Plus lead; DeepSeek V4 Pro, MiMo V2.5 Pro, and DeepSeek V4 Flash are fallbacks. No free/sub-1M fallbacks."
+        "_note": "PUBLISHER 2026-06-24: post-analysis publication chain is 1M-only. Qwen 3.7 Plus leads consolidation because Analyzer traces show MiniMax M3 failing the reviser/envelope contract; MiMo V2.5 Pro and DeepSeek V4 Flash are first fallbacks, MiniMax M3 is retained late, and DeepSeek V4 Pro is last while it returns 402 insufficient balance. No free/sub-1M fallbacks."
       },
       "verification": {
         "primary": "qwen/qwen3.7-plus",
         "fallback": [
-          "minimax/MiniMax-M3",
-          "deepseek/deepseek-v4-pro",
           "xiaomi/mimo-v2.5-pro",
-          "deepseek/deepseek-v4-flash"
+          "deepseek/deepseek-v4-flash",
+          "minimax/MiniMax-M3",
+          "deepseek/deepseek-v4-pro"
         ],
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-        "_note": "PUBLISHER 2026-06-24: post-analysis publication chain is 1M-only. MiniMax M3 + Qwen 3.7 Plus lead; DeepSeek V4 Pro, MiMo V2.5 Pro, and DeepSeek V4 Flash are fallbacks. No free/sub-1M fallbacks."
+        "_note": "PUBLISHER 2026-06-24: post-analysis publication chain is 1M-only. Qwen 3.7 Plus leads verification; MiMo V2.5 Pro and DeepSeek V4 Flash are first fallbacks, MiniMax M3 is retained late, and DeepSeek V4 Pro is last while it returns 402 insufficient balance. No free/sub-1M fallbacks."
       },
       "formatter": {
         "primary": "qwen/qwen3.7-plus",
         "fallback": [
-          "minimax/MiniMax-M3",
-          "deepseek/deepseek-v4-pro",
           "xiaomi/mimo-v2.5-pro",
-          "deepseek/deepseek-v4-flash"
+          "deepseek/deepseek-v4-flash",
+          "minimax/MiniMax-M3",
+          "deepseek/deepseek-v4-pro"
         ],
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7",
-        "_note": "PUBLISHER 2026-06-24: post-analysis publication chain is 1M-only. MiniMax M3 + Qwen 3.7 Plus lead; DeepSeek V4 Pro, MiMo V2.5 Pro, and DeepSeek V4 Flash are fallbacks. No free/sub-1M fallbacks."
+        "_note": "PUBLISHER 2026-06-24: post-analysis publication chain is 1M-only. Qwen 3.7 Plus leads formatting; MiMo V2.5 Pro and DeepSeek V4 Flash are first fallbacks, MiniMax M3 is retained late, and DeepSeek V4 Pro is last while it returns 402 insufficient balance. No free/sub-1M fallbacks."
       }
     },
     "msi": {
@@ -121,14 +123,14 @@
         "_note": "SPEED (news/gear-3): strict 1M-context chain. Fast DeepSeek Flash leads; MiMo, Qwen 3.7 Plus, MiniMax M3, and DeepSeek V4 Pro are fallbacks. No Qwen 3.5, MiniMax M2.7, Kimi, or free/sub-1M fallback."
       },
       "intelligence": {
-        "primary": "minimax/minimax-m3",
+        "primary": "qwen/qwen3.7-plus",
         "fallback": [
-          "qwen/qwen3.7-plus",
-          "deepseek/deepseek-v4-pro",
           "xiaomi/mimo-v2.5-pro",
-          "deepseek/deepseek-v4-flash"
+          "deepseek/deepseek-v4-flash",
+          "minimax/minimax-m3",
+          "deepseek/deepseek-v4-pro"
         ],
-        "_note": "INTELLIGENCE (op-eds/analyses): strict 1M-context publication chain. MiniMax M3 + Qwen 3.7 Plus are the two big models; DeepSeek V4 Pro, MiMo V2.5 Pro, and DeepSeek V4 Flash are fallbacks. MiniMax M2.7 and Kimi K2.5 are excluded for sub-1M context."
+        "_note": "INTELLIGENCE (op-eds/analyses): strict 1M-context publication chain. Qwen 3.7 Plus leads this non-Gear4 intelligence slot; MiMo V2.5 Pro and DeepSeek V4 Flash are first fallbacks, MiniMax M3 is retained late, and DeepSeek V4 Pro is last while it returns 402 insufficient balance. MiniMax M2.7 and Kimi K2.5 are excluded for sub-1M context."
       }
     }
   }
