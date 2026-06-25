@@ -11109,6 +11109,10 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
     trace_dir = context_pkg.get("trace_dir")
+    external_consolidation = bool(
+        isinstance(context_pkg, dict)
+        and context_pkg.get("external_consolidation")
+    )
     contingencies_fired: list[str] = []
 
     # Per-step health bookkeeping (also fed to oversight events at the end)
@@ -11795,6 +11799,49 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                     revised_breadth, _, _ = futures["breadth"].result()
                 except Exception as e:
                     revised_breadth = f"[Re-revision error: {e}]"
+
+    if external_consolidation:
+        _record(
+            "step7-external-consolidation-handoff", True,
+            "caller will consolidate verified revised streams",
+        )
+        _trace_step("step7-external-consolidation-handoff", {
+            "status": "skipped_native_consolidation",
+            "reason": "caller requested external consolidation",
+            "revised_depth_chars": len(revised_depth or ""),
+            "revised_breadth_chars": len(revised_breadth or ""),
+        }, markdown=(
+            "# Step 7 — External consolidation handoff\n\n"
+            "Native corpus consolidation was skipped because the caller will "
+            "consolidate the verified revised streams.\n"
+        ))
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            pipeline_trace.write_step_health(
+                trace_dir, step_health, gear=4,
+                contingencies_fired=contingencies_fired,
+            )
+        try:
+            if isinstance(context_pkg, dict):
+                context_pkg["_pipeline_step_texts"] = [
+                    t for t in (revised_depth, revised_breadth,
+                                depth_analysis, breadth_analysis)
+                    if isinstance(t, str) and t.strip()
+                ]
+        except Exception:
+            pass
+        try:
+            degraded = [k for k, (ok, _) in step_health.items() if not ok]
+            if degraded:
+                print(f"[gear4-summary] degraded steps: {degraded}", flush=True)
+            else:
+                print("[gear4-summary] all steps healthy", flush=True)
+        except Exception:
+            pass
+        return (
+            revised_breadth
+            if len(revised_breadth or "") >= len(revised_depth or "")
+            else revised_depth
+        )
 
     # --- Step 7: Breadth consolidates ---
     consolidate_system = _assemble_step_prompt(
