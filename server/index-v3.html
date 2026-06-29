@@ -398,7 +398,14 @@
         /* Fixed top sections (Project, Model configuration) — labelled with a
            line under, like the conversation groups. */
         .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; }
-        .sidebar-fixed-section .sidebar-group-label { margin-bottom: 5px; }
+        /* Active Project + Model configuration are top-level section headers —
+           match the supergroup headers (Conversations / Automated Processes),
+           a tier above the muted Pinned/Unread sub-labels. */
+        .sidebar-fixed-section .sidebar-group-label {
+          font-size: 12px; font-weight: 600; color: var(--text-normal);
+          border-bottom: 1px solid var(--background-modifier-border);
+          padding: 4px 6px; margin: 4px 0 5px;
+        }
         .sidebar-project-section .sidebar-project-current { width: 100%; }
         .sidebar-project-label { display: flex; align-items: center; gap: 6px; }
         .sidebar-project-label > span { flex: 1; }
