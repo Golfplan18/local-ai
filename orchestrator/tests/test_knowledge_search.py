@@ -288,6 +288,94 @@ class TestKnowledgeSearchEndToEnd(unittest.TestCase):
         self.assertIn("engram_private.md", result)
 
 
+class TestHybridLexicalRetrieval(unittest.TestCase):
+    """The hybrid lane rescues exact/near title-source matches that vector
+    search may miss because Chroma stores the title in metadata, not body."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.chromadb_path = os.path.join(self.tmpdir, "chromadb")
+        self._original = knowledge_search.CHROMADB_PATH
+        knowledge_search.CHROMADB_PATH = self.chromadb_path
+        knowledge_search._METADATA_CACHE.clear()
+
+        import chromadb
+        from orchestrator.embedding import get_or_create_collection as _bind_ef
+        client = chromadb.PersistentClient(path=self.chromadb_path)
+        col = _bind_ef(client, "knowledge")
+        col.add(
+            ids=["target_title_only", "garden_note", "archived_title"],
+            documents=[
+                "This body discusses sincerity, lying, and bad-faith public argument.",
+                "This body discusses Japanese garden design, negative space, and stones.",
+                "This archived body should stay out of default retrieval.",
+            ],
+            metadatas=[
+                {"type": "engram",
+                 "source": "Book — Disingenuous Bullshitters Book Report.md",
+                 "title": "Book — Disingenuous Bullshitters Book Report",
+                 "path": "/vault/Book — Disingenuous Bullshitters Book Report.md",
+                 "tag_archived": False, "tag_incubating": False, "tag_private": False},
+                {"type": "engram", "source": "garden.md", "title": "Garden Note",
+                 "path": "/vault/garden.md",
+                 "tag_archived": False, "tag_incubating": False, "tag_private": False},
+                {"type": "engram", "source": "Archived Hard Problem of Consciousness.md",
+                 "title": "Archived Hard Problem of Consciousness",
+                 "path": "/vault/Archived Hard Problem of Consciousness.md",
+                 "tag_archived": True, "tag_incubating": False, "tag_private": False},
+            ],
+        )
+
+    def tearDown(self):
+        knowledge_search.CHROMADB_PATH = self._original
+        knowledge_search._METADATA_CACHE.clear()
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_exact_title_match_returns_metadata_only_hit(self):
+        chunks = knowledge_search.lexical_search_raw(
+            "Disingenuous Bullshitters Book Report",
+            collection="knowledge",
+            n_results=5,
+        )
+        sources = [c["metadata"].get("source") for c in chunks]
+        self.assertIn("Book — Disingenuous Bullshitters Book Report.md", sources)
+        target = next(c for c in chunks if c["metadata"].get("source", "").startswith("Book"))
+        self.assertEqual(target["retrieval_source"], "lexical")
+        self.assertGreaterEqual(target["lexical_score"], 0.90)
+
+    def test_near_miss_title_match_handles_minor_misspelling(self):
+        chunks = knowledge_search.lexical_search_raw(
+            "hard problem of conciousness",
+            collection="knowledge",
+            n_results=5,
+            include_archived=True,
+        )
+        sources = [c["metadata"].get("source") for c in chunks]
+        self.assertIn("Archived Hard Problem of Consciousness.md", sources)
+
+    def test_archived_filter_applies_to_lexical_lane(self):
+        chunks = knowledge_search.lexical_search_raw(
+            "hard problem of consciousness",
+            collection="knowledge",
+            n_results=5,
+        )
+        sources = [c["metadata"].get("source") for c in chunks]
+        self.assertNotIn("Archived Hard Problem of Consciousness.md", sources)
+
+    def test_hybrid_marks_semantic_and_lexical_sources(self):
+        chunks = knowledge_search.knowledge_search_hybrid_raw(
+            "Disingenuous Bullshitters Book Report",
+            collection="knowledge",
+            n_results=1,
+            lexical_n_results=5,
+        )
+        target = next(
+            c for c in chunks
+            if c["metadata"].get("source") == "Book — Disingenuous Bullshitters Book Report.md"
+        )
+        self.assertIn("lexical", target.get("retrieval_source", ""))
+
+
 # ---------------------------------------------------------------------------
 # End-to-end behavior on conversations collection (transitional)
 # ---------------------------------------------------------------------------

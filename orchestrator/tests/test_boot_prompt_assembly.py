@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+import os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -29,6 +30,7 @@ from boot import (  # noqa: E402
     build_system_prompt_for_gear,
     _extract_section,
     _extract_boot_behavioral_preamble,
+    _build_rag_selection,
 )
 
 
@@ -152,6 +154,31 @@ class BootMdAlwaysFirst(unittest.TestCase):
                 f"step={step!r}: prompt does not start with the boot.md "
                 f"behavioral preamble",
             )
+
+
+class RagSelectionDefaults(unittest.TestCase):
+    """RAG selection is a safety layer and should be default-on unless an
+    operator explicitly disables it for debugging."""
+
+    def setUp(self):
+        self._old = os.environ.get("ORA_RAG_SELECTION")
+
+    def tearDown(self):
+        if self._old is None:
+            os.environ.pop("ORA_RAG_SELECTION", None)
+        else:
+            os.environ["ORA_RAG_SELECTION"] = self._old
+
+    def test_default_on(self):
+        os.environ.pop("ORA_RAG_SELECTION", None)
+        n, floor, _gate, dedup = _build_rag_selection({})
+        self.assertEqual(n, 15)
+        self.assertEqual(floor, 0.40)
+        self.assertTrue(dedup)
+
+    def test_explicit_off(self):
+        os.environ["ORA_RAG_SELECTION"] = "0"
+        self.assertEqual(_build_rag_selection({}), (None, None, None, False))
 
 
 class AllModeFilesProduceNonEmptyPromptsAcrossSteps(unittest.TestCase):

@@ -380,6 +380,39 @@ class TestFormatContextWithProvenance(unittest.TestCase):
         self.assertEqual(rag_engine.format_context_with_provenance([]), "")
 
 
+class TestChunkDocumentCleaning(unittest.TestCase):
+    """Selected chunks are stripped of Ora-generated wrappers before prompt
+    injection, without rewriting their substantive content."""
+
+    def test_strips_frontmatter_and_pipeline_warnings(self):
+        raw = """---
+nexus:
+  - ora
+type: chat
+---
+ℹ️ **Meta-layer oversight: simulated** > Oversight is running in simulated mode.
+
+Useful claim about the hard problem of consciousness.
+
+⚠️ **Pipeline-execution warning** > Prompt cleanup couldn't parse the cleaning model's output.
+Second useful sentence.
+"""
+        cleaned = rag_engine.clean_chunk_document(raw)
+        self.assertNotIn("nexus:", cleaned)
+        self.assertNotIn("Meta-layer oversight", cleaned)
+        self.assertNotIn("Pipeline-execution warning", cleaned)
+        self.assertIn("Useful claim about the hard problem", cleaned)
+        self.assertIn("Second useful sentence", cleaned)
+
+    def test_ranker_drops_empty_cleaned_chunks(self):
+        chunk = _vault_chunk("engram", 0.95, source="warning.md",
+                             document="")
+        sink = []
+        ranked = rag_engine.rank_vault_chunks([chunk], candidate_sink=sink)
+        self.assertEqual(ranked, [])
+        self.assertEqual(sink[0]["drop_reason"], "empty_document")
+
+
 # ---------------------------------------------------------------------------
 # End-to-end: type_filter excludes specified types
 # ---------------------------------------------------------------------------
