@@ -43,6 +43,20 @@
   const groupActive  = sidebar.querySelector('[data-group="active"]  .sidebar-group-rows');
   const groupPending = sidebar.querySelector('[data-group="pending"] .sidebar-group-rows');
 
+  // G1.33 — project switcher (top of sidebar).
+  const projectSwitcher = sidebar.querySelector('#sidebarProjectSwitcher');
+  const projectBtn      = sidebar.querySelector('#sidebarProjectBtn');
+  const projectNameEl   = sidebar.querySelector('#sidebarProjectName');
+  const projectMenu     = sidebar.querySelector('#sidebarProjectMenu');
+  const projectSearch   = sidebar.querySelector('#sidebarProjectSearch');
+  const projectListEl   = sidebar.querySelector('#sidebarProjectList');
+  const projectNewBtn   = sidebar.querySelector('#sidebarProjectNew');
+
+  const ACTIVE_PROJECT_KEY = 'ora-sidebar-project';
+  let activeProjectId = 'general';
+  try { activeProjectId = localStorage.getItem(ACTIVE_PROJECT_KEY) || 'general'; } catch (e) {}
+  let projectsCache = [];
+
   let lastSnapshot = { pinned: [], errored: [], pending: [], unread: [], active: [] };
   let activeConvId = null;
   let browserOverlay = null;
@@ -332,13 +346,90 @@
 
   const fetchList = async () => {
     try {
-      const r = await fetch('/api/conversations');
+      const r = await fetch('/api/conversations?project_id=' + encodeURIComponent(activeProjectId));
       if (!r.ok) return;
       const data = await r.json();
       render(data);
     } catch (e) {
       // Network failure during polling — render the last snapshot we had.
     }
+  };
+
+  // ── G1.33 project switcher ──────────────────────────────────────────────
+  const projectDisplayName = (nexus) =>
+    nexus === 'general' ? 'General' : nexus;
+
+  const renderProjects = () => {
+    if (!projectListEl) return;
+    const q = ((projectSearch && projectSearch.value) || '').trim().toLowerCase();
+    projectListEl.innerHTML = '';
+    projectsCache
+      .filter(p => !q || String(p.name || p.nexus).toLowerCase().includes(q))
+      .forEach(p => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'sidebar-project-row' + (p.nexus === activeProjectId ? ' is-active' : '');
+        row.setAttribute('role', 'option');
+        const name = document.createElement('span');
+        name.className = 'sidebar-project-row-name';
+        name.textContent = p.name || p.nexus;
+        const badge = document.createElement('span');
+        badge.className = 'sidebar-project-badge';
+        const unread = p.unread_count || 0;
+        badge.textContent = String(unread);
+        badge.setAttribute('data-zero', unread ? '0' : '1');
+        row.appendChild(name);
+        row.appendChild(badge);
+        row.addEventListener('click', () => setActiveProject(p.nexus, p.name || p.nexus));
+        projectListEl.appendChild(row);
+      });
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const r = await fetch('/api/projects/meta?status=active');
+      if (!r.ok) return;
+      const data = await r.json();
+      projectsCache = (data && data.projects) || [];
+      const cur = projectsCache.find(p => p.nexus === activeProjectId);
+      if (projectNameEl) {
+        projectNameEl.textContent = cur ? (cur.name || cur.nexus) : projectDisplayName(activeProjectId);
+      }
+      renderProjects();
+    } catch (e) {}
+  };
+
+  const closeProjectMenu = () => {
+    if (!projectMenu) return;
+    projectMenu.hidden = true;
+    if (projectBtn) projectBtn.setAttribute('aria-expanded', 'false');
+  };
+  const openProjectMenu = () => {
+    if (!projectMenu) return;
+    projectMenu.hidden = false;
+    if (projectBtn) projectBtn.setAttribute('aria-expanded', 'true');
+    if (projectSearch) { projectSearch.value = ''; projectSearch.focus(); }
+    fetchProjects(); // refresh badges when the user looks
+  };
+  const toggleProjectMenu = () => {
+    if (projectMenu && projectMenu.hidden) openProjectMenu();
+    else closeProjectMenu();
+  };
+
+  const setActiveProject = async (nexus, name) => {
+    activeProjectId = nexus || 'general';
+    try { localStorage.setItem(ACTIVE_PROJECT_KEY, activeProjectId); } catch (e) {}
+    if (projectNameEl) projectNameEl.textContent = name || projectDisplayName(activeProjectId);
+    closeProjectMenu();
+    // Persist server-side so NEW conversations bind to this project.
+    try {
+      await fetch('/api/active-project', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nexus: activeProjectId }),
+      });
+    } catch (e) {}
+    fetchList();      // refetch the sidebar filtered to this project
+    renderProjects(); // refresh the active highlight
   };
 
   const onRowClick = async (row) => {
@@ -959,6 +1050,37 @@
     setExpanded(false);
   });
 
+  // ── G1.33 project switcher wiring ────────────────────────────────────
+  if (projectNameEl) projectNameEl.textContent = projectDisplayName(activeProjectId);
+  if (projectBtn) projectBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleProjectMenu(); });
+  if (projectSearch) projectSearch.addEventListener('input', renderProjects);
+  if (projectNewBtn) projectNewBtn.addEventListener('click', async () => {
+    // Placeholder creation: name-only (graceful). The richer MOM-guided
+    // creation flow is a later sub-step; this hits /api/projects/create
+    // which makes the record + vault folder.
+    const name = (window.prompt('New project name:') || '').trim();
+    if (!name) return;
+    try {
+      const r = await fetch('/api/projects/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await r.json();
+      if (data && data.ok && data.project) {
+        await fetchProjects();
+        setActiveProject(data.project.nexus, data.project.name);
+      } else {
+        window.alert('Could not create project: ' + ((data && data.error) || 'unknown error'));
+      }
+    } catch (e) {}
+  });
+  document.addEventListener('click', (e) => {
+    if (projectMenu && !projectMenu.hidden && projectSwitcher && !projectSwitcher.contains(e.target)) {
+      closeProjectMenu();
+    }
+  });
+  fetchProjects();
+
   // ── Polling ─────────────────────────────────────────────────────────
   fetchList();
   let pollHandle = window.setInterval(fetchList, REFRESH_INTERVAL_MS);
@@ -983,5 +1105,7 @@
     setExpanded,
     isExpanded,
     getActiveConversation: () => activeConvId,
+    getActiveProject: () => activeProjectId,
+    refreshProjects: fetchProjects,
   };
 })();
