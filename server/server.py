@@ -3532,6 +3532,34 @@ def api_projects_list():
     })
 
 
+@app.route("/api/active-project", methods=["GET"])
+def api_active_project_get():
+    """Return the active project nexus that new conversations bind to (G1.33).
+
+    ``"general"`` is the synthetic default (empty project_ids / empty nexus).
+    """
+    try:
+        from orchestrator.active_project import get_active_project
+        return _json_response({"ok": True, "nexus": get_active_project()})
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc), "nexus": "general"}, 503
+        )
+
+
+@app.route("/api/active-project", methods=["POST"])
+def api_active_project_set():
+    """Set the active project. Body: ``{"nexus": "..."}`` ("general"/empty resets)."""
+    try:
+        from orchestrator.active_project import set_active_project, get_active_project
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    nexus = data.get("nexus")
+    set_active_project(nexus if isinstance(nexus, str) else "")
+    return _json_response({"ok": True, "nexus": get_active_project()})
+
+
 @app.route("/api/projects/register", methods=["POST"])
 def api_projects_register():
     """Register a project plugin by root path. Body: {"root": "..."}."""
@@ -7618,6 +7646,18 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context
             spatial_rep = extra_context.get("spatial_representation")
             annotations = extra_context.get("annotations")
             vision_extr = extra_context.get("vision_extraction_result")
+        # Bind a NEW conversation to the active project (G1.33). project_ids
+        # is honored on first save only, so passing it every turn is safe —
+        # existing envelopes preserve their membership. General (the default)
+        # resolves to [] (the implicit baseline).
+        try:
+            from orchestrator.active_project import (
+                get_active_project,
+                resolve_project_ids,
+            )
+            _project_ids = resolve_project_ids(get_active_project())
+        except Exception:
+            _project_ids = None
         save_turn_spatial_state(
             conversation_id=panel_id,
             user_input=user_input,
@@ -7627,6 +7667,7 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context
             vision_extraction_result=vision_extr,
             timestamp=datetime.now().isoformat(timespec="seconds"),
             tag=tag,
+            project_ids=_project_ids,
         )
     except Exception as e:
         print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
