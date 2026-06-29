@@ -346,16 +346,17 @@
         .sidebar-project-switcher { position: relative; padding: 10px 12px 6px; }
         .sidebar-project-current {
           display: flex; align-items: center; gap: 8px; width: 100%;
-          background: transparent; border: none; cursor: pointer;
-          color: var(--text-normal); font-size: 18px; font-weight: 600;
-          padding: 7px 8px; border-radius: var(--radius-s, 6px);
+          background: var(--background-modifier-form-field);
+          border: 1px solid var(--background-modifier-border); cursor: pointer;
+          color: var(--text-normal); font-size: 15px; font-weight: 500;
+          padding: 8px 10px; border-radius: var(--radius-s, 6px);
         }
-        .sidebar-project-current:hover { background: var(--background-modifier-hover); }
+        .sidebar-project-current:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }
         .sidebar-project-name { flex: 1; text-align: left; overflow: hidden;
           text-overflow: ellipsis; white-space: nowrap; }
         .sidebar-project-chevron { font-size: 13px; color: var(--text-muted); }
         .sidebar-project-menu {
-          position: absolute; left: 12px; right: 12px; top: calc(100% - 2px); z-index: 60;
+          position: absolute; left: 12px; right: 12px; bottom: calc(100% - 2px); top: auto; z-index: 60;
           background: var(--background-primary);
           border: 1px solid var(--background-modifier-border);
           border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.28); padding: 6px;
@@ -395,9 +396,14 @@
         .sidebar-project-new:hover {
           background: var(--background-modifier-hover); color: var(--text-normal);
         }
-        /* Fixed top sections (Project, Model configuration) — labelled with a
-           line under, like the conversation groups. */
-        .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; }
+        /* Project + Model configuration are a fixed control FOOTER at the
+           bottom of the sidebar (order:1 pushes them below the flex:1
+           accordion); the conversation list leads at the top. */
+        .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; order: 1; }
+        .sidebar-project-section {
+          border-top: 1px solid var(--background-modifier-border);
+          margin-top: 6px; padding-top: 8px;
+        }
         /* Active Project + Model configuration are top-level section headers —
            match the supergroup headers (Conversations / Automated Processes),
            a tier above the muted Pinned/Unread sub-labels. */
@@ -420,11 +426,12 @@
         .sidebar-project-label .sidebar-pin-toggle[aria-pressed="true"] { color: var(--interactive-accent); }
         .sidebar-modelconfig-current {
           display: flex; align-items: center; gap: 8px; width: 100%;
-          background: transparent; border: none; cursor: pointer;
+          background: var(--background-modifier-form-field);
+          border: 1px solid var(--background-modifier-border); cursor: pointer;
           color: var(--text-normal); font-size: 15px; font-weight: 500;
-          padding: 6px 8px; border-radius: var(--radius-s, 6px);
+          padding: 8px 10px; border-radius: var(--radius-s, 6px);
         }
-        .sidebar-modelconfig-current:hover { background: var(--background-modifier-hover); }
+        .sidebar-modelconfig-current:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }
         .sidebar-modelconfig-name { flex: 1; text-align: left; overflow: hidden;
           text-overflow: ellipsis; white-space: nowrap; }
       </style>
