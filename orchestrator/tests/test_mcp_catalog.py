@@ -125,11 +125,16 @@ class CatalogFormatTests(unittest.TestCase):
         self.assertIn("Read a file from the vault", out)
         self.assertIn("Navigate the browser to a URL", out)
 
-    def test_catalog_renders_parameter_schemas(self):
+    def test_catalog_renders_compact_parameter_list(self):
+        # 2026-06-29: compact catalog — parameter name + type are rendered
+        # inline, but the per-parameter DESCRIPTIONS the MCP server publishes
+        # are dropped (they were the bulk of the catalog). Tool calls stay
+        # well-formed from the name+type; full param semantics come from the
+        # dispatcher's argument validation on the call.
         with mock.patch.object(dispatcher, "_mcp_client", _FakeMgr(_fake_defs())):
             out = boot._get_mcp_tool_catalog()
         self.assertIn("`path` (string)", out)
-        self.assertIn("Path within vault root", out)
+        self.assertNotIn("Path within vault root", out)
 
     def test_servers_sorted_alphabetically(self):
         with mock.patch.object(dispatcher, "_mcp_client", _FakeMgr(_fake_defs())):
