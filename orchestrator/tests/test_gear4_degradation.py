@@ -153,57 +153,44 @@ class TestStepHealthCapturesContingency(unittest.TestCase):
 
         self.assertEqual(captured.get("gear"), 4)
         self.assertIn(
-            "step3-both-analysts-degraded-fallback-to-gear3",
+            "step3-both-analysts-unrecoverable-fallback-to-gear3",
             captured.get("contingencies_fired", []),
             "Fallback contingency name should appear in step-health "
-            "when both analysts degrade",
+            "when both analysts are unrecoverable after retry+fallback",
         )
 
 
-class TestSingleStreamDegradedAddsContingency(unittest.TestCase):
-    """When one stream succeeds and the other degrades, the matching
-    `cross-eval-on-error-string` contingency name should land on
-    step-health. This is the "pipeline continues with one degraded
-    stream" path — not a Gear 3 fallback.
-
-    The full run_gear4 path requires mocking the remaining steps (eval,
-    reviser, verifier, consolidator, formatter). We don't replicate
-    that here — we directly assert the contingency-naming logic in the
-    block at boot.py:8469-8476 by exercising the small piece of code
-    that does the naming.
+class TestSingleStreamUnrecoverableFallsBackToGear3(unittest.TestCase):
+    """When one stream succeeds and the other is unrecoverable (failed its
+    primary AND its fallback model), the pipeline must NOT proceed on the one
+    healthy stream — it falls back to Gear 3, naming the unrecoverable stream.
+    This replaced the prior "continue with one degraded stream + error string"
+    path (2026-06-29). End-to-end coverage of the fall-back lives in
+    test_gear4_analyst_recovery.py; here we pin the contingency-naming logic.
     """
 
-    def test_single_degraded_naming_depth_ok_breadth_fail(self):
-        # The naming logic in boot.py:
-        #   if depth_ok and not breadth_ok:
-        #       contingencies_fired.append(
-        #           "step3-breadth-analyst-degraded-cross-eval-on-error-string")
-        contingencies = []
+    def test_single_unrecoverable_naming_depth_ok_breadth_fail(self):
+        # Mirrors the naming block in run_gear4's step-3 recovery:
+        #   failed = [s for s, ok in (("depth", depth_ok), ("breadth", breadth_ok)) if not ok]
+        #   "step3-both-..." when both fail, else "step3-<failed>-analyst-unrecoverable..."
         depth_ok, breadth_ok = True, False
-        if depth_ok and not breadth_ok:
-            contingencies.append(
-                "step3-breadth-analyst-degraded-cross-eval-on-error-string")
-        elif breadth_ok and not depth_ok:
-            contingencies.append(
-                "step3-depth-analyst-degraded-cross-eval-on-error-string")
+        failed = [s for s, ok in (("depth", depth_ok), ("breadth", breadth_ok))
+                  if not ok]
+        name = ("step3-both-analysts-unrecoverable-fallback-to-gear3"
+                if not depth_ok and not breadth_ok
+                else f"step3-{failed[0]}-analyst-unrecoverable-fallback-to-gear3")
         self.assertEqual(
-            contingencies,
-            ["step3-breadth-analyst-degraded-cross-eval-on-error-string"],
-        )
+            name, "step3-breadth-analyst-unrecoverable-fallback-to-gear3")
 
-    def test_single_degraded_naming_breadth_ok_depth_fail(self):
-        contingencies = []
+    def test_single_unrecoverable_naming_breadth_ok_depth_fail(self):
         depth_ok, breadth_ok = False, True
-        if depth_ok and not breadth_ok:
-            contingencies.append(
-                "step3-breadth-analyst-degraded-cross-eval-on-error-string")
-        elif breadth_ok and not depth_ok:
-            contingencies.append(
-                "step3-depth-analyst-degraded-cross-eval-on-error-string")
+        failed = [s for s, ok in (("depth", depth_ok), ("breadth", breadth_ok))
+                  if not ok]
+        name = ("step3-both-analysts-unrecoverable-fallback-to-gear3"
+                if not depth_ok and not breadth_ok
+                else f"step3-{failed[0]}-analyst-unrecoverable-fallback-to-gear3")
         self.assertEqual(
-            contingencies,
-            ["step3-depth-analyst-degraded-cross-eval-on-error-string"],
-        )
+            name, "step3-depth-analyst-unrecoverable-fallback-to-gear3")
 
 
 if __name__ == "__main__":

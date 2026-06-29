@@ -11201,10 +11201,14 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                ship.
 
     Reliability contingency table (per step):
-      Step 3 — Each analyst's output goes through ``_call_with_retry`` (one
-               regenerate-on-unhealthy retry). If both streams degrade past
-               retry, the pipeline falls back to Gear 3 with whichever
-               endpoint produced healthier output.
+      Step 3 — Per-stream recovery: each analyst tries its PRIMARY model with
+               one same-model retry; if still unhealthy it advances to the
+               slot's FALLBACK model (also with a same-model retry). A stream
+               that fails both primary and fallback is unrecoverable, and the
+               pipeline falls back to Gear 3 (a complete single-model answer)
+               rather than ever cross-evaluating on one model + an error
+               string — so a refusing/empty model never silently halves the
+               adversarial pair.
       Step 4 — Cross-eval calls use ``_call_with_retry``. If an eval is
                unhealthy after retry, the corresponding reviser receives
                ``[no evaluator feedback — degraded]`` instead.
@@ -11295,52 +11299,88 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         context_pkg, slot="breadth", step="analyst", framework_name=None
     )
 
+    # Per-stream analyst recovery (2026-06-29): a refusing/empty model must not
+    # let the pipeline proceed on one participant. Each stream tries its PRIMARY
+    # model with one SAME-model retry (slot/gear omitted so _call_with_retry
+    # re-hits the same endpoint rather than auto-advancing the chain); if that
+    # still fails, it advances to the slot's FALLBACK model, also with a
+    # same-model retry. A stream that fails both the primary and the fallback is
+    # unrecoverable — the caller then falls back to Gear 3 (a complete
+    # single-model answer) rather than cross-evaluating an error string.
+    # Returns (text, ok, reason, recovery) where recovery is one of
+    # primary | fallback | no-fallback | fallback-failed.
+    def _analyst_stream(system_prompt, primary_endpoint, slot):
+        msgs = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": cleaned_prompt},
+        ]
+        text, ok, reason = _call_with_supplement(
+            msgs, primary_endpoint, "analyst", 30, None, images, context_pkg,
+            slot=None, gear=None, config_name=config_name,
+        )
+        if ok:
+            return text, True, reason, "primary"
+        # Primary (incl. its same-model retry) failed — advance to the slot's
+        # fallback model once, with its own same-model retry.
+        fb = _resolve_fallback_endpoint(
+            slot, 4, primary_endpoint, config_name=config_name,
+            require_vision=bool(images),
+        )
+        if fb is None:
+            return text, False, f"no-fallback-available ({reason})", "no-fallback"
+        fb_text, fb_ok, fb_reason = _call_with_supplement(
+            msgs, fb, "analyst", 30, None, images, context_pkg,
+            slot=None, gear=None, config_name=config_name,
+        )
+        if fb_ok:
+            return fb_text, True, f"recovered-on-fallback ({fb_reason})", "fallback"
+        return fb_text, False, f"primary+fallback-failed ({fb_reason})", "fallback-failed"
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        depth_future = _submit_with_context(executor,
-            _call_with_supplement,
-            [{"role": "system", "content": depth_system},
-             {"role": "user", "content": cleaned_prompt}],
-            depth_endpoint, "analyst", 30, None, images, context_pkg,
-            slot="depth", gear=4, config_name=config_name,
-        )
-        breadth_future = _submit_with_context(executor,
-            _call_with_supplement,
-            [{"role": "system", "content": breadth_system},
-             {"role": "user", "content": cleaned_prompt}],
-            breadth_endpoint, "analyst", 30, None, images, context_pkg,
-            slot="breadth", gear=4, config_name=config_name,
-        )
+        depth_future = _submit_with_context(
+            executor, _analyst_stream, depth_system, depth_endpoint, "depth")
+        breadth_future = _submit_with_context(
+            executor, _analyst_stream, breadth_system, breadth_endpoint, "breadth")
         try:
-            depth_analysis, depth_ok, depth_reason = depth_future.result()
+            depth_analysis, depth_ok, depth_reason, depth_recovery = depth_future.result()
         except Exception as e:
-            depth_analysis, depth_ok, depth_reason = f"[Depth model error: {e}]", False, str(e)
+            depth_analysis, depth_ok, depth_reason, depth_recovery = (
+                f"[Depth model error: {e}]", False, str(e), "exception")
         try:
-            breadth_analysis, breadth_ok, breadth_reason = breadth_future.result()
+            breadth_analysis, breadth_ok, breadth_reason, breadth_recovery = breadth_future.result()
         except Exception as e:
-            breadth_analysis, breadth_ok, breadth_reason = f"[Breadth model error: {e}]", False, str(e)
-    _record("step3-depth", depth_ok, depth_reason)
-    _record("step3-breadth", breadth_ok, breadth_reason)
+            breadth_analysis, breadth_ok, breadth_reason, breadth_recovery = (
+                f"[Breadth model error: {e}]", False, str(e), "exception")
+    _record("step3-depth", depth_ok, f"{depth_reason} [{depth_recovery}]")
+    _record("step3-breadth", breadth_ok, f"{breadth_reason} [{breadth_recovery}]")
 
-    # Single-stream-degraded contingency: the pipeline continues but the
-    # degraded stream's error-string output flows into step 4 as if it
-    # were a real analysis. Without an explicit contingency record, trend
-    # data shows nothing — Gear 4 ran "successfully" even though the
-    # cross-evaluation was operating on half-broken input. Both-degraded
-    # still falls back to Gear 3 (current behaviour) but single-degraded
-    # is now visible in step-health.json.
-    if depth_ok and not breadth_ok:
-        contingencies_fired.append(
-            "step3-breadth-analyst-degraded-cross-eval-on-error-string"
-        )
-    elif breadth_ok and not depth_ok:
-        contingencies_fired.append(
-            "step3-depth-analyst-degraded-cross-eval-on-error-string"
-        )
+    # A stream that recovered on its fallback model is worth a trend marker
+    # even though it is healthy — it shows the primary is flaking.
+    if depth_recovery == "fallback":
+        contingencies_fired.append("step3-depth-analyst-recovered-on-fallback-model")
+    if breadth_recovery == "fallback":
+        contingencies_fired.append("step3-breadth-analyst-recovered-on-fallback-model")
 
-    # Contingency: both analyst streams degraded → fall back to Gear 3.
-    if not depth_ok and not breadth_ok:
-        print("[gear4-contingency] both analysts degraded — falling back to Gear 3", flush=True)
-        contingencies_fired.append("step3-both-analysts-degraded-fallback-to-gear3")
+    # Never proceed on one model: if EITHER stream is unrecoverable after its
+    # primary + same-model retry + fallback (+ retry), fall back to Gear 3 — a
+    # complete single-model answer — rather than cross-evaluating an error
+    # string. (2026-06-29: replaces the prior single-degraded path, which
+    # continued with the degraded stream's error string standing in for a real
+    # analysis; both-degraded already fell back to Gear 3.)
+    if not depth_ok or not breadth_ok:
+        failed = [s for s, ok in (("depth", depth_ok), ("breadth", breadth_ok))
+                  if not ok]
+        print(
+            "[gear4-contingency] analyst stream(s) unrecoverable after "
+            f"retry+fallback ({', '.join(failed)}) — falling back to Gear 3",
+            flush=True,
+        )
+        if not depth_ok and not breadth_ok:
+            contingencies_fired.append(
+                "step3-both-analysts-unrecoverable-fallback-to-gear3")
+        else:
+            contingencies_fired.append(
+                f"step3-{failed[0]}-analyst-unrecoverable-fallback-to-gear3")
         if PIPELINE_TRACE_AVAILABLE and trace_dir:
             pipeline_trace.write_step_health(
                 trace_dir, step_health, gear=4,
@@ -11355,9 +11395,11 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "raw_response": depth_analysis,
         "ok": depth_ok,
         "reason": depth_reason,
+        "recovery": depth_recovery,
         "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
     }, markdown=(
         "# Step 3 — Depth analyst output\n\n"
+        f"**Recovery:** {depth_recovery}  \n"
         f"**Endpoint:** {depth_endpoint.get('name') if isinstance(depth_endpoint, dict) else depth_endpoint}  \n"
         f"**Health:** {'ok' if depth_ok else 'DEGRADED'} — {depth_reason}\n\n"
         f"## Response\n\n{depth_analysis}\n"
@@ -11368,9 +11410,11 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "raw_response": breadth_analysis,
         "ok": breadth_ok,
         "reason": breadth_reason,
+        "recovery": breadth_recovery,
         "endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
     }, markdown=(
         "# Step 3 — Breadth analyst output\n\n"
+        f"**Recovery:** {breadth_recovery}  \n"
         f"**Endpoint:** {breadth_endpoint.get('name') if isinstance(breadth_endpoint, dict) else breadth_endpoint}  \n"
         f"**Health:** {'ok' if breadth_ok else 'DEGRADED'} — {breadth_reason}\n\n"
         f"## Response\n\n{breadth_analysis}\n"
