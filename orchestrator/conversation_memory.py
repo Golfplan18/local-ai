@@ -169,6 +169,7 @@ def save_turn_spatial_state(
     vision_extraction_result: dict | None = None,
     timestamp: str | None = None,
     tag: str = "",
+    project_ids: list[str] | None = None,
     sessions_root: Path | None = None,
 ) -> Path | None:
     """Append a user+assistant pair to conversation.json with optional
@@ -189,6 +190,13 @@ def save_turn_spatial_state(
     ``tag`` is passed in (immutability for the life of the conversation).
     Invalid tags (not in ``CONVERSATION_TAGS``) silently coerce to ``""``.
 
+    The ``project_ids`` argument (G1.33) carries the explicit project
+    memberships (by nexus slug) to stamp on a NEW envelope, sourced from the
+    active-project pointer at the call site. Like ``tag`` it is honored on
+    FIRST save only — an existing envelope's ``project_ids`` is preserved
+    verbatim (membership is edited via the project modal, not per turn).
+    ``None`` / empty means the default ``General`` project.
+
     Returns the path written, or ``None`` on I/O failure (non-blocking; the
     persistence step must never break the conversation flow).
     """
@@ -205,7 +213,8 @@ def save_turn_spatial_state(
     with _conversation_write_lock(conversation_id):
         return _do_write(path, conversation_id, user_input, ai_response,
                           tag, timestamp, spatial_representation,
-                          annotations, vision_extraction_result)
+                          annotations, vision_extraction_result,
+                          project_ids)
 
 
 def _do_write(
@@ -218,6 +227,7 @@ def _do_write(
     spatial_representation: dict | None,
     annotations: dict | list | None,
     vision_extraction_result: dict | None,
+    project_ids: list[str] | None = None,
 ) -> Path | None:
     """Inner read-modify-write helper. Runs inside the per-conversation
     lock; do not call directly."""
@@ -279,6 +289,7 @@ def _do_write(
             "created":                 timestamp or _dt.now().isoformat(timespec="seconds"),
             "parent_conversation_id":  None,
             "fork_point_chunk_id":     None,
+            "project_ids":             list(project_ids) if project_ids else [],
             "messages":                [],
         }
     else:
@@ -294,6 +305,8 @@ def _do_write(
             existing["parent_conversation_id"] = None
         if "fork_point_chunk_id" not in existing:
             existing["fork_point_chunk_id"] = None
+        if "project_ids" not in existing:
+            existing["project_ids"] = []
 
     # Normalize annotations payload: accept either wrapper dict or bare list.
     annotations_normalized: Any
@@ -516,6 +529,7 @@ def iter_conversations(
           "message_count": <int>,
           "last_activity_at": "<iso timestamp>" | None,
           "last_read_at": "<iso timestamp>" | None,
+          "project_ids": ["<nexus slug>", ...],   # [] == General (G1.33)
         }
 
     Conversations whose conversation.json is missing or unreadable are
@@ -583,6 +597,10 @@ def iter_conversations(
             "fork_point_chunk_id": (
                 data.get("fork_point_chunk_id")
                 if isinstance(data.get("fork_point_chunk_id"), str) else None
+            ),
+            "project_ids": (
+                [p for p in data.get("project_ids", []) if isinstance(p, str)]
+                if isinstance(data.get("project_ids"), list) else []
             ),
         })
     return summaries
@@ -733,6 +751,11 @@ def fork_conversation(
 
     forked_at = timestamp or _dt.now().isoformat(timespec="seconds")
 
+    # A fork stays in the same projects as its parent (G1.33).
+    parent_projects = [
+        p for p in (parent.get("project_ids") or []) if isinstance(p, str)
+    ]
+
     child = {
         "conversation_id":         new_id,
         "display_name":            derived_display,
@@ -741,6 +764,7 @@ def fork_conversation(
         "parent_conversation_id":  parent_id,
         "fork_point_chunk_id":     fork_point_chunk_id,
         "forked_at":               forked_at,
+        "project_ids":             list(parent_projects),
         "messages":                copy.deepcopy(parent_messages),
     }
 
@@ -1010,6 +1034,62 @@ def set_conversation_closed(
     return path
 
 
+def set_conversation_projects(
+    conversation_id: str,
+    project_ids: list[str],
+    *,
+    sessions_root: Path | None = None,
+) -> Path | None:
+    """Replace a conversation's explicit project memberships (G1.33).
+
+    ``project_ids`` is the full new list of project nexus slugs the
+    conversation belongs to. The implicit ``General`` project is never
+    stored (an empty list == General), so ``general`` and empty entries are
+    stripped and the list is de-duplicated preserving order. This is the
+    membership-edit path used by the project modal; conversation *creation*
+    sets membership via ``save_turn_spatial_state``'s ``project_ids`` arg.
+
+    Returns the path written, or None if the envelope is missing.
+    """
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    path = _conversation_path(conversation_id, root)
+    if not path.exists():
+        return None
+    with _conversation_write_lock(conversation_id):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if not isinstance(data, dict):
+            return None
+
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for pid in project_ids or []:
+            if not isinstance(pid, str):
+                continue
+            slug = pid.strip()
+            # General is the implicit baseline (empty list) — never stored,
+            # and therefore never removable.
+            if not slug or slug.lower() == "general":
+                continue
+            if slug not in seen:
+                seen.add(slug)
+                cleaned.append(slug)
+        data["project_ids"] = cleaned
+
+        try:
+            tmp_path = path.with_suffix(path.suffix + ".tmp")
+            tmp_path.write_text(
+                json.dumps(data, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            os.replace(tmp_path, path)
+        except OSError:
+            return None
+    return path
+
+
 __all__ = [
     "TURN_SPATIAL_FIELDS",
     "CONVERSATION_TAGS",
@@ -1029,4 +1109,5 @@ __all__ = [
     "set_display_name",
     "set_conversation_pinned",
     "set_conversation_closed",
+    "set_conversation_projects",
 ]
