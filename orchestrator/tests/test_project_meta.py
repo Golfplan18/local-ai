@@ -94,6 +94,35 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertTrue(m["is_plugin"])
         self.assertEqual(m["status"], "active")
 
+    def test_update_project_meta(self):
+        pm.create_project("Book", pointer_dir=self.d)
+        m = pm.update_project_meta(
+            "book", {"name": "Book of Law", "private": True, "bogus": 1},
+            pointer_dir=self.d)
+        self.assertEqual(m["name"], "Book of Law")
+        self.assertTrue(m["private"])
+        raw = json.loads((self.d / "book.json").read_text())
+        self.assertNotIn("bogus", raw)  # unknown field ignored
+
+    def test_update_invalid_and_missing(self):
+        pm.create_project("Book", pointer_dir=self.d)
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.update_project_meta("book", {"status": "bogus"}, pointer_dir=self.d)
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.update_project_meta("book", {"name": "  "}, pointer_dir=self.d)
+        self.assertIsNone(
+            pm.update_project_meta("ghost", {"name": "x"}, pointer_dir=self.d))
+
+    def test_ensure_project_folder(self):
+        proj_dir = self.d / "vault-projects"
+        folder = pm.ensure_project_folder("My Book", vault_projects_dir=proj_dir)
+        self.assertIsNotNone(folder)
+        self.assertTrue(folder.is_dir())
+        self.assertEqual(folder.name, "My Book")
+        f2 = pm.ensure_project_folder("a/b", vault_projects_dir=proj_dir)
+        self.assertTrue(f2.is_dir())
+        self.assertNotIn("/", f2.name)
+
 
 if __name__ == "__main__":
     unittest.main()
