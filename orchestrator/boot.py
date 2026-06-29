@@ -9489,6 +9489,50 @@ def _verifier_passed(verifier_output: str) -> bool:
 
 
 # ────────────────────────────────────────────────────────────────────────────
+# Final-output quality gate (f-quality-gate.md): a single BOUNDED redo of the
+# final output step after the gear has produced its deliverable. The judge
+# emits the same line-anchored ``VERDICT: PASS|FAIL|BROKEN`` contract the
+# per-stream verifier uses (parsed by ``_verifier_passed`` / ``_verifier_broken``
+# above), so no new verdict parser is needed. Gear 4 additionally emits a
+# ``PROBLEM: ANALYSIS|FORMATTING`` line that routes a FAIL back to the step-7
+# consolidator (ANALYSIS) or the step-8 formatter (FORMATTING). Ported from
+# MSI's final-output gates: the gear-3 signature-move audit (verdict-string FAIL
+# -> one escalated re-revise) and the gear-4 voice-editor approval
+# (failure_kind text|formatting -> reconsolidate vs format_fix).
+# ────────────────────────────────────────────────────────────────────────────
+
+QUALITY_GATE_FRAMEWORK = "f-quality-gate.md"
+
+_GATE_PROBLEM_LINE_RE = re.compile(
+    r"^\s*\**\s*PROBLEM\s*\**\s*[:\-—]\s*\**\s*(?P<kind>ANALYSIS|FORMATTING)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _parse_quality_gate_problem(gate_output: str) -> str:
+    """Gear-4 final-output gate routing key: ``"ANALYSIS"`` or ``"FORMATTING"``.
+
+    ANALYSIS routes a FAIL redo back to the step-7 consolidator (substance);
+    FORMATTING routes it back to the step-8 formatter (form/leak). Mirrors
+    MSI's voice-editor ``failure_kind`` (text|formatting). The ``PROBLEM:``
+    line is anchored to its own line and the last occurrence wins, matching
+    the ``VERDICT:`` parser. Defaults to ``"ANALYSIS"`` on any ambiguity or
+    omission — the safe, substance-first direction (MSI's "when in doubt,
+    choose text"): a substance redo re-runs the consolidator and re-formats,
+    so it also repairs most form problems, whereas a formatter-only redo
+    cannot repair substance.
+    """
+    if not gate_output:
+        return "ANALYSIS"
+    last = None
+    for m in _GATE_PROBLEM_LINE_RE.finditer(gate_output):
+        last = m
+    if last is None:
+        return "ANALYSIS"
+    return "FORMATTING" if last.group("kind").upper() == "FORMATTING" else "ANALYSIS"
+
+
+# ────────────────────────────────────────────────────────────────────────────
 # Gear 4 reliability layer: pollution stripper + per-step health validator +
 # retry-once wrapper. See run_gear4's docstring for the contingency table.
 # ────────────────────────────────────────────────────────────────────────────
@@ -10515,10 +10559,16 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     Step 5 — Depth revises (f-revise.md + mode Reviser guidance).
     Step 6 — Breadth verifies (f-verify.md + mode Verifier checks), with up
              to 2 correction cycles.
+    Step 6.5 — Final-output quality gate (f-quality-gate.md): judge the
+             deliverable against the mode's VERIFICATION CRITERIA on the
+             verification slot; on a real FAIL, re-run the reviser ONCE with
+             the gate's itemized REQUIRED FIXES (the re-run is final), then
+             ship. Recorded under the ``step6_5-quality-gate*`` contingency
+             names; PASS and BROKEN ship the reviser's draft as-is.
 
-    Output: verifier's final output (VERIFIED / VERIFIED WITH CORRECTIONS
-    contains the accepted revised analysis; VERIFICATION FAILED surfaces
-    the unresolved deficiencies after cycles are exhausted).
+    Output: the reviser's revised draft (its ``## REVISED DRAFT`` body),
+    gated by the per-cycle verifier (step 6) and the final-output quality
+    gate (step 6.5).
 
     ``config_name`` (install Chunk 2c) selects a named configuration from
     config/configurations/ instead of the legacy pipelines[context] block.
@@ -10969,6 +11019,100 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         )
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
 
+    # --- Step 6.5: Final-output quality gate (single bounded redo) ----------
+    # The verify loop above gates the revision cycle mid-pipeline; this is the
+    # FINAL check of the deliverable against the mode's VERIFICATION CRITERIA,
+    # run on the dedicated 'verification' judge slot with the f-quality-gate
+    # contract. On a real FAIL, re-run the reviser ONCE with the gate's itemized
+    # REQUIRED FIXES, then ship — the re-run is final (mirrors the in-loop
+    # re-revise above). Ported from MSI gear-3's signature-move audit
+    # (verdict-string FAIL -> one escalated re-revise).
+    gate_endpoint = (
+        get_slot_endpoint(config, "verification", config_name=config_name)
+        or breadth_endpoint
+    )
+    gate_system = _assemble_step_prompt(
+        context_pkg, slot="breadth", step="verifier",
+        framework_name=QUALITY_GATE_FRAMEWORK,
+    )
+    gate_user = (
+        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+        "## CANDIDATE ANALYSIS (reviser output; the user-facing deliverable "
+        "is its `## REVISED DRAFT` body — the other sections are pipeline "
+        f"scaffolding)\n\n{revised_analysis}\n\n"
+        "Grade the deliverable against the mode's `## VERIFICATION CRITERIA` "
+        "(PASS gate) and the universal checks. Gear 3 has no separate "
+        "formatter, so OMIT the PROBLEM line. Conclude with the itemized "
+        "checklist, a `## REQUIRED FIXES` section on FAIL, and a final "
+        "`VERDICT:` line (PASS / FAIL / BROKEN) per the F-QUALITY-GATE "
+        "specification."
+    )
+    gate_messages = [
+        {"role": "system", "content": gate_system},
+        {"role": "user", "content": gate_user},
+    ]
+    try:
+        gate_out, gate_call_ok, gate_call_reason = _call_with_retry(
+            gate_messages, gate_endpoint, "quality-gate",
+            min_chars=30, retry_hint=None,
+            images=_images_for_endpoint(images, gate_endpoint),
+            slot="verification", gear=3, config_name=config_name,
+        )
+    except Exception as e:
+        gate_out = f"QUALITY_GATE_EXCEPTION: {e}"
+        gate_call_ok, gate_call_reason = False, str(e)
+
+    gate_passed = _verifier_passed(gate_out)
+    # A failed gate CALL (transport error after retry) ships as BROKEN rather
+    # than firing a content redo a broken judge can't justify — same fail-open
+    # posture as the per-stream verifier's BROKEN handling.
+    gate_broken = _verifier_broken(gate_out) or not gate_call_ok
+    gate_verdict_label = (
+        "BROKEN" if gate_broken else ("PASS" if gate_passed else "FAIL"))
+    gate_redo_fired = False
+    if not gate_passed and not gate_broken:
+        # Real FAIL -> one final re-revise carrying the gate's REQUIRED FIXES.
+        gate_redo_fired = True
+        gate_redo_messages = [
+            {"role": "system", "content": revise_system},
+            {"role": "user", "content": (
+                f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+                f"## YOUR PREVIOUS REVISION\n\n{revised_analysis}\n\n"
+                "## QUALITY-GATE — REQUIRED FIXES (the final output did not "
+                f"meet the mode's verification criteria)\n\n{gate_out}\n\n"
+                "Address every required fix and revise again per the mirror "
+                "contract. This is the final revision — there is no further "
+                "review pass."
+            )},
+        ]
+        revised_analysis, _qg_redo_ok, _qg_redo_reason = _call_with_retry(
+            gate_redo_messages, depth_endpoint, "reviser",
+            min_chars=30, retry_hint=None,
+            images=_images_for_endpoint(images, depth_endpoint),
+            slot="depth", gear=3, config_name=config_name,
+        )
+        _record("step6_5-quality-gate-redo", _qg_redo_ok, _qg_redo_reason)
+        contingencies_fired.append("step6_5-gear3-quality-gate-FAIL-redo-fired")
+    else:
+        contingencies_fired.append(
+            f"step6_5-gear3-quality-gate-{gate_verdict_label}")
+    _record("step6_5-quality-gate", gate_call_ok,
+            f"verdict={gate_verdict_label} redo={gate_redo_fired}")
+    _trace_step_g3("step6_5-quality-gate", {
+        "verdict_raw": gate_out,
+        "verdict_resolved": gate_verdict_label,
+        "passed": gate_passed,
+        "broken": gate_broken,
+        "redo_fired": gate_redo_fired,
+        "call_ok": gate_call_ok,
+        "call_reason": gate_call_reason,
+        "endpoint": gate_endpoint.get("name") if isinstance(gate_endpoint, dict) else str(gate_endpoint),
+    }, markdown=(
+        "# Step 6.5 — Final-output quality gate (Gear 3)\n\n"
+        f"**Verdict:** {gate_verdict_label}  \n"
+        f"**Redo fired:** {gate_redo_fired}\n\n{gate_out}\n"
+    ))
+
     # Gear 3 has no formatter — it returns the reviser output directly. Surface
     # ONLY the ## REVISED DRAFT body; the bookkeeping sections (ADDRESSED / NOT
     # ADDRESSED / INCORPORATED / DECLINED / CLAIM RESOLUTIONS / REMAINING
@@ -11049,8 +11193,12 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
       Step 5 — Parallel revisers (reviser)
       Step 6 — Cross-verification, up to 2 correction cycles (verifier)
       Step 7 — Breadth consolidates (consolidator)
-      Step 8 — Final verifier over the consolidated output; if FAILED,
-               one corrective revision of the consolidation is attempted.
+      Step 8 — Format the consolidated corpus into the deliverable (formatter)
+      Step 8.6 — Final-output quality gate (f-quality-gate.md): judge the
+               deliverable against the mode's VERIFICATION CRITERIA; on FAIL,
+               one bounded redo per problem type — PROBLEM=ANALYSIS re-runs
+               step 7 then re-formats; PROBLEM=FORMATTING re-runs step 8 — then
+               ship.
 
     Reliability contingency table (per step):
       Step 3 — Each analyst's output goes through ``_call_with_retry`` (one
@@ -11077,11 +11225,16 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                still unhealthy, returns the longer of revised_depth /
                revised_breadth with a [degraded — consolidation failed]
                header so the user sees output and knows it's degraded.
-      Step 8 — Final verifier is **load-bearing**: if VERIFICATION FAILED,
-               one corrective revision pass runs on the consolidated
-               output. If still FAILED, the user-visible response gets a
-               single-line warning header and an event is logged to the
-               oversight queue.
+      Step 8 — Formatter places the corpus into the mode's prescribed form. A
+               structural-leak gate retries once on a process-meta leak; step
+               8.5 deterministically scrubs residual pipeline-leak lines.
+      Step 8.6 — Final-output quality gate: an LLM judge on the verification
+               slot grades the deliverable against the mode's VERIFICATION
+               CRITERIA and the f-format/f-consolidate contracts. A FAIL fires
+               one bounded redo of the implicated producer (consolidator for an
+               ANALYSIS verdict, then re-format; formatter for a FORMATTING
+               verdict), recorded under the ``step8_6-quality-gate-*``
+               contingency names; PASS and BROKEN ship as-is.
 
     Reliability ceiling: this layer protects against transient model
     misbehaviour (refusal, clarification-loop, brief stub, tool-call leak).
@@ -12100,6 +12253,191 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         f"**Health:** {'ok' if format_ok else 'DEGRADED'} — {format_reason}\n\n"
         f"{formatted}\n"
     ))
+
+    # --- Step 8.6: Final-output quality gate (bounded redo per problem type) -
+    # After formatting, judge the user-facing deliverable against the mode's
+    # VERIFICATION CRITERIA + the f-format/f-consolidate contracts, on the
+    # dedicated 'verification' judge slot. On FAIL the judge classifies the
+    # PROBLEM: ANALYSIS (substance) routes the redo back to the step-7
+    # consolidator and then re-formats the corrected corpus; FORMATTING routes
+    # it back to the step-8 formatter. One redo per problem type, then ship —
+    # enforced by the two used-flags + a hard 3-pass backstop, re-gating between
+    # redos so a deliverable failing on both axes is repaired on each once.
+    # Ported from MSI's voice-editor approval gate (failure_kind text|formatting
+    # -> reconsolidate_with_feedback vs format_fix). The external-consolidation
+    # path returned before step 7, so reaching here means native consolidation
+    # ran and both `consolidated` and `formatted` are in scope.
+    gate_endpoint = (
+        get_slot_endpoint(config, "verification", config_name=config_name)
+        or breadth_endpoint
+    )
+    gate_system = _assemble_step_prompt(
+        context_pkg, slot="breadth", step="verifier",
+        framework_name=QUALITY_GATE_FRAMEWORK,
+    )
+    _qg_analysis_redo_used = False
+    _qg_formatting_redo_used = False
+    for _qg_pass in range(3):
+        gate_user = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            "## CONSOLIDATED CORPUS (step-7 analysis — the substance the "
+            f"deliverable must faithfully carry)\n\n{consolidated}\n\n"
+            "## CANDIDATE DELIVERABLE (step-8 formatter output — what the user "
+            f"will receive)\n\n{formatted}\n\n"
+            "Grade the CANDIDATE DELIVERABLE against the mode's "
+            "`## VERIFICATION CRITERIA` (PASS gate), the universal checks, and "
+            "the corpus-fidelity checks (no loss / no new claims / no "
+            "summarising). On FAIL, write a `## REQUIRED FIXES` section, then a "
+            "`PROBLEM:` line (ANALYSIS or FORMATTING) and a final `VERDICT:` "
+            "line (PASS / FAIL / BROKEN) per the F-QUALITY-GATE specification."
+        )
+        gate_messages = [
+            {"role": "system", "content": gate_system},
+            {"role": "user", "content": gate_user},
+        ]
+        try:
+            gate_out, gate_call_ok, gate_call_reason = _call_with_retry(
+                gate_messages, gate_endpoint, "quality-gate",
+                min_chars=30, retry_hint=None,
+                images=_images_for_endpoint(images, gate_endpoint),
+                slot="verification", gear=4, config_name=config_name,
+            )
+        except Exception as e:
+            gate_out = f"QUALITY_GATE_EXCEPTION: {e}"
+            gate_call_ok, gate_call_reason = False, str(e)
+
+        gate_passed = _verifier_passed(gate_out)
+        # A failed gate CALL ships as BROKEN rather than firing a content redo
+        # a broken judge can't justify (fail-open, as the verifier does).
+        gate_broken = _verifier_broken(gate_out) or not gate_call_ok
+        problem = _parse_quality_gate_problem(gate_out)
+        gate_verdict_label = (
+            "BROKEN" if gate_broken else ("PASS" if gate_passed else "FAIL"))
+        _record(f"step8_6-quality-gate-pass{_qg_pass + 1}", gate_call_ok,
+                f"verdict={gate_verdict_label} problem={problem}")
+        _trace_step(f"step8_6-quality-gate-pass-{_qg_pass + 1}", {
+            "pass": _qg_pass + 1,
+            "verdict_raw": gate_out,
+            "verdict_resolved": gate_verdict_label,
+            "problem_kind": problem,
+            "passed": gate_passed,
+            "broken": gate_broken,
+            "call_ok": gate_call_ok,
+            "call_reason": gate_call_reason,
+            "analysis_redo_used": _qg_analysis_redo_used,
+            "formatting_redo_used": _qg_formatting_redo_used,
+            "endpoint": gate_endpoint.get("name") if isinstance(gate_endpoint, dict) else str(gate_endpoint),
+        }, markdown=(
+            f"# Step 8.6 — Final-output quality gate (pass {_qg_pass + 1})\n\n"
+            f"**Verdict:** {gate_verdict_label}  \n**Problem:** {problem}\n\n"
+            f"{gate_out}\n"
+        ))
+
+        # PASS or BROKEN -> ship. BROKEN = judge couldn't decide; fail-open,
+        # matching the verifier's BROKEN handling.
+        if gate_passed or gate_broken:
+            contingencies_fired.append(
+                f"step8_6-quality-gate-{gate_verdict_label}-pass{_qg_pass + 1}")
+            break
+
+        # FAIL -> fire the one redo for the identified problem type. If that
+        # type is already spent, ship (one redo per problem type).
+        if problem == "FORMATTING" and not _qg_formatting_redo_used:
+            _qg_formatting_redo_used = True
+            _qg_fmt_msgs = format_messages + [
+                {"role": "assistant", "content": formatted},
+                {"role": "user", "content": (
+                    "## QUALITY-GATE — REQUIRED FIXES (FORMATTING)\n\n"
+                    "The final-output quality gate FAILED the candidate "
+                    "deliverable on FORMATTING grounds. Re-emit the FULL "
+                    "deliverable fixing ONLY the issues below — do not change "
+                    "the substance, drop any atom, add new claims, or "
+                    "summarise. The required fixes:\n\n" + gate_out)},
+            ]
+            _qg_re_fmt, _qg_fmt_ok, _qg_fmt_reason = _call_with_retry(
+                _qg_fmt_msgs, formatter_endpoint, "formatter-quality-redo",
+                min_chars=30, retry_hint=None, images=None,
+                slot="formatter", gear=4, config_name=config_name,
+            )
+            _record("step8_6-quality-gate-formatting-redo",
+                    _qg_fmt_ok, _qg_fmt_reason)
+            contingencies_fired.append("step8_6-quality-gate-FAIL-formatting-redo")
+            if _qg_fmt_ok and _qg_re_fmt.strip():
+                formatted = _qg_re_fmt
+                if _env_flag("ORA_DELIVERABLE_SCRUB"):
+                    _qg_sc, _qg_scr, _qg_sce = _scrub_pipeline_leaks(formatted)
+                    if _qg_scr:
+                        formatted = _qg_sc
+                formatted = _maybe_review_and_refine_visual(
+                    formatted, context_pkg, config, config_name, "f-format")
+            continue
+
+        if problem != "FORMATTING" and not _qg_analysis_redo_used:
+            # ANALYSIS (or ambiguous -> default ANALYSIS): re-run the
+            # consolidator with the gate's fixes, then re-format the corrected
+            # corpus — the deliverable is built from the corpus, so a corpus
+            # fix only reaches the user after a re-format.
+            _qg_analysis_redo_used = True
+            _qg_recon_msgs = consolidate_messages + [
+                {"role": "assistant", "content": consolidated},
+                {"role": "user", "content": (
+                    "## QUALITY-GATE — REQUIRED FIXES (ANALYSIS)\n\n"
+                    "The final-output quality gate FAILED the deliverable on "
+                    "ANALYSIS/substance grounds. Re-produce the consolidated "
+                    "corpus addressing the findings below while honouring the "
+                    "four F-CONSOLIDATE operations (no injection, every atom "
+                    "in, no bloat). The required fixes:\n\n" + gate_out)},
+            ]
+            _qg_re_consol, _qg_rc_ok, _qg_rc_reason = _call_with_supplement(
+                _qg_recon_msgs, consolidator_endpoint,
+                "consolidator-quality-redo",
+                min_chars=30, retry_hint=None,
+                images=_images_for_endpoint(images, consolidator_endpoint),
+                context_pkg=context_pkg,
+                slot="consolidation", gear=4, config_name=config_name,
+            )
+            _record("step8_6-quality-gate-reconsolidate",
+                    _qg_rc_ok, _qg_rc_reason)
+            contingencies_fired.append("step8_6-quality-gate-FAIL-analysis-redo")
+            if _qg_rc_ok and _qg_re_consol.strip():
+                consolidated = _strip_consolidator_preamble(_qg_re_consol)
+                consolidated = _maybe_review_and_refine_visual(
+                    consolidated, context_pkg, config, config_name,
+                    "f-consolidate")
+                # Re-format the corrected corpus into the deliverable.
+                _qg_refmt_msgs = [
+                    {"role": "system", "content": format_system},
+                    {"role": "user", "content": (
+                        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+                        f"## CONSOLIDATED CORPUS\n\n{consolidated}\n\n"
+                        "Place the corpus into the prescribed deliverable form "
+                        "per the mode's `## OUTPUT FORMAT GUIDANCE`. Preserve "
+                        "every atom; the formatter places, does not summarise. "
+                        "Do not call any tool — write the deliverable inline.")},
+                ]
+                _qg_re_fmt2, _qg_rf_ok, _qg_rf_reason = _call_with_retry(
+                    _qg_refmt_msgs, formatter_endpoint,
+                    "formatter-after-reconsolidate",
+                    min_chars=30, retry_hint=None, images=None,
+                    slot="formatter", gear=4, config_name=config_name,
+                )
+                _record("step8_6-quality-gate-reformat",
+                        _qg_rf_ok, _qg_rf_reason)
+                if _qg_rf_ok and _qg_re_fmt2.strip():
+                    formatted = _qg_re_fmt2
+                    if _env_flag("ORA_DELIVERABLE_SCRUB"):
+                        _qg_sc2, _qg_scr2, _qg_sce2 = _scrub_pipeline_leaks(
+                            formatted)
+                        if _qg_scr2:
+                            formatted = _qg_sc2
+                    formatted = _maybe_review_and_refine_visual(
+                        formatted, context_pkg, config, config_name, "f-format")
+            continue
+
+        # The problem-type redo for this verdict is already spent — ship.
+        contingencies_fired.append(
+            f"step8_6-quality-gate-FAIL-{problem}-redo-exhausted-shipping")
+        break
 
     # Per-turn step-health summary — captures every step's verdict plus
     # the contingency paths that fired. Lives at ``step-health.json`` in
