@@ -7981,42 +7981,50 @@ def _get_mcp_tool_catalog() -> str:
         "## AVAILABLE MCP TOOLS",
         "",
         (
-            "External Model Context Protocol servers are connected. Each "
-            "tool below can be invoked via tool calls using its full "
-            "namespaced name; the dispatcher routes `mcp_*` calls to the "
-            "appropriate server. Use them when their description matches "
-            "your task. MCP tools complement (not replace) the dispatcher's "
+            "External Model Context Protocol servers are connected. Invoke a "
+            "tool by its full namespaced name via a tool call; the dispatcher "
+            "routes `mcp_*` calls to the right server and validates arguments. "
+            "This is a compact catalog — tool name, one-line purpose, and "
+            "parameter names+types. Use a tool when its purpose matches your "
+            "task; MCP tools complement (not replace) the dispatcher's "
             "registered tools."
         ),
         "",
     ]
 
+    # Compact rendering (2026-06-29). One line per tool: namespaced name, a
+    # single-line truncated description, and an inline `name (type)` list of
+    # parameters. The per-parameter DESCRIPTION lines the MCP servers publish
+    # are dropped — they were the bulk of the catalog (it ran to tens of KB,
+    # ~40% of the analyst system prompt, with three servers connected). The
+    # parameter names + types keep tool calls well-formed; a model that needs a
+    # parameter's full semantics can issue the call and read the dispatcher's
+    # validation error rather than carry every schema on every analyst turn.
+    _DESC_CAP = 200
     for server in sorted(by_server):
         parts.append(f"### Server `{server}`")
         parts.append("")
         for d in by_server[server]:
             line = f"- **`{d['name']}`**"
             if d["description"]:
-                # Collapse multi-line descriptions to single-line for the
-                # catalog; the full description is what the MCP server
-                # publishes, often spans multiple sentences.
                 desc = " ".join(d["description"].split())
+                if len(desc) > _DESC_CAP:
+                    desc = desc[:_DESC_CAP].rstrip() + "…"
                 line += f" — {desc}"
-            parts.append(line)
             params_schema = d["parameters"]
+            param_bits: list[str] = []
             if isinstance(params_schema, dict):
                 props = params_schema.get("properties", {})
-                if props and isinstance(props, dict):
+                if isinstance(props, dict):
                     for pname, pinfo in props.items():
-                        if not isinstance(pinfo, dict):
-                            continue
-                        ptype = pinfo.get("type", "any")
-                        pdesc = pinfo.get("description", "") or ""
-                        pdesc = " ".join(pdesc.split())
-                        line = f"  - `{pname}` ({ptype})"
-                        if pdesc:
-                            line += f": {pdesc}"
-                        parts.append(line)
+                        ptype = (
+                            pinfo.get("type", "any")
+                            if isinstance(pinfo, dict) else "any"
+                        )
+                        param_bits.append(f"`{pname}` ({ptype})")
+            if param_bits:
+                line += f" — params: {', '.join(param_bits)}"
+            parts.append(line)
         parts.append("")
 
     return "\n".join(parts).strip()
