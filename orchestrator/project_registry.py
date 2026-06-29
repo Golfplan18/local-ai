@@ -778,7 +778,10 @@ def list_projects(pointer_dir: str = POINTER_DIR) -> list[Project]:
             continue
         root = pointer_data.get("root")
         if not root:
-            print(f"[project_registry] Skipping {pf}: missing 'root'")
+            # Container-only project (G1.33): a conversation-container record
+            # with no plugin manifest. Not an error — it simply isn't a plugin
+            # project, so the plugin view skips it silently. The container view
+            # (project_meta) reads these.
             continue
         try:
             project = load_project_at(root)

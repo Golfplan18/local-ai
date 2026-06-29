@@ -3560,6 +3560,81 @@ def api_active_project_set():
     return _json_response({"ok": True, "nexus": get_active_project()})
 
 
+@app.route("/api/projects/meta", methods=["GET"])
+def api_projects_meta():
+    """Switcher list (G1.33): General first, then projects by recency, each with
+    conversation + unread counts so the switcher can badge cross-project
+    activity (General == all-inclusive). Pass ``?status=active`` to filter."""
+    try:
+        from orchestrator import project_meta as _pm
+        projects = _pm.list_project_meta()
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc), "projects": []}, 503)
+    status_filter = (request.args.get("status") or "").strip()
+    if status_filter:
+        projects = [
+            p for p in projects
+            if p.get("is_default") or p.get("status") == status_filter
+        ]
+    # Per-project conversation + unread counts (best-effort; General gets all).
+    counts: dict = {}
+    try:
+        from conversation_memory import iter_conversations
+        for r in iter_conversations():
+            la, lr = r.get("last_activity_at"), r.get("last_read_at")
+            unread = bool(la) and (not lr or la > lr)
+            pids = [p for p in (r.get("project_ids") or []) if isinstance(p, str)]
+            for t in ["general", *pids]:
+                c = counts.setdefault(t, {"conversation_count": 0, "unread_count": 0})
+                c["conversation_count"] += 1
+                if unread:
+                    c["unread_count"] += 1
+    except Exception:
+        counts = {}
+    for p in projects:
+        c = counts.get(p["nexus"], {"conversation_count": 0, "unread_count": 0})
+        p["conversation_count"] = c["conversation_count"]
+        p["unread_count"] = c["unread_count"]
+    return _json_response({"ok": True, "projects": projects})
+
+
+@app.route("/api/projects/create", methods=["POST"])
+def api_projects_create():
+    """Create a container project from a display name. Body: ``{"name": "..."}``.
+    The vault project folder + graceful MOM run in the creation flow (later)."""
+    try:
+        from orchestrator import project_meta as _pm
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return _json_response({"ok": False, "error": "name is required"}, 400)
+    try:
+        meta = _pm.create_project(name)
+    except _pm.ProjectMetaError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
+    return _json_response({"ok": True, "project": meta})
+
+
+@app.route("/api/projects/<nexus>/status", methods=["POST"])
+def api_projects_set_status(nexus):
+    """Set a project's status. Body: ``{"status": "active|inactive|archived"}``."""
+    try:
+        from orchestrator import project_meta as _pm
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    status = (data.get("status") or "").strip()
+    try:
+        meta = _pm.set_project_status(nexus, status)
+    except _pm.ProjectMetaError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
+    if meta is None:
+        return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
+    return _json_response({"ok": True, "project": meta})
+
+
 @app.route("/api/projects/register", methods=["POST"])
 def api_projects_register():
     """Register a project plugin by root path. Body: {"root": "..."}."""
