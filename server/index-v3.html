@@ -341,49 +341,60 @@
 
     <div class="sidebar-expanded-panel">
       <style>
-        /* G1.33 project switcher — top of the sidebar, the organizing control. */
-        .sidebar-project-switcher { position: relative; padding: 8px 10px 4px; }
+        /* G1.33 project switcher — top of the sidebar, the organizing control.
+           Uses the app's Obsidian theme tokens so it adapts to light + dark. */
+        .sidebar-project-switcher { position: relative; padding: 10px 12px 6px; }
         .sidebar-project-current {
-          display: flex; align-items: center; gap: 6px; width: 100%;
-          background: transparent; border: none; cursor: pointer; color: inherit;
-          font-size: 15px; font-weight: 600; padding: 5px 6px; border-radius: 6px;
+          display: flex; align-items: center; gap: 8px; width: 100%;
+          background: transparent; border: none; cursor: pointer;
+          color: var(--text-normal); font-size: 18px; font-weight: 600;
+          padding: 7px 8px; border-radius: var(--radius-s, 6px);
         }
-        .sidebar-project-current:hover { background: rgba(127,127,127,0.12); }
+        .sidebar-project-current:hover { background: var(--background-modifier-hover); }
         .sidebar-project-name { flex: 1; text-align: left; overflow: hidden;
           text-overflow: ellipsis; white-space: nowrap; }
-        .sidebar-project-chevron { font-size: 11px; opacity: 0.55; }
+        .sidebar-project-chevron { font-size: 13px; color: var(--text-muted); }
         .sidebar-project-menu {
-          position: absolute; left: 10px; right: 10px; top: calc(100% - 2px); z-index: 60;
-          background: var(--surface-2, #1d1d1f); border: 1px solid rgba(127,127,127,0.25);
-          border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,0.35); padding: 6px;
-          max-height: 340px; overflow-y: auto;
+          position: absolute; left: 12px; right: 12px; top: calc(100% - 2px); z-index: 60;
+          background: var(--background-primary);
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.28); padding: 6px;
+          max-height: 360px; overflow-y: auto;
         }
         .sidebar-project-menu[hidden] { display: none; }
         .sidebar-project-search {
-          width: 100%; box-sizing: border-box; padding: 6px 8px; margin-bottom: 4px;
-          background: rgba(127,127,127,0.10); border: 1px solid rgba(127,127,127,0.20);
-          border-radius: 6px; color: inherit; font-size: 13px;
+          width: 100%; box-sizing: border-box; padding: 8px 10px; margin-bottom: 4px;
+          background: var(--background-modifier-form-field);
+          border: 1px solid var(--background-modifier-border);
+          border-radius: var(--radius-s, 6px); color: var(--text-normal); font-size: 15px;
         }
+        .sidebar-project-search::placeholder { color: var(--text-faint); }
         .sidebar-project-row {
-          display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
-          border: none; background: transparent; cursor: pointer; color: inherit;
-          font-size: 14px; text-align: left; border-radius: 6px;
+          display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px;
+          border: none; background: transparent; cursor: pointer;
+          color: var(--text-normal); font-size: 16px; text-align: left;
+          border-radius: var(--radius-s, 6px);
         }
-        .sidebar-project-row:hover { background: rgba(127,127,127,0.12); }
-        .sidebar-project-row.is-active { background: rgba(127,127,127,0.18); font-weight: 600; }
+        .sidebar-project-row:hover { background: var(--background-modifier-hover); }
+        .sidebar-project-row.is-active {
+          background: var(--background-modifier-hover); font-weight: 600;
+        }
         .sidebar-project-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis;
           white-space: nowrap; }
         .sidebar-project-badge {
-          min-width: 18px; text-align: center; font-size: 11px; font-weight: 600;
-          padding: 1px 6px; border-radius: 9px; background: var(--bg-accent, #3a5bbf); color: #fff;
+          min-width: 20px; text-align: center; font-size: 12px; font-weight: 600;
+          padding: 2px 7px; border-radius: 10px;
+          background: var(--interactive-accent); color: var(--text-on-accent);
         }
         .sidebar-project-badge[data-zero="1"] { display: none; }
         .sidebar-project-new {
-          display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 4px;
-          padding: 6px 8px; border: none; background: transparent; cursor: pointer;
-          color: inherit; font-size: 13px; opacity: 0.8; border-radius: 6px;
+          display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 4px;
+          padding: 9px 10px; border: none; background: transparent; cursor: pointer;
+          color: var(--text-muted); font-size: 15px; border-radius: var(--radius-s, 6px);
         }
-        .sidebar-project-new:hover { background: rgba(127,127,127,0.12); opacity: 1; }
+        .sidebar-project-new:hover {
+          background: var(--background-modifier-hover); color: var(--text-normal);
+        }
       </style>
       <div class="sidebar-project-switcher" id="sidebarProjectSwitcher">
         <button class="sidebar-project-current" id="sidebarProjectBtn" type="button"
