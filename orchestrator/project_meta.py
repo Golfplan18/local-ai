@@ -196,10 +196,64 @@ def touch_project(nexus: str, pointer_dir: Path | None = None) -> dict[str, Any]
     return _update_pointer(nexus, lambda d: d.__setitem__("last_accessed_at", now), pointer_dir)
 
 
+# Fields the management modal / API may patch on a project record.
+_UPDATABLE_FIELDS = {
+    "name", "status", "default_model_profile", "interaction_style",
+    "output_style", "persona", "model_locks", "private", "last_accessed_at",
+}
+
+
+def update_project_meta(
+    nexus: str, updates: dict, pointer_dir: Path | None = None
+) -> dict[str, Any] | None:
+    """Patch whitelisted fields on a project record. Unknown fields are ignored;
+    an invalid ``status``/``name`` raises. General is synthetic (no-op)."""
+    clean = {k: v for k, v in (updates or {}).items() if k in _UPDATABLE_FIELDS}
+    if "status" in clean and clean["status"] not in PROJECT_STATUSES:
+        raise ProjectMetaError(
+            f"status must be one of {PROJECT_STATUSES}; got {clean['status']!r}"
+        )
+    if "name" in clean:
+        nm = clean["name"]
+        if not isinstance(nm, str) or not nm.strip():
+            raise ProjectMetaError("name must be a non-empty string")
+        clean["name"] = nm.strip()
+    return _update_pointer(nexus, lambda d: d.update(clean), pointer_dir)
+
+
+# ---------------------------------------------------------------------------
+# Vault project folder (G1.33: a project's outputs land in its own folder,
+# not the vault root). Best-effort — folder creation never blocks the record.
+# ---------------------------------------------------------------------------
+
+DEFAULT_VAULT_PROJECTS_DIR = Path.home() / "Documents" / "vault" / "Projects"
+
+
+def _safe_folder_name(name: str) -> str:
+    """Human-readable, filesystem-safe folder name (drop path separators)."""
+    cleaned = re.sub(r"[\\/]+", " ", (name or "").strip()).strip()
+    return cleaned or "Untitled"
+
+
+def ensure_project_folder(name: str, vault_projects_dir: Path | None = None) -> Path | None:
+    """Best-effort: create ``<vault>/Projects/<name>/`` so a project's outputs
+    don't pile up in the vault root. Returns the path, or None if creation
+    failed (e.g. the server lacks Full-Disk-Access to ~/Documents) — never
+    raises, so project creation is not blocked by folder creation."""
+    base = vault_projects_dir or DEFAULT_VAULT_PROJECTS_DIR
+    try:
+        folder = Path(base) / _safe_folder_name(name)
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
+    except OSError:
+        return None
+
+
 __all__ = [
     "POINTER_DIR",
     "GENERAL_NEXUS",
     "PROJECT_STATUSES",
+    "DEFAULT_VAULT_PROJECTS_DIR",
     "ProjectMetaError",
     "slugify_nexus",
     "general_meta",
@@ -208,4 +262,6 @@ __all__ = [
     "create_project",
     "set_project_status",
     "touch_project",
+    "update_project_meta",
+    "ensure_project_folder",
 ]

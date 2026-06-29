@@ -3614,6 +3614,28 @@ def api_projects_create():
         meta = _pm.create_project(name)
     except _pm.ProjectMetaError as exc:
         return _json_response({"ok": False, "error": str(exc)}, 400)
+    folder = _pm.ensure_project_folder(meta["name"])  # best-effort
+    return _json_response({
+        "ok": True,
+        "project": meta,
+        "vault_folder": str(folder) if folder else None,
+    })
+
+
+@app.route("/api/projects/<nexus>", methods=["POST"])
+def api_projects_update(nexus):
+    """Patch a project's record (name, defaults, status, …). Body: ``{field: value}``."""
+    try:
+        from orchestrator import project_meta as _pm
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    try:
+        meta = _pm.update_project_meta(nexus, data)
+    except _pm.ProjectMetaError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
+    if meta is None:
+        return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
     return _json_response({"ok": True, "project": meta})
 
 
