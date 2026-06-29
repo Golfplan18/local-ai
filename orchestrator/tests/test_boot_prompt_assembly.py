@@ -38,6 +38,20 @@ def _load_mode(name: str) -> str:
     return (REPO_ROOT / "modes" / f"{name}.md").read_text()
 
 
+def _is_mode_file(fname: str) -> bool:
+    """True for real mode files, False for the mode INDEX and any other
+    non-mode doc dropped into modes/.
+
+    Real modes declare ``type: mode`` in their YAML frontmatter. modes/INDEX.md
+    is the mode index (``type: reference``) — it carries none of the per-step
+    guidance sections, so build_system_prompt_for_gear produces an empty
+    prompt tail for it. Iterating modes/ blind would flag that empty tail as a
+    regression.
+    """
+    head = (REPO_ROOT / "modes" / fname).read_text()[:800]
+    return any(line.strip() == "type: mode" for line in head.splitlines())
+
+
 def _ctx(mode_name: str) -> dict:
     return {
         "mode_text": _load_mode(mode_name),
@@ -72,8 +86,13 @@ class PerStepDispatch(unittest.TestCase):
         self.assertIn(body.strip(), prompt)
 
     def test_evaluator_includes_evaluation_criteria(self):
-        body = self._section_body("EVALUATION CRITERIA")
-        self.assertTrue(body, "fixture missing EVALUATION CRITERIA")
+        # The mode section was renamed "EVALUATION CRITERIA" ->
+        # "ANALYTICAL BRIEF AND EVALUATION CRITERIA" on 2026-05-24 (it now
+        # absorbs the brief alongside the criteria). build_system_prompt_for_gear
+        # injects this bundle as BASELINE for every step, so the evaluator
+        # prompt carries it.
+        body = self._section_body("ANALYTICAL BRIEF AND EVALUATION CRITERIA")
+        self.assertTrue(body, "fixture missing ANALYTICAL BRIEF AND EVALUATION CRITERIA")
         prompt = self._prompt("evaluator")
         self.assertIn(body.strip(), prompt)
 
@@ -96,32 +115,40 @@ class PerStepDispatch(unittest.TestCase):
         self.assertIn(body.strip(), prompt)
 
     def test_each_step_omits_other_steps_section_bodies(self):
-        # The dispatch should ONLY include the section for the active step,
-        # not bleed in guidance for other steps. Verifier should not see
-        # the consolidation guidance, etc.
-        step_to_section = {
-            "analyst":      "DEPTH ANALYSIS GUIDANCE",
-            "evaluator":    "EVALUATION CRITERIA",
-            "reviser":      "REVISION GUIDANCE",
-            "verifier":     "VERIFICATION CRITERIA",
-            "consolidator": "CONSOLIDATION GUIDANCE",
+        # The dispatch layers each step's OWN role-specific guidance on top of
+        # a shared baseline. Only the role-specific sections are step-exclusive
+        # and must not bleed across steps: DEPTH/BREADTH ANALYSIS GUIDANCE
+        # (analyst), REVISION GUIDANCE (reviser), CONSOLIDATION GUIDANCE
+        # (consolidator). The evaluator and verifier add no role-specific
+        # section of their own — their framing is the universal f-evaluate /
+        # f-verify scaffolding plus the baseline.
+        #
+        # NOTE: the BRIEF + EVALUATION CRITERIA bundle and VERIFICATION
+        # CRITERIA are deliberately NOT step-exclusive — boot.py injects them
+        # as BASELINE for every pipeline step ("Baseline criteria injection
+        # (2026-05-24)") so the analyst writes to the same standard the
+        # evaluator and verifier grade against. They are excluded from this
+        # cross-bleed check.
+        exclusive_owner = {
+            "DEPTH ANALYSIS GUIDANCE":   "analyst",
+            "REVISION GUIDANCE":         "reviser",
+            "CONSOLIDATION GUIDANCE":    "consolidator",
         }
-        for active, own_section in step_to_section.items():
+        for active in ("analyst", "evaluator", "reviser", "verifier", "consolidator"):
+            # analyst is dispatched in the depth slot, so it owns DEPTH (not
+            # BREADTH) ANALYSIS GUIDANCE for this check.
             slot = "depth" if active == "analyst" else "breadth"
             prompt = self._prompt(active, slot=slot)
-            for other_step, other_section in step_to_section.items():
-                if other_step == active:
+            for section, owner in exclusive_owner.items():
+                if owner == active:
                     continue
-                # Skip analyst's mirror — breadth analyst sees breadth, not
-                # depth, but the dispatch above already requested depth.
-                if active == "analyst" and other_step == "analyst":
-                    continue
-                other_body = self._section_body(other_section)
+                body = self._section_body(section)
+                self.assertTrue(body, f"fixture missing {section}")
                 self.assertNotIn(
-                    other_body.strip(),
+                    body.strip(),
                     prompt,
                     f"step={active!r} prompt unexpectedly contains "
-                    f"the body of {other_section} (belongs to {other_step})",
+                    f"the body of {section} (belongs to {owner})",
                 )
 
 
@@ -192,7 +219,10 @@ class AllModeFilesProduceNonEmptyPromptsAcrossSteps(unittest.TestCase):
         boot_md = load_boot_md()
         preamble = _extract_boot_behavioral_preamble(boot_md)
         modes_dir = REPO_ROOT / "modes"
-        mode_files = sorted(f for f in os.listdir(modes_dir) if f.endswith(".md"))
+        mode_files = sorted(
+            f for f in os.listdir(modes_dir)
+            if f.endswith(".md") and _is_mode_file(f)
+        )
         self.assertGreater(len(mode_files), 0, "no mode files found")
         failures = []
         for fname in mode_files:
