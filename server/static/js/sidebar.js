@@ -50,10 +50,19 @@
   let browserSort = null;
   let browserRows = null;
   let browserStatus = null;
+  let browserConversationsToggle = null;
+  let browserEngramsToggle = null;
+  let browserRelevanceSlider = null;
+  let browserRelevanceValue = null;
   let browserResizeObserver = null;
   let browserDismissedIds = new Set();
   let browserRowsCache = [];
   let browserLastData = null;
+  let browserIncludeConversations = true;
+  let browserIncludeEngrams = true;
+  let browserMinRelevance = 0;
+  let browserFetchTimer = null;
+  let browserFilterTimer = null;
 
   const setExpanded = (on) => {
     sidebar.classList.toggle('expanded', !!on);
@@ -478,12 +487,35 @@
           <button class="conversation-browser-search-btn" type="button">Search</button>
           <button class="conversation-browser-close" type="button" aria-label="Close browser">×</button>
         </div>
-        <div class="conversation-browser-status"></div>
+        <div class="conversation-browser-summary">
+          <div class="conversation-browser-status"></div>
+          <div class="conversation-browser-filters">
+            <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
+              <input class="conversation-browser-filter-conversations" type="checkbox" checked>
+              Conversations
+            </label>
+            <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
+              <input class="conversation-browser-filter-engrams" type="checkbox" checked>
+              Engrams
+            </label>
+            <label class="conversation-browser-relevance" title="Minimum relevance for searched results">
+              <span class="conversation-browser-relevance-label">Relevance</span>
+              <input class="conversation-browser-relevance-slider" type="range"
+                     min="0" max="95" step="5" value="0"
+                     aria-label="Minimum relevance">
+              <span class="conversation-browser-relevance-value">0+</span>
+            </label>
+          </div>
+        </div>
         <div class="conversation-browser-rows"></div>
       </div>`;
     document.body.appendChild(browserOverlay);
     browserSearch = browserOverlay.querySelector('.conversation-browser-search');
     browserSort = browserOverlay.querySelector('.conversation-browser-sort');
+    browserConversationsToggle = browserOverlay.querySelector('.conversation-browser-filter-conversations');
+    browserEngramsToggle = browserOverlay.querySelector('.conversation-browser-filter-engrams');
+    browserRelevanceSlider = browserOverlay.querySelector('.conversation-browser-relevance-slider');
+    browserRelevanceValue = browserOverlay.querySelector('.conversation-browser-relevance-value');
     browserRows = browserOverlay.querySelector('.conversation-browser-rows');
     browserStatus = browserOverlay.querySelector('.conversation-browser-status');
     browserOverlay.querySelector('.conversation-browser-close')
@@ -492,6 +524,19 @@
       .addEventListener('click', () => fetchBrowser(browserSearch.value));
     if (browserSort) {
       browserSort.addEventListener('change', () => fetchBrowser(browserSearch.value));
+    }
+    [browserConversationsToggle, browserEngramsToggle].forEach((toggle) => {
+      if (!toggle) return;
+      toggle.addEventListener('change', scheduleBrowserFilterRefresh);
+      const chip = toggle.closest('.conversation-browser-filter-chip');
+      if (chip) chip.addEventListener('click', scheduleBrowserFilterRefresh);
+    });
+    if (browserRelevanceSlider) {
+      browserRelevanceSlider.addEventListener('input', () => {
+        browserMinRelevance = parseInt(browserRelevanceSlider.value, 10) || 0;
+        updateBrowserFilterUI();
+        scheduleBrowserFetch();
+      });
     }
     browserSearch.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -502,6 +547,51 @@
       }
     });
     return browserOverlay;
+  };
+
+  const updateBrowserFilterUI = () => {
+    if (browserConversationsToggle) {
+      const chip = browserConversationsToggle.closest('.conversation-browser-filter-chip');
+      if (chip) chip.classList.toggle('conversation-browser-filter-chip-on', !!browserConversationsToggle.checked);
+    }
+    if (browserEngramsToggle) {
+      const chip = browserEngramsToggle.closest('.conversation-browser-filter-chip');
+      if (chip) chip.classList.toggle('conversation-browser-filter-chip-on', !!browserEngramsToggle.checked);
+    }
+    if (browserRelevanceValue) {
+      browserRelevanceValue.textContent = `${browserMinRelevance}+`;
+    }
+  };
+
+  const syncBrowserFilterState = () => {
+    browserIncludeConversations = !!(browserConversationsToggle && browserConversationsToggle.checked);
+    browserIncludeEngrams = !!(browserEngramsToggle && browserEngramsToggle.checked);
+  };
+
+  const scheduleBrowserFilterRefresh = () => {
+    if (browserFilterTimer) clearTimeout(browserFilterTimer);
+    browserFilterTimer = setTimeout(() => {
+      browserFilterTimer = null;
+      syncBrowserFilterState();
+      updateBrowserFilterUI();
+      fetchBrowser(browserSearch ? browserSearch.value : '');
+    }, 0);
+  };
+
+  const scheduleBrowserFetch = () => {
+    if (browserFetchTimer) clearTimeout(browserFetchTimer);
+    browserFetchTimer = setTimeout(() => {
+      browserFetchTimer = null;
+      fetchBrowser(browserSearch ? browserSearch.value : '');
+    }, 180);
+  };
+
+  const applyBrowserRequestFilters = (params) => {
+    syncBrowserFilterState();
+    params.set('conversations', browserIncludeConversations ? '1' : '0');
+    params.set('engrams', browserIncludeEngrams ? '1' : '0');
+    params.set('min_relevance', String(browserMinRelevance || 0));
+    if (browserSort && browserSort.value) params.set('sort', browserSort.value);
   };
 
   const positionBrowser = () => {
@@ -556,6 +646,7 @@
       browserDismissedIds = new Set();
     }
     browserOverlay.classList.add('is-open');
+    updateBrowserFilterUI();
     startBrowserPositioning();
     fetchBrowser('');
     setTimeout(() => {
@@ -575,9 +666,10 @@
     try {
       const params = new URLSearchParams();
       if ((query || '').trim()) params.set('q', query.trim());
-      if (browserSort && browserSort.value) params.set('sort', browserSort.value);
+      applyBrowserRequestFilters(params);
       params.set('limit', '200');
-      const r = await fetch('/api/conversations/browser?' + params.toString());
+      const requestUrl = '/api/conversations/browser?' + params.toString();
+      const r = await fetch(requestUrl);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       browserLastData = data;
@@ -617,13 +709,15 @@
       const shown = total && total !== visible.length
         ? `${visible.length} shown of ${total}`
         : `${visible.length}`;
+      const floor = browserMinRelevance > 0 ? `, ≥${browserMinRelevance} relevance` : '';
       browserStatus.textContent = `${shown} result${visible.length === 1 ? '' : 's'}`
         + `${parts.length ? ` (${parts.join(', ')})` : ''}`
+        + floor
         + `${removed ? `, ${removed} removed` : ''}`;
     } else {
       browserStatus.textContent = removed
         ? `No visible results, ${removed} removed`
-        : 'No matching conversations or engrams';
+        : 'No matching enabled conversations or engrams';
     }
   };
 
@@ -690,7 +784,10 @@
     if (!conversationId) return;
     browserStatus.textContent = 'Loading related conversations...';
     try {
-      const r = await fetch(`/api/conversation/${encodeURIComponent(conversationId)}/related`);
+      const params = new URLSearchParams();
+      applyBrowserRequestFilters(params);
+      const requestUrl = `/api/conversation/${encodeURIComponent(conversationId)}/related?${params.toString()}`;
+      const r = await fetch(requestUrl);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       browserLastData = data;

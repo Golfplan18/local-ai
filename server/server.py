@@ -6260,11 +6260,61 @@ def _browser_source_counts(rows: list[dict]) -> dict:
     return counts
 
 
+def _browser_parse_bool(value: str | None, default: bool = True) -> bool:
+    if value is None:
+        return default
+    return str(value).strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _browser_parse_min_relevance(value: str | None) -> float:
+    try:
+        parsed = float(value or 0)
+    except (TypeError, ValueError):
+        parsed = 0.0
+    return max(0.0, min(100.0, parsed))
+
+
+def _browser_row_relevance(row: dict, *, has_query: bool) -> float:
+    if not has_query:
+        return 0.0
+    value = row.get("search_relevance")
+    if value is None:
+        value = row.get("score")
+    try:
+        return max(0.0, min(100.0, float(value or 0.0)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _browser_filter_rows(
+    rows: list[dict],
+    *,
+    include_conversations: bool,
+    include_engrams: bool,
+    min_relevance: float,
+    has_query: bool,
+) -> list[dict]:
+    out: list[dict] = []
+    for row in rows:
+        kind = row.get("source_kind") or "live"
+        if kind == "engram":
+            if not include_engrams:
+                continue
+        elif not include_conversations:
+            continue
+        relevance = _browser_row_relevance(row, has_query=has_query)
+        row["relevance"] = relevance
+        if has_query and min_relevance > 0 and relevance < min_relevance:
+            continue
+        out.append(row)
+    return out
+
+
 def _browser_sort_rows(rows: list[dict], sort_mode: str) -> list[dict]:
     if sort_mode == "recency":
         return sorted(
             rows,
-            key=lambda r: (r.get("last_activity_at") or "", float(r.get("score") or 0)),
+            key=lambda r: (r.get("last_activity_at") or "", float(r.get("relevance") or 0), float(r.get("score") or 0)),
             reverse=True,
         )
     return sorted(
@@ -6589,7 +6639,13 @@ def _browser_archive_related_rows(conversation_id: str, limit: int = 100) -> lis
     return _browser_sort_rows(list(rows_by_id.values()), "relevance")[:limit]
 
 
-def _browser_engram_related_rows(conversation_id: str, limit: int = 100) -> list[dict]:
+def _browser_engram_related_rows(
+    conversation_id: str,
+    limit: int = 100,
+    *,
+    include_conversations: bool = True,
+    include_engrams: bool = True,
+) -> list[dict]:
     source_id = _browser_decode_source_id("engram", conversation_id)
     if not source_id:
         return []
@@ -6602,19 +6658,21 @@ def _browser_engram_related_rows(conversation_id: str, limit: int = 100) -> list
     query = heading.group(1).strip() if heading else envelope.get("display_name") or str(content or "")[:240]
 
     rows_by_id: dict[str, dict] = {}
-    for row in _browser_chroma_exact_rows(query, logical_collection="knowledge", limit=max(20, limit // 2)):
-        if row.get("conversation_id") == conversation_id:
-            continue
-        row["relation"] = "related"
-        _browser_merge_best(rows_by_id, row)
-    for row in _browser_chroma_semantic_rows(query, logical_collection="knowledge", limit=max(20, limit // 2)):
-        if row.get("conversation_id") == conversation_id:
-            continue
-        row["relation"] = row.get("relation") or "semantic"
-        _browser_merge_best(rows_by_id, row)
-    for row in _browser_chroma_semantic_rows(query, logical_collection="conversations", limit=max(20, limit // 2)):
-        row["relation"] = row.get("relation") or "conversation"
-        _browser_merge_best(rows_by_id, row)
+    if include_engrams:
+        for row in _browser_chroma_exact_rows(query, logical_collection="knowledge", limit=max(20, limit // 2)):
+            if row.get("conversation_id") == conversation_id:
+                continue
+            row["relation"] = "related"
+            _browser_merge_best(rows_by_id, row)
+        for row in _browser_chroma_semantic_rows(query, logical_collection="knowledge", limit=max(20, limit // 2)):
+            if row.get("conversation_id") == conversation_id:
+                continue
+            row["relation"] = row.get("relation") or "semantic"
+            _browser_merge_best(rows_by_id, row)
+    if include_conversations:
+        for row in _browser_chroma_semantic_rows(query, logical_collection="conversations", limit=max(20, limit // 2)):
+            row["relation"] = row.get("relation") or "conversation"
+            _browser_merge_best(rows_by_id, row)
     return _browser_sort_rows(list(rows_by_id.values()), "relevance")[:limit]
 
 
@@ -6625,16 +6683,27 @@ def conversations_browser():
     sort_mode = (request.args.get("sort") or ("relevance" if query else "recency")).strip().lower()
     if sort_mode not in {"relevance", "recency"}:
         sort_mode = "relevance" if query else "recency"
+    include_conversations = _browser_parse_bool(
+        request.args.get("conversations", request.args.get("include_conversations")),
+        True,
+    )
+    include_engrams = _browser_parse_bool(
+        request.args.get("engrams", request.args.get("include_engrams")),
+        True,
+    )
+    min_relevance = _browser_parse_min_relevance(request.args.get("min_relevance"))
     try:
         limit = int(request.args.get("limit") or 100)
     except (TypeError, ValueError):
         limit = 100
     limit = max(1, min(limit, 500))
 
-    try:
-        live_rows = _browser_live_rows(query)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    live_rows: list[dict] = []
+    if include_conversations:
+        try:
+            live_rows = _browser_live_rows(query)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
 
     live_ids = {r.get("conversation_id") for r in live_rows}
     rows_by_id: dict[str, dict] = {}
@@ -6644,15 +6713,17 @@ def conversations_browser():
     archive_rows: list[dict] = []
     engram_rows: list[dict] = []
     if query:
-        archive_rows.extend(_browser_chroma_exact_rows(
-            query, logical_collection="conversations", limit=120))
-        archive_rows.extend(_browser_chroma_fuzzy_rows(
-            query, logical_collection="conversations", limit=80))
-        engram_rows.extend(_browser_chroma_exact_rows(
-            query, logical_collection="knowledge", limit=80))
-        engram_rows.extend(_browser_chroma_fuzzy_rows(
-            query, logical_collection="knowledge", limit=80))
-        engram_rows.extend(_browser_vault_markdown_rows(query, limit=40))
+        if include_conversations:
+            archive_rows.extend(_browser_chroma_exact_rows(
+                query, logical_collection="conversations", limit=120))
+            archive_rows.extend(_browser_chroma_fuzzy_rows(
+                query, logical_collection="conversations", limit=80))
+        if include_engrams:
+            engram_rows.extend(_browser_chroma_exact_rows(
+                query, logical_collection="knowledge", limit=80))
+            engram_rows.extend(_browser_chroma_fuzzy_rows(
+                query, logical_collection="knowledge", limit=80))
+            engram_rows.extend(_browser_vault_markdown_rows(query, limit=40))
         local_rows = archive_rows + engram_rows
         local_best = max(
             (
@@ -6662,22 +6733,35 @@ def conversations_browser():
             default=0.0,
         )
         if len(local_rows) < 30 or local_best < 90.0:
-            archive_rows.extend(_browser_chroma_semantic_rows(
-                query, logical_collection="conversations", limit=80))
-            engram_rows.extend(_browser_chroma_semantic_rows(
-                query, logical_collection="knowledge", limit=60))
+            if include_conversations:
+                archive_rows.extend(_browser_chroma_semantic_rows(
+                    query, logical_collection="conversations", limit=80))
+            if include_engrams:
+                engram_rows.extend(_browser_chroma_semantic_rows(
+                    query, logical_collection="knowledge", limit=60))
     else:
-        archive_rows.extend(_browser_latest_archive_rows(limit=limit))
+        if include_conversations:
+            archive_rows.extend(_browser_latest_archive_rows(limit=limit))
 
     for row in archive_rows + engram_rows:
         if row.get("source_conversation_id") in live_ids:
             continue
         _browser_merge_best(rows_by_id, row)
 
-    rows = _browser_sort_rows(list(rows_by_id.values()), sort_mode)
+    rows = _browser_filter_rows(
+        list(rows_by_id.values()),
+        include_conversations=include_conversations,
+        include_engrams=include_engrams,
+        min_relevance=min_relevance,
+        has_query=bool(query),
+    )
+    rows = _browser_sort_rows(rows, sort_mode)
     return _json_response({
         "query": query,
         "sort": sort_mode,
+        "include_conversations": include_conversations,
+        "include_engrams": include_engrams,
+        "min_relevance": min_relevance,
         "rows": rows[:limit],
         "total": len(rows),
         "source_counts": _browser_source_counts(rows),
@@ -6711,17 +6795,54 @@ def conversations_related(conversation_id):
     conversation_id = (conversation_id or "").strip()
     if not conversation_id:
         return _json_response({"error": "conversation_id is required"}, status=400)
+    include_conversations = _browser_parse_bool(
+        request.args.get("conversations", request.args.get("include_conversations")),
+        True,
+    )
+    include_engrams = _browser_parse_bool(
+        request.args.get("engrams", request.args.get("include_engrams")),
+        True,
+    )
+    min_relevance = _browser_parse_min_relevance(request.args.get("min_relevance"))
+    sort_mode = (request.args.get("sort") or "relevance").strip().lower()
+    if sort_mode not in {"relevance", "recency"}:
+        sort_mode = "relevance"
     if conversation_id.startswith("archive:"):
-        rows = _browser_archive_related_rows(conversation_id)
+        rows = _browser_archive_related_rows(conversation_id) if include_conversations else []
+        rows = _browser_filter_rows(
+            rows,
+            include_conversations=include_conversations,
+            include_engrams=include_engrams,
+            min_relevance=min_relevance,
+            has_query=True,
+        )
+        rows = _browser_sort_rows(rows, sort_mode)
         return _json_response({
             "conversation_id": conversation_id,
             "rows": rows,
         })
     if conversation_id.startswith("engram:"):
-        rows = _browser_engram_related_rows(conversation_id)
+        rows = _browser_engram_related_rows(
+            conversation_id,
+            include_conversations=include_conversations,
+            include_engrams=include_engrams,
+        )
+        rows = _browser_filter_rows(
+            rows,
+            include_conversations=include_conversations,
+            include_engrams=include_engrams,
+            min_relevance=min_relevance,
+            has_query=True,
+        )
+        rows = _browser_sort_rows(rows, sort_mode)
         return _json_response({
             "conversation_id": conversation_id,
             "rows": rows,
+        })
+    if not include_conversations:
+        return _json_response({
+            "conversation_id": conversation_id,
+            "rows": [],
         })
     try:
         from conversation_memory import iter_conversations, load_conversation_json

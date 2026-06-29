@@ -30,11 +30,42 @@ from __future__ import annotations
 
 import os
 import re
+import sqlite3
+from difflib import SequenceMatcher
 from typing import Any, Optional
 
 CHROMADB_PATH = os.path.expanduser("~/ora/chromadb/")
 
 _INCLUDE_PRIVATE_MODIFIER = "include:private"
+_WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9'_-]*")
+_METADATA_CACHE: dict[str, dict[str, Any]] = {}
+_SQLITE_METADATA_SEGMENT = "urn:chroma:segment/metadata/sqlite"
+_LEXICAL_SQL_CANDIDATES = int(os.environ.get("ORA_RAG_LEXICAL_SQL_CANDIDATES", "400"))
+_LEXICAL_SQL_BODY_CANDIDATES = int(os.environ.get("ORA_RAG_LEXICAL_SQL_BODY_CANDIDATES", "400"))
+_LEXICAL_METADATA_KEYS = (
+    "title",
+    "source",
+    "path",
+    "obsidian_path",
+    "conversation_title",
+    "conversation_id",
+    "session_id",
+    "source_file",
+    "source_document",
+    "source_path",
+    "raw_path",
+    "chunk_path",
+    "vault_path",
+    "source_chat",
+)
+
+_STOPWORDS = {
+    "about", "after", "again", "against", "also", "among", "because",
+    "before", "being", "between", "could", "does", "from", "have",
+    "into", "like", "more", "over", "should", "that", "their", "there",
+    "these", "thing", "this", "those", "through", "what", "when", "where",
+    "which", "while", "with", "would", "your",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +201,498 @@ def _build_where_clause(
     if len(clauses) == 1:
         return clauses[0]
     return {"$and": clauses}
+
+
+# ---------------------------------------------------------------------------
+# Hybrid lexical helpers
+# ---------------------------------------------------------------------------
+
+
+def _normalise_for_match(text: str) -> str:
+    text = str(text or "").lower()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return " ".join(text.split())
+
+
+def _query_terms(query: str) -> list[str]:
+    terms: list[str] = []
+    seen: set[str] = set()
+    for raw in _WORD_RE.findall(query or ""):
+        for term in _normalise_for_match(raw).split():
+            if len(term) < 3 or term in _STOPWORDS or term in seen:
+                continue
+            seen.add(term)
+            terms.append(term)
+    return terms
+
+
+def _document_needles(query: str, terms: list[str]) -> list[str]:
+    """Bounded body-search needles for Chroma's where_document filter.
+
+    Title/source rescue is handled by metadata scanning below. Body search
+    stays narrow so a normal RAG turn does not become a full document scan.
+    """
+    needles: list[str] = []
+    stripped = " ".join(str(query or "").split())
+    if 4 <= len(stripped) <= 120:
+        needles.append(stripped)
+    # Prefer distinctive terms; Chroma's contains filter is literal, so these
+    # catch exact-body mentions without assuming phrase order.
+    distinctive = sorted(
+        (t for t in terms if len(t) >= 5),
+        key=lambda t: (-len(t), t),
+    )
+    needles.extend(distinctive[:8])
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for needle in needles:
+        n = needle.strip()
+        if not n or n.lower() in seen:
+            continue
+        seen.add(n.lower())
+        out.append(n)
+    return out
+
+
+def _field_tokens(text: str) -> list[str]:
+    return _query_terms(text)
+
+
+def _ratio(a: str, b: str) -> float:
+    if not a or not b:
+        return 0.0
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def _metadata_text(meta: dict[str, Any]) -> str:
+    fields = [
+        meta.get("title"),
+        meta.get("source"),
+        meta.get("path"),
+        meta.get("obsidian_path"),
+        meta.get("conversation_title"),
+        meta.get("conversation_id"),
+        meta.get("session_id"),
+        meta.get("source_file"),
+        meta.get("source_document"),
+    ]
+    return " ".join(str(v or "") for v in fields)
+
+
+def _lexical_score(query: str, text: str, *, metadata_match: bool = False) -> float:
+    """Score exact and near-miss lexical matches on a 0-1 similarity scale.
+
+    This is not a final rank. It gives exact title/source/body hits enough
+    synthetic similarity to enter the normal floor → fit-gate → provenance →
+    rerank funnel, where bad matches can still be removed.
+    """
+    qnorm = _normalise_for_match(query)
+    hay = _normalise_for_match(text)
+    if not qnorm or not hay:
+        return 0.0
+    if qnorm in hay:
+        return 0.95 if metadata_match else 0.85
+
+    terms = _query_terms(query)
+    if not terms:
+        return 0.0
+    hay_tokens = set(_field_tokens(hay))
+    exact = sum(1 for t in terms if t in hay_tokens or t in hay)
+
+    fuzzy = 0
+    field_tokens = list(hay_tokens)
+    for term in terms:
+        if term in hay_tokens or term in hay:
+            continue
+        if any(_ratio(term, token) >= 0.86 for token in field_tokens):
+            fuzzy += 1
+
+    coverage = (exact + fuzzy) / max(1, len(terms))
+    if exact == 0 and fuzzy == 0:
+        return 0.0
+    base = 0.50 if metadata_match else 0.42
+    score = base + (0.35 * coverage)
+    if fuzzy and metadata_match:
+        score += 0.08
+    return min(score, 0.90 if metadata_match else 0.78)
+
+
+def _metadata_passes_filters(
+    meta: dict[str, Any],
+    *,
+    collection: str,
+    type_filter: Optional[list[str]],
+    include_private: bool,
+    include_archived: bool,
+    exclude_tags: Optional[list[str]] = None,
+) -> bool:
+    if type_filter and meta.get("type") not in set(type_filter):
+        return False
+    if collection == "knowledge":
+        if not include_archived and bool(meta.get("tag_archived", False)):
+            return False
+        if not include_private and bool(meta.get("tag_private", False)):
+            return False
+        for tag in exclude_tags or []:
+            if bool(meta.get(f"tag_{tag}", False)):
+                return False
+    elif collection == "conversations":
+        if not include_private and meta.get("tag") == "private":
+            return False
+    return True
+
+
+def _fetch_chunks_by_id(
+    collection_obj: Any,
+    ids: list[str],
+    scores: dict[str, float],
+) -> list[dict[str, Any]]:
+    if not ids:
+        return []
+    try:
+        result = collection_obj.get(
+            ids=ids,
+            include=["documents", "metadatas"],
+        )
+    except Exception:
+        return []
+    returned_ids = [str(i) for i in (result.get("ids") or [])]
+    docs = result.get("documents") or []
+    metas = result.get("metadatas") or []
+    by_id = {
+        cid: (doc or "", meta or {})
+        for cid, doc, meta in zip(returned_ids, docs, metas)
+    }
+    chunks: list[dict[str, Any]] = []
+    for cid in ids:
+        if cid not in by_id:
+            continue
+        doc, meta = by_id[cid]
+        score = float(scores.get(cid, 0.0))
+        chunks.append({
+            "id": cid,
+            "document": doc,
+            "metadata": meta,
+            "distance": max(0.0, 1.0 - score),
+            "similarity": score,
+            "lexical_score": score,
+            "retrieval_source": "lexical",
+        })
+    return chunks
+
+
+def _sqlite_path() -> str:
+    return os.path.join(os.path.expanduser(CHROMADB_PATH), "chroma.sqlite3")
+
+
+def _collection_metadata_segment(cur: sqlite3.Cursor, collection_name: str) -> str | None:
+    row = cur.execute(
+        """
+        SELECT s.id
+        FROM collections c
+        JOIN segments s ON s.collection = c.id
+        WHERE c.name = ?
+          AND s.type = ?
+        LIMIT 1
+        """,
+        (collection_name, _SQLITE_METADATA_SEGMENT),
+    ).fetchone()
+    return str(row[0]) if row else None
+
+
+def _dedupe_ids(ids: list[str], limit: int) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in ids:
+        cid = str(raw or "")
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        out.append(cid)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _fts_match_query(terms: list[str]) -> str:
+    clean: list[str] = []
+    for term in terms:
+        for part in re.findall(r"[a-z0-9]+", term.lower()):
+            if len(part) >= 3 and part not in _STOPWORDS:
+                clean.append(f'"{part}"')
+    return " OR ".join(_dedupe_ids(clean, 16))
+
+
+def _metadata_like_patterns(query: str, terms: list[str]) -> list[str]:
+    parts = [p for p in _normalise_for_match(query).split() if len(p) >= 3]
+    parts.extend(terms)
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        if part in _STOPWORDS or part in seen:
+            continue
+        seen.add(part)
+        ordered.append(part)
+    ordered.sort(key=lambda t: (-len(t), t))
+    return [f"%{part}%" for part in ordered[:24]]
+
+
+def _sqlite_candidate_ids(collection_name: str, query: str, terms: list[str], *, limit: int) -> list[str]:
+    """Use Chroma's SQLite metadata and FTS tables for bounded lexical recall.
+
+    This intentionally avoids Chroma's collection-wide `where_document`
+    contains scan. The output is only a candidate set; the normal filters,
+    floor, fit gate, provenance ranking, and reranker still decide whether
+    any candidate is allowed into context.
+    """
+    db_path = _sqlite_path()
+    if not os.path.exists(db_path) or limit <= 0:
+        return []
+
+    ids: list[str] = []
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=2.0)
+    except sqlite3.Error:
+        return []
+    try:
+        cur = conn.cursor()
+        segment_id = _collection_metadata_segment(cur, collection_name)
+        if not segment_id:
+            return []
+
+        patterns = _metadata_like_patterns(query, terms)
+        if patterns:
+            key_placeholders = ",".join("?" for _ in _LEXICAL_METADATA_KEYS)
+            per_term_limit = max(
+                12,
+                min(80, max(1, _LEXICAL_SQL_CANDIDATES // max(1, len(patterns)))),
+            )
+            for pattern in patterns:
+                rows = cur.execute(
+                    f"""
+                    SELECT DISTINCT e.embedding_id
+                    FROM embeddings e
+                    JOIN embedding_metadata m ON m.id = e.id
+                    WHERE e.segment_id = ?
+                      AND m.key IN ({key_placeholders})
+                      AND m.string_value IS NOT NULL
+                      AND lower(m.string_value) LIKE ?
+                    LIMIT ?
+                    """,
+                    (
+                        segment_id,
+                        *_LEXICAL_METADATA_KEYS,
+                        pattern,
+                        per_term_limit,
+                    ),
+                ).fetchall()
+                ids.extend(str(row[0]) for row in rows)
+
+        fts_terms = [term.strip('"') for term in _fts_match_query(terms).split(" OR ") if term]
+        if fts_terms:
+            per_term_limit = max(
+                12,
+                min(80, max(1, _LEXICAL_SQL_BODY_CANDIDATES // max(1, len(fts_terms)))),
+            )
+            for term in fts_terms:
+                if len(ids) >= limit * 3:
+                    break
+                rows = cur.execute(
+                """
+                SELECT e.embedding_id
+                FROM embedding_fulltext_search
+                JOIN embeddings e ON e.id = embedding_fulltext_search.rowid
+                WHERE e.segment_id = ?
+                  AND embedding_fulltext_search MATCH ?
+                LIMIT ?
+                """,
+                    (
+                        segment_id,
+                        f'"{term}"',
+                        per_term_limit,
+                    ),
+                ).fetchall()
+                ids.extend(str(row[0]) for row in rows)
+    except sqlite3.Error:
+        return _dedupe_ids(ids, limit)
+    finally:
+        conn.close()
+    return _dedupe_ids(ids, limit)
+
+
+def _payloads_by_id(collection_obj: Any, ids: list[str]) -> dict[str, tuple[str, dict[str, Any]]]:
+    if not ids:
+        return {}
+    try:
+        result = collection_obj.get(ids=ids, include=["documents", "metadatas"])
+    except Exception:
+        return {}
+    returned_ids = [str(i) for i in (result.get("ids") or [])]
+    docs = result.get("documents") or []
+    metas = result.get("metadatas") or []
+    return {
+        cid: (doc or "", meta or {})
+        for cid, doc, meta in zip(returned_ids, docs, metas)
+    }
+
+
+def lexical_search_raw(
+    query: str,
+    collection: str = "knowledge",
+    n_results: int = 10,
+    *,
+    type_filter: Optional[list[str]] = None,
+    include_private: bool = False,
+    include_archived: bool = False,
+    exclude_tags: Optional[list[str]] = None,
+) -> list[dict[str, Any]]:
+    """Return exact/title/source/body lexical rescue candidates.
+
+    This complements vector retrieval. It is deliberately bounded and
+    fail-soft: metadata/title/source matching and body matching use Chroma's
+    SQLite metadata/full-text indexes, then hand the small candidate set back
+    to the normal ranking pipeline.
+    """
+    if not query or n_results <= 0:
+        return []
+
+    try:
+        import chromadb
+        from orchestrator.embedding import get_or_create_collection
+        client = chromadb.PersistentClient(path=CHROMADB_PATH)
+        col = get_or_create_collection(client, collection)
+        count = col.count()
+        if count == 0:
+            return []
+
+        scores: dict[str, float] = {}
+        terms = _query_terms(query)
+        candidate_ids = _sqlite_candidate_ids(
+            getattr(col, "name", None) or collection,
+            query,
+            terms,
+            limit=max(n_results * 12, min(_LEXICAL_SQL_CANDIDATES, 120)),
+        )
+        payloads = _payloads_by_id(col, candidate_ids)
+
+        for cid in candidate_ids:
+            doc, meta = payloads.get(cid, ("", {}))
+            if not _metadata_passes_filters(
+                meta,
+                collection=collection,
+                type_filter=type_filter,
+                include_private=include_private,
+                include_archived=include_archived,
+                exclude_tags=exclude_tags,
+            ):
+                continue
+            metadata_score = _lexical_score(query, _metadata_text(meta), metadata_match=True)
+            body_score = _lexical_score(query, doc or "", metadata_match=False)
+            score = max(metadata_score, body_score)
+            if score:
+                scores[cid] = score
+
+        if not scores:
+            return []
+        ordered = sorted(scores, key=lambda cid: scores[cid], reverse=True)[:n_results]
+        return _fetch_chunks_by_id(col, ordered, scores)
+    except Exception as exc:
+        import sys
+        print(
+            f"[lexical_search_raw] retrieval failed for collection "
+            f"{collection!r} (query {query[:80]!r}): "
+            f"{type(exc).__name__}: {exc}. Returning empty result.",
+            file=sys.stderr, flush=True,
+        )
+        return []
+
+
+def _merge_raw_chunks(
+    semantic_chunks: list[dict[str, Any]],
+    lexical_chunks: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+
+    def _add(chunk: dict[str, Any], source: str) -> None:
+        cid = str(chunk.get("id") or "")
+        if not cid:
+            cid = f"doc:{_normalise_for_match(chunk.get('document') or '')[:160]}"
+        incoming = dict(chunk)
+        incoming["retrieval_source"] = source
+        if source == "semantic":
+            incoming["semantic_similarity"] = float(incoming.get("similarity", 0.0))
+        if cid not in merged:
+            merged[cid] = incoming
+            order.append(cid)
+            return
+        existing = merged[cid]
+        existing_source = str(existing.get("retrieval_source") or "")
+        sources = set(existing_source.split("+")) if existing_source else set()
+        sources.add(source)
+        existing["retrieval_source"] = "+".join(sorted(s for s in sources if s))
+        if "lexical_score" in incoming:
+            existing["lexical_score"] = max(
+                float(existing.get("lexical_score", 0.0) or 0.0),
+                float(incoming.get("lexical_score", 0.0) or 0.0),
+            )
+        if "semantic_similarity" in incoming:
+            existing["semantic_similarity"] = max(
+                float(existing.get("semantic_similarity", 0.0) or 0.0),
+                float(incoming.get("semantic_similarity", 0.0) or 0.0),
+            )
+        if float(incoming.get("similarity", 0.0)) > float(existing.get("similarity", 0.0)):
+            for key in ("similarity", "distance", "document", "metadata"):
+                existing[key] = incoming.get(key)
+
+    for chunk in semantic_chunks:
+        _add(chunk, "semantic")
+    for chunk in lexical_chunks:
+        _add(chunk, "lexical")
+    return [merged[cid] for cid in order]
+
+
+def knowledge_search_hybrid_raw(
+    query: str,
+    collection: str = "knowledge",
+    n_results: int = 5,
+    *,
+    type_filter: Optional[list[str]] = None,
+    include_private: bool = False,
+    include_archived: bool = False,
+    exclude_tags: Optional[list[str]] = None,
+    lexical_n_results: Optional[int] = None,
+) -> list[dict[str, Any]]:
+    semantic = knowledge_search_raw(
+        query=query,
+        collection=collection,
+        n_results=n_results,
+        type_filter=type_filter,
+        include_private=include_private,
+        include_archived=include_archived,
+        exclude_tags=exclude_tags,
+    )
+    if os.environ.get("ORA_RAG_HYBRID_RETRIEVAL", "1").strip().lower() in {"0", "false", "no", "off"}:
+        for chunk in semantic:
+            chunk.setdefault("retrieval_source", "semantic")
+            chunk.setdefault("semantic_similarity", float(chunk.get("similarity", 0.0)))
+        return semantic
+    if lexical_n_results is None:
+        try:
+            lexical_n_results = int(os.environ.get("ORA_RAG_LEXICAL_N", str(n_results)))
+        except ValueError:
+            lexical_n_results = n_results
+    lexical = lexical_search_raw(
+        query=query,
+        collection=collection,
+        n_results=max(0, int(lexical_n_results or 0)),
+        type_filter=type_filter,
+        include_private=include_private,
+        include_archived=include_archived,
+        exclude_tags=exclude_tags,
+    )
+    return _merge_raw_chunks(semantic, lexical)
 
 
 # ---------------------------------------------------------------------------
@@ -358,6 +881,8 @@ def knowledge_search_raw(
 __all__ = [
     "knowledge_search",
     "knowledge_search_raw",
+    "knowledge_search_hybrid_raw",
+    "lexical_search_raw",
     "_extract_mode_type_filter",
     "_build_where_clause",
     "_format_result_line",

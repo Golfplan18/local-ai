@@ -643,6 +643,55 @@ def _candidate_preview(chunk: dict[str, Any], limit: int = 160) -> str:
     return " ".join(body.split())[:limit]
 
 
+_FRONTMATTER_RE = re.compile(r"\A\s*---\s*\n.*?\n---\s*\n?", re.DOTALL)
+_RAG_GARBAGE_LINE_RE = re.compile(
+    r"("
+    r"meta-layer oversight:\s*simulated"
+    r"|oversight is running in simulated mode"
+    r"|set\s+ORA_OVERSIGHT_LIVE=1"
+    r"|pipeline-execution warning"
+    r"|prompt cleanup couldn't parse"
+    r"|the pipeline ran against the model's narrative response"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def clean_chunk_document(text: str) -> str:
+    """Strip transport/frontmatter noise before a chunk enters context.
+
+    This is deliberately deterministic and conservative: it removes wrapper
+    material Ora itself injected (YAML frontmatter, oversight simulation
+    banners, prompt-cleanup warning lines), but it does not paraphrase or
+    summarize the user's knowledge content.
+    """
+    body = str(text or "")
+    body = _FRONTMATTER_RE.sub("", body)
+    kept: list[str] = []
+    blank_run = 0
+    for line in body.splitlines():
+        if _RAG_GARBAGE_LINE_RE.search(line):
+            continue
+        if not line.strip():
+            blank_run += 1
+            if blank_run <= 2:
+                kept.append("")
+            continue
+        blank_run = 0
+        kept.append(line.rstrip())
+    return "\n".join(kept).strip()
+
+
+def _clean_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
+    cleaned = clean_chunk_document(chunk.get("document") or "")
+    if cleaned == (chunk.get("document") or ""):
+        return chunk
+    out = dict(chunk)
+    out["document"] = cleaned
+    out["document_cleaned"] = True
+    return out
+
+
 def _content_key(chunk: dict[str, Any]) -> str:
     """Normalised chunk text for exact-duplicate detection — lowercased,
     whitespace-collapsed. Two chunks with the same key are the same content
@@ -673,6 +722,9 @@ def _sink_record(
         "weight": weight,
         "recency": recency,
         "score": score,
+        "retrieval_source": chunk.get("retrieval_source"),
+        "lexical_score": chunk.get("lexical_score"),
+        "semantic_similarity": chunk.get("semantic_similarity"),
         "status": status,
         "drop_reason": drop_reason,
         "gate_verdict": chunk.get("gate_verdict"),
@@ -759,6 +811,12 @@ def rank_vault_chunks(
         chunk_type = meta.get("type")
         chunk_tags = meta.get("tags") or []
         similarity = float(chunk.get("similarity", 0.0))
+        if not (chunk.get("document") or "").strip():
+            if candidate_sink is not None:
+                dropped_records.append(
+                    _sink_record(chunk, status="dropped",
+                                 drop_reason="empty_document"))
+            continue
 
         # 1. Fit-gate decision (gate-FIRST): a chunk the relevance gate marked
         #    "drop" is removed before provenance can rank it — this is what
@@ -1018,7 +1076,7 @@ def assemble_ranked_context(
     if max_chars is None:
         max_chars = RAG_MAX_CHARS
 
-    chunks = _knowledge_search.knowledge_search_raw(
+    chunks = _knowledge_search.knowledge_search_hybrid_raw(
         query=query,
         collection=collection,
         n_results=n_results,
@@ -1027,6 +1085,7 @@ def assemble_ranked_context(
         include_archived=include_archived,
         exclude_tags=exclude_tags,
     )
+    chunks = [_clean_chunk(c) for c in chunks]
     # Fit-gate (Process 13): mark each candidate keep/drop against the query's
     # intent BEFORE the provenance ranker. Injected by the caller (boot.py) so
     # this module stays model-free. Fail-open: a gate that raises leaves the

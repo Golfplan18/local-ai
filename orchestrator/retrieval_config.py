@@ -177,7 +177,7 @@ def active_reranker(config: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = config if config is not None else read_chromadb_config()
     reranker = cfg.get("reranker") if isinstance(cfg.get("reranker"), dict) else {}
     if not reranker:
-        return copy.deepcopy(DEFAULT_RERANKERS[-1])
+        return copy.deepcopy(DEFAULT_RERANKERS[0])
     provider = (reranker.get("provider") or "auto").strip() or "auto"
     model = (reranker.get("model") or "cohere/rerank-4-pro").strip()
     rid = reranker.get("id") or ("auto" if provider == "auto" else _profile_id(provider, model))

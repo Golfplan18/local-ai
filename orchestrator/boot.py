@@ -6818,8 +6818,8 @@ def _format_rag_candidates_md(candidates: list) -> str:
         return f"{v:.3f}" if isinstance(v, (int, float)) else "—"
 
     lines = [
-        "| # | sim | wt | rec | score | status | gate | type | source | preview |",
-        "|---|-----|----|-----|-------|--------|------|------|--------|---------|",
+        "| # | lane | sim | wt | rec | score | status | gate | type | source | preview |",
+        "|---|------|-----|----|-----|-------|--------|------|------|--------|---------|",
     ]
     for c in candidates:
         rank = c.get("rank")
@@ -6830,11 +6830,12 @@ def _format_rag_candidates_md(candidates: list) -> str:
         if c.get("gate_reason") and gate != "—":
             gate = f"{gate}: {c['gate_reason']}"
         gate = str(gate).replace("|", r"\|")[:42]
+        lane = str(c.get("retrieval_source") or "—").replace("|", r"\|")[:18]
         src = str(c.get("source", "")).replace("|", r"\|")[:48]
         prev = str(c.get("preview", "")).replace("|", r"\|")[:60]
         lines.append(
             f"| {rank if rank is not None else '—'} "
-            f"| {_f(c.get('similarity'))} | {_f(c.get('weight'))} "
+            f"| {lane} | {_f(c.get('similarity'))} | {_f(c.get('weight'))} "
             f"| {_f(c.get('recency'))} | {_f(c.get('score'))} | {status} "
             f"| {gate} | {c.get('type') or '—'} | {src} | {prev} |"
         )
@@ -6903,10 +6904,11 @@ def _env_flag(name: str) -> bool:
 def _build_rag_selection(config: dict, config_name: str | None = None):
     """Resolve the RAG selection layer (Process 13) for this turn.
 
-    Returns ``(n_results, similarity_floor, fit_gate, dedup)``. When
-    ``ORA_RAG_SELECTION`` is not enabled, returns ``(None, None, None, False)``
-    so callers keep their existing per-lane ``n_results`` and ungated, no-floor,
-    no-dedup behaviour (the exact pre-Process-13 path). When enabled: wider retrieval
+    Returns ``(n_results, similarity_floor, fit_gate, dedup)``. The selection
+    layer is default-on because it is the primary protection against
+    high-similarity off-topic RAG contamination. Set ``ORA_RAG_SELECTION=0``
+    for debugging to restore the old per-lane ``n_results`` and ungated,
+    no-floor, no-dedup behaviour. When enabled: wider retrieval
     (``ORA_RAG_SELECTION_N``, default 15), a low similarity floor
     (``ORA_RAG_SELECTION_FLOOR``, default 0.40), and a batched relevance
     fit-gate backed by the ``ORA_RAG_FIT_GATE_SLOT`` slot (default
@@ -6914,7 +6916,9 @@ def _build_rag_selection(config: dict, config_name: str | None = None):
     returns wider-n + floor but ``fit_gate=None`` (floor-only) rather than
     failing the turn.
     """
-    if not _env_flag("ORA_RAG_SELECTION"):
+    if os.environ.get("ORA_RAG_SELECTION", "1").strip().lower() in (
+        "0", "off", "false", "no"
+    ):
         return (None, None, None, False)
     try:
         n_results = int(os.environ.get("ORA_RAG_SELECTION_N", "15"))
