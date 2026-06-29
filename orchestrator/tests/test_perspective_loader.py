@@ -235,7 +235,11 @@ class UserSelectedLensPromptTests(unittest.TestCase):
             slot="breadth",
             step="analyst",
         )
-        self.assertIn("## USER-SELECTED LENS — cui-bono", prompt)
+        # 2026-06-29: package sections are now wrapped in === LABEL === /
+        # === END LABEL === banner fences (the spatial-input convention,
+        # extended to the text package) rather than bare ## headings.
+        self.assertIn("=== USER-SELECTED LENS — cui-bono ===", prompt)
+        self.assertIn("=== END USER-SELECTED LENS — cui-bono ===", prompt)
         self.assertIn("Ulrich CSH Boundary Categories", prompt)
         self.assertIn("do not replace the mode's purpose", prompt)
 
