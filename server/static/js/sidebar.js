@@ -51,6 +51,8 @@
   const projectSearch   = sidebar.querySelector('#sidebarProjectSearch');
   const projectListEl   = sidebar.querySelector('#sidebarProjectList');
   const projectNewBtn   = sidebar.querySelector('#sidebarProjectNew');
+  const modelConfigBtn  = sidebar.querySelector('#sidebarModelConfigBtn');
+  const modelConfigName = sidebar.querySelector('#sidebarModelConfigName');
 
   const ACTIVE_PROJECT_KEY = 'ora-sidebar-project';
   let activeProjectId = 'general';
@@ -1080,6 +1082,25 @@
     }
   });
   fetchProjects();
+
+  // ── G1.33 model-configuration section ────────────────────────────────
+  // Shows the active configuration name; the per-project / per-run selector
+  // is a later sub-step (G1.35). Clicking opens Settings → Models for now.
+  const fetchModelConfig = async () => {
+    try {
+      const r = await fetch('/api/configurations');
+      if (!r.ok) return;
+      const d = await r.json();
+      if (modelConfigName && d && d.active_name) modelConfigName.textContent = d.active_name;
+    } catch (e) {}
+  };
+  if (modelConfigBtn) modelConfigBtn.addEventListener('click', () => {
+    try {
+      const sp = window.OraSettingsPanel;
+      if (sp && typeof sp.open === 'function') sp.open('models');
+    } catch (e) {}
+  });
+  fetchModelConfig();
 
   // ── Polling ─────────────────────────────────────────────────────────
   fetchList();
