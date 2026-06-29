@@ -399,8 +399,18 @@
            line under, like the conversation groups. */
         .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; }
         .sidebar-fixed-section .sidebar-group-label { margin-bottom: 5px; }
-        .sidebar-project-section .sidebar-project-current { width: 100%; padding-right: 32px; }
-        .sidebar-project-section .sidebar-pin-toggle { position: absolute; top: 24px; right: 10px; }
+        .sidebar-project-section .sidebar-project-current { width: 100%; }
+        .sidebar-project-label { display: flex; align-items: center; gap: 6px; }
+        .sidebar-project-label > span { flex: 1; }
+        .sidebar-project-label .sidebar-pin-toggle {
+          flex: 0 0 auto; padding: 2px; border: none; background: transparent;
+          color: var(--text-muted); cursor: pointer; border-radius: var(--radius-s, 6px);
+          display: inline-flex; align-items: center;
+        }
+        .sidebar-project-label .sidebar-pin-toggle:hover {
+          background: var(--background-modifier-hover); color: var(--text-normal);
+        }
+        .sidebar-project-label .sidebar-pin-toggle[aria-pressed="true"] { color: var(--interactive-accent); }
         .sidebar-modelconfig-current {
           display: flex; align-items: center; gap: 8px; width: 100%;
           background: transparent; border: none; cursor: pointer;
@@ -412,21 +422,24 @@
           text-overflow: ellipsis; white-space: nowrap; }
       </style>
       <div class="sidebar-fixed-section sidebar-project-section" id="sidebarProjectSwitcher">
-        <div class="sidebar-group-label">Project</div>
+        <div class="sidebar-group-label sidebar-project-label">
+          <span>Active Project</span>
+          <!-- Backlog 3E — pin-in-place toggle; small section control on the
+               label row (above the line) so it doesn't crowd the project name. -->
+          <button class="sidebar-pin-toggle" type="button"
+                  id="sidebarPinToggle" aria-pressed="false"
+                  title="Pin sidebar open" aria-label="Pin sidebar open">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <line x1="12" y1="17" x2="12" y2="22"/>
+              <path d="M7 17h10l-1.5-3V6.5a3 3 0 0 0-7 0V14L7 17z"/>
+            </svg>
+          </button>
+        </div>
         <button class="sidebar-project-current" id="sidebarProjectBtn" type="button"
                 aria-haspopup="listbox" aria-expanded="false" title="Switch project">
           <span class="sidebar-project-name" id="sidebarProjectName">General</span>
           <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
-        </button>
-        <!-- Backlog 3E — pin-in-place toggle; upper-right, on the project-name row. -->
-        <button class="sidebar-pin-toggle" type="button"
-                id="sidebarPinToggle" aria-pressed="false"
-                title="Pin sidebar open" aria-label="Pin sidebar open">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-            <line x1="12" y1="17" x2="12" y2="22"/>
-            <path d="M7 17h10l-1.5-3V6.5a3 3 0 0 0-7 0V14L7 17z"/>
-          </svg>
         </button>
         <div class="sidebar-project-menu" id="sidebarProjectMenu" role="listbox" hidden>
           <input class="sidebar-project-search" id="sidebarProjectSearch" type="text"
