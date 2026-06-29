@@ -130,15 +130,12 @@
 
 .sidebar-group-label {
   font-size: 12px;
-  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  background: var(--background-secondary-alt);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s, 6px);
-  padding: 4px 8px;
-  margin: 10px 0 4px;
+  letter-spacing: 0.05em;
+  color: var(--text-normal);
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin: 12px 0 2px;
   display: flex;
   align-items: center;
   gap: 6px;
