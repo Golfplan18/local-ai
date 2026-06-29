@@ -5550,6 +5550,17 @@ def conversations_list():
     except Exception as e:
         return json.dumps({"error": f"iter_conversations failed: {e}"}), 500
 
+    # G1.33 — server-side project filter. ?project_id=<nexus> narrows the
+    # pinned / unread / active groups to that project; errored + pending
+    # (running) PIERCE the filter and stay GLOBAL, so background work and
+    # failures aren't hidden while you work in another project (the locked
+    # switcher spec). Absent / "general" == the all-inclusive view.
+    _project_id = (request.args.get("project_id") or "").strip()
+    _all_projects = (not _project_id) or _project_id.lower() == "general"
+
+    def _in_project(r):
+        return _all_projects or (_project_id in (r.get("project_ids") or []))
+
     pinned: list[dict] = []
     errored: list[dict] = []
     pending: list[dict] = []
@@ -5566,7 +5577,8 @@ def conversations_list():
         # both surface in the Pinned group at the top of the list,
         # regardless of pending / unread / active classification.
         if row.get("is_welcome") or row.get("pinned"):
-            pinned.append(row)
+            if _in_project(row):  # pins are per-project
+                pinned.append(row)
             continue
 
         # Backlog item 11 — errored conversations get their own group.
@@ -5578,6 +5590,10 @@ def conversations_list():
 
         if is_pending:
             pending.append(row)
+            continue
+
+        # Unread/active are project-scoped (errored + pending above are global).
+        if not _in_project(row):
             continue
 
         # Unread heuristic: there's at least one assistant turn AND either no
