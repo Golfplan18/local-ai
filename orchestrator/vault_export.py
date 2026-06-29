@@ -555,9 +555,22 @@ def _format_vault_date(value: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-_DEFAULT_MASTER_MATRIX_PATH = (
-    Path.home() / "Documents" / "vault" / "Engrams" / "Reference — Master Matrix.md"
+# Canonical location is Administration/; Engrams/ is a legacy fallback. Resolve
+# to the first candidate that exists so a vault reorg doesn't silently break
+# nexus derivation — the prior hard-coded Engrams/ path no longer existed, so
+# every export fell through to an empty nexus regardless of topic.
+_MASTER_MATRIX_CANDIDATES = (
+    Path.home() / "Documents" / "vault" / "Administration" / "Reference — Master Matrix.md",
+    Path.home() / "Documents" / "vault" / "Engrams" / "Reference — Master Matrix.md",
 )
+
+
+def _default_master_matrix_path() -> Path:
+    """First existing Master Matrix candidate, else the canonical Administration path."""
+    for candidate in _MASTER_MATRIX_CANDIDATES:
+        if candidate.exists():
+            return candidate
+    return _MASTER_MATRIX_CANDIDATES[0]
 
 # Match `project property name: <id>` and `passion property name: <id>`.
 # Skip `parent project name:` (no "property" keyword — that's a back-reference).
@@ -574,7 +587,7 @@ def _load_master_matrix(path: Path | str | None = None) -> list[str]:
     Defensively returns [] if the file is missing or unreadable —
     callers fall through to empty nexus when no match.
     """
-    target = Path(path) if path else _DEFAULT_MASTER_MATRIX_PATH
+    target = Path(path) if path else _default_master_matrix_path()
     try:
         content = target.read_text(encoding="utf-8")
     except (OSError, FileNotFoundError):

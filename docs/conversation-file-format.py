@@ -459,6 +459,25 @@ class ConversationEnvelope(BaseModel):
         )
     )
 
+    # ── Project membership (G1.33) ─────────────────────────────────────────
+
+    project_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Projects this conversation belongs to, identified by project "
+            "nexus slug (the stable key + vault-facing identifier). A "
+            "conversation may belong to several projects. An empty list "
+            "means the default ``General`` project, which uses an empty "
+            "``nexus:`` per the Schema §10 domain-general convention — so "
+            "legacy envelopes without this field read as General with no "
+            "migration. Set at creation from the active-project pointer and "
+            "edited via the project management modal; a conversation can be "
+            "removed from any project except ``general``. Denormalized into "
+            "ChromaDB chunk metadata so RAG can filter by project without "
+            "joining the envelope."
+        )
+    )
+
     # ── Messages ───────────────────────────────────────────────────────────
 
     messages: list[Turn] = Field(
