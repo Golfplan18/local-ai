@@ -1031,8 +1031,12 @@ a.ora-settings-apikey-label:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* shrinkable: when line 2 overflows, the rightmost (lowest-priority) stat
-     ellipsis-truncates first — TTFT by default, intelligence on Speed. */
+  /* Right-justified: chips sit left, the stat strip is pushed to the right edge
+     so the fixed-order stats line up as columns down a card and across the four
+     presets. Shrinks (and the rightmost stat ellipsis-truncates) only if line 2
+     ever runs out of room. */
+  margin-left: auto;
+  text-align: right;
   flex: 0 1 auto;
 }
 
@@ -1565,6 +1569,8 @@ a.ora-settings-apikey-label:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  margin-left: auto;   /* right-justify the stat strip; chips stay left */
+  text-align: right;
   flex: 0 1 auto;
 }
 
@@ -2111,6 +2117,8 @@ a.ora-settings-apikey-label:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  margin-left: auto;   /* right-justify the stat strip; chips stay left */
+  text-align: right;
   flex: 0 1 auto;
 }
 

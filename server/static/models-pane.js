@@ -810,9 +810,6 @@
     var model = _resolveRegistryModel(modelId);  // honors the id-alias map
     var isDeprecated = !model;  // not in the registry (and no alias) → retired
     if (isDeprecated) classes += ' ora-models-slot-row-deprecated';
-    // Speed-ordered meta (intelligence drops first) for the Speed preset and
-    // its forks; derived from the row's config so callers don't each thread it.
-    if (opts.speedOrder == null) opts.speedOrder = _configNameIsSpeed(configName);
     var meta = model ? _compactMetaHTML(model, opts) : '';
     // Display name preference: media models (aa-img/aa-edit/aa-vid keys)
     // have UUID-style ids that shorten to garbage, so use display_name
@@ -853,38 +850,20 @@
       + '</div>';
   }
 
-  // A configuration is "speed-ordered" when it's the Speed preset (or a custom
-  // forked from it). Speed leads its meta line with latency/throughput and lets
-  // intelligence drop first; every other preset keeps intelligence + cost and
-  // drops TTFT first. See _compactMetaHTML's `order`.
-  function _isSpeedConfig(summary) {
-    return !!summary && (summary.name === 'speed' || summary.preset_lineage === 'speed');
-  }
-  // configName-based variant for the inventory/popout, which carry a name, not
-  // the summary object: a name of 'speed', or a loaded config whose
-  // preset_lineage is 'speed'.
-  function _configNameIsSpeed(name) {
-    if (name === 'speed') return true;
-    var list = (_configs && (_configs.configurations || _configs)) || [];
-    if (!Array.isArray(list)) return false;
-    return list.some(function (c) {
-      return c && c.name === name && c.preset_lineage === 'speed';
-    });
-  }
-
   // Compact meta line used in card slot rows, inventory rows, and the popout.
-  // Renders on the SECOND line of every two-line listing (the name is line 1),
-  // so the stats can sit in the narrower proportional sans without crowding the
-  // monospace name. Each stat is dropped when its datum is null/absent.
+  // Renders RIGHT-JUSTIFIED on the SECOND line of every two-line listing (the
+  // name is line 1, left-justified), in the narrower proportional sans.
   //
-  // ``order`` is priority left→right: the RIGHTMOST stat ellipsis-truncates
-  // first when the row is too narrow (no JS measurement needed). Default keeps
-  // intelligence + cost and drops TTFT before t/s; Speed (opts.speedOrder)
-  // leads with latency + throughput and drops intelligence first.
+  // The stat ORDER is FIXED and identical on every card — intelligence, cost,
+  // throughput, latency — so the columns line up down a card and across the
+  // four presets (the right-justify + tabular figures make them scan as a
+  // table). Earlier this varied by preset (Speed led with latency); that was a
+  // one-line-truncation optimization, unnecessary now that line 2 owns the full
+  // width, and the inconsistency hurt more than it helped. Each part is dropped
+  // when its datum is null/absent.
   //
   // Intelligence is "% peak intel" — a percentage of the top-rated model in the
-  // same category (the word "intel" added 2026-06-30 now that the two-line row
-  // has room to name the axis). opts.omitCost: True for Free-preset cards.
+  // same category. opts.omitCost: True for Free-preset cards (cost is $0).
   function _compactMetaHTML(model, opts) {
     opts = opts || {};
     var isMedia = (model.category && model.category !== 'chat');
@@ -910,10 +889,8 @@
     var ttftPart = (_ttft != null) ? Math.round(_ttft) + 'ms ttft' : null;
     var tpsPart = (model.output_tokens_per_second != null)
       ? model.output_tokens_per_second.toFixed(0) + ' t/s' : null;
-    var order = opts.speedOrder
-      ? [ttftPart, tpsPart, costPart, peakPart]   // Speed: intelligence drops first
-      : [peakPart, costPart, tpsPart, ttftPart];  // else: TTFT drops first (t/s kept)
-    return order.filter(Boolean).join(' · ');
+    // Fixed order everywhere: intelligence · cost · throughput · latency.
+    return [peakPart, costPart, tpsPart, ttftPart].filter(Boolean).join(' · ');
   }
 
   // Intelligence as percent of the per-category peak. 100% = the
@@ -2591,8 +2568,7 @@
       ? ((model && model.display_name) || modelId)
       : '— click to pick a fallback —';
     var chips = (model && modelId) ? _modelChipsHTML(model) : '';
-    var meta = (model && modelId)
-      ? _compactMetaHTML(model, {speedOrder: _configNameIsSpeed(opts.configName)}) : '';
+    var meta = (model && modelId) ? _compactMetaHTML(model) : '';
     var isFallback = (opts.fallbackIndex != null && opts.fallbackIndex >= 0);
     var isActivePick = isFallback && _activeSlotPick
       && _activeSlotPick.popoutSection === opts.section
