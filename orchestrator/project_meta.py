@@ -249,6 +249,57 @@ def ensure_project_folder(name: str, vault_projects_dir: Path | None = None) -> 
         return None
 
 
+_FILE_INDEX_SKIP = {".git", ".obsidian", ".trash", "node_modules", "__pycache__", ".DS_Store"}
+
+
+def list_project_files(
+    name: str,
+    *,
+    vault_projects_dir: Path | None = None,
+    max_files: int = 500,
+) -> dict[str, Any]:
+    """Index a project's vault output folder (``<vault>/Projects/<name>/``).
+
+    The file-management line is "out of Ora" (Q2 LOCKED): this is a read-only
+    clickable index — the modal links each entry to Obsidian / Finder; there is
+    no native CRUD. Returns ``exists: False`` when the folder is absent (e.g.
+    cloud-ora has no vault). Files are newest-first; ``truncated`` flags a cap
+    hit. Never raises.
+    """
+    base = (vault_projects_dir or DEFAULT_VAULT_PROJECTS_DIR) / _safe_folder_name(name)
+    if not base.is_dir():
+        return {"exists": False, "folder": str(base), "files": [], "truncated": False}
+    collected: list[dict[str, Any]] = []
+    try:
+        for p in base.rglob("*"):
+            rel = p.relative_to(base)
+            if any(part in _FILE_INDEX_SKIP for part in rel.parts):
+                continue
+            if not p.is_file():
+                continue
+            try:
+                st = p.stat()
+            except OSError:
+                continue
+            collected.append({
+                "name": p.name,
+                "rel_path": str(rel),
+                "abs_path": str(p),
+                "size": st.st_size,
+                "mtime": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
+            })
+    except OSError:
+        pass
+    collected.sort(key=lambda f: f.get("mtime") or "", reverse=True)
+    truncated = len(collected) > max_files
+    return {
+        "exists": True,
+        "folder": str(base),
+        "files": collected[:max_files],
+        "truncated": truncated,
+    }
+
+
 __all__ = [
     "POINTER_DIR",
     "GENERAL_NEXUS",
@@ -264,4 +315,5 @@ __all__ = [
     "touch_project",
     "update_project_meta",
     "ensure_project_folder",
+    "list_project_files",
 ]
