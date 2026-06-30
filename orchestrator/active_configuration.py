@@ -320,6 +320,12 @@ def bake_missing_presets(force: bool = False) -> list:
         # no filtering rather than aborting every preset bake.
         xref = {}
     tokens_per_sec: dict = xref.get("tokens_per_sec") or {}
+    # Speed-preset sort key: time-to-first-token in ms (OpenRouter or_ttft_ms
+    # preferred, AA latency_ttft_seconds × 1000 fallback). Threaded into
+    # populate_configuration exactly like tokens_per_sec. .get with default
+    # so a version-skewed registry_crossref lacking the key degrades to no
+    # latency signal rather than KeyError-ing the whole bake.
+    latency_ms: dict = xref.get("latency_ms") or {}
     reasoning_model_ids: set = xref.get("reasoning_model_ids") or set()
     registry_ids: set = xref.get("registry_ids") or set()
     unreachable_ids: set = xref.get("unreachable_ids") or set()
@@ -339,6 +345,7 @@ def bake_missing_presets(force: bool = False) -> list:
                 vision_only=vision_only,
                 unreachable_ids=unreachable_ids,
                 tokens_per_sec=tokens_per_sec,
+                latency_ms=latency_ms,
                 reasoning_model_ids=reasoning_model_ids,
                 registry_ids=registry_ids,
                 vision_verified_ids=vision_verified_ids)

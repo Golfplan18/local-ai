@@ -49,6 +49,21 @@
    "floor_pct": null,
    "cost_ceiling_per_m": null,
    "loosening": false
+  },
+  "speed": {
+   "description": "Fastest first response. Ranks every slot by lowest time-to-first-token (then throughput) within an intelligence floor and a cost ceiling; reasoning models excluded (they stall before the first token). Latency from OpenRouter per-provider stats (or_ttft_ms), AA median (latency_ttft_seconds) as fallback.",
+   "mode": "paid_intelligence",
+   "speed_mode": true,
+   "sort_by": "latency_asc",
+   "floor_pct": 40,
+   "min_floor_pct": 25,
+   "adaptive_cost_ceiling": { "enabled": true, "peak_fraction": 0.4, "outlier_median_multiple": 3.0 },
+   "loosening": true,
+   "loosening_strategy": "paired",
+   "floor_step_pct": 5,
+   "ceiling_growth_factor": 1.25,
+   "exclude_reasoning": true,
+   "_note": "PROVISIONAL tuning constants pending empirical calibration: floor_pct 40 / min_floor_pct 25 (intelligence floor) and adaptive_cost_ceiling.peak_fraction 0.4 (cost ceiling) are first-pass picks, not measured optima — retune once Speed bakes can be observed against real registry latency data. The latency_asc sort + reasoning exclusion are applied UNIFORMLY to every slot (big1/big2/fast/small) by populate_configuration's speed_mode path, overriding any slot-level sort_by."
   }
  },
  "slot_specs": {
