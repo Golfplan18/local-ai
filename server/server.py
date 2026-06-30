@@ -13964,6 +13964,108 @@ def _vision_input_candidates() -> list:
     return cands
 
 
+# ── G1.34 — Output export ────────────────────────────────────────────────────
+
+@app.route("/api/export/locations", methods=["GET"])
+def api_export_locations():
+    """Return (and best-effort create) the Exports/Resources boundary folders
+    (§2.8) for the UI's quick-access links. ``Ora Exports/`` holds Ora-generated
+    non-markdown; ``Ora Resources/`` holds external files — both siblings of the
+    vault, outside it so Obsidian never indexes binaries."""
+    try:
+        from orchestrator import export as _export
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    try:
+        dirs = _export.ensure_export_dirs()
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    return _json_response({"ok": True, **dirs})
+
+
+@app.route("/api/export", methods=["POST"])
+def api_export():
+    """Export an output (G1.34). Body::
+
+        {
+          "scope": "current_output" | "full_conversation",
+          "format": "markdown",            # docx/pdf need the bundled Pandoc
+          "content": "<markdown>",         # for current_output
+          "title": "<optional>",
+          "conversation_id": "<for full_conversation>",
+          "project": "<nexus, optional — defaults to the active project>"
+        }
+
+    Markdown is canonical (Export §1.9). ``current_output`` saves the rendered
+    output as a vault markdown note — in the active project's folder when set,
+    else ``<vault>/Outputs/``. ``full_conversation`` delegates to the existing
+    canonical session export. Non-markdown formats return ``deferred`` until the
+    installer bundles Pandoc."""
+    try:
+        from orchestrator import export as _export
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    scope = (data.get("scope") or "current_output").strip()
+    fmt = (data.get("format") or "markdown").strip().lower()
+
+    if fmt in _export.PANDOC_FORMATS:
+        return _json_response(
+            {"ok": False, "deferred": True,
+             "error": f"{fmt.upper()} export arrives with the bundled Pandoc step; "
+                      "Save to Vault (Markdown) and Print are available now."}, 501)
+    if fmt not in _export.NATIVE_FORMATS:
+        return _json_response({"ok": False, "error": f"unknown format {fmt!r}"}, 400)
+
+    if scope == "full_conversation":
+        conversation_id = (data.get("conversation_id") or "").strip()
+        if not conversation_id:
+            return _json_response({"ok": False, "error": "conversation_id required"}, 400)
+        try:
+            from vault_export import export_session_to_vault  # type: ignore
+        except Exception as exc:
+            return _json_response({"ok": False, "error": f"vault_export import failed: {exc}"}, 500)
+        try:
+            result = export_session_to_vault(conversation_id)
+        except Exception as exc:
+            return _json_response({"ok": False, "error": str(exc)}, 500)
+        return _json_response({
+            "ok": True, "scope": scope,
+            "path": str(getattr(result, "markdown_path", "") or ""),
+        })
+
+    # current_output (default) — save one rendered output to the vault.
+    content = data.get("content")
+    if not isinstance(content, str) or not content.strip():
+        return _json_response({"ok": False, "error": "content is required"}, 400)
+    # Resolve the project: explicit body value, else the active project.
+    project_nexus = (data.get("project") or "").strip()
+    if not project_nexus:
+        try:
+            from orchestrator.active_project import get_active_project
+            project_nexus = get_active_project()
+        except Exception:
+            project_nexus = "general"
+    project_name = None
+    if project_nexus and project_nexus.lower() != "general":
+        try:
+            from orchestrator import project_meta as _pm
+            rec = _pm.read_project_meta(project_nexus)
+            project_name = rec.get("name") if rec else project_nexus
+        except Exception:
+            project_name = project_nexus
+    try:
+        path = _export.save_output_to_vault(
+            content, title=data.get("title"),
+            project_nexus=project_nexus, project_name=project_name)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    if path is None:
+        return _json_response(
+            {"ok": False, "error": "could not write to the vault (no vault / no access)"}, 500)
+    return _json_response({"ok": True, "scope": "current_output", "path": str(path)})
+
+
 # ── WP-6.1 — Vault export ────────────────────────────────────────────────────
 
 @app.route("/api/session/export", methods=["POST"])
