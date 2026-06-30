@@ -1,0 +1,114 @@
+/* ============================================================
+   Output-pane export toolbar — G1.34 (§2.7)
+   A disappearing lower-right I/O cluster: hidden until the output
+   pane is hovered (or the menu is open / focused within). Theme
+   tokens only; light + dark both work.
+   ============================================================ */
+
+.output-pane { position: relative; }
+
+.export-toolbar {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  pointer-events: none;
+}
+.output-pane:hover .export-toolbar,
+.export-toolbar:focus-within,
+.export-toolbar.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.export-toolbar__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 5px);
+  padding: 3px 8px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.export-toolbar__status:empty { display: none; }
+.export-toolbar__reveal {
+  background: transparent;
+  border: none;
+  color: var(--interactive-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.export-toolbar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-s, 5px);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: var(--font-ui-smaller);
+  font-family: inherit;
+  box-shadow: 0 2px 8px var(--ora-shadow-recess, rgba(0,0,0,0.18));
+  transition: border-color 0.12s, background 0.12s;
+}
+.export-toolbar__btn:hover { border-color: var(--interactive-accent); }
+.export-toolbar__btn svg { display: block; }
+
+.export-toolbar__exportwrap { position: relative; }
+
+.export-toolbar__menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  min-width: 220px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 6px);
+  box-shadow: 0 8px 24px var(--ora-shadow-recess, rgba(0,0,0,0.35));
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.export-toolbar__menu[hidden] { display: none; }
+
+.export-toolbar__item {
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-s, 4px);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  font-family: inherit;
+  cursor: pointer;
+}
+.export-toolbar__item:hover:not(.is-disabled) { background: var(--background-modifier-hover); }
+.export-toolbar__item.is-disabled { color: var(--text-faint); cursor: not-allowed; }
+.export-toolbar__sep {
+  height: 1px;
+  background: var(--background-modifier-border);
+  margin: 4px 2px;
+}
+
+/* The lower-right cluster is on-screen chrome, never printed. */
+@media print { .export-toolbar { display: none !important; } }
