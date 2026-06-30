@@ -7022,6 +7022,28 @@ def _build_web_extraction(config: dict, config_name: str | None = None) -> dict:
     }
 
 
+def _resolve_effective_style_id(config):
+    """Effective default Output Style id for this turn, BEFORE any one-off:
+    the active project's default_style_id, else the engine config default, else
+    None (no style). A one-off /style overrides this on context_pkg afterward.
+    Best-effort — a lookup failure never breaks step-2 assembly."""
+    try:
+        try:
+            from active_project import get_active_project
+            from project_registry import get_project
+        except ImportError:
+            from orchestrator.active_project import get_active_project
+            from orchestrator.project_registry import get_project
+        nexus = get_active_project()
+        proj = get_project(nexus) if nexus else None
+        if proj is not None and getattr(proj, "default_style_id", None):
+            return proj.default_style_id
+    except Exception:
+        pass
+    val = (config or {}).get("default_style_id")
+    return val if isinstance(val, str) and val.strip() else None
+
+
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None,
                                config_name: str | None = None,
@@ -7603,6 +7625,12 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         # the configuration this turn was asked to run on.
         "config_name": config_name,
         "gear": gear,
+        # Output Style — effective default for this turn (active project's
+        # default_style_id, else engine config default, else None = no style).
+        # A one-off /style overrides this on context_pkg after step 2.
+        "style_id": _resolve_effective_style_id(config),
+        "style_register": "written",
+        "style_deltas": None,
         "conversation_rag": conv_rag,
         "concept_rag": concept_rag,
         "relationship_rag": relationship_rag,

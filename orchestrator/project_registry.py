@@ -248,6 +248,9 @@ class Project:
     # natural compound identity without nesting dicts; lookups go through
     # ``find_framework_configuration(framework, profile_name)``.
     framework_configurations: list = field(default_factory=list)
+    # Output Style: default Output Style profile id for this project (None =
+    # fall back to the engine default, else no style). A one-off /style wins.
+    default_style_id: Optional[str] = None
 
     def resolve_path(self, relative: str) -> Path:
         """Resolve a path relative to the project root. Absolute paths pass through."""
@@ -711,6 +714,14 @@ def _parse_project_from_manifest(manifest_path: Path, root: Path) -> Project:
     if not isinstance(name, str) or not name:
         raise ManifestError(f"{manifest_path}: 'name' is required and must be a non-empty string")
 
+    default_style_id = data.get("default_style_id")
+    if default_style_id is not None:
+        if not isinstance(default_style_id, str) or not default_style_id.strip():
+            raise ManifestError(
+                f"{manifest_path}: 'default_style_id', when present, must be a non-empty string"
+            )
+        default_style_id = default_style_id.strip()
+
     return Project(
         nexus=nexus,
         name=name,
@@ -732,6 +743,7 @@ def _parse_project_from_manifest(manifest_path: Path, root: Path) -> Project:
         framework_configurations=_parse_framework_configurations(
             data.get("framework_configurations"), manifest_path, root.resolve(),
         ),
+        default_style_id=default_style_id,
     )
 
 
