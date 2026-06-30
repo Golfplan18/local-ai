@@ -1,0 +1,364 @@
+/* ============================================================
+   Project management modal — G1.33 sub-step 5
+   Full-cover modal (same shell shape as the bootstrap "new
+   conversation" popup): a dimmed backdrop + a centered card with
+   a left tab rail. Edits a project's Overview (name/status/private
+   + inert model/style/persona defaults) and Mission/Objectives/
+   Milestones (canonical in the vault Operation-Matrix). Theme
+   tokens only — light + dark both work.
+   ============================================================ */
+
+.project-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 1100; /* above the bootstrap modal + sidebar */
+  align-items: center;
+  justify-content: center;
+}
+.project-modal.show { display: flex; }
+
+.project-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.project-modal__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 760px;
+  max-width: 94vw;
+  height: 600px;
+  max-height: 90vh;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+/* Header */
+.project-modal__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+}
+.project-modal__title {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-modal__title-kicker {
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 6px;
+}
+.project-modal__close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-s, 5px);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.project-modal__close:hover {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+}
+
+/* Body: rail + content */
+.project-modal__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.project-modal__rail {
+  flex-shrink: 0;
+  width: 168px;
+  border-right: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+.project-modal__tab {
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: var(--radius-s, 5px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+.project-modal__tab:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.project-modal__tab.is-active {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  font-weight: 600;
+  border-color: var(--background-modifier-border);
+}
+
+.project-modal__content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+.project-modal__panel { display: none; }
+.project-modal__panel.is-active { display: block; }
+
+/* Fields */
+.project-modal__field { margin-bottom: 16px; }
+.project-modal__label {
+  display: block;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+}
+.project-modal__hint {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.project-modal__input,
+.project-modal__select,
+.project-modal__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--background-modifier-form-field, var(--background-primary));
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 5px);
+  font-family: inherit;
+  font-size: var(--font-ui-small);
+  padding: 7px 9px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.project-modal__textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+.project-modal__input:focus,
+.project-modal__select:focus,
+.project-modal__textarea:focus {
+  border-color: var(--interactive-accent);
+}
+.project-modal__input:disabled,
+.project-modal__select:disabled,
+.project-modal__textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.project-modal__row {
+  display: flex;
+  gap: 14px;
+}
+.project-modal__row > .project-modal__field { flex: 1; }
+
+.project-modal__checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  cursor: pointer;
+  user-select: none;
+}
+.project-modal__checkbox-field input { cursor: pointer; }
+
+.project-modal__fieldset-legend {
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 22px 0 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.project-modal__inert-badge {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  font-style: italic;
+  margin-left: 6px;
+}
+
+/* Milestones checklist */
+.project-modal__milestones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.project-modal__milestone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.project-modal__milestone input[type="checkbox"] { flex-shrink: 0; cursor: pointer; }
+.project-modal__milestone-text {
+  flex: 1;
+  background: var(--background-modifier-form-field, var(--background-primary));
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 5px);
+  font-family: inherit;
+  font-size: var(--font-ui-small);
+  padding: 5px 8px;
+  outline: none;
+}
+.project-modal__milestone-text:focus { border-color: var(--interactive-accent); }
+.project-modal__milestone-text.is-done {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.project-modal__milestone-indent {
+  flex-shrink: 0;
+  width: 18px;
+}
+.project-modal__milestone-remove {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-s, 5px);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.project-modal__milestone-remove:hover {
+  color: var(--ora-status-error, #ff6e6e);
+  border-color: var(--background-modifier-border);
+}
+.project-modal__milestone-add {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: transparent;
+  border: 1px dashed var(--background-modifier-border);
+  color: var(--text-muted);
+  border-radius: var(--radius-s, 5px);
+  padding: 5px 10px;
+  font-size: var(--font-ui-smaller);
+  font-family: inherit;
+  cursor: pointer;
+}
+.project-modal__milestone-add:hover {
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+
+/* Per-panel action bar */
+.project-modal__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.project-modal__status {
+  flex: 1;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  min-height: 1.2em;
+}
+.project-modal__status.is-error { color: var(--ora-status-error, #ff6e6e); }
+.project-modal__status.is-ok { color: var(--ora-status-ok, #4caf66); }
+
+.project-modal__btn {
+  font-size: var(--font-ui-small);
+  font-family: inherit;
+  padding: 7px 14px;
+  border-radius: var(--radius-s, 5px);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, filter 0.12s;
+}
+.project-modal__btn:hover { border-color: var(--interactive-accent); }
+.project-modal__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.project-modal__btn--primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+.project-modal__btn--primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+/* Placeholder panels (Files / Conversations land in a later step) */
+.project-modal__placeholder {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+  padding: 24px 8px;
+  text-align: center;
+}
+
+/* The gear entry point on the Active-Project label row. */
+.sidebar-project-manage {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s, 5px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.sidebar-project-manage:hover {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+}
+.sidebar-project-manage svg { width: 14px; height: 14px; display: block; }
+
+/* 'Manage current project' item inside the switcher dropdown — matches
+   the existing '+ New project' row styling pattern. */
+.sidebar-project-manage-item {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-family: inherit;
+  cursor: pointer;
+}
+.sidebar-project-manage-item:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}

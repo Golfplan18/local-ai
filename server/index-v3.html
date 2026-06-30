@@ -228,7 +228,8 @@
 <script src="/static/vendor/jspdf/jspdf.umd.min.js"></script>
 <script src="/static/commands/export-pdf.js"></script>
 
-<script src="/static/js/sidebar.js?v=conversation-browser-filters-20260625-2" defer></script>
+<script src="/static/js/sidebar.js?v=project-modal-20260629" defer></script>
+<script src="/static/js/project-modal.js" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
 <script src="/static/js/review-queue-panel.js" defer></script>
 <script src="/static/js/v3-layout.js" defer></script>
@@ -439,6 +440,16 @@
       <div class="sidebar-fixed-section sidebar-project-section" id="sidebarProjectSwitcher">
         <div class="sidebar-group-label sidebar-project-label">
           <span>Active Project</span>
+          <!-- G1.33 sub-step 5 — manage the current project (full-cover modal). -->
+          <button class="sidebar-project-manage" type="button"
+                  id="sidebarProjectManage"
+                  title="Manage this project" aria-label="Manage this project">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
           <!-- Backlog 3E — pin-in-place toggle; small section control on the
                label row (above the line) so it doesn't crowd the project name. -->
           <button class="sidebar-pin-toggle" type="button"
@@ -460,6 +471,14 @@
           <input class="sidebar-project-search" id="sidebarProjectSearch" type="text"
                  placeholder="Find a project…" autocomplete="off" spellcheck="false" />
           <div class="sidebar-project-list" id="sidebarProjectList"></div>
+          <button class="sidebar-project-manage-item" id="sidebarProjectManageItem" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>Manage current project</span>
+          </button>
           <button class="sidebar-project-new" id="sidebarProjectNew" type="button">
             <span class="plus-glyph">+</span><span>New project</span>
           </button>
