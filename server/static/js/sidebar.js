@@ -51,6 +51,8 @@
   const projectSearch   = sidebar.querySelector('#sidebarProjectSearch');
   const projectListEl   = sidebar.querySelector('#sidebarProjectList');
   const projectNewBtn   = sidebar.querySelector('#sidebarProjectNew');
+  const projectManageBtn  = sidebar.querySelector('#sidebarProjectManage');
+  const projectManageItem = sidebar.querySelector('#sidebarProjectManageItem');
   const modelConfigBtn  = sidebar.querySelector('#sidebarModelConfigBtn');
   const modelConfigName = sidebar.querySelector('#sidebarModelConfigName');
 
@@ -1081,6 +1083,26 @@
       closeProjectMenu();
     }
   });
+
+  // G1.33 sub-step 5 — open the project management modal for the active
+  // project (⚙ on the Active-Project row + 'Manage current project' in the
+  // switcher dropdown).
+  const openProjectModal = () => {
+    const cur = projectsCache.find(p => p.nexus === activeProjectId);
+    const name = cur ? (cur.name || cur.nexus) : projectDisplayName(activeProjectId);
+    try {
+      if (window.OraProjectModal && typeof window.OraProjectModal.open === 'function') {
+        window.OraProjectModal.open(activeProjectId, name);
+      }
+    } catch (e) {}
+  };
+  if (projectManageBtn) projectManageBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); openProjectModal();
+  });
+  if (projectManageItem) projectManageItem.addEventListener('click', (e) => {
+    e.stopPropagation(); closeProjectMenu(); openProjectModal();
+  });
+
   fetchProjects();
 
   // ── G1.33 model-configuration section ────────────────────────────────
