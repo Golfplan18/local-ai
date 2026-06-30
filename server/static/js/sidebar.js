@@ -1058,25 +1058,32 @@
   if (projectNameEl) projectNameEl.textContent = projectDisplayName(activeProjectId);
   if (projectBtn) projectBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleProjectMenu(); });
   if (projectSearch) projectSearch.addEventListener('input', renderProjects);
-  if (projectNewBtn) projectNewBtn.addEventListener('click', async () => {
-    // Placeholder creation: name-only (graceful). The richer MOM-guided
-    // creation flow is a later sub-step; this hits /api/projects/create
-    // which makes the record + vault folder.
-    const name = (window.prompt('New project name:') || '').trim();
-    if (!name) return;
-    try {
-      const r = await fetch('/api/projects/create', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      const data = await r.json();
-      if (data && data.ok && data.project) {
-        await fetchProjects();
-        setActiveProject(data.project.nexus, data.project.name);
-      } else {
-        window.alert('Could not create project: ' + ((data && data.error) || 'unknown error'));
-      }
-    } catch (e) {}
+  if (projectNewBtn) projectNewBtn.addEventListener('click', () => {
+    // MOM-guided creation (graceful): the modal collects the name, creates the
+    // record + vault folder, then invites the user into Mission & Goals. Falls
+    // back to a name-only prompt if the modal module isn't present.
+    closeProjectMenu();
+    if (window.OraProjectModal && typeof window.OraProjectModal.openCreate === 'function') {
+      window.OraProjectModal.openCreate();
+      return;
+    }
+    (async () => {
+      const name = (window.prompt('New project name:') || '').trim();
+      if (!name) return;
+      try {
+        const r = await fetch('/api/projects/create', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        const data = await r.json();
+        if (data && data.ok && data.project) {
+          await fetchProjects();
+          setActiveProject(data.project.nexus, data.project.name);
+        } else {
+          window.alert('Could not create project: ' + ((data && data.error) || 'unknown error'));
+        }
+      } catch (e) {}
+    })();
   });
   document.addEventListener('click', (e) => {
     if (projectMenu && !projectMenu.hidden && projectSwitcher && !projectSwitcher.contains(e.target)) {
@@ -1150,5 +1157,6 @@
     getActiveConversation: () => activeConvId,
     getActiveProject: () => activeProjectId,
     refreshProjects: fetchProjects,
+    setActiveProject: (nexus, name) => setActiveProject(nexus, name),
   };
 })();
