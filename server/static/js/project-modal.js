@@ -30,6 +30,7 @@
   let filesCache = null;
   let convosCache = null;
   let candidateSearchTimer = null;
+  let mode = 'edit';  // 'edit' | 'create'
 
   const isGeneral = () => (current.nexus || '').toLowerCase() === 'general';
 
@@ -77,6 +78,7 @@
     document.body.appendChild(modal);
 
     els = {
+      titleKicker: modal.querySelector('.project-modal__title-kicker'),
       titleName: modal.querySelector('.project-modal__title-name'),
       tabs:      [...modal.querySelectorAll('.project-modal__tab')],
       panels:    [...modal.querySelectorAll('.project-modal__panel')],
@@ -266,12 +268,31 @@
   }
 
   // ── Tabs ────────────────────────────────────────────────────────────────
-  function selectTab(id) {
+  function showTab(id) {
     els.tabs.forEach(t => t.classList.toggle('is-active', t.dataset.tab === id));
     els.panels.forEach(p => p.classList.toggle('is-active', p.dataset.panel === id));
+  }
+
+  function selectTab(id) {
+    // In create mode only Overview is reachable until the project exists.
+    if (mode === 'create' && id !== 'overview') return;
+    showTab(id);
     if (id === 'mom' && momCache === null) loadMom();
     if (id === 'files' && filesCache === null) loadFiles();
     if (id === 'convos' && convosCache === null) loadConvos();
+  }
+
+  // Reflect create-vs-edit mode in the header, the Overview primary button,
+  // and which tabs are reachable.
+  function applyMode() {
+    const creating = mode === 'create';
+    if (els.titleKicker) els.titleKicker.textContent = creating ? 'New' : 'Manage';
+    if (els.ovSave) els.ovSave.textContent = creating ? 'Create project' : 'Save';
+    els.tabs.forEach(t => {
+      if (t.dataset.tab === 'overview') return;
+      t.classList.toggle('is-disabled', creating);
+      t.disabled = creating;
+    });
   }
 
   // ── Open / close ─────────────────────────────────────────────────────────
@@ -282,18 +303,48 @@
     el.classList.toggle('is-ok', kind === 'ok');
   }
 
-  async function open(nexus, name) {
-    build();
-    current = { nexus: nexus || 'general', name: name || nexus || 'General' };
+  function resetTransient() {
     momRawMode = false; momCache = null; filesCache = null; convosCache = null;
-    els.titleName.textContent = current.name;
-    selectTab('overview');
-    // Fresh state per open — the AI-draft hint must not leak across projects.
     if (els.momIntent) els.momIntent.value = '';
     if (els.convoSearch) els.convoSearch.value = '';
     if (els.convosClosed) els.convosClosed.checked = false;
     if (els.convoAddList) els.convoAddList.innerHTML = '';
     if (els.momRawToggle) els.momRawToggle.checked = false;
+  }
+
+  // MOM-guided creation (graceful): name the project, create the record +
+  // vault folder, then land on Mission & Goals so the user is invited — never
+  // forced — to author MOM (with the AI assist). Closing anytime is fine.
+  async function openCreate() {
+    build();
+    mode = 'create';
+    current = { nexus: null, name: '' };
+    resetTransient();
+    applyMode();
+    showTab('overview');
+    els.name.value = '';
+    els.name.disabled = false;
+    els.status.value = 'active';
+    els.status.disabled = true;   // new projects start active
+    els.priv.checked = false;
+    els.priv.disabled = false;
+    els.ovSave.disabled = false;
+    toggleMomRaw();
+    setStatus(els.ovMsg, 'Name your project. You can set Mission, Objectives & Milestones next — or skip it.');
+    setStatus(els.momMsg, '');
+    els.titleName.textContent = 'project';
+    modal.classList.add('show');
+    setTimeout(() => { try { els.name.focus(); } catch (e) {} }, 0);
+  }
+
+  async function open(nexus, name) {
+    build();
+    mode = 'edit';
+    current = { nexus: nexus || 'general', name: name || nexus || 'General' };
+    resetTransient();
+    applyMode();
+    els.titleName.textContent = current.name;
+    selectTab('overview');
     toggleMomRaw();
     setStatus(els.ovMsg, ''); setStatus(els.momMsg, '');
     modal.classList.add('show');
@@ -333,6 +384,7 @@
   }
 
   async function saveOverview() {
+    if (mode === 'create') { createProject(); return; }
     if (isGeneral()) return;
     const body = {
       name: (els.name.value || '').trim(),
@@ -361,6 +413,51 @@
       setStatus(els.ovMsg, 'Save failed: ' + (e.message || e), 'error');
     } finally {
       els.ovSave.disabled = isGeneral();
+    }
+  }
+
+  async function createProject() {
+    const name = (els.name.value || '').trim();
+    if (!name) { setStatus(els.ovMsg, 'Give the project a name.', 'error'); return; }
+    els.ovSave.disabled = true;
+    setStatus(els.ovMsg, 'Creating…');
+    try {
+      const r = await fetch('/api/projects/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await r.json();
+      if (!(data && data.ok && data.project)) {
+        setStatus(els.ovMsg, (data && data.error) || 'Could not create the project.', 'error');
+        els.ovSave.disabled = false;
+        return;
+      }
+      current = { nexus: data.project.nexus, name: data.project.name };
+      // Apply the private flag if the user set it at creation.
+      if (els.priv.checked) {
+        try {
+          await fetch('/api/projects/' + encodeURIComponent(current.nexus), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ private: true }),
+          });
+        } catch (e) {}
+      }
+      // Transition to edit mode and make this the active project.
+      mode = 'edit';
+      applyMode();
+      els.status.disabled = false;
+      els.titleName.textContent = current.name;
+      setStatus(els.ovMsg, 'Project created' + (data.vault_folder ? ' — folder added to the vault.' : '.'), 'ok');
+      try { window.OraSidebar && window.OraSidebar.refreshProjects && window.OraSidebar.refreshProjects(); } catch (e) {}
+      try { window.OraSidebar && window.OraSidebar.setActiveProject && window.OraSidebar.setActiveProject(current.nexus, current.name); } catch (e) {}
+      // Guide (don't force) the user into MOM — the graceful creation flow.
+      showTab('mom');
+      momCache = null;
+      await loadMom();
+      setStatus(els.momMsg, 'Optional: draft your Mission, Objectives & Milestones now — or just close. You can edit anytime.');
+    } catch (e) {
+      setStatus(els.ovMsg, 'Could not create the project: ' + (e.message || e), 'error');
+      els.ovSave.disabled = false;
     }
   }
 
@@ -797,5 +894,5 @@
     }
   }
 
-  window.OraProjectModal = { open, close };
+  window.OraProjectModal = { open, openCreate, close };
 })();
