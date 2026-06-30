@@ -356,7 +356,7 @@
           text-overflow: ellipsis; white-space: nowrap; }
         .sidebar-project-chevron { font-size: 13px; color: var(--text-muted); }
         .sidebar-project-menu {
-          position: absolute; left: 12px; right: 12px; bottom: calc(100% - 2px); top: auto; z-index: 60;
+          position: absolute; left: 12px; right: 12px; top: calc(100% - 2px); bottom: auto; z-index: 60;
           background: var(--background-primary);
           border: 1px solid var(--background-modifier-border);
           border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.28); padding: 6px;
@@ -396,11 +396,12 @@
         .sidebar-project-new:hover {
           background: var(--background-modifier-hover); color: var(--text-normal);
         }
-        /* Project + Model configuration are a fixed control FOOTER at the
-           bottom of the sidebar (order:1 pushes them below the flex:1
-           accordion); the conversation list leads at the top. */
-        .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; order: 1; }
-        .sidebar-project-section {
+        /* Active Project (+ pin) stays at the TOP as the context that filters
+           the list; Model configuration is a setting, anchored as a bottom
+           footer (order:1 pushes only it below the flex:1 accordion). */
+        .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; }
+        .sidebar-modelconfig-section {
+          order: 1;
           border-top: 1px solid var(--background-modifier-border);
           margin-top: 6px; padding-top: 8px;
         }
@@ -464,7 +465,7 @@
           </button>
         </div>
       </div>
-      <div class="sidebar-fixed-section">
+      <div class="sidebar-fixed-section sidebar-modelconfig-section">
         <div class="sidebar-group-label">Model configuration</div>
         <button class="sidebar-modelconfig-current" id="sidebarModelConfigBtn" type="button"
                 title="Configure models">
