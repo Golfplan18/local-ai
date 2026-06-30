@@ -7,12 +7,13 @@ stored in ``~/ora/data/active-configuration.json`` so it survives
 restarts; on a fresh install (no pointer file), the fallback chain
 matches the legacy hardcoded default per context.
 
-Toggles (``adversarial_diversity``, ``vision_only``) live ON the
-configuration file itself in a top-level ``toggles`` block. When a
-configuration is loaded and the block is missing, sensible defaults
-are inferred from the cells (adversarial = True if gear4.breadth is
-populated) and the auto-populate metadata (vision_only from the
-``_auto_populate_metadata`` block when it exists, otherwise False).
+Toggles (``adversarial_diversity``, ``vision_only``, ``min_context_1m``)
+live ON the configuration file itself in a top-level ``toggles`` block.
+When a configuration is loaded and the block is missing, sensible
+defaults are inferred from the cells (adversarial = True if gear4.breadth
+is populated) and the auto-populate metadata (vision_only and
+min_context_1m from the ``_auto_populate_metadata`` block when it exists,
+otherwise False).
 
 This module is the single read/write surface for both pieces of state.
 The Models pane's header uses it; the per-request dispatch path falls
@@ -169,6 +170,8 @@ def get_toggles(name: str) -> dict:
                 "adversarial_diversity", defaults["adversarial_diversity"])),
             "vision_only": bool(saved.get(
                 "vision_only", defaults["vision_only"])),
+            "min_context_1m": bool(saved.get(
+                "min_context_1m", defaults["min_context_1m"])),
         }
     return _infer_defaults(config)
 
@@ -186,7 +189,7 @@ def set_toggles(name: str, toggles: dict) -> dict:
         config = _load_config(name)
         existing = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
         merged = dict(existing)
-        for key in ("adversarial_diversity", "vision_only"):
+        for key in ("adversarial_diversity", "vision_only", "min_context_1m"):
             if key in toggles:
                 merged[key] = bool(toggles[key])
         config["toggles"] = merged
@@ -202,9 +205,14 @@ def _infer_defaults(config: dict) -> dict:
     adversarial = bool(breadth and isinstance(breadth, dict) and breadth.get("primary"))
     meta = config.get("_auto_populate_metadata") or {}
     vision_only = bool(meta.get("vision_only", False))
+    # min_context_1m default: inferred from the bake metadata's min_context
+    # (set when the preset was baked with the context floor on). Any truthy
+    # value means the floor was applied; absent/None/0 → False.
+    min_context_1m = bool(meta.get("min_context"))
     return {
         "adversarial_diversity": adversarial,
         "vision_only": vision_only,
+        "min_context_1m": min_context_1m,
     }
 
 
@@ -215,26 +223,31 @@ def get_preset_toggles() -> dict:
     """Return the global preset toggle state.
 
     Toggles are GLOBAL to the four presets (Adversarial Diversity,
-    Vision-capable only): turning Vision on at the top of the Models
-    pane while a preset is active updates this global state and
-    re-bakes all four presets with vision_only=True.
+    Vision-capable only, 1M context): turning Vision on at the top of
+    the Models pane while a preset is active updates this global state
+    and re-bakes all four presets with vision_only=True. The 1M-context
+    toggle (min_context_1m) re-bakes them with a ~1M context floor so
+    the picks fit long prompts.
 
     Custom configurations keep their own per-config toggle state via
     get_toggles/set_toggles.
 
-    Defaults when no pointer file exists: both toggles off.
+    Defaults when no pointer file exists: all toggles off.
     """
     if not PRESET_TOGGLES_PATH.exists():
-        return {"adversarial_diversity": False, "vision_only": False}
+        return {"adversarial_diversity": False, "vision_only": False,
+                "min_context_1m": False}
     try:
         with open(PRESET_TOGGLES_PATH) as f:
             data = json.load(f)
         return {
             "adversarial_diversity": bool(data.get("adversarial_diversity", False)),
             "vision_only": bool(data.get("vision_only", False)),
+            "min_context_1m": bool(data.get("min_context_1m", False)),
         }
     except (OSError, json.JSONDecodeError):
-        return {"adversarial_diversity": False, "vision_only": False}
+        return {"adversarial_diversity": False, "vision_only": False,
+                "min_context_1m": False}
 
 
 def set_preset_toggles(toggles: dict) -> dict:
@@ -244,7 +257,7 @@ def set_preset_toggles(toggles: dict) -> dict:
         raise ValueError("toggles payload must be an object")
     with _lock:
         current = get_preset_toggles()
-        for key in ("adversarial_diversity", "vision_only"):
+        for key in ("adversarial_diversity", "vision_only", "min_context_1m"):
             if key in toggles:
                 current[key] = bool(toggles[key])
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -261,9 +274,11 @@ def bake_missing_presets(force: bool = False) -> list:
     configuration file on disk.
 
     Reads the global preset toggle state (vision_only,
-    adversarial_diversity) and applies it:
+    adversarial_diversity, min_context_1m) and applies it:
       * vision_only → passed to populate_configuration so the picker
         filters to vision-capable models only.
+      * min_context_1m → passed as min_context=900000 so the picker
+        filters to ~1M-context models (graceful degrade per slot).
       * adversarial_diversity=False → post-bake, copy gear4.depth's
         primary + fallback into gear4.breadth AND mirror gear3.depth
         into gear3.breadth, so "the top model fills all slots" rather
@@ -304,6 +319,12 @@ def bake_missing_presets(force: bool = False) -> list:
     global_toggles = get_preset_toggles()
     vision_only = global_toggles["vision_only"]
     adversarial = global_toggles["adversarial_diversity"]
+    # 1M-context floor: when min_context_1m is on, pass a 900000 context
+    # floor into populate_configuration so every slot picks ~1M-context
+    # models (slots with no eligible candidate degrade gracefully — the
+    # picker skips the floor for that slot and notes it in the loosening
+    # log). Mirrors the vision_only threading exactly.
+    min_context = 900000 if global_toggles["min_context_1m"] else None
 
     # Cross-reference the registry via the script's shared helper:
     # reachability gate (only probe-verified models are pick-eligible),
@@ -348,7 +369,8 @@ def bake_missing_presets(force: bool = False) -> list:
                 latency_ms=latency_ms,
                 reasoning_model_ids=reasoning_model_ids,
                 registry_ids=registry_ids,
-                vision_verified_ids=vision_verified_ids)
+                vision_verified_ids=vision_verified_ids,
+                min_context=min_context)
             config["name"] = preset_name
             # Adversarial OFF: top model fills both Big AND Fast pairs.
             # When Adversarial is on (or not specified), keep the
@@ -709,7 +731,7 @@ def _summarize(name: str, config: dict) -> dict:
 
     toggles_resolved = _infer_defaults(config)
     saved_toggles = config.get("toggles") if isinstance(config.get("toggles"), dict) else {}
-    for key in ("adversarial_diversity", "vision_only"):
+    for key in ("adversarial_diversity", "vision_only", "min_context_1m"):
         if key in saved_toggles:
             toggles_resolved[key] = bool(saved_toggles[key])
 
@@ -821,7 +843,8 @@ def _collect_all_primaries(config: dict) -> list[str]:
 
 
 def _empty_toggles() -> dict:
-    return {"adversarial_diversity": False, "vision_only": False}
+    return {"adversarial_diversity": False, "vision_only": False,
+            "min_context_1m": False}
 
 
 # ── Slot pick — assign a model to a configuration's visible slot ─────────

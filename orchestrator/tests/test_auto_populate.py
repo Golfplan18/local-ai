@@ -7,6 +7,7 @@ text-only, free and paid, models with and without AA enrichment, etc.
 from __future__ import annotations
 
 import importlib.util
+import json
 import math
 import sys
 import unittest
@@ -23,13 +24,18 @@ SPEC.loader.exec_module(auto_populate)
 
 
 def _model(id, *, intelligence=None, blended=None, size="large",
-           vision=False, is_free=False, provider="x"):
-    return {
+           vision=False, is_free=False, provider="x", context=None):
+    m = {
         "id": id, "display_name": id, "provider": provider,
         "size_bucket": size, "vision_capable": vision, "is_free": is_free,
         "aa_intelligence_index": intelligence,
         "openrouter_pricing": {"input_per_m": None, "output_per_m": None, "blended_per_m": blended},
     }
+    # Catalog field for context window. Left unset (→ None → treated as 0
+    # by filter_min_context) unless a test supplies one.
+    if context is not None:
+        m["context_window"] = context
+    return m
 
 
 def _fixture_catalog():
@@ -286,6 +292,104 @@ class TestPickForPaidSlot(unittest.TestCase):
         )
         self.assertEqual([p["id"] for p in picks], ["fast/smart"])
         self.assertEqual(notes, [])
+
+
+class TestFilterMinContext(unittest.TestCase):
+    """The min_context_1m preset toggle's context floor."""
+
+    def test_none_is_noop(self):
+        cands = [_model("a", context=200000), _model("b", context=1000000)]
+        out = auto_populate.filter_min_context(cands, None)
+        self.assertEqual([m["id"] for m in out], ["a", "b"])
+
+    def test_drops_below_floor_keeps_at_or_above(self):
+        cands = [
+            _model("small", context=200000),
+            _model("exactly", context=900000),
+            _model("big", context=1000000),
+        ]
+        out = auto_populate.filter_min_context(cands, 900000)
+        # 200000 excluded; 900000 (boundary, >=) and 1000000 kept.
+        self.assertEqual([m["id"] for m in out], ["exactly", "big"])
+
+    def test_none_context_treated_as_zero_and_dropped(self):
+        cands = [_model("no-ctx"), _model("big", context=1000000)]
+        out = auto_populate.filter_min_context(cands, 900000)
+        self.assertEqual([m["id"] for m in out], ["big"])
+
+    def test_context_of_accepts_context_length_alias(self):
+        # The registry / inventory surface the field as context_length;
+        # _context_of must read either name.
+        self.assertEqual(auto_populate._context_of({"context_length": 1000000}), 1000000)
+        self.assertEqual(auto_populate._context_of({"context_window": 1000000}), 1000000)
+        self.assertEqual(auto_populate._context_of({}), 0)
+        self.assertEqual(auto_populate._context_of({"context_window": None}), 0)
+
+
+class TestPickWithMinContext(unittest.TestCase):
+    """min_context threaded into the pick functions — including the
+    graceful-degrade that keeps a slot filled when no candidate reaches
+    the floor."""
+
+    def test_paid_slot_picks_only_ge_floor_when_available(self):
+        catalog = [
+            _model("big/a",   intelligence=70, blended=2.0, size="large", context=1000000),
+            _model("big/b",   intelligence=65, blended=1.0, size="large", context=1048576),
+            _model("small/c", intelligence=60, blended=0.5, size="large", context=200000),
+        ]
+        picks, notes = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=3,
+            floor_pct=None, cost_ceiling=None, loosening=False,
+            min_context=900000,
+        )
+        pick_ids = {p["id"] for p in picks}
+        self.assertEqual(pick_ids, {"big/a", "big/b"})  # 200000 model excluded
+        self.assertNotIn("small/c", pick_ids)
+        # Floor was satisfiable, so no skip note.
+        self.assertEqual(notes, [])
+
+    def test_paid_slot_graceful_degrade_when_no_candidate_meets_floor(self):
+        # A small/utility-style slot where NO model reaches the 1M floor:
+        # the slot must still fill, and a skip note must be recorded.
+        catalog = [
+            _model("small/a", intelligence=60, blended=0.3, size="small", context=128000),
+            _model("small/b", intelligence=55, blended=0.2, size="small", context=200000),
+        ]
+        picks, notes = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="small", top_n=2,
+            floor_pct=None, cost_ceiling=None, loosening=False,
+            min_context=900000,
+        )
+        self.assertEqual(len(picks), 2)  # still filled despite the floor
+        self.assertTrue(
+            any("context floor skipped" in n for n in notes),
+            f"expected a context-floor-skipped note, got {notes!r}")
+
+    def test_free_slot_picks_only_ge_floor_when_available(self):
+        catalog = [
+            _model("free/big",   intelligence=65, size="large", is_free=True, context=1000000),
+            _model("free/small", intelligence=60, size="large", is_free=True, context=200000),
+        ]
+        picks, notes = auto_populate.pick_for_free_slot(
+            catalog, size_bucket="large", top_n=2,
+            min_context=900000,
+        )
+        self.assertEqual([p["id"] for p in picks], ["free/big"])
+
+    def test_free_slot_graceful_degrade_when_no_candidate_meets_floor(self):
+        catalog = [
+            _model("free/a", intelligence=60, size="small", is_free=True, context=128000),
+            _model("free/b", intelligence=55, size="small", is_free=True, context=200000),
+        ]
+        picks, notes = auto_populate.pick_for_free_slot(
+            catalog, size_bucket="small", top_n=2,
+            min_context=900000,
+        )
+        self.assertEqual(len(picks), 2)  # still filled
+        self.assertTrue(
+            any("context floor skipped" in n for n in notes),
+            f"expected a context-floor-skipped note, got {notes!r}")
+
 
 class TestVendorKey(unittest.TestCase):
     def test_prefers_provider_when_specific(self):
@@ -761,6 +865,64 @@ class TestPopulateConfiguration(unittest.TestCase):
         presets = _fixture_presets()
         with self.assertRaises(ValueError):
             auto_populate.populate_configuration("nonexistent", catalog, presets)
+
+    def _mixed_context_catalog(self):
+        """Large-bucket models reach ~1M context; small-bucket ones don't.
+        Models the picker over a min_context floor: large slots should
+        pick the ≥1M models, small/utility slots must degrade."""
+        return [
+            # Large paid, ~1M context — eligible under the floor.
+            _model("big/ctx-a", intelligence=80, blended=5.0, size="large", provider="a", context=1000000),
+            _model("big/ctx-b", intelligence=75, blended=3.0, size="large", provider="b", context=1048576),
+            _model("big/ctx-c", intelligence=72, blended=2.0, size="large", provider="c", context=1000000),
+            # Large paid, short context — must be excluded under the floor.
+            _model("big/short", intelligence=85, blended=1.0, size="large", provider="d", context=200000),
+            # Small paid, short context only — the utility slot degrades here.
+            _model("small/a", intelligence=60, blended=0.3, size="small", provider="a", context=128000),
+            _model("small/b", intelligence=55, blended=0.2, size="small", provider="b", context=200000),
+            _model("small/c", intelligence=50, blended=0.1, size="small", provider="c", context=131072),
+        ]
+
+    def test_min_context_constrains_large_slots_and_degrades_small(self):
+        catalog = self._mixed_context_catalog()
+        presets = _fixture_presets()
+        config = auto_populate.populate_configuration(
+            "premium", catalog, presets, min_context=900000)
+
+        # Large analysis slots: every picked model must be a ≥1M-context one.
+        ge_1m = {"big/ctx-a", "big/ctx-b", "big/ctx-c"}
+        depth = config["cells"]["analysis"]["gear4"]["depth"]
+        breadth = config["cells"]["analysis"]["gear4"]["breadth"]
+        for cell in (depth, breadth):
+            self.assertIsNotNone(cell)
+            for mid in [cell["primary"], *cell.get("fallback", [])]:
+                self.assertIn(mid, ge_1m,
+                              f"{mid} should be a ≥1M-context model")
+        # The short-context large model must never appear.
+        all_primaries = json.dumps(config["cells"])
+        self.assertNotIn("big/short", all_primaries)
+
+        # Utility (small-bucket) slot has NO ≥1M candidate → graceful
+        # degrade: it still fills, and the loosening_log carries the note.
+        util = config["cells"]["utility"]["step1_cleanup"]
+        self.assertIsNotNone(util, "utility slot must still fill (degrade)")
+        self.assertTrue(util["primary"].startswith("small/"))
+        loosening = config["_auto_populate_metadata"]["loosening_log"]
+        flat = " ".join(
+            note for notes in loosening.values() for note in notes)
+        self.assertIn("context floor skipped", flat)
+
+        # The toggle's resolved floor is recorded in the bake metadata.
+        self.assertEqual(
+            config["_auto_populate_metadata"]["min_context"], 900000)
+
+    def test_min_context_none_picks_freely(self):
+        catalog = self._mixed_context_catalog()
+        presets = _fixture_presets()
+        config = auto_populate.populate_configuration(
+            "premium", catalog, presets, min_context=None)
+        # Without a floor, the short-context large model is eligible again.
+        self.assertIsNone(config["_auto_populate_metadata"]["min_context"])
 
 
 if __name__ == "__main__":
