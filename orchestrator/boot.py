@@ -14046,6 +14046,20 @@ def run_agentic_loop(user_input: str, history: list = None,
     return _run_model_with_tools(messages, endpoint)
 
 
+def _is_known_style_id(style_id: str) -> bool:
+    """True if ``style_id`` names a known Output Style profile. Degrades to True
+    (accept) when the registry can't be read (e.g. PyYAML missing) so a one-off
+    /style command isn't silently eaten in a degraded environment."""
+    try:
+        try:
+            import style_assembly as _sa
+        except ImportError:
+            from orchestrator import style_assembly as _sa
+        return style_id in _sa.load_registry()
+    except Exception:
+        return True
+
+
 def parse_user_command(user_input: str) -> tuple:
     """Parse user input for commands and output directives.
 
@@ -14054,10 +14068,17 @@ def parse_user_command(user_input: str) -> tuple:
       /gear N — override gear for this query
       /save path — write output to file instead of screen
       /saveboth path — write output to file AND display
+      /style <id> — apply an Output Style to this turn (/style off to clear)
+
+    Returns ``(clean_input, use_pipeline, output_target, style_override)``.
+    ``style_override`` is ``{"style_id": <id-or-empty>}`` for a /style command
+    (empty string clears the style for this turn) or ``None`` when no /style
+    command was given.
     """
     use_pipeline = True
     output_target = "screen"
     clean_input = user_input
+    style_override = None
 
     if clean_input.startswith("/direct "):
         use_pipeline = False
@@ -14072,8 +14093,20 @@ def parse_user_command(user_input: str) -> tuple:
         if len(parts) >= 3:
             output_target = f"both:{parts[1]}"
             clean_input = parts[2]
+    elif clean_input.startswith("/style "):
+        parts = clean_input.split(" ", 2)
+        if len(parts) >= 2:
+            style_id = parts[1].strip()
+            rest = parts[2] if len(parts) >= 3 else ""
+            if style_id.lower() == "off":
+                style_override = {"style_id": ""}
+                clean_input = rest
+            elif _is_known_style_id(style_id):
+                style_override = {"style_id": style_id}
+                clean_input = rest
+            # unknown id → leave input intact so a /style typo passes as text
 
-    return clean_input, use_pipeline, output_target
+    return clean_input, use_pipeline, output_target, style_override
 
 
 def main():
@@ -14111,7 +14144,7 @@ def main():
                 print("Goodbye.")
                 break
 
-            clean_input, use_pipeline, output_target = parse_user_command(user_input)
+            clean_input, use_pipeline, output_target, _style_override = parse_user_command(user_input)
 
             response = run_agentic_loop(
                 clean_input, history,

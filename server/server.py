@@ -4903,8 +4903,13 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
     if not user_input:
         return json.dumps({"error": "empty message"}), 400
 
-    # Parse /direct, /save, /saveboth commands from input
-    clean_input, use_pipeline, output_target = parse_user_command(user_input)
+    # Parse /direct, /save, /saveboth, /style commands from input
+    clean_input, use_pipeline, output_target, style_override = parse_user_command(user_input)
+    # /style <id> one-off — fold onto extra_context so it lands on context_pkg
+    # (overriding any project/engine default; "" clears the style this turn).
+    if style_override is not None:
+        extra_context = dict(extra_context or {})
+        extra_context["style_id"] = style_override["style_id"]
 
     # Sidebar window integration: use rolling window for sidebar panels
     is_sidebar = panel_id.startswith("sidebar")
