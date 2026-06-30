@@ -358,6 +358,35 @@ def filter_vision(candidates: list[dict]) -> list[dict]:
     return [m for m in candidates if m.get("vision_capable", False)]
 
 
+def _context_of(model: dict) -> int:
+    """Model's max context window, as an int. None / missing → 0.
+
+    The catalog (config/model-catalog.json) carries this as
+    ``context_window``; the live registry and the /models inventory
+    surface it as ``context_length``. Accept either so the filter works
+    regardless of which corpus feeds the picker. None coerces to 0, so a
+    model with no recorded context is treated as having none."""
+    val = model.get("context_window")
+    if val is None:
+        val = model.get("context_length")
+    try:
+        return int(val) if val is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def filter_min_context(candidates: list[dict], min_context: int | None) -> list[dict]:
+    """Restrict to models whose context window is at least ``min_context``.
+
+    ``min_context=None`` is a no-op (the filter is off). A model with no
+    recorded context (None → 0) is dropped, since we can't prove it fits
+    a long prompt. Used by the ``min_context_1m`` preset toggle so the
+    presets pick models that can hold ~1M-token prompts."""
+    if min_context is None:
+        return candidates
+    return [m for m in candidates if _context_of(m) >= min_context]
+
+
 def filter_verified_vision(candidates: list[dict],
                            vision_verified_ids: set[str] | None = None) -> list[dict]:
     """Restrict to models that can read images.
@@ -644,6 +673,7 @@ def pick_for_paid_slot(
     reasoning_model_ids: set[str] | None = None,
     exclude_reasoning_models: bool = False,
     vision_verified_ids: set[str] | None = None,
+    min_context: int | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N models for a paid slot.
 
@@ -687,6 +717,18 @@ def pick_for_paid_slot(
         candidates = filter_exclude_reasoning(candidates, reasoning_model_ids)
     if vision_only:
         candidates = filter_verified_vision(candidates, vision_verified_ids)
+    # Context floor (min_context_1m toggle). GRACEFUL DEGRADE: if applying
+    # the floor would empty this slot's pool — e.g. a tiny utility/small
+    # slot where no model reaches ~1M context — skip the floor for this
+    # slot so it still fills, and record why in the loosening notes.
+    loosening_notes: list[str] = []
+    if min_context is not None:
+        floored = filter_min_context(candidates, min_context)
+        if floored:
+            candidates = floored
+        else:
+            loosening_notes.append(
+                f"context floor skipped (no ≥{min_context}-context candidates)")
     candidates = filter_min_tokens_per_second(
         candidates, min_tokens_per_second, tokens_per_sec)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
@@ -712,7 +754,8 @@ def pick_for_paid_slot(
     if max_cost_ceiling is not None:
         cost_ceiling = max_cost_ceiling if cost_ceiling is None else min(cost_ceiling, max_cost_ceiling)
 
-    loosening_notes: list[str] = []
+    # loosening_notes already initialized above (may carry a context-floor
+    # skip note from the graceful-degrade branch); keep appending to it.
     current_floor = floor_pct
     current_ceiling = cost_ceiling
 
@@ -790,6 +833,7 @@ def pick_for_free_slot(
     min_tokens_per_second: float | None = None,
     vision_verified_ids: set[str] | None = None,
     vision_required: bool = False,
+    min_context: int | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N free models. No cost math.
 
@@ -853,6 +897,20 @@ def pick_for_free_slot(
                 candidates = bucketed
         if tier_vision:
             candidates = filter_verified_vision(candidates, vision_verified_ids)
+        # Context floor (min_context_1m toggle). GRACEFUL DEGRADE: if the
+        # floor would empty the free pool for this cell (free models rarely
+        # reach ~1M context), skip it so the cell still fills, recording the
+        # skip in the notes. Recorded once across tiers (the same models flow
+        # through every tier, so the floor empties or fills consistently).
+        if min_context is not None:
+            floored = filter_min_context(candidates, min_context)
+            if floored:
+                candidates = floored
+            else:
+                _ctx_note = (
+                    f"context floor skipped (no ≥{min_context}-context candidates)")
+                if _ctx_note not in notes:
+                    notes.append(_ctx_note)
         candidates = filter_min_tokens_per_second(
             candidates, min_tokens_per_second, tokens_per_sec)
         candidates = [m for m in candidates if m["id"] not in excluded_ids]
@@ -945,6 +1003,7 @@ def populate_configuration(
     reasoning_model_ids: set[str] | None = None,
     registry_ids: set[str] | None = None,
     vision_verified_ids: set[str] | None = None,
+    min_context: int | None = None,
 ) -> dict:
     """Compute the full configuration dict for a given preset.
 
@@ -967,6 +1026,13 @@ def populate_configuration(
     so a stale catalog can never inject a model the Models pane would flag
     DEPRECATED. None/empty → no filtering (fresh install before any sync).
     See filter_in_registry.
+
+    ``min_context``: when set (the ``min_context_1m`` preset toggle passes
+    900000), every slot restricts to models with a context window at least
+    this large so long prompts fit. Threaded into both pick functions.
+    Graceful degrade: a slot whose candidates are all below the floor (e.g.
+    small/utility slots, where no model reaches ~1M context) SKIPS the floor
+    so it still fills, with a note in the loosening_log. None → off.
     """
     presets = presets_config["presets"]
     slot_specs = presets_config["slot_specs"]
@@ -1098,6 +1164,7 @@ def populate_configuration(
                 reasoning_model_ids=reasoning_model_ids,
                 exclude_reasoning_models=ref_settings["exclude_reasoning"],
                 vision_verified_ids=vision_verified_ids,
+                min_context=min_context,
             )
             ref_picks_all.extend(ref_picks)
             if ref_diversity and ref_picks:
@@ -1172,6 +1239,7 @@ def populate_configuration(
                     min_tokens_per_second=slot_min_tps,
                     vision_verified_ids=vision_verified_ids,
                     vision_required=slot_vision_required,
+                    min_context=min_context,
                 )
                 notes.extend(pick_notes)
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
@@ -1200,6 +1268,7 @@ def populate_configuration(
                     reasoning_model_ids=reasoning_model_ids,
                     exclude_reasoning_models=slot_exclude_reasoning,
                     vision_verified_ids=vision_verified_ids,
+                    min_context=min_context,
                 )
                 notes.extend(pick_notes)
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
@@ -1249,6 +1318,7 @@ def populate_configuration(
         "_auto_populate_metadata": {
             "preset": preset_name,
             "vision_only": effective_vision_only,
+            "min_context": min_context,
             "vision_substitute": vision_substitute,
             "loosening_log": loosening_log,
             "catalog_models_considered": len(catalog),
@@ -1268,6 +1338,11 @@ def main():
     parser.add_argument(
         "--no-vision-only", action="store_true",
         help="Allow text-only models in any slot. Overrides the preset's vision_only field.",
+    )
+    parser.add_argument(
+        "--min-context-1m", action="store_true",
+        help="Restrict every slot to ~1M-context models (≥900000). Slots with no "
+             "eligible candidate degrade gracefully (floor skipped, note logged).",
     )
     args = parser.parse_args()
 
@@ -1330,6 +1405,7 @@ def main():
         reasoning_model_ids=reasoning_model_ids,
         registry_ids=registry_ids,
         vision_verified_ids=vision_verified_ids,
+        min_context=900000 if args.min_context_1m else None,
     )
     config["name"] = args.config_name
 

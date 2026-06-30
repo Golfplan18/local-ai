@@ -589,5 +589,169 @@ class TestFastSlot(_Fixture):
         self.assertTrue(self.module._is_baseline_complete(config))
 
 
+class TestMinContext1mToggle(_Fixture):
+    """The new min_context_1m preset toggle — the top-of-pane '1M context'
+    header toggle that constrains preset picks to ~1M-context models.
+    Mirrors the vision_only toggle pattern."""
+
+    def setUp(self):
+        super().setUp()
+        # PRESET_TOGGLES_PATH is computed at import from the original
+        # DATA_DIR, so redirect it explicitly into the temp dir for the
+        # global preset-toggle tests.
+        self._orig_preset_toggles = self.module.PRESET_TOGGLES_PATH
+        self.module.PRESET_TOGGLES_PATH = self.data_dir / "preset-toggles.json"
+
+    def tearDown(self):
+        self.module.PRESET_TOGGLES_PATH = self._orig_preset_toggles
+        super().tearDown()
+
+    # ── per-config toggle (get_toggles / set_toggles / _infer_defaults) ──
+
+    def test_default_is_false_when_no_metadata(self):
+        self._write_config("c", {"cells": {}})
+        t = self.module.get_toggles("c")
+        self.assertIn("min_context_1m", t)
+        self.assertFalse(t["min_context_1m"])
+
+    def test_infers_true_from_auto_populate_metadata_min_context(self):
+        # A preset baked with the context floor on stamps min_context=900000.
+        self._write_config("c", {
+            "cells": {},
+            "_auto_populate_metadata": {"min_context": 900000},
+        })
+        t = self.module.get_toggles("c")
+        self.assertTrue(t["min_context_1m"])
+
+    def test_infers_false_when_min_context_none(self):
+        self._write_config("c", {
+            "cells": {},
+            "_auto_populate_metadata": {"min_context": None},
+        })
+        self.assertFalse(self.module.get_toggles("c")["min_context_1m"])
+
+    def test_saved_toggle_overrides_inferred(self):
+        self._write_config("c", {
+            "cells": {},
+            "_auto_populate_metadata": {"min_context": 900000},
+            "toggles": {"min_context_1m": False},
+        })
+        self.assertFalse(self.module.get_toggles("c")["min_context_1m"])
+
+    def test_set_persists_min_context_1m(self):
+        self._write_config("c", {"cells": {},
+                                 "toggles": {"vision_only": True}})
+        out = self.module.set_toggles("c", {"min_context_1m": True})
+        self.assertTrue(out["min_context_1m"])
+        self.assertTrue(out["vision_only"])  # untouched
+        with open(self.config_dir / "c.json") as f:
+            data = json.load(f)
+        self.assertTrue(data["toggles"]["min_context_1m"])
+
+    def test_infer_defaults_includes_key(self):
+        defaults = self.module._infer_defaults({"cells": {}})
+        self.assertIn("min_context_1m", defaults)
+        self.assertFalse(defaults["min_context_1m"])
+
+    def test_empty_toggles_includes_key(self):
+        self.assertIn("min_context_1m", self.module._empty_toggles())
+        self.assertFalse(self.module._empty_toggles()["min_context_1m"])
+
+    # ── global preset toggle (get_preset_toggles / set_preset_toggles) ──
+
+    def test_global_default_false(self):
+        self.assertFalse(self.module.get_preset_toggles()["min_context_1m"])
+
+    def test_global_set_and_get_roundtrip(self):
+        self.module.set_preset_toggles({"min_context_1m": True})
+        self.assertTrue(self.module.get_preset_toggles()["min_context_1m"])
+        # Other toggles untouched by the partial update.
+        self.assertFalse(self.module.get_preset_toggles()["vision_only"])
+
+    def test_global_partial_update_leaves_others(self):
+        self.module.set_preset_toggles({"vision_only": True})
+        self.module.set_preset_toggles({"min_context_1m": True})
+        toggles = self.module.get_preset_toggles()
+        self.assertTrue(toggles["vision_only"])
+        self.assertTrue(toggles["min_context_1m"])
+
+    # ── bake threading: min_context_1m → populate_configuration(min_context=) ──
+
+    def test_bake_threads_min_context_when_toggle_on(self):
+        """bake_missing_presets reads the global min_context_1m toggle and
+        passes min_context=900000 into populate_configuration."""
+        captured = {}
+
+        class _FakeAP:
+            def registry_crossref(self, *a, **k):
+                return {}
+
+            def populate_configuration(self, preset_name, catalog,
+                                       presets_config, **kwargs):
+                captured["min_context"] = kwargs.get("min_context")
+                return {"name": preset_name, "cells": {}, "toggles": {}}
+
+        self._patch_bake(_FakeAP())
+        self.module.set_preset_toggles({"min_context_1m": True})
+        self.module.bake_missing_presets(force=True)
+        self.assertEqual(captured["min_context"], 900000)
+
+    def test_bake_threads_none_when_toggle_off(self):
+        captured = {}
+
+        class _FakeAP:
+            def registry_crossref(self, *a, **k):
+                return {}
+
+            def populate_configuration(self, preset_name, catalog,
+                                       presets_config, **kwargs):
+                captured["min_context"] = kwargs.get("min_context")
+                return {"name": preset_name, "cells": {}, "toggles": {}}
+
+        self._patch_bake(_FakeAP())
+        self.module.set_preset_toggles({"min_context_1m": False})
+        self.module.bake_missing_presets(force=True)
+        self.assertIsNone(captured["min_context"])
+
+    def _patch_bake(self, fake_ap):
+        """Wire bake_missing_presets to use a fake auto-populate module +
+        in-temp catalog/presets so we can capture the threaded args without
+        running the real picker or touching ~/ora."""
+        import importlib
+        ac = self.module
+        # ORA_HOME drives the presets/catalog/script paths inside the bake.
+        cfg = Path(self.tmpdir) / "config"
+        cfg.mkdir(parents=True, exist_ok=True)
+        (cfg / "configuration-presets.json").write_text(json.dumps({"presets": {}}))
+        (cfg / "model-catalog.json").write_text(
+            json.dumps({"models": [{"id": "m", "context_window": 1000000}]}))
+        (Path(self.tmpdir) / "scripts").mkdir(parents=True, exist_ok=True)
+        (Path(self.tmpdir) / "scripts" / "auto-populate-configuration.py").write_text("# stub\n")
+
+        self._orig_ora_home = ac.ORA_HOME
+        ac.ORA_HOME = Path(self.tmpdir)
+
+        # Patch the dynamic-import machinery so exec_module yields the fake.
+        self._orig_spec = importlib.util.spec_from_file_location
+        self._orig_modfrom = importlib.util.module_from_spec
+
+        def _fake_spec(name, path):
+            class _S:
+                loader = type("L", (), {"exec_module": staticmethod(lambda m: None)})()
+            return _S()
+
+        def _fake_modfrom(spec):
+            return fake_ap
+
+        importlib.util.spec_from_file_location = _fake_spec
+        importlib.util.module_from_spec = _fake_modfrom
+
+        def _restore():
+            ac.ORA_HOME = self._orig_ora_home
+            importlib.util.spec_from_file_location = self._orig_spec
+            importlib.util.module_from_spec = self._orig_modfrom
+        self.addCleanup(_restore)
+
+
 if __name__ == "__main__":
     unittest.main()

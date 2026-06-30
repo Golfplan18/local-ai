@@ -12535,7 +12535,8 @@ def configurations_active_get():
             return _json_response({
                 "name": name,
                 "missing": True,
-                "toggles": {"adversarial_diversity": False, "vision_only": False},
+                "toggles": {"adversarial_diversity": False, "vision_only": False,
+                            "min_context_1m": False},
             })
     except Exception as exc:
         return _json_response({"error": f"active-config-read-failed: {exc}"},
@@ -12571,7 +12572,7 @@ def configurations_active_set():
 
 @app.route("/api/configurations/active/toggles", methods=["POST"])
 def configurations_active_toggles():
-    """Update Adversarial Diversity / Vision-capable toggles.
+    """Update Adversarial Diversity / Vision-capable / 1M-context toggles.
 
     The toggles ALWAYS update the global preset state and re-bake
     all four presets — the user's mental model is "these toggles
@@ -12580,8 +12581,12 @@ def configurations_active_toggles():
     gets its per-config toggle state updated so the in-card display
     stays in sync.
 
-    Body: ``{"adversarial_diversity": bool, "vision_only": bool}``;
-    either key may be omitted to leave that toggle unchanged.
+    Body: ``{"adversarial_diversity": bool, "vision_only": bool,
+    "min_context_1m": bool}``; any key may be omitted to leave that
+    toggle unchanged. ``min_context_1m`` re-bakes the presets so every
+    slot picks ~1M-context models (with graceful per-slot degrade).
+    The set_preset_toggles / set_toggles helpers whitelist the accepted
+    keys, so unknown keys in the body are ignored.
     """
     try:
         body = request.get_json(silent=True) or {}

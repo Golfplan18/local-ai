@@ -54,7 +54,7 @@
     vision: false,
     free_filter: 'any',     // 'any' (default) | 'only' (only free) | 'hide' (drop free) — was previously two mutually-exclusive chips
     pick: false,
-    context_1m: false,      // display-only: show only ~1M-context models (context_length >= 900000). Purely an inventory filter to FIND long-context models — never constrains preset picks. The 400K→1M band is empty, so 900K cleanly isolates the ~1M tier.
+    context_1m: false,      // inventory display filter: show only ~1M-context models (context_length >= 900000) in the list. Independent of the header's "1M context" PRESET toggle (min_context_1m), which actually constrains preset picks; the header toggle one-way-syncs its flip into this chip (see _setToggle), but the chip can also be toggled on its own. The 400K→1M band is empty, so 900K cleanly isolates the ~1M tier.
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
     sort_by: 'intelligence_desc',  // highest-intelligence first so the strongest models surface by default (Phase 5; was 'alpha_desc')
@@ -211,6 +211,11 @@
       var activeName = _configs.active_name || '';
       if (_lastSyncedActiveConfig !== activeName) {
         _filters.vision = !!activeToggles.vision_only;
+        // Same first-load sync for the 1M-context chip: mirror the
+        // active config's baked min_context_1m preset toggle into the
+        // inventory's 1M-ctx display chip so the list opens consistent
+        // with what the presets are actually constrained to.
+        _filters.context_1m = !!activeToggles.min_context_1m;
         _lastSyncedActiveConfig = activeName;
       }
       _renderHeader();
@@ -314,6 +319,7 @@
     var t = (_configs && _configs.active_toggles) || {};
     var adv = !!t.adversarial_diversity;
     var vis = !!t.vision_only;
+    var ctx1m = !!t.min_context_1m;
     var refreshedAt = _registry && _registry.generated_at;
     var refreshLabel = refreshedAt
       ? 'Refreshed ' + refreshedAt.substring(0, 10)
@@ -353,13 +359,15 @@
       +   _toggleHTML('vision_only', vis,
                      'Vision-capable only',
                      'restrict picks to models that see images directly')
-      // DISPLAY-ONLY toggle. Unlike the two above, this does NOT POST to
-      // the bake endpoint and does NOT re-bake presets — see _setToggle.
-      // Its checked state mirrors the inventory's 1M-ctx filter chip
-      // (_filters.context_1m), not a baked active-config toggle.
-      +   _toggleHTML('context_1m', !!_filters.context_1m,
+      // Real preset toggle (like the two above): POSTs to the bake
+      // endpoint and re-bakes all four presets with a ~1M context floor
+      // so the picks fit long prompts. Its checked state reads from the
+      // active config's baked min_context_1m toggle (NOT _filters), and
+      // flipping it also syncs the inventory's 1M-ctx chip the way
+      // vision_only syncs the Vision chip — see _setToggle.
+      +   _toggleHTML('min_context_1m', ctx1m,
                      '1M context',
-                     'Show only models with ~1M context (≥900K) in the inventory — display filter only, does not change preset picks. Context value is the model\'s max across providers.')
+                     'Constrain the presets to ~1M-context models (≥900K) so long prompts fit — re-bakes all four presets. Slots with no eligible ≥1M model degrade gracefully (floor skipped, noted on the card). Context value is the model\'s max across providers.')
       +   '<div class="ora-models-refresh-wrap" title="Re-sync the model registry (OpenRouter + AA + LiteLLM) and rebuild the picker\'s model catalog from it, so the two stay in lockstep (~20-40s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
       +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
       +     (aaBadgeLabel
@@ -443,20 +451,6 @@
   }
 
   function _setToggle(name, value) {
-    // DISPLAY-ONLY toggle: "1M context" is NOT a preset re-bake. The
-    // other two header toggles (vision_only, adversarial_diversity) POST
-    // to /api/configurations/active/toggles and re-bake all four presets.
-    // This one must NOT — the user wants to FILTER/find long-context
-    // models for long prompts, NOT constrain preset picks. Forcing
-    // presets to ≥1M context would empty the small/fast slots (most
-    // small/fast models cap well below 1M), breaking every configuration.
-    // So we just set the shared filter, sync the inventory chip the way
-    // vision_only syncs the Vision chip, and re-render the inventory.
-    if (name === 'context_1m') {
-      _filters.context_1m = !!value;
-      _renderInventory();  // re-render with the filter applied (chip reflects _filters.context_1m)
-      return;
-    }
     var payload = {};
     payload[name] = value;
     // Vision-capable toggle auto-syncs the inventory's Vision filter
@@ -466,6 +460,15 @@
     // the inventory returns to showing everything.
     if (name === 'vision_only') {
       _filters.vision = !!value;
+    }
+    // 1M-context toggle auto-syncs the inventory's 1M-ctx filter chip
+    // the same way — flipping the preset toggle ON narrows the
+    // inventory to ~1M-context models too, OFF returns it to all. The
+    // chip (_filters.context_1m) remains an independent display filter
+    // the user can also toggle on its own; this only mirrors the
+    // header toggle's flip into it.
+    if (name === 'min_context_1m') {
+      _filters.context_1m = !!value;
     }
     fetch('/api/configurations/active/toggles', {
       method: 'POST',
@@ -2205,10 +2208,12 @@
     Array.from(section.querySelectorAll('.ora-models-filter-chip input')).forEach(function (el) {
       el.addEventListener('change', function () {
         _filters[el.dataset.filter] = el.checked;
-        // context_1m is mirrored by the header's "1M context" toggle, so
-        // re-render the header too to keep toggle ⇆ chip in sync both ways
-        // (both read the shared _filters.context_1m).
-        if (el.dataset.filter === 'context_1m') _renderHeader();
+        // The context_1m chip is now an INDEPENDENT inventory display
+        // filter (like the Vision chip vs the vision_only toggle): the
+        // header's "1M context" toggle reads the baked active-config
+        // min_context_1m state, not _filters, so flipping the chip does
+        // not change the header toggle. Header→chip sync is one-way and
+        // happens in _setToggle when the header toggle flips.
         _renderInventory();
       });
     });
