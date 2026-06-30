@@ -12151,7 +12151,7 @@ def model_registry_get():
 @app.route("/api/configurations", methods=["GET"])
 def configurations_list():
     """Return everything the Models pane needs to render in one shot:
-    the 4 preset slots (free / budget / optimum / premium), the user's
+    the 4 preset slots (free / budget / speed / premium), the user's
     saved customs, the active configuration name, and the active
     toggle state. Backs the presets row + custom-previous grid + header.
 
@@ -12168,7 +12168,7 @@ def configurations_list():
     except Exception as exc:
         return _json_response({
             "error": f"configurations-list-failed: {exc}",
-            "presets": {p: None for p in ["free", "budget", "optimum", "premium"]},
+            "presets": {p: None for p in ["free", "budget", "speed", "premium"]},
             "customs": [],
         }, status=500)
 
@@ -12281,7 +12281,7 @@ def configurations_delete(name):
     Deleting the currently-active configuration is allowed; the
     backend auto-reverts the active pointer to ``free``. Refuses to
     delete system configurations (background-default, user-pipeline)
-    or the four named presets (free / budget / optimum / premium).
+    or the four named presets (free / budget / speed / premium).
     """
     try:
         from orchestrator import active_configuration as ac
@@ -12374,12 +12374,12 @@ def configurations_active_toggles():
         global_toggles = ac.get_preset_toggles()
 
         # If the active config is anything OTHER than a canonical
-        # preset file (free/budget/optimum/premium), also write its
+        # preset file (free/budget/speed/premium), also write its
         # per-config toggle state so the in-card display stays in
         # sync. We discriminate by FILE NAME, not preset_lineage —
         # legacy configs (like user-pipeline-auto) may claim
-        # lineage=optimum but have their own filename, so the bake
-        # to optimum.json wouldn't reach them.
+        # lineage=budget but have their own filename, so the bake
+        # to budget.json wouldn't reach them.
         name = ac.get_active_name()
         per_config_updated = False
         if name not in ac.PRESET_ORDER:

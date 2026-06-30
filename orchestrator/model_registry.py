@@ -202,7 +202,7 @@ def compute_picks(configurations_dir: Path | None = None) -> dict:
     A model earns PICK if it appears as a ``primary`` or in any
     ``fallback`` list inside any configuration file under
     ``config/configurations/``. The intent is that the four preset
-    configurations (premium / optimum / budget / free) live on disk;
+    configurations (premium / budget / speed / free) live on disk;
     the PICK set is the union of every preset's primary + fallback
     picks across every slot.
 

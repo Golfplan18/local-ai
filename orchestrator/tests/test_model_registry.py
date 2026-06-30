@@ -278,8 +278,8 @@ class TestComputePicks(unittest.TestCase):
         self.assertEqual(result["picks"], [])
 
     def test_picks_union_across_files(self):
-        self._write_config("optimum.json", self._typical_config(
-            preset_lineage="optimum",
+        self._write_config("speed.json", self._typical_config(
+            preset_lineage="speed",
             primaries={
                 "utility.step1_cleanup": "openai/gpt-5-nano",
                 "analysis.gear4.depth": "qwen/qwen3.6-plus",
@@ -312,8 +312,8 @@ class TestComputePicks(unittest.TestCase):
         self.assertEqual(result["picks"], sorted(result["picks"]))
 
     def test_per_model_endorsements_aggregate(self):
-        self._write_config("optimum.json", self._typical_config(
-            preset_lineage="optimum",
+        self._write_config("speed.json", self._typical_config(
+            preset_lineage="speed",
             primaries={"analysis.gear4.depth": "qwen/qwen3.6-plus"},
         ))
         self._write_config("budget.json", self._typical_config(
@@ -322,8 +322,8 @@ class TestComputePicks(unittest.TestCase):
         ))
         result = self.module.compute_picks(self.config_dir)
         entry = result["by_model"]["qwen/qwen3.6-plus"]
-        self.assertEqual(set(entry["preset_lineages"]), {"optimum", "budget"})
-        self.assertEqual(set(entry["configurations"]), {"optimum.json", "budget.json"})
+        self.assertEqual(set(entry["preset_lineages"]), {"speed", "budget"})
+        self.assertEqual(set(entry["configurations"]), {"speed.json", "budget.json"})
 
     def test_vision_substitute_is_NOT_in_picks(self):
         """vision_substitute is a text-to-vision fallback for image
@@ -341,7 +341,7 @@ class TestComputePicks(unittest.TestCase):
     def test_malformed_file_skipped(self):
         (self.config_dir / "broken.json").write_text("{ not json")
         self._write_config("good.json", self._typical_config(
-            preset_lineage="optimum",
+            preset_lineage="budget",
             primaries={"analysis.gear4.depth": "qwen/qwen3.6-plus"},
         ))
         result = self.module.compute_picks(self.config_dir)
@@ -352,8 +352,8 @@ class TestComputePicks(unittest.TestCase):
     def test_fallback_chain_contributes_to_picks(self):
         """A model can earn PICK from being in a fallback list, not
         just from being primary anywhere."""
-        self._write_config("optimum.json", self._typical_config(
-            preset_lineage="optimum",
+        self._write_config("budget.json", self._typical_config(
+            preset_lineage="budget",
             primaries={"analysis.gear4.depth": "qwen/qwen3.6-plus"},
             fallbacks={"analysis.gear4.depth": [
                 "moonshotai/kimi-k2.6",
@@ -376,7 +376,7 @@ class TestComputePicks(unittest.TestCase):
         }
         self._write_config("weird.json", {
             "name": "weird",
-            "preset_lineage": "optimum",
+            "preset_lineage": "budget",
             "cells": cells,
         })
         result = self.module.compute_picks(self.config_dir)

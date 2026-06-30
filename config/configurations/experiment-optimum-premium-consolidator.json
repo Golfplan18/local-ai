@@ -101,7 +101,7 @@
     }
   },
   "_auto_populate_metadata": {
-    "preset": "optimum",
+    "preset": "budget",
     "vision_only": true,
     "vision_substitute": "qwen/qwen3-vl-235b-a22b-instruct",
     "loosening_log": {},

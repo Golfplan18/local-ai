@@ -3,7 +3,7 @@
  *
  * Replaces the classic ConfigPanel embed inside the V3 Settings →
  * Models tab. The pane is configuration-driven: users pick or build a
- * named configuration (Premium / Optimum / Budget / Free / Custom),
+ * named configuration (Premium / Speed / Budget / Free / Custom),
  * the configuration's slot assignments drive the runtime pipeline,
  * and the registry-backed inventory lets users swap individual models
  * per slot when they want to customize.
@@ -39,11 +39,11 @@
   var _configs = null;           // /api/configurations payload — presets + customs + active
 
   // Order matches the user-locked Free→Premium left-to-right layout.
-  var PRESET_ORDER = ['free', 'budget', 'optimum', 'premium'];
+  var PRESET_ORDER = ['free', 'budget', 'speed', 'premium'];
   var PRESET_LABELS = {
     free:    'Free',
     budget:  'Budget',
-    optimum: 'Optimum',
+    speed:   'Speed',
     premium: 'Premium',
   };
   var FAST_MIN_TOKENS_PER_SECOND = 80;

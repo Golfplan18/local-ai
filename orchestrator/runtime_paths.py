@@ -17,7 +17,7 @@ RUNTIME_CONFIG_DIR = RUNTIME_ROOT / "config"
 RUNTIME_DATA_DIR = RUNTIME_ROOT / "data"
 RUNTIME_CONFIGURATIONS_DIR = RUNTIME_CONFIG_DIR / "configurations"
 
-PRESET_NAMES = ("free", "budget", "optimum", "premium")
+PRESET_NAMES = ("free", "budget", "speed", "premium")
 RUNTIME_OVERLAY_CONFIGURATION_NAMES = PRESET_NAMES + ("user-pipeline",)
 
 

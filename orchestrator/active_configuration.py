@@ -529,7 +529,7 @@ def delete_configuration(name: str) -> None:
     Safety checks (raise ValueError on violation):
       - Cannot delete system configurations (background-default,
         user-pipeline — the migrated defaults that anchor dispatch)
-        or the four named presets (free / budget / optimum / premium).
+        or the four named presets (free / budget / speed / premium).
 
     The previous "cannot delete the currently-active" guard has been
     relaxed: deleting the active configuration auto-reverts the
@@ -581,7 +581,7 @@ def _next_auto_name() -> str:
 # Canonical preset order. Matches the user-locked left-to-right order in
 # the Models pane (Free on the left so the default-first-run choice
 # anchors the upper-left corner; Premium on the right as the upgrade).
-PRESET_ORDER = ["free", "budget", "optimum", "premium"]
+PRESET_ORDER = ["free", "budget", "speed", "premium"]
 
 # Configurations excluded from the Custom-Previous grid because they
 # serve a system role rather than a user-saved customization.
@@ -596,7 +596,7 @@ def list_configurations() -> dict:
         "presets": {
           "free":    <summary> | null,
           "budget":  <summary> | null,
-          "optimum": <summary> | null,
+          "speed":   <summary> | null,
           "premium": <summary> | null,
         },
         "customs": [<summary>, ...],
@@ -606,7 +606,7 @@ def list_configurations() -> dict:
 
     A preset slot is the configuration whose ``preset_lineage`` matches
     the preset name; we prefer the canonical-named file (``free.json``,
-    ``optimum.json``, etc.) and fall back to any file carrying that
+    ``budget.json``, etc.) and fall back to any file carrying that
     lineage tag. ``null`` when no file claims that lineage.
 
     Customs are any configuration files NOT matched as a preset and
