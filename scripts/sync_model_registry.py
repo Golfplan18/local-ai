@@ -46,8 +46,12 @@ import json
 import os
 import re
 import sys
+import statistics
 import time
+import urllib.error
+import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -103,6 +107,174 @@ def fetch_openrouter_models() -> list[dict]:
     raw = _fetch(OPENROUTER_MODELS_URL)
     payload = json.loads(raw)
     return payload.get("data") or []
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# OpenRouter per-provider latency / throughput (frontend stats API)
+# ──────────────────────────────────────────────────────────────────────────
+#
+# OpenRouter's public /api/v1 models endpoint carries NO latency. The
+# per-provider numbers the website plots come from an UNDOCUMENTED internal
+# frontend endpoint that is nonetheless public + unauthenticated:
+#
+#   GET /api/frontend/v1/stats/endpoint?permaslug={canonical_slug}&variant={v}
+#
+# It returns one object per provider-endpoint, each with a nested ``stats``
+# block: p50..p99 latency (ms; this is time-to-first-token) + p50..p99
+# throughput (tok/s) + request_count, over a rolling ~30-minute window. It is
+# keyed by native OpenRouter slugs, so NO name-matching is needed (unlike the
+# AA-sourced latency it supersedes). ``permaslug`` == the ``canonical_slug``
+# already in /api/v1/models; ``variant`` is the id suffix (``free`` etc.) or
+# ``standard``. Because it is internal/undocumented and the window is volatile,
+# this is the PRIMARY speed signal but AA median speed stays the fallback, and
+# the whole layer is flag-gated (ORA_OR_STATS) so a break can't wedge the sync.
+
+OPENROUTER_STATS_URL = "https://openrouter.ai/api/frontend/v1/stats/endpoint"
+_OR_STATS_REDUCTION = "top3_fastest_mean_p50"
+
+
+def _or_variant_for_id(model_id: str) -> str:
+    """Frontend-stats ``variant`` param: the id suffix after ':' (``free``,
+    ``thinking``, …) or ``standard`` for a plain id."""
+    return model_id.split(":", 1)[1] if ":" in model_id else "standard"
+
+
+def fetch_openrouter_endpoint_stats(
+    permaslug: str, variant: str = "standard", timeout: int = 20
+) -> list[dict]:
+    """Per-provider-endpoint latency/throughput for one model from OpenRouter's
+    public frontend stats API. Returns the list of endpoint objects (each with
+    a nested ``stats`` block), or [] when the model has no live endpoints
+    (HTTP 404) or on any error — callers treat [] as no-data and fall back to
+    AA median speed."""
+    qs = urllib.parse.urlencode({"permaslug": permaslug, "variant": variant})
+    req = urllib.request.Request(
+        f"{OPENROUTER_STATS_URL}?{qs}",
+        headers={"Accept": "application/json", "User-Agent": AA_USER_AGENT},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read())
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError,
+            json.JSONDecodeError, TimeoutError):
+        return []
+    data = payload.get("data")
+    return data if isinstance(data, list) else []
+
+
+def _reduce_openrouter_stats(endpoints: list[dict], top_k: int = 3) -> dict | None:
+    """Collapse per-provider-endpoint stats into the rankable fields the Speed
+    preset needs. Latency = p50 time-to-first-token (ms); throughput = p50
+    tok/s. Endpoints with no recent traffic carry ``stats``=null and are
+    excluded (no-data, not zero).
+
+    Headline ``or_ttft_ms`` = mean of the TOP_K fastest providers' p50 latency:
+    a Speed preset should reward the fastest achievable path (OpenRouter routes
+    to it and fails over among the fast few on 429), without trusting a single
+    provider that throttles. ``best`` + ``median`` are stored alongside for
+    retuning. All provisional until calibrated against observed routing."""
+    rows = []
+    for ep in endpoints:
+        st = ep.get("stats") or {}
+        lat = _maybe_float(st.get("p50_latency"))
+        if lat is None:
+            continue
+        rows.append({
+            "provider": ep.get("provider_name") or ep.get("provider_slug"),
+            "p50_latency_ms": lat,
+            "p50_throughput": _maybe_float(st.get("p50_throughput")),
+            "request_count": st.get("request_count"),
+        })
+    if not rows:
+        return None
+    rows.sort(key=lambda r: r["p50_latency_ms"])
+    fastest = rows[:top_k]
+    tput = [r["p50_throughput"] for r in fastest if r["p50_throughput"] is not None]
+    return {
+        "or_ttft_ms": round(sum(r["p50_latency_ms"] for r in fastest) / len(fastest), 1),
+        "or_throughput_tps": round(sum(tput) / len(tput), 1) if tput else None,
+        "or_ttft_ms_best": round(rows[0]["p50_latency_ms"], 1),
+        "or_ttft_ms_median": round(
+            statistics.median([r["p50_latency_ms"] for r in rows]), 1
+        ),
+        "provider_count": len(rows),
+        "providers": rows,
+    }
+
+
+def layer_openrouter_stats(
+    models: dict, or_models: list[dict], *, enabled: bool, max_workers: int = 8
+) -> int:
+    """Enrich registry ``models`` in place with OpenRouter per-provider latency
+    + throughput (the Speed preset's primary speed signal). Flag-gated: a no-op
+    unless ``enabled`` (ORA_OR_STATS=1) so a scrape break can never wedge the
+    main sync. Returns the count of models that got latency data.
+
+    Writes top-level ``or_ttft_ms`` (mean of the top-K fastest providers' p50
+    TTFT — the rankable number) + ``or_throughput_tps``, plus a compact
+    per-provider blob under ``_provenance.openrouter_stats`` so any reduction is
+    recomputable without a re-fetch. ``<base>:free`` ids inherit from their base
+    when they lack their own stats. Models with no trafficked endpoints get no
+    fields — consumers fall back to AA median speed."""
+    if not enabled:
+        return 0
+    slug_by_id = {
+        m.get("id"): m.get("canonical_slug")
+        for m in or_models if m.get("id") and m.get("canonical_slug")
+    }
+    targets = [
+        (mid, m) for mid, m in models.items()
+        if m.get("provider") == "openrouter" and slug_by_id.get(mid)
+    ]
+    print(
+        f"[sync] OpenRouter stats: fetching per-provider latency for "
+        f"{len(targets)} models (public frontend API, no key) …",
+        flush=True,
+    )
+    fetched_at = _now_iso()
+
+    def _one(item):
+        mid, _m = item
+        endpoints = fetch_openrouter_endpoint_stats(
+            slug_by_id[mid], _or_variant_for_id(mid)
+        )
+        return mid, _reduce_openrouter_stats(endpoints)
+
+    count = 0
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        for mid, reduced in ex.map(_one, targets):
+            if not reduced:
+                continue
+            m = models[mid]
+            m["or_ttft_ms"] = reduced["or_ttft_ms"]
+            m["or_throughput_tps"] = reduced["or_throughput_tps"]
+            prov = m.setdefault("_provenance", {})
+            prov["openrouter_stats"] = {
+                "fetched_at": fetched_at,
+                "window_minutes": 30,
+                "reduction": _OR_STATS_REDUCTION,
+                "or_ttft_ms_best": reduced["or_ttft_ms_best"],
+                "or_ttft_ms_median": reduced["or_ttft_ms_median"],
+                "provider_count": reduced["provider_count"],
+                "providers": reduced["providers"],
+            }
+            count += 1
+    # ``<base>:free`` ids that lack their own stats inherit the base's number.
+    inherited = 0
+    for mid, m in models.items():
+        if not mid.endswith(":free") or m.get("or_ttft_ms") is not None:
+            continue
+        base = models.get(mid[: -len(":free")])
+        if base and base.get("or_ttft_ms") is not None:
+            m["or_ttft_ms"] = base["or_ttft_ms"]
+            m["or_throughput_tps"] = base.get("or_throughput_tps")
+            inherited += 1
+    print(
+        f"[sync]   OpenRouter stats: {count}/{len(targets)} models got latency"
+        f"{f' (+{inherited} :free inherited)' if inherited else ''}",
+        flush=True,
+    )
+    return count + inherited
 
 
 def fetch_litellm_models() -> dict:
@@ -1944,6 +2116,16 @@ def cmd_sync(args) -> int:
     # path ("via Scrape" / "via API" / "Mixed"). "mixed" indicates the
     # API path was selected but at least one endpoint fell back.
     registry["aa_source"] = aa_source_summary
+
+    # OpenRouter per-provider latency/throughput — the Speed preset's primary
+    # speed signal (AA median stays the fallback). Flag-gated so a break in the
+    # undocumented frontend stats API can't wedge the registry sync; default
+    # off until validated, then enable with ORA_OR_STATS=1.
+    or_stats_enabled = (
+        os.environ.get("ORA_OR_STATS", "").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    layer_openrouter_stats(registry["models"], or_models, enabled=or_stats_enabled)
 
     REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, "w") as f:
