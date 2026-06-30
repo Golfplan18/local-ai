@@ -945,9 +945,10 @@ a.ora-settings-apikey-label:hover {
   flex: 1;
 }
 
-/* Each slot is one row: label │ model [chip] · meta — all inline.
- * align-items: center (not baseline) so the PICK chip (tiny 8px text)
- * doesn't drag the row's baseline down and visually shrink the row. */
+/* Each slot is a two-line block: label gutter │ (name line / chips+meta line).
+ * Vertical padding gives each model block breathing room, and a hairline
+ * between adjacent rows (rule below) makes it obvious which two lines belong
+ * together — without it the stacked blocks blur into one another. */
 .ora-models-slot-row {
   display: flex;
   flex-direction: row;
@@ -956,6 +957,13 @@ a.ora-settings-apikey-label:hover {
   font-size: 11px;
   line-height: 1.3;
   min-height: 16px;
+  padding: 5px 0;
+}
+
+/* Light separator between adjacent model blocks (not before the first). The 1px
+   card-body gap above it supplies the blank space; this supplies the line. */
+.ora-models-slot-row + .ora-models-slot-row {
+  border-top: 1px solid var(--background-modifier-border, #3A3022);
 }
 
 .ora-models-slot-label {

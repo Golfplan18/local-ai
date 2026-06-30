@@ -2435,8 +2435,11 @@
     // fill them in place.
     var sections = [
       _popoutSlotHTML('large', summary.big1, summary.big1_fallback, summary.name, 2),
-      _popoutSlotHTML('fast', summary.fast1, summary.fast1_fallback, summary.name, 2),
-      _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name, 2),
+      // Fast + Small show only ONE fallback to keep the popout short. The
+      // autopicker still bakes the deeper chain (it stays in the config and is
+      // used at runtime) — this caps the DISPLAY, not the selection. Large keeps two.
+      _popoutSlotHTML('fast', summary.fast1, summary.fast1_fallback, summary.name, 1),
+      _popoutSlotHTML('small', summary.small, summary.small_fallback, summary.name, 1),
     ];
 
     popout.hidden = false;
