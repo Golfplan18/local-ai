@@ -512,6 +512,7 @@ def openrouter_view(model: dict) -> dict:
     arch = model.get("architecture") or {}
     input_mods = arch.get("input_modalities") or []
     pricing = model.get("pricing") or {}
+    supported_params = model.get("supported_parameters") or []
     return {
         "id": model.get("id"),
         "display_name": model.get("name"),
@@ -519,7 +520,16 @@ def openrouter_view(model: dict) -> dict:
         "input_modalities": input_mods,
         "output_modalities": arch.get("output_modalities") or [],
         "vision_claimed": ("image" in input_mods),
-        "supported_parameters": model.get("supported_parameters") or [],
+        "supported_parameters": supported_params,
+        # Reasoning signal, OpenRouter-native and id-keyed (no name match):
+        # ``reasoning`` in supported_parameters marks a reasoning-CAPABLE
+        # model; the top-level ``reasoning`` object's ``mandatory`` marks a
+        # forced / always-on reasoner (it thinks before answering, which
+        # inflates time-to-first-token). Robust replacement for the AA
+        # name-matched ``reasoning_model`` flag, which the AA API path leaves
+        # null. ``mandatory`` defaults to False when no reasoning object.
+        "reasoning_capable": ("reasoning" in supported_params),
+        "forced_reasoning": bool((model.get("reasoning") or {}).get("mandatory")),
         "pricing": {
             "input_per_token": _maybe_float(pricing.get("prompt")),
             "output_per_token": _maybe_float(pricing.get("completion")),
@@ -1422,6 +1432,12 @@ def merge_sources(
             "supports_tool_choice": ll_view.get("supports_tool_choice"),
             "pricing": or_view["pricing"],
             "hugging_face_id": or_view.get("hugging_face_id"),
+            # OpenRouter-native reasoning flags (id-keyed, no name matching) —
+            # robust replacement for the AA-sourced ``reasoning_model`` below,
+            # which the AA API path leaves null. ``reasoning_capable`` =
+            # supports a reasoning param; ``forced_reasoning`` = always thinks.
+            "reasoning_capable": or_view.get("reasoning_capable"),
+            "forced_reasoning": or_view.get("forced_reasoning"),
             # Chatbot Arena intelligence
             "intelligence_score": arena["intelligence_score"] if arena else None,
             "intelligence_rank": arena["intelligence_rank"] if arena else None,
@@ -1492,7 +1508,7 @@ _FREE_INHERITABLE_FIELDS = (
     "aa_math_index", "latency_total_seconds", "latency_ttft_seconds",
     "output_tokens_per_second",
     "supports_function_calling", "supports_tool_choice",
-    "reasoning_model", "release_date",
+    "reasoning_model", "reasoning_capable", "forced_reasoning", "release_date",
 )
 
 
