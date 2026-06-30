@@ -1,9 +1,16 @@
 """Tests for the Arena → OpenRouter name-matching algorithm in
 ``scripts/sync_model_registry.py``.
 
-Pins the Chunk L (2026-05-20) algorithm fixes — pre-fix coverage was
-19%; the new tokenizer + OR→Arena direction walking lifted it to 50%.
-These tests cover the specific failure cases that informed the fix.
+Pins the tokenizer + OR→Arena direction walking that lifted Arena
+coverage from 19% to 50% (Chunk L, 2026-05-20), as refined by the
+2026-05-22 version-preservation fix (commit cf5114cc): dots normalize
+to hyphens before splitting and short numeric tokens (1-3 digits)
+survive as version components, so per-variant slugs like gpt-5-1 /
+gpt-5-2 / gpt-5-5 no longer collapse onto a single {gpt} token and
+inherit each other's intelligence scores. "latest" is likewise kept as
+a distinguishing token (it was dropped from the noise list in the same
+fix so "-latest" alias pointers stay meaningful). These tests cover the
+specific failure cases that informed the matcher.
 """
 import os
 import sys
@@ -28,11 +35,12 @@ class TestTokenizer(unittest.TestCase):
     that previously bloated the Jaccard denominator."""
 
     def test_strips_parenthesized_suffix(self):
-        # Bare numeric tokens like "4" are dropped on both sides
-        # (digit-only = noise size/version). Versioned forms like
-        # "4.5" are kept (the dot makes it semantic).
+        # The parenthesized date suffix "(20250514)" is stripped before
+        # tokenizing. The bare "4" survives: since the 2026-05-22 fix,
+        # short numeric tokens (1-3 digits) are kept as version
+        # components so per-variant slugs don't collapse together.
         toks = tokenize_model_name("Claude Opus 4 (20250514)")
-        self.assertEqual(toks, {"claude", "opus"})
+        self.assertEqual(toks, {"claude", "opus", "4"})
 
     def test_strips_thinking_size_parenthetical(self):
         toks = tokenize_model_name("Claude Opus 4 (thinking-16k)")
@@ -41,46 +49,62 @@ class TestTokenizer(unittest.TestCase):
         self.assertNotIn("16k", toks)
 
     def test_strips_date_suffix_hyphen(self):
-        # "Grok-4-0709" → grok (4 and 0709 both dropped as digit-only)
+        # "Grok-4-0709" → the "-0709" tail date is stripped by the
+        # pre-token date regex; "4" survives as a short version token.
         toks = tokenize_model_name("Grok-4-0709")
-        self.assertEqual(toks, {"grok"})
+        self.assertEqual(toks, {"grok", "4"})
 
-    def test_preserves_dotted_version(self):
-        # "claude-opus-4.5" → 4.5 has a dot → kept as semantic version
+    def test_dotted_version_normalized_to_hyphen_split(self):
+        # Since the 2026-05-22 fix, dots normalize to hyphens BEFORE
+        # splitting, so "claude-opus-4.5" tokenizes identically to the
+        # hyphen form "claude-opus-4-5" → {claude, opus, 4, 5}. This is
+        # what lets a dotted "gpt-5.1" match OpenRouter's "gpt-5-1".
         toks = tokenize_model_name("claude-opus-4.5")
-        self.assertEqual(toks, {"claude", "opus", "4.5"})
+        self.assertEqual(toks, {"claude", "opus", "4", "5"})
 
     def test_strips_yyyy_mm_dd(self):
         toks = tokenize_model_name("GPT-4o-2024-08-06")
         self.assertEqual(toks, {"gpt", "4o"})
 
     def test_strips_year_only(self):
-        # Year tokens like "2025" should not survive as a standalone
+        # Year tokens like "2025" should not survive as a standalone.
         toks = tokenize_model_name("ChatGPT-4o-latest 2025")
-        # chatgpt → gpt; latest dropped; 2025 dropped
-        self.assertEqual(toks, {"gpt", "4o"})
+        # chatgpt → gpt; 2025 dropped as a year token; "latest" is kept
+        # (removed from the noise list in the 2026-05-22 fix so
+        # "-latest" alias pointers stay distinguishable).
+        self.assertEqual(toks, {"gpt", "4o", "latest"})
 
     def test_chatgpt_normalized_to_gpt(self):
+        # "chatgpt" brand-normalizes to "gpt" and the parenthesized date
+        # is stripped, so the Arena form tokenizes identically to the
+        # plain "gpt-4o-latest" id. ("latest" is retained on both sides
+        # since the 2026-05-22 fix, so the comparison id keeps it too.)
         a = tokenize_model_name("ChatGPT-4o-latest (2025-03-26)")
-        b = tokenize_model_name("gpt-4o")
+        b = tokenize_model_name("gpt-4o-latest")
         self.assertEqual(a, b)
 
     def test_splits_compound_version_token(self):
-        # "qwen2.5" must split into "qwen" + "2.5" so it can match
-        # the hyphenated OpenRouter form
+        # "Qwen2.5" splits into family + version, and the dotted version
+        # normalizes to hyphen-split digits → {qwen, 2, 5}, matching the
+        # OpenRouter form "qwen-2.5-72b-instruct" token-for-token.
         toks = tokenize_model_name("Qwen2.5-72B-Instruct")
         self.assertIn("qwen", toks)
-        self.assertIn("2.5", toks)
+        self.assertIn("2", toks)
+        self.assertIn("5", toks)
         self.assertIn("72b", toks)
+        # The compound "2.5" is not retained as a single token.
+        self.assertNotIn("2.5", toks)
 
     def test_splits_compound_with_letter_suffix(self):
         toks = tokenize_model_name("Qwen3-235B-A22B")
         self.assertEqual(toks, {"qwen", "3", "235b", "a22b"})
 
-    def test_drops_pure_digit_tokens(self):
-        # Bare "8", "16" digits are noise (size labels) after splitting
+    def test_dotted_version_collapses_after_normalization(self):
+        # "Llama-3.3-70B-Instruct": dots → hyphens means "3.3" becomes
+        # "3-3", whose two "3" digits dedupe to a single short token.
+        # "70b" is alphanumeric so it is kept whole; "instruct" is noise.
         toks = tokenize_model_name("Llama-3.3-70B-Instruct")
-        self.assertEqual(toks, {"llama", "3.3", "70b"})
+        self.assertEqual(toks, {"llama", "3", "70b"})
 
     def test_empty_returns_empty_set(self):
         self.assertEqual(tokenize_model_name(""), set())
