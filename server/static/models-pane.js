@@ -54,6 +54,7 @@
     vision: false,
     free_filter: 'any',     // 'any' (default) | 'only' (only free) | 'hide' (drop free) — was previously two mutually-exclusive chips
     pick: false,
+    context_1m: false,      // display-only: show only ~1M-context models (context_length >= 900000). Purely an inventory filter to FIND long-context models — never constrains preset picks. The 400K→1M band is empty, so 900K cleanly isolates the ~1M tier.
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
     search: '',
     sort_by: 'intelligence_desc',  // highest-intelligence first so the strongest models surface by default (Phase 5; was 'alpha_desc')
@@ -167,7 +168,7 @@
     _picksSet = null;
     _configs = null;
     _filters = {
-      vision: false, free_filter: 'any', pick: false,
+      vision: false, free_filter: 'any', pick: false, context_1m: false,
       intelligence_pct: 0, search: '', sort_by: 'intelligence_desc',
       category: 'chat', grouping: 'vendor', include_unsized: false,
     };
@@ -352,6 +353,13 @@
       +   _toggleHTML('vision_only', vis,
                      'Vision-capable only',
                      'restrict picks to models that see images directly')
+      // DISPLAY-ONLY toggle. Unlike the two above, this does NOT POST to
+      // the bake endpoint and does NOT re-bake presets — see _setToggle.
+      // Its checked state mirrors the inventory's 1M-ctx filter chip
+      // (_filters.context_1m), not a baked active-config toggle.
+      +   _toggleHTML('context_1m', !!_filters.context_1m,
+                     '1M context',
+                     'Show only models with ~1M context (≥900K) in the inventory — display filter only, does not change preset picks. Context value is the model\'s max across providers.')
       +   '<div class="ora-models-refresh-wrap" title="Re-sync the model registry (OpenRouter + AA + LiteLLM) and rebuild the picker\'s model catalog from it, so the two stay in lockstep (~20-40s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
       +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
       +     (aaBadgeLabel
@@ -435,6 +443,20 @@
   }
 
   function _setToggle(name, value) {
+    // DISPLAY-ONLY toggle: "1M context" is NOT a preset re-bake. The
+    // other two header toggles (vision_only, adversarial_diversity) POST
+    // to /api/configurations/active/toggles and re-bake all four presets.
+    // This one must NOT — the user wants to FILTER/find long-context
+    // models for long prompts, NOT constrain preset picks. Forcing
+    // presets to ≥1M context would empty the small/fast slots (most
+    // small/fast models cap well below 1M), breaking every configuration.
+    // So we just set the shared filter, sync the inventory chip the way
+    // vision_only syncs the Vision chip, and re-render the inventory.
+    if (name === 'context_1m') {
+      _filters.context_1m = !!value;
+      _renderInventory();  // re-render with the filter applied (chip reflects _filters.context_1m)
+      return;
+    }
     var payload = {};
     payload[name] = value;
     // Vision-capable toggle auto-syncs the inventory's Vision filter
@@ -1602,6 +1624,12 @@
     if (!isMedia && _filters.free_filter === 'only' && !isFree) return false;
     if (!isMedia && _filters.free_filter === 'hide' && isFree) return false;
     if (_filters.pick && !(_picksSet && _picksSet.has(model.id))) return false;
+    // 1M-context chip: show only models in the ~1M tier. context_length
+    // is the model's max across providers; 900000 cleanly isolates the
+    // 1M band because the 400K→1M range is empty in the catalog. Applies
+    // to media too (a long-context filter is meaningful regardless of
+    // category), so it sits outside the !isMedia guards above.
+    if (_filters.context_1m && (Number(model.context_length) || 0) < 900000) return false;
     // Slot-pick size gate. When picking BIG 1 / BIG 2, restrict to
     // large-bucket models; SMALL / utility to small-bucket. Models
     // with no size_bucket are hidden by default — some are "~latest"
@@ -1948,8 +1976,9 @@
 
   function _filterChipsHTML() {
     var chips = [
-      {key: 'vision', label: 'Vision'},
-      {key: 'pick',   label: 'PICK'},
+      {key: 'vision',     label: 'Vision'},
+      {key: 'pick',       label: 'PICK'},
+      {key: 'context_1m', label: '1M ctx'},
     ];
     var freeOptions = [
       {id: 'any',  label: 'Any cost'},
@@ -2176,6 +2205,10 @@
     Array.from(section.querySelectorAll('.ora-models-filter-chip input')).forEach(function (el) {
       el.addEventListener('change', function () {
         _filters[el.dataset.filter] = el.checked;
+        // context_1m is mirrored by the header's "1M context" toggle, so
+        // re-render the header too to keep toggle ⇆ chip in sync both ways
+        // (both read the shared _filters.context_1m).
+        if (el.dataset.filter === 'context_1m') _renderHeader();
         _renderInventory();
       });
     });
