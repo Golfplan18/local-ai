@@ -397,7 +397,12 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
       ``registry_ids``        — every id in the live registry (filter_in_registry)
       ``unreachable_ids``     — reachability exclusion set (see below)
       ``tokens_per_sec``      — Fast-slot sort key map
-      ``reasoning_model_ids`` — Fast-slot exclusion set
+      ``latency_ms``          — Speed-slot sort key map: {id: time-to-first-token
+                                in ms}, OpenRouter or_ttft_ms preferred, AA
+                                latency_ttft_seconds × 1000 as fallback; models
+                                with neither are omitted (they sort LAST)
+      ``reasoning_model_ids`` — Fast/Speed-slot exclusion set (reasoning_model
+                                OR forced_reasoning flagged)
       ``vision_verified_ids`` — chat ids with confirmed vision support
 
     Reachability policy (2026-06-11): a chat model is pick-eligible only
@@ -417,6 +422,7 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
         "registry_ids": set(),
         "unreachable_ids": set(),
         "tokens_per_sec": {},
+        "latency_ms": {},
         "reasoning_model_ids": set(),
         "vision_verified_ids": set(),
     }
@@ -437,6 +443,13 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
                     out["unreachable_ids"].add(mid)
             if m.get("reasoning_model") is True:
                 out["reasoning_model_ids"].add(mid)
+            # Newer, more robust reasoning flag (PR #113). forced_reasoning
+            # marks models whose hidden chain-of-thought can't be disabled —
+            # exactly the ones the Speed preset must exclude (they stall
+            # before the first token). Kept additive to reasoning_model so
+            # the back-compat flag still contributes.
+            if m.get("forced_reasoning") is True:
+                out["reasoning_model_ids"].add(mid)
             if ((m.get("category") or "chat") == "chat"
                     and m.get("vision_capable") is True
                     and m.get("vision_verified_by")):
@@ -444,6 +457,18 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
             tps = m.get("output_tokens_per_second")
             if tps is not None:
                 out["tokens_per_sec"][mid] = float(tps)
+            # Latency (time-to-first-token) map for the Speed preset's
+            # latency_asc sort. Prefer OpenRouter's per-provider TTFT in ms
+            # (or_ttft_ms, PR #114); fall back to the AA median TTFT in
+            # seconds (latency_ttft_seconds → ×1000). Models with neither
+            # are omitted, so they sort LAST under sort_by_latency_ascending.
+            or_ttft = m.get("or_ttft_ms")
+            if or_ttft is not None:
+                out["latency_ms"][mid] = float(or_ttft)
+            else:
+                aa_ttft = m.get("latency_ttft_seconds")
+                if aa_ttft is not None:
+                    out["latency_ms"][mid] = float(aa_ttft) * 1000.0
     except Exception as exc:
         # Fail soft but never silently: a corrupt registry disables the
         # reachability gate, the in-registry filter, and the Fast-slot
@@ -457,6 +482,7 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
             "registry_ids": set(),
             "unreachable_ids": set(),
             "tokens_per_sec": {},
+            "latency_ms": {},
             "reasoning_model_ids": set(),
             "vision_verified_ids": set(),
         }
@@ -516,6 +542,36 @@ def tokens_per_second_of(model: dict, tps_map: dict[str, float] | None = None) -
     tps_map = tps_map or {}
     val = tps_map.get(model.get("id", ""), model.get("output_tokens_per_second"))
     return float(val) if val is not None else None
+
+
+def latency_of(model: dict, latency_map: dict[str, float] | None = None) -> float | None:
+    """Time-to-first-token in ms, from the registry-derived latency map.
+
+    The map (built by registry_crossref) already prefers OpenRouter's
+    per-provider TTFT (or_ttft_ms) and falls back to the AA median
+    (latency_ttft_seconds × 1000). None means we have no latency signal
+    for this model — under sort_by_latency_ascending it sorts LAST."""
+    latency_map = latency_map or {}
+    val = latency_map.get(model.get("id"))
+    return float(val) if val is not None else None
+
+
+def sort_by_latency_ascending(candidates: list[dict], latency_map: dict[str, float]) -> list[dict]:
+    """Sort by time-to-first-token ascending (fastest first). Models with no
+    latency signal sink to the bottom (None treated as +infinity). Used by
+    the Speed preset to surface the lowest-latency models per slot.
+
+    Deterministic tie-breaking mirrors sort_by_cost_ascending: a stable
+    cost-ascending base pass (cost asc, recency desc) fixes the order within
+    equal-latency groups — including the no-latency tail — so two models
+    with identical (or absent) latency rank by cheapest-then-newest."""
+    by_cost = sort_by_cost_ascending(candidates)
+    return sorted(
+        by_cost,
+        key=lambda m: (latency_of(m, latency_map)
+                       if latency_of(m, latency_map) is not None
+                       else math.inf),
+    )
 
 
 def filter_min_tokens_per_second(
@@ -584,6 +640,7 @@ def pick_for_paid_slot(
     sort_by: str = "cost_asc",
     unreachable_ids: set[str] | None = None,
     tokens_per_sec: dict[str, float] | None = None,
+    latency_ms: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
     exclude_reasoning_models: bool = False,
     vision_verified_ids: set[str] | None = None,
@@ -594,6 +651,7 @@ def pick_for_paid_slot(
       "cost_asc"             — cheapest first (default; used by Optimum/Budget)
       "intelligence_desc"    — smartest first (used by Premium for Big)
       "tokens_per_sec_desc"  — fastest first (available for speed-first slots)
+      "latency_asc"          — lowest time-to-first-token (used by Speed)
 
     ``exclude_reasoning_models``: when True, drop entries flagged
     ``reasoning_model=True`` in the registry. Kept for older preset rules;
@@ -660,6 +718,8 @@ def pick_for_paid_slot(
 
     if sort_by == "tokens_per_sec_desc":
         sort_fn = lambda c: sort_by_tokens_per_sec_descending(c, tokens_per_sec or {})
+    elif sort_by == "latency_asc":
+        sort_fn = lambda c: sort_by_latency_ascending(c, latency_ms or {})
     elif sort_by == "intelligence_desc":
         sort_fn = sort_by_intelligence_descending
     else:
@@ -724,6 +784,7 @@ def pick_for_free_slot(
     unreachable_ids: set[str] | None = None,
     sort_by: str = "intelligence_desc",
     tokens_per_sec: dict[str, float] | None = None,
+    latency_ms: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
     exclude_reasoning_models: bool = False,
     min_tokens_per_second: float | None = None,
@@ -733,7 +794,8 @@ def pick_for_free_slot(
     """Pick top-N free models. No cost math.
 
     ``sort_by`` defaults to ``intelligence_desc`` (the historical Free
-    behavior); Fast slot overrides to ``tokens_per_sec_desc``.
+    behavior); Fast slot overrides to ``tokens_per_sec_desc``; the Speed
+    preset overrides to ``latency_asc``.
 
     size_bucket=None means "any free model" (Free preset doesn't require
     bucket conformance because free models are scarcer).
@@ -800,6 +862,8 @@ def pick_for_free_slot(
         # never changes the (Pareto-optimal) primary.
         if sort_by == "tokens_per_sec_desc":
             picks = sort_by_tokens_per_sec_descending(candidates, tokens_per_sec or {})[:top_n]
+        elif sort_by == "latency_asc":
+            picks = sort_by_latency_ascending(candidates, latency_ms or {})[:top_n]
         else:
             picks = sort_by_intelligence_descending(candidates)[:top_n]
         if picks:
@@ -877,6 +941,7 @@ def populate_configuration(
     vision_only: bool | None = None,
     unreachable_ids: set[str] | None = None,
     tokens_per_sec: dict[str, float] | None = None,
+    latency_ms: dict[str, float] | None = None,
     reasoning_model_ids: set[str] | None = None,
     registry_ids: set[str] | None = None,
     vision_verified_ids: set[str] | None = None,
@@ -944,9 +1009,24 @@ def populate_configuration(
             floor = preset_obj.get("floor_pct")
         ceiling = (slot_spec["cost_ceiling_per_m"] if "cost_ceiling_per_m" in slot_spec
                    else preset_obj.get("cost_ceiling_per_m"))
+        # Speed mode: latency-rank + reasoning-exclusion apply UNIFORMLY to
+        # every slot. This overrides any slot-level sort_by (e.g. the Fast
+        # slot's tokens_per_sec_desc) and any slot-level exclude_reasoning,
+        # because Speed's whole identity is "fastest first response across
+        # the board" — reasoning models stall before the first token, so
+        # they're excluded everywhere, not just on Fast. Detected via the
+        # preset's speed_mode flag OR a preset-level sort_by of latency_asc.
+        speed_mode = (preset_obj.get("speed_mode") is True
+                      or preset_obj.get("sort_by") == "latency_asc")
+        if speed_mode:
+            resolved_sort_by = "latency_asc"
+            resolved_exclude_reasoning = True
+        else:
+            resolved_sort_by = slot_spec.get("sort_by") or preset_obj.get("sort_by", "cost_asc")
+            resolved_exclude_reasoning = slot_spec.get("exclude_reasoning_models", False)
         return {
-            "sort_by": slot_spec.get("sort_by") or preset_obj.get("sort_by", "cost_asc"),
-            "exclude_reasoning": slot_spec.get("exclude_reasoning_models", False),
+            "sort_by": resolved_sort_by,
+            "exclude_reasoning": resolved_exclude_reasoning,
             "floor": floor,
             "ceiling": ceiling,
             "adaptive_ceiling": (
@@ -1012,6 +1092,7 @@ def populate_configuration(
                 sort_by=ref_settings["sort_by"],
                 unreachable_ids=unreachable_ids,
                 tokens_per_sec=tokens_per_sec,
+                latency_ms=latency_ms,
                 reasoning_model_ids=reasoning_model_ids,
                 exclude_reasoning_models=ref_settings["exclude_reasoning"],
                 vision_verified_ids=vision_verified_ids,
@@ -1083,6 +1164,7 @@ def populate_configuration(
                     unreachable_ids=unreachable_ids,
                     sort_by=slot_sort_by,
                     tokens_per_sec=tokens_per_sec,
+                    latency_ms=latency_ms,
                     reasoning_model_ids=reasoning_model_ids,
                     exclude_reasoning_models=slot_exclude_reasoning,
                     min_tokens_per_second=slot_min_tps,
@@ -1112,6 +1194,7 @@ def populate_configuration(
                     sort_by=slot_sort_by,
                     unreachable_ids=unreachable_ids,
                     tokens_per_sec=tokens_per_sec,
+                    latency_ms=latency_ms,
                     reasoning_model_ids=reasoning_model_ids,
                     exclude_reasoning_models=slot_exclude_reasoning,
                     vision_verified_ids=vision_verified_ids,
@@ -1173,7 +1256,7 @@ def populate_configuration(
 
 def main():
     parser = argparse.ArgumentParser(description="Auto-populate a named configuration from the model catalog.")
-    parser.add_argument("preset", help="Preset name: premium | optimum | budget | free")
+    parser.add_argument("preset", help="Preset name: premium | optimum | budget | speed | free")
     parser.add_argument("config_name", help="Configuration name (e.g. user-pipeline)")
     parser.add_argument("--dry-run", action="store_true", help="Print the populated configuration without writing.")
     parser.add_argument(
@@ -1224,12 +1307,15 @@ def main():
     unreachable_ids = xref["unreachable_ids"]
     reasoning_model_ids = xref["reasoning_model_ids"]
     tokens_per_sec = xref["tokens_per_sec"]
+    latency_ms = xref.get("latency_ms") or {}
     registry_ids = xref["registry_ids"]
     vision_verified_ids = xref.get("vision_verified_ids") or set()
     if unreachable_ids:
         print(f"[auto-populate] excluding {len(unreachable_ids)} models without a positive reachability verdict (strict gate; see registry_crossref).")
     if reasoning_model_ids:
-        print(f"[auto-populate] {len(reasoning_model_ids)} reasoning models available for exclusion (Fast slot).")
+        print(f"[auto-populate] {len(reasoning_model_ids)} reasoning models available for exclusion (Fast / Speed slots).")
+    if latency_ms:
+        print(f"[auto-populate] {len(latency_ms)} models carry a latency signal (Speed slot sort key).")
     if vision_verified_ids:
         print(f"[auto-populate] {len(vision_verified_ids)} vision-verified models available for required-vision slots.")
 
@@ -1238,6 +1324,7 @@ def main():
         vision_only=vision_override,
         unreachable_ids=unreachable_ids,
         tokens_per_sec=tokens_per_sec,
+        latency_ms=latency_ms,
         reasoning_model_ids=reasoning_model_ids,
         registry_ids=registry_ids,
         vision_verified_ids=vision_verified_ids,
