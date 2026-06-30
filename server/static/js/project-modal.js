@@ -91,6 +91,8 @@
       momSave:   modal.querySelector('#pmMomSave'),
       momMsg:    modal.querySelector('#pmMomMsg'),
       momNote:   modal.querySelector('#pmMomNote'),
+      momAssist: modal.querySelector('#pmMomAssist'),
+      momIntent: modal.querySelector('#pmMomIntent'),
     };
 
     // Wiring
@@ -101,6 +103,7 @@
     els.momSave.addEventListener('click', saveMom);
     els.momAddBtn.addEventListener('click', () => { addMilestoneRow({ text: '', done: false, indent: 0 }); });
     els.momRawToggle.addEventListener('change', toggleMomRaw);
+    els.momAssist.addEventListener('click', assistMom);
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modal.classList.contains('show')) {
@@ -171,6 +174,17 @@
       <div class="project-modal__panel" data-panel="mom">
         <div class="project-modal__hint" id="pmMomNote" style="margin-bottom:14px"></div>
         <div class="project-modal__field">
+          <div class="project-modal__assist-row">
+            <div class="project-modal__assist-input">
+              <label class="project-modal__label" for="pmMomIntent">Draft with AI <span style="font-weight:400;color:var(--text-faint)">(optional hint)</span></label>
+              <input class="project-modal__input" id="pmMomIntent" type="text"
+                placeholder="e.g. a weekly solo-builder podcast, ships Mondays" />
+            </div>
+            <button type="button" class="project-modal__btn project-modal__btn--assist" id="pmMomAssist">Draft with AI</button>
+          </div>
+          <div class="project-modal__hint">Fills Mission, Objectives, and Milestones below for you to review and edit. Nothing is saved until you click Save.</div>
+        </div>
+        <div class="project-modal__field">
           <label class="project-modal__label" for="pmMission">Mission</label>
           <textarea class="project-modal__textarea" id="pmMission" rows="3"
             placeholder="Why this project exists — the durable purpose."></textarea>
@@ -229,6 +243,8 @@
     momRawMode = false; momCache = null;
     els.titleName.textContent = current.name;
     selectTab('overview');
+    // Fresh state per open — the AI-draft hint must not leak across projects.
+    if (els.momIntent) els.momIntent.value = '';
     if (els.momRawToggle) els.momRawToggle.checked = false;
     toggleMomRaw();
     setStatus(els.ovMsg, ''); setStatus(els.momMsg, '');
@@ -361,15 +377,17 @@
       momCache = {};
       setStatus(els.momNote, '');
       els.momNote.textContent = 'General has no Operation-Matrix. Create a project to set a Mission, Objectives, and Milestones.';
-      [els.mission, els.objectives, els.momRaw].forEach(e => { if (e) { e.value = ''; e.disabled = true; } });
+      [els.mission, els.objectives, els.momRaw, els.momIntent].forEach(e => { if (e) { e.value = ''; e.disabled = true; } });
       if (els.momSave) els.momSave.disabled = true;
       if (els.momAddBtn) els.momAddBtn.disabled = true;
+      if (els.momAssist) els.momAssist.disabled = true;
       renderMilestones([]);
       return;
     }
-    [els.mission, els.objectives, els.momRaw].forEach(e => { if (e) e.disabled = false; });
+    [els.mission, els.objectives, els.momRaw, els.momIntent].forEach(e => { if (e) e.disabled = false; });
     if (els.momSave) els.momSave.disabled = false;
     if (els.momAddBtn) els.momAddBtn.disabled = false;
+    if (els.momAssist) els.momAssist.disabled = false;
     setStatus(els.momMsg, 'Loading…');
     try {
       const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
@@ -387,6 +405,57 @@
     } catch (e) {
       momCache = {};
       setStatus(els.momMsg, 'Could not load Mission/Objectives/Milestones.', 'error');
+    }
+  }
+
+  async function assistMom() {
+    if (isGeneral()) return;
+    // Clobber guard — the assist DRAFTS into the fields; confirm before
+    // overwriting existing content (checked against the SAME sources saveMom
+    // reads, so raw vs checkbox mode is honored).
+    const hasContent = els.mission.value.trim() || els.objectives.value.trim()
+      || (momRawMode ? els.momRaw.value.trim() : collectMilestones().length);
+    if (hasContent && !confirm(
+      'Replace the current Mission, Objectives, and Milestones with an AI draft? Your unsaved edits will be overwritten.')) {
+      return;
+    }
+    const prev = els.momAssist.textContent;
+    els.momAssist.disabled = true;
+    els.momSave.disabled = true;
+    els.momAssist.textContent = 'Drafting…';
+    setStatus(els.momMsg, 'Drafting with AI…');
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus) + '/mom-assist', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: current.name,
+          intent: (els.momIntent.value || '').trim(),
+          fields: {
+            mission: els.mission.value,
+            objectives: els.objectives.value,
+            milestones_raw: momRawMode ? els.momRaw.value
+              : collectMilestones().map(m => `${'  '.repeat(m.indent)}- [${m.done ? 'x' : ' '}] ${m.text}`).join('\n'),
+          },
+        }),
+      });
+      const data = await r.json();
+      if (data && data.ok && data.suggestions) {
+        const s = data.suggestions;
+        els.mission.value = s.mission || '';
+        els.objectives.value = s.objectives || '';
+        // Honor the current editing mode — fill exactly one of the two views.
+        if (momRawMode) els.momRaw.value = s.milestones_raw || '';
+        else renderMilestones(s.milestones || []);
+        setStatus(els.momMsg, 'Drafted — review and edit, then Save.', 'ok');
+      } else {
+        setStatus(els.momMsg, (data && data.error) || 'Drafting failed.', 'error');
+      }
+    } catch (e) {
+      setStatus(els.momMsg, 'Drafting failed: ' + (e.message || e), 'error');
+    } finally {
+      els.momAssist.disabled = false;
+      els.momSave.disabled = false;
+      els.momAssist.textContent = prev;
     }
   }
 

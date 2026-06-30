@@ -228,6 +228,16 @@ def _parse_tasks(raw: str) -> list[dict[str, Any]]:
     return tasks
 
 
+def parse_milestones(raw: str) -> list[dict[str, Any]]:
+    """Public: parse markdown task lines into ``[{text, done, indent}]``."""
+    return _parse_tasks(raw)
+
+
+def render_milestones(milestones: list[dict[str, Any]]) -> str:
+    """Public: render ``[{text, done, indent}]`` back to markdown task lines."""
+    return _render_tasks(milestones)
+
+
 def _render_tasks(milestones: list[dict[str, Any]]) -> str:
     lines: list[str] = []
     for item in milestones or []:
@@ -397,4 +407,6 @@ __all__ = [
     "resolve_matrix_path",
     "read_mom",
     "write_mom",
+    "parse_milestones",
+    "render_milestones",
 ]
