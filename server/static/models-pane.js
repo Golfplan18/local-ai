@@ -368,7 +368,7 @@
       // vision_only syncs the Vision chip — see _setToggle.
       +   _toggleHTML('min_context_1m', ctx1m,
                      '1M context',
-                     'Constrain the presets to ~1M-context models (≥900K) so long prompts fit — re-bakes all four presets. Slots with no eligible ≥1M model degrade gracefully (floor skipped, noted on the card). Context value is the model\'s max across providers.')
+                     'Constrain presets to ~1M-context models so long prompts fit — re-bakes all four; slots with none degrade gracefully.')
       +   '<div class="ora-models-refresh-wrap" title="Re-sync the model registry (OpenRouter + AA + LiteLLM) and rebuild the picker\'s model catalog from it, so the two stay in lockstep (~20-40s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
       +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
       +     (aaBadgeLabel
@@ -806,7 +806,6 @@
         + '<span class="ora-models-slot-value">—</span>'
         + '</div>';
     }
-    var isPick = _picksSet && _picksSet.has(modelId);
     var model = _resolveRegistryModel(modelId);  // honors the id-alias map
     var isDeprecated = !model;  // not in the registry (and no alias) → retired
     if (isDeprecated) classes += ' ora-models-slot-row-deprecated';
@@ -842,7 +841,11 @@
       +   '</span>'
       +   '<span class="ora-models-slot-info-line">'
       +     capChip
-      +     (isPick ? '<span class="ora-models-pick-chip">PICK</span>' : '')
+      // Full chip set (PICK / DIRECT / VISION / LOCAL / :free / …) — same as
+      // the inventory and popout, so a preset card shows whether its picks are
+      // vision-capable, direct-dispatched, etc. (model is null only when
+      // deprecated, where the DEPRECATED chip stands in).
+      +     (model ? _modelChipsHTML(model) : '')
       +     (isDeprecated ? '<span class="ora-models-deprecated-chip">DEPRECATED</span>' : '')
       +     (meta ? '<span class="ora-models-slot-meta">' + meta + '</span>' : '')
       +   '</span>'

@@ -953,7 +953,7 @@ a.ora-settings-apikey-label:hover {
   display: flex;
   flex-direction: row;
   align-items: flex-start;   /* the label gutter aligns to the name line */
-  gap: 6px;
+  gap: 4px;
   font-size: 11px;
   line-height: 1.3;
   min-height: 16px;
@@ -971,14 +971,16 @@ a.ora-settings-apikey-label:hover {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  /* Widened 32px → 64px so longer labels ("image gen",
-     "consolidate", "verify") fit in the column without crowding
-     the model-value cell. Was visible in the screenshot earlier:
-     "IMAGE G" running into the model name. */
-  width: 64px;
+  /* Gutter sized to fit the short slot labels (BIG 1 / FAST / SMALL) snugly so
+     the model name sits close to it; the longer expand-view labels
+     ("consolidate", "verify") clip cleanly at the edge rather than pushing the
+     name out. */
+  width: 56px;
   flex-shrink: 0;
-  padding-right: 4px;
+  padding-right: 3px;
   padding-top: 1px;          /* nudge the gutter onto the name line */
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* Two-line listing: line 1 is the model name (monospace, full width);
@@ -1016,11 +1018,12 @@ a.ora-settings-apikey-label:hover {
 .ora-models-slot-info-line {
   display: flex;
   align-items: center;
+  justify-content: flex-end;   /* chips + stats grouped together on the right */
   gap: 5px;
   min-width: 0;
   overflow: hidden;
   font-family: var(--font-sans, -apple-system, system-ui, 'Segoe UI', sans-serif);
-  font-size: 10px;
+  font-size: 11px;             /* sans reads smaller than the mono name at the same px; 11 keeps it legible while still narrower */
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   color: var(--text-muted, #A89F8A);
@@ -1031,11 +1034,9 @@ a.ora-settings-apikey-label:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* Right-justified: chips sit left, the stat strip is pushed to the right edge
-     so the fixed-order stats line up as columns down a card and across the four
-     presets. Shrinks (and the rightmost stat ellipsis-truncates) only if line 2
-     ever runs out of room. */
-  margin-left: auto;
+  /* The whole info-line is right-aligned (chips + stats as one group); the meta
+     shrinks so its rightmost stat ellipsis-truncates first if line 2 ever runs
+     out of room. */
   text-align: right;
   flex: 0 1 auto;
 }
@@ -1552,6 +1553,7 @@ a.ora-settings-apikey-label:hover {
 .ora-models-model-info-line {
   display: flex;
   align-items: center;
+  justify-content: flex-end;   /* chips + stats grouped together on the right */
   gap: 5px;
   min-width: 0;
   overflow: hidden;
@@ -1559,7 +1561,7 @@ a.ora-settings-apikey-label:hover {
 }
 
 .ora-models-model-meta {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted, #A89F8A);
   font-family: var(--font-sans, -apple-system, system-ui, 'Segoe UI', sans-serif);
   font-variant-numeric: tabular-nums;
@@ -1569,7 +1571,6 @@ a.ora-settings-apikey-label:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  margin-left: auto;   /* right-justify the stat strip; chips stay left */
   text-align: right;
   flex: 0 1 auto;
 }
@@ -2102,6 +2103,7 @@ a.ora-settings-apikey-label:hover {
 .ora-models-popout-info-line {
   display: flex;
   align-items: center;
+  justify-content: flex-end;   /* chips + stats grouped together on the right */
   gap: 5px;
   min-width: 0;
   overflow: hidden;
@@ -2112,12 +2114,11 @@ a.ora-settings-apikey-label:hover {
   font-family: var(--font-sans, -apple-system, system-ui, 'Segoe UI', sans-serif);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  margin-left: auto;   /* right-justify the stat strip; chips stay left */
   text-align: right;
   flex: 0 1 auto;
 }
