@@ -56,6 +56,7 @@
     pick: false,
     context_1m: false,      // inventory display filter: show only ~1M-context models (context_length >= 900000) in the list. Independent of the header's "1M context" PRESET toggle (min_context_1m), which actually constrains preset picks; the header toggle one-way-syncs its flip into this chip (see _setToggle), but the chip can also be toggled on its own. The 400K→1M band is empty, so 900K cleanly isolates the ~1M tier.
     intelligence_pct: 0,    // 0 = show all; 50 = show top 50%; 100 = show nothing
+    latency_max: 0,         // 0 = any; otherwise a time-to-first-token ceiling in ms (≤300/500/1000/2000). A model with no TTFT signal is dropped when a ceiling is set (can't prove it's fast). Uses or_ttft_ms (OpenRouter per-provider TTFT), AA median fallback — see _ttftMs.
     search: '',
     sort_by: 'intelligence_desc',  // highest-intelligence first so the strongest models surface by default (Phase 5; was 'alpha_desc')
     category: 'chat',       // inventory category. Chat-only since 2026-06-11: image/video model selection lives on the Visual tab (routing-config slots chain), not in chat configurations.
@@ -169,7 +170,7 @@
     _configs = null;
     _filters = {
       vision: false, free_filter: 'any', pick: false, context_1m: false,
-      intelligence_pct: 0, search: '', sort_by: 'intelligence_desc',
+      intelligence_pct: 0, latency_max: 0, search: '', sort_by: 'intelligence_desc',
       category: 'chat', grouping: 'vendor', include_unsized: false,
     };
     _expandedVendors = new Set();
@@ -861,6 +862,8 @@
     var speedText = model.output_tokens_per_second != null
       ? model.output_tokens_per_second.toFixed(0) + ' t/s'
       : null;
+    var _ttft = _ttftMs(model);
+    var ttftText = (!isMedia && _ttft != null) ? Math.round(_ttft) + 'ms ttft' : null;
     if (pct != null) parts.push(pct + '% peak');
     if (isMedia) {
       if (!opts.omitCost) {
@@ -879,6 +882,7 @@
         parts.push('$' + blended.toFixed(2) + '/M');
       }
     }
+    if (ttftText) parts.push(ttftText);
     if (speedText) parts.push(speedText);
     return parts.join(' · ');
   }
@@ -1463,6 +1467,7 @@
                           || (_filters.free_filter && _filters.free_filter !== 'any')
                           || _filters.pick
                           || _filters.intelligence_pct > 0
+                          || _filters.latency_max > 0
                           || !!_filters.search;
     var allByVendor = _groupByVendor(allModels);
     var groupsForDisplay = Object.keys(allByVendor).sort().map(function (vendor) {
@@ -1557,6 +1562,10 @@
         activeFilters.push('top ' + (100 - _filters.intelligence_pct) + '% intelligence');
         clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="intelligence_pct">reset Intel slider</button>');
       }
+      if (_filters.latency_max > 0) {
+        activeFilters.push('≤ ' + _filters.latency_max + 'ms ttft');
+        clearables.push('<button type="button" class="ora-models-pick-banner-clear" data-clear-filter="latency_max">clear latency filter</button>');
+      }
       var filterText = activeFilters.length
         ? ' · Filtered: ' + activeFilters.join(' + ')
         : '';
@@ -1627,6 +1636,13 @@
     if (!isMedia && _filters.free_filter === 'only' && !isFree) return false;
     if (!isMedia && _filters.free_filter === 'hide' && isFree) return false;
     if (_filters.pick && !(_picksSet && _picksSet.has(model.id))) return false;
+    // Latency ceiling (chat only): keep models whose time-to-first-token is at
+    // or under the chosen ms threshold. A model with no TTFT signal is dropped
+    // when a ceiling is active — we can't prove it's fast. 0 = off. See _ttftMs.
+    if (!isMedia && _filters.latency_max) {
+      var _t = _ttftMs(model);
+      if (_t == null || _t > _filters.latency_max) return false;
+    }
     // 1M-context chip: show only models in the ~1M tier. context_length
     // is the model's max across providers; 900000 cleanly isolates the
     // 1M band because the 400K→1M range is empty in the catalog. Applies
@@ -1769,6 +1785,18 @@
     return groups;
   }
 
+  // Time-to-first-token in ms, for the Latency sort + filter. Prefer
+  // OpenRouter's real per-provider TTFT (or_ttft_ms, PR #114); for native
+  // vendor-authoritative entries the server joins it from the OpenRouter twin
+  // via the alias map. Fall back to the older Artificial-Analysis median
+  // (latency_ttft_seconds, in seconds → ms). null when neither is known, so
+  // the model sorts/filters into the labeled tail rather than claiming 0 ms.
+  function _ttftMs(model) {
+    if (model && model.or_ttft_ms != null) return Number(model.or_ttft_ms);
+    if (model && model.latency_ttft_seconds != null) return Number(model.latency_ttft_seconds) * 1000;
+    return null;
+  }
+
   function _sortModels(models, by) {
     var arr = models.slice();
     switch (by) {
@@ -1804,8 +1832,8 @@
         });
       case 'latency_asc':
         return arr.sort(function (a, b) {
-          var al = a.latency_ttft_seconds;
-          var bl = b.latency_ttft_seconds;
+          var al = _ttftMs(a);
+          var bl = _ttftMs(b);
           if (al == null) al = Infinity;
           if (bl == null) bl = Infinity;
           return al - bl;
@@ -1998,6 +2026,26 @@
           }).join('')
       +   '</select>'
       + '</label>';
+    // Latency ceiling: filter the inventory to models whose time-to-first-token
+    // (or_ttft_ms, AA fallback) is at or under the chosen value. Values in ms;
+    // 0 = no ceiling. Mirrors the free-tier select idiom.
+    var latencyOptions = [
+      {id: 0,    label: 'Any latency'},
+      {id: 300,  label: '≤ 300ms'},
+      {id: 500,  label: '≤ 500ms'},
+      {id: 1000, label: '≤ 1s'},
+      {id: 2000, label: '≤ 2s'},
+    ];
+    var latSel = Number(_filters.latency_max) || 0;
+    var latencySelectHTML = ''
+      + '<label class="ora-models-sort-wrap" title="Max time-to-first-token (real per-provider OpenRouter latency; sorts/filters models with no signal to the end)">'
+      +   '<select class="ora-models-sort-select" data-filter="latency_max">'
+      +     latencyOptions.map(function (o) {
+            var sel = o.id === latSel ? ' selected' : '';
+            return '<option value="' + o.id + '"' + sel + '>' + _esc(o.label) + '</option>';
+          }).join('')
+      +   '</select>'
+      + '</label>';
     return '<div class="ora-models-filter-chips">'
       + chips.map(function (c) {
           var on = _filters[c.key];
@@ -2007,6 +2055,7 @@
             + '</label>';
         }).join('')
       + freeSelectHTML
+      + latencySelectHTML
       + '</div>';
   }
 
@@ -2082,7 +2131,7 @@
       case 'latency_asc':
         return {
           label: 'No latency data',
-          pred: function (m) { return m.latency_ttft_seconds == null; },
+          pred: function (m) { return _ttftMs(m) == null; },
         };
       case 'speed_desc':
         return {
@@ -2225,6 +2274,7 @@
         var key = btn.dataset.clearFilter;
         if (key === 'free_filter') _filters.free_filter = 'any';
         else if (key === 'intelligence_pct') _filters.intelligence_pct = 0;
+        else if (key === 'latency_max') _filters.latency_max = 0;
         // include_unsized is an opt-IN (the button widens the result
         // set rather than clearing a restriction), so it sets true.
         else if (key === 'include_unsized') _filters.include_unsized = true;
@@ -2251,7 +2301,10 @@
       el.addEventListener('change', function () {
         var key = el.dataset.filter;
         if (!key) return;
-        _filters[key] = el.value;
+        // latency_max is a numeric ms ceiling (0 = off); everything else is a
+        // string key. Coerce so the "0 = off" falsy check in _matchesFilters
+        // works (the string "0" would be truthy).
+        _filters[key] = (key === 'latency_max') ? Number(el.value) : el.value;
         _renderInventory();
       });
     });

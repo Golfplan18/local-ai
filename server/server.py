@@ -12110,6 +12110,20 @@ def model_registry_get():
             "stats": {"loaded": False},
         }, status=500)
 
+    # Per-provider OpenRouter latency/throughput (or_ttft_ms / or_throughput_tps,
+    # PR #114) lives on the OpenRouter-sourced BASE registry. Capture it before
+    # the vendor-authoritative swap below replaces keyed vendors' OpenRouter
+    # entries with NATIVE entries that don't carry these stats — so the swapped
+    # inventory can be re-enriched from here via the alias map (the OR twin's
+    # latency is the best available signal for a native model we dispatch
+    # directly). Keyed by base id.
+    _base_or_latency = {
+        _mid: {"or_ttft_ms": _m.get("or_ttft_ms"),
+               "or_throughput_tps": _m.get("or_throughput_tps")}
+        for _mid, _m in (registry.get("models") or {}).items()
+        if isinstance(_m, dict) and _m.get("or_ttft_ms") is not None
+    }
+
     # Vendor-catalogue-authoritative inventory (flag-gated, default off): when on
     # and the preview registry exists, serve each keyed vendor's OWN catalogue
     # (native ids) instead of its OpenRouter entries. Native entries carry
@@ -12128,6 +12142,28 @@ def model_registry_get():
                     # It's in the vendor's live /models, fetched with the key — reachable.
                     _m.setdefault("reachable", True)
                     _m.setdefault("category", "chat")
+            # Re-attach OpenRouter latency/throughput to native entries that lack
+            # it (the inversion dropped the OR twin that carried it). Resolve via
+            # the SAME alias map the pane uses (exact, no fuzzy match): a native
+            # id's legacy/OR alias forms point back at the base-registry row that
+            # has or_ttft_ms. Lifts coverage from ~122 to ~278 of ~403 native
+            # entries; the rest genuinely lack OR stats anywhere. Tagged
+            # or_latency_via_alias so the source is traceable.
+            _aliases = registry.get("aliases") or {}
+            _canon_to_legacy: dict = {}
+            for _legacy, _canon in _aliases.items():
+                _canon_to_legacy.setdefault(_canon, []).append(_legacy)
+            for _nid, _m in _va_models.items():
+                if not isinstance(_m, dict) or _m.get("or_ttft_ms") is not None:
+                    continue
+                for _cand in [_nid, *_canon_to_legacy.get(_nid, []), *(_m.get("also_known_as") or [])]:
+                    _src = _base_or_latency.get(_cand)
+                    if _src:
+                        _m["or_ttft_ms"] = _src["or_ttft_ms"]
+                        if _src.get("or_throughput_tps") is not None:
+                            _m.setdefault("or_throughput_tps", _src["or_throughput_tps"])
+                        _m["or_latency_via_alias"] = True
+                        break
             # stats must describe the SWAPPED inventory, not the OpenRouter one.
             _vt = sum(1 for _e in _va_models.values() if _e.get("vision_capable") is True)
             _vf = sum(1 for _e in _va_models.values() if _e.get("vision_capable") is False)
