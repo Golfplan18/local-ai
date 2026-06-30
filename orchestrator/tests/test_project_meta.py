@@ -123,6 +123,36 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertTrue(f2.is_dir())
         self.assertNotIn("/", f2.name)
 
+    def test_list_project_files_missing_folder(self):
+        idx = pm.list_project_files("Nope", vault_projects_dir=self.d / "vp")
+        self.assertFalse(idx["exists"])
+        self.assertEqual(idx["files"], [])
+
+    def test_list_project_files(self):
+        proj_dir = self.d / "vp"
+        folder = pm.ensure_project_folder("My Book", vault_projects_dir=proj_dir)
+        (folder / "draft.md").write_text("hi", encoding="utf-8")
+        sub = folder / "notes"
+        sub.mkdir()
+        (sub / "ideas.md").write_text("x", encoding="utf-8")
+        # Skipped junk.
+        (folder / ".DS_Store").write_text("", encoding="utf-8")
+        idx = pm.list_project_files("My Book", vault_projects_dir=proj_dir)
+        self.assertTrue(idx["exists"])
+        names = {f["name"] for f in idx["files"]}
+        self.assertEqual(names, {"draft.md", "ideas.md"})
+        rels = {f["rel_path"] for f in idx["files"]}
+        self.assertIn(os.path.join("notes", "ideas.md"), rels)
+
+    def test_list_project_files_truncation(self):
+        proj_dir = self.d / "vp"
+        folder = pm.ensure_project_folder("Big", vault_projects_dir=proj_dir)
+        for i in range(5):
+            (folder / f"f{i}.md").write_text("x", encoding="utf-8")
+        idx = pm.list_project_files("Big", vault_projects_dir=proj_dir, max_files=3)
+        self.assertEqual(len(idx["files"]), 3)
+        self.assertTrue(idx["truncated"])
+
 
 if __name__ == "__main__":
     unittest.main()

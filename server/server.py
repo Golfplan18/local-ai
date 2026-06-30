@@ -3723,6 +3723,129 @@ def api_projects_mom_set(nexus):
     return _json_response({"ok": True, "mom": mom})
 
 
+def _obsidian_uri_for(abs_path: str):
+    """Build an ``obsidian://open`` URI for a vault-relative file, or None when
+    the path is outside the vault. The frontend navigates to it to open the file
+    in Obsidian (Q2: file management defers to Obsidian)."""
+    try:
+        from orchestrator import operation_matrix as _om
+        from urllib.parse import quote
+        from pathlib import Path as _P
+        root = _om.vault_root()
+        rel = _P(abs_path).resolve().relative_to(root)
+    except Exception:
+        return None
+    return "obsidian://open?vault=" + quote(root.name) + "&file=" + quote(str(rel))
+
+
+@app.route("/api/projects/<nexus>/files", methods=["GET"])
+def api_projects_files(nexus):
+    """Read-only index of a project's vault output folder (G1.33 sub-step 5).
+
+    File management defers to Obsidian (Q2 LOCKED) — each entry carries an
+    ``obsidian_uri`` (open in Obsidian) and ``abs_path`` (reveal in Finder via
+    POST /api/fs/reveal). The Operation-Matrix file is prepended as a pinned
+    entry. ``?name=`` overrides the display name used to locate the folder."""
+    try:
+        from orchestrator import project_meta as _pm
+        from orchestrator import operation_matrix as _om
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    name = request.args.get("name") or None
+    if name is None:
+        rec = _pm.read_project_meta(nexus)
+        name = rec.get("name") if rec else nexus
+    try:
+        index = _pm.list_project_files(name)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    for f in index.get("files", []):
+        f["obsidian_uri"] = _obsidian_uri_for(f["abs_path"])
+    # Prepend the Operation-Matrix file as a pinned entry, if it exists.
+    matrix = None
+    try:
+        mpath = _om.resolve_matrix_path(nexus, name)
+        if mpath is not None:
+            st = mpath.stat()
+            from datetime import datetime as _dt
+            matrix = {
+                "name": mpath.name,
+                "rel_path": mpath.name,
+                "abs_path": str(mpath),
+                "size": st.st_size,
+                "mtime": _dt.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
+                "obsidian_uri": _obsidian_uri_for(str(mpath)),
+                "is_matrix": True,
+            }
+    except Exception:
+        matrix = None
+    return _json_response({"ok": True, "matrix": matrix, **index})
+
+
+@app.route("/api/projects/<nexus>/conversations", methods=["GET"])
+def api_projects_conversations(nexus):
+    """List a project's conversations for the modal (membership + restore).
+
+    ``?include_closed=1`` includes closed threads (the restore-closed browser);
+    General (or empty nexus) is the all-inclusive view. Rows carry ``closed`` so
+    the modal can offer restore via POST /api/conversation/<id>/restore."""
+    try:
+        from conversation_memory import iter_conversations
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    include_closed = (request.args.get("include_closed") or "").strip().lower() in (
+        "1", "true", "yes", "on")
+    nexus_l = (nexus or "").strip().lower()
+    all_projects = (not nexus_l) or nexus_l == "general"
+    try:
+        rows = iter_conversations(include_closed=include_closed)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    out = []
+    for r in rows:
+        if not all_projects and nexus_l not in (r.get("project_ids") or []):
+            continue
+        out.append(r)
+    out.sort(key=lambda r: (r.get("last_activity_at") or ""), reverse=True)
+    return _json_response({"ok": True, "conversations": out})
+
+
+@app.route("/api/fs/reveal", methods=["POST"])
+def api_fs_reveal():
+    """Reveal a vault file in the OS file manager (Finder on macOS).
+
+    Sandboxed: the path must resolve inside the vault root. Best-effort and
+    macOS-only (cloud-ora is headless Linux → 501). Body: ``{"path": "..."}``."""
+    try:
+        from orchestrator import operation_matrix as _om
+        from pathlib import Path as _P
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    raw = (data.get("path") or "").strip()
+    if not raw:
+        return _json_response({"ok": False, "error": "path is required"}, 400)
+    try:
+        target = _P(raw).resolve()
+        root = _om.vault_root()
+        target.relative_to(root)  # raises if outside the vault
+    except ValueError:
+        return _json_response({"ok": False, "error": "path is outside the vault"}, 403)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
+    if not target.exists():
+        return _json_response({"ok": False, "error": "no such path"}, 404)
+    if sys.platform != "darwin":
+        return _json_response(
+            {"ok": False, "error": "reveal-in-Finder is macOS-only"}, 501)
+    try:
+        import subprocess
+        subprocess.run(["open", "-R", str(target)], check=False)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    return _json_response({"ok": True, "path": str(target)})
+
+
 @app.route("/api/projects/register", methods=["POST"])
 def api_projects_register():
     """Register a project plugin by root path. Body: {"root": "..."}."""
@@ -6993,6 +7116,37 @@ def conversations_restore(conversation_id):
         "ok": True,
         "conversation_id": conversation_id,
         "conversation": data,
+    })
+
+
+@app.route("/api/conversation/<conversation_id>/projects", methods=["POST"])
+def conversations_set_projects(conversation_id):
+    """Replace a conversation's project memberships (G1.33 sub-step 5).
+
+    A conversation can belong to many projects; ``general`` is the implicit
+    baseline (empty list == General) and is never stored. Body:
+    ``{"project_ids": ["nexus", ...]}``. Returns the stored list."""
+    conversation_id = (conversation_id or "").strip()
+    if not conversation_id:
+        return _json_response({"error": "conversation_id is required"}, status=400)
+    try:
+        from conversation_memory import set_conversation_projects, load_conversation_json
+    except Exception as e:
+        return _json_response({"error": f"set projects import failed: {e}"}, status=500)
+    data = request.get_json(silent=True) or {}
+    project_ids = data.get("project_ids")
+    if not isinstance(project_ids, list):
+        return _json_response({"error": "project_ids must be a list"}, status=400)
+    path = set_conversation_projects(conversation_id, project_ids)
+    if path is None:
+        return _json_response(
+            {"error": "conversation not found", "conversation_id": conversation_id},
+            status=404)
+    stored = load_conversation_json(conversation_id) or {}
+    return _json_response({
+        "ok": True,
+        "conversation_id": conversation_id,
+        "project_ids": stored.get("project_ids", []),
     })
 
 
