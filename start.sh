@@ -46,6 +46,16 @@ export ORA_RUNTIME_ENGRAM_AUTOCOMMIT=1
 # Enabled 2026-06-05.
 export ORA_DELIVERABLE_SCRUB=1
 
+# OpenRouter per-provider latency (the Speed preset's primary speed
+# signal): the registry sync pulls time-to-first-token + throughput from
+# OpenRouter's public frontend stats API (no key, no credit) and writes
+# or_ttft_ms / or_throughput_tps per model, with AA median latency as the
+# fallback. The layer is a no-op without this flag, so a break in the
+# undocumented endpoint can't wedge the sync. Populates on the next
+# registry refresh (Models-pane Refresh / scheduled sync) after restart.
+# See sync_model_registry.py::layer_openrouter_stats. Enabled 2026-06-29.
+export ORA_OR_STATS=1
+
 # Kill any stale server process
 pkill -f "server/server.py" 2>/dev/null
 sleep 1
