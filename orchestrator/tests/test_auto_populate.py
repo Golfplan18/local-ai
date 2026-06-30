@@ -91,20 +91,9 @@ def _fixture_presets():
             },
             "speed":    {
                 "mode": "paid_intelligence",
-                "speed_mode": True,
-                "sort_by": "latency_asc",
-                "floor_pct": 40,
-                "min_floor_pct": 25,
-                "cost_ceiling_per_m": None,
-                "adaptive_cost_ceiling": {
-                    "enabled": True,
-                    "peak_fraction": 0.4,
-                    "outlier_median_multiple": 3.0,
-                },
-                "loosening": True,
-                "loosening_strategy": "paired",
-                "floor_step_pct": 5,
-                "ceiling_growth_factor": 1.25,
+                "selection": "latency_knee",
+                "latency_ceiling_ms": 1200,
+                "knee_cost_normalization": "log",
                 "exclude_reasoning": True,
             },
             "free":     {"mode": "free_intelligence", "floor_pct": None, "cost_ceiling_per_m": None, "loosening": False},
@@ -813,6 +802,90 @@ class TestFilterInRegistry(unittest.TestCase):
         )
 
 
+class TestLatencyKnee(unittest.TestCase):
+    """Speed's latency-gated cost/intelligence Pareto knee selection
+    (select_by_latency_knee + _cost_intel_frontier)."""
+
+    @staticmethod
+    def _m(mid, intel, cost):
+        return {"id": mid, "display_name": mid,
+                "aa_intelligence_index": intel,
+                "openrouter_pricing": {"blended_per_m": cost}}
+
+    def test_frontier_drops_dominated(self):
+        pool = [
+            self._m("cheap", 10, 0.10),
+            self._m("good", 30, 0.50),
+            self._m("dom", 20, 2.00),   # dominated by good (smarter AND cheaper)
+        ]
+        fr = {m["id"] for m in auto_populate._cost_intel_frontier(pool)}
+        self.assertEqual(fr, {"cheap", "good"})
+
+    def test_knee_picks_elbow_not_cost_cliff(self):
+        # cheap-dumb / mid (elbow) / expensive-barely-better (15x for +3 intel).
+        pool = [self._m("cheap", 10, 0.10), self._m("mid", 30, 0.50), self._m("cliff", 33, 10.0)]
+        lat = {"cheap": 400, "mid": 500, "cliff": 600}
+        picks, _ = auto_populate.select_by_latency_knee(pool, lat, 1200, top_n=3)
+        self.assertEqual(picks[0]["id"], "mid")          # the knee, not the cliff
+        self.assertEqual({p["id"] for p in picks}, {"cheap", "mid", "cliff"})  # rest = fallbacks
+
+    def test_latency_gate_excludes_over_ceiling(self):
+        pool = [self._m("fast", 30, 0.50), self._m("slow", 90, 0.20)]
+        lat = {"fast": 500, "slow": 2000}   # slow is smarter+cheaper but TOO SLOW
+        picks, _ = auto_populate.select_by_latency_knee(pool, lat, 1200, top_n=2)
+        self.assertEqual(picks[0]["id"], "fast")
+        self.assertNotIn("slow", [p["id"] for p in picks])
+
+    def test_gate_empty_degrades_to_fastest(self):
+        pool = [self._m("a", 30, 0.50), self._m("b", 40, 0.40)]
+        lat = {"a": 3000, "b": 2500}        # nothing under the ceiling
+        picks, notes = auto_populate.select_by_latency_knee(pool, lat, 1200, top_n=2)
+        self.assertTrue(picks)
+        self.assertEqual(picks[0]["id"], "b")   # fastest available
+        self.assertTrue(any("latency ceiling skipped" in n for n in notes))
+
+    def test_no_latency_signal_degrades_to_cost(self):
+        pool = [self._m("pricey", 30, 5.0), self._m("cheap", 20, 0.20)]
+        picks, notes = auto_populate.select_by_latency_knee(pool, {}, 1200, top_n=2)
+        self.assertEqual(picks[0]["id"], "cheap")   # cost-ascending fallback
+        self.assertTrue(any("no latency signal" in n for n in notes))
+
+    def test_nonpositive_cost_excluded_no_log_crash(self):
+        # Regression: a paid model priced 0 or negative (OpenRouter's
+        # -1000000.0 variable-price router sentinel) must NOT reach log10 in the
+        # default log-cost knee. _cost_intel_frontier requires cost>0, so the
+        # bad rows are dropped from the cost axis and the knee never crashes.
+        pool = [
+            self._m("router", 0, -1000000.0),  # variable-price sentinel
+            self._m("zero", 0, 0.0),            # zero price
+            self._m("real", 25, 0.50),          # the only genuine cost
+        ]
+        lat = {"router": 300, "zero": 300, "real": 500}
+        self.assertEqual({m["id"] for m in auto_populate._cost_intel_frontier(pool)}, {"real"})
+        picks, _ = auto_populate.select_by_latency_knee(pool, lat, 1200, cost_norm="log", top_n=3)
+        self.assertEqual(picks[0]["id"], "real")   # didn't crash; bad rows off the frontier
+
+    def test_zero_ceiling_gates_everything_out(self):
+        # A 0-ms ceiling must gate everything out (then degrade to fastest),
+        # NOT be treated as "no ceiling" (the falsy-zero pitfall).
+        pool = [self._m("a", 30, 0.5), self._m("b", 20, 0.3)]
+        lat = {"a": 400, "b": 300}
+        picks, notes = auto_populate.select_by_latency_knee(pool, lat, 0, top_n=2)
+        self.assertTrue(picks)
+        self.assertEqual(picks[0]["id"], "b")   # nothing ≤ 0ms → fastest available
+        self.assertTrue(any("latency ceiling skipped" in n for n in notes))
+
+    def test_log_vs_linear_normalization(self):
+        # Smooth/convex frontier: log captures the smart end, linear leans cheaper.
+        pool = [self._m("a", 8, 0.02), self._m("b", 16, 0.70),
+                self._m("c", 18, 0.85), self._m("d", 30, 2.00)]
+        lat = {k: 500 for k in ("a", "b", "c", "d")}
+        log_pick, _ = auto_populate.select_by_latency_knee(pool, lat, 1200, cost_norm="log", top_n=1)
+        lin_pick, _ = auto_populate.select_by_latency_knee(pool, lat, 1200, cost_norm="linear", top_n=1)
+        self.assertEqual(log_pick[0]["id"], "d")    # log → smartest
+        self.assertEqual(lin_pick[0]["id"], "c")    # linear → cheaper
+
+
 class TestFilterVaResolvable(unittest.TestCase):
     """The vendor-catalogue-authoritative pool restriction. When the inversion
     is active, the Models pane serves each keyed vendor's NATIVE catalogue, so a
@@ -1071,14 +1144,26 @@ class TestPopulateConfiguration(unittest.TestCase):
     def test_speed_end_to_end(self):
         catalog = _fixture_catalog()
         presets = _fixture_presets()
-        config = auto_populate.populate_configuration("speed", catalog, presets)
+        # Latency signal (ms) for the large-bucket models. a/flagship is OVER
+        # the 1200ms gate; the rest are within it. With these costs/intels the
+        # gated cost/intelligence frontier is d/weak → c/cheap → b/strong →
+        # a/value, and the log-cost knee (diminishing-returns elbow) is b/strong.
+        latency = {"a/flagship": 1500, "a/value": 800, "b/strong": 600,
+                   "c/cheap": 400, "d/weak": 300, "e/dominated": 900}
+        config = auto_populate.populate_configuration(
+            "speed", catalog, presets, latency_ms=latency)
         self.assertEqual(config["preset_lineage"], "speed")
-        # Workhorse cells populated under the latency-sort path
-        self.assertIsNotNone(config["cells"]["analysis"]["gear4"]["depth"])
+        depth = config["cells"]["analysis"]["gear4"]["depth"]
+        self.assertIsNotNone(depth)
         self.assertIsNotNone(config["cells"]["analysis"]["gear4"]["breadth"])
         self.assertIsNotNone(config["cells"]["post_analysis"]["consolidation"])
         # gear3.breadth is explicitly null (sequential mode)
         self.assertIsNone(config["cells"]["analysis"]["gear3"]["breadth"])
+        # Knee selection: never the over-the-gate flagship, never the dominated
+        # model, and lands on the frontier's best-value knee (b/strong).
+        self.assertNotEqual(depth["primary"], "a/flagship")
+        self.assertNotEqual(depth["primary"], "e/dominated")
+        self.assertEqual(depth["primary"], "b/strong")
 
     def test_unknown_preset_raises(self):
         catalog = _fixture_catalog()

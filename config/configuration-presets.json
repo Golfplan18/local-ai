@@ -35,19 +35,13 @@
    "loosening": false
   },
   "speed": {
-   "description": "Fastest first response. Ranks every slot by lowest time-to-first-token (then throughput) within an intelligence floor and a cost ceiling; reasoning models excluded (they stall before the first token). Latency from OpenRouter per-provider stats (or_ttft_ms), AA median (latency_ttft_seconds) as fallback.",
+   "description": "Fastest first response, best value within the speed budget. Each slot is gated to models whose time-to-first-token is within a latency ceiling (the speed promise), then takes the best-value KNEE of the cost/intelligence Pareto frontier inside that gate — the diminishing-returns point that captures cheaply-available intelligence and dodges cost cliffs (e.g. a 15x-pricier model for a few more intelligence points). Reasoning models excluded everywhere (they stall before the first token). Latency from OpenRouter per-provider stats (or_ttft_ms), AA median (latency_ttft_seconds) as fallback.",
    "mode": "paid_intelligence",
-   "speed_mode": true,
-   "sort_by": "latency_asc",
-   "floor_pct": 40,
-   "min_floor_pct": 25,
-   "adaptive_cost_ceiling": { "enabled": true, "peak_fraction": 0.4, "outlier_median_multiple": 3.0 },
-   "loosening": true,
-   "loosening_strategy": "paired",
-   "floor_step_pct": 5,
-   "ceiling_growth_factor": 1.25,
+   "selection": "latency_knee",
+   "latency_ceiling_ms": 1200,
+   "knee_cost_normalization": "log",
    "exclude_reasoning": true,
-   "_note": "PROVISIONAL tuning constants pending empirical calibration: floor_pct 40 / min_floor_pct 25 (intelligence floor) and adaptive_cost_ceiling.peak_fraction 0.4 (cost ceiling) are first-pass picks, not measured optima — retune once Speed bakes can be observed against real registry latency data. The latency_asc sort + reasoning exclusion are applied UNIFORMLY to every slot (big1/big2/fast/small) by populate_configuration's speed_mode path, overriding any slot-level sort_by."
+   "_note": "PROVISIONAL + retunable (no empirical calibration yet): latency_ceiling_ms 1200 is the speed promise (the TTFT budget); knee_cost_normalization 'log' captures cheaply-available intelligence and only declines at true cost cliffs — set 'linear' to lean cheaper (penalizes absolute dollars more). The knee = argmax(normalized intelligence - normalized cost) on the latency-gated cost/intelligence Pareto frontier, tiebreak smarter -> cheaper -> newer; primary = knee, fallbacks = next-best-value frontier neighbours then fastest. There is NO intelligence floor or cost ceiling — the knee replaces both (user decision 2026-06-30; Budget remains the cost-minimizer). Applied UNIFORMLY to every slot by populate_configuration's knee path. Retune once Speed bakes can be observed against real registry latency."
   }
  },
  "slot_specs": {
