@@ -3657,6 +3657,32 @@ def api_projects_set_status(nexus):
     return _json_response({"ok": True, "project": meta})
 
 
+@app.route("/api/projects/<nexus>/rename-nexus", methods=["POST"])
+def api_projects_rename_nexus(nexus):
+    """Rename a project's nexus across the vault, conversations, and pointers
+    (G1.33 sub-step 5). Body: ``{"new_nexus": str, "dry_run": bool}``.
+
+    **Dry-run by default** — returns the impact report (which vault files +
+    conversations would change) WITHOUT writing. Pass ``"dry_run": false`` to
+    execute the cascade. Validation errors (reserved/invalid/colliding/missing)
+    return 400."""
+    try:
+        from orchestrator import nexus_rename as _nr
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    new_nexus = (data.get("new_nexus") or "").strip()
+    # Default to a preview; the caller must explicitly opt into writing.
+    dry_run = data.get("dry_run", True) is not False
+    try:
+        report = _nr.rename_nexus(nexus, new_nexus, dry_run=dry_run)
+    except _nr.NexusRenameError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    return _json_response({"ok": True, "report": report})
+
+
 @app.route("/api/projects/<nexus>/mom", methods=["GET"])
 def api_projects_mom_get(nexus):
     """Read a project's Mission/Objectives/Milestones from its vault

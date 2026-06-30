@@ -31,6 +31,7 @@
   let convosCache = null;
   let candidateSearchTimer = null;
   let mode = 'edit';  // 'edit' | 'create'
+  let pendingNexus = null;  // a previewed nexus rename awaiting Apply
 
   const isGeneral = () => (current.nexus || '').toLowerCase() === 'general';
 
@@ -88,6 +89,11 @@
       priv:      modal.querySelector('#pmPrivate'),
       ovSave:    modal.querySelector('#pmOverviewSave'),
       ovMsg:     modal.querySelector('#pmOverviewMsg'),
+      advanced:  modal.querySelector('#pmAdvanced'),
+      nexus:     modal.querySelector('#pmNexus'),
+      nexusPreview: modal.querySelector('#pmNexusPreview'),
+      nexusApply: modal.querySelector('#pmNexusApply'),
+      nexusMsg:  modal.querySelector('#pmNexusMsg'),
       // mom
       mission:   modal.querySelector('#pmMission'),
       objectives:modal.querySelector('#pmObjectives'),
@@ -119,6 +125,12 @@
     modal.querySelector('.project-modal__backdrop').addEventListener('click', close);
     els.tabs.forEach(t => t.addEventListener('click', () => selectTab(t.dataset.tab)));
     els.ovSave.addEventListener('click', saveOverview);
+    if (els.nexusPreview) els.nexusPreview.addEventListener('click', previewNexus);
+    if (els.nexusApply) els.nexusApply.addEventListener('click', applyNexus);
+    if (els.nexus) els.nexus.addEventListener('input', () => {
+      pendingNexus = null;
+      if (els.nexusApply) els.nexusApply.style.display = 'none';
+    });
     els.momSave.addEventListener('click', saveMom);
     els.momAddBtn.addEventListener('click', () => { addMilestoneRow({ text: '', done: false, indent: 0 }); });
     els.momRawToggle.addEventListener('change', toggleMomRaw);
@@ -188,6 +200,22 @@
           <div class="project-modal__status" id="pmOverviewMsg"></div>
           <button type="button" class="project-modal__btn project-modal__btn--primary" id="pmOverviewSave">Save</button>
         </div>
+
+        <details class="project-modal__advanced" id="pmAdvanced">
+          <summary>Advanced</summary>
+          <div class="project-modal__field" style="margin-top:12px">
+            <label class="project-modal__label" for="pmNexus">Internal id (nexus)</label>
+            <div class="project-modal__assist-row">
+              <div class="project-modal__assist-input">
+                <input class="project-modal__input" id="pmNexus" type="text" spellcheck="false" autocomplete="off" />
+              </div>
+              <button type="button" class="project-modal__btn" id="pmNexusPreview">Preview impact</button>
+            </div>
+            <div class="project-modal__hint">Renaming the nexus rewrites it in every vault file's frontmatter and in conversation memberships. Preview the impact first; this cannot be auto-undone (the vault's git auto-commit is the safety net).</div>
+            <div class="project-modal__status" id="pmNexusMsg"></div>
+            <button type="button" class="project-modal__btn project-modal__btn--danger" id="pmNexusApply" style="display:none;margin-top:8px">Apply rename</button>
+          </div>
+        </details>
       </div>`;
   }
 
@@ -329,6 +357,7 @@
     els.priv.checked = false;
     els.priv.disabled = false;
     els.ovSave.disabled = false;
+    if (els.advanced) els.advanced.style.display = 'none';  // no nexus until created
     toggleMomRaw();
     setStatus(els.ovMsg, 'Name your project. You can set Mission, Objectives & Milestones next — or skip it.');
     setStatus(els.momMsg, '');
@@ -363,6 +392,15 @@
     els.status.disabled = general;
     els.priv.disabled = general;
     els.ovSave.disabled = general;
+    // Advanced (nexus rename) — edit mode, real projects only.
+    pendingNexus = null;
+    if (els.nexusApply) els.nexusApply.style.display = 'none';
+    setStatus(els.nexusMsg, '');
+    if (els.advanced) {
+      els.advanced.style.display = general ? 'none' : '';
+      els.advanced.open = false;
+    }
+    if (els.nexus) els.nexus.value = general ? '' : current.nexus;
     if (general) {
       setStatus(els.ovMsg, 'General is the built-in default project and can\'t be configured.');
       return;
@@ -446,6 +484,10 @@
       mode = 'edit';
       applyMode();
       els.status.disabled = false;
+      // Advanced (nexus rename) was hidden during create — reveal it now that
+      // the project exists, seeded with its new nexus.
+      if (els.advanced) els.advanced.style.display = '';
+      if (els.nexus) els.nexus.value = current.nexus;
       els.titleName.textContent = current.name;
       setStatus(els.ovMsg, 'Project created' + (data.vault_folder ? ' — folder added to the vault.' : '.'), 'ok');
       try { window.OraSidebar && window.OraSidebar.refreshProjects && window.OraSidebar.refreshProjects(); } catch (e) {}
@@ -458,6 +500,85 @@
     } catch (e) {
       setStatus(els.ovMsg, 'Could not create the project: ' + (e.message || e), 'error');
       els.ovSave.disabled = false;
+    }
+  }
+
+  // ── Advanced: rename the nexus (bulk-YAML cascade, preview → apply) ───────
+  async function previewNexus() {
+    if (isGeneral() || mode === 'create') return;
+    const next = (els.nexus.value || '').trim().toLowerCase();
+    if (els.nexusApply) els.nexusApply.style.display = 'none';
+    pendingNexus = null;
+    if (!next || next === current.nexus) {
+      setStatus(els.nexusMsg, 'Enter a different id to preview.', 'error');
+      return;
+    }
+    els.nexusPreview.disabled = true;
+    setStatus(els.nexusMsg, 'Checking impact…');
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus) + '/rename-nexus', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_nexus: next, dry_run: true }),
+      });
+      const data = await r.json();
+      if (!(data && data.ok)) {
+        setStatus(els.nexusMsg, (data && data.error) || 'Preview failed.', 'error');
+        return;
+      }
+      const rep = data.report;
+      pendingNexus = next;
+      setStatus(els.nexusMsg,
+        `Will rewrite ${rep.vault_file_count} vault file${rep.vault_file_count === 1 ? '' : 's'} `
+        + `and ${rep.conversation_count} conversation${rep.conversation_count === 1 ? '' : 's'}.`);
+      if (els.nexusApply) {
+        els.nexusApply.style.display = '';
+        els.nexusApply.textContent = `Apply rename → ${next}`;
+      }
+    } catch (e) {
+      setStatus(els.nexusMsg, 'Preview failed: ' + (e.message || e), 'error');
+    } finally {
+      els.nexusPreview.disabled = false;
+    }
+  }
+
+  async function applyNexus() {
+    if (!pendingNexus || isGeneral()) return;
+    const from = current.nexus, to = pendingNexus;
+    if (!confirm(`Rename the internal id from "${from}" to "${to}"? This rewrites the nexus across the vault and conversation memberships and cannot be auto-undone.`)) {
+      return;
+    }
+    els.nexusApply.disabled = true;
+    setStatus(els.nexusMsg, 'Renaming…');
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(from) + '/rename-nexus', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_nexus: to, dry_run: false }),
+      });
+      const data = await r.json();
+      if (!(data && data.ok)) {
+        setStatus(els.nexusMsg, (data && data.error) || 'Rename failed.', 'error');
+        return;
+      }
+      const rep = data.report;
+      current.nexus = to;
+      pendingNexus = null;
+      els.nexusApply.style.display = 'none';
+      const errs = (rep.errors || []).length;
+      setStatus(els.nexusMsg,
+        `Renamed — ${rep.vault_file_count} file${rep.vault_file_count === 1 ? '' : 's'}, `
+        + `${rep.conversation_count} conversation${rep.conversation_count === 1 ? '' : 's'}`
+        + (errs ? `, ${errs} error${errs === 1 ? '' : 's'}.` : '.'),
+        errs ? 'error' : 'ok');
+      // Re-point everything at the new id.
+      try { window.OraSidebar && window.OraSidebar.setActiveProject && window.OraSidebar.setActiveProject(to, current.name); } catch (e) {}
+      try { window.OraSidebar && window.OraSidebar.refreshProjects && window.OraSidebar.refreshProjects(); } catch (e) {}
+      try { window.OraSidebar && window.OraSidebar.refresh && window.OraSidebar.refresh(); } catch (e) {}
+      // Force the other tabs to reload against the new nexus next time.
+      momCache = null; filesCache = null; convosCache = null;
+    } catch (e) {
+      setStatus(els.nexusMsg, 'Rename failed: ' + (e.message || e), 'error');
+    } finally {
+      els.nexusApply.disabled = false;
     }
   }
 

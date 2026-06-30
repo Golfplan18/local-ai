@@ -290,6 +290,22 @@
   border-color: var(--interactive-accent);
 }
 
+/* Advanced disclosure (nexus rename) */
+.project-modal__advanced {
+  margin-top: 18px;
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 10px;
+}
+.project-modal__advanced > summary {
+  cursor: pointer;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  user-select: none;
+  list-style: revert;
+}
+.project-modal__advanced > summary:hover { color: var(--text-normal); }
+.project-modal__advanced[open] > summary { color: var(--text-normal); margin-bottom: 4px; }
+
 /* Per-panel action bar */
 .project-modal__actions {
   display: flex;
