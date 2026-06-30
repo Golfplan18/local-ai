@@ -3657,6 +3657,72 @@ def api_projects_set_status(nexus):
     return _json_response({"ok": True, "project": meta})
 
 
+@app.route("/api/projects/<nexus>/mom", methods=["GET"])
+def api_projects_mom_get(nexus):
+    """Read a project's Mission/Objectives/Milestones from its vault
+    Operation-Matrix file (G1.33 sub-step 5). ``?name=`` helps resolve the file
+    by the ``Project Matrix <Name>.md`` naming convention; otherwise resolution
+    falls back to a frontmatter-nexus scan. Returns ``exists: False`` (empty
+    fields) when no matrix file is found — never an error, so a missing vault
+    degrades gracefully."""
+    try:
+        from orchestrator import operation_matrix as _om
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    name = request.args.get("name") or None
+    if name is None:
+        try:
+            from orchestrator import project_meta as _pm
+            rec = _pm.read_project_meta(nexus)
+            if rec:
+                name = rec.get("name")
+        except Exception:
+            name = None
+    try:
+        mom = _om.read_mom(nexus, name)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    return _json_response({"ok": True, "mom": mom})
+
+
+@app.route("/api/projects/<nexus>/mom", methods=["POST"])
+def api_projects_mom_set(nexus):
+    """Patch a project's MOM in its vault Operation-Matrix file. Body any of
+    ``{"mission": str, "objectives": str, "milestones": [{text,done,indent}],
+    "milestones_raw": str, "name": str}``. Only provided sections are touched;
+    everything else in the matrix file is preserved. Creates the matrix file
+    from a template when missing (needs ``name``)."""
+    try:
+        from orchestrator import operation_matrix as _om
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    name = data.get("name") or None
+    if name is None:
+        try:
+            from orchestrator import project_meta as _pm
+            rec = _pm.read_project_meta(nexus)
+            if rec:
+                name = rec.get("name")
+        except Exception:
+            name = None
+    try:
+        mom = _om.write_mom(
+            nexus, name,
+            mission=data.get("mission"),
+            objectives=data.get("objectives"),
+            milestones=data.get("milestones"),
+            milestones_raw=data.get("milestones_raw"),
+        )
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    if mom is None:
+        return _json_response(
+            {"ok": False, "error": "no matrix file (and could not create one — "
+             "General has none, or no name to create from)"}, 404)
+    return _json_response({"ok": True, "mom": mom})
+
+
 @app.route("/api/projects/register", methods=["POST"])
 def api_projects_register():
     """Register a project plugin by root path. Body: {"root": "..."}."""
