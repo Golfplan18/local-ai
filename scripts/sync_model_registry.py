@@ -2118,12 +2118,14 @@ def cmd_sync(args) -> int:
     registry["aa_source"] = aa_source_summary
 
     # OpenRouter per-provider latency/throughput — the Speed preset's primary
-    # speed signal (AA median stays the fallback). Flag-gated so a break in the
-    # undocumented frontend stats API can't wedge the registry sync; default
-    # off until validated, then enable with ORA_OR_STATS=1.
+    # speed signal (AA median stays the fallback). Default ON (validated at
+    # ~94% catalog coverage, 2026-06-29); set ORA_OR_STATS=0 to disable. Each
+    # per-model fetch already no-ops to "no data" on any error, so a break in
+    # the undocumented frontend stats API degrades to the AA fallback rather
+    # than wedging the sync.
     or_stats_enabled = (
-        os.environ.get("ORA_OR_STATS", "").strip().lower()
-        in {"1", "true", "yes", "on"}
+        os.environ.get("ORA_OR_STATS", "1").strip().lower()
+        not in {"0", "false", "no", "off"}
     )
     layer_openrouter_stats(registry["models"], or_models, enabled=or_stats_enabled)
 
