@@ -418,6 +418,74 @@ def filter_reachable(candidates: list[dict], unreachable_ids: set[str]) -> list[
     return [m for m in candidates if m.get("id") not in unreachable_ids]
 
 
+def _vendor_authoritative_enabled() -> bool:
+    """Whether the vendor-catalogue-authoritative inventory is active (default
+    on). Mirrors ``orchestrator.vendor_catalog_registry.enabled()`` — imported
+    when reachable (server bake, or CLI with the repo root on the path), else
+    the same ``ORA_VENDOR_CATALOG_AUTHORITATIVE`` env read so the script still
+    stands alone."""
+    try:
+        from orchestrator import vendor_catalog_registry as _vcr
+        return bool(_vcr.enabled())
+    except Exception:
+        v = (os.environ.get("ORA_VENDOR_CATALOG_AUTHORITATIVE", "1") or "").strip().lower()
+        return v not in ("0", "false", "no", "off")
+
+
+def _va_resolvable_ids(base_registry_path: Path | None = None) -> set[str]:
+    """The ids the vendor-catalogue-authoritative Models pane can resolve:
+    native VA keys ∪ alias forms whose canonical target is a live VA key —
+    exactly the pane's ``_resolveRegistryModel`` contract (server.py
+    model_registry_get serves ``{models, aliases}`` from the VA file, and
+    models-pane.js resolves ``models[id] || models[aliases[id]]``). Restricting
+    the picker's pool to this set keeps every pick aligned with the inventory,
+    so no preset renders DEPRECATED. Empty (→ no restriction) when the inversion
+    is off, the VA file is missing, or it can't be read.
+
+    The VA file is resolved through the SAME resolver the endpoint uses,
+    ``runtime_paths.vendor_authoritative_registry_path()`` — so the picker reads
+    the EXACT file the pane serves: it honors ``ORA_VENDOR_AUTH_REGISTRY_PATH``
+    and the runtime-overlay-else-seed fallback (``overlay_path``), per file. A
+    plain sibling-of-the-base-registry derivation would diverge from the pane
+    under a partial overlay (runtime base present but runtime VA absent → the
+    endpoint serves the SEED VA while a sibling lookup finds nothing), which is
+    exactly the picker/pane skew this fix targets. The sibling is kept only as a
+    last-resort fallback for a fully standalone CLI run where the orchestrator
+    package isn't importable. Computed independently of the base-registry read,
+    so a corrupt base registry doesn't also silently drop the VA restriction.
+    """
+    if not _vendor_authoritative_enabled():
+        return set()
+    va_path: Path | None = None
+    try:
+        from orchestrator import runtime_paths as _rp
+        va_path = _rp.vendor_authoritative_registry_path()
+    except Exception:
+        env = os.environ.get("ORA_VENDOR_AUTH_REGISTRY_PATH")
+        if env:
+            va_path = Path(env)
+        elif base_registry_path is not None:
+            va_path = Path(base_registry_path).parent / "model-registry.vendor-authoritative.json"
+    try:
+        if va_path and Path(va_path).exists():
+            va = json.loads(Path(va_path).read_text())
+            va_keys = set((va.get("models") or {}).keys())
+            resolvable = set(va_keys)
+            for legacy, canonical in (va.get("aliases") or {}).items():
+                if canonical in va_keys:
+                    resolvable.add(legacy)
+            return resolvable
+    except Exception as exc:
+        # A malformed/unreadable VA file must never abort the bake — degrade to
+        # no VA restriction (the base-registry filter still applies), but say so.
+        print(
+            f"[auto-populate] vendor-authoritative pool read failed "
+            f"(proceeding without VA restriction): {exc}",
+            file=sys.stderr,
+        )
+    return set()
+
+
 def registry_crossref(registry_path: Path | None = None) -> dict:
     """Build the registry-derived pick inputs shared by the CLI and the
     server-side bake (orchestrator/active_configuration.py).
@@ -433,6 +501,14 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
       ``reasoning_model_ids`` — Fast/Speed-slot exclusion set (reasoning_model
                                 OR forced_reasoning flagged)
       ``vision_verified_ids`` — chat ids with confirmed vision support
+      ``va_resolvable_ids``   — when the vendor-catalogue-authoritative
+                                inventory is active, the ids the Models pane
+                                can resolve (native keys ∪ alias forms mapping
+                                to a live key). filter_va_resolvable restricts
+                                the pool to these so a pick can't land on an
+                                OpenRouter-only model the pane flags DEPRECATED.
+                                Empty when the inversion is off or the VA file
+                                is missing (no restriction).
 
     Reachability policy (2026-06-11): a chat model is pick-eligible only
     when the probe POSITIVELY verified it (``reachable`` is True), so the
@@ -447,6 +523,13 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
         os.environ.get("ORA_MODEL_REGISTRY_PATH")
         or (CONFIG_DIR / "model-registry.json")
     )
+    # Pane-resolvable set, computed up front and independently of the base
+    # registry read below: the Models pane serves the vendor-authoritative
+    # inventory whenever its file exists + the flag is on, regardless of the
+    # base registry's health, so a corrupt/missing base must NOT silently drop
+    # the VA restriction (that would re-skew picker vs pane). See
+    # _va_resolvable_ids. Empty when the inversion is off / file missing.
+    va_resolvable_ids = _va_resolvable_ids(path)
     out = {
         "registry_ids": set(),
         "unreachable_ids": set(),
@@ -454,6 +537,7 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
         "latency_ms": {},
         "reasoning_model_ids": set(),
         "vision_verified_ids": set(),
+        "va_resolvable_ids": va_resolvable_ids,
     }
     if not Path(path).exists():
         return out
@@ -514,6 +598,7 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
             "latency_ms": {},
             "reasoning_model_ids": set(),
             "vision_verified_ids": set(),
+            "va_resolvable_ids": va_resolvable_ids,
         }
     return out
 
@@ -534,6 +619,44 @@ def filter_in_registry(candidates: list[dict], registry_ids: set[str]) -> list[d
     if not registry_ids:
         return candidates
     return [m for m in candidates if m.get("id") in registry_ids]
+
+
+def filter_va_resolvable(candidates: list[dict], va_resolvable_ids: set[str]) -> list[dict]:
+    """Drop candidates the vendor-catalogue-authoritative Models pane can't resolve.
+
+    When the inversion is active (default on), the Models pane serves each keyed
+    vendor's NATIVE catalogue instead of its OpenRouter entries (see
+    orchestrator/vendor_catalog_registry.py + the /api/model-registry endpoint).
+    The picker, though, ranks the OpenRouter-sourced catalog. An OpenRouter-only
+    model for a native-catalogue vendor (no native twin, no alias) is in the base
+    registry — so filter_in_registry keeps it — yet has NO entry in the pane's
+    inventory, so any preset that picks it renders DEPRECATED even though it's
+    reachable. ``va_resolvable_ids`` is the set of ids the pane CAN resolve
+    (native keys ∪ alias forms mapping to a live key — exactly its
+    ``_resolveRegistryModel`` contract, built by registry_crossref). Restricting
+    the pool to it guarantees every pick matches the inventory, so no preset
+    renders DEPRECATED. Empty/None → no-op (inversion off, fresh install, or
+    missing VA file), so behaviour is unchanged when the pane serves the base
+    registry. Composes with filter_in_registry — both apply, narrowing to
+    base ∩ resolvable.
+
+    Applied as a SOFT per-slot filter inside pick_for_paid_slot /
+    pick_for_free_slot (NOT a hard global cut like filter_in_registry): the
+    pane-resolvable set can be thinner than the registry, so a hard cut could
+    empty a size-bucketed slot and silently bake a null primary; per-slot
+    graceful degrade keeps the slot filling instead.
+
+    A note on dispatch: this filter only changes WHICH models are picked, never
+    how they dispatch. A native-key pick is a direct entry; an alias-form
+    (OpenRouter-namespace) pick resolves via the alias map to its native twin
+    for DISPLAY in the pane. Dispatch follows the runtime's existing routing for
+    the saved id — and under the inversion the prefer-direct rewrite is dormant
+    (boot.py guards it with ``if not _vendor_catalog_authoritative()``), so do
+    NOT assume an alias-form pick reaches the vendor directly; that's a separate
+    routing concern this filter neither creates nor fixes."""
+    if not va_resolvable_ids:
+        return candidates
+    return [m for m in candidates if m.get("id") in va_resolvable_ids]
 
 
 def sort_by_cost_ascending(candidates: list[dict], cost_fn=cost_of) -> list[dict]:
@@ -673,6 +796,7 @@ def pick_for_paid_slot(
     reasoning_model_ids: set[str] | None = None,
     exclude_reasoning_models: bool = False,
     vision_verified_ids: set[str] | None = None,
+    va_resolvable_ids: set[str] | None = None,
     min_context: int | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N models for a paid slot.
@@ -729,6 +853,21 @@ def pick_for_paid_slot(
         else:
             loosening_notes.append(
                 f"context floor skipped (no ≥{min_context}-context candidates)")
+    # Vendor-authoritative restriction (default on). Keep only models the Models
+    # pane can resolve, so this slot never picks an OpenRouter-only model the
+    # pane flags DEPRECATED. SOFT, exactly like the context floor: if it would
+    # empty this slot's pool (a stale/thin VA alias map, or a size-bucketed slot
+    # no native catalogue covers), skip it so the slot still fills — a working
+    # pick that may carry a DEPRECATED chip beats a silent null primary — and
+    # record why. No-op when the inversion is off (set empty). See
+    # filter_va_resolvable.
+    if va_resolvable_ids:
+        resolvable = filter_va_resolvable(candidates, va_resolvable_ids)
+        if resolvable:
+            candidates = resolvable
+        else:
+            loosening_notes.append(
+                "vendor-authoritative restriction skipped (no pane-resolvable candidates)")
     candidates = filter_min_tokens_per_second(
         candidates, min_tokens_per_second, tokens_per_sec)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
@@ -833,6 +972,7 @@ def pick_for_free_slot(
     min_tokens_per_second: float | None = None,
     vision_verified_ids: set[str] | None = None,
     vision_required: bool = False,
+    va_resolvable_ids: set[str] | None = None,
     min_context: int | None = None,
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N free models. No cost math.
@@ -911,6 +1051,21 @@ def pick_for_free_slot(
                     f"context floor skipped (no ≥{min_context}-context candidates)")
                 if _ctx_note not in notes:
                     notes.append(_ctx_note)
+        # Vendor-authoritative restriction (default on): keep only pane-
+        # resolvable models so the cell never picks one the pane flags
+        # DEPRECATED. SOFT, like the context floor — skip (and note once) if it
+        # would empty this cell's pool. :free entries are always pane-resolvable
+        # (the inversion keeps every :free tier), so this rarely bites the free
+        # pool, but the guard keeps the cell filling regardless. See
+        # filter_va_resolvable.
+        if va_resolvable_ids:
+            _va = filter_va_resolvable(candidates, va_resolvable_ids)
+            if _va:
+                candidates = _va
+            else:
+                _va_note = "vendor-authoritative restriction skipped (no pane-resolvable candidates)"
+                if _va_note not in notes:
+                    notes.append(_va_note)
         candidates = filter_min_tokens_per_second(
             candidates, min_tokens_per_second, tokens_per_sec)
         candidates = [m for m in candidates if m["id"] not in excluded_ids]
@@ -1003,6 +1158,7 @@ def populate_configuration(
     reasoning_model_ids: set[str] | None = None,
     registry_ids: set[str] | None = None,
     vision_verified_ids: set[str] | None = None,
+    va_resolvable_ids: set[str] | None = None,
     min_context: int | None = None,
 ) -> dict:
     """Compute the full configuration dict for a given preset.
@@ -1027,6 +1183,16 @@ def populate_configuration(
     DEPRECATED. None/empty → no filtering (fresh install before any sync).
     See filter_in_registry.
 
+    ``va_resolvable_ids``: when the vendor-catalogue-authoritative inventory
+    is active, the ids the Models pane can resolve (native keys ∪ alias forms
+    mapping to a live key). Threaded into the pick functions as a SOFT per-slot
+    filter so a pick can't land on an OpenRouter-only model that's in the base
+    registry but absent from the pane's native inventory — which the pane flags
+    DEPRECATED despite the pick being reachable. Per-slot (not a hard global
+    cut) so a thin pane-resolvable set degrades gracefully instead of emptying a
+    slot. None/empty → no restriction (inversion off or no VA file). See
+    filter_va_resolvable.
+
     ``min_context``: when set (the ``min_context_1m`` preset toggle passes
     900000), every slot restricts to models with a context window at least
     this large so long prompts fit. Threaded into both pick functions.
@@ -1048,9 +1214,18 @@ def populate_configuration(
 
     # Drop catalog entries no longer in the live registry before any pick —
     # otherwise a stale catalog injects models the Models pane flags
-    # DEPRECATED. Applied once here so it covers every slot (chat + media)
-    # and the vision-substitute pick below. See filter_in_registry.
+    # DEPRECATED. Applied once here so it covers every slot and the
+    # vision-substitute pick below. registry_ids is a SUPERSET of what any slot
+    # can pick, so this hard global filter can't empty a slot. See
+    # filter_in_registry.
     catalog = filter_in_registry(catalog, registry_ids or set())
+    # NOTE: the vendor-catalogue-authoritative restriction is NOT applied here.
+    # It's threaded into the pick functions as a SOFT per-slot filter (with
+    # graceful degrade), because the pane-resolvable set can be thinner than the
+    # registry and a hard global cut could silently empty a size-bucketed slot,
+    # baking a null primary — a quieter failure than the DEPRECATED chip it
+    # replaces. See filter_va_resolvable + the per-slot blocks in
+    # pick_for_paid_slot / pick_for_free_slot.
 
     # vision_only resolution: CLI override > preset default > False
     effective_vision_only = vision_only if vision_only is not None else preset.get("vision_only", False)
@@ -1164,6 +1339,7 @@ def populate_configuration(
                 reasoning_model_ids=reasoning_model_ids,
                 exclude_reasoning_models=ref_settings["exclude_reasoning"],
                 vision_verified_ids=vision_verified_ids,
+                va_resolvable_ids=va_resolvable_ids,
                 min_context=min_context,
             )
             ref_picks_all.extend(ref_picks)
@@ -1239,6 +1415,7 @@ def populate_configuration(
                     min_tokens_per_second=slot_min_tps,
                     vision_verified_ids=vision_verified_ids,
                     vision_required=slot_vision_required,
+                    va_resolvable_ids=va_resolvable_ids,
                     min_context=min_context,
                 )
                 notes.extend(pick_notes)
@@ -1268,6 +1445,7 @@ def populate_configuration(
                     reasoning_model_ids=reasoning_model_ids,
                     exclude_reasoning_models=slot_exclude_reasoning,
                     vision_verified_ids=vision_verified_ids,
+                    va_resolvable_ids=va_resolvable_ids,
                     min_context=min_context,
                 )
                 notes.extend(pick_notes)
@@ -1322,6 +1500,8 @@ def populate_configuration(
             "vision_substitute": vision_substitute,
             "loosening_log": loosening_log,
             "catalog_models_considered": len(catalog),
+            "vendor_authoritative_pool": (
+                len(va_resolvable_ids) if va_resolvable_ids else None),
         },
     }
 
@@ -1387,6 +1567,9 @@ def main():
     latency_ms = xref.get("latency_ms") or {}
     registry_ids = xref["registry_ids"]
     vision_verified_ids = xref.get("vision_verified_ids") or set()
+    va_resolvable_ids = xref.get("va_resolvable_ids") or set()
+    if va_resolvable_ids:
+        print(f"[auto-populate] vendor-authoritative inventory active: restricting picks to {len(va_resolvable_ids)} pane-resolvable ids (avoids DEPRECATED picks).")
     if unreachable_ids:
         print(f"[auto-populate] excluding {len(unreachable_ids)} models without a positive reachability verdict (strict gate; see registry_crossref).")
     if reasoning_model_ids:
@@ -1405,6 +1588,7 @@ def main():
         reasoning_model_ids=reasoning_model_ids,
         registry_ids=registry_ids,
         vision_verified_ids=vision_verified_ids,
+        va_resolvable_ids=va_resolvable_ids,
         min_context=900000 if args.min_context_1m else None,
     )
     config["name"] = args.config_name

@@ -9,8 +9,11 @@ from __future__ import annotations
 import importlib.util
 import json
 import math
+import os
 import sys
+import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -808,6 +811,223 @@ class TestFilterInRegistry(unittest.TestCase):
             referenced <= registry_ids,
             f"picked ids outside registry: {referenced - registry_ids}",
         )
+
+
+class TestFilterVaResolvable(unittest.TestCase):
+    """The vendor-catalogue-authoritative pool restriction. When the inversion
+    is active, the Models pane serves each keyed vendor's NATIVE catalogue, so a
+    pick that's in the base registry but absent from that inventory (and not
+    aliased to it) renders DEPRECATED. filter_va_resolvable keeps the pool to
+    ids the pane can resolve. Regression guard for the VA/picker-pool mismatch
+    that surfaced as a DEPRECATED Speed pick."""
+
+    def test_drops_ids_not_pane_resolvable(self):
+        cands = [_model("openai/native"), _model("openai/orphan"), _model("meta/keep")]
+        out = auto_populate.filter_va_resolvable(cands, {"openai/native", "meta/keep"})
+        self.assertEqual({m["id"] for m in out}, {"openai/native", "meta/keep"})
+
+    def test_empty_set_is_noop(self):
+        # Inversion off / no VA file / fresh install → unchanged behaviour.
+        cands = [_model("a/x"), _model("b/y")]
+        self.assertEqual(auto_populate.filter_va_resolvable(cands, set()), cands)
+        self.assertEqual(auto_populate.filter_va_resolvable(cands, None), cands)
+
+    def _referenced_ids(self, config, catalog):
+        catalog_ids = {m["id"] for m in catalog}
+        seen: set = set()
+
+        def walk(o):
+            if isinstance(o, dict):
+                for v in o.values():
+                    walk(v)
+            elif isinstance(o, list):
+                for v in o:
+                    walk(v)
+            elif isinstance(o, str) and o in catalog_ids:
+                seen.add(o)
+
+        walk(config.get("cells", {}))
+        return seen
+
+    def test_populate_never_picks_pane_unresolvable_model(self):
+        # A maximally-attractive model that IS in the base registry but is an
+        # OpenRouter-only orphan absent from the vendor-authoritative inventory:
+        # the picker would grab it first, but it would render DEPRECATED.
+        orphan = _model("openai/orphan", intelligence=99, blended=0.01,
+                        size="large", provider="openai")
+        catalog = _fixture_catalog() + [orphan]
+        presets = _fixture_presets()
+        registry_ids = {m["id"] for m in catalog}  # orphan IS in the base registry
+        # Pane can resolve everything EXCEPT the orphan.
+        va_resolvable = {m["id"] for m in _fixture_catalog()}
+
+        # Without the VA filter the orphan is attractive enough to be picked
+        # (it passes the registry filter — it's in the base registry).
+        unfiltered = auto_populate.populate_configuration(
+            "premium", catalog, presets, registry_ids=registry_ids)
+        self.assertIn("openai/orphan", self._referenced_ids(unfiltered, catalog))
+
+        # With it, nothing outside the pane-resolvable set is selected.
+        filtered = auto_populate.populate_configuration(
+            "premium", catalog, presets,
+            registry_ids=registry_ids, va_resolvable_ids=va_resolvable)
+        referenced = self._referenced_ids(filtered, catalog)
+        self.assertNotIn("openai/orphan", referenced)
+        self.assertTrue(
+            referenced <= va_resolvable,
+            f"picked pane-unresolvable ids: {referenced - va_resolvable}",
+        )
+
+    def test_metadata_records_pool_size(self):
+        catalog = _fixture_catalog()
+        presets = _fixture_presets()
+        va = {m["id"] for m in catalog}
+        cfg = auto_populate.populate_configuration(
+            "premium", catalog, presets, va_resolvable_ids=va)
+        self.assertEqual(
+            cfg["_auto_populate_metadata"]["vendor_authoritative_pool"], len(va))
+        # No restriction → None recorded.
+        cfg2 = auto_populate.populate_configuration("premium", catalog, presets)
+        self.assertIsNone(cfg2["_auto_populate_metadata"]["vendor_authoritative_pool"])
+
+    def test_paid_slot_filters_to_resolvable(self):
+        # Per-slot: the smartest model is a pane-unresolvable orphan; the slot
+        # picks the resolvable one instead, never the orphan.
+        catalog = [
+            _model("ok/a",     intelligence=70, blended=2.0, size="large", provider="ok"),
+            _model("orphan/b", intelligence=99, blended=0.5, size="large", provider="orphan"),
+        ]
+        picks, notes = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=3, floor_pct=None,
+            cost_ceiling=None, loosening=False, va_resolvable_ids={"ok/a"})
+        self.assertEqual({p["id"] for p in picks}, {"ok/a"})
+
+    def test_paid_slot_graceful_degrade_when_va_empties_pool(self):
+        # No candidate is pane-resolvable: rather than empty the slot (which
+        # bakes a silent null primary), fall back to the full pool and record
+        # the skip. A working pick that may show DEPRECATED beats a null cell.
+        catalog = [
+            _model("orphan/a", intelligence=70, blended=2.0, size="large", provider="orphan"),
+            _model("orphan/b", intelligence=60, blended=1.0, size="large", provider="orphan"),
+        ]
+        picks, notes = auto_populate.pick_for_paid_slot(
+            catalog, size_bucket="large", top_n=3, floor_pct=None,
+            cost_ceiling=None, loosening=False, va_resolvable_ids={"unrelated/x"})
+        self.assertTrue(picks)  # slot still fills
+        self.assertTrue(any("vendor-authoritative restriction skipped" in n for n in notes))
+
+    def test_free_slot_graceful_degrade_when_va_empties_pool(self):
+        catalog = [
+            _model("orphan/f", intelligence=50, size="small", is_free=True, provider="orphan"),
+        ]
+        picks, notes = auto_populate.pick_for_free_slot(
+            catalog, size_bucket=None, top_n=2, va_resolvable_ids={"unrelated/x"})
+        self.assertTrue(picks)
+        self.assertTrue(any("vendor-authoritative restriction skipped" in n for n in notes))
+
+
+class TestRegistryCrossrefVaResolvable(unittest.TestCase):
+    """registry_crossref builds va_resolvable_ids from the sibling
+    vendor-authoritative file as native keys ∪ alias-forms-mapping-to-a-live-key
+    — exactly the pane's _resolveRegistryModel contract — and only when the
+    inversion is enabled."""
+
+    def _write_va(self, tmp):
+        """Write a VA file and return its path. The picker resolves the VA file
+        through runtime_paths.vendor_authoritative_registry_path(), which honors
+        ORA_VENDOR_AUTH_REGISTRY_PATH — so tests point that canonical env var at
+        this file (the same knob the server-side resolver reads)."""
+        va = Path(tmp) / "model-registry.vendor-authoritative.json"
+        va.write_text(json.dumps({
+            "models": {
+                "openai/gpt-native": {"dispatch": "direct"},
+                "meta/keep": {},
+            },
+            # legacy/OpenRouter forms → canonical; one points at a missing key
+            # (must be dropped, mirroring the pane's models[aliases[id]] guard).
+            "aliases": {
+                "openai/native": "openai/gpt-native",
+                "openai/dangling": "openai/not-present",
+            },
+        }))
+        return va
+
+    def _base(self, tmp):
+        base = Path(tmp) / "model-registry.json"
+        base.write_text(json.dumps({"models": {
+            "openai/native": {"category": "chat"},
+            "openai/orphan": {"category": "chat"},
+            "meta/keep": {"category": "chat"},
+        }}))
+        return base
+
+    def test_builds_resolvable_set_when_enabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base, va = self._base(tmp), self._write_va(tmp)
+            with mock.patch.dict(os.environ, {
+                    "ORA_VENDOR_CATALOG_AUTHORITATIVE": "1",
+                    "ORA_VENDOR_AUTH_REGISTRY_PATH": str(va)}, clear=False):
+                xref = auto_populate.registry_crossref(base)
+            got = xref["va_resolvable_ids"]
+            # native keys + resolvable alias; dangling alias dropped.
+            self.assertEqual(got, {"openai/gpt-native", "meta/keep", "openai/native"})
+            self.assertNotIn("openai/dangling", got)
+
+    def test_disabled_yields_empty_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base, va = self._base(tmp), self._write_va(tmp)
+            with mock.patch.dict(os.environ, {
+                    "ORA_VENDOR_CATALOG_AUTHORITATIVE": "0",
+                    "ORA_VENDOR_AUTH_REGISTRY_PATH": str(va)}, clear=False):
+                xref = auto_populate.registry_crossref(base)
+            self.assertEqual(xref["va_resolvable_ids"], set())
+
+    def test_missing_va_file_yields_empty_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self._base(tmp)
+            missing = Path(tmp) / "nope.json"
+            with mock.patch.dict(os.environ, {
+                    "ORA_VENDOR_CATALOG_AUTHORITATIVE": "1",
+                    "ORA_VENDOR_AUTH_REGISTRY_PATH": str(missing)}, clear=False):
+                xref = auto_populate.registry_crossref(base)
+            self.assertEqual(xref["va_resolvable_ids"], set())
+
+    def test_computed_even_when_base_registry_missing(self):
+        # The pane serves the VA inventory regardless of the base registry's
+        # health, so the restriction must be computed even if the base registry
+        # is absent — otherwise a missing/corrupt base silently drops the VA
+        # filter and re-skews picker vs pane.
+        with tempfile.TemporaryDirectory() as tmp:
+            va = self._write_va(tmp)
+            absent_base = Path(tmp) / "no-such-registry.json"
+            with mock.patch.dict(os.environ, {
+                    "ORA_VENDOR_CATALOG_AUTHORITATIVE": "1",
+                    "ORA_VENDOR_AUTH_REGISTRY_PATH": str(va)}, clear=False):
+                xref = auto_populate.registry_crossref(absent_base)
+            self.assertIn("openai/gpt-native", xref["va_resolvable_ids"])
+
+    def test_canonical_env_var_wins_old_name_ignored(self):
+        # Regression: the picker MUST honor the system-wide
+        # ORA_VENDOR_AUTH_REGISTRY_PATH (read by runtime_paths +
+        # build_vendor_authoritative_registry.py), NOT a private name. Point the
+        # canonical var at a missing file and the (legacy, never-honored)
+        # ORA_VENDOR_AUTHORITATIVE_PATH at a valid one: the result must be empty,
+        # proving the canonical var is authoritative and the old name is inert.
+        with tempfile.TemporaryDirectory() as tmp:
+            base, va = self._base(tmp), self._write_va(tmp)
+            missing = Path(tmp) / "nope.json"
+            with mock.patch.dict(os.environ, {
+                    "ORA_VENDOR_CATALOG_AUTHORITATIVE": "1",
+                    "ORA_VENDOR_AUTH_REGISTRY_PATH": str(missing),
+                    "ORA_VENDOR_AUTHORITATIVE_PATH": str(va)}, clear=False):
+                xref = auto_populate.registry_crossref(base)
+            self.assertEqual(xref["va_resolvable_ids"], set())
+
+    def test_enabled_helper_honours_env(self):
+        with mock.patch.dict(os.environ, {"ORA_VENDOR_CATALOG_AUTHORITATIVE": "0"}, clear=False):
+            self.assertFalse(auto_populate._vendor_authoritative_enabled())
+        with mock.patch.dict(os.environ, {"ORA_VENDOR_CATALOG_AUTHORITATIVE": "1"}, clear=False):
+            self.assertTrue(auto_populate._vendor_authoritative_enabled())
 
 
 class TestPopulateConfiguration(unittest.TestCase):
