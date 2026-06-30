@@ -971,16 +971,22 @@ a.ora-settings-apikey-label:hover {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  /* Gutter sized to fit the short slot labels (BIG 1 / FAST / SMALL) snugly so
-     the model name sits close to it; the longer expand-view labels
-     ("consolidate", "verify") clip cleanly at the edge rather than pushing the
-     name out. */
-  width: 56px;
+  /* Gutter sized to the short main labels (BIG 1 / BIG 2 / FAST / SMALL) so the
+     model name sits right next to it. The longer expand-view labels
+     (consolidate / verify) get a wider gutter via the override below. */
+  width: 44px;
   flex-shrink: 0;
   padding-right: 3px;
   padding-top: 1px;          /* nudge the gutter onto the name line */
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* Expand-view rows carry longer labels (UTILITY / CONSOLIDATE / VERIFY) — give
+   them a wider gutter so they don't clip. They sit below a dashed divider, so
+   the slight gutter difference from the main rows reads fine. */
+.ora-models-card-expand .ora-models-slot-label {
+  width: 64px;
 }
 
 /* Two-line listing: line 1 is the model name (monospace, full width);
@@ -1030,15 +1036,13 @@ a.ora-settings-apikey-label:hover {
 }
 
 .ora-models-slot-meta {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  /* The whole info-line is right-aligned (chips + stats as one group); the meta
-     shrinks so its rightmost stat ellipsis-truncates first if line 2 ever runs
-     out of room. */
   text-align: right;
-  flex: 0 1 auto;
+  /* Do NOT shrink: the stat strip keeps its full width and stays fully visible,
+     right-anchored. The info-line (overflow:hidden, justify-content:flex-end)
+     only clips at the LEFT edge, and only if the whole line genuinely exceeds
+     the row width — so nothing truncates unless it's pushed off the left. */
+  flex: 0 0 auto;
 }
 
 .ora-models-slot-empty .ora-models-slot-value {

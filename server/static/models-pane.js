@@ -841,11 +841,11 @@
       +   '</span>'
       +   '<span class="ora-models-slot-info-line">'
       +     capChip
-      // Full chip set (PICK / DIRECT / VISION / LOCAL / :free / …) — same as
-      // the inventory and popout, so a preset card shows whether its picks are
-      // vision-capable, direct-dispatched, etc. (model is null only when
-      // deprecated, where the DEPRECATED chip stands in).
-      +     (model ? _modelChipsHTML(model) : '')
+      // Chip set on the cards: PICK / VISION / LOCAL / :free / … but NOT DIRECT
+      // (per user — DIRECT stays on the inventory + popout, where it's detail;
+      // on the compact cards it just crowds line 2). model is null only when
+      // deprecated, where the DEPRECATED chip stands in.
+      +     (model ? _modelChipsHTML(model, {skipDirect: true}) : '')
       +     (isDeprecated ? '<span class="ora-models-deprecated-chip">DEPRECATED</span>' : '')
       +     (meta ? '<span class="ora-models-slot-meta">' + meta + '</span>' : '')
       +   '</span>'
@@ -1958,7 +1958,8 @@
       + '</li>';
   }
 
-  function _modelChipsHTML(model) {
+  function _modelChipsHTML(model, opts) {
+    opts = opts || {};
     var chips = [];
     if (model.vendor === 'Local' || model._local_endpoint === true) {
       chips.push('<span class="ora-models-chip ora-models-chip-local" title="Runs on this Mac via MLX. Free, no remote vendor, no rate limits.">LOCAL</span>');
@@ -1979,7 +1980,7 @@
     // endpoints with dispatch=direct: the user holds this vendor's API
     // key, so calls go straight to the vendor (cheaper than OpenRouter);
     // OpenRouter remains the per-call fallback.
-    if (model.direct_dispatch === true) {
+    if (model.direct_dispatch === true && !opts.skipDirect) {
       chips.push('<span class="ora-models-chip ora-models-chip-direct" title="Dispatches via your '
         + _esc(model.direct_service || 'vendor')
         + ' API key (direct vendor API, no OpenRouter premium). OpenRouter is the per-call fallback.">DIRECT</span>');
