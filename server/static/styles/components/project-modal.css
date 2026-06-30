@@ -208,6 +208,18 @@
   margin-left: 6px;
 }
 
+/* AI assist row (Mission & Goals tab) */
+.project-modal__assist-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.project-modal__assist-input { flex: 1; min-width: 0; }
+.project-modal__btn--assist {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 /* Milestones checklist */
 .project-modal__milestones {
   display: flex;
