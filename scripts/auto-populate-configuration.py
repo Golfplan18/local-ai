@@ -726,6 +726,128 @@ def sort_by_latency_ascending(candidates: list[dict], latency_map: dict[str, flo
     )
 
 
+# Fallback latency ceiling (ms) for the Speed knee when a preset selects
+# latency_knee but omits latency_ceiling_ms. A missing ceiling must NOT disable
+# the gate (that would silently void the speed promise the preset is named for),
+# so degrade to a sane bound rather than None. The shipped Speed config sets its
+# own value; this is the floor against a config that forgets it.
+_DEFAULT_LATENCY_CEILING_MS = 1200
+
+
+def _cost_intel_frontier(pool: list[dict]) -> list[dict]:
+    """Cost/intelligence Pareto frontier of a candidate pool: the models no
+    other model both matches-or-beats on intelligence AND matches-or-undercuts
+    on cost (with at least one strict). A model with no real price (cost_of →
+    inf) can't sit on a cost axis, so it's excluded. The frontier is the menu of
+    efficient cost↔intelligence trade-offs; the Speed knee picks one point on
+    it."""
+    # Only strictly-positive finite costs sit on the cost axis (the cost>0
+    # convention used elsewhere in this file): this keeps the log-cost knee from
+    # taking log10 of a non-positive value AND drops OpenRouter's variable-price
+    # router rows (blended_per_m -1000000.0), whose negative "price" is
+    # meaningless here.
+    priced = [m for m in pool if math.isfinite(cost_of(m)) and cost_of(m) > 0]
+    frontier: list[dict] = []
+    for e in priced:
+        ei, ec = intelligence_of(e), cost_of(e)
+        dominated = any(
+            (intelligence_of(o) >= ei and cost_of(o) <= ec
+             and (intelligence_of(o) > ei or cost_of(o) < ec))
+            for o in priced if o is not e
+        )
+        if not dominated:
+            frontier.append(e)
+    return frontier
+
+
+def select_by_latency_knee(
+    candidates: list[dict],
+    latency_map: dict[str, float] | None,
+    ceiling_ms: float | None,
+    cost_norm: str = "log",
+    top_n: int = 1,
+    existing_notes: list[str] | None = None,
+) -> tuple[list[dict], list[str]]:
+    """Speed preset's slot selection (2026-06-30): a latency-gated cost/
+    intelligence Pareto knee.
+
+      1. LATENCY GATE — keep only models whose time-to-first-token is at/under
+         ``ceiling_ms`` (the speed promise). A model with no latency signal
+         can't be proven fast, so it's dropped. Graceful degrade: if nothing is
+         under the ceiling, fall back to the fastest models that DO have a
+         signal (note logged); if nothing has a signal at all, cost order.
+      2. PARETO FRONTIER — within the gate, the cost↔intelligence efficient set
+         (_cost_intel_frontier).
+      3. BEST-VALUE KNEE — the frontier point maximizing
+         ``norm(intelligence) − norm(cost)`` (cost normalized in log10 dollars
+         by default — ``cost_norm="linear"`` leans cheaper). On a concave
+         frontier this is the diminishing-returns elbow (captures cheap
+         intelligence, dodges cost cliffs like a 15×-price model for +4 points);
+         on a smooth/convex frontier the max sits at an endpoint and the
+         tiebreak (smarter, then cheaper, then newer) takes the smartest-in-gate.
+
+    Returns ``(picks, notes)`` mirroring pick_for_paid_slot: the knee is the
+    primary; the remaining frontier points (next-best-value first) then the
+    fastest non-frontier models become the fallback chain — so a rate-limited
+    primary degrades along the efficient frontier, not off it. No intelligence
+    floor or cost ceiling: the knee replaces both (the user's decision —
+    ``selection: latency_knee``)."""
+    notes = list(existing_notes or [])
+    latency_map = latency_map or {}
+
+    with_lat = [m for m in candidates if latency_of(m, latency_map) is not None]
+    # `is not None` (not truthiness): a 0-ms ceiling must gate everything out
+    # and fall through to the degrade path, NOT disable the gate. Only None
+    # (no ceiling configured) skips the gate.
+    if ceiling_ms is not None:
+        gated = [m for m in with_lat if latency_of(m, latency_map) <= ceiling_ms]
+    else:
+        gated = list(with_lat)
+    if not gated:
+        if with_lat:
+            # The speed promise can't be met (nothing under the ceiling), so
+            # honour speed over value: return the fastest available directly,
+            # skipping the knee. (Running the knee here would re-order by value
+            # and contradict the note.)
+            notes.append(
+                f"latency ceiling skipped (no candidate ≤{ceiling_ms:.0f}ms TTFT; "
+                f"using fastest available)")
+            return sort_by_latency_ascending(with_lat, latency_map)[:top_n], notes
+        notes.append("no latency signal for any candidate; ordered by cost ascending")
+        return sort_by_cost_ascending(candidates)[:top_n], notes
+
+    frontier = _cost_intel_frontier(gated)
+    if not frontier:
+        notes.append("no priced candidate in the latency gate; ordered by latency ascending")
+        return sort_by_latency_ascending(gated, latency_map)[:top_n], notes
+
+    intels = [intelligence_of(e) for e in frontier]
+    raws = [(math.log10(cost_of(e)) if cost_norm == "log" else cost_of(e)) for e in frontier]
+    imin, imax = min(intels), max(intels)
+    cmin, cmax = min(raws), max(raws)
+
+    def _kscore(intel: float, raw_cost: float) -> float:
+        ni = (intel - imin) / (imax - imin) if imax > imin else 0.0
+        nc = (raw_cost - cmin) / (cmax - cmin) if cmax > cmin else 0.0
+        return ni - nc
+
+    # knee first, then next-best-value; tiebreak smarter → cheaper → newer.
+    frontier_ordered = [
+        e for e, _r in sorted(
+            zip(frontier, raws),
+            key=lambda er: (round(_kscore(intelligence_of(er[0]), er[1]), 9),
+                            intelligence_of(er[0]),
+                            -cost_of(er[0]),
+                            release_key(er[0])),
+            reverse=True,
+        )
+    ]
+    chosen = {e["id"] for e in frontier_ordered}
+    rest = sort_by_latency_ascending(
+        [m for m in gated if m["id"] not in chosen], latency_map)
+    return (frontier_ordered + rest)[:top_n], notes
+
+
 def filter_min_tokens_per_second(
     candidates: list[dict],
     min_tokens_per_second: float | None,
@@ -798,8 +920,17 @@ def pick_for_paid_slot(
     vision_verified_ids: set[str] | None = None,
     va_resolvable_ids: set[str] | None = None,
     min_context: int | None = None,
+    selection: str = "rank",
+    latency_ceiling_ms: float | None = None,
+    knee_cost_norm: str = "log",
 ) -> tuple[list[dict], list[str]]:
     """Pick top-N models for a paid slot.
+
+    ``selection``: "rank" (default) runs the floor → cost-ceiling → sort
+    pipeline below. "latency_knee" (Speed) instead gates the filtered pool by
+    ``latency_ceiling_ms`` and picks the cost/intelligence Pareto knee, skipping
+    the floor/ceiling/loosening machinery (the knee replaces them). See
+    select_by_latency_knee.
 
     ``sort_by`` controls the final selection order after filtering:
       "cost_asc"             — cheapest first (default; used by Budget)
@@ -872,6 +1003,16 @@ def pick_for_paid_slot(
         candidates, min_tokens_per_second, tokens_per_sec)
     candidates = [m for m in candidates if m["id"] not in excluded_ids]
     candidates = _apply_vendor_diversity(candidates, excluded_vendors)
+
+    # Speed (knee) selection: gate the filtered pool by the latency ceiling,
+    # then pick the cost/intelligence Pareto frontier's best-value knee, with
+    # frontier neighbours as fallbacks. Returns here, bypassing the floor /
+    # cost-ceiling / loosening pipeline below — the knee replaces the
+    # intelligence floor and cost ceiling. See select_by_latency_knee.
+    if selection == "latency_knee":
+        return select_by_latency_knee(
+            candidates, latency_ms, latency_ceiling_ms,
+            cost_norm=knee_cost_norm, top_n=top_n, existing_notes=loosening_notes)
 
     # NO Pareto filter (2026-06-14, user request). Pareto removes every
     # model that is both less intelligent AND pricier than some other
@@ -1259,13 +1400,29 @@ def populate_configuration(
         # preset's speed_mode flag OR a preset-level sort_by of latency_asc.
         speed_mode = (preset_obj.get("speed_mode") is True
                       or preset_obj.get("sort_by") == "latency_asc")
-        if speed_mode:
+        # Speed (knee, 2026-06-30): gate by latency, pick the cost/intelligence
+        # frontier's best-value knee. Applies to EVERY slot, and like speed_mode
+        # excludes reasoners everywhere (they stall before the first token). The
+        # knee replaces the intelligence floor + cost ceiling, so those are left
+        # to whatever the (now floor/ceiling-less) Speed preset declares.
+        knee_mode = preset_obj.get("selection") == "latency_knee"
+        if knee_mode:
+            resolved_selection = "latency_knee"
+            resolved_sort_by = "latency_asc"   # only orders the fallback tail
+            resolved_exclude_reasoning = True
+        elif speed_mode:
+            resolved_selection = "rank"
             resolved_sort_by = "latency_asc"
             resolved_exclude_reasoning = True
         else:
+            resolved_selection = "rank"
             resolved_sort_by = slot_spec.get("sort_by") or preset_obj.get("sort_by", "cost_asc")
             resolved_exclude_reasoning = slot_spec.get("exclude_reasoning_models", False)
         return {
+            "selection": resolved_selection,
+            "latency_ceiling_ms": preset_obj.get(
+                "latency_ceiling_ms", _DEFAULT_LATENCY_CEILING_MS),
+            "knee_cost_norm": preset_obj.get("knee_cost_normalization", "log"),
             "sort_by": resolved_sort_by,
             "exclude_reasoning": resolved_exclude_reasoning,
             "floor": floor,
@@ -1341,6 +1498,9 @@ def populate_configuration(
                 vision_verified_ids=vision_verified_ids,
                 va_resolvable_ids=va_resolvable_ids,
                 min_context=min_context,
+                selection=ref_settings["selection"],
+                latency_ceiling_ms=ref_settings["latency_ceiling_ms"],
+                knee_cost_norm=ref_settings["knee_cost_norm"],
             )
             ref_picks_all.extend(ref_picks)
             if ref_diversity and ref_picks:
@@ -1447,6 +1607,9 @@ def populate_configuration(
                     vision_verified_ids=vision_verified_ids,
                     va_resolvable_ids=va_resolvable_ids,
                     min_context=min_context,
+                    selection=slot_settings["selection"],
+                    latency_ceiling_ms=slot_settings["latency_ceiling_ms"],
+                    knee_cost_norm=slot_settings["knee_cost_norm"],
                 )
                 notes.extend(pick_notes)
                 section[cell_name] = picks_to_cell(picks, vision_substitute)
