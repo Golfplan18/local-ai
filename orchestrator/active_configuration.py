@@ -351,6 +351,14 @@ def bake_missing_presets(force: bool = False) -> list:
     registry_ids: set = xref.get("registry_ids") or set()
     unreachable_ids: set = xref.get("unreachable_ids") or set()
     vision_verified_ids: set = xref.get("vision_verified_ids") or set()
+    # Vendor-catalogue-authoritative pool restriction: when the inversion is
+    # active, the Models pane serves each keyed vendor's NATIVE catalogue, so a
+    # pick that's in the base registry but absent from that inventory (and not
+    # aliased to it) renders DEPRECATED. registry_crossref builds the set of
+    # pane-resolvable ids; passing it restricts the picks to models the pane can
+    # show. .get with default so a version-skewed scripts/ copy lacking the key
+    # degrades to no VA restriction (base-registry filter still applies).
+    va_resolvable_ids: set = xref.get("va_resolvable_ids") or set()
 
     baked: list = []
     for preset_name in PRESET_ORDER:
@@ -370,6 +378,7 @@ def bake_missing_presets(force: bool = False) -> list:
                 reasoning_model_ids=reasoning_model_ids,
                 registry_ids=registry_ids,
                 vision_verified_ids=vision_verified_ids,
+                va_resolvable_ids=va_resolvable_ids,
                 min_context=min_context)
             config["name"] = preset_name
             # Adversarial OFF: top model fills both Big AND Fast pairs.
