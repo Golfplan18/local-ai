@@ -8250,6 +8250,29 @@ def _fenced(label: str, body: str, note: str = "") -> str:
     return f"\n=== {label} ===\n{mid}{str(body).strip()}\n=== END {label} ==="
 
 
+def _compose_output_style(context_package: dict) -> str:
+    """Best-effort Output Style block for the style_id resolved onto the context
+    package. Returns "" (no-op) when no style is set or anything fails — style is
+    secondary to substance and must never break the pipeline. gear<=2 yields the
+    compact demeanor block; gear>=3 the full style block (see style_assembly)."""
+    style_id = (context_package.get("style_id") or "").strip()
+    if not style_id:
+        return ""
+    try:
+        try:
+            import style_assembly as _sa
+        except ImportError:
+            from orchestrator import style_assembly as _sa
+        return _sa.compose(
+            style_id,
+            register=(context_package.get("style_register") or "written"),
+            gear=(context_package.get("gear") or 4),
+            deltas=context_package.get("style_deltas") or None,
+        )
+    except Exception:
+        return ""
+
+
 def build_system_prompt_for_gear(
     context_package: dict,
     slot: str = "breadth",
@@ -8316,6 +8339,16 @@ def build_system_prompt_for_gear(
     # / legacy callers (line 5926, 8051) still get the full boot.md via
     # load_boot_md(); only pipeline step prompts use the trimmed form.
     parts = [_extract_boot_behavioral_preamble(boot_md)]
+
+    # Output Style (gears 1-2) — compact DEMEANOR block for fast judgments /
+    # short replies, framed high. Gated on gear<=2 so the gear-3/4 breadth
+    # analyst (which shares this function) stays thorough. No-op unless a
+    # style_id has been resolved onto the context package.
+    _osf_gear = context_package.get("gear") or 0
+    if 0 < _osf_gear <= 2:
+        _osf_block = _compose_output_style(context_package)
+        if _osf_block:
+            parts.append(_osf_block)
 
     # Phase A INFERRED_ITEMS block — fix for silent failure #10. When
     # Phase A ran in assume-mode and resolved ambiguities by inferring
@@ -8478,6 +8511,16 @@ def build_system_prompt_for_gear(
             parts.append(_fenced(
                 f"MODE OUTPUT FORMAT GUIDANCE — {mode_name}", format_guidance,
             ))
+
+    # Output Style (gears 3-4) — full STYLE block appended AFTER the step's
+    # substance so style stays secondary to it. Producing/shaping steps only;
+    # the evaluator and verifier are excluded so a style mismatch can never
+    # lower a verdict. No-op unless a style_id has been resolved onto the context.
+    _osf_gear = context_package.get("gear") or 0
+    if _osf_gear >= 3 and step in ("analyst", "reviser", "consolidator", "formatter"):
+        _osf_block = _compose_output_style(context_package)
+        if _osf_block:
+            parts.append(_osf_block)
 
     # RAG / retrieved reference material (all steps benefit from conversation +
     # knowledge + relationship + web context + deterministic tool results).

@@ -1,0 +1,184 @@
+"""Output Style assembly.
+
+Composes a resolved Output Style profile into the text injected into the model:
+  - the compact DEMEANOR block (gears 1-2, fast judgments / short replies)
+  - the full STYLE block (gears 3-4, at the produce/format steps)
+
+Standalone and side-effect-free: it reads the style-*.md files from
+frameworks/book and returns strings. Nothing in the pipeline imports it yet —
+this is the unit-testable core (build step 2). The injection wiring (gears) and
+the resolution chain (one-off / project / default) sit on top of this later.
+
+Precedence baked into every block:
+    values floor > completeness floor > craft floor > substance/findings > style.
+The values floor is INSTRUCTED (a prompt line), not a mechanical gate.
+"""
+
+import os
+import re
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover
+    yaml = None
+
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRAMEWORKS_DIR = os.path.join(WORKSPACE, "frameworks", "book")
+
+# Axis order = the order the lines appear in an assembled block.
+AXIS_ORDER = ["warmth", "force", "energy", "outlook",
+              "playfulness", "directness", "agreeableness"]
+
+# Rungs low->high per axis, for situational-delta math (one-rung swaps).
+RUNGS = {
+    "warmth": ["cool", "even", "warm"],
+    "force": ["gentle", "measured", "forceful"],
+    "energy": ["calm", "steady", "lively"],
+    "outlook": ["skeptical", "balanced", "affirming"],
+    "playfulness": ["straight", "dry", "playful"],
+    "directness": ["diplomatic", "plain", "blunt"],
+    "agreeableness": ["accommodating", "candid", "challenging"],
+}
+
+VALUES_FLOOR_LINE = ("Never flatter to please, never manufacture disagreement, "
+                     "never mislead — these hold regardless of the tone above.")
+COMPLETENESS_LINE = "Never drop information the reader needs to satisfy brevity."
+
+
+def _read(name, base=None):
+    base = base or FRAMEWORKS_DIR
+    with open(os.path.join(base, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+def load_registry(base=None):
+    """{style_id: entry_dict} from style-registry.md (one `## id` + yaml block each)."""
+    if yaml is None:
+        raise RuntimeError("PyYAML is required to parse the style registry")
+    text = _read("style-registry.md", base)
+    entries = {}
+    for m in re.finditer(r"^##[ \t]+([^\n]+)\n.*?```yaml\n(.*?)\n```",
+                         text, re.S | re.M):
+        sid = m.group(1).strip()
+        entries[sid] = yaml.safe_load(m.group(2)) or {}
+    return entries
+
+
+def load_demeanor_axes(base=None):
+    """({axis: {rung: text}}, {device: text}) from style-demeanor-axes.md."""
+    text = _read("style-demeanor-axes.md", base)
+    axes, devices = {}, {}
+    for sec in re.split(r"^##[ \t]+", text, flags=re.M)[1:]:
+        head, _, body = sec.partition("\n")
+        name = head.split("—")[0].split("(")[0].strip().lower()
+        bullets = dict(re.findall(r"^-[ \t]+(\w+):[ \t]*(.+)$", body, re.M))
+        if name.startswith("device"):
+            devices.update(bullets)
+        else:
+            axes[name] = bullets
+    return axes, devices
+
+
+def load_arrangement_schemas(base=None):
+    """{schema_id: prose} from style-arrangement-schemas.md."""
+    text = _read("style-arrangement-schemas.md", base)
+    schemas = {}
+    for sec in re.split(r"^##[ \t]+", text, flags=re.M)[1:]:
+        head, _, body = sec.partition("\n")
+        schemas[head.split("(")[0].strip()] = body.strip()
+    return schemas
+
+
+def load_craft_floor(base=None):
+    """The craft-floor bullet lines from style-craft-floor.md."""
+    text = _read("style-craft-floor.md", base)
+    return [m.group(1).strip() for m in re.finditer(r"^-[ \t]+(.+)$", text, re.M)]
+
+
+def resolve_demeanor(entry, deltas=None):
+    """Profile's demeanor picks with situational deltas applied (one-rung swaps, clamped)."""
+    picks = dict(entry.get("demeanor", {}))
+    for axis, step in (deltas or {}).items():
+        order = RUNGS.get(axis)
+        if not order:
+            continue
+        cur = picks.get(axis, order[len(order) // 2])
+        idx = order.index(cur) if cur in order else len(order) // 2
+        picks[axis] = order[max(0, min(len(order) - 1, idx + step))]
+    return picks
+
+
+def _demeanor_lines(entry, axes, devices, deltas=None, prefix=""):
+    picks = resolve_demeanor(entry, deltas)
+    lines = []
+    for axis in AXIS_ORDER:
+        rung = picks.get(axis)
+        if rung and rung in axes.get(axis, {}):
+            lines.append(prefix + axes[axis][rung])
+    for dev, on in (entry.get("devices") or {}).items():
+        if on and dev in devices:
+            lines.append(prefix + devices[dev])
+    return lines
+
+
+def compose_demeanor_block(entry, axes, devices, deltas=None):
+    """Compact block for gears 1-2: disposition + the two floors. No arrangement."""
+    out = ["## DEMEANOR (this turn)",
+           "PRECEDENCE: values floor > completeness > craft > substance > style.",
+           ""]
+    out += _demeanor_lines(entry, axes, devices, deltas)
+    out += ["", VALUES_FLOOR_LINE, COMPLETENESS_LINE]
+    return "\n".join(out)
+
+
+def compose_style_block(entry, axes, devices, schemas, craft, deltas=None):
+    """Full block for gears 3-4: demeanor + craft + arrangement + diction + completeness."""
+    arr = entry.get("arrangement")
+    out = ["## STYLE — SECONDARY TO SUBSTANCE",
+           "PRECEDENCE: values floor > completeness > craft > findings > style.",
+           ("Style shapes how the piece reads. It never overrides a finding, "
+            "a correction, or a fact."),
+           "", "DEMEANOR:"]
+    out += _demeanor_lines(entry, axes, devices, deltas, prefix="- ")
+    out += ["", "CRAFT FLOOR (outranks style):"]
+    out += ["- " + b for b in craft]
+    out += ["", "ARRANGEMENT (%s): %s" % (arr, schemas.get(arr, "(schema not found)"))]
+    diction = []
+    gl = entry.get("glossary") or {}
+    if gl.get("forbidden"):
+        diction.append("Avoid: " + ", ".join(str(x) for x in gl["forbidden"]) + ".")
+    if gl.get("required"):
+        diction.append("Use: " + ", ".join(str(x) for x in gl["required"]) + ".")
+    if gl.get("canonical"):
+        diction.append("Canonical terms: "
+                        + ", ".join("%s = %s" % (k, v) for k, v in gl["canonical"].items()) + ".")
+    if diction:
+        out += ["", "DICTION: " + " ".join(diction)]
+    out += ["",
+            "COMPLETENESS: floored — never traded for length. Elaboration %s of 5."
+            % entry.get("elaboration", 3),
+            COMPLETENESS_LINE]
+    return "\n".join(out)
+
+
+def compose(style_id, register="written", gear=3, deltas=None, base=None):
+    """Top-level: return the injected block for a style at a given gear.
+
+    gear <= 2 -> compact demeanor block; gear >= 3 -> full style block.
+    `register` is where situational deltas will be derived once the resolution
+    chain is wired; for now the caller passes `deltas` explicitly.
+    """
+    registry = load_registry(base)
+    if style_id not in registry:
+        raise KeyError("unknown style_id: %s" % style_id)
+    entry = registry[style_id]
+    axes, devices = load_demeanor_axes(base)
+    if gear <= 2:
+        return compose_demeanor_block(entry, axes, devices, deltas)
+    schemas = load_arrangement_schemas(base)
+    craft = load_craft_floor(base)
+    return compose_style_block(entry, axes, devices, schemas, craft, deltas)
+
+
+if __name__ == "__main__":  # quick manual peek
+    print(compose("explainer", gear=3))
