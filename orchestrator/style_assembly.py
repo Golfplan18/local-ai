@@ -108,6 +108,62 @@ def resolve_demeanor(entry, deltas=None):
     return picks
 
 
+# ── Card labels (for the Output Styles picker) ───────────────────────────────
+# Short headline forms of the four card slots. Pure functions of an entry — the
+# settings endpoint calls these so the cards stay in lockstep with the registry.
+
+ARRANGEMENT_LABELS = {
+    "answer-first": "answer-first",
+    "motivation-first": "motivation-first",
+    "problem-rationale": "problem→why",
+    "goal-steps": "goal→steps",
+    "inverted-pyramid": "inverted pyr.",
+    "bottom-line-up-front": "bottom-line",
+    "problem-recommendation": "problem→rec",
+    "thesis-evidence": "thesis→evid.",
+    "defined-terms": "defined terms",
+    "benefit-led": "benefit-led",
+    "reference-lookup": "lookup",
+    "scene-reflection": "scene→reflect",
+}
+
+ELABORATION_LABELS = {1: "minimal", 2: "essentials", 3: "balanced",
+                      4: "examples-rich", 5: "exhaustive"}
+
+
+def arrangement_short(arr_id):
+    """Card label for an arrangement schema id."""
+    return ARRANGEMENT_LABELS.get(arr_id, (arr_id or "").replace("-", " "))
+
+
+def elaboration_label(n):
+    """Card label for the 1–5 elaboration dial."""
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        n = 3
+    return ELABORATION_LABELS.get(max(1, min(5, n)), "balanced")
+
+
+def demeanor_summary(entry, max_terms=2):
+    """A one-glance label for the demeanor slot: the rung words of the one or two
+    axes furthest from neutral (e.g. ``warm · affirming``). ``neutral`` when every
+    axis sits on its middle rung. The card's "more" view shows all seven."""
+    picks = (entry or {}).get("demeanor") or {}
+    marked = []
+    for axis in AXIS_ORDER:
+        order = RUNGS.get(axis, [])
+        rung = picks.get(axis)
+        if not order or rung not in order:
+            continue
+        dist = abs(order.index(rung) - len(order) // 2)
+        if dist > 0:
+            marked.append((dist, AXIS_ORDER.index(axis), rung))
+    marked.sort(key=lambda t: (-t[0], t[1]))
+    terms = [r for _, _, r in marked[:max_terms]]
+    return " · ".join(terms) if terms else "neutral"
+
+
 def _demeanor_lines(entry, axes, devices, deltas=None, prefix=""):
     picks = resolve_demeanor(entry, deltas)
     lines = []
@@ -161,14 +217,19 @@ def compose_style_block(entry, axes, devices, schemas, craft, deltas=None):
     return "\n".join(out)
 
 
-def compose(style_id, register="written", gear=3, deltas=None, base=None):
+def compose(style_id, register="written", gear=3, deltas=None, base=None,
+            custom_entries=None):
     """Top-level: return the injected block for a style at a given gear.
 
     gear <= 2 -> compact demeanor block; gear >= 3 -> full style block.
     `register` is where situational deltas will be derived once the resolution
     chain is wired; for now the caller passes `deltas` explicitly.
+    `custom_entries` ({id: entry}) are user-authored profiles merged over the
+    built-ins, so an active custom profile injects exactly like a genre.
     """
     registry = load_registry(base)
+    if custom_entries:
+        registry = {**registry, **custom_entries}
     if style_id not in registry:
         raise KeyError("unknown style_id: %s" % style_id)
     entry = registry[style_id]

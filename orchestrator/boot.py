@@ -8323,11 +8323,23 @@ def _compose_output_style(context_package: dict) -> str:
             import style_assembly as _sa
         except ImportError:
             from orchestrator import style_assembly as _sa
+        # User-authored custom profiles live outside the framework registry; merge
+        # them in so an active custom profile injects exactly like a built-in genre.
+        custom_entries = None
+        try:
+            try:
+                import style_store as _ss
+            except ImportError:
+                from orchestrator import style_store as _ss
+            custom_entries = _ss.load_custom_profiles() or None
+        except Exception:
+            custom_entries = None
         return _sa.compose(
             style_id,
             register=(context_package.get("style_register") or "written"),
             gear=(context_package.get("gear") or 4),
             deltas=context_package.get("style_deltas") or None,
+            custom_entries=custom_entries,
         )
     except Exception:
         return ""
@@ -14119,7 +14131,17 @@ def _is_known_style_id(style_id: str) -> bool:
             import style_assembly as _sa
         except ImportError:
             from orchestrator import style_assembly as _sa
-        return style_id in _sa.load_registry()
+        if style_id in _sa.load_registry():
+            return True
+        # A custom profile is just as valid a /style target as a built-in genre.
+        try:
+            try:
+                import style_store as _ss
+            except ImportError:
+                from orchestrator import style_store as _ss
+            return style_id in _ss.load_custom_profiles()
+        except Exception:
+            return False
     except Exception:
         return True
 
