@@ -8863,7 +8863,9 @@ def run_pipeline(user_input: str, history: list = None,
                  ambiguity_mode: str = "assume",
                  stealth: bool = False,
                  config_name: str | None = None,
-                 conversation_tag: str = "") -> str:
+                 conversation_tag: str = "",
+                 style_id: str | None = None,
+                 style_register: str | None = None) -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
     For Gear 1-2: Single model with context package.
@@ -8906,6 +8908,8 @@ def run_pipeline(user_input: str, history: list = None,
             conversation_id=conversation_id,
             raw_input=user_input,
             ambiguity_mode=ambiguity_mode,
+            style_id=style_id,
+            style_register=style_register,
             stealth=stealth,
         )
 
