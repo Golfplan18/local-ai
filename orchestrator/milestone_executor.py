@@ -152,6 +152,27 @@ def _lookup_framework_default_configuration(framework_name: str) -> Optional[str
     return None
 
 
+def _maybe_persist_self_mindspec(framework_name, mode, final_output):
+    """Persist a completed self MindSpec interview to ~/ora/mind.md so the engine
+    can load it (load_boot_md reads it when "custom values" is enabled). Gated to
+    the self mode so agent/character specs never clobber the user's values.
+    Best-effort: never raises. (Save dest == load_boot_md's MIND_MD source.)"""
+    if framework_name != "mindspec-interview" or mode != "MSI-Self" or not final_output:
+        return
+    try:
+        import os as _os
+        try:
+            from file_ops import file_write          # TOOLS_DIR on sys.path (boot)
+        except ImportError:
+            try:
+                from tools.file_ops import file_write
+            except ImportError:
+                from orchestrator.tools.file_ops import file_write
+        file_write(_os.path.join(_os.path.expanduser("~/ora"), "mind.md"), final_output)
+    except Exception:
+        pass
+
+
 def execute_framework(
     framework_path: str,
     user_input: str,
@@ -275,6 +296,7 @@ def execute_framework(
 
         # Final output = last milestone's deliverable
         final_output = results[-1].deliverable if results else ""
+        _maybe_persist_self_mindspec(fw.name, selected_mode, final_output)
         scratch.mark_complete()
 
         # ---- Oversight hook: FrameworkComplete (success) ----

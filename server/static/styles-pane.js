@@ -42,7 +42,17 @@
       + '</label>';
   }
 
-  function _render(host, styles, currentDefault) {
+  function _saveFlag(flag, val) {
+    var styles = {};
+    styles[flag] = val;
+    return fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates: { styles: styles } }),
+    }).then(_json);
+  }
+
+  function _render(host, styles, currentDefault, useCustom) {
     var rows = [_row('', 'None', 'no Output Style — the engine default voice', !currentDefault)];
     styles.forEach(function (s) {
       rows.push(_row(s.id, s.display_name || s.id, s.description || '', s.id === currentDefault));
@@ -53,6 +63,10 @@
       + 'Override any single turn by typing <code>/style &lt;id&gt;</code> '
       + '(or <code>/style off</code>) in the chat.</p>'
       + '<div class="ora-styles-list">' + rows.join('') + '</div>'
+      + '<label class="ora-style-toggle"><input type="checkbox" data-role="custom-values"'
+      + (useCustom ? ' checked' : '') + '> Use my custom values'
+      + '<span class="ora-style-desc">compose the voice from your personal mind.md '
+      + '(run the MindSpec interview in self mode to create one) instead of the defaults</span></label>'
       + '<p class="ora-styles-status" data-role="status" aria-live="polite"></p>'
       + '</div>';
     var status = host.querySelector('[data-role="status"]');
@@ -69,6 +83,19 @@
         });
       });
     });
+    var cv = host.querySelector('[data-role="custom-values"]');
+    if (cv) {
+      cv.addEventListener('change', function () {
+        status.textContent = 'Saving…';
+        _saveFlag('use_custom_values', cv.checked).then(function () {
+          status.textContent = cv.checked
+            ? 'Using your custom values (mind.md)'
+            : 'Using default values';
+        }).catch(function () {
+          status.textContent = 'Could not save — try again.';
+        });
+      });
+    }
   }
 
   function init(host) {
@@ -83,12 +110,13 @@
       var styles = (res[0] && res[0].styles) || [];
       var settings = (res[1] && res[1].settings) || {};
       var cur = (settings.styles && settings.styles.default_id) || '';
+      var useCustom = !!(settings.styles && settings.styles.use_custom_values);
       if (!styles.length) {
         host.innerHTML = '<p class="ora-styles-empty">No Output Style profiles found '
           + '(the style registry is unavailable).</p>';
         return;
       }
-      _render(host, styles, cur);
+      _render(host, styles, cur, useCustom);
     });
   }
 

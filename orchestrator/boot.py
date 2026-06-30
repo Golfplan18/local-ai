@@ -71,6 +71,7 @@ _CURRENT_STEP_CV: ContextVar[str | None] = ContextVar(
 # Paths
 WORKSPACE = os.path.expanduser("~/ora/")
 BOOT_MD = os.path.join(WORKSPACE, "boot/boot.md")
+MIND_MD = os.path.join(WORKSPACE, "mind.md")  # user values; save dest == load source
 ROUTING_CONFIG_JSON = os.path.join(WORKSPACE, "config/routing-config.json")
 TOOLS_DIR = os.path.join(WORKSPACE, "orchestrator/tools/")
 FRAMEWORKS_DIR = os.path.join(WORKSPACE, "frameworks/book/")
@@ -1261,6 +1262,26 @@ def load_boot_md() -> str:
         if total_chars > 8000:
             print(f"[WARNING] Context directory contains {total_chars} characters "
                   f"(~{total_chars // 4} tokens). Consider moving large files to the vault.")
+
+    # Custom values — when the user has opted into their own values (Output
+    # Styles tab → "custom values") AND authored a personal mind.md, inject it
+    # as the authoritative values layer. Default off → no change (the engine's
+    # hardcoded Mind Seeds in boot.md still apply). Best-effort.
+    try:
+        try:
+            import user_settings as _us
+        except ImportError:
+            from orchestrator import user_settings as _us
+        if _us.get_setting("styles.use_custom_values") and os.path.isfile(MIND_MD):
+            with open(MIND_MD, encoding="utf-8") as _mf:
+                _mind = _mf.read().strip()
+            if _mind:
+                boot_content += (
+                    "\n\n---\n[YOUR VALUES — mind.md (authoritative; supersedes "
+                    "the default Mind Seeds above)]\n\n" + _mind
+                )
+    except Exception:
+        pass
 
     # Universal anti-confabulation directive — appended at load_boot_md level
     # so every code path that loads boot.md gets the directive, not only
